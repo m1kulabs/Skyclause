@@ -131,12 +131,12 @@ The edition descriptions and storage figures come from the editions comparison (
 
 The editions comparison table, Business edition column ([GE editions]):
 
-- **Can:** chat grounded in Google Search and connected data; generate images and video; use Deep Research; create and share Gemini Notebook Enterprise notebooks; build and publish no-code agents (preview); create custom skills; use select connectors and permission-aware search. The Business help centre also covers connecting a custom MCP server ([GE Business help]).
+- **Can:** chat grounded in Google Search and connected data; generate images and video; use Deep Research; create and share Gemini Notebook Enterprise notebooks; build and publish no-code agents (preview in this table, but GA since 3 September 2026 per the release notes; see [Gemini Enterprise](/docs/research/gemini-enterprise.md#corrections-to-google-toolsmd-and-the-briefing)); create custom skills; use select connectors and permission-aware search. The Business help centre also covers connecting a custom MCP server ([GE Business help]).
 - **Cannot:** bring your own full-code agents built outside Gemini Enterprise, such as ADK or A2A agents. Business also lacks the Data Insights agent, Agent Marketplace, the full connector ecosystem, Cloud console access, AI developer tools including Antigravity, and the mobile app ([GE editions], [GE choose edition]).
 - **Standard and Plus** can publish agents built with Agent Platform or ADK into the Gemini Enterprise app, or connect external agents over the Agent2Agent (A2A) protocol ([GE FAQ]).
 - **Doc conflict:** the FAQ says Standard and Plus include Gemini Code Assist, but since 9 October 2026 new Standard and Plus subscriptions no longer include it ([Code Assist sunset]).
 
-What this means for a prototype (inference): Gemini Enterprise is a seat-licensed, staff-facing workspace, not a backend you embed in a public app. Every judge or end user would need a seat in your tenant. A team can use it to show a staff-side experience, for example a no-code agent that answers questions over uploaded campus documents. The sensor ingest, the logic, and any public UI still need the Gemini API or Agent Platform.
+What this means for a prototype (inference): Gemini Enterprise is a seat-licensed, staff-facing workspace, not a backend you embed in a public app. Every judge or end user would need a seat in your tenant. A team can use it to show a staff-side experience, for example a no-code agent that answers questions over uploaded campus documents. The sensor ingest, the logic, and any public UI still need the Gemini API or Agent Platform. Superseded after the briefing: Gemini Enterprise became mandatory, and workflows now carry scheduled and event-driven logic inside the app; see [Gemini Enterprise](/docs/research/gemini-enterprise.md).
 
 [GE Business help]: https://support.google.com/g
 
@@ -303,7 +303,7 @@ What I infer:
 
 ## See also
 
-- [Hackathon brief](/docs/BRIEF.md): dates, tracks, and the open question on tools and credits.
+- [Hackathon brief](/docs/BRIEF.md): dates, tracks, the briefing's Gemini Enterprise stance, and the open questions on licences and credits.
 - [iot-and-network.md](/docs/research/iot-and-network.md): devices, protocols, and the IoT side of the architecture.
 - [public-data-sources.md](/docs/research/public-data-sources.md): live public datasets per track.
 - [judging-and-pitching.md](/docs/research/judging-and-pitching.md): rubrics, responsible AI, and packaging.

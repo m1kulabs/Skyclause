@@ -31,7 +31,7 @@ Contents:
 
 ## Comparable rubrics
 
-The hackathon's website says criteria "will be released soon" and that every prototype is reviewed and scored 11–14 November ([brief](/docs/BRIEF.md)). The rubrics below come from events in the same lineage (Google student programmes, GDG on Campus Malaysia, APU) and from the two big hackathon platforms.
+The hackathon's website says criteria "will be released soon" and that every prototype is reviewed and scored 11–14 November ([brief](/docs/BRIEF.md)). At the 3 November briefing, an NTT DATA presenter gave an unofficial five-point outline: impact, connectors, research, time to impact, and day-to-day workflows ([brief](/docs/BRIEF.md#judging-and-prizes)). The rubrics below come from events in the same lineage (Google student programmes, GDG on Campus Malaysia, APU) and from the two big hackathon platforms.
 
 ### Rubric comparison
 
@@ -94,7 +94,7 @@ This hackathon is organised by APU School of Technology with GDGoC APU, sponsore
 - **Private 5G and edge AI (26 February 2026):** a multi-year Ericsson partnership on private 5G, edge AI, and physical AI, with NTT DATA Edge AI agents running on Ericsson edge platforms, for sectors including energy, transportation, and smart cities ([NTT DATA Ericsson release]).
 - **Malaysia (20 October 2026):** an NTT DATA Malaysia blog on the national grid says the company applies "AI, IoT and advanced analytics" to predictive maintenance, uses edge computing to "identify anomalies and trigger workflows without sending raw data elsewhere", and concludes: "The point isn't to put AI, private 5G or IoT everywhere but to identify operational problems where faster, richer information changes the outcome, then build the architecture around those problems" ([NTT DATA Malaysia energy blog]).
 - **Malaysia site (3 November 2026):** the home page leads with the "Intelligence to Impact" positioning and generative and agentic AI reports ([NTT DATA Malaysia]).
-- **At this hackathon:** the briefing includes Gemini Enterprise training with NTT DATA ([brief](/docs/BRIEF.md)).
+- **At this hackathon:** the briefing included Gemini Enterprise training with NTT DATA, whose presenters called Gemini Enterprise mandatory ([brief](/docs/BRIEF.md#tools)).
 
 Inference: NTT DATA judges are likely to reward a concrete operational problem with a measurable outcome, AI that runs as an agent or workflow rather than a chat box, and visible attention to governance and security.
 
@@ -127,7 +127,7 @@ The final pitching for the top five is at the APU Auditorium during NexConnect '
 
 ## Packaging for asynchronous assessment
 
-Reviewers get a project title, track, summary, HTTPS repo link, a PDF deck of up to 10 MB, and an optional demo link; final submission locks the project and the PDF ([brief](/docs/BRIEF.md)).
+Reviewers get a project title, track, summary, HTTPS repo link, a PDF deck of up to 10 MB, and an optional demo link; final submission locks the project and the PDF ([brief](/docs/BRIEF.md)). The NTT DATA presenters also asked for a five-point README, a diagram in the repo, a 3–4 minute video, and reviewer access to the team's Gemini Enterprise app ([brief](/docs/BRIEF.md#submission-requirements)).
 
 ### README for judges
 
@@ -209,7 +209,7 @@ The format, timing, and judges for the 17 November final are unannounced ([brief
 - YC: "demos seldom work in modern demo day presentations" ([YC demo day guide]).
 - Devpost: skip mundane flows such as creating accounts, and copy any needed text to the clipboard ([Devpost live demo]).
 
-Inference: for a Cloud + IoT + network project, the backup is a second live path, such as a phone hotspot and a second device, with the device brought on stage only if the venue network has been tested. Recorded demo videos are ruled out ([context](/docs/CONTEXT.md#decisions-so-far)).
+Inference: for a Cloud + IoT + network project, the backup is a second live path, such as a phone hotspot and a second device, with the device brought on stage only if the venue network has been tested. A recording can't stand in for the live demo ([context](/docs/CONTEXT.md#decisions-so-far)).
 
 [Devpost live demo]: https://info.devpost.com/blog/how-to-present-a-successful-hackathon-demo
 [Paul Graham]: https://paulgraham.com/investors.html
@@ -272,7 +272,7 @@ This hackathon's brief does not mention the SDGs ([brief](/docs/BRIEF.md)).
 - **Evidence:** comparable events gate on completeness first, and Google Cloud's Devpost rules want a repo with everything needed to run it. **Inference:** a missing run instruction or a private repo could cost more than any feature, so check access from a logged-out browser before 10 November.
 - **Evidence:** Google-lineage rubrics reward a working app over a mockup, and School of Technology staff teach the Coral-to-Vertex AI edge pipeline. **Inference:** a short "real vs stubbed" table in the README and deck protects credibility on the IoT and network layers.
 - **Evidence:** NTT DATA's 2026 messaging is Gemini Enterprise agents, private 5G and edge AI for sectors including smart cities, and "operational problems where faster, richer information changes the outcome". **Inference:** frame the project as one campus operational problem with a before/after metric, and show the AI acting, not only chatting.
-- **Evidence:** the demo link is optional, but comparable events treat a ≤3-minute video as one of the first things judges see. **Inference:** a demo link is worth submitting. The user ruled out recorded demo videos on 3 November 2026, so the link should be the live hosted app ([context](/docs/CONTEXT.md#decisions-so-far)).
+- **Evidence:** the demo link is optional, but comparable events treat a ≤3-minute video as one of the first things judges see. **Inference:** a demo link is worth submitting. After the briefing, the user allowed a 3–4 minute recording of the live system on real data, labelled with its capture date, but never as a stand-in for live access, so the link should lead to the live system, with the video alongside ([context](/docs/CONTEXT.md#decisions-so-far)).
 - **Evidence:** finals elsewhere weight presentation heavily (40% at KitaHack 2026), and YC advises one presenter and lots of practice. **Inference:** pick the strongest speaker and rehearse 3-, 5-, and 10-minute versions, since the format is unannounced.
 - **Evidence:** the Gemini API free tier lets Google use and human-review inputs and says not to submit personal information, and PDPA 2024 treats biometric data as sensitive. **Inference:** keep classmates' personal data out of free-tier calls, avoid face recognition, and say so on a privacy slide.
 - **Evidence:** MLH and YC treat dishonesty about tools or results as disqualifying or fatal. **Inference:** list AI coding tools and any simulated parts in the README.

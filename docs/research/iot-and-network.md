@@ -197,7 +197,7 @@ Google has no managed MQTT service; the broker comes from a partner or is self-h
 
 ### What a judge can see of the network
 
-Submissions are assessed asynchronously from the repo, the PDF deck, and an optional demo link, with only the top five pitching live ([brief](/docs/BRIEF.md)). Inference, not sourced: a network is invisible unless the demo makes it visible. Things a live dashboard can show from the documented features above:
+Submissions are assessed asynchronously from the repo, the PDF deck, and a demo link, plus the README, video, and Gemini Enterprise app access NTT DATA asked for, with only the top five pitching live ([brief](/docs/BRIEF.md#submission-requirements)). Inference, not sourced: a network is invisible unless the demo makes it visible. Things a live dashboard can show from the documented features above:
 
 - End-to-end latency per reading: device timestamp against Pub/Sub `publishTime` ([PubsubMessage]).
 - A device going offline and back: the broker's Will Message or a retained online/offline status, with buffered readings arriving after reconnect.
