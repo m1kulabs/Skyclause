@@ -37,7 +37,7 @@ Contents:
 3.  **Room presence:** a QR check-in 15 minutes after a class starts records whether the room is in use, keyed by APU's class code format ([KB class code]).
 
 [KB APSpace]: https://apiit.atlassian.net/wiki/spaces/ITSM/pages/218792045
-[public data sources]: /docs/research/public-data-sources.md
+[public data sources]: /docs/research/data-sources.md
 [KB class code]: https://apiit.atlassian.net/wiki/spaces/AA/pages/1626997180
 
 ### Timetable & HVAC Reconciler connectors
@@ -72,7 +72,7 @@ The workflow runs on a weekly schedule after publication, plus a daily check for
 ## See also
 
 - [Argon idea ranking](00-ranking.md)
-- [APU public documents](/docs/research/apu-public-documents.md) and [public data sources](/docs/research/public-data-sources.md)
+- [APU public documents](/docs/research/apu.md) and [public data sources](/docs/research/data-sources.md)
 - [Public timetable guide][KB timetable without login] and [timetable prefix fix][KB timetable prefix] in APU's KB
 
 [KB timetable prefix]: https://apiit.atlassian.net/wiki/spaces/ITSM/pages/801013944

@@ -35,7 +35,7 @@ OpenAlex's filter for APU's ROR ID `03c52a632` returned 3,712 works on 3 Novembe
 2.  Checks recent OpenAlex, arXiv, and Crossref literature for overlapping or dated scope, before the student commits a semester.
 3.  Checks APSoftware, APU's free software list, which includes SPSS, SolidWorks, SmartPLS, NVivo, SQL Server, Visual Studio, MATLAB, and NetSim ([KB APSoftware], [KB NetSim]).
 
-[public data sources]: /docs/research/public-data-sources.md
+[public data sources]: /docs/research/data-sources.md
 [KB APSoftware]: https://apiit.atlassian.net/wiki/spaces/ITSM/pages/993492993
 [KB NetSim]: https://apiit.atlassian.net/wiki/spaces/ITSM/pages/2346156347
 
@@ -47,7 +47,7 @@ OpenAlex's filter for APU's ROR ID `03c52a632` returned 3,712 works on 3 Novembe
 - **Google Calendar and Gmail (GA):** propose a first supervision slot and point the student to iConsult, APU's lecturer consultation booking ([KB iConsult]).
 - **Custom MCP on Cloud Run (preview):** `apu-openalex-mcp` queries OpenAlex, Crossref, and Semantic Scholar on demand and passes any API error straight through.
 
-[Gemini Enterprise data]: /docs/research/gemini-enterprise-data.md
+[Gemini Enterprise data]: /docs/research/gemini-enterprise.md#data-in-and-out
 [KB iConsult]: https://apiit.atlassian.net/wiki/spaces/ITSM/pages/219086947
 
 ## Research & FYP Nexus validation and rollout
@@ -65,5 +65,5 @@ OpenAlex's filter for APU's ROR ID `03c52a632` returned 3,712 works on 3 Novembe
 ## See also
 
 - [Argon idea ranking](00-ranking.md)
-- [Public data sources](/docs/research/public-data-sources.md) on OpenAlex
+- [Public data sources](/docs/research/data-sources.md) on OpenAlex
 - [APU's ROR record](https://ror.org/03c52a632)

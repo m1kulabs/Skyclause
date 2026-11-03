@@ -311,40 +311,40 @@ How a reviewer triggers it themselves:
 
 - [Brief](/docs/BRIEF.md) and [context](/docs/CONTEXT.md): rules, judging points, Gemini Enterprise limits, and the recommended shape.
 - [X research][x haze], [Reddit research][reddit haze] and [other platforms research][other rain]: the haze, flood and attendance evidence.
-- [Crowd baseline](/docs/research/crowd-baseline.md): the simulated crowd and APU student tools.
-- [Gemini Enterprise](/docs/research/gemini-enterprise.md) and [Gemini Enterprise data](/docs/research/gemini-enterprise-data.md): triggers, approvals, actions, and live-data paths.
-- [Public data sources](/docs/research/public-data-sources.md), [IoT and network](/docs/research/iot-and-network.md), and [APU public documents]: feeds, sensors, boards, and APU's rules.
-- [Research and impact](/docs/research/research-and-impact.md) and [judging and pitching](/docs/research/judging-and-pitching.md): baselines, accuracy, the video, and privacy.
+- [Crowd baseline](/docs/research/competition.md): the simulated crowd and APU student tools.
+- [Gemini Enterprise](/docs/research/gemini-enterprise.md) and [Gemini Enterprise data](/docs/research/gemini-enterprise.md#data-in-and-out): triggers, approvals, actions, and live-data paths.
+- [Public data sources](/docs/research/data-sources.md), [IoT and network](/docs/research/iot-and-network.md), and [APU public documents]: feeds, sensors, boards, and APU's rules.
+- [Research and impact](/docs/research/judging.md) and [judging and pitching](/docs/research/judging.md): baselines, accuracy, the video, and privacy.
 - Key outside sources: [DOE API calculation], [The Edge, 22 Oct][edge api], [Malay Mail, 7 Oct][mm moe], [The Star, 8 Oct][star moe], [MET Malaysia on X], [JPS KL gauge], [Sensor.Community archive].
 
-[x haze]: /docs/research/social-x.md#haze-and-air-quality-decisions
-[x floods]: /docs/research/social-x.md#event-crowds-and-flash-floods-around-bukit-jalil
-[reddit haze]: /docs/research/social-reddit.md#haze-heat-and-flash-floods
-[reddit attendance]: /docs/research/social-reddit.md#attendance-moodle-locks-and-the-80-visa-rule
-[other rain]: /docs/research/social-other-platforms.md#heat-rain-and-flash-floods
-[crowd clusters]: /docs/research/crowd-baseline.md#clusters-and-shares
-[crowd gaps]: /docs/research/crowd-baseline.md#what-the-crowd-structurally-misses
+[x haze]: /docs/research/social.md#haze-and-air-quality-decisions
+[x floods]: /docs/research/social.md#event-crowds-and-flash-floods-around-bukit-jalil
+[reddit haze]: /docs/research/social.md#haze-heat-and-flash-floods
+[reddit attendance]: /docs/research/social.md#attendance-moodle-locks-and-the-80-visa-rule
+[other rain]: /docs/research/social.md#heat-rain-and-flash-floods
+[crowd clusters]: /docs/research/competition.md#clusters-and-shares
+[crowd gaps]: /docs/research/competition.md#what-the-crowd-structurally-misses
 [ge triggers]: /docs/research/gemini-enterprise.md#triggers-and-schedules
 [ge unattended]: /docs/research/gemini-enterprise.md#what-runs-without-anyone-signed-in
 [ge runs]: /docs/research/gemini-enterprise.md#run-history-as-evidence
 [ge limits]: /docs/research/gemini-enterprise.md#limits-that-bite-in-a-one-week-build
 [ge reviewer]: /docs/research/gemini-enterprise.md#reviewer-access
-[ged actions]: /docs/research/gemini-enterprise-data.md#actions-and-write-back
-[ged sheets]: /docs/research/gemini-enterprise-data.md#phone-or-board-to-google-sheets
-[ged feed]: /docs/research/gemini-enterprise-data.md#public-feed-polled-into-sheets
-[ged federated]: /docs/research/gemini-enterprise-data.md#federated-search-versus-ingestion
-[ged accounts]: /docs/research/gemini-enterprise-data.md#edition-and-account-limits
-[ged sandboxes]: /docs/research/gemini-enterprise-data.md#free-sandboxes
+[ged actions]: /docs/research/gemini-enterprise.md#actions-and-write-back
+[ged sheets]: /docs/research/gemini-enterprise.md#phone-or-board-to-google-sheets
+[ged feed]: /docs/research/gemini-enterprise.md#public-feed-polled-into-sheets
+[ged federated]: /docs/research/gemini-enterprise.md#federated-search-versus-ingestion
+[ged accounts]: /docs/research/gemini-enterprise.md#edition-and-account-limits
+[ged sandboxes]: /docs/research/gemini-enterprise.md#free-sandboxes
 [iot phones]: /docs/research/iot-and-network.md#phone-and-laptop-sensors-in-the-browser
 [iot boards]: /docs/research/iot-and-network.md#cheap-boards-from-malaysian-retailers
 [iot lead time]: /docs/research/iot-and-network.md#hardware-lead-time
 [iot wifi]: /docs/research/iot-and-network.md#apu-campus-wi-fi
-[pds apims]: /docs/research/public-data-sources.md#doe-apims-air-pollutant-index
-[ri accuracy]: /docs/research/research-and-impact.md#measuring-an-agents-accuracy-honestly
-[ri minute]: /docs/research/research-and-impact.md#minute-plan
-[jp pdpa]: /docs/research/judging-and-pitching.md#malaysias-pdpa-and-the-2024-amendment
+[pds apims]: /docs/research/data-sources.md#doe-apims-air-pollutant-index
+[ri accuracy]: /docs/research/judging.md#measuring-an-agents-accuracy-honestly
+[ri minute]: /docs/research/judging.md#minute-plan
+[jp pdpa]: /docs/research/judging.md#malaysias-pdpa-and-the-2024-amendment
 [context decisions]: /docs/CONTEXT.md#decisions-so-far
-[APU public documents]: /docs/research/apu-public-documents.md
+[APU public documents]: /docs/research/apu.md
 [mm moe]: https://www.malaymail.com/news/malaysia/2026/10/07/haze-education-ministry-orders-state-and-district-education-offices-schools-to-monitor-haze-act-based-on-api-readings/238138
 [star moe]: https://www.thestar.com.my/news/nation/2026/10/08/haze-schools-must-close-if-api-exceeds-150-for-three-days-says-education-ministry
 [Malaysia Haze Monitor]: https://github.com/herr-hollis/Malaysia-Haze-Monitor

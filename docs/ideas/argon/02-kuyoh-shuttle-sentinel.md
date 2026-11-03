@@ -97,9 +97,9 @@ Transit, river, and weather feeds are public government data; attribute `data.go
 ## See also
 
 - [Argon idea ranking](00-ranking.md)
-- [Public data sources](/docs/research/public-data-sources.md) and [IoT and network](/docs/research/iot-and-network.md)
+- [Public data sources](/docs/research/data-sources.md) and [IoT and network](/docs/research/iot-and-network.md)
 - [APU shuttle schedule, 22 October 2026][shuttle schedule]
 
 [shuttle schedule]: https://publicwebsite-media.apu.edu.my/assets/2026-10/2026Oct22_APU-SHUTTLE-SERVICES.pdf
-[public data sources]: /docs/research/public-data-sources.md
+[public data sources]: /docs/research/data-sources.md
 [context public feeds]: /docs/CONTEXT.md#public-feeds

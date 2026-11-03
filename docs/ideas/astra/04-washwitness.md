@@ -16,15 +16,15 @@ Contents:
 
 The first user is a residence coordinator handling repeated machine complaints; the beneficiary is a resident deciding whether to spend time and money on a cycle. The current substitute is a vendor app, fault form, email and a sign on the machine.
 
-[S10](/docs/research/astra-social-demand.md#s10-a-repair-vendor-cannot-reproduce-a-recurring-fault) describes a property manager repeatedly observing a washer leak that a repair visit failed to reproduce. [D1–D2](/docs/research/astra-feasibility-and-substitutes.md#additional-demand-evidence) contain overseas student reports of misleading availability and unsuccessful drying. These are specific analogues, not Malaysian equipment statistics.
+[S10](/docs/research/social.md#s10-a-repair-vendor-cannot-reproduce-a-recurring-fault) describes a property manager repeatedly observing a washer leak that a repair visit failed to reproduce. [D1–D2](/docs/research/social.md#d1-and-d2-laundry-analogues-outside-malaysia) contain overseas student reports of misleading availability and unsuccessful drying. These are specific analogues, not Malaysian equipment statistics.
 
-The strongest local account, [S7](/docs/research/astra-social-demand.md#s7-city-of-green-laundry-is-blocked-by-uncollected-clothes), concerns clothes left in completed machines and also says wardens are helpful. **Inference:** repair verification may be the wrong local problem. First observe one laundry room with permission; if most wasted trips arise from uncollected clothes, a collection agreement and reminder could outperform this idea. No local vendor, machine inventory or failure rate is confirmed.
+The strongest local account, [S7](/docs/research/social.md#s7-city-of-green-laundry-is-blocked-by-uncollected-clothes), concerns clothes left in completed machines and also says wardens are helpful. **Inference:** repair verification may be the wrong local problem. First observe one laundry room with permission; if most wasted trips arise from uncollected clothes, a collection agreement and reminder could outperform this idea. No local vendor, machine inventory or failure rate is confirmed.
 
 ## Why this could earn repeat use
 
 The desired reason to return is a credible answer to “has this machine worked since that fault?” A coordinator should spend less time forwarding the same incomplete complaint; a resident should avoid repeating an unsuccessful cycle. Actual retention and willingness to contribute remain unknown.
 
-[Circuit Go and fault reporting already exist](/docs/research/astra-feasibility-and-substitutes.md#existing-substitutes). Availability, payments, cycle timers and AI diagnosis provide no defensible novelty. The narrower hypothesis is **repair acceptance under the original failure condition**, preserving “unable to reproduce” rather than converting it into “fixed.” A simple vendor form with a required successful-cycle checkbox is the strongest low-cost competitor.
+[Circuit Go and fault reporting already exist](/docs/research/competition.md#existing-substitutes). Availability, payments, cycle timers and AI diagnosis provide no defensible novelty. The narrower hypothesis is **repair acceptance under the original failure condition**, preserving “unable to reproduce” rather than converting it into “fixed.” A simple vendor form with a required successful-cycle checkbox is the strongest low-cost competitor.
 
 ## Physical signal and workflow
 

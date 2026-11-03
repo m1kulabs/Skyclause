@@ -71,7 +71,7 @@ Stages and actions come from the [Gemini Enterprise data] research. The Jira Clo
 | Globalping              | Preview | Ping, traceroute, or HTTP from public probes to `apu.edu.my` and the ingest endpoint, to tell upstream from in-room faults          |
 | Custom MCP on Cloud Run | Preview | `get_active_class(room, time)`; `search_kb(symptom)`, reading APU's public KB live over the Confluence REST API; `check_upstream()` |
 
-[Gemini Enterprise data]: /docs/research/gemini-enterprise-data.md
+[Gemini Enterprise data]: /docs/research/gemini-enterprise.md#data-in-and-out
 [context connectors]: /docs/CONTEXT.md#connectors-and-live-data
 
 ### Classroom SLA rulebook
@@ -87,7 +87,7 @@ The 15 rules live in the `TechCentre_SLA_Rulebook` Sheet so TechCentre can chang
 3.  **R09–R12, deduplication:** repeat reports from one room within 10 minutes become comments and a count on the open Jira issue, found by JQL, rather than new tickets. APU's own ticket statuses list duplicates as a reason to cancel ([KB ticket status]).
 4.  **R13–R15, closing:** APU closes a ticket after two days of inactivity, and a reply reopens it to Waiting for Support ([KB ticket status]). Helpdesks elsewhere fight tickets reopened by "thanks" emails ([thanks thread]), so a thank-you reply is logged as confirmation and the ticket stays Done.
 
-[agent hackathon winners]: /docs/research/agent-hackathon-winners.md
+[agent hackathon winners]: /docs/research/winners.md
 [KB timetable]: https://apiit.atlassian.net/wiki/spaces/ITSM/pages/321257473
 [KB class code]: https://apiit.atlassian.net/wiki/spaces/AA/pages/1626997180
 [KB VirtualLab]: https://apiit.atlassian.net/wiki/spaces/ITSM/pages/884047873
@@ -114,7 +114,7 @@ Following the [build plan] and [research and impact] guidance: recruit 6–8 peo
 - **Round 2, Friday 6 November:** test the thin slice with interviewees and record each finding-to-decision change in the README, such as adding offline buffering if phones lose the network mid-reading.
 
 [build plan]: /docs/CONTEXT.md#build-plan-to-17-november
-[research and impact]: /docs/research/research-and-impact.md
+[research and impact]: /docs/research/judging.md
 
 ### SpineDesk Pulse evaluation set
 
@@ -148,10 +148,10 @@ Nothing in APU's private systems or network configuration changes before launch.
 ## See also
 
 - [Argon idea ranking](00-ranking.md)
-- [IoT and network](/docs/research/iot-and-network.md) and [Gemini Enterprise data](/docs/research/gemini-enterprise-data.md)
+- [IoT and network](/docs/research/iot-and-network.md) and [Gemini Enterprise data](/docs/research/gemini-enterprise.md#data-in-and-out)
 - [APU IT helpdesk SLA][KB SLA] and [Teams Wi-Fi contention][KB Teams Wi-Fi] in APU's KB
 
 [KB projector]: https://apiit.atlassian.net/wiki/spaces/ITSM/pages/218857672
 [KB Teams Wi-Fi]: https://apiit.atlassian.net/wiki/spaces/ITSM/pages/2291695772
 [KB SLA]: https://apiit.atlassian.net/wiki/spaces/ITSM/pages/491356161
-[APU public documents]: /docs/research/apu-public-documents.md
+[APU public documents]: /docs/research/apu.md

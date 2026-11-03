@@ -1,6 +1,6 @@
-# Google tools
+# Google Cloud and AI tools beyond Gemini Enterprise
 
-Which Google AI and Cloud tools a team of APU students in Malaysia can realistically use to build a Cloud + IoT + Network prototype between 3 and 10 November 2026, what they cost, and what changed recently. Researched on 3 November 2026 against Google's live docs, pricing pages, and terms; prices are in USD unless marked, and quotas can change without notice.
+Which Google AI and Cloud tools a team of APU students in Malaysia can realistically use to build a Cloud + IoT + Network prototype between 3 and 10 November 2026, what they cost, and what changed recently. Researched on 3 November 2026 against Google's live docs, pricing pages, and terms; prices are in USD unless marked, and quotas can change without notice. Gemini Enterprise itself, including its editions, prices, trials, and what a team can build with it, is covered in [Gemini Enterprise](/docs/research/gemini-enterprise.md).
 
 Contents:
 
@@ -9,11 +9,6 @@ Contents:
     1.  [Current Gemini models](#current-gemini-models)
     1.  [Gemini API free and paid tiers](#gemini-api-free-and-paid-tiers)
     1.  [Gemini API terms that matter for students](#gemini-api-terms-that-matter-for-students)
-1.  [Gemini Enterprise](#gemini-enterprise)
-    1.  [What Gemini Enterprise is](#what-gemini-enterprise-is)
-    1.  [Gemini Enterprise editions and prices](#gemini-enterprise-editions-and-prices)
-    1.  [Gemini Enterprise trials and access](#gemini-enterprise-trials-and-access)
-    1.  [What a team can and cannot build with Gemini Enterprise](#what-a-team-can-and-cannot-build-with-gemini-enterprise)
 1.  [Building blocks](#building-blocks)
     1.  [Gemini Enterprise Agent Platform, formerly Vertex AI](#gemini-enterprise-agent-platform-formerly-vertex-ai)
     1.  [Agent Development Kit](#agent-development-kit)
@@ -90,56 +85,6 @@ The Gemini API Additional Terms, effective 23 March 2026, say ([Gemini API terms
 [AI Studio troubleshooting]: https://aistudio.google.com/docs/troubleshoot-ai-studio
 [available regions]: https://aistudio.google.com/docs/available-regions
 
-## Gemini Enterprise
-
-### What Gemini Enterprise is
-
-- Google describes it as "an intranet search, AI assistant, and agentic platform" for employees. It connects to company data such as Confluence, Jira, SharePoint, and ServiceNow, and hosts custom agents ([GE overview]). The marketing page now brands it as "Gemini for business" and notes that some features shown, such as background tasks and third-party model choice, are still in early access ([GE product page]).
-- It was formerly Google Agentspace ([Gemini Enterprise release notes]).
-- The **Gemini Enterprise app** and **Gemini Enterprise Agent Platform** are bought separately. The app is billed per seat per month; Agent Platform, "the evolution of Vertex AI", is a pay-as-you-go developer platform that needs a Google Cloud account ([GE FAQ]).
-- It is distinct from the consumer Gemini app and from Gemini in Google Workspace ([GE choose edition]).
-- **NTT DATA link:** on 8 June 2026 NTT DATA announced a dedicated global Gemini Enterprise practice, aiming to certify 5,000 Gemini Enterprise experts and to co-develop up to 500 AI agents with Google Cloud ([NTT DATA release]).
-
-[GE overview]: https://docs.cloud.google.com/gemini/enterprise/docs
-[GE product page]: https://cloud.google.com/gemini-enterprise
-[NTT DATA release]: https://www.nttdata.com/global/en/news/press-release/2026/june/060900
-
-### Gemini Enterprise editions and prices
-
-Prices as of 3 November 2026:
-
-| Edition       | Aimed at                                                   | Price                                                                 | Pooled storage per user |
-| ------------- | ---------------------------------------------------------- | --------------------------------------------------------------------- | ----------------------- |
-| Business      | Small businesses and teams; web app only, no Cloud console | From $21 per seat per month ([GE Business])                           | 25 GiB                  |
-| Standard      | Enterprises with stricter security and compliance needs    | From $30 per seat per month, Standard or Plus ([Antigravity pricing]) | 30 GiB                  |
-| Plus          | The fullest AI tools and agent building                    | Separate Plus price not found on Google pages                         | 75 GiB                  |
-| Pay-as-you-go | Consumption billing, 1-seat minimum                        | $0 seat fee plus usage ([Antigravity pricing])                        | Pay-as-you-go           |
-| Frontline     | Add-on for 150 or more Standard or Plus users              | Not published                                                         | 2 GiB                   |
-
-The edition descriptions and storage figures come from the editions comparison ([GE editions]). The release notes also mention EDU, EDU Pro, and Emerging Market editions ([Gemini Enterprise release notes]); educational institutions are told to contact sales, and no public price was found ([GE FAQ]). The sources disagree on the Business seat cap: the FAQ says teams of up to 300, while the editions page says 1–500 users.
-
-### Gemini Enterprise trials and access
-
-- **Business trial:** 30 days, sign up "with your work email" ([GE Business]). It covers up to 5 seats on a monthly term at no cost. You must add a credit or debit card, which may get a temporary authorisation hold, and the trial converts to a paid subscription unless you cancel. It ends at once if you exceed 5 seats or switch to annual billing ([GE Business billing]).
-- **No upgrade path:** a Business edition team can't later move to Standard, Plus, or Frontline, because Google offers no data migration ([GE choose edition]).
-- **Standard and Plus trial:** 30 days, started from the Google Cloud console's free-trial page "without sales assistance" ([GE product page], [GE FAQ]). The link goes through the Cloud billing sign-up, so expect the card checks described in [Google Cloud Free Trial credit](#google-cloud-free-trial-credit) (inference from the link).
-- **Not verified:** whether a personal `@gmail.com` address is accepted for the Business trial. The help centre says non-Microsoft identities sign in with a one-time password sent by email ([GE choose edition]).
-
-[GE Business billing]: https://support.google.com/g/answer/16551831?hl=en
-
-### What a team can and cannot build with Gemini Enterprise
-
-The editions comparison table, Business edition column ([GE editions]):
-
-- **Can:** chat grounded in Google Search and connected data; generate images and video; use Deep Research; create and share Gemini Notebook Enterprise notebooks; build and publish no-code agents (preview in this table, but GA since 3 September 2026 per the release notes; see [Gemini Enterprise](/docs/research/gemini-enterprise.md#corrections-to-google-toolsmd-and-the-briefing)); create custom skills; use select connectors and permission-aware search. The Business help centre also covers connecting a custom MCP server ([GE Business help]).
-- **Cannot:** bring your own full-code agents built outside Gemini Enterprise, such as ADK or A2A agents. Business also lacks the Data Insights agent, Agent Marketplace, the full connector ecosystem, Cloud console access, AI developer tools including Antigravity, and the mobile app ([GE editions], [GE choose edition]).
-- **Standard and Plus** can publish agents built with Agent Platform or ADK into the Gemini Enterprise app, or connect external agents over the Agent2Agent (A2A) protocol ([GE FAQ]).
-- **Doc conflict:** the FAQ says Standard and Plus include Gemini Code Assist, but since 9 October 2026 new Standard and Plus subscriptions no longer include it ([Code Assist sunset]).
-
-What this means for a prototype (inference): Gemini Enterprise is a seat-licensed, staff-facing workspace, not a backend you embed in a public app. Every judge or end user would need a seat in your tenant. A team can use it to show a staff-side experience, for example a no-code agent that answers questions over uploaded campus documents. The sensor ingest, the logic, and any public UI still need the Gemini API or Agent Platform. Superseded after the briefing: Gemini Enterprise became mandatory, and workflows now carry scheduled and event-driven logic inside the app; see [Gemini Enterprise](/docs/research/gemini-enterprise.md).
-
-[GE Business help]: https://support.google.com/g
-
 ## Building blocks
 
 ### Gemini Enterprise Agent Platform, formerly Vertex AI
@@ -154,7 +99,7 @@ What this means for a prototype (inference): Gemini Enterprise is a seat-license
 
 ### Agent Development Kit
 
-- **What it's for here:** writing the agent that reads sensor data, calls tools such as a Maps lookup or a Firestore write, and decides on actions. It runs locally, on Cloud Run, or on Agent Runtime, and can be published to Gemini Enterprise Standard or Plus.
+- **What it's for here:** writing the agent that reads sensor data, calls tools such as a Maps lookup or a Firestore write, and decides on actions. It runs locally, on Cloud Run, or on Agent Runtime, and can be published to Gemini Enterprise Standard or Plus ([full-code agents](/docs/research/gemini-enterprise.md#full-code-agents)).
 - ADK is an open-source, model-agnostic agent framework in Python, TypeScript, Go, Java, and Kotlin (`pip install google-adk`). ADK 2.0 adds graph-based workflows. Its docs moved to [adk.dev](https://adk.dev/) ([ADK]).
 
 [ADK]: https://adk.dev/
@@ -193,7 +138,7 @@ What this means for a prototype (inference): Gemini Enterprise is a seat-license
 - **What it's for here:** the Data-Driven track's analytics layer, joining logged readings with public datasets.
 - **Sandbox, no card:** 10 GiB of storage for the account's lifetime and 1 TiB of queries a month. Tables expire after 60 days, and the sandbox doesn't support streaming, DML statements, or the Data Transfer Service ([BigQuery sandbox]). So sensor data has to be batch-loaded rather than streamed in (inference from those limits).
 - **With billing:** the same 1 TiB of queries plus 10 GiB of storage per month free ([Cloud free features]).
-- Public datasets are in the `bigquery-public-data` project ([BigQuery sandbox]); [public-data-sources.md](/docs/research/public-data-sources.md) catalogues the relevant ones.
+- Public datasets are in the `bigquery-public-data` project ([BigQuery sandbox]); [data sources](/docs/research/data-sources.md) catalogues the relevant ones.
 
 ### Data Studio, formerly Looker Studio
 
@@ -210,7 +155,7 @@ What this means for a prototype (inference): Gemini Enterprise is a seat-license
 ### AI coding tools
 
 - **Google AI Studio Build mode:** generates a full-stack app from prompts and publishes it to Cloud Run through the Starter Tier ([AI Studio deploy]).
-- **Google Antigravity:** an agent-first app, IDE, CLI (`agy`), and SDK. The $0 Individuals plan has "basic weekly rate limits"; Google AI Pro and Ultra subscribers get higher limits and an AI credit pool ([Antigravity pricing]). Google AI Plus isn't listed as a plan.
+- **Google Antigravity:** an agent-first app, IDE, CLI (`agy`), and SDK. The $0 Individuals plan has "basic weekly rate limits"; Google AI Pro and Ultra subscribers get higher limits and an AI credit pool ([Antigravity pricing]). Google AI Plus isn't listed as a plan. Antigravity through a Gemini Enterprise seat is covered in [Gemini Enterprise](/docs/research/gemini-enterprise.md#surfaces-and-licensing).
 - **Gemini CLI and Gemini Code Assist:** no longer an option for students. Both stopped serving individuals on 18 June 2026, and Gemini CLI now serves only Code Assist Standard/Enterprise organisations and paid API keys ([Gemini CLI repo], [Code Assist consumer]). The geminicli.com quota page still lists free Google-login tiers, which is stale.
 - **Jules:** an asynchronous coding agent that works on GitHub repos in a cloud VM. The free plan gives 15 tasks per day and 3 concurrent tasks ([Jules]).
 - **Gemini API CLI (`gemini-api`):** a stateless command-line tool that lets scripts and coding agents call Gemini models ([Gemini CLI repo]).
@@ -263,7 +208,7 @@ As of 3 November 2026:
 - **Age:** AI Studio and the Gemini API require users to be 18 or older ([Gemini API terms]).
 - **School accounts:** a Google Workspace for Education account needs its administrator to mark it as 18+ before it can use AI Studio, and Workspace accounts can't use the Starter Tier ([AI Studio troubleshooting], [AI Studio deploy]). Personal Google accounts avoid both problems (inference).
 - **Starter Tier eligibility:** access can be refused for lack of account history, and AI Studio support can't override that ([AI Studio deploy]).
-- **Payment cards:** a card is needed for the Cloud Free Trial, Gemini API paid tiers, Firebase Blaze, standard Maps keys, and both Gemini Enterprise trials. Cloud Billing rejects prepaid cards and debit cards that require two-factor authentication ([payment methods]).
+- **Payment cards:** a card is needed for the Cloud Free Trial, Gemini API paid tiers, Firebase Blaze, standard Maps keys, and both Gemini Enterprise trials (inferred for the Standard and Plus trial; see [Gemini Enterprise trials and access](/docs/research/gemini-enterprise.md#gemini-enterprise-trials-and-access)). Cloud Billing rejects prepaid cards and debit cards that require two-factor authentication ([payment methods]).
 - **One trial per person:** the Free Trial is once per person and excludes anyone who has paid for Google Cloud, Maps, or Firebase before ([Cloud free features]). A team would typically use one member's trial billing account and grant teammates access to the project (inference).
 - **Personal data:** on free tiers, keep personal data such as student IDs, names, or location traces out of prompts ([Gemini API terms]).
 
@@ -289,13 +234,13 @@ Allowances as of 3 November 2026, taken from the sections above. The setup-effor
 What the evidence shows:
 
 - A team can build and host a working Gemini-powered web app with a database, sign-in, and maps without any payment card, using AI Studio Build, the Starter Tier, Firebase Spark, and the Maps Demo Key. This doesn't extend to Pub/Sub, Cloud Functions, or BigQuery streaming.
-- Gemini Enterprise, the subject of the NTT DATA training, is a seat-licensed workspace for staff. The Business trial gives 5 free seats for 30 days but needs a card and converts to $21 per seat per month. It can't host your own ADK agents; Standard or Plus can.
+- Gemini Enterprise, the subject of the NTT DATA training, is a seat-licensed workspace for staff. The Business trial gives 5 free seats for 30 days but needs a card and converts to $21 per seat per month. It can't host your own ADK agents; Standard or Plus can ([Gemini Enterprise](/docs/research/gemini-enterprise.md#what-a-team-can-and-cannot-build-with-gemini-enterprise)).
 - Free-tier Gemini prompts may be read by human reviewers, and users must be 18 or older. Campus or student data must stay out of free-tier prompts.
 - Many guides are out of date. Vertex AI, Agent Engine, Gemini CLI's free tier, Gemini Code Assist for individuals, Firebase Studio, Looker Studio, and the Gemini 2.5 models have all been renamed or retired in 2026.
 
 What I infer:
 
-- Build the product on the Gemini API or Agent Platform. If the team wants to nod to the sponsor, add Gemini Enterprise as the staff-side surface, for example a no-code agent over the project's documents, shown in the deck.
+- Build the product on the Gemini API or Agent Platform. If the team wants to nod to the sponsor, add Gemini Enterprise as the staff-side surface, for example a no-code agent over the project's documents, shown in the deck. Superseded after the briefing: Gemini Enterprise became mandatory, and workflows now carry scheduled and event-driven logic inside the app; see [Gemini Enterprise](/docs/research/gemini-enterprise.md#what-gemini-enterprise-is).
 - Free daily request limits look tight, so aggregate sensor readings on the server and call Gemini on summaries or events, not on every reading. Use Flash-Lite for frequent calls and Flash for occasional heavy reasoning.
 - If one teammate has an accepted credit or debit card, the $300 Free Trial unlocks Pub/Sub, Agent Platform, and BigQuery streaming for the week. It doesn't cover AI Studio API usage.
 - Use current product names in the README and deck, since judges from Google Cloud or NTT DATA will notice outdated names.
@@ -304,10 +249,11 @@ What I infer:
 ## See also
 
 - [Hackathon brief](/docs/BRIEF.md): dates, tracks, the briefing's Gemini Enterprise stance, and the open questions on licences and credits.
-- [iot-and-network.md](/docs/research/iot-and-network.md): devices, protocols, and the IoT side of the architecture.
-- [public-data-sources.md](/docs/research/public-data-sources.md): live public datasets per track.
-- [judging-and-pitching.md](/docs/research/judging-and-pitching.md): rubrics, responsible AI, and packaging.
-- [past-winners.md](/docs/research/past-winners.md): what has won before.
+- [Gemini Enterprise](/docs/research/gemini-enterprise.md): editions, prices, trials, workflows, connectors, live-data paths, and reviewer access.
+- [IoT and network](/docs/research/iot-and-network.md): devices, protocols, and the IoT side of the architecture.
+- [Data sources](/docs/research/data-sources.md): live public datasets per track.
+- [Judging](/docs/research/judging.md): rubrics, responsible AI, and packaging.
+- [Winners](/docs/research/winners.md): what has won before.
 - [Google AI Studio docs](https://aistudio.google.com/docs) and [Google Cloud free program](https://cloud.google.com/free).
 
 [AI Studio models]: https://aistudio.google.com/docs/models
@@ -326,10 +272,6 @@ What I infer:
 [Data Studio]: https://cloud.google.com/data-studio
 [Google Skills]: https://www.skills.google/
 [Gemini Enterprise release notes]: https://docs.cloud.google.com/gemini/enterprise/docs/release-notes
-[GE FAQ]: https://cloud.google.com/gemini-enterprise/faq
-[GE editions]: https://docs.cloud.google.com/gemini/enterprise/docs/editions
-[GE choose edition]: https://support.google.com/g/answer/16547364?hl=en
-[GE Business]: https://cloud.google.com/gemini-enterprise/business
 [Cloud free features]: https://docs.cloud.google.com/free/docs/free-cloud-features
 [payment methods]: https://docs.cloud.google.com/billing/docs/how-to/payment-methods
 [BigQuery sandbox]: https://docs.cloud.google.com/bigquery/docs/sandbox

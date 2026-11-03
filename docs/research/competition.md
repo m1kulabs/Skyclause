@@ -1,15 +1,9 @@
-# Crowd baseline
+# Competition
 
-What the other teams in the APU Cloud Innovation Hackathon 2026 are likely to build, so a team can see where the crowd will sit and where it won't. It combines the hackathon's own signals, public GitHub repositories, a simulation of the AI brainstorming many teams will do, Devpost and GitHub crowding counts, and evidence of what APU students already build and use for themselves. Researched on 3 November 2026.
+Who and what an entry in the APU Cloud Innovation Hackathon 2026 competes with: the likely crowd of other teams, and existing products that already do the job, so a team can see where the crowd will sit and where it won't. The crowd part combines the hackathon's own signals, public GitHub repositories, a simulation of the AI brainstorming many teams will do, Devpost and GitHub crowding counts, and evidence of what APU students already build and use for themselves. The substitutes part is primary-source checks of products that already do the jobs proposed by the [Astra shortlist](/docs/ideas/astra/00-ranking.md). It merges the earlier crowd-baseline research with the substitute checks from the Astra feasibility research; both were researched on 3 November 2026.
 
 Contents:
 
-1.  [Method](#method)
-    1.  [Sources searched](#sources-searched)
-    1.  [Simulation prompts](#simulation-prompts)
-    1.  [Models and samples](#models-and-samples)
-    1.  [Extraction and clustering](#extraction-and-clustering)
-    1.  [Errors and limits](#errors-and-limits)
 1.  [Signals from this hackathon](#signals-from-this-hackathon)
     1.  [Ideas shown at the briefing](#ideas-shown-at-the-briefing)
     1.  [Public repositories so far](#public-repositories-so-far)
@@ -26,71 +20,16 @@ Contents:
     1.  [Repositories and adoption](#repositories-and-adoption)
     1.  [The official APSpace app](#the-official-apspace-app)
     1.  [Unmet needs these tools point to](#unmet-needs-these-tools-point-to)
+1.  [Existing substitutes](#existing-substitutes)
+1.  [Takeaways for this hackathon](#takeaways-for-this-hackathon)
+1.  [Method](#method)
+    1.  [Sources searched](#sources-searched)
+    1.  [Simulation prompts](#simulation-prompts)
+    1.  [Models and samples](#models-and-samples)
+    1.  [Extraction and clustering](#extraction-and-clustering)
+    1.  [Errors and limits](#errors-and-limits)
+    1.  [Substitute checks](#substitute-checks)
 1.  [See also](#see-also)
-
-## Method
-
-### Sources searched
-
-- **Discord and briefing:** every capture under [docs/sources/discord.com](/docs/sources/discord.com/apu-cloud-innovation-hackathon-discord.md) and the [briefing transcript]. The Discord captures leave out participants' own posts (for example, team-seeking posts in `#team-formation`) for privacy, and the `#project-discussion` idea lab has no captured replies, so no participant's idea is on record ([#team-formation], [#project-discussion]). Participant numbers are not published in any capture; the presenter only said "there are a lot of participants" ([briefing] at 1:50:28).
-- **GitHub:** repository search for repositories created on or after 20 October 2026 matching "APU Cloud Innovation Hackathon", "Cloud Innovation Hackathon", "NexConnect", "apu hackathon", "gdgocapu", "GDGoC APU", "Gemini Enterprise" with APU, "APU campus", "apu smart campus", "When Cloud, IoT, and Network Converge" and similar; code search for the hackathon name, "NexConnect" with "APU", and "gdgocapu". All run on 3 November 2026 between about 10:40 and 11:00 PM MYT.
-- **Simulation:** five participant prompts, each sent repeatedly to three model families at default sampling settings, described below. Raw outputs stay in the scratch folder, not the repo.
-- **Crowding counts:** Devpost's project search JSON (`devpost.com/software/search.json?query=...`, the same index as the [Devpost search] page), which matches every word and breaks on hyphens and quotes, so queries avoid both; and GitHub repository search totals, all time, since 1 January 2026, and since 1 October 2026. Counts already in [past winners](/docs/research/past-winners.md#evidence-of-crowding) are not repeated.
-- **APU student tools:** GitHub repository search for APSpace, APU timetable, APIIT, APU bus and shuttle, APU attendance and Attendix, APU Telegram and Discord bots, "Asia Pacific University" and others; the Apple App Store lookup and review feed and the Google Play listing and newest reviews for APSpace.
-
-[briefing transcript]: /docs/sources/briefing-session/transcript.md
-[#team-formation]: /docs/sources/discord.com/team-formation.md
-[#project-discussion]: /docs/sources/discord.com/project-discussion.md
-[devpost search]: https://devpost.com/software/search?query=campus+digital+twin
-
-### Simulation prompts
-
-The briefing presenter told teams without ideas to "go to Antigravity, ask for ideas" and to "give prompt to Gemini Enterprise itself. You get use cases" ([briefing] at 1:29:22 and 1:45:17). The prompts below use only the public brief: the theme, the three tracks with their Discord example ideas, and "use Gemini Enterprise" ([problem statements]). Each asks for five ideas.
-
-1.  **P1, minimal:** "We're a team joining the APU Cloud Innovation Hackathon 2026. The theme is "When Cloud, IoT, and Network Converge" and we have to build with Gemini Enterprise. Give us 5 project ideas, each with a title and a short description."
-1.  **P2, Smart Campus track:** "My team picked the Smart Campus & Student Experience track for the APU Cloud Innovation Hackathon 2026 (theme: "When Cloud, IoT, and Network Converge"). The track is about improving student life, access to campus services, and connectivity. Their example ideas are campus navigation, personalized onboarding, or an AI learning companion. We need to use Gemini Enterprise. Suggest 5 project ideas with a title and short description for each."
-1.  **P3, Intelligent Automation track:** "Hackathon: APU Cloud Innovation Hackathon 2026, theme "When Cloud, IoT, and Network Converge". Our track is Intelligent Automation & Digital Transformation: use AI to streamline repetitive work and university workflows. Example ideas they gave: HR/IT support, document processing, or student performance insights for lecturers. We must build it in Gemini Enterprise. Give me 5 ideas (title + short description)."
-1.  **P4, Data-Driven Research track:** "We are doing the Data-Driven Research & Intelligent Decision Making track at the APU Cloud Innovation Hackathon 2026. Theme is "When Cloud, IoT, and Network Converge". The track: turn data into useful insights for research and planning, e.g. research visualization, trend analysis, or resource forecasting. Tool: Gemini Enterprise. Can you suggest 5 project ideas? Title and short description for each please."
-1.  **P5, full brief, aiming to win:**
-
-    ```text
-    We're 4 APU (Asia Pacific University, Malaysia) students entering the APU Cloud Innovation Hackathon 2026 and we want to win. Theme: "When Cloud, IoT, and Network Converge". There are three tracks, we pick one:
-    1. Smart Campus & Student Experience - improve student life, access to campus services, and connectivity (examples: campus navigation, personalized onboarding, AI learning companion)
-    2. Intelligent Automation & Digital Transformation - use AI to streamline repetitive work and university workflows (examples: HR/IT support, document processing, student performance insights for lecturers)
-    3. Data-Driven Research & Intelligent Decision Making - turn data into useful insights for research and planning (examples: research visualization, trend analysis, resource forecasting)
-    We need to use Gemini Enterprise and we have about one week to build a prototype. Give us 5 strong ideas that could win, with a title, short description and which track for each.
-    ```
-
-[problem statements]: /docs/sources/discord.com/problem-statements.md
-
-### Models and samples
-
-All requests were sent on 3 November 2026 between about 10:38 and 11:40 PM MYT, as one user message with no system prompt and no sampling settings (no temperature, top-p or thinking parameters), so each model ran at its defaults.
-
-| Family    | Model ID sent           | Model reported in the response   | Responses                                | Ideas |
-| --------- | ----------------------- | -------------------------------- | ---------------------------------------- | ----- |
-| Gemini    | `gemini-3.6-flash`      | `gemini-3.6-flash`               | 6 (P1: 3, P3: 1, P4: 2, P2 and P5: none) | 30    |
-| Gemini    | `gemini-3.5-flash-lite` | `gemini-3.5-flash-lite`          | 50 (10 per prompt)                       | 250   |
-| OpenAI    | `chat-latest`           | `chat-latest` (no dated version) | 50 (10 per prompt)                       | 250   |
-| Anthropic | `claude-sonnet-5-5`     | `claude-sonnet-5-5`              | 50 (10 per prompt)                       | 250   |
-
-Every response contained exactly five ideas: 156 responses, 780 ideas. Gemini went through the Gemini API (`generateContent`, thought parts dropped), OpenAI through Chat Completions, and Anthropic through the Messages API with `max_tokens` 16000.
-
-The newest Flash in the Gemini API's model list is `gemini-3.8-flash`, which `gemini-flash-latest` also points to; it could not be used (see [Errors and limits](#errors-and-limits)). Gemini 3.6 Flash, the newest Flash that answered, ran out of quota after six responses, so Gemini 3.5 Flash-Lite supplies 250 of the 280 Gemini ideas. **Inference:** the Gemini column reflects Flash-Lite more than the newest Flash.
-
-### Extraction and clustering
-
-1.  **Extraction:** `gpt-5.4-mini` with a strict JSON schema read each response and returned, per idea: title; a one-line summary of up to 25 words; track; setting (campus or off campus); primary user; main form (chat assistant, dashboard, app or portal, background workflow); whether it acts on a schedule or trigger without being asked; its device data source (new sensors the team deploys, existing campus systems, simulated, public feeds, none); whether it names the staff team that acts on the output; whether it cites a measured baseline or quantified target; and named systems and technologies. Flags were judged strictly from each idea's own text.
-1.  **Discovery:** each "title: summary" was embedded with `text-embedding-3-small`, and k-means (k = 28) on the first 500 ideas showed the clusters, from which a 27-category taxonomy was written.
-1.  **Assignment:** `gpt-5.4-mini` put each of the 780 ideas into one category. The k-means clusters agreed with these labels for 79% of ideas, and a manual read of 40 random labels found 38 sensible; the two misses put industrial ideas in campus categories.
-1.  **Shares:** families have different sample counts, so "Overall" is the mean of the three family shares, which weights each family equally. Keyword counts over the full 156 responses back the structural findings.
-
-### Errors and limits
-
-- **Gemini 3.8 Flash:** the first five parallel calls returned HTTP 429 (free tier, 5 requests per minute per model). Slower retries returned HTTP 503 "This model is currently experiencing high demand" for about ten minutes, and then HTTP 429 for the free-tier limit of 20 requests per day, with a retry delay of about 17 hours. `gemini-3.7-flash` reported the same `gemini-3.8-flash` daily quota. Routing the model through OpenRouter failed with HTTP 403 "Key limit exceeded (total limit)", because that key has a $0 limit.
-- **Gemini 3.6 Flash:** six responses succeeded; the other calls returned HTTP 503 (high demand) and then HTTP 429 for its own 20-per-day free-tier limit.
-- **No other failures:** all 50 Flash-Lite, 50 OpenAI and 50 Anthropic requests succeeded, as did all extraction, embedding and labelling calls.
-- **What the simulation can't show:** it samples AI brainstorming, not the teams. Real teams also start from the briefing's examples, coursework and their own experience. The prompts are short and English-only, and a team that asks one model sees a narrower set than the pooled map (see [Model differences](#model-differences)). Labels have about a 5% visible error rate. Devpost and GitHub counts match words, not meaning, so read them as relative sizes.
 
 ## Signals from this hackathon
 
@@ -151,7 +90,7 @@ GitHub shows what students elsewhere build when they pair "campus" with Gemini, 
 
 ## Crowd map
 
-**This is a simulation of other teams' AI brainstorming, not a list of ideas for this team.** Read it as an avoid-list.
+**This is a simulation of other teams' AI brainstorming, not a list of ideas for this team.** Read it as an avoid-list. How it was run is under [Method](#method).
 
 ### Clusters and shares
 
@@ -219,17 +158,17 @@ Counts for the 10 largest simulated clusters, taken on 3 November 2026. Devpost 
 | Student performance | `at risk students` 2,011; `student at risk lecturer` 13                                          | `student performance prediction` 13,488 / 8,972 / 1,296; `at risk students` 1,926 / 1,286 / 209 |
 | Digital twin        | `smart campus` 1,344; `smart campus dashboard` 432; `campus digital twin` 47                     | `smart campus` 16,044 / 12,630 / 2,185; `campus digital twin` 324 / 284 / 82                    |
 | Space finder        | `study space` 2,497; `study space finder` 43                                                     | `study space` 6,532 / 3,104 / 675                                                               |
-| Navigation          | in [past winners](/docs/research/past-winners.md#evidence-of-crowding)                           | `campus navigation` 3,874 / 2,240 / 493                                                         |
+| Navigation          | in [winners](/docs/research/winners.md#evidence-of-crowding)                                     | `campus navigation` 3,874 / 2,240 / 493                                                         |
 | Smart farming       | `smart farming` 1,303; `smart irrigation` 645; `precision agriculture` 521                       | `smart farming` 9,540 / 5,155 / 631                                                             |
 
 Other Devpost counts: for the briefing's examples, `study planner` 1,093, `hr chatbot` 311, `scholarship eligibility` 231 and `admission documents` 155; for areas the simulation left out, `timetable calendar sync` 46, `timetable change notification` 11, `campus shuttle` 79, `shuttle tracker` 15, `lab equipment booking` 25 and `exam seating` 16.
 
-- **Devpost understates this crowd:** the largest simulated clusters are thin on Devpost when phrased the campus way (`campus helpdesk` 12, `wifi campus agent` 14, `campus digital twin` 47, `hvac occupancy` 58). **Inference:** Devpost records what teams built before agent builders; when every team asks the same assistants, few Devpost matches no longer means open ground. This qualifies the [context file's reading](/docs/CONTEXT.md#crowded-and-open-ground) that an agent filing tickets from a live feed would be close to unopposed: that holds among published agent winners, but it is the second-largest simulated cluster here.
+- **Devpost understates this crowd:** the largest simulated clusters are thin on Devpost when phrased the campus way (`campus helpdesk` 12, `wifi campus agent` 14, `campus digital twin` 47, `hvac occupancy` 58). **Inference:** Devpost records what teams built before agent builders; when every team asks the same assistants, few Devpost matches no longer means open ground. This qualifies the [context file's reading](/docs/CONTEXT.md#crowded-and-open-ground), and the same reading in [winners](/docs/research/winners.md#takeaways-for-this-hackathon), that an agent filing tickets from a live feed would be close to unopposed: that holds among published agent winners, but it is the second-largest simulated cluster here.
 - **The GitHub crowd is recent:** for 11 of the 13 GitHub queries above, more than half of all matching repositories were created in 2026, for example 284 of 324 for `campus digital twin` and 335 of 397 for `campus helpdesk`. Part of this is GitHub's general growth.
 
 ## Saturation tiers
 
-Tiers combine the simulated share, what every team heard at the briefing, the NTT DATA-labelled demos, and Devpost history in [past winners](/docs/research/past-winners.md#evidence-of-crowding).
+Tiers combine the simulated share, what every team heard at the briefing, the NTT DATA-labelled demos, and Devpost history in [winners](/docs/research/winners.md#evidence-of-crowding).
 
 - **Saturated:** campus energy and sustainability (10.5% simulated); Wi-Fi and network diagnosis (8.7%); facilities or IT fault-to-ticket agents (7.6%); document processing and the admissions document checker (5.5%, the briefing's lead example, and an admissions agent in the NTT DATA demo); HR policy and IT helpdesk agents (1.4% simulated, but built live at the briefing and in the NTT DATA demos); persona and campus Q&A chatbots (3.3% simulated, five personas in the NTT DATA demo, about 15 of 40 recent `campus gemini` repositories, and heavy on Devpost).
 - **Crowded:** campus safety (5.5%); student performance insights (5.3%, a Discord example); live dashboards or digital twins (4.9%); study-space finders (4.8%); navigation (4.5%, a Discord example, heavy on Devpost); onboarding (3.4%, a Discord example); research trend analytics (3.4%, a Discord and briefing example); learning companions and study planners (2.7%, a Discord and briefing example, heavy on Devpost); and the off-campus set of smart farming (4.2%), city traffic (3.8%), logistics (3.5%) and flood warning (3.2%).
@@ -238,7 +177,7 @@ Tiers combine the simulated share, what every team heard at the briefing, the NT
 
 ## What the crowd structurally misses
 
-Shares are of the 780 simulated ideas (mean of the three families) unless they say "responses", which means the 156 full answers. These are signals about the field, not product pitches.
+Shares are of the 780 simulated ideas (mean of the three families) unless they say "responses", which means the 156 full answers. These are signals about the field, not product pitches. The combined reading is in [Takeaways for this hackathon](#takeaways-for-this-hackathon).
 
 - **Real data:** 48% of ideas would have the team deploy new sensors and 34% would read existing campus systems, but only 3% use public data feeds. The answers also tell teams to fake the data: "simulate", "mock", "synthetic" or "dummy" appears in 98% of Claude, 78% of ChatGPT and 30% of Gemini responses, as in "2-3 real sensors plus simulated data for the rest". **Inference:** most rival demos will run on simulated readings, which this repo's rules forbid anyway, so a live, real feed is rare.
 - **Named connectors:** NTT DATA said 1P and 3P connectors are the main technical focus ([briefing] at 1:55:01), yet the named connectors it listed appear in at most 2% of responses (see [Model differences](#model-differences)). Only 2 of 780 ideas name Jira, ServiceNow, SharePoint, OneDrive, Salesforce, SAP or MCP.
@@ -248,9 +187,9 @@ Shares are of the 780 simulated ideas (mean of the three families) unless they s
 - **APU's own systems and users:** APSpace appears in 3 ideas, and no idea treats the timetable or attendance as a service students use. Lecturers are the primary user of 4% of ideas and researchers of 4%, against students 25%, mixed groups 22% and admin staff 21%.
 - **Staying on campus:** with the minimal prompt, 42% to 82% of ideas leave campus, which fits the theme but not NTT DATA's first criterion of impact on "students, the university, or operations" ([briefing] at 1:55:01).
 
-**Inference:** the crowd will cluster on sensor-fed campus operations shown on simulated data, behind a chat window or dashboard, without named connectors or a measured baseline. The scarce combination is a real feed, a named APU owner, a measured before-and-after, and an unattended run that uses Gemini Enterprise's own connectors.
-
 ## APU student-built tools
+
+These are the substitutes APU students have already built for their own campus life, and the official app they build around.
 
 ### Repositories and adoption
 
@@ -333,13 +272,118 @@ These are signals, not product pitches.
 - **Live room availability that is accurate:** asked for since 2019, offered by APSpace, and called "fake" in 2026. Strength: medium.
 - **Shuttle reliability:** one hackathon repo, one 2026 shuttle project and one store complaint. Strength: low to medium.
 
+## Existing substitutes
+
+Products that already do the jobs proposed by the [Astra shortlist](/docs/ideas/astra/00-ranking.md), checked on 3 November 2026 for that shortlist. These are primary-source checks of proposed mechanisms, not evidence that APU has adopted them. Product pages establish advertised capabilities, not comparative performance. The "Remaining hypothesis" column is the Astra research's reading for each idea, and the IDs are the ones the Astra idea briefs cite.
+
+| ID  | Astra idea    | Primary source                                                                                                      | What already exists                                                                                                                  | Remaining hypothesis worth testing                                                                                                                                                                |
+| --- | ------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C1  | [Recheck]     | [NetBeez higher education][netbeez]                                                                                 | Client-perspective Wi-Fi sensors and student digital-experience monitoring.                                                          | A low-cost, student-initiated before/after verification packet linked to one real support case might fit an underserved local workflow. Monitoring itself is established.                         |
+| C2  | [Recheck]     | [Atlassian incident automation][jsm automation] and [Atlassian's June 2026 reopening announcement][jsm reopen]      | Incident automation and reopening with retained history.                                                                             | The gap, if present, is obtaining comparable physical recovery evidence, not inventing ticket reopening. Configure existing Jira automation if it already solves the entire task.                 |
+| C3  | [LastLink]    | [Transit GO][transit go] and [University of Maryland Transit FAQ][umd transit]                                      | Crowdsourced vehicle positions, arrival information, disruption notices and trip planning already serve campuses.                    | An APU liaison's evidence-backed service-change request, with explicit separation of observed waits and missing telemetry, is a narrower possible contribution.                                   |
+| C4  | [WashWitness] | [Circuit Go's publisher listing][circuit go] and [Scape's machine-fault procedure][scape]                           | Machine availability, reservations, payments and reporting faults are existing functions.                                            | Verify whether a machine actually completes a useful wash/dry after repair, while distinguishing occupied, failed and unreachable states. No demand for another payment app has been established. |
+| C5  | [LabRelay]    | [UNT Health freezer monitoring procedure][unt freezer] and [Rudolph Lab's first-person monitoring account][rudolph] | Temperature thresholds, offline alarms and remote alerts already exist. The lab account describes intermittent Wi-Fi causing alerts. | Acknowledgement, responsibility and an independently observed return to normal might be the neglected work. A new alert dashboard has weak differentiation.                                       |
+| C6  | [AccessRelay] | [Virginia Tech elevator-outage notice][vt outage]                                                                   | Campus outage notices and closure maps already exist.                                                                                | Track whether a person can complete the intended activity through an agreed alternative, then verify restored access. The existence of a map does not establish that this handoff is solved.      |
+
+[recheck]: /docs/ideas/astra/01-recheck.md
+[lastlink]: /docs/ideas/astra/02-lastlink.md
+[accessrelay]: /docs/ideas/astra/03-accessrelay.md
+[washwitness]: /docs/ideas/astra/04-washwitness.md
+[labrelay]: /docs/ideas/astra/05-labrelay.md
+[netbeez]: https://netbeez.net/higher-education/
+[jsm automation]: https://support.atlassian.com/jira-service-management-cloud/docs/automate-incident-management-in-jira-service-management/
+[jsm reopen]: https://community.atlassian.com/forums/discussion/3250997/you-can-now-reopen-closed-alerts-in-jira-service-management-operations
+[transit go]: https://transitapp.com/en/features/go-crowdsourcing
+[umd transit]: https://transportation.umd.edu/transit-app-faqs
+[circuit go]: https://play.google.com/store/apps/details?id=co.uk.circuit.go.app
+[scape]: https://help.scape.com/what-should-i-do-if-a-machine-isnt-working
+[unt freezer]: https://www.unthealth.edu/corelabs/rees-scientific-freezer-fridge-monitoring-directions.html
+[rudolph]: https://rudolphlab.com/blog/temperature-monitoring-of-freezers
+[vt outage]: https://news.vt.edu/notices/facilities/2026/09/08-01.html
+
+## Takeaways for this hackathon
+
+- **Against the crowd (inference):** the crowd will cluster on sensor-fed campus operations shown on simulated data, behind a chat window or dashboard, without named connectors or a measured baseline. The scarce combination is a real feed, a named APU owner, a measured before-and-after, and an unattended run that uses Gemini Enterprise's own connectors.
+- **Against existing substitutes, for the Astra shortlist (inference):** originality is most plausible in the last handoff: evidence of usable recovery, an actionable service-change packet, or confirmation that an alternative actually worked. Every Astra finalist has substantial existing substitutes. None has been proven globally unique, and the search is not exhaustive.
+- **Boundaries for the Astra product documents:** keep strict boundaries. HTTPS timings are application reachability, not radio signal strength or root-cause diagnosis; a camera records a physical observation but does not turn a manual report into autonomous sensing; an accelerometer measures vibration, not cleanliness; a cold-box experiment is not validation on a laboratory freezer. These boundaries must appear in the product documents.
+
+## Method
+
+### Sources searched
+
+- **Discord and briefing:** every capture under [docs/sources/discord.com](/docs/sources/discord.com/apu-cloud-innovation-hackathon-discord.md) and the [briefing transcript][briefing]. The Discord captures leave out participants' own posts (for example, team-seeking posts in `#team-formation`) for privacy, and the `#project-discussion` idea lab has no captured replies, so no participant's idea is on record ([#team-formation], [#project-discussion]). Participant numbers are not published in any capture; the presenter only said "there are a lot of participants" ([briefing] at 1:50:28).
+- **GitHub:** repository search for repositories created on or after 20 October 2026 matching "APU Cloud Innovation Hackathon", "Cloud Innovation Hackathon", "NexConnect", "apu hackathon", "gdgocapu", "GDGoC APU", "Gemini Enterprise" with APU, "APU campus", "apu smart campus", "When Cloud, IoT, and Network Converge" and similar; code search for the hackathon name, "NexConnect" with "APU", and "gdgocapu". All run on 3 November 2026 between about 10:40 and 11:00 PM MYT.
+- **Simulation:** five participant prompts, each sent repeatedly to three model families at default sampling settings, described below. Raw outputs stay in the scratch folder, not the repo.
+- **Crowding counts:** Devpost's project search JSON (`devpost.com/software/search.json?query=...`, the same index as the [Devpost search] page), which matches every word and breaks on hyphens and quotes, so queries avoid both; and GitHub repository search totals, all time, since 1 January 2026, and since 1 October 2026. Counts already in [winners](/docs/research/winners.md#evidence-of-crowding) are not repeated.
+- **APU student tools:** GitHub repository search for APSpace, APU timetable, APIIT, APU bus and shuttle, APU attendance and Attendix, APU Telegram and Discord bots, "Asia Pacific University" and others; the Apple App Store lookup and review feed and the Google Play listing and newest reviews for APSpace.
+
+[#team-formation]: /docs/sources/discord.com/team-formation.md
+[#project-discussion]: /docs/sources/discord.com/project-discussion.md
+[devpost search]: https://devpost.com/software/search?query=campus+digital+twin
+
+### Simulation prompts
+
+The briefing presenter told teams without ideas to "go to Antigravity, ask for ideas" and to "give prompt to Gemini Enterprise itself. You get use cases" ([briefing] at 1:29:22 and 1:45:17). The prompts below use only the public brief: the theme, the three tracks with their Discord example ideas, and "use Gemini Enterprise" ([problem statements]). Each asks for five ideas.
+
+1.  **P1, minimal:** "We're a team joining the APU Cloud Innovation Hackathon 2026. The theme is "When Cloud, IoT, and Network Converge" and we have to build with Gemini Enterprise. Give us 5 project ideas, each with a title and a short description."
+1.  **P2, Smart Campus track:** "My team picked the Smart Campus & Student Experience track for the APU Cloud Innovation Hackathon 2026 (theme: "When Cloud, IoT, and Network Converge"). The track is about improving student life, access to campus services, and connectivity. Their example ideas are campus navigation, personalized onboarding, or an AI learning companion. We need to use Gemini Enterprise. Suggest 5 project ideas with a title and short description for each."
+1.  **P3, Intelligent Automation track:** "Hackathon: APU Cloud Innovation Hackathon 2026, theme "When Cloud, IoT, and Network Converge". Our track is Intelligent Automation & Digital Transformation: use AI to streamline repetitive work and university workflows. Example ideas they gave: HR/IT support, document processing, or student performance insights for lecturers. We must build it in Gemini Enterprise. Give me 5 ideas (title + short description)."
+1.  **P4, Data-Driven Research track:** "We are doing the Data-Driven Research & Intelligent Decision Making track at the APU Cloud Innovation Hackathon 2026. Theme is "When Cloud, IoT, and Network Converge". The track: turn data into useful insights for research and planning, e.g. research visualization, trend analysis, or resource forecasting. Tool: Gemini Enterprise. Can you suggest 5 project ideas? Title and short description for each please."
+1.  **P5, full brief, aiming to win:**
+
+    ```text
+    We're 4 APU (Asia Pacific University, Malaysia) students entering the APU Cloud Innovation Hackathon 2026 and we want to win. Theme: "When Cloud, IoT, and Network Converge". There are three tracks, we pick one:
+    1. Smart Campus & Student Experience - improve student life, access to campus services, and connectivity (examples: campus navigation, personalized onboarding, AI learning companion)
+    2. Intelligent Automation & Digital Transformation - use AI to streamline repetitive work and university workflows (examples: HR/IT support, document processing, student performance insights for lecturers)
+    3. Data-Driven Research & Intelligent Decision Making - turn data into useful insights for research and planning (examples: research visualization, trend analysis, resource forecasting)
+    We need to use Gemini Enterprise and we have about one week to build a prototype. Give us 5 strong ideas that could win, with a title, short description and which track for each.
+    ```
+
+[problem statements]: /docs/sources/discord.com/problem-statements.md
+
+### Models and samples
+
+All requests were sent on 3 November 2026 between about 10:38 and 11:40 PM MYT, as one user message with no system prompt and no sampling settings (no temperature, top-p or thinking parameters), so each model ran at its defaults.
+
+| Family    | Model ID sent           | Model reported in the response   | Responses                                | Ideas |
+| --------- | ----------------------- | -------------------------------- | ---------------------------------------- | ----- |
+| Gemini    | `gemini-3.6-flash`      | `gemini-3.6-flash`               | 6 (P1: 3, P3: 1, P4: 2, P2 and P5: none) | 30    |
+| Gemini    | `gemini-3.5-flash-lite` | `gemini-3.5-flash-lite`          | 50 (10 per prompt)                       | 250   |
+| OpenAI    | `chat-latest`           | `chat-latest` (no dated version) | 50 (10 per prompt)                       | 250   |
+| Anthropic | `claude-sonnet-5-5`     | `claude-sonnet-5-5`              | 50 (10 per prompt)                       | 250   |
+
+Every response contained exactly five ideas: 156 responses, 780 ideas. Gemini went through the Gemini API (`generateContent`, thought parts dropped), OpenAI through Chat Completions, and Anthropic through the Messages API with `max_tokens` 16000.
+
+The newest Flash in the Gemini API's model list is `gemini-3.8-flash`, which `gemini-flash-latest` also points to; it could not be used (see [Errors and limits](#errors-and-limits)). Gemini 3.6 Flash, the newest Flash that answered, ran out of quota after six responses, so Gemini 3.5 Flash-Lite supplies 250 of the 280 Gemini ideas. **Inference:** the Gemini column reflects Flash-Lite more than the newest Flash.
+
+### Extraction and clustering
+
+1.  **Extraction:** `gpt-5.4-mini` with a strict JSON schema read each response and returned, per idea: title; a one-line summary of up to 25 words; track; setting (campus or off campus); primary user; main form (chat assistant, dashboard, app or portal, background workflow); whether it acts on a schedule or trigger without being asked; its device data source (new sensors the team deploys, existing campus systems, simulated, public feeds, none); whether it names the staff team that acts on the output; whether it cites a measured baseline or quantified target; and named systems and technologies. Flags were judged strictly from each idea's own text.
+1.  **Discovery:** each "title: summary" was embedded with `text-embedding-3-small`, and k-means (k = 28) on the first 500 ideas showed the clusters, from which a 27-category taxonomy was written.
+1.  **Assignment:** `gpt-5.4-mini` put each of the 780 ideas into one category. The k-means clusters agreed with these labels for 79% of ideas, and a manual read of 40 random labels found 38 sensible; the two misses put industrial ideas in campus categories.
+1.  **Shares:** families have different sample counts, so "Overall" is the mean of the three family shares, which weights each family equally. Keyword counts over the full 156 responses back the structural findings.
+
+### Errors and limits
+
+- **Gemini 3.8 Flash:** the first five parallel calls returned HTTP 429 (free tier, 5 requests per minute per model). Slower retries returned HTTP 503 "This model is currently experiencing high demand" for about ten minutes, and then HTTP 429 for the free-tier limit of 20 requests per day, with a retry delay of about 17 hours. `gemini-3.7-flash` reported the same `gemini-3.8-flash` daily quota. Routing the model through OpenRouter failed with HTTP 403 "Key limit exceeded (total limit)", because that key has a $0 limit.
+- **Gemini 3.6 Flash:** six responses succeeded; the other calls returned HTTP 503 (high demand) and then HTTP 429 for its own 20-per-day free-tier limit.
+- **No other failures:** all 50 Flash-Lite, 50 OpenAI and 50 Anthropic requests succeeded, as did all extraction, embedding and labelling calls.
+- **What the simulation can't show:** it samples AI brainstorming, not the teams. Real teams also start from the briefing's examples, coursework and their own experience. The prompts are short and English-only, and a team that asks one model sees a narrower set than the pooled map (see [Model differences](#model-differences)). Labels have about a 5% visible error rate. Devpost and GitHub counts match words, not meaning, so read them as relative sizes.
+
+### Substitute checks
+
+The [existing substitutes](#existing-substitutes) come from the Astra feasibility research. It browsed the linked primary documentation and first-party product pages on 3 November 2026. Search families included university Wi-Fi monitoring, incident reopening, campus transit crowdsourcing, laundry availability/fault reporting, laboratory freezer alarms, and elevator outages. Reddit pages were opened or inspected through indexed results; quotations were avoided. Existing repository feed tests are attributed to their original research, not presented as fresh API tests in this session. No prototype or interviews were conducted in this research session. X and Reddit methodology, dates and access limitations are separately recorded in [social](/docs/research/social.md).
+
+The same research session's platform constraints (F1 to F5) are now in [Gemini Enterprise](/docs/research/gemini-enterprise.md#platform-constraints-and-design-consequences), and its additional demand evidence (D1 to D3) in [social](/docs/research/social.md#d1-and-d2-laundry-analogues-outside-malaysia) (D3 is [S8](/docs/research/social.md#s8-a-lift-outage-leaves-a-student-outside-the-lecture-hall)); the Reddit and feed-test sentences above cover those sections.
+
 ## See also
 
-- [Past winners](/docs/research/past-winners.md#saturated-idea-types): Devpost counts for the historically saturated idea types, and how winners in crowded categories stood out.
+- [Winners](/docs/research/winners.md#saturated-idea-types): Devpost counts for the historically saturated idea types, how winners in crowded categories stood out, and what agent entries reward.
 - [Hackathon context](/docs/CONTEXT.md#crowded-and-open-ground): the team's working view of crowded and open ground, which this file qualifies.
 - [Brief](/docs/BRIEF.md#challenge-tracks): the tracks and example ideas every team starts from.
 - [Briefing transcript](/docs/sources/briefing-session/transcript.md): the worked examples and NTT DATA's spoken judging outline.
-- [APU public documents](/docs/research/apu-public-documents.md) and [public data sources](/docs/research/public-data-sources.md): real APU and public data that the simulated crowd does not use.
-- [Agent hackathon winners](/docs/research/agent-hackathon-winners.md) and [judging and pitching](/docs/research/judging-and-pitching.md): what agent entries and NTT DATA reward.
+- [APU](/docs/research/apu.md) and [data sources](/docs/research/data-sources.md): real APU and public data that the simulated crowd does not use.
+- [Judging](/docs/research/judging.md): what NTT DATA rewards.
+- [Astra shortlist](/docs/ideas/astra/00-ranking.md): the ideas the existing substitutes were checked against.
 
 [briefing]: /docs/sources/briefing-session/transcript.md

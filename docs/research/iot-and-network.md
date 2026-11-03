@@ -63,7 +63,7 @@ The [connected device architectures overview][connected devices] lists three pat
 
 ### From Pub/Sub to storage and Gemini
 
-Downstream of Pub/Sub, Google documents these pieces (product choice and free tiers are in [Google tools](/docs/research/google-tools.md)):
+Downstream of Pub/Sub, Google documents these pieces (product choice and free tiers are in [Google tools](/docs/research/google-cloud.md)):
 
 - **BigQuery without code:** a BigQuery subscription "writes messages to an existing BigQuery table as they are received", at-least-once, with no subscriber client; Dataflow is recommended only for windowing or complex transforms ([BigQuery subscriptions]).
 - **Cloud Run:** push subscriptions deliver each message as an HTTPS POST and "work well with ... Cloud Run" ([push subscriptions]). Cloud Run also serves WebSockets "with no additional configuration", up to a 60-minute request timeout and 1,000 concurrent connections per instance, but instances don't share state, so Google suggests Firestore real-time updates or Memorystore Redis to fan out to clients ([Cloud Run WebSockets]).
@@ -134,7 +134,7 @@ Prices and stock from Cytron's Malaysian store on 3 November 2026; they change d
 - **Wi-Fi presence:** an ESP32 in sniffer mode can capture 802.11 management, data, and (if enabled) control frames, at "a great impact on the throughput" of its own connection ([ESP32 sniffer mode]). Phones defeat naive counting: Android 10+ "uses a randomized MAC address by default" ([Android MAC randomization]), and iPhones use "a different MAC address for each Wi-Fi network", rotating every two weeks on open or weakly secured networks from iOS 18 ([Apple private address]).
 - **BLE devices:** Web Bluetooth can read standard GATT sensors (heart-rate straps, thermometers) from Chrome without extra hardware ([Web Bluetooth]); passive beacon scanning from a browser needs the experimental flag (see above).
 - **APU campus systems:** APU's facilities page names CREDIT (Centre for Research and Development of IoT) and describes the AGRHI Hub glasshouse with "Internet of Things (IoT) sensors for climatic conditioning data" ([APU campus facilities]). Not found: any public API or data feed from these or other APU building systems; searched apu.edu.my and the web for APU smart campus, IoT lab, and sensor interfaces.
-- Collecting device identifiers raises privacy questions; see [judging and pitching](/docs/research/judging-and-pitching.md).
+- Collecting device identifiers raises privacy questions; see [judging and pitching](/docs/research/judging.md).
 
 [ESP32 sniffer mode]: https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/wifi-driver/wifi-modes.html
 [Android MAC randomization]: https://source.android.com/docs/core/connect/wifi-mac-randomization-behavior
@@ -143,7 +143,7 @@ Prices and stock from Cytron's Malaysian store on 3 November 2026; they change d
 
 ### Live public sensor feeds
 
-Real-time public feeds exist in these categories: air quality, weather and rainfall, river and flood water levels, public transport vehicle positions, and road traffic. Specific sources, endpoints, and licences are catalogued in [public data sources](/docs/research/public-data-sources.md).
+Real-time public feeds exist in these categories: air quality, weather and rainfall, river and flood water levels, public transport vehicle positions, and road traffic. Specific sources, endpoints, and licences are catalogued in [public data sources](/docs/research/data-sources.md).
 
 ## The network part in practice
 
@@ -184,7 +184,7 @@ Google has no managed MQTT service; the broker comes from a partner or is self-h
 
 - Google's architectures put aggregation and transformation on the edge gateway in the direct-to-Pub/Sub pattern ("the gateway plays an active role in aggregating and transforming the data") and leave analytics to the cloud ([Direct to Pub/Sub]).
 - On-device ML for ESP32 is available through Espressif's [esp-tflite-micro](https://github.com/espressif/esp-tflite-micro) ("TensorFlow Lite Micro for Espressif Chipsets"), last pushed 2 November 2026.
-- In the cloud, the Pub/Sub AI Inference SMT can call Gemini per message ([AI Inference SMT]); Gemini options are compared in [Google tools](/docs/research/google-tools.md).
+- In the cloud, the Pub/Sub AI Inference SMT can call Gemini per message ([AI Inference SMT]); Gemini options are compared in [Google tools](/docs/research/google-cloud.md).
 - Inference: a split that is easy to show is thresholding or event detection on the device or in the browser, sending only events and summaries, with Gemini interpreting them in the cloud.
 
 ### Offline and intermittent links
@@ -281,10 +281,10 @@ Questions the open cases turned on before the ruling:
 ## See also
 
 - [Brief](/docs/BRIEF.md): theme, tracks, dates, and submission format.
-- [Google tools](/docs/research/google-tools.md): Google AI and Cloud products, free tiers, and credits.
-- [Public data sources](/docs/research/public-data-sources.md): live public sensor feeds and datasets per track.
-- [Judging and pitching](/docs/research/judging-and-pitching.md): rubrics, async packaging, and privacy.
-- [Past winners](/docs/research/past-winners.md): comparable IoT hackathon projects.
+- [Google tools](/docs/research/google-cloud.md): Google AI and Cloud products, free tiers, and credits.
+- [Public data sources](/docs/research/data-sources.md): live public sensor feeds and datasets per track.
+- [Judging and pitching](/docs/research/judging.md): rubrics, async packaging, and privacy.
+- [Past winners](/docs/research/winners.md): comparable IoT hackathon projects.
 - [Project conventions](/docs/references/project-conventions.md): the real-public-data rule.
 
 [Standalone MQTT broker]: https://docs.cloud.google.com/architecture/connected-devices/mqtt-broker-architecture

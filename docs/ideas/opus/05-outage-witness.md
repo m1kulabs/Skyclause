@@ -64,8 +64,8 @@ No independent record of APU outages exists:
 [kb-grounds]: https://apiit.atlassian.net/wiki/spaces/AA/pages/2229469321
 [kb-who]: https://apiit.atlassian.net/wiki/spaces/AA/pages/2229272695
 [kb-teams]: https://apiit.atlassian.net/wiki/spaces/ITSM/pages/2291695772
-[sop-wifi]: /docs/research/social-other-platforms.md#wi-fi-power-and-core-platforms
-[red-fm]: /docs/research/social-reddit.md#facilities-approvals-follow-ups-and-proof-of-work
+[sop-wifi]: /docs/research/social.md#wi-fi-power-and-core-platforms
+[red-fm]: /docs/research/social.md#facilities-approvals-follow-ups-and-proof-of-work
 [Pukunui]: https://pukunui.com.my/asia-pacific-university-technology-innovation/
 [ANU EC page]: https://anu.edu.au/students/program-administration/assessments-exams/extenuating-circumstances-application
 
@@ -106,7 +106,7 @@ No independent record of APU outages exists:
 - **No Microsoft 365:** the team can't get a tenant, so the pilot uses Google Workspace and Jira. **Inference:** APU runs Microsoft 365 and its Virtual Help Centre on Atlassian ([APU systems][apu-sys]), so handover swaps Gmail for an Outlook shared mailbox and Sheets for a SharePoint list (both GA) and points the Jira connector at APU's own site.
 - **Platform fit:** event triggers on Gmail and Jira Cloud and cron schedules are documented ([triggers][ge-trig]); Sheets cell reads and writes have been GA through the Drive connector since 12 October 2026 ([actions][ged-act]); Approval and Request info steps exist for workflows ([workflows][ge-wf]); the Globalping connector is federated and read-only ([Globalping][ged-gp]). The custom MCP store needs Streamable HTTP with OAuth and an organisation policy lifted ([custom MCP][ged-mcp]); Globalping's server answers at `https://mcp.globalping.dev/mcp` with OAuth.
 
-[apu-sys]: /docs/research/apu-public-documents.md#systems-apu-runs
+[apu-sys]: /docs/research/apu.md#systems-apu-runs
 
 ### Cloud, IoT, and network
 
@@ -163,9 +163,9 @@ No independent record of APU outages exists:
   - Apps: OutageWatch (crowd-reported outage map) and single-phone power monitors such as poweroutage.app. None ties several independent probes to an institution's evidence rule.
 - **Name:** no product, Devpost project, or GitHub repository called Outage Witness was found; the nearest names are OutageWatch and Power Outage.
 
-[cb-sat]: /docs/research/crowd-baseline.md#saturation-tiers
-[cb-clu]: /docs/research/crowd-baseline.md#clusters-and-shares
-[cb-miss]: /docs/research/crowd-baseline.md#what-the-crowd-structurally-misses
+[cb-sat]: /docs/research/competition.md#saturation-tiers
+[cb-clu]: /docs/research/competition.md#clusters-and-shares
+[cb-miss]: /docs/research/competition.md#what-the-crowd-structurally-misses
 
 ## Scores
 
@@ -218,8 +218,8 @@ The strongest objection to each component, and the answer:
   - Lead with precision, because a false "observed" could support a false claim; report recall, the confusion matrix, n, and a Wilson 95% interval per class: service, provider, site network, site power ([accuracy][rai-acc]). "No coverage" items are counted separately.
   - **Spoof tests, labelled and kept out of the set:** 10 single-probe unplugs, 5 two-probe unplugs more than 60 seconds apart, and 3 single-probe Wi-Fi-off tests; the expected number of episodes is zero.
 
-[rai-consent]: /docs/research/research-and-impact.md#consent-and-anonymised-quotes
-[rai-acc]: /docs/research/research-and-impact.md#measuring-an-agents-accuracy-honestly
+[rai-consent]: /docs/research/judging.md#consent-and-anonymised-quotes
+[rai-acc]: /docs/research/judging.md#measuring-an-agents-accuracy-honestly
 
 ## Time to impact
 
@@ -234,7 +234,7 @@ The strongest objection to each component, and the answer:
 - **Owners:** business owner, the Office of Extenuating Circumstances Claims; IT owner, Technology Services; residence owner, Accommodation; data protection, whoever answers for PDPA at APU ([owners][rai-own]).
 - **Assumptions:** the EC office and Technology Services agree in writing; APU keeps or licenses Gemini Enterprise seats; probes stay at 80% uptime or better, measured weekly; the organisers give written permission to use the KB text.
 
-[rai-own]: /docs/research/research-and-impact.md#owners-and-what-has-to-be-true
+[rai-own]: /docs/research/judging.md#owners-and-what-has-to-be-true
 
 ## Demo and review
 
@@ -282,21 +282,21 @@ The strongest objection to each component, and the answer:
 - **Platform limits:** Gmail and Drive connectors need a Workspace account, not `@gmail.com` ([accounts][ged-acc]); if the licence is consumer, requests become Jira issues on the Jira Cloud event trigger and the register moves to Supabase. Every write pauses for review; credentials expire after 14 days; quota failures aren't retried, so the hourly run also picks up unanswered requests; Globalping and custom MCP are preview, so the measurement rows in Sheets keep the critical path on GA connectors ([limits][ge-lim]).
 - **Read as the Wi-Fi watch:** the pitch opens with the EC rule and a decision, never with a dashboard, and the product files no fault tickets.
 
-[jp-pdpa]: /docs/research/judging-and-pitching.md#malaysias-pdpa-and-the-2024-amendment
-[apu-terms]: /docs/research/apu-public-documents.md#terms-of-use-and-robotstxt
+[jp-pdpa]: /docs/research/judging.md#malaysias-pdpa-and-the-2024-amendment
+[apu-terms]: /docs/research/apu.md#terms-of-use-and-robotstxt
 [kb-wpol]: https://apiit.atlassian.net/wiki/spaces/ITSM/pages/2215378997
 [kb-onb]: https://apiit.atlassian.net/wiki/spaces/ITSM/pages/669581410
-[ged-acc]: /docs/research/gemini-enterprise-data.md#edition-and-account-limits
+[ged-acc]: /docs/research/gemini-enterprise.md#edition-and-account-limits
 [ge-lim]: /docs/research/gemini-enterprise.md#limits-that-bite-in-a-one-week-build
 
 ## See also
 
-- [Gemini Enterprise](/docs/research/gemini-enterprise.md) and [Gemini Enterprise data](/docs/research/gemini-enterprise-data.md): triggers, approvals, connectors, and live-data paths.
-- [APU public documents](/docs/research/apu-public-documents.md#apu-knowledge-base-on-confluence): the public Confluence KB and its terms.
+- [Gemini Enterprise](/docs/research/gemini-enterprise.md) and [Gemini Enterprise data](/docs/research/gemini-enterprise.md#data-in-and-out): triggers, approvals, connectors, and live-data paths.
+- [APU public documents](/docs/research/apu.md#apu-knowledge-base-on-confluence): the public Confluence KB and its terms.
 - [IoT and network](/docs/research/iot-and-network.md#phone-and-laptop-sensors-in-the-browser): phone sensors in the browser and [APU campus Wi-Fi](/docs/research/iot-and-network.md#apu-campus-wi-fi).
 - [Social research on other platforms][sop-res], [Reddit][red-wifi], and [X][x-apu]: the evidence of pain.
-- [Crowd baseline](/docs/research/crowd-baseline.md): what other teams are likely to build.
-- [Research and impact](/docs/research/research-and-impact.md#minute-plan): the README skeleton and the video minute plan.
+- [Crowd baseline](/docs/research/competition.md): what other teams are likely to build.
+- [Research and impact](/docs/research/judging.md#minute-plan): the README skeleton and the video minute plan.
 - [What happens when IT equipment fails?][kb-it] and [Safe Exam Browser FAQ][kb-seb], which says exam halls use "a dedicated SSID" where APU does "not anticipate any downtime".
 - [Grid Watch: Mapping Blackouts with Smart Phones][Grid Watch] and [DumsorWatch in Accra][DumsorWatch]: the research behind charge-state outage sensing.
 - [Globalping API](https://api.globalping.io/v1/spec.yaml) and [MDN browser-compat-data](https://github.com/mdn/browser-compat-data).
@@ -307,13 +307,13 @@ The strongest objection to each component, and the answer:
 [kb-submit]: https://apiit.atlassian.net/wiki/spaces/AA/pages/221152223
 [Grid Watch]: https://patpannuto.com/pubs/klugman14gridwatch.pdf
 [DumsorWatch]: https://nline.io/docs/klugman19scale.pdf
-[sop-res]: /docs/research/social-other-platforms.md#residence-upkeep-and-theft
-[red-wifi]: /docs/research/social-reddit.md#campus-wi-fi-and-network-filtering
-[x-apu]: /docs/research/social-x.md#apus-footprint-on-x
+[sop-res]: /docs/research/social.md#residence-upkeep-and-theft
+[red-wifi]: /docs/research/social.md#campus-wi-fi-and-network-filtering
+[x-apu]: /docs/research/social.md#apus-footprint-on-x
 [ge-trig]: /docs/research/gemini-enterprise.md#triggers-and-schedules
 [ge-wf]: /docs/research/gemini-enterprise.md#workflows
 [ge-un]: /docs/research/gemini-enterprise.md#what-runs-without-anyone-signed-in
-[ged-act]: /docs/research/gemini-enterprise-data.md#actions-and-write-back
-[ged-gp]: /docs/research/gemini-enterprise-data.md#network-measurements-through-globalping
-[ged-mcp]: /docs/research/gemini-enterprise-data.md#requirements-and-registration
-[ged-quota]: /docs/research/gemini-enterprise-data.md#free-tier-limits-that-matter
+[ged-act]: /docs/research/gemini-enterprise.md#actions-and-write-back
+[ged-gp]: /docs/research/gemini-enterprise.md#network-measurements-through-globalping
+[ged-mcp]: /docs/research/gemini-enterprise.md#requirements-and-registration
+[ged-quota]: /docs/research/gemini-enterprise.md#free-tier-limits-that-matter
