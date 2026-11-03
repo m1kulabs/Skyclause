@@ -86,8 +86,8 @@ No earlier APU Cloud Innovation Hackathon with published winners was found, nor 
 
 ## Crowded and open ground
 
-- **Crowded:** campus navigation, campus chatbots, AI tutors and learning companions, attendance and face recognition, mental health, and food waste ([past winners]). **Inference:** the briefing's own examples (an admissions-file checker, a scholarship-eligibility agent, a study planner, a GitHub trend watcher) will be crowded too, because every team heard them.
-- **Thinner on Devpost:** lecturer dashboards (35 matches), classroom occupancy (28), and helpdesk tickets (60). **Inference:** an agent that acts on a live campus feed, such as filing a ticket when readings cross a threshold, would be close to unopposed among published agent winners ([agent hackathon winners]).
+- **Saturated and crowded:** the crowd baseline's [Saturation tiers](/docs/research/competition.md#saturation-tiers) class campus energy, Wi-Fi and network diagnosis, facilities or IT fault-to-ticket agents, document processing and admissions checkers, HR policy and IT helpdesk agents, and campus Q&A chatbots as saturated. Navigation, study planners, live dashboards and several other categories are crowded. The tiers combine simulated brainstorming, briefing examples, NTT DATA-labelled demos and published projects.
+- **Live feeds don't make open ground:** lecturer dashboards (35 Devpost matches), classroom occupancy (28), and helpdesk tickets (60) looked thinner among published projects ([agent hackathon winners]). But across 780 simulated ideas, campus operations on sensor or telemetry feeds hold 41.7%, and telemetry-to-ticket agents hold 16.3%, using the mean of the three model families' shares ([Crowd map](/docs/research/competition.md#crowd-map)). **Inference:** low historical counts don't establish low competition here; a campus network watch that files tickets follows one of the largest simulated clusters.
 - **How crowded categories were won:** depth and an explicit limit on what the agent may do alone, not more agents or novelty. EqualLens covered the whole hiring flow; TrustLens set out 11 document types and 46 checks ([past winners]).
 
 ## Building inside Gemini Enterprise
@@ -178,7 +178,7 @@ As of 3 November 2026; quotas and prices change without notice ([Google tools], 
 
 ## Recommended shape
 
-**Inference**, from the sections above; the track and idea are the team's call.
+**Inference**, from the sections above; the track and idea are the team's call. Check the [Crowd map](/docs/research/competition.md#crowd-map) and [Saturation tiers](/docs/research/competition.md#saturation-tiers) before choosing: a live feed and write actions alone don't distinguish an idea.
 
 - **Problem:** one operational process owned by one named APU office, such as IT helpdesk, library, logistics and operations, or admissions, where real events arrive daily and someone checks them by hand.
 - **Signal:** a real live input: readings from the team's phones or boards, a public feed, or real events such as emails or tickets, landing where a connector queries it live. One board only if it arrives by 6 November, and never on the critical path.
@@ -186,7 +186,7 @@ As of 3 November 2026; quotas and prices change without notice ([Google tools], 
 - **Connectors:** at least one 1P (Drive and Sheets, Gmail) and one 3P that mirrors APU's stack (Jira, SharePoint or OneDrive, ServiceNow); a custom MCP server only as the add-on.
 - **Proof:** several days of run history, a timed baseline, precision and recall on 30–50 real items, and 6–8 interviews with the office's staff or users.
 - **Plan:** what changes for the office by 3 months and what is measured by 6, with owners named.
-- **Example:** an IT helpdesk network watch: phones on campus measure Wi-Fi latency and loss, a scheduled workflow checks them against thresholds, files a Jira issue for the affected area with the matching KB article, and drafts a notice for approval.
+- **Example:** a logistics shuttle-disruption watch: a phone on an actual Campus Connect shuttle records GPS and timestamps, a scheduled workflow compares the observed journey with APU's published shuttle schedule, and drafts a Jira follow-up and rider notice for approval when an observed departure is late. Missing readings show an error, not a service disruption. Shuttle, bus and parking ideas hold 0.5% of the simulation and sit in its "Absent" tier ([Saturation tiers](/docs/research/competition.md#saturation-tiers)); that tier means sparse coverage, not zero ideas or guaranteed low competition.
 - **Tracks:** Intelligent Automation fits "maximizing" most directly; Smart Campus needs an operations angle; Data-Driven Research has the least APU-specific data.
 - **Avoid:** a chat-only agent; ideas that need private records; ingested connectors for live values; a public web app as the main product; face or other biometric data, which the 2024 PDPA amendment made sensitive; personal data in free-tier prompts; LoRaWAN; depending on custom MCP before the organisers confirm it's allowed.
 
