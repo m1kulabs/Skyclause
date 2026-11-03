@@ -22,7 +22,7 @@ Packets group route, stop, window, wait, boarding outcome, corroboration and unc
 
 ## Evidence and uncertainty
 
-[Social S2](/docs/research/astra-social-demand.md#s2-a-former-student-names-classrooms-and-several-service-failures) reports crowded, late APU shuttles and 30–60-minute waits in June 2025. [S4](/docs/research/astra-social-demand.md#s4-a-rider-reports-bearable-morning-waits) contradicts universal severe delays: a January 2026 rider describes bearable waits, usually at most 20 minutes. [S6](/docs/research/astra-social-demand.md#s6-a-parkhill-resident-describes-an-alternative-commute) describes shorter waits again. [S5](/docs/research/astra-social-demand.md#s5-new-students-cannot-confidently-identify-the-correct-shuttle-procedure) shows route and boarding-rule confusion.
+[Social S2](/docs/research/social.md#s2-a-former-student-names-classrooms-and-several-service-failures) reports crowded, late APU shuttles and 30–60-minute waits in June 2025. [S4](/docs/research/social.md#s4-a-rider-reports-bearable-morning-waits) contradicts universal severe delays: a January 2026 rider describes bearable waits, usually at most 20 minutes. [S6](/docs/research/social.md#s6-a-parkhill-resident-describes-an-alternative-commute) describes shorter waits again. [S5](/docs/research/social.md#s5-new-students-cannot-confidently-identify-the-correct-shuttle-procedure) shows route and boarding-rule confusion.
 
 These are unverified accounts, not service statistics. **Inference:** an office might value recurrence evidence. Missed APU–Rapid connections and willingness to act are unproven; transfer rescue was dropped.
 
@@ -30,15 +30,15 @@ These are unverified accounts, not service statistics. **Inference:** an office 
 
 At one agreed stop/route, volunteers record arrival, vehicle arrival, boarding outcome and departure, with corroboration where possible. Public GPS enriches matching observations; it cannot infer load or prove boarding.
 
-[F5](/docs/research/astra-feasibility-and-substitutes.md#platform-constraints) identifies public T580 near APU. **T580 is not the campus shuttle.** Shuttle observations remain explicitly manual. Missing GPS is unavailable telemetry, never cancellation. Agree and publish the repeated-gap review rule with the liaison.
+[F5](/docs/research/gemini-enterprise.md#platform-constraints-and-design-consequences) identifies public T580 near APU. **T580 is not the campus shuttle.** Shuttle observations remain explicitly manual. Missing GPS is unavailable telemetry, never cancellation. Agree and publish the repeated-gap review rule with the liaison.
 
-[Substitute C3](/docs/research/astra-feasibility-and-substitutes.md#existing-substitutes) covers Transit crowdsourcing and campus transport apps. Compare against a spreadsheet log too. The bounded contribution is a sourced service-request packet, without urgent dispatch, connection or time-saving guarantees.
+[Substitute C3](/docs/research/competition.md#existing-substitutes) covers Transit crowdsourcing and campus transport apps. Compare against a spreadsheet log too. The bounded contribution is a sourced service-request packet, without urgent dispatch, connection or time-saving guarantees.
 
 ## Architecture and states
 
 Phone GPS anchors stop observations; public vehicle GPS supplies relevant physical telemetry. HTTPS, timestamps, heartbeat and failures expose the network. GPS cannot establish passenger counts.
 
-The feeder writes current observations to a supported Workspace Sheet. Gemini Enterprise uses **1P live Sheets actions** for evidence and versioned rules, interprets messy descriptions, and drafts an explained request. Deterministic code matches routes/stops, freshness and duplicates. **3P Jira reviewed create** records a genuine qualifying service-gap case in the team's project. Production integration is unconfirmed. Jira reads/updates/comments/transitions require capability proof; reviewers manually link/transition existing issues without duplicate creation ([F1–F4](/docs/research/astra-feasibility-and-substitutes.md#platform-constraints)).
+The feeder writes current observations to a supported Workspace Sheet. Gemini Enterprise uses **1P live Sheets actions** for evidence and versioned rules, interprets messy descriptions, and drafts an explained request. Deterministic code matches routes/stops, freshness and duplicates. **3P Jira reviewed create** records a genuine qualifying service-gap case in the team's project. Production integration is unconfirmed. Jira reads/updates/comments/transitions require capability proof; reviewers manually link/transition existing issues without duplicate creation ([F1–F4](/docs/research/gemini-enterprise.md#platform-constraints-and-design-consequences)).
 
 States: `observing → evidence incomplete → gap candidate → review pending → request created → outcome check due → outcome recorded`. Healthy windows remain observations. A reviewer can reject a candidate. These states live in the application, not assumed Jira automation.
 

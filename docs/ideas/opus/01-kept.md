@@ -282,9 +282,9 @@ Weighted total: 12 + 12 + 10 + 6 + 15 + 8 + 8 + 8 + 4 = **83 / 100**.
   - **Detector level:** every bus event, detected against observed, gets its own precision and recall to separate counter errors from rule errors.
   - **Report:** the confusion matrix, precision, recall, n, and Wilson 95% intervals, with the date tested.
 
-[interview method]: /docs/research/research-and-impact.md#interviews
-[baseline method]: /docs/research/research-and-impact.md#baseline-and-before-and-after-metric
-[accuracy method]: /docs/research/research-and-impact.md#measuring-an-agents-accuracy-honestly
+[interview method]: /docs/research/judging.md#interviews
+[baseline method]: /docs/research/judging.md#baseline-and-before-and-after-metric
+[accuracy method]: /docs/research/judging.md#measuring-an-agents-accuracy-honestly
 
 ## Time to impact
 
@@ -311,7 +311,7 @@ The plan follows GOV.UK's discovery, alpha, and beta phases ([delivery phases]).
   - A Gemini Enterprise seat continues after the sponsored trial.
   - APU grants written permission for the PDF and the timetable feed.
 
-[delivery phases]: /docs/research/research-and-impact.md#mapping-3-and-6-months-to-delivery-phases
+[delivery phases]: /docs/research/judging.md#mapping-3-and-6-months-to-delivery-phases
 
 ## Demo and review
 
@@ -335,7 +335,7 @@ How a reviewer triggers it, during 11–14 Nov with approvals answered 08:00–2
 - **As a shared user:** reviewers run the shared evidence workflow from chat with a date and window, and see their own run's trace ([GE sharing]). This needs read access to the Sheet; test it with a non-team account on 9 Nov, because federated Drive search only covers the searcher's own domain ([GE account limits]).
 - **Network check:** reviewers open the stop page with `?stop=REVIEW` and tap. The row lands with its latency, is tagged test, and is excluded from every metric.
 
-[minute plan]: /docs/research/research-and-impact.md#minute-plan
+[minute plan]: /docs/research/judging.md#minute-plan
 
 ## Build plan
 
@@ -377,51 +377,51 @@ The riskiest pieces come first: the licence and the Jira event, then counter acc
   - Reviewers outside the domain may not read the Sheet through Drive; test on 9 Nov and fall back to the Jira and email triggers.
   - A licence on consumer accounts would break Drive and Gmail; ask the organisers on 4 Nov.
 - **Feeds fail during assessment:** error rows show the HTTP status, and the verdict says "not observed", never a cached value. Infobanjir publishes no terms, and the T580 reading is sparse at a 50-minute headway; both are attribution context, not the verdict.
-- **A rival APU shuttle entry:** a public APU shuttle-tracker repository already exists ([crowd baseline](/docs/research/crowd-baseline.md#public-repositories-so-far)), so expect at least one tracker entry. Pitch the difference in the first 15 seconds: Kept grades the promise and closes the loop with the desk.
+- **A rival APU shuttle entry:** a public APU shuttle-tracker repository already exists ([crowd baseline](/docs/research/competition.md#public-repositories-so-far)), so expect at least one tracker entry. Pitch the difference in the first 15 seconds: Kept grades the promise and closes the loop with the desk.
 
-[APU terms]: /docs/research/apu-public-documents.md#terms-of-use-and-robotstxt
+[APU terms]: /docs/research/apu.md#terms-of-use-and-robotstxt
 
 ## See also
 
-- [Shuttle buses and the LRT last mile][shuttle research], [Reddit commute research], and [X: getting to class](/docs/research/social-x.md#getting-to-class-campus-buses-shuttles-and-the-lrt): the social evidence.
-- [Crowd baseline](/docs/research/crowd-baseline.md): clusters, rivals, and the APSpace app.
-- [Gemini Enterprise](/docs/research/gemini-enterprise.md) and [Gemini Enterprise data](/docs/research/gemini-enterprise-data.md): triggers, approvals, connectors, sandboxes, and reviewer access.
-- [Public data sources](/docs/research/public-data-sources.md): GTFS, MET, and Infobanjir.
+- [Shuttle buses and the LRT last mile][shuttle research], [Reddit commute research], and [X: getting to class](/docs/research/social.md#getting-to-class-campus-buses-shuttles-and-the-lrt): the social evidence.
+- [Crowd baseline](/docs/research/competition.md): clusters, rivals, and the APSpace app.
+- [Gemini Enterprise](/docs/research/gemini-enterprise.md) and [Gemini Enterprise data](/docs/research/gemini-enterprise.md#data-in-and-out): triggers, approvals, connectors, sandboxes, and reviewer access.
+- [Public data sources](/docs/research/data-sources.md): GTFS, MET, and Infobanjir.
 - [IoT and network](/docs/research/iot-and-network.md): browser sensors, edge processing, and what reviewers can see of the network.
-- [APU public documents](/docs/research/apu-public-documents.md): the shuttle PDF, APU's systems, and terms.
-- [Research and impact](/docs/research/research-and-impact.md) and [judging and pitching](/docs/research/judging-and-pitching.md): methods, the README, the video, and PDPA.
+- [APU public documents](/docs/research/apu.md): the shuttle PDF, APU's systems, and terms.
+- [Research and impact](/docs/research/judging.md) and [judging and pitching](/docs/research/judging.md): methods, the README, the video, and PDPA.
 - [Campus Connect schedule V1_20261022][shuttle PDF], the [shuttle page][Shuttle page], and the [MediaPipe object detector guide][MediaPipe object detector].
 
-[shuttle research]: /docs/research/social-other-platforms.md#shuttle-buses-and-the-lrt-last-mile
-[Reddit commute research]: /docs/research/social-reddit.md#getting-to-campus-shuttle-lrt-bukit-jalil-and-traffic
-[GTFS static research]: /docs/research/public-data-sources.md#routes-and-stops-near-apu-gtfs-static
-[APSpace research]: /docs/research/crowd-baseline.md#the-official-apspace-app
-[APU systems]: /docs/research/apu-public-documents.md
+[shuttle research]: /docs/research/social.md#shuttle-buses-and-the-lrt-last-mile
+[Reddit commute research]: /docs/research/social.md#getting-to-campus-shuttle-lrt-bukit-jalil-and-traffic
+[GTFS static research]: /docs/research/data-sources.md#routes-and-stops-near-apu-gtfs-static
+[APSpace research]: /docs/research/competition.md#the-official-apspace-app
+[APU systems]: /docs/research/apu.md
 [GE triggers]: /docs/research/gemini-enterprise.md#triggers-and-schedules
 [GE unattended]: /docs/research/gemini-enterprise.md#what-runs-without-anyone-signed-in
 [GE limits]: /docs/research/gemini-enterprise.md#limits-that-bite-in-a-one-week-build
 [GE runs]: /docs/research/gemini-enterprise.md#run-history-as-evidence
 [GE sharing]: /docs/research/gemini-enterprise.md#agent-gallery-and-sharing
 [GE reviewer access]: /docs/research/gemini-enterprise.md#what-each-reviewer-needs
-[GE actions]: /docs/research/gemini-enterprise-data.md#actions-and-write-back
-[GE freshness]: /docs/research/gemini-enterprise-data.md#federated-search-versus-ingestion
-[GE account limits]: /docs/research/gemini-enterprise-data.md#edition-and-account-limits
-[GE MCP]: /docs/research/gemini-enterprise-data.md#requirements-and-registration
-[GE sandboxes]: /docs/research/gemini-enterprise-data.md#free-sandboxes
-[GE data unverified]: /docs/research/gemini-enterprise-data.md#not-verified
+[GE actions]: /docs/research/gemini-enterprise.md#actions-and-write-back
+[GE freshness]: /docs/research/gemini-enterprise.md#federated-search-versus-ingestion
+[GE account limits]: /docs/research/gemini-enterprise.md#edition-and-account-limits
+[GE MCP]: /docs/research/gemini-enterprise.md#requirements-and-registration
+[GE sandboxes]: /docs/research/gemini-enterprise.md#free-sandboxes
+[GE data unverified]: /docs/research/gemini-enterprise.md#not-verified
 [IoT edge]: /docs/research/iot-and-network.md#edge-versus-cloud-processing
 [IoT network]: /docs/research/iot-and-network.md#what-a-judge-can-see-of-the-network
 [IoT Wi-Fi]: /docs/research/iot-and-network.md#apu-campus-wi-fi
-[crowd clusters]: /docs/research/crowd-baseline.md#clusters-and-shares
-[crowd tiers]: /docs/research/crowd-baseline.md#saturation-tiers
-[crowd counts]: /docs/research/crowd-baseline.md#crowding-counts
-[crowd misses]: /docs/research/crowd-baseline.md#what-the-crowd-structurally-misses
-[crowd repos]: /docs/research/crowd-baseline.md#public-repositories-so-far
-[crowd APU tools]: /docs/research/crowd-baseline.md#repositories-and-adoption
-[crowd names]: /docs/research/crowd-baseline.md#name-collisions
+[crowd clusters]: /docs/research/competition.md#clusters-and-shares
+[crowd tiers]: /docs/research/competition.md#saturation-tiers
+[crowd counts]: /docs/research/competition.md#crowding-counts
+[crowd misses]: /docs/research/competition.md#what-the-crowd-structurally-misses
+[crowd repos]: /docs/research/competition.md#public-repositories-so-far
+[crowd APU tools]: /docs/research/competition.md#repositories-and-adoption
+[crowd names]: /docs/research/competition.md#name-collisions
 [shuttle PDF]: https://publicwebsite-media.apu.edu.my/assets/2026-10/2026Oct22_APU-SHUTTLE-SERVICES.pdf
 [timetable feed]: https://s3-ap-southeast-1.amazonaws.com/open-ws/weektimetable
 [MediaPipe object detector]: https://developers.google.com/edge/mediapipe/solutions/vision/object_detector/web_js
 [Shuttle page]: https://www.apu.edu.my/shuttle-services-campus-connect
 [data ruling]: /docs/CONTEXT.md#decisions-so-far
-[PDPA research]: /docs/research/judging-and-pitching.md#malaysias-pdpa-and-the-2024-amendment
+[PDPA research]: /docs/research/judging.md#malaysias-pdpa-and-the-2024-amendment

@@ -50,7 +50,7 @@ The website says the judging criteria "will be released soon", and none had been
 
 [brief]: /docs/BRIEF.md#judging-and-prizes
 [context]: /docs/CONTEXT.md#what-the-judges-will-reward
-[judging and pitching]: /docs/research/judging-and-pitching.md
+[judging and pitching]: /docs/research/judging.md
 
 ### Rubric components
 
@@ -69,7 +69,7 @@ The website says the judging criteria "will be released soon", and none had been
 
 Posts on r/malaysiauni, r/malaysia, r/KualaLumpur, and r/sysadmin were checked against APU's public KB on `apiit.atlassian.net`, which holds 1,189 pages readable without login, 725 of them IT helpdesk articles ([APU public documents]).
 
-[APU public documents]: /docs/research/apu-public-documents.md
+[APU public documents]: /docs/research/apu.md
 
 ### Classroom Wi-Fi and A/V drops
 
@@ -133,7 +133,7 @@ Twenty concepts came from the problem statements, the briefing, and the evidence
 3.  **Sensitive data and crowding:** face-recognition attendance (`attendance tracking` 736, `attendance face recognition` 287; GDGoC APU taught it with YOLO in March 2025; the 2024 PDPA amendment makes biometric data sensitive), and a mental health companion (`mental health` 13,678).
 4.  **Hardware and private data:** a LoRaWAN campus sensor mesh (1 of 96 mapped gateways near Kuala Lumpur was online, and a gateway costs about RM1,000 ([IoT and network])), and a GPA dropout predictor, which needs private student records.
 
-[past winners]: /docs/research/past-winners.md
+[past winners]: /docs/research/winners.md
 [context crowding]: /docs/CONTEXT.md#crowded-and-open-ground
 
 ### Round 2: live data and theme test
@@ -146,7 +146,7 @@ Eight concepts faced three tests from the Gemini Enterprise and IoT research ([G
 
 Three were dropped: a prepaid residence meter top-up (needs private payment access), a cafeteria food-waste camera (`food waste` 5,171 on Devpost, weak 3P connector fit), and a VirtualLab licence optimiser (no public telemetry).
 
-[Gemini Enterprise data]: /docs/research/gemini-enterprise-data.md
+[Gemini Enterprise data]: /docs/research/gemini-enterprise.md#data-in-and-out
 [project conventions]: /docs/references/project-conventions.md
 
 ### Round 3: scoring the finalists
@@ -171,12 +171,12 @@ If the team prefers outdoor transit data that daily commuters feel, Kuyoh Shuttl
 ## See also
 
 - [Brief](/docs/BRIEF.md) and [context](/docs/CONTEXT.md)
-- [Agent hackathon winners](/docs/research/agent-hackathon-winners.md) and [past winners](/docs/research/past-winners.md)
-- [Gemini Enterprise data](/docs/research/gemini-enterprise-data.md) and [IoT and network](/docs/research/iot-and-network.md)
-- [APU public documents](/docs/research/apu-public-documents.md) and [public data sources](/docs/research/public-data-sources.md)
-- [Research and impact](/docs/research/research-and-impact.md)
+- [Agent hackathon winners](/docs/research/winners.md) and [past winners](/docs/research/winners.md)
+- [Gemini Enterprise data](/docs/research/gemini-enterprise.md#data-in-and-out) and [IoT and network](/docs/research/iot-and-network.md)
+- [APU public documents](/docs/research/apu.md) and [public data sources](/docs/research/data-sources.md)
+- [Research and impact](/docs/research/judging.md)
 
 [KB SLA]: https://apiit.atlassian.net/wiki/spaces/ITSM/pages/491356161
 [attendance worry thread]: https://www.reddit.com/r/malaysiauni/comments/1vctvfq/
 [IoT and network]: /docs/research/iot-and-network.md
-[public data sources]: /docs/research/public-data-sources.md
+[public data sources]: /docs/research/data-sources.md

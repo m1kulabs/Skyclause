@@ -41,7 +41,7 @@ The seven eliminated or held candidates fail a gate before full scoring. Giving 
 | WashWitness | The problem may be other residents leaving clothes        | Vibration cannot prove cleanliness or dryness   | Overseas fault accounts; local evidence differs        | Vendor permission may dominate development time             | Confirm a useful cycle, keep unknown separate from empty               |
 | LabRelay    | Another alert may add alarm fatigue                       | Network and probe can fail together             | Strong lab pain, APU applicability unconfirmed         | Physical probe and supervised equipment access required     | Named acknowledgement and recovery matter more than notification count |
 
-These challenges follow [social research](/docs/research/astra-social-demand.md), [X evidence](/docs/research/astra-x-signals.md), and [technical/substitute checks](/docs/research/astra-feasibility-and-substitutes.md). They produce actual scope changes in the next round.
+These challenges follow [social research](/docs/research/social.md#reddit), [X evidence](/docs/research/social.md#x), and [technical/substitute checks](/docs/research/competition.md). They produce actual scope changes in the next round.
 
 ## Round three: compare against substitutes
 

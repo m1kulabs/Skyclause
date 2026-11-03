@@ -107,7 +107,7 @@ The NTT DATA presenters called Gemini Enterprise mandatory, with agents built in
 - **Write actions worth showing:** on GA Google connectors, Drive and Sheets (cell reads and writes since 12 October 2026), Gmail send, and Calendar events; on GA third-party connectors, Jira Cloud create issue, ServiceNow create incident, Slack, Outlook, SharePoint, Teams, and GitHub. Supabase, Salesforce, and Globalping (real network measurements) are in preview. There is no SAP connector.
 - **Custom MCP is the add-on, and it's gated:** the Custom MCP Server store is in preview, needs Streamable HTTP over public HTTPS with OAuth or no auth, and is blocked by default by an organisation policy only an Organization Policy Administrator can lift.
 - **Account type decides the path:** Drive, Gmail, and Calendar connectors don't support consumer `@gmail.com` accounts, despite the presenter saying they "work perfectly". Without a card, the best live path is phone or board → Apps Script web app → a Sheet in the licensed Workspace domain, read live through Drive and Sheets, with an Apps Script time trigger polling public feeds into it. On consumer accounts, use Supabase Free with the Supabase connector instead. With a card: Pub/Sub → BigQuery, read through BigQuery's federated query mode (preview), plus a Cloud Run MCP server that fetches public feeds on demand and passes their errors through ([Gemini Enterprise data]).
-- **Sandboxes hold only real records:** Jira Cloud Free (10 users), Salesforce Developer Edition, and a ServiceNow Personal Developer Instance (reclaimed after 10 days of inactivity) can hold records the system creates from real events; delete any preloaded demo records. The Microsoft 365 developer sandbox is closed to most students and ships sample data, which the rule bars ([Gemini Enterprise data](/docs/research/gemini-enterprise-data.md#free-sandboxes)).
+- **Sandboxes hold only real records:** Jira Cloud Free (10 users), Salesforce Developer Edition, and a ServiceNow Personal Developer Instance (reclaimed after 10 days of inactivity) can hold records the system creates from real events; delete any preloaded demo records. The Microsoft 365 developer sandbox is closed to most students and ships sample data, which the rule bars ([Gemini Enterprise data](/docs/research/gemini-enterprise.md#free-sandboxes)).
 
 ### Reviewer access
 
@@ -158,7 +158,7 @@ Each source below returned current data on 3 November 2026 without a key; endpoi
 
 ### APU's own documents and systems
 
-APU documents no data API, though APSpace's timetable is a public, undocumented feed ([APU timetable feed](/docs/research/apu-timetable-feed.md)), and much of its operating knowledge is public ([APU public documents]):
+APU documents no data API, though APSpace's timetable is a public, undocumented feed ([APU timetable feed](/docs/research/apu.md#apspace-timetable-feed)), and much of its operating knowledge is public ([APU public documents]):
 
 - **Knowledge base:** `kb.apu.edu.my` is APU's Confluence site, where 21 of its 28 spaces hold 1,189 pages readable without login, 725 of them IT helpdesk articles, some edited on 3 November. Other spaces cover academic administration, the library, graduation, accommodation, logistics, and visas.
 - **Documents:** the shuttle schedule (effective 22 October 2026), the November 2026 orientation guide, Student Handbook v8.0, the application form's required-documents checklist, 138 course pages with entry requirements and fees, the August 2026 scholarship grid, the PTPTN guide, and the refund policy. Academic regulations, programme handbooks, and the academic calendar are login-gated.
@@ -200,8 +200,8 @@ There are two lists: the portal's, and what NTT DATA asked for at the briefing (
 The quality layer ([research and impact], [judging and pitching]):
 
 - **Repo:** public and opening from a logged-out browser, though the presenter left that to teams; no secrets, with GitHub push protection on.
-- **README:** the five headings in the briefing's words, then "Data and privacy" and "How to review or run it"; a connector table and "How it runs day to day" under the solution, and "Time to impact: 3 and 6 months" under impact. Add a Mermaid diagram of device, network, feeder, connectors, workflow, and actions; a table of what is live, what is replayed, and from which source; data sources and licences; and AI tools used, including Antigravity. A skeleton is in [research and impact](/docs/research/research-and-impact.md#readme-skeleton).
-- **Video:** about 3:45, with the demo and impact inside the first three minutes; labelled as a recording with its capture date in the title, on screen, and in the description; YouTube unlisted, checked from a logged-out browser. A minute plan is in [research and impact](/docs/research/research-and-impact.md#minute-plan).
+- **README:** the five headings in the briefing's words, then "Data and privacy" and "How to review or run it"; a connector table and "How it runs day to day" under the solution, and "Time to impact: 3 and 6 months" under impact. Add a Mermaid diagram of device, network, feeder, connectors, workflow, and actions; a table of what is live, what is replayed, and from which source; data sources and licences; and AI tools used, including Antigravity. A skeleton is in [research and impact](/docs/research/judging.md#readme-skeleton).
+- **Video:** about 3:45, with the demo and impact inside the first three minutes; labelled as a recording with its capture date in the title, on screen, and in the description; YouTube unlisted, checked from a logged-out browser. A minute plan is in [research and impact](/docs/research/judging.md#minute-plan).
 - **Deck:** a PDF that reads without a presenter, one idea per slide, sections following NTT DATA's five points, and a privacy slide. GitHub ignores links inside PDFs, so print the repo, app, and video URLs as visible text on the first and last slides.
 - **Live system:** the workflow keeps running through 11–14 November, with schedule credentials refreshed just before; feeds and any board online; sandboxes awake; failed sources showing their errors, never cached data.
 
@@ -238,26 +238,25 @@ The [brief's open questions](/docs/BRIEF.md#open-questions) list what the organi
 ## See also
 
 - [Brief](/docs/BRIEF.md): the event's rules, dates, briefing, and open questions.
-- [Gemini Enterprise]: workflows, triggers, quotas, reviewer access, and Antigravity.
-- [Gemini Enterprise data]: connectors, freshness, actions, MCP, live-data paths, and sandboxes.
-- [Agent hackathon winners]: agent and workflow-automation winners, by NTT DATA's judging points.
-- [Research and impact]: user research, impact measurement, time to impact, the README, and the video.
-- [APU public documents]: APU's public documents, knowledge base, and systems.
-- [Past winners]: earlier winner profiles, patterns, and crowding counts.
-- [Judging and pitching]: comparable rubrics, packaging, pitching, and privacy.
-- [Google tools]: products, quotas, prices, and the no-card path.
-- [IoT and network]: Google Cloud IoT architecture, sensors, boards, protocols, and pitfalls.
+- [Gemini Enterprise]: workflows, triggers, quotas, reviewer access, Antigravity, connectors, freshness, actions, MCP, live-data paths, and sandboxes.
+- [Google tools]: Google Cloud and AI products beyond Gemini Enterprise, quotas, prices, and the no-card path.
+- [Past winners]: earlier and agent-hackathon winner profiles, patterns by NTT DATA's judging points, and crowding counts.
+- [Competition](/docs/research/competition.md): what other teams will likely build and existing products that already do the job.
+- [Judging and pitching]: comparable rubrics, user research, impact measurement, time to impact, packaging, the README, the video, and the pitch.
+- [APU public documents]: APU's public documents, knowledge base, timetable feed, and systems.
 - [Public data sources]: the live data catalogue per track.
+- [IoT and network]: Google Cloud IoT architecture, sensors, boards, protocols, and pitfalls.
+- [Social research](/docs/research/social.md): pain points from X, Reddit, and other platforms.
 
 [brief]: /docs/BRIEF.md
 [briefing]: /docs/sources/briefing-session/transcript.md
-[past winners]: /docs/research/past-winners.md
-[agent hackathon winners]: /docs/research/agent-hackathon-winners.md
-[judging and pitching]: /docs/research/judging-and-pitching.md
-[research and impact]: /docs/research/research-and-impact.md
+[past winners]: /docs/research/winners.md
+[agent hackathon winners]: /docs/research/winners.md
+[judging and pitching]: /docs/research/judging.md
+[research and impact]: /docs/research/judging.md
 [Gemini Enterprise]: /docs/research/gemini-enterprise.md
-[Gemini Enterprise data]: /docs/research/gemini-enterprise-data.md
-[APU public documents]: /docs/research/apu-public-documents.md
-[Google tools]: /docs/research/google-tools.md
+[Gemini Enterprise data]: /docs/research/gemini-enterprise.md#data-in-and-out
+[APU public documents]: /docs/research/apu.md
+[Google tools]: /docs/research/google-cloud.md
 [IoT and network]: /docs/research/iot-and-network.md
-[public data sources]: /docs/research/public-data-sources.md
+[public data sources]: /docs/research/data-sources.md

@@ -22,9 +22,9 @@ Recurring reports create evidence requests and retests. Adoption requires less r
 
 ## Evidence and uncertainty
 
-[Social S1](/docs/research/astra-social-demand.md#s1-apu-wi-fi-loss-has-specific-locations) identifies cafeteria/stair signal loss in May 2026. [S2](/docs/research/astra-social-demand.md#s2-a-former-student-names-classrooms-and-several-service-failures) names S0801/E0903 in a former student's June 2025 complaint. [S3](/docs/research/astra-social-demand.md#s3-a-separate-apu-student-reports-intermittent-service) independently describes intermittent service. These are unverified reports. S1 also reports working accommodation Wi-Fi; [S7](/docs/research/astra-social-demand.md#s7-city-of-green-laundry-is-blocked-by-uncollected-clothes) distinguishes restrictions from decent speed.
+[Social S1](/docs/research/social.md#s1-apu-wi-fi-loss-has-specific-locations) identifies cafeteria/stair signal loss in May 2026. [S2](/docs/research/social.md#s2-a-former-student-names-classrooms-and-several-service-failures) names S0801/E0903 in a former student's June 2025 complaint. [S3](/docs/research/social.md#s3-a-separate-apu-student-reports-intermittent-service) independently describes intermittent service. These are unverified reports. S1 also reports working accommodation Wi-Fi; [S7](/docs/research/social.md#s7-city-of-green-laundry-is-blocked-by-uncollected-clothes) distinguishes restrictions from decent speed.
 
-**Inference:** comparable retesting may help. No source proves premature APU ticket closure. [S10](/docs/research/astra-social-demand.md#s10-a-repair-vendor-cannot-reproduce-a-recurring-fault) supplies a non-campus recurring-repair analogue, not local validation.
+**Inference:** comparable retesting may help. No source proves premature APU ticket closure. [S10](/docs/research/social.md#s10-a-repair-vendor-cannot-reproduce-a-recurring-fault) supplies a non-campus recurring-repair analogue, not local validation.
 
 ## Mechanism and substitutes
 
@@ -32,11 +32,11 @@ A student submits location/task context and runs HTTPS checks to an authorised e
 
 Acceptance combines repeated fresh successful windows, reporter task confirmation and reviewer judgment. Sparse evidence remains “retest needed.” HTTPS results measure application reachability and elapsed request time: they do not measure RF strength, packet loss, or prove a Wi-Fi root cause.
 
-[Substitutes C1–C2](/docs/research/astra-feasibility-and-substitutes.md#existing-substitutes) include NetBeez, Jira automation, and a technician's checklist. Test comparable physical recovery evidence against a form/template; discard AI if it adds correction work.
+[Substitutes C1–C2](/docs/research/competition.md#existing-substitutes) include NetBeez, Jira automation, and a technician's checklist. Test comparable physical recovery evidence against a form/template; discard AI if it adds correction work.
 
 ## Architecture and states
 
-Team phones are physical network clients at recorded locations. HTTPS carries observations to a current Sheet; Gemini Enterprise uses the **1P live Sheets action** to read readings, freshness, case IDs, and versioned acceptance rules. It interprets report text and assembles an explanation; deterministic code handles matching and thresholds. **3P Jira reviewed create** opens one real case after approval. Jira updates, comments, reads, or transitions are unproven capabilities: the reviewer manually links/transitions existing issues when needed. Deduplication prevents another create masquerading as an update ([F1–F4](/docs/research/astra-feasibility-and-substitutes.md#platform-constraints)).
+Team phones are physical network clients at recorded locations. HTTPS carries observations to a current Sheet; Gemini Enterprise uses the **1P live Sheets action** to read readings, freshness, case IDs, and versioned acceptance rules. It interprets report text and assembles an explanation; deterministic code handles matching and thresholds. **3P Jira reviewed create** opens one real case after approval. Jira updates, comments, reads, or transitions are unproven capabilities: the reviewer manually links/transitions existing issues when needed. Deduplication prevents another create masquerading as an update ([F1–F4](/docs/research/gemini-enterprise.md#platform-constraints-and-design-consequences)).
 
 States: `reported → evidence needed → review pending → case created → retest needed → recovery evidence ready → human accepted`. A failed retest returns to `retest needed`. These are application states, not promised Jira transitions.
 

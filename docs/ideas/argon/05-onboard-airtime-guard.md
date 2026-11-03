@@ -56,12 +56,12 @@ Contents:
 - **Microphone permission:** even with no recording, the noise check asks for the mic, which may put students off; keep it optional.
 - **Safari has no `navigator.connection`:** iPhones report burst-test results only.
 
-[past winners]: /docs/research/past-winners.md
+[past winners]: /docs/research/winners.md
 
 ## See also
 
 - [Argon idea ranking](00-ranking.md)
 - [SpineDesk Pulse](01-spinedesk-pulse.md), which uses the same browser probe for classrooms
-- [Past winners](/docs/research/past-winners.md) on Devpost crowding
+- [Past winners](/docs/research/winners.md) on Devpost crowding
 
 [KB APSpace]: https://apiit.atlassian.net/wiki/spaces/ITSM/pages/218792045

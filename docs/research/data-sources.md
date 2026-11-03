@@ -1,6 +1,6 @@
 # Public data sources
 
-Which real, public, currently live datasets and APIs could power a prototype in each of the three tracks, with relevance to APU at Technology Park Malaysia (TPM), Bukit Jalil, Kuala Lumpur. A source is marked live only if a real request returned current data on 3 November 2026 (requests made 10:13–10:50 MYT); raw responses are kept outside the repo. Researched on 3 November 2026.
+Which real, public, currently live datasets and APIs could power a prototype in each of the three tracks, with relevance to APU at Technology Park Malaysia (TPM), Bukit Jalil, Kuala Lumpur. A source is marked live only if a real request returned current data on 3 November 2026 (requests made 10:13–10:50 MYT); raw responses are kept outside the repo. Researched on 3 November 2026. APU's own timetable feed and public documents are in [APU's public documents, data, and systems](/docs/research/apu.md#apspace-timetable-feed).
 
 Contents:
 
@@ -237,7 +237,7 @@ These feeds suit "connecting devices with useful actions": thresholds and warnin
 - **Offers:** datasets hosted in the `bigquery-public-data` project, queried with SQL ([public datasets][bq_public]).
 - **Access:** any Cloud project. The first 1 TB processed each month is free, and there's no SLA ([public datasets][bq_public]). The sandbox needs no billing account but caps storage at 10 GiB lifetime, expires tables after 60 days, and doesn't support streaming data ([sandbox][bq_sandbox]).
 - **Terms:** per dataset.
-- **Not verified:** this environment has no authenticated gcloud account, so I couldn't query any dataset or confirm Malaysian coverage. The sandbox's lack of streaming matters for an IoT pipeline; see [google-tools.md](/docs/research/google-tools.md).
+- **Not verified:** this environment has no authenticated gcloud account, so I couldn't query any dataset or confirm Malaysian coverage. The sandbox's lack of streaming matters for an IoT pipeline; see [Google Cloud](/docs/research/google-cloud.md).
 
 [bq_public]: https://cloud.google.com/bigquery/public-data
 [bq_sandbox]: https://cloud.google.com/bigquery/docs/sandbox
@@ -275,7 +275,7 @@ These feeds suit "connecting devices with useful actions": thresholds and warnin
 - **Evidence:** keyless, CC BY 4.0, sensor-style feeds near APU exist today: bus GPS every 30 s, the Sungai Kuyoh river gauge at LRT Bukit Jalil every 15 min, and DOE air-quality stations hourly. **Inference:** they give a credible "IoT senses the world" signal without hardware, but should sit beside any team sensor rather than replace it; see [iot-and-network.md](/docs/research/iot-and-network.md).
 - **Evidence:** data.gov.my documents 4 requests per minute per API, and APIMS blocks browser CORS. **Inference:** poll each feed from one Cloud Run or Cloud Functions job, store each snapshot with its source timestamp, and serve the app from that store. This adds a visible cloud-and-network layer and keeps the app inside the rate limits during async judging. Under the repo rule, when a poll fails the app must show that feed's error rather than the last snapshot ([project conventions](/docs/references/project-conventions.md)).
 - **Evidence:** WAQI forbids redistributing cached or archived data, and the Open-Meteo free tier is non-commercial. **Inference:** prefer data.gov.my, APIMS, and OpenAlex for anything you store or might commercialise, and put an attributions list in the README.
-- **Evidence:** APU documents no API or open data, though APSpace's timetable is a public, undocumented feed ([APU timetable feed](/docs/research/apu-timetable-feed.md)), and OSM has almost nothing inside the campus. **Inference:** a Smart Campus build will rely on surrounding public data (transport, weather, flood, air) plus whatever the team collects itself. Mapping campus blocks in OSM is a real, cheap contribution the team could show.
+- **Evidence:** APU documents no API or open data, though APSpace's timetable is a public, undocumented feed ([APSpace timetable feed](/docs/research/apu.md#apspace-timetable-feed)), and OSM has almost nothing inside the campus. **Inference:** a Smart Campus build will rely on surrounding public data (transport, weather, flood, air) plus whatever the team collects itself. Mapping campus blocks in OSM is a real, cheap contribution the team could show.
 - **Evidence:** OpenAlex returns APU's 3.7k works with topic groupings for a fraction of a cent per call, and Rapid Rail OD data covers Bukit Jalil daily. **Inference:** these are the strongest bases for the Data-Driven Research track (research-trend or resource-forecasting dashboards in BigQuery or Data Studio, formerly Looker Studio, with Gemini summaries).
 - **Evidence:** MOHE statistics are aggregate PDFs with no APU-level rows, and `lecturers_uni` covers public universities only. **Inference:** avoid pitches that promise APU-specific student analytics from public data; that data isn't public.
 - **Evidence:** I couldn't verify Google Maps Platform or BigQuery by request here. **Inference:** budget 30 minutes on day one to enable the APIs on the team's own project and re-run the checks.
@@ -283,10 +283,10 @@ These feeds suit "connecting devices with useful actions": thresholds and warnin
 ## See also
 
 - [Hackathon brief](/docs/BRIEF.md)
-- [Google tools](/docs/research/google-tools.md): Cloud and AI products, free tiers, BigQuery sandbox
+- [Google Cloud](/docs/research/google-cloud.md): Cloud and AI products, free tiers, BigQuery sandbox
 - [IoT and network](/docs/research/iot-and-network.md): sensors, protocols, and ingestion architecture
-- [Judging and pitching](/docs/research/judging-and-pitching.md): packaging, privacy, and attribution in the deck
-- [Past winners](/docs/research/past-winners.md): what similar teams built
+- [Judging](/docs/research/judging.md): packaging, privacy, and attribution in the deck
+- [Past winners](/docs/research/winners.md): what similar teams built
 
 [dgm_rate]: https://developer.data.gov.my/rate-limit
 [dgm_faq]: https://developer.data.gov.my/faq

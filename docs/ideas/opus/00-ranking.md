@@ -44,23 +44,23 @@ Scores are out of 100: the mean of two independent final scorers, taking the low
 
 ## Scoring matrix
 
-NTT DATA said at the briefing that it will rate impact, the 1P and 3P connectors used (MCP as an add-on), research, time to impact, and how automated workflows run day to day ([brief](/docs/BRIEF.md#judging-and-prizes)). It gave no weights or scale. **Inference:** the weights below are ours; the extra components come from the theme and from comparable rubrics ([judging and pitching](/docs/research/judging-and-pitching.md#comparable-rubrics)).
+NTT DATA said at the briefing that it will rate impact, the 1P and 3P connectors used (MCP as an add-on), research, time to impact, and how automated workflows run day to day ([brief](/docs/BRIEF.md#judging-and-prizes)). It gave no weights or scale. **Inference:** the weights below are ours; the extra components come from the theme and from comparable rubrics ([judging and pitching](/docs/research/judging.md#comparable-rubrics)).
 
 ### Components and weights
 
 Each component is scored 1–5 and weighted; 5 on everything is 100.
 
-| Component           | Weight | What scores high                                                                                                           |
-| ------------------- | -----: | -------------------------------------------------------------------------------------------------------------------------- |
-| Impact              |     15 | A named APU office or group, the real volume it handles, and a measured before-and-after                                   |
-| Connectors          |     15 | Distinct 1P and 3P connectors doing real work in the loop; MCP only breaks ties                                            |
-| Research            |     10 | Users reachable for 6–8 interviews, a timed baseline, and 30–50 real items for precision and recall                        |
-| Time to impact      |     10 | A credible, dated 3- and 6-month plan with an owner                                                                        |
-| Day-to-day workflow |     15 | Starts on a schedule or connector event, runs unattended, and keeps one human approval                                     |
-| Theme               |     10 | Cloud, IoT and network each visible and load-bearing                                                                       |
-| Originality         |     10 | Distance from the [crowd baseline](/docs/research/crowd-baseline.md#saturation-tiers) and from the briefing's own examples |
-| Usage               |     10 | People would still use it in March 2027, through a channel they already have                                               |
-| Demo                |      5 | Lands in a 3–4 minute video, and a reviewer can trigger it themselves                                                      |
+| Component           | Weight | What scores high                                                                                                        |
+| ------------------- | -----: | ----------------------------------------------------------------------------------------------------------------------- |
+| Impact              |     15 | A named APU office or group, the real volume it handles, and a measured before-and-after                                |
+| Connectors          |     15 | Distinct 1P and 3P connectors doing real work in the loop; MCP only breaks ties                                         |
+| Research            |     10 | Users reachable for 6–8 interviews, a timed baseline, and 30–50 real items for precision and recall                     |
+| Time to impact      |     10 | A credible, dated 3- and 6-month plan with an owner                                                                     |
+| Day-to-day workflow |     15 | Starts on a schedule or connector event, runs unattended, and keeps one human approval                                  |
+| Theme               |     10 | Cloud, IoT and network each visible and load-bearing                                                                    |
+| Originality         |     10 | Distance from the [crowd baseline](/docs/research/competition.md#saturation-tiers) and from the briefing's own examples |
+| Usage               |     10 | People would still use it in March 2027, through a channel they already have                                            |
+| Demo                |      5 | Lands in a 3–4 minute video, and a reviewer can trigger it themselves                                                   |
 
 ### Gates
 
@@ -103,18 +103,18 @@ Each idea file also carries its own scores with a reason per component, written 
 
 ## What the research changed
 
-- **The crowd sits where we expected to stand.** In a simulation of 780 ideas from the AI assistants most teams will use, 41.7% are campus operations run off sensor or telemetry feeds, and 16.3% turn telemetry into tickets, so the IT helpdesk network watch suggested in [CONTEXT] is crowded ([crowd baseline](/docs/research/crowd-baseline.md#crowd-map)). The same assistants tell teams to simulate data in 30–98% of answers.
-- **What the crowd misses:** real public feeds (3% of simulated ideas), named connectors such as Jira or ServiceNow (2 of 780), and a measured baseline with an unattended run and a named owner (1%) ([crowd baseline](/docs/research/crowd-baseline.md#what-the-crowd-structurally-misses)).
-- **APU's timetable is public.** APSpace loads every class session, with block-and-floor room codes, from an open JSON feed, and later weeks are published about weekly ([APU timetable feed](/docs/research/apu-timetable-feed.md)). It names lecturers, so those fields are dropped, and APU's permission is needed.
-- **Haze is the loudest signal; boring automation is what sticks.** Haze posts reached 1,555–3,418 points on Reddit ([Reddit](/docs/research/social-reddit.md)), and the ministry left each university to pick its teaching mode ([X](/docs/research/social-x.md)). Practitioners keep "when X, notify Y" automations and distrust runs that report success but did nothing.
-- **APU's top complaints share one shape:** a request goes in and nobody can see what happens next, across admin, residences and timetables ([other platforms](/docs/research/social-other-platforms.md#signals)). Shuttle queues at 8 AM and 5 PM come fourth.
+- **The crowd sits where we expected to stand.** In a simulation of 780 ideas from the AI assistants most teams will use, 41.7% are campus operations run off sensor or telemetry feeds, and 16.3% turn telemetry into tickets, so the IT helpdesk network watch suggested in [CONTEXT] is crowded ([crowd baseline](/docs/research/competition.md#crowd-map)). The same assistants tell teams to simulate data in 30–98% of answers.
+- **What the crowd misses:** real public feeds (3% of simulated ideas), named connectors such as Jira or ServiceNow (2 of 780), and a measured baseline with an unattended run and a named owner (1%) ([crowd baseline](/docs/research/competition.md#what-the-crowd-structurally-misses)).
+- **APU's timetable is public.** APSpace loads every class session, with block-and-floor room codes, from an open JSON feed, and later weeks are published about weekly ([APU timetable feed](/docs/research/apu.md#apspace-timetable-feed)). It names lecturers, so those fields are dropped, and APU's permission is needed.
+- **Haze is the loudest signal; boring automation is what sticks.** Haze posts reached 1,555–3,418 points on Reddit ([Reddit](/docs/research/social.md#reddit)), and the ministry left each university to pick its teaching mode ([X](/docs/research/social.md#x)). Practitioners keep "when X, notify Y" automations and distrust runs that report success but did nothing.
+- **APU's top complaints share one shape:** a request goes in and nobody can see what happens next, across admin, residences and timetables ([other platforms](/docs/research/social.md#signals)). Shuttle queues at 8 AM and 5 PM come fourth.
 
 ## How the ideas were found
 
 ### Research inputs
 
-- New for this ranking: real posts from [X](/docs/research/social-x.md) (227 relevant of 2,222), [Reddit](/docs/research/social-reddit.md) (220 threads, 3,774 comments), and [other platforms](/docs/research/social-other-platforms.md) (Lowyat, Google Maps reviews, TikTok, Instagram, YouTube, Bluesky, Hacker News); a [crowd baseline](/docs/research/crowd-baseline.md) of what other teams will likely build; and the [APU timetable feed](/docs/research/apu-timetable-feed.md).
-- Existing: [brief](/docs/BRIEF.md), [CONTEXT], and the research on [Gemini Enterprise](/docs/research/gemini-enterprise.md), [its data paths](/docs/research/gemini-enterprise-data.md), [public data sources](/docs/research/public-data-sources.md), [APU public documents](/docs/research/apu-public-documents.md), [IoT and network](/docs/research/iot-and-network.md), and [research and impact](/docs/research/research-and-impact.md).
+- New for this ranking: real posts from [X](/docs/research/social.md#x) (227 relevant of 2,222), [Reddit](/docs/research/social.md#reddit) (220 threads, 3,774 comments), and [other platforms](/docs/research/social.md#other-platforms) (Lowyat, Google Maps reviews, TikTok, Instagram, YouTube, Bluesky, Hacker News); a [crowd baseline](/docs/research/competition.md) of what other teams will likely build; and the [APU timetable feed](/docs/research/apu.md#apspace-timetable-feed).
+- Existing: [brief](/docs/BRIEF.md), [CONTEXT], and the research on [Gemini Enterprise](/docs/research/gemini-enterprise.md), [its data paths](/docs/research/gemini-enterprise.md#data-in-and-out), [public data sources](/docs/research/data-sources.md), [APU public documents](/docs/research/apu.md), [IoT and network](/docs/research/iot-and-network.md), and [research and impact](/docs/research/judging.md).
 
 ### Four rounds
 
@@ -157,6 +157,6 @@ Scores here are from the second round, out of 100, before the merges.
 ## See also
 
 - [Brief](/docs/BRIEF.md) and [CONTEXT]: the event's rules and how to compete.
-- [Crowd baseline](/docs/research/crowd-baseline.md): what the other teams will likely build.
-- [Social research on X](/docs/research/social-x.md), [Reddit](/docs/research/social-reddit.md), and [other platforms](/docs/research/social-other-platforms.md): the pains behind every idea.
-- [APU timetable feed](/docs/research/apu-timetable-feed.md): the public feed four of the five ideas read.
+- [Crowd baseline](/docs/research/competition.md): what the other teams will likely build.
+- [Social research on X](/docs/research/social.md#x), [Reddit](/docs/research/social.md#reddit), and [other platforms](/docs/research/social.md#other-platforms): the pains behind every idea.
+- [APU timetable feed](/docs/research/apu.md#apspace-timetable-feed): the public feed four of the five ideas read.

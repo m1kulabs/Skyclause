@@ -16,13 +16,13 @@ Contents:
 
 The user is a lab equipment custodian maintaining a duty rota and reviewing incident outcomes. The current workaround is the existing monitor, phone/email contact list, printed procedure and a follow-up conversation.
 
-Three distinct firsthand lab accounts motivate the hypothesis: [S11](/docs/research/astra-social-demand.md#s11-power-failure-disables-equipment-and-alerting) reports power loss without notifications from either monitoring system; [S12](/docs/research/astra-social-demand.md#s12-an-alarm-arrives-but-no-one-acts) reports an alarm received but not acted on at midnight; [S13](/docs/research/astra-social-demand.md#s13-the-person-present-cannot-find-a-response-procedure) reports missing out-of-hours contacts and uncertainty about the next action. These accounts do not prove root cause, sample damage or an APU problem.
+Three distinct firsthand lab accounts motivate the hypothesis: [S11](/docs/research/social.md#s11-power-failure-disables-equipment-and-alerting) reports power loss without notifications from either monitoring system; [S12](/docs/research/social.md#s12-an-alarm-arrives-but-no-one-acts) reports an alarm received but not acted on at midnight; [S13](/docs/research/social.md#s13-the-person-present-cannot-find-a-response-procedure) reports missing out-of-hours contacts and uncertainty about the next action. These accounts do not prove root cause, sample damage or an APU problem.
 
 **No APU laboratory, freezer, duty owner or physical probe has been secured.** A technology campus need not have the particular cold-storage workflow described by these posts. This is why a compelling problem ranks below easier local observation opportunities.
 
 ## Distinct value and existing tools
 
-Existing freezer monitors already supply thresholds, offline alarms and remote alerts; [C5](/docs/research/astra-feasibility-and-substitutes.md#existing-substitutes) documents these substitutes. Pager/rota tools and an approved response sheet may fully solve the task. A model-generated temperature warning is not a novelty claim.
+Existing freezer monitors already supply thresholds, offline alarms and remote alerts; [C5](/docs/research/competition.md#existing-substitutes) documents these substitutes. Pager/rota tools and an approved response sheet may fully solve the task. A model-generated temperature warning is not a novelty claim.
 
 The proposed contribution is a compact **acknowledgement and recovery record** across the existing monitor, procedure and incident queue: delivered does not imply acknowledged; acknowledged does not imply acted; acted does not imply recovered. Gemini helps reconcile an incident's free-text notes with the asset's approved procedure and highlight missing evidence. It does not invent safe biological thresholds or prescribe sample handling.
 

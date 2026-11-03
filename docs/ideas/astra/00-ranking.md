@@ -2,7 +2,7 @@
 
 **Investigate Recheck first:** help APU IT confirm that a reported Wi-Fi problem is usable again from the affected place before accepting closure. Its strongest advantage is a short path to real observations and a measurable helpdesk outcome. Its biggest unknown is whether APU actually needs a better recovery-verification process. **LastLink is the second choice** if a transport liaison can use measured service-gap evidence. These are research priorities, not validated products or a commitment to build five apps.
 
-Based on the [brief](/docs/BRIEF.md), [context](/docs/CONTEXT.md), newly researched [social demand](/docs/research/astra-social-demand.md), [X signals](/docs/research/astra-x-signals.md), and [substitute checks](/docs/research/astra-feasibility-and-substitutes.md). Dated 3 November 2026. Names are working names, with no trademark or domain clearance. The user's 1,000-plus-participant premise is treated as a planning assumption, not a verified registration count. No other idea directories were used.
+Based on the [brief](/docs/BRIEF.md), [context](/docs/CONTEXT.md), newly researched [social demand](/docs/research/social.md#reddit), [X signals](/docs/research/social.md#x), and [substitute checks](/docs/research/competition.md). Dated 3 November 2026. Names are working names, with no trademark or domain clearance. The user's 1,000-plus-participant premise is treated as a planning assumption, not a verified registration count. No other idea directories were used.
 
 Contents:
 
@@ -57,7 +57,7 @@ Feasibility, theme integration, differentiation, adoption friction, privacy and 
 | Distinct value              | Existing app, ticket rule or spreadsheet cannot achieve equivalent value with less work                  | All five face credible substitutes; see each falsifier. No claim of global uniqueness.                                                                         |
 | Reviewable prototype        | Real event → fresh read → inspectable decision → approval → real record, repeatable by a reviewer        | Not built. A team-owned Jira project demonstrates capability, not APU integration.                                                                             |
 
-Failure of the first gate pauses the proposed architecture; do not quietly substitute a standalone chatbot and call it compliant. First verify another supported account-compatible 1P/3P path described in [connector research](/docs/research/gemini-enterprise-data.md); otherwise escalate the licence issue to organisers through the team. Custom MCP is optional and cannot rescue an unconfirmed organisation policy.
+Failure of the first gate pauses the proposed architecture; do not quietly substitute a standalone chatbot and call it compliant. First verify another supported account-compatible 1P/3P path described in [connector research](/docs/research/gemini-enterprise.md#data-in-and-out); otherwise escalate the licence issue to organisers through the team. Custom MCP is optional and cannot rescue an unconfirmed organisation policy.
 
 ## Sensitivity and confidence
 
@@ -79,7 +79,7 @@ WashWitness becomes second under delivery-first weights; AccessRelay and WashWit
 
 ## Shared delivery contract
 
-The product briefs inherit these constraints from [CONTEXT](/docs/CONTEXT.md#decisions-so-far) and [current feasibility research](/docs/research/astra-feasibility-and-substitutes.md):
+The product briefs inherit these constraints from [CONTEXT](/docs/CONTEXT.md#decisions-so-far) and [current feasibility research](/docs/research/competition.md):
 
 - **Architecture:** physical observation → HTTPS feeder → current Sheet in a supported Workspace domain → live Sheets action in Gemini Enterprise → reviewed Jira create. A stored reading is historical evidence with its original time, never a substitute for a failed live source. For current status, validate source/collector heartbeat and freshness at read time. A healthy Sheet alone does not prove a healthy sensor.
 - **Connector honesty:** 1P Sheets supplies current observations and versioned team-authored rules; 3P Jira receives real cases generated from those observations. Prove the action inventory first. Any Jira read, update, comment or transition beyond verified create is a capability gate; a reviewer can manually link or transition the existing issue. Do not create duplicate incidents to conceal a missing update action.
