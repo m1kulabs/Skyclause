@@ -158,7 +158,7 @@ Each source below returned current data on 3 November 2026 without a key; endpoi
 
 ### APU's own documents and systems
 
-APU publishes no data API, but much of its operating knowledge is public ([APU public documents]):
+APU documents no data API, though APSpace's timetable is a public, undocumented feed ([APU timetable feed](/docs/research/apu-timetable-feed.md)), and much of its operating knowledge is public ([APU public documents]):
 
 - **Knowledge base:** `kb.apu.edu.my` is APU's Confluence site, where 21 of its 28 spaces hold 1,189 pages readable without login, 725 of them IT helpdesk articles, some edited on 3 November. Other spaces cover academic administration, the library, graduation, accommodation, logistics, and visas.
 - **Documents:** the shuttle schedule (effective 22 October 2026), the November 2026 orientation guide, Student Handbook v8.0, the application form's required-documents checklist, 138 course pages with entry requirements and fees, the August 2026 scholarship grid, the PTPTN guide, and the refund policy. Academic regulations, programme handbooks, and the academic calendar are login-gated.
