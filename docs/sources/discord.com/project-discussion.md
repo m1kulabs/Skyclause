@@ -24,7 +24,9 @@ Reply with one area and a problem you would like to solve. You can also share a 
 
 Asked on 2 November 2026.
 
-A participant asked which tools teams are required or allowed to use, and whether cloud credits will be distributed. No answer had been posted at capture time.
+A participant asked which tools teams are required or allowed to use, and whether cloud credits will be distributed.
+
+An organizer answered on 3 November 2026: "You're welcome to use other tools to build your solution, though we encourage teams to use **Gemini Enterprise** where it fits. Google will support participants with trial licences for Gemini Enterprise. We're still confirming the details for **Google Cloud credits** and will share an update as soon as we have one."
 
 ## See also
 

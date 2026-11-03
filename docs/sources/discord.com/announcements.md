@@ -1,6 +1,6 @@
 # Announcements
 
-Official organizer posts from the `#announcements` channel of the hackathon Discord, captured on 3 November 2026. Posts are listed oldest first with their posting date in Malaysia time (MYT).
+Official organizer posts from the `#announcements` channel of the hackathon Discord, captured on 3 November 2026 at 8:30 PM, after the briefing. Posts are listed oldest first with their posting date in Malaysia time (MYT).
 
 Contents:
 
@@ -9,6 +9,11 @@ Contents:
 1.  [Eligibility update](#eligibility-update)
 1.  [Team formation reminder](#team-formation-reminder)
 1.  [Briefing and Gemini training](#briefing-and-gemini-training)
+1.  [Briefing RSVP reminder](#briefing-rsvp-reminder)
+1.  [Briefing moved to Google Meet](#briefing-moved-to-google-meet)
+1.  [Google Meet QR code](#google-meet-qr-code)
+1.  [Briefing started](#briefing-started)
+1.  [Google tools and cloud credits](#google-tools-and-cloud-credits)
 1.  [See also](#see-also)
 
 ## Registration and updates
@@ -62,17 +67,54 @@ If you need help finding a team, ask in [#help-desk](help-desk.md). Please do no
 
 ## Briefing and Gemini training
 
-Posted 2 November 2026.
+Posted 2 November 2026 and edited on 3 November 2026 at 4:18 PM. The original post asked participants to join through the **Join** button on Bevy; the edit replaced that with Google Meet.
 
-Our problem statement briefing and Gemini Enterprise training with **NTT DATA** is happening tomorrow. This is your chance to hear the challenge explained and get familiar with the tools you can use for your prototype.
+**Briefing today: Gemini Training with NTT DATA**
 
-- **When:** Tuesday, 3 November 2026, 6:00–8:00 PM (MYT)
-- **Where:** Online
-- **How to join:** RSVP on the [briefing session event page][briefing], then click **Join** there to access the virtual session.
+The problem statement briefing and Gemini Enterprise training is on **Tuesday, 3 November, 6:00–8:00 PM MYT**. We encourage all team members to attend.
 
-We strongly encourage **all team members** to attend together and join on time. If you are still looking for teammates, head to [#team-formation](team-formation.md). For briefing questions or joining issues, ask in [#help-desk](help-desk.md).
+- **RSVP on Bevy for attendance tracking:** [briefing session event page][briefing]
+- **Join the live session on Google Meet:** https://meet.google.com/hrb-gtwg-cns
+
+Please use Google Meet, not the Bevy Join button. We apologise for the earlier joining instructions. For help, ask in [#help-desk](help-desk.md).
 
 [briefing]: https://gdg.community.dev/events/details/google-gdg-on-campus-asia-pacific-university-of-technology-innovation-kuala-lumpur-malaysia-presents-apu-cloud-innovation-hackathon-2026-briefing-session/
+
+## Briefing RSVP reminder
+
+Posted 3 November 2026 at 12:17 PM, as a reply to the briefing post.
+
+Hi everyone, just a gentle reminder to RSVP for the briefing session **at 6:00 pm - 8:00 pm today (3/11/2026)**, the briefing session will be held on our Google Developer Group Bevy platform, see you there!
+
+## Briefing moved to Google Meet
+
+Posted 3 November 2026 at 4:17 PM.
+
+**Important update: use Google Meet for today's briefing.** The APU Cloud Innovation Hackathon 2026 briefing is today, **Tuesday, 3 November, 6:00–8:00 PM (MYT)**. The live session will take place on **Google Meet**: https://meet.google.com/hrb-gtwg-cns
+
+**Please RSVP on Bevy so we can track attendance:** [briefing session event page][briefing]
+
+**After registering, join through the Google Meet link above. Do not use the Bevy "Join" button for the meeting.** This replaces the joining instructions in our earlier announcements. We're sorry for the confusion and appreciate your understanding. See you at 6:00 PM!
+
+## Google Meet QR code
+
+Posted 3 November 2026 at 5:13 PM.
+
+An image-only post: a QR code that opens the Google Meet link https://meet.google.com/hrb-gtwg-cns.
+
+## Briefing started
+
+Posted 3 November 2026 at 6:03 PM.
+
+The briefing has started! Make sure you join on Google Meet: https://meet.google.com/meet/hrb-gtwg-cns
+
+The recording of the briefing is captured in the [Briefing session transcript](/docs/sources/briefing-session/transcript.md) and [slides](/docs/sources/briefing-session/slides.md).
+
+## Google tools and cloud credits
+
+Posted 3 November 2026 at 6:46 PM and edited at 6:52 PM.
+
+As you plan your hackathon project, please make use of Google tools and services where they fit your idea, for example Gemini, Gemini Enterprise, Antigravity, and Google Cloud. You're welcome to use other tools to support your solution too. If you're unsure which tools to use, ask us in [#help-desk](help-desk.md). We'll share an update on Google Cloud credits once the details are confirmed.
 
 ## See also
 

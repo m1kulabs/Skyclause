@@ -1,11 +1,12 @@
 # General
 
-Participant questions answered by organizers in the `#general` channel of the hackathon Discord, captured on 3 November 2026. Questions are paraphrased without participant details.
+Participant questions and organizer answers from the `#general` channel of the hackathon Discord, captured on 3 November 2026. Questions are paraphrased without participant details.
 
 Contents:
 
 1.  [Registration closing versus prototype deadline](#registration-closing-versus-prototype-deadline)
 1.  [Teammates who each created a team](#teammates-who-each-created-a-team)
+1.  [Project details not editable](#project-details-not-editable)
 1.  [See also](#see-also)
 
 ## Registration closing versus prototype deadline
@@ -21,6 +22,12 @@ An organizer answered: "You'll be able to submit/update it before the prototype 
 Asked and answered on 2 November 2026.
 
 Two teammates had each registered and created their own team, so both were leaders and neither could join the other's team by invite link. At their request, an organizer deleted both teams so they could register again.
+
+## Project details not editable
+
+Asked on 3 November 2026.
+
+A participant whose team has five members shared a screenshot of the workspace's project details form and said they could not edit the project title, challenge, or other fields. No answer had been posted at capture time.
 
 ## See also
 

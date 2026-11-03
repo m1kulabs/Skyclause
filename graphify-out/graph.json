@@ -1111,7 +1111,7 @@
       "node_kind": "heading",
       "norm_label": "see also",
       "source_file": "docs/sources/discord.com/project-discussion.md",
-      "source_location": "L29"
+      "source_location": "L31"
     },
     {
       "id": "docs_sources_discord_com_resources",
@@ -1186,66 +1186,6 @@
       "source_location": "L1"
     },
     {
-      "id": "docs_sources_discord_com_submission_guidelines_deadline",
-      "label": "Deadline",
-      "_origin": "ast",
-      "community": 11,
-      "community_name": "apu-cloud-innovation-hackathon-discord.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "deadline",
-      "source_file": "docs/sources/discord.com/submission-guidelines.md",
-      "source_location": "L12"
-    },
-    {
-      "id": "docs_sources_discord_com_submission_guidelines_final_submission",
-      "label": "Final submission",
-      "_origin": "ast",
-      "community": 11,
-      "community_name": "apu-cloud-innovation-hackathon-discord.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "final submission",
-      "source_file": "docs/sources/discord.com/submission-guidelines.md",
-      "source_location": "L26"
-    },
-    {
-      "id": "docs_sources_discord_com_submission_guidelines_see_also",
-      "label": "See also",
-      "_origin": "ast",
-      "community": 11,
-      "community_name": "apu-cloud-innovation-hackathon-discord.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "see also",
-      "source_file": "docs/sources/discord.com/submission-guidelines.md",
-      "source_location": "L32"
-    },
-    {
-      "id": "docs_sources_discord_com_submission_guidelines_submission_guidelines",
-      "label": "Submission guidelines",
-      "_origin": "ast",
-      "community": 11,
-      "community_name": "apu-cloud-innovation-hackathon-discord.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "submission guidelines",
-      "source_file": "docs/sources/discord.com/submission-guidelines.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "docs_sources_discord_com_submission_guidelines_what_to_prepare",
-      "label": "What to prepare",
-      "_origin": "ast",
-      "community": 11,
-      "community_name": "apu-cloud-innovation-hackathon-discord.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "what to prepare",
-      "source_file": "docs/sources/discord.com/submission-guidelines.md",
-      "source_location": "L16"
-    },
-    {
       "id": "docs_sources_discord_com_team_formation",
       "label": "team-formation.md",
       "_origin": "ast",
@@ -1314,6 +1254,66 @@
       "file_type": "document",
       "node_kind": "page",
       "norm_label": "welcome-and-rules.md",
+      "source_file": "docs/sources/discord.com/welcome-and-rules.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "docs_sources_discord_com_welcome_and_rules_about_the_hackathon",
+      "label": "About the hackathon",
+      "_origin": "ast",
+      "community": 11,
+      "community_name": "apu-cloud-innovation-hackathon-discord.md",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "about the hackathon",
+      "source_file": "docs/sources/discord.com/welcome-and-rules.md",
+      "source_location": "L12"
+    },
+    {
+      "id": "docs_sources_discord_com_welcome_and_rules_community_rules",
+      "label": "Community rules",
+      "_origin": "ast",
+      "community": 11,
+      "community_name": "apu-cloud-innovation-hackathon-discord.md",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "community rules",
+      "source_file": "docs/sources/discord.com/welcome-and-rules.md",
+      "source_location": "L24"
+    },
+    {
+      "id": "docs_sources_discord_com_welcome_and_rules_see_also",
+      "label": "See also",
+      "_origin": "ast",
+      "community": 11,
+      "community_name": "apu-cloud-innovation-hackathon-discord.md",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "see also",
+      "source_file": "docs/sources/discord.com/welcome-and-rules.md",
+      "source_location": "L28"
+    },
+    {
+      "id": "docs_sources_discord_com_welcome_and_rules_start_here",
+      "label": "Start here",
+      "_origin": "ast",
+      "community": 11,
+      "community_name": "apu-cloud-innovation-hackathon-discord.md",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "start here",
+      "source_file": "docs/sources/discord.com/welcome-and-rules.md",
+      "source_location": "L16"
+    },
+    {
+      "id": "docs_sources_discord_com_welcome_and_rules_welcome_and_rules",
+      "label": "Welcome and rules",
+      "_origin": "ast",
+      "community": 11,
+      "community_name": "apu-cloud-innovation-hackathon-discord.md",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "welcome and rules",
       "source_file": "docs/sources/discord.com/welcome-and-rules.md",
       "source_location": "L1"
     },
@@ -1518,7 +1518,7 @@
       "node_kind": "heading",
       "norm_label": "see also",
       "source_file": "docs/sources/discord.com/apu-cloud-innovation-hackathon-discord.md",
-      "source_location": "L58"
+      "source_location": "L60"
     },
     {
       "id": "docs_sources_discord_com_apu_cloud_innovation_hackathon_discord_server_description",
@@ -2046,7 +2046,43 @@
       "node_kind": "heading",
       "norm_label": "briefing and gemini training",
       "source_file": "docs/sources/discord.com/announcements.md",
-      "source_location": "L63"
+      "source_location": "L68"
+    },
+    {
+      "id": "docs_sources_discord_com_announcements_briefing_moved_to_google_meet",
+      "label": "Briefing moved to Google Meet",
+      "_origin": "ast",
+      "community": 21,
+      "community_name": "Announcements",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "briefing moved to google meet",
+      "source_file": "docs/sources/discord.com/announcements.md",
+      "source_location": "L89"
+    },
+    {
+      "id": "docs_sources_discord_com_announcements_briefing_rsvp_reminder",
+      "label": "Briefing RSVP reminder",
+      "_origin": "ast",
+      "community": 21,
+      "community_name": "Announcements",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "briefing rsvp reminder",
+      "source_file": "docs/sources/discord.com/announcements.md",
+      "source_location": "L83"
+    },
+    {
+      "id": "docs_sources_discord_com_announcements_briefing_started",
+      "label": "Briefing started",
+      "_origin": "ast",
+      "community": 21,
+      "community_name": "Announcements",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "briefing started",
+      "source_file": "docs/sources/discord.com/announcements.md",
+      "source_location": "L105"
     },
     {
       "id": "docs_sources_discord_com_announcements_eligibility_update",
@@ -2058,7 +2094,31 @@
       "node_kind": "heading",
       "norm_label": "eligibility update",
       "source_file": "docs/sources/discord.com/announcements.md",
-      "source_location": "L43"
+      "source_location": "L48"
+    },
+    {
+      "id": "docs_sources_discord_com_announcements_google_meet_qr_code",
+      "label": "Google Meet QR code",
+      "_origin": "ast",
+      "community": 21,
+      "community_name": "Announcements",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "google meet qr code",
+      "source_file": "docs/sources/discord.com/announcements.md",
+      "source_location": "L99"
+    },
+    {
+      "id": "docs_sources_discord_com_announcements_google_tools_and_cloud_credits",
+      "label": "Google tools and cloud credits",
+      "_origin": "ast",
+      "community": 21,
+      "community_name": "Announcements",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "google tools and cloud credits",
+      "source_file": "docs/sources/discord.com/announcements.md",
+      "source_location": "L113"
     },
     {
       "id": "docs_sources_discord_com_announcements_prize_pool",
@@ -2070,7 +2130,7 @@
       "node_kind": "heading",
       "norm_label": "prize pool",
       "source_file": "docs/sources/discord.com/announcements.md",
-      "source_location": "L27"
+      "source_location": "L32"
     },
     {
       "id": "docs_sources_discord_com_announcements_registration_and_updates",
@@ -2082,7 +2142,7 @@
       "node_kind": "heading",
       "norm_label": "registration and updates",
       "source_file": "docs/sources/discord.com/announcements.md",
-      "source_location": "L14"
+      "source_location": "L19"
     },
     {
       "id": "docs_sources_discord_com_announcements_see_also",
@@ -2094,7 +2154,7 @@
       "node_kind": "heading",
       "norm_label": "see also",
       "source_file": "docs/sources/discord.com/announcements.md",
-      "source_location": "L77"
+      "source_location": "L119"
     },
     {
       "id": "docs_sources_discord_com_announcements_team_formation_reminder",
@@ -2106,7 +2166,7 @@
       "node_kind": "heading",
       "norm_label": "team formation reminder",
       "source_file": "docs/sources/discord.com/announcements.md",
-      "source_location": "L53"
+      "source_location": "L58"
     },
     {
       "id": "docs_sources_discord_com_problem_statements_choosing_a_problem_statement",
@@ -2205,6 +2265,18 @@
       "source_location": "L1"
     },
     {
+      "id": "docs_sources_discord_com_general_project_details_not_editable",
+      "label": "Project details not editable",
+      "_origin": "ast",
+      "community": 23,
+      "community_name": "General",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "project details not editable",
+      "source_file": "docs/sources/discord.com/general.md",
+      "source_location": "L26"
+    },
+    {
       "id": "docs_sources_discord_com_general_registration_closing_versus_prototype_deadline",
       "label": "Registration closing versus prototype deadline",
       "_origin": "ast",
@@ -2214,7 +2286,7 @@
       "node_kind": "heading",
       "norm_label": "registration closing versus prototype deadline",
       "source_file": "docs/sources/discord.com/general.md",
-      "source_location": "L11"
+      "source_location": "L12"
     },
     {
       "id": "docs_sources_discord_com_general_see_also",
@@ -2226,7 +2298,7 @@
       "node_kind": "heading",
       "norm_label": "see also",
       "source_file": "docs/sources/discord.com/general.md",
-      "source_location": "L25"
+      "source_location": "L32"
     },
     {
       "id": "docs_sources_discord_com_general_teammates_who_each_created_a_team",
@@ -2238,7 +2310,7 @@
       "node_kind": "heading",
       "norm_label": "teammates who each created a team",
       "source_file": "docs/sources/discord.com/general.md",
-      "source_location": "L19"
+      "source_location": "L20"
     },
     {
       "id": "docs_research_public_data_sources",
@@ -2577,64 +2649,304 @@
       "source_location": "L95"
     },
     {
-      "id": "docs_sources_discord_com_welcome_and_rules_about_the_hackathon",
-      "label": "About the hackathon",
+      "id": "docs_sources_briefing_session_slides",
+      "label": "slides.md",
       "_origin": "ast",
       "community": 25,
-      "community_name": "Welcome and rules",
+      "community_name": "Briefing session slides",
       "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "about the hackathon",
-      "source_file": "docs/sources/discord.com/welcome-and-rules.md",
-      "source_location": "L12"
+      "node_kind": "page",
+      "norm_label": "slides.md",
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L1"
     },
     {
-      "id": "docs_sources_discord_com_welcome_and_rules_community_rules",
-      "label": "Community rules",
+      "id": "docs_sources_briefing_session_slides_about_these_slides",
+      "label": "About these slides",
       "_origin": "ast",
       "community": 25,
-      "community_name": "Welcome and rules",
+      "community_name": "Briefing session slides",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "community rules",
-      "source_file": "docs/sources/discord.com/welcome-and-rules.md",
-      "source_location": "L24"
+      "norm_label": "about these slides",
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L25"
     },
     {
-      "id": "docs_sources_discord_com_welcome_and_rules_see_also",
+      "id": "docs_sources_briefing_session_slides_briefing_session_slides",
+      "label": "Briefing session slides",
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "Briefing session slides",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "briefing session slides",
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "docs_sources_briefing_session_slides_see_also",
       "label": "See also",
       "_origin": "ast",
       "community": 25,
-      "community_name": "Welcome and rules",
+      "community_name": "Briefing session slides",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "see also",
-      "source_file": "docs/sources/discord.com/welcome-and-rules.md",
-      "source_location": "L28"
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L273"
     },
     {
-      "id": "docs_sources_discord_com_welcome_and_rules_start_here",
-      "label": "Start here",
+      "id": "docs_sources_briefing_session_slides_slide_10_gemini_enterprise_enablement_hands_on",
+      "label": "Slide 10: Gemini Enterprise Enablement (Hands-on)",
       "_origin": "ast",
       "community": 25,
-      "community_name": "Welcome and rules",
+      "community_name": "Briefing session slides",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "start here",
-      "source_file": "docs/sources/discord.com/welcome-and-rules.md",
-      "source_location": "L16"
+      "norm_label": "slide 10: gemini enterprise enablement (hands-on)",
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L212"
     },
     {
-      "id": "docs_sources_discord_com_welcome_and_rules_welcome_and_rules",
-      "label": "Welcome and rules",
+      "id": "docs_sources_briefing_session_slides_slide_11_google_antigravity_enablement",
+      "label": "Slide 11: Google Antigravity Enablement",
       "_origin": "ast",
       "community": 25,
-      "community_name": "Welcome and rules",
+      "community_name": "Briefing session slides",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "welcome and rules",
-      "source_file": "docs/sources/discord.com/welcome-and-rules.md",
+      "norm_label": "slide 11: google antigravity enablement",
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L227"
+    },
+    {
+      "id": "docs_sources_briefing_session_slides_slide_12_antigravity_enablement_hands_on",
+      "label": "Slide 12: Antigravity Enablement (Hands-on)",
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "Briefing session slides",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "slide 12: antigravity enablement (hands-on)",
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L246"
+    },
+    {
+      "id": "docs_sources_briefing_session_slides_slide_13_q_a_and_discussion",
+      "label": "Slide 13: Q&A and Discussion",
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "Briefing session slides",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "slide 13: q&a and discussion",
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L261"
+    },
+    {
+      "id": "docs_sources_briefing_session_slides_slide_1_gemini_enterprise_and_google_antigravity_workshop",
+      "label": "Slide 1: Gemini Enterprise and Google Antigravity Workshop",
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "Briefing session slides",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "slide 1: gemini enterprise and google antigravity workshop",
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L32"
+    },
+    {
+      "id": "docs_sources_briefing_session_slides_slide_2_agenda",
+      "label": "Slide 2: Agenda",
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "Briefing session slides",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "slide 2: agenda",
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L42"
+    },
+    {
+      "id": "docs_sources_briefing_session_slides_slide_3_workshop_overview",
+      "label": "Slide 3: Workshop Overview",
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "Briefing session slides",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "slide 3: workshop overview",
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L60"
+    },
+    {
+      "id": "docs_sources_briefing_session_slides_slide_4_about_ntt_data",
+      "label": "Slide 4: About NTT DATA",
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "Briefing session slides",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "slide 4: about ntt data",
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L77"
+    },
+    {
+      "id": "docs_sources_briefing_session_slides_slide_5_team_introduction",
+      "label": "Slide 5: Team Introduction",
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "Briefing session slides",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "slide 5: team introduction",
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L97"
+    },
+    {
+      "id": "docs_sources_briefing_session_slides_slide_6_hackathon_theme",
+      "label": "Slide 6: Hackathon Theme",
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "Briefing session slides",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "slide 6: hackathon theme",
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L114"
+    },
+    {
+      "id": "docs_sources_briefing_session_slides_slide_7_google_cloud_basics",
+      "label": "Slide 7: Google Cloud Basics",
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "Briefing session slides",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "slide 7: google cloud basics",
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L152"
+    },
+    {
+      "id": "docs_sources_briefing_session_slides_slide_8_google_cloud_hierarchy",
+      "label": "Slide 8: Google Cloud Hierarchy",
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "Briefing session slides",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "slide 8: google cloud hierarchy",
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L175"
+    },
+    {
+      "id": "docs_sources_briefing_session_slides_slide_9_gemini_enterprise_overview",
+      "label": "Slide 9: Gemini Enterprise Overview",
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "Briefing session slides",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "slide 9: gemini enterprise overview",
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L188"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript",
+      "label": "transcript.md",
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "Briefing session slides",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "transcript.md",
+      "source_file": "docs/sources/briefing-session/transcript.md",
       "source_location": "L1"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript_about_this_transcript",
+      "label": "About this transcript",
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "Briefing session slides",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "about this transcript",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L30"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript_briefing_session_transcript",
+      "label": "Briefing session transcript",
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "Briefing session slides",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "briefing session transcript",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript_in_call_chat",
+      "label": "In-call chat",
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "Briefing session slides",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "in-call chat",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L74"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript_q_a",
+      "label": "Q&A",
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "Briefing session slides",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "q&a",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L49"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript_questions_asked_by_voice_or_read_from_the_chat",
+      "label": "Questions asked by voice or read from the chat",
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "Briefing session slides",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "questions asked by voice or read from the chat",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L51"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript_see_also",
+      "label": "See also",
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "Briefing session slides",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "see also",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L683"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript_speakers",
+      "label": "Speakers",
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "Briefing session slides",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "speakers",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L38"
     },
     {
       "id": "docs_research_iot_and_network",
@@ -3801,6 +4113,174 @@
       "source_location": "L445"
     },
     {
+      "id": "docs_sources_briefing_session_transcript_antigravity_and_connector_demo",
+      "label": "Antigravity and connector demo",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "Transcript",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "antigravity and connector demo",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L365"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript_antigravity_recap",
+      "label": "Antigravity recap",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "Transcript",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "antigravity recap",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L493"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript_before_the_session",
+      "label": "Before the session",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "Transcript",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "before the session",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L95"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript_closing",
+      "label": "Closing",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "Transcript",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "closing",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L671"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript_gemini_enterprise_demo",
+      "label": "Gemini Enterprise demo",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "Transcript",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "gemini enterprise demo",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L169"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript_gemini_enterprise_recap",
+      "label": "Gemini Enterprise recap",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "Transcript",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "gemini enterprise recap",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L285"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript_google_antigravity",
+      "label": "Google Antigravity",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "Transcript",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "google antigravity",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L299"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript_google_cloud_basics",
+      "label": "Google Cloud basics",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "Transcript",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "google cloud basics",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L155"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript_hackathon_briefing",
+      "label": "Hackathon briefing",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "Transcript",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "hackathon briefing",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L147"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript_hackathon_tracks_and_deliverables",
+      "label": "Hackathon tracks and deliverables",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "Transcript",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "hackathon tracks and deliverables",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L503"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript_introduction_and_agenda",
+      "label": "Introduction and agenda",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "Transcript",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "introduction and agenda",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L127"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript_questions_and_answers",
+      "label": "Questions and answers",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "Transcript",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "questions and answers",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L539"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript_team_introduction",
+      "label": "Team introduction",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "Transcript",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "team introduction",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L143"
+    },
+    {
+      "id": "docs_sources_briefing_session_transcript_transcript",
+      "label": "Transcript",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "Transcript",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "transcript",
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L93"
+    },
+    {
       "id": "docs_brief",
       "label": "BRIEF.md",
       "_origin": "ast",
@@ -3943,6 +4423,66 @@
       "norm_label": "tools",
       "source_file": "docs/BRIEF.md",
       "source_location": "L45"
+    },
+    {
+      "id": "docs_sources_discord_com_submission_guidelines_deadline",
+      "label": "Deadline",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "Submission guidelines",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "deadline",
+      "source_file": "docs/sources/discord.com/submission-guidelines.md",
+      "source_location": "L12"
+    },
+    {
+      "id": "docs_sources_discord_com_submission_guidelines_final_submission",
+      "label": "Final submission",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "Submission guidelines",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "final submission",
+      "source_file": "docs/sources/discord.com/submission-guidelines.md",
+      "source_location": "L26"
+    },
+    {
+      "id": "docs_sources_discord_com_submission_guidelines_see_also",
+      "label": "See also",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "Submission guidelines",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "see also",
+      "source_file": "docs/sources/discord.com/submission-guidelines.md",
+      "source_location": "L32"
+    },
+    {
+      "id": "docs_sources_discord_com_submission_guidelines_submission_guidelines",
+      "label": "Submission guidelines",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "Submission guidelines",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "submission guidelines",
+      "source_file": "docs/sources/discord.com/submission-guidelines.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "docs_sources_discord_com_submission_guidelines_what_to_prepare",
+      "label": "What to prepare",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "Submission guidelines",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "what to prepare",
+      "source_file": "docs/sources/discord.com/submission-guidelines.md",
+      "source_location": "L16"
     },
     {
       "id": "docs_agents_issue_tracker",
@@ -7190,6 +7730,413 @@
       "weight": 1.0
     },
     {
+      "source": "docs_sources_briefing_session_slides",
+      "target": "docs_sources_briefing_session_slides_briefing_session_slides",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_slides_briefing_session_slides",
+      "target": "docs_sources_briefing_session_slides_slide_6_hackathon_theme",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L114",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_slides_briefing_session_slides",
+      "target": "docs_sources_briefing_session_slides_slide_7_google_cloud_basics",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L152",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_slides_briefing_session_slides",
+      "target": "docs_sources_briefing_session_slides_slide_8_google_cloud_hierarchy",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L175",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_slides_briefing_session_slides",
+      "target": "docs_sources_briefing_session_slides_slide_9_gemini_enterprise_overview",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L188",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_slides_briefing_session_slides",
+      "target": "docs_sources_briefing_session_slides_slide_10_gemini_enterprise_enablement_hands_on",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L212",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_slides_briefing_session_slides",
+      "target": "docs_sources_briefing_session_slides_slide_11_google_antigravity_enablement",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L227",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_slides_briefing_session_slides",
+      "target": "docs_sources_briefing_session_slides_slide_12_antigravity_enablement_hands_on",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L246",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_slides_briefing_session_slides",
+      "target": "docs_sources_briefing_session_slides_about_these_slides",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L25",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_slides_briefing_session_slides",
+      "target": "docs_sources_briefing_session_slides_slide_13_q_a_and_discussion",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L261",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_slides_briefing_session_slides",
+      "target": "docs_sources_briefing_session_slides_see_also",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L273",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_slides_briefing_session_slides",
+      "target": "docs_sources_briefing_session_slides_slide_1_gemini_enterprise_and_google_antigravity_workshop",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L32",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_slides_briefing_session_slides",
+      "target": "docs_sources_briefing_session_slides_slide_2_agenda",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L42",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_slides_briefing_session_slides",
+      "target": "docs_sources_briefing_session_slides_slide_3_workshop_overview",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L60",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_slides_briefing_session_slides",
+      "target": "docs_sources_briefing_session_slides_slide_4_about_ntt_data",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L77",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_slides_briefing_session_slides",
+      "target": "docs_sources_briefing_session_slides_slide_5_team_introduction",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L97",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript",
+      "target": "docs_sources_briefing_session_transcript_briefing_session_transcript",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript_briefing_session_transcript",
+      "target": "docs_sources_briefing_session_transcript_about_this_transcript",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L30",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript_briefing_session_transcript",
+      "target": "docs_sources_briefing_session_transcript_speakers",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L38",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript_briefing_session_transcript",
+      "target": "docs_sources_briefing_session_transcript_q_a",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L49",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript_briefing_session_transcript",
+      "target": "docs_sources_briefing_session_transcript_see_also",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L683",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript_briefing_session_transcript",
+      "target": "docs_sources_briefing_session_transcript_transcript",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L93",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript_q_a",
+      "target": "docs_sources_briefing_session_transcript_questions_asked_by_voice_or_read_from_the_chat",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L51",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript_q_a",
+      "target": "docs_sources_briefing_session_transcript_in_call_chat",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L74",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript_transcript",
+      "target": "docs_sources_briefing_session_transcript_introduction_and_agenda",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L127",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript_transcript",
+      "target": "docs_sources_briefing_session_transcript_team_introduction",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L143",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript_transcript",
+      "target": "docs_sources_briefing_session_transcript_hackathon_briefing",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L147",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript_transcript",
+      "target": "docs_sources_briefing_session_transcript_google_cloud_basics",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L155",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript_transcript",
+      "target": "docs_sources_briefing_session_transcript_gemini_enterprise_demo",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L169",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript_transcript",
+      "target": "docs_sources_briefing_session_transcript_gemini_enterprise_recap",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L285",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript_transcript",
+      "target": "docs_sources_briefing_session_transcript_google_antigravity",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L299",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript_transcript",
+      "target": "docs_sources_briefing_session_transcript_antigravity_and_connector_demo",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L365",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript_transcript",
+      "target": "docs_sources_briefing_session_transcript_antigravity_recap",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L493",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript_transcript",
+      "target": "docs_sources_briefing_session_transcript_hackathon_tracks_and_deliverables",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L503",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript_transcript",
+      "target": "docs_sources_briefing_session_transcript_questions_and_answers",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L539",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript_transcript",
+      "target": "docs_sources_briefing_session_transcript_closing",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L671",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_briefing_session_transcript_transcript",
+      "target": "docs_sources_briefing_session_transcript_before_the_session",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/briefing-session/transcript.md",
+      "source_location": "L95",
+      "weight": 1.0
+    },
+    {
       "source": "docs_sources_discord_com_announcements",
       "target": "docs_sources_discord_com_announcements_announcements",
       "relation": "contains",
@@ -7202,57 +8149,24 @@
     },
     {
       "source": "docs_sources_discord_com_announcements_announcements",
-      "target": "docs_sources_discord_com_announcements_registration_and_updates",
+      "target": "docs_sources_discord_com_announcements_briefing_started",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/sources/discord.com/announcements.md",
-      "source_location": "L14",
+      "source_location": "L105",
       "weight": 1.0
     },
     {
       "source": "docs_sources_discord_com_announcements_announcements",
-      "target": "docs_sources_discord_com_announcements_prize_pool",
+      "target": "docs_sources_discord_com_announcements_google_tools_and_cloud_credits",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/sources/discord.com/announcements.md",
-      "source_location": "L27",
-      "weight": 1.0
-    },
-    {
-      "source": "docs_sources_discord_com_announcements_announcements",
-      "target": "docs_sources_discord_com_announcements_eligibility_update",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/sources/discord.com/announcements.md",
-      "source_location": "L43",
-      "weight": 1.0
-    },
-    {
-      "source": "docs_sources_discord_com_announcements_announcements",
-      "target": "docs_sources_discord_com_announcements_team_formation_reminder",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/sources/discord.com/announcements.md",
-      "source_location": "L53",
-      "weight": 1.0
-    },
-    {
-      "source": "docs_sources_discord_com_announcements_announcements",
-      "target": "docs_sources_discord_com_announcements_briefing_and_gemini_training",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/sources/discord.com/announcements.md",
-      "source_location": "L63",
+      "source_location": "L113",
       "weight": 1.0
     },
     {
@@ -7263,7 +8177,95 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/sources/discord.com/announcements.md",
-      "source_location": "L77",
+      "source_location": "L119",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_discord_com_announcements_announcements",
+      "target": "docs_sources_discord_com_announcements_registration_and_updates",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/discord.com/announcements.md",
+      "source_location": "L19",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_discord_com_announcements_announcements",
+      "target": "docs_sources_discord_com_announcements_prize_pool",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/discord.com/announcements.md",
+      "source_location": "L32",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_discord_com_announcements_announcements",
+      "target": "docs_sources_discord_com_announcements_eligibility_update",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/discord.com/announcements.md",
+      "source_location": "L48",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_discord_com_announcements_announcements",
+      "target": "docs_sources_discord_com_announcements_team_formation_reminder",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/discord.com/announcements.md",
+      "source_location": "L58",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_discord_com_announcements_announcements",
+      "target": "docs_sources_discord_com_announcements_briefing_and_gemini_training",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/discord.com/announcements.md",
+      "source_location": "L68",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_discord_com_announcements_announcements",
+      "target": "docs_sources_discord_com_announcements_briefing_rsvp_reminder",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/discord.com/announcements.md",
+      "source_location": "L83",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_discord_com_announcements_announcements",
+      "target": "docs_sources_discord_com_announcements_briefing_moved_to_google_meet",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/discord.com/announcements.md",
+      "source_location": "L89",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_discord_com_announcements_announcements",
+      "target": "docs_sources_discord_com_announcements_google_meet_qr_code",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/discord.com/announcements.md",
+      "source_location": "L99",
       "weight": 1.0
     },
     {
@@ -7318,7 +8320,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/sources/discord.com/apu-cloud-innovation-hackathon-discord.md",
-      "source_location": "L58",
+      "source_location": "L60",
       "weight": 1.0
     },
     {
@@ -7648,7 +8650,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/sources/discord.com/general.md",
-      "source_location": "L11",
+      "source_location": "L12",
       "weight": 1.0
     },
     {
@@ -7659,7 +8661,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/sources/discord.com/general.md",
-      "source_location": "L19",
+      "source_location": "L20",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_discord_com_general_general",
+      "target": "docs_sources_discord_com_general_project_details_not_editable",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/discord.com/general.md",
+      "source_location": "L26",
       "weight": 1.0
     },
     {
@@ -7670,7 +8683,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/sources/discord.com/general.md",
-      "source_location": "L25",
+      "source_location": "L32",
       "weight": 1.0
     },
     {
@@ -7868,7 +8881,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/sources/discord.com/project-discussion.md",
-      "source_location": "L29",
+      "source_location": "L31",
       "weight": 1.0
     },
     {
@@ -8730,58 +9743,14 @@
       "weight": 1.0
     },
     {
-      "source": "docs_sources_discord_com_announcements",
-      "target": "docs_sources_discord_com_key_dates_and_briefing",
+      "source": "docs_sources_briefing_session_slides",
+      "target": "docs_sources_briefing_session_transcript",
       "relation": "references",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "docs/sources/discord.com/announcements.md",
-      "source_location": "L21",
-      "weight": 1.0
-    },
-    {
-      "source": "docs_sources_discord_com_announcements",
-      "target": "docs_sources_discord_com_problem_statements",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/sources/discord.com/announcements.md",
-      "source_location": "L22",
-      "weight": 1.0
-    },
-    {
-      "source": "docs_sources_discord_com_announcements",
-      "target": "docs_sources_discord_com_help_desk",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/sources/discord.com/announcements.md",
-      "source_location": "L23",
-      "weight": 1.0
-    },
-    {
-      "source": "docs_sources_discord_com_announcements",
-      "target": "docs_sources_discord_com_submission_guidelines",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/sources/discord.com/announcements.md",
-      "source_location": "L25",
-      "weight": 1.0
-    },
-    {
-      "source": "docs_sources_discord_com_announcements",
-      "target": "docs_sources_discord_com_team_formation",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/sources/discord.com/announcements.md",
-      "source_location": "L59",
+      "source_file": "docs/sources/briefing-session/slides.md",
+      "source_location": "L3",
       "weight": 1.0
     },
     {
@@ -8792,7 +9761,62 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/sources/discord.com/announcements.md",
-      "source_location": "L79",
+      "source_location": "L121",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_discord_com_announcements",
+      "target": "docs_sources_discord_com_key_dates_and_briefing",
+      "relation": "references",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/discord.com/announcements.md",
+      "source_location": "L26",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_discord_com_announcements",
+      "target": "docs_sources_discord_com_problem_statements",
+      "relation": "references",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/discord.com/announcements.md",
+      "source_location": "L27",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_discord_com_announcements",
+      "target": "docs_sources_discord_com_help_desk",
+      "relation": "references",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/discord.com/announcements.md",
+      "source_location": "L28",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_discord_com_announcements",
+      "target": "docs_sources_discord_com_submission_guidelines",
+      "relation": "references",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/discord.com/announcements.md",
+      "source_location": "L30",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_discord_com_announcements",
+      "target": "docs_sources_discord_com_team_formation",
+      "relation": "references",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/discord.com/announcements.md",
+      "source_location": "L64",
       "weight": 1.0
     },
     {
@@ -9160,5 +10184,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "9adf91fb84514b008f391ca70b047983094e9ea6"
+  "built_at_commit": "0619d81f3a179f2de2a25987f29dd49a780795c2"
 }
