@@ -185,7 +185,7 @@ These feeds suit "connecting devices with useful actions": thresholds and warnin
 - **Access:** yearly files `https://storage.data.gov.my/transportation/rail/rapidrail_2026_daily.parquet` (5.3 MB) or `.csv` (314 MB), with editions 2023–2026. No key. The dataset is flagged `exclude_openapi`, so it is served from storage rather than the API.
 - **Terms:** CC BY 4.0 ([FAQ][dgm_faq]).
 - **Updates and sensor:** daily. The metadata showed data as of 2026-11-01 23:59, with the next update due 2026-11-03 22:00. Sensor feed: no as published (a daily aggregate of gate taps).
-- **Live, APU relevance:** columns `origin, destination, date, ridership`, with 5,293,275 rows from 1 January to 1 November 2026. Trips starting at `SP17` Bukit Jalil were 6,512 (28 Oct), 6,170 (29 Oct), 6,642 (30 Oct), 8,402 (31 Oct), and 10,032 (1 Nov).
+- **Live, APU relevance:** columns `origin, destination, date, ridership`, with 5,293,275 rows from 1 January to 1 November 2026. Trips starting at `SP17` Bukit Jalil were 3,256 (28 Oct), 3,085 (29 Oct), 3,321 (30 Oct), 4,201 (31 Oct), and 5,016 (1 Nov). Each side also has an `A0: All Stations` row that already totals the others, so exclude it when summing, or every count doubles (rechecked 4 Nov 2026).
 
 ### data.gov.my catalogue and OpenDOSM
 
