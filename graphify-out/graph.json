@@ -4326,7 +4326,7 @@
       "node_kind": "heading",
       "norm_label": "challenge tracks",
       "source_file": "docs/BRIEF.md",
-      "source_location": "L37"
+      "source_location": "L38"
     },
     {
       "id": "docs_brief_eligibility_and_teams",
@@ -4338,7 +4338,7 @@
       "node_kind": "heading",
       "norm_label": "eligibility and teams",
       "source_file": "docs/BRIEF.md",
-      "source_location": "L27"
+      "source_location": "L28"
     },
     {
       "id": "docs_brief_judging_and_prizes",
@@ -4350,7 +4350,7 @@
       "node_kind": "heading",
       "norm_label": "judging and prizes",
       "source_file": "docs/BRIEF.md",
-      "source_location": "L85"
+      "source_location": "L107"
     },
     {
       "id": "docs_brief_key_dates",
@@ -4362,7 +4362,7 @@
       "node_kind": "heading",
       "norm_label": "key dates",
       "source_file": "docs/BRIEF.md",
-      "source_location": "L52"
+      "source_location": "L65"
     },
     {
       "id": "docs_brief_open_questions",
@@ -4374,7 +4374,7 @@
       "node_kind": "heading",
       "norm_label": "open questions",
       "source_file": "docs/BRIEF.md",
-      "source_location": "L99"
+      "source_location": "L129"
     },
     {
       "id": "docs_brief_see_also",
@@ -4386,7 +4386,7 @@
       "node_kind": "heading",
       "norm_label": "see also",
       "source_file": "docs/BRIEF.md",
-      "source_location": "L117"
+      "source_location": "L152"
     },
     {
       "id": "docs_brief_source_discrepancies",
@@ -4398,7 +4398,7 @@
       "node_kind": "heading",
       "norm_label": "source discrepancies",
       "source_file": "docs/BRIEF.md",
-      "source_location": "L111"
+      "source_location": "L145"
     },
     {
       "id": "docs_brief_submission_requirements",
@@ -4410,7 +4410,7 @@
       "node_kind": "heading",
       "norm_label": "submission requirements",
       "source_file": "docs/BRIEF.md",
-      "source_location": "L72"
+      "source_location": "L83"
     },
     {
       "id": "docs_brief_tools",
@@ -4422,7 +4422,7 @@
       "node_kind": "heading",
       "norm_label": "tools",
       "source_file": "docs/BRIEF.md",
-      "source_location": "L45"
+      "source_location": "L46"
     },
     {
       "id": "docs_sources_discord_com_submission_guidelines_deadline",
@@ -5542,13 +5542,35 @@
     },
     {
       "source": "docs_brief_apu_cloud_innovation_hackathon_2026_brief",
+      "target": "docs_brief_judging_and_prizes",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L107",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_brief_apu_cloud_innovation_hackathon_2026_brief",
+      "target": "docs_brief_open_questions",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L129",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_brief_apu_cloud_innovation_hackathon_2026_brief",
       "target": "docs_brief_source_discrepancies",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/BRIEF.md",
-      "source_location": "L111",
+      "source_location": "L145",
       "weight": 1.0
     },
     {
@@ -5559,7 +5581,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/BRIEF.md",
-      "source_location": "L117",
+      "source_location": "L152",
       "weight": 1.0
     },
     {
@@ -5581,7 +5603,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/BRIEF.md",
-      "source_location": "L27",
+      "source_location": "L28",
       "weight": 1.0
     },
     {
@@ -5592,7 +5614,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/BRIEF.md",
-      "source_location": "L37",
+      "source_location": "L38",
       "weight": 1.0
     },
     {
@@ -5603,7 +5625,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/BRIEF.md",
-      "source_location": "L45",
+      "source_location": "L46",
       "weight": 1.0
     },
     {
@@ -5614,7 +5636,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/BRIEF.md",
-      "source_location": "L52",
+      "source_location": "L65",
       "weight": 1.0
     },
     {
@@ -5625,29 +5647,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/BRIEF.md",
-      "source_location": "L72",
-      "weight": 1.0
-    },
-    {
-      "source": "docs_brief_apu_cloud_innovation_hackathon_2026_brief",
-      "target": "docs_brief_judging_and_prizes",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/BRIEF.md",
-      "source_location": "L85",
-      "weight": 1.0
-    },
-    {
-      "source": "docs_brief_apu_cloud_innovation_hackathon_2026_brief",
-      "target": "docs_brief_open_questions",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/BRIEF.md",
-      "source_location": "L99",
+      "source_location": "L83",
       "weight": 1.0
     },
     {
@@ -10184,5 +10184,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "0619d81f3a179f2de2a25987f29dd49a780795c2"
+  "built_at_commit": "d06ffe736efa2806b50fa08f1bbdb8c6c6e12966"
 }
