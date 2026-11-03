@@ -16,18 +16,6 @@
       "source_location": "L1"
     },
     {
-      "id": "docs_references_markdown_style_add_spacing_to_headings",
-      "label": "Add spacing to headings",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "Markdown style guide",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "add spacing to headings",
-      "source_file": "docs/references/markdown-style.md",
-      "source_location": "L300"
-    },
-    {
       "id": "docs_references_markdown_style_always_use_a_contents_list",
       "label": "Always use a contents list",
       "_origin": "ast",
@@ -38,18 +26,6 @@
       "norm_label": "always use a contents list",
       "source_file": "docs/references/markdown-style.md",
       "source_location": "L181"
-    },
-    {
-      "id": "docs_references_markdown_style_atx_style_headings",
-      "label": "ATX-style headings",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "Markdown style guide",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "atx-style headings",
-      "source_file": "docs/references/markdown-style.md",
-      "source_location": "L249"
     },
     {
       "id": "docs_references_markdown_style_better_is_better_than_best",
@@ -74,18 +50,6 @@
       "norm_label": "capitalization",
       "source_file": "docs/references/markdown-style.md",
       "source_location": "L126"
-    },
-    {
-      "id": "docs_references_markdown_style_capitalization_of_titles_and_headers",
-      "label": "Capitalization of titles and headers",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "Markdown style guide",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "capitalization of titles and headers",
-      "source_file": "docs/references/markdown-style.md",
-      "source_location": "L325"
     },
     {
       "id": "docs_references_markdown_style_delete_dead_documentation",
@@ -146,18 +110,6 @@
       "norm_label": "duplication is evil",
       "source_file": "docs/references/markdown-style.md",
       "source_location": "L828"
-    },
-    {
-      "id": "docs_references_markdown_style_headings",
-      "label": "Headings",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "Markdown style guide",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "headings",
-      "source_file": "docs/references/markdown-style.md",
-      "source_location": "L247"
     },
     {
       "id": "docs_references_markdown_style_images",
@@ -352,18 +304,6 @@
       "source_location": "L773"
     },
     {
-      "id": "docs_references_markdown_style_use_a_single_h1_heading",
-      "label": "Use a single H1 heading",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "Markdown style guide",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "use a single h1 heading",
-      "source_file": "docs/references/markdown-style.md",
-      "source_location": "L321"
-    },
-    {
       "id": "docs_references_markdown_style_use_lazy_numbering_for_long_lists",
       "label": "Use lazy numbering for long lists",
       "_origin": "ast",
@@ -374,18 +314,6 @@
       "norm_label": "use lazy numbering for long lists",
       "source_file": "docs/references/markdown-style.md",
       "source_location": "L331"
-    },
-    {
-      "id": "docs_references_markdown_style_use_unique_complete_names_for_headings",
-      "label": "Use unique, complete names for headings",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "Markdown style guide",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "use unique, complete names for headings",
-      "source_file": "docs/references/markdown-style.md",
-      "source_location": "L264"
     },
     {
       "id": "package",
@@ -2037,6 +1965,222 @@
       "source_location": "L22"
     },
     {
+      "id": "docs_brief",
+      "label": "BRIEF.md",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "APU Cloud Innovation Hackathon 2026 brief",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "brief.md",
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "docs_brief_apu_cloud_innovation_hackathon_2026_brief",
+      "label": "APU Cloud Innovation Hackathon 2026 brief",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "APU Cloud Innovation Hackathon 2026 brief",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "apu cloud innovation hackathon 2026 brief",
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "docs_brief_at_a_glance",
+      "label": "At a glance",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "APU Cloud Innovation Hackathon 2026 brief",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "at a glance",
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L18"
+    },
+    {
+      "id": "docs_brief_challenge_tracks",
+      "label": "Challenge tracks",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "APU Cloud Innovation Hackathon 2026 brief",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "challenge tracks",
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L37"
+    },
+    {
+      "id": "docs_brief_eligibility_and_teams",
+      "label": "Eligibility and teams",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "APU Cloud Innovation Hackathon 2026 brief",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "eligibility and teams",
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L27"
+    },
+    {
+      "id": "docs_brief_judging_and_prizes",
+      "label": "Judging and prizes",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "APU Cloud Innovation Hackathon 2026 brief",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "judging and prizes",
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L85"
+    },
+    {
+      "id": "docs_brief_key_dates",
+      "label": "Key dates",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "APU Cloud Innovation Hackathon 2026 brief",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "key dates",
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L52"
+    },
+    {
+      "id": "docs_brief_open_questions",
+      "label": "Open questions",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "APU Cloud Innovation Hackathon 2026 brief",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "open questions",
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L99"
+    },
+    {
+      "id": "docs_brief_see_also",
+      "label": "See also",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "APU Cloud Innovation Hackathon 2026 brief",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "see also",
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L117"
+    },
+    {
+      "id": "docs_brief_source_discrepancies",
+      "label": "Source discrepancies",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "APU Cloud Innovation Hackathon 2026 brief",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "source discrepancies",
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L111"
+    },
+    {
+      "id": "docs_brief_submission_requirements",
+      "label": "Submission requirements",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "APU Cloud Innovation Hackathon 2026 brief",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "submission requirements",
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L72"
+    },
+    {
+      "id": "docs_brief_tools",
+      "label": "Tools",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "APU Cloud Innovation Hackathon 2026 brief",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "tools",
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L45"
+    },
+    {
+      "id": "docs_references_markdown_style_add_spacing_to_headings",
+      "label": "Add spacing to headings",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "Headings",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "add spacing to headings",
+      "source_file": "docs/references/markdown-style.md",
+      "source_location": "L300"
+    },
+    {
+      "id": "docs_references_markdown_style_atx_style_headings",
+      "label": "ATX-style headings",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "Headings",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "atx-style headings",
+      "source_file": "docs/references/markdown-style.md",
+      "source_location": "L249"
+    },
+    {
+      "id": "docs_references_markdown_style_capitalization_of_titles_and_headers",
+      "label": "Capitalization of titles and headers",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "Headings",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "capitalization of titles and headers",
+      "source_file": "docs/references/markdown-style.md",
+      "source_location": "L325"
+    },
+    {
+      "id": "docs_references_markdown_style_headings",
+      "label": "Headings",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "Headings",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "headings",
+      "source_file": "docs/references/markdown-style.md",
+      "source_location": "L247"
+    },
+    {
+      "id": "docs_references_markdown_style_use_a_single_h1_heading",
+      "label": "Use a single H1 heading",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "Headings",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "use a single h1 heading",
+      "source_file": "docs/references/markdown-style.md",
+      "source_location": "L321"
+    },
+    {
+      "id": "docs_references_markdown_style_use_unique_complete_names_for_headings",
+      "label": "Use unique, complete names for headings",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "Headings",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "use unique, complete names for headings",
+      "source_file": "docs/references/markdown-style.md",
+      "source_location": "L264"
+    },
+    {
       "id": "docs_agents_issue_tracker",
       "label": "issue-tracker.md",
       "_origin": "ast",
@@ -3079,6 +3223,127 @@
       "confidence_score": 1.0,
       "source_file": "docs/agents/triage-labels.md",
       "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_brief",
+      "target": "docs_brief_apu_cloud_innovation_hackathon_2026_brief",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_brief_apu_cloud_innovation_hackathon_2026_brief",
+      "target": "docs_brief_source_discrepancies",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L111",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_brief_apu_cloud_innovation_hackathon_2026_brief",
+      "target": "docs_brief_see_also",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L117",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_brief_apu_cloud_innovation_hackathon_2026_brief",
+      "target": "docs_brief_at_a_glance",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L18",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_brief_apu_cloud_innovation_hackathon_2026_brief",
+      "target": "docs_brief_eligibility_and_teams",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L27",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_brief_apu_cloud_innovation_hackathon_2026_brief",
+      "target": "docs_brief_challenge_tracks",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L37",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_brief_apu_cloud_innovation_hackathon_2026_brief",
+      "target": "docs_brief_tools",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L45",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_brief_apu_cloud_innovation_hackathon_2026_brief",
+      "target": "docs_brief_key_dates",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L52",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_brief_apu_cloud_innovation_hackathon_2026_brief",
+      "target": "docs_brief_submission_requirements",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L72",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_brief_apu_cloud_innovation_hackathon_2026_brief",
+      "target": "docs_brief_judging_and_prizes",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L85",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_brief_apu_cloud_innovation_hackathon_2026_brief",
+      "target": "docs_brief_open_questions",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/BRIEF.md",
+      "source_location": "L99",
       "weight": 1.0
     },
     {
@@ -5580,5 +5845,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "cd0e5f62e865c6a53c2d639e7581892957392dd4"
+  "built_at_commit": "ff9e439e90f8e20ecda5e2173f2571641d96cc46"
 }
