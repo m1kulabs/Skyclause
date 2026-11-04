@@ -1,12 +1,13 @@
 # Idea ranking
 
-**Build [Kept] first.** It grades APU's Campus Connect shuttle against its own published schedule every weeknight and hands the Logistics & Operations shuttle desk dated evidence for each recurring gap. It ranks first at 81.6 / 100, in every weighting tried and as an unmerged source idea, and needs no card or board: two phones, Google Workspace, Jira Cloud Free, and free GitHub Pages hosting. [Sempat] is the clear second at 77.5. Ranks 3–5 sit within 4.2 points, so treat them as a tier.
+**Build [Kept] first.** It grades APU's Campus Connect shuttle against its own published schedule every weeknight and hands the Logistics & Operations shuttle desk dated evidence for each recurring gap. It ranks first at 81.6 / 100, in every weighting tried and as an unmerged source idea, and needs no card or board: two phones, Google Workspace, Jira Cloud Free, and free GitHub Pages hosting. [Sempat] is the clear second at 77.5. Ranks 3–5 sit within 4.2 points, so treat them as a tier. This advice assumes someone can reach campus, which the team now says it can't; see [Not like for like](#not-like-for-like).
 
-This page re-ranks the 15 ideas from the three idea sets ([argon](/docs/ideas/argon/00-ranking.md), [astra](/docs/ideas/astra/00-ranking.md), [opus](/docs/ideas/opus/00-ranking.md)) against one scoring matrix, merges the overlapping ones into 8 products, and ranks those. The matrix combines the three sets' matrices, NTT DATA's five judging points, and related criteria. The sets themselves are unchanged; this synthesis is the one place that compares them ([project conventions](/docs/references/project-conventions.md)). Dated 4 November 2026. Names are working names. Every score is a prospective estimate: there are no interviews, licence tests, or run history yet.
+This page re-ranks the 15 ideas from the three idea sets ([argon](/docs/ideas/argon/00-ranking.md), [astra](/docs/ideas/astra/00-ranking.md), [opus](/docs/ideas/opus/00-ranking.md)) against one scoring matrix, merges the overlapping ones into 8 products, and ranks those. The matrix combines the three sets' matrices, NTT DATA's five judging points, and related criteria. The sets themselves are unchanged; this synthesis is the one place that compares them ([project conventions](/docs/references/project-conventions.md)). Dated 4 November 2026; [BoardCast] and [LiftBoard] were added on 5 November (see [Not like for like](#not-like-for-like)). Names are working names. Every score is a prospective estimate: there are no interviews, licence tests, or run history yet.
 
 Contents:
 
 1.  [Ranking](#ranking)
+    1.  [Not like for like](#not-like-for-like)
 1.  [Scores by component](#scores-by-component)
 1.  [Scoring matrix](#scoring-matrix)
     1.  [Components and weights](#components-and-weights)
@@ -31,12 +32,19 @@ Contents:
 |    4 | [Fanfall]              | GDGoC APU events lead, then Student Service                  | Forecasts each stadium night next door against APU's evening events and grades itself on next-day gate taps        | Data-Driven Research   |  72.7 |
 |    5 | [Skyclause]            | Facilities, safety and welfare desk (not in APU's public KB) | Turns haze and storm readings into one logged, approved conditions call per wave of physical classes               | Intelligent Automation |  68.5 |
 |    6 | [Research & FYP Nexus] | School of Technology FYP coordinator                         | Checks a draft final-year project against APU's own and recent outside work before supervisor matching             | Data-Driven Research   |  60.8 |
-|    7 | [LabRelay]             | A lab equipment custodian (none secured)                     | Audits who acknowledged an equipment alarm and whether an independent reading confirms recovery                    | Intelligent Automation |  50.8 |
-|    8 | [WashWitness]          | Residence office coordinator                                 | Accepts a laundry machine repair only after an observed working cycle                                              | Intelligent Automation |  46.2 |
+|    7 | [BoardCast]            | Students; no office                                          | Tells a shuttle rider which run reaches class, flags a broken bus routine, and shares one-tap boarding reports     | Smart Campus           |  60.7 |
+|    8 | [LiftBoard]            | Students; no office                                          | Shows each block's up and down class-change pressure, and records real lift rides with manual taps                 | Smart Campus           |  55.0 |
+|    9 | [LabRelay]             | A lab equipment custodian (none secured)                     | Audits who acknowledged an equipment alarm and whether an independent reading confirms recovery                    | Intelligent Automation |  50.8 |
+|   10 | [WashWitness]          | Residence office coordinator                                 | Accepts a laundry machine repair only after an observed working cycle                                              | Intelligent Automation |  46.2 |
 
 - **Kept leads every view:** first under all five weightings, first among the 15 unmerged ideas (81.5), and first with each of the three final scorers (78.2, 86.6, 85.8).
 - **Outage Witness and Fanfall tie at 72.7.** Fanfall leads by 0.07 before rounding. Ties at one decimal go to the higher score on NTT DATA's five points, the only criteria the judges stated, so Outage Witness (73.3) ranks above Fanfall (72.0). Outage Witness also ranks above Fanfall under three of the four other weightings.
-- **Every product passed every gate** with all three scorers.
+- **The first eight products passed every gate** with all three scorers. For BoardCast and LiftBoard, two scorers failed G3 because no licence exists today; both pass it as a design, and no earlier product had a licence either.
+- **Research & FYP Nexus and BoardCast are 0.1 apart,** which is noise.
+
+### Not like for like
+
+The first eight products were scored on 4 November, before the team's limits were known. BoardCast and LiftBoard were scored on 5 November knowing them: nobody on campus, no recruited riders or lecturers, and no licence yet. **Inference:** the top three products all need phones on campus, so they would score lower today, and their ranks overstate what this team can do by 10 November. BoardCast and LiftBoard are the only two here designed for those limits.
 
 [Kept]: /docs/ideas/01-kept.md
 [Sempat]: /docs/ideas/02-sempat.md
@@ -46,6 +54,8 @@ Contents:
 [Research & FYP Nexus]: /docs/ideas/06-research-fyp-nexus.md
 [LabRelay]: /docs/ideas/07-labrelay.md
 [WashWitness]: /docs/ideas/08-washwitness.md
+[BoardCast]: /docs/ideas/09-boardcast.md
+[LiftBoard]: /docs/ideas/10-liftboard.md
 
 ## Scores by component
 
@@ -59,6 +69,8 @@ Means of three independent scorers on a 1–5 scale. Day-to-day workflow and the
 | Fanfall              |    3 |    4 |   4 | 3.67 | 3.33 |   3 | 4.33 | 3.33 | 4.33 |  72.7 |
 | Skyclause            |    3 |    4 |   4 | 3.33 |    3 |   3 | 3.33 | 3.33 |    4 |  68.5 |
 | Research & FYP Nexus |    3 |    4 |   3 |    3 |    3 |   1 |    2 |    5 |    5 |  60.8 |
+| BoardCast            |    3 |    3 |   3 | 2.67 |    3 |   3 | 3.67 | 2.67 | 3.67 |  60.7 |
+| LiftBoard            | 2.33 |    3 |   3 | 2.67 | 2.33 |   2 | 3.67 | 2.67 | 3.67 |  55.0 |
 | LabRelay             | 1.67 | 3.33 |   3 | 1.67 | 1.67 |   4 |    3 |    2 |    3 |  50.8 |
 | WashWitness          | 1.67 | 3.33 |   2 |    2 | 1.67 |   3 | 2.67 |    3 |    2 |  46.2 |
 
@@ -111,11 +123,13 @@ The same component scores under four other weightings. Rank in brackets.
 | Outage Witness       |                   72.7 (3) |              73.3 (3) |             71.9 (3) |                             74.2 (3) |                  70.7 (4) |
 | Fanfall              |                   72.7 (4) |              72.0 (4) |             71.3 (4) |                             72.6 (4) |                  74.2 (3) |
 | Skyclause            |                   68.5 (5) |              69.3 (5) |             67.5 (5) |                             69.4 (5) |                  68.2 (5) |
-| Research & FYP Nexus |                   60.8 (6) |              64.0 (6) |             61.4 (6) |                             65.4 (6) |                  58.4 (6) |
-| LabRelay             |                   50.8 (7) |              45.4 (7) |             48.4 (7) |                             51.1 (7) |                  52.2 (7) |
-| WashWitness          |                   46.2 (8) |              42.7 (8) |             44.6 (8) |                             46.6 (8) |                  47.3 (8) |
+| Research & FYP Nexus |                   60.8 (6) |              64.0 (6) |             61.4 (6) |                             65.4 (6) |                  58.4 (7) |
+| BoardCast            |                   60.7 (7) |              58.7 (7) |             60.7 (7) |                             60.3 (7) |                  62.2 (6) |
+| LiftBoard            |                   55.0 (8) |              53.3 (8) |             54.2 (8) |                             54.9 (8) |                  57.0 (8) |
+| LabRelay             |                   50.8 (9) |              45.4 (9) |             48.4 (9) |                             51.1 (9) |                  52.2 (9) |
+| WashWitness          |                  46.2 (10) |             42.7 (10) |            44.6 (10) |                            46.6 (10) |                 47.3 (10) |
 
-Full weights: impact-first IM 25, CO/WF/RE/TI 12, TH 8, OR 9, BU 5, DE 5; delivery-first IM 10, CO 12, WF 18, RE 10, TI 15, TH 10, OR 5, BU 12, DE 8; originality-heavy OR 20, the NTT five 12 each, TH 10, BU 5, DE 5. The base column orders Outage Witness above Fanfall by the tie rule in [Ranking](#ranking); Fanfall leads there by 0.067 before rounding. Only these two ever swap. Between scorers the spread is wider than between weightings: the FDE scored Outage Witness 66.6 and the lecturer 82.8. Don't read a gap under 5 points as decisive.
+Full weights: impact-first IM 25, CO/WF/RE/TI 12, TH 8, OR 9, BU 5, DE 5; delivery-first IM 10, CO 12, WF 18, RE 10, TI 15, TH 10, OR 5, BU 12, DE 8; originality-heavy OR 20, the NTT five 12 each, TH 10, BU 5, DE 5. The base column orders Outage Witness above Fanfall by the tie rule in [Ranking](#ranking); Fanfall leads there by 0.067 before rounding. Among the first eight products, only these two ever swap. BoardCast also passes Research & FYP Nexus under the originality-heavy weighting. Between scorers the spread is wider than between weightings: the FDE scored Outage Witness 66.6 and the lecturer 82.8. Don't read a gap under 5 points as decisive.
 
 ## The 15 source ideas reranked
 
@@ -168,7 +182,9 @@ Each product's "Origins" section records what it kept, changed, and dropped from
 - **Pick [Fanfall] for the best pitch.** The 17 November final shares the night with a concert next door, and the forecast grades itself every morning. Its theme score (3) ties Skyclause's for the lowest in the top five, and its doc concedes it's a club-scale tool until an office adopts it.
 - **Pick [Skyclause] for the strongest institutional hook,** the ministry's 7 October 2026 haze instruction. Its owner office has no public trace in APU's knowledge base, and the window camera is on probation.
 - **Don't build two.** Kept, Fanfall and Skyclause all touch the evening exit wave. Fanfall's graded surge-night calendar can become a read-only input to Kept's "external cause" rule later ([Fanfall's origins](/docs/ideas/04-fanfall.md#origins)).
-- **The bottom three carry stop conditions:** Research & FYP Nexus has no IoT layer (theme 1); LabRelay has no lab, custodian or probe secured; WashWitness exists only if a timed observation shows broken machines rather than queues, since APU's own evidence points to queues.
+- **Pick [BoardCast] if nobody can reach campus.** It helps one student with no other users, from public feeds, and it keeps co-op. Before 10 November that co-op runs only on the team's own phones, so it can't show any real APU queue.
+- **Pick [LiftBoard] for the widest pain, with the weakest proof.** Students and lecturers both feel it, and kymil4 first raised it, but no APU lift can be timed before the deadline, and its second feature overlaps notices students already get.
+- **The bottom stop conditions still hold:** Research & FYP Nexus has no IoT layer (theme 1); LabRelay has no lab, custodian or probe secured; WashWitness exists only if a timed observation shows broken machines rather than queues, since APU's own evidence points to queues.
 
 ## What the rerank changed
 
@@ -190,6 +206,7 @@ The final scorers recorded 13 more small errors in the product docs while scorin
 
 ## Evidence limits
 
+- **BoardCast and LiftBoard were scored differently:** by one pass only, after the same scorers also rated their [source](/docs/ideas/opus/07-boardcast.md) [docs](/docs/ideas/opus/06-liftboard.md), which scored 48.7 and 39.8. Two of the three scorers shared `gpt-6-astra`, against three different models before.
 - **Nothing is validated:** no owner has agreed, no interview has happened, no Gemini Enterprise licence has been tested, and no workflow has run. Each product's research plan says what to measure first.
 - **The scorers are AI personas, not the judges.** They disagree by up to 16 points on one product. The official criteria may reweight everything.
 - **Merged products had an edge in polish.** Pass B scored docs written for this ranking, while Pass A scored the original set docs. Components where a product beat its best source by more than half a point: Kept theme (4 → 5); Outage Witness and Fanfall demo; Research & FYP Nexus connectors, buildability and demo; LabRelay connectors, workflow and theme; WashWitness connectors. Most reflect real design changes recorded in each "Origins" section, such as dropping the custom MCP, adding approved Jira writes, and moving the decision into the workflow. Skyclause (−5.4) and WashWitness (−1.7) scored below their sources: Skyclause's doc dropped the unverifiable storm count and now says its owner office has no public trace, and WashWitness now leads with the gate that may cancel it.
