@@ -247,11 +247,10 @@ The [brief's open questions](/docs/BRIEF.md#open-questions) list what the organi
 - [Judging and pitching]: comparable rubrics, user research, impact measurement, time to impact, packaging, the README, the video, and the pitch.
 - [APU public documents]: APU's public documents, knowledge base, timetable feed, and systems.
 - [Public data sources]: the live data catalogue per track.
-- [IoT and network]: Google Cloud IoT architecture, sensors, boards, protocols, and pitfalls.
+- [IoT and network]: Google Cloud IoT architecture, sensors, boards, protocols, pitfalls, and what the team's phones and one Pi 5 can sense, run and serve unattended from a home.
 - [Social research](/docs/research/social.md): pain points from X, Reddit, and other platforms.
-- [Everyday signals on X](/docs/research/everyday-x.md) and [on Reddit and other platforms](/docs/research/everyday-reddit.md): students' lives away from campus, and which phone and Pi tools people keep using.
-- [Phones and Raspberry Pi 5](/docs/research/phones-and-pi.md): what phones and a Pi 5 can sense, run and serve unattended from a home.
-- [Rules and guarantees](/docs/research/rules-and-guarantees.md): APU, provider and platform rules re-checked at their sources, and timetable feed measurements.
+- [Everyday signals](/docs/research/everyday.md): students' lives away from campus on Reddit, X and other platforms, and which phone and Pi tools people keep using.
+- [Rules and guarantees](/docs/research/rules-and-guarantees.md): APU and provider rules and guarantees re-checked at their sources.
 
 [brief]: /docs/BRIEF.md
 [briefing]: /docs/sources/briefing-session/transcript.md

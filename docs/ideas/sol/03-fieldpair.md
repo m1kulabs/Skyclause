@@ -15,7 +15,7 @@ Contents:
 
 **User/owner:** the student coordinating a small distributed sensor experiment, where teammates capture real readings at their own homes. Job: “Before I compare these runs, tell me which capture conditions differ from our agreed protocol and what evidence or recollection is needed.” Choose **Data-Driven Research & Intelligent Decision Making**.
 
-A [home magnetometer experiment](https://www.reddit.com/r/AskPhysics/comments/mgblbj/) produced an unexpected relationship; the poster eventually reported that increasing distance fixed the setup issue. That is evidence of experimental setup/interpretation difficulty, not a unit-conversion bug or proof that an agent would have caught it. A [phyphox discussion](https://www.reddit.com/r/codyslab/comments/xhn85m/) includes a request for simultaneous sensor outputs and uncertainty about accuracy. Both are old transfer evidence, with no verified APU demand. See the [bounded source notes](/docs/research/sol-platform-and-incumbents.md#phone-experiment-signals).
+A [home magnetometer experiment](https://www.reddit.com/r/AskPhysics/comments/mgblbj/) produced an unexpected relationship; the poster eventually reported that increasing distance fixed the setup issue. That is evidence of experimental setup/interpretation difficulty, not a unit-conversion bug or proof that an agent would have caught it. A [phyphox discussion](https://www.reddit.com/r/codyslab/comments/xhn85m/) includes a request for simultaneous sensor outputs and uncertainty about accuracy. Both are old transfer evidence, with no verified APU demand. See the [bounded source notes](/docs/research/everyday.md#phone-sensor-experiment-threads).
 
 More recent [firsthand phyphox forum reports](https://phyphox.org/forums/showthread.php?pid=4887&tid=2356), June–July 2026, describe actual sampling-rate differences and an experiment loading differently across phones. Existing support resolved the case. This sharpens the capture-manifest design, but the user's student status is unknown and it does not validate a new coordination product; the research score remains low.
 
@@ -23,7 +23,7 @@ No lecturer, approved lab, campus visit or external environmental probe is neede
 
 ## Difference from existing collection tools
 
-phyphox captures, plots and exports phone data. KoboToolbox and ODK provide validation/audit functions; QField synchronizes offline fieldwork; FizziQ already offers phone experiments and uncertainty activities. [Incumbent notes](/docs/research/sol-platform-and-incumbents.md#existing-products).
+phyphox captures, plots and exports phone data. KoboToolbox and ODK provide validation/audit functions; QField synchronizes offline fieldwork; FizziQ already offers phone experiments and uncertainty activities. [Incumbent notes](/docs/research/competition.md#incumbents-checked-against-official-documentation).
 
 The narrower hypothesis is **cross-run protocol compatibility and corrective closure**: the protocol changed, one member used a different sensor mode, a required declaration is absent, or a run arrived incompletely. Rules detect exact mismatches. Gemini reconciles a changing written protocol with those facts, explains the minimum correction, and coordinates the owner. It must never reject a surprising result because it differs from a textbook expectation.
 
@@ -45,7 +45,7 @@ The baseline is **phyphox + a versioned protocol + schema validation + shared ch
 | Jira Cloud, third party   | Real recollection tasks assigned to student collectors           | Reviewed mutations; duplicate key includes run and reason     |
 | Enterprise workflow       | Contextual protocol reconciliation and correction follow-through | Human owns scientific interpretation                          |
 
-Cloud joins separately collected runs; network integrity determines what can be compared; phones provide the actual phenomena. A Pi is optional and unnecessary for the MVP. No clock-synchronization precision is promised: independent clocks do not establish simultaneous events. If paired timing is required, quantify offset/uncertainty or exclude that comparison. [Platform and measurement limits](/docs/research/sol-platform-and-incumbents.md).
+Cloud joins separately collected runs; network integrity determines what can be compared; phones provide the actual phenomena. A Pi is optional and unnecessary for the MVP. No clock-synchronization precision is promised: independent clocks do not establish simultaneous events. If paired timing is required, quantify offset/uncertainty or exclude that comparison. [Platform and measurement limits](/docs/research/gemini-enterprise.md).
 
 ## Remote MVP and demonstration
 

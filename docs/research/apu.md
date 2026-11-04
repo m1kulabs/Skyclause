@@ -14,6 +14,7 @@ Contents:
     1.  [Timetable feed change behaviour](#timetable-feed-change-behaviour)
     1.  [Personal data in the timetable feed](#personal-data-in-the-timetable-feed)
     1.  [Who already uses the timetable feed](#who-already-uses-the-timetable-feed)
+    1.  [APSpace timetable feed measurements](#apspace-timetable-feed-measurements)
 1.  [Public documents by track](#public-documents-by-track)
     1.  [Smart Campus & Student Experience](#smart-campus--student-experience)
     1.  [Intelligent Automation & Digital Transformation](#intelligent-automation--digital-transformation)
@@ -203,6 +204,17 @@ One JSON array of flat objects with the same 18 fields. The [APSpace interface][
 [search]: https://github.com/search?q=%22open-ws%2Fweektimetable%22&type=code
 [aplife]: https://github.com/osscv/APLife
 
+### APSpace timetable feed measurements
+
+Measurements made on 5 November 2026 (about 06:03 MYT). The numbers below contain no lecturer names or other personal data.
+
+- **Method:** one `GET` of the public `weektimetable` file (1,138,362 bytes, gzip; `Last-Modified` 28 October 2026 01:39:49 GMT, same ETag as in the feed section). Lecturer fields were dropped in memory on load. The file holds 31,606 rows and 9,854 distinct sessions for 26 October to 22 November 2026. The three small scripts count rows by intake, date and first start time. An earlier run the same morning gave identical figures.
+- **First in-person class start varies within a week:** 953 intake-groups have three or more in-person days from 2 to 6 November. For them the gap between the earliest and latest daily first start has a median of 315 minutes (25th percentile 270, 75th percentile 420); 96% differ by 2 hours or more and none starts at the same time every day. "In person" excludes rooms and modules marked online.
+- **No sessions on 8 and 9 November:** the feed has no sessions on either date, and 10 to 13 November have 309 to 390 sessions a day, against about 500 to 570 on ordinary weekdays in the weeks either side.
+- **Intakes affected by the 9 November holiday:** 449 intakes have sessions in the week of 9 November, and 437 of them have sessions on a Monday of 2 or 16 November. **Inference:** those 437 lose a Monday on 9 November. The holiday is Deepavali (Sunday 8 November) with a Monday replacement day in Kuala Lumpur, per secondary listings such as [Wego][wego]; I did not find a government gazette to confirm it, and the feed does not label the empty days.
+- **Week-to-week first starts, measured again at about 06:11 MYT** (feed unchanged, same ETag): comparing each intake-group's first in-person start on the same weekday of consecutive teaching weeks, 26 October against 2 November kept 97.1% of 3,935 weekday slots the same (10.3% of 845 intake-groups had any change), while 2 November against 16 November, across the week of 9 November, changed 87.7% of 4,181 slots (76.9% moved, 5.9% gained a class, 4.9% lost one) in 99.8% of 855 intake-groups. Module sets were as stable across that gap as between ordinary weeks (574 of 859 identical), so **Inference:** classes were re-slotted rather than replaced. Over 26 October to 22 November, each intake-group has a median of 6 distinct first in-person start times (maximum 11, across 1,155 intake-groups).
+- **Intakes with no classes 9 to 15 November:** 466 intakes have sessions in the weeks of 26 October, 2 November and 16 November but none from 9 to 15 November. **Inference:** a scheduled week break; no source states it.
+
 ## Public documents by track
 
 Documents on APU's website, media host, and KB, grouped by the hackathon track each fits best.
@@ -378,3 +390,4 @@ All of this section is **Inference**; connector features and limits are covered 
 - [Google Cloud](/docs/research/google-cloud.md): Cloud and AI products, free tiers, BigQuery sandbox
 - [Judging](/docs/research/judging.md): packaging, privacy, and attribution in the deck
 - [Project conventions](/docs/references/project-conventions.md): the real-data rule
+  [wego]: https://blog.wego.com/deepavali-2026-malaysia-travel-plan/

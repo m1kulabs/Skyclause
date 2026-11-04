@@ -15,7 +15,7 @@ Contents:
 
 **User/owner:** a student sharing a home with willing peers who needs a bounded period for a real presentation or focused task. Job: “Get an explicit answer to this request and a workable alternative if the household cannot agree.” Choose **Smart Campus & Student Experience**.
 
-The [APU residence complaint](https://www.reddit.com/r/malaysiauni/comments/1l4ub3h/dont_ever_come_to_apus_offcampus_city_of_green/) describes late-night shouting; [Malaysian residence and library reports](/docs/research/sol-reddit-signals.md) add noise examples. These do not establish an agreement problem among willing co-tenants. X's public-space discussion is [counter-evidence](/docs/research/sol-x-signals.md): students sometimes accept noise because opening hours, availability and group work matter more.
+The [APU residence complaint](https://www.reddit.com/r/malaysiauni/comments/1l4ub3h/dont_ever_come_to_apus_offcampus_city_of_green/) describes late-night shouting; [Malaysian residence and library reports](/docs/research/everyday.md) add noise examples. These do not establish an agreement problem among willing co-tenants. X's public-space discussion is [counter-evidence](/docs/research/everyday.md): students sometimes accept noise because opening hours, availability and group work matter more.
 
 Unlike RoomReady's individual decision, this requires at least one willing counterpart. A solo user can record personal task readiness, but that is not evidence QuietPact works. No landlord, warden, lecturer, staff member, campus location or unwilling neighbour participates in the MVP. A housemate can decline without being scored or penalized.
 
@@ -39,7 +39,7 @@ Gemini's possible contribution is reconciling multiple human constraints into a 
 | Calendar, first party     | Prepare an accepted alternative or reminder          | Write requires review; event polling is not a real-time warning                    |
 | Enterprise workflow       | Prepare renegotiation and inspect actual closure     | Never automatically sanction or message a housemate                                |
 
-The cloud joins commitments across people; the network delivers acknowledgements and explicitly exposes unavailable sessions; the microphone provides optional evidence about whether the environment helped the task. If a shared calendar alone gives the same outcome, sensing is unnecessary and this is a weak theme fit. No Pi or third-party connector is added merely for decoration. [Platform and microphone limits](/docs/research/sol-platform-and-incumbents.md).
+The cloud joins commitments across people; the network delivers acknowledgements and explicitly exposes unavailable sessions; the microphone provides optional evidence about whether the environment helped the task. If a shared calendar alone gives the same outcome, sensing is unnecessary and this is a weak theme fit. No Pi or third-party connector is added merely for decoration. [Platform and microphone limits](/docs/research/gemini-enterprise.md).
 
 Private audio stays on the phone and is discarded; publish only genuinely safe, consented summary data with provenance. Do not use hidden microphone operation, infer personalities, or label a resident disruptive. These are concrete product limits arising from this workflow, not a claim of regulatory certification.
 

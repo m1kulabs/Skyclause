@@ -42,7 +42,7 @@ Contents:
 
 ## The problem: a first class that moves
 
-**Who and how often.** The feed lists 1,045 intakes. Within a week, the first in-person class start of 953 intake-groups with three or more in-person days (2–6 November) spreads by a median of 315 minutes (25th percentile 270, 75th 420); 96% spread by 2 hours or more and none starts at the same time every day ([feed measurements](/docs/research/rules-and-guarantees.md#apspace-timetable-feed-measurements)). A single daily alarm is wrong for almost everyone.
+**Who and how often.** The feed lists 1,045 intakes. Within a week, the first in-person class start of 953 intake-groups with three or more in-person days (2–6 November) spreads by a median of 315 minutes (25th percentile 270, 75th 420); 96% spread by 2 hours or more and none starts at the same time every day ([feed measurements](/docs/research/apu.md#apspace-timetable-feed-measurements)). A single daily alarm is wrong for almost everyone.
 
 **Week to week.** A repeating alarm per weekday mostly holds inside a teaching block and fails across a break. Measured for this doc on 5 November 2026 from the [feed] file then served (ETag `c9d8d238…`, lecturer fields dropped in memory), comparing each intake-group's first in-person start on the same weekday:
 
@@ -55,7 +55,7 @@ Contents:
 **The file everyone copies is old, and the copies die quietly.**
 
 - The feed was last written 28 October 2026 at 09:39:49 MYT and was unchanged at 06:11 MYT on 5 November; APSpace loads the same file without a login ([APU feed](/docs/research/apu.md#timetable-feed-change-behaviour)).
-- Of the original and 40 [forks][cron-forks] of the most-forked student sync, 1 schedule was active on 5 November; 34 were `disabled_inactivity`, 3 `disabled_fork` and 3 had no workflow. GitHub disables scheduled workflows on forks by default and after 60 days without activity, with no promised warning ([GitHub rules](/docs/research/rules-and-guarantees.md#github-disables-scheduled-workflows)).
+- Of the original and 40 [forks][cron-forks] of the most-forked student sync, 1 schedule was active on 5 November; 34 were `disabled_inactivity`, 3 `disabled_fork` and 3 had no workflow. GitHub disables scheduled workflows on forks by default and after 60 days without activity, with no promised warning ([GitHub rules](/docs/research/iot-and-network.md#github-disables-scheduled-workflows)).
 - A bot author's parents kept asking "What time is your class starting for tomorrow?" ([bot README][dbot]). Automation builders name the same pain: "A run can finish green and still do nothing" ([automation that survives](/docs/research/social.md#automation-that-survives-daily-use)).
 
 **Strongest disconfirming evidence:**
@@ -108,7 +108,7 @@ On a night with no announcement and every receipt in, the agent's only work is o
 
 ### Phones by OS
 
-Limits per setup are in [which phone setups survive](/docs/research/phones-and-pi.md#which-phone-setups-survive-for-days); the alarm facts are in [setting alarms without a person](/docs/research/rules-and-guarantees.md#setting-alarms-from-a-phone-without-a-person).
+Limits per setup are in [which phone setups survive](/docs/research/iot-and-network.md#which-phone-setups-survive-for-days); the alarm facts are in [setting alarms without a person](/docs/research/iot-and-network.md#setting-alarms-from-a-phone-without-a-person).
 
 **Android, the documented path:**
 
@@ -116,20 +116,20 @@ Limits per setup are in [which phone setups survive](/docs/research/phones-and-p
 - **At 21:45, on charger connected, and at 05:15:** an HTTP GET to the Apps Script `doGet` (intake, group, token). It first dismisses any active `Bangun` alarm that no longer matches, and with a class tomorrow sets a one-off alarm labelled `Bangun`. `ACTION_DISMISS_ALARM` prompts when more than one alarm matches, so the flow keeps at most one active; whether dismissing an upcoming alarm needs a tap is part of the switch-off test. Then it POSTs a receipt: alarm time or "none", source (feed or announcement), fetch milliseconds, or the error text.
 - **On a fetch error:** a phone notification ("Bangun couldn't confirm tomorrow: …") and no alarm change.
 - **Events:** alarm dismissed posts `woke` (whether each app exposes this event is checked on 6 November); leaving home Wi-Fi posts `left`. Each carries a timestamp, never coordinates. A week of `woke` to `left` gaps suggests a lead time; the student decides.
-- **Needs:** battery optimisation off and the phone on its charger at night, which takes it out of Doze ([Android limits](/docs/research/phones-and-pi.md#android-background-limits)). Samsung, Xiaomi and OnePlus may still kill the app, which the missing-receipt rule exists to catch.
+- **Needs:** battery optimisation off and the phone on its charger at night, which takes it out of Doze ([Android limits](/docs/research/iot-and-network.md#android-background-limits)). Samsung, Xiaomi and OnePlus may still kill the app, which the missing-receipt rule exists to catch.
 
 **iPhone, unverified until the kill test:**
 
 - **Setup once, by hand:** a setup Shortcut asks Apps Script which alarm times the student's intake-group needs in the feed window (each distinct first-class start minus their lead time) and creates them, labelled and off. That is a median of 6 alarms per intake-group, 8 at the 90th percentile and 11 at most (same file), not a grid of 27.
 - **Time of Day 21:45 and 05:15, Run Immediately:** Get Contents of URL, then Toggle Alarm turns on the matching alarm and the rest off, or all off with no class, then a receipt POST. If the needed time has no alarm yet (a new time from a change), it posts that and notifies the student to rerun setup.
 - **Events:** the Alarm trigger "is stopped" posts `woke`; Leave home posts `left`; no coordinates leave the phone.
-- **Not verified:** whether Toggle Alarm runs without a prompt inside a Run Immediately automation. Apple lists the alarm actions only by name, and its iOS 27 guide says "You also may need to set individual actions to run automatically" ([Shortcuts automations](/docs/research/phones-and-pi.md#ios-shortcuts-personal-automations)). Toggle-only avoids deletion, which a community guide says needs "Allow Deleting Without Confirmation" on iOS 18.
+- **Not verified:** whether Toggle Alarm runs without a prompt inside a Run Immediately automation. Apple lists the alarm actions only by name, and its iOS 27 guide says "You also may need to set individual actions to run automatically" ([Shortcuts automations](/docs/research/iot-and-network.md#ios-shortcuts-personal-automations)). Toggle-only avoids deletion, which a community guide says needs "Allow Deleting Without Confirmation" on iOS 18.
 
 ### The Pi watcher
 
-- **Service:** a Pi 5 at a teammate's home on Ethernet and the official 27 W supply, a systemd unit with `Restart=always` and `WatchdogSec`, and the hardware watchdog at about 10 seconds ([keeping it alive](/docs/research/phones-and-pi.md#services-and-watchdogs)). It boots by itself when power returns.
+- **Service:** a Pi 5 at a teammate's home on Ethernet and the official 27 W supply, a systemd unit with `Restart=always` and `WatchdogSec`, and the hardware watchdog at about 10 seconds ([keeping it alive](/docs/research/iot-and-network.md#services-and-watchdogs)). It boots by itself when power returns.
 - **Every 10 minutes:** a conditional GET with `If-None-Match`, logging status (304, 200 or error), latency, ETag and `Last-Modified`. On a 200 it downloads the 1.1 MB file, drops `NAME`, `SAMACCOUNTNAME` and `LECTID` in memory, keeps the subscribed intakes, diffs them and posts the diff. It keeps that filtered copy, which a 304 confirms is current, so a new subscriber's intake posts without a fresh download.
-- **Heartbeat every 10 minutes:** uptime, `vcgencmd get_throttled`, SoC temperature and the last poll status ([power and undervoltage](/docs/research/phones-and-pi.md#power-undervoltage-and-the-rtc)). The reply carries the subscribed intakes and any drill flag.
+- **Heartbeat every 10 minutes:** uptime, `vcgencmd get_throttled`, SoC temperature and the last poll status ([power and undervoltage](/docs/research/iot-and-network.md#power-undervoltage-and-the-rtc)). The reply carries the subscribed intakes and any drill flag.
 - **At 21:50:** it checks the Google side: a canary `doGet` answers, and the Apps Script gap check ran in the last 20 minutes. If either fails it sends an [ntfy] push to the owner. It also pushes on days 12 and 13 after the last credential refresh, because a workflow whose credentials expired can't remind anyone.
 - **Why a Pi:** a watcher can't certify itself, so the outside half sits off Google. It also polls from a residential Malaysian line, as students' phones do.
 
@@ -137,7 +137,7 @@ Limits per setup are in [which phone setups survive](/docs/research/phones-and-p
 
 ### The Apps Script feeder
 
-- **Where:** a web app writing a Sheet in the licensed Workspace domain, the no-card path the connectors can read live ([Pi to Apps Script](/docs/research/phones-and-pi.md#pi-to-apps-script-and-sheets)). Tabs: `polls`, `heartbeats`, `health`, `sessions` (no lecturer fields), `feed_diffs`, `changes`, `subscribers`, `receipts` and `events`. Each row stores the device time and the receive time.
+- **Where:** a web app writing a Sheet in the licensed Workspace domain, the no-card path the connectors can read live ([Pi to Apps Script](/docs/research/iot-and-network.md#pi-to-apps-script-and-sheets)). Tabs: `polls`, `heartbeats`, `health`, `sessions` (no lecturer fields), `feed_diffs`, `changes`, `subscribers`, `receipts` and `events`. Each row stores the device time and the receive time.
 - **`doGet` for phones:** tomorrow's first session (in person, or online too if chosen) after approved `changes`, minus lead time. It answers only if the Pi's last poll is under 20 minutes old and returned 304 or 200; otherwise it returns the error and its time. `doGet` and `doPost` don't spend trigger quota.
 - **10-minute time trigger:** when the heartbeat gap passes 25 minutes, it makes one conditional GET of the feed itself (to tell a dead feed from a dead Pi) and emails a `watcher-silent` marker with both facts to the desk inbox. It sends from a different teammate's account than the desk, so the Gmail trigger sees received mail ([triggers](/docs/research/gemini-enterprise.md#triggers-and-schedules)). It writes its last-run time for the Pi to check.
 - **Status page and drill link:** a `doGet` page shows feed age, last poll, watcher uptime and receipt completeness, never timetable contents. A tokenised drill link sets a flag; the Pi pauses heartbeats for 60 minutes, labelled `drill`, at most once every 3 hours.
@@ -261,10 +261,10 @@ Remote, with no APU staff, 6–8 November:
 
 - **Interviews (6–8, two rounds: 6 and 8 November):**
   - **2–3 student tool builders:** the maintainers of APLife and APSync, the Discord bot's author and the one active fork, asked for a 15-minute call by a public issue or discussion on their repos. Why they built it, how often the feed changed, what broke.
-  - **2–3 class reps or volunteers:** through the hackathon Discord (about 212 members), the GDG on Campus APU chapter (3,128 members) and teammates' intake WhatsApp groups ([communities](/docs/research/everyday-reddit.md#communities-found)). How announcements arrive, how many came last month, how long relaying takes. This is the first count of announcement volume, since no source has one.
-  - **2 commuting students:** by public replies in r/malaysiauni attendance and timetable threads ([recruiting](/docs/research/everyday-reddit.md#how-a-remote-team-could-use-them)). Their alarm habit and their last late or missed class.
+  - **2–3 class reps or volunteers:** through the hackathon Discord (about 212 members), the GDG on Campus APU chapter (3,128 members) and teammates' intake WhatsApp groups ([communities](/docs/research/everyday.md#communities-found)). How announcements arrive, how many came last month, how long relaying takes. This is the first count of announcement volume, since no source has one.
+  - **2 commuting students:** by public replies in r/malaysiauni attendance and timetable threads ([recruiting](/docs/research/everyday.md#how-a-remote-team-could-use-them)). Their alarm habit and their last late or missed class.
 - **Timed observation (6–7 November):** on a call with consent, 5 students check tomorrow's first class and set their alarm their usual way; time from opening the app to alarm set, and any wrong reading. If a real announcement arrives, the relay is timed too: the lecturer's mail, the rep's post, and each classmate's calendar update, then the same item through Bangun.
-- **Survey (6–8 November):** one post each in r/malaysiauni, the hackathon Discord, the GDG chapter and intake WhatsApp groups, offering a survey swap or an RM5 Touch 'n Go draw per local norms ([recruiting norms](/docs/research/everyday-reddit.md#what-recruiting-looks-like-there)). Questions: one fixed alarm, one per weekday, or set nightly; prep and travel minutes; the channel of the last change; announcements a month; ever late, absent or a wasted trip because of a change. APU survey posts often draw almost nothing, so interviews carry the research.
+- **Survey (6–8 November):** one post each in r/malaysiauni, the hackathon Discord, the GDG chapter and intake WhatsApp groups, offering a survey swap or an RM5 Touch 'n Go draw per local norms ([recruiting norms](/docs/research/everyday.md#what-recruiting-looks-like-there)). Questions: one fixed alarm, one per weekday, or set nightly; prep and travel minutes; the channel of the last change; announcements a month; ever late, absent or a wasted trip because of a change. APU survey posts often draw almost nothing, so interviews carry the research.
 - **Public posts as evidence:** the dated threads in [the problem](#the-problem-a-first-class-that-moves).
 
 ## Impact and measurement
@@ -309,7 +309,7 @@ Nothing waits on APU saying yes. If APU objects to feed use, the stop switch tur
 - **Credentials:** schedules run on the author's credentials, which expire 14 days after refresh. Refresh on 9 November covers to 23 November; the Pi's push on days 12 and 13 is the reminder.
 - **Quotas:** Standard pools 160 assistant queries per user a day, resetting at 4:00 PM MYT. **Inference:** one Night watch run a night plus one Change desk run per forward or marker stays far below that; N6 lists any forward a failed run left behind.
 - **Who keeps what running, 11–14 November, from home:**
-  - **Pi:** the teammate who hosts it, on Ethernet and the official supply; they check the status page morning and evening, others reach it over Tailscale SSH ([remote access](/docs/research/phones-and-pi.md#network-and-remote-access)), and OS updates are frozen from 10 to 14 November.
+  - **Pi:** the teammate who hosts it, on Ethernet and the official supply; they check the status page morning and evening, others reach it over Tailscale SSH ([remote access](/docs/research/iot-and-network.md#network-and-remote-access)), and OS updates are frozen from 10 to 14 November.
   - **Phones:** each teammate's own phone on its charger overnight with the flow on.
   - **Approvals:** the seat holder checks **Needs Review** at 22:00 and 07:00.
 - **When something loses power or network (what a reviewer sees):**
@@ -411,8 +411,8 @@ The panel's final mean scores on the 1–5 scale, with weights from the [scoring
 - [APSpace timetable feed](/docs/research/apu.md#apspace-timetable-feed): endpoints, schema, change behaviour and personal data.
 - [Rules and guarantees](/docs/research/rules-and-guarantees.md): the re-verified feed measurements, GitHub's schedule rules and the alarm actions.
 - [APU student-built tools](/docs/research/competition.md#apu-student-built-tools): the timetable tools students keep rebuilding.
-- [Phones and Raspberry Pi](/docs/research/phones-and-pi.md): Shortcuts, Android limits, watchdogs and the Apps Script path.
+- [Phones and Raspberry Pi](/docs/research/iot-and-network.md): Shortcuts, Android limits, watchdogs and the Apps Script path.
 - [Gemini Enterprise](/docs/research/gemini-enterprise.md): triggers, approvals, actions, quotas and reviewer access.
-- [Social research](/docs/research/social.md) and [Reddit research](/docs/research/everyday-reddit.md): the student posts and where to recruit.
+- [Social research](/docs/research/social.md) and [Reddit research](/docs/research/everyday.md): the student posts and where to recruit.
 
 [dbot]: https://github.com/notedwin-dev/ApSpace-Discord-Bot
