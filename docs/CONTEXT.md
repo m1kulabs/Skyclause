@@ -36,6 +36,8 @@ The repo allows only real public data, never mock or sample data, with no fallba
 - **Allowed:** live readings from the team's own phones or boards; a published real dataset replayed as a stream, labelled as a replay; a real sensor log the team recorded, once published with its provenance, then replayed; a 3–4 minute video recorded from the live system running on real data, labelled as a recording with its capture date. The video was ruled in after the briefing, where NTT DATA asked for one.
 - **Forbidden:** synthetic or random readings; recorded data shown when a live source fails (already in the rule); a video that stands in for live access. Reviewers still get the live system.
 
+On 4 November 2026 the user added one case: mock GPS is allowed in tests and in the recorded demo, and doesn't need a label. **Inference:** this covers positions only. Feeds, phones, network, and cloud stay real, results measured from mocked runs aren't evidence, and the team doesn't claim a mocked run happened at a real place.
+
 The case-by-case table for sensor data is in [IoT and network](/docs/research/iot-and-network.md#real-versus-simulated-data).
 
 [project conventions]: /docs/references/project-conventions.md
