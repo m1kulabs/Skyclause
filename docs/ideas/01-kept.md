@@ -40,7 +40,7 @@ Contents:
 
 All three cross-set scorers ranked Kept first and proposed folding the other two into it. The merge keeps Kept's grading loop and Done watch as the spine and takes from the others only what makes a verdict fairer or more actionable.
 
-- **[Kept](/docs/ideas/opus/01-kept.md), the spine:**
+- **[Kept](/docs/ideas/opus-01/01-kept.md), the spine:**
   - Kept: the on-device counter, the Sheet ledger and its deterministic match, the nightly grade, Done → watch → reopen, Gmail evidence requests, the Friday late-and-weekend rule, and the Microsoft 365 mapping.
   - Changed: three workflows, not four. The seven daily peak checks are gone: a same-hour alert still waits for an approval click, the desk acts on patterns rather than single buses, and one scorer called four workflows heavy for three students. The feeder emails the team when a counter goes silent, and rain now also gates detector trust (R4).
   - Dropped: the crowd-check and name-collision claims, which cite no source.
@@ -246,7 +246,7 @@ The riskiest pieces come first: the licence and Jira actions, then counter accur
 
 ## See also
 
-- Source ideas: [Kept](/docs/ideas/opus/01-kept.md), [LastLink](/docs/ideas/astra/02-lastlink.md), and [Kuyoh Shuttle Sentinel](/docs/ideas/argon/02-kuyoh-shuttle-sentinel.md).
+- Source ideas: [Kept](/docs/ideas/opus-01/01-kept.md), [LastLink](/docs/ideas/astra/02-lastlink.md), and [Kuyoh Shuttle Sentinel](/docs/ideas/argon/02-kuyoh-shuttle-sentinel.md).
 - [Social research](/docs/research/social.md), [competition](/docs/research/competition.md), [APU documents and systems](/docs/research/apu.md), [public data sources](/docs/research/data-sources.md), [Gemini Enterprise](/docs/research/gemini-enterprise.md), [IoT and network](/docs/research/iot-and-network.md), and [judging](/docs/research/judging.md).
 - The [Campus Connect schedule V1_20261022][shuttle PDF], the [shuttle page](https://www.apu.edu.my/shuttle-services-campus-connect), and the [data ruling].
 

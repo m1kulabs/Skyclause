@@ -1,4 +1,4 @@
-# Opus idea ranking
+# Opus-01 idea ranking
 
 Five product ideas for the APU Cloud Innovation Hackathon 2026, ranked against NTT DATA's five spoken judging points and the related criteria in [CONTEXT], after four rounds of ideation and scoring on 3–4 November 2026. Each idea has its own file; this page gives the ranking, the scoring matrix, how the ideas were found, and what was cut.
 
