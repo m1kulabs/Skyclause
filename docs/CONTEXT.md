@@ -249,6 +249,9 @@ The [brief's open questions](/docs/BRIEF.md#open-questions) list what the organi
 - [Public data sources]: the live data catalogue per track.
 - [IoT and network]: Google Cloud IoT architecture, sensors, boards, protocols, and pitfalls.
 - [Social research](/docs/research/social.md): pain points from X, Reddit, and other platforms.
+- [Everyday signals on X](/docs/research/everyday-x.md) and [on Reddit and other platforms](/docs/research/everyday-reddit.md): students' lives away from campus, and which phone and Pi tools people keep using.
+- [Phones and Raspberry Pi 5](/docs/research/phones-and-pi.md): what phones and a Pi 5 can sense, run and serve unattended from a home.
+- [Rules and guarantees](/docs/research/rules-and-guarantees.md): APU, provider and platform rules re-checked at their sources, and timetable feed measurements.
 
 [brief]: /docs/BRIEF.md
 [briefing]: /docs/sources/briefing-session/transcript.md
