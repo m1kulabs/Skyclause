@@ -47,9 +47,9 @@ The research distinguishes a complaint, documented existing capability, and an o
 | Phone-experiment discussion describes setup and interpretation difficulties              | Sensor/protocol integrity is worth investigating                                  | That FieldPair improves scientific validity or has local demand   |
 | Official incumbent documentation                                                         | Remote access, measurement capture, validation and meeting checks already exist   | An exhaustive market census or proof a new seam is unique         |
 
-Post URLs, dates, access limits and paraphrases are in the [Reddit report](/docs/research/sol-reddit-signals.md) and [X report](/docs/research/sol-x-signals.md). Current platform and incumbent checks are in [Sol platform research](/docs/research/sol-platform-and-incumbents.md). Source failures remain visible; confidence is not upgraded merely because authenticated retrieval was attempted.
+Post URLs, dates, access limits and paraphrases are in the [Reddit report](/docs/research/everyday.md) and [X report](/docs/research/everyday.md). Current platform and incumbent checks are in [Sol platform research](/docs/research/gemini-enterprise.md). Source failures remain visible; confidence is not upgraded merely because authenticated retrieval was attempted.
 
-The additional [phyphox forum signal](/docs/research/sol-platform-and-incumbents.md#phone-experiment-signals) reports actual/requested sampling differences and cross-phone file loading, then resolution through existing support. It sharpens FieldPair's compatibility check while challenging whether a new product is needed. The user's student status and any unmet team workflow remain unknown.
+The additional [phyphox forum signal](/docs/research/everyday.md#phone-sensor-experiment-threads) reports actual/requested sampling differences and cross-phone file loading, then resolution through existing support. It sharpens FieldPair's compatibility check while challenging whether a new product is needed. The user's student status and any unmet team workflow remain unknown.
 
 ## Round one: diverge
 
@@ -177,6 +177,6 @@ Three- and six-month dates in the product briefs are **5 February and 5 May 2027
 ## Sources
 
 - [Hackathon brief](/docs/BRIEF.md) and [context](/docs/CONTEXT.md): event facts and explicitly marked inferences. The supplied capture is dated 3 November; no claim that a new official rubric was checked today.
-- [Reddit and related social signals](/docs/research/sol-reddit-signals.md): original pain reports, evidence limits and incumbent comparisons.
-- [X signals and retrieval audit](/docs/research/sol-x-signals.md): authenticated read attempts and separately sourced public posts, with any failures retained.
-- [Platform and incumbent checks](/docs/research/sol-platform-and-incumbents.md): current primary technical sources and additional original Reddit/phyphox forum signals; live tenant compatibility remains unverified.
+- [Reddit and related social signals](/docs/research/everyday.md): original pain reports, evidence limits and incumbent comparisons.
+- [X signals and retrieval audit](/docs/research/everyday.md): authenticated read attempts and separately sourced public posts, with any failures retained.
+- [Platform and incumbent checks](/docs/research/gemini-enterprise.md): current primary technical sources and additional original Reddit/phyphox forum signals; live tenant compatibility remains unverified.

@@ -16,13 +16,13 @@ Contents:
 
 **User/owner:** the integration lead of a 2–5 person student team sharing one real Pi at a member's home. Job: “Before I change or demonstrate it, let me reproduce the last trusted observation and see what my teammate left unresolved.” Choose **Intelligent Automation & Digital Transformation**.
 
-A student asked how members of a programming group could continuously test Git code on one Pi from their separate machines, rather than gathering around it. This is a direct description of the collaboration problem, from outside APU and an older thread; it is not evidence that current tools leave this gap. [Original comment](https://www.reddit.com/r/raspberry_pi/comments/jzubxl/comment/ge6vrc3/), [research and date limits](/docs/research/sol-reddit-signals.md).
+A student asked how members of a programming group could continuously test Git code on one Pi from their separate machines, rather than gathering around it. This is a direct description of the collaboration problem, from outside APU and an older thread; it is not evidence that current tools leave this gap. [Original comment](https://www.reddit.com/r/raspberry_pi/comments/jzubxl/comment/ge6vrc3/), [research and date limits](/docs/research/everyday.md).
 
 No campus access, institutional administrator, lecturer, lab booking or private student record is involved. One team and one device give immediate value; a marketplace or campus sensor population is unnecessary.
 
 ## The useful difference
 
-Pi Connect already offers remote access; Arduino Cloud already offers shared telemetry and device workflows; labgrid already manages exclusive resource access. See [incumbent checks](/docs/research/sol-platform-and-incumbents.md#existing-products) and the [social report](/docs/research/sol-reddit-signals.md). None of those features alone is BenchRelay's invention.
+Pi Connect already offers remote access; Arduino Cloud already offers shared telemetry and device workflows; labgrid already manages exclusive resource access. See [incumbent checks](/docs/research/competition.md#incumbents-checked-against-official-documentation) and the [social report](/docs/research/everyday.md). None of those features alone is BenchRelay's invention.
 
 The proposed seam is a **handoff receipt**: device/session ID, actual running revision, declared configuration, observation IDs, unresolved task IDs, acceptance conditions and next person's reproduction result. A receipt becomes outdated when revision or declared configuration changes. It is a team record, not cryptographic proof of physical truth.
 
@@ -59,7 +59,7 @@ flowchart LR
 | Jira Cloud, third party             | Read blockers and create/update real corrective work after approval       | Team owns site; no APU IT queue; source error stops that decision                                                  |
 | Enterprise workflow                 | Explain context-dependent handoff problems and prepare next action        | Asynchronous; no subsecond lock/control promises                                                                   |
 
-The documented capabilities and account limits are in [platform research](/docs/research/sol-platform-and-incumbents.md#platform-constraints). Direct GitHub workflow integration and custom MCP are outside the critical path. An ingest adapter may record a revision from a real checkout without asserting that the model inspected GitHub.
+The documented capabilities and account limits are in [platform research](/docs/research/gemini-enterprise.md#platform-constraints-and-design-consequences). Direct GitHub workflow integration and custom MCP are outside the critical path. An ingest adapter may record a revision from a real checkout without asserting that the model inspected GitHub.
 
 The network matters because two remote people must agree which run arrived and which state it describes. Buffer only actual unsent readings; on reconnect upload them as **historical backlog**, with capture and receipt timestamps. A latest status cannot use an old successful reading after failure. Keep last-run history inspectable, separated from live state.
 

@@ -35,9 +35,9 @@ Contents:
 
 ## Problem
 
-**Who and how often.** Malaysian renters and students lose home internet and power. A Lowyat member paying RM136 a month wrote that "almost every week will have outage that would last randomly from half an hour to entire day", with 82 posts in December 2025. A Malaysian X user reported "Unifi down almost 2 days" in June 2026, and another wrote of an outage lasting 13 days with nine calls to 100 and an MCMC website that "doesn't work either" ([everyday Reddit](/docs/research/everyday-reddit.md#water-power-and-home-internet-outages), [everyday X](/docs/research/everyday-x.md#home-internet-water-and-power-cuts)).
+**Who and how often.** Malaysian renters and students lose home internet and power. A Lowyat member paying RM136 a month wrote that "almost every week will have outage that would last randomly from half an hour to entire day", with 82 posts in December 2025. A Malaysian X user reported "Unifi down almost 2 days" in June 2026, and another wrote of an outage lasting 13 days with nine calls to 100 and an MCMC website that "doesn't work either" ([everyday Reddit](/docs/research/everyday.md#water-power-and-home-internet-outages), [everyday X](/docs/research/everyday.md#water-power-and-home-internet-outages)).
 
-**The lived question is "is it just me?"** A Kerala developer built a PIN-code power-cut tracker for "is it only my house, or the whole area?" (25 April 2026, 320 points). The Malaysian analogues are a TRX blackout thread (3,017 points) and the Johor Jaya substation fire of 16 October 2026 (216 points) ([everyday Reddit](/docs/research/everyday-reddit.md#water-power-and-home-internet-outages)).
+**The lived question is "is it just me?"** A Kerala developer built a PIN-code power-cut tracker for "is it only my house, or the whole area?" (25 April 2026, 320 points). The Malaysian analogues are a TRX blackout thread (3,017 points) and the Johor Jaya substation fire of 16 October 2026 (216 points) ([everyday Reddit](/docs/research/everyday.md#water-power-and-home-internet-outages)).
 
 **The rules that make a timestamp valuable** (all from [rules and guarantees](/docs/research/rules-and-guarantees.md), checked 5 November 2026):
 
@@ -50,7 +50,7 @@ Contents:
 **Strongest disconfirming evidence:**
 
 - Unifi already offers proactive alerts. Its own page lists Proactive Service Alerts over WhatsApp and MyUnifi, where replying "Y" confirms the fault and the "report will be auto-created", and a Malaysian X user learned of their outage from such a WhatsApp message. This can cover the plain single-customer line fault Cap Masa would otherwise lead with, which is why it leads with the cases below instead.
-- No thread describes classes or exams lost to a home outage, and no APU post describes a rejected EC claim for connectivity ([disconfirming signals](/docs/research/everyday-reddit.md#disconfirming-signals-and-gaps)).
+- No thread describes classes or exams lost to a home outage, and no APU post describes a rejected EC claim for connectivity ([disconfirming signals](/docs/research/everyday.md#disconfirming-signals-and-gaps)).
 - Outages may be too rare to show in a week: Lowyat replies to "Is unifi down today?" are often "No issue".
 - The rebate is RM50, and only for 100 Mbps and above Unifi plans.
 - The 2018 EC policy reportedly says a purely personal network fault may not qualify. This is **not verified**: the PDF returned 404 and the claim came from a search summary.
@@ -65,26 +65,26 @@ Contents:
 
 ## What people do today
 
-| Substitute                                                                                               | What it does                                                                                                                                          | What is left                                                                                                                                 |
-| -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Uptime Kuma, Speedtest Tracker, Smokeping on a Pi or NAS (self-hosted)                                   | Log outages and speed to answer "Is the internet down?!" ([everyday Reddit](/docs/research/everyday-reddit.md#water-power-and-home-internet-outages)) | They log; they do not start the ISP ticket, track the 24 h and 3-day clocks, or write the EC and MCMC text                                   |
-| Unifi proactive alerts, MyUnifi, EasyFix, Unifi Cares WhatsApp                                           | Notify and auto-create a ticket for some outages; EasyFix and MyUnifi take reports                                                                    | Not sent for multi-customer or already-reported faults; nothing for other ISPs or power; the student still needs a timeline for MCMC and APU |
-| Status boards (a Bluesky status bot posted "Unifi is reportedly down for some users" on 4 November 2026) | Crowd view of one ISP                                                                                                                                 | Nothing about your line, your deadline or your claim                                                                                         |
-| Asking the class WhatsApp, neighbours, the balcony                                                       | "Is it just me?"                                                                                                                                      | No timestamps, no filing                                                                                                                     |
-| Dual-WAN routers with 5G failover, a Home Assistant phone left on a charger, a UPS with NUT on a Pi      | Keep working or detect a parent's outage                                                                                                              | Detection only; no claim or evidence                                                                                                         |
+| Substitute                                                                                               | What it does                                                                                                                                   | What is left                                                                                                                                 |
+| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Uptime Kuma, Speedtest Tracker, Smokeping on a Pi or NAS (self-hosted)                                   | Log outages and speed to answer "Is the internet down?!" ([everyday Reddit](/docs/research/everyday.md#water-power-and-home-internet-outages)) | They log; they do not start the ISP ticket, track the 24 h and 3-day clocks, or write the EC and MCMC text                                   |
+| Unifi proactive alerts, MyUnifi, EasyFix, Unifi Cares WhatsApp                                           | Notify and auto-create a ticket for some outages; EasyFix and MyUnifi take reports                                                             | Not sent for multi-customer or already-reported faults; nothing for other ISPs or power; the student still needs a timeline for MCMC and APU |
+| Status boards (a Bluesky status bot posted "Unifi is reportedly down for some users" on 4 November 2026) | Crowd view of one ISP                                                                                                                          | Nothing about your line, your deadline or your claim                                                                                         |
+| Asking the class WhatsApp, neighbours, the balcony                                                       | "Is it just me?"                                                                                                                               | No timestamps, no filing                                                                                                                     |
+| Dual-WAN routers with 5G failover, a Home Assistant phone left on a charger, a UPS with NUT on a Pi      | Keep working or detect a parent's outage                                                                                                       | Detection only; no claim or evidence                                                                                                         |
 
 **Saturated tier, and why this angle differs.** Wi-Fi and network diagnosis, and telemetry-to-ticket, are saturated ideas in the [crowd map](/docs/research/competition.md#saturation-tiers), and a reviewer who has read 200 entries will pattern-match a Pi that probes Moodle and opens a Jira ticket. The crowd's version watches the campus network and files IT tickets for APU. Cap Masa watches the student's own home, files nothing itself, and ends in a claim the student sends to a provider, a regulator or APU, which is a different user and a different deliverable. Even so, the headline must be the filing and the clocks, never a latency chart. **Inference:** the crowd is unlikely to build the home-ISP rebate and EC form of this idea, though it may build the probe half.
 
 ## How it works
 
-**Devices and setup** (per [phones and Pi](/docs/research/phones-and-pi.md)):
+**Devices and setup** (per [phones and Pi](/docs/research/iot-and-network.md)):
 
 - **Pi 5 (8 GB), wired to the home router, at a teammate's or recruited student's home.** A systemd service probes every 60 s: gateway round trip, DNS, TCP and HTTPS to ISP-neutral anchors, and APU's Moodle, APSpace and Microsoft sign-in pages (GET of the public login page, no credentials). It also writes a heartbeat row. The uplink is Ethernet, with the phone hotspot on `wlan0` as backup, so a "line down" row still reaches the cloud over mobile data.
 - **Android phone on the bedside charger** (Home Assistant Companion or MacroDroid): reports "charger disconnected" and "Wi-Fi lost" over mobile data. Battery optimisation must be off.
-- **iPhone:** a Shortcuts personal automation on "Charger Is Disconnected" that runs without asking ([Shortcuts](/docs/research/phones-and-pi.md#ios-shortcuts-personal-automations)). Events only: iOS has no interval trigger, so no phone-side probing.
+- **iPhone:** a Shortcuts personal automation on "Charger Is Disconnected" that runs without asking ([Shortcuts](/docs/research/iot-and-network.md#ios-shortcuts-personal-automations)). Events only: iOS has no interval trigger, so no phone-side probing.
 - **Probes from other homes:** teammates on other ISPs run the same Pi script, and the cross-home rows are the outside view. Adopting the Pi as a Globalping probe is optional and sits off the critical path.
 
-**Power is inferred, not seen.** A Pi can't observe a power cut while it happens. After it reboots, the gap between the last log entry and the new boot, plus `power_reset`, tells an outage from a watchdog or undervoltage reset ([power and the RTC](/docs/research/phones-and-pi.md#power-undervoltage-and-the-rtc)). The phone's charger-disconnected event gives an earlier live hint, but it too is a signal, not a confirmed cut: a phone can be unplugged by hand. Every power verdict is labelled "inferred" and counted separately.
+**Power is inferred, not seen.** A Pi can't observe a power cut while it happens. After it reboots, the gap between the last log entry and the new boot, plus `power_reset`, tells an outage from a watchdog or undervoltage reset ([power and the RTC](/docs/research/iot-and-network.md#power-undervoltage-and-the-rtc)). The phone's charger-disconnected event gives an earlier live hint, but it too is a signal, not a confirmed cut: a phone can be unplugged by hand. Every power verdict is labelled "inferred" and counted separately.
 
 **Network path.** Pi probes (Ethernet, hotspot backup) go over HTTPS to an Apps Script web app and into a Sheet row. On a state change the script saves a Drive file and sends a Gmail message to the student's own address. Gemini Enterprise workflows have no webhook trigger, so a polled Gmail or Drive trigger is the bridge ([triggers](/docs/research/gemini-enterprise.md#triggers-and-schedules)). Google's docs say to use "When an email is sent" for mail one sends to oneself, so that is the trigger to try first.
 
@@ -136,7 +136,7 @@ flowchart LR
 | Globalping                    | 3P       | Preview | Read only             | Optional outside view; the technical claim does not rest on it |
 | Slack                         | 3P       | GA      | Action                | Optional class-rep notice (the rep approves)                   |
 
-The Globalping connector's public API has no "list my measurements" endpoint, so whether it can find the team's own measurements is untested ([Globalping](/docs/research/phones-and-pi.md#globalping-probe), [connector note](/docs/research/gemini-enterprise.md#network-measurements-through-globalping)). Prove one live Sheet read and one reviewed Jira create first.
+The Globalping connector's public API has no "list my measurements" endpoint, so whether it can find the team's own measurements is untested ([Globalping](/docs/research/iot-and-network.md#globalping-probe), [connector note](/docs/research/gemini-enterprise.md#network-measurements-through-globalping)). Prove one live Sheet read and one reviewed Jira create first.
 
 ## Cloud, IoT, and network
 
@@ -160,7 +160,7 @@ The Globalping connector's public API has no "list my measurements" endpoint, so
 
 ## Research plan
 
-Remote, with no APU staff ([research notes](/docs/research/everyday-reddit.md#water-power-and-home-internet-outages)).
+Remote, with no APU staff ([research notes](/docs/research/everyday.md#water-power-and-home-internet-outages)).
 
 - **Where:** r/malaysiauni (recruiting works, but APU requests get 0 to 1 replies, so offer a swap or RM5), APU Discord and the intake groups the team can reach, and Lowyat Unifi threads for ISP-side interviewees.
 - **6 to 8 interviews (15 minutes, voice or text):** off-campus APU students, ideally on Unifi. The questions: the last time the net dropped near a deadline, what did you do and what did you have to show; have you ever filed an EC; do you know the 24 h rule; did you get Unifi's own alert; was any outage in the last 3 months left unticketed or unrebated; did you ever need a timeline for MCMC.
@@ -187,7 +187,7 @@ Remote, with no APU staff ([research notes](/docs/research/everyday-reddit.md#wa
 - **Unattended:** Pi probes every 60 s, the heartbeat, state-change emails, the Gmail-triggered workflow and the nightly schedule. Expect 5 days of rows and nightly runs in the Runs tab by assessment ([run history](/docs/research/gemini-enterprise.md#what-runs-without-anyone-signed-in)).
 - **Credentials:** scheduled runs use the author's delegated credentials, which expire every 14 days, so a refresh entry goes on the team calendar for 9 November. Event-triggered runs that fail with `RESOURCE_EXHAUSTED` are not retried.
 - **Quotas:** Standard allows 160 assistant queries a day per user, pooled. The schedule is nightly only, and usage per run is measured on 6 and 7 November.
-- **Who keeps devices up:** each teammate or recruited student keeps their Pi on the official 27 W supply and their Android phone charging at home, 11 to 14 November. Updates are frozen from 10 November, and logs leave the Pi promptly, because a power cut can corrupt SD storage and an overlay file system loses buffered logs ([Pi power cuts](/docs/research/phones-and-pi.md#power-cuts-and-sd-cards)).
+- **Who keeps devices up:** each teammate or recruited student keeps their Pi on the official 27 W supply and their Android phone charging at home, 11 to 14 November. Updates are frozen from 10 November, and logs leave the Pi promptly, because a power cut can corrupt SD storage and an overlay file system loses buffered logs ([Pi power cuts](/docs/research/iot-and-network.md#power-cuts-and-sd-cards)).
 - **Power loss:** a Pi on default settings boots by itself when power returns. A reviewer sees "no probe rows since HH:MM" and, after reboot, a power-inferred period.
 - **Network loss:** the hotspot carries a "line down" row; if both fail, the same "no rows" error shows.
 - **Reviewers fire a trigger** without touching a teammate's device: see [demo and review](#demo-and-review).
@@ -258,8 +258,8 @@ Weights are in the [scoring matrix](/docs/ideas/opus-03/00-ranking.md#scoring-ma
 - [Brief](/docs/BRIEF.md)
 - [Context](/docs/CONTEXT.md)
 - [Rules and guarantees](/docs/research/rules-and-guarantees.md)
-- [Everyday Reddit signals](/docs/research/everyday-reddit.md)
-- [Everyday X signals](/docs/research/everyday-x.md)
-- [Phones and Raspberry Pi 5](/docs/research/phones-and-pi.md)
+- [Everyday Reddit signals](/docs/research/everyday.md)
+- [Everyday X signals](/docs/research/everyday.md)
+- [Phones and Raspberry Pi 5](/docs/research/iot-and-network.md)
 - [Gemini Enterprise](/docs/research/gemini-enterprise.md)
 - [Competition](/docs/research/competition.md)

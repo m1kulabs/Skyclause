@@ -1,6 +1,6 @@
 # Rules and guarantees
 
-Public rules, provider guarantees, platform behaviours and one set of feed measurements that shape the off-campus problems of APU students, each re-checked against its primary source on 5 November 2026. Quotes are short; follow the link for the full text, and the APU pages stay APU's (see [Terms of use and robots.txt](/docs/research/apu.md#terms-of-use-and-robotstxt)).
+Public rules and provider guarantees that shape the off-campus problems of APU students, each re-checked against its primary source on 5 November 2026. Quotes are short; follow the link for the full text, and the APU pages stay APU's (see [Terms of use and robots.txt](/docs/research/apu.md#terms-of-use-and-robotstxt)).
 
 Contents:
 
@@ -17,11 +17,6 @@ Contents:
    1. [MCMC complaints for telco and broadband issues](#mcmc-complaints-for-telco-and-broadband-issues)
    1. [Semak Mule and NSRC 997](#semak-mule-and-nsrc-997)
    1. [EMGS processing target](#emgs-processing-target)
-1. [Platform behaviours](#platform-behaviours)
-   1. [GitHub disables scheduled workflows](#github-disables-scheduled-workflows)
-   1. [Tailscale Funnel and the client address](#tailscale-funnel-and-the-client-address)
-   1. [Setting alarms from a phone without a person](#setting-alarms-from-a-phone-without-a-person)
-1. [APSpace timetable feed measurements](#apspace-timetable-feed-measurements)
 1. [Not verified](#not-verified)
 1. [See also](#see-also)
 
@@ -119,40 +114,6 @@ All from the [Unifi Promise page][unifi] (checked 5 November 2026).
 - **Status updates:** the application form page says "Please check your email regularly for updates on your application status" (same site).
 - **Inference:** the target covers a complete application, not the whole renewal cycle the APU page puts at "around three (3) months" ([Student Visa / Pass][kb_visa]); the two numbers should not be compared as if they measured the same thing.
 
-## Platform behaviours
-
-### GitHub disables scheduled workflows
-
-- **Rules:** "In a public repository, scheduled workflows are automatically disabled when no repository activity has occurred in 60 days" and "When a public repository is forked, scheduled workflows are disabled by default" ([GitHub: disable and enable workflows][gh_disable]; checked 5 November 2026).
-- **Measurement on the most-forked APU timetable sync:** on 5 November 2026 the GitHub REST API listed the original repository and its 40 forks. 1 had an active schedule (67 runs, last 30 October 2026, success); 34 were `disabled_inactivity` (including the original), 3 were `disabled_fork`, and 3 had no workflow file. 7 of the 41 had any recorded run. Method: `gh api` for each repository's workflows and the latest run; the repository is described under [Who already uses the timetable feed](/docs/research/apu.md#who-already-uses-the-timetable-feed).
-- **Inference:** a student-built sync that nobody touches goes silent without telling anyone; the docs promise no warning.
-
-### Tailscale Funnel and the client address
-
-- **Docs are silent:** "Funnel traffic, which is publicly available, does not include identity headers"; the page does not mention `X-Forwarded-For` ([Tailscale serve headers][ts_headers]; checked 5 November 2026).
-- **Source file:** in `ipn/ipnlocal/serve.go` at commit [`e19eb27`][ts_serve] (committed 2 November 2026 21:42 UTC), the handler for Funnel ingress reads the `Tailscale-Ingress-Src` header ("want ip:port"; the comment says "srcAddr represents the source AddrPort and not that of the ingressPeer"). The reverse proxy then runs `r.Out.Header.Set("X-Forwarded-For", c.SrcAddr.Addr().String())`, which overwrites any value the client sent, and sets `Tailscale-Funnel-Request` to `?1` for Funnel requests.
-- **What this does not show:** a live request. **Inference:** a service behind `tailscale funnel` should see the visitor's IP address (without the port) in `X-Forwarded-For`; confirm with a request from mobile data before relying on it. Funnel setup is in [Public HTTPS without a card](/docs/research/phones-and-pi.md#public-https-without-a-card).
-
-### Setting alarms from a phone without a person
-
-- **Android intent:** `ACTION_SET_ALARM` "Activates an existing alarm or creates a new one" and "always enables the alarm"; `EXTRA_SKIP_UI`, "If true, the application is asked to bypass any intermediate UI" ([AlarmClock reference][android_alarm]; checked 5 November 2026). "Asked" matters: the clock app decides. The caller needs the `SET_ALARM` permission for related actions, and `ACTION_DISMISS_ALARM` prompts the user if more than one active alarm matches.
-- **Tasker:** the Set Alarm action sets "a new alarm in the default alarm clock application", and "If Confirm is not checked no user interaction will be required"; "on some devices, setting the alarm too close to the current time may result in the alarm being set for the next day" ([Tasker Set Alarm][tasker]; checked 5 November 2026).
-- **Automate:** the Alarm add block "adds an alarm in the default Clock app" and continues at once; Android supports only minute precision ([Automate Alarm add][automate]; checked 5 November 2026). The page says nothing about prompts.
-- **iOS actions:** Apple's page names "Create Alarm, Toggle Alarm, Get All Alarms, and Start Timer" as Shortcuts actions, listed as newly supported on macOS in the iOS 16.1 notes ([Shortcuts what's new][ios_new]; checked 5 November 2026). A community guide reports that deleting alarms without a prompt needs "Allow Deleting Without Confirmation" on iOS 18 ([Home Assistant community][ha_alarm]; checked 5 November 2026).
-- **Personal automations:** which triggers run without a prompt is already recorded in [iOS Shortcuts personal automations](/docs/research/phones-and-pi.md#ios-shortcuts-personal-automations); Android apps are under [Android automation apps and Termux](/docs/research/phones-and-pi.md#android-automation-apps-and-termux).
-- **Inference:** an Android phone can have an alarm created with no tap if the clock app honours `EXTRA_SKIP_UI` or Tasker is used with Confirm off; on iOS, creating and toggling alarms are documented actions, but no page I opened says they run without a prompt inside an automation.
-
-## APSpace timetable feed measurements
-
-Measurements made on 5 November 2026 (about 06:03 MYT). The feed itself is described in [APSpace timetable feed](/docs/research/apu.md#apspace-timetable-feed). The numbers below contain no lecturer names or other personal data.
-
-- **Method:** one `GET` of the public `weektimetable` file (1,138,362 bytes, gzip; `Last-Modified` 28 October 2026 01:39:49 GMT, same ETag as in the feed section). Lecturer fields were dropped in memory on load. The file holds 31,606 rows and 9,854 distinct sessions for 26 October to 22 November 2026. The three small scripts count rows by intake, date and first start time. An earlier run the same morning gave identical figures.
-- **First in-person class start varies within a week:** 953 intake-groups have three or more in-person days from 2 to 6 November. For them the gap between the earliest and latest daily first start has a median of 315 minutes (25th percentile 270, 75th percentile 420); 96% differ by 2 hours or more and none starts at the same time every day. "In person" excludes rooms and modules marked online.
-- **No sessions on 8 and 9 November:** the feed has no sessions on either date, and 10 to 13 November have 309 to 390 sessions a day, against about 500 to 570 on ordinary weekdays in the weeks either side.
-- **Intakes affected by the 9 November holiday:** 449 intakes have sessions in the week of 9 November, and 437 of them have sessions on a Monday of 2 or 16 November. **Inference:** those 437 lose a Monday on 9 November. The holiday is Deepavali (Sunday 8 November) with a Monday replacement day in Kuala Lumpur, per secondary listings such as [Wego][wego]; I did not find a government gazette to confirm it, and the feed does not label the empty days.
-- **Week-to-week first starts, measured again at about 06:11 MYT** (feed unchanged, same ETag): comparing each intake-group's first in-person start on the same weekday of consecutive teaching weeks, 26 October against 2 November kept 97.1% of 3,935 weekday slots the same (10.3% of 845 intake-groups had any change), while 2 November against 16 November, across the week of 9 November, changed 87.7% of 4,181 slots (76.9% moved, 5.9% gained a class, 4.9% lost one) in 99.8% of 855 intake-groups. Module sets were as stable across that gap as between ordinary weeks (574 of 859 identical), so **Inference:** classes were re-slotted rather than replaced. Over 26 October to 22 November, each intake-group has a median of 6 distinct first in-person start times (maximum 11, across 1,155 intake-groups).
-- **Intakes with no classes 9 to 15 November:** 466 intakes have sessions in the weeks of 26 October, 2 November and 16 November but none from 9 to 15 November. **Inference:** a scheduled week break; no source states it.
-
 ## Not verified
 
 - **Unifi Promise "total loss only", and exclusions of customer-premises faults and force majeure:** stated by a news site on the earlier guarantee, not by the current page ([SoyaCincau, 2021][soya]). Dropped.
@@ -160,16 +121,13 @@ Measurements made on 5 November 2026 (about 06:03 MYT). The feed itself is descr
 - **MCMC advice to "call 100" and wait about 15 working days before filing:** from a Reddit thread and a third-party wiki. The CFM FAQ states no required wait. Dropped.
 - **MCMC's own reply that a customer should go to the provider first:** an X post whose page returned HTTP 402 to my fetch; the wording came only from a search snippet. Dropped in favour of the CFM FAQ.
 - **Semak Mule's own wording** on what "No Records Found" means: the portal returned only its title; only the two secondary pages above were readable.
-- **Whether iOS runs Toggle Alarm unattended inside a Run Immediately automation:** no page I opened says so (the community guide covers deletion, and Apple's page lists only the action names).
-- **Android background launch limits** for alarm intents on recent Android versions, and iOS 26 or 27 behaviour for any alarm action: not opened.
-- **Whether `X-Forwarded-For` carries a real mobile-network address in a live Funnel request:** the source says so; a live test was not run.
 - **EMGS Hub push notifications per application stage:** not opened.
 - **The off-campus residences' Wi-Fi filtering** and the APResidence power-status dots: not part of the pages re-read here.
 
 ## See also
 
-- [APU's public documents, data, and systems](/docs/research/apu.md): the knowledge base, the feed and its terms
-- [Phones and Raspberry Pi](/docs/research/phones-and-pi.md): iOS Shortcuts, Android automation, public HTTPS from a Pi
+- [APU's public documents, data, and systems](/docs/research/apu.md): the knowledge base, the timetable feed with its 5 November measurements, and its terms
+- [IoT and network](/docs/research/iot-and-network.md): iOS Shortcuts, Android automation, public HTTPS from a Pi, and platform behaviours such as GitHub disabling idle scheduled workflows
 - [Gemini Enterprise](/docs/research/gemini-enterprise.md): connectors, approval gates and limits
 - [Public data sources](/docs/research/data-sources.md): live public APIs and datasets
 - [Project conventions](/docs/references/project-conventions.md): the real-data rule
@@ -190,13 +148,4 @@ Measurements made on 5 November 2026 (about 06:03 MYT). The feed itself is descr
 [abm]: https://www.abm.org.my/safe-online-banking/scam-alerts/do-you-know-you-can-check-suspicious-accounts-online/
 [nsrc]: https://www.malaysia.gov.my/en/categories/safety-and-community/cybersecurity/nsrc-997-hotline
 [emgs]: https://educationmalaysia.gov.my/get-in-touch/faq
-[gh_disable]: https://docs.github.com/en/actions/how-tos/manage-workflow-runs/disable-and-enable-workflows
-[ts_headers]: https://tailscale.com/s/serve-headers
-[ts_serve]: https://github.com/tailscale/tailscale/blob/e19eb275ea21790aac94be1a5eddcd20ebb40a35/ipn/ipnlocal/serve.go
-[android_alarm]: https://developer.android.com/reference/android/provider/AlarmClock
-[tasker]: https://tasker.joaoapps.com/userguide/en/help/ah_set_alarm.html
-[automate]: https://llamalab.com/automate/doc/block/alarm_add.html
-[ios_new]: https://support.apple.com/en-us/101583
-[ha_alarm]: https://community.home-assistant.io/t/sync-home-assistant-alarm-clock-to-iphone-alarms-using-shortcuts-ios-18/805595
-[wego]: https://blog.wego.com/deepavali-2026-malaysia-travel-plan/
 [soya]: https://soyacincau.com/2021/11/30/tm-unifi-service-guarantee-users-rebate-if-service-not-restored-in-24-hours/

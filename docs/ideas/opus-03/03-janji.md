@@ -75,11 +75,11 @@ Janji has no notes output. The only artefact is the said-versus-shipped ledger a
 
 ### Devices and setup per OS
 
-| Device                                          | Setup                                                                                                                                                                                                                                                                                                                                                                              | Unattended                                                                             |
-| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Any phone (Android or iPhone)                   | The lead records the wrap-up in the stock voice recorder, after spoken consent. The file reaches the Pi through the Tailscale app (a real install step for the recorder's phone) or an upload page on the Pi                                                                                                                                                                       | No: recording is a deliberate act, at the moment the group says "so who's doing what?" |
-| Pi 5 (8 GB, heatsink only, one teammate's home) | `whisper.cpp` base (the multilingual model; `ms`, `zh` and `id` are in whisper's language list ([whisper][whisper-lang])); an `inotify` job transcribes, writes the promise text, deletes the audio, POSTs the transcript text and logs bytes in, bytes out, seconds and `vcgencmd get_throttled`; `Restart=always`, hardware watchdog, updates frozen ([phones-and-pi][pp-alive]) | Yes                                                                                    |
-| Lead's laptop                                   | Nothing to install: the Sheet and the ledger email                                                                                                                                                                                                                                                                                                                                 | n/a                                                                                    |
+| Device                                          | Setup                                                                                                                                                                                                                                                                                                                                                                                | Unattended                                                                             |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| Any phone (Android or iPhone)                   | The lead records the wrap-up in the stock voice recorder, after spoken consent. The file reaches the Pi through the Tailscale app (a real install step for the recorder's phone) or an upload page on the Pi                                                                                                                                                                         | No: recording is a deliberate act, at the moment the group says "so who's doing what?" |
+| Pi 5 (8 GB, heatsink only, one teammate's home) | `whisper.cpp` base (the multilingual model; `ms`, `zh` and `id` are in whisper's language list ([whisper][whisper-lang])); an `inotify` job transcribes, writes the promise text, deletes the audio, POSTs the transcript text and logs bytes in, bytes out, seconds and `vcgencmd get_throttled`; `Restart=always`, hardware watchdog, updates frozen ([iot-and-network][pp-alive]) | Yes                                                                                    |
+| Lead's laptop                                   | Nothing to install: the Sheet and the ledger email                                                                                                                                                                                                                                                                                                                                   | n/a                                                                                    |
 
 If the lead types the promises into the Sheet instead of recording, the Pi drops out and the workflow still runs. An optional Discord voice bot on the Pi (`@discordjs/voice` 0.19.1 or later, where receive was fixed per [discord.js][djs]) is untested and not on the critical path.
 
@@ -136,7 +136,7 @@ flowchart LR
 ## Cloud, IoT, and network
 
 - **Cloud:** Gemini Enterprise is the core. It extracts promises, checks them against Drive and GitHub, and sends the ledger. Apps Script and Sheets are the feeder and the store.
-- **IoT:** the phone microphone captures the wrap-up and the Pi 5 transcribes it at the edge, so audio never leaves the house. This is bursty edge AI rather than a continuous sensor ([phones-and-pi][pp-takeaways]): ten 30-second windows at about 2.5 seconds each on whisper base is about 25 seconds of CPU, well short of the roughly 200 seconds a heatsink-only Pi tolerates before throttling ([thermal][pp-thermal], [speech to text][pp-stt]).
+- **IoT:** the phone microphone captures the wrap-up and the Pi 5 transcribes it at the edge, so audio never leaves the house. This is bursty edge AI rather than a continuous sensor ([iot-and-network][pp-takeaways]): ten 30-second windows at about 2.5 seconds each on whisper base is about 25 seconds of CPU, well short of the roughly 200 seconds a heatsink-only Pi tolerates before throttling ([thermal][pp-thermal], [speech to text][pp-stt]).
 - **Network:** the Tailscale path from phone to Pi, then HTTPS from Pi to Apps Script. The egress log (about 5 MB in, a few KB out, seconds, throttle flags) is shown beside the ledger, so the claim that audio stays home is visible rather than asserted. **Inference:** if the lead types promises, the Pi and the network path become decoration and Convergence falls, which is the main reason the recording path matters.
 
 ## Real data
@@ -250,22 +250,22 @@ Round 4 panel means, weights at [the scoring matrix](/docs/ideas/opus-03/00-rank
 - [Ranking](/docs/ideas/opus-03/00-ranking.md)
 - [Brief](/docs/BRIEF.md)
 - [Context](/docs/CONTEXT.md)
-- [Reddit research](/docs/research/everyday-reddit.md)
-- [X research](/docs/research/everyday-x.md)
-- [Phones and Pi](/docs/research/phones-and-pi.md)
+- [Reddit research](/docs/research/everyday.md)
+- [X research](/docs/research/everyday.md)
+- [Phones and Pi](/docs/research/iot-and-network.md)
 - [Gemini Enterprise](/docs/research/gemini-enterprise.md)
 - [Judging](/docs/research/judging.md)
 
-[r-group]: /docs/research/everyday-reddit.md#group-assignments-and-free-riders
-[r-unmet]: /docs/research/everyday-reddit.md#unmet-needs-inference
-[r-disconf]: /docs/research/everyday-reddit.md#disconfirming-signals-and-gaps
-[r-communities]: /docs/research/everyday-reddit.md#communities-found
-[r-recruit]: /docs/research/everyday-reddit.md#what-recruiting-looks-like-there
-[x-group]: /docs/research/everyday-x.md#group-assignments-and-survey-respondents
-[pp-thermal]: /docs/research/phones-and-pi.md#temperature-and-throttling
-[pp-stt]: /docs/research/phones-and-pi.md#speech-to-text
-[pp-alive]: /docs/research/phones-and-pi.md#keeping-it-alive-unattended
-[pp-takeaways]: /docs/research/phones-and-pi.md#takeaways-for-this-hackathon
+[r-group]: /docs/research/everyday.md#group-assignments-and-free-riders
+[r-unmet]: /docs/research/everyday.md#unmet-needs-inference
+[r-disconf]: /docs/research/everyday.md#disconfirming-signals-and-gaps
+[r-communities]: /docs/research/everyday.md#communities-found
+[r-recruit]: /docs/research/everyday.md#what-recruiting-looks-like-there
+[x-group]: /docs/research/everyday.md#group-assignments-and-free-riders
+[pp-thermal]: /docs/research/iot-and-network.md#temperature-and-throttling
+[pp-stt]: /docs/research/iot-and-network.md#speech-to-text
+[pp-alive]: /docs/research/iot-and-network.md#keeping-it-alive-unattended
+[pp-takeaways]: /docs/research/iot-and-network.md#takeaways-for-this-hackathon
 [ge-unattended]: /docs/research/gemini-enterprise.md#what-runs-without-anyone-signed-in
 [ge-actions]: /docs/research/gemini-enterprise.md#actions-and-write-back
 [ctx-apu]: /docs/CONTEXT.md#apus-own-documents-and-systems

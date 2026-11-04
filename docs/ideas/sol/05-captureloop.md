@@ -15,7 +15,7 @@ Contents:
 
 **User/owner:** a student voluntarily sharing their own handwritten notes with a study partner. Job: “Tell me exactly what is missing while I still have the original, so my partner can use the packet without another chain of requests.” Choose **Intelligent Automation & Digital Transformation**, focused on the student's document-sharing workflow.
 
-No direct demand evidence for this precise job was found in this research. It is an independent ideation hypothesis, not a lesson from an interviewed student. The [social report](/docs/research/sol-reddit-signals.md#7-advance-meeting-notices-do-not-solve-participation-or-useful-preparation) describes group-work preparation problems, but does **not** establish missing-note captures. That weak connection must not be inflated into validation.
+No direct demand evidence for this precise job was found in this research. It is an independent ideation hypothesis, not a lesson from an interviewed student. The [social report](/docs/research/everyday.md#advance-meeting-notices-do-not-solve-participation-or-useful-preparation) describes group-work preparation problems, but does **not** establish missing-note captures. That weak connection must not be inflated into validation.
 
 Use only genuine team-authored notes and an actual recipient task, with consent to publish the safe material required by the repo's data rules. No APU slides, protected course handbooks, assignments owned by others, grades or lecturer assistance are assumed. If the team lacks a real packet-sharing event, stop rather than manufacture one.
 
@@ -42,7 +42,7 @@ Deterministic checks own page IDs, manifest completeness and delivery. Gemini wo
 | Drive/Sheets, first party | Manifest, versions and approved status updates           | Supported account plus actual image/PDF inspection in Enterprise                               |
 | Enterprise workflow       | Contextual reference check and correction follow-through | Cannot claim reliable handwritten mathematics or automatic accessibility certification         |
 
-No Pi, third-party connector, APU system or automatic external message is required. Additional connectors need an actual user workflow before being added. Current [platform research](/docs/research/sol-platform-and-incumbents.md#platform-constraints) supports file actions, not the untested image-understanding path. Until that path is proven, this architecture is a conditional design and should not win selection.
+No Pi, third-party connector, APU system or automatic external message is required. Additional connectors need an actual user workflow before being added. Current [platform research](/docs/research/gemini-enterprise.md#platform-constraints-and-design-consequences) supports file actions, not the untested image-understanding path. Until that path is proven, this architecture is a conditional design and should not win selection.
 
 ## Remote MVP and demonstration
 
