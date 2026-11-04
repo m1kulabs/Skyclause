@@ -48,7 +48,7 @@ All three cross-set scorers ranked Kept first and proposed folding the other two
   - Kept: its distinct decision, which observed stop and time merits a service-change request, as the design-gap packet; its source boundaries (T580 is not the shuttle; a missing position is unavailable telemetry, never a cancellation; repeated samples of one departure are one item); per-source fresh, stale, failed or unknown; the outcome check after a change; its counterevidence; and the rules-only baseline its delivery contract asks for ([shared contract](/docs/ideas/astra/00-ranking.md#shared-delivery-contract)).
   - Dropped: volunteers logging by hand as the sensor, which every scorer named as its fatal risk; phone GPS; the unnamed "transport liaison"; 30-minute batches.
   - Verdict: strengthens. A design gap without a packet is one more complaint; with denominators, waves and counterexamples it is an input to the next schedule revision.
-- **[Kuyoh Shuttle Sentinel](/docs/ideas/argon/02-kuyoh-shuttle-sentinel.md), rules R3 and R4:**
+- **[Kuyoh Shuttle Sentinel](/docs/ideas/argon-01/02-kuyoh-shuttle-sentinel.md), rules R3 and R4:**
   - Kept: T580 corridor speed, MET warnings, and its per-window Green/Amber/Red state, renamed the corridor state that attribution reads; its halt-on-error, now "a failed attribution feed blocks an operator-miss verdict".
   - Changed: the Sungai Kuyoh rainfall gauge `0232901RF` replaces the water-level gauge `0232901WL`, which read 26.37 m against a 28.00 m Normal threshold on 3 November ([Infobanjir]) and is unlikely to reach Waspada (alert) in a week.
   - Dropped: live corridor advisories and relief-van calendar blocks, because the events are rare, no reviewer can trigger one, and a rival README already promises rain alerts ([rival repos]); the attendance grace window, which is Academic Administration's policy, not LNO's; ServiceNow, SharePoint, Slack and the preview MCP server; the opt-in geolocation probe.
@@ -246,7 +246,7 @@ The riskiest pieces come first: the licence and Jira actions, then counter accur
 
 ## See also
 
-- Source ideas: [Kept](/docs/ideas/opus-01/01-kept.md), [LastLink](/docs/ideas/astra/02-lastlink.md), and [Kuyoh Shuttle Sentinel](/docs/ideas/argon/02-kuyoh-shuttle-sentinel.md).
+- Source ideas: [Kept](/docs/ideas/opus-01/01-kept.md), [LastLink](/docs/ideas/astra/02-lastlink.md), and [Kuyoh Shuttle Sentinel](/docs/ideas/argon-01/02-kuyoh-shuttle-sentinel.md).
 - [Social research](/docs/research/social.md), [competition](/docs/research/competition.md), [APU documents and systems](/docs/research/apu.md), [public data sources](/docs/research/data-sources.md), [Gemini Enterprise](/docs/research/gemini-enterprise.md), [IoT and network](/docs/research/iot-and-network.md), and [judging](/docs/research/judging.md).
 - The [Campus Connect schedule V1_20261022][shuttle PDF], the [shuttle page](https://www.apu.edu.my/shuttle-services-campus-connect), and the [data ruling].
 
