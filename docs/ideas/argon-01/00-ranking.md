@@ -1,4 +1,4 @@
-# Argon idea ranking
+# Argon-01 idea ranking
 
 Five product ideas for the APU Cloud Innovation Hackathon 2026, scored out of 100 on a rubric built from NTT DATA's five briefing points and the Google and APU rubrics. Each one is a Gemini Enterprise workflow that starts on a schedule or a connector event, works through first-party (1P) and third-party (3P) connectors, and stops for one human approval before it writes anything; all but Research & FYP Nexus act on live network or sensor readings. Chat-style campus assistants are left out because APU already runs one, and the category is crowded on Devpost. SpineDesk Pulse ranks first.
 

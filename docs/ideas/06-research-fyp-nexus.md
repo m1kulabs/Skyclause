@@ -38,7 +38,7 @@ Connector stages are from [actions and write-back](/docs/research/gemini-enterpr
 
 ## Origins
 
-The single source is [Research & FYP Nexus](/docs/ideas/argon/04-research-fyp-nexus.md). All three Pass A scorers kept it as a singleton: it is the only research-track idea and shares no owner or signal with the others.
+The single source is [Research & FYP Nexus](/docs/ideas/argon-01/04-research-fyp-nexus.md). All three Pass A scorers kept it as a singleton: it is the only research-track idea and shares no owner or signal with the others.
 
 - **Kept:** the APU-only OpenAlex corpus, the Drive-folder trigger, the APSoftware check, the pointer to iConsult rather than a new booking path, the masked-abstract Top-1/Top-3 test, and the intake-based rollout.
 - **Changed:** "ranks the top three lecturers" became "lists APU works nearest the abstract, with their authors". Lecturers with few indexed papers would be under-ranked, and nothing suggests staff accept being scored, so the coordinator chooses. Matching now runs on OpenAlex's own APU-restricted search at call time instead of a weekly BigQuery copy. A weekly overlap watch on approved projects was added, so the workflow recurs between intakes; all three scorers marked the source down for running only when students submit.
