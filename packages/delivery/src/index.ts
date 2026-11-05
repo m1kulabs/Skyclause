@@ -1,3 +1,4 @@
+export { webIdentityCredentials, type AwsCredentials, type WebIdentityOptions } from './aws-credentials'
 export {
   createEmailTransport,
   SesError,
