@@ -1,33 +1,38 @@
 // The `lint` guard for spec §1 dependency rules and D10: every package stays inside its "May depend on" cell,
 // packages never depend on apps, project references stay acyclic and nothing reaches into `pilot/`.
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { dirname, join, relative, resolve, sep } from 'node:path'
+import { dirname, join, relative, resolve } from 'node:path'
 import ts from 'typescript'
-import { listFiles } from './files'
+import { isSource, listFiles, toPosix } from './files'
 
-/** Spec §1 "May depend on", workspace packages only; `type:` entries allow `import type` alone. */
-const CELLS: Record<string, string[]> = {
-  contracts: ['type:clauses', 'type:sources', 'type:forecast'],
-  config: ['contracts'],
-  i18n: ['config'],
-  clauses: [],
-  forecast: ['clauses', 'contracts'],
-  sources: ['clauses', 'contracts'],
-  agent: ['contracts'],
-  db: ['contracts', 'clauses', 'forecast', 'config'],
-  auth: ['db', 'contracts', 'delivery', 'config'],
-  api: ['contracts', 'config', 'i18n', 'clauses', 'forecast', 'sources', 'agent', 'db', 'delivery'],
-  delivery: ['contracts', 'i18n', 'config'],
-  mcp: ['sdk'],
-  sdk: [],
-  cli: ['sdk', 'mcp', 'i18n', 'type:contracts'],
-  elements: ['contracts', 'i18n'],
-  skills: []
+interface Cell {
+  deps: string[]
+  /** Reachable through `import type` only. */
+  typeOnly?: string[]
+}
+
+/** Spec §1 "May depend on", workspace packages only. */
+const CELLS: Record<string, Cell> = {
+  contracts: { deps: [], typeOnly: ['clauses', 'sources', 'forecast'] },
+  config: { deps: ['contracts'] },
+  i18n: { deps: ['config'] },
+  clauses: { deps: [] },
+  forecast: { deps: ['clauses', 'contracts'] },
+  sources: { deps: ['clauses', 'contracts'] },
+  agent: { deps: ['contracts'] },
+  db: { deps: ['contracts', 'clauses', 'forecast', 'config'] },
+  auth: { deps: ['db', 'contracts', 'delivery', 'config'] },
+  api: { deps: ['contracts', 'config', 'i18n', 'clauses', 'forecast', 'sources', 'agent', 'db', 'delivery'] },
+  delivery: { deps: ['contracts', 'i18n', 'config'] },
+  mcp: { deps: ['sdk'] },
+  sdk: { deps: [] },
+  cli: { deps: ['sdk', 'mcp', 'i18n'], typeOnly: ['contracts'] },
+  elements: { deps: ['contracts', 'i18n'] },
+  skills: { deps: [] }
 }
 const APPS = ['web', 'worker', 'docs']
 /** `packages/clauses` is pure and browser-safe: its only runtime dependency is its CEL library (TRD layout). */
 const CLAUSES_ONLY = '@bufbuild/cel'
-const SOURCE = /\.[cm]?[jt]sx?$/
 const SCOPE = '@skyclause/'
 
 interface Unit {
@@ -77,7 +82,6 @@ function specifiers(file: string, text: string): Array<{ spec: string; typeOnly:
   return found
 }
 
-const posix = (path: string) => path.split(sep).join('/')
 const isPilot = (path: string) => path === 'pilot' || path.startsWith('pilot/')
 
 export function checkBoundaries(root: string): string[] {
@@ -115,11 +119,11 @@ export function checkBoundaries(root: string): string[] {
       }
     }
 
-    for (const file of listFiles(root, [unit.dir]).filter((f) => SOURCE.test(f))) {
+    for (const file of listFiles(root, [unit.dir]).filter(isSource)) {
       const isTest = file.includes('/test/') || /\.(test|spec)\.[cm]?[jt]sx?$/.test(file) || file.includes('/e2e/')
       for (const { spec, typeOnly } of specifiers(file, readFileSync(join(root, file), 'utf8'))) {
         if (spec.startsWith('.')) {
-          const path = posix(relative(root, resolve(root, dirname(file), spec)))
+          const path = toPosix(relative(root, resolve(root, dirname(file), spec)))
           const target = unitAt(path)
           if (isPilot(path)) problems.push(`${file} imports pilot/ (D10)`)
           else if (target && target !== unit) edges.push({ where: file, verb: 'imports', target, typeOnly })
@@ -146,7 +150,7 @@ export function checkBoundaries(root: string): string[] {
       }
       const targets: string[] = []
       for (const reference of config?.references ?? []) {
-        const path = posix(relative(root, resolve(root, unit.dir, reference.path)))
+        const path = toPosix(relative(root, resolve(root, unit.dir, reference.path)))
         const target = unitAt(path)
         if (isPilot(path)) problems.push(`${unit.dir}/tsconfig.json references pilot/ (D10)`)
         else if (target) {
@@ -160,11 +164,14 @@ export function checkBoundaries(root: string): string[] {
     for (const { where, verb, target, typeOnly } of edges) {
       if (target.app && !unit.app) {
         problems.push(`${where} ${verb} app ${SCOPE}${target.name}; apps depend on packages, never the reverse`)
-      } else if (unit.app ? target.app : !cell!.includes(target.name)) {
-        if (typeOnly && cell?.includes(`type:${target.name}`)) continue
-        if (cell?.includes(`type:${target.name}`)) {
-          problems.push(`${where} ${verb} ${SCOPE}${target.name}, which its §1 cell allows only as import type`)
-        } else problems.push(`${where} ${verb} ${SCOPE}${target.name}, outside its §1 cell`)
+      } else if (unit.app ? target.app : !cell!.deps.includes(target.name)) {
+        const typeAllowed = cell?.typeOnly?.includes(target.name) ?? false
+        if (typeAllowed && typeOnly) continue
+        problems.push(
+          typeAllowed
+            ? `${where} ${verb} ${SCOPE}${target.name}, which its §1 cell allows only as import type`
+            : `${where} ${verb} ${SCOPE}${target.name}, outside its §1 cell`
+        )
       }
     }
   }

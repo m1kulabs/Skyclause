@@ -2,27 +2,26 @@
 // packages, grouped by owner, and fails while any remain. `promote.yml` gates on it; PR CI doesn't.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { listFiles } from './files'
+import { isSource, listFiles } from './files'
 
 const PLACEHOLDER = /notBuilt\(\s*(['"])([^'"]+)\1\s*\)|data-unbuilt=(['"])([^'"]+)\3/g
-const SOURCE = /\.[cm]?[jt]sx?$/
 
 const args = process.argv.slice(2)
 const ownerFlag = args.indexOf('--owner')
-const only = ownerFlag === -1 ? null : args[ownerFlag + 1]
-if (only === undefined) {
+const ownerFilter = ownerFlag === -1 ? null : args[ownerFlag + 1]
+if (ownerFilter === undefined) {
   console.error('usage: check-unbuilt.ts [--owner <key>]')
   process.exit(2)
 }
 
 const byOwner = new Map<string, string[]>()
-for (const file of listFiles(process.cwd(), ['apps', 'packages']).filter((f) => SOURCE.test(f))) {
+for (const file of listFiles(process.cwd(), ['apps', 'packages']).filter(isSource)) {
   readFileSync(join(process.cwd(), file), 'utf8')
     .split('\n')
     .forEach((line, i) => {
       for (const match of line.matchAll(PLACEHOLDER)) {
         const owner = match[2] ?? match[4] ?? ''
-        if (only && owner !== only) continue
+        if (ownerFilter && owner !== ownerFilter) continue
         byOwner.set(owner, [...(byOwner.get(owner) ?? []), `${file}:${i + 1}`])
       }
     })

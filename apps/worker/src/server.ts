@@ -51,11 +51,11 @@ export interface WorkerPart {
   events?: EventConsumer[]
 }
 
-type Named = 'topics' | 'queues' | 'ticks' | 'internal' | 'ses' | 'jobs'
+type KeyedKind = 'topics' | 'queues' | 'ticks' | 'internal' | 'ses' | 'jobs'
 
-export type Registry = { [K in Named]: NonNullable<WorkerPart[K]> } & { events: EventConsumer[] }
+export type Registry = { [K in KeyedKind]: NonNullable<WorkerPart[K]> } & { events: EventConsumer[] }
 
-const NAMED: Named[] = ['topics', 'queues', 'ticks', 'internal', 'ses', 'jobs']
+const KEYED_KINDS: KeyedKind[] = ['topics', 'queues', 'ticks', 'internal', 'ses', 'jobs']
 
 export function defineRegistry(parts: WorkerPart[]): Registry {
   const registry: Registry = { topics: {}, queues: {}, ticks: {}, internal: {}, ses: {}, jobs: {}, events: [] }
@@ -66,7 +66,7 @@ export function defineRegistry(parts: WorkerPart[]): Registry {
     owners.set(key, owner)
   }
   for (const part of parts) {
-    for (const kind of NAMED) {
+    for (const kind of KEYED_KINDS) {
       for (const [name, handler] of Object.entries(part[kind] ?? {})) {
         claim(`${kind} ${name}`, part.owner)
         ;(registry[kind] as Record<string, unknown>)[name] = handler
