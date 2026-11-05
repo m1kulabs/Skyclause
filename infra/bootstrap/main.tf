@@ -29,17 +29,20 @@ locals {
   apis = [
     "aiplatform.googleapis.com",
     "artifactregistry.googleapis.com",
+    "billingbudgets.googleapis.com",
     "cloudkms.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "cloudscheduler.googleapis.com",
     "cloudtasks.googleapis.com",
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
+    "monitoring.googleapis.com",
     "pubsub.googleapis.com",
     "run.googleapis.com",
     "secretmanager.googleapis.com",
     "storage.googleapis.com",
     "sts.googleapis.com",
+    "telemetry.googleapis.com",
   ]
 
   # Admin per service it manages, plus the IAM it needs to grant roles and mint the eval pool.
@@ -51,12 +54,18 @@ locals {
     "roles/iam.serviceAccountAdmin",
     "roles/iam.serviceAccountUser",
     "roles/iam.workloadIdentityPoolAdmin",
+    "roles/monitoring.editor",
     "roles/pubsub.admin",
     "roles/resourcemanager.projectIamAdmin",
     "roles/run.admin",
     "roles/secretmanager.admin",
+    # The budget provider in production sends skyclause as the quota project (#114).
+    "roles/serviceusage.serviceUsageConsumer",
     "roles/storage.admin",
   ]
+
+  # #79 §9 gate 2: the project's billing account, for the budget alert (#114).
+  billing_account = "01D106-4ADF3E-8FE685"
 }
 
 provider "google" {
@@ -107,6 +116,15 @@ resource "google_project_iam_member" "terraform" {
   project = local.project_id
   role    = each.value
   member  = google_service_account.terraform.member
+}
+
+# Budgets live on the billing account, so the production budget alert needs a billing role there; whoever
+# applies this must be a billing account administrator. Costs Manager also shows the account's other projects'
+# costs (#114).
+resource "google_billing_account_iam_member" "terraform_budgets" {
+  billing_account_id = local.billing_account
+  role               = "roles/billing.costsManager"
+  member             = google_service_account.terraform.member
 }
 
 resource "google_service_account_iam_member" "terraform_wif" {

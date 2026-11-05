@@ -106,3 +106,21 @@ variable "map_domains" {
   type        = bool
   default     = false
 }
+
+variable "oncall_contacts_ready" {
+  description = "Create the on-call notification channels from ONCALL_CONTACTS once infra/wizards/oncall-contacts.sh has stored it (#114)."
+  type        = bool
+  default     = false
+}
+
+variable "billing_account" {
+  description = "The skyclause project's Cloud Billing account (#79 §9 gate 2), for the budget alert."
+  type        = string
+  default     = null
+}
+
+variable "monthly_budget_myr" {
+  description = "Monthly budget for this project in the billing account's currency, MYR; null creates no budget."
+  type        = number
+  default     = null
+}
