@@ -1,6 +1,6 @@
-// `check-deployed.ts [--image <ref>] <file.json>...` (#90): reads `gcloud run services|jobs list` (an array) or
-// `describe` (one resource) output, `--format=json`, prints each resource's APP_ENV and image, and fails if any
-// runs APP_ENV=test (#79 §7) or has none, or, with --image, runs any other image.
+// `check-deployed.ts [--image <ref>] <list.json>...` (#90): reads `gcloud run services list` and `gcloud run jobs list`
+// output (`--format=json`), prints each resource's APP_ENV and image, and fails if any runs APP_ENV=test (#79 §7) or
+// has none, or, with --image, runs any other image.
 import { readFileSync } from 'node:fs'
 
 interface Container {
@@ -17,15 +17,11 @@ const args = process.argv.slice(2)
 const imageFlag = args.indexOf('--image')
 const image = imageFlag === -1 ? null : args.splice(imageFlag, 2)[1]
 if (image === undefined || args.length === 0) {
-  console.error('usage: check-deployed.ts [--image <ref>] <file.json>...')
+  console.error('usage: check-deployed.ts [--image <ref>] <list.json>...')
   process.exit(2)
 }
 
 const problems: string[] = []
-for (const file of args) {
-  const parsed = JSON.parse(readFileSync(file, 'utf8')) as Resource | Resource[]
-  for (const resource of Array.isArray(parsed) ? parsed : [parsed]) check(resource, file)
-}
 
 function check(resource: Resource, file: string) {
   const name = resource.metadata?.name ?? file
@@ -42,5 +38,8 @@ function check(resource: Resource, file: string) {
   }
 }
 
+for (const file of args) {
+  for (const resource of JSON.parse(readFileSync(file, 'utf8')) as Resource[]) check(resource, file)
+}
 for (const problem of problems) console.error(problem)
 process.exitCode = problems.length ? 1 : 0
