@@ -86,6 +86,11 @@ node_modules/
 .env*
 !.env.example
 
+# Apps Script credentials and clasp project files
+.clasprc.json
+.clasp*.json
+client_secret*.json
+
 # Graphify
 graphify-out/*
 !graphify-out/graph.json

@@ -3,7 +3,8 @@
     "graph": "graphify update .",
     "lint": "prettier --check .",
     "lint:fix": "prettier --write .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "typecheck": "tsc --noEmit -p pilot"
   },
   "lint-staged": {
     "*": "prettier --write --ignore-unknown"
@@ -11,8 +12,11 @@
   "devDependencies": {
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
+    "@types/bun": "^1.4.4",
+    "@types/google-apps-script": "^2.0.15",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
-    "prettier": "^3.9.10"
+    "prettier": "^3.9.10",
+    "typescript": "^7.0.2"
   }
 }
