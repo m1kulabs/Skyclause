@@ -67,7 +67,6 @@ variable "app_config" {
       "SES_REGION",
       "TURNSTILE_SITE_KEY",
       "VAPID_PUBLIC_KEY",
-      "VAPID_SUBJECT",
     ], name)])
     error_message = "app_config takes only the #79 §6 names other tickets supply."
   }

@@ -66,7 +66,7 @@ resource "google_secret_manager_secret_version" "generated" {
   secret_data_wo_version = 1
 }
 
-# Accessor grants for every mount; VAPID_PRIVATE_KEY is #113's secret, so it's named, not managed.
+# Accessor grants for every mount; VAPID_PRIVATE_KEY is #113's secret in run.tf, so it's named here.
 resource "google_secret_manager_secret_iam_member" "access" {
   for_each = merge([
     for account, names in local.mounts : { for name in names : "${name} ${account}" => { secret = name, account = account } }
