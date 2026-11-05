@@ -16401,6 +16401,18 @@
       "source_location": "L1"
     },
     {
+      "id": "docs_ideas_00_ranking_alternative_ranking_under_strict_limits",
+      "label": "Alternative ranking under strict limits",
+      "_origin": "ast",
+      "community": 63,
+      "community_name": "Idea ranking",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "alternative ranking under strict limits",
+      "source_file": "docs/ideas/00-ranking.md",
+      "source_location": "L197"
+    },
+    {
       "id": "docs_ideas_00_ranking_components_and_weights",
       "label": "Components and weights",
       "_origin": "ast",
@@ -16410,7 +16422,7 @@
       "node_kind": "heading",
       "norm_label": "components and weights",
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L115"
+      "source_location": "L116"
     },
     {
       "id": "docs_ideas_00_ranking_evidence_limits",
@@ -16422,7 +16434,7 @@
       "node_kind": "heading",
       "norm_label": "evidence limits",
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L328"
+      "source_location": "L378"
     },
     {
       "id": "docs_ideas_00_ranking_gates",
@@ -16434,7 +16446,7 @@
       "node_kind": "heading",
       "norm_label": "gates",
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L141"
+      "source_location": "L142"
     },
     {
       "id": "docs_ideas_00_ranking_how_the_products_were_merged",
@@ -16446,7 +16458,7 @@
       "node_kind": "heading",
       "norm_label": "how the products were merged",
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L243"
+      "source_location": "L293"
     },
     {
       "id": "docs_ideas_00_ranking_how_to_choose",
@@ -16458,7 +16470,7 @@
       "node_kind": "heading",
       "norm_label": "how to choose",
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L264"
+      "source_location": "L314"
     },
     {
       "id": "docs_ideas_00_ranking_idea_ranking",
@@ -16482,7 +16494,7 @@
       "node_kind": "heading",
       "norm_label": "method",
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L314"
+      "source_location": "L364"
     },
     {
       "id": "docs_ideas_00_ranking_ranking",
@@ -16494,7 +16506,7 @@
       "node_kind": "heading",
       "norm_label": "ranking",
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L27"
+      "source_location": "L28"
     },
     {
       "id": "docs_ideas_00_ranking_scale_and_aggregation",
@@ -16506,7 +16518,7 @@
       "node_kind": "heading",
       "norm_label": "scale and aggregation",
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L134"
+      "source_location": "L135"
     },
     {
       "id": "docs_ideas_00_ranking_scores_by_component",
@@ -16518,7 +16530,7 @@
       "node_kind": "heading",
       "norm_label": "scores by component",
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L75"
+      "source_location": "L76"
     },
     {
       "id": "docs_ideas_00_ranking_scoring_matrix",
@@ -16530,7 +16542,7 @@
       "node_kind": "heading",
       "norm_label": "scoring matrix",
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L102"
+      "source_location": "L103"
     },
     {
       "id": "docs_ideas_00_ranking_see_also",
@@ -16542,7 +16554,7 @@
       "node_kind": "heading",
       "norm_label": "see also",
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L340"
+      "source_location": "L390"
     },
     {
       "id": "docs_ideas_00_ranking_sensitivity",
@@ -16554,7 +16566,7 @@
       "node_kind": "heading",
       "norm_label": "sensitivity",
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L152"
+      "source_location": "L153"
     },
     {
       "id": "docs_ideas_00_ranking_team_limits",
@@ -16566,7 +16578,7 @@
       "node_kind": "heading",
       "norm_label": "team limits",
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L106"
+      "source_location": "L107"
     },
     {
       "id": "docs_ideas_00_ranking_the_32_source_ideas_reranked",
@@ -16578,7 +16590,7 @@
       "node_kind": "heading",
       "norm_label": "the 32 source ideas reranked",
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L196"
+      "source_location": "L246"
     },
     {
       "id": "docs_ideas_00_ranking_what_the_rerank_changed",
@@ -16590,7 +16602,7 @@
       "node_kind": "heading",
       "norm_label": "what the rerank changed",
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L287"
+      "source_location": "L337"
     },
     {
       "id": "docs_ideas_08_janji",
@@ -23260,7 +23272,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L102",
+      "source_location": "L103",
       "weight": 1.0
     },
     {
@@ -23271,7 +23283,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L152",
+      "source_location": "L153",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_ideas_00_ranking_idea_ranking",
+      "target": "docs_ideas_00_ranking_alternative_ranking_under_strict_limits",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/ideas/00-ranking.md",
+      "source_location": "L197",
       "weight": 1.0
     },
     {
@@ -23282,29 +23305,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L196",
-      "weight": 1.0
-    },
-    {
-      "source": "docs_ideas_00_ranking_idea_ranking",
-      "target": "docs_ideas_00_ranking_how_the_products_were_merged",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L243",
-      "weight": 1.0
-    },
-    {
-      "source": "docs_ideas_00_ranking_idea_ranking",
-      "target": "docs_ideas_00_ranking_how_to_choose",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L264",
+      "source_location": "L246",
       "weight": 1.0
     },
     {
@@ -23315,23 +23316,23 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L27",
+      "source_location": "L28",
       "weight": 1.0
     },
     {
       "source": "docs_ideas_00_ranking_idea_ranking",
-      "target": "docs_ideas_00_ranking_what_the_rerank_changed",
+      "target": "docs_ideas_00_ranking_how_the_products_were_merged",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L287",
+      "source_location": "L293",
       "weight": 1.0
     },
     {
       "source": "docs_ideas_00_ranking_idea_ranking",
-      "target": "docs_ideas_00_ranking_method",
+      "target": "docs_ideas_00_ranking_how_to_choose",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -23342,13 +23343,35 @@
     },
     {
       "source": "docs_ideas_00_ranking_idea_ranking",
+      "target": "docs_ideas_00_ranking_what_the_rerank_changed",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/ideas/00-ranking.md",
+      "source_location": "L337",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_ideas_00_ranking_idea_ranking",
+      "target": "docs_ideas_00_ranking_method",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/ideas/00-ranking.md",
+      "source_location": "L364",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_ideas_00_ranking_idea_ranking",
       "target": "docs_ideas_00_ranking_evidence_limits",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L328",
+      "source_location": "L378",
       "weight": 1.0
     },
     {
@@ -23359,7 +23382,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L340",
+      "source_location": "L390",
       "weight": 1.0
     },
     {
@@ -23370,7 +23393,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L75",
+      "source_location": "L76",
       "weight": 1.0
     },
     {
@@ -23381,7 +23404,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L106",
+      "source_location": "L107",
       "weight": 1.0
     },
     {
@@ -23392,7 +23415,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L115",
+      "source_location": "L116",
       "weight": 1.0
     },
     {
@@ -23403,7 +23426,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L134",
+      "source_location": "L135",
       "weight": 1.0
     },
     {
@@ -23414,7 +23437,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/ideas/00-ranking.md",
-      "source_location": "L141",
+      "source_location": "L142",
       "weight": 1.0
     },
     {
@@ -43032,5 +43055,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "cfad2f2a3d33be8483e8c2d9a96340a11344c254"
+  "built_at_commit": "513d271115f942340fc2504c4d7fa6e2d86745b4"
 }
