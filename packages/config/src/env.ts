@@ -6,7 +6,7 @@ const base = z.object({
 })
 
 // a-email-transport (#113): infra/aws's app_config output. Optional until gate 4B, then all of a
-// service's set together; EMAIL_ALLOWLIST is set only while SES is in the sandbox.
+// service's set together.
 const arn = (service: string) => z.string().regex(new RegExp(`^arn:aws:${service}:[a-z0-9-]*:\\d{12}:.+$`))
 const sending = {
   SES_REGION: z.string().regex(/^[a-z]{2}(-[a-z]+)+-\d$/),
@@ -38,16 +38,14 @@ function together(names: string[]) {
   }
 }
 
-const email = { ...optional(sending), EMAIL_ALLOWLIST: z.string().optional() }
-
 const schemas = {
-  web: base.extend(email).superRefine(together(Object.keys(sending))),
+  web: base.extend(optional(sending)).superRefine(together(Object.keys(sending))),
   worker: base
     .extend({
       WORKER_URL: z.url(),
       WORKER_INVOKER_SA: z.email(),
       PORT: z.coerce.number().int().positive().default(8080),
-      ...email,
+      ...optional(sending),
       ...optional(receiving)
     })
     .superRefine(together([...Object.keys(sending), ...Object.keys(receiving)])),

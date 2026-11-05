@@ -51,11 +51,10 @@ describe('loadEnv', () => {
 
   test('the email variables are optional until gate 4B, then read together', () => {
     expect(loadEnv('worker', worker)).not.toHaveProperty('SES_REGION')
-    expect(loadEnv('worker', { ...worker, ...email, ...inbound, EMAIL_ALLOWLIST: '*@skyclause.m1ku.tech' })).toEqual({
+    expect(loadEnv('worker', { ...worker, ...email, ...inbound })).toEqual({
       ...worker,
       ...email,
       ...inbound,
-      EMAIL_ALLOWLIST: '*@skyclause.m1ku.tech',
       PORT: 8080
     })
     expect(loadEnv('web', { APP_ENV: 'production', ...email })).toEqual({ APP_ENV: 'production', ...email })

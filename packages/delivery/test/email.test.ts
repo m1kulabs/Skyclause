@@ -115,38 +115,11 @@ describe('EmailTransport.send', () => {
     expect(ses.inputs).toHaveLength(0)
   })
 
-  test('with EMAIL_ALLOWLIST set, an outside address makes no SES call', async () => {
-    const ses = sesDouble()
-    const transport = createEmailTransport({
-      ses: ses.client,
-      ...config,
-      allowlist: 'Team.Lead@skyclause.m1ku.tech, *@Example.EDU.my'
-    })
-
-    expect(await transport.send({ ...notice, to: 'outsider@gmail.com' })).toEqual({
-      providerMessageId: null,
-      suppressed: 'staging'
-    })
-    expect(await transport.send({ ...notice, to: 'someone@sub.example.edu.my' })).toEqual({
-      providerMessageId: null,
-      suppressed: 'staging'
-    })
-    expect(ses.inputs).toHaveLength(0)
-
-    await transport.send({ ...notice, to: 'approver@example.edu.my' })
-    await transport.send({ ...notice, to: 'team.lead@SKYCLAUSE.m1ku.tech' })
-    expect(ses.inputs).toHaveLength(2)
-  })
-
-  test('with EMAIL_ALLOWLIST unset or blank, every address is sent', async () => {
-    for (const allowlist of [undefined, '', '  ']) {
-      const ses = sesDouble()
-      const result = await createEmailTransport({ ses: ses.client, ...config, allowlist }).send({
-        ...notice,
-        to: 'outsider@gmail.com'
-      })
-      expect(result.providerMessageId).toBe('0108019a5b6f0001-test')
-    }
+  test('an answer without a message ID is an error, since the outbox stores the ID', async () => {
+    const ses = sesDouble(async () => ({}))
+    await expect(createEmailTransport({ ses: ses.client, ...config }).send(notice)).rejects.toThrow(
+      'SES SendEmail returned no MessageId'
+    )
   })
 
   test('an SES error surfaces as a typed error naming SES and the status', async () => {

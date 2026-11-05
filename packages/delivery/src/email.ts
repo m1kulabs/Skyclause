@@ -17,7 +17,7 @@ export interface EmailMessage {
 }
 
 export interface EmailTransport {
-  send(m: EmailMessage): Promise<{ providerMessageId: string | null; suppressed?: 'staging' }>
+  send(m: EmailMessage): Promise<{ providerMessageId: string }>
 }
 
 /** A failed SES call: `code` is SES's error name, `status` its HTTP status or null with no response. */
@@ -48,31 +48,11 @@ export interface EmailTransportOptions {
   fromAuth: string
   /** `EMAIL_FROM_NOTICES`, for `from: 'notices'` and `'system'` */
   fromNotices: string
-  /**
-   * `EMAIL_ALLOWLIST`: comma-separated addresses and `*@domain` entries, case-insensitive. Set only
-   * while SES is in the sandbox; unset or blank sends to everyone (infra/README.md).
-   */
-  allowlist?: string
-}
-
-function allowlisted(allowlist: string | undefined): (to: string) => boolean {
-  const entries = (allowlist ?? '')
-    .split(',')
-    .map((entry) => entry.trim().toLowerCase())
-    .filter(Boolean)
-  if (!entries.length) return () => true
-  return (to) => {
-    const address = to.trim().toLowerCase()
-    const domain = address.slice(address.lastIndexOf('@') + 1)
-    return entries.some((entry) => entry === address || entry === `*@${domain}`)
-  }
 }
 
 export function createEmailTransport(options: EmailTransportOptions): EmailTransport {
-  const allowed = allowlisted(options.allowlist)
   return {
     async send(m) {
-      if (!allowed(m.to)) return { providerMessageId: null, suppressed: 'staging' }
       const from = m.from === 'auth' ? options.fromAuth : options.fromNotices
       const raw = buildMime(m, from)
       const command = new SendEmailCommand({
@@ -89,7 +69,8 @@ export function createEmailTransport(options: EmailTransportOptions): EmailTrans
       } catch (error) {
         throw new SesError('SendEmail', error)
       }
-      return { providerMessageId: result.MessageId ?? null }
+      if (!result.MessageId) throw new Error('SES SendEmail returned no MessageId')
+      return { providerMessageId: result.MessageId }
     }
   }
 }
