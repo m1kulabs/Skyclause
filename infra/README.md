@@ -94,7 +94,7 @@ A person with AWS access to account `776566309118` applies `aws/` after the prod
       --versioning-configuration Status=Enabled
     ```
 
-1.  In a pull request, set `google_service_account_ids` in `aws/terraform.tfvars` to each account's `uniqueId`. Recreating either account changes its ID, and the role refuses it until this is updated and applied again:
+1.  `aws/terraform.tfvars` holds `google_service_account_ids`, each account's `uniqueId`. Recreating either account changes its ID, and the role refuses it until this is updated in a pull request and applied again:
 
     ```shell
     gcloud iam service-accounts describe skyclause-web@skyclause.iam.gserviceaccount.com \
