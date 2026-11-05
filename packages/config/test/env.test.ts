@@ -22,7 +22,7 @@ describe('loadEnv', () => {
   })
 
   test('allows APP_ENV=test outside Cloud Run', () => {
-    expect(loadEnv('web', { APP_ENV: 'test' })).toEqual({ APP_ENV: 'test' })
+    expect(loadEnv('web', { APP_ENV: 'test' }).APP_ENV).toBe('test')
   })
 
   test('refuses an APP_ENV outside dev, staging, production and test', () => {
@@ -30,7 +30,24 @@ describe('loadEnv', () => {
   })
 
   test('returns the worker variables, with Cloud Run’s PORT defaulting to 8080', () => {
-    expect(loadEnv('worker', worker)).toEqual({ ...worker, PORT: 8080 })
+    expect(loadEnv('worker', worker)).toMatchObject({ ...worker, PORT: 8080 })
     expect(loadEnv('worker', { ...worker, PORT: '9000' }).PORT).toBe(9000)
+  })
+
+  test('reads LOG_LEVEL, defaulting to info, and refuses an unknown level', () => {
+    expect(loadEnv('job', { APP_ENV: 'dev' }).LOG_LEVEL).toBe('info')
+    expect(loadEnv('job', { APP_ENV: 'dev', LOG_LEVEL: 'debug' }).LOG_LEVEL).toBe('debug')
+    expect(() => loadEnv('job', { APP_ENV: 'dev', LOG_LEVEL: 'verbose' })).toThrow(/LOG_LEVEL/)
+  })
+
+  test('reads OTEL_SERVICE_NAME and the project and region telemetry exports to, all optional', () => {
+    const env = loadEnv('web', {
+      APP_ENV: 'production',
+      OTEL_SERVICE_NAME: 'web',
+      GCP_PROJECT: 'skyclause',
+      GCP_REGION: 'asia-southeast1'
+    })
+    expect(env).toMatchObject({ OTEL_SERVICE_NAME: 'web', GCP_PROJECT: 'skyclause', GCP_REGION: 'asia-southeast1' })
+    expect(loadEnv('web', { APP_ENV: 'dev' }).GCP_PROJECT).toBeUndefined()
   })
 })
