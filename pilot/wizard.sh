@@ -231,7 +231,8 @@ pclasp() { HOME="$WIZ_TMP/home" BUN_INSTALL_CACHE_DIR="$BUN_CACHE" bunx @google/
 
 # gh_var NAME prints a repository variable, or nothing if it's unset; a failed call fails, so it's never "unset".
 gh_var() { gh variable list -R "$REPO" --json name,value --jq ".[] | select(.name == \"$1\") | .value"; }
-has_secret() { gh secret list -R "$REPO" --json name --jq '.[].name' 2>/dev/null | grep -qx "$1"; }
+# grep without -q reads all its input, so pipefail never sees gh die of SIGPIPE.
+has_secret() { gh secret list -R "$REPO" --json name --jq '.[].name' 2>/dev/null | grep -x "$1" >/dev/null; }
 
 health_json() { curl -fsSL "${INGEST_URL}?health=1" 2>/dev/null || true; }
 # Anonymous on purpose: the camera phone and the Pi post without signing in.
@@ -240,6 +241,11 @@ health_ok() { [[ -n "${INGEST_URL:-}" ]] && health_json | jq -e '.ok == true' >/
 latest_dispatch() {
   gh run list -R "$REPO" --workflow "$1" --event workflow_dispatch -L 1 --json databaseId --jq '.[0].databaseId // empty' ||
     true
+}
+
+# stored NAME stops the run unless GitHub now holds $NAME, so a later stage never builds on a missing value.
+stored() {
+  [[ "$(gh_var "$1")" == "${!1}" ]] || { warn "GitHub doesn't hold $1 yet; fix gh, then re-run"; exit 1; }
 }
 
 already() {
@@ -314,13 +320,13 @@ repo_settings_done() {
   patterns=$(IFS=,; printf '%s' "${ALLOWED_ACTIONS[*]}")
   gh api "repos/$REPO" --jq '.allow_squash_merge and (.allow_merge_commit | not) and (.allow_rebase_merge | not)
     and .squash_merge_commit_title == "PR_TITLE" and .squash_merge_commit_message == "COMMIT_MESSAGES"
-    and .delete_branch_on_merge' | grep -qx true &&
+    and .delete_branch_on_merge' | grep -x true >/dev/null &&
     gh api "repos/$REPO/vulnerability-alerts" --silent 2>/dev/null &&
-    gh api "repos/$REPO/automated-security-fixes" --jq .enabled | grep -qx true &&
+    gh api "repos/$REPO/automated-security-fixes" --jq .enabled | grep -x true >/dev/null &&
     gh api "repos/$REPO/actions/permissions" --jq '.enabled and .allowed_actions == "selected" and .sha_pinning_required' |
-    grep -qx true &&
+    grep -x true >/dev/null &&
     gh api "repos/$REPO/actions/permissions/selected-actions" --jq ".github_owned_allowed and (.verified_allowed | not)
-      and (.patterns_allowed | sort | join(\",\")) == \"$patterns\"" | grep -qx true
+      and (.patterns_allowed | sort | join(\",\")) == \"$patterns\"" | grep -x true >/dev/null
 }
 
 # repo_setting "what" gh-api-args... applies one setting; GitHub Free answers 403 for some, which is recorded.
@@ -371,13 +377,20 @@ while true; do
 done
 write_env PILOT_OWNER_EMAIL "$PILOT_OWNER_EMAIL"
 
+# GitHub first; .env remembers an ID whose set_var failed, so a re-run never makes a second script or deployment.
 PILOT_SCRIPT_ID=$(gh_var PILOT_SCRIPT_ID)
 INGEST_DEPLOYMENT_ID=$(gh_var INGEST_DEPLOYMENT_ID)
 INGEST_URL=$(gh_var INGEST_URL)
+on_github=false
+if [[ -n "$PILOT_SCRIPT_ID" && -n "$INGEST_DEPLOYMENT_ID" && -n "$INGEST_URL" ]]; then on_github=true; fi
+[[ -n "$PILOT_SCRIPT_ID" ]] || PILOT_SCRIPT_ID=$(_existing PILOT_SCRIPT_ID || true)
+[[ -n "$INGEST_DEPLOYMENT_ID" ]] || INGEST_DEPLOYMENT_ID=$(_existing INGEST_DEPLOYMENT_ID || true)
+deployed_before=false
+if [[ -n "$PILOT_SCRIPT_ID" && -n "$INGEST_DEPLOYMENT_ID" ]]; then deployed_before=true; fi
 
 stage "Apps Script API and the admin checks"
 # Once deployed these worked, but a token that dies after a while usually means Cloud session control.
-if [[ -n "$INGEST_DEPLOYMENT_ID" ]] && ! confirm "The pilot is deployed. Walk through these checks again (after a red canary)?"; then
+if $deployed_before && ! confirm "The pilot is deployed. Walk through these checks again (after a red canary)?"; then
   note "✓ already done: the pilot web app is deployed"
 else
   say "Signed in as $PILOT_OWNER_EMAIL:"
@@ -398,7 +411,7 @@ else
 fi
 
 stage "Mint the CI token (CLASPRC_JSON)"
-if [[ -n "$INGEST_DEPLOYMENT_ID" ]] && has_secret CLASPRC_JSON &&
+if $deployed_before && has_secret CLASPRC_JSON &&
   ! confirm "CLASPRC_JSON is set. Mint a new one (after a revocation or a red canary)?"; then
   note "✓ kept the current CLASPRC_JSON"
 else
@@ -419,34 +432,40 @@ else
 fi
 
 stage "Create, push and deploy skyclause-pilot"
-if [[ -n "$PILOT_SCRIPT_ID" && -n "$INGEST_DEPLOYMENT_ID" && -n "$INGEST_URL" ]]; then
+if $on_github; then
   already "script $PILOT_SCRIPT_ID, web app deployment $INGEST_DEPLOYMENT_ID"
 else
-  git fetch -q origin main
-  if ! git merge-base --is-ancestor HEAD origin/main || [[ -n "$(git status --porcelain -- pilot)" ]]; then
-    warn "check out a commit on origin/main with no local changes under pilot/: CI's scope guard reads the manifest"
-    warn "at the commit this stage deploys"
-    exit 1
+  # An existing deployment is kept: its /exec URL may already be on the phone and the Pi.
+  if [[ -z "$INGEST_DEPLOYMENT_ID" ]]; then
+    git fetch -q origin main
+    if ! git merge-base --is-ancestor HEAD origin/main || [[ -n "$(git status --porcelain -- pilot)" ]]; then
+      warn "check out a commit on origin/main with no local changes under pilot/: CI's scope guard reads the manifest"
+      warn "at the commit this stage deploys"
+      exit 1
+    fi
+    if [[ -z "$PILOT_SCRIPT_ID" ]]; then
+      mkdir -p "$WIZ_TMP/create"
+      PILOT_SCRIPT_ID=$(cd "$WIZ_TMP/create" && pclasp --json create-script --type standalone --title skyclause-pilot |
+        jq -r '.scriptId // empty')
+      [[ -n "$PILOT_SCRIPT_ID" ]] || { warn "clasp created no script; see its output above"; exit 1; }
+      write_env PILOT_SCRIPT_ID "$PILOT_SCRIPT_ID"
+    fi
+    printf '{"scriptId":"%s","rootDir":"dist"}\n' "$PILOT_SCRIPT_ID" > "$CLASP_PROJECT"
+    PILOT_SCRIPT_ID="$PILOT_SCRIPT_ID" bun pilot/apps-script/build.ts
+    pclasp -P "$CLASP_PROJECT" push --force
+    INGEST_DEPLOYMENT_ID=$(pclasp -P "$CLASP_PROJECT" --json create-deployment -d "$(git rev-parse HEAD)" |
+      jq -r '.deploymentId // empty')
+    [[ -n "$INGEST_DEPLOYMENT_ID" ]] || { warn "clasp created no deployment; see its output above"; exit 1; }
+    write_env INGEST_DEPLOYMENT_ID "$INGEST_DEPLOYMENT_ID"
   fi
-  if [[ -z "$PILOT_SCRIPT_ID" ]]; then
-    mkdir -p "$WIZ_TMP/create"
-    PILOT_SCRIPT_ID=$(cd "$WIZ_TMP/create" && pclasp --json create-script --type standalone --title skyclause-pilot |
-      jq -r '.scriptId // empty')
-    [[ -n "$PILOT_SCRIPT_ID" ]] || { warn "clasp created no script; see its output above"; exit 1; }
-    set_var PILOT_SCRIPT_ID "$PILOT_SCRIPT_ID"
-    write_env PILOT_SCRIPT_ID "$PILOT_SCRIPT_ID"
-  fi
-  printf '{"scriptId":"%s","rootDir":"dist"}\n' "$PILOT_SCRIPT_ID" > "$CLASP_PROJECT"
-  PILOT_SCRIPT_ID="$PILOT_SCRIPT_ID" bun pilot/apps-script/build.ts
-  pclasp -P "$CLASP_PROJECT" push --force
-  INGEST_DEPLOYMENT_ID=$(pclasp -P "$CLASP_PROJECT" --json create-deployment -d "$(git rev-parse HEAD)" |
-    jq -r '.deploymentId // empty')
-  [[ -n "$INGEST_DEPLOYMENT_ID" ]] || { warn "clasp created no deployment; see its output above"; exit 1; }
   INGEST_URL="https://script.google.com/macros/s/$INGEST_DEPLOYMENT_ID/exec"
+  write_env INGEST_URL "$INGEST_URL"
+  set_var PILOT_SCRIPT_ID "$PILOT_SCRIPT_ID"
   set_var INGEST_DEPLOYMENT_ID "$INGEST_DEPLOYMENT_ID"
   set_var INGEST_URL "$INGEST_URL"
-  write_env INGEST_DEPLOYMENT_ID "$INGEST_DEPLOYMENT_ID"
-  write_env INGEST_URL "$INGEST_URL"
+  stored PILOT_SCRIPT_ID
+  stored INGEST_DEPLOYMENT_ID
+  stored INGEST_URL
 fi
 
 stage "Run setup() for OAuth consent"
@@ -474,6 +493,9 @@ if [[ -n "$(_existing SCRIPT_PROPERTIES_SET_ON || true)" ]] &&
 else
   # Tokens already on a device stay: a token missing from .env may still be in the Script Properties.
   for name in "${TOKENS[@]}"; do
+    if $deployed_before && [[ -z "$(_existing "$name" || true)" ]]; then
+      warn "$name isn't in $ENV_FILE. Paste the one in the editor's Script Properties: a new token cuts off every device."
+    fi
     ask_secret "$name" "$name: Enter keeps or generates it; paste it if the editor's Script Properties already hold one:"
     write_env "$name" "${!name:-$(openssl rand -hex 32)}"
   done
@@ -520,7 +542,8 @@ fi
 stage "Prove the deploy and the canary"
 # DEPLOY_FREEZE is shared with P1's workflows and #78 owns it, so this stage only reads it.
 workflows=(pilot-deploy.yml pilot-canary.yml)
-if [[ "$(gh_var DEPLOY_FREEZE)" == true ]]; then
+freeze=$(gh_var DEPLOY_FREEZE)
+if [[ "$freeze" == true ]]; then
   note "DEPLOY_FREEZE is true (#78), so only the canary runs; pilot-deploy waits for the freeze to lift."
   workflows=(pilot-canary.yml)
 fi
