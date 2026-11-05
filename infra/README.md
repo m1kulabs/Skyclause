@@ -62,13 +62,15 @@ terraform -chdir=infra/environments/production plan
 Set these in a pull request, in `environments/production/terraform.tfvars`, which Terraform loads by itself. `variables.tf` describes and validates each one.
 
 - `app_config`: the #79 §6 TF values other tickets make, such as `GOOGLE_CLIENT_ID`, `TURNSTILE_SITE_KEY`, `VAPID_PUBLIC_KEY` and the SES values. Each is set on every service and job once given.
-- `supplied_secrets`: `GOOGLE_CLIENT_SECRET`, `TURNSTILE_SECRET_KEY` and `SKYCLAUSE_STAFF_EMAILS` start as empty secrets. Add a version with `gcloud secrets versions add`, then list the name here to mount it. Cloud Run fails a revision whose secret has no version.
+- `supplied_secrets`: `GOOGLE_CLIENT_SECRET`, `TURNSTILE_SECRET_KEY` and `SKYCLAUSE_STAFF_EMAILS` start as empty secrets. Add a version with `gcloud secrets versions add`, then list the name here to mount it. Cloud Run fails a revision whose secret has no version. Two wizards add the versions and print the public values:
+  - `infra/wizards/google-sign-in.sh` (about 25 minutes): Google Auth Platform branding and the Web OAuth client (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`), and the app host's Turnstile widget (`TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`).
+  - `infra/wizards/staff-and-ses.sh` (about 5 minutes): `SKYCLAUSE_STAFF_EMAILS`, then, optionally, SES sandbox verification of the team addresses.
 - `vapid_private_key_ready`: set to `true` once #113's `vapid-keys` job has created `VAPID_PRIVATE_KEY`.
 
 ## Custom hosts
 
 `skyclause.m1ku.tech`, `app.`, `api.`, `mcp.`, `embed.` and `docs.` map to `web` through Cloud Run domain mappings.
 
-1.  A person verifies `skyclause.m1ku.tech` as a Domain property in Google Search Console, choosing the CNAME record, and adds `skyclause-terraform@skyclause.iam.gserviceaccount.com` as an owner. A record at the `m1ku.tech` apex is never used.
-1.  Set `map_domains = true`. After the apply, `terraform output dns_records` lists each host's records; create them in Cloudflare with `proxied: false` and the comment `owner: skyclause`.
+1.  A person verifies `skyclause.m1ku.tech` as a Domain property in Google Search Console, choosing the CNAME record, and adds `skyclause-terraform@skyclause.iam.gserviceaccount.com` as an owner. A record at the `m1ku.tech` apex is never used. `infra/wizards/search-console.sh` walks through it in about 15 minutes and writes the CNAME itself.
+1.  Set `map_domains = true`. After the apply, `terraform output dns_records` lists each host's records; create them in Cloudflare with `proxied: false` and the comment `owner: skyclause`. `bun scripts/cloudflare-record.ts [--dry-run] CNAME <name> <target>` does that with `M1KU_CLOUDFLARE_API_TOKEN`, and refuses any name outside `skyclause.m1ku.tech` and any record not commented `owner: skyclause`.
 1.  Once each certificate is active, set `host_mode = "multi"` and the six `origins`. Until then every origin is the `web` URL.
