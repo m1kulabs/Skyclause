@@ -12014,7 +12014,7 @@
       "node_kind": "heading",
       "norm_label": "not verified",
       "source_file": "docs/research/iot-and-network.md",
-      "source_location": "L847"
+      "source_location": "L849"
     },
     {
       "id": "docs_research_iot_and_network_offline_and_intermittent_links",
@@ -12098,7 +12098,7 @@
       "node_kind": "heading",
       "norm_label": "see also",
       "source_file": "docs/research/iot-and-network.md",
-      "source_location": "L862"
+      "source_location": "L864"
     },
     {
       "id": "docs_research_iot_and_network_signals_from_devices_that_already_exist",
@@ -12122,7 +12122,7 @@
       "node_kind": "heading",
       "norm_label": "takeaways for this hackathon",
       "source_file": "docs/research/iot-and-network.md",
-      "source_location": "L826"
+      "source_location": "L828"
     },
     {
       "id": "docs_research_iot_and_network_the_network_part_in_practice",
@@ -41233,7 +41233,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/iot-and-network.md",
-      "source_location": "L826",
+      "source_location": "L828",
       "weight": 1.0
     },
     {
@@ -41244,7 +41244,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/iot-and-network.md",
-      "source_location": "L847",
+      "source_location": "L849",
       "weight": 1.0
     },
     {
@@ -41255,7 +41255,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/iot-and-network.md",
-      "source_location": "L862",
+      "source_location": "L864",
       "weight": 1.0
     },
     {
@@ -47695,5 +47695,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "f743f9749c6588cb847c116aa32468622e4a8fba"
+  "built_at_commit": "67dba1751c04e30081c2473748b60697058929c3"
 }
