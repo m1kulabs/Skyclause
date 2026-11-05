@@ -5,7 +5,7 @@ import { METRICS, type SliStat } from '@skyclause/contracts'
 // on the batch's own transaction, so it never wakes the database itself.
 
 /** `[from, to)`. */
-export interface Window {
+export interface TimeWindow {
   from: Date
   to: Date
 }
@@ -53,23 +53,23 @@ export interface SlaDue {
 /** The timestamp reads, as `system`. Each method is one query; rows fall in a window by the field named. */
 export interface SliReads {
   /** Every Scheduler slot each adapter was due in the window (`slotAt`). */
-  pollSlots(window: Window): Promise<PollSlot[]>
+  pollSlots(window: TimeWindow): Promise<PollSlot[]>
   /** Each adapter's latest `count` slots due before `before`. */
   latestPollSlots(before: Date, count: number): Promise<PollSlot[]>
   /** By `storedAt`. */
-  storedReadings(window: Window): Promise<StoredReading[]>
+  storedReadings(window: TimeWindow): Promise<StoredReading[]>
   /** By `evaluatedAt`. */
-  evaluations(window: Window): Promise<Evaluation[]>
+  evaluations(window: TimeWindow): Promise<Evaluation[]>
   /** Bundles reaching needs review (`needsReviewAt`), with their run's `crossing.at`. */
-  reviews(window: Window): Promise<Review[]>
+  reviews(window: TimeWindow): Promise<Review[]>
   /** By `needsReviewAt`. */
-  approverAlerts(window: Window): Promise<ApproverAlert[]>
+  approverAlerts(window: TimeWindow): Promise<ApproverAlert[]>
   /** The latest `count` bundles to reach needs review before `before`. */
   latestApproverAlerts(before: Date, count: number): Promise<ApproverAlert[]>
   /** Call notices of approved bundles, by `approvedAt`. */
-  handovers(window: Window): Promise<Handover[]>
+  handovers(window: TimeWindow): Promise<Handover[]>
   /** By `dueAt` (`bundle.sla_due_at`). */
-  slaDue(window: Window): Promise<SlaDue[]>
+  slaDue(window: TimeWindow): Promise<SlaDue[]>
 }
 
 const MINUTE = 60_000
