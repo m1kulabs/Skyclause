@@ -1,0 +1,5 @@
+# ge-setup.sh copies the /wizard library verbatim, and the library is never
+# hand-edited. Two findings in it are not bugs:
+# SC1087: "$e[Enter keeps current]" is a colour code then text, not an array.
+# SC2329: ask_secret, set_secret and set_var stay in the library unused.
+disable=SC1087,SC2329

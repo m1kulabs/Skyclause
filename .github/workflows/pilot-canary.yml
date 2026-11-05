@@ -1,0 +1,67 @@
+# Nightly P0 canary (#48), 00:30 MYT: the pilot owner's clasp token still works and every feed is fresh.
+name: pilot-canary
+
+on:
+  schedule:
+    - cron: '30 16 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Before pilot/wizard.sh has run, nothing is set and the canary reports that; a half-set pilot is a failure.
+  setup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      ready: ${{ steps.setup.outputs.ready }}
+    steps:
+      - id: setup
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          PILOT_SCRIPT_ID: ${{ vars.PILOT_SCRIPT_ID }}
+          INGEST_URL: ${{ vars.INGEST_URL }}
+        run: |
+          missing=()
+          for name in CLASPRC_JSON PILOT_SCRIPT_ID INGEST_URL; do
+            [ -n "${!name}" ] || missing+=("$name")
+          done
+          if [ "${#missing[@]}" -eq 3 ]; then
+            echo "::notice::The pilot isn't set up yet: run pilot/wizard.sh"
+            echo ready=false >> "$GITHUB_OUTPUT"
+          elif [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::${missing[*]} not set; re-run pilot/wizard.sh"
+            exit 1
+          else
+            echo ready=true >> "$GITHUB_OUTPUT"
+          fi
+
+  canary:
+    needs: setup
+    if: needs.setup.outputs.ready == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      PILOT_SCRIPT_ID: ${{ vars.PILOT_SCRIPT_ID }}
+      INGEST_URL: ${{ vars.INGEST_URL }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - name: Write the clasp token
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
+      # Fails if Google rejects the token, for example after a revocation or a session-control expiry.
+      - run: bunx @google/clasp@3.4.1 list-deployments "$PILOT_SCRIPT_ID"
+      # Fails on a failed health call or a source past stale_after_min that isn't off_hours.
+      - run: bun pilot/apps-script/deployed.ts canary
+      - name: Delete the clasp token
+        if: always()
+        run: rm -f ~/.clasprc.json
