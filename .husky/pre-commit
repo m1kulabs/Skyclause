@@ -1,1 +1,4 @@
 bunx lint-staged
+# Scan what's being committed for secrets (#48); CI's secrets job scans the full history.
+command -v gitleaks >/dev/null 2>&1 || { echo 'pre-commit: install gitleaks (brew install gitleaks) to scan staged changes' >&2; exit 1; }
+gitleaks git --pre-commit --staged --redact --no-banner
