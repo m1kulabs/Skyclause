@@ -120,9 +120,11 @@ The Gemini API Additional Terms, effective 23 March 2026, say ([Gemini API terms
 
 - **What it's for here:** an HTTPS ingest endpoint that devices or gateways post readings to, the API backend, and a host for ADK or Genkit agents.
 - **Free tier (request-based billing):** 2 million requests, 180,000 vCPU-seconds, and 360,000 GiB-seconds per month, counted per billing account ([Cloud Run pricing]). Using it needs a billing account, unless you deploy through the AI Studio Starter Tier.
-- The pricing page lists a Kuala Lumpur region, `asia-southeast4` ([Cloud Run pricing]).
+- **Region:** the pricing page's region list includes "Kuala Lumpur (asia-southeast4)" ([Cloud Run pricing]), but Google's [Compute Engine regions] and [Cloud Run locations] pages list no Malaysia region (checked 5 November 2026). So the region isn't listed as launched; the nearest live region is `asia-southeast1` (Singapore).
 
 [Cloud Run pricing]: https://cloud.google.com/run/pricing
+[Compute Engine regions]: https://docs.cloud.google.com/compute/docs/regions-zones
+[Cloud Run locations]: https://docs.cloud.google.com/run/docs/locations
 
 ### Pub/Sub and the Cloud IoT Core retirement
 
