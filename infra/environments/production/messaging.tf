@@ -1,0 +1,49 @@
+# Pub/Sub topics, Cloud Tasks queues and the minute tick (#79 §5). Every call to the worker
+# carries an OIDC token for the invoker account with audience WORKER_URL.
+
+module "topic" {
+  source   = "../../modules/topic"
+  for_each = toset(["domain-events", "readings-updated", "runs-requested"])
+
+  project_id           = local.project_id
+  region               = local.region
+  name                 = each.key
+  push_endpoint        = "${local.worker_url}/pubsub/${each.key}"
+  push_service_account = local.sa.invoker
+  audience             = local.worker_url
+  publishers = {
+    web    = local.member.web
+    worker = local.member.worker
+    jobs   = local.member.jobs
+  }
+}
+
+module "queue" {
+  source   = "../../modules/queue"
+  for_each = toset(["bundle-timers", "webhook-deliveries", "shift-reminders", "exports"])
+
+  project_id = local.project_id
+  region     = local.region
+  name       = each.key
+  enqueuers = {
+    web    = local.member.web
+    worker = local.member.worker
+  }
+}
+
+resource "google_cloud_scheduler_job" "ticks_minute" {
+  name      = "ticks-minute"
+  region    = local.region
+  schedule  = "* * * * *"
+  time_zone = "Etc/UTC"
+
+  http_target {
+    http_method = "POST"
+    uri         = "${local.worker_url}/ticks/minute"
+
+    oidc_token {
+      service_account_email = local.sa.invoker
+      audience              = local.worker_url
+    }
+  }
+}
