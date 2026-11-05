@@ -79,12 +79,6 @@ variable "scheduler_service_account" {
   }
 }
 
-variable "args" {
-  description = "Container arguments, such as `job <name>` for the worker's job entry."
-  type        = list(string)
-  default     = []
-}
-
 variable "image" {
   description = "Image for the first version only; deploys replace it."
   type        = string
