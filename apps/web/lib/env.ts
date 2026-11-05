@@ -1,9 +1,12 @@
-import { loadEnv } from '@skyclause/config'
+import { startTelemetry } from '@skyclause/config'
 
-/** Stops the server at start on a missing variable, or APP_ENV=test on Cloud Run, rather than answering 500s. */
-export function checkEnv() {
+/**
+ * Starts telemetry (spec §1), whose `loadEnv` stops the server at start on a missing variable, or APP_ENV=test
+ * on Cloud Run, rather than answering 500s.
+ */
+export function startServer() {
   try {
-    loadEnv('web')
+    startTelemetry('web')
   } catch (error) {
     console.error(JSON.stringify({ severity: 'ERROR', message: 'web failed', error: String(error) }))
     process.exit(1)

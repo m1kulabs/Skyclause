@@ -18,6 +18,9 @@
       "path": "../../packages/config"
     },
     {
+      "path": "../../packages/contracts"
+    },
+    {
       "path": "../../packages/db"
     }
   ]
