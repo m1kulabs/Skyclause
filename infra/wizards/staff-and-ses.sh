@@ -208,8 +208,8 @@ finish() {
 PROJECT=skyclause
 AWS_ACCOUNT=776566309118
 SES_REGION=ap-southeast-2
-ADDRESS='[^@[:space:],]+@[^@[:space:],]+\.[^@[:space:],]+'
-ADDRESS_LIST="^ *$ADDRESS( *, *$ADDRESS)* *$"
+ADDRESS_PATTERN='[^@[:space:],]+@[^@[:space:],]+\.[^@[:space:],]+'
+ADDRESS_LIST_PATTERN="^ *$ADDRESS_PATTERN( *, *$ADDRESS_PATTERN)* *$"
 
 # store_secret NAME VALUE adds VALUE as a new version of the Secret Manager secret NAME.
 store_secret() {
@@ -267,7 +267,7 @@ if confirm "Store the staff addresses now?"; then
     exit 1
   fi
   say "Enter real addresses only, comma-separated. They go to Secret Manager, not .env or git."
-  ask_valid ask STAFF_EMAILS "Staff addresses:" "$ADDRESS_LIST" "Use comma-separated addresses, like a@example.org,b@example.org."
+  ask_valid ask STAFF_EMAILS "Staff addresses:" "$ADDRESS_LIST_PATTERN" "Use comma-separated addresses, like a@example.org,b@example.org."
   store_secret SKYCLAUSE_STAFF_EMAILS "${STAFF_EMAILS// /}"
   unset STAFF_EMAILS
   note "Then add \"SKYCLAUSE_STAFF_EMAILS\" to supplied_secrets in infra/environments/production/terraform.tfvars."
@@ -286,7 +286,7 @@ if confirm "Verify team addresses now?"; then
     warn "The AWS CLI isn't signed in to account $AWS_ACCOUNT: sign in and re-run."
     exit 1
   fi
-  ask_valid ask TEAM_ADDRESSES "Team addresses:" "$ADDRESS_LIST" "Use comma-separated addresses."
+  ask_valid ask TEAM_ADDRESSES "Team addresses:" "$ADDRESS_LIST_PATTERN" "Use comma-separated addresses."
   IFS=',' read -ra addresses <<<"${TEAM_ADDRESSES// /}"
   pending="$(unverified "${addresses[@]}")"
   # Creates the identity, or re-sends the email for one still pending (its link lasts 24 hours).

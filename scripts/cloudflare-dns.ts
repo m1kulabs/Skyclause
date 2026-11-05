@@ -38,11 +38,16 @@ interface CloudflareRecord {
   comment?: string | null
 }
 
-/** Lowercases `name`, drops a trailing dot, and throws unless it is skyclause.m1ku.tech or under it. */
+/** `value` lowercased without a trailing dot, or null unless every label is a valid DNS label. */
+function hostname(value: string): string | null {
+  const name = value.toLowerCase().replace(/\.$/, '')
+  return name.split('.').every((part) => label.test(part)) ? name : null
+}
+
+/** `name` as a hostname; throws unless it is skyclause.m1ku.tech or under it. */
 function ownName(name: string): string {
-  const fqdn = name.toLowerCase().replace(/\.$/, '')
-  const labels = fqdn.split('.')
-  if ((fqdn !== base && !fqdn.endsWith(`.${base}`)) || !labels.every((part) => label.test(part))) {
+  const fqdn = hostname(name)
+  if (!fqdn || (fqdn !== base && !fqdn.endsWith(`.${base}`))) {
     throw new Error(`${name} is not skyclause.m1ku.tech or a name under it`)
   }
   return fqdn
@@ -51,11 +56,8 @@ function ownName(name: string): string {
 /** The content to store: a CNAME target as a lowercase hostname without the trailing dot, a TXT value as given. */
 function validContent(wanted: WantedRecord): string {
   if (wanted.type === 'CNAME') {
-    const target = wanted.content.toLowerCase().replace(/\.$/, '')
-    const labels = target.split('.')
-    if (labels.length < 2 || !labels.every((part) => label.test(part))) {
-      throw new Error(`CNAME content ${wanted.content} is not a hostname`)
-    }
+    const target = hostname(wanted.content)
+    if (!target?.includes('.')) throw new Error(`CNAME content ${wanted.content} is not a hostname`)
     return target
   }
   if (wanted.content.length === 0 || wanted.content.length > 2048) {
@@ -87,10 +89,10 @@ export async function upsertRecord(wanted: WantedRecord, options: UpsertOptions)
   const zones = await call<{ id: string; name: string }[]>(`/zones?${new URLSearchParams({ name: zoneName })}`)
   const zone = zones.filter((candidate) => candidate.name === zoneName)
   if (zone.length !== 1) throw new Error(`expected one Cloudflare zone ${zoneName}, found ${zone.length}`)
-  const records = `/zones/${zone[0]!.id}/dns_records`
+  const recordsPath = `/zones/${zone[0]!.id}/dns_records`
 
   const atName = (
-    await call<CloudflareRecord[]>(`${records}?${new URLSearchParams({ name, per_page: '100' })}`)
+    await call<CloudflareRecord[]>(`${recordsPath}?${new URLSearchParams({ name, per_page: '100' })}`)
   ).filter((record) => record.name.toLowerCase() === name)
   for (const record of atName) {
     if (record.comment !== comment) {
@@ -111,7 +113,7 @@ export async function upsertRecord(wanted: WantedRecord, options: UpsertOptions)
   if (wanted.type === 'CNAME' && cname) {
     if (cname.content.toLowerCase() === content && cname.proxied === false) return { action: 'unchanged', id: cname.id }
     if (options.dryRun) return { action: 'updated', id: cname.id }
-    const updated = await call<CloudflareRecord>(`${records}/${cname.id}`, { method: 'PATCH', body })
+    const updated = await call<CloudflareRecord>(`${recordsPath}/${cname.id}`, { method: 'PATCH', body })
     return { action: 'updated', id: updated.id }
   }
 
@@ -122,6 +124,6 @@ export async function upsertRecord(wanted: WantedRecord, options: UpsertOptions)
   if (same) return { action: 'unchanged', id: same.id }
 
   if (options.dryRun) return { action: 'created', id: null }
-  const created = await call<CloudflareRecord>(records, { method: 'POST', body })
+  const created = await call<CloudflareRecord>(recordsPath, { method: 'POST', body })
   return { action: 'created', id: created.id }
 }

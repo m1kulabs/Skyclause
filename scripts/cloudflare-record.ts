@@ -1,6 +1,6 @@
 // `bun scripts/cloudflare-record.ts [--dry-run] <CNAME|TXT> <name> <content>`: creates or updates one
 // record under skyclause.m1ku.tech with M1KU_CLOUDFLARE_API_TOKEN, by the rules in cloudflare-dns.ts.
-import { upsertRecord, type RecordType } from './cloudflare-dns'
+import { upsertRecord } from './cloudflare-dns'
 
 const args = process.argv.slice(2)
 const dryRun = args[0] === '--dry-run'
@@ -17,7 +17,7 @@ if (!token) {
 }
 
 try {
-  const result = await upsertRecord({ type: type as RecordType, name, content }, { token, dryRun })
+  const result = await upsertRecord({ type, name, content }, { token, dryRun })
   console.log(
     `${dryRun ? 'dry run: would be ' : ''}${result.action} ${type} ${name}${result.id ? ` (${result.id})` : ''}`
   )
