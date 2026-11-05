@@ -55,13 +55,13 @@ Contents:
 
 ## Information architecture
 
-All hosts are proposed, not registered. Marketing and public pages live on `skyclause.com`, the app and auth routes on `app.skyclause.com`, the API at `api.skyclause.com/v1`, the remote MCP server at `mcp.skyclause.com/mcp`, docs at `docs.skyclause.com` and embed frames at `embed.skyclause.com`.
+All hosts are proposed subdomains on the `m1ku.tech` Cloudflare zone; nothing is registered. Marketing and public pages live on `skyclause.m1ku.tech`, the app and auth routes on `app.skyclause.m1ku.tech`, the API at `api.skyclause.m1ku.tech/v1`, the remote MCP server at `mcp.skyclause.m1ku.tech/mcp`, docs at `docs.skyclause.m1ku.tech` and embed frames at `embed.skyclause.m1ku.tech`.
 
 | Route                                                                                              | Purpose                                                                 | Who can see it                                      |
 | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------- |
 | `/`                                                                                                | Landing with the live call; pricing and FAQ are sections                | Everyone                                            |
 | `/ms/`                                                                                             | Malay landing                                                           | Everyone                                            |
-| `/docs`                                                                                            | Redirect to `docs.skyclause.com`                                        | Everyone                                            |
+| `/docs`                                                                                            | Redirect to `docs.skyclause.m1ku.tech`                                  | Everyone                                            |
 | `/status`                                                                                          | Service status, incidents and source status                             | Everyone                                            |
 | `/legal/privacy`, `/legal/terms`                                                                   | PDPA notice and terms                                                   | Everyone                                            |
 | `/p/{org}/{project}`                                                                               | Public project page                                                     | Everyone, if the project publishes it               |
@@ -72,7 +72,7 @@ All hosts are proposed, not registered. Marketing and public pages live on `skyc
 | `/oembed`, `/openapi.json`, `/skills`                                                              | oEmbed endpoint, OpenAPI document, Agent Skills pack                    | Everyone                                            |
 | `/.well-known/oauth-authorization-server`, `/.well-known/oauth-protected-resource`                 | OAuth metadata for MCP clients                                          | Everyone                                            |
 | `/.well-known/agent-card.json`                                                                     | A2A agent card, only if AGT-5 ships                                     | Everyone                                            |
-| `embed.skyclause.com/{org}/{project}`                                                              | Embed frames                                                            | Any page embedding a public project                 |
+| `embed.skyclause.m1ku.tech/{org}/{project}`                                                        | Embed frames                                                            | Any page embedding a public project                 |
 | `/sign-in`, `/sign-up`                                                                             | Magic link, Google, passkeys                                            | Everyone                                            |
 | `/guest`                                                                                           | Continue as guest into the Commons                                      | Everyone                                            |
 | `/device`                                                                                          | CLI device-code login                                                   | Signed-in accounts                                  |
@@ -442,7 +442,7 @@ Typed clients generated from the OpenAPI document.
 
 AI agents read and draft through MCP and skills; none can approve.
 
-- **AGT-1** (P1) A remote MCP server at `mcp.skyclause.com/mcp` speaks streamable HTTP with OAuth and publishes the two `/.well-known` metadata documents; it replies `application/json` and accepts both session styles ([MCP revision note](/docs/research/iot-and-network.md#fit-with-gemini-enterprise-custom-mcp)). Acceptance: Claude Code and one other client from CAI-1 list the tools after consent.
+- **AGT-1** (P1) A remote MCP server at `mcp.skyclause.m1ku.tech/mcp` speaks streamable HTTP with OAuth and publishes the two `/.well-known` metadata documents; it replies `application/json` and accepts both session styles ([MCP revision note](/docs/research/iot-and-network.md#fit-with-gemini-enterprise-custom-mcp)). Acceptance: Claude Code and one other client from CAI-1 list the tools after consent.
 - **AGT-2** (P1) Tools and scopes are those in the table below; read tools declare `readOnlyHint`; there is no approve, send or publish tool. Acceptance: the server's tool list equals the table.
 - **AGT-3** (P1) `skyclause mcp` serves the same tools over local stdio with the CLI's login. Acceptance: the stdio and remote tool lists match.
 - **AGT-4** (P1) An Agent Skills pack (`SKILL.md`) at `/skills` and via `skyclause skills install` teaches an agent to ask for a call, read a ledger and request evidence. Acceptance: in Claude Code with the skill installed and the remote MCP server connected, an agent following the skill declares a window and returns its call with input ages.
@@ -474,7 +474,7 @@ Brand assets, live favicons, previews and embeds.
 - **WEB-3** (P1) `/p/{org}/{project}/favicon.svg` is coloured by the current real mode and shows the error colour when inputs are erroring; it is cached for at most 60 seconds. Acceptance: the favicon changes within 60 seconds of a crossing.
 - **WEB-4** (P1) Open Graph images per project, call and window (`/c/{callId}/og.png`, 1200×630) with `twitter:card` and alt text. Acceptance: each image shows the mode, window time and capture time of the data.
 - **WEB-5** (P1) [oEmbed](https://oembed.com/) at `/oembed`, discovered by `<link rel="alternate" type="application/json+oembed">` on public pages. Acceptance: the endpoint returns a valid rich response for any public project or call URL.
-- **WEB-6** (P1) `<skyclause-status>` and `<skyclause-window>` custom elements, with an iframe fallback from `embed.skyclause.com`, show the current mode, inputs with ages, attribution and the non-affiliation line, and render errors as errors. Acceptance: with the gauge erroring, the element shows No call, not a value.
+- **WEB-6** (P1) `<skyclause-status>` and `<skyclause-window>` custom elements, with an iframe fallback from `embed.skyclause.m1ku.tech`, show the current mode, inputs with ages, attribution and the non-affiliation line, and render errors as errors. Acceptance: with the gauge erroring, the element shows No call, not a value.
 - **WEB-7** (P1) A subscribe-to-calendar button offers `webcal:`, Google Calendar and Outlook links for the conditions calendar. Acceptance: each link adds the same ICS feed.
 - **WEB-8** (P3) An SVG status badge (deferred). Acceptance: none before P3.
 
@@ -489,7 +489,7 @@ What a project chooses to show the world, with attribution and no personal data.
 - **PUB-5** (P1) Attribution per source: MET (CC BY 4.0), Rapid Rail and data.gov.my (CC BY 4.0), Wikipedia (CC BY-SA 4.0, share-alike on derived listings). Acceptance: each value's source and licence is one click away.
 - **PUB-6** (P1) `/status` shows our components (app, API, MCP, each poller, notice delivery) apart from source status, with incident history. Acceptance: an APIMS outage shows as a source incident, not ours.
 - **PUB-7** (P1) `/legal/privacy` and `/legal/terms`, with the PDPA notice in English and Bahasa Melayu. Acceptance: both languages are published before the first subscriber form goes live.
-- **PUB-8** (P1) `docs.skyclause.com` holds guides (a quickstart following ORG-6, packs and clause sheets, approvals and the rota, evidence, connect your AI, privacy) whose examples are captured from real calls and readings with capture dates and station IDs (DEV-5). Acceptance: the quickstart, followed in a fresh account, ends with a declared window and its call, and no example lacks a capture line.
+- **PUB-8** (P1) `docs.skyclause.m1ku.tech` holds guides (a quickstart following ORG-6, packs and clause sheets, approvals and the rota, evidence, connect your AI, privacy) whose examples are captured from real calls and readings with capture dates and station IDs (DEV-5). Acceptance: the quickstart, followed in a fresh account, ends with a declared window and its call, and no example lacks a capture line.
 - **PUB-9** (P1) The docs' references are generated: the API reference from `/openapi.json`, the CLI reference from the CLI's command definitions and the MCP reference from the live tool list. Acceptance: the docs build fails when a reference differs from its source.
 
 ### Audit and data rights (AUD)
