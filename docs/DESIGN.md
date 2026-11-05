@@ -664,7 +664,7 @@ Each screen answers one question first, states its one finding under the title, 
 
 ### Docs site
 
-- **Job:** teach the API, SDK, CLI, MCP and clause language at `docs.skyclause.com`. **Finding:** n/a, a reference.
+- **Job:** teach the API, SDK, CLI, MCP and clause language at `docs.skyclause.m1ku.tech`. **Finding:** n/a, a reference.
 - **Layout:** three panes after [Attio help](https://www.navbar.gallery/navbar/attio-help): a tree nav with "⌘K" search, the centre column (breadcrumb, title, one lead sentence, body at 16px), an "On this page" list; the API reference generated from `/openapi.json`; light or dark from the system, in Work Sans with JetBrains Mono for code.
 - **Samples:** every request and response is captured from a real call or reading and carries its capture line ("Captured 2026-11-05 21:12 MYT · station `0232901RF`"), per [DEV-5](/docs/PRD.md#developer-playground-dev); language tabs (curl, TypeScript, Python, CLI) stay in sync across the page; errors follow the Kobbe pattern.
 
@@ -700,7 +700,7 @@ Each screen answers one question first, states its one finding under the title, 
 
 ### oEmbed card
 
-`/oembed` returns `type: "rich"` with `provider_name: "Skyclause"`, `width: 480`, `height: 200`, `thumbnail_url` set to the Open Graph image, and `html` holding the `embed.skyclause.com` iframe of `<skyclause-window>` ([WEB-5](/docs/PRD.md#web-components-web)). Public pages carry the discovery `<link rel="alternate" type="application/json+oembed">`.
+`/oembed` returns `type: "rich"` with `provider_name: "Skyclause"`, `width: 480`, `height: 200`, `thumbnail_url` set to the Open Graph image, and `html` holding the `embed.skyclause.m1ku.tech` iframe of `<skyclause-window>` ([WEB-5](/docs/PRD.md#web-components-web)). Public pages carry the discovery `<link rel="alternate" type="application/json+oembed">`.
 
 ### Custom elements
 
@@ -710,7 +710,7 @@ TRD's [web components](/docs/TRD.md#web-components) section is the contract; thi
 - **`<skyclause-window window="{windowId}">`,** or `project`, `start` and `end` attributes: the call for one window with its strip.
 - **Parts:** `mode` (glyph and word), `window`, `strip`, `age` (each input-age chip), `source`, `link` (the permalink) and `attribution` (licences, the non-affiliation and not-a-safety-service lines), each styleable through `::part()`.
 - **Custom properties:** `--skyclause-bg`, `--skyclause-fg`, `--skyclause-muted`, `--skyclause-accent` (the window line), `--skyclause-radius`, `--skyclause-font` (the host's font, falling back to Work Sans). Mode colours and glyphs are not themable, so a host can't make one mode read as another.
-- **Fallback:** an iframe from `embed.skyclause.com/{org}/{project}` with the same anatomy.
+- **Fallback:** an iframe from `embed.skyclause.m1ku.tech/{org}/{project}` with the same anatomy.
 
 ### Subscribe button
 
@@ -727,7 +727,7 @@ Subject: {Mode}: {window}, {Ddd D Mmm} ({project})
 
 Why: {clause}. {input} {station} logged {value} {unit} {comparison}, {class}. {Input} {age} old when drafted.
 What it means: {clause sheet wording for the mode}
-Approved by the {role} on duty at {HH:MM} MYT. Details and readings: https://skyclause.com/c/{callId}
+Approved by the {role} on duty at {HH:MM} MYT. Details and readings: https://skyclause.m1ku.tech/c/{callId}
 
 Skyclause is not a safety or emergency service. In an emergency, call 999.
 Not affiliated with APU, KPT, JPS, MET, DOE, Prasarana/Rapid KL or the stadium.
@@ -736,12 +736,12 @@ Unsubscribe: {one-click link}
 
 ```text
 BEGIN:VEVENT
-UID:{callId}@skyclause.com
+UID:{callId}@skyclause.m1ku.tech
 DTSTART;TZID=Asia/Kuala_Lumpur:{window start}
 DTEND;TZID=Asia/Kuala_Lumpur:{window end}
 SUMMARY:{Mode} · {window}
 DESCRIPTION:{clause}: {input} {value} ({class}).\nApproved {HH:MM} MYT.\nNot a safety or emergency service.
-URL:https://skyclause.com/c/{callId}
+URL:https://skyclause.m1ku.tech/c/{callId}
 END:VEVENT
 ```
 
