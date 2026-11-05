@@ -12,6 +12,7 @@ locals {
     MCP_ORIGIN        = local.origins.mcp
     EMBED_ORIGIN      = local.origins.embed
     DOCS_ORIGIN       = local.origins.docs
+    VAPID_SUBJECT     = local.origins.app
     GCP_PROJECT       = local.project_id
     GCP_REGION        = local.region
     WORKER_URL        = local.worker_url
@@ -88,6 +89,43 @@ module "migrate" {
     google_secret_manager_secret_version.generated,
     google_secret_manager_secret_version.database,
   ]
+}
+
+# #113's vapid-keys job makes the approver web-push pair once (infra/README.md). Terraform holds
+# only the empty secret; the job adds its one version, which the worker mounts once
+# vapid_private_key_ready is true. Only the job's own account may list and add versions, and it
+# can't read them.
+resource "google_secret_manager_secret" "vapid_private_key" {
+  secret_id = "VAPID_PRIVATE_KEY"
+
+  replication {
+    user_managed {
+      replicas {
+        location = local.region
+      }
+    }
+  }
+}
+
+resource "google_secret_manager_secret_iam_member" "vapid_keys" {
+  for_each = toset(["roles/secretmanager.viewer", "roles/secretmanager.secretVersionAdder"])
+
+  secret_id = google_secret_manager_secret.vapid_private_key.secret_id
+  role      = each.key
+  member    = local.member.vapid
+}
+
+module "vapid_keys" {
+  source = "../../modules/job"
+
+  project_id      = local.project_id
+  region          = local.region
+  name            = "vapid-keys"
+  service_account = local.sa.vapid
+  args            = ["job", "vapid-keys"]
+  env             = merge(local.env, { OTEL_SERVICE_NAME = "vapid-keys" })
+
+  depends_on = [google_secret_manager_secret_iam_member.vapid_keys]
 }
 
 # Custom hosts (#79 §4 Hosts) through Cloud Run domain mappings, all on `web`. Each host's DNS

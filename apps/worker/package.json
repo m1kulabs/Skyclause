@@ -12,6 +12,7 @@
     "@opentelemetry/api": "1.9.1",
     "@skyclause/config": "workspace:*",
     "@skyclause/contracts": "workspace:*",
+    "@skyclause/delivery": "workspace:*",
     "hono": "4.13.16",
     "jose": "6.2.15"
   },
