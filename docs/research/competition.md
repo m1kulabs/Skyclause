@@ -1,6 +1,6 @@
 # Competition
 
-Who and what an entry in the APU Cloud Innovation Hackathon 2026 competes with: the likely crowd of other teams, and existing products that already do the job, so a team can see where the crowd will sit and where it won't. The crowd part combines the hackathon's own signals, public GitHub repositories, a simulation of the AI brainstorming many teams will do, Devpost and GitHub crowding counts, and evidence of what APU students already build and use for themselves. The substitutes part is primary-source checks of products that already do the jobs proposed by the [Astra shortlist](/docs/ideas/astra/00-ranking.md), and of incumbents for ideas built on the team's own phones and Raspberry Pi. It merges the earlier crowd-baseline research with the substitute checks from the Astra feasibility research, both researched on 3 November 2026, and two sets of incumbent checks against official documentation made on 5 November 2026: one from platform and device research, one from a reading of original Reddit posts about student work conditions and shared hardware.
+Who and what an entry in the APU Cloud Innovation Hackathon 2026 competes with: the likely crowd of other teams, and existing products that already do the job, so a team can see where the crowd will sit and where it won't. The crowd part combines the hackathon's own signals, public GitHub repositories, a simulation of the AI brainstorming many teams will do, Devpost and GitHub crowding counts, and evidence of what APU students already build and use for themselves. The substitutes part is primary-source checks of products that already do the jobs proposed by the [Astra shortlist](/docs/ideas/astra/01/00-ranking.md), and of incumbents for ideas built on the team's own phones and Raspberry Pi. It merges the earlier crowd-baseline research with the substitute checks from the Astra feasibility research, both researched on 3 November 2026, and two sets of incumbent checks against official documentation made on 5 November 2026: one from platform and device research, one from a reading of original Reddit posts about student work conditions and shared hardware.
 
 Contents:
 
@@ -280,7 +280,7 @@ Two sets of primary-source checks: substitutes for a shortlist of campus-service
 
 ### Substitutes for the campus-service shortlist
 
-Products that already do the jobs proposed by the [Astra shortlist](/docs/ideas/astra/00-ranking.md), checked on 3 November 2026 for that shortlist. These are primary-source checks of proposed mechanisms, not evidence that APU has adopted them. Product pages establish advertised capabilities, not comparative performance. The "Remaining hypothesis" column is the Astra research's reading for each idea, and the IDs are the ones the Astra idea briefs cite.
+Products that already do the jobs proposed by the [Astra shortlist](/docs/ideas/astra/01/00-ranking.md), checked on 3 November 2026 for that shortlist. These are primary-source checks of proposed mechanisms, not evidence that APU has adopted them. Product pages establish advertised capabilities, not comparative performance. The "Remaining hypothesis" column is the Astra research's reading for each idea, and the IDs are the ones the Astra idea briefs cite.
 
 | ID  | Astra idea    | Primary source                                                                                                      | What already exists                                                                                                                  | Remaining hypothesis worth testing                                                                                                                                                                |
 | --- | ------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -291,11 +291,11 @@ Products that already do the jobs proposed by the [Astra shortlist](/docs/ideas/
 | C5  | [LabRelay]    | [UNT Health freezer monitoring procedure][unt freezer] and [Rudolph Lab's first-person monitoring account][rudolph] | Temperature thresholds, offline alarms and remote alerts already exist. The lab account describes intermittent Wi-Fi causing alerts. | Acknowledgement, responsibility and an independently observed return to normal might be the neglected work. A new alert dashboard has weak differentiation.                                       |
 | C6  | [AccessRelay] | [Virginia Tech elevator-outage notice][vt outage]                                                                   | Campus outage notices and closure maps already exist.                                                                                | Track whether a person can complete the intended activity through an agreed alternative, then verify restored access. The existence of a map does not establish that this handoff is solved.      |
 
-[recheck]: /docs/ideas/astra/01-recheck.md
-[lastlink]: /docs/ideas/astra/02-lastlink.md
-[accessrelay]: /docs/ideas/astra/03-accessrelay.md
-[washwitness]: /docs/ideas/astra/04-washwitness.md
-[labrelay]: /docs/ideas/astra/05-labrelay.md
+[recheck]: /docs/ideas/astra/01/01-recheck.md
+[lastlink]: /docs/ideas/astra/01/02-lastlink.md
+[accessrelay]: /docs/ideas/astra/01/03-accessrelay.md
+[washwitness]: /docs/ideas/astra/01/04-washwitness.md
+[labrelay]: /docs/ideas/astra/01/05-labrelay.md
 [netbeez]: https://netbeez.net/higher-education/
 [jsm automation]: https://support.atlassian.com/jira-service-management-cloud/docs/automate-incident-management-in-jira-service-management/
 [jsm reopen]: https://community.atlassian.com/forums/discussion/3250997/you-can-now-reopen-closed-alerts-in-jira-service-management-operations
@@ -431,7 +431,7 @@ The [incumbents checked against official documentation](#incumbents-checked-agai
 - [Briefing transcript](/docs/sources/briefing-session/transcript.md): the worked examples and NTT DATA's spoken judging outline.
 - [APU](/docs/research/apu.md) and [data sources](/docs/research/data-sources.md): real APU and public data that the simulated crowd does not use.
 - [Judging](/docs/research/judging.md): what NTT DATA rewards.
-- [Astra shortlist](/docs/ideas/astra/00-ranking.md): the ideas the existing substitutes were checked against.
+- [Astra shortlist](/docs/ideas/astra/01/00-ranking.md): the ideas the existing substitutes were checked against.
 - [IoT and network](/docs/research/iot-and-network.md#the-teams-devices): the team's phones and Pi that the 5 November incumbents were checked for.
 
 [briefing]: /docs/sources/briefing-session/transcript.md
