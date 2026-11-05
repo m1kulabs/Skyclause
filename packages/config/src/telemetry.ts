@@ -79,7 +79,10 @@ export function traceContext(): Record<string, string> {
   return carrier
 }
 
-/** Runs `work` in a span continuing the trace in `carrier` (a message's attributes or a request's headers). */
+/**
+ * Runs `work` in a span continuing the trace in `carrier` (a message's attributes or a request's headers),
+ * linked to the span it was called from, such as the push request's.
+ */
 export function withTrace<T>(
   carrier: Record<string, string | undefined>,
   name: string,
@@ -87,7 +90,9 @@ export function withTrace<T>(
   kind: SpanKind = SpanKind.CONSUMER
 ): Promise<T> {
   const parent = propagation.extract(ROOT_CONTEXT, carrier)
-  return trace.getTracer('skyclause').startActiveSpan(name, { kind }, parent, async (span) => {
+  const caller = trace.getActiveSpan()?.spanContext()
+  const links = caller ? [{ context: caller }] : []
+  return trace.getTracer('skyclause').startActiveSpan(name, { kind, links }, parent, async (span) => {
     try {
       return await work()
     } catch (error) {

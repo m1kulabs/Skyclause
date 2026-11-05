@@ -113,6 +113,9 @@ test('one trace crosses a Pub/Sub push and a Cloud Tasks call, and the log lines
     .filter((span) => span.spanContext().traceId === traceId)
     .map((span) => span.name)
   expect(names.sort()).toEqual(['POST /tasks/bundle-timers', 'poll', 'pubsub readings-updated'])
+  // The push request's own span stays in Cloud Run's trace, linked from the handler's.
+  const handler = spans.getFinishedSpans().find((span) => span.name === 'pubsub readings-updated')
+  expect(handler?.links.map((link) => link.context.traceId)).toEqual(['0af7651916cd43dd8448eb211c80319c'])
 })
 
 test('the answer waits for the flush, so a throttled instance still exports the request', async () => {
