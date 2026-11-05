@@ -7,7 +7,7 @@ const config: NextConfig = {
   output: 'standalone',
   outputFileTracingRoot: root,
   turbopack: { root },
-  transpilePackages: ['@skyclause/db']
+  transpilePackages: ['@skyclause/config', '@skyclause/db']
 }
 
 export default config

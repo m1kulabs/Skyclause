@@ -29,6 +29,7 @@
       "name": "@skyclause/web",
       "version": "0.0.0",
       "dependencies": {
+        "@skyclause/config": "workspace:*",
         "@skyclause/db": "workspace:*",
         "next": "16.4.5",
         "react": "19.3.1",
