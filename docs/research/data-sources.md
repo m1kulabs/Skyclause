@@ -1,6 +1,6 @@
 # Public data sources
 
-Which real, public, currently live datasets and APIs could power a prototype in each of the three tracks, with relevance to APU at Technology Park Malaysia (TPM), Bukit Jalil, Kuala Lumpur. A source is marked live only if a real request returned current data on 3 November 2026 (10:13–10:50 MYT), or on 5 November 2026 (22:20–22:26 MYT) for Google Maps Platform, BigQuery, OpenAQ, WAQI, and Semantic Scholar; raw responses are kept outside the repo. Researched on 3 November 2026 and rechecked on 5 November 2026. APU's own timetable feed and public documents are in [APU's public documents, data, and systems](/docs/research/apu.md#apspace-timetable-feed).
+Which real, public, currently live datasets and APIs could power a prototype in each of the three tracks, with relevance to APU at Technology Park Malaysia (TPM), Bukit Jalil, Kuala Lumpur. A source is marked live only if a real request returned current data on 3 November 2026 (10:13–10:50 MYT), or on 5 November 2026 (22:20–22:41 MYT) for Google Maps Platform, BigQuery, OpenAQ, WAQI, and Semantic Scholar; raw responses are kept outside the repo. Researched on 3 November 2026 and rechecked on 5 November 2026. APU's own timetable feed and public documents are in [APU's public documents, data, and systems](/docs/research/apu.md#apspace-timetable-feed).
 
 Contents:
 
@@ -241,11 +241,12 @@ These feeds suit "connecting devices with useful actions": thresholds and warnin
 - **Offers:** datasets hosted in the `bigquery-public-data` project, queried with SQL ([public datasets][bq_public]).
 - **Access:** any Cloud project. The first 1 TB processed each month is free, and there's no SLA ([public datasets][bq_public]). The sandbox needs no billing account but caps storage at 10 GiB lifetime, expires tables after 60 days, and doesn't support streaming data ([sandbox][bq_sandbox]). The sandbox's lack of streaming matters for an IoT pipeline; see [Google Cloud](/docs/research/google-cloud.md).
 - **Terms:** per dataset.
-- **Malaysian coverage, checked 22:21–22:24 MYT on 5 November 2026 from the team's `skyclause` Cloud project:** no weather or air-quality dataset I checked (`ghcn_d`, `noaa_gsod`, `openaq`) has current rows for the Klang Valley. I checked the two map datasets for freshness only, not for Malaysian or APU coverage.
+- **Malaysian coverage, checked 22:21–22:41 MYT on 5 November 2026 from the team's `skyclause` Cloud project:** no weather or air-quality dataset I checked (`ghcn_d`, `noaa_gsod`, `openaq`) has current rows for the Klang Valley. Overture's `place` table does cover the campus; I checked `geo_openstreetmap` for freshness only.
   - `ghcn_d` (NOAA daily station records) was refreshed on 5 November, but its two Klang Valley stations, `MYM00048647` Subang (Sultan Abdul Aziz Shah, about 18.7 km) and `MYM00048650` KLIA (about 34.5 km), stop on 24 August 2025, with `PRCP`, `TMAX`, `TMIN`, and `TAVG`. Of 16 Malaysian stations, only Mersing has 2026 rows, and only temperatures.
   - `noaa_gsod` has no 2026 table; `gsod2025` ends on 28 August 2025, with Subang and KLIA to 24 August.
   - `openaq.global_air_quality` was last modified on 23 June 2022 and has no Malaysian rows.
-  - `geo_openstreetmap`'s newest tables were last modified on 11 November 2022. `overture_maps` was refreshed on 22 October 2026, but even a 300 m query around campus is estimated at 11 GB, so I didn't run it.
+  - `geo_openstreetmap`'s newest tables were last modified on 11 November 2022.
+  - `overture_maps` carries the release label `2026-10-21_0` and was refreshed on 22 October 2026. A 300 m `ST_DWITHIN` query on `place` around the OSM centroid returned 16 rows of `{id, names.primary, basic_category, confidence, operating_status, sources[].dataset}`. Every row's sources are `meta` and `Overture`, and none has an `operating_status`. The rows include "Asia Pacific University of Technology & Innovation - APU" (`college_university`, confidence 0.99, about 140 m), "APU Library" (`library`, about 60 m), "Nelson's APU" (`cafe`), and "AWS Cloud Club at Asia Pacific University". Some look misplaced (inference): "The Fullerton Hotel Singapore", "Stadium Bukit Jalil", and a community hall in Taman Seri Gombak all fall inside the circle. The query was estimated at up to 13.7 GB but billed 19 MB, because the table is clustered by geometry; a 300 m query on `building` was estimated at 498 GB, so I didn't run it.
 
 [bq_public]: https://cloud.google.com/bigquery/public-data
 [bq_sandbox]: https://cloud.google.com/bigquery/docs/sandbox
