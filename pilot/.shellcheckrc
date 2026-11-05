@@ -1,0 +1,3 @@
+# wizard.sh copies the /wizard library verbatim, and the library is never hand-edited. Its one finding isn't a bug:
+# SC1087 flags "$e[Enter keeps current]", which is a colour code then text, not an array.
+disable=SC1087
