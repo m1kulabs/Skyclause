@@ -14390,7 +14390,7 @@
       "node_kind": "heading",
       "norm_label": "ai coding tools",
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L155"
+      "source_location": "L157"
     },
     {
       "id": "docs_research_google_cloud_bigquery",
@@ -14402,7 +14402,7 @@
       "node_kind": "heading",
       "norm_label": "bigquery",
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L136"
+      "source_location": "L138"
     },
     {
       "id": "docs_research_google_cloud_building_blocks",
@@ -14450,7 +14450,7 @@
       "node_kind": "heading",
       "norm_label": "data studio, formerly looker studio",
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L143"
+      "source_location": "L145"
     },
     {
       "id": "docs_research_google_cloud_education_and_community_programmes",
@@ -14462,7 +14462,7 @@
       "node_kind": "heading",
       "norm_label": "education and community programmes",
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L193"
+      "source_location": "L195"
     },
     {
       "id": "docs_research_google_cloud_firebase",
@@ -14546,7 +14546,7 @@
       "node_kind": "heading",
       "norm_label": "google cloud free trial credit",
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L185"
+      "source_location": "L187"
     },
     {
       "id": "docs_research_google_cloud_google_maps_platform",
@@ -14558,7 +14558,7 @@
       "node_kind": "heading",
       "norm_label": "google maps platform",
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L147"
+      "source_location": "L149"
     },
     {
       "id": "docs_research_google_cloud_minimal_reference_stack",
@@ -14570,7 +14570,7 @@
       "node_kind": "heading",
       "norm_label": "minimal reference stack",
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L215"
+      "source_location": "L217"
     },
     {
       "id": "docs_research_google_cloud_money_and_access",
@@ -14582,7 +14582,7 @@
       "node_kind": "heading",
       "norm_label": "money and access",
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L166"
+      "source_location": "L168"
     },
     {
       "id": "docs_research_google_cloud_paths_that_need_no_payment_card",
@@ -14594,7 +14594,7 @@
       "node_kind": "heading",
       "norm_label": "paths that need no payment card",
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L168"
+      "source_location": "L170"
     },
     {
       "id": "docs_research_google_cloud_practical_blockers_for_malaysian_students",
@@ -14606,7 +14606,7 @@
       "node_kind": "heading",
       "norm_label": "practical blockers for malaysian students",
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L206"
+      "source_location": "L208"
     },
     {
       "id": "docs_research_google_cloud_pub_sub_and_the_cloud_iot_core_retirement",
@@ -14618,7 +14618,7 @@
       "node_kind": "heading",
       "norm_label": "pub/sub and the cloud iot core retirement",
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L127"
+      "source_location": "L129"
     },
     {
       "id": "docs_research_google_cloud_see_also",
@@ -14630,7 +14630,7 @@
       "node_kind": "heading",
       "norm_label": "see also",
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L249"
+      "source_location": "L251"
     },
     {
       "id": "docs_research_google_cloud_takeaways_for_this_hackathon",
@@ -14642,7 +14642,7 @@
       "node_kind": "heading",
       "norm_label": "takeaways for this hackathon",
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L232"
+      "source_location": "L234"
     },
     {
       "id": "docs_research_google_cloud_what_changed_in_2026",
@@ -40859,7 +40859,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L127",
+      "source_location": "L129",
       "weight": 1.0
     },
     {
@@ -40870,7 +40870,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L136",
+      "source_location": "L138",
       "weight": 1.0
     },
     {
@@ -40881,7 +40881,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L143",
+      "source_location": "L145",
       "weight": 1.0
     },
     {
@@ -40892,7 +40892,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L147",
+      "source_location": "L149",
       "weight": 1.0
     },
     {
@@ -40903,7 +40903,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L155",
+      "source_location": "L157",
       "weight": 1.0
     },
     {
@@ -40958,7 +40958,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L166",
+      "source_location": "L168",
       "weight": 1.0
     },
     {
@@ -40969,7 +40969,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L215",
+      "source_location": "L217",
       "weight": 1.0
     },
     {
@@ -40980,7 +40980,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L232",
+      "source_location": "L234",
       "weight": 1.0
     },
     {
@@ -40991,7 +40991,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L249",
+      "source_location": "L251",
       "weight": 1.0
     },
     {
@@ -41035,7 +41035,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L168",
+      "source_location": "L170",
       "weight": 1.0
     },
     {
@@ -41046,7 +41046,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L185",
+      "source_location": "L187",
       "weight": 1.0
     },
     {
@@ -41057,7 +41057,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L193",
+      "source_location": "L195",
       "weight": 1.0
     },
     {
@@ -41068,7 +41068,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/google-cloud.md",
-      "source_location": "L206",
+      "source_location": "L208",
       "weight": 1.0
     },
     {
@@ -47695,5 +47695,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "0d5878b77772f6e7fdf6e0f6b9e7d68ba722fe2b"
+  "built_at_commit": "717d2b91f0ee3c71f0d21d97fff807526a9be5af"
 }

@@ -268,7 +268,7 @@ How each limit traces to a usage driver:
 - **Approvers** trace to the rota: the default rota covers storm afternoons and surge nights, and escalation needs a next approver, so Community allows three.
 - **Runs** trace to schedules: one scheduled run a day per pack (the pilot's 06:45 weekday Sky run, about 22 a month, and the source idea's 07:00 daily Crowd outlook, about 30) is about 52 a month for a project with both packs (our arithmetic), so Community's 150 leaves about 100 for crossings, listing changes and requests. Grading is computed, not a run.
 - **Subscribers and channels** trace to email and delivery cost; **support** traces to staff time, which the free tiers don't pay for.
-- **SSO and residency** are sold only once verified: APU runs Microsoft 365, and the Kuala Lumpur region's Cloud SQL, KMS and Vertex Gemini are unchecked ([Google Cloud research](/docs/research/google-cloud.md#cloud-run)).
+- **SSO and residency** are sold only once verified: APU runs Microsoft 365, and Google's location pages list no Malaysia region ([Google Cloud research](/docs/research/google-cloud.md#cloud-run); checked 5 November 2026).
 
 [BIL-1]: /docs/PRD.md#billing-bil
 [prd nfr]: /docs/PRD.md#non-functional-requirements
