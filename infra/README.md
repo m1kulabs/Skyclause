@@ -1,6 +1,6 @@
 # Skyclause infrastructure
 
-Terraform for every Google Cloud and Neon resource P1 runs on. There is one environment, `production`, in the Google Cloud project `skyclause` beside the P0 pilot, whose resources it never manages (D10 in #79). Compute and storage sit in `asia-southeast1` and the Neon database in `aws-ap-southeast-1`, both Singapore.
+Terraform for every Google Cloud, Neon and AWS resource P1 runs on. There is one environment, `production`, in the Google Cloud project `skyclause` beside the P0 pilot, whose resources it never manages (D10 in #79). Compute and storage sit in `asia-southeast1` and the Neon database in `aws-ap-southeast-1`, both Singapore. Amazon SES sits in AWS `ap-southeast-2`, Sydney, the only region the AWS account's organisation policy allows.
 
 Contents:
 
@@ -8,12 +8,15 @@ Contents:
 1.  [Bootstrap](#bootstrap)
 1.  [Applying](#applying)
 1.  [Values set by other tickets](#values-set-by-other-tickets)
+1.  [Monitoring](#monitoring)
 1.  [Custom hosts](#custom-hosts)
+1.  [AWS email](#aws-email)
 
 ## Layout
 
-- `bootstrap/`: the state bucket, the APIs, the `skyclause-terraform` service account that CI impersonates, and the `NEON_API_KEY` secret. A project owner applies it by hand.
+- `bootstrap/`: the state bucket, the APIs, the `skyclause-terraform` service account that CI impersonates, the `NEON_API_KEY` secret and the project's monthly budget alert (RM40, gate 2's US$10), so CI holds no billing role. A project owner who can manage the billing account's budgets applies it by hand, and again whenever it changes.
 - `environments/production/`: everything else. CI plans and applies it from `main`.
+- `aws/`: Amazon SES sending and receiving, their SNS topics, the inbound bucket and the role `web` and `worker` assume with Google ID tokens (#113), in AWS account `776566309118`. It has its own state in S3, and a person applies it by hand.
 - `modules/`: `service` (Cloud Run service), `job` (Cloud Run job with an optional schedule), `topic` (Pub/Sub topic with a push subscription to the worker) and `queue` (Cloud Tasks).
 - `scripts/check-region`: fails unless every located resource in a `terraform show -json` document is in Singapore. CI runs it on each plan before applying, and `scripts/check-region.test.sh` tests it.
 
@@ -62,13 +65,84 @@ terraform -chdir=infra/environments/production plan
 Set these in a pull request, in `environments/production/terraform.tfvars`, which Terraform loads by itself. `variables.tf` describes and validates each one.
 
 - `app_config`: the #79 §6 TF values other tickets make, such as `GOOGLE_CLIENT_ID`, `TURNSTILE_SITE_KEY`, `VAPID_PUBLIC_KEY` and the SES values. Each is set on every service and job once given.
-- `supplied_secrets`: `GOOGLE_CLIENT_SECRET`, `TURNSTILE_SECRET_KEY` and `SKYCLAUSE_STAFF_EMAILS` start as empty secrets. Add a version with `gcloud secrets versions add`, then list the name here to mount it. Cloud Run fails a revision whose secret has no version.
-- `vapid_private_key_ready`: set to `true` once #113's `vapid-keys` job has created `VAPID_PRIVATE_KEY`.
+- `supplied_secrets`: `GOOGLE_CLIENT_SECRET`, `TURNSTILE_SECRET_KEY` and `SKYCLAUSE_STAFF_EMAILS` start as empty secrets. Add a version with `gcloud secrets versions add`, then list the name here to mount it. Cloud Run fails a revision whose secret has no version. Two wizards add the versions and print the public values:
+  - `infra/wizards/google-sign-in.sh` (about 25 minutes): Google Auth Platform branding and the Web OAuth client (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`), and the app host's Turnstile widget (`TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`).
+  - `infra/wizards/staff-and-ses.sh` (about 5 minutes): `SKYCLAUSE_STAFF_EMAILS`, then, optionally, SES sandbox verification of the team addresses.
+- `vapid_private_key_ready`: set to `true` once #113's `vapid-keys` job has created `VAPID_PRIVATE_KEY`. A person runs the job once, after #90's first deploy has put the real image on it, and copies the public key it logs into `app_config` as `VAPID_PUBLIC_KEY` (5 minutes). A second run changes nothing, and the key never rotates by itself, since rotating drops every push subscription:
+
+  ```shell
+  gcloud run jobs execute vapid-keys --region=asia-southeast1 --project=skyclause --wait
+  gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="vapid-keys" AND jsonPayload.message="vapid public key"' \
+    --project=skyclause --limit=1 --format='value(jsonPayload.VAPID_PUBLIC_KEY)'
+  ```
+
+- `oncall_contacts_ready`: set to `true` once `infra/wizards/oncall-contacts.sh` has stored `ONCALL_CONTACTS`.
+
+## Monitoring
+
+`environments/production/monitoring.tf` holds #114's uptime checks, SLOs and alert policies. Every policy notifies the platform on-call's email and SMS channels.
+
+- **Availability:** an uptime check every minute on `/healthz` of each distinct app, API and MCP origin, one while `HOST_MODE=single`, with a 99.5% 30-day SLO and fast- and slow-burn pages.
+- **Jobs:** a page on any failed Cloud Run job execution.
+- **Pipeline:** a PromQL page per TRD SLI row, on the `breach` stat the worker's `sli` handler records each batch, and one per absent heartbeat (`auditor`, `minute_tick`). Each starts disabled; once its metric has flowed for a day, check its query in Metrics Explorer and set its `enabled` to `true`.
+- **On-call contacts:** a person runs `infra/wizards/oncall-contacts.sh` (10 minutes), which stores them hidden. After `oncall_contacts_ready` is applied, run it again to verify the SMS numbers, since an unverified number isn't paged.
 
 ## Custom hosts
 
 `skyclause.m1ku.tech`, `app.`, `api.`, `mcp.`, `embed.` and `docs.` map to `web` through Cloud Run domain mappings.
 
-1.  A person verifies `skyclause.m1ku.tech` as a Domain property in Google Search Console, choosing the CNAME record, and adds `skyclause-terraform@skyclause.iam.gserviceaccount.com` as an owner. A record at the `m1ku.tech` apex is never used.
-1.  Set `map_domains = true`. After the apply, `terraform output dns_records` lists each host's records; create them in Cloudflare with `proxied: false` and the comment `owner: skyclause`.
+1.  A person verifies `skyclause.m1ku.tech` as a Domain property in Google Search Console, choosing the CNAME record, and adds `skyclause-terraform@skyclause.iam.gserviceaccount.com` as an owner. A record at the `m1ku.tech` apex is never used. `infra/wizards/search-console.sh` walks through it in about 15 minutes and writes the CNAME itself.
+1.  Set `map_domains = true`. After the apply, `terraform output dns_records` lists each host's records; create them in Cloudflare with `proxied: false` and the comment `owner: skyclause`. For a CNAME, TXT or MX (content `<priority> <host>`), `bun scripts/cloudflare-record.ts [--dry-run] <CNAME|TXT|MX> <name> <content>` does that with `M1KU_CLOUDFLARE_API_TOKEN`, and refuses any name outside `skyclause.m1ku.tech` and any record not commented `owner: skyclause`.
 1.  Once each certificate is active, set `host_mode = "multi"` and the six `origins`. Until then every origin is the `web` URL.
+
+## AWS email
+
+A person with AWS access to account `776566309118` applies `aws/` after the production apply has created `skyclause-web` and `skyclause-worker` and a worker revision with `/ses/inbound` is live (about 30 minutes plus DNS propagation). Pass `--region ap-southeast-2` to every `aws` command, since the CLI's default region may differ.
+
+1.  Create the state bucket once. New buckets already block public access and encrypt objects:
+
+    ```shell
+    aws s3api create-bucket --bucket skyclause-tfstate-776566309118 --region ap-southeast-2 \
+      --create-bucket-configuration LocationConstraint=ap-southeast-2
+    aws s3api put-bucket-versioning --bucket skyclause-tfstate-776566309118 --region ap-southeast-2 \
+      --versioning-configuration Status=Enabled
+    ```
+
+1.  `aws/terraform.tfvars` holds `google_service_account_ids`, each account's `uniqueId`. Recreating either account changes its ID, and the role refuses it until this is updated in a pull request and applied again:
+
+    ```shell
+    gcloud iam service-accounts describe skyclause-web@skyclause.iam.gserviceaccount.com \
+      --project=skyclause --format='value(uniqueId)'
+    gcloud iam service-accounts describe skyclause-worker@skyclause.iam.gserviceaccount.com \
+      --project=skyclause --format='value(uniqueId)'
+    ```
+
+1.  Apply it. This also activates the receipt rule set, the only one in the region:
+
+    ```shell
+    terraform -chdir=infra/aws init
+    terraform -chdir=infra/aws apply
+    ```
+
+1.  Enter the records from `terraform -chdir=infra/aws output dns_records` in Cloudflare with `bun scripts/cloudflare-record.ts`, which sets `proxied: false` and the comment `owner: skyclause` (#118). The DKIM values assume SES signs from `dkim.amazonses.com`, which Terraform can't read yet; first check that each identity prints it, and use the printed zone if it differs:
+
+    ```shell
+    for identity in notices.skyclause.m1ku.tech in.skyclause.m1ku.tech; do
+      aws sesv2 get-email-identity --email-identity "$identity" --region ap-southeast-2 \
+        --query DkimAttributes.SigningHostedZone --output text
+    done
+    ```
+
+1.  Check that DKIM and MAIL FROM read `SUCCESS` for `notices.`, and DKIM for `in.`:
+
+    ```shell
+    aws sesv2 get-email-identity --email-identity notices.skyclause.m1ku.tech --region ap-southeast-2 \
+      --query '[DkimAttributes.Status, MailFromAttributes.MailFromDomainStatus]'
+    aws sesv2 get-email-identity --email-identity in.skyclause.m1ku.tech --region ap-southeast-2 \
+      --query DkimAttributes.Status
+    ```
+
+1.  Check the subscriptions with `aws sns list-subscriptions-by-topic --region ap-southeast-2 --topic-arn <arn>` for both topic ARNs in the `app_config` output. The worker confirms each when its handler is live: `/ses/inbound` here, `/ses/events` with #158. If one still reads `PendingConfirmation` after its handler is live, send the confirmation again with `terraform -chdir=infra/aws apply -replace=aws_sns_topic_subscription.<inbound or ses_events>`.
+1.  Copy the `app_config` output into `app_config` in `environments/production/terraform.tfvars` in a pull request.
+1.  While `aws sesv2 get-account --region ap-southeast-2` shows `ProductionAccessEnabled: false`, SES delivers only to verified addresses, so live checks use team addresses verified with `infra/wizards/staff-and-ses.sh`. Mail to anyone else fails with `MessageRejected` until SES production access is granted (#118).
+1.  Turn on `inbound_email` with the audited `flag:set` script (#92).
