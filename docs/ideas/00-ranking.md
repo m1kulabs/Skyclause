@@ -1,6 +1,6 @@
 # Idea ranking
 
-**Build [ChronoDiff] by default, and ask for written permission to use APU's timetable feed today.** Three products tie at the top: [Outage Witness] at 71.3, [Skyclause] at 71.1 and ChronoDiff at 71.0 / 100. They hold ranks 1–3 under every weighting tried, but 0.3 points is far inside the scorers' noise, so tie-breakers decide the pick. ChronoDiff is the only one of the three that all three scorers passed on all four gates. It also leads on NTT DATA's five stated points: 76.0 when they carry all the weight, against 74.7 for the other two. It audits each release of APU's public timetable from a Raspberry Pi 5 at a teammate's home and files approved fixes for the Schedulers office. Its weak spots are a theme score of 2, because it has no sensor, and its reliance on APU's feed, which needs APU's written permission. If permission is refused, build Skyclause, which needs a teammate's high window, or Outage Witness, which only works in its off-campus form.
+**Build [ChronoDiff] by default, and ask for written permission to use APU's timetable feed today.** Three products tie at the top: [Outage Witness] at 71.3, [Skyclause] at 71.1 and ChronoDiff at 71.0 / 100. They hold ranks 1–3 under every weighting tried, but 0.3 points is far inside the scorers' noise, so tie-breakers decide the pick. ChronoDiff is the only one of the three that all three scorers passed on all four gates. It also leads on NTT DATA's five stated points: 76.0 when they carry all the weight, against 74.7 for the other two. It audits each release of APU's public timetable from a Raspberry Pi 5 at a teammate's home and files approved fixes for the Schedulers office. Its weak spots are a theme score of 2, because it has no sensor, and its reliance on APU's feed, which needs APU's written permission. If permission is refused, build Skyclause, which needs a teammate's high window, or Outage Witness, which only works in its off-campus form. If nobody at APU will act at all, not even to grant permission, ChronoDiff drops out and those two lead; see [Alternative ranking under strict limits](#alternative-ranking-under-strict-limits).
 
 This page re-ranks the 32 ideas from the seven idea sets ([argon-01](/docs/ideas/argon-01/00-ranking.md), [argon-02](/docs/ideas/argon-02/00-ranking.md), [astra](/docs/ideas/astra/00-ranking.md), [opus-01](/docs/ideas/opus-01/00-ranking.md), [opus-02](/docs/ideas/opus-02/00-ranking.md), [opus-03](/docs/ideas/opus-03/00-ranking.md), [sol](/docs/ideas/sol/00-ranking.md)) against one scoring matrix. It then merges the overlapping ideas into 25 products, writes a doc for each of the 18 strongest, and ranks those. The matrix combines the seven sets' matrices, NTT DATA's five judging points, and the criteria the sets share. The sets themselves are unchanged; this synthesis is the one place that compares them ([project conventions](/docs/references/project-conventions.md)).
 
@@ -16,6 +16,7 @@ Contents:
     1.  [Scale and aggregation](#scale-and-aggregation)
     1.  [Gates](#gates)
 1.  [Sensitivity](#sensitivity)
+1.  [Alternative ranking under strict limits](#alternative-ranking-under-strict-limits)
 1.  [The 32 source ideas reranked](#the-32-source-ideas-reranked)
 1.  [How the products were merged](#how-the-products-were-merged)
 1.  [How to choose](#how-to-choose)
@@ -108,7 +109,7 @@ The organisers haven't posted official criteria. At the briefing NTT DATA said i
 Every score assumes the team as it is on 5 November 2026, not as it might be:
 
 - Nobody on the team can be at APU before 10 November, so no phone can be placed, carried, or ridden on campus.
-- No APU staff, lecturer, or office will help or act during the build, and no users are recruited yet.
+- No APU staff, lecturer, or office will help or act during the build, and no users are recruited yet. The main ranking applies this to the build's critical path; [Alternative ranking under strict limits](#alternative-ranking-under-strict-limits) also rules out APU's written permission and APU offices as the only users.
 - The only devices are the team's own Android phones and iPhones and one Raspberry Pi 5 (8 GB) at a team member's home, with no add-on sensors and no payment card ([IoT and network](/docs/research/iot-and-network.md#the-teams-devices)).
 - No Gemini Enterprise licence has arrived; scorers assumed one arrives through the event on a supported domain.
 
@@ -192,6 +193,55 @@ What moves:
 - **Lifting G4 moves Kept from 18th to 14th,** and the four products below it each drop one place.
 
 The spread between scorers is wider than the spread between weightings. Khabar ranges from 62.0 with the FDE to 74.4 with the lecturer.
+
+## Alternative ranking under strict limits
+
+The main ranking reads "no APU staff will help" as "no APU staff on the build's critical path". It still credits two things the team can't get if nobody at APU acts at all:
+
+- **APU's written permission:** APU's Terms of Use ask for it before any use of its content ([terms](/docs/research/apu.md#terms-of-use-and-robotstxt)), and granting it is an APU staff action. Seven products read APU's timetable feed, including the recommended ChronoDiff.
+- **APU offices as users:** several products name an APU office as owner, and some reach no user until that office acts.
+
+This view applies the limits strictly: no one from the team at APU, no lecturer, office or staff member acting, approving, adopting or granting permission, and only the team's phones and one Pi 5. On top of G1–G4 it adds two gates. Scores are unchanged, because the scorers already assumed the team limits; only the gates differ.
+
+- **S1 No APU permission:** the core loop works without APU's written permission. A product fails if its core input is APU content that its doc says needs permission, and it stops or loses its core without it. A permission-gated add-on doesn't fail it.
+- **S2 Value without APU:** someone other than APU staff, such as a student, a student group or the team, gets the output before or soon after 10 November with no APU office acting.
+
+| Strict rank | Product                | Main rank | Score | NTT five | S1 permission | S2 value without APU | Why                                                                                                                             |
+| ----------: | ---------------------- | --------: | ----: | -------: | ------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+|           1 | [Outage Witness]       |         1 |  71.3 |     48.5 | Pass          | Pass                 | Students check whether Moodle or APSpace failed for everyone before filing; HEAD probes copy nothing                            |
+|           2 | [Skyclause]            |         2 |  71.1 |     48.5 | Pass          | Pass                 | Reads no APU content; club organisers and commuting students opt in through student channels                                    |
+|           3 | [Fanfall]              |         4 |  68.3 |     47.7 | Pass          | Pass                 | Public rail, bus and venue feeds; students subscribe to the surge-night calendar by URL                                         |
+|           4 | [Tukar]                |         6 |  67.9 |     47.7 | Pass          | Pass                 | No APU content or office; FYP students recruited on Reddit and X                                                                |
+|           5 | [Khabar]               |         7 |  65.9 |     41.6 | Pass          | Pass                 | Phone events only; students living alone and their buddies                                                                      |
+|           6 | [Janji]                |         8 |  64.5 |     42.5 | Pass          | Pass                 | Drive, GitHub and wrap-up audio; the team and outside student groups                                                            |
+|           7 | [KuyohGuard]           |         9 |  64.2 |     45.9 | Pass          | Borderline           | Runs on government feeds without the APU dismissal join; riders get advisories only through the opt-in list in its 3-month plan |
+|           8 | [Cap Masa]             |        12 |  59.1 |     36.4 | Pass          | Pass                 | Times APU's public sign-in pages without copying them; the student owns the evidence pack                                       |
+|           9 | [Research & FYP Nexus] |        13 |  57.1 |     40.7 | Pass          | Pass                 | OpenAlex and arXiv; the APU page fetch is an add-on; students email their drafts                                                |
+|          10 | [RoomReady]            |        15 |  51.7 |     32.1 | Pass          | Pass                 | Reads no APU feed; the team's own sessions, then remote students                                                                |
+|          11 | [BenchRelay]           |        16 |  50.8 |     30.8 | Pass          | Borderline           | No APU content; passes only because the team counts as its first user                                                           |
+|          12 | [FieldPair]            |        17 |  46.7 |     25.1 | Pass          | Borderline           | No APU content; passes only because the team counts as its first user                                                           |
+|           — | [ChronoDiff]           |         3 |  71.0 |     49.4 | Fail          | Pass                 | Its core is APU's timetable feed: "if APU refuses or the feed closes, ChronoDiff stops"                                         |
+|           — | [Bangun]               |         5 |  68.1 |     45.9 | Fail          | Pass                 | Without the feed it loses its core alarm and becomes "an announcement relay"                                                    |
+|           — | [BoardCast]            |        10 |  63.1 |     41.6 | Fail          | Pass                 | Builds the board from APU's timetable and shuttle feeds; "kill on a refusal"                                                    |
+|           — | [GateWatch]            |        11 |  61.3 |     43.3 | Fail          | Pass                 | Its own kill line: "if the organisers refuse probing, stop"                                                                     |
+|           — | [BiblioForge]          |        14 |  54.2 |     36.4 | Fail          | Borderline           | Needs the timetable feed and the Koha API; its first users are Library staff, not yet engaged                                   |
+|           — | [Kept]                 |        18 |  54.5 |     34.7 | Fail          | Fail                 | Also fails G4; reads the shuttle API and timetable, and its packets go to the LNO desk                                          |
+
+- **ChronoDiff drops out,** so the strict pick is between [Outage Witness] (71.3) and [Skyclause] (71.1). They also tie on NTT DATA's five points, at 48.5 each.
+  - **Pick Skyclause if a teammate has a high window with a skyline.** It reads nothing of APU's.
+  - **Otherwise pick Outage Witness.** It times Moodle and APSpace with HEAD requests that copy nothing.
+- **Probing APU's hosts is the soft spot.** Outage Witness and Cap Masa assume that timing APU's public sign-in pages needs no permission. GateWatch's doc treats the same kind of check as permission-gated and stops on a refusal. If APU's terms cover probing, Outage Witness and Cap Masa fall too, and Skyclause and Fanfall lead.
+- **[Tukar] (67.9) is the cleanest fit:** no APU content, no APU office, and users the team can reach on Reddit and X. It sits 3.4 points behind the leader, inside the scorers' noise.
+- **Six products drop out:**
+  - On S1, five products whose core needs APU's permission: ChronoDiff, Bangun, BoardCast, GateWatch and BiblioForge.
+  - Kept, which fails G4, S1 and S2.
+- **Borderline calls:**
+  - KuyohGuard passes S2 only through the opt-in rider list in its 3-month plan.
+  - BenchRelay and FieldPair pass S2 only because the team counts as their first user.
+- **How the classification was made:** an independent classifier on a different model read the 18 docs blind, and disagreed on three products.
+  - GateWatch now fails S1, on its own kill line, which overrode the probing exemption.
+  - Bangun fails S1: without the feed, its doc says what remains is "an announcement relay with no feed-based alarm: a much smaller product". The classifier had passed it.
+  - KuyohGuard passes S2, as the classifier argued.
 
 ## The 32 source ideas reranked
 
