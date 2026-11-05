@@ -45,15 +45,21 @@ locals {
   member = { for name, account in google_service_account.this : name => account.member }
 
   project_roles = concat(
+    [
+      { account = "web", role = "roles/cloudtrace.agent" },
+      { account = "web", role = "roles/monitoring.metricWriter" },
+      { account = "worker", role = "roles/cloudtrace.agent" },
+      { account = "worker", role = "roles/monitoring.metricWriter" },
+      { account = "worker", role = "roles/aiplatform.user" },
+      { account = "jobs", role = "roles/cloudtrace.agent" },
+      { account = "jobs", role = "roles/monitoring.metricWriter" },
+      { account = "deployer", role = "roles/run.developer" },
+    ],
     # Telemetry goes to Google's OTLP endpoint (#114), which needs the writer role and the quota project.
     flatten([for account in ["web", "worker", "jobs", "migrator", "vapid"] : [
       { account = account, role = "roles/telemetry.writer" },
       { account = account, role = "roles/serviceusage.serviceUsageConsumer" },
     ]]),
-    [
-      { account = "worker", role = "roles/aiplatform.user" },
-      { account = "deployer", role = "roles/run.developer" },
-    ],
   )
 
   # Account-on-account grants: who may act as whom.

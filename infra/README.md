@@ -14,7 +14,7 @@ Contents:
 
 ## Layout
 
-- `bootstrap/`: the state bucket, the APIs, the `skyclause-terraform` service account that CI impersonates, its Costs Manager role on the billing account for the budget alert, and the `NEON_API_KEY` secret. A project owner who is also the billing account's administrator applies it by hand, and again whenever it changes.
+- `bootstrap/`: the state bucket, the APIs, the `skyclause-terraform` service account that CI impersonates, the `NEON_API_KEY` secret and the project's monthly budget alert (RM40, gate 2's US$10), so CI holds no billing role. A project owner who can manage the billing account's budgets applies it by hand, and again whenever it changes.
 - `environments/production/`: everything else. CI plans and applies it from `main`.
 - `aws/`: Amazon SES sending and receiving, their SNS topics, the inbound bucket and the role `web` and `worker` assume with Google ID tokens (#113), in AWS account `776566309118`. It has its own state in S3, and a person applies it by hand.
 - `modules/`: `service` (Cloud Run service), `job` (Cloud Run job with an optional schedule), `topic` (Pub/Sub topic with a push subscription to the worker) and `queue` (Cloud Tasks).
@@ -77,7 +77,6 @@ Set these in a pull request, in `environments/production/terraform.tfvars`, whic
   ```
 
 - `oncall_contacts_ready`: set to `true` once `infra/wizards/oncall-contacts.sh` has stored `ONCALL_CONTACTS`.
-- `billing_account` and `monthly_budget_myr`: the budget alert's account and amount (#79 §9 gate 2). The Budget API takes only the account's currency, MYR.
 
 ## Monitoring
 

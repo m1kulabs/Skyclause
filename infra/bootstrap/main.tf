@@ -59,18 +59,22 @@ locals {
     "roles/resourcemanager.projectIamAdmin",
     "roles/run.admin",
     "roles/secretmanager.admin",
-    # The budget provider in production sends skyclause as the quota project (#114).
-    "roles/serviceusage.serviceUsageConsumer",
     "roles/storage.admin",
   ]
-
-  # #79 §9 gate 2: the project's billing account, for the budget alert (#114).
-  billing_account = "01D106-4ADF3E-8FE685"
 }
 
 provider "google" {
   project = local.project_id
   region  = local.region
+}
+
+# The Budget API needs a quota project with user credentials, which the owner applies this with.
+provider "google" {
+  alias                 = "billing"
+  project               = local.project_id
+  region                = local.region
+  user_project_override = true
+  billing_project       = local.project_id
 }
 
 resource "google_project_service" "this" {
@@ -118,15 +122,6 @@ resource "google_project_iam_member" "terraform" {
   member  = google_service_account.terraform.member
 }
 
-# Budgets live on the billing account, so the production budget alert needs a billing role there; whoever
-# applies this must be a billing account administrator. Costs Manager also shows the account's other projects'
-# costs (#114).
-resource "google_billing_account_iam_member" "terraform_budgets" {
-  billing_account_id = local.billing_account
-  role               = "roles/billing.costsManager"
-  member             = google_service_account.terraform.member
-}
-
 resource "google_service_account_iam_member" "terraform_wif" {
   service_account_id = google_service_account.terraform.name
   role               = "roles/iam.workloadIdentityUser"
@@ -157,4 +152,39 @@ resource "google_secret_manager_secret_iam_member" "terraform_neon" {
 
 output "terraform_service_account" {
   value = google_service_account.terraform.email
+}
+
+# The budget alert (#114, #79 §9 gate 2). Budgets live on the billing account, which also pays for the owner's
+# other projects, so the owner applies it here and the CI account holds no billing role. With no update rule,
+# alerts email the billing account's administrators and users.
+resource "google_billing_budget" "monthly" {
+  provider = google.billing
+
+  billing_account = "01D106-4ADF3E-8FE685"
+  display_name    = "skyclause monthly"
+
+  # This project only.
+  budget_filter {
+    projects        = ["projects/413187272599"]
+    calendar_period = "MONTH"
+  }
+
+  # Gate 2's US$10 in the account's currency, the only one the Budget API takes: RM40.46 at Bank Negara
+  # Malaysia's noon middle rate on 5 November 2026 (4.046), rounded down.
+  amount {
+    specified_amount {
+      currency_code = "MYR"
+      units         = "40"
+    }
+  }
+
+  # Gate 2's thresholds, on actual spend.
+  dynamic "threshold_rules" {
+    for_each = [0.5, 0.9, 1.0]
+    content {
+      threshold_percent = threshold_rules.value
+    }
+  }
+
+  depends_on = [google_project_service.this]
 }

@@ -1,5 +1,6 @@
 # Monitoring (#114): uptime checks and NFR-3's 99.5% SLOs with burn-rate pages, TRD's pipeline pages, a failed
-# job page, the platform on-call's channels and the budget alert. Every policy pages the on-call channels.
+# job page and the platform on-call's channels. Every policy pages the on-call channels. The budget alert is
+# infra/bootstrap's, so this account needs no billing role.
 # Uptime checks hit /healthz, which never queries the database (D45), and run within the free 1 million
 # executions a month: three regions every minute is 129,600 per check.
 
@@ -267,49 +268,5 @@ resource "google_monitoring_notification_channel" "oncall" {
       )
       error_message = "ONCALL_CONTACTS needs an email address and an E.164 phone number for primary and secondary."
     }
-  }
-}
-
-# The budget API needs a quota project with user credentials, so this provider sends one.
-provider "google" {
-  alias                 = "billing"
-  project               = local.project_id
-  region                = local.region
-  user_project_override = true
-  billing_project       = local.project_id
-}
-
-resource "google_billing_budget" "monthly" {
-  count    = var.billing_account != null && var.monthly_budget_myr != null ? 1 : 0
-  provider = google.billing
-
-  billing_account = var.billing_account
-  display_name    = "skyclause monthly"
-
-  # The billing account also pays for other projects; this budget counts only this one.
-  budget_filter {
-    projects        = ["projects/${data.google_project.this.number}"]
-    calendar_period = "MONTH"
-  }
-
-  amount {
-    specified_amount {
-      # The Budget API takes only the billing account's currency.
-      currency_code = "MYR"
-      units         = tostring(var.monthly_budget_myr)
-    }
-  }
-
-  # §9 gate 2's thresholds, on actual spend.
-  dynamic "threshold_rules" {
-    for_each = [0.5, 0.9, 1.0]
-    content {
-      threshold_percent = threshold_rules.value
-    }
-  }
-
-  all_updates_rule {
-    monitoring_notification_channels = [for key, channel in google_monitoring_notification_channel.oncall : channel.name if endswith(key, "email")]
-    disable_default_iam_recipients   = false
   }
 }
