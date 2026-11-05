@@ -86,10 +86,11 @@ node_modules/
 .env*
 !.env.example
 
-# Apps Script credentials and clasp project files
+# Apps Script credentials, clasp project files and the clasp bundle
 .clasprc.json
 .clasp*.json
 client_secret*.json
+pilot/apps-script/dist/
 
 # Graphify
 graphify-out/*
