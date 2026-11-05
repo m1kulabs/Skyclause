@@ -39,6 +39,12 @@ variable "secrets" {
   default     = {}
 }
 
+variable "args" {
+  description = "Arguments to the image's entrypoint, such as [\"job\", \"<name>\"] for apps/worker's main.js."
+  type        = list(string)
+  default     = []
+}
+
 variable "timeout" {
   description = "Task timeout."
   type        = string
