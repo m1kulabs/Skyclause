@@ -39,7 +39,35 @@ jobs:
     if: github.ref == 'refs/heads/main' && (vars.DEPLOY_FREEZE != 'true' || inputs.override_freeze)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    outputs:
+      apps-script: ${{ steps.setup.outputs.apps-script }}
+      camera: ${{ steps.setup.outputs.camera }}
     steps:
+      # Until pilot/wizard.sh has run, each deploy job is skipped with a notice instead of failing.
+      - name: Check what the wizard has set up
+        id: setup
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          PILOT_SCRIPT_ID: ${{ vars.PILOT_SCRIPT_ID }}
+          INGEST_DEPLOYMENT_ID: ${{ vars.INGEST_DEPLOYMENT_ID }}
+          INGEST_URL: ${{ vars.INGEST_URL }}
+        run: |
+          missing=()
+          for name in CLASPRC_JSON PILOT_SCRIPT_ID INGEST_DEPLOYMENT_ID INGEST_URL; do
+            [ -n "${!name}" ] || missing+=("$name")
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::notice::Skipping the Apps Script deploy until pilot/wizard.sh sets ${missing[*]}"
+            echo apps-script=false >> "$GITHUB_OUTPUT"
+          else
+            echo apps-script=true >> "$GITHUB_OUTPUT"
+          fi
+          if [ -z "$INGEST_URL" ]; then
+            echo "::notice::Skipping the camera deploy until pilot/wizard.sh sets INGEST_URL"
+            echo camera=false >> "$GITHUB_OUTPUT"
+          else
+            echo camera=true >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -54,7 +82,7 @@ jobs:
 
   apps-script:
     needs: checks
-    if: inputs.target != 'camera'
+    if: needs.checks.outputs.apps-script == 'true' && inputs.target != 'camera'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
@@ -71,11 +99,6 @@ jobs:
         with:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
-      - name: Check the wizard's variables
-        run: |
-          for name in PILOT_SCRIPT_ID INGEST_DEPLOYMENT_ID INGEST_URL; do
-            [ -n "${!name}" ] || { echo "::error::$name is not set; run pilot/wizard.sh"; exit 1; }
-          done
       - run: bun pilot/apps-script/build.ts
       - name: Scope guard
         if: ${{ !inputs.scopes_reauthorized }}
@@ -100,7 +123,7 @@ jobs:
 
   camera:
     needs: checks
-    if: inputs.target != 'apps-script'
+    if: needs.checks.outputs.camera == 'true' && inputs.target != 'apps-script'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

@@ -10,7 +10,36 @@ permissions:
   contents: read
 
 jobs:
+  # Before pilot/wizard.sh has run, nothing is set and the canary reports that; a half-set pilot is a failure.
+  setup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      ready: ${{ steps.setup.outputs.ready }}
+    steps:
+      - id: setup
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          PILOT_SCRIPT_ID: ${{ vars.PILOT_SCRIPT_ID }}
+          INGEST_URL: ${{ vars.INGEST_URL }}
+        run: |
+          missing=()
+          for name in CLASPRC_JSON PILOT_SCRIPT_ID INGEST_URL; do
+            [ -n "${!name}" ] || missing+=("$name")
+          done
+          if [ "${#missing[@]}" -eq 3 ]; then
+            echo "::notice::The pilot isn't set up yet: run pilot/wizard.sh"
+            echo ready=false >> "$GITHUB_OUTPUT"
+          elif [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::${missing[*]} not set; re-run pilot/wizard.sh"
+            exit 1
+          else
+            echo ready=true >> "$GITHUB_OUTPUT"
+          fi
+
   canary:
+    needs: setup
+    if: needs.setup.outputs.ready == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
@@ -23,11 +52,6 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
-      - name: Check the wizard's variables
-        run: |
-          for name in PILOT_SCRIPT_ID INGEST_URL; do
-            [ -n "${!name}" ] || { echo "::error::$name is not set; run pilot/wizard.sh"; exit 1; }
-          done
       - name: Write the clasp token
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
