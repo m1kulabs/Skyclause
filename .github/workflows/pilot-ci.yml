@@ -26,6 +26,7 @@ jobs:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
       - run: bun run lint
+      - run: shellcheck pilot/wizard.sh
 
   pr-title:
     runs-on: ubuntu-24.04

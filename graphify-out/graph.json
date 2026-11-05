@@ -4,30 +4,17 @@
   "graph": { "schema_version": 1, "graphify_version": "0.9.102" },
   "nodes": [
     {
-      "id": "pilot_apps_script_src_properties_scriptproperty",
-      "label": "ScriptProperty",
+      "id": "pilot_apps_script_src_setup_driveport",
+      "label": "DrivePort",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 113,
       "community_name": "setup.test.ts",
       "file_type": "code",
-      "norm_label": "scriptproperty",
-      "source_file": "pilot/apps-script/src/properties.ts",
-      "source_location": "L28"
-    },
-    {
-      "id": "pilot_apps_script_src_setup_propertyport",
-      "label": "PropertyPort",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 113,
-      "community_name": "setup.test.ts",
-      "file_type": "code",
-      "norm_label": "propertyport",
+      "norm_label": "driveport",
       "source_file": "pilot/apps-script/src/setup.ts",
-      "source_location": "L5"
+      "source_location": "L11"
     },
     {
       "id": "pilot_apps_script_src_setup_setupreport",
@@ -108,6 +95,19 @@
       "source_location": "L30"
     },
     {
+      "id": "pilot_apps_script_src_properties_scriptproperty",
+      "label": "ScriptProperty",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 131,
+      "community_name": "router.ts",
+      "file_type": "code",
+      "norm_label": "scriptproperty",
+      "source_file": "pilot/apps-script/src/properties.ts",
+      "source_location": "L28"
+    },
+    {
       "id": "pilot_apps_script_src_router_getroute",
       "label": "GetRoute",
       "_callable": true,
@@ -158,6 +158,19 @@
       "norm_label": "webresponse",
       "source_file": "pilot/apps-script/src/router.ts",
       "source_location": "L11"
+    },
+    {
+      "id": "pilot_apps_script_src_setup_propertyport",
+      "label": "PropertyPort",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 131,
+      "community_name": "router.ts",
+      "file_type": "code",
+      "norm_label": "propertyport",
+      "source_file": "pilot/apps-script/src/setup.ts",
+      "source_location": "L5"
     },
     {
       "id": "pilot_shared_device_post_devicepost",
@@ -277,43 +290,17 @@
       "source_location": "L25"
     },
     {
-      "id": "pilot_apps_script_src_health_input",
-      "label": "Input",
+      "id": "pilot_apps_script_build_buildoptions",
+      "label": "BuildOptions",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 167,
       "community_name": "health.ts",
       "file_type": "code",
-      "norm_label": "input",
-      "source_file": "pilot/apps-script/src/health.ts",
-      "source_location": "L24"
-    },
-    {
-      "id": "pilot_apps_script_src_health_stamp",
-      "label": "Stamp",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 167,
-      "community_name": "health.ts",
-      "file_type": "code",
-      "norm_label": "stamp",
-      "source_file": "pilot/apps-script/src/health.ts",
-      "source_location": "L4"
-    },
-    {
-      "id": "pilot_apps_script_src_schema_cell",
-      "label": "Cell",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 167,
-      "community_name": "health.ts",
-      "file_type": "code",
-      "norm_label": "cell",
-      "source_file": "pilot/apps-script/src/schema.ts",
-      "source_location": "L318"
+      "norm_label": "buildoptions",
+      "source_file": "pilot/apps-script/build.ts",
+      "source_location": "L6"
     },
     {
       "id": "pilot_apps_script_src_schema_column",
@@ -321,8 +308,8 @@
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
-      "community": 168,
-      "community_name": "apps-script/src/main.ts",
+      "community": 169,
+      "community_name": "schema.ts",
       "file_type": "code",
       "norm_label": "column",
       "source_file": "pilot/apps-script/src/schema.ts",
@@ -407,19 +394,6 @@
       "source_location": "L8"
     },
     {
-      "id": "pilot_apps_script_build_buildoptions",
-      "label": "BuildOptions",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 186,
-      "community_name": "How it works",
-      "file_type": "code",
-      "norm_label": "buildoptions",
-      "source_file": "pilot/apps-script/build.ts",
-      "source_location": "L6"
-    },
-    {
       "id": "packages_config_src_env_env",
       "label": "Env",
       "_callable": true,
@@ -472,6 +446,19 @@
       "source_location": "L17"
     },
     {
+      "id": "pilot_apps_script_src_health_input",
+      "label": "Input",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 200,
+      "community_name": "Signals",
+      "file_type": "code",
+      "norm_label": "input",
+      "source_file": "pilot/apps-script/src/health.ts",
+      "source_location": "L24"
+    },
+    {
       "id": "pilot_apps_script_src_health_sourcehealth",
       "label": "SourceHealth",
       "_callable": true,
@@ -483,6 +470,32 @@
       "norm_label": "sourcehealth",
       "source_file": "pilot/apps-script/src/health.ts",
       "source_location": "L9"
+    },
+    {
+      "id": "pilot_apps_script_src_health_stamp",
+      "label": "Stamp",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 200,
+      "community_name": "Signals",
+      "file_type": "code",
+      "norm_label": "stamp",
+      "source_file": "pilot/apps-script/src/health.ts",
+      "source_location": "L4"
+    },
+    {
+      "id": "pilot_apps_script_src_schema_cell",
+      "label": "Cell",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 200,
+      "community_name": "Signals",
+      "file_type": "code",
+      "norm_label": "cell",
+      "source_file": "pilot/apps-script/src/schema.ts",
+      "source_location": "L318"
     },
     {
       "id": "apps_worker_src_server_eventconsumer",
@@ -641,31 +654,6 @@
       "source_location": "L37"
     },
     {
-      "id": "pilot_apps_script_src_setup_driveport",
-      "label": "DrivePort",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 278,
-      "community_name": "DrivePort",
-      "file_type": "code",
-      "norm_label": "driveport",
-      "source_file": "pilot/apps-script/src/setup.ts",
-      "source_location": "L11"
-    },
-    {
-      "id": "pilot_apps_script_src_gas_withlock",
-      "label": "withLock()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 110,
-      "community_name": "doPost",
-      "file_type": "code",
-      "norm_label": "withlock()",
-      "source_file": "pilot/apps-script/src/gas.ts",
-      "source_location": "L16"
-    },
-    {
       "id": "pilot_apps_script_src_main_doget",
       "label": "doGet()",
       "_callable": true,
@@ -714,28 +702,76 @@
       "source_location": "L43"
     },
     {
-      "id": "pilot_apps_script_src_setup_propertyport_get",
-      "label": ".get()",
+      "id": "pilot_apps_script_src_setup_driveport_createfolder",
+      "label": ".createFolder()",
       "_callable": true,
       "_origin": "ast",
       "community": 113,
       "community_name": "setup.test.ts",
       "file_type": "code",
-      "norm_label": ".get()",
+      "norm_label": ".createfolder()",
       "source_file": "pilot/apps-script/src/setup.ts",
-      "source_location": "L6"
+      "source_location": "L15"
     },
     {
-      "id": "pilot_apps_script_src_setup_propertyport_set",
-      "label": ".set()",
+      "id": "pilot_apps_script_src_setup_driveport_createrootfolder",
+      "label": ".createRootFolder()",
       "_callable": true,
       "_origin": "ast",
       "community": 113,
       "community_name": "setup.test.ts",
       "file_type": "code",
-      "norm_label": ".set()",
+      "norm_label": ".createrootfolder()",
       "source_file": "pilot/apps-script/src/setup.ts",
-      "source_location": "L7"
+      "source_location": "L13"
+    },
+    {
+      "id": "pilot_apps_script_src_setup_driveport_createspreadsheet",
+      "label": ".createSpreadsheet()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 113,
+      "community_name": "setup.test.ts",
+      "file_type": "code",
+      "norm_label": ".createspreadsheet()",
+      "source_file": "pilot/apps-script/src/setup.ts",
+      "source_location": "L18"
+    },
+    {
+      "id": "pilot_apps_script_src_setup_driveport_findfolder",
+      "label": ".findFolder()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 113,
+      "community_name": "setup.test.ts",
+      "file_type": "code",
+      "norm_label": ".findfolder()",
+      "source_file": "pilot/apps-script/src/setup.ts",
+      "source_location": "L14"
+    },
+    {
+      "id": "pilot_apps_script_src_setup_driveport_findrootfolder",
+      "label": ".findRootFolder()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 113,
+      "community_name": "setup.test.ts",
+      "file_type": "code",
+      "norm_label": ".findrootfolder()",
+      "source_file": "pilot/apps-script/src/setup.ts",
+      "source_location": "L12"
+    },
+    {
+      "id": "pilot_apps_script_src_setup_driveport_findspreadsheet",
+      "label": ".findSpreadsheet()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 113,
+      "community_name": "setup.test.ts",
+      "file_type": "code",
+      "norm_label": ".findspreadsheet()",
+      "source_file": "pilot/apps-script/src/setup.ts",
+      "source_location": "L16"
     },
     {
       "id": "pilot_apps_script_src_setup_runsetup",
@@ -822,18 +858,6 @@
       "source_location": "L26"
     },
     {
-      "id": "pilot_apps_script_deployed_test_health",
-      "label": "health()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 131,
-      "community_name": "router.ts",
-      "file_type": "code",
-      "norm_label": "health()",
-      "source_file": "pilot/apps-script/deployed.test.ts",
-      "source_location": "L18"
-    },
-    {
       "id": "pilot_apps_script_src_router_handleget",
       "label": "handleGet()",
       "_callable": true,
@@ -904,6 +928,30 @@
       "norm_label": "tokenmatches()",
       "source_file": "pilot/apps-script/src/router.ts",
       "source_location": "L30"
+    },
+    {
+      "id": "pilot_apps_script_src_setup_propertyport_get",
+      "label": ".get()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 131,
+      "community_name": "router.ts",
+      "file_type": "code",
+      "norm_label": ".get()",
+      "source_file": "pilot/apps-script/src/setup.ts",
+      "source_location": "L6"
+    },
+    {
+      "id": "pilot_apps_script_src_setup_propertyport_set",
+      "label": ".set()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 131,
+      "community_name": "router.ts",
+      "file_type": "code",
+      "norm_label": ".set()",
+      "source_file": "pilot/apps-script/src/setup.ts",
+      "source_location": "L7"
     },
     {
       "id": "pilot_apps_script_src_triggers_synctriggers",
@@ -1026,6 +1074,30 @@
       "source_location": "L9"
     },
     {
+      "id": "pilot_apps_script_build_build",
+      "label": "build()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 167,
+      "community_name": "health.ts",
+      "file_type": "code",
+      "norm_label": "build()",
+      "source_file": "pilot/apps-script/build.ts",
+      "source_location": "L14"
+    },
+    {
+      "id": "pilot_apps_script_build_test_load",
+      "label": "load()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 167,
+      "community_name": "health.ts",
+      "file_type": "code",
+      "norm_label": "load()",
+      "source_file": "pilot/apps-script/build.test.ts",
+      "source_location": "L27"
+    },
+    {
       "id": "pilot_shared_time_tomytiso",
       "label": "toMytIso()",
       "_callable": true,
@@ -1036,125 +1108,6 @@
       "norm_label": "tomytiso()",
       "source_file": "pilot/shared/time.ts",
       "source_location": "L5"
-    },
-    {
-      "id": "pilot_apps_script_src_gas_firstlive",
-      "label": "firstLive()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "apps-script/src/main.ts",
-      "file_type": "code",
-      "metadata": {
-        "unresolved_calls": [
-          {
-            "callee": "isTrashed",
-            "receiver_type": "T",
-            "lang": "typescript",
-            "line": "L33",
-            "file": "pilot/apps-script/src/gas.ts"
-          }
-        ]
-      },
-      "norm_label": "firstlive()",
-      "source_file": "pilot/apps-script/src/gas.ts",
-      "source_location": "L27"
-    },
-    {
-      "id": "pilot_apps_script_src_gas_getproperty",
-      "label": "getProperty()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "apps-script/src/main.ts",
-      "file_type": "code",
-      "norm_label": "getproperty()",
-      "source_file": "pilot/apps-script/src/gas.ts",
-      "source_location": "L14"
-    },
-    {
-      "id": "pilot_apps_script_src_gas_kindof",
-      "label": "kindOf()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "apps-script/src/main.ts",
-      "file_type": "code",
-      "norm_label": "kindof()",
-      "source_file": "pilot/apps-script/src/gas.ts",
-      "source_location": "L104"
-    },
-    {
-      "id": "pilot_apps_script_src_gas_readcolumns",
-      "label": "readColumns()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "apps-script/src/main.ts",
-      "file_type": "code",
-      "norm_label": "readcolumns()",
-      "source_file": "pilot/apps-script/src/gas.ts",
-      "source_location": "L88"
-    },
-    {
-      "id": "pilot_apps_script_src_gas_sheet",
-      "label": "sheet()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "apps-script/src/main.ts",
-      "file_type": "code",
-      "norm_label": "sheet()",
-      "source_file": "pilot/apps-script/src/gas.ts",
-      "source_location": "L56"
-    },
-    {
-      "id": "pilot_apps_script_src_health_buildhealth",
-      "label": "buildHealth()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "apps-script/src/main.ts",
-      "file_type": "code",
-      "norm_label": "buildhealth()",
-      "source_file": "pilot/apps-script/src/health.ts",
-      "source_location": "L40"
-    },
-    {
-      "id": "pilot_apps_script_src_health_time",
-      "label": "time()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "apps-script/src/main.ts",
-      "file_type": "code",
-      "norm_label": "time()",
-      "source_file": "pilot/apps-script/src/health.ts",
-      "source_location": "L35"
-    },
-    {
-      "id": "pilot_apps_script_src_main_health",
-      "label": "health()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "apps-script/src/main.ts",
-      "file_type": "code",
-      "norm_label": "health()",
-      "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L21"
-    },
-    {
-      "id": "pilot_apps_script_src_tick_runevaluationtick",
-      "label": "runEvaluationTick()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "apps-script/src/main.ts",
-      "file_type": "code",
-      "norm_label": "runevaluationtick()",
-      "source_file": "pilot/apps-script/src/tick.ts",
-      "source_location": "L2"
     },
     {
       "id": "pilot_apps_script_src_readings_validatereading",
@@ -1396,6 +1349,18 @@
       "source_location": "L18"
     },
     {
+      "id": "scripts_fixtures_test_repowith",
+      "label": "repoWith()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 178,
+      "community_name": "DrivePort",
+      "file_type": "code",
+      "norm_label": "repowith()",
+      "source_file": "scripts/fixtures.test.ts",
+      "source_location": "L20"
+    },
+    {
       "id": "scripts_not_configured_test_run",
       "label": "run()",
       "_callable": true,
@@ -1418,30 +1383,6 @@
       "norm_label": "plantrepo()",
       "source_file": "scripts/test-helpers.ts",
       "source_location": "L6"
-    },
-    {
-      "id": "pilot_apps_script_build_build",
-      "label": "build()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 186,
-      "community_name": "How it works",
-      "file_type": "code",
-      "norm_label": "build()",
-      "source_file": "pilot/apps-script/build.ts",
-      "source_location": "L14"
-    },
-    {
-      "id": "pilot_apps_script_build_test_load",
-      "label": "load()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 186,
-      "community_name": "How it works",
-      "file_type": "code",
-      "norm_label": "load()",
-      "source_file": "pilot/apps-script/build.test.ts",
-      "source_location": "L27"
     },
     {
       "id": "pilot_camera_build_buildcamera",
@@ -1562,6 +1503,18 @@
       "norm_label": "stalesources()",
       "source_file": "pilot/apps-script/deployed.ts",
       "source_location": "L62"
+    },
+    {
+      "id": "pilot_apps_script_deployed_test_health",
+      "label": "health()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 200,
+      "community_name": "Signals",
+      "file_type": "code",
+      "norm_label": "health()",
+      "source_file": "pilot/apps-script/deployed.test.ts",
+      "source_location": "L18"
     },
     {
       "id": "pilot_apps_script_deployed_test_manifest",
@@ -1728,28 +1681,123 @@
       "source_location": "L27"
     },
     {
-      "id": "scripts_fixtures_checkfixtures",
-      "label": "checkFixtures()",
+      "id": "pilot_apps_script_src_gas_firstlive",
+      "label": "firstLive()",
       "_callable": true,
       "_origin": "ast",
       "community": 263,
       "community_name": "i18n/test/smoke.test.ts",
       "file_type": "code",
-      "norm_label": "checkfixtures()",
-      "source_file": "scripts/fixtures.ts",
-      "source_location": "L9"
+      "metadata": {
+        "unresolved_calls": [
+          {
+            "callee": "isTrashed",
+            "receiver_type": "T",
+            "lang": "typescript",
+            "line": "L33",
+            "file": "pilot/apps-script/src/gas.ts"
+          }
+        ]
+      },
+      "norm_label": "firstlive()",
+      "source_file": "pilot/apps-script/src/gas.ts",
+      "source_location": "L27"
     },
     {
-      "id": "scripts_fixtures_test_repowith",
-      "label": "repoWith()",
+      "id": "pilot_apps_script_src_gas_getproperty",
+      "label": "getProperty()",
       "_callable": true,
       "_origin": "ast",
       "community": 263,
       "community_name": "i18n/test/smoke.test.ts",
       "file_type": "code",
-      "norm_label": "repowith()",
-      "source_file": "scripts/fixtures.test.ts",
-      "source_location": "L20"
+      "norm_label": "getproperty()",
+      "source_file": "pilot/apps-script/src/gas.ts",
+      "source_location": "L14"
+    },
+    {
+      "id": "pilot_apps_script_src_gas_kindof",
+      "label": "kindOf()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 263,
+      "community_name": "i18n/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "kindof()",
+      "source_file": "pilot/apps-script/src/gas.ts",
+      "source_location": "L104"
+    },
+    {
+      "id": "pilot_apps_script_src_gas_readcolumns",
+      "label": "readColumns()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 263,
+      "community_name": "i18n/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "readcolumns()",
+      "source_file": "pilot/apps-script/src/gas.ts",
+      "source_location": "L88"
+    },
+    {
+      "id": "pilot_apps_script_src_gas_sheet",
+      "label": "sheet()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 263,
+      "community_name": "i18n/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "sheet()",
+      "source_file": "pilot/apps-script/src/gas.ts",
+      "source_location": "L56"
+    },
+    {
+      "id": "pilot_apps_script_src_gas_withlock",
+      "label": "withLock()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 263,
+      "community_name": "i18n/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "withlock()",
+      "source_file": "pilot/apps-script/src/gas.ts",
+      "source_location": "L16"
+    },
+    {
+      "id": "pilot_apps_script_src_health_buildhealth",
+      "label": "buildHealth()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 263,
+      "community_name": "i18n/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "buildhealth()",
+      "source_file": "pilot/apps-script/src/health.ts",
+      "source_location": "L40"
+    },
+    {
+      "id": "pilot_apps_script_src_main_health",
+      "label": "health()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 263,
+      "community_name": "i18n/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "health()",
+      "source_file": "pilot/apps-script/src/main.ts",
+      "source_location": "L21"
+    },
+    {
+      "id": "pilot_apps_script_src_tick_runevaluationtick",
+      "label": "runEvaluationTick()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 263,
+      "community_name": "i18n/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "runevaluationtick()",
+      "source_file": "pilot/apps-script/src/tick.ts",
+      "source_location": "L2"
     },
     {
       "id": "apps_web_app_page_home",
@@ -1764,76 +1812,40 @@
       "source_location": "L1"
     },
     {
-      "id": "pilot_apps_script_src_setup_driveport_createfolder",
-      "label": ".createFolder()",
+      "id": "pilot_wizard_test_referenced",
+      "label": "referenced()",
       "_callable": true,
       "_origin": "ast",
-      "community": 278,
-      "community_name": "DrivePort",
+      "community": 275,
+      "community_name": "Bangun",
       "file_type": "code",
-      "norm_label": ".createfolder()",
-      "source_file": "pilot/apps-script/src/setup.ts",
-      "source_location": "L15"
+      "norm_label": "referenced()",
+      "source_file": "pilot/wizard.test.ts",
+      "source_location": "L22"
     },
     {
-      "id": "pilot_apps_script_src_setup_driveport_createrootfolder",
-      "label": ".createRootFolder()",
+      "id": "pilot_wizard_test_written",
+      "label": "written()",
       "_callable": true,
       "_origin": "ast",
-      "community": 278,
-      "community_name": "DrivePort",
+      "community": 275,
+      "community_name": "Bangun",
       "file_type": "code",
-      "norm_label": ".createrootfolder()",
-      "source_file": "pilot/apps-script/src/setup.ts",
-      "source_location": "L13"
-    },
-    {
-      "id": "pilot_apps_script_src_setup_driveport_createspreadsheet",
-      "label": ".createSpreadsheet()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 278,
-      "community_name": "DrivePort",
-      "file_type": "code",
-      "norm_label": ".createspreadsheet()",
-      "source_file": "pilot/apps-script/src/setup.ts",
+      "norm_label": "written()",
+      "source_file": "pilot/wizard.test.ts",
       "source_location": "L18"
     },
     {
-      "id": "pilot_apps_script_src_setup_driveport_findfolder",
-      "label": ".findFolder()",
+      "id": "scripts_fixtures_checkfixtures",
+      "label": "checkFixtures()",
       "_callable": true,
       "_origin": "ast",
       "community": 278,
       "community_name": "DrivePort",
       "file_type": "code",
-      "norm_label": ".findfolder()",
-      "source_file": "pilot/apps-script/src/setup.ts",
-      "source_location": "L14"
-    },
-    {
-      "id": "pilot_apps_script_src_setup_driveport_findrootfolder",
-      "label": ".findRootFolder()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 278,
-      "community_name": "DrivePort",
-      "file_type": "code",
-      "norm_label": ".findrootfolder()",
-      "source_file": "pilot/apps-script/src/setup.ts",
-      "source_location": "L12"
-    },
-    {
-      "id": "pilot_apps_script_src_setup_driveport_findspreadsheet",
-      "label": ".findSpreadsheet()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 278,
-      "community_name": "DrivePort",
-      "file_type": "code",
-      "norm_label": ".findspreadsheet()",
-      "source_file": "pilot/apps-script/src/setup.ts",
-      "source_location": "L16"
+      "norm_label": "checkfixtures()",
+      "source_file": "scripts/fixtures.ts",
+      "source_location": "L9"
     },
     {
       "id": "apps_worker_test_server_test_token",
@@ -1846,6 +1858,18 @@
       "norm_label": "token()",
       "source_file": "apps/worker/test/server.test.ts",
       "source_location": "L17"
+    },
+    {
+      "id": "pilot_apps_script_src_health_time",
+      "label": "time()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 64,
+      "community_name": "Janji",
+      "file_type": "code",
+      "norm_label": "time()",
+      "source_file": "pilot/apps-script/src/health.ts",
+      "source_location": "L35"
     },
     {
       "id": "docs_references_markdown_style",
@@ -4222,6 +4246,54 @@
       "source_location": "L303"
     },
     {
+      "id": "docs_ideas_opus_03_01_tukar_devices_and_setup_per_os",
+      "label": "Devices and setup per OS",
+      "_origin": "ast",
+      "community": 108,
+      "community_name": "Tukar",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "devices and setup per os",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L128"
+    },
+    {
+      "id": "docs_ideas_opus_03_01_tukar_existing_swap_panels_and_checkers",
+      "label": "Existing swap panels and checkers",
+      "_origin": "ast",
+      "community": 108,
+      "community_name": "Tukar",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "existing swap panels and checkers",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L83"
+    },
+    {
+      "id": "docs_ideas_opus_03_01_tukar_gemini_enterprise_workflows_in_tukar",
+      "label": "Gemini Enterprise workflows in Tukar",
+      "_origin": "ast",
+      "community": 108,
+      "community_name": "Tukar",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "gemini enterprise workflows in tukar",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L175"
+    },
+    {
+      "id": "docs_ideas_opus_03_01_tukar_how_tukar_works",
+      "label": "How Tukar works",
+      "_origin": "ast",
+      "community": 108,
+      "community_name": "Tukar",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "how tukar works",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L126"
+    },
+    {
       "id": "docs_ideas_opus_03_01_tukar_impact_and_measurement",
       "label": "Impact and measurement",
       "_origin": "ast",
@@ -4256,6 +4328,18 @@
       "norm_label": "main risks",
       "source_file": "docs/ideas/opus/03/01-tukar.md",
       "source_location": "L346"
+    },
+    {
+      "id": "docs_ideas_opus_03_01_tukar_network_path_hop_by_hop",
+      "label": "Network path, hop by hop",
+      "_origin": "ast",
+      "community": 108,
+      "community_name": "Tukar",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "network path, hop by hop",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L144"
     },
     {
       "id": "docs_ideas_opus_03_01_tukar_privacy_and_rules",
@@ -4318,6 +4402,18 @@
       "source_location": "L387"
     },
     {
+      "id": "docs_ideas_opus_03_01_tukar_the_provenance_statement",
+      "label": "The provenance statement",
+      "_origin": "ast",
+      "community": 108,
+      "community_name": "Tukar",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "the provenance statement",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L190"
+    },
+    {
       "id": "docs_ideas_opus_03_01_tukar_the_survey_respondent_problem",
       "label": "The survey-respondent problem",
       "_origin": "ast",
@@ -4354,6 +4450,18 @@
       "source_location": "L1"
     },
     {
+      "id": "docs_ideas_opus_03_01_tukar_tukar_architecture_diagram",
+      "label": "Tukar architecture diagram",
+      "_origin": "ast",
+      "community": 108,
+      "community_name": "Tukar",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "tukar architecture diagram",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L202"
+    },
+    {
       "id": "docs_ideas_opus_03_01_tukar_tukar_at_a_glance",
       "label": "Tukar at a glance",
       "_origin": "ast",
@@ -4378,6 +4486,18 @@
       "source_location": "L228"
     },
     {
+      "id": "docs_ideas_opus_03_01_tukar_tukar_s_rules_version_1",
+      "label": "Tukar's rules, version 1",
+      "_origin": "ast",
+      "community": 108,
+      "community_name": "Tukar",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "tukar's rules, version 1",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L163"
+    },
+    {
       "id": "docs_ideas_opus_03_01_tukar_tukar_s_scores",
       "label": "Tukar's scores",
       "_origin": "ast",
@@ -4388,6 +4508,66 @@
       "norm_label": "tukar's scores",
       "source_file": "docs/ideas/opus/03/01-tukar.md",
       "source_location": "L366"
+    },
+    {
+      "id": "docs_ideas_opus_03_01_tukar_what_fyp_students_do_today",
+      "label": "What FYP students do today",
+      "_origin": "ast",
+      "community": 108,
+      "community_name": "Tukar",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "what fyp students do today",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L69"
+    },
+    {
+      "id": "docs_ideas_opus_03_01_tukar_what_is_left_for_tukar",
+      "label": "What is left for Tukar",
+      "_origin": "ast",
+      "community": 108,
+      "community_name": "Tukar",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "what is left for tukar",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L116"
+    },
+    {
+      "id": "docs_ideas_opus_03_01_tukar_what_surveyswap_s_pages_say_about_google_forms",
+      "label": "What SurveySwap's pages say about Google Forms",
+      "_origin": "ast",
+      "community": 108,
+      "community_name": "Tukar",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "what surveyswap's pages say about google forms",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L104"
+    },
+    {
+      "id": "docs_ideas_opus_03_01_tukar_what_the_gateway_sees_and_what_it_can_t",
+      "label": "What the gateway sees and what it can't",
+      "_origin": "ast",
+      "community": 108,
+      "community_name": "Tukar",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "what the gateway sees and what it can't",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L155"
+    },
+    {
+      "id": "docs_ideas_opus_03_01_tukar_workarounds_in_public_posts",
+      "label": "Workarounds in public posts",
+      "_origin": "ast",
+      "community": 108,
+      "community_name": "Tukar",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "workarounds in public posts",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L71"
     },
     {
       "id": "docs_ideas_05_bangun",
@@ -4786,7 +4966,7 @@
       "source_location": "L220"
     },
     {
-      "id": "docs_ideas_07_khabar_build_plan",
+      "id": "docs_ideas_08_janji_build_plan",
       "label": "Build plan",
       "_origin": "ast",
       "community": 110,
@@ -4794,20 +4974,56 @@
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "build plan",
-      "source_file": "docs/ideas/07-khabar.md",
-      "source_location": "L221"
+      "source_file": "docs/ideas/08-janji.md",
+      "source_location": "L230"
     },
     {
-      "id": "docs_ideas_07_khabar_origins",
-      "label": "Origins",
+      "id": "docs_ideas_opus_03_02_bangun_bangun",
+      "label": "Bangun",
       "_origin": "ast",
       "community": 110,
       "community_name": "doPost",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "origins",
-      "source_file": "docs/ideas/07-khabar.md",
-      "source_location": "L43"
+      "norm_label": "bangun",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "docs_ideas_opus_03_02_bangun_bangun_at_a_glance",
+      "label": "Bangun at a glance",
+      "_origin": "ast",
+      "community": 110,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "bangun at a glance",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L32"
+    },
+    {
+      "id": "docs_ideas_opus_03_02_bangun_bangun_s_connectors",
+      "label": "Bangun's connectors",
+      "_origin": "ast",
+      "community": 110,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "bangun's connectors",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L223"
+    },
+    {
+      "id": "docs_ideas_opus_03_02_bangun_bangun_s_scores",
+      "label": "Bangun's scores",
+      "_origin": "ast",
+      "community": 110,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "bangun's scores",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L387"
     },
     {
       "id": "docs_ideas_opus_03_02_bangun_build_plan_to_10_november",
@@ -4820,6 +5036,42 @@
       "norm_label": "build plan to 10 november",
       "source_file": "docs/ideas/opus/03/02-bangun.md",
       "source_location": "L358"
+    },
+    {
+      "id": "docs_ideas_opus_03_02_bangun_cloud_iot_and_network_in_bangun",
+      "label": "Cloud, IoT, and network in Bangun",
+      "_origin": "ast",
+      "community": 110,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "cloud, iot, and network in bangun",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L234"
+    },
+    {
+      "id": "docs_ideas_opus_03_02_bangun_day_to_day_operation",
+      "label": "Day-to-day operation",
+      "_origin": "ast",
+      "community": 110,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "day-to-day operation",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L305"
+    },
+    {
+      "id": "docs_ideas_opus_03_02_bangun_demo_and_review",
+      "label": "Demo and review",
+      "_origin": "ast",
+      "community": 110,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "demo and review",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L322"
     },
     {
       "id": "docs_ideas_opus_03_02_bangun_gemini_enterprise_workflows",
@@ -4846,6 +5098,18 @@
       "source_location": "L90"
     },
     {
+      "id": "docs_ideas_opus_03_02_bangun_impact_and_measurement",
+      "label": "Impact and measurement",
+      "_origin": "ast",
+      "community": 110,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "impact and measurement",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L270"
+    },
+    {
       "id": "docs_ideas_opus_03_02_bangun_network_path_and_diagram",
       "label": "Network path and diagram",
       "_origin": "ast",
@@ -4870,6 +5134,66 @@
       "source_location": "L109"
     },
     {
+      "id": "docs_ideas_opus_03_02_bangun_privacy_and_rules",
+      "label": "Privacy and rules",
+      "_origin": "ast",
+      "community": 110,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "privacy and rules",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L342"
+    },
+    {
+      "id": "docs_ideas_opus_03_02_bangun_real_data_and_failure_behaviour",
+      "label": "Real data and failure behaviour",
+      "_origin": "ast",
+      "community": 110,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "real data and failure behaviour",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L240"
+    },
+    {
+      "id": "docs_ideas_opus_03_02_bangun_research_plan",
+      "label": "Research plan",
+      "_origin": "ast",
+      "community": 110,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "research plan",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L258"
+    },
+    {
+      "id": "docs_ideas_opus_03_02_bangun_risks_and_kill_criteria",
+      "label": "Risks and kill criteria",
+      "_origin": "ast",
+      "community": 110,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "risks and kill criteria",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L371"
+    },
+    {
+      "id": "docs_ideas_opus_03_02_bangun_see_also",
+      "label": "See also",
+      "_origin": "ast",
+      "community": 110,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "see also",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L407"
+    },
+    {
       "id": "docs_ideas_opus_03_02_bangun_the_apps_script_feeder",
       "label": "The Apps Script feeder",
       "_origin": "ast",
@@ -4892,6 +5216,42 @@
       "norm_label": "the pi watcher",
       "source_file": "docs/ideas/opus/03/02-bangun.md",
       "source_location": "L128"
+    },
+    {
+      "id": "docs_ideas_opus_03_02_bangun_the_problem_a_first_class_that_moves",
+      "label": "The problem: a first class that moves",
+      "_origin": "ast",
+      "community": 110,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "the problem: a first class that moves",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L43"
+    },
+    {
+      "id": "docs_ideas_opus_03_02_bangun_time_to_impact",
+      "label": "Time to impact",
+      "_origin": "ast",
+      "community": 110,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "time to impact",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L295"
+    },
+    {
+      "id": "docs_ideas_opus_03_02_bangun_what_students_do_today",
+      "label": "What students do today",
+      "_origin": "ast",
+      "community": 110,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "what students do today",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L72"
     },
     {
       "id": "docs_ideas_opus_03_02_bangun_when_a_person_clicks",
@@ -5631,6 +5991,18 @@
       "source_location": "L29"
     },
     {
+      "id": "docs_ideas_07_khabar_build_plan",
+      "label": "Build plan",
+      "_origin": "ast",
+      "community": 115,
+      "community_name": "Khabar",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "build plan",
+      "source_file": "docs/ideas/07-khabar.md",
+      "source_location": "L221"
+    },
+    {
       "id": "docs_ideas_07_khabar_cloud_iot_and_network",
       "label": "Cloud, IoT and network",
       "_origin": "ast",
@@ -5713,6 +6085,18 @@
       "norm_label": "off-campus fit",
       "source_file": "docs/ideas/07-khabar.md",
       "source_location": "L168"
+    },
+    {
+      "id": "docs_ideas_07_khabar_origins",
+      "label": "Origins",
+      "_origin": "ast",
+      "community": 115,
+      "community_name": "Khabar",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "origins",
+      "source_file": "docs/ideas/07-khabar.md",
+      "source_location": "L43"
     },
     {
       "id": "docs_ideas_07_khabar_problem_and_evidence",
@@ -7882,39 +8266,6 @@
       "source_location": "L34"
     },
     {
-      "id": "pilot_apps_script_src_routes",
-      "label": "routes.ts",
-      "_origin": "ast",
-      "community": 131,
-      "community_name": "router.ts",
-      "file_type": "code",
-      "norm_label": "routes.ts",
-      "source_file": "pilot/apps-script/src/routes.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "pilot_apps_script_src_routes_getroutes",
-      "label": "getRoutes",
-      "_origin": "ast",
-      "community": 131,
-      "community_name": "router.ts",
-      "file_type": "code",
-      "norm_label": "getroutes",
-      "source_file": "pilot/apps-script/src/routes.ts",
-      "source_location": "L6"
-    },
-    {
-      "id": "pilot_apps_script_src_routes_postroutes",
-      "label": "postRoutes",
-      "_origin": "ast",
-      "community": 131,
-      "community_name": "router.ts",
-      "file_type": "code",
-      "norm_label": "postroutes",
-      "source_file": "pilot/apps-script/src/routes.ts",
-      "source_location": "L4"
-    },
-    {
       "id": "pilot_shared_device_post",
       "label": "device-post.ts",
       "_origin": "ast",
@@ -7924,18 +8275,6 @@
       "norm_label": "device-post.ts",
       "source_file": "pilot/shared/device-post.ts",
       "source_location": "L1"
-    },
-    {
-      "id": "docs_ideas_opus_02_02_boardcast_claims_that_fail_or_lack_support",
-      "label": "Claims that fail or lack support",
-      "_origin": "ast",
-      "community": 131,
-      "community_name": "router.ts",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "claims that fail or lack support",
-      "source_file": "docs/ideas/opus/02/02-boardcast.md",
-      "source_location": "L282"
     },
     {
       "id": "docs_ideas_argon_01_00_ranking_ideation_rounds",
@@ -10077,7 +10416,7 @@
       "file_type": "code",
       "norm_label": "runs-on",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L61"
+      "source_location": "L62"
     },
     {
       "id": "github_workflows_pilot_ci_build_steps",
@@ -10088,7 +10427,7 @@
       "file_type": "code",
       "norm_label": "steps",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L63"
+      "source_location": "L64"
     },
     {
       "id": "github_workflows_pilot_ci_build_timeout_minutes",
@@ -10099,7 +10438,7 @@
       "file_type": "code",
       "norm_label": "timeout-minutes",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L62"
+      "source_location": "L63"
     },
     {
       "id": "github_workflows_pilot_ci_concurrency",
@@ -10143,7 +10482,7 @@
       "file_type": "code",
       "norm_label": "gitleaks_sha256",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L79"
+      "source_location": "L80"
     },
     {
       "id": "github_workflows_pilot_ci_env_gitleaks_version",
@@ -10154,7 +10493,7 @@
       "file_type": "code",
       "norm_label": "gitleaks_version",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L78"
+      "source_location": "L79"
     },
     {
       "id": "github_workflows_pilot_ci_env_title",
@@ -10165,7 +10504,7 @@
       "file_type": "code",
       "norm_label": "title",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L43"
+      "source_location": "L44"
     },
     {
       "id": "github_workflows_pilot_ci_jobs",
@@ -10187,7 +10526,7 @@
       "file_type": "code",
       "norm_label": "build",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L60"
+      "source_location": "L61"
     },
     {
       "id": "github_workflows_pilot_ci_jobs_lint",
@@ -10209,7 +10548,7 @@
       "file_type": "code",
       "norm_label": "pr-title",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L30"
+      "source_location": "L31"
     },
     {
       "id": "github_workflows_pilot_ci_jobs_secrets",
@@ -10220,7 +10559,7 @@
       "file_type": "code",
       "norm_label": "secrets",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L74"
+      "source_location": "L75"
     },
     {
       "id": "github_workflows_pilot_ci_jobs_test",
@@ -10231,7 +10570,7 @@
       "file_type": "code",
       "norm_label": "test",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L46"
+      "source_location": "L47"
     },
     {
       "id": "github_workflows_pilot_ci_lint_runs_on",
@@ -10330,7 +10669,7 @@
       "file_type": "code",
       "norm_label": "runs-on",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L31"
+      "source_location": "L32"
     },
     {
       "id": "github_workflows_pilot_ci_pr_title_steps",
@@ -10341,7 +10680,7 @@
       "file_type": "code",
       "norm_label": "steps",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L33"
+      "source_location": "L34"
     },
     {
       "id": "github_workflows_pilot_ci_pr_title_timeout_minutes",
@@ -10352,7 +10691,7 @@
       "file_type": "code",
       "norm_label": "timeout-minutes",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L32"
+      "source_location": "L33"
     },
     {
       "id": "github_workflows_pilot_ci_pull_request_types",
@@ -10374,7 +10713,7 @@
       "file_type": "code",
       "norm_label": "env",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L77"
+      "source_location": "L78"
     },
     {
       "id": "github_workflows_pilot_ci_secrets_runs_on",
@@ -10385,7 +10724,7 @@
       "file_type": "code",
       "norm_label": "runs-on",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L75"
+      "source_location": "L76"
     },
     {
       "id": "github_workflows_pilot_ci_secrets_steps",
@@ -10396,7 +10735,7 @@
       "file_type": "code",
       "norm_label": "steps",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L80"
+      "source_location": "L81"
     },
     {
       "id": "github_workflows_pilot_ci_secrets_timeout_minutes",
@@ -10407,7 +10746,7 @@
       "file_type": "code",
       "norm_label": "timeout-minutes",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L76"
+      "source_location": "L77"
     },
     {
       "id": "github_workflows_pilot_ci_steps_env",
@@ -10418,7 +10757,7 @@
       "file_type": "code",
       "norm_label": "env",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L42"
+      "source_location": "L43"
     },
     {
       "id": "github_workflows_pilot_ci_steps_run",
@@ -10462,7 +10801,7 @@
       "file_type": "code",
       "norm_label": "runs-on",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L47"
+      "source_location": "L48"
     },
     {
       "id": "github_workflows_pilot_ci_test_steps",
@@ -10473,7 +10812,7 @@
       "file_type": "code",
       "norm_label": "steps",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L49"
+      "source_location": "L50"
     },
     {
       "id": "github_workflows_pilot_ci_test_timeout_minutes",
@@ -10484,7 +10823,7 @@
       "file_type": "code",
       "norm_label": "timeout-minutes",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L48"
+      "source_location": "L49"
     },
     {
       "id": "github_workflows_pilot_ci_with_bun_version_file",
@@ -10506,7 +10845,7 @@
       "file_type": "code",
       "norm_label": "fetch-depth",
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L83"
+      "source_location": "L84"
     },
     {
       "id": "github_workflows_pilot_ci_with_persist_credentials",
@@ -11490,26 +11829,37 @@
       "source_location": "L1"
     },
     {
-      "id": "pilot_apps_script_src_health",
-      "label": "health.ts",
+      "id": "pilot_apps_script_build",
+      "label": "apps-script/build.ts",
       "_origin": "ast",
       "community": 167,
       "community_name": "health.ts",
       "file_type": "code",
-      "norm_label": "health.ts",
-      "source_file": "pilot/apps-script/src/health.ts",
+      "norm_label": "apps-script/build.ts",
+      "source_file": "pilot/apps-script/build.ts",
       "source_location": "L1"
     },
     {
-      "id": "pilot_apps_script_src_health_successful",
-      "label": "SUCCESSFUL",
+      "id": "pilot_apps_script_build_test",
+      "label": "apps-script/build.test.ts",
       "_origin": "ast",
       "community": 167,
       "community_name": "health.ts",
       "file_type": "code",
-      "norm_label": "successful",
-      "source_file": "pilot/apps-script/src/health.ts",
-      "source_location": "L33"
+      "norm_label": "apps-script/build.test.ts",
+      "source_file": "pilot/apps-script/build.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "pilot_apps_script_build_test_stamp",
+      "label": "stamp",
+      "_origin": "ast",
+      "community": 167,
+      "community_name": "health.ts",
+      "file_type": "code",
+      "norm_label": "stamp",
+      "source_file": "pilot/apps-script/build.test.ts",
+      "source_location": "L9"
     },
     {
       "id": "pilot_apps_script_src_health_test",
@@ -11567,116 +11917,436 @@
       "source_location": "L1"
     },
     {
-      "id": "pilot_apps_script_src_bundle",
-      "label": "bundle.ts",
+      "id": "pilot_readme_how_the_pilot_deploys",
+      "label": "How the pilot deploys",
+      "_origin": "ast",
+      "community": 167,
+      "community_name": "health.ts",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "how the pilot deploys",
+      "source_file": "pilot/README.md",
+      "source_location": "L57"
+    },
+    {
+      "id": "pilot_wizard",
+      "label": "wizard.sh",
       "_origin": "ast",
       "community": 168,
       "community_name": "apps-script/src/main.ts",
       "file_type": "code",
-      "norm_label": "bundle.ts",
-      "source_file": "pilot/apps-script/src/bundle.ts",
+      "metadata": { "language": "bash", "kind": "file" },
+      "norm_label": "wizard.sh",
+      "source_file": "pilot/wizard.sh",
       "source_location": "L1"
     },
     {
-      "id": "pilot_apps_script_src_gas",
-      "label": "gas.ts",
+      "id": "pilot_wizard_already",
+      "label": "already()",
       "_origin": "ast",
       "community": 168,
       "community_name": "apps-script/src/main.ts",
       "file_type": "code",
-      "norm_label": "gas.ts",
-      "source_file": "pilot/apps-script/src/gas.ts",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "already()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L251"
+    },
+    {
+      "id": "pilot_wizard_ask",
+      "label": "ask()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "ask()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L109"
+    },
+    {
+      "id": "pilot_wizard_ask_secret",
+      "label": "ask_secret()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "ask_secret()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L122"
+    },
+    {
+      "id": "pilot_wizard_banner",
+      "label": "banner()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "banner()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L40"
+    },
+    {
+      "id": "pilot_wizard_clear",
+      "label": "_clear()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "_clear()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L33"
+    },
+    {
+      "id": "pilot_wizard_clip",
+      "label": "clip()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "clip()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L257"
+    },
+    {
+      "id": "pilot_wizard_confirm",
+      "label": "confirm()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "confirm()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L85"
+    },
+    {
+      "id": "pilot_wizard_existing",
+      "label": "_existing()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "_existing()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L94"
+    },
+    {
+      "id": "pilot_wizard_finish",
+      "label": "finish()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "finish()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L182"
+    },
+    {
+      "id": "pilot_wizard_gh_var",
+      "label": "gh_var()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "gh_var()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L233"
+    },
+    {
+      "id": "pilot_wizard_has_secret",
+      "label": "has_secret()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "has_secret()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L235"
+    },
+    {
+      "id": "pilot_wizard_health_json",
+      "label": "health_json()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "health_json()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L237"
+    },
+    {
+      "id": "pilot_wizard_health_ok",
+      "label": "health_ok()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "health_ok()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L239"
+    },
+    {
+      "id": "pilot_wizard_latest_dispatch",
+      "label": "latest_dispatch()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "latest_dispatch()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L241"
+    },
+    {
+      "id": "pilot_wizard_note",
+      "label": "note()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "note()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L63"
+    },
+    {
+      "id": "pilot_wizard_open_url",
+      "label": "open_url()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "open_url()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L67"
+    },
+    {
+      "id": "pilot_wizard_pause",
+      "label": "pause()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "pause()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L79"
+    },
+    {
+      "id": "pilot_wizard_pclasp",
+      "label": "pclasp()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "pclasp()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L230"
+    },
+    {
+      "id": "pilot_wizard_property",
+      "label": "property()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "property()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L266"
+    },
+    {
+      "id": "pilot_wizard_repo_setting",
+      "label": "repo_setting()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "repo_setting()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L333"
+    },
+    {
+      "id": "pilot_wizard_repo_settings_apply",
+      "label": "repo_settings_apply()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "repo_settings_apply()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L338"
+    },
+    {
+      "id": "pilot_wizard_repo_settings_done",
+      "label": "repo_settings_done()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "repo_settings_done()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L318"
+    },
+    {
+      "id": "pilot_wizard_run_wizard",
+      "label": "run_wizard()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "run_wizard()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L352"
+    },
+    {
+      "id": "pilot_wizard_say",
+      "label": "say()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "say()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L60"
+    },
+    {
+      "id": "pilot_wizard_set_secret",
+      "label": "set_secret()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "set_secret()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L155"
+    },
+    {
+      "id": "pilot_wizard_set_var",
+      "label": "set_var()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "set_var()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L169"
+    },
+    {
+      "id": "pilot_wizard_sh__entry",
+      "label": "wizard.sh script",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_entrypoint" },
+      "norm_label": "wizard.sh script",
+      "source_file": "pilot/wizard.sh",
       "source_location": "L1"
     },
     {
-      "id": "pilot_apps_script_src_gas_drive",
-      "label": "drive",
+      "id": "pilot_wizard_stage",
+      "label": "stage()",
       "_origin": "ast",
       "community": 168,
       "community_name": "apps-script/src/main.ts",
       "file_type": "code",
-      "norm_label": "drive",
-      "source_file": "pilot/apps-script/src/gas.ts",
-      "source_location": "L38"
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "stage()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L52"
     },
     {
-      "id": "pilot_apps_script_src_gas_properties",
-      "label": "properties",
+      "id": "pilot_wizard_step",
+      "label": "step()",
       "_origin": "ast",
       "community": 168,
       "community_name": "apps-script/src/main.ts",
       "file_type": "code",
-      "norm_label": "properties",
-      "source_file": "pilot/apps-script/src/gas.ts",
-      "source_location": "L9"
-    },
-    {
-      "id": "pilot_apps_script_src_gas_triggers",
-      "label": "triggers",
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "apps-script/src/main.ts",
-      "file_type": "code",
-      "norm_label": "triggers",
-      "source_file": "pilot/apps-script/src/gas.ts",
-      "source_location": "L117"
-    },
-    {
-      "id": "pilot_apps_script_src_gas_workbooks",
-      "label": "workbooks",
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "apps-script/src/main.ts",
-      "file_type": "code",
-      "norm_label": "workbooks",
-      "source_file": "pilot/apps-script/src/gas.ts",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "step()",
+      "source_file": "pilot/wizard.sh",
       "source_location": "L62"
     },
     {
-      "id": "pilot_apps_script_src_main",
-      "label": "apps-script/src/main.ts",
+      "id": "pilot_wizard_stored",
+      "label": "stored()",
       "_origin": "ast",
       "community": 168,
       "community_name": "apps-script/src/main.ts",
       "file_type": "code",
-      "norm_label": "apps-script/src/main.ts",
-      "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L1"
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "stored()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L247"
     },
     {
-      "id": "pilot_apps_script_src_tick",
-      "label": "tick.ts",
+      "id": "pilot_wizard_warn",
+      "label": "warn()",
       "_origin": "ast",
       "community": 168,
       "community_name": "apps-script/src/main.ts",
       "file_type": "code",
-      "norm_label": "tick.ts",
-      "source_file": "pilot/apps-script/src/tick.ts",
-      "source_location": "L1"
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "warn()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L64"
     },
     {
-      "id": "docs_ideas_08_janji_signal_to_cloud_path",
-      "label": "Signal to cloud path",
+      "id": "pilot_wizard_wif_apply",
+      "label": "wif_apply()",
       "_origin": "ast",
       "community": 168,
       "community_name": "apps-script/src/main.ts",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "signal to cloud path",
-      "source_file": "docs/ideas/08-janji.md",
-      "source_location": "L88"
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "wif_apply()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L292"
     },
     {
-      "id": "docs_ideas_opus_03_03_janji_network_path",
-      "label": "Network path",
+      "id": "pilot_wizard_wif_done",
+      "label": "wif_done()",
       "_origin": "ast",
       "community": 168,
       "community_name": "apps-script/src/main.ts",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "network path",
-      "source_file": "docs/ideas/opus/03/03-janji.md",
-      "source_location": "L86"
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "wif_done()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L272"
+    },
+    {
+      "id": "pilot_wizard_write_env",
+      "label": "write_env()",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "apps-script/src/main.ts",
+      "file_type": "code",
+      "metadata": { "language": "bash", "kind": "bash_function" },
+      "norm_label": "write_env()",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L140"
     },
     {
       "id": "pilot_apps_script_src_readings",
@@ -13055,6 +13725,18 @@
       "source_location": "L353"
     },
     {
+      "id": "docs_ideas_opus_02_02_boardcast_claims_that_fail_or_lack_support",
+      "label": "Claims that fail or lack support",
+      "_origin": "ast",
+      "community": 175,
+      "community_name": "Independent review",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "claims that fail or lack support",
+      "source_file": "docs/ideas/opus/02/02-boardcast.md",
+      "source_location": "L282"
+    },
+    {
       "id": "docs_ideas_opus_02_02_boardcast_claims_that_hold",
       "label": "Claims that hold",
       "_origin": "ast",
@@ -13531,61 +14213,6 @@
       "norm_label": "problems",
       "source_file": "scripts/check-boundaries.ts",
       "source_location": "L4"
-    },
-    {
-      "id": "scripts_check_unbuilt",
-      "label": "check-unbuilt.ts",
-      "_origin": "ast",
-      "community": 177,
-      "community_name": "boundaries.ts",
-      "file_type": "code",
-      "norm_label": "check-unbuilt.ts",
-      "source_file": "scripts/check-unbuilt.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "scripts_check_unbuilt_args",
-      "label": "args",
-      "_origin": "ast",
-      "community": 177,
-      "community_name": "boundaries.ts",
-      "file_type": "code",
-      "norm_label": "args",
-      "source_file": "scripts/check-unbuilt.ts",
-      "source_location": "L9"
-    },
-    {
-      "id": "scripts_check_unbuilt_byowner",
-      "label": "byOwner",
-      "_origin": "ast",
-      "community": 177,
-      "community_name": "boundaries.ts",
-      "file_type": "code",
-      "norm_label": "byowner",
-      "source_file": "scripts/check-unbuilt.ts",
-      "source_location": "L17"
-    },
-    {
-      "id": "scripts_check_unbuilt_count",
-      "label": "count",
-      "_origin": "ast",
-      "community": 177,
-      "community_name": "boundaries.ts",
-      "file_type": "code",
-      "norm_label": "count",
-      "source_file": "scripts/check-unbuilt.ts",
-      "source_location": "L35"
-    },
-    {
-      "id": "scripts_check_unbuilt_ownerflag",
-      "label": "ownerFlag",
-      "_origin": "ast",
-      "community": 177,
-      "community_name": "boundaries.ts",
-      "file_type": "code",
-      "norm_label": "ownerflag",
-      "source_file": "scripts/check-unbuilt.ts",
-      "source_location": "L10"
     },
     {
       "id": "scripts_files",
@@ -14293,39 +14920,6 @@
       "source_location": "L732"
     },
     {
-      "id": "pilot_apps_script_build",
-      "label": "apps-script/build.ts",
-      "_origin": "ast",
-      "community": 186,
-      "community_name": "How it works",
-      "file_type": "code",
-      "norm_label": "apps-script/build.ts",
-      "source_file": "pilot/apps-script/build.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "pilot_apps_script_build_test",
-      "label": "apps-script/build.test.ts",
-      "_origin": "ast",
-      "community": 186,
-      "community_name": "How it works",
-      "file_type": "code",
-      "norm_label": "apps-script/build.test.ts",
-      "source_file": "pilot/apps-script/build.test.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "pilot_apps_script_build_test_stamp",
-      "label": "stamp",
-      "_origin": "ast",
-      "community": 186,
-      "community_name": "How it works",
-      "file_type": "code",
-      "norm_label": "stamp",
-      "source_file": "pilot/apps-script/build.test.ts",
-      "source_location": "L9"
-    },
-    {
       "id": "pilot_camera_build",
       "label": "camera/build.ts",
       "_origin": "ast",
@@ -14379,6 +14973,61 @@
       "norm_label": "repo",
       "source_file": "pilot/fixtures/fixtures.test.ts",
       "source_location": "L5"
+    },
+    {
+      "id": "scripts_check_unbuilt",
+      "label": "check-unbuilt.ts",
+      "_origin": "ast",
+      "community": 186,
+      "community_name": "How it works",
+      "file_type": "code",
+      "norm_label": "check-unbuilt.ts",
+      "source_file": "scripts/check-unbuilt.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "scripts_check_unbuilt_args",
+      "label": "args",
+      "_origin": "ast",
+      "community": 186,
+      "community_name": "How it works",
+      "file_type": "code",
+      "norm_label": "args",
+      "source_file": "scripts/check-unbuilt.ts",
+      "source_location": "L9"
+    },
+    {
+      "id": "scripts_check_unbuilt_byowner",
+      "label": "byOwner",
+      "_origin": "ast",
+      "community": 186,
+      "community_name": "How it works",
+      "file_type": "code",
+      "norm_label": "byowner",
+      "source_file": "scripts/check-unbuilt.ts",
+      "source_location": "L17"
+    },
+    {
+      "id": "scripts_check_unbuilt_count",
+      "label": "count",
+      "_origin": "ast",
+      "community": 186,
+      "community_name": "How it works",
+      "file_type": "code",
+      "norm_label": "count",
+      "source_file": "scripts/check-unbuilt.ts",
+      "source_location": "L35"
+    },
+    {
+      "id": "scripts_check_unbuilt_ownerflag",
+      "label": "ownerFlag",
+      "_origin": "ast",
+      "community": 186,
+      "community_name": "How it works",
+      "file_type": "code",
+      "norm_label": "ownerflag",
+      "source_file": "scripts/check-unbuilt.ts",
+      "source_location": "L10"
     },
     {
       "id": "pilot_workflows_ge_setup",
@@ -17109,6 +17758,40 @@
       "norm_label": "deployed.test.ts",
       "source_file": "pilot/apps-script/deployed.test.ts",
       "source_location": "L1"
+    },
+    {
+      "id": "pilot_apps_script_src_health",
+      "label": "health.ts",
+      "_origin": "ast",
+      "community": 200,
+      "community_name": "Signals",
+      "file_type": "code",
+      "norm_label": "health.ts",
+      "source_file": "pilot/apps-script/src/health.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "pilot_apps_script_src_health_successful",
+      "label": "SUCCESSFUL",
+      "_origin": "ast",
+      "community": 200,
+      "community_name": "Signals",
+      "file_type": "code",
+      "norm_label": "successful",
+      "source_file": "pilot/apps-script/src/health.ts",
+      "source_location": "L33"
+    },
+    {
+      "id": "docs_design_components_per_need",
+      "label": "Components per need",
+      "_origin": "ast",
+      "community": 200,
+      "community_name": "Signals",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "components per need",
+      "source_file": "docs/DESIGN.md",
+      "source_location": "L461"
     },
     {
       "id": "infra_scripts_check_region_test",
@@ -23371,166 +24054,209 @@
       "source_location": "L131"
     },
     {
-      "id": "docs_ideas_opus_03_01_tukar_devices_and_setup_per_os",
-      "label": "Devices and setup per OS",
+      "id": "pilot_readme",
+      "label": "pilot/README.md",
       "_origin": "ast",
       "community": 262,
       "community_name": "elements/test/smoke.test.ts",
       "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "devices and setup per os",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L128"
-    },
-    {
-      "id": "docs_ideas_opus_03_01_tukar_gemini_enterprise_workflows_in_tukar",
-      "label": "Gemini Enterprise workflows in Tukar",
-      "_origin": "ast",
-      "community": 262,
-      "community_name": "elements/test/smoke.test.ts",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "gemini enterprise workflows in tukar",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L175"
-    },
-    {
-      "id": "docs_ideas_opus_03_01_tukar_how_tukar_works",
-      "label": "How Tukar works",
-      "_origin": "ast",
-      "community": 262,
-      "community_name": "elements/test/smoke.test.ts",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "how tukar works",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L126"
-    },
-    {
-      "id": "docs_ideas_opus_03_01_tukar_network_path_hop_by_hop",
-      "label": "Network path, hop by hop",
-      "_origin": "ast",
-      "community": 262,
-      "community_name": "elements/test/smoke.test.ts",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "network path, hop by hop",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L144"
-    },
-    {
-      "id": "docs_ideas_opus_03_01_tukar_the_provenance_statement",
-      "label": "The provenance statement",
-      "_origin": "ast",
-      "community": 262,
-      "community_name": "elements/test/smoke.test.ts",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "the provenance statement",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L190"
-    },
-    {
-      "id": "docs_ideas_opus_03_01_tukar_tukar_architecture_diagram",
-      "label": "Tukar architecture diagram",
-      "_origin": "ast",
-      "community": 262,
-      "community_name": "elements/test/smoke.test.ts",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "tukar architecture diagram",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L202"
-    },
-    {
-      "id": "docs_ideas_opus_03_01_tukar_tukar_s_rules_version_1",
-      "label": "Tukar's rules, version 1",
-      "_origin": "ast",
-      "community": 262,
-      "community_name": "elements/test/smoke.test.ts",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "tukar's rules, version 1",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L163"
-    },
-    {
-      "id": "docs_ideas_opus_03_01_tukar_what_the_gateway_sees_and_what_it_can_t",
-      "label": "What the gateway sees and what it can't",
-      "_origin": "ast",
-      "community": 262,
-      "community_name": "elements/test/smoke.test.ts",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "what the gateway sees and what it can't",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L155"
-    },
-    {
-      "id": "scripts_fixtures",
-      "label": "scripts/fixtures.ts",
-      "_origin": "ast",
-      "community": 263,
-      "community_name": "i18n/test/smoke.test.ts",
-      "file_type": "code",
-      "norm_label": "scripts/fixtures.ts",
-      "source_file": "scripts/fixtures.ts",
+      "node_kind": "page",
+      "norm_label": "pilot/readme.md",
+      "source_file": "pilot/README.md",
       "source_location": "L1"
     },
     {
-      "id": "scripts_fixtures_test",
-      "label": "scripts/fixtures.test.ts",
+      "id": "pilot_readme_layout",
+      "label": "Layout",
       "_origin": "ast",
-      "community": 263,
-      "community_name": "i18n/test/smoke.test.ts",
-      "file_type": "code",
-      "metadata": {
-        "unresolved_calls": [
-          {
-            "callee": "slice",
-            "receiver_type": "Uint8Array",
-            "lang": "typescript",
-            "line": "L59",
-            "file": "scripts/fixtures.test.ts"
-          }
-        ]
-      },
-      "norm_label": "scripts/fixtures.test.ts",
-      "source_file": "scripts/fixtures.test.ts",
+      "community": 262,
+      "community_name": "elements/test/smoke.test.ts",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "layout",
+      "source_file": "pilot/README.md",
+      "source_location": "L14"
+    },
+    {
+      "id": "pilot_readme_pilot",
+      "label": "Pilot",
+      "_origin": "ast",
+      "community": 262,
+      "community_name": "elements/test/smoke.test.ts",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "pilot",
+      "source_file": "pilot/README.md",
       "source_location": "L1"
     },
     {
-      "id": "scripts_fixtures_test_bytes",
-      "label": "bytes",
+      "id": "pilot_readme_secrets_and_variables",
+      "label": "Secrets and variables",
       "_origin": "ast",
-      "community": 263,
-      "community_name": "i18n/test/smoke.test.ts",
-      "file_type": "code",
-      "norm_label": "bytes",
-      "source_file": "scripts/fixtures.test.ts",
-      "source_location": "L11"
+      "community": 262,
+      "community_name": "elements/test/smoke.test.ts",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "secrets and variables",
+      "source_file": "pilot/README.md",
+      "source_location": "L67"
     },
     {
-      "id": "scripts_fixtures_test_entry",
-      "label": "entry",
+      "id": "pilot_readme_set_up_or_repair_the_pilot",
+      "label": "Set up or repair the pilot",
       "_origin": "ast",
-      "community": 263,
-      "community_name": "i18n/test/smoke.test.ts",
-      "file_type": "code",
-      "norm_label": "entry",
-      "source_file": "scripts/fixtures.test.ts",
-      "source_location": "L12"
+      "community": 262,
+      "community_name": "elements/test/smoke.test.ts",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "set up or repair the pilot",
+      "source_file": "pilot/README.md",
+      "source_location": "L78"
     },
     {
-      "id": "scripts_fixtures_test_reporoot",
-      "label": "repoRoot",
+      "id": "pilot_readme_set_up_your_dev_project",
+      "label": "Set up your dev project",
+      "_origin": "ast",
+      "community": 262,
+      "community_name": "elements/test/smoke.test.ts",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "set up your dev project",
+      "source_file": "pilot/README.md",
+      "source_location": "L24"
+    },
+    {
+      "id": "pilot_readme_work_in_dev",
+      "label": "Work in dev",
+      "_origin": "ast",
+      "community": 262,
+      "community_name": "elements/test/smoke.test.ts",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "work in dev",
+      "source_file": "pilot/README.md",
+      "source_location": "L50"
+    },
+    {
+      "id": "pilot_apps_script_src_bundle",
+      "label": "bundle.ts",
       "_origin": "ast",
       "community": 263,
       "community_name": "i18n/test/smoke.test.ts",
       "file_type": "code",
-      "norm_label": "reporoot",
-      "source_file": "scripts/fixtures.test.ts",
-      "source_location": "L8"
+      "norm_label": "bundle.ts",
+      "source_file": "pilot/apps-script/src/bundle.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "pilot_apps_script_src_gas",
+      "label": "gas.ts",
+      "_origin": "ast",
+      "community": 263,
+      "community_name": "i18n/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "gas.ts",
+      "source_file": "pilot/apps-script/src/gas.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "pilot_apps_script_src_gas_drive",
+      "label": "drive",
+      "_origin": "ast",
+      "community": 263,
+      "community_name": "i18n/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "drive",
+      "source_file": "pilot/apps-script/src/gas.ts",
+      "source_location": "L38"
+    },
+    {
+      "id": "pilot_apps_script_src_gas_properties",
+      "label": "properties",
+      "_origin": "ast",
+      "community": 263,
+      "community_name": "i18n/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "properties",
+      "source_file": "pilot/apps-script/src/gas.ts",
+      "source_location": "L9"
+    },
+    {
+      "id": "pilot_apps_script_src_gas_triggers",
+      "label": "triggers",
+      "_origin": "ast",
+      "community": 263,
+      "community_name": "i18n/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "triggers",
+      "source_file": "pilot/apps-script/src/gas.ts",
+      "source_location": "L117"
+    },
+    {
+      "id": "pilot_apps_script_src_gas_workbooks",
+      "label": "workbooks",
+      "_origin": "ast",
+      "community": 263,
+      "community_name": "i18n/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "workbooks",
+      "source_file": "pilot/apps-script/src/gas.ts",
+      "source_location": "L62"
+    },
+    {
+      "id": "pilot_apps_script_src_main",
+      "label": "apps-script/src/main.ts",
+      "_origin": "ast",
+      "community": 263,
+      "community_name": "i18n/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "apps-script/src/main.ts",
+      "source_file": "pilot/apps-script/src/main.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "pilot_apps_script_src_routes",
+      "label": "routes.ts",
+      "_origin": "ast",
+      "community": 263,
+      "community_name": "i18n/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "routes.ts",
+      "source_file": "pilot/apps-script/src/routes.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "pilot_apps_script_src_routes_getroutes",
+      "label": "getRoutes",
+      "_origin": "ast",
+      "community": 263,
+      "community_name": "i18n/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "getroutes",
+      "source_file": "pilot/apps-script/src/routes.ts",
+      "source_location": "L6"
+    },
+    {
+      "id": "pilot_apps_script_src_routes_postroutes",
+      "label": "postRoutes",
+      "_origin": "ast",
+      "community": 263,
+      "community_name": "i18n/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "postroutes",
+      "source_file": "pilot/apps-script/src/routes.ts",
+      "source_location": "L4"
+    },
+    {
+      "id": "pilot_apps_script_src_tick",
+      "label": "tick.ts",
+      "_origin": "ast",
+      "community": 263,
+      "community_name": "i18n/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "tick.ts",
+      "source_file": "pilot/apps-script/src/tick.ts",
+      "source_location": "L1"
     },
     {
       "id": "github_workflows_pilot_deploy_apps_script_env",
@@ -24271,196 +24997,59 @@
       "source_location": "L1"
     },
     {
-      "id": "docs_ideas_opus_03_02_bangun_bangun",
-      "label": "Bangun",
+      "id": "pilot_wizard_test",
+      "label": "wizard.test.ts",
       "_origin": "ast",
       "community": 275,
       "community_name": "Bangun",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "bangun",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "file_type": "code",
+      "norm_label": "wizard.test.ts",
+      "source_file": "pilot/wizard.test.ts",
       "source_location": "L1"
     },
     {
-      "id": "docs_ideas_opus_03_02_bangun_bangun_at_a_glance",
-      "label": "Bangun at a glance",
+      "id": "pilot_wizard_test_repo",
+      "label": "repo",
       "_origin": "ast",
       "community": 275,
       "community_name": "Bangun",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "bangun at a glance",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L32"
+      "file_type": "code",
+      "norm_label": "repo",
+      "source_file": "pilot/wizard.test.ts",
+      "source_location": "L5"
     },
     {
-      "id": "docs_ideas_opus_03_02_bangun_bangun_s_connectors",
-      "label": "Bangun's connectors",
+      "id": "pilot_wizard_test_stages",
+      "label": "stages",
       "_origin": "ast",
       "community": 275,
       "community_name": "Bangun",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "bangun's connectors",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L223"
+      "file_type": "code",
+      "norm_label": "stages",
+      "source_file": "pilot/wizard.test.ts",
+      "source_location": "L12"
     },
     {
-      "id": "docs_ideas_opus_03_02_bangun_bangun_s_scores",
-      "label": "Bangun's scores",
+      "id": "pilot_wizard_test_wizard",
+      "label": "wizard",
       "_origin": "ast",
       "community": 275,
       "community_name": "Bangun",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "bangun's scores",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L387"
+      "file_type": "code",
+      "norm_label": "wizard",
+      "source_file": "pilot/wizard.test.ts",
+      "source_location": "L6"
     },
     {
-      "id": "docs_ideas_opus_03_02_bangun_cloud_iot_and_network_in_bangun",
-      "label": "Cloud, IoT, and network in Bangun",
+      "id": "pilot_wizard_test_workflows",
+      "label": "workflows",
       "_origin": "ast",
       "community": 275,
       "community_name": "Bangun",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "cloud, iot, and network in bangun",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L234"
-    },
-    {
-      "id": "docs_ideas_opus_03_02_bangun_day_to_day_operation",
-      "label": "Day-to-day operation",
-      "_origin": "ast",
-      "community": 275,
-      "community_name": "Bangun",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "day-to-day operation",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L305"
-    },
-    {
-      "id": "docs_ideas_opus_03_02_bangun_demo_and_review",
-      "label": "Demo and review",
-      "_origin": "ast",
-      "community": 275,
-      "community_name": "Bangun",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "demo and review",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L322"
-    },
-    {
-      "id": "docs_ideas_opus_03_02_bangun_impact_and_measurement",
-      "label": "Impact and measurement",
-      "_origin": "ast",
-      "community": 275,
-      "community_name": "Bangun",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "impact and measurement",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L270"
-    },
-    {
-      "id": "docs_ideas_opus_03_02_bangun_privacy_and_rules",
-      "label": "Privacy and rules",
-      "_origin": "ast",
-      "community": 275,
-      "community_name": "Bangun",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "privacy and rules",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L342"
-    },
-    {
-      "id": "docs_ideas_opus_03_02_bangun_real_data_and_failure_behaviour",
-      "label": "Real data and failure behaviour",
-      "_origin": "ast",
-      "community": 275,
-      "community_name": "Bangun",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "real data and failure behaviour",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L240"
-    },
-    {
-      "id": "docs_ideas_opus_03_02_bangun_research_plan",
-      "label": "Research plan",
-      "_origin": "ast",
-      "community": 275,
-      "community_name": "Bangun",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "research plan",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L258"
-    },
-    {
-      "id": "docs_ideas_opus_03_02_bangun_risks_and_kill_criteria",
-      "label": "Risks and kill criteria",
-      "_origin": "ast",
-      "community": 275,
-      "community_name": "Bangun",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "risks and kill criteria",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L371"
-    },
-    {
-      "id": "docs_ideas_opus_03_02_bangun_see_also",
-      "label": "See also",
-      "_origin": "ast",
-      "community": 275,
-      "community_name": "Bangun",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "see also",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L407"
-    },
-    {
-      "id": "docs_ideas_opus_03_02_bangun_the_problem_a_first_class_that_moves",
-      "label": "The problem: a first class that moves",
-      "_origin": "ast",
-      "community": 275,
-      "community_name": "Bangun",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "the problem: a first class that moves",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L43"
-    },
-    {
-      "id": "docs_ideas_opus_03_02_bangun_time_to_impact",
-      "label": "Time to impact",
-      "_origin": "ast",
-      "community": 275,
-      "community_name": "Bangun",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "time to impact",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L295"
-    },
-    {
-      "id": "docs_ideas_opus_03_02_bangun_what_students_do_today",
-      "label": "What students do today",
-      "_origin": "ast",
-      "community": 275,
-      "community_name": "Bangun",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "what students do today",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L72"
+      "file_type": "code",
+      "norm_label": "workflows",
+      "source_file": "pilot/wizard.test.ts",
+      "source_location": "L7"
     },
     {
       "id": "pilot_workflows_setup_template",
@@ -24689,6 +25278,72 @@
       "norm_label": "values set by other tickets",
       "source_file": "infra/README.md",
       "source_location": "L60"
+    },
+    {
+      "id": "scripts_fixtures",
+      "label": "scripts/fixtures.ts",
+      "_origin": "ast",
+      "community": 278,
+      "community_name": "DrivePort",
+      "file_type": "code",
+      "norm_label": "scripts/fixtures.ts",
+      "source_file": "scripts/fixtures.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "scripts_fixtures_test",
+      "label": "scripts/fixtures.test.ts",
+      "_origin": "ast",
+      "community": 278,
+      "community_name": "DrivePort",
+      "file_type": "code",
+      "metadata": {
+        "unresolved_calls": [
+          {
+            "callee": "slice",
+            "receiver_type": "Uint8Array",
+            "lang": "typescript",
+            "line": "L59",
+            "file": "scripts/fixtures.test.ts"
+          }
+        ]
+      },
+      "norm_label": "scripts/fixtures.test.ts",
+      "source_file": "scripts/fixtures.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "scripts_fixtures_test_bytes",
+      "label": "bytes",
+      "_origin": "ast",
+      "community": 278,
+      "community_name": "DrivePort",
+      "file_type": "code",
+      "norm_label": "bytes",
+      "source_file": "scripts/fixtures.test.ts",
+      "source_location": "L11"
+    },
+    {
+      "id": "scripts_fixtures_test_entry",
+      "label": "entry",
+      "_origin": "ast",
+      "community": 278,
+      "community_name": "DrivePort",
+      "file_type": "code",
+      "norm_label": "entry",
+      "source_file": "scripts/fixtures.test.ts",
+      "source_location": "L12"
+    },
+    {
+      "id": "scripts_fixtures_test_reporoot",
+      "label": "repoRoot",
+      "_origin": "ast",
+      "community": 278,
+      "community_name": "DrivePort",
+      "file_type": "code",
+      "norm_label": "reporoot",
+      "source_file": "scripts/fixtures.test.ts",
+      "source_location": "L8"
     },
     {
       "id": "docs_research_social_cross_platform_signals",
@@ -25171,18 +25826,6 @@
       "source_location": "L453"
     },
     {
-      "id": "docs_design_components_per_need",
-      "label": "Components per need",
-      "_origin": "ast",
-      "community": 281,
-      "community_name": "Components",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "components per need",
-      "source_file": "docs/DESIGN.md",
-      "source_location": "L461"
-    },
-    {
       "id": "docs_design_product_components",
       "label": "Product components",
       "_origin": "ast",
@@ -25265,66 +25908,6 @@
       "norm_label": "real data",
       "source_file": "docs/ideas/opus/01/05-outage-witness.md",
       "source_location": "L124"
-    },
-    {
-      "id": "docs_ideas_opus_03_01_tukar_existing_swap_panels_and_checkers",
-      "label": "Existing swap panels and checkers",
-      "_origin": "ast",
-      "community": 283,
-      "community_name": "What FYP students do today",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "existing swap panels and checkers",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L83"
-    },
-    {
-      "id": "docs_ideas_opus_03_01_tukar_what_fyp_students_do_today",
-      "label": "What FYP students do today",
-      "_origin": "ast",
-      "community": 283,
-      "community_name": "What FYP students do today",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "what fyp students do today",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L69"
-    },
-    {
-      "id": "docs_ideas_opus_03_01_tukar_what_is_left_for_tukar",
-      "label": "What is left for Tukar",
-      "_origin": "ast",
-      "community": 283,
-      "community_name": "What FYP students do today",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "what is left for tukar",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L116"
-    },
-    {
-      "id": "docs_ideas_opus_03_01_tukar_what_surveyswap_s_pages_say_about_google_forms",
-      "label": "What SurveySwap's pages say about Google Forms",
-      "_origin": "ast",
-      "community": 283,
-      "community_name": "What FYP students do today",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "what surveyswap's pages say about google forms",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L104"
-    },
-    {
-      "id": "docs_ideas_opus_03_01_tukar_workarounds_in_public_posts",
-      "label": "Workarounds in public posts",
-      "_origin": "ast",
-      "community": 283,
-      "community_name": "What FYP students do today",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "workarounds in public posts",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L71"
     },
     {
       "id": "github_workflows_pilot_deploy_apps_script_if",
@@ -31157,18 +31740,6 @@
       "source_location": "L30"
     },
     {
-      "id": "docs_ideas_08_janji_build_plan",
-      "label": "Build plan",
-      "_origin": "ast",
-      "community": 64,
-      "community_name": "Janji",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "build plan",
-      "source_file": "docs/ideas/08-janji.md",
-      "source_location": "L230"
-    },
-    {
       "id": "docs_ideas_08_janji_cloud_iot_and_network",
       "label": "Cloud, IoT and network",
       "_origin": "ast",
@@ -31349,6 +31920,18 @@
       "source_location": "L258"
     },
     {
+      "id": "docs_ideas_08_janji_signal_to_cloud_path",
+      "label": "Signal to cloud path",
+      "_origin": "ast",
+      "community": 64,
+      "community_name": "Janji",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "signal to cloud path",
+      "source_file": "docs/ideas/08-janji.md",
+      "source_location": "L88"
+    },
+    {
       "id": "docs_ideas_08_janji_states_and_failure_handling",
       "label": "States and failure handling",
       "_origin": "ast",
@@ -31407,6 +31990,18 @@
       "norm_label": "workflows",
       "source_file": "docs/ideas/08-janji.md",
       "source_location": "L100"
+    },
+    {
+      "id": "docs_ideas_opus_03_03_janji_network_path",
+      "label": "Network path",
+      "_origin": "ast",
+      "community": 64,
+      "community_name": "Janji",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "network path",
+      "source_file": "docs/ideas/opus/03/03-janji.md",
+      "source_location": "L86"
     },
     {
       "id": "docs_ideas_09_kuyohguard",
@@ -37179,6 +37774,17 @@
       "type": "external"
     },
     {
+      "id": "ref_node_vm",
+      "label": "ref_node_vm",
+      "community": 167,
+      "community_name": "health.ts",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "ref_node_vm",
+      "source_file": "",
+      "type": "external"
+    },
+    {
       "id": "apps_web_e2e_fixtures_expect",
       "label": "apps_web_e2e_fixtures_expect",
       "community": 170,
@@ -37197,6 +37803,17 @@
       "external": true,
       "file_type": "concept",
       "norm_label": "ref_node_child_process",
+      "source_file": "",
+      "type": "external"
+    },
+    {
+      "id": "ref_node_os",
+      "label": "ref_node_os",
+      "community": 178,
+      "community_name": "DrivePort",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "ref_node_os",
       "source_file": "",
       "type": "external"
     },
@@ -37223,17 +37840,6 @@
       "type": "external"
     },
     {
-      "id": "ref_node_os",
-      "label": "ref_node_os",
-      "community": 186,
-      "community_name": "How it works",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "ref_node_os",
-      "source_file": "",
-      "type": "external"
-    },
-    {
       "id": "ref_node_path",
       "label": "ref_node_path",
       "community": 186,
@@ -37245,21 +37851,10 @@
       "type": "external"
     },
     {
-      "id": "ref_node_vm",
-      "label": "ref_node_vm",
-      "community": 186,
-      "community_name": "How it works",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "ref_node_vm",
-      "source_file": "",
-      "type": "external"
-    },
-    {
       "id": "ref_node_crypto",
       "label": "ref_node_crypto",
-      "community": 263,
-      "community_name": "i18n/test/smoke.test.ts",
+      "community": 278,
+      "community_name": "DrivePort",
       "external": true,
       "file_type": "concept",
       "norm_label": "ref_node_crypto",
@@ -37624,14 +38219,14 @@
       "_origin": "ast",
       "also_seen": [
         { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L23" },
-        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L36" },
-        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L52" },
-        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L66" }
+        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L37" },
+        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L53" },
+        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L67" }
       ],
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L84",
+      "source_location": "L85",
       "weight": 1.0
     },
     {
@@ -37641,13 +38236,13 @@
       "_origin": "ast",
       "also_seen": [
         { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L26" },
-        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L39" },
-        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L55" }
+        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L40" },
+        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L56" }
       ],
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L69",
+      "source_location": "L70",
       "weight": 1.0
     },
     {
@@ -37656,31 +38251,18 @@
       "relation": "contains",
       "_origin": "ast",
       "also_seen": [
-        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L27" }
+        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L27" },
+        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L28" }
       ],
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L28",
+      "source_location": "L29",
       "weight": 1.0
     },
     {
       "source": "github_workflows_pilot_ci_pr_title_steps",
       "target": "github_workflows_pilot_ci_steps_uses",
-      "relation": "contains",
-      "_origin": "ast",
-      "also_seen": [
-        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L34" }
-      ],
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L37",
-      "weight": 1.0
-    },
-    {
-      "source": "github_workflows_pilot_ci_pr_title_steps",
-      "target": "github_workflows_pilot_ci_steps_with",
       "relation": "contains",
       "_origin": "ast",
       "also_seen": [
@@ -37694,35 +38276,35 @@
     },
     {
       "source": "github_workflows_pilot_ci_pr_title_steps",
-      "target": "github_workflows_pilot_ci_steps_run",
+      "target": "github_workflows_pilot_ci_steps_with",
       "relation": "contains",
       "_origin": "ast",
       "also_seen": [
-        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L40" }
+        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L36" }
       ],
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L44",
+      "source_location": "L39",
+      "weight": 1.0
+    },
+    {
+      "source": "github_workflows_pilot_ci_pr_title_steps",
+      "target": "github_workflows_pilot_ci_steps_run",
+      "relation": "contains",
+      "_origin": "ast",
+      "also_seen": [
+        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L41" }
+      ],
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".github/workflows/pilot-ci.yml",
+      "source_location": "L45",
       "weight": 1.0
     },
     {
       "source": "github_workflows_pilot_ci_test_steps",
       "target": "github_workflows_pilot_ci_steps_uses",
-      "relation": "contains",
-      "_origin": "ast",
-      "also_seen": [
-        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L50" }
-      ],
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L53",
-      "weight": 1.0
-    },
-    {
-      "source": "github_workflows_pilot_ci_test_steps",
-      "target": "github_workflows_pilot_ci_steps_with",
       "relation": "contains",
       "_origin": "ast",
       "also_seen": [
@@ -37736,36 +38318,36 @@
     },
     {
       "source": "github_workflows_pilot_ci_test_steps",
-      "target": "github_workflows_pilot_ci_steps_run",
+      "target": "github_workflows_pilot_ci_steps_with",
       "relation": "contains",
       "_origin": "ast",
       "also_seen": [
-        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L56" },
-        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L57" }
+        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L52" }
       ],
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L58",
+      "source_location": "L55",
+      "weight": 1.0
+    },
+    {
+      "source": "github_workflows_pilot_ci_test_steps",
+      "target": "github_workflows_pilot_ci_steps_run",
+      "relation": "contains",
+      "_origin": "ast",
+      "also_seen": [
+        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L57" },
+        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L58" }
+      ],
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".github/workflows/pilot-ci.yml",
+      "source_location": "L59",
       "weight": 1.0
     },
     {
       "source": "github_workflows_pilot_ci_build_steps",
       "target": "github_workflows_pilot_ci_steps_uses",
-      "relation": "contains",
-      "_origin": "ast",
-      "also_seen": [
-        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L64" }
-      ],
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L67",
-      "weight": 1.0
-    },
-    {
-      "source": "github_workflows_pilot_ci_build_steps",
-      "target": "github_workflows_pilot_ci_steps_with",
       "relation": "contains",
       "_origin": "ast",
       "also_seen": [
@@ -37779,16 +38361,30 @@
     },
     {
       "source": "github_workflows_pilot_ci_build_steps",
-      "target": "github_workflows_pilot_ci_steps_run",
+      "target": "github_workflows_pilot_ci_steps_with",
       "relation": "contains",
       "_origin": "ast",
       "also_seen": [
-        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L70" }
+        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L66" }
       ],
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L71",
+      "source_location": "L69",
+      "weight": 1.0
+    },
+    {
+      "source": "github_workflows_pilot_ci_build_steps",
+      "target": "github_workflows_pilot_ci_steps_run",
+      "relation": "contains",
+      "_origin": "ast",
+      "also_seen": [
+        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L71" }
+      ],
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".github/workflows/pilot-ci.yml",
+      "source_location": "L72",
       "weight": 1.0
     },
     {
@@ -37797,12 +38393,12 @@
       "relation": "contains",
       "_origin": "ast",
       "also_seen": [
-        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L85" }
+        { "confidence": "EXTRACTED", "source_file": ".github/workflows/pilot-ci.yml", "source_location": "L86" }
       ],
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L90",
+      "source_location": "L91",
       "weight": 1.0
     },
     {
@@ -38620,6 +39216,630 @@
       "context": "call",
       "source_file": "pilot/apps-script/src/setup.test.ts",
       "source_location": "L97",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_already",
+      "target": "pilot_wizard_note",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L252",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_already",
+      "target": "pilot_wizard_pause",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L253",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_ask",
+      "target": "pilot_wizard_existing",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L111",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_ask_secret",
+      "target": "pilot_wizard_existing",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L124",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_banner",
+      "target": "pilot_wizard_clear",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L41",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_banner",
+      "target": "pilot_wizard_pause",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L47",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_finish",
+      "target": "pilot_wizard_clear",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L183",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_finish",
+      "target": "pilot_wizard_note",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L185",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_finish",
+      "target": "pilot_wizard_warn",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L188",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_health_ok",
+      "target": "pilot_wizard_health_json",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L239",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_open_url",
+      "target": "pilot_wizard_warn",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L75",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_property",
+      "target": "pilot_wizard_step",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L267",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_property",
+      "target": "pilot_wizard_clip",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L268",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_property",
+      "target": "pilot_wizard_pause",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L269",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_repo_setting",
+      "target": "pilot_wizard_note",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L335",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_repo_setting",
+      "target": "pilot_wizard_warn",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L335",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_repo_settings_apply",
+      "target": "pilot_wizard_repo_setting",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L339",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_warn",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L361",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_banner",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L365",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_stage",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L367",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_say",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L368",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_ask",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L371",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_write_env",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L378",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_gh_var",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L381",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_existing",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L386",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_confirm",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L393",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_note",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L394",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_open_url",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L397",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_step",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L398",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_pause",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L399",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_has_secret",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L414",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_pclasp",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L421",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_set_secret",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L429",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_already",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L436",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_set_var",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L463",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_stored",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L466",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_health_ok",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L472",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_health_json",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L486",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_ask_secret",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L499",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_property",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L510",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_wif_done",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L523",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_wif_apply",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L526",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_repo_settings_done",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L533",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_repo_settings_apply",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L536",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_latest_dispatch",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L553",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_run_wizard",
+      "target": "pilot_wizard_finish",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L574",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_set_secret",
+      "target": "pilot_wizard_warn",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L165",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_set_var",
+      "target": "pilot_wizard_warn",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L178",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_sh__entry",
+      "target": "pilot_wizard_run_wizard",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L577",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_stage",
+      "target": "pilot_wizard_clear",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L53",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_stored",
+      "target": "pilot_wizard_warn",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L248",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_wif_apply",
+      "target": "pilot_wizard_set_var",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L313",
       "weight": 1.0
     },
     {
@@ -40012,6 +41232,30 @@
       "context": "call",
       "source_file": "pilot/apps-script/src/triggers.test.ts",
       "source_location": "L18",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_test",
+      "target": "pilot_wizard_test_written",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.test.ts",
+      "source_location": "L18",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_test",
+      "target": "pilot_wizard_test_referenced",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/wizard.test.ts",
+      "source_location": "L22",
       "weight": 1.0
     },
     {
@@ -44312,6 +45556,42 @@
       "context": "import",
       "source_file": "pilot/shared/time.test.ts",
       "source_location": "L2",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_test",
+      "target": "ref_bun_test",
+      "relation": "imports_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "pilot/wizard.test.ts",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_test",
+      "target": "ref_node_fs",
+      "relation": "imports_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "pilot/wizard.test.ts",
+      "source_location": "L2",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_test",
+      "target": "ref_node_path",
+      "relation": "imports_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "pilot/wizard.test.ts",
+      "source_location": "L3",
       "weight": 1.0
     },
     {
@@ -68951,7 +70231,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L30",
+      "source_location": "L31",
       "weight": 1.0
     },
     {
@@ -68962,7 +70242,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L46",
+      "source_location": "L47",
       "weight": 1.0
     },
     {
@@ -68973,7 +70253,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L60",
+      "source_location": "L61",
       "weight": 1.0
     },
     {
@@ -68984,7 +70264,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L74",
+      "source_location": "L75",
       "weight": 1.0
     },
     {
@@ -68995,7 +70275,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L61",
+      "source_location": "L62",
       "weight": 1.0
     },
     {
@@ -69006,7 +70286,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L62",
+      "source_location": "L63",
       "weight": 1.0
     },
     {
@@ -69017,7 +70297,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L63",
+      "source_location": "L64",
       "weight": 1.0
     },
     {
@@ -69061,7 +70341,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L31",
+      "source_location": "L32",
       "weight": 1.0
     },
     {
@@ -69072,7 +70352,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L32",
+      "source_location": "L33",
       "weight": 1.0
     },
     {
@@ -69083,7 +70363,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L33",
+      "source_location": "L34",
       "weight": 1.0
     },
     {
@@ -69094,7 +70374,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L75",
+      "source_location": "L76",
       "weight": 1.0
     },
     {
@@ -69105,7 +70385,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L76",
+      "source_location": "L77",
       "weight": 1.0
     },
     {
@@ -69116,7 +70396,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L77",
+      "source_location": "L78",
       "weight": 1.0
     },
     {
@@ -69127,7 +70407,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L80",
+      "source_location": "L81",
       "weight": 1.0
     },
     {
@@ -69138,7 +70418,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L47",
+      "source_location": "L48",
       "weight": 1.0
     },
     {
@@ -69149,7 +70429,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L48",
+      "source_location": "L49",
       "weight": 1.0
     },
     {
@@ -69160,7 +70440,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L49",
+      "source_location": "L50",
       "weight": 1.0
     },
     {
@@ -69204,7 +70484,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L42",
+      "source_location": "L43",
       "weight": 1.0
     },
     {
@@ -69215,7 +70495,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L78",
+      "source_location": "L79",
       "weight": 1.0
     },
     {
@@ -69226,7 +70506,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L79",
+      "source_location": "L80",
       "weight": 1.0
     },
     {
@@ -69237,7 +70517,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L81",
+      "source_location": "L82",
       "weight": 1.0
     },
     {
@@ -69248,7 +70528,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L82",
+      "source_location": "L83",
       "weight": 1.0
     },
     {
@@ -69259,7 +70539,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L43",
+      "source_location": "L44",
       "weight": 1.0
     },
     {
@@ -69270,7 +70550,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".github/workflows/pilot-ci.yml",
-      "source_location": "L83",
+      "source_location": "L84",
       "weight": 1.0
     },
     {
@@ -74026,6 +75306,83 @@
       "weight": 1.0
     },
     {
+      "source": "pilot_readme",
+      "target": "pilot_readme_pilot",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/README.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_readme_pilot",
+      "target": "pilot_readme_layout",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/README.md",
+      "source_location": "L14",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_readme_pilot",
+      "target": "pilot_readme_set_up_your_dev_project",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/README.md",
+      "source_location": "L24",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_readme_pilot",
+      "target": "pilot_readme_work_in_dev",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/README.md",
+      "source_location": "L50",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_readme_pilot",
+      "target": "pilot_readme_how_the_pilot_deploys",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/README.md",
+      "source_location": "L57",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_readme_pilot",
+      "target": "pilot_readme_secrets_and_variables",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/README.md",
+      "source_location": "L67",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_readme_pilot",
+      "target": "pilot_readme_set_up_or_repair_the_pilot",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/README.md",
+      "source_location": "L78",
+      "weight": 1.0
+    },
+    {
       "source": "pilot_shared_device_post",
       "target": "pilot_shared_device_post_postbody",
       "relation": "contains",
@@ -74210,6 +75567,61 @@
       "confidence_score": 1.0,
       "source_file": "pilot/tsconfig.json",
       "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_sh__entry",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_test",
+      "target": "pilot_wizard_test_stages",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.test.ts",
+      "source_location": "L12",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_test",
+      "target": "pilot_wizard_test_repo",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.test.ts",
+      "source_location": "L5",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_test",
+      "target": "pilot_wizard_test_wizard",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.test.ts",
+      "source_location": "L6",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard_test",
+      "target": "pilot_wizard_test_workflows",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.test.ts",
+      "source_location": "L7",
       "weight": 1.0
     },
     {
@@ -75189,6 +76601,369 @@
       "confidence_score": 1.0,
       "source_file": "infra/scripts/check-region.test.sh",
       "source_location": "L10",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_ask",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L109",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_ask_secret",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L122",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_write_env",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L140",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_set_secret",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L155",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_set_var",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L169",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_finish",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L182",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_pclasp",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L230",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_gh_var",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L233",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_has_secret",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L235",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_health_json",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L237",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_health_ok",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L239",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_latest_dispatch",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L241",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_stored",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L247",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_already",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L251",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_clip",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L257",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_property",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L266",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_wif_done",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L272",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_wif_apply",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L292",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_repo_settings_done",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L318",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_clear",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L33",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_repo_setting",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L333",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_repo_settings_apply",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L338",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_run_wizard",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L352",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_banner",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L40",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_stage",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L52",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_say",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L60",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_step",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L62",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_note",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L63",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_warn",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L64",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_open_url",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L67",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_pause",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L79",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_confirm",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L85",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_wizard",
+      "target": "pilot_wizard_existing",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "pilot/wizard.sh",
+      "source_location": "L94",
       "weight": 1.0
     },
     {
@@ -76810,6 +78585,18 @@
       "weight": 1.0
     },
     {
+      "source": "pilot_readme_how_the_pilot_deploys",
+      "target": "pilot_apps_script_build_build",
+      "relation": "references",
+      "_origin": "ast",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "context": "build",
+      "source_file": "pilot/README.md",
+      "source_location": "L59",
+      "weight": 1.0
+    },
+    {
       "source": "docs_ideas_05_bangun_build_plan",
       "target": "pilot_apps_script_src_main_doget",
       "relation": "references",
@@ -77459,5 +79246,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "86975a5c1afe70d4c74fba325c000f17e106fd9b"
+  "built_at_commit": "bb7522dc4516e9ad6c3e81496a425fcb7a8529f3"
 }
