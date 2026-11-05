@@ -114,7 +114,8 @@ resource "google_monitoring_custom_service" "availability" {
   display_name = "Availability: ${each.key}"
 }
 
-# A minute is good when the check passed from any region in it.
+# Windows-based on the check's BOOL `check_passed`, one window a minute. Google's docs don't say how the three
+# regions' results combine in a window; the SLO's console page shows it after the apply.
 resource "google_monitoring_slo" "availability" {
   for_each = local.availability
 
@@ -299,16 +300,12 @@ resource "google_billing_budget" "monthly" {
     }
   }
 
+  # §9 gate 2's thresholds, on actual spend.
   dynamic "threshold_rules" {
     for_each = [0.5, 0.9, 1.0]
     content {
       threshold_percent = threshold_rules.value
     }
-  }
-
-  threshold_rules {
-    threshold_percent = 1.0
-    spend_basis       = "FORECASTED_SPEND"
   }
 
   all_updates_rule {
