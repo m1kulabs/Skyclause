@@ -1,0 +1,4 @@
+# Wizards copy the /wizard library verbatim, and the library is never hand-edited. Its findings aren't bugs:
+# SC1087 flags "$e[Enter keeps current]", a colour code then text, not an array; SC2329 flags the helpers a
+# wizard doesn't call.
+disable=SC1087,SC2329

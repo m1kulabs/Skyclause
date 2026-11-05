@@ -8,11 +8,12 @@ Contents:
 1.  [Bootstrap](#bootstrap)
 1.  [Applying](#applying)
 1.  [Values set by other tickets](#values-set-by-other-tickets)
+1.  [Monitoring](#monitoring)
 1.  [Custom hosts](#custom-hosts)
 
 ## Layout
 
-- `bootstrap/`: the state bucket, the APIs, the `skyclause-terraform` service account that CI impersonates, and the `NEON_API_KEY` secret. A project owner applies it by hand.
+- `bootstrap/`: the state bucket, the APIs, the `skyclause-terraform` service account that CI impersonates, its Costs Manager role on the billing account for the budget alert, and the `NEON_API_KEY` secret. A project owner who is also the billing account's administrator applies it by hand, and again whenever it changes.
 - `environments/production/`: everything else. CI plans and applies it from `main`.
 - `modules/`: `service` (Cloud Run service), `job` (Cloud Run job with an optional schedule), `topic` (Pub/Sub topic with a push subscription to the worker) and `queue` (Cloud Tasks).
 - `scripts/check-region`: fails unless every located resource in a `terraform show -json` document is in Singapore. CI runs it on each plan before applying, and `scripts/check-region.test.sh` tests it.
@@ -64,6 +65,17 @@ Set these in a pull request, in `environments/production/terraform.tfvars`, whic
 - `app_config`: the #79 §6 TF values other tickets make, such as `GOOGLE_CLIENT_ID`, `TURNSTILE_SITE_KEY`, `VAPID_PUBLIC_KEY` and the SES values. Each is set on every service and job once given.
 - `supplied_secrets`: `GOOGLE_CLIENT_SECRET`, `TURNSTILE_SECRET_KEY` and `SKYCLAUSE_STAFF_EMAILS` start as empty secrets. Add a version with `gcloud secrets versions add`, then list the name here to mount it. Cloud Run fails a revision whose secret has no version.
 - `vapid_private_key_ready`: set to `true` once #113's `vapid-keys` job has created `VAPID_PRIVATE_KEY`.
+- `oncall_contacts_ready`: set to `true` once [`wizards/oncall-contacts.sh`](/infra/wizards/oncall-contacts.sh) has stored `ONCALL_CONTACTS`.
+- `billing_account` and `monthly_budget_myr`: the budget alert's account and amount (#79 §9 gate 2). The Budget API takes only the account's currency, MYR.
+
+## Monitoring
+
+`environments/production/monitoring.tf` holds #114's uptime checks, SLOs and alert policies. Every policy notifies the platform on-call's email and SMS channels.
+
+- **Availability:** an uptime check every minute on `/healthz` of each distinct app, API and MCP origin, one while `HOST_MODE=single`, with a 99.5% 30-day SLO and fast- and slow-burn pages.
+- **Jobs:** a page on any failed Cloud Run job execution.
+- **Pipeline:** a PromQL page per TRD SLI row, on the `breach` stat the worker's `sli` handler records each batch, and one per absent heartbeat (`auditor`, `minute_tick`). Each starts disabled; once its metric has flowed for a day, check its query in Metrics Explorer and set its `enabled` to `true`.
+- **On-call contacts:** a person runs `infra/wizards/oncall-contacts.sh` (10 minutes), which stores them hidden. After `oncall_contacts_ready` is applied, run it again to verify the SMS numbers, since an unverified number isn't paged.
 
 ## Custom hosts
 
