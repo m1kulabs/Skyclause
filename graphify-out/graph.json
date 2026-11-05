@@ -8548,7 +8548,7 @@
       "node_kind": "heading",
       "norm_label": "billing",
       "source_file": "docs/TRD.md",
-      "source_location": "L547"
+      "source_location": "L548"
     },
     {
       "id": "docs_trd_byok_and_model_routing",
@@ -8560,7 +8560,7 @@
       "node_kind": "heading",
       "norm_label": "byok and model routing",
       "source_file": "docs/TRD.md",
-      "source_location": "L533"
+      "source_location": "L534"
     },
     {
       "id": "docs_trd_cli",
@@ -8572,7 +8572,7 @@
       "node_kind": "heading",
       "norm_label": "cli",
       "source_file": "docs/TRD.md",
-      "source_location": "L563"
+      "source_location": "L564"
     },
     {
       "id": "docs_trd_cost_model",
@@ -8584,7 +8584,7 @@
       "node_kind": "heading",
       "norm_label": "cost model",
       "source_file": "docs/TRD.md",
-      "source_location": "L787"
+      "source_location": "L791"
     },
     {
       "id": "docs_trd_environments_and_deployment",
@@ -8596,7 +8596,7 @@
       "node_kind": "heading",
       "norm_label": "environments and deployment",
       "source_file": "docs/TRD.md",
-      "source_location": "L771"
+      "source_location": "L772"
     },
     {
       "id": "docs_trd_grading",
@@ -8608,7 +8608,7 @@
       "node_kind": "heading",
       "norm_label": "grading",
       "source_file": "docs/TRD.md",
-      "source_location": "L439"
+      "source_location": "L440"
     },
     {
       "id": "docs_trd_not_verified",
@@ -8620,7 +8620,7 @@
       "node_kind": "heading",
       "norm_label": "not verified",
       "source_file": "docs/TRD.md",
-      "source_location": "L819"
+      "source_location": "L828"
     },
     {
       "id": "docs_trd_observability_and_slos",
@@ -8632,7 +8632,7 @@
       "node_kind": "heading",
       "norm_label": "observability and slos",
       "source_file": "docs/TRD.md",
-      "source_location": "L738"
+      "source_location": "L739"
     },
     {
       "id": "docs_trd_privacy_and_data_retention",
@@ -8644,7 +8644,7 @@
       "node_kind": "heading",
       "norm_label": "privacy and data retention",
       "source_file": "docs/TRD.md",
-      "source_location": "L712"
+      "source_location": "L713"
     },
     {
       "id": "docs_trd_repository_layout",
@@ -8656,7 +8656,7 @@
       "node_kind": "heading",
       "norm_label": "repository layout",
       "source_file": "docs/TRD.md",
-      "source_location": "L139"
+      "source_location": "L140"
     },
     {
       "id": "docs_trd_sdk",
@@ -8668,7 +8668,7 @@
       "node_kind": "heading",
       "norm_label": "sdk",
       "source_file": "docs/TRD.md",
-      "source_location": "L555"
+      "source_location": "L556"
     },
     {
       "id": "docs_trd_security",
@@ -8680,7 +8680,7 @@
       "node_kind": "heading",
       "norm_label": "security",
       "source_file": "docs/TRD.md",
-      "source_location": "L692"
+      "source_location": "L693"
     },
     {
       "id": "docs_trd_see_also",
@@ -8692,7 +8692,7 @@
       "node_kind": "heading",
       "norm_label": "see also",
       "source_file": "docs/TRD.md",
-      "source_location": "L832"
+      "source_location": "L842"
     },
     {
       "id": "docs_trd_skyclause_technical_requirements",
@@ -8716,7 +8716,7 @@
       "node_kind": "heading",
       "norm_label": "stack",
       "source_file": "docs/TRD.md",
-      "source_location": "L111"
+      "source_location": "L112"
     },
     {
       "id": "docs_trd_technical_risks",
@@ -8728,7 +8728,7 @@
       "node_kind": "heading",
       "norm_label": "technical risks",
       "source_file": "docs/TRD.md",
-      "source_location": "L804"
+      "source_location": "L810"
     },
     {
       "id": "docs_trd_testing",
@@ -8740,7 +8740,7 @@
       "node_kind": "heading",
       "norm_label": "testing",
       "source_file": "docs/TRD.md",
-      "source_location": "L759"
+      "source_location": "L760"
     },
     {
       "id": "docs_product",
@@ -10344,7 +10344,7 @@
       "node_kind": "heading",
       "norm_label": "a2a agent card",
       "source_file": "docs/TRD.md",
-      "source_location": "L609"
+      "source_location": "L610"
     },
     {
       "id": "docs_trd_agent_layer",
@@ -10356,7 +10356,7 @@
       "node_kind": "heading",
       "norm_label": "agent layer",
       "source_file": "docs/TRD.md",
-      "source_location": "L574"
+      "source_location": "L575"
     },
     {
       "id": "docs_trd_agent_skills_pack",
@@ -10368,7 +10368,7 @@
       "node_kind": "heading",
       "norm_label": "agent skills pack",
       "source_file": "docs/TRD.md",
-      "source_location": "L601"
+      "source_location": "L602"
     },
     {
       "id": "docs_trd_mcp_tools_and_scopes",
@@ -10380,7 +10380,7 @@
       "node_kind": "heading",
       "norm_label": "mcp tools and scopes",
       "source_file": "docs/TRD.md",
-      "source_location": "L590"
+      "source_location": "L591"
     },
     {
       "id": "docs_trd_remote_mcp_server",
@@ -10392,7 +10392,7 @@
       "node_kind": "heading",
       "norm_label": "remote mcp server",
       "source_file": "docs/TRD.md",
-      "source_location": "L576"
+      "source_location": "L577"
     },
     {
       "id": "docs_trd_adapter_contract",
@@ -10404,7 +10404,7 @@
       "node_kind": "heading",
       "norm_label": "adapter contract",
       "source_file": "docs/TRD.md",
-      "source_location": "L215"
+      "source_location": "L216"
     },
     {
       "id": "docs_trd_adapters_by_source",
@@ -10416,7 +10416,7 @@
       "node_kind": "heading",
       "norm_label": "adapters by source",
       "source_file": "docs/TRD.md",
-      "source_location": "L238"
+      "source_location": "L239"
     },
     {
       "id": "docs_trd_device_sources",
@@ -10428,7 +10428,7 @@
       "node_kind": "heading",
       "norm_label": "device sources",
       "source_file": "docs/TRD.md",
-      "source_location": "L265"
+      "source_location": "L266"
     },
     {
       "id": "docs_trd_freshness_staleness_and_recovery",
@@ -10440,7 +10440,7 @@
       "node_kind": "heading",
       "norm_label": "freshness, staleness and recovery",
       "source_file": "docs/TRD.md",
-      "source_location": "L257"
+      "source_location": "L258"
     },
     {
       "id": "docs_trd_signal_pipeline",
@@ -10452,7 +10452,7 @@
       "node_kind": "heading",
       "norm_label": "signal pipeline",
       "source_file": "docs/TRD.md",
-      "source_location": "L211"
+      "source_location": "L212"
     },
     {
       "id": "docs_trd_agent_evals_and_budgets",
@@ -10464,7 +10464,7 @@
       "node_kind": "heading",
       "norm_label": "agent evals and budgets",
       "source_file": "docs/TRD.md",
-      "source_location": "L376"
+      "source_location": "L377"
     },
     {
       "id": "docs_trd_agent_inputs_and_output_schema",
@@ -10476,7 +10476,7 @@
       "node_kind": "heading",
       "norm_label": "agent inputs and output schema",
       "source_file": "docs/TRD.md",
-      "source_location": "L323"
+      "source_location": "L324"
     },
     {
       "id": "docs_trd_decision_agent",
@@ -10488,7 +10488,7 @@
       "node_kind": "heading",
       "norm_label": "decision agent",
       "source_file": "docs/TRD.md",
-      "source_location": "L319"
+      "source_location": "L320"
     },
     {
       "id": "docs_trd_model_routing_for_the_agent",
@@ -10500,7 +10500,7 @@
       "node_kind": "heading",
       "norm_label": "model routing for the agent",
       "source_file": "docs/TRD.md",
-      "source_location": "L360"
+      "source_location": "L361"
     },
     {
       "id": "docs_trd_prompt_injection_defences",
@@ -10512,7 +10512,7 @@
       "node_kind": "heading",
       "norm_label": "prompt-injection defences",
       "source_file": "docs/TRD.md",
-      "source_location": "L369"
+      "source_location": "L370"
     },
     {
       "id": "pilot_apps_script_src_registry",
@@ -10822,7 +10822,7 @@
       "node_kind": "heading",
       "norm_label": "api",
       "source_file": "docs/TRD.md",
-      "source_location": "L449"
+      "source_location": "L450"
     },
     {
       "id": "docs_trd_api_conventions",
@@ -10834,7 +10834,7 @@
       "node_kind": "heading",
       "norm_label": "api conventions",
       "source_file": "docs/TRD.md",
-      "source_location": "L451"
+      "source_location": "L452"
     },
     {
       "id": "docs_trd_api_resources",
@@ -10846,7 +10846,7 @@
       "node_kind": "heading",
       "norm_label": "api resources",
       "source_file": "docs/TRD.md",
-      "source_location": "L463"
+      "source_location": "L464"
     },
     {
       "id": "docs_trd_webhook_event_catalogue",
@@ -10858,7 +10858,7 @@
       "node_kind": "heading",
       "norm_label": "webhook event catalogue",
       "source_file": "docs/TRD.md",
-      "source_location": "L484"
+      "source_location": "L485"
     },
     {
       "id": "docs_trd_approval_and_delivery",
@@ -10870,7 +10870,7 @@
       "node_kind": "heading",
       "norm_label": "approval and delivery",
       "source_file": "docs/TRD.md",
-      "source_location": "L382"
+      "source_location": "L383"
     },
     {
       "id": "docs_trd_approver_rota_and_escalation",
@@ -10882,7 +10882,7 @@
       "node_kind": "heading",
       "norm_label": "approver rota and escalation",
       "source_file": "docs/TRD.md",
-      "source_location": "L414"
+      "source_location": "L415"
     },
     {
       "id": "docs_trd_bundle_state_machine",
@@ -10894,7 +10894,7 @@
       "node_kind": "heading",
       "norm_label": "bundle state machine",
       "source_file": "docs/TRD.md",
-      "source_location": "L386"
+      "source_location": "L387"
     },
     {
       "id": "docs_trd_channels_and_sends",
@@ -10906,7 +10906,7 @@
       "node_kind": "heading",
       "norm_label": "channels and sends",
       "source_file": "docs/TRD.md",
-      "source_location": "L421"
+      "source_location": "L422"
     },
     {
       "id": "docs_trd_auth_and_tenancy",
@@ -10918,7 +10918,7 @@
       "node_kind": "heading",
       "norm_label": "auth and tenancy",
       "source_file": "docs/TRD.md",
-      "source_location": "L498"
+      "source_location": "L499"
     },
     {
       "id": "docs_trd_guests_share_links_and_bot_checks",
@@ -10930,7 +10930,7 @@
       "node_kind": "heading",
       "norm_label": "guests, share links and bot checks",
       "source_file": "docs/TRD.md",
-      "source_location": "L526"
+      "source_location": "L527"
     },
     {
       "id": "docs_trd_sign_in_and_sessions",
@@ -10942,7 +10942,7 @@
       "node_kind": "heading",
       "norm_label": "sign-in and sessions",
       "source_file": "docs/TRD.md",
-      "source_location": "L502"
+      "source_location": "L503"
     },
     {
       "id": "docs_trd_tenancy_enforcement",
@@ -10954,7 +10954,7 @@
       "node_kind": "heading",
       "norm_label": "tenancy enforcement",
       "source_file": "docs/TRD.md",
-      "source_location": "L516"
+      "source_location": "L517"
     },
     {
       "id": "docs_trd_clause_engine",
@@ -10966,7 +10966,7 @@
       "node_kind": "heading",
       "norm_label": "clause engine",
       "source_file": "docs/TRD.md",
-      "source_location": "L271"
+      "source_location": "L272"
     },
     {
       "id": "docs_trd_clause_shape_and_the_indicator_registry",
@@ -10978,7 +10978,7 @@
       "node_kind": "heading",
       "norm_label": "clause shape and the indicator registry",
       "source_file": "docs/TRD.md",
-      "source_location": "L275"
+      "source_location": "L276"
     },
     {
       "id": "docs_trd_evaluation_and_precedence",
@@ -10990,7 +10990,7 @@
       "node_kind": "heading",
       "norm_label": "evaluation and precedence",
       "source_file": "docs/TRD.md",
-      "source_location": "L302"
+      "source_location": "L303"
     },
     {
       "id": "docs_trd_explanations_versions_and_replays",
@@ -11002,7 +11002,7 @@
       "node_kind": "heading",
       "norm_label": "explanations, versions and replays",
       "source_file": "docs/TRD.md",
-      "source_location": "L312"
+      "source_location": "L313"
     },
     {
       "id": "claude",
@@ -11026,7 +11026,7 @@
       "node_kind": "heading",
       "norm_label": "custom elements and iframe fallback",
       "source_file": "docs/TRD.md",
-      "source_location": "L641"
+      "source_location": "L642"
     },
     {
       "id": "docs_trd_favicons_and_the_live_favicon",
@@ -11038,7 +11038,7 @@
       "node_kind": "heading",
       "norm_label": "favicons and the live favicon",
       "source_file": "docs/TRD.md",
-      "source_location": "L621"
+      "source_location": "L622"
     },
     {
       "id": "docs_trd_open_graph_and_oembed",
@@ -11050,7 +11050,7 @@
       "node_kind": "heading",
       "norm_label": "open graph and oembed",
       "source_file": "docs/TRD.md",
-      "source_location": "L632"
+      "source_location": "L633"
     },
     {
       "id": "docs_trd_web_components",
@@ -11062,7 +11062,7 @@
       "node_kind": "heading",
       "norm_label": "web components",
       "source_file": "docs/TRD.md",
-      "source_location": "L617"
+      "source_location": "L618"
     },
     {
       "id": "docs_design_app_shell",
@@ -11182,7 +11182,7 @@
       "node_kind": "heading",
       "norm_label": "connecting a gemini enterprise tenant",
       "source_file": "docs/TRD.md",
-      "source_location": "L684"
+      "source_location": "L685"
     },
     {
       "id": "docs_trd_gemini_enterprise_pilot",
@@ -11194,7 +11194,7 @@
       "node_kind": "heading",
       "norm_label": "gemini enterprise pilot",
       "source_file": "docs/TRD.md",
-      "source_location": "L662"
+      "source_location": "L663"
     },
     {
       "id": "docs_trd_pilot_parts_and_platform_replacements",
@@ -11206,7 +11206,7 @@
       "node_kind": "heading",
       "norm_label": "pilot parts and platform replacements",
       "source_file": "docs/TRD.md",
-      "source_location": "L666"
+      "source_location": "L667"
     },
     {
       "id": "docs_trd_data_model",
@@ -11218,7 +11218,7 @@
       "node_kind": "heading",
       "norm_label": "data model",
       "source_file": "docs/TRD.md",
-      "source_location": "L167"
+      "source_location": "L168"
     },
     {
       "id": "docs_trd_entities_and_keys",
@@ -11230,7 +11230,7 @@
       "node_kind": "heading",
       "norm_label": "entities and keys",
       "source_file": "docs/TRD.md",
-      "source_location": "L169"
+      "source_location": "L170"
     },
     {
       "id": "docs_trd_tenancy_append_only_tables_and_partitions",
@@ -11242,7 +11242,7 @@
       "node_kind": "heading",
       "norm_label": "tenancy, append-only tables and partitions",
       "source_file": "docs/TRD.md",
-      "source_location": "L200"
+      "source_location": "L201"
     },
     {
       "id": "docs_sources_infobanjirjpskl_water_gov_my_rainfall_graph_75",
@@ -61973,7 +61973,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L576",
+      "source_location": "L577",
       "weight": 1.0
     },
     {
@@ -61984,7 +61984,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L590",
+      "source_location": "L591",
       "weight": 1.0
     },
     {
@@ -61995,7 +61995,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L601",
+      "source_location": "L602",
       "weight": 1.0
     },
     {
@@ -62006,7 +62006,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L609",
+      "source_location": "L610",
       "weight": 1.0
     },
     {
@@ -62017,7 +62017,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L451",
+      "source_location": "L452",
       "weight": 1.0
     },
     {
@@ -62028,7 +62028,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L463",
+      "source_location": "L464",
       "weight": 1.0
     },
     {
@@ -62039,7 +62039,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L484",
+      "source_location": "L485",
       "weight": 1.0
     },
     {
@@ -62050,7 +62050,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L386",
+      "source_location": "L387",
       "weight": 1.0
     },
     {
@@ -62061,7 +62061,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L414",
+      "source_location": "L415",
       "weight": 1.0
     },
     {
@@ -62072,7 +62072,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L421",
+      "source_location": "L422",
       "weight": 1.0
     },
     {
@@ -62083,7 +62083,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L502",
+      "source_location": "L503",
       "weight": 1.0
     },
     {
@@ -62094,7 +62094,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L516",
+      "source_location": "L517",
       "weight": 1.0
     },
     {
@@ -62105,7 +62105,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L526",
+      "source_location": "L527",
       "weight": 1.0
     },
     {
@@ -62116,7 +62116,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L275",
+      "source_location": "L276",
       "weight": 1.0
     },
     {
@@ -62127,7 +62127,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L302",
+      "source_location": "L303",
       "weight": 1.0
     },
     {
@@ -62138,7 +62138,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L312",
+      "source_location": "L313",
       "weight": 1.0
     },
     {
@@ -62149,7 +62149,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L169",
+      "source_location": "L170",
       "weight": 1.0
     },
     {
@@ -62160,7 +62160,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L200",
+      "source_location": "L201",
       "weight": 1.0
     },
     {
@@ -62171,7 +62171,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L323",
+      "source_location": "L324",
       "weight": 1.0
     },
     {
@@ -62182,7 +62182,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L360",
+      "source_location": "L361",
       "weight": 1.0
     },
     {
@@ -62193,7 +62193,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L369",
+      "source_location": "L370",
       "weight": 1.0
     },
     {
@@ -62204,7 +62204,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L376",
+      "source_location": "L377",
       "weight": 1.0
     },
     {
@@ -62215,7 +62215,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L666",
+      "source_location": "L667",
       "weight": 1.0
     },
     {
@@ -62226,7 +62226,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L684",
+      "source_location": "L685",
       "weight": 1.0
     },
     {
@@ -62237,7 +62237,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L215",
+      "source_location": "L216",
       "weight": 1.0
     },
     {
@@ -62248,7 +62248,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L238",
+      "source_location": "L239",
       "weight": 1.0
     },
     {
@@ -62259,7 +62259,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L257",
+      "source_location": "L258",
       "weight": 1.0
     },
     {
@@ -62270,7 +62270,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L265",
+      "source_location": "L266",
       "weight": 1.0
     },
     {
@@ -62281,7 +62281,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L111",
+      "source_location": "L112",
       "weight": 1.0
     },
     {
@@ -62292,7 +62292,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L139",
+      "source_location": "L140",
       "weight": 1.0
     },
     {
@@ -62303,7 +62303,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L167",
+      "source_location": "L168",
       "weight": 1.0
     },
     {
@@ -62314,7 +62314,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L211",
+      "source_location": "L212",
       "weight": 1.0
     },
     {
@@ -62325,7 +62325,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L271",
+      "source_location": "L272",
       "weight": 1.0
     },
     {
@@ -62336,7 +62336,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L319",
+      "source_location": "L320",
       "weight": 1.0
     },
     {
@@ -62347,7 +62347,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L382",
+      "source_location": "L383",
       "weight": 1.0
     },
     {
@@ -62358,7 +62358,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L439",
+      "source_location": "L440",
       "weight": 1.0
     },
     {
@@ -62369,7 +62369,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L449",
+      "source_location": "L450",
       "weight": 1.0
     },
     {
@@ -62380,7 +62380,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L498",
+      "source_location": "L499",
       "weight": 1.0
     },
     {
@@ -62391,7 +62391,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L533",
+      "source_location": "L534",
       "weight": 1.0
     },
     {
@@ -62402,7 +62402,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L547",
+      "source_location": "L548",
       "weight": 1.0
     },
     {
@@ -62413,7 +62413,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L555",
+      "source_location": "L556",
       "weight": 1.0
     },
     {
@@ -62424,7 +62424,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L563",
+      "source_location": "L564",
       "weight": 1.0
     },
     {
@@ -62435,7 +62435,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L574",
+      "source_location": "L575",
       "weight": 1.0
     },
     {
@@ -62446,7 +62446,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L617",
+      "source_location": "L618",
       "weight": 1.0
     },
     {
@@ -62468,7 +62468,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L662",
+      "source_location": "L663",
       "weight": 1.0
     },
     {
@@ -62479,7 +62479,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L692",
+      "source_location": "L693",
       "weight": 1.0
     },
     {
@@ -62490,7 +62490,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L712",
+      "source_location": "L713",
       "weight": 1.0
     },
     {
@@ -62501,7 +62501,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L738",
+      "source_location": "L739",
       "weight": 1.0
     },
     {
@@ -62512,7 +62512,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L759",
+      "source_location": "L760",
       "weight": 1.0
     },
     {
@@ -62523,7 +62523,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L771",
+      "source_location": "L772",
       "weight": 1.0
     },
     {
@@ -62534,7 +62534,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L787",
+      "source_location": "L791",
       "weight": 1.0
     },
     {
@@ -62545,7 +62545,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L804",
+      "source_location": "L810",
       "weight": 1.0
     },
     {
@@ -62556,7 +62556,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L819",
+      "source_location": "L828",
       "weight": 1.0
     },
     {
@@ -62567,7 +62567,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L832",
+      "source_location": "L842",
       "weight": 1.0
     },
     {
@@ -62578,7 +62578,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L621",
+      "source_location": "L622",
       "weight": 1.0
     },
     {
@@ -62589,7 +62589,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L632",
+      "source_location": "L633",
       "weight": 1.0
     },
     {
@@ -62600,7 +62600,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/TRD.md",
-      "source_location": "L641",
+      "source_location": "L642",
       "weight": 1.0
     },
     {
@@ -70080,7 +70080,7 @@
       "confidence_score": 0.95,
       "context": "GET",
       "source_file": "docs/TRD.md",
-      "source_location": "L468",
+      "source_location": "L469",
       "weight": 1.0
     },
     {
@@ -70692,7 +70692,7 @@
       "confidence_score": 0.95,
       "context": "main",
       "source_file": "docs/TRD.md",
-      "source_location": "L780",
+      "source_location": "L782",
       "weight": 1.0
     },
     {
@@ -70740,7 +70740,7 @@
       "confidence_score": 0.95,
       "context": "sha256",
       "source_file": "docs/TRD.md",
-      "source_location": "L197",
+      "source_location": "L198",
       "weight": 1.0
     },
     {
@@ -70781,5 +70781,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "546ec54f7fca588e0ed56e1051904a92ab3018ca"
+  "built_at_commit": "af0a7afda3fbc7147ee10d458bda34dead40fbfb"
 }
