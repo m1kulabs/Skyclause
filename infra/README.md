@@ -65,7 +65,13 @@ Set these in a pull request, in `environments/production/terraform.tfvars`, whic
 
 - `app_config`: the #79 §6 TF values other tickets make, such as `GOOGLE_CLIENT_ID`, `TURNSTILE_SITE_KEY`, `VAPID_PUBLIC_KEY` and the SES values. Each is set on every service and job once given.
 - `supplied_secrets`: `GOOGLE_CLIENT_SECRET`, `TURNSTILE_SECRET_KEY` and `SKYCLAUSE_STAFF_EMAILS` start as empty secrets. Add a version with `gcloud secrets versions add`, then list the name here to mount it. Cloud Run fails a revision whose secret has no version.
-- `vapid_private_key_ready`: set to `true` once #113's `vapid-keys` job has created `VAPID_PRIVATE_KEY`.
+- `vapid_private_key_ready`: set to `true` once #113's `vapid-keys` job has created `VAPID_PRIVATE_KEY`. A person runs the job once, after #90's first deploy has put the real image on it, and copies the public key it logs into `app_config` as `VAPID_PUBLIC_KEY` (5 minutes). A second run changes nothing, and the key never rotates by itself, since rotating drops every push subscription:
+
+  ```shell
+  gcloud run jobs execute vapid-keys --region=asia-southeast1 --project=skyclause --wait
+  gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="vapid-keys" AND jsonPayload.message="vapid public key"' \
+    --project=skyclause --limit=1 --format='value(jsonPayload.VAPID_PUBLIC_KEY)'
+  ```
 
 ## Custom hosts
 
