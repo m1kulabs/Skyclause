@@ -1,3 +1,4 @@
 .agents/
 .claude/
 docs/sources/**/*.json
+pilot/fixtures/**/*.json
