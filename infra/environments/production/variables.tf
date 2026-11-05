@@ -49,7 +49,6 @@ variable "app_config" {
       "ADAPTER_USER_AGENT",
       "AWS_ROLE_ARN",
       "COMMONS_MODEL_TOKENS_PER_DAY",
-      "EMAIL_ALLOWLIST",
       "EMAIL_FROM_AUTH",
       "EMAIL_FROM_NOTICES",
       "GOOGLE_CLIENT_ID",
@@ -67,7 +66,6 @@ variable "app_config" {
       "SES_REGION",
       "TURNSTILE_SITE_KEY",
       "VAPID_PUBLIC_KEY",
-      "VAPID_SUBJECT",
     ], name)])
     error_message = "app_config takes only the #79 §6 names other tickets supply."
   }

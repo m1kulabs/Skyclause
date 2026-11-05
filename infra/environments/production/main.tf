@@ -38,6 +38,7 @@ locals {
     migrator = "The migrate job"
     invoker  = "OIDC identity on Pub/Sub, Scheduler and Cloud Tasks calls to the worker (WORKER_INVOKER_SA)"
     deployer = "Deploys images from main (#90)"
+    vapid    = "The vapid-keys job, the only account that may add VAPID_PRIVATE_KEY versions (#113)"
   }
 
   sa     = { for name, account in google_service_account.this : name => account.email }
@@ -67,6 +68,7 @@ locals {
     { account = "worker", member = "deployer", role = "roles/iam.serviceAccountUser" },
     { account = "jobs", member = "deployer", role = "roles/iam.serviceAccountUser" },
     { account = "migrator", member = "deployer", role = "roles/iam.serviceAccountUser" },
+    { account = "vapid", member = "deployer", role = "roles/iam.serviceAccountUser" },
   ]
 }
 
