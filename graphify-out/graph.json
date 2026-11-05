@@ -17,19 +17,6 @@
       "source_location": "L11"
     },
     {
-      "id": "pilot_apps_script_src_setup_setupreport",
-      "label": "SetupReport",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 113,
-      "community_name": "setup.ts",
-      "file_type": "code",
-      "norm_label": "setupreport",
-      "source_file": "pilot/apps-script/src/setup.ts",
-      "source_location": "L63"
-    },
-    {
       "id": "pilot_apps_script_src_setup_test_fakefolder",
       "label": "FakeFolder",
       "_callable": true,
@@ -67,19 +54,6 @@
       "norm_label": "workbookport",
       "source_file": "pilot/apps-script/src/setup.ts",
       "source_location": "L21"
-    },
-    {
-      "id": "pilot_apps_script_src_triggers_syncresult",
-      "label": "SyncResult",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 113,
-      "community_name": "setup.ts",
-      "file_type": "code",
-      "norm_label": "syncresult",
-      "source_file": "pilot/apps-script/src/triggers.ts",
-      "source_location": "L32"
     },
     {
       "id": "pilot_apps_script_src_properties_getproperty",
@@ -225,6 +199,19 @@
       "source_location": "L29"
     },
     {
+      "id": "pilot_apps_script_src_setup_setupreport",
+      "label": "SetupReport",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 153,
+      "community_name": "triggers.test.ts",
+      "file_type": "code",
+      "norm_label": "setupreport",
+      "source_file": "pilot/apps-script/src/setup.ts",
+      "source_location": "L63"
+    },
+    {
       "id": "pilot_apps_script_src_triggers_cadence",
       "label": "Cadence",
       "_callable": true,
@@ -264,6 +251,19 @@
       "source_location": "L9"
     },
     {
+      "id": "pilot_apps_script_src_triggers_syncresult",
+      "label": "SyncResult",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 153,
+      "community_name": "triggers.test.ts",
+      "file_type": "code",
+      "norm_label": "syncresult",
+      "source_file": "pilot/apps-script/src/triggers.ts",
+      "source_location": "L32"
+    },
+    {
       "id": "pilot_apps_script_src_triggers_triggerentry",
       "label": "TriggerEntry",
       "_callable": true,
@@ -288,19 +288,6 @@
       "norm_label": "triggerport",
       "source_file": "pilot/apps-script/src/triggers.ts",
       "source_location": "L25"
-    },
-    {
-      "id": "pilot_apps_script_build_buildoptions",
-      "label": "BuildOptions",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 167,
-      "community_name": "health.ts",
-      "file_type": "code",
-      "norm_label": "buildoptions",
-      "source_file": "pilot/apps-script/build.ts",
-      "source_location": "L6"
     },
     {
       "id": "pilot_apps_script_src_health_health",
@@ -641,6 +628,19 @@
       "source_location": "L12"
     },
     {
+      "id": "pilot_apps_script_build_buildoptions",
+      "label": "BuildOptions",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 201,
+      "community_name": "build.test.ts",
+      "file_type": "code",
+      "norm_label": "buildoptions",
+      "source_file": "pilot/apps-script/build.ts",
+      "source_location": "L6"
+    },
+    {
       "id": "pilot_apps_script_src_main_setup",
       "label": "setup()",
       "_callable": true,
@@ -905,6 +905,66 @@
       "source_location": "L7"
     },
     {
+      "id": "pilot_apps_script_src_gas_getproperty",
+      "label": "getProperty()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 149,
+      "community_name": "doPost",
+      "file_type": "code",
+      "norm_label": "getproperty()",
+      "source_file": "pilot/apps-script/src/gas.ts",
+      "source_location": "L14"
+    },
+    {
+      "id": "pilot_apps_script_src_main_doget",
+      "label": "doGet()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 149,
+      "community_name": "doPost",
+      "file_type": "code",
+      "norm_label": "doget()",
+      "source_file": "pilot/apps-script/src/main.ts",
+      "source_location": "L32"
+    },
+    {
+      "id": "pilot_apps_script_src_main_dopost",
+      "label": "doPost()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 149,
+      "community_name": "doPost",
+      "file_type": "code",
+      "norm_label": "dopost()",
+      "source_file": "pilot/apps-script/src/main.ts",
+      "source_location": "L37"
+    },
+    {
+      "id": "pilot_apps_script_src_main_health",
+      "label": "health()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 149,
+      "community_name": "doPost",
+      "file_type": "code",
+      "norm_label": "health()",
+      "source_file": "pilot/apps-script/src/main.ts",
+      "source_location": "L21"
+    },
+    {
+      "id": "pilot_apps_script_src_main_json",
+      "label": "json()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 149,
+      "community_name": "doPost",
+      "file_type": "code",
+      "norm_label": "json()",
+      "source_file": "pilot/apps-script/src/main.ts",
+      "source_location": "L17"
+    },
+    {
       "id": "pilot_apps_script_src_triggers_synctriggers",
       "label": "syncTriggers()",
       "_callable": true,
@@ -1013,28 +1073,28 @@
       "source_location": "L9"
     },
     {
-      "id": "pilot_apps_script_build_build",
-      "label": "build()",
+      "id": "pilot_apps_script_src_health_buildhealth",
+      "label": "buildHealth()",
       "_callable": true,
       "_origin": "ast",
       "community": 167,
       "community_name": "health.ts",
       "file_type": "code",
-      "norm_label": "build()",
-      "source_file": "pilot/apps-script/build.ts",
-      "source_location": "L14"
+      "norm_label": "buildhealth()",
+      "source_file": "pilot/apps-script/src/health.ts",
+      "source_location": "L40"
     },
     {
-      "id": "pilot_apps_script_build_test_load",
-      "label": "load()",
+      "id": "pilot_apps_script_src_health_time",
+      "label": "time()",
       "_callable": true,
       "_origin": "ast",
       "community": 167,
       "community_name": "health.ts",
       "file_type": "code",
-      "norm_label": "load()",
-      "source_file": "pilot/apps-script/build.test.ts",
-      "source_location": "L27"
+      "norm_label": "time()",
+      "source_file": "pilot/apps-script/src/health.ts",
+      "source_location": "L35"
     },
     {
       "id": "pilot_shared_time_tomytiso",
@@ -1070,18 +1130,6 @@
       "norm_label": "firstlive()",
       "source_file": "pilot/apps-script/src/gas.ts",
       "source_location": "L27"
-    },
-    {
-      "id": "pilot_apps_script_src_gas_getproperty",
-      "label": "getProperty()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "doPost",
-      "file_type": "code",
-      "norm_label": "getproperty()",
-      "source_file": "pilot/apps-script/src/gas.ts",
-      "source_location": "L14"
     },
     {
       "id": "pilot_apps_script_src_gas_kindof",
@@ -1130,66 +1178,6 @@
       "norm_label": "withlock()",
       "source_file": "pilot/apps-script/src/gas.ts",
       "source_location": "L16"
-    },
-    {
-      "id": "pilot_apps_script_src_health_buildhealth",
-      "label": "buildHealth()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "doPost",
-      "file_type": "code",
-      "norm_label": "buildhealth()",
-      "source_file": "pilot/apps-script/src/health.ts",
-      "source_location": "L40"
-    },
-    {
-      "id": "pilot_apps_script_src_main_doget",
-      "label": "doGet()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "doPost",
-      "file_type": "code",
-      "norm_label": "doget()",
-      "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L32"
-    },
-    {
-      "id": "pilot_apps_script_src_main_dopost",
-      "label": "doPost()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "doPost",
-      "file_type": "code",
-      "norm_label": "dopost()",
-      "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L37"
-    },
-    {
-      "id": "pilot_apps_script_src_main_health",
-      "label": "health()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "doPost",
-      "file_type": "code",
-      "norm_label": "health()",
-      "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L21"
-    },
-    {
-      "id": "pilot_apps_script_src_main_json",
-      "label": "json()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "doPost",
-      "file_type": "code",
-      "norm_label": "json()",
-      "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L17"
     },
     {
       "id": "pilot_apps_script_src_tick_runevaluationtick",
@@ -1443,18 +1431,6 @@
       "source_location": "L18"
     },
     {
-      "id": "scripts_fixtures_test_repowith",
-      "label": "repoWith()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 178,
-      "community_name": "boundaries.test.ts",
-      "file_type": "code",
-      "norm_label": "repowith()",
-      "source_file": "scripts/fixtures.test.ts",
-      "source_location": "L20"
-    },
-    {
       "id": "scripts_not_configured_test_run",
       "label": "run()",
       "_callable": true,
@@ -1631,18 +1607,6 @@
       "source_location": "L27"
     },
     {
-      "id": "apps_web_instrumentation_register",
-      "label": "register()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 199,
-      "community_name": "config/src/index.ts",
-      "file_type": "code",
-      "norm_label": "register()",
-      "source_file": "apps/web/instrumentation.ts",
-      "source_location": "L5"
-    },
-    {
       "id": "packages_config_src_env_loadenv",
       "label": "loadEnv()",
       "_callable": true,
@@ -1655,16 +1619,28 @@
       "source_location": "L21"
     },
     {
-      "id": "pilot_apps_script_src_health_time",
-      "label": "time()",
+      "id": "pilot_apps_script_build_build",
+      "label": "build()",
       "_callable": true,
       "_origin": "ast",
-      "community": 216,
-      "community_name": "How it works",
+      "community": 201,
+      "community_name": "build.test.ts",
       "file_type": "code",
-      "norm_label": "time()",
-      "source_file": "pilot/apps-script/src/health.ts",
-      "source_location": "L35"
+      "norm_label": "build()",
+      "source_file": "pilot/apps-script/build.ts",
+      "source_location": "L14"
+    },
+    {
+      "id": "pilot_apps_script_build_test_load",
+      "label": "load()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 201,
+      "community_name": "build.test.ts",
+      "file_type": "code",
+      "norm_label": "load()",
+      "source_file": "pilot/apps-script/build.test.ts",
+      "source_location": "L27"
     },
     {
       "id": "scripts_fixtures_checkfixtures",
@@ -1677,6 +1653,42 @@
       "norm_label": "checkfixtures()",
       "source_file": "scripts/fixtures.ts",
       "source_location": "L9"
+    },
+    {
+      "id": "scripts_fixtures_test_repowith",
+      "label": "repoWith()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 234,
+      "community_name": "scripts/fixtures.test.ts",
+      "file_type": "code",
+      "norm_label": "repowith()",
+      "source_file": "scripts/fixtures.test.ts",
+      "source_location": "L20"
+    },
+    {
+      "id": "apps_web_instrumentation_register",
+      "label": "register()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 263,
+      "community_name": "lib/env.ts",
+      "file_type": "code",
+      "norm_label": "register()",
+      "source_file": "apps/web/instrumentation.ts",
+      "source_location": "L2"
+    },
+    {
+      "id": "apps_web_lib_env_checkenv",
+      "label": "checkEnv()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 263,
+      "community_name": "lib/env.ts",
+      "file_type": "code",
+      "norm_label": "checkenv()",
+      "source_file": "apps/web/lib/env.ts",
+      "source_location": "L4"
     },
     {
       "id": "apps_web_app_page_home",
@@ -4077,18 +4089,6 @@
       "source_location": "L303"
     },
     {
-      "id": "docs_ideas_opus_03_01_tukar_devices_and_setup_per_os",
-      "label": "Devices and setup per OS",
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "Tukar",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "devices and setup per os",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L128"
-    },
-    {
       "id": "docs_ideas_opus_03_01_tukar_existing_swap_panels_and_checkers",
       "label": "Existing swap panels and checkers",
       "_origin": "ast",
@@ -4099,30 +4099,6 @@
       "norm_label": "existing swap panels and checkers",
       "source_file": "docs/ideas/opus/03/01-tukar.md",
       "source_location": "L83"
-    },
-    {
-      "id": "docs_ideas_opus_03_01_tukar_gemini_enterprise_workflows_in_tukar",
-      "label": "Gemini Enterprise workflows in Tukar",
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "Tukar",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "gemini enterprise workflows in tukar",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L175"
-    },
-    {
-      "id": "docs_ideas_opus_03_01_tukar_how_tukar_works",
-      "label": "How Tukar works",
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "Tukar",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "how tukar works",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L126"
     },
     {
       "id": "docs_ideas_opus_03_01_tukar_impact_and_measurement",
@@ -4159,18 +4135,6 @@
       "norm_label": "main risks",
       "source_file": "docs/ideas/opus/03/01-tukar.md",
       "source_location": "L346"
-    },
-    {
-      "id": "docs_ideas_opus_03_01_tukar_network_path_hop_by_hop",
-      "label": "Network path, hop by hop",
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "Tukar",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "network path, hop by hop",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L144"
     },
     {
       "id": "docs_ideas_opus_03_01_tukar_privacy_and_rules",
@@ -4233,18 +4197,6 @@
       "source_location": "L387"
     },
     {
-      "id": "docs_ideas_opus_03_01_tukar_the_provenance_statement",
-      "label": "The provenance statement",
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "Tukar",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "the provenance statement",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L190"
-    },
-    {
       "id": "docs_ideas_opus_03_01_tukar_the_survey_respondent_problem",
       "label": "The survey-respondent problem",
       "_origin": "ast",
@@ -4281,18 +4233,6 @@
       "source_location": "L1"
     },
     {
-      "id": "docs_ideas_opus_03_01_tukar_tukar_architecture_diagram",
-      "label": "Tukar architecture diagram",
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "Tukar",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "tukar architecture diagram",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L202"
-    },
-    {
       "id": "docs_ideas_opus_03_01_tukar_tukar_at_a_glance",
       "label": "Tukar at a glance",
       "_origin": "ast",
@@ -4315,18 +4255,6 @@
       "norm_label": "tukar's connectors",
       "source_file": "docs/ideas/opus/03/01-tukar.md",
       "source_location": "L228"
-    },
-    {
-      "id": "docs_ideas_opus_03_01_tukar_tukar_s_rules_version_1",
-      "label": "Tukar's rules, version 1",
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "Tukar",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "tukar's rules, version 1",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L163"
     },
     {
       "id": "docs_ideas_opus_03_01_tukar_tukar_s_scores",
@@ -4375,18 +4303,6 @@
       "norm_label": "what surveyswap's pages say about google forms",
       "source_file": "docs/ideas/opus/03/01-tukar.md",
       "source_location": "L104"
-    },
-    {
-      "id": "docs_ideas_opus_03_01_tukar_what_the_gateway_sees_and_what_it_can_t",
-      "label": "What the gateway sees and what it can't",
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "Tukar",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "what the gateway sees and what it can't",
-      "source_file": "docs/ideas/opus/03/01-tukar.md",
-      "source_location": "L155"
     },
     {
       "id": "docs_ideas_opus_03_01_tukar_workarounds_in_public_posts",
@@ -5313,39 +5229,6 @@
       "source_location": "L1366"
     },
     {
-      "id": "pilot_apps_script_src_setup",
-      "label": "setup.ts",
-      "_origin": "ast",
-      "community": 113,
-      "community_name": "setup.ts",
-      "file_type": "code",
-      "norm_label": "setup.ts",
-      "source_file": "pilot/apps-script/src/setup.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "pilot_apps_script_src_setup_defaults",
-      "label": "DEFAULTS",
-      "_origin": "ast",
-      "community": 113,
-      "community_name": "setup.ts",
-      "file_type": "code",
-      "norm_label": "defaults",
-      "source_file": "pilot/apps-script/src/setup.ts",
-      "source_location": "L58"
-    },
-    {
-      "id": "pilot_apps_script_src_setup_folders",
-      "label": "FOLDERS",
-      "_origin": "ast",
-      "community": 113,
-      "community_name": "setup.ts",
-      "file_type": "code",
-      "norm_label": "folders",
-      "source_file": "pilot/apps-script/src/setup.ts",
-      "source_location": "L42"
-    },
-    {
       "id": "pilot_apps_script_src_setup_test",
       "label": "setup.test.ts",
       "_origin": "ast",
@@ -5377,17 +5260,6 @@
       "norm_label": "schema",
       "source_file": "pilot/apps-script/src/setup.test.ts",
       "source_location": "L100"
-    },
-    {
-      "id": "pilot_apps_script_src_setup_workbooks",
-      "label": "WORKBOOKS",
-      "_origin": "ast",
-      "community": 113,
-      "community_name": "setup.ts",
-      "file_type": "code",
-      "norm_label": "workbooks",
-      "source_file": "pilot/apps-script/src/setup.ts",
-      "source_location": "L53"
     },
     {
       "id": "docs_research_rules_and_guarantees",
@@ -5630,30 +5502,6 @@
       "source_location": "L221"
     },
     {
-      "id": "docs_ideas_07_khabar_cloud_iot_and_network",
-      "label": "Cloud, IoT and network",
-      "_origin": "ast",
-      "community": 115,
-      "community_name": "Khabar",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "cloud, iot and network",
-      "source_file": "docs/ideas/07-khabar.md",
-      "source_location": "L128"
-    },
-    {
-      "id": "docs_ideas_07_khabar_connectors_and_platform_check",
-      "label": "Connectors and platform check",
-      "_origin": "ast",
-      "community": 115,
-      "community_name": "Khabar",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "connectors and platform check",
-      "source_file": "docs/ideas/07-khabar.md",
-      "source_location": "L118"
-    },
-    {
       "id": "docs_ideas_07_khabar_demo_and_review",
       "label": "Demo and review",
       "_origin": "ast",
@@ -5664,18 +5512,6 @@
       "norm_label": "demo and review",
       "source_file": "docs/ideas/07-khabar.md",
       "source_location": "L209"
-    },
-    {
-      "id": "docs_ideas_07_khabar_how_it_works",
-      "label": "How it works",
-      "_origin": "ast",
-      "community": 115,
-      "community_name": "Khabar",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "how it works",
-      "source_file": "docs/ideas/07-khabar.md",
-      "source_location": "L80"
     },
     {
       "id": "docs_ideas_07_khabar_khabar",
@@ -5738,18 +5574,6 @@
       "source_location": "L60"
     },
     {
-      "id": "docs_ideas_07_khabar_real_data_and_privacy",
-      "label": "Real data and privacy",
-      "_origin": "ast",
-      "community": 115,
-      "community_name": "Khabar",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "real data and privacy",
-      "source_file": "docs/ideas/07-khabar.md",
-      "source_location": "L134"
-    },
-    {
       "id": "docs_ideas_07_khabar_research_plan",
       "label": "Research plan",
       "_origin": "ast",
@@ -5798,30 +5622,6 @@
       "source_location": "L255"
     },
     {
-      "id": "docs_ideas_07_khabar_signal_to_cloud_path",
-      "label": "Signal to cloud path",
-      "_origin": "ast",
-      "community": 115,
-      "community_name": "Khabar",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "signal to cloud path",
-      "source_file": "docs/ideas/07-khabar.md",
-      "source_location": "L84"
-    },
-    {
-      "id": "docs_ideas_07_khabar_states_and_failure_handling",
-      "label": "States and failure handling",
-      "_origin": "ast",
-      "community": 115,
-      "community_name": "Khabar",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "states and failure handling",
-      "source_file": "docs/ideas/07-khabar.md",
-      "source_location": "L110"
-    },
-    {
       "id": "docs_ideas_07_khabar_time_to_impact",
       "label": "Time to impact",
       "_origin": "ast",
@@ -5856,18 +5656,6 @@
       "norm_label": "why the crowd won't build it",
       "source_file": "docs/ideas/07-khabar.md",
       "source_location": "L161"
-    },
-    {
-      "id": "docs_ideas_07_khabar_workflow_and_rule_set",
-      "label": "Workflow and rule set",
-      "_origin": "ast",
-      "community": 115,
-      "community_name": "Khabar",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "workflow and rule set",
-      "source_file": "docs/ideas/07-khabar.md",
-      "source_location": "L98"
     },
     {
       "id": "docs_sources_discord_com_general",
@@ -8336,18 +8124,6 @@
       "source_location": "L787"
     },
     {
-      "id": "docs_trd_environments_and_deployment",
-      "label": "Environments and deployment",
-      "_origin": "ast",
-      "community": 135,
-      "community_name": "Skyclause technical requirements",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "environments and deployment",
-      "source_file": "docs/TRD.md",
-      "source_location": "L771"
-    },
-    {
       "id": "docs_trd_grading",
       "label": "Grading",
       "_origin": "ast",
@@ -10012,52 +9788,124 @@
       "source_location": "L190"
     },
     {
-      "id": "docs_design_cli_output",
-      "label": "CLI output",
+      "id": "docs_ideas_05_bangun_build_plan",
+      "label": "Build plan",
       "_origin": "ast",
       "community": 149,
-      "community_name": "Components",
+      "community_name": "doPost",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "cli output",
-      "source_file": "docs/DESIGN.md",
-      "source_location": "L496"
+      "norm_label": "build plan",
+      "source_file": "docs/ideas/05-bangun.md",
+      "source_location": "L220"
     },
     {
-      "id": "docs_design_components",
-      "label": "Components",
+      "id": "docs_ideas_opus_03_02_bangun_build_plan_to_10_november",
+      "label": "Build plan to 10 November",
       "_origin": "ast",
       "community": 149,
-      "community_name": "Components",
+      "community_name": "doPost",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "components",
-      "source_file": "docs/DESIGN.md",
-      "source_location": "L453"
+      "norm_label": "build plan to 10 november",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L358"
     },
     {
-      "id": "docs_design_product_components",
-      "label": "Product components",
+      "id": "docs_ideas_opus_03_02_bangun_gemini_enterprise_workflows",
+      "label": "Gemini Enterprise workflows",
       "_origin": "ast",
       "community": 149,
-      "community_name": "Components",
+      "community_name": "doPost",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "product components",
-      "source_file": "docs/DESIGN.md",
-      "source_location": "L480"
+      "norm_label": "gemini enterprise workflows",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L145"
     },
     {
-      "id": "docs_design_shadcn_style_and_setup",
-      "label": "shadcn style and setup",
+      "id": "docs_ideas_opus_03_02_bangun_how_bangun_works",
+      "label": "How Bangun works",
       "_origin": "ast",
       "community": 149,
-      "community_name": "Components",
+      "community_name": "doPost",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "shadcn style and setup",
-      "source_file": "docs/DESIGN.md",
-      "source_location": "L455"
+      "norm_label": "how bangun works",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L90"
+    },
+    {
+      "id": "docs_ideas_opus_03_02_bangun_network_path_and_diagram",
+      "label": "Network path and diagram",
+      "_origin": "ast",
+      "community": 149,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "network path and diagram",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L184"
+    },
+    {
+      "id": "docs_ideas_opus_03_02_bangun_phones_by_os",
+      "label": "Phones by OS",
+      "_origin": "ast",
+      "community": 149,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "phones by os",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L109"
+    },
+    {
+      "id": "docs_ideas_opus_03_02_bangun_the_apps_script_feeder",
+      "label": "The Apps Script feeder",
+      "_origin": "ast",
+      "community": 149,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "the apps script feeder",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L138"
+    },
+    {
+      "id": "docs_ideas_opus_03_02_bangun_the_pi_watcher",
+      "label": "The Pi watcher",
+      "_origin": "ast",
+      "community": 149,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "the pi watcher",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L128"
+    },
+    {
+      "id": "docs_ideas_opus_03_02_bangun_when_a_person_clicks",
+      "label": "When a person clicks",
+      "_origin": "ast",
+      "community": 149,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "when a person clicks",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L173"
+    },
+    {
+      "id": "docs_ideas_opus_03_02_bangun_where_each_job_runs",
+      "label": "Where each job runs",
+      "_origin": "ast",
+      "community": 149,
+      "community_name": "doPost",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "where each job runs",
+      "source_file": "docs/ideas/opus/03/02-bangun.md",
+      "source_location": "L92"
     },
     {
       "id": "docs_references_project_conventions",
@@ -10262,6 +10110,72 @@
       "norm_label": "prompt-injection defences",
       "source_file": "docs/TRD.md",
       "source_location": "L369"
+    },
+    {
+      "id": "pilot_apps_script_src_registry",
+      "label": "apps-script/src/registry.ts",
+      "_origin": "ast",
+      "community": 153,
+      "community_name": "triggers.test.ts",
+      "file_type": "code",
+      "norm_label": "apps-script/src/registry.ts",
+      "source_file": "pilot/apps-script/src/registry.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "pilot_apps_script_src_registry_triggerregistry",
+      "label": "triggerRegistry",
+      "_origin": "ast",
+      "community": 153,
+      "community_name": "triggers.test.ts",
+      "file_type": "code",
+      "norm_label": "triggerregistry",
+      "source_file": "pilot/apps-script/src/registry.ts",
+      "source_location": "L6"
+    },
+    {
+      "id": "pilot_apps_script_src_setup",
+      "label": "setup.ts",
+      "_origin": "ast",
+      "community": 153,
+      "community_name": "triggers.test.ts",
+      "file_type": "code",
+      "norm_label": "setup.ts",
+      "source_file": "pilot/apps-script/src/setup.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "pilot_apps_script_src_setup_defaults",
+      "label": "DEFAULTS",
+      "_origin": "ast",
+      "community": 153,
+      "community_name": "triggers.test.ts",
+      "file_type": "code",
+      "norm_label": "defaults",
+      "source_file": "pilot/apps-script/src/setup.ts",
+      "source_location": "L58"
+    },
+    {
+      "id": "pilot_apps_script_src_setup_folders",
+      "label": "FOLDERS",
+      "_origin": "ast",
+      "community": 153,
+      "community_name": "triggers.test.ts",
+      "file_type": "code",
+      "norm_label": "folders",
+      "source_file": "pilot/apps-script/src/setup.ts",
+      "source_location": "L42"
+    },
+    {
+      "id": "pilot_apps_script_src_setup_workbooks",
+      "label": "WORKBOOKS",
+      "_origin": "ast",
+      "community": 153,
+      "community_name": "triggers.test.ts",
+      "file_type": "code",
+      "norm_label": "workbooks",
+      "source_file": "pilot/apps-script/src/setup.ts",
+      "source_location": "L53"
     },
     {
       "id": "pilot_apps_script_src_triggers",
@@ -10996,39 +10910,6 @@
       "source_location": "L1"
     },
     {
-      "id": "pilot_apps_script_build",
-      "label": "build.ts",
-      "_origin": "ast",
-      "community": 167,
-      "community_name": "health.ts",
-      "file_type": "code",
-      "norm_label": "build.ts",
-      "source_file": "pilot/apps-script/build.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "pilot_apps_script_build_test",
-      "label": "build.test.ts",
-      "_origin": "ast",
-      "community": 167,
-      "community_name": "health.ts",
-      "file_type": "code",
-      "norm_label": "build.test.ts",
-      "source_file": "pilot/apps-script/build.test.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "pilot_apps_script_build_test_stamp",
-      "label": "stamp",
-      "_origin": "ast",
-      "community": 167,
-      "community_name": "health.ts",
-      "file_type": "code",
-      "norm_label": "stamp",
-      "source_file": "pilot/apps-script/build.test.ts",
-      "source_location": "L9"
-    },
-    {
       "id": "pilot_apps_script_src_health",
       "label": "health.ts",
       "_origin": "ast",
@@ -11084,28 +10965,6 @@
       "source_location": "L4"
     },
     {
-      "id": "pilot_apps_script_src_registry",
-      "label": "apps-script/src/registry.ts",
-      "_origin": "ast",
-      "community": 167,
-      "community_name": "health.ts",
-      "file_type": "code",
-      "norm_label": "apps-script/src/registry.ts",
-      "source_file": "pilot/apps-script/src/registry.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "pilot_apps_script_src_registry_triggerregistry",
-      "label": "triggerRegistry",
-      "_origin": "ast",
-      "community": 167,
-      "community_name": "health.ts",
-      "file_type": "code",
-      "norm_label": "triggerregistry",
-      "source_file": "pilot/apps-script/src/registry.ts",
-      "source_location": "L6"
-    },
-    {
       "id": "pilot_shared_time",
       "label": "time.ts",
       "_origin": "ast",
@@ -11128,6 +10987,30 @@
       "source_location": "L1"
     },
     {
+      "id": "docs_design_cli_output",
+      "label": "CLI output",
+      "_origin": "ast",
+      "community": 167,
+      "community_name": "health.ts",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "cli output",
+      "source_file": "docs/DESIGN.md",
+      "source_location": "L496"
+    },
+    {
+      "id": "docs_design_components",
+      "label": "Components",
+      "_origin": "ast",
+      "community": 167,
+      "community_name": "health.ts",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "components",
+      "source_file": "docs/DESIGN.md",
+      "source_location": "L453"
+    },
+    {
       "id": "docs_design_components_per_need",
       "label": "Components per need",
       "_origin": "ast",
@@ -11138,6 +11021,42 @@
       "norm_label": "components per need",
       "source_file": "docs/DESIGN.md",
       "source_location": "L461"
+    },
+    {
+      "id": "docs_design_product_components",
+      "label": "Product components",
+      "_origin": "ast",
+      "community": 167,
+      "community_name": "health.ts",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "product components",
+      "source_file": "docs/DESIGN.md",
+      "source_location": "L480"
+    },
+    {
+      "id": "docs_design_shadcn_style_and_setup",
+      "label": "shadcn style and setup",
+      "_origin": "ast",
+      "community": 167,
+      "community_name": "health.ts",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "shadcn style and setup",
+      "source_file": "docs/DESIGN.md",
+      "source_location": "L455"
+    },
+    {
+      "id": "docs_ideas_08_janji_signal_to_cloud_path",
+      "label": "Signal to cloud path",
+      "_origin": "ast",
+      "community": 167,
+      "community_name": "health.ts",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "signal to cloud path",
+      "source_file": "docs/ideas/08-janji.md",
+      "source_location": "L88"
     },
     {
       "id": "pilot_apps_script_src_bundle",
@@ -11259,126 +11178,6 @@
       "norm_label": "tick.ts",
       "source_file": "pilot/apps-script/src/tick.ts",
       "source_location": "L1"
-    },
-    {
-      "id": "docs_ideas_05_bangun_build_plan",
-      "label": "Build plan",
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "doPost",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "build plan",
-      "source_file": "docs/ideas/05-bangun.md",
-      "source_location": "L220"
-    },
-    {
-      "id": "docs_ideas_opus_03_02_bangun_build_plan_to_10_november",
-      "label": "Build plan to 10 November",
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "doPost",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "build plan to 10 november",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L358"
-    },
-    {
-      "id": "docs_ideas_opus_03_02_bangun_gemini_enterprise_workflows",
-      "label": "Gemini Enterprise workflows",
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "doPost",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "gemini enterprise workflows",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L145"
-    },
-    {
-      "id": "docs_ideas_opus_03_02_bangun_how_bangun_works",
-      "label": "How Bangun works",
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "doPost",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "how bangun works",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L90"
-    },
-    {
-      "id": "docs_ideas_opus_03_02_bangun_network_path_and_diagram",
-      "label": "Network path and diagram",
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "doPost",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "network path and diagram",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L184"
-    },
-    {
-      "id": "docs_ideas_opus_03_02_bangun_phones_by_os",
-      "label": "Phones by OS",
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "doPost",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "phones by os",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L109"
-    },
-    {
-      "id": "docs_ideas_opus_03_02_bangun_the_apps_script_feeder",
-      "label": "The Apps Script feeder",
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "doPost",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "the apps script feeder",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L138"
-    },
-    {
-      "id": "docs_ideas_opus_03_02_bangun_the_pi_watcher",
-      "label": "The Pi watcher",
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "doPost",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "the pi watcher",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L128"
-    },
-    {
-      "id": "docs_ideas_opus_03_02_bangun_when_a_person_clicks",
-      "label": "When a person clicks",
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "doPost",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "when a person clicks",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L173"
-    },
-    {
-      "id": "docs_ideas_opus_03_02_bangun_where_each_job_runs",
-      "label": "Where each job runs",
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "doPost",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "where each job runs",
-      "source_file": "docs/ideas/opus/03/02-bangun.md",
-      "source_location": "L92"
     },
     {
       "id": "pilot_apps_script_src_readings",
@@ -11821,17 +11620,6 @@
       "source_location": "L1"
     },
     {
-      "id": "apps_web_package_json_ref_skyclause_config",
-      "label": "@skyclause/config",
-      "_origin": "ast",
-      "community": 170,
-      "community_name": "web/package.json",
-      "file_type": "concept",
-      "norm_label": "@skyclause/config",
-      "source_file": "apps/web/package.json",
-      "source_location": "L13"
-    },
-    {
       "id": "ref_axe_core_playwright",
       "label": "@axe-core/playwright",
       "_origin": "ast",
@@ -11885,6 +11673,17 @@
       "norm_label": "react-dom",
       "source_file": "apps/web/package.json",
       "source_location": "L17"
+    },
+    {
+      "id": "ref_skyclause_config",
+      "label": "@skyclause/config",
+      "_origin": "ast",
+      "community": 170,
+      "community_name": "web/package.json",
+      "file_type": "concept",
+      "norm_label": "@skyclause/config",
+      "source_file": "apps/web/package.json",
+      "source_location": "L13"
     },
     {
       "id": "ref_skyclause_db",
@@ -12530,15 +12329,27 @@
       "type": "module"
     },
     {
-      "id": "skyclause_auth",
-      "label": "@skyclause/auth",
+      "id": "skyclause_api",
+      "label": "@skyclause/api",
       "_origin": "ast",
       "community": 176,
       "community_name": "vitest",
       "confidence": "EXTRACTED",
       "file_type": "code",
-      "norm_label": "@skyclause/auth",
-      "source_file": "@skyclause/auth",
+      "norm_label": "@skyclause/api",
+      "source_file": "@skyclause/api",
+      "type": "module"
+    },
+    {
+      "id": "skyclause_clauses",
+      "label": "@skyclause/clauses",
+      "_origin": "ast",
+      "community": 176,
+      "community_name": "vitest",
+      "confidence": "EXTRACTED",
+      "file_type": "code",
+      "norm_label": "@skyclause/clauses",
+      "source_file": "@skyclause/clauses",
       "type": "module"
     },
     {
@@ -12554,15 +12365,15 @@
       "type": "module"
     },
     {
-      "id": "skyclause_delivery",
-      "label": "@skyclause/delivery",
+      "id": "skyclause_config",
+      "label": "@skyclause/config",
       "_origin": "ast",
       "community": 176,
       "community_name": "vitest",
       "confidence": "EXTRACTED",
       "file_type": "code",
-      "norm_label": "@skyclause/delivery",
-      "source_file": "@skyclause/delivery",
+      "norm_label": "@skyclause/config",
+      "source_file": "@skyclause/config",
       "type": "module"
     },
     {
@@ -12590,6 +12401,18 @@
       "type": "module"
     },
     {
+      "id": "skyclause_i18n",
+      "label": "@skyclause/i18n",
+      "_origin": "ast",
+      "community": 176,
+      "community_name": "vitest",
+      "confidence": "EXTRACTED",
+      "file_type": "code",
+      "norm_label": "@skyclause/i18n",
+      "source_file": "@skyclause/i18n",
+      "type": "module"
+    },
+    {
       "id": "skyclause_mcp",
       "label": "@skyclause/mcp",
       "_origin": "ast",
@@ -12602,15 +12425,15 @@
       "type": "module"
     },
     {
-      "id": "skyclause_sources",
-      "label": "@skyclause/sources",
+      "id": "skyclause_sdk",
+      "label": "@skyclause/sdk",
       "_origin": "ast",
       "community": 176,
       "community_name": "vitest",
       "confidence": "EXTRACTED",
       "file_type": "code",
-      "norm_label": "@skyclause/sources",
-      "source_file": "@skyclause/sources",
+      "norm_label": "@skyclause/sdk",
+      "source_file": "@skyclause/sdk",
       "type": "module"
     },
     {
@@ -12669,25 +12492,47 @@
       "source_location": "L1"
     },
     {
-      "id": "packages_auth_src_index",
-      "label": "auth/src/index.ts",
+      "id": "packages_api_src_index",
+      "label": "api/src/index.ts",
       "_origin": "ast",
       "community": 176,
       "community_name": "vitest",
       "file_type": "code",
-      "norm_label": "auth/src/index.ts",
-      "source_file": "packages/auth/src/index.ts",
+      "norm_label": "api/src/index.ts",
+      "source_file": "packages/api/src/index.ts",
       "source_location": "L1"
     },
     {
-      "id": "packages_auth_test_smoke_test",
-      "label": "auth/test/smoke.test.ts",
+      "id": "packages_api_test_smoke_test",
+      "label": "api/test/smoke.test.ts",
       "_origin": "ast",
       "community": 176,
       "community_name": "vitest",
       "file_type": "code",
-      "norm_label": "auth/test/smoke.test.ts",
-      "source_file": "packages/auth/test/smoke.test.ts",
+      "norm_label": "api/test/smoke.test.ts",
+      "source_file": "packages/api/test/smoke.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "packages_clauses_src_index",
+      "label": "clauses/src/index.ts",
+      "_origin": "ast",
+      "community": 176,
+      "community_name": "vitest",
+      "file_type": "code",
+      "norm_label": "clauses/src/index.ts",
+      "source_file": "packages/clauses/src/index.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "packages_clauses_test_smoke_test",
+      "label": "clauses/test/smoke.test.ts",
+      "_origin": "ast",
+      "community": 176,
+      "community_name": "vitest",
+      "file_type": "code",
+      "norm_label": "clauses/test/smoke.test.ts",
+      "source_file": "packages/clauses/test/smoke.test.ts",
       "source_location": "L1"
     },
     {
@@ -12713,25 +12558,14 @@
       "source_location": "L1"
     },
     {
-      "id": "packages_delivery_src_index",
-      "label": "delivery/src/index.ts",
+      "id": "packages_config_test_smoke_test",
+      "label": "config/test/smoke.test.ts",
       "_origin": "ast",
       "community": 176,
       "community_name": "vitest",
       "file_type": "code",
-      "norm_label": "delivery/src/index.ts",
-      "source_file": "packages/delivery/src/index.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "packages_delivery_test_smoke_test",
-      "label": "delivery/test/smoke.test.ts",
-      "_origin": "ast",
-      "community": 176,
-      "community_name": "vitest",
-      "file_type": "code",
-      "norm_label": "delivery/test/smoke.test.ts",
-      "source_file": "packages/delivery/test/smoke.test.ts",
+      "norm_label": "config/test/smoke.test.ts",
+      "source_file": "packages/config/test/smoke.test.ts",
       "source_location": "L1"
     },
     {
@@ -12757,6 +12591,28 @@
       "source_location": "L1"
     },
     {
+      "id": "packages_i18n_src_index",
+      "label": "i18n/src/index.ts",
+      "_origin": "ast",
+      "community": 176,
+      "community_name": "vitest",
+      "file_type": "code",
+      "norm_label": "i18n/src/index.ts",
+      "source_file": "packages/i18n/src/index.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "packages_i18n_test_smoke_test",
+      "label": "i18n/test/smoke.test.ts",
+      "_origin": "ast",
+      "community": 176,
+      "community_name": "vitest",
+      "file_type": "code",
+      "norm_label": "i18n/test/smoke.test.ts",
+      "source_file": "packages/i18n/test/smoke.test.ts",
+      "source_location": "L1"
+    },
+    {
       "id": "packages_mcp_src_index",
       "label": "mcp/src/index.ts",
       "_origin": "ast",
@@ -12779,25 +12635,25 @@
       "source_location": "L1"
     },
     {
-      "id": "packages_sources_src_index",
-      "label": "sources/src/index.ts",
+      "id": "packages_sdk_src_index",
+      "label": "sdk/src/index.ts",
       "_origin": "ast",
       "community": 176,
       "community_name": "vitest",
       "file_type": "code",
-      "norm_label": "sources/src/index.ts",
-      "source_file": "packages/sources/src/index.ts",
+      "norm_label": "sdk/src/index.ts",
+      "source_file": "packages/sdk/src/index.ts",
       "source_location": "L1"
     },
     {
-      "id": "packages_sources_test_smoke_test",
-      "label": "sources/test/smoke.test.ts",
+      "id": "packages_sdk_test_smoke_test",
+      "label": "sdk/test/smoke.test.ts",
       "_origin": "ast",
       "community": 176,
       "community_name": "vitest",
       "file_type": "code",
-      "norm_label": "sources/test/smoke.test.ts",
-      "source_file": "packages/sources/test/smoke.test.ts",
+      "norm_label": "sdk/test/smoke.test.ts",
+      "source_file": "packages/sdk/test/smoke.test.ts",
       "source_location": "L1"
     },
     {
@@ -12876,6 +12732,61 @@
       "norm_label": "problems",
       "source_file": "scripts/check-boundaries.ts",
       "source_location": "L4"
+    },
+    {
+      "id": "scripts_check_unbuilt",
+      "label": "check-unbuilt.ts",
+      "_origin": "ast",
+      "community": 177,
+      "community_name": "boundaries.ts",
+      "file_type": "code",
+      "norm_label": "check-unbuilt.ts",
+      "source_file": "scripts/check-unbuilt.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "scripts_check_unbuilt_args",
+      "label": "args",
+      "_origin": "ast",
+      "community": 177,
+      "community_name": "boundaries.ts",
+      "file_type": "code",
+      "norm_label": "args",
+      "source_file": "scripts/check-unbuilt.ts",
+      "source_location": "L9"
+    },
+    {
+      "id": "scripts_check_unbuilt_byowner",
+      "label": "byOwner",
+      "_origin": "ast",
+      "community": 177,
+      "community_name": "boundaries.ts",
+      "file_type": "code",
+      "norm_label": "byowner",
+      "source_file": "scripts/check-unbuilt.ts",
+      "source_location": "L17"
+    },
+    {
+      "id": "scripts_check_unbuilt_count",
+      "label": "count",
+      "_origin": "ast",
+      "community": 177,
+      "community_name": "boundaries.ts",
+      "file_type": "code",
+      "norm_label": "count",
+      "source_file": "scripts/check-unbuilt.ts",
+      "source_location": "L35"
+    },
+    {
+      "id": "scripts_check_unbuilt_ownerflag",
+      "label": "ownerFlag",
+      "_origin": "ast",
+      "community": 177,
+      "community_name": "boundaries.ts",
+      "file_type": "code",
+      "norm_label": "ownerflag",
+      "source_file": "scripts/check-unbuilt.ts",
+      "source_location": "L10"
     },
     {
       "id": "scripts_files",
@@ -14801,6 +14712,18 @@
       "source_location": "L1"
     },
     {
+      "id": "docs_trd_environments_and_deployment",
+      "label": "Environments and deployment",
+      "_origin": "ast",
+      "community": 197,
+      "community_name": "worker/src/main.ts",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "environments and deployment",
+      "source_file": "docs/TRD.md",
+      "source_location": "L771"
+    },
+    {
       "id": "github_actions_setup_action",
       "label": "action.yml",
       "_origin": "ast",
@@ -14966,47 +14889,13 @@
       "source_location": "L16"
     },
     {
-      "id": "skyclause_config",
-      "label": "@skyclause/config",
-      "_origin": "ast",
-      "community": 199,
-      "community_name": "config/src/index.ts",
-      "confidence": "EXTRACTED",
-      "file_type": "code",
-      "norm_label": "@skyclause/config",
-      "source_file": "@skyclause/config",
-      "type": "module"
-    },
-    {
-      "id": "apps_web_instrumentation",
-      "label": "instrumentation.ts",
-      "_origin": "ast",
-      "community": 199,
-      "community_name": "config/src/index.ts",
-      "file_type": "code",
-      "norm_label": "instrumentation.ts",
-      "source_file": "apps/web/instrumentation.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "apps_web_test_instrumentation_test",
-      "label": "instrumentation.test.ts",
-      "_origin": "ast",
-      "community": 199,
-      "community_name": "config/src/index.ts",
-      "file_type": "code",
-      "norm_label": "instrumentation.test.ts",
-      "source_file": "apps/web/test/instrumentation.test.ts",
-      "source_location": "L1"
-    },
-    {
       "id": "packages_config_src_env",
-      "label": "env.ts",
+      "label": "src/env.ts",
       "_origin": "ast",
       "community": 199,
       "community_name": "config/src/index.ts",
       "file_type": "code",
-      "norm_label": "env.ts",
+      "norm_label": "src/env.ts",
       "source_file": "packages/config/src/env.ts",
       "source_location": "L1"
     },
@@ -15064,17 +14953,6 @@
       "norm_label": "worker",
       "source_file": "packages/config/test/env.test.ts",
       "source_location": "L4"
-    },
-    {
-      "id": "packages_config_test_smoke_test",
-      "label": "config/test/smoke.test.ts",
-      "_origin": "ast",
-      "community": 199,
-      "community_name": "config/src/index.ts",
-      "file_type": "code",
-      "norm_label": "config/test/smoke.test.ts",
-      "source_file": "packages/config/test/smoke.test.ts",
-      "source_location": "L1"
     },
     {
       "id": "docs_ideas_astra_01_01_recheck_architecture_and_states",
@@ -15738,7 +15616,7 @@
       "label": "next.config.ts",
       "_origin": "ast",
       "community": 201,
-      "community_name": "check-unbuilt.ts",
+      "community_name": "build.test.ts",
       "file_type": "code",
       "norm_label": "next.config.ts",
       "source_file": "apps/web/next.config.ts",
@@ -15749,7 +15627,7 @@
       "label": "config",
       "_origin": "ast",
       "community": 201,
-      "community_name": "check-unbuilt.ts",
+      "community_name": "build.test.ts",
       "file_type": "code",
       "norm_label": "config",
       "source_file": "apps/web/next.config.ts",
@@ -15760,18 +15638,51 @@
       "label": "root",
       "_origin": "ast",
       "community": 201,
-      "community_name": "check-unbuilt.ts",
+      "community_name": "build.test.ts",
       "file_type": "code",
       "norm_label": "root",
       "source_file": "apps/web/next.config.ts",
       "source_location": "L4"
     },
     {
+      "id": "pilot_apps_script_build",
+      "label": "build.ts",
+      "_origin": "ast",
+      "community": 201,
+      "community_name": "build.test.ts",
+      "file_type": "code",
+      "norm_label": "build.ts",
+      "source_file": "pilot/apps-script/build.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "pilot_apps_script_build_test",
+      "label": "build.test.ts",
+      "_origin": "ast",
+      "community": 201,
+      "community_name": "build.test.ts",
+      "file_type": "code",
+      "norm_label": "build.test.ts",
+      "source_file": "pilot/apps-script/build.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "pilot_apps_script_build_test_stamp",
+      "label": "stamp",
+      "_origin": "ast",
+      "community": 201,
+      "community_name": "build.test.ts",
+      "file_type": "code",
+      "norm_label": "stamp",
+      "source_file": "pilot/apps-script/build.test.ts",
+      "source_location": "L9"
+    },
+    {
       "id": "pilot_fixtures_fixtures_test",
       "label": "fixtures/fixtures.test.ts",
       "_origin": "ast",
       "community": 201,
-      "community_name": "check-unbuilt.ts",
+      "community_name": "build.test.ts",
       "file_type": "code",
       "norm_label": "fixtures/fixtures.test.ts",
       "source_file": "pilot/fixtures/fixtures.test.ts",
@@ -15782,7 +15693,7 @@
       "label": "copies",
       "_origin": "ast",
       "community": 201,
-      "community_name": "check-unbuilt.ts",
+      "community_name": "build.test.ts",
       "file_type": "code",
       "norm_label": "copies",
       "source_file": "pilot/fixtures/fixtures.test.ts",
@@ -15793,66 +15704,11 @@
       "label": "repo",
       "_origin": "ast",
       "community": 201,
-      "community_name": "check-unbuilt.ts",
+      "community_name": "build.test.ts",
       "file_type": "code",
       "norm_label": "repo",
       "source_file": "pilot/fixtures/fixtures.test.ts",
       "source_location": "L5"
-    },
-    {
-      "id": "scripts_check_unbuilt",
-      "label": "check-unbuilt.ts",
-      "_origin": "ast",
-      "community": 201,
-      "community_name": "check-unbuilt.ts",
-      "file_type": "code",
-      "norm_label": "check-unbuilt.ts",
-      "source_file": "scripts/check-unbuilt.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "scripts_check_unbuilt_args",
-      "label": "args",
-      "_origin": "ast",
-      "community": 201,
-      "community_name": "check-unbuilt.ts",
-      "file_type": "code",
-      "norm_label": "args",
-      "source_file": "scripts/check-unbuilt.ts",
-      "source_location": "L9"
-    },
-    {
-      "id": "scripts_check_unbuilt_byowner",
-      "label": "byOwner",
-      "_origin": "ast",
-      "community": 201,
-      "community_name": "check-unbuilt.ts",
-      "file_type": "code",
-      "norm_label": "byowner",
-      "source_file": "scripts/check-unbuilt.ts",
-      "source_location": "L17"
-    },
-    {
-      "id": "scripts_check_unbuilt_count",
-      "label": "count",
-      "_origin": "ast",
-      "community": 201,
-      "community_name": "check-unbuilt.ts",
-      "file_type": "code",
-      "norm_label": "count",
-      "source_file": "scripts/check-unbuilt.ts",
-      "source_location": "L35"
-    },
-    {
-      "id": "scripts_check_unbuilt_ownerflag",
-      "label": "ownerFlag",
-      "_origin": "ast",
-      "community": 201,
-      "community_name": "check-unbuilt.ts",
-      "file_type": "code",
-      "norm_label": "ownerflag",
-      "source_file": "scripts/check-unbuilt.ts",
-      "source_location": "L10"
     },
     {
       "id": "github_workflows_checks_changes_steps",
@@ -17564,18 +17420,6 @@
       "norm_label": "../../packages/config/tsconfig.base.json",
       "source_file": "apps/docs/tsconfig.json",
       "source_location": "L2"
-    },
-    {
-      "id": "docs_ideas_08_janji_signal_to_cloud_path",
-      "label": "Signal to cloud path",
-      "_origin": "ast",
-      "community": 216,
-      "community_name": "How it works",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "signal to cloud path",
-      "source_file": "docs/ideas/08-janji.md",
-      "source_location": "L88"
     },
     {
       "id": "docs_ideas_opus_03_03_janji_devices_and_setup_per_os",
@@ -21479,43 +21323,31 @@
       "source_location": "L3"
     },
     {
-      "id": "docs_ideas_opus_01_01_kept_cloud_iot_and_network",
-      "label": "Cloud, IoT, and network",
+      "id": "docs_ideas_03_chronodiff_cloud_iot_and_network",
+      "label": "Cloud, IoT and network",
       "_origin": "ast",
       "community": 255,
       "community_name": "How it works",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "cloud, iot, and network",
-      "source_file": "docs/ideas/opus/01/01-kept.md",
-      "source_location": "L128"
+      "norm_label": "cloud, iot and network",
+      "source_file": "docs/ideas/03-chronodiff.md",
+      "source_location": "L131"
     },
     {
-      "id": "docs_ideas_opus_01_01_kept_connectors_and_actions",
-      "label": "Connectors and actions",
+      "id": "docs_ideas_03_chronodiff_connectors_and_platform_check",
+      "label": "Connectors and platform check",
       "_origin": "ast",
       "community": 255,
       "community_name": "How it works",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "connectors and actions",
-      "source_file": "docs/ideas/opus/01/01-kept.md",
-      "source_location": "L107"
+      "norm_label": "connectors and platform check",
+      "source_file": "docs/ideas/03-chronodiff.md",
+      "source_location": "L116"
     },
     {
-      "id": "docs_ideas_opus_01_01_kept_day_to_day_workflow",
-      "label": "Day-to-day workflow",
-      "_origin": "ast",
-      "community": 255,
-      "community_name": "How it works",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "day-to-day workflow",
-      "source_file": "docs/ideas/opus/01/01-kept.md",
-      "source_location": "L62"
-    },
-    {
-      "id": "docs_ideas_opus_01_01_kept_how_it_works",
+      "id": "docs_ideas_03_chronodiff_how_it_works",
       "label": "How it works",
       "_origin": "ast",
       "community": 255,
@@ -21523,20 +21355,68 @@
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "how it works",
-      "source_file": "docs/ideas/opus/01/01-kept.md",
-      "source_location": "L60"
+      "source_file": "docs/ideas/03-chronodiff.md",
+      "source_location": "L63"
     },
     {
-      "id": "docs_ideas_opus_01_01_kept_real_data",
-      "label": "Real data",
+      "id": "docs_ideas_03_chronodiff_real_data_and_privacy",
+      "label": "Real data and privacy",
       "_origin": "ast",
       "community": 255,
       "community_name": "How it works",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "real data",
-      "source_file": "docs/ideas/opus/01/01-kept.md",
-      "source_location": "L150"
+      "norm_label": "real data and privacy",
+      "source_file": "docs/ideas/03-chronodiff.md",
+      "source_location": "L137"
+    },
+    {
+      "id": "docs_ideas_03_chronodiff_rule_set",
+      "label": "Rule set",
+      "_origin": "ast",
+      "community": 255,
+      "community_name": "How it works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "rule set",
+      "source_file": "docs/ideas/03-chronodiff.md",
+      "source_location": "L91"
+    },
+    {
+      "id": "docs_ideas_03_chronodiff_signal_to_cloud_path",
+      "label": "Signal to cloud path",
+      "_origin": "ast",
+      "community": 255,
+      "community_name": "How it works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "signal to cloud path",
+      "source_file": "docs/ideas/03-chronodiff.md",
+      "source_location": "L65"
+    },
+    {
+      "id": "docs_ideas_03_chronodiff_states_and_failure_handling",
+      "label": "States and failure handling",
+      "_origin": "ast",
+      "community": 255,
+      "community_name": "How it works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "states and failure handling",
+      "source_file": "docs/ideas/03-chronodiff.md",
+      "source_location": "L108"
+    },
+    {
+      "id": "docs_ideas_03_chronodiff_workflows",
+      "label": "Workflows",
+      "_origin": "ast",
+      "community": 255,
+      "community_name": "How it works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "workflows",
+      "source_file": "docs/ideas/03-chronodiff.md",
+      "source_location": "L79"
     },
     {
       "id": "github_workflows_checks_e2e_if",
@@ -21682,38 +21562,100 @@
       "source_location": "L55"
     },
     {
-      "id": "skyclause_api",
-      "label": "@skyclause/api",
+      "id": "docs_ideas_opus_03_01_tukar_devices_and_setup_per_os",
+      "label": "Devices and setup per OS",
       "_origin": "ast",
       "community": 259,
-      "community_name": "api/test/smoke.test.ts",
-      "confidence": "EXTRACTED",
-      "file_type": "code",
-      "norm_label": "@skyclause/api",
-      "source_file": "@skyclause/api",
-      "type": "module"
+      "community_name": "How Tukar works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "devices and setup per os",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L128"
     },
     {
-      "id": "packages_api_src_index",
-      "label": "api/src/index.ts",
+      "id": "docs_ideas_opus_03_01_tukar_gemini_enterprise_workflows_in_tukar",
+      "label": "Gemini Enterprise workflows in Tukar",
       "_origin": "ast",
       "community": 259,
-      "community_name": "api/test/smoke.test.ts",
-      "file_type": "code",
-      "norm_label": "api/src/index.ts",
-      "source_file": "packages/api/src/index.ts",
-      "source_location": "L1"
+      "community_name": "How Tukar works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "gemini enterprise workflows in tukar",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L175"
     },
     {
-      "id": "packages_api_test_smoke_test",
-      "label": "api/test/smoke.test.ts",
+      "id": "docs_ideas_opus_03_01_tukar_how_tukar_works",
+      "label": "How Tukar works",
       "_origin": "ast",
       "community": 259,
-      "community_name": "api/test/smoke.test.ts",
-      "file_type": "code",
-      "norm_label": "api/test/smoke.test.ts",
-      "source_file": "packages/api/test/smoke.test.ts",
-      "source_location": "L1"
+      "community_name": "How Tukar works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "how tukar works",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L126"
+    },
+    {
+      "id": "docs_ideas_opus_03_01_tukar_network_path_hop_by_hop",
+      "label": "Network path, hop by hop",
+      "_origin": "ast",
+      "community": 259,
+      "community_name": "How Tukar works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "network path, hop by hop",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L144"
+    },
+    {
+      "id": "docs_ideas_opus_03_01_tukar_the_provenance_statement",
+      "label": "The provenance statement",
+      "_origin": "ast",
+      "community": 259,
+      "community_name": "How Tukar works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "the provenance statement",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L190"
+    },
+    {
+      "id": "docs_ideas_opus_03_01_tukar_tukar_architecture_diagram",
+      "label": "Tukar architecture diagram",
+      "_origin": "ast",
+      "community": 259,
+      "community_name": "How Tukar works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "tukar architecture diagram",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L202"
+    },
+    {
+      "id": "docs_ideas_opus_03_01_tukar_tukar_s_rules_version_1",
+      "label": "Tukar's rules, version 1",
+      "_origin": "ast",
+      "community": 259,
+      "community_name": "How Tukar works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "tukar's rules, version 1",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L163"
+    },
+    {
+      "id": "docs_ideas_opus_03_01_tukar_what_the_gateway_sees_and_what_it_can_t",
+      "label": "What the gateway sees and what it can't",
+      "_origin": "ast",
+      "community": 259,
+      "community_name": "How Tukar works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "what the gateway sees and what it can't",
+      "source_file": "docs/ideas/opus/03/01-tukar.md",
+      "source_location": "L155"
     },
     {
       "id": "docs_research_iot_and_network",
@@ -21836,38 +21778,88 @@
       "source_location": "L828"
     },
     {
-      "id": "skyclause_clauses",
-      "label": "@skyclause/clauses",
+      "id": "docs_ideas_07_khabar_cloud_iot_and_network",
+      "label": "Cloud, IoT and network",
       "_origin": "ast",
       "community": 260,
-      "community_name": "clauses/test/smoke.test.ts",
-      "confidence": "EXTRACTED",
-      "file_type": "code",
-      "norm_label": "@skyclause/clauses",
-      "source_file": "@skyclause/clauses",
-      "type": "module"
+      "community_name": "How it works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "cloud, iot and network",
+      "source_file": "docs/ideas/07-khabar.md",
+      "source_location": "L128"
     },
     {
-      "id": "packages_clauses_src_index",
-      "label": "clauses/src/index.ts",
+      "id": "docs_ideas_07_khabar_connectors_and_platform_check",
+      "label": "Connectors and platform check",
       "_origin": "ast",
       "community": 260,
-      "community_name": "clauses/test/smoke.test.ts",
-      "file_type": "code",
-      "norm_label": "clauses/src/index.ts",
-      "source_file": "packages/clauses/src/index.ts",
-      "source_location": "L1"
+      "community_name": "How it works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "connectors and platform check",
+      "source_file": "docs/ideas/07-khabar.md",
+      "source_location": "L118"
     },
     {
-      "id": "packages_clauses_test_smoke_test",
-      "label": "clauses/test/smoke.test.ts",
+      "id": "docs_ideas_07_khabar_how_it_works",
+      "label": "How it works",
       "_origin": "ast",
       "community": 260,
-      "community_name": "clauses/test/smoke.test.ts",
-      "file_type": "code",
-      "norm_label": "clauses/test/smoke.test.ts",
-      "source_file": "packages/clauses/test/smoke.test.ts",
-      "source_location": "L1"
+      "community_name": "How it works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "how it works",
+      "source_file": "docs/ideas/07-khabar.md",
+      "source_location": "L80"
+    },
+    {
+      "id": "docs_ideas_07_khabar_real_data_and_privacy",
+      "label": "Real data and privacy",
+      "_origin": "ast",
+      "community": 260,
+      "community_name": "How it works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "real data and privacy",
+      "source_file": "docs/ideas/07-khabar.md",
+      "source_location": "L134"
+    },
+    {
+      "id": "docs_ideas_07_khabar_signal_to_cloud_path",
+      "label": "Signal to cloud path",
+      "_origin": "ast",
+      "community": 260,
+      "community_name": "How it works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "signal to cloud path",
+      "source_file": "docs/ideas/07-khabar.md",
+      "source_location": "L84"
+    },
+    {
+      "id": "docs_ideas_07_khabar_states_and_failure_handling",
+      "label": "States and failure handling",
+      "_origin": "ast",
+      "community": 260,
+      "community_name": "How it works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "states and failure handling",
+      "source_file": "docs/ideas/07-khabar.md",
+      "source_location": "L110"
+    },
+    {
+      "id": "docs_ideas_07_khabar_workflow_and_rule_set",
+      "label": "Workflow and rule set",
+      "_origin": "ast",
+      "community": 260,
+      "community_name": "How it works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "workflow and rule set",
+      "source_file": "docs/ideas/07-khabar.md",
+      "source_location": "L98"
     },
     {
       "id": "skyclause_contracts",
@@ -21938,72 +21930,109 @@
       "source_location": "L1"
     },
     {
-      "id": "skyclause_i18n",
-      "label": "@skyclause/i18n",
+      "id": "apps_web_instrumentation",
+      "label": "instrumentation.ts",
       "_origin": "ast",
       "community": 263,
-      "community_name": "i18n/test/smoke.test.ts",
-      "confidence": "EXTRACTED",
+      "community_name": "lib/env.ts",
       "file_type": "code",
-      "norm_label": "@skyclause/i18n",
-      "source_file": "@skyclause/i18n",
-      "type": "module"
+      "norm_label": "instrumentation.ts",
+      "source_file": "apps/web/instrumentation.ts",
+      "source_location": "L1"
     },
     {
-      "id": "packages_i18n_src_index",
-      "label": "i18n/src/index.ts",
+      "id": "apps_web_lib_env",
+      "label": "lib/env.ts",
       "_origin": "ast",
       "community": 263,
-      "community_name": "i18n/test/smoke.test.ts",
+      "community_name": "lib/env.ts",
       "file_type": "code",
-      "norm_label": "i18n/src/index.ts",
-      "source_file": "packages/i18n/src/index.ts",
+      "norm_label": "lib/env.ts",
+      "source_file": "apps/web/lib/env.ts",
       "source_location": "L1"
     },
     {
-      "id": "packages_i18n_test_smoke_test",
-      "label": "i18n/test/smoke.test.ts",
+      "id": "apps_web_test_instrumentation_test",
+      "label": "instrumentation.test.ts",
       "_origin": "ast",
       "community": 263,
-      "community_name": "i18n/test/smoke.test.ts",
+      "community_name": "lib/env.ts",
       "file_type": "code",
-      "norm_label": "i18n/test/smoke.test.ts",
-      "source_file": "packages/i18n/test/smoke.test.ts",
+      "norm_label": "instrumentation.test.ts",
+      "source_file": "apps/web/test/instrumentation.test.ts",
       "source_location": "L1"
     },
     {
-      "id": "skyclause_sdk",
-      "label": "@skyclause/sdk",
+      "id": "docs_ideas_opus_01_04_sempat_cloud_iot_and_network",
+      "label": "Cloud, IoT, and network",
       "_origin": "ast",
       "community": 264,
-      "community_name": "sdk/test/smoke.test.ts",
-      "confidence": "EXTRACTED",
-      "file_type": "code",
-      "norm_label": "@skyclause/sdk",
-      "source_file": "@skyclause/sdk",
-      "type": "module"
+      "community_name": "How it works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "cloud, iot, and network",
+      "source_file": "docs/ideas/opus/01/04-sempat.md",
+      "source_location": "L103"
     },
     {
-      "id": "packages_sdk_src_index",
-      "label": "sdk/src/index.ts",
+      "id": "docs_ideas_opus_01_04_sempat_connectors_and_actions",
+      "label": "Connectors and actions",
       "_origin": "ast",
       "community": 264,
-      "community_name": "sdk/test/smoke.test.ts",
-      "file_type": "code",
-      "norm_label": "sdk/src/index.ts",
-      "source_file": "packages/sdk/src/index.ts",
-      "source_location": "L1"
+      "community_name": "How it works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "connectors and actions",
+      "source_file": "docs/ideas/opus/01/04-sempat.md",
+      "source_location": "L78"
     },
     {
-      "id": "packages_sdk_test_smoke_test",
-      "label": "sdk/test/smoke.test.ts",
+      "id": "docs_ideas_opus_01_04_sempat_day_to_day_workflow",
+      "label": "Day-to-day workflow",
       "_origin": "ast",
       "community": 264,
-      "community_name": "sdk/test/smoke.test.ts",
-      "file_type": "code",
-      "norm_label": "sdk/test/smoke.test.ts",
-      "source_file": "packages/sdk/test/smoke.test.ts",
-      "source_location": "L1"
+      "community_name": "How it works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "day-to-day workflow",
+      "source_file": "docs/ideas/opus/01/04-sempat.md",
+      "source_location": "L56"
+    },
+    {
+      "id": "docs_ideas_opus_01_04_sempat_how_few_measurements_are_enough",
+      "label": "How few measurements are enough",
+      "_origin": "ast",
+      "community": 264,
+      "community_name": "How it works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "how few measurements are enough",
+      "source_file": "docs/ideas/opus/01/04-sempat.md",
+      "source_location": "L110"
+    },
+    {
+      "id": "docs_ideas_opus_01_04_sempat_how_it_works",
+      "label": "How it works",
+      "_origin": "ast",
+      "community": 264,
+      "community_name": "How it works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "how it works",
+      "source_file": "docs/ideas/opus/01/04-sempat.md",
+      "source_location": "L54"
+    },
+    {
+      "id": "docs_ideas_opus_01_04_sempat_real_data",
+      "label": "Real data",
+      "_origin": "ast",
+      "community": 264,
+      "community_name": "How it works",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "real data",
+      "source_file": "docs/ideas/opus/01/04-sempat.md",
+      "source_location": "L130"
     },
     {
       "id": "skyclause_skills",
@@ -22530,6 +22559,108 @@
       "norm_label": "typescript",
       "source_file": "package.json",
       "source_location": "L44"
+    },
+    {
+      "id": "skyclause_auth",
+      "label": "@skyclause/auth",
+      "_origin": "ast",
+      "community": 272,
+      "community_name": "auth/test/smoke.test.ts",
+      "confidence": "EXTRACTED",
+      "file_type": "code",
+      "norm_label": "@skyclause/auth",
+      "source_file": "@skyclause/auth",
+      "type": "module"
+    },
+    {
+      "id": "packages_auth_src_index",
+      "label": "auth/src/index.ts",
+      "_origin": "ast",
+      "community": 272,
+      "community_name": "auth/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "auth/src/index.ts",
+      "source_file": "packages/auth/src/index.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "packages_auth_test_smoke_test",
+      "label": "auth/test/smoke.test.ts",
+      "_origin": "ast",
+      "community": 272,
+      "community_name": "auth/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "auth/test/smoke.test.ts",
+      "source_file": "packages/auth/test/smoke.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "skyclause_delivery",
+      "label": "@skyclause/delivery",
+      "_origin": "ast",
+      "community": 273,
+      "community_name": "delivery/test/smoke.test.ts",
+      "confidence": "EXTRACTED",
+      "file_type": "code",
+      "norm_label": "@skyclause/delivery",
+      "source_file": "@skyclause/delivery",
+      "type": "module"
+    },
+    {
+      "id": "packages_delivery_src_index",
+      "label": "delivery/src/index.ts",
+      "_origin": "ast",
+      "community": 273,
+      "community_name": "delivery/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "delivery/src/index.ts",
+      "source_file": "packages/delivery/src/index.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "packages_delivery_test_smoke_test",
+      "label": "delivery/test/smoke.test.ts",
+      "_origin": "ast",
+      "community": 273,
+      "community_name": "delivery/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "delivery/test/smoke.test.ts",
+      "source_file": "packages/delivery/test/smoke.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "skyclause_sources",
+      "label": "@skyclause/sources",
+      "_origin": "ast",
+      "community": 274,
+      "community_name": "sources/test/smoke.test.ts",
+      "confidence": "EXTRACTED",
+      "file_type": "code",
+      "norm_label": "@skyclause/sources",
+      "source_file": "@skyclause/sources",
+      "type": "module"
+    },
+    {
+      "id": "packages_sources_src_index",
+      "label": "sources/src/index.ts",
+      "_origin": "ast",
+      "community": 274,
+      "community_name": "sources/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "sources/src/index.ts",
+      "source_file": "packages/sources/src/index.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "packages_sources_test_smoke_test",
+      "label": "sources/test/smoke.test.ts",
+      "_origin": "ast",
+      "community": 274,
+      "community_name": "sources/test/smoke.test.ts",
+      "file_type": "code",
+      "norm_label": "sources/test/smoke.test.ts",
+      "source_file": "packages/sources/test/smoke.test.ts",
+      "source_location": "L1"
     },
     {
       "id": "docs_context",
@@ -27152,30 +27283,6 @@
       "source_location": "L1"
     },
     {
-      "id": "docs_ideas_03_chronodiff_cloud_iot_and_network",
-      "label": "Cloud, IoT and network",
-      "_origin": "ast",
-      "community": 59,
-      "community_name": "ChronoDiff",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "cloud, iot and network",
-      "source_file": "docs/ideas/03-chronodiff.md",
-      "source_location": "L131"
-    },
-    {
-      "id": "docs_ideas_03_chronodiff_connectors_and_platform_check",
-      "label": "Connectors and platform check",
-      "_origin": "ast",
-      "community": 59,
-      "community_name": "ChronoDiff",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "connectors and platform check",
-      "source_file": "docs/ideas/03-chronodiff.md",
-      "source_location": "L116"
-    },
-    {
       "id": "docs_ideas_03_chronodiff_demo_and_review",
       "label": "Demo and review",
       "_origin": "ast",
@@ -27186,18 +27293,6 @@
       "norm_label": "demo and review",
       "source_file": "docs/ideas/03-chronodiff.md",
       "source_location": "L199"
-    },
-    {
-      "id": "docs_ideas_03_chronodiff_how_it_works",
-      "label": "How it works",
-      "_origin": "ast",
-      "community": 59,
-      "community_name": "ChronoDiff",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "how it works",
-      "source_file": "docs/ideas/03-chronodiff.md",
-      "source_location": "L63"
     },
     {
       "id": "docs_ideas_03_chronodiff_not_verified",
@@ -27248,18 +27343,6 @@
       "source_location": "L50"
     },
     {
-      "id": "docs_ideas_03_chronodiff_real_data_and_privacy",
-      "label": "Real data and privacy",
-      "_origin": "ast",
-      "community": 59,
-      "community_name": "ChronoDiff",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "real data and privacy",
-      "source_file": "docs/ideas/03-chronodiff.md",
-      "source_location": "L137"
-    },
-    {
       "id": "docs_ideas_03_chronodiff_research_plan",
       "label": "Research plan",
       "_origin": "ast",
@@ -27284,18 +27367,6 @@
       "source_location": "L223"
     },
     {
-      "id": "docs_ideas_03_chronodiff_rule_set",
-      "label": "Rule set",
-      "_origin": "ast",
-      "community": 59,
-      "community_name": "ChronoDiff",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "rule set",
-      "source_file": "docs/ideas/03-chronodiff.md",
-      "source_location": "L91"
-    },
-    {
       "id": "docs_ideas_03_chronodiff_scores",
       "label": "Scores",
       "_origin": "ast",
@@ -27318,30 +27389,6 @@
       "norm_label": "see also",
       "source_file": "docs/ideas/03-chronodiff.md",
       "source_location": "L243"
-    },
-    {
-      "id": "docs_ideas_03_chronodiff_signal_to_cloud_path",
-      "label": "Signal to cloud path",
-      "_origin": "ast",
-      "community": 59,
-      "community_name": "ChronoDiff",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "signal to cloud path",
-      "source_file": "docs/ideas/03-chronodiff.md",
-      "source_location": "L65"
-    },
-    {
-      "id": "docs_ideas_03_chronodiff_states_and_failure_handling",
-      "label": "States and failure handling",
-      "_origin": "ast",
-      "community": 59,
-      "community_name": "ChronoDiff",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "states and failure handling",
-      "source_file": "docs/ideas/03-chronodiff.md",
-      "source_location": "L108"
     },
     {
       "id": "docs_ideas_03_chronodiff_time_to_impact",
@@ -27378,18 +27425,6 @@
       "norm_label": "why the crowd won't build it",
       "source_file": "docs/ideas/03-chronodiff.md",
       "source_location": "L150"
-    },
-    {
-      "id": "docs_ideas_03_chronodiff_workflows",
-      "label": "Workflows",
-      "_origin": "ast",
-      "community": 59,
-      "community_name": "ChronoDiff",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "workflows",
-      "source_file": "docs/ideas/03-chronodiff.md",
-      "source_location": "L79"
     },
     {
       "id": "docs_agents_domain",
@@ -27944,18 +27979,6 @@
       "source_location": "L261"
     },
     {
-      "id": "docs_ideas_opus_01_04_sempat_cloud_iot_and_network",
-      "label": "Cloud, IoT, and network",
-      "_origin": "ast",
-      "community": 62,
-      "community_name": "Sempat",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "cloud, iot, and network",
-      "source_file": "docs/ideas/opus/01/04-sempat.md",
-      "source_location": "L103"
-    },
-    {
       "id": "docs_ideas_opus_01_04_sempat_component_scores",
       "label": "Component scores",
       "_origin": "ast",
@@ -27966,30 +27989,6 @@
       "norm_label": "component scores",
       "source_file": "docs/ideas/opus/01/04-sempat.md",
       "source_location": "L173"
-    },
-    {
-      "id": "docs_ideas_opus_01_04_sempat_connectors_and_actions",
-      "label": "Connectors and actions",
-      "_origin": "ast",
-      "community": 62,
-      "community_name": "Sempat",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "connectors and actions",
-      "source_file": "docs/ideas/opus/01/04-sempat.md",
-      "source_location": "L78"
-    },
-    {
-      "id": "docs_ideas_opus_01_04_sempat_day_to_day_workflow",
-      "label": "Day-to-day workflow",
-      "_origin": "ast",
-      "community": 62,
-      "community_name": "Sempat",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "day-to-day workflow",
-      "source_file": "docs/ideas/opus/01/04-sempat.md",
-      "source_location": "L56"
     },
     {
       "id": "docs_ideas_opus_01_04_sempat_demo_and_review",
@@ -28016,30 +28015,6 @@
       "source_location": "L189"
     },
     {
-      "id": "docs_ideas_opus_01_04_sempat_how_few_measurements_are_enough",
-      "label": "How few measurements are enough",
-      "_origin": "ast",
-      "community": 62,
-      "community_name": "Sempat",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "how few measurements are enough",
-      "source_file": "docs/ideas/opus/01/04-sempat.md",
-      "source_location": "L110"
-    },
-    {
-      "id": "docs_ideas_opus_01_04_sempat_how_it_works",
-      "label": "How it works",
-      "_origin": "ast",
-      "community": 62,
-      "community_name": "Sempat",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "how it works",
-      "source_file": "docs/ideas/opus/01/04-sempat.md",
-      "source_location": "L54"
-    },
-    {
       "id": "docs_ideas_opus_01_04_sempat_problem_and_evidence",
       "label": "Problem and evidence",
       "_origin": "ast",
@@ -28050,18 +28025,6 @@
       "norm_label": "problem and evidence",
       "source_file": "docs/ideas/opus/01/04-sempat.md",
       "source_location": "L39"
-    },
-    {
-      "id": "docs_ideas_opus_01_04_sempat_real_data",
-      "label": "Real data",
-      "_origin": "ast",
-      "community": 62,
-      "community_name": "Sempat",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "real data",
-      "source_file": "docs/ideas/opus/01/04-sempat.md",
-      "source_location": "L130"
     },
     {
       "id": "docs_ideas_opus_01_04_sempat_research_plan",
@@ -29444,6 +29407,18 @@
       "source_location": "L340"
     },
     {
+      "id": "docs_ideas_opus_01_01_kept_cloud_iot_and_network",
+      "label": "Cloud, IoT, and network",
+      "_origin": "ast",
+      "community": 68,
+      "community_name": "Kept",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "cloud, iot, and network",
+      "source_file": "docs/ideas/opus/01/01-kept.md",
+      "source_location": "L128"
+    },
+    {
       "id": "docs_ideas_opus_01_01_kept_component_scores",
       "label": "Component scores",
       "_origin": "ast",
@@ -29454,6 +29429,30 @@
       "norm_label": "component scores",
       "source_file": "docs/ideas/opus/01/01-kept.md",
       "source_location": "L211"
+    },
+    {
+      "id": "docs_ideas_opus_01_01_kept_connectors_and_actions",
+      "label": "Connectors and actions",
+      "_origin": "ast",
+      "community": 68,
+      "community_name": "Kept",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "connectors and actions",
+      "source_file": "docs/ideas/opus/01/01-kept.md",
+      "source_location": "L107"
+    },
+    {
+      "id": "docs_ideas_opus_01_01_kept_day_to_day_workflow",
+      "label": "Day-to-day workflow",
+      "_origin": "ast",
+      "community": 68,
+      "community_name": "Kept",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "day-to-day workflow",
+      "source_file": "docs/ideas/opus/01/01-kept.md",
+      "source_location": "L62"
     },
     {
       "id": "docs_ideas_opus_01_01_kept_demo_and_review",
@@ -29480,6 +29479,18 @@
       "source_location": "L227"
     },
     {
+      "id": "docs_ideas_opus_01_01_kept_how_it_works",
+      "label": "How it works",
+      "_origin": "ast",
+      "community": 68,
+      "community_name": "Kept",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "how it works",
+      "source_file": "docs/ideas/opus/01/01-kept.md",
+      "source_location": "L60"
+    },
+    {
       "id": "docs_ideas_opus_01_01_kept_kept",
       "label": "Kept",
       "_origin": "ast",
@@ -29502,6 +29513,18 @@
       "norm_label": "problem and evidence",
       "source_file": "docs/ideas/opus/01/01-kept.md",
       "source_location": "L38"
+    },
+    {
+      "id": "docs_ideas_opus_01_01_kept_real_data",
+      "label": "Real data",
+      "_origin": "ast",
+      "community": 68,
+      "community_name": "Kept",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "real data",
+      "source_file": "docs/ideas/opus/01/01-kept.md",
+      "source_location": "L150"
     },
     {
       "id": "docs_ideas_opus_01_01_kept_research_plan",
@@ -34033,17 +34056,6 @@
       "type": "external"
     },
     {
-      "id": "ref_node_vm",
-      "label": "ref_node_vm",
-      "community": 167,
-      "community_name": "health.ts",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "ref_node_vm",
-      "source_file": "",
-      "type": "external"
-    },
-    {
       "id": "apps_web_e2e_fixtures_expect",
       "label": "apps_web_e2e_fixtures_expect",
       "community": 170,
@@ -34066,17 +34078,6 @@
       "type": "external"
     },
     {
-      "id": "ref_node_os",
-      "label": "ref_node_os",
-      "community": 178,
-      "community_name": "boundaries.test.ts",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "ref_node_os",
-      "source_file": "",
-      "type": "external"
-    },
-    {
       "id": "ref_node_url",
       "label": "ref_node_url",
       "community": 178,
@@ -34091,7 +34092,7 @@
       "id": "ref_node_fs",
       "label": "ref_node_fs",
       "community": 201,
-      "community_name": "check-unbuilt.ts",
+      "community_name": "build.test.ts",
       "external": true,
       "file_type": "concept",
       "norm_label": "ref_node_fs",
@@ -34099,13 +34100,35 @@
       "type": "external"
     },
     {
+      "id": "ref_node_os",
+      "label": "ref_node_os",
+      "community": 201,
+      "community_name": "build.test.ts",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "ref_node_os",
+      "source_file": "",
+      "type": "external"
+    },
+    {
       "id": "ref_node_path",
       "label": "ref_node_path",
       "community": 201,
-      "community_name": "check-unbuilt.ts",
+      "community_name": "build.test.ts",
       "external": true,
       "file_type": "concept",
       "norm_label": "ref_node_path",
+      "source_file": "",
+      "type": "external"
+    },
+    {
+      "id": "ref_node_vm",
+      "label": "ref_node_vm",
+      "community": 201,
+      "community_name": "build.test.ts",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "ref_node_vm",
       "source_file": "",
       "type": "external"
     },
@@ -34117,6 +34140,17 @@
       "external": true,
       "file_type": "concept",
       "norm_label": "ref_node_crypto",
+      "source_file": "",
+      "type": "external"
+    },
+    {
+      "id": "packages_config_src_index_loadenv",
+      "label": "packages_config_src_index_loadenv",
+      "community": 263,
+      "community_name": "lib/env.ts",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "packages_config_src_index_loadenv",
       "source_file": "",
       "type": "external"
     }
@@ -34406,18 +34440,6 @@
       "context": "call",
       "source_file": "apps/web/e2e/home.spec.ts",
       "source_location": "L6",
-      "weight": 1.0
-    },
-    {
-      "source": "apps_web_instrumentation_register",
-      "target": "packages_config_src_env_loadenv",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "apps/web/instrumentation.ts",
-      "source_location": "L8",
       "weight": 1.0
     },
     {
@@ -35274,6 +35296,19 @@
       "weight": 1.0
     },
     {
+      "source": "apps_web_instrumentation_register",
+      "target": "apps_web_lib_env",
+      "relation": "imports_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "deferred": true,
+      "source_file": "apps/web/instrumentation.ts",
+      "source_location": "L4",
+      "weight": 1.0
+    },
+    {
       "source": "packages_agent_test_smoke_test",
       "target": "packages_agent_src_index",
       "relation": "imports_from",
@@ -35783,20 +35818,20 @@
       "weight": 1.0
     },
     {
-      "source": "apps_web_instrumentation",
-      "target": "packages_config_src_env_loadenv",
+      "source": "apps_web_lib_env",
+      "target": "packages_config_src_index_loadenv",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "context": "import",
-      "source_file": "apps/web/instrumentation.ts",
+      "source_file": "apps/web/lib/env.ts",
       "source_location": "L1",
       "weight": 1.0
     },
     {
       "source": "apps_web_package",
-      "target": "apps_web_package_json_ref_skyclause_config",
+      "target": "ref_skyclause_config",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -37488,14 +37523,14 @@
       "weight": 1.0
     },
     {
-      "source": "apps_web_instrumentation",
+      "source": "apps_web_lib_env",
       "target": "packages_config_src_index",
       "relation": "imports_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "context": "import",
-      "source_file": "apps/web/instrumentation.ts",
+      "source_file": "apps/web/lib/env.ts",
       "source_location": "L1",
       "weight": 1.0
     },
@@ -39499,7 +39534,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/instrumentation.ts",
-      "source_location": "L5",
+      "source_location": "L2",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_env",
+      "target": "apps_web_lib_env_checkenv",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/lib/env.ts",
+      "source_location": "L4",
       "weight": 1.0
     },
     {
@@ -67092,7 +67138,7 @@
     },
     {
       "source": "apps_web_package_dependencies_skyclause_config",
-      "target": "apps_web_package_json_ref_skyclause_config",
+      "target": "ref_skyclause_config",
       "relation": "declares",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -67406,6 +67452,15 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/docs/test/smoke.test.ts"
+    },
+    {
+      "source": "apps_web_instrumentation",
+      "target": "apps_web_lib_env",
+      "relation": "dynamic_import",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/instrumentation.ts"
     },
     {
       "source": "packages_agent_test_smoke_test",
@@ -69416,5 +69471,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "684be5df898e441325e660891f1d87158f0bcd8c"
+  "built_at_commit": "5abfa22ca304b79493aba98c6e2d0f3c9f1914d4"
 }
