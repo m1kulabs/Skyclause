@@ -24,7 +24,7 @@ function health() {
   return buildHealth({
     stamp: { sha: __BUILD_SHA__, builtAt: __BUILD_TIME__ },
     now: new Date(),
-    sources: readColumns(sheetId, 'sources', ['source_id', 'state', 'stale_after_min']),
+    sources: readColumns(sheetId, 'sources', ['source_id', 'freshness', 'state', 'stale_after_min']),
     polls: readColumns(sheetId, 'polls', ['source_id', 'outcome', 'received_at'])
   })
 }
