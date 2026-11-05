@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "build": "bun pilot/apps-script/build.ts",
     "graph": "graphify update .",
     "lint": "prettier --check .",
     "lint:fix": "prettier --write .",
