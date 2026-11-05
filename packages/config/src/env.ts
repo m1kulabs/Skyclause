@@ -5,13 +5,52 @@ const base = z.object({
   APP_ENV: z.enum(['dev', 'staging', 'production', 'test'])
 })
 
+// a-email-transport (#113): infra/aws's app_config output. Optional until gate 4B, then all of a
+// service's set together; EMAIL_ALLOWLIST is set only while SES is in the sandbox.
+const arn = (service: string) => z.string().regex(new RegExp(`^arn:aws:${service}:[a-z0-9-]*:\\d{12}:.+$`))
+const sending = {
+  SES_REGION: z.string().regex(/^[a-z]{2}(-[a-z]+)+-\d$/),
+  SES_CONFIGURATION_SET: z.string().min(1),
+  EMAIL_FROM_AUTH: z.string().min(1),
+  EMAIL_FROM_NOTICES: z.string().min(1),
+  AWS_ROLE_ARN: arn('iam')
+}
+const receiving = {
+  SES_EVENTS_SNS_TOPIC_ARN: arn('sns'),
+  INBOUND_DOMAIN: z.string().min(1),
+  INBOUND_BUCKET: z.string().min(1),
+  INBOUND_SNS_TOPIC_ARN: arn('sns')
+}
+
+function optional<T extends Record<string, z.ZodType>>(shape: T) {
+  return Object.fromEntries(Object.entries(shape).map(([name, type]) => [name, type.optional()])) as {
+    [K in keyof T]: z.ZodOptional<T[K]>
+  }
+}
+
+function together(names: string[]) {
+  return (env: Record<string, unknown>, ctx: z.RefinementCtx) => {
+    const missing = names.filter((name) => env[name] === undefined)
+    if (missing.length && missing.length < names.length) {
+      for (const name of missing)
+        ctx.addIssue({ code: 'custom', path: [name], message: 'set with the other email variables' })
+    }
+  }
+}
+
+const email = { ...optional(sending), EMAIL_ALLOWLIST: z.string().optional() }
+
 const schemas = {
-  web: base,
-  worker: base.extend({
-    WORKER_URL: z.url(),
-    WORKER_INVOKER_SA: z.email(),
-    PORT: z.coerce.number().int().positive().default(8080)
-  }),
+  web: base.extend(email).superRefine(together(Object.keys(sending))),
+  worker: base
+    .extend({
+      WORKER_URL: z.url(),
+      WORKER_INVOKER_SA: z.email(),
+      PORT: z.coerce.number().int().positive().default(8080),
+      ...email,
+      ...optional(receiving)
+    })
+    .superRefine(together([...Object.keys(sending), ...Object.keys(receiving)])),
   job: base
 }
 

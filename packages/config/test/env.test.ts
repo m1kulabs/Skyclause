@@ -33,4 +33,46 @@ describe('loadEnv', () => {
     expect(loadEnv('worker', worker)).toEqual({ ...worker, PORT: 8080 })
     expect(loadEnv('worker', { ...worker, PORT: '9000' }).PORT).toBe(9000)
   })
+
+  // Set from infra/aws's app_config output once gate 4B is done; until then none is set.
+  const email = {
+    SES_REGION: 'ap-southeast-2',
+    SES_CONFIGURATION_SET: 'skyclause-production',
+    EMAIL_FROM_AUTH: 'Skyclause <sign-in@notices.skyclause.m1ku.tech>',
+    EMAIL_FROM_NOTICES: 'Skyclause <notices@notices.skyclause.m1ku.tech>',
+    AWS_ROLE_ARN: 'arn:aws:iam::776566309118:role/skyclause-production-email'
+  }
+  const inbound = {
+    SES_EVENTS_SNS_TOPIC_ARN: 'arn:aws:sns:ap-southeast-2:776566309118:skyclause-production-ses-events',
+    INBOUND_DOMAIN: 'in.skyclause.m1ku.tech',
+    INBOUND_BUCKET: 'skyclause-production-inbound-776566309118',
+    INBOUND_SNS_TOPIC_ARN: 'arn:aws:sns:ap-southeast-2:776566309118:skyclause-production-inbound'
+  }
+
+  test('the email variables are optional until gate 4B, then read together', () => {
+    expect(loadEnv('worker', worker)).not.toHaveProperty('SES_REGION')
+    expect(loadEnv('worker', { ...worker, ...email, ...inbound, EMAIL_ALLOWLIST: '*@skyclause.m1ku.tech' })).toEqual({
+      ...worker,
+      ...email,
+      ...inbound,
+      EMAIL_ALLOWLIST: '*@skyclause.m1ku.tech',
+      PORT: 8080
+    })
+    expect(loadEnv('web', { APP_ENV: 'production', ...email })).toEqual({ APP_ENV: 'production', ...email })
+  })
+
+  test('a partial email set fails the start naming what is missing', () => {
+    const { AWS_ROLE_ARN: _, ...partial } = email
+    expect(() => loadEnv('web', { APP_ENV: 'production', ...partial })).toThrow(/AWS_ROLE_ARN/)
+    expect(() => loadEnv('worker', { ...worker, ...email })).toThrow(/INBOUND_SNS_TOPIC_ARN/)
+  })
+
+  test('refuses an AWS_ROLE_ARN or topic that is not an ARN', () => {
+    expect(() =>
+      loadEnv('web', { APP_ENV: 'production', ...email, AWS_ROLE_ARN: 'skyclause-production-email' })
+    ).toThrow(/AWS_ROLE_ARN/)
+    expect(() => loadEnv('worker', { ...worker, ...email, ...inbound, INBOUND_SNS_TOPIC_ARN: 'inbound' })).toThrow(
+      /INBOUND_SNS_TOPIC_ARN/
+    )
+  })
 })
