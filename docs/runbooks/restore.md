@@ -17,7 +17,7 @@ Contents:
 
 ## Restore window
 
-- Neon Free's instant restore reaches any point in the last 6 hours (`history_retention_seconds = 21600`, up to 1 GB of change history) and takes seconds. There are no scheduled snapshots, and the one manual snapshot stays unused, so deleted data never outlives the window ([TRD environments and deployment](/docs/TRD.md#environments-and-deployment)).
+- Neon Free's instant restore reaches any point in the last 6 hours (`history_retention_seconds = 21600`, up to 1 GB of change history) and takes seconds. There are no scheduled snapshots, and the one manual snapshot Free allows is never taken, so deleted data never outlives the window; the drill fails if a snapshot exists ([TRD environments and deployment](/docs/TRD.md#environments-and-deployment)).
 - Damage found more than 6 hours after it happened can't be restored from Neon.
 - The `frames` and `archive` buckets are versioned: restore an object from its noncurrent version.
 

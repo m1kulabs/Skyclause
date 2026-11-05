@@ -72,7 +72,7 @@ Within 72 hours of becoming aware, the breach owner notifies the Personal Data P
 
 ### Notify affected people
 
-Where the assessment finds significant harm, the breach owner notifies each affected person within 7 days after notifying the Commissioner, with the content the guideline requires. Send through Skyclause's own notices sender, so each send is logged, and record the count sent and the count that failed.
+Where the assessment finds significant harm, the breach owner notifies each affected person within 7 days after notifying the Commissioner, with the content the guideline requires. Record how many were notified and how many notices failed.
 
 ## Breach record
 
