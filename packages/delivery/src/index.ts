@@ -19,3 +19,4 @@ export {
   type InboundMessage,
   type SesInboundOptions
 } from './inbound'
+export { ensureVapidKeys, type VapidKeysOptions } from './vapid'

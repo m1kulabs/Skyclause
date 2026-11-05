@@ -1,9 +1,12 @@
 import { loadEnv, type Env } from '@skyclause/config'
-import { sesInboundForAws } from '@skyclause/delivery'
+import { ensureVapidKeys, sesInboundForAws } from '@skyclause/delivery'
 import type { WorkerPart } from './server'
 
-/** `POST /ses/inbound` (D7): 503 until infra/aws's values are on the worker (gate 4B). */
-export function createSesInboundPart(load: () => Env<'worker'> = () => loadEnv('worker')): WorkerPart {
+/**
+ * a-email-transport's part: `POST /ses/inbound` (D7), 503 until infra/aws's values are on the worker
+ * (gate 4B), and the `vapid-keys` job.
+ */
+export function createEmailPart(load: () => Env<'worker'> = () => loadEnv('worker')): WorkerPart {
   let handle: ((request: Request) => Promise<Response>) | undefined
   return {
     owner: 'a-email-transport',
@@ -23,8 +26,15 @@ export function createSesInboundPart(load: () => Env<'worker'> = () => loadEnv('
         }
         return handle(request)
       }
+    },
+    jobs: {
+      'vapid-keys': async () => {
+        const project = process.env.GCP_PROJECT
+        if (!project) throw new Error('GCP_PROJECT is not set')
+        await ensureVapidKeys({ project })
+      }
     }
   }
 }
 
-export const sesInbound = createSesInboundPart()
+export const email = createEmailPart()

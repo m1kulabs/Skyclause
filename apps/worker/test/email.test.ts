@@ -1,7 +1,7 @@
 import { createLocalJWKSet } from 'jose'
 import { describe, expect, test } from 'vitest'
 import { createServer, defineRegistry } from '../src/server'
-import { createSesInboundPart } from '../src/ses-inbound'
+import { createEmailPart } from '../src/email'
 
 const base = {
   APP_ENV: 'production' as const,
@@ -10,9 +10,9 @@ const base = {
   PORT: 8080
 }
 
-function app(env: Parameters<typeof createSesInboundPart>[0]) {
+function app(env: Parameters<typeof createEmailPart>[0]) {
   return createServer({
-    registry: defineRegistry([createSesInboundPart(env)]),
+    registry: defineRegistry([createEmailPart(env)]),
     audience: base.WORKER_URL,
     invoker: base.WORKER_INVOKER_SA,
     jwks: createLocalJWKSet({ keys: [] }),
@@ -20,7 +20,11 @@ function app(env: Parameters<typeof createSesInboundPart>[0]) {
   })
 }
 
-describe('worker /ses/inbound', () => {
+describe('worker email part', () => {
+  test('registers the vapid-keys job', () => {
+    expect(Object.keys(defineRegistry([createEmailPart(() => base)]).jobs)).toEqual(['vapid-keys'])
+  })
+
   test('is served without Google OIDC and answers 503 until infra/aws values are set', async () => {
     const res = await app(() => base).request('/ses/inbound', { method: 'POST', body: '{}' })
     expect(res.status).toBe(503)
