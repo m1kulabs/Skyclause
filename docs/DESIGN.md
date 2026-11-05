@@ -217,7 +217,7 @@ Contents:
 - **Two surfaces, one family.** The landing page adopts the dealt sheet "The quiet instrument" (seed 1236965075, Work Sans, black and crimson, hero "Control that reads the page"); the app adopts "Data terminal" (seed 134039495, dark, every selection a 1px accent line, signs not colour on numbers), dealt with the landing's palette and type kept, with one redraw recorded under [App shell](#app-shell).
 - **The face.** Crimson `#b11226` from the brand replaces the app sheet's dealt blue as the one accent line; on dark app surfaces it is lifted to `#f0566c` so a 1px line holds 5.33:1 on the ground. It never fills an app button and never colours a number.
 - **The signature element: the window strip.** A minute-by-minute strip of one window: 5-minute rain bars, the rolling 60-minute total against the Lebat line (31 mm in an hour, JPS's class), the MET warning's valid span, the arrival and exit periods of a stadium night, and each input's age, with the window itself marked by a 1px crimson line exactly as wide as it. It appears in the landing hero (live), on bundle, call and project pages, on public pages, in `<skyclause-window>` and on Open Graph cards.
-- **The data behind the examples.** The 2 November 2026 figures at 5-minute resolution come from the [JPS 5-minute series][jps-series] for `0232901RF`, captured at 21:12 MYT on 5 November 2026 (the endpoint keeps 7 days); every 60-minute total is our arithmetic on that series. APIMS readings come from the [APIMS map feed][apims-map] and MET warnings from the [data.gov.my warning feed][met-warn], both captured at the same minute. No bundle, approval or notice has ever happened, so those states appear only as templates with named fields.
+- **The data behind the examples.** The 2 November 2026 figures at 5-minute resolution come from the [JPS 5-minute series][jps-series] for `0232901RF`, captured at 21:12 MYT on 5 November 2026 and [stored][jps-capture], since the endpoint keeps 7 days; every 60-minute total is our arithmetic on that series. APIMS readings come from the [APIMS map feed][apims-map] and MET warnings from the [data.gov.my warning feed][met-warn], both captured a minute later, at 21:13 MYT, and stored too ([APIMS][apims-capture], [warnings][met-capture]). No bundle, approval or notice has ever happened, so those states appear only as templates with named fields.
 - **What the design never does.** Show a value that is not live or not labelled replay; swap to a recording when a feed fails; let colour carry a mode alone; draw a chart without a scale and dates.
 
 ## Inspirations
@@ -306,7 +306,7 @@ The hero's control is the product's defining control: pick a window and read the
 
 - **Control:** a date row (Today, then 7 named days, the MET forecast's horizon) and a 24-hour minute strip on which the visitor drags a window, or sets start and end in two time fields with 15-minute steps. The chosen span is marked by the 1px crimson line as wide as the window. Keyboard: arrows move the start by 15 minutes, Shift with arrows changes the length; the fields are the no-drag path.
 - **Readout:** the mode word per pack at the display step, then at 14px every fired clause, every input with source, station ID and age, and the label "Clause engine verdict: not reviewed, not sent". Under it, the latest approved call by permalink, or "No approved call yet (n=0)".
-- **Captured example, 21:12 MYT on 5 November 2026, window 21:30–23:00:** Sky: Normal; no clause fires. Inputs: gauge `0232901RF` 0.5 mm in 60 min, 12 min old · API 67 at Cheras `CA16W`, 12 min old · 1 MET thunderstorm warning in force 21:00–01:00, naming no W.P. Kuala Lumpur district, 7 min old. Crowd: The Weeknd listed, forecast 26,997 exits (band 19,268–32,053, the Fanfall idea's arithmetic from 07:25 MYT).
+- **Captured example, 21:12 MYT on 5 November 2026, window 21:30–23:00:** Sky: Normal; no clause fires. Inputs, from the stored [gauge][jps-capture], [APIMS][apims-capture] and [warning][met-capture] captures: gauge `0232901RF` 0.5 mm in 60 min, 12 min old · API 67 at Cheras `CA16W`, 12 min old · 1 MET thunderstorm warning in force 21:00–01:00, naming no W.P. Kuala Lumpur district, 7 min old. Crowd: The Weeknd listed, forecast 26,997 exits (band 19,268–32,053, the Fanfall idea's arithmetic from 07:25 MYT).
 - **Errors are errors:** a stale input reads "No call for Storm confirmed: gauge `0232901RF` silent since {HH:MM} MYT", the shape PRD fixes; a failed fetch reads "Couldn't reach the JPS gauge at {HH:MM}. Retry". In both, no rain value is shown and nothing recorded stands in ([LND-2](/docs/PRD.md#landing-page-lnd)).
 - **Without script:** the server renders the verdict for the next hour with ages and a plain form for the window.
 
@@ -495,7 +495,7 @@ App screens perform no entrances; motion is feedback, within PRD's [NFR-7](/docs
 
 ### CLI output
 
-`skyclause` prints the same facts as the app in the same words ([CLI requirements](/docs/PRD.md#cli-cli); flags per TRD's [CLI](/docs/TRD.md#cli)). Rules: a header naming the station, source and time zone once; units in column headers; right-aligned tabular numbers; a dash for missing; mode and state words always printed, colour only as repetition (crimson for critical and error, amber for warning) and none under `NO_COLOR` or when not a TTY; a capture line at the foot; `--json` prints the same fields with ISO times and ages in seconds. The block below is real: the [JPS 5-minute series][jps-series] for 2 November 2026, captured at 21:12 MYT on 5 November; the 60-minute column is our arithmetic.
+`skyclause` prints the same facts as the app in the same words ([CLI requirements](/docs/PRD.md#cli-cli); flags per TRD's [CLI](/docs/TRD.md#cli)). Rules: a header naming the station, source and time zone once; units in column headers; right-aligned tabular numbers; a dash for missing; mode and state words always printed, colour only as repetition (crimson for critical and error, amber for warning) and none under `NO_COLOR` or when not a TTY; a capture line at the foot; `--json` prints the same fields with ISO times and ages in seconds. The block below is real: the [JPS 5-minute series][jps-series] for 2 November 2026, captured at 21:12 MYT on 5 November and [stored][jps-capture]; the 60-minute column is our arithmetic.
 
 ```console
 $ skyclause signals tail 0232901RF --since 2026-11-02T14:30+08:00 --until 2026-11-02T15:40+08:00
@@ -798,7 +798,6 @@ PRD sets the targets: WCAG 2.2 AA, keyboard and focus, forms and motion ([NFR-4 
 ## Known gaps
 
 - **No bundle, approval or notice exists yet,** so every such state here is a template with named fields; the landing showcase, Open Graph previews and notice previews use the 2 November replay for their measured parts. Swap in the first approved live call when there is one.
-- **The replay's source window closes:** the JPS endpoint keeps 7 days, so the 2 November series is gone from it after 9 November; the captured copy must be stored with its capture line to keep the replay reproducible ([#33](https://github.com/m1kulabs/gdgocapu/issues/33)).
 - **The mode glyph set** is drawn for this doc and untested with users, especially Surge night's three bars and Outdoor-limited's half disc at 12px.
 - **The light theme** is derived, not dealt or studied; only its contrast is checked. Dense 13px Work Sans for long sessions is unverified; comfortable density is the fallback.
 - **Malay copy** needs a Malay-reading reviewer for every template and for `/ms/` before launch.
@@ -818,3 +817,6 @@ PRD sets the targets: WCAG 2.2 AA, keyboard and focus, forms and motion ([NFR-4 
 [jps-series]: https://infobanjirjpskl.water.gov.my/Rainfall/GetRainfallGraph/75
 [apims-map]: https://eqms.doe.gov.my/api3/publicportalapims/mapcaqm
 [met-warn]: https://api.data.gov.my/weather/warning/
+[jps-capture]: /docs/sources/infobanjirjpskl.water.gov.my/rainfall-graph-75.md
+[apims-capture]: /docs/sources/eqms.doe.gov.my/mapcaqm.md
+[met-capture]: /docs/sources/api.data.gov.my/weather-warning.md

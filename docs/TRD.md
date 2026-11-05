@@ -252,7 +252,7 @@ This table is the one source for poll intervals; PRD's [NFR-1](/docs/PRD.md#non-
 | [Wikipedia stadium and arena pages](/docs/ideas/04-fanfall.md#real-data-and-privacy)                    | Daily, by revision ID                                                         | A new revision is parsed into listings carrying URL and revision; share-alike applies to derived listings                                                                                                          | Vandalism and cancelled shows: every listing passes a person ([CAL-14](/docs/PRD.md#calls-and-approvals-cal)) |
 | Camera PWA, Pi 5                                                                                        | Camera every 10 min in daylight; Pi as configured                             | `POST /v1/ingest/{sourceId}`; see [Device sources](#device-sources)                                                                                                                                                | Device silence and buffering                                                                                  |
 
-`CA17W` and `CA19B` were checked in a live capture of `https://eqms.doe.gov.my/api3/publicportalapims/mapcaqm` at 21:12 MYT on 5 November 2026 (API 62 and 57, record time 21:00).
+`CA17W` and `CA19B` were checked in a [live capture](/docs/sources/eqms.doe.gov.my/mapcaqm.md) of `https://eqms.doe.gov.my/api3/publicportalapims/mapcaqm` at 21:13 MYT on 5 November 2026 (API 62 and 57, record time 21:00).
 
 ### Freshness, staleness and recovery
 
