@@ -1,6 +1,6 @@
 # Skyclause infrastructure
 
-Terraform for every Google Cloud and Neon resource P1 runs on. There is one environment, `production`, in the Google Cloud project `skyclause` beside the P0 pilot, whose resources it never manages (D10 in #79). Compute and storage sit in `asia-southeast1` and the Neon database in `aws-ap-southeast-1`, both Singapore.
+Terraform for every Google Cloud, Neon and AWS resource P1 runs on. There is one environment, `production`, in the Google Cloud project `skyclause` beside the P0 pilot, whose resources it never manages (D10 in #79). Compute and storage sit in `asia-southeast1` and the Neon database in `aws-ap-southeast-1`, both Singapore. Amazon SES sits in AWS `ap-southeast-2`, Sydney, the only region the AWS account's organisation policy allows.
 
 Contents:
 
@@ -9,11 +9,13 @@ Contents:
 1.  [Applying](#applying)
 1.  [Values set by other tickets](#values-set-by-other-tickets)
 1.  [Custom hosts](#custom-hosts)
+1.  [AWS email](#aws-email)
 
 ## Layout
 
 - `bootstrap/`: the state bucket, the APIs, the `skyclause-terraform` service account that CI impersonates, and the `NEON_API_KEY` secret. A project owner applies it by hand.
 - `environments/production/`: everything else. CI plans and applies it from `main`.
+- `aws/`: Amazon SES sending and receiving, their SNS topics, the inbound bucket and the role `web` and `worker` assume with Google ID tokens (#113), in AWS account `776566309118`. It has its own state in S3, and a person applies it by hand.
 - `modules/`: `service` (Cloud Run service), `job` (Cloud Run job with an optional schedule), `topic` (Pub/Sub topic with a push subscription to the worker) and `queue` (Cloud Tasks).
 - `scripts/check-region`: fails unless every located resource in a `terraform show -json` document is in Singapore. CI runs it on each plan before applying, and `scripts/check-region.test.sh` tests it.
 
@@ -72,3 +74,55 @@ Set these in a pull request, in `environments/production/terraform.tfvars`, whic
 1.  A person verifies `skyclause.m1ku.tech` as a Domain property in Google Search Console, choosing the CNAME record, and adds `skyclause-terraform@skyclause.iam.gserviceaccount.com` as an owner. A record at the `m1ku.tech` apex is never used.
 1.  Set `map_domains = true`. After the apply, `terraform output dns_records` lists each host's records; create them in Cloudflare with `proxied: false` and the comment `owner: skyclause`.
 1.  Once each certificate is active, set `host_mode = "multi"` and the six `origins`. Until then every origin is the `web` URL.
+
+## AWS email
+
+A person with AWS access to account `776566309118` applies `aws/` after the production apply has created `skyclause-web` and `skyclause-worker` and a worker revision with `/ses/inbound` is live (about 30 minutes plus DNS propagation). Pass `--region ap-southeast-2` to every `aws` command, since the CLI's default region may differ.
+
+1.  Create the state bucket once. New buckets already block public access and encrypt objects:
+
+    ```shell
+    aws s3api create-bucket --bucket skyclause-tfstate-776566309118 --region ap-southeast-2 \
+      --create-bucket-configuration LocationConstraint=ap-southeast-2
+    aws s3api put-bucket-versioning --bucket skyclause-tfstate-776566309118 --region ap-southeast-2 \
+      --versioning-configuration Status=Enabled
+    ```
+
+1.  In a pull request, set `google_service_account_ids` in `aws/terraform.tfvars` to each account's `uniqueId`. Recreating either account changes its ID, and the role refuses it until this is updated and applied again:
+
+    ```shell
+    gcloud iam service-accounts describe skyclause-web@skyclause.iam.gserviceaccount.com \
+      --project=skyclause --format='value(uniqueId)'
+    gcloud iam service-accounts describe skyclause-worker@skyclause.iam.gserviceaccount.com \
+      --project=skyclause --format='value(uniqueId)'
+    ```
+
+1.  Apply it. This also activates the receipt rule set, the only one in the region:
+
+    ```shell
+    terraform -chdir=infra/aws init
+    terraform -chdir=infra/aws apply
+    ```
+
+1.  Enter the records from `terraform -chdir=infra/aws output dns_records` in Cloudflare with `proxied: false` and the comment `owner: skyclause` (#118). The DKIM values assume SES signs from `dkim.amazonses.com`, which Terraform can't read yet; first check that each identity prints it, and use the printed zone if it differs:
+
+    ```shell
+    for identity in notices.skyclause.m1ku.tech in.skyclause.m1ku.tech; do
+      aws sesv2 get-email-identity --email-identity "$identity" --region ap-southeast-2 \
+        --query DkimAttributes.SigningHostedZone --output text
+    done
+    ```
+
+1.  Check that DKIM and MAIL FROM read `SUCCESS` for `notices.`, and DKIM for `in.`:
+
+    ```shell
+    aws sesv2 get-email-identity --email-identity notices.skyclause.m1ku.tech --region ap-southeast-2 \
+      --query '[DkimAttributes.Status, MailFromAttributes.MailFromDomainStatus]'
+    aws sesv2 get-email-identity --email-identity in.skyclause.m1ku.tech --region ap-southeast-2 \
+      --query DkimAttributes.Status
+    ```
+
+1.  Check the subscriptions with `aws sns list-subscriptions-by-topic --region ap-southeast-2 --topic-arn <arn>` for both topic ARNs in the `app_config` output. The worker confirms each when its handler is live: `/ses/inbound` here, `/ses/events` with #158. If one still reads `PendingConfirmation` after its handler is live, send the confirmation again with `terraform -chdir=infra/aws apply -replace=aws_sns_topic_subscription.<inbound or ses_events>`.
+1.  Copy the `app_config` output into `app_config` in `environments/production/terraform.tfvars` in a pull request.
+1.  While `aws sesv2 get-account --region ap-southeast-2` shows `ProductionAccessEnabled: false`, SES delivers only to verified addresses. Verify each team address with `aws sesv2 create-email-identity --email-identity <address> --region ap-southeast-2` and its emailed link, and list the addresses in `app_config`'s `EMAIL_ALLOWLIST`; the transport makes no SES call to anyone else. Once SES production access is granted (#118), remove `EMAIL_ALLOWLIST` in a pull request: unset, every address is sent.
+1.  Turn on `inbound_email` with the audited `flag:set` script (#92).
