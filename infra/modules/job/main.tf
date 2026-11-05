@@ -39,6 +39,12 @@ variable "secrets" {
   default     = {}
 }
 
+variable "args" {
+  description = "Arguments to the image's entrypoint, such as [\"job\", \"<name>\"] for apps/worker's main.js."
+  type        = list(string)
+  default     = []
+}
+
 variable "timeout" {
   description = "Task timeout."
   type        = string
@@ -92,6 +98,7 @@ resource "google_cloud_run_v2_job" "this" {
 
       containers {
         image = var.image
+        args  = var.args
 
         dynamic "env" {
           for_each = var.env
