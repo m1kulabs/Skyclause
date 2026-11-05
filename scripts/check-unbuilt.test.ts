@@ -10,7 +10,9 @@ const planted = plantRepo({
     "import { notBuilt } from '@skyclause/contracts'\n\nexport const withTenant = notBuilt('x')\n",
   'apps/web/features/settings/panel.tsx': 'export const Panel = () => (\n  <section data-unbuilt="x" />\n)\n',
   'apps/web/features/alerts/card.tsx': "export const Card = () => <div data-unbuilt='c-alerts-ui' />\n",
-  'docs/notes.md': "notBuilt('outside-apps-and-packages')\n"
+  'docs/notes.md': "notBuilt('outside-apps-and-packages')\n",
+  'packages/contracts/test/not-built.test.ts': "expect(() => notBuilt('in-a-test')()).toThrow()\n",
+  'apps/web/e2e/set-7.spec.ts': 'await expect(page.locator(\'[data-unbuilt="in-a-spec"]\')).toHaveCount(0)\n'
 })
 
 function run(...args: string[]) {
@@ -23,6 +25,8 @@ test('lists every notBuilt and data-unbuilt placeholder with file and line, grou
   expect(result.stdout).toContain('x\n  apps/web/features/settings/panel.tsx:2\n  packages/db/src/tenant.ts:3\n')
   expect(result.stdout).toContain('c-alerts-ui\n  apps/web/features/alerts/card.tsx:1\n')
   expect(result.stdout).not.toContain('outside-apps-and-packages')
+  expect(result.stdout).not.toContain('in-a-test')
+  expect(result.stdout).not.toContain('in-a-spec')
 })
 
 test('--owner limits the list to one owner', () => {

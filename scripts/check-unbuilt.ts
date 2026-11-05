@@ -1,8 +1,8 @@
 // `check:unbuilt [--owner <key>]` (spec §7): lists every `notBuilt('<key>')` and `data-unbuilt="<key>"` in apps and
-// packages, grouped by owner, and fails while any remain. `promote.yml` gates on it; PR CI doesn't.
+// packages outside tests, grouped by owner, and fails while any remain. `promote.yml` gates on it; PR CI doesn't.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { isSource, listFiles } from './files'
+import { isSource, isTestFile, listFiles } from './files'
 
 const PLACEHOLDER = /notBuilt\(\s*(['"])([^'"]+)\1\s*\)|data-unbuilt=(['"])([^'"]+)\3/g
 
@@ -15,7 +15,9 @@ if (ownerFilter === undefined) {
 }
 
 const byOwner = new Map<string, string[]>()
-for (const file of listFiles(process.cwd(), ['apps', 'packages']).filter(isSource)) {
+for (const file of listFiles(process.cwd(), ['apps', 'packages']).filter(
+  (file) => isSource(file) && !isTestFile(file)
+)) {
   readFileSync(join(process.cwd(), file), 'utf8')
     .split('\n')
     .forEach((line, i) => {

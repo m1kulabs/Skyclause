@@ -4,6 +4,8 @@ import { join, relative, sep } from 'node:path'
 const SOURCE = /\.[cm]?[jt]sx?$/
 
 export const isSource = (file: string) => SOURCE.test(file)
+/** Test and e2e files: doubles and selectors live there, never shipped code. */
+export const isTestFile = (file: string) => /(^|\/)(test|e2e)\//.test(file) || /\.(test|spec)\.[cm]?[jt]sx?$/.test(file)
 export const toPosix = (path: string) => path.split(sep).join('/')
 
 const SKIPPED = new Set(['node_modules', '.next', 'dist', '.git', 'test-results', 'playwright-report'])
