@@ -93,6 +93,12 @@ playwright-report/
 .env*
 !.env.example
 
+# Apps Script credentials, clasp project files and the clasp bundle
+.clasprc.json
+.clasp*.json
+client_secret*.json
+pilot/apps-script/dist/
+
 # Graphify
 graphify-out/*
 !graphify-out/graph.json
