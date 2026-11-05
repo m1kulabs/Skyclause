@@ -8,8 +8,10 @@ const REDACTED = '[redacted]'
 const PATTERNS: Array<[RegExp, string]> = [
   [/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g, REDACTED],
   // Header text, such as a request dumped into an error message.
-  [/\b(authorization|proxy-authorization|cookie|set-cookie)(\s*:\s*)[^\r\n]*/gi, `$1$2${REDACTED}`],
+  [/\b(authorization|proxy-authorization|cookie|set-cookie)(\s*[:=]\s*)[^\r\n]*/gi, `$1$2${REDACTED}`],
   [/\b(bearer)\s+[A-Za-z0-9._~+/=-]{8,}/gi, `$1 ${REDACTED}`],
+  // Google OAuth access tokens, such as Vertex AI's.
+  [/ya29\.[A-Za-z0-9._-]+/g, REDACTED],
   // API keys `skc_`, guest tokens `skg_`, webhook secrets `skw_` (D38).
   [/sk[cgw]_[A-Za-z0-9_-]+/g, REDACTED],
   // Google AI Studio, then OpenAI, Anthropic and OpenRouter (`sk-`, `sk-proj-`, `sk-ant-`, `sk-or-v1-`).
@@ -19,8 +21,8 @@ const PATTERNS: Array<[RegExp, string]> = [
   [/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, REDACTED]
 ]
 
-/** A key whose whole value is a credential: `authorization`, `cookie`, `http.request.header.cookie`. */
-const SECRET_KEY = /(?:^|[._-])(?:proxy-)?(?:authorization|cookie|set-cookie)$/i
+/** A key whose whole value is a credential: `authorization`, `http.request.header.cookie`, `x-api-key`, `password`. */
+const SECRET_KEY = /(?:^|[._-])(?:proxy-)?(?:authorization|cookie|set-cookie|api[-_]?key|password|secret|token)$/i
 
 export function redactText(text: string): string {
   return PATTERNS.reduce((out, [pattern, replacement]) => out.replace(pattern, replacement), text)
@@ -33,7 +35,12 @@ export function redact(value: unknown, seen = new WeakSet<object>()): unknown {
   if (seen.has(value)) return '[circular]'
   seen.add(value)
   if (value instanceof Error) {
-    return { name: value.name, message: redactText(value.message), stack: value.stack && redactText(value.stack) }
+    return {
+      name: value.name,
+      message: redactText(value.message),
+      stack: value.stack && redactText(value.stack),
+      cause: value.cause === undefined ? undefined : redact(value.cause, seen)
+    }
   }
   if (Array.isArray(value)) return value.map((item) => redact(item, seen))
   return Object.fromEntries(

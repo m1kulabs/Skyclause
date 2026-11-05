@@ -27,6 +27,8 @@ const plants: fc.Arbitrary<Plant> = fc.oneof(
     .map(([prefix, body]) => ({ text: prefix + body, secret: prefix + body })),
   chars(`${ALNUM}._-`, 16, 60).map((token) => ({ text: `Authorization: Bearer ${token}`, secret: token })),
   chars(ALNUM, 16, 40).map((token) => ({ text: `bearer ${token}`, secret: token })),
+  chars(ALNUM, 16, 40).map((token) => ({ text: `authorization=${token}`, secret: token })),
+  chars(`${ALNUM}_-`, 30, 60).map((token) => ({ text: `ya29.${token}`, secret: token })),
   chars(ALNUM, 16, 40).map((value) => ({
     text: `Cookie: better-auth.session_token=${value}; sc_share=${value}`,
     secret: value
@@ -144,11 +146,11 @@ describe('redaction before export', () => {
     )
   })
 
-  test('thrown errors, logged or recorded on a span', async () => {
+  test('thrown errors and their causes, logged or recorded on a span', async () => {
     await fc.assert(
       fc.asyncProperty(sentence, async (plant) => {
         const error = new Error(plant.text)
-        log.error('handler failed', { error })
+        log.error('handler failed', { error: new Error('send failed', { cause: error }) })
         const span = trace.getTracer('test').startSpan('handler')
         span.recordException(error)
         span.end()
@@ -157,10 +159,14 @@ describe('redaction before export', () => {
     )
   })
 
-  test('Authorization and Cookie values under their keys, whatever they hold', async () => {
+  test('Authorization, Cookie and other credential values under their keys, whatever they hold', async () => {
     await fc.assert(
       fc.asyncProperty(chars(ALNUM, 12, 40), async (value) => {
-        log.info('request', { headers: { Authorization: value, cookie: value, 'Set-Cookie': [value] } })
+        log.info('request', {
+          headers: { Authorization: value, cookie: value, 'Set-Cookie': [value], 'x-api-key': value },
+          password: value,
+          webhook: { secret: value, token: value }
+        })
         trace
           .getTracer('test')
           .startSpan('GET /api', { attributes: { 'http.request.header.authorization': [value] } })
