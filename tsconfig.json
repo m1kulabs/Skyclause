@@ -1,0 +1,65 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "packages/contracts"
+    },
+    {
+      "path": "packages/config"
+    },
+    {
+      "path": "packages/i18n"
+    },
+    {
+      "path": "packages/clauses"
+    },
+    {
+      "path": "packages/forecast"
+    },
+    {
+      "path": "packages/sources"
+    },
+    {
+      "path": "packages/agent"
+    },
+    {
+      "path": "packages/db"
+    },
+    {
+      "path": "packages/auth"
+    },
+    {
+      "path": "packages/api"
+    },
+    {
+      "path": "packages/delivery"
+    },
+    {
+      "path": "packages/mcp"
+    },
+    {
+      "path": "packages/sdk"
+    },
+    {
+      "path": "packages/cli"
+    },
+    {
+      "path": "packages/elements"
+    },
+    {
+      "path": "packages/skills"
+    },
+    {
+      "path": "apps/web"
+    },
+    {
+      "path": "apps/worker"
+    },
+    {
+      "path": "apps/docs"
+    },
+    {
+      "path": "scripts"
+    }
+  ]
+}
