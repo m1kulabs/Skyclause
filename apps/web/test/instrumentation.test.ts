@@ -15,23 +15,23 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-test('the web server exits at start naming a missing APP_ENV', () => {
+test('the web server exits at start naming a missing APP_ENV', async () => {
   vi.stubEnv('APP_ENV', undefined)
-  register()
+  await register()
   expect(exit).toHaveBeenCalledWith(1)
   expect(String(error.mock.calls[0]?.[0])).toMatch(/APP_ENV/)
 })
 
-test('the web server exits at start on APP_ENV=test under Cloud Run', () => {
+test('the web server exits at start on APP_ENV=test under Cloud Run', async () => {
   vi.stubEnv('APP_ENV', 'test')
   vi.stubEnv('K_SERVICE', 'web')
-  register()
+  await register()
   expect(exit).toHaveBeenCalledWith(1)
   expect(String(error.mock.calls[0]?.[0])).toMatch(/APP_ENV=test/)
 })
 
-test('the web server starts with a valid environment', () => {
+test('the web server starts with a valid environment', async () => {
   vi.stubEnv('APP_ENV', 'staging')
-  register()
+  await register()
   expect(exit).not.toHaveBeenCalled()
 })
