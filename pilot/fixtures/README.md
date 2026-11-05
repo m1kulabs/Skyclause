@@ -1,0 +1,7 @@
+# Pilot fixtures
+
+Test inputs for the pilot's parser and engine tests, copied byte for byte from the `docs/sources` captures. A test checks that each copy still equals its original, so edit neither by hand.
+
+- [`rainfall-graph-75-20261105T1312Z.json`](rainfall-graph-75-20261105T1312Z.json): the JPS 5-minute rain series for gauge `0232901RF`, Sg. Kuyoh di LRT Bukit Jalil (station 75), from `https://infobanjirjpskl.water.gov.my/Rainfall/GetRainfallGraph/75`. Captured at 21:12 MYT on 5 November 2026 (13:12 UTC), HTTP 200, 127,043 bytes, 2,269 readings from 29 October 00:00 to 5 November 21:00 MYT. Original and notes: [rainfall-graph-75.md](/docs/sources/infobanjirjpskl.water.gov.my/rainfall-graph-75.md).
+- [`weather-warning-20261105T1313Z.json`](weather-warning-20261105T1313Z.json): MET Malaysia weather warnings from `https://api.data.gov.my/weather/warning/`, CC BY 4.0, MET Malaysia via data.gov.my. Captured at 21:13 MYT on 5 November 2026 (13:13 UTC), HTTP 200, 8,888 bytes, 4 records. Original and notes: [weather-warning.md](/docs/sources/api.data.gov.my/weather-warning.md).
+- [`mapcaqm-20261105T1313Z.json`](mapcaqm-20261105T1313Z.json): the DOE APIMS Air Pollutant Index for all 68 stations, including `CA16W` Cheras, `CA19B` Petaling Jaya and `CA17W` Putrajaya, from `https://eqms.doe.gov.my/api3/publicportalapims/mapcaqm`. Captured at 21:13 MYT on 5 November 2026 (13:13 UTC), HTTP 200, 17,031 bytes, every `RECORD_DT` 21:00 MYT. Original and notes: [mapcaqm.md](/docs/sources/eqms.doe.gov.my/mapcaqm.md).
