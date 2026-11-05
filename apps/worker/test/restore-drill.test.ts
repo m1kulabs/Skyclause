@@ -326,3 +326,17 @@ test('a manual snapshot is a miss, since deleted data would outlive the 6-hour w
   expect(record).toMatchObject({ snapshots: 1, deleted: true })
   expect(misses).toEqual(['NFR-14: 1 snapshot(s) would keep deleted data past the restore window'])
 })
+
+test('a branch holding none of the writes production had before the point misses RPO', async () => {
+  const api = fakeNeon()
+  const clock = fakeClock()
+  const { database } = fakeDatabase(
+    { branch: { verdicts: {}, newest: null }, production: { newest: '2026-11-06T22:45:00.000Z' } },
+    clock
+  )
+
+  const { record, misses } = await runDrill({ neon: neonFor(api), database, ...clock })
+
+  expect(record).toMatchObject({ rpo_s: null, lag_s: null, deleted: true })
+  expect(misses).toEqual(['RPO: the branch holds none of the writes production had before the point'])
+})
