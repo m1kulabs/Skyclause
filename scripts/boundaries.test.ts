@@ -123,6 +123,17 @@ describe('dependency boundaries (spec §1, D10)', () => {
     expect(checkBoundaries(root)).toEqual(['packages/sources/src/index.ts imports pilot/ (D10)'])
   })
 
+  test('repository scripts and root configs importing pilot/ fail (D10)', () => {
+    const root = plantRepo({
+      'scripts/sync.ts': "import { schema } from '../pilot/apps-script/src/schema'\n",
+      'vitest.config.mts': "import '../pilot/x'\nimport './pilot/apps-script/build'\n"
+    })
+    expect(checkBoundaries(root)).toEqual([
+      'scripts/sync.ts imports pilot/ (D10)',
+      'vitest.config.mts imports pilot/ (D10)'
+    ])
+  })
+
   test('a project reference into pilot/ fails (D10)', () => {
     const root = repo({ 'apps/worker': { references: ['../../pilot'] } })
     expect(checkBoundaries(root)).toEqual(['apps/worker/tsconfig.json references pilot/ (D10)'])

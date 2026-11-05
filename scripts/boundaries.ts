@@ -3,7 +3,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import ts from 'typescript'
-import { isSource, listFiles, toPosix } from './files'
+import { isSource, isTestFile, listFiles, toPosix } from './files'
 
 interface Cell {
   deps: string[]
@@ -120,7 +120,7 @@ export function checkBoundaries(root: string): string[] {
     }
 
     for (const file of listFiles(root, [unit.dir]).filter(isSource)) {
-      const isTest = file.includes('/test/') || /\.(test|spec)\.[cm]?[jt]sx?$/.test(file) || file.includes('/e2e/')
+      const isTest = isTestFile(file)
       for (const { spec, typeOnly } of specifiers(file, readFileSync(join(root, file), 'utf8'))) {
         if (spec.startsWith('.')) {
           const path = toPosix(relative(root, resolve(root, dirname(file), spec)))
@@ -173,6 +173,18 @@ export function checkBoundaries(root: string): string[] {
             : `${where} ${verb} ${SCOPE}${target.name}, outside its §1 cell`
         )
       }
+    }
+  }
+
+  // Repository tooling and root configs aren't units, but D10 still bars them from pilot/.
+  const tooling = [
+    ...listFiles(root, ['scripts']),
+    ...readdirSync(root, { withFileTypes: true }).flatMap((entry) => (entry.isFile() ? [entry.name] : []))
+  ]
+  for (const file of tooling.filter(isSource)) {
+    for (const { spec } of specifiers(file, readFileSync(join(root, file), 'utf8'))) {
+      const path = spec.startsWith('.') ? toPosix(relative(root, resolve(root, dirname(file), spec))) : spec
+      if (isPilot(path) || spec === pilotPackage) problems.push(`${file} imports pilot/ (D10)`)
     }
   }
 
