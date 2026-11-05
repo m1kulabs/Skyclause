@@ -93,7 +93,8 @@ module "migrate" {
 
 # #113's vapid-keys job makes the approver web-push pair once (infra/README.md). Terraform holds
 # only the empty secret; the job adds its one version, which the worker mounts once
-# vapid_private_key_ready is true. The job may list and add versions but never read them.
+# vapid_private_key_ready is true. Only the job's own account may list and add versions, and it
+# can't read them.
 resource "google_secret_manager_secret" "vapid_private_key" {
   secret_id = "VAPID_PRIVATE_KEY"
 
@@ -111,7 +112,7 @@ resource "google_secret_manager_secret_iam_member" "vapid_keys" {
 
   secret_id = google_secret_manager_secret.vapid_private_key.secret_id
   role      = each.key
-  member    = local.member.jobs
+  member    = local.member.vapid
 }
 
 module "vapid_keys" {
@@ -120,7 +121,8 @@ module "vapid_keys" {
   project_id      = local.project_id
   region          = local.region
   name            = "vapid-keys"
-  service_account = local.sa.jobs
+  service_account = local.sa.vapid
+  args            = ["job", "vapid-keys"]
   env             = merge(local.env, { OTEL_SERVICE_NAME = "vapid-keys" })
 
   depends_on = [google_secret_manager_secret_iam_member.vapid_keys]
