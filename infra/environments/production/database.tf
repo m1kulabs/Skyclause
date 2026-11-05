@@ -15,6 +15,7 @@ locals {
     MIGRATE   = "migrator"
   }
   database_url_secrets = [for suffix in keys(local.database_logins) : "DATABASE_URL_${suffix}"]
+  app_logins           = toset([for login in values(local.database_logins) : login if login != "migrator"])
 }
 
 resource "neon_project" "main" {
@@ -44,12 +45,22 @@ resource "neon_project" "main" {
   }
 }
 
-resource "neon_role" "this" {
-  for_each = toset([for login in values(local.database_logins) : login if login != "migrator"])
+# Neon gives every role made through its API membership of neon_superuser, which can
+# SET ROLE to it and bypass RLS. So only `migrator` comes from Neon; it creates the other
+# logins in SQL, where they get no such membership and #91 grants them their roles.
+resource "random_password" "login" {
+  for_each = local.app_logins
 
-  project_id = neon_project.main.id
-  branch_id  = neon_project.main.default_branch_id
-  name       = each.key
+  length  = 40
+  special = false
+}
+
+resource "postgresql_role" "login" {
+  for_each = local.app_logins
+
+  name     = each.key
+  login    = true
+  password = random_password.login[each.key].result
 }
 
 # Direct (unpooled) host: Neon's pooler runs PgBouncer in transaction mode, which drops
@@ -61,7 +72,7 @@ resource "google_secret_manager_secret_version" "database" {
   secret_data = format(
     "postgresql://%s:%s@%s/%s?sslmode=verify-full",
     each.value,
-    urlencode(each.value == "migrator" ? neon_project.main.database_password : neon_role.this[each.value].password),
+    urlencode(each.value == "migrator" ? neon_project.main.database_password : random_password.login[each.value].result),
     neon_project.main.database_host,
     local.database,
   )

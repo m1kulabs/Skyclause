@@ -12,6 +12,10 @@ terraform {
       source  = "kislerdm/neon"
       version = "0.18.0"
     }
+    postgresql = {
+      source  = "cyrilgdn/postgresql"
+      version = "~> 1.27"
+    }
     random = {
       source  = "hashicorp/random"
       version = "~> 3.9"
@@ -32,3 +36,14 @@ provider "google" {
 
 # Reads the API key from NEON_API_KEY.
 provider "neon" {}
+
+# Connects as `migrator` to create the other logins. A sleeping compute wakes on connect.
+provider "postgresql" {
+  host            = neon_project.main.database_host
+  database        = local.database
+  username        = "migrator"
+  password        = neon_project.main.database_password
+  sslmode         = "verify-full"
+  superuser       = false
+  connect_timeout = 30
+}
