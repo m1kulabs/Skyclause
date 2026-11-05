@@ -18,7 +18,7 @@ export function validateReading(row: Row<'readings'>): string[] {
     problems.push('http_status must be an integer from 0 to 599')
   const latency = row.latency_ms
   if (latency === undefined || latency === '') problems.push('latency_ms is missing')
-  else if (typeof latency !== 'number' || !Number.isFinite(latency) || latency < 0)
-    problems.push('latency_ms must be a number of 0 or more')
+  // Device rows take received_at − device_time (#59), so a phone clock running ahead gives a negative latency.
+  else if (typeof latency !== 'number' || !Number.isFinite(latency)) problems.push('latency_ms must be a number')
   return problems
 }

@@ -49,11 +49,13 @@ describe('validateReading (SIG-1)', () => {
     ])
   })
 
-  test('refuses a negative or non-numeric latency', () => {
-    expect(validateReading({ ...reading, latency_ms: -1 })).toEqual(['latency_ms must be a number of 0 or more'])
-    expect(validateReading({ ...reading, latency_ms: Number.NaN })).toEqual([
-      'latency_ms must be a number of 0 or more'
-    ])
+  test('refuses a latency that is not a number', () => {
+    expect(validateReading({ ...reading, latency_ms: '812' })).toEqual(['latency_ms must be a number'])
+    expect(validateReading({ ...reading, latency_ms: Number.NaN })).toEqual(['latency_ms must be a number'])
+  })
+
+  test('accepts a negative latency, as a camera whose clock runs ahead reports it (#59)', () => {
+    expect(validateReading({ ...reading, latency_ms: -1500 })).toEqual([])
   })
 
   test('lists every problem at once', () => {
