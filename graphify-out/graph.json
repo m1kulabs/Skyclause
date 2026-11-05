@@ -13118,7 +13118,7 @@
       "node_kind": "heading",
       "norm_label": "limits that bite in a one-week build",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L538"
+      "source_location": "L539"
     },
     {
       "id": "docs_research_gemini_enterprise_not_verified",
@@ -13130,7 +13130,7 @@
       "node_kind": "heading",
       "norm_label": "not verified",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L577"
+      "source_location": "L578"
     },
     {
       "id": "docs_research_gemini_enterprise_platform_constraints_and_design_consequences",
@@ -13142,7 +13142,7 @@
       "node_kind": "heading",
       "norm_label": "platform constraints and design consequences",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L559"
+      "source_location": "L560"
     },
     {
       "id": "docs_research_gemini_enterprise_see_also",
@@ -13154,7 +13154,7 @@
       "node_kind": "heading",
       "norm_label": "see also",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L598"
+      "source_location": "L599"
     },
     {
       "id": "docs_research_gemini_enterprise_takeaways_for_this_hackathon",
@@ -13166,7 +13166,7 @@
       "node_kind": "heading",
       "norm_label": "takeaways for this hackathon",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L569"
+      "source_location": "L570"
     },
     {
       "id": "docs_sources_briefing_session_slides",
@@ -14570,7 +14570,7 @@
       "node_kind": "heading",
       "norm_label": "actions and write-back",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L329"
+      "source_location": "L330"
     },
     {
       "id": "docs_research_gemini_enterprise_custom_connectors_through_the_api",
@@ -14582,7 +14582,7 @@
       "node_kind": "heading",
       "norm_label": "custom connectors through the api",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L386"
+      "source_location": "L387"
     },
     {
       "id": "docs_research_gemini_enterprise_custom_mcp_servers",
@@ -14594,7 +14594,7 @@
       "node_kind": "heading",
       "norm_label": "custom mcp servers",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L350"
+      "source_location": "L351"
     },
     {
       "id": "docs_research_gemini_enterprise_data_in_and_out",
@@ -14618,7 +14618,7 @@
       "node_kind": "heading",
       "norm_label": "federated search versus ingestion",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L308"
+      "source_location": "L309"
     },
     {
       "id": "docs_research_gemini_enterprise_free_sandboxes",
@@ -14630,7 +14630,7 @@
       "node_kind": "heading",
       "norm_label": "free sandboxes",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L474"
+      "source_location": "L475"
     },
     {
       "id": "docs_research_gemini_enterprise_google_managed_remote_mcp_servers",
@@ -14642,7 +14642,7 @@
       "node_kind": "heading",
       "norm_label": "google-managed remote mcp servers",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L365"
+      "source_location": "L366"
     },
     {
       "id": "docs_research_gemini_enterprise_kaggle_and_github",
@@ -14654,7 +14654,7 @@
       "node_kind": "heading",
       "norm_label": "kaggle and github",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L495"
+      "source_location": "L496"
     },
     {
       "id": "docs_research_gemini_enterprise_requirements_and_registration",
@@ -14666,7 +14666,7 @@
       "node_kind": "heading",
       "norm_label": "requirements and registration",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L352"
+      "source_location": "L353"
     },
     {
       "id": "docs_research_gemini_enterprise_third_party_remote_mcp_servers",
@@ -14678,7 +14678,7 @@
       "node_kind": "heading",
       "norm_label": "third-party remote mcp servers",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L375"
+      "source_location": "L376"
     },
     {
       "id": "docs_research_apu",
@@ -22178,7 +22178,7 @@
       "node_kind": "heading",
       "norm_label": "comparison of live-data paths",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L463"
+      "source_location": "L464"
     },
     {
       "id": "docs_research_gemini_enterprise_device_to_pub_sub_and_bigquery",
@@ -22190,7 +22190,7 @@
       "node_kind": "heading",
       "norm_label": "device to pub/sub and bigquery",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L438"
+      "source_location": "L439"
     },
     {
       "id": "docs_research_gemini_enterprise_device_to_supabase",
@@ -22202,7 +22202,7 @@
       "node_kind": "heading",
       "norm_label": "device to supabase",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L429"
+      "source_location": "L430"
     },
     {
       "id": "docs_research_gemini_enterprise_free_tier_limits_that_matter",
@@ -22214,7 +22214,7 @@
       "node_kind": "heading",
       "norm_label": "free-tier limits that matter",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L400"
+      "source_location": "L401"
     },
     {
       "id": "docs_research_gemini_enterprise_live_data_architectures",
@@ -22226,7 +22226,7 @@
       "node_kind": "heading",
       "norm_label": "live-data architectures",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L396"
+      "source_location": "L397"
     },
     {
       "id": "docs_research_gemini_enterprise_mcp_server_that_queries_public_feeds_on_demand",
@@ -22238,7 +22238,7 @@
       "node_kind": "heading",
       "norm_label": "mcp server that queries public feeds on demand",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L447"
+      "source_location": "L448"
     },
     {
       "id": "docs_research_gemini_enterprise_network_measurements_through_globalping",
@@ -22250,7 +22250,7 @@
       "node_kind": "heading",
       "norm_label": "network measurements through globalping",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L456"
+      "source_location": "L457"
     },
     {
       "id": "docs_research_gemini_enterprise_phone_or_board_to_google_sheets",
@@ -22262,7 +22262,7 @@
       "node_kind": "heading",
       "norm_label": "phone or board to google sheets",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L411"
+      "source_location": "L412"
     },
     {
       "id": "docs_research_gemini_enterprise_public_feed_polled_into_sheets",
@@ -22274,7 +22274,7 @@
       "node_kind": "heading",
       "norm_label": "public feed polled into sheets",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L421"
+      "source_location": "L422"
     },
     {
       "id": "docs_ideas_sol_01_00_ranking_build_and_submission_plan",
@@ -24428,7 +24428,7 @@
       "node_kind": "heading",
       "norm_label": "edition and account limits",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L300"
+      "source_location": "L301"
     },
     {
       "id": "docs_research_gemini_enterprise_google_data_sources",
@@ -24464,7 +24464,7 @@
       "node_kind": "heading",
       "norm_label": "reviewer access",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L505"
+      "source_location": "L506"
     },
     {
       "id": "docs_research_gemini_enterprise_the_app_url",
@@ -24476,7 +24476,7 @@
       "node_kind": "heading",
       "norm_label": "the app url",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L519"
+      "source_location": "L520"
     },
     {
       "id": "docs_research_gemini_enterprise_what_each_reviewer_needs",
@@ -24488,7 +24488,7 @@
       "node_kind": "heading",
       "norm_label": "what each reviewer needs",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L507"
+      "source_location": "L508"
     },
     {
       "id": "docs_research_gemini_enterprise_what_to_ask_reviewers_for",
@@ -24500,7 +24500,7 @@
       "node_kind": "heading",
       "norm_label": "what to ask reviewers for",
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L528"
+      "source_location": "L529"
     },
     {
       "id": "docs_ideas_sol_01_02_roomready_build_impact_and_risks",
@@ -40403,7 +40403,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L300",
+      "source_location": "L301",
       "weight": 1.0
     },
     {
@@ -40414,7 +40414,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L352",
+      "source_location": "L353",
       "weight": 1.0
     },
     {
@@ -40425,7 +40425,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L365",
+      "source_location": "L366",
       "weight": 1.0
     },
     {
@@ -40436,7 +40436,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L375",
+      "source_location": "L376",
       "weight": 1.0
     },
     {
@@ -40458,7 +40458,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L308",
+      "source_location": "L309",
       "weight": 1.0
     },
     {
@@ -40469,7 +40469,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L329",
+      "source_location": "L330",
       "weight": 1.0
     },
     {
@@ -40480,7 +40480,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L350",
+      "source_location": "L351",
       "weight": 1.0
     },
     {
@@ -40491,7 +40491,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L386",
+      "source_location": "L387",
       "weight": 1.0
     },
     {
@@ -40502,7 +40502,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L396",
+      "source_location": "L397",
       "weight": 1.0
     },
     {
@@ -40513,7 +40513,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L474",
+      "source_location": "L475",
       "weight": 1.0
     },
     {
@@ -40524,7 +40524,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L495",
+      "source_location": "L496",
       "weight": 1.0
     },
     {
@@ -40557,7 +40557,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L505",
+      "source_location": "L506",
       "weight": 1.0
     },
     {
@@ -40568,7 +40568,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L538",
+      "source_location": "L539",
       "weight": 1.0
     },
     {
@@ -40579,7 +40579,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L569",
+      "source_location": "L570",
       "weight": 1.0
     },
     {
@@ -40590,7 +40590,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L577",
+      "source_location": "L578",
       "weight": 1.0
     },
     {
@@ -40601,7 +40601,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L598",
+      "source_location": "L599",
       "weight": 1.0
     },
     {
@@ -40645,7 +40645,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L559",
+      "source_location": "L560",
       "weight": 1.0
     },
     {
@@ -40656,7 +40656,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L400",
+      "source_location": "L401",
       "weight": 1.0
     },
     {
@@ -40667,7 +40667,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L411",
+      "source_location": "L412",
       "weight": 1.0
     },
     {
@@ -40678,7 +40678,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L421",
+      "source_location": "L422",
       "weight": 1.0
     },
     {
@@ -40689,7 +40689,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L429",
+      "source_location": "L430",
       "weight": 1.0
     },
     {
@@ -40700,7 +40700,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L438",
+      "source_location": "L439",
       "weight": 1.0
     },
     {
@@ -40711,7 +40711,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L447",
+      "source_location": "L448",
       "weight": 1.0
     },
     {
@@ -40722,7 +40722,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L456",
+      "source_location": "L457",
       "weight": 1.0
     },
     {
@@ -40733,7 +40733,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L463",
+      "source_location": "L464",
       "weight": 1.0
     },
     {
@@ -40744,7 +40744,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L507",
+      "source_location": "L508",
       "weight": 1.0
     },
     {
@@ -40755,7 +40755,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L519",
+      "source_location": "L520",
       "weight": 1.0
     },
     {
@@ -40766,7 +40766,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/research/gemini-enterprise.md",
-      "source_location": "L528",
+      "source_location": "L529",
       "weight": 1.0
     },
     {
@@ -47800,5 +47800,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "8f2f01f2bda6660b1f2e2534a92c86dbf372dd95"
+  "built_at_commit": "f74f27c2f497fdac6a31a2c4fe1dbe776ed390bb"
 }
