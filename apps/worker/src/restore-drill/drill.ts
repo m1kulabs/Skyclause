@@ -9,6 +9,7 @@ const POINT_BACK_MS = 10 * 60_000
 const RTO_S = 4 * 3600
 const RPO_S = 5 * 60
 const PREFIX = 'drill-'
+const STOPPED = 'restore drill stopped'
 
 /** #146's `verifyLedger` result. */
 export type LedgerVerdict =
@@ -98,7 +99,7 @@ export async function runDrill(options: DrillOptions): Promise<{ record: DrillRe
   let deleted = false
   try {
     while ((await neon.endpointState(branch.endpointId)) !== 'active') {
-      if (options.signal?.aborted) throw new Error('restore drill stopped')
+      if (options.signal?.aborted) throw new Error(STOPPED)
       if (now() - requested >= RTO_S * 1000)
         throw new Error(`${branch.name} wasn't accepting connections within ${RTO_S} s`)
       await sleep(pollMs)
@@ -193,8 +194,8 @@ function untilAborted<T>(work: Promise<T>, signal?: AbortSignal): Promise<T> {
   return Promise.race([
     work,
     new Promise<never>((_, reject) => {
-      if (signal.aborted) reject(new Error('restore drill stopped'))
-      signal.addEventListener('abort', () => reject(new Error('restore drill stopped')), { once: true })
+      if (signal.aborted) reject(new Error(STOPPED))
+      signal.addEventListener('abort', () => reject(new Error(STOPPED)), { once: true })
     })
   ])
 }

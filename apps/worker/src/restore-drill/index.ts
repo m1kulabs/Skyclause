@@ -15,7 +15,7 @@ export const restoreDrill: WorkerPart = {
       process.once('SIGTERM', () => controller.abort())
       const { record, misses } = await runDrill({
         neon: createNeonClient({ apiKey: env.NEON_DRILL_API_KEY!, projectId: env.NEON_PROJECT_ID! }),
-        // packages/db's reads replace null once #91's `system` login and #146's verifyLedger land.
+        // packages/db's reads replace null in #224, once #91's `system` login and #146's verifyLedger land.
         database: null,
         signal: controller.signal
       })
