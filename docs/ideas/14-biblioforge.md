@@ -42,7 +42,7 @@ Contents:
 
 ## Origins
 
-BiblioForge has one source, the [argon-02 BiblioForge doc](/docs/ideas/argon-02/05-biblioforge.md); there is no merge. It keeps that doc's join of timetable demand, Koha holdings, and APU's open-access works in OpenAlex, its approval-gated Confluence guide and Jira ticket, its loud per-source failures, and its honest admission that no APU holdings complaint exists. Every number was re-checked on 5 November 2026 between 07:15 and 07:45 MYT.
+BiblioForge has one source, the [argon-02 BiblioForge doc](/docs/ideas/argon/02/05-biblioforge.md); there is no merge. It keeps that doc's join of timetable demand, Koha holdings, and APU's open-access works in OpenAlex, its approval-gated Confluence guide and Jira ticket, its loud per-source failures, and its honest admission that no APU holdings complaint exists. Every number was re-checked on 5 November 2026 between 07:15 and 07:45 MYT.
 
 - **Changed:** the weekly Monday run becomes a daily one, so the Runs tab gains history before 10 November and new intakes enter the 14–28-day window as they come. The scarcity ratio becomes three columns (intake-groups, matching copies, copies on loan), because the ratio alone can't tell a short collection from an unused one. Koha queries cover the top 100 modules by intake-groups, not all 857 titles, to keep load on APU's host near 8 minutes a day. The editable rules move into a `Rules` tab the approver can change.
 - **Dropped:** Cloud Run, Pub/Sub, and BigQuery (all need a payment card, which the team doesn't have), and with them the preview BigQuery federated query; SharePoint and Outlook (the team has no Microsoft 365 tenant, and the developer sandbox ships sample data the repo bars, see [free sandboxes]); the 138 course pages from the 6-month plan (another APU crawl without permission, and pages aren't modules); and the link to the set's shared edge design, which assumed the card path.
@@ -250,7 +250,7 @@ Three builders: **B1** (Gemini Enterprise workflow, Jira, Confluence), **B2** (P
 
 ## See also
 
-- [BiblioForge source doc (argon-02)](/docs/ideas/argon-02/05-biblioforge.md)
+- [BiblioForge source doc (argon-02)](/docs/ideas/argon/02/05-biblioforge.md)
 - [Cross-set idea ranking](/docs/ideas/00-ranking.md)
 - [APU's public documents, data, and systems](/docs/research/apu.md)
 - [Public data sources](/docs/research/data-sources.md)

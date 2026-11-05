@@ -45,7 +45,7 @@ Contents:
 
 ## Origins
 
-The only source is [Skyclause](/docs/ideas/opus-01/02-skyclause.md); this version answers its scorers' objections and the team's off-campus limits.
+The only source is [Skyclause](/docs/ideas/opus/01/02-skyclause.md); this version answers its scorers' objections and the team's off-campus limits.
 
 - **Kept:** the clause sheet with published defaults, release waves instead of fixed windows, local confirmation before a storm call, one approval per non-normal call, the Jira decision register, evidence replies by email, nightly grading, error rows instead of stale values, and the window camera.
 - **Changed, the deciding step:** in the source, Apps Script evaluated every clause and Gemini applied a precedence lookup. Here the agent node evaluates the sheet against raw indicators; the feeder's formula verdict is a shadow check that only wakes the workflow and flags disagreement in the approval bundle.

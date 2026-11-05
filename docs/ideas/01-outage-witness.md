@@ -42,7 +42,7 @@ Contents:
 
 ## Origins
 
-One source: [Outage Witness](/docs/ideas/opus-01/05-outage-witness.md), revised against the team's off-campus limits and three scorers' objections.
+One source: [Outage Witness](/docs/ideas/opus/01/05-outage-witness.md), revised against the team's off-campus limits and three scorers' objections.
 
 - **Kept:** the name; the witness question and its answers, including the "no coverage" refusal; the quorum, no-self-witness, unplug, cross-network, degradation, and coverage rules; buffered delivery as the visible network; the Gmail trigger with **Request info**; the steward's approval; Jira cases; the daily register and probe-health line; spoof tests; window-based scoring; and the DumsorWatch lesson that dedicated plugged-in devices outlast apps on people's own phones.
 - **Changed:**
@@ -256,7 +256,7 @@ Three builders: B1 workflows and Jira, B2 probe page and Pi 5, B3 feeder, resear
 
 ## See also
 
-- [Outage Witness source idea](/docs/ideas/opus-01/05-outage-witness.md) and the [cross-set ranking](/docs/ideas/00-ranking.md).
+- [Outage Witness source idea](/docs/ideas/opus/01/05-outage-witness.md) and the [cross-set ranking](/docs/ideas/00-ranking.md).
 - [Rules and guarantees](/docs/research/rules-and-guarantees.md), [APU](/docs/research/apu.md#apu-knowledge-base-on-confluence), and [Social](/docs/research/social.md#wi-fi-power-and-core-platforms): the EC rule and the evidence of pain.
 - [Gemini Enterprise](/docs/research/gemini-enterprise.md), [IoT and network](/docs/research/iot-and-network.md#globalping-probe), and [Competition](/docs/research/competition.md).
 - [Grid Watch: Mapping Blackouts with Smart Phones][Grid Watch], [DumsorWatch at scale][DumsorWatch], and the [Globalping API].

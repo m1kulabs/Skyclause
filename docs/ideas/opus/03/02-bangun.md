@@ -386,7 +386,7 @@ A = Pi and feeder, B = phones, C = Gemini Enterprise, D = research, E = README a
 
 ## Bangun's scores
 
-The panel's final mean scores on the 1–5 scale, with weights from the [scoring matrix](/docs/ideas/opus-03/00-ranking.md#scoring-matrix). The panel scored the version before this doc's corrections (two workflows instead of four, Android first, about 6 iPhone alarms instead of 27, exception-only approvals); those target F and W and are not rescored.
+The panel's final mean scores on the 1–5 scale, with weights from the [scoring matrix](/docs/ideas/opus/03/00-ranking.md#scoring-matrix). The panel scored the version before this doc's corrections (two workflows instead of four, Android first, about 6 iPhone alarms instead of 27, exception-only approvals); those target F and W and are not rescored.
 
 | ID  | Component           | Weight | Mean | Points | Reason                                                                                                                                 |
 | --- | ------------------- | ------ | ---- | ------ | -------------------------------------------------------------------------------------------------------------------------------------- |
@@ -406,7 +406,7 @@ The panel's final mean scores on the 1–5 scale, with weights from the [scoring
 
 ## See also
 
-- [opus-03 ranking](/docs/ideas/opus-03/00-ranking.md): the scoring matrix and how Bangun ranks.
+- [opus-03 ranking](/docs/ideas/opus/03/00-ranking.md): the scoring matrix and how Bangun ranks.
 - [Brief](/docs/BRIEF.md) and [hackathon context](/docs/CONTEXT.md): rules, dates, judging outline and real-data decisions.
 - [APSpace timetable feed](/docs/research/apu.md#apspace-timetable-feed): endpoints, schema, change behaviour and personal data.
 - [Rules and guarantees](/docs/research/rules-and-guarantees.md): the re-verified feed measurements, GitHub's schedule rules and the alarm actions.

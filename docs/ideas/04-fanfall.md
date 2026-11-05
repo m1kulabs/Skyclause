@@ -43,7 +43,7 @@ Contents:
 
 ## Origins
 
-This product revises one source idea, [Fanfall](/docs/ideas/opus-01/03-fanfall.md), against three scorers' objections and the team's limits (nobody at APU before 10 November, no APU staff help, no users recruited, one Pi 5).
+This product revises one source idea, [Fanfall](/docs/ideas/opus/01/03-fanfall.md), against three scorers' objections and the team's limits (nobody at APU before 10 November, no APU staff help, no users recruited, one Pi 5).
 
 - **Kept:** the forecast written down before the night and graded against gate taps the next day; venue listings landing on a calendar with source URL and revision; the Gmail intake for shows the feeds miss; the public surge-night calendar; Sheet formulas for all arithmetic; one approval per bundle; Jira issues for misses and unlisted surges.
 - **Changed, the sensing:** all three scorers said the "load-bearing" phone leg timer needs volunteers walking from APU to the faregate. It is off the critical path and deferred until someone can be at APU; advisories say "minutes unmeasured" instead of "budget +N minutes". The team's Pi 5 replaces the GitHub Actions job and the hand-written Apps Script protobuf decoder: it decodes GTFS Realtime with a library, reduces the ridership file with DuckDB, and posts only derived rows. That removes one build risk; it does not make the sensors the team's own (see [Cloud, IoT and network](#cloud-iot-and-network)).

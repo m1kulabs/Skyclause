@@ -43,7 +43,7 @@ Contents:
 
 ## Origins
 
-Cap Masa is a single-source product: it revises [Cap Masa](/docs/ideas/opus-03/04-cap-masa.md) (opus-03, lead and only source) against the scorers' objections and the team's real limits.
+Cap Masa is a single-source product: it revises [Cap Masa](/docs/ideas/opus/03/04-cap-masa.md) (opus-03, lead and only source) against the scorers' objections and the team's real limits.
 
 - **Kept:** the home-side receipt that ends in a claim the student sends, the three rule sources (Unifi Promise, MCMC, APU EC), the aim at cases Unifi's alerts leave uncovered, power read as "inferred", the hotspot failover, the GA connector set, every draft behind Needs Review, induced events labelled and kept out of the impact outcome, and the kill test on whether a gap remains after Unifi's alerts.
 - **Changed, cross-home view:** the source had teammates on other ISPs run "the same Pi script". The team owns one Pi 5, so the other homes are phone-only, with charger and Wi-Fi events and no line-versus-premises split. The "all homes on one ISP down" rule is gone. Its action was the same as for a line fault (file your own ticket, because your 24 hours start at your ticket), and the "APU-side" rule now has one vantage point instead of two or more homes.
@@ -249,7 +249,7 @@ The recorded video is about 3:30, labelled with its capture date, and comes from
 
 ## See also
 
-- [Cap Masa source doc (opus-03)](/docs/ideas/opus-03/04-cap-masa.md)
+- [Cap Masa source doc (opus-03)](/docs/ideas/opus/03/04-cap-masa.md)
 - [Cross-set ranking](/docs/ideas/00-ranking.md)
 - [Rules and guarantees: Unifi, MCMC, APU EC](/docs/research/rules-and-guarantees.md)
 - [Everyday signals: outages, tools people keep, recruiting](/docs/research/everyday.md)

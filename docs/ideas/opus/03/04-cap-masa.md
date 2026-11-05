@@ -234,7 +234,7 @@ Remote, with no APU staff ([research notes](/docs/research/everyday.md#water-pow
 
 ## Scores
 
-Weights are in the [scoring matrix](/docs/ideas/opus-03/00-ranking.md#scoring-matrix). The panel's final mean scores, which are scored out of 5:
+Weights are in the [scoring matrix](/docs/ideas/opus/03/00-ranking.md#scoring-matrix). The panel's final mean scores, which are scored out of 5:
 
 | ID  | Component           | Score | Reason                                                                                                                       |
 | --- | ------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------- |
@@ -254,7 +254,7 @@ Weights are in the [scoring matrix](/docs/ideas/opus-03/00-ranking.md#scoring-ma
 
 ## See also
 
-- [Ranking](/docs/ideas/opus-03/00-ranking.md)
+- [Ranking](/docs/ideas/opus/03/00-ranking.md)
 - [Brief](/docs/BRIEF.md)
 - [Context](/docs/CONTEXT.md)
 - [Rules and guarantees](/docs/research/rules-and-guarantees.md)

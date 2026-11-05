@@ -45,7 +45,7 @@ Contents:
 
 Kept leads because its automated count, nightly grade and Done watch close the loop that LastLink leaves manual. Neither escapes the need for someone at an APU stop.
 
-- **[Kept](/docs/ideas/opus-01/01-kept.md), the lead:**
+- **[Kept](/docs/ideas/opus/01/01-kept.md), the lead:**
   - Kept: the on-device stop counter, the Sheet ledger and its deterministic match, the nightly grade and three-way attribution, Done → watch → reopen, Gmail evidence requests, the Friday late-and-weekend rule, and the Microsoft 365 mapping.
   - Changed: three workflows, not four. The seven daily peak checks are gone, because each alert still waits for an approval click, the desk acts on patterns rather than single buses, and the scorers called the build heavy for three people. The feeder emails the team when a counter goes silent. The late-and-weekend rule (R8) is demoted, because a recount shows nearly all those sessions belong to one intake.
   - Numbers fixed: the 17:45 release covers 190 to 257 distinct intakes a day, not "193 to 260 intake groups" (recounted on 5 Nov). The "820 or 830" advice is a 20 Apr 2026 reply in an 18 Apr thread. BUSSYSTEM is described as the research describes it, without model names it doesn't cite.
@@ -264,7 +264,7 @@ The reduced version, riskiest first: permission and the licence, then the Jira a
 
 ## See also
 
-- Source ideas: [Kept](/docs/ideas/opus-01/01-kept.md) and [LastLink](/docs/ideas/astra/02-lastlink.md); the cross-set [ranking](/docs/ideas/00-ranking.md).
+- Source ideas: [Kept](/docs/ideas/opus/01/01-kept.md) and [LastLink](/docs/ideas/astra/02-lastlink.md); the cross-set [ranking](/docs/ideas/00-ranking.md).
 - [Social research](/docs/research/social.md), [competition](/docs/research/competition.md), [APU documents and systems](/docs/research/apu.md), [public data sources](/docs/research/data-sources.md), [Gemini Enterprise](/docs/research/gemini-enterprise.md), [IoT and network](/docs/research/iot-and-network.md), [judging](/docs/research/judging.md), and [everyday signals](/docs/research/everyday.md).
 - The [Campus Connect schedule V1_20261022][shuttle PDF], the [shuttle page](https://www.apu.edu.my/shuttle-services-campus-connect), and the [data ruling].
 

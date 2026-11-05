@@ -230,7 +230,7 @@ Video, 3 to 4 minutes, from the live system and labelled with its date:
 
 ## Scores
 
-Round 4 panel means, weights at [the scoring matrix](/docs/ideas/opus-03/00-ranking.md#scoring-matrix). Weighted total **71.1**; stated-criteria subtotal (I, T, R, TT, W) **41.4 of 55**.
+Round 4 panel means, weights at [the scoring matrix](/docs/ideas/opus/03/00-ranking.md#scoring-matrix). Weighted total **71.1**; stated-criteria subtotal (I, T, R, TT, W) **41.4 of 55**.
 
 | ID  | Component           | Score | Reason                                                                                                                                   |
 | --- | ------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------- |
@@ -247,7 +247,7 @@ Round 4 panel means, weights at [the scoring matrix](/docs/ideas/opus-03/00-rank
 
 ## See also
 
-- [Ranking](/docs/ideas/opus-03/00-ranking.md)
+- [Ranking](/docs/ideas/opus/03/00-ranking.md)
 - [Brief](/docs/BRIEF.md)
 - [Context](/docs/CONTEXT.md)
 - [Reddit research](/docs/research/everyday.md)

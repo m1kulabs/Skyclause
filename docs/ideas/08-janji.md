@@ -43,7 +43,7 @@ Contents:
 
 ## Origins
 
-Janji has one source, the [Janji idea doc](/docs/ideas/opus-03/03-janji.md); there is no earlier cross-set version.
+Janji has one source, the [Janji idea doc](/docs/ideas/opus/03/03-janji.md); there is no earlier cross-set version.
 
 - **Kept:** the wrap-up as the only input and no meeting notes as output; the said-versus-shipped ledger; rules R1–R5 and the rule that an unreadable artefact is never counted as slipped; artefact coverage printed on every ledger; home transcription on the Pi; consent and retention; and the three kill criteria.
 - **Changed, because the source was wrong or unsupported:**
@@ -257,7 +257,7 @@ Three builders: **B1** Gemini Enterprise (Runs A and B, rules, approvals, chat a
 
 ## See also
 
-- [Janji source idea doc](/docs/ideas/opus-03/03-janji.md)
+- [Janji source idea doc](/docs/ideas/opus/03/03-janji.md)
 - [Cross-set ranking](/docs/ideas/00-ranking.md)
 - [Everyday signals: group work, communities and recruiting](/docs/research/everyday.md)
 - [Gemini Enterprise: workflows, connectors, approvals and reviewer access](/docs/research/gemini-enterprise.md)

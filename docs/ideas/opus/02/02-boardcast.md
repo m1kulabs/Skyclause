@@ -1,6 +1,6 @@
 # BoardCast
 
-BoardCast tells APU shuttle riders, the night before, what missing each run will cost them and how early to be at the stop, from APU's own feeds and riders' phones. This is the hill-climbed version of the seed, scored on 5 November 2026 against the [set's matrix](/docs/ideas/opus-02/00-ranking.md#scoring-matrix): 53 to 70.5 out of 100. An independent review then scored it 50.5. Every score is a hypothesis: nothing is built, no rider has reported, and no licence has arrived. **Inference** marks conclusions no source states.
+BoardCast tells APU shuttle riders, the night before, what missing each run will cost them and how early to be at the stop, from APU's own feeds and riders' phones. This is the hill-climbed version of the seed, scored on 5 November 2026 against the [set's matrix](/docs/ideas/opus/02/00-ranking.md#scoring-matrix): 53 to 70.5 out of 100. An independent review then scored it 50.5. Every score is a hypothesis: nothing is built, no rider has reported, and no licence has arrived. **Inference** marks conclusions no source states.
 
 Contents:
 
