@@ -43,7 +43,7 @@ Contents:
 
 ## Origins
 
-BoardCast has one source, the [BoardCast idea doc][src], whose own [independent review](/docs/ideas/opus-02/02-boardcast.md#independent-review) said where the design was wrong. This version replaces an earlier cross-set version of the same idea; every number kept was rerun on 5 November 2026 against the live feeds, the shuttle PDF, the Rapid Rail parquet files and OSM routing.
+BoardCast has one source, the [BoardCast idea doc][src], whose own [independent review](/docs/ideas/opus/02/02-boardcast.md#independent-review) said where the design was wrong. This version replaces an earlier cross-set version of the same idea; every number kept was rerun on 5 November 2026 against the live feeds, the shuttle PDF, the Rapid Rail parquet files and OSM routing.
 
 - **Kept:** the miss-cost arithmetic, the campus-wave counts with their caveats, Parkhill's demotion, arrival bands at LRT Bukit Jalil, the `live`, `field-test` and `rehearsal` partitions, the request for written permission, the licence kill, reporting the failed weekday test, and the review's privacy, herding and fraud warnings.
 - **Changed, following the review and the scorers:**
@@ -269,7 +269,7 @@ Cut in this order: custom MCP, Sheets and Calendar without Workspace, Malay word
 - [Gemini Enterprise: workflows, connectors and reviewer access](/docs/research/gemini-enterprise.md)
 - [IoT and network: phones, the Pi and public HTTPS](/docs/research/iot-and-network.md)
 
-[src]: /docs/ideas/opus-02/02-boardcast.md
+[src]: /docs/ideas/opus/02/02-boardcast.md
 [pdf]: https://publicwebsite-media.apu.edu.my/assets/2026-10/2026Oct22_APU-SHUTTLE-SERVICES.pdf
 [r-shuttle]: /docs/research/social.md#shuttle-buses-and-the-lrt-last-mile
 [terms]: /docs/research/apu.md#terms-of-use-and-robotstxt

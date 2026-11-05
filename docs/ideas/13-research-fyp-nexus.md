@@ -45,7 +45,7 @@ Connector stages are from [actions and write-back] and [triggers]. They are docu
 
 ## Origins
 
-The single source is [Research & FYP Nexus](/docs/ideas/argon-01/04-research-fyp-nexus.md) from the argon-01 set; nothing else merges into it.
+The single source is [Research & FYP Nexus](/docs/ideas/argon/01/04-research-fyp-nexus.md) from the argon-01 set; nothing else merges into it.
 
 - **Kept:** APU's CC0 OpenAlex corpus as the matching base, a draft-arrives trigger, the overlap check, iConsult as the booking path, the masked-abstract Top-1/Top-3 test, and a dated 3- and 6-month rollout.
 - **Changed:** APU's KB shows that FYPPGBank already routes titles to an FYP Project Manager, so the source's supervisor-routing ticket became a team case record and the product a pre-submission check. No APU staff will act before 10 November, so the team owns the first three months, and the FYP committee's owner role went to APU's FYP Project Manager as a month-4 target. "Ranks the top three lecturers" became "lists APU works nearest the draft, with their authors", since under-indexed lecturers would rank low and nothing suggests staff accept being scored. Intake moved from a monitored folder to email in FYPPGBank's own fields. Matching runs on OpenAlex's APU-restricted search at call time instead of a weekly BigQuery copy. A weekly overlap watch makes the workflow recur between submissions. The APSoftware check left the critical path: it reads APU's KB, which APU's Terms of Use reserve, so it waits for written permission.
@@ -231,7 +231,7 @@ Reviewers get a seat, the role and the shared workflow ([reviewer access]). They
 
 ## See also
 
-- [Research & FYP Nexus source idea](/docs/ideas/argon-01/04-research-fyp-nexus.md)
+- [Research & FYP Nexus source idea](/docs/ideas/argon/01/04-research-fyp-nexus.md)
 - [Cross-set ranking](/docs/ideas/00-ranking.md)
 - [OpenAlex and other research feeds](/docs/research/data-sources.md#openalex)
 - [APU's knowledge base](/docs/research/apu.md#apu-knowledge-base-on-confluence)

@@ -42,7 +42,7 @@ Contents:
 
 ## Origins
 
-Khabar comes from one source, the [opus-03 Khabar doc](/docs/ideas/opus-03/05-khabar.md). It keeps that doc's core: a passive check from the phone's own events, never location, student first, a buddy the student chose, and false alarms per person-week as the headline metric and kill criterion. It changes the following, to answer the scorers' objections and to fix claims the research or the live pages contradict:
+Khabar comes from one source, the [opus-03 Khabar doc](/docs/ideas/opus/03/05-khabar.md). It keeps that doc's core: a passive check from the phone's own events, never location, student first, a buddy the student chose, and false alarms per person-week as the headline metric and kill criterion. It changes the following, to answer the scorers' objections and to fix claims the research or the live pages contradict:
 
 - **Android app:** MacroDroid, whose HTTP action no MacroDroid page confirms, is replaced by Automate, whose HTTP request block sends POST "when a body is supplied" ([IoT and network][iot-auto]) and whose block list includes Device unlocked, Power source plugged and Time await ([Automate blocks], opened 5 November 2026). The "5 free macros" figure goes with MacroDroid; Automate's free edition allows 30 running blocks.
 - **iPhone heartbeat:** the source said an iPhone has no 03:00 heartbeat and that its silence can't be split into "offline" and "untouched". Time of Day automations do run without asking at fixed daily times ([IoT and network][iot-ios]), so an iPhone posts at 03:00 and 12:00 too, and the App trigger (also allowed without asking) gives it an unlock-like sign. Both are untested on a locked phone.
@@ -254,7 +254,7 @@ If the licence isn't live by Saturday, the feeder, status tab and test still run
 
 ## See also
 
-- [Khabar source doc (opus-03)](/docs/ideas/opus-03/05-khabar.md)
+- [Khabar source doc (opus-03)](/docs/ideas/opus/03/05-khabar.md)
 - [Cross-set idea ranking](/docs/ideas/00-ranking.md)
 - [Hackathon brief](/docs/BRIEF.md) and [context](/docs/CONTEXT.md)
 - [Everyday signals: living alone and check-ins](/docs/research/everyday.md#living-alone-and-check-ins)

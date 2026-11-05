@@ -365,7 +365,7 @@ Roles for 2 to 5 students: A, Pi and network; B, Apps Script and Forms; C, Gemin
 
 ## Tukar's scores
 
-The panel's final mean scores from three judges, 1 to 5; weights are in the [scoring matrix](/docs/ideas/opus-03/00-ranking.md#scoring-matrix).
+The panel's final mean scores from three judges, 1 to 5; weights are in the [scoring matrix](/docs/ideas/opus/03/00-ranking.md#scoring-matrix).
 
 | ID  | Component           | Weight | Mean | Points | Reason                                                                                                                                                                                |
 | --- | ------------------- | ------ | ---- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -386,7 +386,7 @@ The panel scored before the Protect check in [What SurveySwap's pages say about 
 
 ## See also
 
-- [Idea ranking for this set](/docs/ideas/opus-03/00-ranking.md)
+- [Idea ranking for this set](/docs/ideas/opus/03/00-ranking.md)
 - [Hackathon brief](/docs/BRIEF.md)
 - [Hackathon context](/docs/CONTEXT.md)
 - [Recruiting on r/malaysiauni](/docs/research/everyday.md#what-recruiting-looks-like-there)

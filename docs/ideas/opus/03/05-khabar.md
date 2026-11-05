@@ -257,7 +257,7 @@ Video (3 to 4 minutes, recorded from the live system and labelled with its date)
 
 ## Scores
 
-Weights are in the [scoring matrix](/docs/ideas/opus-03/00-ranking.md#scoring-matrix). Scores are the panel's means.
+Weights are in the [scoring matrix](/docs/ideas/opus/03/00-ranking.md#scoring-matrix). Scores are the panel's means.
 
 | ID  | Component           | Score | Reason                                                                                                                                             |
 | --- | ------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -285,7 +285,7 @@ Weighted total: **69.3** of 100. Stated-criteria subtotal (I, T, R, TT, W): **37
 
 ## See also
 
-- [Idea ranking](/docs/ideas/opus-03/00-ranking.md)
+- [Idea ranking](/docs/ideas/opus/03/00-ranking.md)
 - [Hackathon brief](/docs/BRIEF.md)
 - [Context and decisions](/docs/CONTEXT.md)
 - [Everyday signals on X](/docs/research/everyday.md) and [on Reddit](/docs/research/everyday.md)

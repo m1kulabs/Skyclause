@@ -43,7 +43,7 @@ Contents:
 
 ## Origins
 
-Tukar has one source, the [opus-03 Tukar doc](/docs/ideas/opus-03/01-tukar.md), which leads. Its own scorers' strongest objections were a two-sided cold start, many moving parts, and an absent IoT layer; this version answers the first two and concedes the third.
+Tukar has one source, the [opus-03 Tukar doc](/docs/ideas/opus/03/01-tukar.md), which leads. Its own scorers' strongest objections were a two-sided cold start, many moving parts, and an absent IoT layer; this version answers the first two and concedes the third.
 
 - **Kept:** the swap exchange with credits, the Funnel gateway that classes the network and drops the address, the Workspace ledger, the nightly workflow with one batched approval, Gmail enrolment, rules R1 to R4 and the panel cap, the statement built on PNAS's five disclosures, the research plan and the kill criteria.
 - **Changed, for the cold start:** every session from a team member's link is now marked `team=true` and kept out of outcome figures, the team answers each poster's survey before asking them to join, and the doc now says which measurements survive with no outside owners and which don't ([Risks](#risks-and-kill-criteria)).
@@ -268,7 +268,7 @@ Roles for three people: **A**, Pi and network; **B**, Apps Script and Gemini Ent
 
 ## See also
 
-- [Tukar source doc (opus-03)](/docs/ideas/opus-03/01-tukar.md)
+- [Tukar source doc (opus-03)](/docs/ideas/opus/03/01-tukar.md)
 - [Cross-set idea ranking](/docs/ideas/00-ranking.md)
 - [Hackathon brief](/docs/BRIEF.md) and [context](/docs/CONTEXT.md)
 - [Recruiting on r/malaysiauni and X](/docs/research/everyday.md#what-recruiting-looks-like-there)

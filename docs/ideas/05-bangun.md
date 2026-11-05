@@ -42,7 +42,7 @@ Contents:
 
 ## Origins
 
-Bangun has one source, [opus-03 Bangun](/docs/ideas/opus-03/02-bangun.md). This version keeps its core loop and answers what its scorers objected to: too many moving parts, an agent that looks peripheral, an unverified iPhone path, and unlicensed feed use.
+Bangun has one source, [opus-03 Bangun](/docs/ideas/opus/03/02-bangun.md). This version keeps its core loop and answers what its scorers objected to: too many moving parts, an agent that looks peripheral, an unverified iPhone path, and unlicensed feed use.
 
 - **Kept:** the Pi's conditional-GET watcher, the Apps Script alarm service that never waits on a model, phone receipts and the missing-receipt rule, announcement rules R1–R7, exception-only approvals, the 6–7 November kill test, and 30–50 real past announcements as the accuracy set. Its feed measurements were re-run on 5 November at 07:14 MYT against the same file (ETag `c9d8d238…a24842dd`) and hold, except two corrections below.
 - **Changed, to cut parts:** two workflows become one Gmail-triggered workflow, with Apps Script mailing a night report to start the nightly run. Android uses only Automate (free): Tasker costs RM19.99, the team has no payment card, and a 7-day trial started on 5 November ends on 12 November, mid-assessment ([Android apps](/docs/research/iot-and-network.md#android-automation-apps-and-termux)). iPhone leaves the critical path. The approved change lives only on the shared intake calendar, which Apps Script reads at fetch time, so the separate `changes` row write is gone. The rules move from workflow instructions into a `rules` tab the owner can edit.
@@ -260,7 +260,7 @@ A builds the Pi and Apps Script, B the Android flow and research, C the workflow
 
 ## See also
 
-- [opus-03 Bangun](/docs/ideas/opus-03/02-bangun.md): the source idea.
+- [opus-03 Bangun](/docs/ideas/opus/03/02-bangun.md): the source idea.
 - [Cross-set ranking](/docs/ideas/00-ranking.md).
 - [APSpace timetable feed](/docs/research/apu.md#apspace-timetable-feed): endpoints, schema, change behaviour, personal data and the 5 November measurements.
 - [IoT and network](/docs/research/iot-and-network.md): Android limits, Shortcuts, alarm actions, watchdogs and the Apps Script path.
