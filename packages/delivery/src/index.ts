@@ -7,3 +7,4 @@ export {
   type EmailTransportOptions,
   type SesClient
 } from './email'
+export { isSnsUrl, SnsVerificationError, verifySnsMessage, type SnsMessage, type VerifyOptions } from './sns'
