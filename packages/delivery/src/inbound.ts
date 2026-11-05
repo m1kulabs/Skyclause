@@ -2,8 +2,9 @@
 // announces it on INBOUND_SNS_TOPIC_ARN; the worker's /ses/inbound verifies the notification,
 // reads the object, hands it to the matching consumer and deletes it. Bodies and addresses never
 // reach the logs.
-import { DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
+import { DeleteObjectCommand, GetObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import PostalMime from 'postal-mime'
+import { webIdentityCredentials } from './aws-credentials'
 import { isSnsUrl, SnsVerificationError, verifySnsMessage } from './sns'
 
 /** What a consumer receives (spec §1 `onInbound`). */
@@ -190,3 +191,10 @@ const router = createInboundRouter()
 export const onInbound = router.onInbound
 /** The worker's `/ses/inbound` route over every `onInbound` registration. */
 export const sesInboundHandler = router.handler
+
+/** `sesInboundHandler` reading the bucket as `AWS_ROLE_ARN`, with keyless credentials (D42). */
+export function sesInboundForAws(config: { region: string; roleArn: string; topicArn: string; bucket: string }) {
+  const { region, roleArn, topicArn, bucket } = config
+  const s3 = new S3Client({ region, credentials: webIdentityCredentials({ roleArn, region }) })
+  return sesInboundHandler({ topicArn, bucket, region, s3 })
+}

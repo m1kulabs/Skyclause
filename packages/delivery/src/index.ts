@@ -11,6 +11,7 @@ export { isSnsUrl, SnsVerificationError, verifySnsMessage, type SnsMessage, type
 export {
   createInboundRouter,
   onInbound,
+  sesInboundForAws,
   sesInboundHandler,
   type InboundBucket,
   type InboundHandler,
