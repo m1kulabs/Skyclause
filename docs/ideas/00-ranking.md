@@ -1,20 +1,22 @@
 # Idea ranking
 
-**Build [Kept] first.** It grades APU's Campus Connect shuttle against its own published schedule every weeknight and hands the Logistics & Operations shuttle desk dated evidence for each recurring gap. It ranks first at 81.6 / 100, in every weighting tried and as an unmerged source idea, and needs no card or board: two phones, Google Workspace, Jira Cloud Free, and free GitHub Pages hosting. [Sempat] is the clear second at 77.5. Ranks 3–5 sit within 4.2 points, so treat them as a tier. This advice assumes someone can reach campus, which the team now says it can't; see [Not like for like](#not-like-for-like).
+**Build [ChronoDiff] by default, and ask for written permission to use APU's timetable feed today.** Three products tie at the top: [Outage Witness] at 71.3, [Skyclause] at 71.1 and ChronoDiff at 71.0 / 100. They hold ranks 1–3 under every weighting tried, but 0.3 points is far inside the scorers' noise, so tie-breakers decide the pick. ChronoDiff is the only one of the three that all three scorers passed on all four gates. It also leads on NTT DATA's five stated points: 76.0 when they carry all the weight, against 74.7 for the other two. It audits each release of APU's public timetable from a Raspberry Pi 5 at a teammate's home and files approved fixes for the Schedulers office. Its weak spots are a theme score of 2, because it has no sensor, and its reliance on APU's feed, which needs APU's written permission. If permission is refused, build Skyclause, which needs a teammate's high window, or Outage Witness, which only works in its off-campus form.
 
-This page re-ranks the 15 ideas from the three idea sets ([argon-01](/docs/ideas/argon-01/00-ranking.md), [astra](/docs/ideas/astra/00-ranking.md), [opus-01](/docs/ideas/opus-01/00-ranking.md)) against one scoring matrix, merges the overlapping ones into 8 products, and ranks those. The matrix combines the three sets' matrices, NTT DATA's five judging points, and related criteria. The sets themselves are unchanged; this synthesis is the one place that compares them ([project conventions](/docs/references/project-conventions.md)). Dated 4 November 2026; [BoardCast] and [LiftBoard] were added on 5 November (see [Not like for like](#not-like-for-like)). Names are working names. Every score is a prospective estimate: there are no interviews, licence tests, or run history yet.
+This page re-ranks the 32 ideas from the seven idea sets ([argon-01](/docs/ideas/argon-01/00-ranking.md), [argon-02](/docs/ideas/argon-02/00-ranking.md), [astra](/docs/ideas/astra/00-ranking.md), [opus-01](/docs/ideas/opus-01/00-ranking.md), [opus-02](/docs/ideas/opus-02/00-ranking.md), [opus-03](/docs/ideas/opus-03/00-ranking.md), [sol](/docs/ideas/sol/00-ranking.md)) against one scoring matrix. It then merges the overlapping ideas into 25 products, writes a doc for each of the 18 strongest, and ranks those. The matrix combines the seven sets' matrices, NTT DATA's five judging points, and the criteria the sets share. The sets themselves are unchanged; this synthesis is the one place that compares them ([project conventions](/docs/references/project-conventions.md)).
+
+The page is dated 5 November 2026 and replaces the 4 November ranking of 10 products. That ranking scored 8 of its products before the team's limits were known. This time every idea and product was scored on the same day, under the same [team limits](#team-limits). Names are working names. Every score is a prospective estimate: there are no interviews, licence tests, or run history yet.
 
 Contents:
 
 1.  [Ranking](#ranking)
-    1.  [Not like for like](#not-like-for-like)
 1.  [Scores by component](#scores-by-component)
 1.  [Scoring matrix](#scoring-matrix)
+    1.  [Team limits](#team-limits)
     1.  [Components and weights](#components-and-weights)
     1.  [Scale and aggregation](#scale-and-aggregation)
     1.  [Gates](#gates)
 1.  [Sensitivity](#sensitivity)
-1.  [The 15 source ideas reranked](#the-15-source-ideas-reranked)
+1.  [The 32 source ideas reranked](#the-32-source-ideas-reranked)
 1.  [How the products were merged](#how-the-products-were-merged)
 1.  [How to choose](#how-to-choose)
 1.  [What the rerank changed](#what-the-rerank-changed)
@@ -24,193 +26,316 @@ Contents:
 
 ## Ranking
 
-| Rank | Product                | Owner (APU office, unconfirmed)                              | In one line                                                                                                        | Track                  | Score |
-| ---: | ---------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | ---------------------- | ----: |
-|    1 | [Kept]                 | Logistics & Operations shuttle desk                          | Grades every shuttle departure against the published schedule nightly, raises recurring gaps, and watches each fix | Intelligent Automation |  81.6 |
-|    2 | [Sempat]               | Schedulers office, Academic Administration                   | Checks each published timetable week's tight room changes against measured lift and stair times                    | Intelligent Automation |  77.5 |
-|    3 | [Outage Witness]       | IT helpdesk at TechCentre                                    | Spare phones on chargers and public probes form an independent, timestamped register of connectivity failures      | Intelligent Automation |  72.7 |
-|    4 | [Fanfall]              | GDGoC APU events lead, then Student Service                  | Forecasts each stadium night next door against APU's evening events and grades itself on next-day gate taps        | Data-Driven Research   |  72.7 |
-|    5 | [Skyclause]            | Facilities, safety and welfare desk (not in APU's public KB) | Turns haze and storm readings into one logged, approved conditions call per wave of physical classes               | Intelligent Automation |  68.5 |
-|    6 | [Research & FYP Nexus] | School of Technology FYP coordinator                         | Checks a draft final-year project against APU's own and recent outside work before supervisor matching             | Data-Driven Research   |  60.8 |
-|    7 | [BoardCast]            | Students; no office                                          | Tells a shuttle rider which run reaches class, flags a broken bus routine, and shares one-tap boarding reports     | Smart Campus           |  60.7 |
-|    8 | [LiftBoard]            | Students; no office                                          | Shows each block's up and down class-change pressure, and records real lift rides with manual taps                 | Smart Campus           |  55.0 |
-|    9 | [LabRelay]             | A lab equipment custodian (none secured)                     | Audits who acknowledged an equipment alarm and whether an independent reading confirms recovery                    | Intelligent Automation |  50.8 |
-|   10 | [WashWitness]          | Residence office coordinator                                 | Accepts a laundry machine repair only after an observed working cycle                                              | Intelligent Automation |  46.2 |
+| Rank | Product                | Owner (unconfirmed unless stated)                                        | In one line                                                                                                                    | Track                  | Gates                    | Score |
+| ---: | ---------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------- | ------------------------ | ----: |
+|    1 | [Outage Witness]       | Office of Extenuating Circumstances Claims (unconfirmed)                 | Keeps an independent, timestamped register of Moodle and APSpace failures, witnessed from outside APU                          | Intelligent Automation | Conditional G4           |  71.3 |
+|    2 | [Skyclause]            | A teammate; target the facilities, safety and welfare desk (unconfirmed) | Makes one logged, approved haze-and-storm call for each class or event window its subscribers declare                          | Intelligent Automation | Conditional G4           |  71.1 |
+|    3 | [ChronoDiff]           | Schedulers office (unconfirmed)                                          | Audits each release of APU's public timetable for double-bookings, holiday clashes and tight transfers before students live it | Intelligent Automation | All pass                 |  71.0 |
+|    4 | [Fanfall]              | Events lead of an APU club (proposed)                                    | Forecasts each stadium night's hit on APU evening events and grades itself on next-day gate taps                               | Data-Driven Research   | All pass                 |  68.3 |
+|    5 | [Bangun]               | Students; class reps forward announcements                               | Sets each student's phone alarm for tomorrow's real first class, with a receipt from every hop                                 | Intelligent Automation | Conditional G2, G3       |  68.1 |
+|    6 | [Tukar]                | The team's exchange operator                                             | A survey-swap exchange for FYP students whose Pi gateway records where each response session started                           | Data-Driven Research   | Conditional G2, G3       |  67.9 |
+|    7 | [Khabar]               | The team, then a student society's welfare lead                          | Tells a chosen friend when a student living alone has gone quiet, from the phone's own events                                  | Smart Campus           | Conditional G2, G3       |  65.9 |
+|    8 | [Janji]                | Each project group's lead                                                | Checks a group's spoken promises against what changed in its Drive folder and GitHub repo                                      | Intelligent Automation | Conditional G2           |  64.5 |
+|    9 | [KuyohGuard]           | Logistics & Operations duty coordinator (unconfirmed)                    | Joins river, rain, MET and T580 feeds with APU's dismissal waves and drafts corridor advisories                                | Intelligent Automation | Conditional G4           |  64.2 |
+|   10 | [BoardCast]            | Students; no office                                                      | Tells a shuttle rider which run reaches each class next week, and when a timetable change breaks the routine                   | Smart Campus           | Conditional G1, G3, G4   |  63.1 |
+|   11 | [GateWatch]            | IT Helpdesk (proposed)                                                   | Checks APU's sign-in and portal hosts from three off-campus vantages, and re-runs before a fix is accepted                     | Intelligent Automation | Conditional G3           |  61.3 |
+|   12 | [Cap Masa]             | The individual student                                                   | When a student's home line or power drops, starts the ISP and EC clocks and assembles the dated proof                          | Intelligent Automation | All pass                 |  59.1 |
+|   13 | [Research & FYP Nexus] | The team, then APU's FYP Project Manager (proposed)                      | Checks a draft FYP title against APU's own and recent outside work before it enters FYPPGBank                                  | Data-Driven Research   | Conditional G2           |  57.1 |
+|   14 | [BiblioForge]          | APU Library (not asked)                                                  | Flags large modules with few print copies in Koha and finds open-access APU papers for module guides                           | Data-Driven Research   | Conditional G2, G3, G4   |  54.2 |
+|   15 | [RoomReady]            | The individual student                                                   | Helps a student pick a tested room, device and connection for one upcoming online session                                      | Smart Campus           | Conditional G3           |  51.7 |
+|   16 | [BenchRelay]           | A student team's integration lead                                        | Tells the next teammate what is really running on the shared Pi, and what to fix before handoff                                | Intelligent Automation | Conditional G3           |  50.8 |
+|   17 | [FieldPair]            | A student running a multi-phone experiment                               | Checks each phone-sensor run against the team's protocol and drafts one recollection task                                      | Data-Driven Research   | Conditional G3           |  46.7 |
+|   18 | [Kept]                 | Logistics & Operations shuttle desk (unconfirmed)                        | Grades the Campus Connect shuttle against its published schedule nightly; needs a phone at APU's bay                           | Intelligent Automation | Conditional G3; fails G4 |  54.5 |
 
-- **Kept leads every view:** first under all five weightings, first among the 15 unmerged ideas (81.5), and first with each of the three final scorers (78.2, 86.6, 85.8).
-- **Outage Witness and Fanfall tie at 72.7.** Fanfall leads by 0.07 before rounding. Ties at one decimal go to the higher score on NTT DATA's five points, the only criteria the judges stated, so Outage Witness (73.3) ranks above Fanfall (72.0). Outage Witness also ranks above Fanfall under three of the four other weightings.
-- **The first eight products passed every gate** with all three scorers. For BoardCast and LiftBoard, two scorers failed G3 because no licence exists today; both pass it as a design, and no earlier product had a licence either.
-- **Research & FYP Nexus and BoardCast are 0.1 apart,** which is noise.
+- **The top three are a tie.** Outage Witness, Skyclause and ChronoDiff hold ranks 1–3 under all seven views in [Sensitivity](#sensitivity), in an order that varies across views. ChronoDiff leads when only NTT DATA's five points count, and when originality counts double.
+- **Two of the three pass the off-campus gate only conditionally.** Outage Witness passes on its reduced build, which witnesses Moodle and APSpace failures from outside APU; its full product needs phones on campus chargers. Skyclause passes if a teammate has a high window with a skyline.
+- **Kept fails the off-campus gate with all three scorers,** because it needs a phone at APU's boarding bay. Kept led the 4 November ranking at 81.6. Here it scores 54.5, which would rank 14th even with the gate lifted.
+- **Ranks 4–6 are a second tier:** [Fanfall] 68.3, [Bangun] 68.1 and [Tukar] 67.9.
+- **Don't read a gap under 5 points as decisive.** The same persona scored one anchor doc up to 10 points apart in two batches ([Evidence limits](#evidence-limits)).
 
-### Not like for like
-
-The first eight products were scored on 4 November, before the team's limits were known. BoardCast and LiftBoard were scored on 5 November knowing them: nobody on campus, no recruited riders or lecturers, and no licence yet. **Inference:** the top three products all need phones on campus, so they would score lower today, and their ranks overstate what this team can do by 10 November. BoardCast and LiftBoard are the only two here designed for those limits.
-
-[Kept]: /docs/ideas/01-kept.md
-[Sempat]: /docs/ideas/02-sempat.md
-[Outage Witness]: /docs/ideas/03-outage-witness.md
+[Outage Witness]: /docs/ideas/01-outage-witness.md
+[Skyclause]: /docs/ideas/02-skyclause.md
+[ChronoDiff]: /docs/ideas/03-chronodiff.md
 [Fanfall]: /docs/ideas/04-fanfall.md
-[Skyclause]: /docs/ideas/05-skyclause.md
-[Research & FYP Nexus]: /docs/ideas/06-research-fyp-nexus.md
-[LabRelay]: /docs/ideas/07-labrelay.md
-[WashWitness]: /docs/ideas/08-washwitness.md
-[BoardCast]: /docs/ideas/09-boardcast.md
-[LiftBoard]: /docs/ideas/10-liftboard.md
+[Bangun]: /docs/ideas/05-bangun.md
+[Tukar]: /docs/ideas/06-tukar.md
+[Khabar]: /docs/ideas/07-khabar.md
+[Janji]: /docs/ideas/08-janji.md
+[KuyohGuard]: /docs/ideas/09-kuyohguard.md
+[BoardCast]: /docs/ideas/10-boardcast.md
+[GateWatch]: /docs/ideas/11-gatewatch.md
+[Cap Masa]: /docs/ideas/12-cap-masa.md
+[Research & FYP Nexus]: /docs/ideas/13-research-fyp-nexus.md
+[BiblioForge]: /docs/ideas/14-biblioforge.md
+[RoomReady]: /docs/ideas/15-roomready.md
+[BenchRelay]: /docs/ideas/16-benchrelay.md
+[FieldPair]: /docs/ideas/17-fieldpair.md
+[Kept]: /docs/ideas/18-kept.md
 
 ## Scores by component
 
 Means of three independent scorers on a 1–5 scale. Day-to-day workflow and theme take the lowest of the three, as the totals do. Each product doc's "Scores" section gives every scorer's score and the lowest scorer's reason.
 
-| Product              |   IM |   CO |  WF |   RE |   TI |  TH |   OR |   BU |   DE | Total |
-| -------------------- | ---: | ---: | --: | ---: | ---: | --: | ---: | ---: | ---: | ----: |
-| Kept                 |    4 | 4.33 |   4 | 4.33 | 3.33 |   5 |    4 | 3.33 | 4.33 |  81.6 |
-| Sempat               |    4 | 4.33 |   4 | 3.33 | 3.33 |   4 | 4.33 | 3.67 |    4 |  77.5 |
-| Outage Witness       | 3.33 | 4.33 |   4 | 3.67 |    3 |   4 | 2.67 | 3.67 | 4.33 |  72.7 |
-| Fanfall              |    3 |    4 |   4 | 3.67 | 3.33 |   3 | 4.33 | 3.33 | 4.33 |  72.7 |
-| Skyclause            |    3 |    4 |   4 | 3.33 |    3 |   3 | 3.33 | 3.33 |    4 |  68.5 |
-| Research & FYP Nexus |    3 |    4 |   3 |    3 |    3 |   1 |    2 |    5 |    5 |  60.8 |
-| BoardCast            |    3 |    3 |   3 | 2.67 |    3 |   3 | 3.67 | 2.67 | 3.67 |  60.7 |
-| LiftBoard            | 2.33 |    3 |   3 | 2.67 | 2.33 |   2 | 3.67 | 2.67 | 3.67 |  55.0 |
-| LabRelay             | 1.67 | 3.33 |   3 | 1.67 | 1.67 |   4 |    3 |    2 |    3 |  50.8 |
-| WashWitness          | 1.67 | 3.33 |   2 |    2 | 1.67 |   3 | 2.67 |    3 |    2 |  46.2 |
+| Product              |   IM |   CO |  WF |   RE |   TI |  TH |   OR |   UR |   BU |   DE | Total |
+| -------------------- | ---: | ---: | --: | ---: | ---: | --: | ---: | ---: | ---: | ---: | ----: |
+| Outage Witness       |    3 | 4.33 |   4 |    4 | 3.33 |   4 |    3 |    2 |    3 |    4 |  71.3 |
+| Skyclause            |    3 | 4.33 |   4 |    4 | 3.33 |   3 | 3.67 | 3.33 |    2 |    4 |  71.1 |
+| ChronoDiff           |    3 |    4 |   4 |    4 |    4 |   2 |    4 | 3.67 | 2.67 | 3.33 |  71.0 |
+| Fanfall              | 2.67 |    4 |   4 |    4 | 3.67 |   2 | 3.67 | 3.33 | 2.33 | 3.67 |  68.3 |
+| Bangun               |    3 | 3.33 |   4 | 3.67 | 3.67 |   3 | 3.67 |    3 | 2.67 | 3.33 |  68.1 |
+| Tukar                |    3 | 3.67 |   4 |    4 | 3.67 |   2 |    3 |    4 |    2 |    4 |  67.9 |
+| Khabar               | 2.33 |    4 |   4 | 2.33 | 3.33 |   4 |    3 |    3 | 3.67 | 3.67 |  65.9 |
+| Janji                | 2.67 |    3 |   4 | 3.33 | 3.33 |   3 |    4 | 2.33 | 2.67 | 3.33 |  64.5 |
+| KuyohGuard           | 2.67 |    4 |   4 | 3.67 | 3.33 |   2 |    3 | 2.67 | 2.67 |    3 |  64.2 |
+| BoardCast            | 2.67 | 3.33 |   4 |    3 |    3 |   2 |    4 |    3 | 2.67 |    4 |  63.1 |
+| GateWatch            |    2 | 4.33 |   4 |    3 | 3.33 |   3 |    2 |    2 | 2.67 | 3.33 |  61.3 |
+| Cap Masa             |    2 | 3.67 |   3 | 2.67 | 2.67 |   4 | 2.67 |    3 | 3.33 |    3 |  59.1 |
+| Research & FYP Nexus | 2.67 |    4 |   3 |    3 |    3 |   1 |    2 |    2 | 4.33 |    4 |  57.1 |
+| BiblioForge          |    2 | 3.33 |   4 |    2 | 2.67 |   1 |    4 | 1.33 |    3 |    4 |  54.2 |
+| RoomReady            |    2 | 2.67 |   3 |    2 | 2.67 |   3 | 2.33 |    2 |    3 |    4 |  51.7 |
+| BenchRelay           | 1.33 |  3.5 |   3 | 1.83 | 2.17 |   3 | 2.83 | 1.17 |  3.5 |    4 |  50.8 |
+| FieldPair            |    1 | 3.33 |   2 | 1.33 |    2 |   4 |    3 |    1 |    3 |    4 |  46.7 |
+| Kept                 |    2 | 3.67 |   3 | 2.67 |    2 |   2 | 3.67 |    3 | 2.67 |    3 |  54.5 |
 
-IM impact, CO connectors, WF day-to-day workflow, RE research, TI time to impact, TH theme, OR originality, BU buildability, DE demo.
+IM impact, CO connectors, WF day-to-day workflow, RE research, TI time to impact, TH theme, OR originality, UR real use, BU buildability, DE demo.
 
 ## Scoring matrix
 
 The organisers haven't posted official criteria. At the briefing NTT DATA said its team will rate five points, with no weights or scale ([brief](/docs/BRIEF.md#judging-and-prizes), [context](/docs/CONTEXT.md#what-ntt-data-said-it-will-rate)). **Inference:** the weights below are ours. Replace them if official criteria appear.
 
+### Team limits
+
+Every score assumes the team as it is on 5 November 2026, not as it might be:
+
+- Nobody on the team can be at APU before 10 November, so no phone can be placed, carried, or ridden on campus.
+- No APU staff, lecturer, or office will help or act during the build, and no users are recruited yet.
+- The only devices are the team's own Android phones and iPhones and one Raspberry Pi 5 (8 GB) at a team member's home, with no add-on sensors and no payment card ([IoT and network](/docs/research/iot-and-network.md#the-teams-devices)).
+- No Gemini Enterprise licence has arrived; scorers assumed one arrives through the event on a supported domain.
+
 ### Components and weights
 
-NTT DATA's five points share 70 equally, since it gave no weights. Related criteria take the other 30: the theme, distance from the crowd, a one-week build, and a reviewable demo. Each component maps to the matching components of the three sets' matrices, so nothing is counted twice.
+NTT DATA's five points share 65 equally, since it gave no weights; equal weights are a choice, not evidence. The other 35 go to the related criteria that recur across the seven sets' matrices. Each component maps to the matching components of the sets, so nothing is counted twice.
 
-| ID  | Component           | Weight | Scores 5 when                                                                                                                                                | Scores 1–2 when                                                                      | From the sets                                           |
-| --- | ------------------- | -----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------- |
-| IM  | Impact              |     14 | One named APU office or group, a repeated task with countable volume, a consequence that matters, and a measurable before and after                          | "All students"; a rare or trivial task; a benefit that can't be measured             | astra I, argon-01 C1, opus-01 Impact                    |
-| CO  | Connectors          |     14 | Distinct GA 1P and 3P connectors, each doing a real job: live read, decision input, approved write; MCP only as an add-on; no indexed copies for live values | Chat only; one connector; preview features or custom MCP on the critical path        | astra T, argon-01 C2, opus-01 Connectors                |
-| WF  | Day-to-day workflow |     14 | Starts on a schedule or connector event, runs unattended for days, reads an editable rule set, recovers from failures, keeps one human approval              | Needs a typed prompt; nothing recurs; writes without review                          | astra W, argon-01 C3, opus-01 Day-to-day workflow       |
-| RE  | Research            |     14 | Strong existing evidence of the pain, and 6–8 interviewees, a timed observation, and 30–50 real items reachable by 10 November                               | Speculative or non-APU pain; users or items out of reach this week                   | astra R, argon-01 C5, opus-01 Research                  |
-| TI  | Time to impact      |     14 | A dated 3- and 6-month plan with a named owner, no change to APU's private systems, a channel people already use, still used after 6 months                  | Needs a semester of approvals or system changes; novelty use only                    | astra H, argon-01 C6, opus-01 Time to impact and Usage  |
-| TH  | Theme               |     10 | Cloud, IoT, and network each visible and load-bearing: a real sensor the team runs, the network visible per reading                                          | IoT decorative or absent; network invisible                                          | argon-01 C4, opus-01 Theme, astra theme check           |
-| OR  | Originality         |     10 | Far from the [crowd's saturated and crowded tiers](/docs/research/competition.md#saturation-tiers), the briefing's four examples, and APU's AIDA assistant   | IT-helpdesk network watch, chatbot, tutor, navigation, attendance, briefing examples | argon-01 C7, opus-01 Originality, astra differentiation |
-| BU  | Buildability        |      5 | A 3-person team builds it by 10 November with no card and no hardware on the critical path                                                                   | Needs boards, many devices, a card, or access the team lacks                         | opus-01 Buildable gate, astra feasibility               |
-| DE  | Demo                |      5 | Lands in a 3–4 minute video from the live system, and a reviewer can trigger it themselves                                                                   | Needs a rare real event; a reviewer can't trigger it                                 | opus-01 Demo, astra demo clarity                        |
+| ID  | Component           | Weight | Scores 5 when                                                                                                                                                                               | Scores 1–2 when                                                                                                 | From the sets                                                                            |
+| --- | ------------------- | -----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| IM  | Impact              |     13 | A named APU office or student group as owner, a repeated task with countable real volume, a consequence that matters, and a timed baseline with a before and after by 10 November           | "All students"; a rare or trivial task; a benefit nobody can measure this week                                  | argon-01 C1, argon-02 M7, astra I, opus-01, opus-02 and opus-03 Impact, sol I            |
+| CO  | Connectors          |     13 | Distinct GA 1P and 3P connectors, each doing a real job: live read, decision input, approved write; MCP only as an add-on; no indexed copies for live values                                | Chat only; one connector; preview features or custom MCP on the critical path                                   | argon-01 C2, argon-02 M1, astra T, opus-01 and opus-02 Connectors, opus-03 T, sol T      |
+| WF  | Day-to-day workflow |     13 | Starts on a schedule or connector event, runs unattended for days, reads an editable rule set, recovers from failures, keeps one human approval                                             | Needs a typed prompt; nothing recurs; writes without review                                                     | argon-01 C3, argon-02 M2, astra W, opus-01, opus-02 and opus-03 W, sol W                 |
+| RE  | Research            |     13 | Documented, cited evidence of the pain at APU or in Malaysian higher education, plus 6–8 interviewees, a timed observation, and 30–50 real items the team can reach by 10 November          | Speculative or non-local pain; interviewees or items out of reach this week                                     | argon-01 C5, argon-02 M5, astra R, opus-01, opus-02 and opus-03 Research, sol R          |
+| TI  | Time to impact      |     13 | First value within weeks; a dated 3- and 6-month plan with a named owner and its assumptions; no change to APU's private systems                                                            | A semester of approvals or APU system changes before anyone benefits                                            | argon-01 C6, argon-02 M8, astra H, opus-01 and opus-02 Time to impact, opus-03 TT, sol V |
+| TH  | Theme               |     10 | Cloud, IoT, and network each visible and load-bearing: a real sensor the team runs off campus, the network visible per reading                                                              | IoT decorative or absent, or only third-party feeds polled; network invisible                                   | argon-01 C4, argon-02 M3, opus-01 and opus-02 Theme, opus-03 C                           |
+| OR  | Originality         |      9 | Far from the [crowd's saturated and crowded tiers](/docs/research/competition.md#saturation-tiers), the briefing's four examples, APU's AIDA assistant, and documented incumbents           | IT-helpdesk network watch, chatbot, tutor, navigation, attendance, briefing examples, or an incumbent's feature | argon-01 C7, argon-02 M6, opus-01, opus-02 and opus-03 Originality, sol O                |
+| UR  | Real use            |      6 | Cited evidence that people already spend effort on this (self-built tools, repeated requests, a kept workaround), reached through a channel they already use; evidence only, not a forecast | No cited workaround behaviour; needs a new app habit                                                            | opus-01 and opus-02 Usage, opus-03 U, argon-02 M5                                        |
+| BU  | Buildability        |      5 | Build effort only: three people finish a working loop by 10 November with small scope and few moving parts                                                                                  | Many components or devices, or scope beyond a week                                                              | opus-03 F, sol F, opus-01 and opus-02 Buildable gate                                     |
+| DE  | Demo                |      5 | Lands in a 3–4 minute video from the live system, and a reviewer can trigger it themselves                                                                                                  | Needs a rare real event; a reviewer can't trigger it                                                            | opus-01 and opus-02 Demo, opus-03 D, sol D                                               |
+
+What changed from the matrix this page used on 4 November: the NTT five drop from 14 to 13 each, originality from 10 to 9, and **real use** becomes its own row, because four of the seven sets weight it separately and the old matrix had folded it into time to impact. Buildability now measures build effort only, since the new gate carries the team's limits.
 
 ### Scale and aggregation
 
-- **Scale:** 1 has major unsupported dependencies; 2 a plausible mechanism with substantial gaps; 3 a credible partial path; 4 a strong proposed fit supported by evidence; 5 an especially direct structural fit. A 5 is a hypothesis, not a result.
+- **Scale:** 1 has major unsupported dependencies; 2 a plausible mechanism with substantial gaps; 3 a credible partial path; 4 a strong proposed fit supported by evidence; 5 an especially direct structural fit. A 5 is a hypothesis, not a result. Integers only.
 - **Total:** Σ (weight × score) / 5, out of 100.
-- **Three scorers, conservative on the loop:** the mean of three independent scorers per component, except day-to-day workflow and theme, which take the lowest score, following the opus-01 set's rule. Those two are where a demo most easily overstates a real system.
+- **Three scorers, conservative on the loop:** the mean of three independent scorers per component, except day-to-day workflow and theme, which take the lowest score. Those two are where a demo most easily overstates a real system.
+- **Ties** at one decimal go to the higher subtotal on NTT DATA's five points.
 
 ### Gates
 
-Failing a gate ranks an idea below every idea that passes, whatever its score. Responsible AI is a gate rather than points, so it isn't counted twice.
+Failing a gate ranks an idea below every idea that passes, whatever its score. A gate fails when most of the scorers' verdicts fail it; "conditional" means it passes only if a named assumption holds.
 
-- **G1 Real data:** only live team-device readings, live public feeds, real events the system creates, or labelled replays of published real datasets; no mock, sample, or synthetic data, and no cached fallback when a source fails ([project conventions](/docs/references/project-conventions.md), [decisions](/docs/CONTEXT.md#decisions-so-far)).
-- **G2 Privacy:** no private records the team can't lawfully get, such as grades, fees, applications, or visa records, and no biometrics.
+- **G1 Real data:** only live team-device readings, live public feeds, real events the system creates, or labelled replays of published real datasets; no mock, sample, or synthetic data, and no cached fallback ([project conventions](/docs/references/project-conventions.md), [decisions](/docs/CONTEXT.md#decisions-so-far)).
+- **G2 Privacy:** no private records the team can't lawfully get, no biometrics, and no personal data in free-tier prompts.
 - **G3 Gemini Enterprise core:** the deciding step runs in a Gemini Enterprise workflow or agent; everything else feeds it.
+- **G4 Off-campus build (new):** the critical path needs no team member at APU, no APU staff action, and only the team's phones, the one Pi 5, public feeds, and free accounts. An idea that needs a phone on a shuttle, in a lift lobby, on a campus charger, or at a campus window fails. It's a hard gate on purpose: the team's limits are facts, so an idea that needs campus presence can't be built by this team this week, however good it is. The [G4-lifted view](#sensitivity) shows the order if campus access appears.
 
-The draft matrix had a fourth gate, "users and 30–50 items reachable by 10 November". Review cut it because it duplicated Research and Buildability, and no idea has that evidence yet.
+Real data and loud failure are gates, not scored rows, on purpose: every idea must meet them, so a scored row would reward compliance twice. Republishing APU content without APU's written permission, or a preview feature or custom MCP on the critical path, is recorded as a fatal-risk flag rather than a gate ([APU's terms of use](/docs/research/apu.md#terms-of-use-and-robotstxt)).
 
 ## Sensitivity
 
-The same component scores under four other weightings. Rank in brackets.
+The same component scores under five other weightings, and with the off-campus gate lifted. Rank in brackets.
 
-| Product              | Base (14 ×5, 10, 10, 5, 5) | NTT five only (20 ×5) | Impact-first (IM 25) | Delivery-first (WF 18, TI 15, BU 12) | Originality-heavy (OR 20) |
-| -------------------- | -------------------------: | --------------------: | -------------------: | -----------------------------------: | ------------------------: |
-| Kept                 |                   81.6 (1) |              80.0 (1) |             81.2 (1) |                             80.4 (1) |                  81.6 (1) |
-| Sempat               |                   77.5 (2) |              76.0 (2) |             77.8 (2) |                             77.0 (2) |                  78.6 (2) |
-| Outage Witness       |                   72.7 (3) |              73.3 (3) |             71.9 (3) |                             74.2 (3) |                  70.7 (4) |
-| Fanfall              |                   72.7 (4) |              72.0 (4) |             71.3 (4) |                             72.6 (4) |                  74.2 (3) |
-| Skyclause            |                   68.5 (5) |              69.3 (5) |             67.5 (5) |                             69.4 (5) |                  68.2 (5) |
-| Research & FYP Nexus |                   60.8 (6) |              64.0 (6) |             61.4 (6) |                             65.4 (6) |                  58.4 (7) |
-| BoardCast            |                   60.7 (7) |              58.7 (7) |             60.7 (7) |                             60.3 (7) |                  62.2 (6) |
-| LiftBoard            |                   55.0 (8) |              53.3 (8) |             54.2 (8) |                             54.9 (8) |                  57.0 (8) |
-| LabRelay             |                   50.8 (9) |              45.4 (9) |             48.4 (9) |                             51.1 (9) |                  52.2 (9) |
-| WashWitness          |                  46.2 (10) |             42.7 (10) |            44.6 (10) |                            46.6 (10) |                 47.3 (10) |
+| Product              |      Base | NTT five only | Impact-first | Delivery-first | Originality-heavy | Old weights | G4 lifted |
+| -------------------- | --------: | ------------: | -----------: | -------------: | ----------------: | ----------: | --------: |
+| Outage Witness       |  71.3 (1) |      74.7 (2) |     69.5 (1) |       71.3 (1) |          70.1 (3) |    73.3 (1) |  71.3 (1) |
+| Skyclause            |  71.1 (2) |      74.7 (3) |     69.5 (2) |       69.4 (3) |          71.1 (2) |    71.6 (2) |  71.1 (2) |
+| ChronoDiff           |  71.0 (3) |      76.0 (1) |     69.4 (3) |       69.9 (2) |          71.5 (1) |    71.2 (3) |  71.0 (3) |
+| Fanfall              |  68.3 (4) |      73.3 (4) |     66.1 (6) |       67.4 (6) |          68.3 (5) |    68.7 (5) |  68.3 (4) |
+| Bangun               |  68.1 (5) |      70.7 (6) |     66.9 (4) |       67.5 (5) |          68.5 (4) |    68.8 (4) |  68.1 (5) |
+| Tukar                |  67.9 (6) |      73.3 (5) |     66.7 (5) |       67.1 (7) |          66.3 (6) |    67.3 (6) |  67.9 (6) |
+| Khabar               |  65.9 (7) |     64.0 (10) |     63.2 (7) |       68.6 (4) |          65.5 (8) |    66.1 (7) |  65.9 (7) |
+| Janji                |  64.5 (8) |      65.3 (9) |     62.8 (8) |       64.1 (9) |          66.3 (7) |    65.7 (8) |  64.5 (8) |
+| KuyohGuard           |  64.2 (9) |      70.7 (7) |     62.5 (9) |       64.1 (8) |         63.2 (10) |    65.1 (9) |  64.2 (9) |
+| BoardCast            | 63.1 (10) |     64.0 (11) |    61.6 (10) |      63.4 (10) |          64.9 (9) |   63.5 (10) | 63.1 (10) |
+| GateWatch            | 61.3 (11) |      66.7 (8) |    58.1 (11) |      63.1 (11) |         58.7 (12) |   62.7 (11) | 61.3 (11) |
+| Cap Masa             | 59.1 (12) |     56.0 (13) |    56.5 (12) |      60.5 (13) |         58.8 (11) |   58.9 (12) | 59.1 (12) |
+| Research & FYP Nexus | 57.1 (13) |     62.7 (12) |    56.0 (13) |      60.8 (12) |         54.8 (14) |   58.2 (13) | 57.1 (13) |
+| BiblioForge          | 54.2 (14) |     56.0 (14) |    51.8 (14) |      56.5 (14) |         57.1 (13) |   56.2 (14) | 54.2 (15) |
+| RoomReady            | 51.7 (15) |     49.3 (15) |    49.9 (15) |      54.4 (15) |         51.5 (16) |   52.2 (16) | 51.7 (16) |
+| BenchRelay           | 50.8 (16) |     47.3 (16) |    47.1 (16) |      54.2 (16) |         52.0 (15) |   52.3 (15) | 50.8 (17) |
+| FieldPair            | 46.7 (17) |     38.7 (17) |    42.9 (17) |      49.2 (17) |         49.3 (17) |   48.1 (17) | 46.7 (18) |
+| Kept                 | 54.5 (18) |     53.3 (18) |    52.5 (18) |      54.5 (18) |         56.7 (18) |   54.3 (18) | 54.5 (14) |
 
-Full weights: impact-first IM 25, CO/WF/RE/TI 12, TH 8, OR 9, BU 5, DE 5; delivery-first IM 10, CO 12, WF 18, RE 10, TI 15, TH 10, OR 5, BU 12, DE 8; originality-heavy OR 20, the NTT five 12 each, TH 10, BU 5, DE 5. The base column orders Outage Witness above Fanfall by the tie rule in [Ranking](#ranking); Fanfall leads there by 0.067 before rounding. Among the first eight products, only these two ever swap. BoardCast also passes Research & FYP Nexus under the originality-heavy weighting. Between scorers the spread is wider than between weightings: the FDE scored Outage Witness 66.6 and the lecturer 82.8. Don't read a gap under 5 points as decisive.
+Full weights:
 
-## The 15 source ideas reranked
+- **Base:** IM, CO, WF, RE, TI 13 each; TH 10; OR 9; UR 6; BU 5; DE 5.
+- **NTT five only:** the five NTT points at 20 each.
+- **Impact-first:** IM 25; CO, WF, RE, TI 11 each; TH 9; OR 8; UR 6; BU 4; DE 4.
+- **Delivery-first:** IM 9; CO 12; WF 16; RE 9; TI 14; TH 9; OR 5; UR 6; BU 12; DE 8.
+- **Originality-heavy:** OR 20; the NTT five 11 each; TH 10; UR 5; BU 5; DE 5.
+- **Old weights:** the 4 November matrix, with the NTT five at 14 each, TH 10, OR 10, BU 5, DE 5, and no real-use row.
+- **G4 lifted:** base weights, with the off-campus gate ignored.
 
-Before any merging, three independent scorers rated all 15 source ideas on the same matrix. They scored fresh, ignoring each set's own scores, and were told that length earns nothing: the opus-01 docs run 300–430 lines, argon-01 70–160, astra 75–95.
+What moves:
 
-| Rank | Idea                                                                                | Set      | Set's own rank |   IM |   CO |  WF |   RE |   TI |  TH |   OR |   BU |   DE | Total | Fed product          |
-| ---: | ----------------------------------------------------------------------------------- | -------- | -------------: | ---: | ---: | --: | ---: | ---: | --: | ---: | ---: | ---: | ----: | -------------------- |
-|    1 | [Kept](/docs/ideas/opus-01/01-kept.md)                                              | opus-01  |              1 |    4 |    4 |   5 | 4.33 | 3.33 |   4 |    4 | 3.67 |    4 |  81.5 | Kept                 |
-|    2 | [Sempat](/docs/ideas/opus-01/04-sempat.md)                                          | opus-01  |              4 | 3.67 |    4 |   4 | 3.67 |    3 |   4 |    5 | 3.67 |    4 |  77.0 | Sempat               |
-|    3 | [Skyclause](/docs/ideas/opus-01/02-skyclause.md)                                    | opus-01  |              2 |    3 |    4 |   5 |    4 |    3 |   3 | 3.67 | 3.33 |    4 |  73.9 | Skyclause            |
-|    4 | [Outage Witness](/docs/ideas/opus-01/05-outage-witness.md)                          | opus-01  |              5 | 3.33 |    4 |   4 | 3.33 |    3 |   5 | 3.33 | 2.67 | 3.67 |  72.4 | Outage Witness       |
-|    5 | [Fanfall](/docs/ideas/opus-01/03-fanfall.md)                                        | opus-01  |              3 |    3 |    4 |   4 | 3.67 | 3.33 |   3 |    4 | 3.67 | 3.67 |  71.7 | Fanfall              |
-|    6 | [SpineDesk Pulse](/docs/ideas/argon-01/01-spinedesk-pulse.md)                       | argon-01 |              1 |    4 |    3 |   3 | 3.67 |    3 |   4 |    1 |    3 | 3.67 |  63.3 | Outage Witness       |
-|    7 | [Kuyoh Shuttle Sentinel](/docs/ideas/argon-01/02-kuyoh-shuttle-sentinel.md)         | argon-01 |              2 |    3 | 3.33 |   4 |    3 | 2.33 |   2 |    3 | 3.67 | 2.67 |  60.2 | Kept                 |
-|    8 | [Recheck](/docs/ideas/astra/01-recheck.md)                                          | astra    |              1 | 2.67 |    3 |   3 |    3 |    3 |   3 |    2 | 4.33 |    3 |  58.4 | Outage Witness       |
-|    9 | [Research & FYP Nexus](/docs/ideas/argon-01/04-research-fyp-nexus.md)               | argon-01 |              4 |    3 | 3.33 |   3 |    3 | 2.67 |   1 | 2.33 | 3.67 |    4 |  56.3 | Research & FYP Nexus |
-|   10 | [LastLink](/docs/ideas/astra/02-lastlink.md)                                        | astra    |              2 | 2.33 | 2.67 |   2 |    3 | 2.33 |   2 |    3 |    4 | 2.33 |  50.9 | Kept                 |
-|   11 | [OnBoard Airtime Guard](/docs/ideas/argon-01/05-onboard-airtime-guard.md)           | argon-01 |              5 |    2 | 2.67 |   2 |    3 | 2.33 |   3 | 1.33 | 3.67 | 3.33 |  49.3 | Outage Witness       |
-|   12 | [AccessRelay](/docs/ideas/astra/03-accessrelay.md)                                  | astra    |              3 | 2.67 | 2.67 |   2 |    2 |    2 |   2 | 3.33 | 3.67 |    2 |  48.1 | Sempat               |
-|   13 | [Timetable & HVAC Reconciler](/docs/ideas/argon-01/03-timetable-hvac-reconciler.md) | argon-01 |              3 | 2.33 | 2.67 |   2 | 2.33 | 2.67 |   1 |    3 | 3.67 | 2.67 |  47.9 | Sempat               |
-|   14 | [WashWitness](/docs/ideas/astra/04-washwitness.md)                                  | astra    |              4 |    2 | 2.67 |   2 |    2 |    2 |   3 | 3.33 |    3 | 2.33 |  47.9 | WashWitness          |
-|   15 | [LabRelay](/docs/ideas/astra/05-labrelay.md)                                        | astra    |              5 | 1.67 | 2.67 |   2 | 1.33 | 1.33 |   3 | 3.33 |    2 | 2.67 |  42.5 | LabRelay             |
+- **The top three never leave ranks 1–3.**
+- **[Khabar] rises to 4th** under delivery-first, on its buildability (3.67).
+- **[KuyohGuard] rises to 7th** under NTT five only, because its connectors, research and time to impact are stronger than its theme.
+- **Lifting G4 moves Kept from 18th to 14th,** and the four products below it each drop one place.
 
-- **The sets' first choices split:** opus-01's Kept stays first, argon-01's SpineDesk Pulse falls to 6th, and astra's Recheck to 8th. Both fallen ideas sit in the most crowded space. Simulated AI brainstorms put 16.3% of ideas on telemetry turned into tickets ([competition](/docs/research/competition.md#crowd-map)), and SpineDesk scored 1 on originality. SpineDesk also carries a custom MCP on its critical path; Recheck leaves its deciding step to deterministic code.
-- **All five opus-01 ideas lead.** Their scorers credited named offices, unattended sensing, and several GA connectors, not length; the FDE scorer said so explicitly. Under weights that ignore originality and theme (NTT five only), the same five ideas lead.
-- **Ties at 47.9** (Reconciler and WashWitness) are listed in base-rank order of the unrounded totals.
+The spread between scorers is wider than the spread between weightings. Khabar ranges from 62.0 with the FDE to 74.4 with the lecturer.
+
+## The 32 source ideas reranked
+
+Before any merging, three independent scorers rated all 32 source ideas on the same matrix. They scored fresh, ignoring each set's own scores. They were told that length earns nothing: the opus docs run 265–430 lines, while the argon-01, astra and sol docs run 67–160.
+
+| Rank | Idea                                                                                | Set      | Set's own rank |   IM |   CO |   WF |   RE |   TI |   TH |   OR |   UR |   BU |   DE | Total | Gates    | Fed product          |
+| ---: | ----------------------------------------------------------------------------------- | -------- | -------------: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ----: | -------- | -------------------- |
+|    1 | [Tukar](/docs/ideas/opus-03/01-tukar.md)                                            | opus-03  |              1 | 3.33 |    4 |    4 | 4.33 |    4 |    2 | 3.67 |    4 | 2.67 |    4 |  73.2 | pass     | Tukar                |
+|    2 | [Fanfall](/docs/ideas/opus-01/03-fanfall.md)                                        | opus-01  |              3 |    3 | 4.67 |    4 |    4 | 3.67 |    2 |    4 | 3.67 | 2.67 | 4.33 |  72.9 | pass     | Fanfall              |
+|    3 | [Skyclause](/docs/ideas/opus-01/02-skyclause.md)                                    | opus-01  |              2 | 3.67 |    4 |    5 | 3.33 |    3 |    3 |    4 |    3 |    2 |    4 |  72.2 | pass     | Skyclause            |
+|    4 | [Bangun](/docs/ideas/opus-03/02-bangun.md)                                          | opus-03  |              2 | 3.33 | 3.67 |    4 |    4 |    4 |    3 |    3 | 3.67 | 2.33 |    4 |  71.5 | pass     | Bangun               |
+|    5 | [Janji](/docs/ideas/opus-03/03-janji.md)                                            | opus-03  |              3 | 2.92 |  3.5 |    4 | 3.75 | 3.25 | 2.75 | 3.17 | 2.83 | 2.92 |    4 |  66.8 | pass     | Janji                |
+|    6 | [Cap Masa](/docs/ideas/opus-03/04-cap-masa.md)                                      | opus-03  |              4 |    2 | 3.67 |    4 | 3.33 |    3 |    4 | 2.67 |    3 | 3.33 |    4 |  65.3 | pass     | Cap Masa             |
+|    7 | [Khabar](/docs/ideas/opus-03/05-khabar.md)                                          | opus-03  |              5 |    2 |    4 |    4 | 2.33 |    3 |    4 | 3.33 | 2.67 |    4 |    4 |  65.1 | pass     | Khabar               |
+|    8 | [ChronoDiff](/docs/ideas/argon-02/01-chronodiff.md)                                 | argon-02 |              1 | 2.67 | 3.67 |    4 |    3 | 2.67 |    2 | 3.33 |    4 |    3 | 2.33 |  61.7 | pass     | ChronoDiff           |
+|    9 | [Kuyoh Shuttle Sentinel](/docs/ideas/argon-01/02-kuyoh-shuttle-sentinel.md)         | argon-01 |              2 | 2.67 | 3.33 |    4 | 2.67 | 2.33 |    2 | 3.67 |    2 |    3 | 2.33 |  57.3 | pass     | KuyohGuard           |
+|   10 | [KuyohGuard](/docs/ideas/argon-02/02-kuyohguard.md)                                 | argon-02 |              2 | 2.67 | 3.33 |    4 | 2.67 | 2.67 |    2 | 3.33 |    2 |    2 | 2.67 |  56.9 | pass     | KuyohGuard           |
+|   11 | [GateWatch](/docs/ideas/argon-02/04-gatewatch.md)                                   | argon-02 |              4 | 2.33 |    3 |    4 | 2.67 | 2.33 |    3 |    2 | 2.33 | 2.67 | 2.33 |  54.7 | pass     | GateWatch            |
+|   12 | [BoardCast](/docs/ideas/opus-02/02-boardcast.md)                                    | opus-02  |              1 |    2 |    3 |    3 |    2 | 2.33 |    3 | 3.67 |    2 |    2 | 3.33 |  52.4 | pass     | BoardCast            |
+|   13 | [Research & FYP Nexus](/docs/ideas/argon-01/04-research-fyp-nexus.md)               | argon-01 |              4 | 2.67 |    3 |    3 |    3 | 2.33 |    1 |    2 |    2 | 3.33 | 3.67 |  51.4 | pass     | Research & FYP Nexus |
+|   14 | [BenchRelay](/docs/ideas/sol/01-benchrelay.md)                                      | sol      |              1 | 1.67 |    3 |    3 | 1.67 |    3 |    2 |    3 | 1.67 | 4.33 | 2.67 |  50.5 | pass     | BenchRelay           |
+|   15 | [CanonKeeper](/docs/ideas/argon-02/03-canonkeeper.md)                               | argon-02 |              3 | 2.67 | 3.33 |    3 | 2.33 | 2.33 |    1 |    3 | 1.67 | 2.33 | 2.67 |  49.9 | pass     | Not carried forward  |
+|   16 | [BiblioForge](/docs/ideas/argon-02/05-biblioforge.md)                               | argon-02 |              5 | 2.67 | 3.33 |    3 | 1.67 |    2 |    1 | 3.67 | 1.67 |    3 | 2.67 |  49.2 | pass     | BiblioForge          |
+|   17 | [RoomReady](/docs/ideas/sol/02-roomready.md)                                        | sol      |              2 |    2 |    2 |    2 | 2.33 |    3 |    2 |    2 |    2 |    4 | 3.33 |  46.8 | pass     | RoomReady            |
+|   18 | [FieldPair](/docs/ideas/sol/03-fieldpair.md)                                        | sol      |              3 | 1.33 |    3 |    2 | 1.33 |    2 |    3 | 3.67 | 1.33 | 3.67 |    3 |  46.0 | pass     | FieldPair            |
+|   19 | [Timetable & HVAC Reconciler](/docs/ideas/argon-01/03-timetable-hvac-reconciler.md) | argon-01 |              3 | 2.67 |    2 |    3 | 2.67 | 2.33 |    1 | 2.33 |    2 |    2 | 2.33 |  45.9 | pass     | ChronoDiff           |
+|   20 | [QuietPact](/docs/ideas/sol/04-quietpact.md)                                        | sol      |              4 | 1.33 |    2 |    1 |    2 | 2.33 |    2 | 3.67 | 1.33 | 3.33 |    2 |  40.1 | pass     | RoomReady            |
+|   21 | [CaptureLoop](/docs/ideas/sol/05-captureloop.md)                                    | sol      |              5 |    1 |    1 |    1 |    1 |    2 |    1 |    2 |    1 | 3.33 | 2.33 |  28.1 | pass     | Not carried forward  |
+|   22 | [Kept](/docs/ideas/opus-01/01-kept.md)                                              | opus-01  |              1 | 3.33 | 4.67 |    4 | 2.67 |    3 |    3 |    4 | 3.33 | 2.33 | 3.33 |  68.8 | fails G4 | Kept                 |
+|   23 | [Outage Witness](/docs/ideas/opus-01/05-outage-witness.md)                          | opus-01  |              5 |    3 | 3.67 |    4 |    3 | 2.33 |    4 | 3.33 |    3 |    2 | 3.33 |  64.5 | fails G4 | Outage Witness       |
+|   24 | [Sempat](/docs/ideas/opus-01/04-sempat.md)                                          | opus-01  |              4 |    3 |    4 |    3 |    2 | 2.67 |    3 | 4.33 | 2.33 | 2.33 |    3 |  60.1 | fails G4 | ChronoDiff           |
+|   25 | [LiftBoard](/docs/ideas/opus-02/01-liftboard.md)                                    | opus-02  |              2 |    2 |    3 |    3 |    2 |    2 |    3 | 3.67 |    2 | 2.33 | 3.33 |  51.9 | fails G4 | Not carried forward  |
+|   26 | [WashWitness](/docs/ideas/astra/04-washwitness.md)                                  | astra    |              4 |    2 |    3 |    3 | 1.67 |    2 |    3 |    3 |    2 | 3.67 |    2 |  49.8 | fails G4 | Not carried forward  |
+|   27 | [Recheck](/docs/ideas/astra/01-recheck.md)                                          | astra    |              1 | 2.17 |    3 | 2.75 | 2.25 | 2.08 | 2.75 | 1.58 | 1.92 | 3.83 | 2.75 |  49.1 | fails G4 | GateWatch            |
+|   28 | [AccessRelay](/docs/ideas/astra/03-accessrelay.md)                                  | astra    |              3 |    2 |    3 |    2 |    2 |    2 |    2 | 2.67 |    2 | 3.67 |    2 |  45.5 | fails G4 | Not carried forward  |
+|   29 | [LastLink](/docs/ideas/astra/02-lastlink.md)                                        | astra    |              2 |    2 | 2.67 |    2 |    2 |    2 |    1 | 3.33 |    2 | 3.67 |    2 |  43.8 | fails G4 | Kept                 |
+|   30 | [OnBoard Airtime Guard](/docs/ideas/argon-01/05-onboard-airtime-guard.md)           | argon-01 |              5 | 2.33 |    2 |    2 | 2.33 | 2.33 |    2 | 1.67 |    2 |    3 | 2.67 |  43.7 | fails G4 | Not carried forward  |
+|   31 | [SpineDesk Pulse](/docs/ideas/argon-01/01-spinedesk-pulse.md)                       | argon-01 |              1 | 2.67 |    2 |    3 |    2 |    2 |    2 |    1 |    2 |    2 | 2.67 |  43.2 | fails G4 | GateWatch            |
+|   32 | [LabRelay](/docs/ideas/astra/05-labrelay.md)                                        | astra    |              5 |    2 | 2.67 |    3 | 1.67 | 1.67 |    1 | 2.67 | 1.33 | 1.67 |    2 |  40.7 | fails G4 | Not carried forward  |
+
+- **The sets' first choices split.**
+  - opus-03's Tukar ranks 1st, argon-02's ChronoDiff 8th, opus-02's BoardCast 12th and sol's BenchRelay 14th.
+  - opus-01's Kept, astra's Recheck and argon-01's SpineDesk Pulse fail the off-campus gate.
+- **11 of the 32 fail the off-campus gate.** Ten of them come from argon-01, astra and opus-01, the three sets written on 3–4 November, before the team's limits were known. Every argon-02, opus-03 and sol idea passes.
+- **Scores track doc length.** Despite the instruction, Pass A totals correlate with source length (r = 0.79). The longer opus docs also carry more measured evidence, so the two can't be separated.
+  - The length bias could have cut short docs unfairly. So a product was carried forward if its lead cleared 50 either raw or after a length correction. RoomReady, FieldPair and BiblioForge came in that way.
+  - Pass B then scored product docs that all run 200–259 lines.
 
 ## How the products were merged
 
-Each Pass A scorer proposed which ideas a team would never build together. All three agreed on three merges, and a majority kept four of the other five ideas separate. WashWitness had no majority: each scorer gave it a different partner, and it stays alone because every proposed partner has a different owner.
+Three merge proposers, one per persona, read every idea's digest and the head of each source doc. Each grouped the ideas one team would build as one product, because they serve the same owner and make the same decision. A pair merged when at least two of the three agreed, and a product is a set of connected pairs. That turned the 32 ideas into 25 products.
 
-| Product                | Merged from                                                     | Agreement | What the merge kept                                                                                                                                                                                         |
-| ---------------------- | --------------------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Kept]                 | Kept, LastLink, Kuyoh Shuttle Sentinel                          | 3 of 3    | Kept's nightly grading and Jira Done watch; LastLink's service-change packet for schedule-design gaps; Kuyoh's T580, rain gauge and MET feeds as attribution rules                                          |
-| [Sempat]               | Sempat, Timetable & HVAC Reconciler, AccessRelay                | 3 of 3    | Sempat's measured transfers against the public timetable feed; the Reconciler's physical/online and group-code checks; AccessRelay's rule that a fix counts only once confirmed. HVAC and long gaps dropped |
-| [Outage Witness]       | Outage Witness, SpineDesk Pulse, Recheck, OnBoard Airtime Guard | 3 of 3    | One owner (the IT helpdesk, using SpineDesk's published SLA), one decision (was a failure independently witnessed), Recheck's recovery check; 4 phones instead of 8–12, no MCP                              |
-| [Skyclause]            | Skyclause                                                       | 2 of 3    | One scorer proposed merging it with Fanfall; owners and decisions differ                                                                                                                                    |
-| [Fanfall]              | Fanfall                                                         | 2 of 3    | As above                                                                                                                                                                                                    |
-| [Research & FYP Nexus] | Research & FYP Nexus                                            | 3 of 3    | Singleton                                                                                                                                                                                                   |
-| [LabRelay]             | LabRelay                                                        | 2 of 3    | One scorer proposed an "asset acknowledgement loop" with WashWitness; owners differ                                                                                                                         |
-| [WashWitness]          | WashWitness                                                     | 1 of 3    | One scorer paired it with LabRelay, another with Outage Witness; owners differ, so it stays alone                                                                                                           |
+| Product      | Merged from                                     | Agreement                                                                 | What the merge kept                                                                                                                                                                                             |
+| ------------ | ----------------------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [ChronoDiff] | ChronoDiff, Timetable & HVAC Reconciler, Sempat | 3 of 3 for the Reconciler; 2 of 3 for Sempat                              | ChronoDiff's home-Pi release diff leads; the Reconciler's physical/online and group-prefix rules; Sempat's tight-transfer rule and fix watch. The HVAC half is dropped, and lift timing waits for campus access |
+| [KuyohGuard] | KuyohGuard, Kuyoh Shuttle Sentinel              | 3 of 3                                                                    | KuyohGuard's Pi join of public feeds and dismissal waves; Sentinel's Green/Amber/Red rulebook and Jira incidents. The phone probe at the LRT queue is dropped                                                   |
+| [GateWatch]  | GateWatch, Recheck, SpineDesk Pulse             | 2 of 3 for each pairing with Recheck; 1 of 3 for GateWatch with SpineDesk | GateWatch's three off-campus vantages; Recheck's rule that a fix counts only after a comparable re-run; SpineDesk's SLA clause on in-session faults. The lectern probe waits for campus access                  |
+| [RoomReady]  | RoomReady, QuietPact                            | 2 of 3                                                                    | RoomReady's tested room-device-connection choice; QuietPact's explicit accept-or-counter step, now a household-noise branch                                                                                     |
+| [Kept]       | Kept, LastLink                                  | 3 of 3                                                                    | Kept's on-device counter, nightly grade and Done watch; LastLink's evidence states and design-gap packet. The Kuyoh feeds moved to KuyohGuard                                                                   |
+
+- **Pairings proposed by only one scorer stayed apart:** Kept with BoardCast, Sempat with LiftBoard, and Outage Witness with Cap Masa. Each pair has different owners or decisions.
+- **Carried forward to a product doc:** every product that passes all gates and whose lead scored at least 50 in Pass A, either raw or after the length correction. That gives 16 products. Two more came in as the strongest products that failed only the off-campus gate: Kept and Outage Witness, to show what campus access would buy. Outage Witness's writer then rebuilt it around an off-campus build, which Pass B passed.
+- **Not carried forward (7):**
+  - [CanonKeeper](/docs/ideas/argon-02/03-canonkeeper.md) (49.9) and [CaptureLoop](/docs/ideas/sol/05-captureloop.md) (28.1), on score.
+  - [LiftBoard](/docs/ideas/opus-02/01-liftboard.md), [WashWitness](/docs/ideas/astra/04-washwitness.md), [AccessRelay](/docs/ideas/astra/03-accessrelay.md), [OnBoard Airtime Guard](/docs/ideas/argon-01/05-onboard-airtime-guard.md) and [LabRelay](/docs/ideas/astra/05-labrelay.md), on the off-campus gate.
+  - The 4 November product docs for LiftBoard, LabRelay and WashWitness are removed. Sempat's doc is folded into ChronoDiff.
 
 Each product's "Origins" section records what it kept, changed, and dropped from every source.
 
 ## How to choose
 
-- **Pick [Kept] by default.** It has the top score on research and theme, a pain every LRT commuter feels twice a day, and needs no card or board, though its own scorers called the build heavy for three people. Its main risk is that LNO never engages or forbids a fixed phone mount. Ask in person on 4 November; the evidence builds in the team's own Jira either way. Its own kill line: stop if both baseline counts on 4–5 November show every departure kept and nobody left behind.
-- **Pick [Sempat] for originality with a fixed kill line.** It ties Fanfall for the top originality score (4.33). Nobody has measured whether APU's 15-minute changeovers are enough. It stops at 20:00 on 5 November if fewer than 28 of the week's 1,377 room changes fail by lift. It needs APU's written permission to use the timetable feed.
-- **Pick [Outage Witness] for the strongest theme story.** The network is both the sensor and the problem, and TechCentre's SLA already treats in-session Wi-Fi as urgent. Its originality is the weakest of the top five (2.67), because the helpdesk network watch is where the crowd will be. Win on the independent witness record, not the ticket.
-- **Pick [Fanfall] for the best pitch.** The 17 November final shares the night with a concert next door, and the forecast grades itself every morning. Its theme score (3) ties Skyclause's for the lowest in the top five, and its doc concedes it's a club-scale tool until an office adopts it.
-- **Pick [Skyclause] for the strongest institutional hook,** the ministry's 7 October 2026 haze instruction. Its owner office has no public trace in APU's knowledge base, and the window camera is on probation.
-- **Don't build two.** Kept, Fanfall and Skyclause all touch the evening exit wave. Fanfall's graded surge-night calendar can become a read-only input to Kept's "external cause" rule later ([Fanfall's origins](/docs/ideas/04-fanfall.md#origins)).
-- **Pick [BoardCast] if nobody can reach campus.** It helps one student with no other users, from public feeds, and it keeps co-op. Before 10 November that co-op runs only on the team's own phones, so it can't show any real APU queue.
-- **Pick [LiftBoard] for the widest pain, with the weakest proof.** Students and lecturers both feel it, and kymil4 first raised it, but no APU lift can be timed before the deadline, and its second feature overlaps notices students already get.
-- **The bottom stop conditions still hold:** Research & FYP Nexus has no IoT layer (theme 1); LabRelay has no lab, custodian or probe secured; WashWitness exists only if a timed observation shows broken machines rather than queues, since APU's own evidence points to queues.
+- **Pick [ChronoDiff] by default.**
+  - **Why:** all three scorers passed it on all four gates, so it is the one top-three product whose off-campus build carries no condition, and it holds the highest NTT-five subtotal. Like every product, it still needs the feed permission below and a licence on a Workspace domain.
+  - **Risk:** it bulk-reads APU's timetable feed, and APU's Terms of Use ask for permission first ([terms](/docs/research/apu.md#terms-of-use-and-robotstxt)). Ask through the organisers now. If APU refuses, ChronoDiff stops and shows the error, with no cached copy.
+  - **Kill line:** on Sunday 8 November, stop if fewer than 10 of its 40 labelled items are problems a scheduler or student would act on.
+  - **Theme:** its theme score is 2, so the pitch must show the Pi as an edge diff engine and network probe, not claim a sensor.
+- **Pick [Skyclause] for the strongest institutional hook,** the ministry's 7 October haze instruction.
+  - It scores 4 on research and needs no APU feed.
+  - It does need a teammate's window with a skyline, and its target owner office has one unconfirmed public mention and no knowledge-base page.
+  - Its buildability is the lowest in the top three (2).
+- **Pick [Outage Witness] for the highest score, knowing what that score buys.**
+  - It ranks on its off-campus service-scope build, which witnesses Moodle and APSpace failures. The full residence and campus product needs phones on APU chargers and staff consent.
+  - Its real-use score (2) is the lowest in the top tier.
+- **Pick [Tukar] for the strongest research and real use** (4 and 4).
+  - Its users are the interviewees: FYP students who post survey requests daily.
+  - It needs no APU feed or office. Its theme is 2.
+- **Don't build two.**
+  - Outage Witness and GateWatch both probe Moodle and APSpace from outside APU.
+  - ChronoDiff, Bangun, BoardCast, KuyohGuard, GateWatch, BiblioForge and Kept all read APU's timetable feed, so one permission request covers all seven; Kept and BoardCast also read APU's shuttle API.
+  - KuyohGuard, BoardCast and Kept share the shuttle corridor.
+- **Pick [Kept] only if campus access appears.** Even then it ranks 14th, below 13 products built for the team's limits.
 
 ## What the rerank changed
 
-Writing and fact-checking the products corrected several source claims. Each correction is recorded in the product's "Origins" or evidence section:
-
-- **Jira comment and status-change actions are GA,** not unproven as the astra set assumed ([Gemini Enterprise](/docs/research/gemini-enterprise.md)). Kept, Outage Witness, WashWitness and LabRelay now write comments and transitions after approval instead of opening duplicates.
-- **Globalping and GitHub aren't on Workflow Builder's connector list** ([workflows](/docs/research/gemini-enterprise.md#workflows)); Globalping now enters through the Apps Script feeder, and GitHub only runs feeders.
-- **Dropped or corrected numbers:** Skyclause's "20 of 24 weekdays" storm count came from the author's OCR, so it was dropped and is now measured. Sempat's 1,441 transfers are 1,377 room changes across 662 of 933 intake groups. Kuyoh's flood tier now uses the rain gauge, because the water level sat below Normal. Fanfall's 1 February 2026 isn't a surge day, and its 20 November exposure is 379 intake groups. Kept's PDF quote no longer includes words the PDF doesn't contain.
-- **New local evidence:** APU's laundry FAQs show machines already report "Online and Vacant" through APSpace, so WashWitness can't sell availability. Technology Services' Wi-Fi policy says it already monitors the network, so Outage Witness sells an independent, citable record instead.
-
-The final scorers recorded 13 more small errors in the product docs while scoring: counts, a quote's date, an unsourced price, an untraced office, stale cross-references, and one unverified trigger type. Twelve were fixed before publishing. The thirteenth, TechCentre's location, stays because it cites APU's knowledge-base page directly. The scores predate the fixes.
+- **The order turned over.**
+  - Kept fell from 1st to last, on the off-campus gate.
+  - Sempat (2nd on 4 November) is now a rule inside ChronoDiff.
+  - Outage Witness rose from 3rd to 1st by dropping its campus probes.
+  - Twelve of the 18 products are new: five from opus-03, four from argon-02, and three from sol.
+- **The matrix gained a real-use row and an off-campus gate,** and buildability now measures build effort only ([Components and weights](#components-and-weights)).
+- **Writing and fact-checking the products corrected several source claims.** Each correction is recorded in the product's "Origins" section.
+  - **GitHub isn't on Workflow Builder's connector list** ([workflows](/docs/research/gemini-enterprise.md#workflows)). Bangun now writes Jira issues instead, and Janji reads commits through an Apps Script feeder.
+  - **BigQuery, Cloud Run and Pub/Sub need billing,** and the team has no card. KuyohGuard and BiblioForge now write to a Sheet through Apps Script.
+  - **The Globalping connector is preview.** Outage Witness now calls Globalping's public API from the feeder.
+  - **Dropped or corrected numbers:**
+    - Skyclause's haze backtest is 9 Hybrid, 5 Outdoor-limited and 7 Normal, not 8, 5 and 8.
+    - Fanfall's station is 880 m away, not 900 m.
+    - Bangun's "no intake-group starts at the same time every day" is 1 of 953.
+    - BiblioForge's Library KB space has 58 pages, not 65, and its Koha catalogue needs a sign-in.
+    - Tukar's "absent from 780 simulated ideas" had no source, so it now says no crowd cluster covers survey recruitment.
+    - Janji's build plan was a weekday off.
+- **The final scorers reported 5 more errors,** and all 5 were fixed before publishing:
+  - ChronoDiff's transfer count now states its room scope.
+  - ChronoDiff's App Store quote is no longer labelled as a Play review.
+  - Cap Masa's Unifi clock now notes that its start is ambiguous.
+  - Kept's departure count now says it covers 36 of 39 departures.
+  - Fanfall's event count now names the API filter. That report was itself a scorer error: the API returns 36 completed events with `status=Completed` and 26 unfiltered.
+  - The scores predate these fixes.
 
 ## Method
 
-1.  **Matrix:** built from the three sets' matrices and NTT DATA's five points, then checked by a separate review that rebalanced the weights, removed a double-counting gate, and asked for length-blind scoring.
-1.  **Pass A, rerank the 15:** three independent scorers in three personas, each on a different model: an NTT DATA forward deployed engineer, an APU School of Technology IoT lecturer, and a Google Cloud advocate who is also an APU student. Each scored every idea, spot-checked the claims behind each 4 or 5 against the research, and proposed merges.
-1.  **Merge:** the three unanimous merges and the majority singletons gave 8 products. Five writers built one doc each, using Pass A's reasons and fatal risks to choose which variant leads, and re-checked numbers against live sources on 4 November.
-1.  **Pass B, rank the products:** three fresh scorers with the same personas on rotated models scored the 8 docs and fact-checked them. Their scores are the ranking.
+1.  **Matrix:** built from the seven sets' matrices and NTT DATA's five points. A separate review on a different model then tightened the real-use definition, raised theme to 10, rotated models across personas, added a second anchor, and moved the team's limits out of the score rows into the off-campus gate.
+1.  **Pass A, rerank the 32:** three personas, an NTT DATA forward deployed engineer (FDE), an APU School of Technology IoT lecturer, and a Google Cloud advocate who is also an APU student, scored four length-balanced batches of 7–8 ideas.
+    - **Models:** each persona ran on Claude Opus 5.5, Claude Sonnet 5.5 or Claude Fable 5.1, rotated across batches so no persona kept one model.
+    - **Anchors:** every batch also held two anchor ideas, Recheck and Janji, to measure drift, and the doc order was rotated per scorer.
+    - **Checks:** scorers spot-checked every 5 and at least two load-bearing claims per idea against the research or live sources.
+1.  **Merge:** three proposers grouped the ideas; majority pairs gave 25 products, and 18 were carried forward.
+1.  **Write:** one writer per product. Each writer had the scorers' reasons, fatal risks and contradicted claims, but no numbers, and re-checked figures against live sources on 5 November.
+1.  **Pass B, rank the products:** three fresh scorers per doc, with the same personas, read each doc and fact-checked it.
+    - **Batches:** two batches of 8, with BenchRelay in both. The three products carried forward late made a third batch, with Tukar and ChronoDiff as anchors.
+    - **Models:** rotated to a new pattern, so each persona used all three models across the three batches.
+    - Their scores are the ranking.
 
 ## Evidence limits
 
-- **BoardCast and LiftBoard were scored differently:** by one pass only, after the same scorers also rated their [source](/docs/ideas/opus-02/02-boardcast.md) [docs](/docs/ideas/opus-02/01-liftboard.md), which scored 48.7 and 39.8. Two of the three scorers shared `gpt-6-astra`, against three different models before.
-- **Nothing is validated:** no owner has agreed, no interview has happened, no Gemini Enterprise licence has been tested, and no workflow has run. Each product's research plan says what to measure first.
-- **The scorers are AI personas, not the judges.** They disagree by up to 16 points on one product. The official criteria may reweight everything.
-- **Merged products had an edge in polish.** Pass B scored docs written for this ranking, while Pass A scored the original set docs. Components where a product beat its best source by more than half a point: Kept theme (4 → 5); Outage Witness and Fanfall demo; Research & FYP Nexus connectors, buildability and demo; LabRelay connectors, workflow and theme; WashWitness connectors. Most reflect real design changes recorded in each "Origins" section, such as dropping the custom MCP, adding approved Jira writes, and moving the decision into the workflow. Skyclause (−5.4) and WashWitness (−1.7) scored below their sources: Skyclause's doc dropped the unverifiable storm count and now says its owner office has no public trace, and WashWitness now leads with the gate that may cancel it.
-- **Permissions are pending:** APU's Terms of Use reserve copyright, so the timetable feed and knowledge base need written permission ([APU](/docs/research/apu.md)).
+- **Nothing is validated.** No owner has agreed, no interview has happened, no Gemini Enterprise licence has been tested, and no workflow has run. Each product's research plan says what to measure first.
+- **The scorers are AI personas from one model family, not the judges.** The 4 November ranking used three families. Self-preference toward docs written by the same family is possible, and the official criteria may reweight everything.
+- **Batch drift is real.**
+  - The same persona scored BenchRelay 51.8 and 61.8 in two Pass B batches. The lecturer scored it 47.4 and 57.0.
+  - Between the main and late batches, Tukar moved by 2.1 points and ChronoDiff by 0.3.
+  - In Pass A, the Janji anchor ranged from 59.8 to 80.4 across batches.
+- **Length still tracks score in Pass B** (r = 0.70 across docs of 200–259 lines). Writers with more measured evidence wrote more, so this may be substance rather than bias.
+- **Several products rank on a reduced build:** Outage Witness, KuyohGuard, BoardCast and GateWatch each defer a campus or permission-dependent part. Their docs' "Off-campus fit" sections say what's left out.
+- **Permissions are pending:** seven products read APU's timetable feed, and APU's Terms of Use reserve copyright ([APU](/docs/research/apu.md#terms-of-use-and-robotstxt)).
 
 ## See also
 
@@ -218,4 +343,5 @@ The final scorers recorded 13 more small errors in the product docs while scorin
 - [Competition](/docs/research/competition.md): what other teams will likely build and existing substitutes.
 - [Judging](/docs/research/judging.md): comparable rubrics, evidencing each judging point, and packaging.
 - [Gemini Enterprise](/docs/research/gemini-enterprise.md): workflows, triggers, connectors, actions, and reviewer access.
-- The source idea sets: [argon-01](/docs/ideas/argon-01/00-ranking.md), [astra](/docs/ideas/astra/00-ranking.md), [opus-01](/docs/ideas/opus-01/00-ranking.md), [opus-02](/docs/ideas/opus-02/00-ranking.md).
+- [IoT and network](/docs/research/iot-and-network.md): what the team's phones and Pi 5 can sense and serve.
+- The source idea sets: [argon-01](/docs/ideas/argon-01/00-ranking.md), [argon-02](/docs/ideas/argon-02/00-ranking.md), [astra](/docs/ideas/astra/00-ranking.md), [opus-01](/docs/ideas/opus-01/00-ranking.md), [opus-02](/docs/ideas/opus-02/00-ranking.md), [opus-03](/docs/ideas/opus-03/00-ranking.md), [sol](/docs/ideas/sol/00-ranking.md).
