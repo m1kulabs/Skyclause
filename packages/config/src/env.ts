@@ -5,7 +5,8 @@ const base = z.object({
   APP_ENV: z.enum(['dev', 'staging', 'production', 'test']),
   // a-observability; telemetry exports only where Terraform sets GCP_PROJECT (f-infra).
   OTEL_SERVICE_NAME: z.string().min(1).optional(),
-  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+  // Unset means info (telemetry.ts).
+  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional(),
   GCP_PROJECT: z.string().min(1).optional(),
   GCP_REGION: z.string().min(1).optional()
 })

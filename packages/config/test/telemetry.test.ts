@@ -61,6 +61,13 @@ describe('structured logs', () => {
     expect(JSON.parse(lines[0] ?? '')).toEqual({ severity: 'WARNING', message: 'slow' })
   })
 
+  test('without LOG_LEVEL, debug lines are dropped', () => {
+    start()
+    log.debug('d')
+    log.info('i')
+    expect(lines.map((line) => JSON.parse(line).message)).toEqual(['i'])
+  })
+
   test('LOG_LEVEL drops lines below it', () => {
     start({ LOG_LEVEL: 'warn' })
     log.debug('d')

@@ -150,7 +150,7 @@ export function startTelemetry(service: Service, options: TelemetryOptions = {})
   const env = loadEnv(service, options.env ?? process.env)
   const source = options.env ?? process.env
   const project = env.GCP_PROJECT
-  logging = { level: env.LOG_LEVEL, project, write: options.write ?? stdio }
+  logging = { level: env.LOG_LEVEL ?? 'info', project, write: options.write ?? stdio }
   diag.setLogger(
     {
       error: (message) => log.error(`telemetry: ${message}`),
