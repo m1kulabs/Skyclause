@@ -1,3 +1,5 @@
+import { log as telemetryLog } from '@skyclause/config'
+import type { HeartbeatName } from '@skyclause/contracts'
 import { Hono, type MiddlewareHandler } from 'hono'
 import { jwtVerify, type JWTPayload, type JWTVerifyGetKey } from 'jose'
 
@@ -93,14 +95,14 @@ export interface ServerOptions {
   /** Expected `email`: `WORKER_INVOKER_SA`. */
   invoker: string
   jwks: JWTVerifyGetKey
-  /** Records `skyclause.heartbeat{name}`; defaults to a structured log line until #114's gauge. */
-  heartbeat?: (name: string) => void
+  /** Records `skyclause.heartbeat{name}`: `main.ts` passes telemetry's gauge; defaults to a log line. */
+  heartbeat?: (name: HeartbeatName) => void
 }
 
+/** Redacted and linked to the active trace (#114). */
 export function log(severity: 'INFO' | 'ERROR', message: string, fields: Record<string, unknown> = {}) {
-  const line = JSON.stringify({ severity, message, ...fields })
-  if (severity === 'ERROR') console.error(line)
-  else console.log(line)
+  if (severity === 'ERROR') telemetryLog.error(message, fields)
+  else telemetryLog.info(message, fields)
 }
 
 export function logHeartbeat(name: string) {

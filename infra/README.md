@@ -8,12 +8,13 @@ Contents:
 1.  [Bootstrap](#bootstrap)
 1.  [Applying](#applying)
 1.  [Values set by other tickets](#values-set-by-other-tickets)
+1.  [Monitoring](#monitoring)
 1.  [Custom hosts](#custom-hosts)
 1.  [AWS email](#aws-email)
 
 ## Layout
 
-- `bootstrap/`: the state bucket, the APIs, the `skyclause-terraform` service account that CI impersonates, and the `NEON_API_KEY` secret. A project owner applies it by hand.
+- `bootstrap/`: the state bucket, the APIs, the `skyclause-terraform` service account that CI impersonates, the `NEON_API_KEY` secret and the project's monthly budget alert (RM40, gate 2's US$10), so CI holds no billing role. A project owner who can manage the billing account's budgets applies it by hand, and again whenever it changes.
 - `environments/production/`: everything else. CI plans and applies it from `main`.
 - `aws/`: Amazon SES sending and receiving, their SNS topics, the inbound bucket and the role `web` and `worker` assume with Google ID tokens (#113), in AWS account `776566309118`. It has its own state in S3, and a person applies it by hand.
 - `modules/`: `service` (Cloud Run service), `job` (Cloud Run job with an optional schedule), `topic` (Pub/Sub topic with a push subscription to the worker) and `queue` (Cloud Tasks).
@@ -74,6 +75,17 @@ Set these in a pull request, in `environments/production/terraform.tfvars`, whic
   gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="vapid-keys" AND jsonPayload.message="vapid public key"' \
     --project=skyclause --limit=1 --format='value(jsonPayload.VAPID_PUBLIC_KEY)'
   ```
+
+- `oncall_contacts_ready`: set to `true` once `infra/wizards/oncall-contacts.sh` has stored `ONCALL_CONTACTS`.
+
+## Monitoring
+
+`environments/production/monitoring.tf` holds #114's uptime checks, SLOs and alert policies. Every policy notifies the platform on-call's email and SMS channels.
+
+- **Availability:** an uptime check every minute on `/healthz` of each distinct app, API and MCP origin, one while `HOST_MODE=single`, with a 99.5% 30-day SLO and fast- and slow-burn pages.
+- **Jobs:** a page on any failed Cloud Run job execution.
+- **Pipeline:** a PromQL page per TRD SLI row, on the `breach` stat the worker's `sli` handler records each batch, and one per absent heartbeat (`auditor`, `minute_tick`). Each starts disabled; once its metric has flowed for a day, check its query in Metrics Explorer and set its `enabled` to `true`.
+- **On-call contacts:** a person runs `infra/wizards/oncall-contacts.sh` (10 minutes), which stores them hidden. After `oncall_contacts_ready` is applied, run it again to verify the SMS numbers, since an unverified number isn't paged.
 
 ## Custom hosts
 

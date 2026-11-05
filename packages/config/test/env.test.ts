@@ -95,4 +95,21 @@ describe('loadEnv', () => {
       GCP_PROJECT: 'skyclause'
     })
   })
+
+  test('reads LOG_LEVEL, optional, and refuses an unknown level', () => {
+    expect(loadEnv('job', { APP_ENV: 'dev' }).LOG_LEVEL).toBeUndefined()
+    expect(loadEnv('job', { APP_ENV: 'dev', LOG_LEVEL: 'debug' }).LOG_LEVEL).toBe('debug')
+    expect(() => loadEnv('job', { APP_ENV: 'dev', LOG_LEVEL: 'verbose' })).toThrow(/LOG_LEVEL/)
+  })
+
+  test('reads OTEL_SERVICE_NAME and the project and region telemetry exports to, all optional', () => {
+    const env = loadEnv('web', {
+      APP_ENV: 'production',
+      OTEL_SERVICE_NAME: 'web',
+      GCP_PROJECT: 'skyclause',
+      GCP_REGION: 'asia-southeast1'
+    })
+    expect(env).toMatchObject({ OTEL_SERVICE_NAME: 'web', GCP_PROJECT: 'skyclause', GCP_REGION: 'asia-southeast1' })
+    expect(loadEnv('web', { APP_ENV: 'dev' }).GCP_PROJECT).toBeUndefined()
+  })
 })

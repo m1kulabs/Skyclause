@@ -15,6 +15,15 @@ resource "google_service_account_iam_member" "drill_deployer" {
   member             = local.member.deployer
 }
 
+# The job's entry point exports telemetry like every other job's (#114).
+resource "google_project_iam_member" "drill_telemetry" {
+  for_each = toset(["roles/telemetry.writer", "roles/serviceusage.serviceUsageConsumer"])
+
+  project = local.project_id
+  role    = each.key
+  member  = google_service_account.drill.member
+}
+
 # Scoped to this project: it can't create projects, mint keys or read another project. Neon can't
 # narrow a key to branch names, so the job itself refuses every branch not named drill-*.
 resource "neon_org_api_key" "drill" {

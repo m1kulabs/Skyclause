@@ -2,7 +2,13 @@ import { z } from 'zod'
 
 // Spec §6. Owners add their variables to the service that reads them.
 const base = z.object({
-  APP_ENV: z.enum(['dev', 'staging', 'production', 'test'])
+  APP_ENV: z.enum(['dev', 'staging', 'production', 'test']),
+  // a-observability; telemetry exports only where Terraform sets GCP_PROJECT (f-infra).
+  OTEL_SERVICE_NAME: z.string().min(1).optional(),
+  // Unset means info (telemetry.ts).
+  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional(),
+  GCP_PROJECT: z.string().min(1).optional(),
+  GCP_REGION: z.string().min(1).optional()
 })
 
 // a-email-transport (#113): infra/aws's app_config output. Optional until gate 4B, then all of a
