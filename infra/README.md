@@ -67,7 +67,7 @@ Set these in a pull request, in `environments/production/terraform.tfvars`, whic
   - `infra/wizards/google-sign-in.sh` (about 25 minutes): Google Auth Platform branding and the Web OAuth client (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`), and the app host's Turnstile widget (`TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`).
   - `infra/wizards/staff-and-ses.sh` (about 5 minutes): `SKYCLAUSE_STAFF_EMAILS`, then, optionally, SES sandbox verification of the team addresses.
 - `vapid_private_key_ready`: set to `true` once #113's `vapid-keys` job has created `VAPID_PRIVATE_KEY`.
-- `oncall_contacts_ready`: set to `true` once [`wizards/oncall-contacts.sh`](/infra/wizards/oncall-contacts.sh) has stored `ONCALL_CONTACTS`.
+- `oncall_contacts_ready`: set to `true` once `infra/wizards/oncall-contacts.sh` has stored `ONCALL_CONTACTS`.
 - `billing_account` and `monthly_budget_myr`: the budget alert's account and amount (#79 §9 gate 2). The Budget API takes only the account's currency, MYR.
 
 ## Monitoring
