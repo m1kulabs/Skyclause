@@ -9,8 +9,7 @@ Contents:
 1.  [Repository layout](#repository-layout)
 1.  [Data model](#data-model)
     1.  [Entities and keys](#entities-and-keys)
-    1.  [Tenancy keys and append-only tables](#tenancy-keys-and-append-only-tables)
-    1.  [Readings partitioning](#readings-partitioning)
+    1.  [Tenancy, append-only tables and partitions](#tenancy-append-only-tables-and-partitions)
 1.  [Signal pipeline](#signal-pipeline)
     1.  [Adapter contract](#adapter-contract)
     1.  [Adapters by source](#adapters-by-source)
@@ -70,45 +69,26 @@ Skyclause is one TypeScript monorepo deployed as a few Cloud Run units in `asia-
 
 ```mermaid
 flowchart LR
-  subgraph Feeds
-    F1[JPS gauge 0232901RF]
-    F2[MET warnings and forecast]
-    F3[DOE APIMS]
-    F4[Rapid Rail parquet and metadata]
-    F5[data.gov.my GTFS]
-    F6[GoLive and Wikipedia]
-  end
-  WEB[Web app, API /v1, MCP /mcp, embeds]
-  DEV[Camera PWA and Pi 5] -->|POST /v1/ingest| WEB
-  CS[Cloud Scheduler] --> AJ[Adapter jobs on Cloud Run]
-  Feeds --> AJ
-  AJ --> DB[(Postgres 18: polls, readings)]
+  F[Public feeds: JPS, MET, APIMS, Rapid Rail, GTFS, GoLive, Wikipedia] --> AJ[Adapter jobs on Cloud Scheduler]
+  D[Camera PWA and Pi 5] -->|POST /v1/ingest| WEB[Web app, API, MCP, embeds]
+  AJ --> DB[(Postgres 18: polls, readings, bundles, ledger)]
   WEB --> DB
   AJ -->|readings.updated| PS[[Pub/Sub]]
   PS --> EV[Evaluator: indicators, forecast module, clause engine]
-  EV -->|shadow verdicts| DB
   EV -->|crossing| PS
-  PS --> RO[Run orchestrator]
-  RO --> AG[Decision agent: Vertex AI Gemini or BYOK]
-  AG --> BU[Bundle]
-  BU --> AP[Approval UI]
-  WEB --> AP
-  AP --> SD[Sender: email, ICS, webhooks, in-app]
-  SD --> LG[(Ledger)]
-  LG --> GR[Grader jobs]
+  PS --> RO[Run orchestrator] --> AG[Decision agent: Vertex AI Gemini or BYOK]
+  AG --> BU[Bundle] --> AP[Approval UI] --> SD[Sender: email, push, ICS, webhooks]
+  SD --> LG[(Ledger)] --> GR[Grader jobs]
 ```
 
-| Unit             | Runs on                                          | Does                                                                                                                              |
-| ---------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| `web`            | Cloud Run service                                | Next.js app on `skyclause.com`, `app.`, `api.` (`/v1`), `mcp.` (`/mcp`) and `embed.`; Better Auth; SSE streams; oEmbed; OG images |
-| `worker` service | Cloud Run service (Pub/Sub push, Scheduler HTTP) | Evaluator, run orchestrator, sender (outbox), SLA and expiry handlers called by Cloud Tasks, the auditor tick                     |
-| Adapter jobs     | Cloud Run jobs on Cloud Scheduler                | One job per source kind: fetch, parse, write `poll` and `reading` rows, publish `readings.updated`                                |
-| Batch jobs       | Cloud Run jobs                                   | Graders, forecast module, migrations, retention, partition checks, live contract tests                                            |
-| `docs`           | Cloud Run service                                | `docs.skyclause.com`: guides, API reference from `/openapi.json`, CLI and SDK docs                                                |
+| Unit             | Runs on                                          | Does                                                                                                                                                                     |
+| ---------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `web`            | Cloud Run service                                | Next.js app on `skyclause.com`, `app.`, `api.` (`/v1`), `mcp.` (`/mcp`) and `embed.`; Better Auth; SSE; oEmbed; OG images; `docs.skyclause.com` runs from the same image |
+| `worker` service | Cloud Run service (Pub/Sub push, Scheduler HTTP) | Evaluator, run orchestrator, sender (outbox), SLA and expiry handlers called by Cloud Tasks, the auditor tick                                                            |
+| Adapter jobs     | Cloud Run jobs on Cloud Scheduler                | One job per source kind: fetch, parse, write `poll` and `reading` rows, publish `readings.updated`                                                                       |
+| Batch jobs       | Cloud Run jobs                                   | Graders, forecast module, migrations, retention, partition checks, live contract tests                                                                                   |
 
-Cloud Run jobs "do not listen for or serve requests" ([Cloud Run jobs]), so Pub/Sub push subscriptions and the per-minute evaluator tick target the `worker` service, built from the same image as the jobs. Retries on poll jobs are set to 0: the next scheduled poll is the retry, which keeps every adapter inside its rate budget.
-
-The six flows:
+Cloud Run jobs "do not listen for or serve requests" ([Cloud Run jobs]), so Pub/Sub push subscriptions and the per-minute evaluator tick target the `worker` service, built from the same image as the jobs. Retries on poll jobs are set to 0: the next scheduled poll is the retry, which keeps every adapter inside its rate budget. The six flows:
 
 1.  **Poll.** Cloud Scheduler starts an adapter job. Each request writes one `poll` row (HTTP status, latency, outcome); new observations become `reading` rows; the job publishes `readings.updated` with the source ID.
 1.  **Evaluate.** The evaluator recomputes indicators for every project bound to the source, runs the forecast module for Crowd nights, and evaluates each project's published clause sheets for open windows and site-level verdicts. A changed verdict is a **crossing**: a `crossing` row and a Pub/Sub message. A per-minute tick re-evaluates, so staleness and opening spans change verdicts without a new reading.
@@ -117,12 +97,12 @@ The six flows:
 1.  **Send and record.** The sender drains an outbox (email, ICS feed version, webhooks, in-app); each send is idempotent; every sent, rejected or all-Normal outcome appends a ledger entry.
 1.  **Grade.** Graders compare Sky calls with the gauge and APIMS nightly and Crowd nights with gate taps on D+1, and open review items.
 
-**Run orchestration is a Postgres state machine, not a hosted workflow engine.** A run is a short chain of idempotent steps (snapshot, shadow, draft, validate, persist), each recorded in `run_step`; Pub/Sub redelivers a message whose handler died, and the handler resumes at the first unfinished step. The human wait is not inside the run: the bundle is a row the dashboard must query anyway, and its timers are Cloud Tasks scheduled at `sla_due_at` and `expires_at` (first 1M operations a month free ([Cloud Tasks pricing])). Rejected:
+**Run orchestration is a Postgres state machine, not a hosted workflow engine.** A run is a short chain of idempotent steps (snapshot, shadow, draft, validate, persist), each recorded in `run_step`; Pub/Sub redelivers a message whose handler died, and the handler resumes at the first unfinished step. The human wait is not inside the run: the bundle is a row the dashboard must query anyway, and its timers are Cloud Tasks scheduled at `sla_due_at` and each call's `expires_at` (first 1M operations a month free ([Cloud Tasks pricing])). Rejected:
 
-- **Inngest** (`inngest` 4.26.2): `step.waitForEvent` with a CEL `if` expression is documented for approvals ([waitForEvent]), but its maximum wait is Not verified while a Crowd outlook can wait up to 14 days, and bundle state would live in two places.
-- **Trigger.dev** (`@trigger.dev/sdk` 4.8.3): `wait.forToken` fits ([wait for token]), but billing while waiting and self-hosting are Not verified, and step payloads would leave `asia-southeast1` unless self-hosted (**Inference**).
-- **AI SDK 7 `WorkflowAgent`** (`@ai-sdk/workflow` 2.0.95): a durable agent that survives delayed approvals ([AI SDK 7]), but it ties the wait to one agent invocation, whereas the approval belongs to the bundle after the agent has finished; its runtime on Cloud Run is Not verified.
-- **Cloud Workflows:** steps are defined outside the TypeScript codebase, so `packages/clauses` can't run in-process; not checked against primary sources here.
+- **Inngest** (`inngest` 4.26.2): maximum `waitForEvent` duration Not verified, and bundle state would live twice ([waitForEvent]).
+- **Trigger.dev** (`@trigger.dev/sdk` 4.8.3): billing while waiting Not verified; payloads leave the region unless self-hosted ([wait for token]).
+- **AI SDK 7 `WorkflowAgent`** (`@ai-sdk/workflow` 2.0.95): ties the wait to one agent invocation, but approval belongs to the bundle ([AI SDK 7]).
+- **Cloud Workflows:** steps live outside the TypeScript codebase, so `packages/clauses` can't run in-process.
 
 [Cloud Tasks pricing]: https://cloud.google.com/tasks/pricing
 [waitForEvent]: https://www.inngest.com/docs/reference/functions/step-wait-for-event
@@ -130,32 +110,26 @@ The six flows:
 
 ## Stack
 
-Versions are the npm or PyPI latest on 5 November 2026 unless marked "not checked"; each is pinned exactly in the lockfile.
+Versions are the npm or PyPI latest on 5 November 2026 where a version is given; each is pinned exactly in the lockfile.
 
-| Layer            | Choice and version                                                                                                                                                            | Why                                                                                            | Alternatives rejected                                                                                                                                                          |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Language         | TypeScript, ESM; Node.js 22 or later on Cloud Run; Bun 1.4.4 for installs, scripts and CLI binaries                                                                           | One language from adapters to embeds; AI SDK 7 needs Node 22+ and ESM ([AI SDK 7])             | Python backend (splits the clause engine across languages)                                                                                                                     |
-| Web              | Next.js 16.4.5 App Router, React 19.3, Cache Components on ([Next.js 16.4])                                                                                                   | Server Components, Route Handlers for API, MCP, oEmbed and OG images in one deployable         | Separate SPA plus API server (two deployables for the pilot's scale)                                                                                                           |
-| UI               | shadcn CLI 4.23.0 on Base UI (`@base-ui/react` 1.9.0), Tailwind CSS 4.3.4, shadcn charts on Recharts 3.10.1                                                                   | Base UI is shadcn's default since July 2026 ([shadcn Base UI]); charts themed by CSS variables | Radix via `init -b radix` (`radix-ui` 1.8.1): no reason to leave the default                                                                                                   |
-| API              | Hono with zod route schemas generating OpenAPI 3.1 (versions not checked), mounted in a Next.js Route Handler                                                                 | One schema validates requests and generates `/openapi.json`, SDKs and docs                     | Hand-written OpenAPI beside Route Handlers (drifts); tRPC (no public OpenAPI)                                                                                                  |
-| Auth             | Better Auth 1.7.17 with organization, anonymous, `@better-auth/api-key`, MCP and `@better-auth/cimd` 1.7.17                                                                   | Organisations, guests, org API keys and an MCP OAuth provider in one Postgres schema           | Clerk (`@clerk/nextjs` 7.9.24): per-key fees, no guest users or MCP OAuth provider on its API-keys page ([Clerk API keys]); Auth.js, now part of Better Auth, v5 still beta.32 |
-| Database         | Cloud SQL for PostgreSQL 18 with `pg_partman` and `pg_cron` ([Cloud SQL extensions])                                                                                          | Relational tenancy with row-level security, monthly partitions, one store for ledger and auth  | TimescaleDB (not on Cloud SQL's list; Supabase deprecated it for Postgres 17); Neon (Free suspends after 5 min idle, Asian regions Not verified); Firestore (no RLS or joins)  |
-| Data access      | Drizzle ORM and Drizzle Kit (not checked)                                                                                                                                     | SQL-shaped schema and migrations in one package; Better Auth has an adapter                    | Prisma, Kysely: either works; one tool for schema and migrations decided it                                                                                                    |
-| Scheduling       | Cloud Scheduler, Cloud Run jobs, Pub/Sub, Cloud Tasks                                                                                                                         | Managed cron and retries in-region; jobs run up to 168 h for backfills ([Cloud Run jobs])      | GitHub Actions cron (disabled after 60 days without activity); Apps Script (pilot only)                                                                                        |
-| Clause language  | CEL via `@bufbuild/cel` 0.6.2 ([cel-es])                                                                                                                                      | Ships cel-spec conformance data, so the verdict can be checked to be the same everywhere       | `@marcbachmann/cel-js` 8.0.0 ([cel-js]): conformance pass rate Not verified; `cel-js` 0.8.2 (unpublished since July 2025); JSONLogic or a custom DSL                           |
-| AI               | AI SDK 7 (`ai` 7.0.163), `@ai-sdk/google-vertex` 5.0.132, `@ai-sdk/google` 4.0.112, `@ai-sdk/anthropic` 4.0.97, `@ai-sdk/openai` 4.0.109, `@openrouter/ai-sdk-provider` 3.1.0 | One structured-output API across the five BYOK providers; `@ai-sdk/otel` spans                 | Direct provider SDKs (five integrations to keep in step)                                                                                                                       |
-| Models           | `gemini-3.8-flash` (drafts), `gemini-4-argon` (grade reviews) on Vertex AI ([model versions])                                                                                 | Retire no earlier than September and October 2027                                              | `gemini-3.6-flash` (retires 19 November 2026 on Agent Platform); `gemini-2.5-*` (deprecated, reroutes 1 December 2026)                                                         |
-| Keys and secrets | Cloud KMS (`@google-cloud/kms` 6.3.0), Secret Manager                                                                                                                         | Envelope encryption with a regional KEK ([KMS envelope encryption])                            | An application master key in environment variables                                                                                                                             |
-| Files            | Cloud Storage; DuckDB in the worker for parquet (not checked)                                                                                                                 | Frames with lifecycle deletion; DuckDB reads the Rapid Rail parquet directly                   | BigQuery loads (kept for later analytics)                                                                                                                                      |
-| Transit          | `gtfs-realtime-bindings` for GTFS-rt protobuf (not checked)                                                                                                                   | The binding the data-sources check used (in Python)                                            | A hand-written protobuf decoder                                                                                                                                                |
-| Agent layer      | `@modelcontextprotocol/server` 2.4.0 (spec 2026-07-28) ([MCP TypeScript SDK]); `@a2a-js/sdk` 1.3.0 behind a flag                                                              | Stateless streamable HTTP; one tool set for remote and stdio                                   | `@modelcontextprotocol/sdk` 1.32.2, kept only for a compatibility route if needed                                                                                              |
-| Embeds           | Lit 3.3.3 ([Lit blog])                                                                                                                                                        | Small custom elements with shadow DOM; OpenJS Foundation project                               | React inside shadow roots (heavier); plain custom elements (more hand-written rendering)                                                                                       |
-| CLI              | commander 15.0.0 on the SDK; binaries from `bun build --compile` ([Bun executables])                                                                                          | Stable, small; single binaries for macOS, Linux (including arm64 for the Pi 5) and Windows     | oclif 6.0.15 (plugins and installers not needed); citty 0.2.2 (smaller community)                                                                                              |
-| Email            | Amazon SES in `ap-southeast-1` (Not verified)                                                                                                                                 | Sends from Singapore beside the data; DKIM and bounce handling                                 | Postmark, Resend: no regional reason to prefer; none checked                                                                                                                   |
-| Billing          | Stripe (not checked)                                                                                                                                                          | MYR prices, invoices, customer portal                                                          | Local gateways without subscription billing                                                                                                                                    |
-| Observability    | OpenTelemetry to Cloud Trace, Monitoring and Logging; `@ai-sdk/otel`                                                                                                          | One trace from poll to notice, with model spans                                                | Vendor APM agents                                                                                                                                                              |
-| Infra and CI     | Terraform; GitHub Actions with Workload Identity Federation (not checked)                                                                                                     | Reviewed infrastructure changes; no long-lived cloud keys in CI                                | Console-built infrastructure                                                                                                                                                   |
-| Tests            | Vitest, fast-check, Playwright with axe (not checked)                                                                                                                         | Unit, property, end-to-end and accessibility checks in one pipeline                            | Bun's test runner (production runs on Node, so tests do too)                                                                                                                   |
+| Layer             | Choice and version                                                                                                                                                            | Why                                                                                       | Alternatives rejected                                                                 |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Language          | TypeScript, ESM; Node.js 22 or later on Cloud Run; Bun 1.4.4 for installs, scripts and binaries                                                                               | One language from adapters to embeds; AI SDK 7 needs Node 22+ and ESM ([AI SDK 7])        | A Python backend: splits the clause engine                                            |
+| Web               | Next.js 16.4.5 App Router, React 19.3, Cache Components ([Next.js 16.4])                                                                                                      | Route Handlers serve API, MCP, oEmbed and OG images from one deployable                   | SPA plus API server: two deployables                                                  |
+| UI                | shadcn CLI 4.23.0 on Base UI (`@base-ui/react` 1.9.0), Tailwind CSS 4.3.4, shadcn charts on Recharts 3.10.1                                                                   | Base UI is shadcn's default since July 2026 ([shadcn Base UI])                            | Radix (`radix-ui` 1.8.1): no reason to leave the default                              |
+| API               | Hono with zod route schemas generating OpenAPI 3.1, mounted in a Route Handler                                                                                                | One schema validates requests and generates `/openapi.json`, SDKs and docs                | Hand-written OpenAPI: drifts; tRPC: no public OpenAPI                                 |
+| Auth              | Better Auth 1.7.17 with organization, anonymous, `@better-auth/api-key`, MCP and `@better-auth/cimd` 1.7.17                                                                   | Organisations, guests, org API keys and an MCP OAuth provider in one Postgres schema      | Clerk: no guests or MCP provider ([Clerk API keys]); Auth.js: merged into Better Auth |
+| Database          | Cloud SQL for PostgreSQL 18 with `pg_partman` and `pg_cron` ([Cloud SQL extensions]); Drizzle ORM and Drizzle Kit                                                             | Row-level security, monthly partitions, one store for ledger and auth                     | TimescaleDB: not on Cloud SQL; Neon: idle suspend; Firestore: no RLS                  |
+| Scheduling        | Cloud Scheduler, Cloud Run jobs, Pub/Sub, Cloud Tasks                                                                                                                         | Managed cron and retries in-region; jobs run up to 168 h for backfills ([Cloud Run jobs]) | GitHub Actions cron: disabled after 60 idle days                                      |
+| Clause language   | CEL via `@bufbuild/cel` 0.6.2 ([cel-es])                                                                                                                                      | Ships cel-spec conformance data                                                           | `@marcbachmann/cel-js` 8.0.0: conformance unpublished ([cel-js])                      |
+| AI                | AI SDK 7 (`ai` 7.0.163), `@ai-sdk/google-vertex` 5.0.132, `@ai-sdk/google` 4.0.112, `@ai-sdk/anthropic` 4.0.97, `@ai-sdk/openai` 4.0.109, `@openrouter/ai-sdk-provider` 3.1.0 | One structured-output API across the five BYOK providers; `@ai-sdk/otel` spans            | Five direct provider SDKs                                                             |
+| Keys and secrets  | Cloud KMS (`@google-cloud/kms` 6.3.0), Secret Manager                                                                                                                         | Envelope encryption with a regional KEK ([KMS envelope encryption])                       | A master key in environment variables                                                 |
+| Files and parsing | Cloud Storage; DuckDB for parquet; `gtfs-realtime-bindings` for GTFS-rt                                                                                                       | Frames with lifecycle deletion; the Rapid Rail parquet read in place                      | BigQuery loads: later, for analytics                                                  |
+| Agent layer       | `@modelcontextprotocol/server` 2.4.0 (spec 2026-07-28) ([MCP TypeScript SDK]); `@a2a-js/sdk` 1.3.0 behind a flag                                                              | Stateless streamable HTTP; one tool set for remote and stdio                              | SDK v1 1.32.2: compatibility route only                                               |
+| Embeds            | Lit 3.3.3 ([Lit blog])                                                                                                                                                        | Small custom elements with shadow DOM                                                     | React in shadow roots: heavier                                                        |
+| CLI               | commander 15.0.0 on the SDK; `bun build --compile` binaries ([Bun executables])                                                                                               | Stable and small; single binaries                                                         | oclif 6.0.15: unneeded plugins; citty 0.2.2: smaller community                        |
+| Email, billing    | Amazon SES in `ap-southeast-1` (Not verified); Stripe                                                                                                                         | Sends from Singapore beside the data; MYR prices and invoices                             | Postmark, Resend: no regional reason                                                  |
+| Ops               | OpenTelemetry to Cloud Trace, Monitoring and Logging; Terraform; GitHub Actions with Workload Identity Federation; Vitest, fast-check, Playwright with axe                    | One trace from poll to notice; reviewed infrastructure; no cloud keys in CI               | Vendor APM agents; console-built infrastructure                                       |
 
 [Next.js 16.4]: https://nextjs.org/blog/next-16-4.md
 [shadcn Base UI]: https://ui.shadcn.com/docs/changelog/2026-07-base-ui-default
@@ -182,92 +156,54 @@ skyclause/
 │   ├── delivery/       outbox, email templates, ICS writer, webhook signer and retrier
 │   ├── mcp/            MCP tools, resources and prompts, shared by the remote server and `skyclause mcp`
 │   ├── sdk/            @skyclause/sdk: generated types plus pagination, SSE and webhook helpers
-│   ├── sdk-python/     skyclause on PyPI, generated from the same document
+│   ├── sdk-python/     skyclause on PyPI (P2), generated from the same document
 │   ├── cli/            skyclause CLI on commander and the SDK
 │   ├── elements/       <skyclause-status> and <skyclause-window> in Lit 3
 │   ├── skills/         Agent Skills pack source (SKILL.md per skill)
 │   └── config/         shared tsconfig, lint and Prettier settings, env schema
-├── infra/              Terraform for every Google Cloud resource
-└── .github/workflows/  CI, release, deploy
+└── infra/              Terraform for every Google Cloud resource
 ```
 
 ## Data model
 
 ### Entities and keys
 
-Better Auth owns `user` (our **account**), `member` (membership), `organization`, `session` and its own `account` table (sign-in methods, not our account); the rest are ours. Every tenant row carries `org_id`; "global" rows are the shared source catalogue.
+Better Auth owns `user` (our **account**), `member` (membership), `organization`, `session` and its own `account` table (sign-in methods). Every tenant row carries `org_id`; "global" rows are the shared source catalogue. The table lists keys and the fields engineers need; Drizzle's schema in `packages/db` is the full definition.
 
-| Entity                      | Key fields                                                                                                                                                                                                                        | Tenancy        | Notes                                                                             |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | --------------------------------------------------------------------------------- |
-| organisation                | `id`, `slug` (unique, not reserved), `name`, `plan`, `stripe_customer_id`, `deleted_at`                                                                                                                                           | root           | Better Auth `organization`, extended                                              |
-| membership                  | `org_id`, `account_id`, `role` (owner, admin, approver, editor, viewer, guest)                                                                                                                                                    | org            | Better Auth `member`; roles via `createAccessControl`                             |
-| account                     | `id`, `email`, `is_anonymous`, `locale`, `theme`, `density`, `reduced_motion`                                                                                                                                                     | auth           | Better Auth `user`                                                                |
-| guest_budget                | `device_hash`, `ip_hash`, `day`, counters for runs, tokens, evidence requests, windows                                                                                                                                            | org `commons`  | Caps per [GST-8](/docs/PRD.md#guest-access-and-the-commons-gst)                   |
-| project                     | `org_id`, `slug`, `time_zone` (default `Asia/Kuala_Lumpur`), `site` (lat, lon), `public`, `semester_ends_on`                                                                                                                      | org            | The Commons project is `commons/bukit-jalil`                                      |
-| project_pack                | `project_id`, `pack` (`sky`, `crowd`), `enabled`, `sheet_id`, `schedule` (local times and days)                                                                                                                                   | org            | The 06:45 and 07:00 runs come from here                                           |
-| source                      | `kind`, `external_id` (`0232901RF`, `CA16W`, `Ds058`, `SP17`), `owner_org_id`, `cadence_s`, `freshness`, `licence`, `attribution`, `probation`                                                                                    | global or org  | Catalogue sources have no owner; camera and Pi sources belong to one organisation |
-| project_source              | `project_id`, `source_id`, `role`                                                                                                                                                                                                 | org            | Any project may bind any catalogue source                                         |
-| poll                        | `source_id`, `started_at`, `http_status`, `latency_ms`, `outcome` (`ok`, `unchanged`, `error`), `error`                                                                                                                           | follows source | The error row; append-only, monthly partitions                                    |
-| reading                     | `source_id`, `metric`, `observed_at`, `received_at`, `device_time`, `value`, `revision`, `poll_id`                                                                                                                                | follows source | Append-only, monthly partitions                                                   |
-| indicator_snapshot          | `project_id`, `pack`, `t_eval`, `values` (name → value, unit, observed_at, age_s, state, reading IDs), `hash`                                                                                                                     | org            | Immutable; verdicts, runs and approvals point at it                               |
-| clause_sheet, sheet_version | `project_id`, `pack`; version `n`, `status` (draft, published), `content_hash`, `published_by`, `published_at`                                                                                                                    | org            | Published versions are immutable ([CLS-7](/docs/PRD.md#clauses-cls))              |
-| clause                      | `version_id`, `key`, `reads`, `requires`, `span`, `when` (CEL), `proposes`, `wording` per language                                                                                                                                | org            | One row per clause per version, so grades group by clause                         |
-| window                      | `project_id`, `title`, `starts_at`, `ends_at`, `rrule`, `declared_by`, `guest`, `expires_at`, `moderation`                                                                                                                        | org            | Guest windows expire 14 days after creation                                       |
-| shadow_state, crossing      | `project_id`, `pack`, `window_id` or site; `verdict`, `since`; crossing `from`, `to`, `at`, `snapshot_id`                                                                                                                         | org            | Crossings append-only                                                             |
-| run, run_step               | `project_id`, `pack`, `trigger`, `dedupe_key`, `sheet_version_id`, `snapshot_id`, `model`, `fallback_used`, `tokens_in`, `tokens_out`, `status`                                                                                   | org            | `run_step` records each step for resumption                                       |
-| bundle                      | `run_id`, `state`, `superseded_by`, `sla_due_at`, `expires_at`, `escalation_level`, `review_hash`                                                                                                                                 | org            | See [Bundle state machine](#bundle-state-machine)                                 |
-| call                        | `bundle_id`, `window_id` (null for pack-level items), `mode`, `watch`, `no_call`, `recommendations`, `fired`, `blocked`, `shadow_mode`, `agrees`, `decision`, `expires_at`, `crossing_at`, `drafted_at`, `approved_at`, `sent_at` | org            | Delays per [CAL-12](/docs/PRD.md#calls-and-approvals-cal)                         |
-| approval                    | `bundle_id` or `listing_id`, `call_id`, `actor_id`, `action` (approve, edit, reject, reconfirm, escalate), `diff`, `at`                                                                                                           | org            | Append-only                                                                       |
-| notice                      | `call_id`, `subscriber_id`, `channel`, `language`, `idempotency_key`, `status`, `provider_message_id`                                                                                                                             | org            | The outbox row                                                                    |
-| subscriber                  | `project_id`, `email`, `role`, `window_ids`, `language`, `consent_at`, `consent_version`, `confirmed_at`, `unsubscribed_at`, `manage_token_hash`                                                                                  | org            | No account                                                                        |
-| listing                     | `project_id`, `venue`, `title`, `doors_at`, `show_at`, `show_class`, `source_url`, `source_revision`, `sources`, `state`                                                                                                          | org            | proposed → approved → listed                                                      |
-| night, forecast             | `project_id`, `date`, `listing_ids`, `state`; forecast `baseline`, `uplift`, `forecast`, `band_low`, `band_high`, `method_version`, `created_at`                                                                                  | org            | Forecasts append-only, so each provably predates its night                        |
-| grade, review_item          | `call_id` or `night_id`, `outcome`, `observed`, `sheet_version_id`, `graded_at`; review `state`, `explanation`, `jira_key`                                                                                                        | org            | Live only; replays go to `replay_result`                                          |
-| evidence_request            | `project_id`, `requester`, `span`, `status`, `answer`, `received_at`, `drafted_at`, `approved_at`, `replied_at`                                                                                                                   | org            | Times per [LED-6](/docs/PRD.md#ledger-and-evidence-led)                           |
-| ledger_entry                | `project_id`, `seq`, `kind`, `refs`, `body`, `prev_hash`, `hash`                                                                                                                                                                  | org            | Append-only hash chain                                                            |
-| api_key                     | `org_id`, `name`, `prefix`, `hash`, `scopes` (`read`, `draft`, `admin`), `expires_at`, `rate_limit`, `created_by`                                                                                                                 | org            | Better Auth api-key plugin, org-referenced                                        |
-| ai_key, ai_usage            | `org_id` or `account_id`, `provider`, `ciphertext`, `wrapped_dek`, `kek_version`, `last4`, `declared_tier`, `priority`; usage per run                                                                                             | org or account | See [BYOK and model routing](#byok-and-model-routing)                             |
-| webhook, webhook_delivery   | `org_id`, `project_id`, `url`, `secret` (KMS-wrapped), `events`, `status`; delivery `attempt`, `status_code`, `latency_ms`, `next_at`                                                                                             | org            | Deliveries append-only                                                            |
-| share_link                  | `project_id`, `token_hash`, `role` (view, reviewer), `expires_at`, `revoked_at`                                                                                                                                                   | org            |                                                                                   |
-| rota_shift                  | `project_id`, `account_id`, `days`, `local_start`, `local_end`, `condition`, `order`                                                                                                                                              | org            | See [Approver rota and escalation](#approver-rota-and-escalation)                 |
-| audit_event                 | `org_id`, `actor` (account, API key, OAuth client, system), `action`, `target`, `before`, `after`, `ip_hash`, `at`                                                                                                                | org            | Append-only                                                                       |
+| Entity                                  | Key fields                                                                                                                                                                                 | Tenancy        | Notes                                                                                                                                                      |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| organisation, membership, account       | `slug`, `plan`, `stripe_customer_id`; membership `role`; account `email`, `is_anonymous`, `locale`                                                                                         | root, auth     | Better Auth tables, extended; `guest_budget` (device and IP hashes, daily counters) caps guests per [GST-8](/docs/PRD.md#guest-access-and-the-commons-gst) |
+| project, project_pack                   | `slug`, `time_zone`, `public`, `semester_ends_on`; pack `pack`, `enabled`, `sheet_id`, `schedule`                                                                                          | org            | The Commons project is `commons/bukit-jalil`                                                                                                               |
+| source, project_source                  | `kind`, `external_id`, `owner_org_id`, `cadence_s`, `freshness`, `licence`, `probation`; binding `role`                                                                                    | global or org  | Catalogue sources have no owner; camera and Pi sources do                                                                                                  |
+| poll, reading                           | `source_id`, `started_at`, `http_status`, `latency_ms`, `outcome`; `metric`, `observed_at`, `received_at`, `value`, `revision`                                                             | follows source | Append-only, monthly partitions                                                                                                                            |
+| indicator_snapshot                      | `project_id`, `pack`, `t_eval`, `values` (value, unit, age, state, reading IDs per name), `hash`                                                                                           | org            | Immutable; verdicts, runs and approvals point at it                                                                                                        |
+| sheet_version, clause                   | version `n`, `status`, `content_hash`, `published_by`; clause `key`, `requires`, `span`, `when`, `proposes`                                                                                | org            | Published versions immutable ([CLS-7](/docs/PRD.md#clauses-cls))                                                                                           |
+| window                                  | `starts_at`, `ends_at`, `title`, `declared_by`, `guest`, `expires_at`, `moderation`                                                                                                        | org            |                                                                                                                                                            |
+| shadow_state, crossing                  | `window_id` or site, `verdict`, `since`; crossing `from`, `to`, `at`, `snapshot_id`                                                                                                        | org            | Crossings append-only                                                                                                                                      |
+| run, run_step                           | `trigger`, `dedupe_key`, `sheet_version_id`, `snapshot_id`, `model`, `fallback_used`, tokens, `status`                                                                                     | org            | Steps make runs resumable                                                                                                                                  |
+| bundle, call                            | bundle `state`, `superseded_by`, `review_hash`, `sla_due_at`; call `mode`, `watch`, `no_call`, `fired`, `agrees`, `decision`, `expires_at`, delay times                                    | org            | Delays per [CAL-12](/docs/PRD.md#calls-and-approvals-cal)                                                                                                  |
+| approval                                | `bundle_id` or `listing_id`, `call_id`, `actor_id`, `action`, `diff`                                                                                                                       | org            | Append-only                                                                                                                                                |
+| notice                                  | `call_id`, `subscriber_id`, `channel`, `idempotency_key`, `status`, `provider_message_id`                                                                                                  | org            | The outbox row                                                                                                                                             |
+| subscriber, consent_record, suppression | subscriber `email`, `role`, `window_ids`, `language`, `confirmed_at`; consent `notice_version`, `at`, `ip_hash`; suppression `email_hash`, `reason` (bounce, complaint, unsubscribe), `at` | org            | Bounces and complaints from SES land in `suppression`; consent rows append-only                                                                            |
+| push_subscription                       | `account_id`, `endpoint`, `p256dh`, `auth`, `user_agent`, `last_ok_at`                                                                                                                     | org            | Web push for approvers                                                                                                                                     |
+| listing, night, forecast                | listing `source_url`, `source_revision`, `state`; night `date`, `state`; forecast `baseline`, `uplift`, `forecast`, `band_low`, `band_high`, `created_at`                                  | org            | Forecasts append-only, so each provably predates its night                                                                                                 |
+| grade, review_item                      | `call_id` or `night_id`, `outcome`, `sheet_version_id`; review `state`, `explanation`                                                                                                      | org            | Live only; replays go to `replay_result`                                                                                                                   |
+| evidence_request                        | `span`, `requester`, `status`, received, drafted, approved and replied times                                                                                                               | org            | Per [LED-6](/docs/PRD.md#ledger-and-evidence-led)                                                                                                          |
+| ledger_entry                            | `project_id`, `seq`, `kind`, `refs`, `body`, `prev_hash`, `hash`                                                                                                                           | org            | Append-only hash chain                                                                                                                                     |
+| api_key, ai_key, ai_usage               | key `prefix`, `hash`, `scopes`, `expires_at`; AI key `provider`, `ciphertext`, `wrapped_dek`, `kek_version`, `declared_tier`, `priority`                                                   | org or account | [BYOK](#byok-and-model-routing)                                                                                                                            |
+| webhook, webhook_delivery               | `url`, `secret` (KMS-wrapped), `events`, `verified_at`, `status`; delivery `attempt`, `status_code`, `latency_ms`                                                                          | org            | Deliveries start only after `verified_at`                                                                                                                  |
+| share_link, rota_shift                  | `token_hash`, `role`, `expires_at`, `revoked_at`; shift `account_id`, `project_id` (null on the organisation rota), `days`, `local_start`, `local_end`, `condition`, `order`               | org            |                                                                                                                                                            |
+| verification                            | `target` (Claude, ChatGPT, Gemini Enterprise, Cursor, VS Code), `client_version`, `tested_at`, `result`, `tested_by`, `notes`                                                              | global         | Backs "Verified on <date>" ([CAI-2](/docs/PRD.md#connect-your-ai-cai))                                                                                     |
+| pilot_archive                           | `project_id`, `kind` (Sheets ledger, Jira register, run traces), `object_path`, `sha256`, `captured_at`                                                                                    | org            | Read-only files, linked from the project; never in `ledger_entry`                                                                                          |
+| audit_event                             | `actor` (account, API key, OAuth client, system), `action`, `target`, `before`, `after`, `at`                                                                                              | org            | Append-only                                                                                                                                                |
 
-```mermaid
-erDiagram
-  ORGANISATION ||--o{ MEMBERSHIP : has
-  ACCOUNT ||--o{ MEMBERSHIP : holds
-  ORGANISATION ||--o{ PROJECT : owns
-  PROJECT ||--o{ PROJECT_SOURCE : binds
-  SOURCE ||--o{ PROJECT_SOURCE : "bound by"
-  SOURCE ||--o{ POLL : "polled as"
-  SOURCE ||--o{ READING : produces
-  PROJECT ||--o{ WINDOW : declares
-  PROJECT ||--o{ SHEET_VERSION : versions
-  SHEET_VERSION ||--o{ CLAUSE : contains
-  PROJECT ||--o{ RUN : runs
-  RUN ||--|| BUNDLE : produces
-  BUNDLE ||--o{ CALL : holds
-  WINDOW ||--o{ CALL : gets
-  BUNDLE ||--o{ APPROVAL : records
-  CALL ||--o{ NOTICE : sends
-  SUBSCRIBER ||--o{ NOTICE : receives
-  CALL ||--o| GRADE : "graded by"
-  PROJECT ||--o{ NIGHT : has
-  NIGHT ||--o{ FORECAST : forecasts
-  NIGHT ||--o| GRADE : "graded by"
-  PROJECT ||--o{ LEDGER_ENTRY : appends
-```
-
-### Tenancy keys and append-only tables
+### Tenancy, append-only tables and partitions
 
 - Every tenant table has `org_id NOT NULL` and, where scoped, `project_id`; foreign keys are composite (`org_id`, `project_id`), so a child row can't point into another organisation.
 - Catalogue sources (`owner_org_id IS NULL`) and their polls and readings are readable by every role, including guests and public pages; device sources are readable only inside their organisation.
 - Append-only tables: `poll`, `reading`, `indicator_snapshot`, `crossing`, `approval`, `forecast`, `grade`, `ledger_entry`, `audit_event`, `webhook_delivery`, `ai_usage`. The application role has `INSERT` and `SELECT` only, and a trigger rejects `UPDATE` and `DELETE`; retention and erasure run as a separate `retention` role ([LED-1](/docs/PRD.md#ledger-and-evidence-led)).
 - The ledger is a hash chain: `hash = sha256(prev_hash || canonical_json(body))`, with `seq` gapless per project; the integrity check walks the chain and names the first bad entry ([LED-2](/docs/PRD.md#ledger-and-evidence-led)). Bodies hold counts, roles and pseudonymous IDs, never emails, so erasure pseudonymises without breaking the chain.
 - IDs are UUIDv7 (time-ordered); authorisation never relies on an ID being secret.
-
-### Readings partitioning
-
 - `poll` and `reading` are range-partitioned by month on `started_at` and `observed_at` with `pg_partman`, which Cloud SQL lists; TimescaleDB is not on the list ([Cloud SQL extensions]). `premake` keeps three future months; a default partition catches backfilled rows outside the premade range until maintenance moves them; `pg_cron` runs `partman.run_maintenance_proc()` hourly, and the auditor alarms if next month's partition is missing.
 - Volume (our arithmetic): one JPS gauge at 288 readings a day, 68 APIMS stations × 24 = 1,632, daily Rapid Rail exits per station, a few MET rows: about 2,000 rows a day for the pilot catalogue. Partitions serve retention and vacuum, not scale.
 - Indexes: `(source_id, metric, observed_at DESC)` for latest-value reads; BRIN on `received_at` for latency reports.
@@ -301,37 +237,36 @@ export interface SourceAdapter<Raw> {
 
 ### Adapters by source
 
-| Source                             | Endpoint                                                                                                              | Cadence                                                                        | Parse and store                                                                                                                                                                                                                                          | Failure modes                                                                                                                                |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| JPS rain gauge `0232901RF`         | The JSON behind `infobanjirjpskl.water.gov.my/Rainfall/Station/75?districtId=0` (undocumented, no terms)              | Every 5 min, `observed`                                                        | 5-minute rain in mm; the first poll after binding stores the 7-day window the endpoint holds (for the pilot, from 29 October) ([day-to-day loop](/docs/ideas/02-skyclause.md#day-to-day-loop))                                                           | Path or shape may change without notice: error polls and a schema alarm; Public Infobanjir is not a fallback                                 |
-| MET warnings                       | `api.data.gov.my/weather/warning/`                                                                                    | Every 10 min, `polled`                                                         | One reading per warning keyed by `issued`, `title_en` and `valid_from`; `title_bm`, `title_en`, `heading_en`, `text_en`, `valid_from`, `valid_to` stored verbatim; in force only between `valid_from` and `valid_to` ([SIG-4](/docs/PRD.md#signals-sig)) | Shares the Weather API's 4 a minute with the forecast; a 15 October warning was still listed on 5 November                                   |
-| MET forecast, Kuala Lumpur `Ds058` | `api.data.gov.my/weather/forecast/?contains=Kuala%20Lumpur@location__location_name`                                   | Daily data; polled every 6 h, stored on change, `polled`                       | Seven days of morning, afternoon, night and summary text in Malay, minimum and maximum temperature; drives the "forecast storm afternoon" rota condition                                                                                                 | Stale when no row covers today                                                                                                               |
-| DOE APIMS                          | `eqms.doe.gov.my/api3/publicportalapims/mapcaqm`; history at `.../apitablehourly?stateid=<n>&datetime=<epoch>`        | Hourly data; polled every 15 min, `observed`                                   | All 68 stations per hour by `STATION_ID` and `RECORD_DT`; defaults `CA16W` Cheras, Petaling Jaya and Putrajaya; binding backfills three days so "the last three 06:00 readings" exist                                                                    | CORS-locked, so server-side only; undocumented; PM2.5 and PM10 enter as 24-hour averages, so the index lags (shown, not corrected)           |
-| Rapid Rail origin-destination      | Metadata in `data-gov-my/datagovmy-meta`; file `storage.data.gov.my/transportation/rail/rapidrail_2026_daily.parquet` | Metadata every 30 min once `next_update` passes; file when as-of advances      | DuckDB sums exits per destination station per day, excluding `A0: All Stations` or every count doubles; `SP17` exits feed the Crowd grade; the file is kept in Cloud Storage by as-of date                                                               | Late file: grade "pending until" `next_update` ([SIG-11](/docs/PRD.md#signals-sig)); schema change: error poll; the year rolls the file name |
-| GTFS Realtime                      | `api.data.gov.my/gtfs-realtime/vehicle-position/prasarana/?category=rapid-bus-kl` and `rapid-bus-mrtfeeder`           | Every 60 s during arrival and exit periods only, started by the evaluator tick | Protobuf decoded; vehicles kept inside a polygon around `SP17` and TPM; T580 segment times `KL149` → `KL2009` written; raw positions dropped once segment times exist                                                                                    | 2 of the API's 4 a minute; out-of-area positions (E028) dropped; missing positions mean missing telemetry, not a cancelled bus               |
-| GTFS Static                        | `api.data.gov.my/gtfs-static/prasarana/?category=<cat>`                                                               | Daily 04:00                                                                    | Stops, routes and scheduled times for segment baselines                                                                                                                                                                                                  | Calendars end (MRT feeder 6 December 2026): stale after expiry                                                                               |
-| GoLive                             | `golive-asia.com/api/event/list`                                                                                      | Hourly, `polled`                                                               | Shows at the Bukit Jalil complex become `listing` rows in `proposed` with URL; `Z`-suffixed times stored raw and flagged until verified as local                                                                                                         | Undocumented; terms ban only ticket bots; single-source listings flagged ([SIG-13](/docs/PRD.md#signals-sig))                                |
-| Wikipedia stadium and arena pages  | MediaWiki API, `action=query&prop=revisions`                                                                          | Daily, by revision ID (1381307107 and 1381135293 on 5 November)                | A new revision is parsed into listings carrying URL and revision; CC BY-SA 4.0 share-alike applies to derived listings                                                                                                                                   | Vandalism and cancelled shows: every listing passes a person ([CAL-14](/docs/PRD.md#calls-and-approvals-cal))                                |
-| Camera PWA, Pi 5                   | `POST /v1/ingest/{sourceId}`                                                                                          | Camera every 10 min in daylight; Pi as configured                              | See [Device sources](#device-sources)                                                                                                                                                                                                                    | Device silence and buffering                                                                                                                 |
+This table is the one source for poll intervals; PRD's [NFR-1](/docs/PRD.md#non-functional-requirements) links here, and endpoints, licences and live checks are in the linked research.
 
-Endpoint facts come from [data sources](/docs/research/data-sources.md#met-malaysia-warnings), [APIMS](/docs/research/data-sources.md#doe-apims-air-pollutant-index), [Rapid Rail](/docs/research/data-sources.md#rapid-rail-origin-destination-ridership), [GTFS Realtime](/docs/research/data-sources.md#bus-and-train-positions-gtfs-realtime) and Fanfall's [real data](/docs/ideas/04-fanfall.md#real-data-and-privacy).
+| Source                                                                                                  | Poll cadence                                                                  | Parse and store                                                                                                                                                                                                    | Failure handling                                                                                              |
+| ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| [JPS rain gauge `0232901RF`](/docs/ideas/02-skyclause.md#day-to-day-loop)                               | Every 5 min, `observed`                                                       | 5-minute rain in mm; the first poll after binding stores the 7-day window the endpoint holds (for the pilot, from 29 October)                                                                                      | Undocumented JSON may change: error polls and a schema alarm; Public Infobanjir is not a fallback             |
+| [MET warnings](/docs/research/data-sources.md#met-malaysia-warnings)                                    | Every 10 min, `polled`                                                        | One reading per warning keyed by `issued`, `title_en`, `valid_from`; text stored verbatim; in force only between `valid_from` and `valid_to` ([SIG-4](/docs/PRD.md#signals-sig))                                   | Shares the Weather API's 4 a minute with the forecast; old warnings stay listed, so the window decides        |
+| [MET forecast `Ds058`](/docs/research/data-sources.md#weather-forecasts-for-campus)                     | Every 6 h, stored on change, `polled`                                         | Seven days of Malay period text and temperatures; sets `site.met_afternoon_thunderstorm` for the rota                                                                                                              | Stale when no row covers today                                                                                |
+| [DOE APIMS](/docs/research/data-sources.md#doe-apims-air-pollutant-index)                               | Every 15 min for hourly data, `observed`                                      | All 68 stations by `STATION_ID` and `RECORD_DT`; defaults `CA16W` Cheras, `CA19B` Petaling Jaya and `CA17W` Putrajaya; binding backfills three days from the hourly history so the last three 06:00 readings exist | Server-side only (CORS); undocumented; the index lags as 24-hour averages, shown, not corrected               |
+| [Rapid Rail origin-destination](/docs/research/data-sources.md#rapid-rail-origin-destination-ridership) | Metadata every 30 min once `next_update` passes; the file when as-of advances | DuckDB sums daily exits per station, excluding `A0: All Stations`; `SP17` exits feed the Crowd grade; the file is kept in Cloud Storage by as-of date                                                              | Late: "pending until" `next_update` ([SIG-11](/docs/PRD.md#signals-sig)); schema change: error poll           |
+| [GTFS Realtime](/docs/research/data-sources.md#bus-and-train-positions-gtfs-realtime)                   | Every 60 s in arrival and exit periods only, started by the evaluator tick    | `rapid-bus-kl` and `rapid-bus-mrtfeeder` decoded; vehicles inside a polygon around `SP17` and TPM; T580 segment times `KL149` → `KL2009` written, raw positions dropped                                            | 2 of the API's 4 a minute; out-of-area positions dropped; missing positions mean missing telemetry            |
+| [GTFS Static](/docs/research/data-sources.md#routes-and-stops-near-apu-gtfs-static)                     | Daily at 04:00                                                                | Stops, routes and scheduled times for segment baselines                                                                                                                                                            | Stale once a feed calendar ends                                                                               |
+| [GoLive](/docs/ideas/04-fanfall.md#real-data-and-privacy)                                               | Hourly, `polled`                                                              | Bukit Jalil complex shows become `proposed` listings with URL; `Z`-suffixed times stored raw and flagged                                                                                                           | Single-source listings flagged ([SIG-13](/docs/PRD.md#signals-sig))                                           |
+| [Wikipedia stadium and arena pages](/docs/ideas/04-fanfall.md#real-data-and-privacy)                    | Daily, by revision ID                                                         | A new revision is parsed into listings carrying URL and revision; share-alike applies to derived listings                                                                                                          | Vandalism and cancelled shows: every listing passes a person ([CAL-14](/docs/PRD.md#calls-and-approvals-cal)) |
+| Camera PWA, Pi 5                                                                                        | Camera every 10 min in daylight; Pi as configured                             | `POST /v1/ingest/{sourceId}`; see [Device sources](#device-sources)                                                                                                                                                | Device silence and buffering                                                                                  |
+
+`CA17W` and `CA19B` were checked in a live capture of `https://eqms.doe.gov.my/api3/publicportalapims/mapcaqm` at 21:12 MYT on 5 November 2026 (API 62 and 57, record time 21:00).
 
 ### Freshness, staleness and recovery
 
 - Input states: fresh, stale, error, recovered ([SIG-3](/docs/PRD.md#signals-sig)), plus `probation` and `off_hours` for the camera.
 - `observed` sources: age is `t_eval − observed_at` of the newest reading; stale after two missed intervals (JPS 10 minutes, APIMS 2 hours, camera 20 minutes in daylight).
 - `polled` sources (warnings, forecast, listings): age is time since the last `ok` or `unchanged` poll, because an unchanged warning list is still current; stale after two missed or failed polls.
-- Error: the latest poll failed; the state names the HTTP status and since when.
-- Recovered: the first good reading after stale or error marks the input recovered and names it on the next call; clauses use it only from the next fresh reading.
-- Rapid Rail is "pending" until its `next_update`, then stale after two missed polls.
-- Ages are computed at `t_eval` and frozen in the indicator snapshot, so a replay reproduces them exactly.
+- Error: the latest poll failed, naming the HTTP status and since when. Recovered: the first good reading after stale or error marks the input recovered and names it on the next call; clauses use it only from the next fresh reading.
+- Rapid Rail is "pending" until its `next_update`, then stale after two missed polls. Ages are computed at `t_eval` and frozen in the indicator snapshot, so a replay reproduces them exactly.
 
 ### Device sources
 
 - **Camera PWA** ([SIG-8](/docs/PRD.md#signals-sig), [SIG-9](/docs/PRD.md#signals-sig)): Chrome on an Android phone on a charger with the page in front and a screen wake lock, the only setup that keeps reporting ([pages left running](/docs/research/iot-and-network.md#web-pages-and-pwas-left-running)). The page masks the lower third before any pixel leaves the device, scores near-landmark and far-skyline contrast against a clear-day reference on the phone ([edge processing](/docs/research/iot-and-network.md#edge-versus-cloud-processing)), and posts two ratios, a small JPEG and `device_time` every 10 minutes. Offline, it queues in IndexedDB and uploads in order with original times and an idempotency key; the server adds `received_at`, so latency shows per reading. Frames go to Cloud Storage under `frames/{project}/{date}/`.
 - **Probation:** `source.probation` stays true until two labellers agree with the phone's flag on at least 90% of at least 100 daylight frames, including at least 10 obscured; until then the registry marks camera indicators unusable in clauses. Outside the project's daylight hours the camera is `off_hours`, which clauses treat as an absent optional input, not as stale.
-- **Pi 5** ([SIG-10](/docs/PRD.md#signals-sig)): the device agent in `packages/sources` is compiled with Bun for `bun-linux-arm64` and runs under systemd with `Restart=always`, `StartLimitIntervalSec=0` and the hardware watchdog ([services and watchdogs](/docs/research/iot-and-network.md#services-and-watchdogs)). It stamps nothing before NTP sync, since the board has no RTC battery ([power and the RTC](/docs/research/iot-and-network.md#power-undervoltage-and-the-rtc)); buffers to an append-only JSON-lines file with `fsync`, kept small because power cuts corrupt SD cards; uploads in order on reconnect; and sends a heartbeat each minute. Posts stopping for 60 minutes mark the source offline. On the platform, GTFS-rt decoding and the ridership reduction run in cloud adapters; the Pi is an optional project device.
-- **Device auth:** one token per device from the api-key plugin, scoped to `ingest` on one source, rotated in project settings.
+- **Pi 5** ([SIG-10](/docs/PRD.md#signals-sig)): the device agent in `packages/sources` is compiled with Bun for `bun-linux-arm64` and runs under systemd with `Restart=always`, `StartLimitIntervalSec=0` and the hardware watchdog ([services and watchdogs](/docs/research/iot-and-network.md#services-and-watchdogs)). It stamps nothing before NTP sync, since the board has no RTC battery ([power and the RTC](/docs/research/iot-and-network.md#power-undervoltage-and-the-rtc)); buffers to an append-only JSON-lines file with `fsync`, kept small because power cuts corrupt SD cards; uploads in order on reconnect; and sends a heartbeat each minute. Posts stopping for 60 minutes mark the source offline. On the platform, GTFS-rt decoding and the ridership reduction run in cloud adapters; the Pi is an optional project device. Device auth: one token per device from the api-key plugin, scoped to `ingest` on one source, rotated in project settings.
 
 ## Clause engine
 
@@ -350,14 +285,11 @@ A clause, here the default Storm confirmed from the [Skyclause clause sheet](/do
 
 ```yaml
 key: storm_confirmed
-pack: sky
-name: Storm confirmed
 requires: [w.rain_max_60m_mm]
 span: { from: end-30m, to: end+60m }
 when: w.rain_max_60m_mm >= 31.0
 proposes: { mode: commute_disruption }
-wording:
-  en: Storm confirmed at the JPS gauge (Lebat class)
+wording: { en: Storm confirmed at the JPS gauge (Lebat class) }
 ```
 
 - Each adapter declares its indicators with name, CEL type (`double`, `int`, `bool`, `timestamp`, `duration`, `list`), unit, scope (`site` or `window`) and source kind; window-scoped indicators (prefix `w.`) are computed by the engine over each window's span, site-scoped ones (prefix `site.`) once per evaluation. The CEL environment declares `site` and `w` from the registry, so an unknown name or a type mismatch fails `check` and the sheet can't publish.
@@ -379,26 +311,7 @@ wording:
 
 ### Explanations, versions and replays
 
-```ts
-type ClauseExplanation = {
-  clause: string // 'storm_confirmed'
-  sheet_version: number
-  result: 'fired' | 'not_fired' | 'blocked'
-  when: string // the CEL condition as published
-  span?: { from: string; to: string; complete: boolean }
-  inputs: Array<{
-    indicator: string // 'w.rain_max_60m_mm'
-    source: string // '0232901RF'
-    value: number | string | boolean | null // null only with state error or stale
-    unit?: string
-    observed_at: string // RFC 3339
-    age_s: number
-    state: 'fresh' | 'stale' | 'error' | 'recovered' | 'probation' | 'off_hours'
-    reading_ids: string[]
-  }>
-}
-```
-
+- **Explanations.** `explain` returns, per clause, the key, sheet version, result (fired, not fired, blocked), the CEL condition as published, the span with a `complete` flag, and each input's indicator name, source ID (such as `0232901RF`), value (null only when stale or erroring), unit, `observed_at`, age, state and reading IDs. Call pages, `explain_call` and evidence packs render this one shape.
 - **Versions.** Every save is a draft; publishing runs `check`, shows the diff against the live version and a 30-day replay of which calls would change, labelled replay, and makes an immutable numbered version ([CLS-8](/docs/PRD.md#clauses-cls)). Only Approver and above can publish, from a human session; API keys can't. Each run pins the version it used.
 - **Determinism.** `evaluate` is pure: no clock, I/O or randomness. The same version hash, snapshot hash, windows and `t_eval` give the same verdict hash, stored on each run so a later replay proves it.
 - **Replays.** Any version or draft over recorded readings or a published dataset (the Rapid Rail yearly files, the Sensor.Community archive) writes `replay_result` rows; every output says "replay", never enters live grades and is never shown when a live source fails ([CLS-9](/docs/PRD.md#clauses-cls)).
@@ -409,85 +322,32 @@ type ClauseExplanation = {
 
 ### Agent inputs and output schema
 
-The orchestrator assembles every input before the call, as JSON data blocks: the pinned clause sheet (keys, conditions, wording), the indicator snapshot with values, units, states and ages, MET warning text verbatim, the windows at risk as IDs with start and end times, candidate recipients as opaque IDs with role and language, and yesterday's grades. Window titles, emails and names never enter a prompt; they are filled in after drafting ([NFR-11](/docs/PRD.md#non-functional-requirements)). The agent does not see the shadow verdict, so agreement between the two measures something.
+The orchestrator assembles every input before the call, as JSON data blocks: the pinned clause sheet (keys, conditions, wording), the indicator snapshot with values, units, states and ages, MET warning text verbatim, the windows at risk as IDs with start and end times, candidate recipients as opaque IDs with role and language, and yesterday's grades. Window titles, emails and names never enter a prompt; they are filled in after drafting ([NFR-11](/docs/PRD.md#non-functional-requirements)). The agent doesn't see the shadow verdict, so their agreement measures something.
 
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://api.skyclause.com/schemas/proposed-bundle.json",
-  "type": "object",
-  "additionalProperties": false,
-  "required": ["pack", "calls", "items"],
-  "properties": {
-    "pack": { "enum": ["sky", "crowd"] },
-    "calls": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "window_id",
-          "mode",
-          "watch",
-          "no_call",
-          "fired",
-          "recommendations",
-          "recipients",
-          "notices",
-          "reason"
-        ],
-        "properties": {
-          "window_id": { "type": "string" },
-          "mode": {
-            "enum": ["normal", "outdoor_limited", "commute_disruption", "hybrid_recommended", "surge_night", null]
-          },
-          "watch": { "type": "boolean" },
-          "no_call": { "type": ["array", "null"], "items": { "type": "string", "description": "indicator name" } },
-          "fired": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["clause", "inputs"],
-              "properties": {
-                "clause": { "type": "string" },
-                "inputs": { "type": "array", "items": { "type": "string" } }
-              }
-            }
-          },
-          "recommendations": {
-            "type": "array",
-            "items": { "enum": ["keep_with_advisory", "shift_start", "shift_end", "ask_shuttle", "leave_before_doors"] }
-          },
-          "recipients": { "type": "array", "items": { "type": "string", "description": "candidate recipient ID" } },
-          "notices": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["language", "subject", "body"],
-              "properties": {
-                "language": { "enum": ["en", "ms"] },
-                "subject": { "type": "string", "maxLength": 120 },
-                "body": { "type": "string", "maxLength": 2000 }
-              }
-            }
-          },
-          "reason": { "type": "string", "maxLength": 1500 }
-        }
-      }
-    },
-    "items": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["kind", "night_id"],
-        "properties": { "kind": { "const": "surge_night_entry" }, "night_id": { "type": "string" } }
-      }
-    }
-  }
-}
+```ts
+// packages/agent/schema.ts: the proposed bundle, passed to AI SDK structured output
+const Notice = z.object({ language: z.enum(['en', 'ms']), subject: z.string().max(120), body: z.string().max(2000) })
+const Call = z.object({
+  window_id: z.string(),
+  mode: z.enum(['normal', 'outdoor_limited', 'commute_disruption', 'hybrid_recommended', 'surge_night']).nullable(),
+  watch: z.boolean(),
+  no_call: z.array(z.string()).nullable(), // indicator names that block the call
+  fired: z.array(z.object({ clause: z.string(), inputs: z.array(z.string()) })),
+  recommendations: z.array(
+    z.enum(['keep_with_advisory', 'shift_start', 'shift_end', 'ask_shuttle', 'leave_before_doors'])
+  ),
+  recipients: z.array(z.string()), // candidate recipient IDs only
+  notices: z.array(Notice),
+  reason: z.string().max(1500)
+})
+export const ProposedBundle = z.object({
+  pack: z.enum(['sky', 'crowd']),
+  calls: z.array(Call),
+  items: z.array(z.object({ kind: z.literal('surge_night_entry'), night_id: z.string() }))
+})
 ```
 
-After the model returns, `validate` enforces what the schema can't, and a failure leaves the run "No draft" with the reason (one repair attempt first):
+After the model returns, `validate` enforces what the schema can't, and a failure leaves the run "No draft" with the reason (after one repair attempt):
 
 - every fired clause exists in the pinned version, and every cited input exists in the snapshot;
 - every number in a notice appears in the snapshot or the window times (the model never computes);
@@ -499,10 +359,11 @@ Then each call is compared with the shadow verdict (`agrees`), and disagreements
 
 ### Model routing for the agent
 
-- Defaults on Vertex AI, pinned per release in `packages/agent/models.ts`: `gemini-3.8-flash` for drafts (released 2 September 2026, retirement no earlier than 2 September 2027) and `gemini-4-argon` for review-item drafts after grading (13 October 2026, no earlier than 13 October 2027) ([model versions]). Never `gemini-3.6-flash`, which Agent Platform retires on 19 November 2026 although AI Studio labels it Stable, nor the deprecated `gemini-2.5-*` ([AI Studio models]).
-- Endpoint `global`, which gives no data residency. Singapore ML processing is listed for `gemini-4-argon`, `gemini-3.5-flash` and `gemini-2.5-flash`, not `gemini-3.8-flash`, so an in-region option drafts with `gemini-4-argon` at its price ([data residency]).
-- A model change ships only with an eval report; organisation keys and fallback are in [BYOK and model routing](#byok-and-model-routing).
+- Defaults on Vertex AI, pinned per release in `packages/agent/models.ts`: `gemini-3.8-flash` for drafts and `gemini-4-argon` for review-item drafts after grading.
+- Release and retirement dates are external, checked 5 November 2026 on Google's [model versions] page, and not in the repo's research: `gemini-3.8-flash` released 2 September 2026, retiring no earlier than 2 September 2027; `gemini-4-argon` released 13 October 2026, no earlier than 13 October 2027; `gemini-3.6-flash` retires 19 November 2026 although [AI Studio's model list][AI Studio models] labels it Stable, so it is never used, nor the deprecated `gemini-2.5-*`, which reroute on 1 December 2026.
+- Endpoint `global`, which gives no data residency. Singapore ML processing is listed for `gemini-4-argon`, `gemini-3.5-flash` and `gemini-2.5-flash`, not `gemini-3.8-flash`, so an in-region option drafts with `gemini-4-argon` at its price ([data residency]; external, checked 5 November 2026). A model change ships only with an eval report; organisation keys and fallback are in [BYOK and model routing](#byok-and-model-routing).
 
+[model versions]: https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/model-versions
 [AI Studio models]: https://aistudio.google.com/docs/models
 
 ### Prompt-injection defences
@@ -510,8 +371,7 @@ Then each call is compared with the shadow verdict (`agrees`), and disagreements
 - **No tools.** The agent receives a fully assembled input and returns one structured object; it can't fetch, write or send. Only an approved bundle reaches people.
 - **Data is data.** Listings, forwarded emails, MET warning text and evidence-request text are JSON-encoded inside delimited data blocks, and the system prompt says they carry no instructions; window titles never enter at all.
 - **Output checks** above: recipients by ID, numbers traced to the snapshot, links allow-listed, required lines from templates.
-- **Free-tier keys** get no recipient roles (see [BYOK](#byok-and-model-routing)); nothing personal is in any prompt by construction.
-- Injection strings in the eval suite are test inputs, not product data.
+- **Free-tier keys** get no recipient roles ([BYOK](#byok-and-model-routing)); nothing personal is in any prompt by construction. Injection strings in the eval suite are test inputs, not product data.
 
 ### Agent evals and budgets
 
@@ -545,37 +405,36 @@ stateDiagram-v2
   Superseded --> [*]
 ```
 
-- **Supersession:** a newer bundle covering every window of an open one supersedes it, links to it and blocks its approval; with partial overlap only the overlapping calls are superseded.
-- **Expiry** ([CAL-8](/docs/PRD.md#calls-and-approvals-cal)): each call's `expires_at` is its window's start, or its end when Storm confirmed or Flash-flood risk fired it; a Cloud Tasks task per call marks it expired, pack-level items such as a surge-night entry expire when the night's arrival period starts; an expired call is never sent, and the bundle expires when its last call does. Expired calls are still graded, so an unapproved crossing shows up in review.
+- **Supersession:** a newer bundle covering every window of an open one supersedes it, links to it and blocks its approval; with partial overlap only the overlapping calls are superseded ([CAL-7](/docs/PRD.md#calls-and-approvals-cal)).
+- **Expiry** ([CAL-8](/docs/PRD.md#calls-and-approvals-cal)): each call's `expires_at` is its window's start, or its end when Storm confirmed or Flash-flood risk fired it; pack-level items such as a surge-night entry expire when the night's arrival period starts. A Cloud Tasks task per call marks it expired, an expired call is never sent, and the bundle expires when its last call does. Expired calls are still graded, so an unapproved crossing shows up in review.
 - **Re-check at approval** ([CAL-9](/docs/PRD.md#calls-and-approvals-cal)): Approve sends the `review_hash` the approver saw; the server re-evaluates with current inputs and, if any input value, state or verdict differs, answers 409 `inputs-changed` with a "changed since drafting" diff; confirming records `reconfirm` and approves against the new snapshot.
-- **Who can approve:** Approver, Admin or Owner (roles are cumulative; [roles](/docs/PRD.md#roles-and-permissions)), from a human session authenticated within 12 hours ([ACC-8](/docs/PRD.md#accounts-and-sign-in-acc)). The approve endpoint is first-party only (`app.skyclause.com/api/bundles/{id}/approve`), absent from `/openapi.json` and the SDKs; API keys and OAuth tokens get 403.
+- **Who can approve** is PRD's [roles matrix](/docs/PRD.md#roles-and-permissions), checked at approval time, from a human session with recent authentication ([ACC-8](/docs/PRD.md#accounts-and-sign-in-acc)). The approve endpoint is first-party only (`app.skyclause.com/api/bundles/{id}/approve`), absent from `/openapi.json` and the SDKs; API keys and OAuth tokens get 403.
 - **Listings** use the same queue and `approval` rows: proposed → approved → listed; a change or cancellation needs approval ([CAL-14](/docs/PRD.md#calls-and-approvals-cal)).
 
 ### Approver rota and escalation
 
-- `rota_shift` rows give days, local start and end, an optional condition and an order. Conditions read indicators, so the defaults work unattended: 14:00–19:15 MYT when `site.met_afternoon_thunderstorm` is true (from the MET forecast text) and 08:00–22:00 on surge nights.
-- On Needs review, everyone on duty is notified within 30 seconds (in-app and email); the bundle records who and when ([CAL-10](/docs/PRD.md#calls-and-approvals-cal)).
-- `sla_due_at` defaults to 10 minutes for a Sky crossing and 2 hours for a Crowd outlook; a Cloud Tasks task at that time escalates to the next on the rota, then to Admins and Owners at the next interval, each step an `approval` row with `action = escalate` and an audit event ([CAL-11](/docs/PRD.md#calls-and-approvals-cal)).
+- `rota_shift` rows hold the organisation rota and per-project overrides ([ORG-4](/docs/PRD.md#organisations-org), [PRJ-7](/docs/PRD.md#projects-prj)). Shift conditions read indicators, so templates work unattended: the storm-afternoon template applies when `site.met_afternoon_thunderstorm` is true, the surge-night template when a night is listed.
+- **Approver alerts** go to everyone on duty when a bundle enters Needs review, by web push and email at once, plus in-app. Web push uses VAPID keys from Secret Manager, a service worker registered at `app.skyclause.com/sw.js` and one `push_subscription` per device; the sender posts to each push endpoint within 30 seconds of Needs review and records the push service's response, and email goes through the same outbox. A 404 or 410 from a push service deletes that subscription. Who was alerted, by which channel and when is stored on the bundle ([CAL-10](/docs/PRD.md#calls-and-approvals-cal)).
+- **Shift reminders:** a Cloud Tasks task 30 minutes before each conditional shift that will apply (for example, a storm afternoon in the morning's MET forecast) reminds the approver by push and email; no reminder means no shift.
+- **Escalation:** `sla_due_at` comes from the project's SLA ([PRJ-7](/docs/PRD.md#projects-prj)); a Cloud Tasks task at that time alerts the next approver on the rota, then Admins and Owners one SLA later, each step an `approval` row with `action = escalate` and an audit event ([CAL-11](/docs/PRD.md#calls-and-approvals-cal)).
 
 ### Channels and sends
 
 - **Outbox.** Approval inserts `notice` rows in the same transaction, each with `idempotency_key = sha256(bundle_id, call_id, subscriber_id, channel)` under a unique index. The sender claims rows with `FOR UPDATE SKIP LOCKED`, sends and stores the provider message ID; a crash between send and record can repeat one email at worst, and the key prevents any second row.
 - **Email:** Amazon SES in `ap-southeast-1` (proposed; Not verified). The sending domain `notices.skyclause.com` publishes SPF, DKIM (2048-bit) and DMARC at `p=quarantine`, moving to `p=reject` after a month of clean reports. Every notice has a plain-text part, `List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058), the line "Skyclause is not a safety or emergency service. In an emergency, call 999." and source attributions; bounces and complaints suppress the address ([NTC](/docs/PRD.md#notices-and-channels-ntc)).
 - **ICS:** `/p/{org}/{project}/calendar.ics` (RFC 5545) with one `VEVENT` per sent non-Normal call or surge night; `UID` `call-{id}@skyclause.com` is stable, `SEQUENCE` rises on supersession, and a withdrawn entry becomes `STATUS:CANCELLED`; the description lists fired clauses with input ages and the permalink; `ETag` and `Last-Modified` make polling cheap. How often Outlook and Google refresh subscribed calendars is Not verified, so a Sky crossing never relies on ICS alone.
-- **Webhooks:** HTTPS endpoints that pass the SSRF guard; each delivery is signed and retried as below; an endpoint failing for 24 hours is disabled and Admins are emailed.
+- **Webhooks:** HTTPS endpoints that pass the SSRF guard. **Ownership proof first:** on creation the endpoint receives a `webhook.verify` POST carrying a random challenge and must answer 200 with that challenge in the body within 10 seconds; until it does, `verified_at` is null and no event is delivered. Each delivery is then signed and retried as below; an endpoint failing for 24 hours is disabled and Admins are emailed.
 
 ```ts
 // Headers: Skyclause-Webhook-Id, Skyclause-Webhook-Timestamp (Unix seconds), Skyclause-Signature: v1=<hex>
-const signed = `${id}.${timestamp}.${rawBody}`
-const expected = hex(hmacSha256(endpointSecret, signed))
-// Receivers reject when |now - timestamp| > 300 s or the signature differs (constant-time compare),
-// and drop repeats of the same Skyclause-Webhook-Id, which stays constant across retries.
-// Retries after a non-2xx or 10 s timeout: 1 min, 5 min, 30 min, 2 h, 6 h, 12 h, and a last attempt
-// 24 h after the first, each with ±10% jitter (NTC-5).
+const expected = hex(hmacSha256(endpointSecret, `${id}.${timestamp}.${rawBody}`))
+// Receivers reject when |now - timestamp| > 300 s or the signature differs (constant-time compare), and drop
+// repeats of an id, which stays constant across retries. Retries after a non-2xx or a 10 s timeout: 1 min, 5 min,
+// 30 min, 2 h, 6 h, 12 h, and a last attempt 24 h after the first, each with ±10% jitter (NTC-5).
 ```
 
 - **In-app:** the bundle event stream updates the dashboard, approvals queue and the live favicon.
-- **Phase 2:** Microsoft Graph (Outlook mail and calendar, since APU runs Microsoft 365) and Jira Cloud as a decision register mirroring ledger entries and review items, each a per-organisation OAuth connection whose refresh token is KMS-wrapped; both send through the same outbox ([NTC-11](/docs/PRD.md#notices-and-channels-ntc)).
+- **P2:** Microsoft Graph (Outlook mail and calendar, since APU runs Microsoft 365) and Jira Cloud as a decision register mirroring ledger entries and review items, each a per-organisation OAuth connection whose refresh token is KMS-wrapped; both send through the same outbox ([NTC-11](/docs/PRD.md#notices-and-channels-ntc)).
 
 ## Grading
 
@@ -583,24 +442,9 @@ Outcomes are PRD's [Grades and analysis (ANL)](/docs/PRD.md#grades-and-analysis-
 
 - **Sky, nightly at 23:55 MYT** for windows whose span closed: the observed mode is the pinned sheet version evaluated on complete readings over the span (gauge, APIMS, warnings in force; the camera only after probation). Hit: call above Normal and observed above Normal; miss: Normal, rejected or expired with observed above Normal; false alarm: above Normal, observed Normal; correct Normal. No call windows are counted separately, a different non-Normal mode is recorded as `mode_diff`, and a rejected call is graded on what was proposed, so a rejection can be judged right or wrong.
 - **Crowd, on D+1** when the Rapid Rail as-of date passes night D: actual `SP17` exits against the forecast written before the night. In band when `band_low ≤ actual ≤ band_high`; out of band otherwise; unlisted surge when no listed night explains actual minus baseline at or above the sheet's threshold. Until the file lands the grade is "pending until" `next_update`.
-- **Metrics** per pack, clause and period: precision = hits ÷ (hits + false alarms); recall = hits ÷ (hits + misses); false-alarm ratio = false alarms ÷ (hits + false alarms); band coverage = in band ÷ graded nights; absolute percentage error = |actual − forecast| ÷ actual; agent–shadow agreement = agreeing calls ÷ graded calls, excluding stale-input cases; delays crossing → approved → sent at p50 and p95. Every figure prints n, the Wilson 95% interval and the date range; with n = 0 it prints n = 0.
-
-```ts
-// Wilson score interval; z = 1.96 for 95%
-export function wilson(x: number, n: number, z = 1.96): [number, number] | null {
-  if (n === 0) return null
-  const p = x / n
-  const d = 1 + (z * z) / n
-  const c = p + (z * z) / (2 * n)
-  const r = z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))
-  return [(c - r) / d, (c + r) / d]
-}
-// Unit checks from the repo: wilson(40, 50) ≈ [0.67, 0.89] (judging research);
-// wilson(7, 8) ≈ [0.53, 0.98] and wilson(7, 21) ≈ [0.17, 0.55] (Fanfall's surge flag).
-```
-
-- **Review items:** a miss, false alarm, expired call above Normal, out-of-band night or unlisted surge opens one `review_item` for the project's approvers; Jira mirrors them in Phase 2 ([ANL-4](/docs/PRD.md#grades-and-analysis-anl)). The next 06:45 run receives yesterday's grades.
-- Analysis views are materialised nightly from `grade`; replays live only in `replay_result` ([accuracy method](/docs/research/judging.md#measuring-an-agents-accuracy-honestly)).
+- **Metrics** per pack, clause and period: precision = hits ÷ (hits + false alarms); recall = hits ÷ (hits + misses); false-alarm ratio = false alarms ÷ (hits + false alarms); band coverage = in band ÷ graded nights; absolute percentage error = |actual − forecast| ÷ actual; agent–shadow agreement = agreeing calls ÷ graded calls, excluding stale-input cases; delays crossing → approved → sent at p50 and p95. Every figure prints n, the Wilson 95% interval and the date range; with n = 0 it prints n = 0. The interval is Wilson's score interval with z = 1.96: (p̂ + z²/2n ± z·√(p̂(1 − p̂)/n + z²/4n²)) ÷ (1 + z²/n), where p̂ = x/n; unit tests check it against 40 of 50 (0.67–0.89) from the [judging research](/docs/research/judging.md#measuring-an-agents-accuracy-honestly) and 7 of 8 (0.53–0.98) from Fanfall.
+- **Review items:** a miss, false alarm, expired call above Normal, out-of-band night or unlisted surge opens one `review_item` for the project's approvers; Jira mirrors them from P2 ([ANL-4](/docs/PRD.md#grades-and-analysis-anl)). The next 06:45 run receives yesterday's grades.
+- Analysis views are materialised nightly from `grade`; replays live only in `replay_result`.
 
 ## API
 
@@ -610,12 +454,11 @@ export function wilson(x: number, n: number, z = 1.96): [number, number] | null 
 - **Auth:** `Authorization: Bearer` with an organisation API key (scopes `read`, `draft`, `admin`, capped by the creator's role), an OAuth access token (`read`, `draft`; audience-checked) or a first-party session ([roles](/docs/PRD.md#roles-and-permissions)). Approval and clause publishing are not in `/v1`.
 - **Shape:** JSON with `snake_case` fields, RFC 3339 UTC timestamps, ages in whole seconds. A source failure is data, not an empty value: readings and indicators carry `state`, and No call carries the input and since when.
 - **Pagination:** `limit` (1–200, default 50) and an opaque `cursor`; responses are `{ "data": [...], "next_cursor": null }` with a string cursor while more remain.
-- **Rate limits:** per key from the api-key plugin, and per IP hash for public and guest routes; over the limit, `429` with `Retry-After` (seconds).
+- **Rate limits:** per key from the api-key plugin, and per IP hash for public and guest routes; over the limit, `429` with `Retry-After` (seconds). CORS is `*` without credentials on public read routes only.
 - **Idempotency:** `Idempotency-Key` is required on creating `POST`s; the key, organisation, route and request hash are kept 24 hours; a repeat returns the stored response, and the same key with a different body returns 422.
 - **Errors:** RFC 9457 `application/problem+json` with `type` `https://docs.skyclause.com/problems/<slug>`, `title`, `status`, `detail`, `instance`; slugs include `validation-failed`, `insufficient-scope`, `rate-limited`, `idempotency-mismatch`, `source-error`, `bundle-superseded`, `call-expired`, `inputs-changed` and `budget-exhausted`. A row in another organisation returns 404, never 403 ([NFR-10](/docs/PRD.md#non-functional-requirements)).
 - **SSE:** `GET /v1/projects/{id}/readings/stream` and `GET /v1/projects/{id}/bundles/stream` as `text/event-stream`; each event `id` is a per-project sequence for `Last-Event-ID` resumption; a comment heartbeat every 15 seconds; the server ends streams after a set lifetime and clients reconnect. Fan-out uses Postgres `LISTEN`/`NOTIFY`, one listener per instance.
 - **Versioning:** additive changes ship in `/v1`; breaking ones only under `/v2`; deprecations send `Deprecation` (RFC 9745) and `Sunset` (RFC 8594) headers at least six months before removal ([SDK-5](/docs/PRD.md#sdk-sdk)).
-- **CORS:** `*` without credentials on public read routes only.
 
 ### API resources
 
@@ -633,9 +476,8 @@ export function wilson(x: number, n: number, z = 1.96): [number, number] | null 
 | Listings and nights  | `GET`, `POST /projects/{id}/listings` (propose from an allow-listed URL), `GET /projects/{id}/nights`, `GET /nights/{id}`             | `read`, `draft`        |
 | Subscribers          | `GET`, `POST /projects/{id}/subscribers`, `DELETE /subscribers/{id}`                                                                  | `admin`                |
 | Webhooks             | `GET`, `POST /webhooks`, `GET /webhooks/{id}/deliveries`, `POST /webhooks/{id}/redeliver`                                             | `admin`                |
-| Ingest               | `POST /ingest/{sourceId}`                                                                                                             | device token           |
+| Ingest               | `POST /ingest/{sourceId}`; `GET /usage` (`read`)                                                                                      | device token           |
 | Public               | `GET /public/{org}/{project}/status`, `GET /public/{org}/{project}/ledger`, `POST /public/commons/evaluate`                           | none                   |
-| Usage                | `GET /usage`                                                                                                                          | `read`                 |
 
 `POST /public/commons/evaluate` backs the landing hero: it evaluates the published Commons sheet for the visitor's window with the clause engine and returns the verdict with every input's age, labelled "Clause engine verdict: not reviewed, not sent"; no model runs per visitor ([LND-1 to LND-3](/docs/PRD.md#landing-page-lnd)).
 
@@ -659,8 +501,8 @@ This section enforces PRD's [roles and permissions](/docs/PRD.md#roles-and-permi
 
 ### Sign-in and sessions
 
-- **Better Auth 1.7.17** in `apps/web`, on the same Postgres in an `auth` schema. Plugins: organization (custom roles via `createAccessControl`, invitations expiring after 48 hours, `membershipLimit` raised from its default of 100 by plan) ([Better Auth organization]); anonymous ([Better Auth anonymous]); `@better-auth/api-key` with `references` set to organisation, so `organizationId` is required, plus built-in rate limits, `expiresIn` and the `skc_` prefix ([Better Auth API key]); MCP with `@better-auth/cimd` (`metadataProfile: "mcp-2026-07-28"`), and never `oauthProvider()` beside it ([Better Auth MCP]). Magic link (15 minutes, single use), Google and passkeys come from Better Auth's own plugins, whose versions are Not verified ([ACC](/docs/PRD.md#accounts-and-sign-in-acc)).
-- **Roles** are cumulative, Viewer < Editor < Approver < Admin < Owner, with Guest only in the Commons and the share-link reviewer only in its project. API keys carry `read`, `draft` or `admin`; MCP tokens `read` and `draft`; neither can approve or publish.
+- **Better Auth 1.7.17** in `apps/web`, on the same Postgres in an `auth` schema. Plugins: organization (custom roles via `createAccessControl`, invitations set to expire after 7 days instead of the plugin's 48-hour default ([ORG-2](/docs/PRD.md#organisations-org)), `membershipLimit` raised from its default of 100 by plan) ([Better Auth organization]); anonymous ([Better Auth anonymous]); `@better-auth/api-key` with `references` set to organisation, so `organizationId` is required, plus built-in rate limits, `expiresIn` and the `skc_` prefix ([Better Auth API key]); MCP with `@better-auth/cimd` (`metadataProfile: "mcp-2026-07-28"`), and never `oauthProvider()` beside it ([Better Auth MCP]). Magic link (15 minutes, single use), Google and passkeys come from Better Auth's own plugins, whose versions are Not verified ([ACC](/docs/PRD.md#accounts-and-sign-in-acc)).
+- **Roles and scopes** follow PRD's [roles matrix](/docs/PRD.md#roles-and-permissions): one `createAccessControl` statement per matrix row, and API key scopes (`read`, `draft`, `admin`) and MCP token scopes (`read`, `draft`) mapped to the same statements; no scope maps to approve or publish.
 - **Recent authentication:** approving, publishing a clause version and creating a key need a session authenticated within 12 hours, otherwise a passkey or magic-link step ([ACC-8](/docs/PRD.md#accounts-and-sign-in-acc)).
 - **CLI device code** (RFC 8628) at `/device`, codes valid 10 minutes; whether Better Auth ships a device-authorisation plugin is Not verified, and without one we implement the two endpoints over Better Auth sessions. The result is a human session, so the CLI can approve interactively.
 - **Every Server Action and Route Handler checks auth itself**: in Next.js 16 Server Functions are POSTs to the page route, and `proxy.ts` only maps hosts to route groups ([Next.js proxy]).
@@ -704,7 +546,7 @@ This section enforces PRD's [roles and permissions](/docs/PRD.md#roles-and-permi
 
 ## Billing
 
-- Phase P2 per [BIL](/docs/PRD.md#billing-bil); the beta collects no payment. Stripe Billing in MYR with one customer per organisation, Products and Prices from [PRODUCT pricing](/docs/PRODUCT.md#packaging-and-pricing) (all untested), Checkout and the Customer Portal; signature-verified Stripe webhooks update `organisation.plan` and the entitlements that gate projects, runs, members and rate limits server-side.
+- P2 per [BIL](/docs/PRD.md#billing-bil); the beta collects no payment. Stripe Billing in MYR with one customer per organisation, Products and Prices from [PRODUCT pricing](/docs/PRODUCT.md#packaging-and-pricing) (all untested), Checkout and the Customer Portal; signature-verified Stripe webhooks update `organisation.plan` and the entitlements that gate projects, runs, members and rate limits server-side.
 - **Metering:** runs and default-model tokens per organisation per month, reported to Stripe's usage-based billing (the current meter API is Not verified).
 - **Service tax:** the Malaysian service tax rate, registration threshold and whether Stripe Tax covers Malaysia are Not verified; until registration is recorded, invoices carry no tax line ([BIL-3](/docs/PRD.md#billing-bil)).
 - **Payment methods:** cards; FPX through Stripe in Malaysia is Not verified.
@@ -712,43 +554,20 @@ This section enforces PRD's [roles and permissions](/docs/PRD.md#roles-and-permi
 
 ## SDK
 
-- **`@skyclause/sdk`:** types generated from `/openapi.json` (generator chosen at build: `openapi-typescript` with a fetch client; not checked), ESM only, no Node built-ins, Web Crypto for HMAC, so one build serves Node 22+, Bun, Deno, browsers and edge runtimes; one contract suite runs on all five ([SDK](/docs/PRD.md#sdk-sdk)).
+- **`@skyclause/sdk`** (P1): types generated from `/openapi.json` with a thin fetch client, ESM only, no Node built-ins, Web Crypto for HMAC, so one build serves Node 22+, Bun, Deno, browsers and edge runtimes; one contract suite runs on all five ([SDK](/docs/PRD.md#sdk-sdk)).
 - **Hand-written:** `paginate()` async iterators over cursors; `stream()` SSE readers with `Last-Event-ID` resumption and backoff; `webhooks.verify(rawBody, headers, secret)` with constant-time compare; typed problem errors, so a source failure arrives as an error naming the source and since when; idempotency keys and retries on 429 and 5xx that honour `Retry-After`.
-- **Python `skyclause`:** pydantic models and an httpx client generated from the same document, with the same three helpers.
+- **Python `skyclause`** (P2): pydantic models and an httpx client generated from the same document, with the same three helpers.
 - No approval operation exists in either SDK, because the endpoint isn't in the public document. Versions follow semver with the SDK major equal to the API major; each release records the OpenAPI hash, and CI fails when generated code drifts. Examples are captured from real calls with capture date and station ID ([DEV-5](/docs/PRD.md#developer-playground-dev)).
 
 ## CLI
 
-commander 15.0.0 (Node 22.12 or later) over the SDK; [CLI](/docs/PRD.md#cli-cli) sets the requirements and [DESIGN](/docs/DESIGN.md#cli-output) the output.
+Commands are PRD's [CLI-4](/docs/PRD.md#cli-cli) (plus `login`, `init` and `config`); output is DESIGN's [CLI output](/docs/DESIGN.md#cli-output). Implementation:
 
-```text
-skyclause login | logout | whoami
-skyclause init                               link this directory to an existing project; never creates one
-skyclause projects list | show <project>
-skyclause windows list | add | remove
-skyclause signals list | tail <source>       tail streams readings with ages
-skyclause clauses show | test <file> | replay --from <date> --to <date> | diff <a> <b>
-skyclause calls list | show <id>
-skyclause bundles list | show <id> | approve <id>
-skyclause evidence request --window <id> | show <id>
-skyclause mcp                                local stdio MCP server
-skyclause skills install
-skyclause config get | set
-```
-
-- `--json` on every command gives one stable JSON document (NDJSON for `tail`); No call is data and exits 0; errors exit 1, usage 2, auth 3, `inputs-changed` 4. Global flags: `--org`, `--project`, `--profile`, `--no-color`.
-- `bundles approve` needs a TTY, a device-code session (never an API key) and the Approver role or above, prints the re-check diff and asks to confirm; `--json` or a pipe refuses with the reason.
-- **Auth:** `skyclause login` shows a user code for `/device`; the token goes to the OS keychain (macOS Keychain, Windows Credential Manager, libsecret on Linux), never a plain file; keychain access from a Bun-compiled binary is Not verified. CI uses `SKYCLAUSE_API_KEY` (`read` and `draft`).
-- **Config** at `~/.config/skyclause/config.json`:
-
-```json
-{
-  "profile": "default",
-  "profiles": { "default": { "api": "https://api.skyclause.com/v1", "org": "commons", "project": "bukit-jalil" } }
-}
-```
-
-- **Distribution:** npm `skyclause` (`npx skyclause`); GitHub release binaries from Bun 1.4.4 `bun build --compile` for `bun-linux-x64`, `bun-linux-arm64`, the `-musl` variants, `bun-darwin-arm64`, `bun-darwin-x64`, `bun-windows-x64` and `bun-windows-arm64`, with macOS binaries codesigned ([Bun executables]); a tap repository `skyclause/homebrew-tap`, installed after `brew tap skyclause/tap` and `brew trust --formula skyclause/tap/skyclause`, since non-official taps now need explicit trust ([Homebrew taps]).
+- commander 15.0.0 (Node 22.12 or later) over `@skyclause/sdk`; each command is a thin function over one SDK call, so `--json` prints the SDK's typed result as one stable document (NDJSON for `signals tail`). No call is data and exits 0; errors exit 1, usage 2, auth 3 and `inputs-changed` 4.
+- `bundles approve` calls the first-party approve endpoint with the device-code session, never an API key; it needs a TTY, prints the re-check diff and asks to confirm, and refuses `--json` or a pipe with the reason ([CLI-5](/docs/PRD.md#cli-cli)).
+- **Auth:** `skyclause login` shows a user code for `/device`; the token goes to the OS keychain (macOS Keychain, Windows Credential Manager, libsecret on Linux), never a plain file; keychain access from a Bun-compiled binary is Not verified. CI uses `SKYCLAUSE_API_KEY`.
+- **Config** at `~/.config/skyclause/config.json`: named profiles, each with `api` (default `https://api.skyclause.com/v1`), `org` and `project`; `skyclause init` writes it for an existing project and never creates one ([CLI-6](/docs/PRD.md#cli-cli)).
+- **Distribution:** npm `skyclause` (`npx skyclause`); GitHub release binaries for every target `bun build --compile` supports officially (Linux x64 and arm64 with musl and baseline variants, macOS arm64 and x64, Windows x64 and arm64), macOS binaries codesigned ([Bun executables]); a tap repository `skyclause/homebrew-tap`, installed after `brew tap skyclause/tap` and `brew trust --formula skyclause/tap/skyclause`, since non-official taps now need explicit trust ([Homebrew taps]).
 - `skyclause mcp` serves the remote server's tools over stdio with `@modelcontextprotocol/server` 2.4.0 and the CLI's credentials.
 
 [Homebrew taps]: https://docs.brew.sh/How-to-Create-and-Maintain-a-Tap
@@ -764,39 +583,36 @@ skyclause config get | set
 - **Registration:** client ID metadata documents for ChatGPT (preferred there) and probably Claude, whose "published identity" being CIMD is Not verified ([Claude connectors]); a pre-registered client with ID and secret for Gemini Enterprise (redirect `https://vertexaisearch.cloud.google.com/oauth-redirect`) and for Antigravity (`https://antigravity.google/oauth-callback`); dynamic client registration only as a rate-limited fallback, since the spec deprecates it and Better Auth ships it off.
 - Consent at `/oauth/consent` names client, redirect host, organisation, projects and scopes, and says "No AI can approve a bundle or send to people" ([ACC-6](/docs/PRD.md#accounts-and-sign-in-acc)).
 
+[MCP changelog]: https://modelcontextprotocol.io/specification/latest/changelog
+[ChatGPT auth]: https://developers.openai.com/apps-sdk/build/auth
+[MCP authorization]: https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization
+[Claude connectors]: https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp
+
 ### MCP tools and scopes
 
-- The tool list and scopes are PRD's [AGT-2](/docs/PRD.md#agent-layer-agt) table: nine `read` tools (`list_projects`, `get_signals`, `list_bundles`, `get_call`, `explain_call`, `get_clause_sheet`, `replay_clauses`, `get_ledger`, `get_grades`) and three `draft` tools (`declare_window`, `ask_for_call`, `request_evidence`). There is no approve, send or publish tool, and no scope that could carry one.
-- Tools live in `packages/mcp` as functions over an SDK client built with the caller's token, so remote and stdio share one implementation and one permission check (the API's). Read tools set `readOnlyHint`, which spares Gemini Enterprise users a confirmation per call; the set stays far below its 100-action limit.
+- Tools and scopes are PRD's [AGT-2](/docs/PRD.md#agent-layer-agt) table. Scope mapping: the nine `read` tools need an OAuth token with `read`, the three `draft` tools (`declare_window`, `ask_for_call`, `request_evidence`) need `draft`, and both map to the same `createAccessControl` statements as API keys; no scope maps to approve, send or publish, so no tool can.
+- Tools live in `packages/mcp` as functions over an SDK client built with the caller's token, so remote and stdio share one implementation and the API's permission checks. Read tools set `readOnlyHint`, which spares Gemini Enterprise users a confirmation per call; the set stays far below its 100-action limit.
 - Results carry ages and No call states as the API does; draft tools spend the calling account's budgets, and every call is audited with client, account, tool and time ([AGT-6](/docs/PRD.md#agent-layer-agt)).
 - **Resources:** `skyclause://{org}/{project}/clause-sheet`, `skyclause://{org}/{project}/signals` and `skyclause://{org}/{project}/ledger/{date}`. **Prompts:** `call-for-window`, `evidence-for-window`, `explain-a-grade`.
-- **Elicitation:** URL mode only for secrets (AI keys, Phase 2 Microsoft and Jira connections), pointing at the settings page; form mode never asks for keys, as the spec forbids ([MCP elicitation]).
+- **Elicitation:** URL mode only for secrets (AI keys, P2 Microsoft and Jira connections), pointing at the settings page; form mode never asks for keys, as the spec forbids ([MCP elicitation]).
+- **MCP inspector** ([DEV-4](/docs/PRD.md#developer-playground-dev)): `/developers/mcp` runs `@modelcontextprotocol/client` 2.4.0 in the browser against the remote server with the visitor's token and keeps the session's JSON-RPC requests and responses in memory for display, newest first; `Authorization` headers, tokens and any field the server marks secret are replaced with `[redacted]` before display, and nothing is persisted server-side beyond the normal audit event.
+
+[MCP elicitation]: https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation
 
 ### Agent Skills pack
 
-```text
-skills/
-├── skyclause-call/        SKILL.md: ask for a call for a window and read its input ages; never claim approval
-│   └── references/api.md
-├── skyclause-ledger/      SKILL.md: read a ledger and grades, always with n and intervals
-└── skyclause-evidence/    SKILL.md: request evidence for a window and quote it with sources
-```
-
+- Three skills, each a directory with `SKILL.md`: `skyclause-call` (ask for a call for a window and read its input ages, never claiming approval, with `references/api.md`), `skyclause-ledger` (read a ledger and grades, always with n and intervals) and `skyclause-evidence` (request evidence for a window and quote it with sources).
 - Source in `packages/skills`, published to a public `skyclause/skills` repository for `npx skills add skyclause/skills` (`skills` 1.7.6) and as zipped release assets for claude.ai uploads and Gemini Enterprise, where an admin must enable skills ([skills CLI], [Gemini Enterprise skills](/docs/research/gemini-enterprise.md#skills)); `/skills` and `skyclause skills install` serve the same files.
 - Frontmatter per the spec: `name` matching the directory (at most 64 characters, lowercase and hyphens), `description` up to 1,024 characters, `license` and `compatibility` (needs the Skyclause MCP server or CLI); bodies under 500 lines; no "claude" or "anthropic" in names; `skills-ref validate` runs in CI ([Agent Skills spec]).
+
+[skills CLI]: https://github.com/vercel-labs/skills
+[Agent Skills spec]: https://agentskills.io/specification
 
 ### A2A agent card
 
 - Behind the `a2a` flag and Not verified until a live test: `/.well-known/agent-card.json` advertising a `draft-call` skill (a window handed over by a Gemini Enterprise workflow becomes a drafted bundle for human review) and a `get-call` skill.
 - Gemini Enterprise registers external A2A agents only on Standard and Plus, "supports the A2A v0.3 streaming mechanism" only, accepts OAuth 2.0 or nothing, and no API keys or custom headers; the current spec is 1.0.0 ([register A2A], [A2A spec]). `@a2a-js/sdk` 1.3.0 targets 1.0; the documented v0.3 compatibility layer is Python's (`a2a.compat.v0_3` in `a2a-sdk` 1.3.0), so a JavaScript v0.3 path is Not verified.
 
-[MCP changelog]: https://modelcontextprotocol.io/specification/latest/changelog
-[ChatGPT auth]: https://developers.openai.com/apps-sdk/build/auth
-[Claude connectors]: https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp
-[MCP authorization]: https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization
-[MCP elicitation]: https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation
-[skills CLI]: https://github.com/vercel-labs/skills
-[Agent Skills spec]: https://agentskills.io/specification
 [register A2A]: https://docs.cloud.google.com/gemini/enterprise/docs/register-and-manage-an-a2a-agent
 [A2A spec]: https://a2a-protocol.org/latest/specification/
 
@@ -826,10 +642,20 @@ Requirements are PRD's [WEB](/docs/PRD.md#web-components-web); visuals are DESIG
 
 ### Custom elements and iframe fallback
 
-- `packages/elements` ships `<skyclause-status project="commons/bukit-jalil">` (current mode or No call with input ages) and `<skyclause-window project="…" start="…" end="…">` (the call for one window) in Lit 3.3.3, with open shadow roots (closed mode is no security boundary), styles shared through `adoptedStyleSheets` ([MDN shadow DOM]), theming by CSS custom properties (`--skyclause-font`, `--skyclause-fg`, `--skyclause-bg`, `--skyclause-accent`) and `::part(mode)`, `::part(age)` and `::part(attribution)`.
-- Data comes from the public read routes (CORS `*`, no credentials) and the SSE stream; errors render as errors. Distribution: npm `@skyclause/elements` and a versioned `embed.skyclause.com/elements/v1.js` with published SRI hashes; host pages must allow the embed origin in `script-src` and the API in `connect-src`.
-- **Iframe fallback** at `embed.skyclause.com/{org}/{project}` for hosts whose CSP blocks third-party scripts: `frame-ancestors`, which works only as an HTTP header and supersedes `X-Frame-Options`, is `*` for public projects or the organisation's allow-list ([MDN frame-ancestors]); hosts are told to use `sandbox="allow-scripts allow-popups"` and `loading="lazy"` ([MDN iframe]); height arrives by `postMessage` (`skyclause:resize`).
-- Every embed carries its attribution line (MET, Rapid Rail and data.gov.my under CC BY 4.0; Wikipedia under CC BY-SA 4.0; links for JPS, APIMS and GoLive), the non-affiliation line and the not-a-safety-service line. A shadcn `registry.json` for a status card can follow later.
+TRD owns this contract; DESIGN draws it.
+
+```html
+<skyclause-status project="{org}/{project}" theme="light|dark|auto"></skyclause-status>
+<skyclause-window window="{windowId}"></skyclause-window>
+<skyclause-window project="{org}/{project}" start="{RFC 3339}" end="{RFC 3339}"></skyclause-window>
+```
+
+- `<skyclause-status>` shows the project's current mode per pack, or No call with the blocking input and since when. `<skyclause-window window>` shows the call for a declared window; with `project`, `start` and `end` instead, it shows the clause engine's verdict for that span, labelled "Clause engine verdict: not reviewed, not sent". `theme` defaults to `auto` (`prefers-color-scheme`).
+- **Theming:** CSS custom properties `--skyclause-bg`, `--skyclause-fg`, `--skyclause-muted`, `--skyclause-accent`, `--skyclause-radius` and `--skyclause-font`; parts `mode`, `window`, `strip`, `age`, `source`, `link` and `attribution` for `::part()`. Nothing else is public styling API.
+- Lit 3.3.3 with open shadow roots (closed mode is no security boundary) and styles shared through `adoptedStyleSheets` ([MDN shadow DOM]). Data comes from the public read routes (CORS `*`, no credentials) and the SSE stream; errors render as errors, never a cached value.
+- **Distribution:** npm `@skyclause/elements` and a versioned `embed.skyclause.com/elements/v1.js` with published SRI hashes; host pages must allow the embed origin in `script-src` and the API in `connect-src`.
+- **Iframe fallback** at `embed.skyclause.com/{org}/{project}` (and `/window/{windowId}`) for hosts whose CSP blocks third-party scripts: `frame-ancestors`, which works only as an HTTP header and supersedes `X-Frame-Options`, is `*` for public projects or the organisation's allow-list ([MDN frame-ancestors]); hosts are told to use `sandbox="allow-scripts allow-popups"` and `loading="lazy"` ([MDN iframe]); height arrives by `postMessage` (`skyclause:resize`).
+- Every embed carries its attribution line (MET, Rapid Rail and data.gov.my under CC BY 4.0; Wikipedia under CC BY-SA 4.0; links for JPS, APIMS and GoLive), the non-affiliation line and the not-a-safety-service line ([PUB-4, PUB-5](/docs/PRD.md#public-pages-pub)).
 
 [MDN shadow DOM]: https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM
 [MDN frame-ancestors]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/frame-ancestors
@@ -837,25 +663,23 @@ Requirements are PRD's [WEB](/docs/PRD.md#web-components-web); visuals are DESIG
 
 ## Gemini Enterprise pilot
 
-The pilot (5–17 November 2026) runs the idea docs' builds on Gemini Enterprise, Sky storm crossing and evidence-by-email first; nothing is built yet. Each part maps to its platform replacement, and the pilot's real readings and ledger rows can be imported later as history marked with their pilot origin.
+The pilot (5–17 November 2026) runs the idea docs' builds on Gemini Enterprise, Sky storm crossing and evidence-by-email first; nothing is built yet. Each part maps to its platform replacement. Pilot data is never imported into the platform's hash-chained ledger: the Sheets ledger, the Jira register export and the run traces are archived read-only as `pilot_archive` files in Cloud Storage, each with its SHA-256 and capture time, and linked from the project as "Pilot archive (Gemini Enterprise, November 2026)".
 
 ### Pilot parts and platform replacements
 
-| Pilot part           | In the pilot                                                                                             | On the platform                                                                 |
-| -------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Feeders              | Apps Script time triggers for JPS, MET, APIMS, GoLive and Wikipedia; error rows in Sheets                | Adapter jobs on Cloud Scheduler writing `poll` and `reading`                    |
-| Clause sheet         | A Sheet with formula shadow check                                                                        | `sheet_version` with CEL in `packages/clauses`; an importer for the pilot sheet |
-| Readings and windows | Sheets tabs and an opt-in Form                                                                           | Postgres; windows from the app, API and MCP                                     |
-| Crossing hand-off    | A file in Drive `crossings/`, because there is no webhook trigger                                        | A `crossing` row and a Pub/Sub message                                          |
-| Triggers             | Schedules at 06:45 Monday to Friday and 07:00 daily; Drive, Gmail and Calendar event triggers (5–10 min) | Per-pack schedules, crossings, change events and requests                       |
-| Agent node           | A Gemini agent node reading Sheets with Get cell values                                                  | The decision agent in `packages/agent` on Vertex AI or BYOK                     |
-| Approval step        | One workflow **Approval** per run                                                                        | The bundle approval UI with rota, SLA, escalation and re-check                  |
-| Writes               | Gmail Send and Reply, Calendar Create event, Jira Create issue and comment, Sheets Update cell values    | Email outbox, ICS feed, webhooks and ledger; Microsoft 365 and Jira in Phase 2  |
-| Decision register    | Jira Cloud Free ([NTC-4](/docs/PRD.md#notices-and-channels-ntc))                                         | `ledger_entry` hash chain and `review_item`                                     |
-| Phone camera         | A phone page posting to an Apps Script web app                                                           | The camera PWA posting to `/v1/ingest`                                          |
-| Pi 5                 | GTFS-rt decoding and the DuckDB ridership reduction, posting to Apps Script                              | Cloud adapters; the Pi becomes an optional project device                       |
-| Auditor and grading  | Apps Script emails (silent feed, crossing with no run in 20 min, credentials on day 12); nightly grading | The auditor tick and grader jobs                                                |
-| Run evidence         | The **Runs** tab                                                                                         | Run traces, call pages and the public ledger                                    |
+| Pilot part           | In the pilot                                                                                                                                            | On the platform                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Feeders              | Apps Script time triggers for JPS, MET, APIMS, GoLive and Wikipedia; error rows in Sheets                                                               | Adapter jobs on Cloud Scheduler writing `poll` and `reading`                                               |
+| Clause sheet         | A Sheet with formula shadow check                                                                                                                       | `sheet_version` with CEL in `packages/clauses`; an importer for the pilot sheet                            |
+| Readings and windows | Sheets tabs and an opt-in Form                                                                                                                          | Postgres; windows from the app, API and MCP                                                                |
+| Crossing hand-off    | A file in Drive `crossings/`, because there is no webhook trigger                                                                                       | A `crossing` row and a Pub/Sub message                                                                     |
+| Triggers             | Schedules at 06:45 Monday to Friday and 07:00 daily; Drive, Gmail and Calendar event triggers (5–10 min)                                                | Per-pack schedules, crossings, change events and requests                                                  |
+| Agent node           | A Gemini agent node reading Sheets with Get cell values                                                                                                 | The decision agent in `packages/agent` on Vertex AI or BYOK                                                |
+| Approval step        | One workflow **Approval** per run                                                                                                                       | The bundle approval UI with rota, SLA, escalation and re-check                                             |
+| Writes               | Gmail Send and Reply, Calendar Create event, Jira Create issue and comment, Sheets Update cell values; Jira Cloud Free as the decision register (NTC-4) | Email outbox, ICS feed, webhooks, the hash-chained ledger and review items; Microsoft 365 and Jira from P2 |
+| Phone camera         | A phone page posting to an Apps Script web app                                                                                                          | The camera PWA posting to `/v1/ingest`                                                                     |
+| Pi 5                 | GTFS-rt decoding and the DuckDB ridership reduction, posting to Apps Script                                                                             | Cloud adapters; the Pi becomes an optional project device                                                  |
+| Auditor and grading  | Apps Script emails (silent feed, crossing with no run in 20 min, credentials on day 12); nightly grading                                                | The auditor tick and grader jobs; the **Runs** tab becomes run traces, call pages and the public ledger    |
 
 Sources: [Skyclause loop](/docs/ideas/02-skyclause.md#day-to-day-loop), [Skyclause connectors](/docs/ideas/02-skyclause.md#connectors-and-platform-check), [Fanfall workflows](/docs/ideas/04-fanfall.md#day-to-day-workflows) and [Fanfall connectors](/docs/ideas/04-fanfall.md#connectors-and-platform-check).
 
@@ -869,16 +693,16 @@ Sources: [Skyclause loop](/docs/ideas/02-skyclause.md#day-to-day-loop), [Skyclau
 
 ## Security
 
-| Threat              | Controls                                                                                                                                                                                                                                                          |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cross-tenant access | RLS under `withTenant`, composite keys, a 404 cross-organisation test per route, no reliance on secret IDs                                                                                                                                                        |
-| Guest abuse         | Turnstile, budgets per device and IP hash, title refusals and moderation, reports, 14-day expiry, no sends from guests                                                                                                                                            |
-| SSRF                | Listing proposals fetch only allow-listed hosts (GoLive, Wikipedia); webhook URLs resolve and refuse private, loopback, link-local and metadata addresses at connect time, with no redirects; later custom sources add an allow-list and a recorded licence check |
-| Prompt injection    | No agent tools, data blocks, output validation, recipients by ID, human approval ([defences](#prompt-injection-defences))                                                                                                                                         |
-| Webhook spoofing    | Signed outbound deliveries with timestamps; Stripe signatures verified inbound; Pub/Sub push and Cloud Tasks calls carry OIDC tokens the worker checks                                                                                                            |
-| Key theft           | KMS envelope encryption, one decrypting service account, redaction; API keys stored hashed and shown once (if the api-key plugin doesn't hash, we wrap it)                                                                                                        |
-| Forged approval     | First-party human sessions only, 12-hour recent auth, role checked at approval time, `review_hash`, audit                                                                                                                                                         |
-| Stolen device token | One source per token, rotation, rate limits, readings marked by device                                                                                                                                                                                            |
+| Threat                      | Controls                                                                                                                                                                                                                                                          |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cross-tenant access         | RLS under `withTenant`, composite keys, a 404 cross-organisation test per route, no reliance on secret IDs                                                                                                                                                        |
+| Guest abuse                 | Turnstile, budgets per device and IP hash, title refusals and moderation, reports, 14-day expiry, no sends from guests                                                                                                                                            |
+| SSRF                        | Listing proposals fetch only allow-listed hosts (GoLive, Wikipedia); webhook URLs resolve and refuse private, loopback, link-local and metadata addresses at connect time, with no redirects; later custom sources add an allow-list and a recorded licence check |
+| Prompt injection            | No agent tools, data blocks, output validation, recipients by ID, human approval ([defences](#prompt-injection-defences))                                                                                                                                         |
+| Webhook spoofing and misuse | Signed outbound deliveries with timestamps; an endpoint must echo a challenge before any delivery; Stripe signatures verified inbound; Pub/Sub push and Cloud Tasks calls carry OIDC tokens the worker checks                                                     |
+| Key theft                   | KMS envelope encryption, one decrypting service account, redaction; API keys stored hashed and shown once (if the api-key plugin doesn't hash, we wrap it)                                                                                                        |
+| Forged approval             | First-party human sessions only, 12-hour recent auth, role checked at approval time, `review_hash`, audit                                                                                                                                                         |
+| Stolen device token         | One source per token, rotation, rate limits, readings marked by device                                                                                                                                                                                            |
 
 - **Secrets** live in Secret Manager (database password, Stripe, SES, Turnstile, OAuth client secrets) and mount per service; CI deploys through Workload Identity Federation with no service-account keys.
 - **CSP:** the app sends a nonce-based `script-src` with `'strict-dynamic'`, `frame-ancestors 'none'` and HSTS; the embed origin sets `frame-ancestors` per project ([NFR-10](/docs/PRD.md#non-functional-requirements)).
@@ -889,31 +713,23 @@ Sources: [Skyclause loop](/docs/ideas/02-skyclause.md#day-to-day-loop), [Skyclau
 
 ## Privacy and data retention
 
-| PDPA principle    | Implementation                                                                                                            |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| General (consent) | Versioned PDPA notice and consent on every form; `consent_at` and `consent_version` stored                                |
-| Notice and choice | Notice language per subscriber; one-click unsubscribe on every notice                                                     |
-| Disclosure        | Only processors: the email provider, Stripe, model providers; no personal data in any prompt, so none reaches a free tier |
-| Security          | KMS, RLS, Secret Manager, audit log, breach runbook                                                                       |
-| Retention         | The table below                                                                                                           |
-| Data integrity    | Accounts edit in settings; subscribers by magic link                                                                      |
-| Access            | Export and correction; portability under the 2024 amendment                                                               |
+PDPA principles map as follows ([PDPA research](/docs/research/judging.md#malaysias-pdpa-and-the-2024-amendment)): **general and notice and choice**, a versioned notice and consent on every form (`consent_record`), a notice language per subscriber and one-click unsubscribe; **disclosure**, only processors (the email provider, Stripe, model providers) and no personal data in any prompt, so none reaches a free tier; **security**, KMS, RLS, Secret Manager, the audit log and a breach runbook; **retention**, the table below; **integrity and access**, editing in settings or by magic link, export and correction, and portability under the 2024 amendment.
 
 The 2024 amendment (Act A1727) adds processors' security duty, breach notification (72 hours to the Commissioner, then 7 days to data subjects, per a secondary source), DPOs above thresholds and removes the cross-border whitelist ([PDPA research](/docs/research/judging.md#malaysias-pdpa-and-the-2024-amendment)).
 
-Retention follows PRD's [NFR-14](/docs/PRD.md#non-functional-requirements) table; the mechanisms:
+Retention periods are PRD's [NFR-14](/docs/PRD.md#non-functional-requirements); the mechanism per data class:
 
-| Data                          | Kept                                            | Mechanism                                                                                                                                                |
-| ----------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public-source readings, polls | Life of the project                             | Catalogue rows are shared, so they stay while any project binds the source; a deleted project loses its bindings                                         |
-| Camera frames                 | To `semester_ends_on`, at most 183 days         | Cloud Storage lifecycle rule plus a nightly sweep; contrast rows kept                                                                                    |
-| Raw bus positions             | Until segment times exist, at most 24 hours     | Memory and a scratch object with a 1-day lifecycle; segment times kept                                                                                   |
-| Guest windows, guest accounts | 14 days from creation; 30 days without activity | Nightly jobs, counted in their logs                                                                                                                      |
-| Subscribers                   | Until unsubscribe plus 30 days                  | Erased, leaving a hashed suppression entry                                                                                                               |
-| Ledger, audit log             | Life of the organisation                        | Personal fields pseudonymised on account or subscriber deletion; the hash chain holds no emails                                                          |
-| Deleted organisation          | 30-day grace                                    | Purged; backups age out within 35 days                                                                                                                   |
-| Export files                  | 7 days                                          | Signed URLs and a lifecycle rule                                                                                                                         |
-| APU timetable PII             | Never stored                                    | `NAME`, `SAMACCOUNTNAME`, `LECTID` dropped at ingest, before storage, logs or prompts ([APU](/docs/research/apu.md#personal-data-in-the-timetable-feed)) |
+| Data                          | Mechanism                                                                                                                                                |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public-source readings, polls | Catalogue rows are shared, so they stay while any project binds the source; deleting a project removes its bindings                                      |
+| Camera frames                 | Cloud Storage lifecycle rule from `semester_ends_on`, plus a nightly sweep; contrast rows kept                                                           |
+| Raw bus positions             | Memory and a scratch object with a 1-day lifecycle rule; segment times kept                                                                              |
+| Guest windows and accounts    | Nightly jobs that log deletions by count                                                                                                                 |
+| Subscribers                   | A nightly job erases unsubscribed rows after the grace period, leaving the hashed `suppression` entry; `consent_record` rows are pseudonymised           |
+| Ledger and audit log          | Personal fields pseudonymised on account or subscriber deletion; the hash chain holds no emails, so it stays valid                                       |
+| Deleted organisation          | Soft delete, then a purge job; Cloud SQL backups age out on their retention schedule                                                                     |
+| Export files                  | Signed URLs and a lifecycle rule                                                                                                                         |
+| APU timetable PII             | `NAME`, `SAMACCOUNTNAME`, `LECTID` dropped at ingest, before storage, logs or prompts ([APU](/docs/research/apu.md#personal-data-in-the-timetable-feed)) |
 
 - **Export and deletion:** account and organisation exports run as jobs producing JSON and CSV within 24 hours; deletion follows [AUD-3 and AUD-4](/docs/PRD.md#audit-and-data-rights-aud).
 - **Region:** all storage and compute in `asia-southeast1`. Google's location pages for Compute Engine, Cloud Run, Cloud SQL, KMS and Cloud Scheduler (updated 26–30 October 2026) list no Malaysia region; "Kuala Lumpur (asia-southeast4)" appears only on the Cloud Run pricing page and in `/docs/research/google-cloud.md#cloud-run`, so no residency is promised ([regions], [Cloud Run locations]). Gemini on `global` has no residency guarantee ([data residency]). Personal data is stored in Singapore, and the privacy notice says so.
@@ -923,23 +739,24 @@ Retention follows PRD's [NFR-14](/docs/PRD.md#non-functional-requirements) table
 
 ## Observability and SLOs
 
-- OpenTelemetry in every service and job, exporting traces to Cloud Trace, metrics to Cloud Monitoring and structured logs to Cloud Logging (exporter packages not checked); AI SDK spans through `@ai-sdk/otel`. Runs, bundles, calls and notices store their trace ID, so a call page links to the trace from poll to notice.
-- PRD's [NFR-1 to NFR-3](/docs/PRD.md#non-functional-requirements) set the targets; this table says how each is measured. If they ever differ, PRD wins.
+- OpenTelemetry in every service and job, exporting traces to Cloud Trace, metrics to Cloud Monitoring and structured logs to Cloud Logging; AI SDK spans through `@ai-sdk/otel`. Runs, bundles, calls and notices store their trace ID, so a call page links to the trace from poll to notice.
+- Targets are PRD's [NFR-1 to NFR-3](/docs/PRD.md#non-functional-requirements); this table says how each is measured and when someone is paged.
 
-| SLI                           | Target                                | Measured as                                                               |
-| ----------------------------- | ------------------------------------- | ------------------------------------------------------------------------- |
-| Polls on schedule             | 99% start within 60 s of their slot   | Scheduler slot against `poll.started_at`, per adapter, 30-day window      |
-| Source freshness              | Reported per source, not budgeted     | Share of minutes each input is fresh; upstream outages shown on `/status` |
-| Reading to shadow verdict     | 60 s                                  | `reading.received_at` to the evaluation that used it                      |
-| Crossing to needs review      | p95 3 min                             | `crossing.at` to the bundle's Needs review transition                     |
-| Approver notified             | 30 s                                  | Needs review to the first notification sent                               |
-| Approval to provider          | p95 60 s; 99.9% within 60 s           | `approved_at` to the provider's acceptance per notice                     |
-| Approval SLA                  | Every breach escalated and logged     | `sla_due_at` against approval and escalation rows                         |
-| Webhooks                      | 99% delivered within the retry window | `webhook_delivery` outcomes                                               |
-| App, API and MCP availability | 99.5% a month in P1, 99.9% from P2    | Synthetic checks and load balancer success ratio                          |
+| SLI                           | Measured as                                                                          | Alerting                                                    |
+| ----------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| Polls on schedule             | Scheduler slot against `poll.started_at`, per adapter, 30-day window                 | Page when an adapter misses three slots in a row            |
+| Source freshness              | Share of minutes each input is fresh; upstream outages shown on `/status`            | Auditor notifies project admins; not a platform page        |
+| Reading to shadow verdict     | `reading.received_at` to the evaluation that used it                                 | Page when p95 over 15 minutes exceeds target                |
+| Crossing to needs review      | `crossing.at` to the bundle's Needs review transition                                | Page on a p95 breach over an hour; every breach in a report |
+| Approver alerted              | Needs review to the push service's or SES's acceptance                               | Page when alerts fail for two bundles in a row              |
+| Approval to provider          | `approved_at` to the provider's acceptance per notice; webhook outcomes per endpoint | Page when the 60-second share drops below target            |
+| Approval SLA                  | `sla_due_at` against approval and escalation rows                                    | Escalation is the alert; unescalated breaches page          |
+| App, API and MCP availability | Synthetic checks every minute and load balancer success ratio                        | Page on a fast burn of the monthly error budget             |
 
 - **Error budgets:** when a 30-day budget is spent, feature deploys touching that path stop until it recovers; fixes still ship.
-- **Auditor**, a worker tick every minute ([SIG-12](/docs/PRD.md#signals-sig)): a feed or device silent for two intervals (one notification, and one on recovery); a crossing with no run within 20 minutes; a bundle nearing its SLA with nobody on duty; OAuth connections near expiry (Phase 2) and, during the pilot, day 12 of the 14-day Gemini Enterprise credentials; failing webhook endpoints; next month's partitions missing; KMS rotation due; a pinned model within 30 days of retirement; a Rapid Rail file two hours past `next_update`. The auditor's own heartbeat has an absence alarm.
+- **On-call:** a platform rota (separate from approver rotas) carries pages from Cloud Monitoring by push and SMS-capable paging; the primary acknowledges within 15 minutes in P1 and 5 minutes from P2, with a secondary after that.
+- **Incident communication:** `/status` ([PUB-6](/docs/PRD.md#public-pages-pub)) shows our components apart from source status; the on-call opens an incident there within 15 minutes of a page that affects users, updates it at least hourly and posts a summary within 5 working days. A personal-data breach follows the PDPA runbook ([AUD-7](/docs/PRD.md#audit-and-data-rights-aud)).
+- **Auditor**, a worker tick every minute ([SIG-12](/docs/PRD.md#signals-sig)): a feed or device silent for two intervals (one notification, and one on recovery); a crossing with no run within 20 minutes; a bundle nearing its SLA with nobody on duty; OAuth connections near expiry (P2) and, during the pilot, day 12 of the 14-day Gemini Enterprise credentials; failing webhook endpoints; next month's partitions missing; KMS rotation due; a pinned model within 30 days of retirement; a Rapid Rail file two hours past `next_update`. The auditor's own heartbeat has an absence alarm.
 
 ## Testing
 
@@ -952,7 +769,6 @@ Test doubles appear only inside tests; staging and production run on real feeds.
 - **Auth and tenancy:** the 404 cross-organisation suite; API keys, MCP tokens and guests can't approve or publish; `onLinkAccount` moves guest windows, including after social sign-in.
 - **MCP:** a client on `@modelcontextprotocol/client` 2.4.0 exercises the stateless and `initialize` paths; Claude, ChatGPT and Gemini Enterprise are tested by hand and recorded as "Verified on <date>" ([CAI-2](/docs/PRD.md#connect-your-ai-cai)).
 - **Accessibility:** axe in Playwright on every screen, embed and email template against WCAG 2.2 AA, with DESIGN's [accessibility rules](/docs/DESIGN.md#accessibility).
-- **Agent evals:** as in [Agent evals and budgets](#agent-evals-and-budgets).
 
 ## Environments and deployment
 
@@ -962,30 +778,27 @@ Test doubles appear only inside tests; staging and production run on real feeds.
 | staging     | Its own Google Cloud project, `asia-southeast1`      | Real feeds on schedule; notices only to an allow-list of team addresses                 |
 | production  | Its own Google Cloud project, `asia-southeast1`      | Real feeds and real recipients                                                          |
 
-- **Terraform** (not checked) defines projects, Cloud Run services and jobs, Scheduler jobs, Pub/Sub topics, Cloud Tasks queues, Cloud SQL, KMS, Secret Manager, buckets with lifecycle rules and IAM; state sits in a versioned bucket.
+- **Terraform** defines projects, Cloud Run services and jobs, Scheduler jobs, Pub/Sub topics, Cloud Tasks queues, Cloud SQL, KMS, Secret Manager, buckets with lifecycle rules and IAM; state sits in a versioned bucket.
 - **GitHub Actions:** pull requests run install with Bun, Prettier and lint, type-check, unit and property tests, the OpenAPI drift check, the seed check ([NFR-15](/docs/PRD.md#non-functional-requirements)) and builds; `main` builds one image, deploys it to staging, runs the end-to-end suite, then promotes the same digest to production after a manual approval.
 - **Migrations:** Drizzle Kit SQL reviewed in the PR, expand and contract (add, backfill, switch, drop a release later), run as a Cloud Run job before traffic moves.
 - **Feature flags:** a `feature_flag` table, global and per organisation (`pack_crowd`, `a2a`, `msgraph`, `jira`), evaluated server-side; no flag changes what data is shown as true.
 - **Rollback:** Cloud Run revisions with traffic splitting, so a rollback moves traffic to the previous revision; migrations stay compatible for one release; jobs pin image digests.
+- **Backups:** Cloud SQL automated daily backups with point-in-time recovery, kept 35 days to match [NFR-14](/docs/PRD.md#non-functional-requirements); targets RPO 5 minutes and RTO 4 hours in P1, RTO 1 hour from P2; Cloud Storage buckets for frames and archives are versioned. A restore into a scratch instance runs every quarter, is timed against the RTO, checks the ledger hash chain end to end and is recorded in the ops log. Backup retention and PITR settings are Not verified against Google's docs here.
+- **Support:** channels per tier are [PRODUCT pricing](/docs/PRODUCT.md#packaging-and-pricing)'s (docs and `/status` for Commons; email, best effort, for Community and Team, Team ahead; a named contact for Campus). One support inbox tags each message with the sender's plan so Team mail is read first; support staff hold no Approver role, so no support channel can approve or send.
 
 ## Cost model
 
-Our arithmetic, for the pilot site (one project with both packs, plus Commons traffic), per 30-day month. Assumptions: 12 runs a day (Sky: 06:45, two crossings and five requests on average; Crowd: 07:00, two listing changes and one grading), 12,000 input and 2,000 output tokens per draft, 8 billed seconds at 1 vCPU and 512 MiB per job execution, AI Studio list prices as a stand-in for Vertex AI ([current models](/docs/research/google-cloud.md#current-gemini-models)), whose own prices are Not verified.
+Our arithmetic, for the pilot site (one project with both packs, plus Commons traffic), per 30-day month. Assumptions: 12 runs a day (Sky: 06:45, two crossings and five requests on average; Crowd: 07:00, two listing changes and one grading), 12,000 input and 2,000 output tokens per draft, one review draft a day at 8,000 and 1,500, 8 billed seconds at 1 vCPU per job execution, and AI Studio list prices as a stand-in for Vertex AI ([current models](/docs/research/google-cloud.md#current-gemini-models)).
 
-| Item                       | Basis                                                                                                                                                                                                                                                                                              | Monthly                                               |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| Cloud Scheduler            | 13 jobs (8 adapters, evaluator tick, auditor, Sky grader, retention, contract tests) minus 3 free, at $0.10 per job per 31 days ([Cloud Scheduler pricing]); the tick starts the GTFS-rt job only inside arrival and exit periods, and the Crowd grader and forecast follow the Rapid Rail adapter | $1.00                                                 |
-| Cloud Run jobs             | About 570 executions a day × 8 s = 4,560 vCPU-s, plus GTFS-rt polls on about 12 nights (12 × 300 polls × 8 s = 28,800 a month)                                                                                                                                                                     | About 166,000 vCPU-s                                  |
-| Cloud Run services         | Evaluator ticks 1,440 a day × 0.5 s, 12 runs × 20 s, 50,000 web and API requests × 0.1 s                                                                                                                                                                                                           | About 34,000 vCPU-s                                   |
-| Cloud Run total            | About 200,000 vCPU-s against the 180,000 vCPU-s, 360,000 GiB-s and 2M requests free per billing account ([Cloud Run](/docs/research/google-cloud.md#cloud-run))                                                                                                                                    | About 20,000 vCPU-s billable; price Not verified      |
-| Cloud SQL                  | Smallest instance with storage and backups in `asia-southeast1`                                                                                                                                                                                                                                    | Not verified; likely the largest line (**Inference**) |
-| Cloud KMS                  | One software key version at $0.000082192 an hour × 720 h, plus about 2,000 operations at $0.03 per 10,000 ([KMS pricing])                                                                                                                                                                          | About $0.07                                           |
-| Pub/Sub, Cloud Tasks       | Well under 10 GiB and 1M operations                                                                                                                                                                                                                                                                | $0                                                    |
-| Drafts, `gemini-3.8-flash` | 12 × (12,000 × $0.75 + 2,000 × $3.75) per 1M tokens = $0.198 a day                                                                                                                                                                                                                                 | $5.94 to 31 December 2026; $11.88 after               |
-| Reviews, `gemini-4-argon`  | One a day × (8,000 × $2 + 1,500 × $10) per 1M tokens = $0.031                                                                                                                                                                                                                                      | $0.93 to 30 November 2026; $1.86 after                |
-| Email, Storage, egress     | Frames, parquet copies, notices                                                                                                                                                                                                                                                                    | Not verified                                          |
+| Item                       | Basis                                                                                                                                                                         | Monthly                                                                                           |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Drafts, `gemini-3.8-flash` | 12 × (12,000 × $0.75 + 2,000 × $3.75) per 1M tokens = $0.198 a day                                                                                                            | $5.94 to 31 December 2026; $11.88 after                                                           |
+| Reviews, `gemini-4-argon`  | 8,000 × $2 + 1,500 × $10 per 1M tokens = $0.031 a day                                                                                                                         | $0.93 to 30 November 2026; $1.86 after                                                            |
+| Cloud Scheduler            | 13 jobs (8 adapters, evaluator tick, auditor, Sky grader, retention, contract tests) minus 3 free, at $0.10 per job per 31 days ([Cloud Scheduler pricing])                   | $1.00                                                                                             |
+| Cloud KMS                  | One software key version at $0.000082192 an hour × 720 h, plus about 2,000 operations at $0.03 per 10,000 ([KMS pricing])                                                     | About $0.07                                                                                       |
+| Cloud Run free-tier check  | Jobs: about 570 executions a day × 8 s, plus GTFS-rt on about 12 nights × 300 polls × 8 s, about 166,000 vCPU-s; services: about 34,000 vCPU-s (ticks, runs, 50,000 requests) | About 200,000 vCPU-s against 180,000 free ([Cloud Run](/docs/research/google-cloud.md#cloud-run)) |
 
-Known lines come to about $8 a month until December 2026 and about $15 after, plus Cloud SQL, Cloud Run above the free tier and email; whether job vCPU-seconds count against the request-based free tier is Not verified. If job start-up dominates, the per-minute and 5-minute adapters can move to HTTP endpoints on the worker service. The pilot's Gemini Enterprise seats (Standard from $30 a seat a month, per the [Gemini Enterprise research](/docs/research/gemini-enterprise.md#gemini-enterprise-editions-and-prices)) are a pilot cost only.
+Known lines come to about $8 a month until December 2026 and about $15 after. Pub/Sub and Cloud Tasks stay inside their free allowances. Cloud SQL, email, storage, Vertex AI's own prices and Cloud Run above the free tier (and whether job seconds count against it) have no verified price, so they are left out rather than guessed; if job start-up dominates, the frequent adapters can move to HTTP endpoints on the worker service. The pilot's Gemini Enterprise seats (Standard from $30 a seat a month, per the [Gemini Enterprise research](/docs/research/gemini-enterprise.md#gemini-enterprise-editions-and-prices)) are a pilot cost only.
 
 [KMS pricing]: https://cloud.google.com/kms/pricing
 [Cloud Scheduler pricing]: https://cloud.google.com/scheduler/pricing
@@ -1003,26 +816,20 @@ Engineering risks only; market and pilot risks are IDEA's [risks and kill criter
 | Better Auth gaps (1.8 in beta; API key hashing, device flow, `onLinkAccount` on social sign-in unknown)                          | Auth holes or missing flows             | A test per unknown; wrap or implement where missing                                                           |
 | `@bufbuild/cel` is beta                                                                                                          | Verdicts shift after an upgrade         | Exact pin, conformance subset, replay diff before every upgrade, the library hidden behind `packages/clauses` |
 | Cold starts on the crossing path                                                                                                 | Crossing to needs review over 3 minutes | Measure it; set minimum instances on the worker if p95 breaches                                               |
-| `LISTEN`/`NOTIFY` fan-out under Cloud SQL connection limits                                                                      | Gaps in streams                         | One listener per instance; `Last-Event-ID` resumption                                                         |
-| A new sending domain's reputation                                                                                                | Notices in spam                         | SPF, DKIM, DMARC, gradual volume, one-click unsubscribe, bounce suppression                                   |
-| Calendar clients refresh ICS slowly                                                                                              | Stale entries in subscribers' calendars | ICS is never the only channel for a crossing                                                                  |
 | Home devices (power, SD cards, Android battery limits)                                                                           | Silent camera or Pi                     | Buffering, watchdogs, the auditor; devices never sit on the critical path                                     |
-| No Malaysia region                                                                                                               | Residency requests can't be met         | No promise; a migration plan once a region launches                                                           |
-| The Malaysia Haze Monitor log's licence is unrecorded                                                                            | The haze regression may be unusable     | Ask the maintainer; keep the copy inside tests                                                                |
 
 ## Not verified
 
 Platform and technical unknowns; market and evidence unknowns are in IDEA's [Not verified](/docs/IDEA.md#not-verified) and product questions in PRD's [open questions](/docs/PRD.md#open-questions).
 
-- **Gemini Enterprise:** which MCP revision its custom MCP connector speaks; whether MCP steps in workflows bypass human review; whether A2A registration works with our card (it speaks v0.3 only, and a JavaScript v0.3 compatibility layer is unconfirmed).
-- **MCP clients:** whether TS SDK v2 serves 2025-11-25 `initialize` clients; whether Claude's "published identity" is CIMD; Cursor's remote OAuth support.
+- **Gemini Enterprise and MCP clients:** which MCP revision its custom MCP connector speaks; whether MCP steps in workflows bypass human review; whether A2A registration works with our card (it speaks v0.3 only, and a JavaScript v0.3 compatibility layer is unconfirmed); whether TS SDK v2 serves 2025-11-25 `initialize` clients; whether Claude's "published identity" is CIMD; Cursor's remote OAuth support.
 - **Gemini models:** GA or preview stage of each model on Agent Platform (a search snippet implied Argon went GA on 13 October 2026; the release notes weren't read); Vertex AI prices (AI Studio's are used above); whether retirement dates beyond the "no earlier than" floors move.
 - **Better Auth:** whether API keys are stored hashed, the default key header, whether API keys create sessions, whether social sign-in triggers `onLinkAccount`, the device-authorisation, passkey, magic-link and captcha plugins and their versions.
 - **Billing:** FPX through Stripe in Malaysia; the service tax rate and registration threshold; Stripe Tax coverage for Malaysia; the current Stripe meter API.
-- **Google Cloud:** Cloud SQL prices; Cloud Run prices above the free tier and whether jobs share it; Cloud Scheduler's minimum interval (the per-minute tick assumes one minute); whether KMS has a free tier; Cloud Run's maximum request duration for SSE; the Malaysia region's launch date and ID.
+- **Google Cloud:** Cloud SQL prices; Cloud Run prices above the free tier and whether jobs share it; Cloud Scheduler's minimum interval (the per-minute tick assumes one minute); whether KMS has a free tier; Cloud Run's maximum request duration for SSE; the Malaysia region's launch date and ID; Cloud SQL backup retention and point-in-time recovery settings.
 - **Web:** X card types and limits (the docs returned 402 and 404); whether a JavaScript favicon swap works in Safari 26 and Chrome; Lit SSR maturity; how often Outlook and Google Calendar refresh subscribed ICS feeds.
-- **Feeds:** the exact JSON path behind the JPS station page; whether MET warnings carry a Malay body as well as `title_bm`; whether GoLive's `Z` times are local show times; the APIMS station IDs for Petaling Jaya and Putrajaya (taken from the `mapcaqm` response at binding).
-- **Tooling not checked on 5 November:** versions of Hono, zod, Drizzle, DuckDB, `gtfs-realtime-bindings`, `openapi-typescript`, Vitest, fast-check, Playwright, the OpenTelemetry exporters, Terraform and the Stripe SDK; Amazon SES in `ap-southeast-1` and its inbound mail; OS keychain access from a Bun-compiled binary; Inngest's maximum wait and Trigger.dev's billing while waiting (both rejected anyway).
+- **Feeds:** the exact JSON path behind the JPS station page; whether MET warnings carry a Malay body as well as `title_bm`; whether GoLive's `Z` times are local show times.
+- **Tooling:** versions of packages the 5 November checks didn't cover (Hono, zod, Drizzle, DuckDB, `gtfs-realtime-bindings`, the Stripe SDK, test and OpenTelemetry packages) are pinned at implementation; Amazon SES in `ap-southeast-1`; OS keychain access from a Bun-compiled binary.
 
 ## See also
 
@@ -1040,4 +847,3 @@ Platform and technical unknowns; market and evidence unknowns are in IDEA's [Not
 [data residency]: https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/data-residency
 [KMS envelope encryption]: https://docs.cloud.google.com/kms/docs/envelope-encryption
 [MCP TypeScript SDK]: https://github.com/modelcontextprotocol/typescript-sdk
-[model versions]: https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/model-versions
