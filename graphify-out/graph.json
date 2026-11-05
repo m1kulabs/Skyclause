@@ -3094,18 +3094,6 @@
       "source_location": "L1"
     },
     {
-      "id": "docs_sources_discord_com_project_discussion",
-      "label": "project-discussion.md",
-      "_origin": "ast",
-      "community": 11,
-      "community_name": "apu-cloud-innovation-hackathon-discord.md",
-      "file_type": "document",
-      "node_kind": "page",
-      "norm_label": "project-discussion.md",
-      "source_file": "docs/sources/discord.com/project-discussion.md",
-      "source_location": "L1"
-    },
-    {
       "id": "docs_sources_discord_com_resources",
       "label": "resources.md",
       "_origin": "ast",
@@ -4688,6 +4676,18 @@
       "norm_label": "smart campus & student experience",
       "source_file": "docs/sources/discord.com/problem-statements.md",
       "source_location": "L13"
+    },
+    {
+      "id": "docs_sources_discord_com_project_discussion",
+      "label": "project-discussion.md",
+      "_origin": "ast",
+      "community": 118,
+      "community_name": "Project discussion",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "project-discussion.md",
+      "source_file": "docs/sources/discord.com/project-discussion.md",
+      "source_location": "L1"
     },
     {
       "id": "docs_sources_discord_com_project_discussion_idea_lab",
@@ -7947,7 +7947,7 @@
       "node_kind": "heading",
       "norm_label": "see also",
       "source_file": "docs/DESIGN.md",
-      "source_location": "L808"
+      "source_location": "L807"
     },
     {
       "id": "docs_design_shapes",
@@ -8346,172 +8346,52 @@
       "source_location": "L1151"
     },
     {
-      "id": "docs_sources_discord_com_faq_and_guidelines_can_i_join_on_my_own",
-      "label": "Can I join on my own?",
+      "id": "docs_sources_api_data_gov_my_weather_warning",
+      "label": "weather-warning.md",
       "_origin": "ast",
       "community": 142,
-      "community_name": "Joining and registration",
+      "community_name": "weather-warning.md",
       "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "can i join on my own?",
-      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
-      "source_location": "L40"
+      "node_kind": "page",
+      "norm_label": "weather-warning.md",
+      "source_file": "docs/sources/api.data.gov.my/weather-warning.md",
+      "source_location": "L1"
     },
     {
-      "id": "docs_sources_discord_com_faq_and_guidelines_how_do_we_register",
-      "label": "How do we register?",
+      "id": "docs_sources_api_data_gov_my_weather_warning_weather_warnings",
+      "label": "Weather warnings",
       "_origin": "ast",
       "community": 142,
-      "community_name": "Joining and registration",
+      "community_name": "weather-warning.md",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "how do we register?",
-      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
-      "source_location": "L48"
+      "norm_label": "weather warnings",
+      "source_file": "docs/sources/api.data.gov.my/weather-warning.md",
+      "source_location": "L1"
     },
     {
-      "id": "docs_sources_discord_com_faq_and_guidelines_how_many_people_can_be_on_a_team",
-      "label": "How many people can be on a team?",
-      "_origin": "ast",
-      "community": 142,
-      "community_name": "Joining and registration",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "how many people can be on a team?",
-      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
-      "source_location": "L36"
-    },
-    {
-      "id": "docs_sources_discord_com_faq_and_guidelines_is_there_a_fee",
-      "label": "Is there a fee?",
-      "_origin": "ast",
-      "community": 142,
-      "community_name": "Joining and registration",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "is there a fee?",
-      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
-      "source_location": "L44"
-    },
-    {
-      "id": "docs_sources_discord_com_faq_and_guidelines_joining_and_registration",
-      "label": "Joining and registration",
-      "_origin": "ast",
-      "community": 142,
-      "community_name": "Joining and registration",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "joining and registration",
-      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
-      "source_location": "L30"
-    },
-    {
-      "id": "docs_sources_discord_com_faq_and_guidelines_need_to_correct_a_registration",
-      "label": "Need to correct a registration?",
-      "_origin": "ast",
-      "community": 142,
-      "community_name": "Joining and registration",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "need to correct a registration?",
-      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
-      "source_location": "L52"
-    },
-    {
-      "id": "docs_sources_discord_com_faq_and_guidelines_who_can_join",
-      "label": "Who can join?",
-      "_origin": "ast",
-      "community": 142,
-      "community_name": "Joining and registration",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "who can join?",
-      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
-      "source_location": "L32"
-    },
-    {
-      "id": "docs_sources_discord_com_faq_and_guidelines_challenges_and_schedule",
-      "label": "Challenges and schedule",
+      "id": "docs_sources_eqms_doe_gov_my_mapcaqm",
+      "label": "mapcaqm.md",
       "_origin": "ast",
       "community": 143,
-      "community_name": "Challenges and schedule",
+      "community_name": "mapcaqm.md",
       "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "challenges and schedule",
-      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
-      "source_location": "L56"
+      "node_kind": "page",
+      "norm_label": "mapcaqm.md",
+      "source_file": "docs/sources/eqms.doe.gov.my/mapcaqm.md",
+      "source_location": "L1"
     },
     {
-      "id": "docs_sources_discord_com_faq_and_guidelines_do_we_have_to_use_an_example_idea",
-      "label": "Do we have to use an example idea?",
+      "id": "docs_sources_eqms_doe_gov_my_mapcaqm_apims_mapcaqm_feed",
+      "label": "APIMS mapcaqm feed",
       "_origin": "ast",
       "community": 143,
-      "community_name": "Challenges and schedule",
+      "community_name": "mapcaqm.md",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "do we have to use an example idea?",
-      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
-      "source_location": "L62"
-    },
-    {
-      "id": "docs_sources_discord_com_faq_and_guidelines_does_my_discord_challenge_tag_register_our_choice",
-      "label": "Does my Discord challenge tag register our choice?",
-      "_origin": "ast",
-      "community": 143,
-      "community_name": "Challenges and schedule",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "does my discord challenge tag register our choice?",
-      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
-      "source_location": "L66"
-    },
-    {
-      "id": "docs_sources_discord_com_faq_and_guidelines_when_does_registration_close",
-      "label": "When does registration close?",
-      "_origin": "ast",
-      "community": 143,
-      "community_name": "Challenges and schedule",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "when does registration close?",
-      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
-      "source_location": "L74"
-    },
-    {
-      "id": "docs_sources_discord_com_faq_and_guidelines_when_is_the_briefing",
-      "label": "When is the briefing?",
-      "_origin": "ast",
-      "community": 143,
-      "community_name": "Challenges and schedule",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "when is the briefing?",
-      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
-      "source_location": "L70"
-    },
-    {
-      "id": "docs_sources_discord_com_faq_and_guidelines_where_does_the_hackathon_take_place",
-      "label": "Where does the hackathon take place?",
-      "_origin": "ast",
-      "community": 143,
-      "community_name": "Challenges and schedule",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "where does the hackathon take place?",
-      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
-      "source_location": "L78"
-    },
-    {
-      "id": "docs_sources_discord_com_faq_and_guidelines_which_problem_statements_can_we_choose_from",
-      "label": "Which problem statements can we choose from?",
-      "_origin": "ast",
-      "community": 143,
-      "community_name": "Challenges and schedule",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "which problem statements can we choose from?",
-      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
-      "source_location": "L58"
+      "norm_label": "apims mapcaqm feed",
+      "source_file": "docs/sources/eqms.doe.gov.my/mapcaqm.md",
+      "source_location": "L1"
     },
     {
       "id": "docs_design_landing_art_direction",
@@ -9712,6 +9592,30 @@
       "norm_label": "tenancy, append-only tables and partitions",
       "source_file": "docs/TRD.md",
       "source_location": "L200"
+    },
+    {
+      "id": "docs_sources_infobanjirjpskl_water_gov_my_rainfall_graph_75",
+      "label": "rainfall-graph-75.md",
+      "_origin": "ast",
+      "community": 166,
+      "community_name": "rainfall-graph-75.md",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "rainfall-graph-75.md",
+      "source_file": "docs/sources/infobanjirjpskl.water.gov.my/rainfall-graph-75.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "docs_sources_infobanjirjpskl_water_gov_my_rainfall_graph_75_rainfall_graph_for_station_75",
+      "label": "Rainfall graph for station 75",
+      "_origin": "ast",
+      "community": 166,
+      "community_name": "rainfall-graph-75.md",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "rainfall graph for station 75",
+      "source_file": "docs/sources/infobanjirjpskl.water.gov.my/rainfall-graph-75.md",
+      "source_location": "L1"
     },
     {
       "id": "commitlint_config",
@@ -21173,6 +21077,18 @@
       "source_location": "L82"
     },
     {
+      "id": "docs_sources_discord_com_faq_and_guidelines_can_i_join_on_my_own",
+      "label": "Can I join on my own?",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "Building, submissions, and help",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "can i join on my own?",
+      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
+      "source_location": "L40"
+    },
+    {
       "id": "docs_sources_discord_com_faq_and_guidelines_can_we_change_team_members_or_our_problem_statement_after_registering",
       "label": "Can we change team members or our problem statement after registering?",
       "_origin": "ast",
@@ -21185,6 +21101,42 @@
       "source_location": "L94"
     },
     {
+      "id": "docs_sources_discord_com_faq_and_guidelines_challenges_and_schedule",
+      "label": "Challenges and schedule",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "Building, submissions, and help",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "challenges and schedule",
+      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
+      "source_location": "L56"
+    },
+    {
+      "id": "docs_sources_discord_com_faq_and_guidelines_do_we_have_to_use_an_example_idea",
+      "label": "Do we have to use an example idea?",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "Building, submissions, and help",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "do we have to use an example idea?",
+      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
+      "source_location": "L62"
+    },
+    {
+      "id": "docs_sources_discord_com_faq_and_guidelines_does_my_discord_challenge_tag_register_our_choice",
+      "label": "Does my Discord challenge tag register our choice?",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "Building, submissions, and help",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "does my discord challenge tag register our choice?",
+      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
+      "source_location": "L66"
+    },
+    {
       "id": "docs_sources_discord_com_faq_and_guidelines_faq_and_guidelines",
       "label": "FAQ and guidelines",
       "_origin": "ast",
@@ -21195,6 +21147,66 @@
       "norm_label": "faq and guidelines",
       "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
       "source_location": "L1"
+    },
+    {
+      "id": "docs_sources_discord_com_faq_and_guidelines_how_do_we_register",
+      "label": "How do we register?",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "Building, submissions, and help",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "how do we register?",
+      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
+      "source_location": "L48"
+    },
+    {
+      "id": "docs_sources_discord_com_faq_and_guidelines_how_many_people_can_be_on_a_team",
+      "label": "How many people can be on a team?",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "Building, submissions, and help",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "how many people can be on a team?",
+      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
+      "source_location": "L36"
+    },
+    {
+      "id": "docs_sources_discord_com_faq_and_guidelines_is_there_a_fee",
+      "label": "Is there a fee?",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "Building, submissions, and help",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "is there a fee?",
+      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
+      "source_location": "L44"
+    },
+    {
+      "id": "docs_sources_discord_com_faq_and_guidelines_joining_and_registration",
+      "label": "Joining and registration",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "Building, submissions, and help",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "joining and registration",
+      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
+      "source_location": "L30"
+    },
+    {
+      "id": "docs_sources_discord_com_faq_and_guidelines_need_to_correct_a_registration",
+      "label": "Need to correct a registration?",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "Building, submissions, and help",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "need to correct a registration?",
+      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
+      "source_location": "L52"
     },
     {
       "id": "docs_sources_discord_com_faq_and_guidelines_see_also",
@@ -21233,6 +21245,30 @@
       "source_location": "L88"
     },
     {
+      "id": "docs_sources_discord_com_faq_and_guidelines_when_does_registration_close",
+      "label": "When does registration close?",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "Building, submissions, and help",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "when does registration close?",
+      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
+      "source_location": "L74"
+    },
+    {
+      "id": "docs_sources_discord_com_faq_and_guidelines_when_is_the_briefing",
+      "label": "When is the briefing?",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "Building, submissions, and help",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "when is the briefing?",
+      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
+      "source_location": "L70"
+    },
+    {
       "id": "docs_sources_discord_com_faq_and_guidelines_where_are_official_updates",
       "label": "Where are official updates?",
       "_origin": "ast",
@@ -21245,6 +21281,18 @@
       "source_location": "L106"
     },
     {
+      "id": "docs_sources_discord_com_faq_and_guidelines_where_does_the_hackathon_take_place",
+      "label": "Where does the hackathon take place?",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "Building, submissions, and help",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "where does the hackathon take place?",
+      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
+      "source_location": "L78"
+    },
+    {
       "id": "docs_sources_discord_com_faq_and_guidelines_where_should_i_ask_a_question",
       "label": "Where should I ask a question?",
       "_origin": "ast",
@@ -21255,6 +21303,30 @@
       "norm_label": "where should i ask a question?",
       "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
       "source_location": "L102"
+    },
+    {
+      "id": "docs_sources_discord_com_faq_and_guidelines_which_problem_statements_can_we_choose_from",
+      "label": "Which problem statements can we choose from?",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "Building, submissions, and help",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "which problem statements can we choose from?",
+      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
+      "source_location": "L58"
+    },
+    {
+      "id": "docs_sources_discord_com_faq_and_guidelines_who_can_join",
+      "label": "Who can join?",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "Building, submissions, and help",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "who can join?",
+      "source_file": "docs/sources/discord.com/faq-and-guidelines.md",
+      "source_location": "L32"
     },
     {
       "id": "docs_ideas_13_research_fyp_nexus",
@@ -26427,7 +26499,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/DESIGN.md",
-      "source_location": "L808",
+      "source_location": "L807",
       "weight": 1.0
     },
     {
@@ -44218,6 +44290,17 @@
       "weight": 1.0
     },
     {
+      "source": "docs_sources_api_data_gov_my_weather_warning",
+      "target": "docs_sources_api_data_gov_my_weather_warning_weather_warnings",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/api.data.gov.my/weather-warning.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
       "source": "docs_sources_briefing_session_slides",
       "target": "docs_sources_briefing_session_slides_briefing_session_slides",
       "relation": "contains",
@@ -45571,6 +45654,17 @@
       "weight": 1.0
     },
     {
+      "source": "docs_sources_eqms_doe_gov_my_mapcaqm",
+      "target": "docs_sources_eqms_doe_gov_my_mapcaqm_apims_mapcaqm_feed",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/eqms.doe.gov.my/mapcaqm.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
       "source": "docs_sources_gdgocapu_com_apu_cloud_innovation_hackathon",
       "target": "docs_sources_gdgocapu_com_apu_cloud_innovation_hackathon_apu_cloud_innovation_hackathon_2026",
       "relation": "contains",
@@ -45986,6 +46080,17 @@
       "confidence_score": 1.0,
       "source_file": "docs/sources/gdgocapu.com/team-workspace.md",
       "source_location": "L27",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_sources_infobanjirjpskl_water_gov_my_rainfall_graph_75",
+      "target": "docs_sources_infobanjirjpskl_water_gov_my_rainfall_graph_75_rainfall_graph_for_station_75",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/sources/infobanjirjpskl.water.gov.my/rainfall-graph-75.md",
+      "source_location": "L1",
       "weight": 1.0
     },
     {
@@ -47695,5 +47800,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "717d2b91f0ee3c71f0d21d97fff807526a9be5af"
+  "built_at_commit": "a55a89d1b26c0f4e04fba84f50117a0ab0d09268"
 }
