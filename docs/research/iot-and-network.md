@@ -804,7 +804,7 @@ Platform behaviours that decide whether a phone or Pi job keeps running unattend
 
 The repo rule says: "Use real public data, such as live public APIs or published datasets, never demo, mock, placeholder, seed, or sample data, even temporarily. If the source fails, show the error, with no fallback, cached copy, or default value. If no public source fits, ask the user." It adds that "test doubles in tests are fine" ([project conventions](/docs/references/project-conventions.md)). The hackathon's own rules say nothing about data provenance ([brief](/docs/BRIEF.md)).
 
-How the rule's wording maps onto each case. The cases the wording left open were decided by the user on 3 November 2026; [context](/docs/CONTEXT.md#decisions-so-far) records the ruling.
+How the rule's wording maps onto each case. The cases the wording left open were decided by the user on 3 November 2026. On 4 November 2026 the user also allowed mock GPS, which the wording forbids outside tests. [Context](/docs/CONTEXT.md#decisions-so-far) records the rulings.
 
 | Case                                                   | Data is real? | Wording that applies                     | Status                                        |
 | ------------------------------------------------------ | ------------- | ---------------------------------------- | --------------------------------------------- |
@@ -815,7 +815,9 @@ How the rule's wording maps onto each case. The cases the wording left open were
 | Live readings from the team's own phone or board       | Yes           | Real, but not a "public" source          | Decided: allowed                              |
 | Published real dataset replayed as if streaming        | Yes           | "published datasets"; replay shifts time | Decided: allowed                              |
 | Team-recorded real sensor log, replayed                | Yes           | Not public unless the team publishes it  | Decided: allowed if published with provenance |
-| Pre-recorded demo video of a live run                  | Yes           | Rule doesn't address videos              | Decided: forbidden                            |
+| Video of the live system, labelled with capture date   | Yes           | Rule doesn't address videos              | Decided: allowed                              |
+| Video that stands in for live access                   | Yes           | Rule doesn't address videos              | Decided: forbidden                            |
+| Mock GPS positions in tests and the recorded demo      | No            | "never demo, mock"                       | Decided: allowed, no label needed             |
 
 Questions the open cases turned on before the ruling:
 
@@ -842,7 +844,7 @@ Questions the open cases turned on before the ruling:
 - **Evidence:** `doPost` isn't subject to the trigger restrictions, Apps Script redirects responses, and a sheet holds 20 million cells. **Inference:** one reading a minute from the Pi into a sheet fits easily; clients must follow redirects.
 - **Evidence:** Globalping's public API reads measurements only by ID, while the Gemini Enterprise connector "searches your measurements". **Inference:** test the Globalping connector against the team's own measurements before building on it.
 - **Evidence:** systemd stops restarting after 5 starts in 10 seconds by default, NetworkManager stops autoconnecting after 4 tries by default, and power dropouts corrupt SD cards. **Inference:** before 10 November, set `Restart=always` with `StartLimitIntervalSec=0`, a hardware watchdog, Wi-Fi power saving off with unlimited retries (or Ethernet), the 27 W supply, Tailscale SSH for every teammate, frozen updates, and data sent off the Pi as it's read.
-- **Decided (3 November 2026):** team-owned live sensors, replayed published datasets, and team-recorded logs published with provenance are allowed; a recorded demo video is not ([Real versus simulated data](#real-versus-simulated-data)).
+- **Decided (3 November 2026):** team-owned live sensors, replayed published datasets, team-recorded logs published with provenance, and a labelled video recorded from the live system are allowed; a video that stands in for live access is not ([Real versus simulated data](#real-versus-simulated-data)).
 
 ## Not verified
 
