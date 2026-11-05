@@ -1,6 +1,7 @@
 export { webIdentityCredentials, type AwsCredentials, type WebIdentityOptions } from './aws-credentials'
 export {
   createEmailTransport,
+  emailTransportForAws,
   SesError,
   type EmailMessage,
   type EmailTransport,

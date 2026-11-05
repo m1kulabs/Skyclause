@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { SendEmailCommand } from '@aws-sdk/client-sesv2'
+import { SendEmailCommand, SESv2Client } from '@aws-sdk/client-sesv2'
+import { webIdentityCredentials } from './aws-credentials'
 
 /** Spec §1 `EmailTransport.send` input; #87 moves the type to `packages/contracts`. */
 export interface EmailMessage {
@@ -91,6 +92,15 @@ export function createEmailTransport(options: EmailTransportOptions): EmailTrans
       return { providerMessageId: result.MessageId ?? null }
     }
   }
+}
+
+/** `createEmailTransport` on SES in `region` as `AWS_ROLE_ARN`, with keyless credentials (D42). */
+export function emailTransportForAws(
+  config: Omit<EmailTransportOptions, 'ses'> & { region: string; roleArn: string }
+): EmailTransport {
+  const { region, roleArn, ...options } = config
+  const ses = new SESv2Client({ region, credentials: webIdentityCredentials({ roleArn, region }) })
+  return createEmailTransport({ ...options, ses })
 }
 
 const CRLF = '\r\n'
