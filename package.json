@@ -18,9 +18,9 @@
     "test:e2e": "bun run --cwd apps/web test:e2e",
     "build": "bun run --filter './apps/*' build",
     "openapi:check": "bun scripts/not-configured.ts f-api openapi.json apps packages",
-    "db:seed-check": "bun scripts/not-configured.ts f-db packages/db .sql",
-    "db:up": "bun scripts/not-configured.ts f-db packages/db .sql",
-    "db:migrate": "bun scripts/not-configured.ts f-db packages/db .sql",
+    "db:seed-check": "bun scripts/not-configured.ts f-db .sql packages/db",
+    "db:up": "bun scripts/not-configured.ts f-db .sql packages/db",
+    "db:migrate": "bun scripts/not-configured.ts f-db .sql packages/db",
     "check:unbuilt": "bun scripts/check-unbuilt.ts",
     "prepare": "husky"
   },
