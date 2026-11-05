@@ -1,0 +1,16 @@
+{
+  "name": "@skyclause/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build src/main.ts --target=node --format=esm --sourcemap=linked --outdir=dist",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@hono/node-server": "2.1.6",
+    "@skyclause/config": "workspace:*",
+    "hono": "4.13.16",
+    "jose": "6.2.15"
+  }
+}
