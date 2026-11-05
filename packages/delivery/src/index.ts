@@ -8,3 +8,12 @@ export {
   type SesClient
 } from './email'
 export { isSnsUrl, SnsVerificationError, verifySnsMessage, type SnsMessage, type VerifyOptions } from './sns'
+export {
+  createInboundRouter,
+  onInbound,
+  sesInboundHandler,
+  type InboundBucket,
+  type InboundHandler,
+  type InboundMessage,
+  type SesInboundOptions
+} from './inbound'
