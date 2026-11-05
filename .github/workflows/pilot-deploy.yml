@@ -1,0 +1,129 @@
+# Deploys the P0 pilot from main (#48): Apps Script through clasp with the pilot owner's token, and the camera page
+# to its bucket through direct WIF. DEPLOY_FREEZE=true skips a run unless a dispatch sets override_freeze.
+name: pilot-deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - pilot/apps-script/**
+      - pilot/shared/**
+      - pilot/camera/**
+      - bun.lock
+  workflow_dispatch:
+    inputs:
+      target:
+        description: What to deploy
+        type: choice
+        options: [all, apps-script, camera]
+        default: all
+      override_freeze:
+        description: Deploy while DEPLOY_FREEZE is true
+        type: boolean
+        default: false
+      scopes_reauthorized:
+        description: Skip the scope guard; the pilot owner runs setup() straight after to grant changed scopes
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-pilot
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    # A skipped run skips every job below. Only main deploys: the token and WIF are for main's code.
+    if: github.ref == 'refs/heads/main' && (vars.DEPLOY_FREEZE != 'true' || inputs.override_freeze)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bunx tsc --noEmit -p pilot
+      - run: bun test
+      - run: bun pilot/apps-script/build.ts
+
+  apps-script:
+    needs: checks
+    if: inputs.target != 'camera'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      PILOT_SCRIPT_ID: ${{ vars.PILOT_SCRIPT_ID }}
+      INGEST_DEPLOYMENT_ID: ${{ vars.INGEST_DEPLOYMENT_ID }}
+      INGEST_URL: ${{ vars.INGEST_URL }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The scope guard reads the manifest at the SHA health reports.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - name: Check the wizard's variables
+        run: |
+          for name in PILOT_SCRIPT_ID INGEST_DEPLOYMENT_ID INGEST_URL; do
+            [ -n "${!name}" ] || { echo "::error::$name is not set; run pilot/wizard.sh"; exit 1; }
+          done
+      - run: bun pilot/apps-script/build.ts
+      - name: Scope guard
+        if: ${{ !inputs.scopes_reauthorized }}
+        run: bun pilot/apps-script/deployed.ts scope-guard
+      - name: Write the clasp token and project file
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
+          # Named apart from the .clasp.json each developer keeps for their own dev script.
+          printf '{"scriptId":"%s","rootDir":"dist"}\n' "$PILOT_SCRIPT_ID" > pilot/apps-script/.clasp-pilot.json
+      - run: bunx @google/clasp@3.4.1 -P pilot/apps-script/.clasp-pilot.json push --force
+      - run: >-
+          bunx @google/clasp@3.4.1 -P pilot/apps-script/.clasp-pilot.json
+          update-deployment "$INGEST_DEPLOYMENT_ID" -d "$GITHUB_SHA"
+      - name: Health returns this SHA
+        run: bun pilot/apps-script/deployed.ts await-sha "$GITHUB_SHA"
+      - name: Delete the clasp token
+        if: always()
+        run: rm -f ~/.clasprc.json pilot/apps-script/.clasp-pilot.json
+
+  camera:
+    needs: checks
+    if: inputs.target != 'apps-script'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun pilot/camera/build.ts
+        env:
+          INGEST_URL: ${{ vars.INGEST_URL }}
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+      - env:
+          CAMERA_BUCKET: ${{ vars.CAMERA_BUCKET }}
+        run: >-
+          gcloud storage rsync pilot/camera/dist "gs://$CAMERA_BUCKET" --recursive
+          --delete-unmatched-destination-objects --cache-control=no-cache
