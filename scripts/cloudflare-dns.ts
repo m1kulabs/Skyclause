@@ -8,11 +8,12 @@ const base = 'skyclause.m1ku.tech'
 const comment = 'owner: skyclause'
 const label = /^[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9])?$/
 
-export type RecordType = 'CNAME' | 'TXT'
+export type RecordType = 'CNAME' | 'TXT' | 'MX'
 
 export interface WantedRecord {
   type: RecordType
   name: string
+  /** A CNAME's target, a TXT's value, or an MX's `<priority> <host>`. */
   content: string
 }
 
@@ -35,6 +36,7 @@ interface CloudflareRecord {
   name: string
   content: string
   proxied?: boolean
+  priority?: number
   comment?: string | null
 }
 
@@ -53,22 +55,33 @@ function ownName(name: string): string {
   return fqdn
 }
 
-/** The content to store: a CNAME target as a lowercase hostname without the trailing dot, a TXT value as given. */
-function validContent(wanted: WantedRecord): string {
+/**
+ * The content to store: a CNAME target as a lowercase hostname without the trailing dot, a TXT value
+ * as given, or an MX host the same way with its priority apart.
+ */
+function validContent(wanted: WantedRecord): { content: string; priority?: number } {
   if (wanted.type === 'CNAME') {
     const target = hostname(wanted.content)
     if (!target?.includes('.')) throw new Error(`CNAME content ${wanted.content} is not a hostname`)
-    return target
+    return { content: target }
+  }
+  if (wanted.type === 'MX') {
+    const [, priority, host] = wanted.content.match(/^(\d{1,5}) (\S+)$/) ?? []
+    const target = host ? hostname(host) : null
+    if (!priority || Number(priority) > 65535 || !target?.includes('.')) {
+      throw new Error(`MX content ${wanted.content} is not "<priority 0-65535> <host>"`)
+    }
+    return { content: target, priority: Number(priority) }
   }
   if (wanted.content.length === 0 || wanted.content.length > 2048) {
     throw new Error('TXT content must be 1 to 2048 characters')
   }
-  return wanted.content
+  return { content: wanted.content }
 }
 
 export async function upsertRecord(wanted: WantedRecord, options: UpsertOptions): Promise<UpsertResult> {
   const name = ownName(wanted.name)
-  const content = validContent(wanted)
+  const { content, priority } = validContent(wanted)
   const call = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
     const response = await (options.fetch ?? fetch)(`${api}${path}`, {
       ...init,
@@ -101,7 +114,7 @@ export async function upsertRecord(wanted: WantedRecord, options: UpsertOptions)
   }
 
   const proxied = wanted.type === 'CNAME' ? { proxied: false } : {}
-  const body = JSON.stringify({ type: wanted.type, name, content, ...proxied, ttl: 1, comment })
+  const body = JSON.stringify({ type: wanted.type, name, content, priority, ...proxied, ttl: 1, comment })
   const cname = atName.find((record) => record.type === 'CNAME')
   const others = atName.filter((record) => record.type !== 'CNAME')
   if ((wanted.type === 'CNAME' && others.length > 0) || (wanted.type !== 'CNAME' && cname)) {
@@ -115,6 +128,18 @@ export async function upsertRecord(wanted: WantedRecord, options: UpsertOptions)
     if (options.dryRun) return { action: 'updated', id: cname.id }
     const updated = await call<CloudflareRecord>(`${recordsPath}/${cname.id}`, { method: 'PATCH', body })
     return { action: 'updated', id: updated.id }
+  }
+
+  if (wanted.type === 'MX') {
+    const mx = others.filter((record) => record.type === 'MX')
+    const same = mx.find((record) => hostname(record.content) === content && record.priority === priority)
+    if (same) return { action: 'unchanged', id: same.id }
+    if (mx.length > 1) throw new Error(`${name} already has ${mx.length} MX records; fix them by hand`)
+    if (mx[0]) {
+      if (options.dryRun) return { action: 'updated', id: mx[0].id }
+      const updated = await call<CloudflareRecord>(`${recordsPath}/${mx[0].id}`, { method: 'PATCH', body })
+      return { action: 'updated', id: updated.id }
+    }
   }
 
   // Cloudflare may return TXT content wrapped in quotes.

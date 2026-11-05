@@ -7,6 +7,7 @@ interface StoredRecord {
   name: string
   content: string
   proxied?: boolean
+  priority?: number
   ttl?: number
   comment?: string | null
 }
@@ -232,6 +233,90 @@ test('leaves our own TXT unchanged when Cloudflare returns the same value in quo
   expect(result).toEqual({ action: 'unchanged', id: 'ours' })
   expect(cf.writes).toEqual([])
 })
+
+test('creates an MX from "<priority> <host>", with the priority apart and no proxied flag', async () => {
+  const cf = fakeCloudflare()
+
+  const result = await upsertRecord(
+    { type: 'MX', name: 'in.skyclause.m1ku.tech', content: '10 inbound-smtp.ap-southeast-2.amazonaws.com' },
+    { token: 'test-token', fetch: cf.fetch }
+  )
+
+  expect(result).toEqual({ action: 'created', id: 'new-1' })
+  expect(cf.records).toEqual([
+    {
+      id: 'new-1',
+      type: 'MX',
+      name: 'in.skyclause.m1ku.tech',
+      content: 'inbound-smtp.ap-southeast-2.amazonaws.com',
+      priority: 10,
+      ttl: 1,
+      comment: 'owner: skyclause'
+    }
+  ])
+})
+
+test('leaves our own matching MX unchanged', async () => {
+  const cf = fakeCloudflare([
+    {
+      id: 'ours',
+      type: 'MX',
+      name: 'bounce.notices.skyclause.m1ku.tech',
+      content: 'feedback-smtp.ap-southeast-2.amazonses.com',
+      priority: 10,
+      comment: 'owner: skyclause'
+    }
+  ])
+
+  const result = await upsertRecord(
+    {
+      type: 'MX',
+      name: 'bounce.notices.skyclause.m1ku.tech',
+      content: '10 feedback-smtp.ap-southeast-2.amazonses.com'
+    },
+    { token: 'test-token', fetch: cf.fetch }
+  )
+
+  expect(result).toEqual({ action: 'unchanged', id: 'ours' })
+  expect(cf.writes).toEqual([])
+})
+
+test('updates our one MX in place, since SES wants exactly one MX at a MAIL FROM name', async () => {
+  const cf = fakeCloudflare([
+    {
+      id: 'ours',
+      type: 'MX',
+      name: 'bounce.notices.skyclause.m1ku.tech',
+      content: 'feedback-smtp.ap-southeast-1.amazonses.com',
+      priority: 10,
+      comment: 'owner: skyclause'
+    }
+  ])
+
+  const result = await upsertRecord(
+    {
+      type: 'MX',
+      name: 'bounce.notices.skyclause.m1ku.tech',
+      content: '10 feedback-smtp.ap-southeast-2.amazonses.com'
+    },
+    { token: 'test-token', fetch: cf.fetch }
+  )
+
+  expect(result).toEqual({ action: 'updated', id: 'ours' })
+  expect(cf.records).toHaveLength(1)
+  expect(cf.records[0]).toMatchObject({ content: 'feedback-smtp.ap-southeast-2.amazonses.com', priority: 10 })
+})
+
+test.each(['inbound-smtp.ap-southeast-2.amazonaws.com', '10', 'ten inbound-smtp.example.com', '70000 mx.example.com'])(
+  'refuses MX content %j that is not "<priority 0-65535> <host>"',
+  async (content) => {
+    const cf = fakeCloudflare()
+    await expect(
+      upsertRecord({ type: 'MX', name: 'in.skyclause.m1ku.tech', content }, { token: 'test-token', fetch: cf.fetch })
+    ).rejects.toThrow(/MX content/)
+    expect(cf.calls).toEqual([])
+  }
+)
 
 test("fails with Cloudflare's own error, never the token, when a call is refused", async () => {
   const cf = fakeCloudflare()

@@ -80,7 +80,7 @@ Set these in a pull request, in `environments/production/terraform.tfvars`, whic
 `skyclause.m1ku.tech`, `app.`, `api.`, `mcp.`, `embed.` and `docs.` map to `web` through Cloud Run domain mappings.
 
 1.  A person verifies `skyclause.m1ku.tech` as a Domain property in Google Search Console, choosing the CNAME record, and adds `skyclause-terraform@skyclause.iam.gserviceaccount.com` as an owner. A record at the `m1ku.tech` apex is never used. `infra/wizards/search-console.sh` walks through it in about 15 minutes and writes the CNAME itself.
-1.  Set `map_domains = true`. After the apply, `terraform output dns_records` lists each host's records; create them in Cloudflare with `proxied: false` and the comment `owner: skyclause`. For a CNAME or TXT, `bun scripts/cloudflare-record.ts [--dry-run] <CNAME|TXT> <name> <content>` does that with `M1KU_CLOUDFLARE_API_TOKEN`, and refuses any name outside `skyclause.m1ku.tech` and any record not commented `owner: skyclause`.
+1.  Set `map_domains = true`. After the apply, `terraform output dns_records` lists each host's records; create them in Cloudflare with `proxied: false` and the comment `owner: skyclause`. For a CNAME, TXT or MX (content `<priority> <host>`), `bun scripts/cloudflare-record.ts [--dry-run] <CNAME|TXT|MX> <name> <content>` does that with `M1KU_CLOUDFLARE_API_TOKEN`, and refuses any name outside `skyclause.m1ku.tech` and any record not commented `owner: skyclause`.
 1.  Once each certificate is active, set `host_mode = "multi"` and the six `origins`. Until then every origin is the `web` URL.
 
 ## AWS email
@@ -112,7 +112,7 @@ A person with AWS access to account `776566309118` applies `aws/` after the prod
     terraform -chdir=infra/aws apply
     ```
 
-1.  Enter the records from `terraform -chdir=infra/aws output dns_records` in Cloudflare with `proxied: false` and the comment `owner: skyclause` (#118). The DKIM values assume SES signs from `dkim.amazonses.com`, which Terraform can't read yet; first check that each identity prints it, and use the printed zone if it differs:
+1.  Enter the records from `terraform -chdir=infra/aws output dns_records` in Cloudflare with `bun scripts/cloudflare-record.ts`, which sets `proxied: false` and the comment `owner: skyclause` (#118). The DKIM values assume SES signs from `dkim.amazonses.com`, which Terraform can't read yet; first check that each identity prints it, and use the printed zone if it differs:
 
     ```shell
     for identity in notices.skyclause.m1ku.tech in.skyclause.m1ku.tech; do
