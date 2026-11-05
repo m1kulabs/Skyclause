@@ -46,7 +46,7 @@ locals {
 
   project_roles = concat(
     # Telemetry goes to Google's OTLP endpoint (#114), which needs the writer role and the quota project.
-    flatten([for account in ["web", "worker", "jobs", "migrator"] : [
+    flatten([for account in ["web", "worker", "jobs", "migrator", "vapid"] : [
       { account = account, role = "roles/telemetry.writer" },
       { account = account, role = "roles/serviceusage.serviceUsageConsumer" },
     ]]),
