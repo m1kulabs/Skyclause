@@ -421,7 +421,7 @@ English first, Bahasa Melayu second.
 
 Typed clients generated from the OpenAPI document.
 
-- **SDK-1** (P1) `@skyclause/sdk` for TypeScript: ESM, runs in Node, Bun, Deno, browsers and edge runtimes, generated from `/openapi.json`, with hand-written pagination iterators, SSE streams and webhook signature verification. Acceptance: one test suite passes on all five runtimes.
+- **SDK-1** (P1) `@skyclause/sdk` for TypeScript: ESM, runs in Node, Bun, Deno, browsers and edge runtimes, generated from `/openapi.json`, with hand-written pagination iterators, SSE streams and webhook signature verification. It is used from the repo workspace as a `workspace:*` dependency and isn't published to npm; public releases were dropped on 6 November 2026. Acceptance: one test suite passes on all five runtimes.
 - **SDK-2** (P1) `skyclause` for Python with the same three helpers. Acceptance: the same contract tests pass.
 - **SDK-3** (P1) Auth by API key or OAuth token; no SDK method can approve. Acceptance: the generated client has no approval operation.
 - **SDK-4** (P1) Source failures surface as typed errors naming the source and since when, never as empty values. Acceptance: a No call reading returns its state, not `null`.
@@ -431,7 +431,7 @@ Typed clients generated from the OpenAPI document.
 
 `skyclause` for terminals and scripts.
 
-- **CLI-1** (P1) Installs from npm, Homebrew and a single binary built with Bun for macOS, Linux and Windows. Acceptance: `skyclause --version` runs on all three.
+- **CLI-1** (P1) Runs from a clone of the repository with Bun on macOS, Linux and Windows: `bun install`, then `bun run skyclause <command>`. Nothing is published to npm, Homebrew or GitHub releases; public releases were dropped on 6 November 2026. Acceptance: in a fresh clone, `bun install` then `bun run skyclause --version` runs on all three.
 - **CLI-2** (P1) `skyclause login` uses device code (ACC-5). Acceptance: no token is written to a plain file.
 - **CLI-3** (P1) Every command takes `--json` with a stable schema; No call is data, not an error; errors exit non-zero. Acceptance: `skyclause signals --json` on an erroring source exits 0 and includes the error row.
 - **CLI-4** (P1) Commands: projects; windows; signals (`tail` streams readings with ages); clauses (`test`, `replay`, `diff`); calls and bundles (list, show); evidence; `mcp` (local stdio server); `skills install`. Acceptance: `skyclause clauses replay` labels its output "replay".
