@@ -1,6 +1,4 @@
 # The #79 §6 TF values, for #89's app_config in infra/environments/production/terraform.tfvars.
-# EMAIL_ALLOWLIST isn't here: it holds team addresses and is set there only while SES is in the
-# sandbox (infra/aws/README.md).
 output "app_config" {
   value = {
     SES_REGION               = local.region

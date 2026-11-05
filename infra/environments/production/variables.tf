@@ -49,7 +49,6 @@ variable "app_config" {
       "ADAPTER_USER_AGENT",
       "AWS_ROLE_ARN",
       "COMMONS_MODEL_TOKENS_PER_DAY",
-      "EMAIL_ALLOWLIST",
       "EMAIL_FROM_AUTH",
       "EMAIL_FROM_NOTICES",
       "GOOGLE_CLIENT_ID",
