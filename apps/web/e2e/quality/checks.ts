@@ -251,7 +251,10 @@ async function keyboardFindings(page: Page): Promise<Finding[]> {
 
   const first = stops[0]
   if (!first?.skipLink) {
-    findings.push({ check: 'skip-link', detail: `the first Tab stop is ${first?.label ?? 'nothing'}, not a skip link` })
+    const detail = first
+      ? `the first Tab stop is ${first.label}, not a skip link`
+      : 'Tab reaches nothing, not even a skip link'
+    findings.push({ check: 'skip-link', detail })
   } else if (!first.visible) {
     findings.push({ check: 'skip-link', detail: 'the skip link stays hidden when focused' })
   }
