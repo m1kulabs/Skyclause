@@ -2,17 +2,72 @@ import { z } from 'zod'
 
 // Spec §6. Owners add their variables to the service that reads them.
 const base = z.object({
-  APP_ENV: z.enum(['dev', 'staging', 'production', 'test'])
+  APP_ENV: z.enum(['dev', 'staging', 'production', 'test']),
+  // a-observability; telemetry exports only where Terraform sets GCP_PROJECT (f-infra).
+  OTEL_SERVICE_NAME: z.string().min(1).optional(),
+  // Unset means info (telemetry.ts).
+  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional(),
+  GCP_PROJECT: z.string().min(1).optional(),
+  GCP_REGION: z.string().min(1).optional()
 })
 
+// a-email-transport (#113): infra/aws's app_config output. Optional until gate 4B, then all of a
+// service's set together.
+const arn = (service: string) => z.string().regex(new RegExp(`^arn:aws:${service}:[a-z0-9-]*:\\d{12}:.+$`))
+const sending = {
+  SES_REGION: z.string().regex(/^[a-z]{2}(-[a-z]+)+-\d$/),
+  SES_CONFIGURATION_SET: z.string().min(1),
+  EMAIL_FROM_AUTH: z.string().min(1),
+  EMAIL_FROM_NOTICES: z.string().min(1),
+  AWS_ROLE_ARN: arn('iam')
+}
+const receiving = {
+  SES_EVENTS_SNS_TOPIC_ARN: arn('sns'),
+  INBOUND_DOMAIN: z.string().min(1),
+  INBOUND_BUCKET: z.string().min(1),
+  INBOUND_SNS_TOPIC_ARN: arn('sns')
+}
+
+// c-approver-alerts' VAPID values (#113 generates them): optional until the vapid-keys job has
+// run; VAPID_SUBJECT is APP_ORIGIN from Terraform.
+const base64urlBytes = (length: number, first?: number) =>
+  z.string().refine((value) => {
+    const bytes = Buffer.from(value, 'base64url')
+    return /^[\w-]+$/.test(value) && bytes.length === length && (first === undefined || bytes[0] === first)
+  }, `must be ${length} bytes of base64url`)
+const vapidPublic = { VAPID_SUBJECT: z.url().optional(), VAPID_PUBLIC_KEY: base64urlBytes(65, 0x04).optional() }
+
+function optional<T extends Record<string, z.ZodType>>(shape: T) {
+  return Object.fromEntries(Object.entries(shape).map(([name, type]) => [name, type.optional()])) as {
+    [K in keyof T]: z.ZodOptional<T[K]>
+  }
+}
+
+function together(names: string[]) {
+  return (env: Record<string, unknown>, ctx: z.RefinementCtx) => {
+    const missing = names.filter((name) => env[name] === undefined)
+    if (missing.length && missing.length < names.length) {
+      for (const name of missing)
+        ctx.addIssue({ code: 'custom', path: [name], message: 'set with the other email variables' })
+    }
+  }
+}
+
 const schemas = {
-  web: base,
-  worker: base.extend({
-    WORKER_URL: z.url(),
-    WORKER_INVOKER_SA: z.email(),
-    PORT: z.coerce.number().int().positive().default(8080)
-  }),
-  job: base
+  web: base.extend({ ...optional(sending), ...vapidPublic }).superRefine(together(Object.keys(sending))),
+  worker: base
+    .extend({
+      WORKER_URL: z.url(),
+      WORKER_INVOKER_SA: z.email(),
+      PORT: z.coerce.number().int().positive().default(8080),
+      ...optional(sending),
+      ...optional(receiving),
+      ...vapidPublic,
+      VAPID_PRIVATE_KEY: base64urlBytes(32).optional()
+    })
+    .superRefine(together([...Object.keys(sending), ...Object.keys(receiving)])),
+  // GCP_PROJECT is f-infra's; the vapid-keys job reads it.
+  job: base.extend({ GCP_PROJECT: z.string().min(1).optional() })
 }
 
 export type Service = keyof typeof schemas
