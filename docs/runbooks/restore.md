@@ -109,8 +109,9 @@ A pass logs `restore drill` at INFO with the record. A miss logs `restore drill 
 
 Whoever runs a drill, or is on call when the scheduled one runs, adds a row by pull request. Times are MYT; `point` is UTC.
 
-| Date (MYT) | Run by | `point` | `ready_s` | `verified_s` | `rto_ok` | `rpo_s` | `projects` | `entries` | `first_bad` | `window_s` | `snapshots` | `deleted` | Notes |
-| ---------- | ------ | ------- | --------- | ------------ | -------- | ------- | ---------- | --------- | ----------- | ---------- | ----------- | --------- | ----- |
+| Date (MYT)       | Run by                                    | `point`              | `ready_s` | `verified_s` | `rto_ok` | `rpo_s` | `projects` | `entries` | `first_bad` | `window_s` | `snapshots` | `deleted` | Notes                                                                                                                                                                                        |
+| ---------------- | ----------------------------------------- | -------------------- | --------- | ------------ | -------- | ------- | ---------- | --------- | ----------- | ---------- | ----------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-06 07:07 | An agent for kymil4, from a laptop (#117) | 2026-11-05T22:57:59Z | 3.7       | 0            | true     | null    | 0          | 0         | null        | 21600      | 0           | true      | First drill, before the job's first apply, with the owner's Neon key. The database has no schema yet (#91) and the ledger walk isn't built (#146), so `entries` is 0 and RPO wasn't measured |
 
 ## See also
 
