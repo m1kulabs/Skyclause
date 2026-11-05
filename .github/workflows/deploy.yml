@@ -99,7 +99,7 @@ jobs:
       - name: Push by digest
         id: push
         run: |
-          gcloud auth configure-docker asia-southeast1-docker.pkg.dev --quiet
+          gcloud auth configure-docker "${REPOSITORY%%/*}" --quiet
           docker push "$REPOSITORY:$GITHUB_SHA"
           image="$(docker inspect --format '{{index .RepoDigests 0}}' "$REPOSITORY:$GITHUB_SHA")"
           echo "image=$image" | tee -a "$GITHUB_OUTPUT"
@@ -201,13 +201,11 @@ jobs:
           bun scripts/check-deployed.ts --image "$IMAGE" "$RUNNER_TEMP/services.json" "$RUNNER_TEMP/jobs.json" |
             tee "$RUNNER_TEMP/deployed.txt"
           {
-            echo '### Deployed'
-            echo "Commit \`$GITHUB_SHA\`, image \`$IMAGE\`:"
+            echo '### Read back'
             echo '```text'
             cat "$RUNNER_TEMP/deployed.txt"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-          echo "::notice::Deployed $IMAGE to web, worker and every job."
 
   smoke:
     needs: deploy
@@ -229,3 +227,15 @@ jobs:
         working-directory: apps/web
         env:
           E2E_BASE_URL: ${{ needs.deploy.outputs.web_url }}
+
+  record:
+    needs: [image, smoke]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Record the digest
+        env:
+          IMAGE: ${{ needs.image.outputs.image }}
+        run: |
+          echo "### Deployed"$'\n\n'"Commit \`$GITHUB_SHA\` runs \`$IMAGE\` on web, worker and every job; /healthz and @smoke passed." >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice::Deployed $IMAGE to web, worker and every job."
