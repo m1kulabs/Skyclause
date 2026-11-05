@@ -74,4 +74,25 @@ describe('loadEnv', () => {
       /INBOUND_SNS_TOPIC_ARN/
     )
   })
+
+  test('reads the VAPID values once the vapid-keys job has made them, and checks their encoding', () => {
+    const vapid = {
+      VAPID_SUBJECT: 'https://app.skyclause.m1ku.tech',
+      // Shaped like web push's base64url keys (a 65-byte 0x04 point, a 32-byte scalar), not real ones.
+      VAPID_PUBLIC_KEY: `B${'A'.repeat(86)}`,
+      VAPID_PRIVATE_KEY: 'A'.repeat(43)
+    }
+    expect(loadEnv('worker', { ...worker, ...vapid })).toMatchObject(vapid)
+    const { VAPID_PRIVATE_KEY: _, ...publicOnly } = vapid
+    expect(loadEnv('web', { APP_ENV: 'production', ...publicOnly })).toEqual({ APP_ENV: 'production', ...publicOnly })
+    expect(() => loadEnv('web', { APP_ENV: 'production', VAPID_PUBLIC_KEY: 'not-a-key' })).toThrow(/VAPID_PUBLIC_KEY/)
+    expect(() => loadEnv('worker', { ...worker, ...vapid, VAPID_PRIVATE_KEY: 'short' })).toThrow(/VAPID_PRIVATE_KEY/)
+  })
+
+  test('a job reads GCP_PROJECT', () => {
+    expect(loadEnv('job', { APP_ENV: 'production', GCP_PROJECT: 'skyclause' })).toEqual({
+      APP_ENV: 'production',
+      GCP_PROJECT: 'skyclause'
+    })
+  })
 })

@@ -22,6 +22,15 @@ const receiving = {
   INBOUND_SNS_TOPIC_ARN: arn('sns')
 }
 
+// c-approver-alerts' VAPID values (#113 generates them): optional until the vapid-keys job has
+// run; VAPID_SUBJECT is APP_ORIGIN from Terraform.
+const base64urlBytes = (length: number, first?: number) =>
+  z.string().refine((value) => {
+    const bytes = Buffer.from(value, 'base64url')
+    return /^[\w-]+$/.test(value) && bytes.length === length && (first === undefined || bytes[0] === first)
+  }, `must be ${length} bytes of base64url`)
+const vapidPublic = { VAPID_SUBJECT: z.url().optional(), VAPID_PUBLIC_KEY: base64urlBytes(65, 0x04).optional() }
+
 function optional<T extends Record<string, z.ZodType>>(shape: T) {
   return Object.fromEntries(Object.entries(shape).map(([name, type]) => [name, type.optional()])) as {
     [K in keyof T]: z.ZodOptional<T[K]>
@@ -39,17 +48,20 @@ function together(names: string[]) {
 }
 
 const schemas = {
-  web: base.extend(optional(sending)).superRefine(together(Object.keys(sending))),
+  web: base.extend({ ...optional(sending), ...vapidPublic }).superRefine(together(Object.keys(sending))),
   worker: base
     .extend({
       WORKER_URL: z.url(),
       WORKER_INVOKER_SA: z.email(),
       PORT: z.coerce.number().int().positive().default(8080),
       ...optional(sending),
-      ...optional(receiving)
+      ...optional(receiving),
+      ...vapidPublic,
+      VAPID_PRIVATE_KEY: base64urlBytes(32).optional()
     })
     .superRefine(together([...Object.keys(sending), ...Object.keys(receiving)])),
-  job: base
+  // GCP_PROJECT is f-infra's; the vapid-keys job reads it.
+  job: base.extend({ GCP_PROJECT: z.string().min(1).optional() })
 }
 
 export type Service = keyof typeof schemas

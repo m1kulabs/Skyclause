@@ -29,7 +29,7 @@ export function createEmailPart(load: () => Env<'worker'> = () => loadEnv('worke
     },
     jobs: {
       'vapid-keys': async () => {
-        const project = process.env.GCP_PROJECT
+        const project = loadEnv('job').GCP_PROJECT
         if (!project) throw new Error('GCP_PROJECT is not set')
         await ensureVapidKeys({ project })
       }
