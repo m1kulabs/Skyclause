@@ -127,7 +127,7 @@ Versions are the npm or PyPI latest on 5 November 2026 where a version is given;
 | Files and parsing | Cloud Storage; DuckDB for parquet; `gtfs-realtime-bindings` for GTFS-rt                                                                                                       | Frames with lifecycle deletion; the Rapid Rail parquet read in place                      | BigQuery loads: later, for analytics                                                  |
 | Agent layer       | `@modelcontextprotocol/server` 2.4.0 (spec 2026-07-28) ([MCP TypeScript SDK]); `@a2a-js/sdk` 1.3.0 behind a flag                                                              | Stateless streamable HTTP; one tool set for remote and stdio                              | SDK v1 1.32.2: compatibility route only                                               |
 | Embeds            | Lit 3.3.3 ([Lit blog])                                                                                                                                                        | Small custom elements with shadow DOM                                                     | React in shadow roots: heavier                                                        |
-| CLI               | commander 15.0.0 on the SDK; `bun build --compile` binaries ([Bun executables])                                                                                               | Stable and small; single binaries                                                         | oclif 6.0.15: unneeded plugins; citty 0.2.2: smaller community                        |
+| CLI               | commander 15.0.0 on the SDK, run with Bun from the repo workspace                                                                                                             | Stable and small                                                                          | oclif 6.0.15: unneeded plugins; citty 0.2.2: smaller community                        |
 | Email, billing    | Amazon SES in `ap-southeast-1` (Not verified); Stripe                                                                                                                         | Sends from Singapore beside the data; MYR prices and invoices                             | Postmark, Resend: no regional reason                                                  |
 | Ops               | OpenTelemetry to Cloud Trace, Monitoring and Logging; Terraform; GitHub Actions with Workload Identity Federation; Vitest, fast-check, Playwright with axe                    | One trace from poll to notice; reviewed infrastructure; no cloud keys in CI               | Vendor APM agents; console-built infrastructure                                       |
 
@@ -156,7 +156,7 @@ skyclause/
 │   ├── delivery/       outbox, email templates, ICS writer, webhook signer and retrier
 │   ├── mcp/            MCP tools, resources and prompts, shared by the remote server and `skyclause mcp`
 │   ├── sdk/            @skyclause/sdk: generated types plus pagination, SSE and webhook helpers
-│   ├── sdk-python/     skyclause on PyPI (P2), generated from the same document
+│   ├── sdk-python/     skyclause for Python (P2), generated from the same document
 │   ├── cli/            skyclause CLI on commander and the SDK
 │   ├── elements/       <skyclause-status> and <skyclause-window> in Lit 3
 │   ├── skills/         Agent Skills pack source (SKILL.md per skill)
@@ -555,6 +555,7 @@ This section enforces PRD's [roles and permissions](/docs/PRD.md#roles-and-permi
 ## SDK
 
 - **`@skyclause/sdk`** (P1): types generated from `/openapi.json` with a thin fetch client, ESM only, no Node built-ins, Web Crypto for HMAC, so one build serves Node 22+, Bun, Deno, browsers and edge runtimes; one contract suite runs on all five ([SDK](/docs/PRD.md#sdk-sdk)).
+- **Distribution:** none, as public releases were dropped on 6 November 2026. Workspace packages depend on `@skyclause/sdk` as `workspace:*`; nothing goes to npm, and the Python SDK (P2) isn't published to PyPI.
 - **Hand-written:** `paginate()` async iterators over cursors; `stream()` SSE readers with `Last-Event-ID` resumption and backoff; `webhooks.verify(rawBody, headers, secret)` with constant-time compare; typed problem errors, so a source failure arrives as an error naming the source and since when; idempotency keys and retries on 429 and 5xx that honour `Retry-After`.
 - **Python `skyclause`** (P2): pydantic models and an httpx client generated from the same document, with the same three helpers.
 - No approval operation exists in either SDK, because the endpoint isn't in the public document. Versions follow semver with the SDK major equal to the API major; each release records the OpenAPI hash, and CI fails when generated code drifts. Examples are captured from real calls with capture date and station ID ([DEV-5](/docs/PRD.md#developer-playground-dev)).
@@ -565,12 +566,10 @@ Commands are PRD's [CLI-4](/docs/PRD.md#cli-cli) (plus `login`, `init` and `conf
 
 - commander 15.0.0 (Node 22.12 or later) over `@skyclause/sdk`; each command is a thin function over one SDK call, so `--json` prints the SDK's typed result as one stable document (NDJSON for `signals tail`). No call is data and exits 0; errors exit 1, usage 2, auth 3 and `inputs-changed` 4.
 - `bundles approve` calls the first-party approve endpoint with the device-code session, never an API key; it needs a TTY, prints the re-check diff and asks to confirm, and refuses `--json` or a pipe with the reason ([CLI-5](/docs/PRD.md#cli-cli)).
-- **Auth:** `skyclause login` shows a user code for `/device`; the token goes to the OS keychain (macOS Keychain, Windows Credential Manager, libsecret on Linux), never a plain file; keychain access from a Bun-compiled binary is Not verified. CI uses `SKYCLAUSE_API_KEY`.
+- **Auth:** `skyclause login` shows a user code for `/device`; the token goes to the OS keychain (macOS Keychain, Windows Credential Manager, libsecret on Linux), never a plain file; keychain access from Bun is Not verified. CI uses `SKYCLAUSE_API_KEY`.
 - **Config** at `~/.config/skyclause/config.json`: named profiles, each with `api` (default `https://api.skyclause.m1ku.tech/v1`), `org` and `project`; `skyclause init` writes it for an existing project and never creates one ([CLI-6](/docs/PRD.md#cli-cli)).
-- **Distribution:** npm `skyclause` (`npx skyclause`); GitHub release binaries for every target `bun build --compile` supports officially (Linux x64 and arm64 with musl and baseline variants, macOS arm64 and x64, Windows x64 and arm64), macOS binaries codesigned ([Bun executables]); a tap repository `skyclause/homebrew-tap`, installed after `brew tap skyclause/tap` and `brew trust --formula skyclause/tap/skyclause`, since non-official taps now need explicit trust ([Homebrew taps]).
+- **Use:** from a clone, `bun install` links the CLI's `skyclause` bin into `node_modules/.bin` (the root `package.json` lists the CLI package as a `workspace:*` dev dependency), and `bun run skyclause <command>` runs it on macOS, Linux and Windows. Not `bunx skyclause`, which falls back to the public npm registry when the link is missing. Nothing is published to npm, Homebrew or GitHub releases, and no binary is codesigned or notarised: public releases were dropped on 6 November 2026.
 - `skyclause mcp` serves the remote server's tools over stdio with `@modelcontextprotocol/server` 2.4.0 and the CLI's credentials.
-
-[Homebrew taps]: https://docs.brew.sh/How-to-Create-and-Maintain-a-Tap
 
 ## Agent layer
 
@@ -602,10 +601,9 @@ Commands are PRD's [CLI-4](/docs/PRD.md#cli-cli) (plus `login`, `init` and `conf
 ### Agent Skills pack
 
 - Three skills, each a directory with `SKILL.md`: `skyclause-call` (ask for a call for a window and read its input ages, never claiming approval, with `references/api.md`), `skyclause-ledger` (read a ledger and grades, always with n and intervals) and `skyclause-evidence` (request evidence for a window and quote it with sources).
-- Source in `packages/skills`, published to a public `skyclause/skills` repository for `npx skills add skyclause/skills` (`skills` 1.7.6) and as zipped release assets for claude.ai uploads and Gemini Enterprise, where an admin must enable skills ([skills CLI], [Gemini Enterprise skills](/docs/research/gemini-enterprise.md#skills)); `/skills` and `skyclause skills install` serve the same files.
+- Source in `packages/skills`. `/skills` serves its files and one zip per skill for claude.ai uploads and Gemini Enterprise, where an admin must enable skills ([Gemini Enterprise skills](/docs/research/gemini-enterprise.md#skills)), and `skyclause skills install` installs the same files. There is no public `skyclause/skills` repository and no release asset: public releases were dropped on 6 November 2026.
 - Frontmatter per the spec: `name` matching the directory (at most 64 characters, lowercase and hyphens), `description` up to 1,024 characters, `license` and `compatibility` (needs the Skyclause MCP server or CLI); bodies under 500 lines; no "claude" or "anthropic" in names; `skills-ref validate` runs in CI ([Agent Skills spec]).
 
-[skills CLI]: https://github.com/vercel-labs/skills
 [Agent Skills spec]: https://agentskills.io/specification
 
 ### A2A agent card
@@ -653,7 +651,7 @@ TRD owns this contract; DESIGN draws it.
 - `<skyclause-status>` shows the project's current mode per pack, or No call with the blocking input and since when. `<skyclause-window window>` shows the call for a declared window; with `project`, `start` and `end` instead, it shows the clause engine's verdict for that span, labelled "Clause engine verdict: not reviewed, not sent". `theme` defaults to `auto` (`prefers-color-scheme`).
 - **Theming:** CSS custom properties `--skyclause-bg`, `--skyclause-fg`, `--skyclause-muted`, `--skyclause-accent`, `--skyclause-radius` and `--skyclause-font`; parts `mode`, `window`, `strip`, `age`, `source`, `link` and `attribution` for `::part()`. Nothing else is public styling API.
 - Lit 3.3.3 with open shadow roots (closed mode is no security boundary) and styles shared through `adoptedStyleSheets` ([MDN shadow DOM]). Data comes from the public read routes (CORS `*`, no credentials) and the SSE stream; errors render as errors, never a cached value.
-- **Distribution:** npm `@skyclause/elements` and a versioned `embed.skyclause.m1ku.tech/elements/v1.js` with published SRI hashes; host pages must allow the embed origin in `script-src` and the API in `connect-src`.
+- **Distribution:** only the versioned `embed.skyclause.m1ku.tech/elements/v1.js` with published SRI hashes, not npm, as public releases were dropped on 6 November 2026; host pages must allow the embed origin in `script-src` and the API in `connect-src`.
 - **Iframe fallback** at `embed.skyclause.m1ku.tech/{org}/{project}` (and `/window/{windowId}`) for hosts whose CSP blocks third-party scripts: `frame-ancestors`, which works only as an HTTP header and supersedes `X-Frame-Options`, is `*` for public projects or the organisation's allow-list ([MDN frame-ancestors]); hosts are told to use `sandbox="allow-scripts allow-popups"` and `loading="lazy"` ([MDN iframe]); height arrives by `postMessage` (`skyclause:resize`).
 - Every embed carries its attribution line (MET, Rapid Rail and data.gov.my under CC BY 4.0; Wikipedia under CC BY-SA 4.0; links for JPS, APIMS and GoLive), the non-affiliation line and the not-a-safety-service line ([PUB-4, PUB-5](/docs/PRD.md#public-pages-pub)).
 
@@ -707,7 +705,7 @@ Sources: [Skyclause loop](/docs/ideas/02-skyclause.md#day-to-day-loop), [Skyclau
 - **Secrets** live in Secret Manager (database password, Stripe, SES, Turnstile, OAuth client secrets) and mount per service; CI deploys through Workload Identity Federation with no service-account keys.
 - **CSP:** the app sends a nonce-based `script-src` with `'strict-dynamic'`, `frame-ancestors 'none'` and HSTS; the embed origin sets `frame-ancestors` per project ([NFR-10](/docs/PRD.md#non-functional-requirements)).
 - **Patching:** Next.js ships security patches monthly (the latest on 3 November 2026, out-of-band ones on 22 September and 14 October) ([Next.js blog]); patches land within 7 days and out-of-band ones within 48 hours.
-- **Dependencies:** exact versions in `bun.lock`, weekly update PRs, a stated reason for every new dependency, dependency and secret scanning in CI, npm provenance on published packages, an SBOM per image and base images pinned by digest.
+- **Dependencies:** exact versions in `bun.lock`, weekly update PRs, a stated reason for every new dependency, dependency and secret scanning in CI, an SBOM per image and base images pinned by digest. No package is published, so npm provenance doesn't apply: public releases were dropped on 6 November 2026.
 
 [Next.js blog]: https://nextjs.org/blog
 
@@ -829,7 +827,7 @@ Platform and technical unknowns; market and evidence unknowns are in IDEA's [Not
 - **Google Cloud:** Cloud SQL prices; Cloud Run prices above the free tier and whether jobs share it; Cloud Scheduler's minimum interval (the per-minute tick assumes one minute); whether KMS has a free tier; Cloud Run's maximum request duration for SSE; the Malaysia region's launch date and ID; Cloud SQL backup retention and point-in-time recovery settings.
 - **Web:** X card types and limits (the docs returned 402 and 404); whether a JavaScript favicon swap works in Safari 26 and Chrome; Lit SSR maturity; how often Outlook and Google Calendar refresh subscribed ICS feeds.
 - **Feeds:** the exact JSON path behind the JPS station page; whether MET warnings carry a Malay body as well as `title_bm`; whether GoLive's `Z` times are local show times.
-- **Tooling:** versions of packages the 5 November checks didn't cover (Hono, zod, Drizzle, DuckDB, `gtfs-realtime-bindings`, the Stripe SDK, test and OpenTelemetry packages) are pinned at implementation; Amazon SES in `ap-southeast-1`; OS keychain access from a Bun-compiled binary.
+- **Tooling:** versions of packages the 5 November checks didn't cover (Hono, zod, Drizzle, DuckDB, `gtfs-realtime-bindings`, the Stripe SDK, test and OpenTelemetry packages) are pinned at implementation; Amazon SES in `ap-southeast-1`; OS keychain access from Bun.
 
 ## See also
 
@@ -839,7 +837,6 @@ Platform and technical unknowns; market and evidence unknowns are in IDEA's [Not
 - [Brief](/docs/BRIEF.md) and [context](/docs/CONTEXT.md), including the [data rulings](/docs/CONTEXT.md#decisions-so-far).
 
 [AI SDK 7]: https://vercel.com/changelog/ai-sdk-7
-[Bun executables]: https://bun.com/docs/compiler/executables
 [cel-es]: https://github.com/bufbuild/cel-es
 [cel-js]: https://github.com/marcbachmann/cel-js
 [Cloud Run jobs]: https://docs.cloud.google.com/run/docs/create-jobs
