@@ -31,7 +31,7 @@ test('the web server exits at start on APP_ENV=test under Cloud Run', async () =
 })
 
 test('the web server starts with a valid environment', async () => {
-  vi.stubEnv('APP_ENV', 'staging')
+  vi.stubEnv('APP_ENV', 'production')
   await register()
   expect(exit).not.toHaveBeenCalled()
 })

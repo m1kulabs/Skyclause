@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { loadEnv } from '@skyclause/config'
 
 const worker = {
-  APP_ENV: 'staging',
+  APP_ENV: 'production',
   WORKER_URL: 'https://worker-413187272599.asia-southeast1.run.app',
   WORKER_INVOKER_SA: 'worker-invoker@skyclause.iam.gserviceaccount.com'
 }
@@ -25,8 +25,8 @@ describe('loadEnv', () => {
     expect(loadEnv('web', { APP_ENV: 'test' })).toEqual({ APP_ENV: 'test' })
   })
 
-  test('refuses an APP_ENV outside dev, staging, production and test', () => {
-    expect(() => loadEnv('web', { APP_ENV: 'prod' })).toThrow(/APP_ENV/)
+  test('refuses an APP_ENV outside dev, production and test, staging included (D44)', () => {
+    for (const APP_ENV of ['prod', 'staging']) expect(() => loadEnv('web', { APP_ENV })).toThrow(/APP_ENV/)
   })
 
   test('returns the worker variables, with Cloud Run’s PORT defaulting to 8080', () => {

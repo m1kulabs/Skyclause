@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 // Spec §6. Owners add their variables to the service that reads them.
 const base = z.object({
-  APP_ENV: z.enum(['dev', 'staging', 'production', 'test'])
+  APP_ENV: z.enum(['dev', 'production', 'test'])
 })
 
 const schemas = {
