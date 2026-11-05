@@ -1,0 +1,3 @@
+# P0 runs `bun test` over pilot/ only (D10); P1 tests run under Vitest through `bun run test`.
+[test]
+root = "pilot"

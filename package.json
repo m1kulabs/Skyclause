@@ -1,8 +1,27 @@
 {
+  "name": "skyclause",
+  "private": true,
+  "packageManager": "bun@1.4.4",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "graph": "graphify update .",
-    "lint": "prettier --check .",
+    "lint": "prettier --check . && eslint . && bun scripts/check-boundaries.ts",
     "lint:fix": "prettier --write .",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "test:e2e": "bun run --cwd apps/web test:e2e",
+    "build": "bun run --filter './apps/*' build",
+    "openapi:check": "bun scripts/not-configured.ts f-api openapi.json apps packages",
+    "db:seed-check": "bun scripts/not-configured.ts f-db packages/db .sql",
+    "db:up": "bun scripts/not-configured.ts f-db packages/db .sql",
+    "db:migrate": "bun scripts/not-configured.ts f-db packages/db .sql",
+    "check:unbuilt": "bun scripts/check-unbuilt.ts",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -11,8 +30,18 @@
   "devDependencies": {
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
+    "@eslint/js": "9.39.5",
+    "@next/eslint-plugin-next": "16.4.5",
+    "@types/node": "22.20.5",
+    "eslint": "9.39.5",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "fast-check": "4.10.2",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
-    "prettier": "^3.9.10"
+    "prettier": "^3.9.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1",
+    "vite": "8.3.6",
+    "vitest": "5.1.0"
   }
 }

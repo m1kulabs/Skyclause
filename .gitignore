@@ -82,6 +82,13 @@ tmbootpicker.efi
 node_modules/
 .worktrees/
 
+# Build and test output
+dist/
+.next/
+next-env.d.ts
+test-results/
+playwright-report/
+
 # Environment
 .env*
 !.env.example
