@@ -1,0 +1,58 @@
+{
+  "format_version": "1.2",
+  "planned_values": {
+    "root_module": {
+      "resources": [
+        {
+          "address": "google_iam_workload_identity_pool.eval",
+          "mode": "managed",
+          "type": "google_iam_workload_identity_pool",
+          "values": { "workload_identity_pool_id": "github-eval" }
+        },
+        {
+          "address": "google_storage_bucket.this[\"exports\"]",
+          "mode": "managed",
+          "type": "google_storage_bucket",
+          "values": { "location": "ASIA-SOUTHEAST1", "name": "skyclause-production-exports" }
+        },
+        {
+          "address": "neon_project.main",
+          "mode": "managed",
+          "type": "neon_project",
+          "values": { "name": "skyclause-production", "region_id": "aws-ap-southeast-1" }
+        },
+        {
+          "address": "google_secret_manager_secret.this[\"IP_HASH_KEY\"]",
+          "mode": "managed",
+          "type": "google_secret_manager_secret",
+          "values": {
+            "secret_id": "IP_HASH_KEY",
+            "replication": [{ "auto": [], "user_managed": [{ "replicas": [{ "location": "asia-southeast1" }] }] }]
+          }
+        },
+        {
+          "address": "data.google_project.this",
+          "mode": "data",
+          "type": "google_project",
+          "values": { "project_id": "skyclause", "region": "us-central1" }
+        }
+      ],
+      "child_modules": [
+        {
+          "address": "module.topic[\"domain-events\"]",
+          "resources": [
+            {
+              "address": "module.topic[\"domain-events\"].google_pubsub_topic.this",
+              "mode": "managed",
+              "type": "google_pubsub_topic",
+              "values": {
+                "name": "domain-events",
+                "message_storage_policy": [{ "allowed_persistence_regions": ["asia-southeast1"] }]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "format_version": "1.2",
+  "planned_values": {
+    "root_module": {
+      "resources": [
+        {
+          "address": "google_secret_manager_secret.this[\"BETTER_AUTH_SECRET\"]",
+          "mode": "managed",
+          "type": "google_secret_manager_secret",
+          "values": { "secret_id": "BETTER_AUTH_SECRET", "replication": [{ "auto": [{}], "user_managed": [] }] }
+        },
+        {
+          "address": "module.topic[\"runs-requested\"].google_pubsub_topic.this",
+          "mode": "managed",
+          "type": "google_pubsub_topic",
+          "values": { "name": "runs-requested", "message_storage_policy": [] }
+        }
+      ]
+    }
+  }
+}

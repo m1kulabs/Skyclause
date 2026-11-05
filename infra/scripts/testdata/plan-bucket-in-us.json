@@ -1,0 +1,21 @@
+{
+  "format_version": "1.2",
+  "planned_values": {
+    "root_module": {
+      "resources": [
+        {
+          "address": "google_storage_bucket.this[\"frames\"]",
+          "mode": "managed",
+          "type": "google_storage_bucket",
+          "values": { "location": "US", "name": "skyclause-production-frames" }
+        },
+        {
+          "address": "google_storage_bucket.this[\"exports\"]",
+          "mode": "managed",
+          "type": "google_storage_bucket",
+          "values": { "location": "ASIA-SOUTHEAST1", "name": "skyclause-production-exports" }
+        }
+      ]
+    }
+  }
+}

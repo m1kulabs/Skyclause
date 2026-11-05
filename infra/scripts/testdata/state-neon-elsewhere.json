@@ -1,0 +1,21 @@
+{
+  "format_version": "1.0",
+  "values": {
+    "root_module": {
+      "resources": [
+        {
+          "address": "neon_project.main",
+          "mode": "managed",
+          "type": "neon_project",
+          "values": { "name": "skyclause-production", "region_id": "aws-us-east-1" }
+        },
+        {
+          "address": "google_kms_key_ring.main",
+          "mode": "managed",
+          "type": "google_kms_key_ring",
+          "values": { "location": "asia-southeast1", "name": "skyclause" }
+        }
+      ]
+    }
+  }
+}

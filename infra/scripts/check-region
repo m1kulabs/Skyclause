@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Fails unless every located resource in a `terraform show -json` document (plan or state)
+# sits in Singapore (NFR-11): asia-southeast1 on Google Cloud, aws-ap-southeast-1 for Neon.
+# Usage: check-region <show.json>
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+  echo "usage: check-region <terraform show -json output>" >&2
+  exit 2
+fi
+
+violations="$(
+  jq -r '
+    (.planned_values // .values).root_module
+    | recurse(.child_modules[]?)
+    | .resources[]?
+    | select(.mode == "managed")
+    | .address as $address
+    | (
+        # Secret Manager and Pub/Sub store data globally unless told otherwise.
+        if .type == "google_secret_manager_secret"
+          and ((.values.replication[0].user_managed[0].replicas // []) | length) == 0
+        then "\($address): replication is not pinned to asia-southeast1"
+        elif .type == "google_pubsub_topic"
+          and ((.values.message_storage_policy[0].allowed_persistence_regions // []) | length) == 0
+        then "\($address): message storage is not pinned to asia-southeast1"
+        else empty
+        end
+      ),
+      (
+        .values
+        | paths(type == "string") as $path
+        | ($path | map(select(type == "string")) | last) as $key
+        | getpath($path) as $value
+        | select($value != "")
+        | select(
+            (($key == "location" or $key == "region" or $key == "allowed_persistence_regions")
+              and ($value | ascii_downcase) != "asia-southeast1")
+            or ($key == "region_id" and $value != "aws-ap-southeast-1")
+          )
+        | "\($address): \($path | map(tostring) | join(".")) = \($value)"
+      )
+  ' "$1"
+)"
+
+if [[ -n "$violations" ]]; then
+  echo "Resources outside Singapore:" >&2
+  echo "$violations" >&2
+  exit 1
+fi
+echo "Every located resource is in Singapore."
