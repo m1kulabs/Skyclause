@@ -50,7 +50,7 @@ Kept leads because its automated count, nightly grade and Done watch close the l
   - Changed: three workflows, not four. The seven daily peak checks are gone, because each alert still waits for an approval click, the desk acts on patterns rather than single buses, and the scorers called the build heavy for three people. The feeder emails the team when a counter goes silent. The late-and-weekend rule (R8) is demoted, because a recount shows nearly all those sessions belong to one intake.
   - Numbers fixed: the 17:45 release covers 190 to 257 distinct intakes a day, not "193 to 260 intake groups" (recounted on 5 Nov). The "820 or 830" advice is a 20 Apr 2026 reply in an 18 Apr thread. BUSSYSTEM is described as the research describes it, without model names it doesn't cite.
   - Dropped: the 4 Nov stopwatch baseline at the bay and the 36 items by 7 Nov, because nobody can be at APU; the crowd-check and name-collision claims, which cite no source.
-- **[LastLink](/docs/ideas/astra/02-lastlink.md):**
+- **[LastLink](/docs/ideas/astra/01/02-lastlink.md):**
   - Kept: its decision (which stop and time merits a service-change request) as the design-gap packet (R5). Its evidence states, so an observation becomes a verified candidate only with recurrence and corroboration, and a reviewer can reject one. Its stop record (arrival, vehicle arrival, boarding outcome, departure, corroboration) as the ground-truth label and the fallback sensor if no camera is allowed.
   - Also kept: its source rules. T580 is not the campus shuttle; a missing position is unavailable telemetry, never a cancellation; GPS can't establish load or boarding; repeated samples of one departure are one item; a failed feed blocks the conclusions that depend on it (R4). Plus per-source fresh, stale, failed or unknown, its counterevidence, and its kill gate and strongest objection.
   - Dropped: volunteers logging by hand as the main sensor, because a counter sees every departure in its window without them (both still need someone at the stop, every scorer's fatal risk); phone GPS at the stop; the unnamed transport liaison; 30-minute operator batches; the 72-hour budget for four students (the team is three); and the 25% preparation-time target, which has no baseline to be measured against.
@@ -264,7 +264,7 @@ The reduced version, riskiest first: permission and the licence, then the Jira a
 
 ## See also
 
-- Source ideas: [Kept](/docs/ideas/opus/01/01-kept.md) and [LastLink](/docs/ideas/astra/02-lastlink.md); the cross-set [ranking](/docs/ideas/00-ranking.md).
+- Source ideas: [Kept](/docs/ideas/opus/01/01-kept.md) and [LastLink](/docs/ideas/astra/01/02-lastlink.md); the cross-set [ranking](/docs/ideas/00-ranking.md).
 - [Social research](/docs/research/social.md), [competition](/docs/research/competition.md), [APU documents and systems](/docs/research/apu.md), [public data sources](/docs/research/data-sources.md), [Gemini Enterprise](/docs/research/gemini-enterprise.md), [IoT and network](/docs/research/iot-and-network.md), [judging](/docs/research/judging.md), and [everyday signals](/docs/research/everyday.md).
 - The [Campus Connect schedule V1_20261022][shuttle PDF], the [shuttle page](https://www.apu.edu.my/shuttle-services-campus-connect), and the [data ruling].
 

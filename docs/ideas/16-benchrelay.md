@@ -42,7 +42,7 @@ Contents:
 
 ## Origins
 
-This product has one source, the [BenchRelay source doc](/docs/ideas/sol/01-benchrelay.md). This version revises it against three independent scorers' objections and the team's limits:
+This product has one source, the [BenchRelay source doc](/docs/ideas/sol/01/01-benchrelay.md). This version revises it against three independent scorers' objections and the team's limits:
 
 - **Kept:** the job (reproduce the last trusted observation and see what the teammate left unresolved); the handoff receipt and its fields, which go stale when the revision or declared configuration changes; sensed facts kept apart from human declarations; `unknown` instead of a diagnosis when telemetry is missing, and readings that arrive after a reconnect marked as historical backlog; a local coordinator that gives one session exclusive use of the Pi, runs only allowlisted tests and never runs shell commands an agent wrote; the baseline of README, Git/CI, remote shell and a shared checklist; Drive and Sheets plus Jira; the go thresholds and kill criteria; the 20–28 builder-hour estimate; and the dated plan.
 - **Changed:**
@@ -242,7 +242,7 @@ Three builders: **B1** integration (licence, Sheets, Jira, workflow), **B2** Pi 
 
 ## See also
 
-- [BenchRelay source proposal](/docs/ideas/sol/01-benchrelay.md)
+- [BenchRelay source proposal](/docs/ideas/sol/01/01-benchrelay.md)
 - [Cross-set idea ranking](/docs/ideas/00-ranking.md)
 - [Everyday signals: shared hardware and the test-receipt direction](/docs/research/everyday.md#shared-hardware-and-prototypes)
 - [Competition: crowd map, saturation tiers and incumbents](/docs/research/competition.md)

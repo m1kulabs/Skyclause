@@ -42,7 +42,7 @@ Contents:
 
 ## Origins
 
-This product has one source, the [FieldPair source doc](/docs/ideas/sol/03-fieldpair.md), revised against three independent scorers' objections and the team's limits:
+This product has one source, the [FieldPair source doc](/docs/ideas/sol/01/03-fieldpair.md), revised against three independent scorers' objections and the team's limits:
 
 - **Kept:** the job (find incompatible runs before a merge, then organise the specific recollection), the separation of protocol mismatch, measurement uncertainty, scientific anomaly and transport failure, the rule that no run is rejected for an unexpected value alone, replacements that link to originals, the non-AI baseline (phyphox, a versioned protocol, schema validation and a shared checklist), Drive and Sheets plus Jira, no clock-synchronisation promise, and the kill criteria, including no genuine experiment by 6 November.
 - **Changed:** (1) _Nothing recurs and no trigger is named:_ added a Drive event trigger per completed run and a nightly sweep. Recurrence still depends on a live experiment; between experiments FieldPair does nothing, and this doc says so. (2) _The rule set was only a protocol file:_ made the protocol and its thresholds a versioned, coordinator-editable Sheet tab. (3) _No genuine experiment exists:_ added a plainly labelled reduced version, a device-support survey on the team's phones, that tests the pipeline but claims neither users nor impact. (4) Capture moved from phyphox exports to a team-built browser page, so the manifest is machine-made and the network leg is visible, with phyphox import kept for after the hackathon. (5) Research items rose from the source's ten-capture floor to 30–50 runs to match the research bar.
@@ -213,7 +213,7 @@ Three builders: **B1** integration (licence, Sheets, Jira, workflow), **B2** cap
 
 ## See also
 
-- [FieldPair source proposal](/docs/ideas/sol/03-fieldpair.md)
+- [FieldPair source proposal](/docs/ideas/sol/01/03-fieldpair.md)
 - [Cross-set idea ranking](/docs/ideas/00-ranking.md)
 - [Everyday signals: phone-sensor experiment threads](/docs/research/everyday.md#phone-sensor-experiment-threads)
 - [Competition: crowd map, saturation tiers and incumbents](/docs/research/competition.md)
