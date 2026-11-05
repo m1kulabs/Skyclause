@@ -212,7 +212,7 @@ CONSOLE=https://console.cloud.google.com/auth
 # store_secret NAME VALUE adds VALUE as a new version of the Secret Manager secret NAME.
 store_secret() {
   local name="$1" value="$2" enabled
-  enabled="$(gcloud secrets versions list "$name" --project="$PROJECT" --filter='state=ENABLED' --format='value(name)' 2>/dev/null | wc -l | tr -d ' ')"
+  enabled="$(gcloud secrets versions list "$name" --project="$PROJECT" --format='value(state)' | { grep -ci '^enabled$' || true; })"
   if ((enabled > 0)) && ! confirm "$name already has $enabled enabled version(s). Add a new one?"; then
     note "kept $name as it is"
     return 0
@@ -236,6 +236,8 @@ run_wizard() {
 
 TOTAL_STAGES=7
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
+# Not the root .env, which Bun loads in local development.
+ENV_FILE=infra/wizards/.env
 
 banner "Google sign-in and Turnstile for app.skyclause.m1ku.tech"
 
@@ -313,8 +315,9 @@ unset TURNSTILE_SECRET_KEY
 stage "Terraform values"
 say "These are public. Give them to the agent, or add them in a pull request to"
 say "infra/environments/production/terraform.tfvars:"
-printf '\n    app_config = {\n      GOOGLE_CLIENT_ID   = "%s"\n      TURNSTILE_SITE_KEY = "%s"\n    }\n' "$GOOGLE_CLIENT_ID" "$TURNSTILE_SITE_KEY"
-printf '    supplied_secrets = ["GOOGLE_CLIENT_SECRET", "TURNSTILE_SECRET_KEY"]\n\n'
+printf '\n    app_config: GOOGLE_CLIENT_ID   = "%s"\n' "$GOOGLE_CLIENT_ID"
+printf '                TURNSTILE_SITE_KEY = "%s"\n' "$TURNSTILE_SITE_KEY"
+printf '    supplied_secrets: add "GOOGLE_CLIENT_SECRET" and "TURNSTILE_SECRET_KEY" to the names already listed\n\n'
 note "Sign-in and Turnstile work on $APP_ORIGIN once host_mode is multi (gate 1)."
 pause
 

@@ -214,7 +214,7 @@ ADDRESS_LIST="^ *$ADDRESS( *, *$ADDRESS)* *$"
 # store_secret NAME VALUE adds VALUE as a new version of the Secret Manager secret NAME.
 store_secret() {
   local name="$1" value="$2" enabled
-  enabled="$(gcloud secrets versions list "$name" --project="$PROJECT" --filter='state=ENABLED' --format='value(name)' 2>/dev/null | wc -l | tr -d ' ')"
+  enabled="$(gcloud secrets versions list "$name" --project="$PROJECT" --format='value(state)' | { grep -ci '^enabled$' || true; })"
   if ((enabled > 0)) && ! confirm "$name already has $enabled enabled version(s). Add a new one?"; then
     note "kept $name as it is"
     return 0
@@ -234,71 +234,90 @@ ask_valid() {
   done
 }
 
-# unverified ADDRESS... prints each address SES hasn't verified for sending yet.
+# unverified ADDRESS... prints each address SES hasn't verified for sending yet; AWS's own error
+# shows for anything but a missing identity.
 unverified() {
   local address status
   for address in "$@"; do
     status="$(aws sesv2 get-email-identity --email-identity "$address" --region "$SES_REGION" \
-      --query VerifiedForSendingStatus --output text 2>/dev/null || true)"
+      --query VerifiedForSendingStatus --output text 2> >(grep -v NotFoundException >&2) || true)"
     [[ "$status" == True ]] || printf '%s\n' "$address"
   done
 }
 
 run_wizard() {
 
-TOTAL_STAGES=3
+TOTAL_STAGES=4
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
+# Not the root .env, which Bun loads in local development.
+ENV_FILE=infra/wizards/.env
 
 banner "Staff addresses and SES sandbox recipients"
 
 stage "Check your tools"
 command -v gcloud >/dev/null 2>&1 || { warn "gcloud is missing: install it and re-run"; exit 1; }
-if ! gcloud secrets describe SKYCLAUSE_STAFF_EMAILS --project="$PROJECT" >/dev/null 2>&1; then
-  warn "Secret Manager has no SKYCLAUSE_STAFF_EMAILS in $PROJECT: the production Terraform apply (#89) makes it."
-  exit 1
-fi
 say "gcloud is signed in as ${BOLD}$(gcloud config get-value account 2>/dev/null)${RESET}."
 pause
 
 stage "Staff addresses"
 say "Staff (D30) can use Skyclause's staff tools: guest blocks, incidents and the like."
-say "Enter real addresses only, comma-separated. They go to Secret Manager, not .env or git."
-ask_valid ask STAFF_EMAILS "Staff addresses:" "$ADDRESS_LIST" "Use comma-separated addresses, like a@example.org,b@example.org."
-store_secret SKYCLAUSE_STAFF_EMAILS "${STAFF_EMAILS// /}"
-unset STAFF_EMAILS
+if confirm "Store the staff addresses now?"; then
+  if ! gcloud secrets describe SKYCLAUSE_STAFF_EMAILS --project="$PROJECT" >/dev/null; then
+    warn "Secret Manager has no SKYCLAUSE_STAFF_EMAILS in $PROJECT: the production Terraform apply (#89) makes it."
+    exit 1
+  fi
+  say "Enter real addresses only, comma-separated. They go to Secret Manager, not .env or git."
+  ask_valid ask STAFF_EMAILS "Staff addresses:" "$ADDRESS_LIST" "Use comma-separated addresses, like a@example.org,b@example.org."
+  store_secret SKYCLAUSE_STAFF_EMAILS "${STAFF_EMAILS// /}"
+  unset STAFF_EMAILS
+  note "Then add \"SKYCLAUSE_STAFF_EMAILS\" to supplied_secrets in infra/environments/production/terraform.tfvars."
+else
+  note "Skipped."
+fi
 pause
 
-stage "SES sandbox: verify team addresses (optional)"
+stage "SES sandbox: ask AWS to verify team addresses (optional)"
 say "While SES is in the sandbox in $SES_REGION, it delivers only to verified addresses."
 say "Verify each team address #113's live checks send to. Skip this once production access is granted."
+addresses=()
 if confirm "Verify team addresses now?"; then
   command -v aws >/dev/null 2>&1 || { warn "aws is missing: install it and re-run"; exit 1; }
-  if [[ "$(aws sts get-caller-identity --query Account --output text 2>/dev/null)" != "$AWS_ACCOUNT" ]]; then
+  if [[ "$(aws sts get-caller-identity --query Account --output text)" != "$AWS_ACCOUNT" ]]; then
     warn "The AWS CLI isn't signed in to account $AWS_ACCOUNT: sign in and re-run."
     exit 1
   fi
   ask_valid ask TEAM_ADDRESSES "Team addresses:" "$ADDRESS_LIST" "Use comma-separated addresses."
   IFS=',' read -ra addresses <<<"${TEAM_ADDRESSES// /}"
-  for address in "${addresses[@]}"; do
-    if aws sesv2 get-email-identity --email-identity "$address" --region "$SES_REGION" >/dev/null 2>&1; then
-      note "$address is already an SES identity"
-    else
-      aws sesv2 create-email-identity --email-identity "$address" --region "$SES_REGION" >/dev/null
-      printf '  %s✓ asked%s SES to verify %s\n' "$GREEN" "$RESET" "$address"
-    fi
-  done
+  pending="$(unverified "${addresses[@]}")"
+  # Creates the identity, or re-sends the email for one still pending (its link lasts 24 hours).
+  while IFS= read -r address; do
+    [[ -n "$address" ]] || continue
+    aws ses verify-email-identity --email-address "$address" --region "$SES_REGION" >/dev/null
+    printf '  %s✓ sent%s an AWS verification email to %s\n' "$GREEN" "$RESET" "$address"
+  done <<<"$pending"
+  [[ -n "$pending" ]] || note "Every address is already verified."
+else
+  note "Skipped."
+fi
+pause
+
+stage "SES sandbox: confirm the links"
+if ((${#addresses[@]} == 0)); then
+  note "Nothing to confirm."
+else
   step "Each inbox gets an AWS 'Email Address Verification Request' for Asia Pacific (Sydney)."
-  step "Click the link in each one; it expires after 24 hours."
+  step "Click the link in each one; it expires after 24 hours. Re-run this wizard to re-send."
   pause "Press Enter once every link is clicked"
   while pending="$(unverified "${addresses[@]}")" && [[ -n "$pending" ]]; do
     warn "Not verified yet: ${pending//$'\n'/, }"
     confirm "Check again?" || break
   done
-  if [[ -z "$pending" ]]; then printf '  %s✓ verified%s every team address\n' "$GREEN" "$RESET"; fi
-else
-  note "Skipped."
+  if [[ -z "$pending" ]]; then
+    printf '  %s✓ verified%s every team address\n' "$GREEN" "$RESET"
+  else
+    SKIPPED+=("SES verification of ${pending//$'\n'/, } (re-run to re-send)")
+  fi
 fi
-pause
 
 finish
 }

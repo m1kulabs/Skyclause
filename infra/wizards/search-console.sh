@@ -222,6 +222,8 @@ run_wizard() {
 
 TOTAL_STAGES=5
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
+# Not the root .env, which Bun loads in local development.
+ENV_FILE=infra/wizards/.env
 
 banner "Verify skyclause.m1ku.tech for Cloud Run domain mappings"
 
@@ -262,21 +264,25 @@ say "CNAME $RECORD_NAME → $RECORD_CONTENT (DNS only, comment 'owner: skyclause
 bun scripts/cloudflare-record.ts --dry-run CNAME "$RECORD_NAME" "$RECORD_CONTENT"
 confirm "Write it to the m1ku.tech zone?" || { say "Nothing written."; exit 1; }
 bun scripts/cloudflare-record.ts CNAME "$RECORD_NAME" "$RECORD_CONTENT"
+note "Note the record ID above for #118 (gate 1 records each name, type and ID)."
 say "Waiting for 1.1.1.1 to serve it (up to 5 minutes)…"
+RESOLVED=""
 for _ in $(seq 20); do
   if dig +short @1.1.1.1 "$RECORD_NAME" CNAME | grep -qiF "$RECORD_CONTENT"; then
+    RESOLVED=yes
     printf '  %s✓ resolves%s %s\n' "$GREEN" "$RESET" "$RECORD_NAME"
     break
   fi
   sleep 15
 done
+[[ -n "$RESOLVED" ]] || warn "1.1.1.1 doesn't serve it yet. Verify may fail until it does; it can take hours."
 pause
 
 stage "Search Console: verify"
 step "Back in Search Console, click Verify."
 note "If it can't find the record yet, wait a few minutes and click Verify again."
 pause "Press Enter once it says ownership is verified"
-until gcloud domains list-user-verified --project="$PROJECT" --format='value(id)' 2>/dev/null | grep -qx "$DOMAIN"; do
+until gcloud domains list-user-verified --project="$PROJECT" --format='value(id)' | grep -qx "$DOMAIN"; do
   warn "gcloud doesn't list $DOMAIN as verified for $ACCOUNT yet."
   confirm "Check again?" || { warn "Continuing on your word that Search Console shows it verified."; break; }
 done
