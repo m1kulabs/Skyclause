@@ -107,6 +107,22 @@ export function logHeartbeat(name: string) {
   log('INFO', 'heartbeat', { metric: 'skyclause.heartbeat', name })
 }
 
+/** Decodes a Pub/Sub push body; throws on anything that isn't one. */
+function decodePush(text: string): PushMessage {
+  const { message } = JSON.parse(text) as {
+    message?: { data?: string; attributes?: Record<string, string>; messageId?: string; publishTime?: string }
+  }
+  if (typeof message?.messageId !== 'string' || typeof message.publishTime !== 'string') {
+    throw new Error('not a Pub/Sub push envelope')
+  }
+  return {
+    data: message.data ? JSON.parse(Buffer.from(message.data, 'base64').toString('utf8')) : null,
+    attributes: message.attributes ?? {},
+    messageId: message.messageId,
+    publishTime: message.publishTime
+  }
+}
+
 const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com']
 
 export function createServer(options: ServerOptions) {
@@ -142,15 +158,13 @@ export function createServer(options: ServerOptions) {
   app.post('/pubsub/:topic', async (c) => {
     const handler = registry.topics[c.req.param('topic')]
     if (!handler) return c.text('unknown topic', 404)
-    const { message } = await c.req.json<{
-      message: { data?: string; attributes?: Record<string, string>; messageId: string; publishTime: string }
-    }>()
-    await handler({
-      data: message.data ? JSON.parse(Buffer.from(message.data, 'base64').toString('utf8')) : null,
-      attributes: message.attributes ?? {},
-      messageId: message.messageId,
-      publishTime: message.publishTime
-    })
+    let message: PushMessage
+    try {
+      message = decodePush(await c.req.text())
+    } catch {
+      return c.text('malformed push envelope', 400)
+    }
+    await handler(message)
     return c.body(null, 204)
   })
 
@@ -158,10 +172,16 @@ export function createServer(options: ServerOptions) {
     const handler = registry.queues[c.req.param('queue')]
     if (!handler) return c.text('unknown queue', 404)
     const text = await c.req.text()
+    let body: unknown
+    try {
+      body = text ? JSON.parse(text) : null
+    } catch {
+      return c.text('malformed task body', 400)
+    }
     await handler({
       name: c.req.header('x-cloudtasks-taskname') ?? null,
       retryCount: Number(c.req.header('x-cloudtasks-taskretrycount') ?? 0),
-      body: text ? JSON.parse(text) : null
+      body
     })
     return c.body(null, 204)
   })

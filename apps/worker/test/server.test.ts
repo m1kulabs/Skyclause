@@ -84,6 +84,19 @@ describe('worker dispatch', () => {
     expect(res.status).toBe(404)
   })
 
+  test('a malformed push envelope or task body is 400', async () => {
+    const app = server({ owner: 'test', topics: { t: async () => {} }, queues: { q: async () => {} } })
+    const bearer = await token()
+    for (const body of [
+      'not json',
+      '{}',
+      JSON.stringify({ message: { data: Buffer.from('not json').toString('base64') } })
+    ]) {
+      expect((await post(app, '/pubsub/t', { bearer, body })).status, body).toBe(400)
+    }
+    expect((await post(app, '/tasks/q', { bearer, body: 'not json' })).status).toBe(400)
+  })
+
   test('a throwing topic handler is 500, so Pub/Sub redelivers', async () => {
     const app = server({
       owner: 'test',
