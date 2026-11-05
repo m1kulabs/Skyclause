@@ -23,27 +23,28 @@ export function withLock<T>(fn: () => T): T {
   }
 }
 
-function first<T extends { isTrashed(): boolean }>(items: { hasNext(): boolean; next(): T }): T | null {
+// The first item that isn't in the trash and passes `keep`.
+function firstLive<T extends { isTrashed(): boolean }>(
+  items: { hasNext(): boolean; next(): T },
+  keep: (item: T) => boolean = () => true
+): T | null {
   while (items.hasNext()) {
     const item = items.next()
-    if (!item.isTrashed()) return item
+    if (!item.isTrashed() && keep(item)) return item
   }
   return null
 }
 
 export const drive: DrivePort = {
-  findRootFolder: (name) => first(DriveApp.getRootFolder().getFoldersByName(name))?.getId() ?? null,
+  findRootFolder: (name) => firstLive(DriveApp.getRootFolder().getFoldersByName(name))?.getId() ?? null,
   createRootFolder: (name) => DriveApp.getRootFolder().createFolder(name).getId(),
-  findFolder: (parentId, name) => first(DriveApp.getFolderById(parentId).getFoldersByName(name))?.getId() ?? null,
+  findFolder: (parentId, name) => firstLive(DriveApp.getFolderById(parentId).getFoldersByName(name))?.getId() ?? null,
   createFolder: (parentId, name) => DriveApp.getFolderById(parentId).createFolder(name).getId(),
-  findSpreadsheet: (folderId, name) => {
-    const files = DriveApp.getFolderById(folderId).getFilesByName(name)
-    while (files.hasNext()) {
-      const file = files.next()
-      if (!file.isTrashed() && file.getMimeType() === MimeType.GOOGLE_SHEETS) return file.getId()
-    }
-    return null
-  },
+  findSpreadsheet: (folderId, name) =>
+    firstLive(
+      DriveApp.getFolderById(folderId).getFilesByName(name),
+      (file) => file.getMimeType() === MimeType.GOOGLE_SHEETS
+    )?.getId() ?? null,
   createSpreadsheet: (folderId, name, firstTab) => {
     const spreadsheet = SpreadsheetApp.create(name)
     spreadsheet.getSheets()[0]?.setName(firstTab)
