@@ -31,17 +31,17 @@ Contents:
 
 ## At a glance
 
-| Field                 | Plan                                                                                                                                                                                                                                       |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Owner                 | Pilot: the teammate on a published roster who holds the workflow-owner seat. Target: APU's facilities, safety and welfare desk (FSSW), not confirmed; one public review mentions its head and no KB page names it                          |
-| First users           | Student club and event organisers with outdoor or evening activities, and commuting students with 08:30 or late-afternoon classes, recruited through student channels; lecturers who opt in after 10 November                              |
-| Track                 | Intelligent Automation & Digital Transformation                                                                                                                                                                                            |
-| Trigger               | Schedule at 06:45 Monday to Friday (today's call); Drive event on a new file in `crossings/` (a clause changed state); Gmail "When an email is received" (evidence or call request)                                                        |
-| Live signal           | JPS gauge `0232901RF`, 5-minute rain; MET warnings and KL forecast (polled every 10 minutes and 6 hours); DOE APIMS hourly API (polled every 15 minutes) at Cheras, Petaling Jaya and Putrajaya; the team's window camera, on probation    |
-| Connectors            | 1P: Drive (event trigger, read), Sheets via Drive actions (Get cell values; Update cell values after approval), Gmail (event trigger; Send, Reply), Calendar (Create event). 3P: Jira Cloud Free (Create issue, Create comment). MCP: none |
-| Decision              | For each window an opted-in recipient declared, the agent node picks the mode from the clause sheet and the readings with their ages, or returns "no call" when an input it needs is stale                                                 |
-| Action and approval   | A Normal call ends with no write and its run trace is the record; any other call stops once at **Approval**, then sends notices, the calendar entry, the Jira issue and the ledger row                                                     |
-| Reviewer self-trigger | Email "evidence for 2 Nov 14:00–16:30" or "call for tomorrow" to the team inbox (reply after approval, staffed 08:00–22:00 MYT, 11–14 November); subscribe to the public conditions calendar                                               |
+| Field                 | Plan                                                                                                                                                                                                                                     |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Owner                 | Pilot: the teammate on a published roster who holds the workflow-owner seat. Target: APU's facilities, safety and welfare desk (FSSW), not confirmed; one public review mentions its head and no KB page names it                        |
+| First users           | Student club and event organisers with outdoor or evening activities, and commuting students with 08:30 or late-afternoon classes, recruited through student channels; lecturers who opt in after 10 November                            |
+| Track                 | Intelligent Automation & Digital Transformation                                                                                                                                                                                          |
+| Trigger               | Schedule at 06:45 Monday to Friday (today's call); Drive event on a new file in `crossings/` (a clause changed state); Gmail "When an email is received" (evidence or call request)                                                      |
+| Live signal           | JPS gauge `0232901RF`, 5-minute rain; MET warnings and KL forecast (polled every 10 minutes and 6 hours); DOE APIMS hourly API (polled every 15 minutes) at Cheras, Petaling Jaya and Putrajaya; the team's window camera, on probation  |
+| Connectors            | 1P: Drive (event trigger, read), Sheets via Drive actions (Get cell values; Update cell values after approval), Gmail (event trigger; Send, Reply), Calendar (Create event). 3P: Jira Cloud Free (Create issue, Update issue). MCP: none |
+| Decision              | For each window an opted-in recipient declared, the agent node picks the mode from the clause sheet and the readings with their ages, or returns "no call" when an input it needs is stale                                               |
+| Action and approval   | A Normal call ends with no write and its run trace is the record; any other call stops once at **Approval**, then sends notices, the calendar entry, the Jira issue and the ledger row                                                   |
+| Reviewer self-trigger | Email "evidence for 2 Nov 14:00–16:30" or "call for tomorrow" to the team inbox (reply after approval, staffed 08:00–22:00 MYT, 11–14 November); subscribe to the public conditions calendar                                             |
 
 ## Origins
 
@@ -140,9 +140,9 @@ The owner edits thresholds and wording in a Sheet; defaults come from the publis
 | Sheets via Drive actions | 1P    | Get cell values; Update cell values after approval | Clause sheet, indicators, windows; the approved ledger row |
 | Gmail                    | 1P    | Event trigger (email received); Send, Reply        | Requests in; notices and evidence replies out              |
 | Google Calendar          | 1P    | Create event                                       | Public conditions calendar, subscribable from Outlook      |
-| Jira Cloud Free          | 3P    | Create issue, Create comment; federated search     | Decision register with each call's grade                   |
+| Jira Cloud Free          | 3P    | Create issue, Update issue; federated search       | Decision register, one issue per approved call             |
 
-- Schedules with cron and a time zone, and Drive and Gmail event triggers polled every 5–10 minutes, are documented; there is no webhook trigger, hence the Drive hand-off ([triggers](/docs/research/gemini-enterprise.md#triggers-and-schedules)). Sheets cell reads and writes have been GA since 12 October 2026; Gmail, Calendar and Jira Cloud's create issue and create comment are listed GA actions ([actions](/docs/research/gemini-enterprise.md#actions-and-write-back)), though Jira comments stay unproven until they work in the app ([platform checks](/docs/research/gemini-enterprise.md#platform-constraints-and-design-consequences)). At APU, Outlook and OneDrive or SharePoint would replace Gmail, Calendar and Drive; all are GA.
+- Schedules with cron and a time zone, and Drive and Gmail event triggers polled every 5–10 minutes, are documented; there is no webhook trigger, hence the Drive hand-off ([triggers](/docs/research/gemini-enterprise.md#triggers-and-schedules)). Sheets cell reads and writes have been GA since 12 October 2026; Gmail, Calendar and Jira Cloud's create issue and update issue are listed GA actions ([actions](/docs/research/gemini-enterprise.md#actions-and-write-back)), though Jira writes stay unproven until one works in the app ([platform checks](/docs/research/gemini-enterprise.md#platform-constraints-and-design-consequences)). At APU, Outlook and OneDrive or SharePoint would replace Gmail, Calendar and Drive; all are GA.
 - Connector writes from a workflow agent node require human review, and scheduled runs that email people pause for approval ([unattended runs](/docs/research/gemini-enterprise.md#what-runs-without-anyone-signed-in)). **Inference:** the approval page doesn't say who may approve, so the workflow owner's seat is the approver.
 - Sheets are read through actions at query time, never through an ingested copy that would answer from old data ([federated versus ingestion](/docs/research/gemini-enterprise.md#federated-search-versus-ingestion)). Drive, Gmail and Calendar connectors need a Workspace account, not `@gmail.com` ([account limits](/docs/research/gemini-enterprise.md#edition-and-account-limits)).
 
@@ -262,7 +262,7 @@ No card: Apps Script, Sheets, Drive, Gmail and Calendar on the licensed Workspac
 
 - Whether any teammate's window has a near landmark and a skyline in view, how far it is from campus, and whether its contrast ratios track haze or rain at all; the probation test decides the last.
 - Whether a workflow can take both a Gmail trigger and a manual `@` run, which a read-only `@Skyclause` add-on would need.
-- Whether Jira Cloud's Create comment works in the team's app, and how long approvals take in practice.
+- Whether Jira Cloud's Create issue and Update issue work in the team's app, and how long approvals take in practice.
 - Whether a MET warning named Kuala Lumpur on the afternoon of 2 November; no public history exists.
 - Which JPS view is right for 3 November: the KL portal's daily field says 46 mm, Public Infobanjir 39 mm.
 - Whether FSSW exists under that name and what it decides, and the gauge's own coordinates (JPS publishes none; it is named for LRT Bukit Jalil station).
