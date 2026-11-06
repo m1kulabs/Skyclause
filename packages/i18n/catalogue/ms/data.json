@@ -1,0 +1,90 @@
+{
+  "strip": {
+    "summary_live": "Strip langsung hingga {to}. {crossing}. {count} bacaan.",
+    "summary_replay": "Ulangan {source}, dirakam {captured}. {crossing}. {count} bacaan.",
+    "crossing": "Lebat dicapai pada {time} ({value} mm dalam 60 min)",
+    "no_crossing": "Tiada lintasan Lebat dalam tetingkap ini",
+    "show_table": "Tunjuk jadual",
+    "hide_table": "Sembunyi jadual",
+    "table_caption": "Bacaan hujan dengan jumlah 60 minit",
+    "table_time": "Masa",
+    "table_rain5": "mm setiap 5 min",
+    "table_rain60": "mm setiap 60 min",
+    "missing": "–",
+    "empty": "Tiada bacaan lagi (n=0). Ikat sumber untuk memulakan strip.",
+    "replay_badge": "Ulangan",
+    "window": "Tetingkap",
+    "now": "Kini",
+    "ages_title": "Umur input",
+    "lebat_line": "Lebat 31 mm"
+  },
+  "age": {
+    "label": "{name} {age}",
+    "label_stale": "{name} {age} {stale}",
+    "stale": "lapuk",
+    "error": "{name} ralat sejak {time}",
+    "daily": "data hingga {date}",
+    "source_time": "Waktu sumber",
+    "received_time": "Waktu diterima",
+    "status": "Status",
+    "latency": "Kependaman",
+    "latency_value": "{value} ms"
+  },
+  "source": {
+    "cadence": "setiap {value}",
+    "minute": "{value} min",
+    "value": "{value} {unit}",
+    "latest_empty": "Tiada bacaan lagi (n=0).",
+    "ticks_label": "{count} tinjauan terakhir",
+    "tick_received": "diterima",
+    "tick_missed": "tiada",
+    "tick_error": "ralat",
+    "licence": "Lesen",
+    "licence_derived": "Terbitan sahaja",
+    "open_source": "Buka sumber"
+  },
+  "call": {
+    "window": "Tetingkap {id}",
+    "night": "Malam {id}",
+    "expires": "Tamat {time}",
+    "fired_item": "{clause}: {inputs}",
+    "state_drafted": "Draf",
+    "state_approved": "Diluluskan",
+    "state_edited": "Disunting",
+    "state_rejected": "Ditolak",
+    "state_expired": "Tamat tempoh",
+    "state_superseded": "Digantikan",
+    "state_sending": "Dihantar",
+    "state_sent": "Telah dihantar",
+    "state_failed": "Gagal",
+    "fired_empty": "Tiada klausa dicetuskan",
+    "actions": "Tindakan panggilan"
+  },
+  "bundle": {
+    "trigger": "{trigger} pada {time}",
+    "title": "{triggerText} {project}",
+    "sla": "{count} minit SLA berbaki",
+    "sla_over": "SLA telah lepas",
+    "agrees": "Setuju",
+    "disagrees": "Tidak setuju pada {count}",
+    "escalation": "Eskalasi {level}",
+    "approve": "Luluskan {count} panggilan",
+    "draft_only": "Draf: belum disemak, belum dihantar",
+    "calls_title": "Panggilan mengikut mod",
+    "actions": "Tindakan berkas"
+  },
+  "grade": {
+    "value_label": "{metric} {value}",
+    "n": "n={count}",
+    "n_zero": "n=0",
+    "period": "{from} hingga {to}",
+    "replay": "Ulangan",
+    "empty": "Tiada tetingkap dinilai lagi (n=0).",
+    "interval_label": "Selang Wilson 95% {low} hingga {high}"
+  },
+  "pack": {
+    "clause_engine": "Keputusan enjin klausa: belum disemak, belum dihantar",
+    "approved_call": "Panggilan diluluskan",
+    "no_basis": "Tiada keputusan lagi"
+  }
+}

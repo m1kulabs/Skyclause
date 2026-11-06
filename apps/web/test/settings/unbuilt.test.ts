@@ -17,14 +17,6 @@ export const expectedOwners: Record<string, string[]> = {
   'b-create-project-ui': panels('project', ['packs']),
   'c-channels-ui': panels('project', ['channels']),
   'd-public-project-page': panels('project', ['public']),
-  'd-data-components': [
-    'window-strip',
-    'input-age-chip',
-    'source-health-row',
-    'bundle-card',
-    'call-row',
-    'grade-card'
-  ].map((part) => `apps/web/features/data-components/${part}.tsx`),
   'a-step-up': ['apps/web/features/reauth/use-reauth.ts', 'apps/web/features/reauth/reauth-dialog.tsx'],
   'd-org-live': ['apps/web/features/org-live/index.tsx'],
   'b-windows-ui': ['apps/web/features/windows/declare-window-dialog.tsx']

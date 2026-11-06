@@ -1,0 +1,90 @@
+{
+  "strip": {
+    "summary_live": "Live strip to {to}. {crossing}. {count} readings.",
+    "summary_replay": "Replay of {source}, captured {captured}. {crossing}. {count} readings.",
+    "crossing": "Lebat crossed at {time} ({value} mm in 60 min)",
+    "no_crossing": "No Lebat crossing in this window",
+    "show_table": "Show table",
+    "hide_table": "Hide table",
+    "table_caption": "Rain readings with 60-minute totals",
+    "table_time": "Time",
+    "table_rain5": "mm per 5 min",
+    "table_rain60": "mm per 60 min",
+    "missing": "–",
+    "empty": "No readings yet (n=0). Bind a source to start the strip.",
+    "replay_badge": "Replay",
+    "window": "Window",
+    "now": "Now",
+    "ages_title": "Input ages",
+    "lebat_line": "Lebat 31 mm"
+  },
+  "age": {
+    "label": "{name} {age}",
+    "label_stale": "{name} {age} {stale}",
+    "stale": "stale",
+    "error": "{name} error since {time}",
+    "daily": "data to {date}",
+    "source_time": "Source time",
+    "received_time": "Received time",
+    "status": "Status",
+    "latency": "Latency",
+    "latency_value": "{value} ms"
+  },
+  "source": {
+    "cadence": "every {value}",
+    "minute": "{value} min",
+    "value": "{value} {unit}",
+    "latest_empty": "No readings yet (n=0).",
+    "ticks_label": "Last {count} polls",
+    "tick_received": "received",
+    "tick_missed": "missed",
+    "tick_error": "error",
+    "licence": "Licence",
+    "licence_derived": "Derived only",
+    "open_source": "Open source"
+  },
+  "call": {
+    "window": "Window {id}",
+    "night": "Night {id}",
+    "expires": "Expires {time}",
+    "fired_item": "{clause}: {inputs}",
+    "state_drafted": "Drafted",
+    "state_approved": "Approved",
+    "state_edited": "Edited",
+    "state_rejected": "Rejected",
+    "state_expired": "Expired",
+    "state_superseded": "Superseded",
+    "state_sending": "Sending",
+    "state_sent": "Sent",
+    "state_failed": "Failed",
+    "fired_empty": "No clause fired",
+    "actions": "Call actions"
+  },
+  "bundle": {
+    "trigger": "{trigger} at {time}",
+    "title": "{triggerText} {project}",
+    "sla": "{count} min of SLA left",
+    "sla_over": "SLA passed",
+    "agrees": "Agrees",
+    "disagrees": "Disagrees on {count}",
+    "escalation": "Escalation {level}",
+    "approve": "Approve {count} calls",
+    "draft_only": "Draft: not reviewed, not sent",
+    "calls_title": "Calls by mode",
+    "actions": "Bundle actions"
+  },
+  "grade": {
+    "value_label": "{metric} {value}",
+    "n": "n={count}",
+    "n_zero": "n=0",
+    "period": "{from} to {to}",
+    "replay": "Replay",
+    "empty": "No graded windows yet (n=0).",
+    "interval_label": "Wilson 95% interval {low} to {high}"
+  },
+  "pack": {
+    "clause_engine": "Clause engine verdict: not reviewed, not sent",
+    "approved_call": "Approved call",
+    "no_basis": "No call yet"
+  }
+}
