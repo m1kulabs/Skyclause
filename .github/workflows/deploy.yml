@@ -17,6 +17,7 @@ on:
       - scripts/container-entry.sh
       - scripts/check-image.sh
       - scripts/check-deployed.ts
+      - scripts/sbom-worker-bundle.ts
       - .github/actions/build-image/**
       - .github/workflows/deploy.yml
   pull_request:
@@ -25,6 +26,7 @@ on:
       - .dockerignore
       - scripts/container-entry.sh
       - scripts/check-image.sh
+      - scripts/sbom-worker-bundle.ts
       - .github/actions/build-image/**
       - .github/workflows/deploy.yml
   workflow_dispatch:
