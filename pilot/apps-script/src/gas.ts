@@ -13,6 +13,7 @@ import type { LabelSlot, ProbationLabel, ProbationRow } from '../../shared/proba
 import type { JpsHttpResponse } from './jps.ts'
 import type { LabelStore } from './label.ts'
 import type { PiRowsStore } from './pi-rows.ts'
+import type { RawFile, SentMessage, SweepPorts } from './sweep.ts'
 import type { GetProperty } from './properties.ts'
 import { validateReading } from './readings.ts'
 import { columnsOf, toRow, type Cell, type Column, type Row, type Tab } from './schema.ts'
@@ -621,6 +622,138 @@ export function labelStore(spreadsheetId: string): LabelStore {
       setCell(spreadsheetId, 'sources', rowNumber, 'probation_agreement', agreement ?? '')
       const index = columnsOf('sources').indexOf('probation') + 1
       sheet(spreadsheetId, 'sources').getRange(rowNumber, index).setNote(note)
+    }
+  }
+}
+
+// --- Sweep (#62) adapters: the pure runSweep ports, built from SHEET_ID and the Script Properties. ---
+
+const SWEEP_SENT_QUERY = 'in:sent newer_than:2d'
+const SWEEP_SENT_MAX = 100
+
+export function sha256HexDigest(text: string): string {
+  const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, text, Utilities.Charset.UTF_8)
+  return bytes.map((byte) => (byte < 0 ? byte + 256 : byte).toString(16).padStart(2, '0')).join('')
+}
+
+function listFiles(folderId: string | null): RawFile[] {
+  if (!folderId) return []
+  const out: RawFile[] = []
+  const files = DriveApp.getFolderById(folderId).getFiles()
+  while (files.hasNext()) {
+    const file = files.next()
+    if (file.isTrashed()) continue
+    out.push({ id: file.getId(), name: file.getName(), text: file.getBlob().getDataAsString() })
+  }
+  return out
+}
+
+function sweepSent(): SentMessage[] {
+  const out: SentMessage[] = []
+  const threads = GmailApp.search(SWEEP_SENT_QUERY, 0, SWEEP_SENT_MAX)
+  for (const thread of threads) {
+    for (const message of thread.getMessages()) {
+      out.push({
+        subject: message.getSubject(),
+        date: toMytIso(new Date(message.getDate().getTime())),
+        threadId: thread.getId()
+      })
+    }
+  }
+  return out
+}
+
+// The calendar entry stands in for the call page; its URL carries the event in `eid`. Anything else
+// (a pasted link, an event on another calendar) resolves to null and the sweep reports it as unresolved.
+function sweepEvent(url: string): GoogleAppsScript.Calendar.CalendarEvent | null {
+  const match = url.match(/[?&]eid=([^&]+)/)
+  if (!match?.[1]) return null
+  const calendarId = getProperty('CONDITIONS_CALENDAR_ID')
+  if (!calendarId) return null
+  try {
+    const decoded = Utilities.newBlob(
+      Utilities.base64Decode(match[1].replace(/-/g, '+').replace(/_/g, '/'))
+    ).getDataAsString()
+    const eventId = decoded.split(' ')[0]
+    if (!eventId) return null
+    return CalendarApp.getCalendarById(calendarId)?.getEventById(eventId) ?? null
+  } catch {
+    return null
+  }
+}
+
+export function sweepStore(spreadsheetId: string): SweepPorts {
+  if (!spreadsheetId) throw new Error('SHEET_ID is not set; run setup()')
+  return {
+    now: () => new Date(),
+    sha256Hex: sha256HexDigest,
+    skyFiles: () => listFiles(getProperty('CROSSINGS_SKY_FOLDER_ID')),
+    crowdFiles: () => listFiles(getProperty('CROSSINGS_CROWD_FOLDER_ID')),
+    replayFiles: () => listFiles(getProperty('CROSSINGS_REPLAY_FOLDER_ID')),
+    rota: () => readColumns(spreadsheetId, 'rota', ['date', 'start', 'end', 'approver', 'email']),
+    notifications: () => readColumns(spreadsheetId, 'notifications', ['at', 'kind', 'to', 'ref', 'gmail_message_id']),
+    ledger: () => readColumns(spreadsheetId, 'ledger', columnsOf('ledger')),
+    indicators: () =>
+      readColumns(spreadsheetId, 'indicators', [
+        'snapshot_id',
+        'scope',
+        'name',
+        'value',
+        'observed_at',
+        'age_min',
+        'state'
+      ]),
+    clauseVersions: () =>
+      readColumns(spreadsheetId, 'clause_versions', [
+        'version_n',
+        'saved_at',
+        'editor',
+        'content_hash',
+        'content_json'
+      ]),
+    windows: () =>
+      readColumns(spreadsheetId, 'windows', [
+        'window_id',
+        'subscriber_id',
+        'kind',
+        'date',
+        'start_myt',
+        'end_myt',
+        'language',
+        'status'
+      ]),
+    shadow: () => readColumns(spreadsheetId, 'shadow', ['scope', 'verdict', 'snapshot_id']),
+    sent: sweepSent,
+    calendarDescription: (url) => sweepEvent(url)?.getDescription() ?? null,
+    teamAlertEmails: () =>
+      (getProperty('TEAM_ALERT_EMAILS') ?? '')
+        .split(',')
+        .map((address) => address.trim())
+        .filter((address) => address !== ''),
+    sendMail: (to, subject, body) => {
+      GmailApp.sendEmail(to.join(','), subject, body)
+      const threads = GmailApp.search('in:sent newer_than:1h', 0, SWEEP_SENT_MAX)
+      for (const thread of threads) {
+        for (const message of thread.getMessages()) {
+          if (message.getSubject() === subject) return message.getId()
+        }
+      }
+      return ''
+    },
+    appendNotification: (row) => appendRows(spreadsheetId, 'notifications', [row]),
+    fillLedger: (rowIndex, cells) => {
+      const target = sheet(spreadsheetId, 'ledger')
+      const columns = columnsOf('ledger')
+      const sheetRow = rowIndex + 2
+      for (const [column, value] of Object.entries(cells)) {
+        target.getRange(sheetRow, columns.indexOf(column as (typeof columns)[number]) + 1).setValue(value)
+      }
+    },
+    appendCalendarDescription: (url, line) => {
+      const event = sweepEvent(url)
+      if (!event) return
+      const current = event.getDescription()
+      event.setDescription(current ? `${current}\n${line}` : line)
     }
   }
 }
