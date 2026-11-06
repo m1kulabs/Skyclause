@@ -530,6 +530,7 @@ This section enforces PRD's [roles and permissions](/docs/PRD.md#roles-and-permi
 
 ### Guests, share links and bot checks
 
+- **Commons:** `f-deploy` runs the idempotent `commons:provision` job (`d-commons`) after `migrate`. It creates `commons`, `bukit-jalil`, default sheets and GST-2 bindings, then turns `pack_crowd` on. The job is audited as `system` and never creates readings, windows or calls. `PILOT_PROJECT` names the project whose approved calls LND-3 and GST-3 link and which holds the pilot archive, linked from `c-ledger-ui`'s ledger (LED-8).
 - **Guests:** `/guest` runs Cloudflare Turnstile, verified server-side (Better Auth's captcha integration is Not verified), then `signIn.anonymous()`, which creates `{id}@anonymous.placeholder.invalid`, and joins `commons` as Guest. Budgets per signed device cookie and per IP hash; guest windows expire after 14 days and inactive guest accounts after 30 ([GST](/docs/PRD.md#guest-access-and-the-commons-gst)).
 - **Conversion:** signing up runs `onLinkAccount({ anonymousUser, newUser })`, which creates the new organisation and project, moves active guest windows and evidence requests, and lets Better Auth delete the anonymous user. A sign-in still waiting on a second factor doesn't link, and whether social sign-in triggers the hook is Not verified, so both are tested.
 - **Share links:** 32 random bytes, base64url, stored as SHA-256; role view or reviewer; required expiry, revocable; `/share/{token}` issues a session limited to that project; each use is audited.
