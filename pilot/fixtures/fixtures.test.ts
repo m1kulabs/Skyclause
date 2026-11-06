@@ -9,7 +9,10 @@ const copies = {
   'weather-warning-20261105T1313Z.json': 'docs/sources/api.data.gov.my',
   'mapcaqm-20261105T1313Z.json': 'docs/sources/eqms.doe.gov.my',
   'ridership-od-rapidrail-daily-20261106T1456Z.json': 'docs/sources/storage.data.gov.my',
-  'rapidrail-sp17-extract-20261106T1456Z.json': 'docs/sources/storage.data.gov.my'
+  'rapidrail-sp17-extract-20261106T1456Z.json': 'docs/sources/storage.data.gov.my',
+  'bukit-jalil-stadium-20261106T1922Z.json': 'docs/sources/en.wikipedia.org',
+  'unifi-arena-20261106T1922Z.json': 'docs/sources/en.wikipedia.org',
+  'malaysia-results-20261106T1922Z.json': 'docs/sources/en.wikipedia.org'
 }
 
 describe('pilot fixtures', () => {
