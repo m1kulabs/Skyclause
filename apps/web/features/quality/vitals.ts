@@ -1,4 +1,4 @@
-import { ROUTE_GROUPS, type RouteGroup, type VitalBody, type VitalMetric } from '@skyclause/contracts'
+import { ROUTE_GROUPS, type RouteGroup, type VitalBody, type VitalMetric } from '@skyclause/contracts/analytics'
 import { onCLS, onFCP, onINP, onLCP, onTTFB } from 'web-vitals'
 
 /** The route group of the page under the root layout, from `useSelectedLayoutSegments()` there; null outside the five. */
