@@ -80,10 +80,11 @@ jobs:
 
   # A push that changed infra/ also runs terraform.yml; deploy lists Cloud Run jobs only after that apply succeeds, so
   # a job it creates gets this image (#226). Other pushes and dispatches pass at once.
-  terraform:
+  wait-for-terraform:
     if: github.ref == 'refs/heads/main' && (vars.DEPLOY_FREEZE != 'true' || inputs.override_freeze)
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # An apply can queue behind earlier ones in terraform-production.
+    timeout-minutes: 60
     permissions:
       contents: read
       actions: read
@@ -129,7 +130,7 @@ jobs:
           echo "image=$image" | tee -a "$GITHUB_OUTPUT"
 
   deploy:
-    needs: [checks, image, terraform]
+    needs: [checks, image, wait-for-terraform]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:

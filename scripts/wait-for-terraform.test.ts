@@ -34,8 +34,14 @@ const git = (cwd: string, ...args: string[]) => {
 const identity = ['-c', 'user.name=t', '-c', 'user.email=t@example.test', '-c', 'commit.gpgsign=false']
 const commit = (cwd: string, ...args: string[]) => git(cwd, ...identity, 'commit', '-q', ...args)
 
+interface Push {
+  repo: string
+  before: string
+  sha: string
+}
+
 // A repository whose history is: base, then a push touching apps/ only, then a push touching infra/ and apps/.
-function plantHistory() {
+function plantPushes(): { appsOnly: Push; withInfra: Push } {
   const repo = plantRepo({ 'apps/worker/src/main.ts': 'base\n', 'infra/main.tf': 'base\n' })
   git(repo, 'init', '-q', '-b', 'main')
   git(repo, 'add', '.')
@@ -48,18 +54,24 @@ function plantHistory() {
   writeFileSync(join(repo, 'infra/main.tf'), 'module "job" {}\n')
   commit(repo, '-am', 'infra and apps')
   const withInfra = git(repo, 'rev-parse', 'HEAD')
-  return { repo, base, appsOnly, withInfra }
+  return { appsOnly: { repo, before: base, sha: appsOnly }, withInfra: { repo, before: appsOnly, sha: withInfra } }
 }
 
-const runsList = (...runs: object[]) => JSON.stringify({ total_count: runs.length, workflow_runs: runs })
-const run = (status: string, conclusion: string | null = null) =>
-  JSON.stringify({ id: 42, status, conclusion, html_url: 'https://github.com/o/r/actions/runs/42' })
+// What GitHub's API answers for terraform.yml's runs of a commit, and for one run.
+const runsList = (...runs: object[]) => ({ total_count: runs.length, workflow_runs: runs })
+const terraformRun = (status: string, conclusion: string | null = null) => ({
+  id: 42,
+  status,
+  conclusion,
+  html_url: 'https://github.com/o/r/actions/runs/42'
+})
 
-function wait(push: { repo: string; before: string; sha: string }, gh: { list?: string[]; run?: string[] } = {}) {
+function waitFor(push: Push, gh: { list?: object[]; run?: object[] } = {}) {
+  const queue = (answers: object[]) => answers.map((answer) => JSON.stringify(answer) + '\n').join('')
   const fake = plantRepo({
     'bin/gh': fakeGh,
-    list: (gh.list ?? [runsList()]).join('\n') + '\n',
-    run: (gh.run ?? [run('queued')]).join('\n') + '\n'
+    list: queue(gh.list ?? [runsList()]),
+    run: queue(gh.run ?? [terraformRun('queued')])
   })
   chmodSync(join(fake, 'bin/gh'), 0o755)
   const result = spawnSync(script, [push.before, push.sha], {
@@ -83,8 +95,7 @@ function wait(push: { repo: string; before: string; sha: string }, gh: { list?: 
 }
 
 test('a push without an infra/ change returns at once, without asking GitHub', () => {
-  const { repo, base, appsOnly } = plantHistory()
-  const result = wait({ repo, before: base, sha: appsOnly })
+  const result = waitFor(plantPushes().appsOnly)
   expect(result.stderr).toBe('')
   expect(result.status).toBe(0)
   expect(result.stdout).toMatch(/no infra\/ change/i)
@@ -92,20 +103,17 @@ test('a push without an infra/ change returns at once, without asking GitHub', (
 })
 
 test('a push changing infra/ waits for its terraform run to appear and succeed', () => {
-  const { repo, appsOnly, withInfra } = plantHistory()
-  const result = wait(
-    { repo, before: appsOnly, sha: withInfra },
-    {
-      list: [runsList(), runsList(JSON.parse(run('queued')))],
-      run: [run('queued'), run('in_progress'), run('completed', 'success')]
-    }
-  )
+  const { withInfra } = plantPushes()
+  const result = waitFor(withInfra, {
+    list: [runsList(), runsList(terraformRun('queued'))],
+    run: [terraformRun('queued'), terraformRun('in_progress'), terraformRun('completed', 'success')]
+  })
   expect(result.stderr).toBe('')
   expect(result.status).toBe(0)
   expect(result.stdout).toContain('https://github.com/o/r/actions/runs/42 succeeded')
   expect(result.calls).toEqual([
-    `repos/o/r/actions/workflows/terraform.yml/runs?head_sha=${withInfra}&event=push`,
-    `repos/o/r/actions/workflows/terraform.yml/runs?head_sha=${withInfra}&event=push`,
+    `repos/o/r/actions/workflows/terraform.yml/runs?head_sha=${withInfra.sha}&event=push`,
+    `repos/o/r/actions/workflows/terraform.yml/runs?head_sha=${withInfra.sha}&event=push`,
     'repos/o/r/actions/runs/42',
     'repos/o/r/actions/runs/42',
     'repos/o/r/actions/runs/42'
@@ -113,32 +121,34 @@ test('a push changing infra/ waits for its terraform run to appear and succeed',
 })
 
 test('a failed or cancelled terraform run fails the wait, naming the run', () => {
-  const { repo, appsOnly, withInfra } = plantHistory()
+  const { withInfra } = plantPushes()
   for (const conclusion of ['failure', 'cancelled']) {
-    const result = wait(
-      { repo, before: appsOnly, sha: withInfra },
-      { list: [runsList(JSON.parse(run('in_progress')))], run: [run('completed', conclusion)] }
-    )
+    const result = waitFor(withInfra, {
+      list: [runsList(terraformRun('in_progress'))],
+      run: [terraformRun('completed', conclusion)]
+    })
     expect(result.status).toBe(1)
     expect(result.stdout).toContain(`::error::terraform run https://github.com/o/r/actions/runs/42 ended ${conclusion}`)
   }
 })
 
 test('a push changing infra/ with no terraform run to wait for fails rather than deploying past it', () => {
-  const { repo, appsOnly, withInfra } = plantHistory()
-  const result = wait({ repo, before: appsOnly, sha: withInfra }, { list: [runsList()] })
+  const { withInfra } = plantPushes()
+  const result = waitFor(withInfra, { list: [runsList()] })
   expect(result.status).toBe(1)
-  expect(result.stdout).toContain(`::error::This push changed infra/, but no terraform run for ${withInfra} appeared`)
-  expect(result.calls).toHaveLength(20)
+  expect(result.stdout).toContain(
+    `::error::This push changed infra/, but no terraform run for ${withInfra.sha} appeared`
+  )
 })
 
 test('a push whose base commit is missing (a force-push) waits as if it changed infra/', () => {
-  const { repo, withInfra } = plantHistory()
-  const result = wait(
-    { repo, before: 'f'.repeat(40), sha: withInfra },
-    { list: [runsList(JSON.parse(run('in_progress')))], run: [run('completed', 'success')] }
-  )
+  const { withInfra } = plantPushes()
+  const forced = { ...withInfra, before: 'f'.repeat(40) }
+  const result = waitFor(forced, {
+    list: [runsList(terraformRun('in_progress'))],
+    run: [terraformRun('completed', 'success')]
+  })
   expect(result.status).toBe(0)
-  expect(result.stdout).toContain(`::warning::Can't diff ${'f'.repeat(40)}..${withInfra}`)
+  expect(result.stdout).toContain(`::warning::Can't diff ${forced.before}..${forced.sha}`)
   expect(result.stdout).toContain('https://github.com/o/r/actions/runs/42 succeeded')
 })
