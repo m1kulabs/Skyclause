@@ -1,0 +1,31 @@
+{
+  "object": "Objek: {name}",
+  "named_action": "{action} “{name}”",
+  "type_name": "Taip “{name}” dengan tepat untuk mengesahkan.",
+  "cancel": "Batal",
+  "saving": "Menyimpan…",
+  "confirm_failed": "Perubahan tidak dapat disimpan. Cuba lagi.",
+  "unsaved": "Anda mempunyai perubahan yang belum disimpan. Tinggalkan halaman ini dan buang perubahan tersebut?",
+  "undo": "Buat asal",
+  "harness": {
+    "title": "Ujian interaksi SET-7",
+    "name": "Objek ujian pengesahan",
+    "object_name": "Nama objek ujian",
+    "confirm": "Alih keluar “{name}”",
+    "typed": "Padam “{name}”",
+    "description": "Tindakan ujian ini menamakan objek yang dipilih.",
+    "open_confirm": "Buka pengesahan",
+    "open_typed": "Buka pengesahan bertaip",
+    "queue": "Jadualkan tindakan tertunda",
+    "pending": "Tindakan menunggu. Anda mempunyai 10 saat untuk buat asal.",
+    "idle": "Tiada tindakan menunggu.",
+    "commits": "n={count} komit",
+    "confirmed": "n={count} pengesahan",
+    "edit": "Medan ujian belum disimpan",
+    "leave": "Tinggalkan borang ujian",
+    "navigate": "Navigasi dengan perlindungan",
+    "save": "Simpan borang ujian",
+    "focus": "Sasaran fokus palet",
+    "close": "Tutup palet"
+  }
+}

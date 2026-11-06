@@ -1,0 +1,31 @@
+{
+  "object": "Object: {name}",
+  "named_action": "{action} “{name}”",
+  "type_name": "Type “{name}” exactly to confirm.",
+  "cancel": "Cancel",
+  "saving": "Saving…",
+  "confirm_failed": "The change could not be saved. Try again.",
+  "unsaved": "You have unsaved changes. Leave this page and discard them?",
+  "undo": "Undo",
+  "harness": {
+    "title": "SET-7 interaction tests",
+    "name": "Confirmation test object",
+    "object_name": "Test object name",
+    "confirm": "Remove “{name}”",
+    "typed": "Delete “{name}”",
+    "description": "This test-only action names the selected object.",
+    "open_confirm": "Open confirmation",
+    "open_typed": "Open typed confirmation",
+    "queue": "Queue deferred action",
+    "pending": "Action pending. You have 10 seconds to undo.",
+    "idle": "No pending action.",
+    "commits": "n={count} commits",
+    "confirmed": "n={count} confirmations",
+    "edit": "Unsaved test field",
+    "leave": "Leave the test form",
+    "navigate": "Navigate with the guard",
+    "save": "Save test form",
+    "focus": "Palette focus target",
+    "close": "Close the palette"
+  }
+}

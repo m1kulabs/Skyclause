@@ -1,0 +1,111 @@
+{
+  "scopes": {
+    "account": "Tetapan akaun",
+    "organisation": "Tetapan organisasi",
+    "project": "Tetapan projek"
+  },
+  "sections": {
+    "account": {
+      "profile": {
+        "title": "Profil",
+        "description": "Urus nama, foto dan e-mel log masuk anda."
+      },
+      "security": {
+        "title": "Keselamatan",
+        "description": "Urus kaedah log masuk dan sesi aktif."
+      },
+      "appearance": {
+        "title": "Paparan",
+        "description": "Pilih tema, kontras, kepadatan, gerakan dan bahasa anda."
+      },
+      "notifications": {
+        "title": "Pemberitahuan",
+        "description": "Pilih cara anda menerima amaran dan kemas kini."
+      },
+      "ai-keys": {
+        "title": "Kunci AI",
+        "description": "Urus kunci penyedia AI untuk akaun anda."
+      },
+      "api-keys": {
+        "title": "Kunci API",
+        "description": "Urus kunci yang memberi alat akses kepada akaun anda."
+      },
+      "data": {
+        "title": "Data dan privasi",
+        "description": "Urus data dan privasi akaun anda."
+      }
+    },
+    "organisation": {
+      "general": {
+        "title": "Umum",
+        "description": "Urus nama dan pilihan organisasi."
+      },
+      "members": {
+        "title": "Ahli dan peranan",
+        "description": "Urus keahlian, jemputan dan peranan."
+      },
+      "rota": {
+        "title": "Jadual pelulus",
+        "description": "Semak syif dan liputan pelulus."
+      },
+      "billing": {
+        "title": "Pengebilan",
+        "description": "Semak pengebilan organisasi. Versi beta adalah percuma."
+      },
+      "audit": {
+        "title": "Log audit",
+        "description": "Semak perubahan yang dibuat dalam organisasi anda."
+      },
+      "ai-keys": {
+        "title": "Kunci AI",
+        "description": "Urus kunci penyedia AI untuk organisasi ini."
+      },
+      "api-keys": {
+        "title": "Kunci API",
+        "description": "Urus kunci yang memberi alat akses kepada organisasi ini."
+      },
+      "webhooks": {
+        "title": "Webhook",
+        "description": "Urus destinasi dan penghantaran webhook."
+      },
+      "integrations": {
+        "title": "Integrasi",
+        "description": "Urus alat yang disambungkan dan kebenaran akses."
+      },
+      "data": {
+        "title": "Penyimpanan data",
+        "description": "Urus data, eksport dan tempoh penyimpanan organisasi."
+      }
+    },
+    "project": {
+      "general": {
+        "title": "Lokasi dan zon waktu",
+        "description": "Urus lokasi projek dan zon waktu tempatan."
+      },
+      "packs": {
+        "title": "Pek dan sumber",
+        "description": "Urus pek dan sumber yang digunakan oleh projek ini."
+      },
+      "channels": {
+        "title": "Saluran",
+        "description": "Urus saluran yang menghantar notis yang diluluskan."
+      },
+      "rota": {
+        "title": "Jadual giliran",
+        "description": "Urus liputan pelulus untuk projek ini."
+      },
+      "public": {
+        "title": "Halaman awam",
+        "description": "Urus maklumat projek yang dipaparkan kepada umum."
+      },
+      "share": {
+        "title": "Pautan perkongsian",
+        "description": "Urus pautan yang memberi orang lain akses kepada projek ini."
+      },
+      "clauses": {
+        "title": "Versi lembaran klausa",
+        "description": "Semak versi lembaran klausa."
+      }
+    }
+  }
+}

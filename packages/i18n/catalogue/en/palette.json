@@ -1,0 +1,9 @@
+{
+  "title": "Command palette",
+  "description": "Search the commands available to your role. Press Escape to close.",
+  "search": "Search commands",
+  "placeholder": "Search commands…",
+  "results": "Available commands",
+  "empty": "n=0 commands. Press Escape to return to the app.",
+  "no_matches": "n=0 matches. Try another search."
+}
