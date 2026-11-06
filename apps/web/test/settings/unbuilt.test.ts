@@ -11,7 +11,6 @@ export const expectedOwners: Record<string, string[]> = {
   'a-settings-pages': [...panels('account', ['data']), ...panels('organisation', ['billing', 'audit', 'data'])],
   'a-org-projects': panels('organisation', ['general']),
   'a-members-ui': panels('organisation', ['members', 'rota']),
-  'e-webhooks-ui': panels('organisation', ['webhooks']),
   'e-mcp-auth': panels('organisation', ['integrations']),
   'b-project-ui': panels('project', ['general', 'rota', 'share']),
   'b-create-project-ui': panels('project', ['packs']),
@@ -38,4 +37,5 @@ test('check:unbuilt reports every settings panel and shared part under its spec 
     .flat()
     .filter((file) => file.includes('/settings/') && file.endsWith('/panel.tsx'))
   expect(panelFiles).toHaveLength(22)
+  expect(byOwner['e-webhooks-ui']).toBeUndefined()
 })
