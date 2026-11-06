@@ -5,7 +5,7 @@ import type { Principal } from '@skyclause/contracts'
 const TEST_PRINCIPAL_COOKIE = 'skyclause_test_principal'
 
 export async function asPage(page: Page, principal: Principal): Promise<void> {
-  const url = process.env.E2E_BASE_URL ?? 'http://localhost:3100'
+  const url = process.env.E2E_BASE_URL ?? `http://localhost:${process.env.E2E_PORT ?? 3100}`
   const value = encodeURIComponent(
     JSON.stringify(principal, (_key, field: unknown) => (field instanceof Date ? field.toISOString() : field))
   )

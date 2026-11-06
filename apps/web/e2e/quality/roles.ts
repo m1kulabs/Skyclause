@@ -38,7 +38,7 @@ export const STAND_IN_REASON = 'signInAs waits on #94'
 
 /** Explicitly signed out through #95's test-only seam; never call the unfinished #94 resolver. */
 export async function signedOut(page: Page) {
-  const url = process.env.E2E_BASE_URL ?? 'http://localhost:3100'
+  const url = process.env.E2E_BASE_URL ?? `http://localhost:${process.env.E2E_PORT ?? 3100}`
   await page
     .context()
     .addCookies([{ name: 'skyclause_test_principal', value: 'null', url, httpOnly: true, sameSite: 'Lax' }])

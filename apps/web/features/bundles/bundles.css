@@ -1,0 +1,188 @@
+.bundle-detail {
+  max-width: 1040px;
+  margin-inline: auto;
+  padding: 24px;
+  overflow-wrap: anywhere;
+  min-height: 75vh;
+}
+
+html:has(.bundle-detail),
+.shell-content:has(.bundle-detail) {
+  scroll-padding-bottom: 180px;
+}
+
+.bundle-detail h1 {
+  font-size: 24px;
+  font-weight: 600;
+}
+.bundle-detail h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-block: 32px 12px;
+}
+.bundle-detail h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+.bundle-detail h4,
+.bundle-detail h5 {
+  font-weight: 600;
+  margin-block: 16px 8px;
+}
+.bundle-detail p {
+  margin-block: 8px;
+}
+.bundle-detail a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.bundle-call-list {
+  list-style: none;
+  padding: 0;
+}
+.bundle-call-list > li {
+  border-top: 1px solid var(--border);
+  padding-block: 24px;
+  scroll-margin-block: 64px 180px;
+}
+.bundle-call-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.bundle-call-actions > button {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 34px;
+  height: auto;
+  white-space: normal;
+}
+.bundle-mode,
+.bundle-input {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+}
+.bundle-mode {
+  font-weight: 600;
+}
+.bundle-choice,
+.bundle-recipient {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+.bundle-choice input,
+.bundle-recipient input {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  accent-color: var(--foreground);
+}
+.bundle-disagreements {
+  margin-block: 16px;
+}
+.bundle-disagreements fieldset + fieldset {
+  margin-top: 16px;
+}
+.bundle-notice {
+  margin-block: 16px;
+}
+.bundle-notice blockquote {
+  white-space: pre-wrap;
+  max-width: 75ch;
+}
+.bundle-trace [data-slot='trace-line'] {
+  flex-wrap: wrap;
+}
+.bundle-delay {
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+  padding-top: 16px;
+}
+.bundle-error {
+  color: var(--destructive);
+}
+.bundle-approval-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--background);
+  border-top: 1px solid var(--border);
+  padding-block: 16px;
+}
+.bundle-phone-approval {
+  display: none;
+}
+.bundle-edit,
+.bundle-recheck {
+  overflow-wrap: anywhere;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  width: min(640px, calc(100vw - 32px));
+  max-width: none;
+}
+.bundle-edit fieldset {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 24px;
+  min-width: 0;
+}
+.bundle-edit legend {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.bundle-edit textarea {
+  min-height: 160px;
+}
+.bundle-approval-drawer {
+  overflow-wrap: anywhere;
+}
+.bundle-approval-drawer [data-slot='drawer-footer'] {
+  gap: 12px;
+  padding-top: 16px;
+}
+
+@media (max-width: 640px) {
+  .bundle-detail {
+    padding: 16px;
+    padding-bottom: 180px;
+  }
+  .bundle-call-actions > button {
+    min-height: 44px;
+    height: auto;
+    white-space: normal;
+  }
+  .bundle-approval-bar {
+    display: none;
+  }
+  .bundle-phone-approval {
+    display: block;
+    position: sticky;
+    bottom: 64px;
+    padding-block: 12px;
+    background: var(--background);
+  }
+  .bundle-phone-approval > button,
+  .bundle-phone-confirm {
+    width: 100%;
+    min-height: 44px;
+    height: auto;
+    white-space: normal;
+  }
+  .bundle-edit button,
+  .bundle-recheck button {
+    min-height: 44px;
+    height: auto;
+    white-space: normal;
+  }
+}

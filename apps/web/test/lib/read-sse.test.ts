@@ -26,6 +26,7 @@ test('reconnects after EOF and resumes with the last event ID', async () => {
   vi.stubGlobal('fetch', fetchMock)
 
   await readSse('/v1/events', {
+    headers: { 'Skyclause-Organization': 'test-org' },
     signal: controller.signal,
     onEvent(event) {
       events.push(event)
@@ -35,6 +36,7 @@ test('reconnects after EOF and resumes with the last event ID', async () => {
 
   expect(fetchMock).toHaveBeenCalledTimes(2)
   expect(requestHeaders[1]?.get('Last-Event-ID')).toBe('42')
+  expect(requestHeaders.every((headers) => headers.get('Skyclause-Organization') === 'test-org')).toBe(true)
   expect(events).toEqual([
     { id: '42', event: 'update', data: 'first\nline' },
     { id: '43', event: 'message', data: 'resumed' }
