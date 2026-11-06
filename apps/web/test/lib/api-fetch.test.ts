@@ -109,3 +109,25 @@ test('explicit organisation wins over the global connect route for client creati
   await apiFetch('getProjects', { params: { instance: 'chosen-org' }, org: 'chosen-org' })
   expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Skyclause-Organization')).toBe('chosen-org')
 })
+
+test('parses a CSV export as text through the operation response schema', async () => {
+  const csv = 'id,kind\r\nentry-1,call_approved\r\n'
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response(csv, { headers: { 'Content-Type': 'text/csv; charset=utf-8' } }))
+  )
+  const fetcher = createApiFetch({
+    exportLedger: {
+      method: 'GET',
+      path: '/v1/projects/{id}/ledger/export',
+      request: { params: {} as { id: string } },
+      response: {
+        parse: (value: unknown) => {
+          if (typeof value !== 'string') throw new Error('Expected CSV')
+          return value
+        }
+      }
+    }
+  })
+  expect(await fetcher('exportLedger', { params: { id: 'p' } })).toBe(csv)
+})
