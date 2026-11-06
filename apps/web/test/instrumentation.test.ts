@@ -17,12 +17,13 @@ afterEach(() => {
   for (const api of [trace, metrics, propagation, context]) api.disable()
 })
 
+// The first register() cold-imports the telemetry SDK, which can take several seconds when the full suite runs in parallel.
 test('the web server exits at start naming a missing APP_ENV', async () => {
   vi.stubEnv('APP_ENV', undefined)
   await register()
   expect(exit).toHaveBeenCalledWith(1)
   expect(String(error.mock.calls[0]?.[0])).toMatch(/APP_ENV/)
-})
+}, 30_000)
 
 test('the web server exits at start on APP_ENV=test under Cloud Run', async () => {
   vi.stubEnv('APP_ENV', 'test')
