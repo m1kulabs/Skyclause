@@ -214,7 +214,7 @@ The organisation's first screen puts what needs a person first.
 
 A window (a class, an event, a commute wave) is what gets a call; guest windows are specified in GST-4.
 
-- **WIN-1** (P0) A subscriber or member declares a window by form: title, kind (class, event, commute wave), date, start and end in MYT, and, for subscribers, email, role and notice language, with a PDPA notice and an unticked consent box. Acceptance: the form cannot submit without consent; the stored record holds only those fields.
+- **WIN-1** (P0) A subscriber or member declares a window by form: title, kind (class, event, commute wave), date, start and end in MYT, and, for subscribers, email, role and notice language (English only in P0; Malay from P1, LOC-4), with a PDPA notice and an unticked consent box. Acceptance: the form cannot submit without consent; the stored record holds only those fields.
 - **WIN-2** (P1) `/{org}/{project}/windows` lists upcoming and past windows, each with its latest Sky call and Crowd call (from different runs) and their states. Acceptance: a window with calls from two runs shows both, each linking to its bundle.
 - **WIN-3** (P1) Recurring windows repeat weekly on chosen days until a date or a count, with skipped dates; each occurrence gets its own call. Acceptance: a Monday and Wednesday window for 6 weeks with one skip creates 11 occurrences.
 - **WIN-4** (P1) Import windows from an ICS file or ICS URL; URLs are refreshed hourly behind the SSRF guard, imported windows show their source, and a change starts a run. Acceptance: editing an event's end time at the source changes the window within one refresh and starts a run.
@@ -600,7 +600,7 @@ Events carry random IDs for organisation and project, counts and enums only: no 
 
 Product decisions only; technical unknowns are in TRD's [Not verified](/docs/TRD.md#not-verified) and market ones in IDEA's [Not verified](/docs/IDEA.md#not-verified).
 
-1.  Which teammate holds the pilot approver seat on each forecast storm afternoon of 11–14 November, and who reads Malay? Decides: the team. By 9 November 2026.
+1.  Which teammate holds the pilot approver seat on each forecast storm afternoon of 11–14 November? Decides: the team. By 9 November 2026.
 1.  Guest and reviewer-link budgets (GST-8, PRJ-6): are 20 runs, 10 evidence requests and 5 windows a device a day right, and what is the Commons' daily model budget in MYR? Decides: product lead with the cost model. By 15 December 2026.
 1.  Who may publish clause versions: the Approver role or above (proposed) or Editor and above? Decides: product lead after pilot interviews. By 15 December 2026.
 1.  Can the haze replay keep using the Malaysia Haze Monitor log, whose licence is unrecorded, or must it move to a dataset with a recorded licence? Decides: product lead after asking the maintainer. By 15 December 2026.

@@ -360,7 +360,7 @@ After the model returns, `validate` enforces what the schema can't, and a failur
 - recipients are a subset of that window's candidates; links point only at sources and Skyclause;
 - the not-a-safety-service line, attributions, unsubscribe and, for Hybrid recommended, the teaching-mode line come from templates, not the model ([CAL-15](/docs/PRD.md#calls-and-approvals-cal));
 - drafts and approver edits must pass the English and Malay attendance-excuse deny-lists; a match blocks drafting or approval ([CAL-15](/docs/PRD.md#calls-and-approvals-cal));
-- a Malay notice needs a Malay-reading approver on the rota, or the call is drafted in English.
+- from P1, a Malay notice needs a Malay-reading approver on the rota, or the call is drafted in English ([LOC-5](/docs/PRD.md#localisation-loc)); P0 notices are English only.
 
 Then each call is compared with the shadow verdict (`agrees`), and disagreements go first in the bundle with both verdicts. The shadow pick uses the clause wording ([CAL-4](/docs/PRD.md#calls-and-approvals-cal)).
 
