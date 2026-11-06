@@ -283,7 +283,7 @@ This table is the one source for poll intervals; PRD's [NFR-1](/docs/PRD.md#non-
 export function check(sheet: SheetInput, registry: IndicatorRegistry): CheckResult // types, names, spans
 export function evaluate(sheet: CheckedSheet, snapshot: IndicatorSnapshot, windows: Window[], tEval: Instant): Verdicts
 export function explain(verdicts: Verdicts): ClauseExplanation[]
-export function replay(sheet: CheckedSheet, history: ReadingHistory, range: DateRange): ReplayResult // labelled replay
+export function replay(sheet: CheckedSheet, history: ReadingHistory, windows: Window[], range: DateRange): ReplayResult // labelled replay
 ```
 
 A clause, here the default Storm confirmed from the [Skyclause clause sheet](/docs/ideas/02-skyclause.md#the-clause-sheet):
@@ -297,6 +297,7 @@ proposes: { mode: commute_disruption }
 wording: { en: Storm confirmed at the JPS gauge (Lebat class) }
 ```
 
+- Clause scope is `site`, `window` or `night`; absent `optional` inputs do not block a clause, `builtin: 'silent_input'` marks the built-in Silent input clause, and `expiry` may be `'start'` or `'end'`.
 - Each adapter declares its indicators with name, CEL type (`double`, `int`, `bool`, `timestamp`, `duration`, `list`), unit, scope (`site` or `window`) and source kind; window-scoped indicators (prefix `w.`) are computed by the engine over each window's span, site-scoped ones (prefix `site.`) once per evaluation. The CEL environment declares `site` and `w` from the registry, so an unknown name or a type mismatch fails `check` and the sheet can't publish.
 - Crowd indicators (baseline, uplift, forecast, band) come from `packages/forecast` per night and enter as `site.night.*` ([SIG-7](/docs/PRD.md#signals-sig)); the engine never computes them and the model never does arithmetic.
 - The allowed CEL subset: comparisons, arithmetic, `&&`, `||`, `!`, `has()`, `size()`, and `all` and `exists` over lists. No custom functions, no I/O, no `now`: time enters only through `t_eval` and the span ([CLS-6](/docs/PRD.md#clauses-cls)).
@@ -307,17 +308,17 @@ wording: { en: Storm confirmed at the JPS gauge (Lebat class) }
 ### Evaluation and precedence
 
 - **Spans.** `from` and `to` are relative to the window's `start` or `end` (Storm confirmed: 30 minutes before to 60 minutes after the end). A window is evaluated while `t_eval` falls inside its span; window indicators read observed readings from `from` to the earlier of `to` and `t_eval`, and the span is marked complete once `to` has passed.
-- **Per clause:** fired, not fired or blocked. Blocked means a `requires` input isn't fresh; the result names the input and since when ([CLS-3](/docs/PRD.md#clauses-cls)).
+- **Per clause:** fired, not fired, blocked or `not_open`. A `not_open` clause (span not yet open) neither fires nor blocks. Blocked means a `requires` input isn't fresh; the result names the input and since when ([CLS-3](/docs/PRD.md#clauses-cls)).
 - **Sky:** the highest fired mode wins and every fired clause is listed; a clause proposing Watch sets `watch = true` and never a mode ([CLS-2](/docs/PRD.md#clauses-cls)).
 - **No call:** a window's verdict is No call when a blocked clause proposes a mode above the highest fired mode; otherwise the highest fired mode stands and blocked clauses are listed. So a silent gauge blocks Storm confirmed but not a Hybrid recommended haze call.
 - **Crowd:** Surge night when a surge clause fires; recommendations are the union of fired clauses' recommendations, in sheet order; the Silent input row gives No call for clauses that need a silent Crowd input.
-- **Site-level verdicts** (haze, surge nights) evaluate with no windows ([CLS-11](/docs/PRD.md#clauses-cls)).
+- **Site-level verdicts** (haze) and night-level verdicts (surge nights) evaluate with no windows ([CLS-11](/docs/PRD.md#clauses-cls)).
 - **Crossings.** A verdict that differs from `shadow_state` is a crossing ([CLS-4](/docs/PRD.md#clauses-cls)). It starts a run when the new verdict is above Normal, when it is No call inside an open span, when a site-level verdict changes, or when it falls back to Normal while an unapproved bundle covers the window (so the stale draft is superseded). Other changes are recorded only. While a run for the same project and pack is in progress, further crossings queue at most one follow-up run.
 
 ### Explanations, versions and replays
 
-- **Explanations.** `explain` returns, per clause, the key, sheet version, result (fired, not fired, blocked), the CEL condition as published, the span with a `complete` flag, and each input's indicator name, source ID (such as `0232901RF`), value (null only when stale or erroring), unit, `observed_at`, age, state and reading IDs. Call pages, `explain_call` and evidence packs render this one shape.
-- **Versions.** Every save is a draft; publishing runs `check`, shows the diff against the live version and a 30-day replay of which calls would change, labelled replay, and makes an immutable numbered version ([CLS-8](/docs/PRD.md#clauses-cls)). Only Approver and above can publish, from a human session; API keys can't. Each run pins the version it used.
+- **Explanations.** `explain` returns, per clause, the key, sheet version, result (fired, not fired, blocked, `not_open`), the CEL condition as published, the span with a `complete` flag, and each input's indicator name, source ID (such as `0232901RF`), value (null only when stale or erroring), unit, `observed_at`, age, state and reading IDs. Call pages, `explain_call` and evidence packs render this one shape.
+- **Versions.** Every save is a draft; publishing runs `check`, shows the diff against the live version and a labelled replay preview of which calls would change over the last 30 days of stored run snapshots, and makes an immutable numbered version ([CLS-8](/docs/PRD.md#clauses-cls)). Only Approver and above can publish, from a human session; API keys can't. Each run pins the version it used.
 - **Determinism.** `evaluate` is pure: no clock, I/O or randomness. The same version hash, snapshot hash, windows and `t_eval` give the same verdict hash, stored on each run so a later replay proves it.
 - **Replays.** Any version or draft over recorded readings or a published dataset (the Rapid Rail yearly files, the Sensor.Community archive) writes `replay_result` rows; every output says "replay", never enters live grades and is never shown when a live source fails ([CLS-9](/docs/PRD.md#clauses-cls)).
 
@@ -411,10 +412,10 @@ stateDiagram-v2
 ```
 
 - **Supersession:** a newer bundle covering every window of an open one supersedes it, links to it and blocks its approval; with partial overlap only the overlapping calls are superseded ([CAL-7](/docs/PRD.md#calls-and-approvals-cal)).
-- **Expiry** ([CAL-8](/docs/PRD.md#calls-and-approvals-cal)): each call's `expires_at` is its window's start, or its end when Storm confirmed or Flash-flood risk fired it; pack-level items such as a surge-night entry expire when the night's arrival period starts. A Cloud Tasks task per call marks it expired, an expired call is never sent, and the bundle expires when its last call does. Expired calls are still graded, so an unapproved crossing shows up in review.
+- **Expiry** ([CAL-8](/docs/PRD.md#calls-and-approvals-cal)): each call's `expires_at` is its window's start by default or with `expiry: 'start'`, and its end with `expiry: 'end'`; pack-level items such as a surge-night entry expire when the night's arrival period starts. A Cloud Tasks task per call marks it expired, an expired call is never sent, and the bundle expires when its last call does. Expired calls are still graded, so an unapproved crossing shows up in review.
 - **Re-check at approval** ([CAL-9](/docs/PRD.md#calls-and-approvals-cal)): Approve sends the `review_hash` the approver saw; the server re-evaluates with current inputs and, if any input value, state or verdict differs, answers 409 `inputs-changed` with a "changed since drafting" diff; confirming records `reconfirm` and approves against the new snapshot.
 - **Who can approve** is PRD's [roles matrix](/docs/PRD.md#roles-and-permissions), checked at approval time, from a human session with recent authentication ([ACC-8](/docs/PRD.md#accounts-and-sign-in-acc)). The approve endpoint is first-party only (`app.skyclause.m1ku.tech/api/bundles/{id}/approve`), absent from `/openapi.json` and the SDKs; API keys and OAuth tokens get 403.
-- **Listings** use the same queue and `approval` rows: proposed → approved → listed; a change or cancellation needs approval ([CAL-14](/docs/PRD.md#calls-and-approvals-cal)).
+- **Listings** use the same queue and `approval` rows: `proposed` → `listed` (action `list`), `rejected`, `cancelled`; nights add `unlisted`. A change or cancellation needs approval ([CAL-14](/docs/PRD.md#calls-and-approvals-cal)).
 
 ### Approver rota and escalation
 
