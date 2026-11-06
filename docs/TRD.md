@@ -259,6 +259,8 @@ This table is the one source for poll intervals; PRD's [NFR-1](/docs/PRD.md#non-
 
 `CA17W` and `CA19B` were checked in a [live capture](/docs/sources/eqms.doe.gov.my/mapcaqm.md) of `https://eqms.doe.gov.my/api3/publicportalapims/mapcaqm` at 21:13 MYT on 5 November 2026 (API 62 and 57, record time 21:00). The JPS series comes from `https://infobanjirjpskl.water.gov.my/Rainfall/GetRainfallGraph/75` ([capture](/docs/sources/infobanjirjpskl.water.gov.my/rainfall-graph-75.md), 21:12 MYT the same day), and MET warnings carry a Malay body, `text_bm`, beside `title_bm` in all four records ([capture](/docs/sources/api.data.gov.my/weather-warning.md), 21:13 MYT).
 
+The GTFS Realtime cadence is the platform's; the pilot's Pi probe polls every minute from 16:00 to 24:00 on surge nights and one matched normal night a week ([Fanfall workflows](/docs/ideas/04-fanfall.md#day-to-day-workflows)).
+
 ### Freshness, staleness and recovery
 
 - Input states: fresh, stale, error, recovered ([SIG-3](/docs/PRD.md#signals-sig)), plus `probation` and `off_hours` for the camera.
