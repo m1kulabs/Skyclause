@@ -736,7 +736,8 @@ Unsubscribe: {one-click link}
 
 ```text
 BEGIN:VEVENT
-UID:{callId}@skyclause.m1ku.tech
+UID:call-{first sent call id}@skyclause.m1ku.tech
+SEQUENCE:{sequence}
 DTSTART;TZID=Asia/Kuala_Lumpur:{window start}
 DTEND;TZID=Asia/Kuala_Lumpur:{window end}
 SUMMARY:{Mode} · {window}
@@ -744,6 +745,8 @@ DESCRIPTION:{clause}: {input} {value} ({class}).\nApproved {HH:MM} MYT.\nNot a s
 URL:https://skyclause.m1ku.tech/c/{callId}
 END:VEVENT
 ```
+
+Call entries keep the first sent call ID in their `UID` and raise `SEQUENCE` on supersession; surge-night entries use `night-{id}@skyclause.m1ku.tech`.
 
 ## Voice and content
 
