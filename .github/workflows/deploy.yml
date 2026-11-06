@@ -18,15 +18,19 @@ on:
       - scripts/container-entry.sh
       - scripts/check-image.sh
       - scripts/check-deployed.ts
+      - scripts/sbom-worker-bundle.ts
       - scripts/wait-for-terraform.sh
       - .github/actions/build-image/**
       - .github/workflows/deploy.yml
   pull_request:
     paths:
       - Dockerfile
+      - apps/worker/package.json
+      - bun.lock
       - .dockerignore
       - scripts/container-entry.sh
       - scripts/check-image.sh
+      - scripts/sbom-worker-bundle.ts
       - .github/actions/build-image/**
       - .github/workflows/deploy.yml
   workflow_dispatch:
