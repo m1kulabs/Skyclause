@@ -29,12 +29,13 @@ const meta = JSON.parse(readFileSync(metaPath, 'utf8')) as Metafile
 // bun.lock is JSON with trailing commas; none of its strings (names, ranges, integrity hashes) hold a `,]` or `,}`.
 const lock = JSON.parse(readFileSync(lockPath, 'utf8').replace(/,(\s*[\]}])/g, '$1')) as Lockfile
 
-// Every version bun.lock resolves each package name to (`"<name>@<version>"`; nested keys hold the duplicates).
-const locked = new Map<string, string[]>()
+// Every version bun.lock resolves each package name to (`"<name>@<version>"`; nested keys such as `cliui/string-width`
+// hold other versions, or the same one again).
+const locked = new Map<string, Set<string>>()
 for (const [resolution] of Object.values(lock.packages)) {
   const versionAt = resolution.lastIndexOf('@')
   const name = resolution.slice(0, versionAt)
-  locked.set(name, [...(locked.get(name) ?? []), resolution.slice(versionAt + 1)])
+  locked.set(name, (locked.get(name) ?? new Set()).add(resolution.slice(versionAt + 1)))
 }
 
 // An input such as `../../node_modules/.bun/@hono+node-server@2.1.6+<peer hash>/node_modules/@hono/node-server/…`:
@@ -49,7 +50,7 @@ for (const output of Object.values(meta.outputs)) {
     if (!name) continue
     const store = /\.bun\/([^/]+)\/$/.exec(path.slice(0, modules))?.[1]
     const storeVersion = store?.slice(name.replace('/', '+').length + 1).replace(/\+[0-9a-f]{16}$/, '')
-    const candidates = (locked.get(name) ?? []).filter((version) => !storeVersion || version === storeVersion)
+    const candidates = [...(locked.get(name) ?? [])].filter((version) => !storeVersion || version === storeVersion)
     const [version] = candidates
     if (version && candidates.length === 1) bundled.set(`${name}@${version}`, { name, version })
     else problems.set(name, `${name}: bundled from ${path}, but bun.lock has ${candidates.length} matching versions`)

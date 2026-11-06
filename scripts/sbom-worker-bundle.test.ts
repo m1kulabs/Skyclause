@@ -105,3 +105,17 @@ test("Bun's store directory picks the version when bun.lock holds several", () =
     '2.0.0'
   ])
 })
+
+test('one version that bun.lock lists under several parents counts once', () => {
+  const files = plantRepo({
+    'meta.json': metafile('../../node_modules/.bun/string-width@7.2.0/node_modules/string-width/index.js'),
+    'bun.lock': lockfile(
+      ['string-width', 'string-width@8.3.0'],
+      ['cliui/string-width', 'string-width@7.2.0'],
+      ['wrap-ansi/string-width', 'string-width@7.2.0']
+    )
+  })
+  const result = merge({ meta: join(files, 'meta.json'), lock: join(files, 'bun.lock') })
+  expect(result.stderr).toBe('')
+  expect(result.stdout).toBe('string-width@7.2.0\n')
+})

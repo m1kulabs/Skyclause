@@ -24,6 +24,7 @@ on:
     paths:
       - Dockerfile
       - apps/worker/package.json
+      - bun.lock
       - .dockerignore
       - scripts/container-entry.sh
       - scripts/check-image.sh
