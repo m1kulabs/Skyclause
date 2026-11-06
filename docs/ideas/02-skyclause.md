@@ -245,7 +245,7 @@ The reviewer fires it by emailing the team inbox, the dependable path since a re
 | Mon 9 Nov  | Feature freeze; refresh schedule credentials; record the video                                                                                         | Test the reviewer email path from a non-team account                              |
 | Tue 10 Nov | Submit early; keep everything running                                                                                                                  | Watch quota use and the auditor                                                   |
 
-No card: Apps Script, Sheets, Drive, Gmail and Calendar on the licensed Workspace domain, Jira Cloud Free ([sandboxes](/docs/research/gemini-enterprise.md#free-sandboxes)), and the camera page on GitHub Pages. If the licence is late, the feeder, camera, clause sheet and grading log real data from 5 November and the workflows attach to the same Sheets.
+No card: Apps Script, Sheets, Drive, Gmail and Calendar on the licensed Workspace domain, and Jira Cloud Free ([sandboxes](/docs/research/gemini-enterprise.md#free-sandboxes)). The camera page is static files in the public Cloud Storage bucket `skyclause-camera` (`asia-southeast1`), not GitHub Pages, which needs a public repository or a paid GitHub plan ([GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site)); the repository stays private until the team decides to publish it. If the licence is late, the feeder, camera, clause sheet and grading log real data from 5 November and the workflows attach to the same Sheets.
 
 ## Risks and kill criteria
 
