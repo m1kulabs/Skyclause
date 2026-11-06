@@ -27,6 +27,10 @@
   "lint-staged": {
     "*": "prettier --write --ignore-unknown"
   },
+  "dependencies": {
+    "fzstd": "0.1.1",
+    "hyparquet": "1.7.0"
+  },
   "devDependencies": {
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
