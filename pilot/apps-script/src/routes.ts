@@ -1,4 +1,5 @@
-import { cameraDrive, cameraFrameStore, getProperty, piRowsStore } from './gas.ts'
+import { cameraDrive, cameraFrameStore, getProperty, labelStore, piRowsStore, withLock } from './gas.ts'
+import { handleLabelPage, LABEL_PAGE } from './label.ts'
 import { handlePiRows, PI_ROWS_KIND } from './pi-rows.ts'
 import { newUuidV7 } from './jps.ts'
 import { CAMERA_CONFIG_KIND, CAMERA_FRAME_KIND, cameraConfig, handleCameraFrame } from './camera.ts'
@@ -30,5 +31,16 @@ export const getRoutes: GetRoute[] = [
     param: 'kind',
     value: CAMERA_CONFIG_KIND,
     handle: () => ({ json: cameraConfig(getProperty('CAMERA_DAY_START'), getProperty('CAMERA_DAY_END')) })
+  },
+  {
+    param: 'page',
+    value: LABEL_PAGE,
+    handle: (params) =>
+      handleLabelPage(params, {
+        getProperty,
+        withLock,
+        store: labelStore(getProperty('SHEET_ID') ?? ''),
+        scriptUrl: ScriptApp.getService().getUrl()
+      })
   }
 ]
