@@ -195,6 +195,7 @@ Market and evidence unknowns only; product questions are in [PRD](/docs/PRD.md#o
 - **Rain totals:** for 3 November the KL portal's daily field says 46 mm and Public Infobanjir 39 mm.
 - **The gauge's position:** JPS publishes no coordinates; the gauge is named for LRT Bukit Jalil station.
 - **The Crowd backtest:** Fanfall's 48-event backtest and its precision and recall were not re-run; a plain eight-week median finds 20 nights at 5,000 or more extra exits where the source found 21 ([Fanfall not verified](/docs/ideas/04-fanfall.md#not-verified)).
+- **The haze backtest:** the 9 Hybrid recommended, 5 Outdoor-limited, 7 Normal and 1 no-data weekdays ran on the Malaysia Haze Monitor log, which has no stored copy, so they can't be re-run from the repo.
 - **Listings:** the 7, 8 and 28–29 November arena shows and the 13–15 November expo come from one fetch; whether GoLive's `Z`-suffixed times are local show times.
 - **GDGoC APU's event count:** the [winners research](/docs/research/winners.md#this-hackathons-lineage) counts 24 completed events from 18 October 2024 to 28 October 2026; Fanfall and the ranking count 36 with `status=Completed`.
 - **The Weeknd grade:** whether the 4 and 5 November forecasts land in band; the first file is due at 22:00 on 5 November.
