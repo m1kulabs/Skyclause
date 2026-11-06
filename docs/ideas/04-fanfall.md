@@ -242,6 +242,8 @@ Three builders: **B1** the Pi and Apps Script feeders, **B2** the workflows and 
 
 If the licence hasn't arrived by Friday, B2 builds the workflows on the first day it does, and the feeders and grades run meanwhile. Cut first: the Gmail intake (listings are added to the calendar by hand with their URL), then the Jira Done trigger.
 
+In the pilot, Fanfall is the Crowd pack's fallback ([PRD scope](/docs/PRD.md#scope-and-release-phases)): the forecast and band, D+1 grading (pending while the file is late) and surge-night entries on the public conditions calendar follow the Sky path. The listing pollers, the Gmail intake, the 07:00 outlook and the bus probe are the stretch, built only if the Sky path works end to end by the end of 7 November; until then, listings are added by hand with their URL and revision.
+
 ## Risks and kill criteria
 
 - **The forecast doesn't hold:** if both Weeknd nights land outside the band with errors above 40%, stop advisories and publish only the graded ledger until the event classes are revisited.
