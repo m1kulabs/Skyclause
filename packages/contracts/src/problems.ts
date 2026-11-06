@@ -1,0 +1,37 @@
+// TRD "API conventions" and Spec §4 problem slugs.
+export const PROBLEM_SLUGS = [
+  'validation-failed',
+  'insufficient-scope',
+  'rate-limited',
+  'idempotency-mismatch',
+  'source-error',
+  'bundle-superseded',
+  'call-expired',
+  'inputs-changed',
+  'budget-exhausted',
+  'not-built',
+  'organization-required',
+  'reauth-required',
+  'slug-reserved',
+  'slug-taken',
+  'last-owner',
+  'role-not-grantable',
+  'last-sign-in-method',
+  'link-expired',
+  'invite-withdrawn',
+  'sole-owner',
+  'key-test-failed',
+  'malay-reader-required',
+  'export-pending',
+  'unsafe-url',
+  'pack-prerequisites',
+  'preview-stale',
+  'not-publishable',
+  'redraft-required',
+  'no-event-yet',
+  'webhook-unverified',
+  'feature-off',
+  'privacy-notice-unpublished'
+] as const
+
+export type ProblemSlug = (typeof PROBLEM_SLUGS)[number]

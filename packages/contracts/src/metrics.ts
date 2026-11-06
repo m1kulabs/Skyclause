@@ -9,6 +9,10 @@ export const METRICS = {
   approverAlerted: 'skyclause.approver_alerted',
   approvalToProvider: 'skyclause.approval_to_provider',
   approvalSla: 'skyclause.approval_sla',
+  /** The full TRD SLI row name; `readingToVerdict` remains available to existing consumers. */
+  readingToShadowVerdict: 'skyclause.reading_to_shadow_verdict',
+  sourceFreshness: 'skyclause.source_freshness',
+  appApiMcpAvailability: 'skyclause.app_api_mcp_availability',
   /** #111 records it from `POST /e`. */
   webVitals: 'skyclause.web_vitals',
   heartbeat: 'skyclause.heartbeat'

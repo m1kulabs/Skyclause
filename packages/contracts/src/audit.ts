@@ -1,0 +1,37 @@
+// PRD AUD-1 and Spec §1 audit action categories.
+export const AUDIT_ACTIONS = [
+  'bundle.approved',
+  'call.edited',
+  'call.rejected',
+  'api_key.created',
+  'api_key.revoked',
+  'ai_key.created',
+  'ai_key.revoked',
+  'member.role_changed',
+  'invite.created',
+  'invite.revoked',
+  'clause_sheet.published',
+  'share_link.created',
+  'share_link.revoked',
+  'source.bound',
+  'source.unbound',
+  'sla.changed',
+  'export.requested',
+  'organisation.deleted',
+  'account.deleted',
+  'mcp.consent_granted',
+  'bundle.escalated',
+  'listing.proposed',
+  'listing.listed',
+  'listing.changed',
+  'listing.rejected',
+  'listing.cancelled',
+  'listing.unlisted',
+  'staff.action',
+  'flag.changed',
+  'mcp.tool_called',
+  'bundle.approve_denied',
+  'source.probation_passed'
+] as const
+
+export type AuditAction = (typeof AUDIT_ACTIONS)[number]

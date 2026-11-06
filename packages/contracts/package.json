@@ -4,6 +4,12 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./analytics": "./src/analytics.ts"
+  },
+  "dependencies": {
+    "@hono/zod-openapi": "1.6.3",
+    "@skyclause/clauses": "workspace:*",
+    "zod": "4.6.7"
   }
 }

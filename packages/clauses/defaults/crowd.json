@@ -1,0 +1,66 @@
+{
+  "pack": "crowd",
+  "clauses": [
+    {
+      "key": "surge_night",
+      "name": "Surge night",
+      "enabled": true,
+      "scope": "night",
+      "requires": ["site.night.forecast", "site.night.baseline"],
+      "when": "site.night.forecast - site.night.baseline >= 5000",
+      "proposes": { "mode": "surge_night", "note": "calendar_entry" },
+      "wording": { "en": "Surge night: forecast {site.night.forecast.value} exits" }
+    },
+    {
+      "key": "arrival_clash",
+      "name": "Arrival clash",
+      "enabled": true,
+      "scope": "window",
+      "requires": ["w.end", "site.night.arrival_start", "site.night.arrival_end"],
+      "when": "w.end >= site.night.arrival_start && w.end <= site.night.arrival_end",
+      "proposes": { "recommendations": ["shift_end", "leave_before_doors"] },
+      "wording": { "en": "Shift the end out of the arrival period, or leave before doors" }
+    },
+    {
+      "key": "exit_clash",
+      "name": "Exit clash",
+      "enabled": true,
+      "scope": "window",
+      "requires": ["w.end", "site.night.exit_start", "site.night.exit_end"],
+      "when": "w.end >= site.night.exit_start && w.end <= site.night.exit_end",
+      "proposes": { "recommendations": ["shift_end", "keep_with_advisory"] },
+      "wording": { "en": "Shift the end out of the exit period, or keep with an advisory" }
+    },
+    {
+      "key": "after_last_shuttle",
+      "name": "After the last shuttle",
+      "enabled": true,
+      "scope": "window",
+      "requires": ["w.end_local_min"],
+      "when": "w.end_local_min > 19 * 60 + 15",
+      "proposes": { "recommendations": ["ask_shuttle"] },
+      "wording": { "en": "Ask the shuttle desk for a run" }
+    },
+    {
+      "key": "single_source_listing",
+      "name": "Single-source listing",
+      "enabled": true,
+      "scope": "night",
+      "requires": ["site.night.single_source"],
+      "when": "site.night.single_source",
+      "proposes": { "note": "single_source_flag" },
+      "wording": { "en": "Single-source listing; the approver confirms" }
+    },
+    {
+      "key": "silent_input",
+      "name": "Silent input",
+      "enabled": true,
+      "builtin": "silent_input",
+      "scope": "site",
+      "requires": [],
+      "when": "true",
+      "proposes": {},
+      "wording": { "en": "No call for clauses needing a silent Crowd input" }
+    }
+  ]
+}

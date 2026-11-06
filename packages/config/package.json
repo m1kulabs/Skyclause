@@ -5,7 +5,9 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./tsconfig.base.json": "./tsconfig.base.json"
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./crypto": "./src/crypto.ts",
+    "./net": "./src/net.ts"
   },
   "dependencies": {
     "@opentelemetry/api": "1.10.0",
