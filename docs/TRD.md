@@ -224,14 +224,14 @@ export interface SourceAdapter<Raw> {
   apiFamily?: 'datagovmy-weather' | 'datagovmy-gtfs-rt' | 'datagovmy-gtfs-static'
   cadence: Duration // expected interval between new data
   freshness: 'observed' | 'polled' // age from source time, or from the last good poll
-  fetch(source: Source, ctx: PollContext): Promise<Raw> // one request; throws HttpError with status
-  parse(raw: Raw, source: Source): ReadingInput[] // pure; throws SchemaError when the shape changes
+  fetch(sources: Source[], ctx: PollContext): Promise<Raw> // one request for all bound sources; throws HttpError with status
+  parse(raw: Raw, sources: Source[]): ReadingInput[] // pure; throws SchemaError when the shape changes
   backfill?(source: Source, ctx: PollContext): Promise<Raw> // first poll after binding only
   indicators: IndicatorDefinition[] // registered with packages/clauses
 }
 ```
 
-- Every request writes one `poll` row with HTTP status, latency and outcome. A non-2xx, a 20-second timeout or a `SchemaError` writes `outcome = error` with the message; nothing copies or carries forward the last value ([SIG-2](/docs/PRD.md#signals-sig)).
+- Every request writes one `poll` row per bound source, sharing `request_id`, with HTTP status, latency and outcome. A non-2xx, a 20-second timeout or a `SchemaError` writes `outcome = error` with the message; nothing copies or carries forward the last value ([SIG-2](/docs/PRD.md#signals-sig)).
 - Readings dedupe on (`source_id`, `metric`, `observed_at`); a re-fetched value that differs appends `revision + 1`. Indicators use the latest revision; calls keep the reading IDs they saw.
 - Adapters on one data.gov.my API take a slot from a per-API budget of 4 requests a minute (a Postgres advisory lock and counter) ([data.gov.my notes][dgm]); a `429` is an error poll and the next scheduled poll is the retry. Paths always end with `/`, since a missing slash returns `301` with HTML.
 - Only adapters call upstream. The app, API, playground, embeds and MCP read stored rows, so tenants and guests add no upstream requests.
