@@ -1,0 +1,36 @@
+# Daily audit of production dependencies on main (#249). Dependabot has no security updates for Bun (#228), so this is
+# what turns a Next.js or other production advisory into a red run and one devops issue for kymil4 within a day,
+# inside TRD's 48-hour out-of-band patching window. Pull requests audit every dependency in checks.yml.
+name: audit
+
+on:
+  schedule:
+    # 00:17 UTC (08:17 MYT), off the hour, when GitHub delays scheduled runs least.
+    - cron: '17 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      # bun audit exits 1 on a finding and on its own failure; the script tells them apart by the JSON.
+      - run: bun audit --production --json > "$RUNNER_TEMP/audit.json" || true
+      - run: bun scripts/audit-issue.ts "$RUNNER_TEMP/audit.json"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
