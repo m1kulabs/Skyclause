@@ -1,5 +1,7 @@
 // Apps Script entry points. The build turns every function exported here into a top-level function in dist/Code.js,
 // so trigger handlers, doGet, doPost and functions run by hand in the editor must be exported from this file.
+import { toMytIso } from '../../shared/time.ts'
+import { defaultSkyClauseRows } from './clauses.ts'
 import {
   appendReadings,
   appendRows,
@@ -18,6 +20,8 @@ import {
   setupClausesStore,
   sweepStore,
   sha256HexDigest,
+  saveLastClauseEditor,
+  skyReplayPorts,
   triggers,
   windowFormPort,
   withLock,
@@ -31,13 +35,15 @@ import { ensureResponsesSheetId, runCreateWindowForm, runOptinSubmit } from './o
 import { columnsOf } from './schema.ts'
 import { runSweep, verifyLedgerChain } from './sweep.ts'
 import { triggerRegistry } from './registry.ts'
+import { JPS_REPLAY_CAPTURE } from './replay-data.ts'
+import { runSkyReplay as executeSkyReplay, selectReplaySubscriberIds, type SkyReplayResult } from './replay.ts'
 import { handleGet, handlePost } from './router.ts'
 import { getRoutes, postRoutes } from './routes.ts'
 import { runSetup } from './setup.ts'
+import { runClauseEditHandler } from './sky-runtime.ts'
 import { executeEvaluationTick } from './tick.ts'
 import { recordWeekndForecasts, runCrowdForecast } from './crowd-tick.ts'
 import { runHistoryBuild } from './crowd-history.ts'
-import { toMytIso } from '../../shared/time.ts'
 
 export { runEvaluationTick } from './tick.ts'
 
@@ -45,6 +51,8 @@ export { runEvaluationTick } from './tick.ts'
 declare const __BUILD_SHA__: string
 declare const __BUILD_TIME__: string
 declare const __PILOT_SCRIPT_ID__: string
+
+const SUBSCRIBER_REPLAY_COLUMNS = ['subscriber_id', 'email', 'consent_at', 'unsubscribed_at'] as const
 
 function json(value: unknown): GoogleAppsScript.Content.TextOutput {
   return ContentService.createTextOutput(JSON.stringify(value)).setMimeType(ContentService.MimeType.JSON)
@@ -201,6 +209,88 @@ export function recordWeekndForecastsOnce(): void {
   if (!sheetId) throw new Error('SHEET_ID is not set; run setup()')
   withLock(() => {
     console.log(JSON.stringify(recordWeekndForecasts(crowdForecastStore(sheetId))))
+  })
+}
+
+export function on_edit_clauses(event?: GoogleAppsScript.Events.SheetsOnEdit): void {
+  if (!event) return
+  const configuredSheetId = getProperty('SHEET_ID')
+  if (!configuredSheetId || !configuredSheetId.trim()) return
+
+  const rangeSheet = typeof event.range?.getSheet === 'function' ? event.range.getSheet() : null
+  const workbookId =
+    typeof event.source?.getId === 'function'
+      ? event.source.getId()
+      : typeof rangeSheet?.getParent === 'function' && typeof rangeSheet.getParent()?.getId === 'function'
+        ? rangeSheet.getParent().getId()
+        : ''
+
+  const sheetName =
+    typeof rangeSheet?.getName === 'function'
+      ? rangeSheet.getName()
+      : typeof event.source?.getActiveSheet === 'function' &&
+          typeof event.source.getActiveSheet()?.getName === 'function'
+        ? event.source.getActiveSheet().getName()
+        : ''
+
+  const rawUser = (event as { user?: unknown }).user
+  const editor =
+    typeof event.user?.getEmail === 'function' ? event.user.getEmail() : typeof rawUser === 'string' ? rawUser : null
+
+  runClauseEditHandler(
+    {
+      workbookId,
+      sheetName,
+      editor
+    },
+    {
+      configuredSheetId,
+      withLock,
+      saveEditor: saveLastClauseEditor
+    }
+  )
+}
+
+export function runSkyReplay(): SkyReplayResult {
+  return withLock(() => {
+    const liveSheetId = getProperty('SHEET_ID')?.trim() ?? ''
+    const replaySheetId = getProperty('REPLAY_SHEET_ID')?.trim() ?? ''
+    const skyFolderId = getProperty('CROSSINGS_SKY_FOLDER_ID')?.trim() ?? ''
+    const crowdFolderId = getProperty('CROSSINGS_CROWD_FOLDER_ID')?.trim() ?? ''
+    const replayFolderId = getProperty('CROSSINGS_REPLAY_FOLDER_ID')?.trim() ?? ''
+    const teamAlertEmails = getProperty('TEAM_ALERT_EMAILS') ?? ''
+    const dayStart = getProperty('CAMERA_DAY_START')?.trim() || '07:15'
+    const dayEnd = getProperty('CAMERA_DAY_END')?.trim() || '19:00'
+
+    if (!liveSheetId) throw new Error('SHEET_ID is not set; run setup()')
+    if (!replaySheetId) throw new Error('REPLAY_SHEET_ID is not set; run setup()')
+    if (!skyFolderId) throw new Error('CROSSINGS_SKY_FOLDER_ID is not set; run setup()')
+    if (!replayFolderId) throw new Error('CROSSINGS_REPLAY_FOLDER_ID is not set; run setup()')
+
+    if (
+      replaySheetId === liveSheetId ||
+      replayFolderId === skyFolderId ||
+      (crowdFolderId.length > 0 && replayFolderId === crowdFolderId)
+    ) {
+      throw new Error('Replay storage must be separate from live storage')
+    }
+
+    const subscriberRows = readColumns(liveSheetId, 'subscribers', SUBSCRIBER_REPLAY_COLUMNS)
+    const subscriberIds = selectReplaySubscriberIds(teamAlertEmails, subscriberRows)
+
+    const storedClauses = readColumns(liveSheetId, 'clauses', columnsOf('clauses'))
+    const clauses = storedClauses.length > 0 ? storedClauses : defaultSkyClauseRows()
+
+    return executeSkyReplay(
+      {
+        capture: JPS_REPLAY_CAPTURE,
+        subscriberIds,
+        recordedAt: toMytIso(new Date()),
+        daylight: { start: dayStart, end: dayEnd },
+        clauses
+      },
+      skyReplayPorts(replaySheetId, replayFolderId)
+    )
   })
 }
 

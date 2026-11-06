@@ -6,6 +6,7 @@ import type { ClausesPort } from './setup.ts'
 import type { CrowdGradeStore } from './crowd-grades.ts'
 import { baselineFor } from './crowd.ts'
 import { dailyFromReadings } from './crowd-tick.ts'
+import type { PlannedSkyCrossingFile, SkyCrossingDocument } from './crossings.ts'
 import type { SourceStateUpdate } from './indicators.ts'
 import type { CameraDrive, CameraFrameStore, RetentionStore } from './camera.ts'
 import {
@@ -22,12 +23,23 @@ import type { PiRowsStore } from './pi-rows.ts'
 import type { RawFile, SentMessage, SweepPorts } from './sweep.ts'
 import type { GetProperty } from './properties.ts'
 import { validateReading } from './readings.ts'
+import type { SkyReplayPorts } from './replay.ts'
 import { columnsOf, toRow, type Cell, type Column, type Row, type Tab } from './schema.ts'
 import type { DrivePort, PropertyPort, WorkbookPort } from './setup.ts'
+import type {
+  SkyClauseAppendTab,
+  SkyClauseReadTab,
+  SkyClauseReplaceTab,
+  SkyClauseRuntimePorts,
+  SkyClauseStorePort
+} from './sky-runtime.ts'
 import { normalizeDateCell, normalizeWindowRow, type SkyEvaluationStore, type SkyEvaluationTab } from './tick.ts'
 import type { InstalledTrigger, TriggerPort } from './triggers.ts'
 
 const LOCK_WAIT_MS = 30_000
+const LAST_CLAUSE_EDITOR_KEY = 'SKY_LAST_CLAUSE_EDITOR'
+const CROSSING_FILENAME_RE = /^crossing-(\d{8}-\d{4})-(\d+)\.json$/
+const CROSSING_ID_RE = /^X-(\d{8}-\d{4})-(\d+)$/
 
 // Windows columns A–I only; column J (`title`) is private and never read by evaluation.
 export const WINDOWS_PUBLIC_COLUMNS = [
@@ -42,12 +54,26 @@ export const WINDOWS_PUBLIC_COLUMNS = [
   'declared_at'
 ] as const satisfies readonly Column<'windows'>[]
 
+const LEDGER_CLAUSE_COLUMNS = ['entry_id', 'source_ref'] as const satisfies readonly Column<'ledger'>[]
+
 export const properties: PropertyPort = {
   get: (name) => PropertiesService.getScriptProperties().getProperty(name),
   set: (name, value) => void PropertiesService.getScriptProperties().setProperty(name, value)
 }
 
 export const getProperty: GetProperty = (name) => properties.get(name)
+
+export function readLastClauseEditor(): string | null {
+  const value = PropertiesService.getScriptProperties().getProperty(LAST_CLAUSE_EDITOR_KEY)
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+export function saveLastClauseEditor(editor: string): void {
+  const normalized = typeof editor === 'string' && editor.trim().length > 0 ? editor.trim() : 'unknown'
+  PropertiesService.getScriptProperties().setProperty(LAST_CLAUSE_EDITOR_KEY, normalized)
+}
 
 export function withLock<T>(fn: () => T): T {
   const lock = LockService.getScriptLock()
@@ -257,6 +283,211 @@ export function skyEvaluationStore(spreadsheetId: string): SkyEvaluationStore {
     appendIndicators: (rows) => appendRows(spreadsheetId, 'indicators', rows),
     replaceNow: (rows) => replaceNowRows(spreadsheetId, rows),
     updateSourceStates: (updates) => updateStoredSourceStates(spreadsheetId, updates)
+  }
+}
+
+function requireSpreadsheetId(spreadsheetId: string, propertyName = 'SHEET_ID'): string {
+  const trimmed = typeof spreadsheetId === 'string' ? spreadsheetId.trim() : ''
+  if (!trimmed) throw new Error(`${propertyName} is not set; run setup()`)
+  return trimmed
+}
+
+function requireCrossingFolderId(crossingFolderId: string, propertyName = 'CROSSINGS_SKY_FOLDER_ID'): string {
+  const trimmed = typeof crossingFolderId === 'string' ? crossingFolderId.trim() : ''
+  if (!trimmed) throw new Error(`${propertyName} is not set; run setup()`)
+  return trimmed
+}
+
+function replacePaddedTabRows<T extends Tab>(spreadsheetId: string, tab: T, records: readonly Row<T>[]): void {
+  const target = sheet(spreadsheetId, tab)
+  const width = columnsOf(tab).length
+  const previousDataRows = Math.max(0, target.getLastRow() - 1)
+  const rows = records.map((record) => toRow(tab, record))
+  const totalRows = Math.max(rows.length, previousDataRows)
+  if (totalRows === 0) return
+  const blankRow: Cell[] = Array.from({ length: width }, () => '')
+  const paddedRows: Cell[][] = Array.from({ length: totalRows }, (_, index) =>
+    index < rows.length ? rows[index]! : [...blankRow]
+  )
+  target.getRange(2, 1, totalRows, width).setValues(paddedRows)
+}
+
+function canonicalJsonSerialize(value: unknown): string {
+  if (value instanceof Date) {
+    const ms = value.getTime()
+    return JSON.stringify(Number.isFinite(ms) ? toMytIso(value) : '')
+  }
+  if (value === null || typeof value !== 'object') {
+    if (value === undefined || typeof value === 'function' || typeof value === 'symbol') {
+      return 'null'
+    }
+    return JSON.stringify(value)
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => canonicalJsonSerialize(item)).join(',')}]`
+  }
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, val]) => val !== undefined && typeof val !== 'function' && typeof val !== 'symbol')
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+  const members = entries.map(([key, val]) => `${JSON.stringify(key)}:${canonicalJsonSerialize(val)}`)
+  return `{${members.join(',')}}`
+}
+
+function sha256Hex(text: string): string {
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, text, Utilities.Charset.UTF_8)
+  return digest.map((byte) => (byte & 0xff).toString(16).padStart(2, '0')).join('')
+}
+
+function parseValidatedCrossingDocument(filename: string, rawText: string): SkyCrossingDocument {
+  const parsed = JSON.parse(rawText) as unknown
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`Invalid crossing JSON document in ${filename}: expected object`)
+  }
+  const doc = parsed as Record<string, unknown>
+  const crossingId = typeof doc.crossing_id === 'string' ? doc.crossing_id.trim() : ''
+  const tEval = typeof doc.t_eval === 'string' ? doc.t_eval.trim() : ''
+  const snapshotId = typeof doc.snapshot_id === 'string' ? doc.snapshot_id.trim() : ''
+  if (!CROSSING_ID_RE.test(crossingId) || doc.pack !== 'sky' || !tEval || !snapshotId || !Array.isArray(doc.changes)) {
+    throw new Error(`Invalid crossing JSON structure in ${filename}`)
+  }
+  return parsed as SkyCrossingDocument
+}
+
+function writeCrossingDocumentFile(
+  folderId: string,
+  file: PlannedSkyCrossingFile,
+  propertyName = 'CROSSINGS_SKY_FOLDER_ID'
+): void {
+  const resolvedFolderId = requireCrossingFolderId(folderId, propertyName)
+  const filename = typeof file?.filename === 'string' ? file.filename.trim() : ''
+  if (!CROSSING_FILENAME_RE.test(filename)) {
+    throw new Error(`Invalid crossing filename: ${String(file?.filename)}`)
+  }
+  const folder = DriveApp.getFolderById(resolvedFolderId)
+  folder.createFile(filename, JSON.stringify(file.document, null, 2))
+}
+
+function skyClauseStore(spreadsheetId: string): SkyClauseStorePort {
+  return {
+    readRows<T extends SkyClauseReadTab>(tab: T): readonly Row<T>[] {
+      const sheetId = requireSpreadsheetId(spreadsheetId)
+      switch (tab) {
+        case 'ledger':
+          return readColumns(sheetId, 'ledger', LEDGER_CLAUSE_COLUMNS) as unknown as readonly Row<T>[]
+        case 'clauses':
+        case 'clause_versions':
+        case 'shadow_state':
+          return readColumns(sheetId, tab, columnsOf(tab)) as unknown as readonly Row<T>[]
+        default: {
+          const exhaustive: never = tab
+          throw new Error(`Unsupported Sky clause read tab: ${String(exhaustive)}`)
+        }
+      }
+    },
+    appendRows<T extends SkyClauseAppendTab>(tab: T, rows: readonly Row<T>[]): void {
+      const sheetId = requireSpreadsheetId(spreadsheetId)
+      switch (tab) {
+        case 'clauses':
+        case 'clause_versions':
+        case 'ledger':
+          appendRows(sheetId, tab, rows)
+          return
+        default: {
+          const exhaustive: never = tab
+          throw new Error(`Unsupported Sky clause append tab: ${String(exhaustive)}`)
+        }
+      }
+    },
+    replaceRows<T extends SkyClauseReplaceTab>(tab: T, rows: readonly Row<T>[]): void {
+      const sheetId = requireSpreadsheetId(spreadsheetId)
+      switch (tab) {
+        case 'shadow':
+        case 'shadow_state':
+          replacePaddedTabRows(sheetId, tab, rows)
+          return
+        default: {
+          const exhaustive: never = tab
+          throw new Error(`Unsupported Sky clause replace tab: ${String(exhaustive)}`)
+        }
+      }
+    }
+  }
+}
+
+export function skyClauseRuntimePorts(spreadsheetId: string, crossingFolderId: string): SkyClauseRuntimePorts {
+  const store = skyClauseStore(spreadsheetId)
+  return {
+    store,
+    canonicalJson: canonicalJsonSerialize,
+    sha256: sha256Hex,
+    listCrossings(): readonly PlannedSkyCrossingFile[] {
+      const folderId = requireCrossingFolderId(crossingFolderId)
+      const folder = DriveApp.getFolderById(folderId)
+      const files = folder.getFiles()
+      const crossings: PlannedSkyCrossingFile[] = []
+      while (files.hasNext()) {
+        const file = files.next()
+        if (file.isTrashed()) continue
+        const filename = file.getName()
+        if (!CROSSING_FILENAME_RE.test(filename)) continue
+        const text = file.getBlob().getDataAsString()
+        const document = parseValidatedCrossingDocument(filename, text)
+        crossings.push({
+          filename,
+          document
+        })
+      }
+      crossings.sort((a, b) => (a.filename < b.filename ? -1 : a.filename > b.filename ? 1 : 0))
+      return crossings
+    },
+    createCrossing(file: PlannedSkyCrossingFile): void {
+      writeCrossingDocumentFile(crossingFolderId, file, 'CROSSINGS_SKY_FOLDER_ID')
+    }
+  }
+}
+
+export function skyReplayPorts(replaySheetId: string, replayFolderId: string): SkyReplayPorts {
+  return {
+    canonicalJson: canonicalJsonSerialize,
+    createCrossing(file: PlannedSkyCrossingFile): void {
+      writeCrossingDocumentFile(replayFolderId, file, 'CROSSINGS_REPLAY_FOLDER_ID')
+    },
+    nextSequence(proposedFilename: string): number {
+      const folderId = requireCrossingFolderId(replayFolderId, 'CROSSINGS_REPLAY_FOLDER_ID')
+      const trimmed = typeof proposedFilename === 'string' ? proposedFilename.trim() : ''
+      const match = CROSSING_FILENAME_RE.exec(trimmed)
+      if (!match) {
+        throw new Error(`Invalid proposed crossing filename: ${String(proposedFilename)}`)
+      }
+      const stamp = match[1]!
+      const folder = DriveApp.getFolderById(folderId)
+      const files = folder.getFiles()
+      let maxSeq = 0
+      while (files.hasNext()) {
+        const existing = files.next()
+        if (existing.isTrashed()) continue
+        const existingMatch = CROSSING_FILENAME_RE.exec(existing.getName().trim())
+        if (existingMatch && existingMatch[1] === stamp) {
+          const seq = Number.parseInt(existingMatch[2]!, 10)
+          if (Number.isInteger(seq) && seq > maxSeq) {
+            maxSeq = seq
+          }
+        }
+      }
+      return maxSeq + 1
+    },
+    replaceClauses(rows: readonly Row<'clauses'>[]): void {
+      const sheetId = requireSpreadsheetId(replaySheetId, 'REPLAY_SHEET_ID')
+      replacePaddedTabRows(sheetId, 'clauses', rows)
+    },
+    replaceWindows(rows: readonly Row<'windows'>[]): void {
+      const sheetId = requireSpreadsheetId(replaySheetId, 'REPLAY_SHEET_ID')
+      replacePaddedTabRows(sheetId, 'windows', rows)
+    },
+    report(message: string): void {
+      console.log(message)
+    },
+    sha256: sha256Hex
   }
 }
 
