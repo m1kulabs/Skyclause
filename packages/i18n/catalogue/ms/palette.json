@@ -1,0 +1,9 @@
+{
+  "title": "Palet arahan",
+  "description": "Cari arahan yang tersedia untuk peranan anda. Tekan Escape untuk tutup.",
+  "search": "Cari arahan",
+  "placeholder": "Cari arahan…",
+  "results": "Arahan yang tersedia",
+  "empty": "n=0 arahan. Tekan Escape untuk kembali ke aplikasi.",
+  "no_matches": "n=0 padanan. Cuba carian lain."
+}

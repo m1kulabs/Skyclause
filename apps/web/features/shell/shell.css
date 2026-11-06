@@ -1,0 +1,301 @@
+.app-shell {
+  min-height: 100svh;
+  color: var(--foreground);
+  background: var(--background);
+}
+/* RootDocument also serves public pages. The app owns a skip target after its navigation. */
+body:has(.app-shell) > .skip-link {
+  display: none;
+}
+.shell-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  width: 224px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+}
+.shell-brand {
+  display: block;
+  padding: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.shell-secondary-nav {
+  margin-top: 24px;
+}
+.shell-sidebar nav {
+  padding-inline: 8px;
+}
+.shell-nav-link {
+  position: relative;
+  min-height: 34px;
+  height: auto;
+  overflow: visible;
+  color: var(--muted-foreground);
+}
+.shell-nav-link > .shell-nav-label {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
+.shell-nav-link[data-active] {
+  color: var(--foreground);
+}
+.shell-nav-link[data-active] > .shell-nav-label {
+  text-decoration: underline;
+  text-decoration-color: var(--selection);
+  text-decoration-thickness: var(--selection-width);
+  text-underline-offset: 4px;
+}
+.shell-approvals-count:empty {
+  display: none;
+}
+.shell-approvals-count {
+  margin-left: auto;
+}
+.shell-collapse {
+  justify-content: flex-start;
+  height: auto;
+  min-height: 34px;
+  white-space: normal;
+}
+.shell-body {
+  flex: 1;
+  min-width: 0;
+}
+.shell-topline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  border-bottom: 1px solid var(--border);
+  padding-inline: 16px;
+}
+.shell-desktop-scope {
+  min-width: 0;
+}
+.shell-desktop-scope [data-slot='breadcrumb-list'] {
+  flex-wrap: nowrap;
+}
+.shell-switcher {
+  min-width: 0;
+  height: auto;
+  min-height: 34px;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.shell-switcher > span {
+  min-width: 0;
+}
+.shell-freshness {
+  margin-left: auto;
+}
+.shell-menu {
+  width: max-content;
+  max-width: min(28rem, calc(100vw - 32px));
+}
+.shell-menu [data-slot='dropdown-menu-item'] {
+  min-height: 34px;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+}
+.shell-project-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 24px;
+  padding-inline: 24px;
+  min-height: 44px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: thin;
+}
+.shell-project-tabs a {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding-block: 12px;
+  color: var(--muted-foreground);
+}
+.shell-project-tabs [aria-current='page'] {
+  color: var(--foreground);
+}
+.shell-project-tabs [aria-current='page'] span {
+  text-decoration: underline;
+  text-decoration-color: var(--selection);
+  text-decoration-thickness: var(--selection-width);
+  text-underline-offset: 12px;
+}
+.shell-content {
+  padding: 24px;
+}
+.shell-content a,
+.shell-scope-list a {
+  text-underline-offset: 4px;
+}
+.shell-content [data-slot='empty-content'] > a {
+  text-decoration: underline;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.shell-phone-scope,
+.shell-bottom-bar {
+  display: none;
+}
+.shell-scope-sheet {
+  max-height: 85svh;
+}
+.shell-scope-list {
+  overflow-y: auto;
+  padding: 0 24px 24px;
+  overflow-wrap: anywhere;
+}
+.shell-scope-list section {
+  margin-bottom: 24px;
+}
+.shell-scope-list a {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-height: 44px;
+}
+.shell-scope-list a span {
+  color: var(--muted-foreground);
+}
+.shell-more-links {
+  display: flex;
+  flex-direction: column;
+  padding: 0 24px 24px;
+}
+.shell-more-links a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+}
+.shell-more-links svg {
+  width: 16px;
+  height: 16px;
+}
+@media (min-width: 1101px) {
+  .shell-expanded-tooltip {
+    display: none;
+  }
+}
+@media (min-width: 641px) {
+  .app-shell[data-collapsed='true'] .shell-sidebar {
+    width: 50px;
+  }
+  .app-shell[data-collapsed='true'] .shell-sidebar .shell-nav-label,
+  .app-shell[data-collapsed='true'] .shell-sidebar-scope,
+  .app-shell[data-collapsed='true'] .shell-approvals-count {
+    display: none;
+  }
+  .app-shell[data-collapsed='true'] .shell-brand {
+    padding: 8px 0;
+    font-size: 12px;
+    text-align: center;
+  }
+  .app-shell[data-collapsed='true'] .shell-nav-link[data-active]::after {
+    content: '';
+    position: absolute;
+    right: -8px;
+    width: var(--selection-width);
+    height: 16px;
+    background: var(--selection);
+  }
+}
+@media (min-width: 641px) and (max-width: 1100px) {
+  .shell-sidebar {
+    width: 50px;
+  }
+  .shell-sidebar .shell-nav-label,
+  .shell-sidebar-scope,
+  .shell-approvals-count,
+  .shell-collapse {
+    display: none;
+  }
+  .shell-brand {
+    padding: 8px 0;
+    font-size: 12px;
+    text-align: center;
+  }
+  .shell-nav-link[data-active]::after {
+    content: '';
+    position: absolute;
+    right: -8px;
+    width: var(--selection-width);
+    height: 16px;
+    background: var(--selection);
+  }
+}
+@media (max-width: 640px) {
+  .shell-sidebar,
+  .shell-desktop-scope {
+    display: none;
+  }
+  .shell-phone-scope {
+    display: block;
+    min-width: 0;
+  }
+  .shell-topline {
+    gap: 4px;
+    padding-inline: 8px;
+  }
+  .shell-topline .shell-switcher {
+    min-height: 44px;
+  }
+  .shell-content {
+    padding: 20px 16px calc(100px + env(safe-area-inset-bottom));
+  }
+  .shell-bottom-bar {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 20;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    padding: 4px 0 calc(4px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    background: var(--background);
+  }
+  .shell-bottom-bar > a,
+  .shell-more {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 44px;
+    padding: 4px 2px;
+    color: var(--muted-foreground);
+    font-size: 12px;
+    line-height: 16px;
+    overflow-wrap: anywhere;
+    text-align: center;
+  }
+  .shell-bottom-bar svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+  .shell-bottom-bar [aria-current='page'] {
+    color: var(--foreground);
+  }
+  .shell-bottom-bar [aria-current='page'] span {
+    text-decoration: underline;
+    text-decoration-color: var(--selection);
+    text-decoration-thickness: var(--selection-width);
+    text-underline-offset: 3px;
+  }
+}
+@media (pointer: coarse) {
+  .shell-nav-link,
+  .shell-menu [data-slot='dropdown-menu-item'] {
+    min-height: 44px;
+  }
+}

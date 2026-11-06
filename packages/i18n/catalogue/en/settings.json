@@ -1,0 +1,111 @@
+{
+  "scopes": {
+    "account": "Account settings",
+    "organisation": "Organisation settings",
+    "project": "Project settings"
+  },
+  "sections": {
+    "account": {
+      "profile": {
+        "title": "Profile",
+        "description": "Manage your name, photo and sign-in email."
+      },
+      "security": {
+        "title": "Security",
+        "description": "Manage sign-in methods and active sessions."
+      },
+      "appearance": {
+        "title": "Appearance",
+        "description": "Choose your theme, contrast, density, motion and language."
+      },
+      "notifications": {
+        "title": "Notifications",
+        "description": "Choose how you receive alerts and updates."
+      },
+      "ai-keys": {
+        "title": "AI keys",
+        "description": "Manage the AI provider keys for your account."
+      },
+      "api-keys": {
+        "title": "API keys",
+        "description": "Manage keys that give tools access to your account."
+      },
+      "data": {
+        "title": "Data and privacy",
+        "description": "Manage your account data and privacy."
+      }
+    },
+    "organisation": {
+      "general": {
+        "title": "General",
+        "description": "Manage the organisation name and preferences."
+      },
+      "members": {
+        "title": "Members and roles",
+        "description": "Manage membership, invitations and roles."
+      },
+      "rota": {
+        "title": "Approver rota",
+        "description": "Review approver shifts and coverage."
+      },
+      "billing": {
+        "title": "Billing",
+        "description": "Review organisation billing. The beta is free."
+      },
+      "audit": {
+        "title": "Audit log",
+        "description": "Review changes made in your organisation."
+      },
+      "ai-keys": {
+        "title": "AI keys",
+        "description": "Manage the AI provider keys for this organisation."
+      },
+      "api-keys": {
+        "title": "API keys",
+        "description": "Manage keys that give tools access to this organisation."
+      },
+      "webhooks": {
+        "title": "Webhooks",
+        "description": "Manage webhook destinations and deliveries."
+      },
+      "integrations": {
+        "title": "Integrations",
+        "description": "Manage connected tools and access grants."
+      },
+      "data": {
+        "title": "Data retention",
+        "description": "Manage organisation data, exports and retention."
+      }
+    },
+    "project": {
+      "general": {
+        "title": "Site and time zone",
+        "description": "Manage the project site and local time zone."
+      },
+      "packs": {
+        "title": "Packs and sources",
+        "description": "Manage the packs and sources used by this project."
+      },
+      "channels": {
+        "title": "Channels",
+        "description": "Manage the channels that deliver approved notices."
+      },
+      "rota": {
+        "title": "Rota",
+        "description": "Manage approver coverage for this project."
+      },
+      "public": {
+        "title": "Public pages",
+        "description": "Manage the project information shown to the public."
+      },
+      "share": {
+        "title": "Share links",
+        "description": "Manage links that give others access to this project."
+      },
+      "clauses": {
+        "title": "Clause sheet versions",
+        "description": "Review clause sheet versions."
+      }
+    }
+  }
+}
