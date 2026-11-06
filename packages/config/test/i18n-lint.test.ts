@@ -1,6 +1,9 @@
 import { ESLint } from 'eslint'
 import { fileURLToPath } from 'node:url'
-import { expect, test } from 'vitest'
+import { vi, expect, test } from 'vitest'
+
+// Each test starts an ESLint instance, which can take several seconds when the full suite runs in parallel.
+vi.setConfig({ testTimeout: 30_000 })
 
 const root = fileURLToPath(new URL('../../..', import.meta.url))
 const eslint = new ESLint({ cwd: root, overrideConfigFile: `${root}/eslint.config.mjs` })
