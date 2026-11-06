@@ -22,17 +22,32 @@ export async function stubApi<Registry extends ApiRegistry, OperationId extends 
   page: Page,
   operationId: OperationId,
   body: unknown,
-  options: { registry: Registry }
+  options: { registry: Registry; stream?: { event: string; id?: string }; query?: Record<string, string | null> }
 ): Promise<void> {
   const operation = options.registry[operationId]!
   const responseBody = assertValidResponse(operation, body)
   const pattern = routePattern(operation.path)
 
   await page.route(pattern, async (route) => {
-    if (route.request().method().toUpperCase() !== operation.method.toUpperCase()) {
-      await route.continue()
+    const query = new URL(route.request().url()).searchParams
+    if (options.query && Object.entries(options.query).some(([key, value]) => query.get(key) !== value)) {
+      await route.fallback()
       return
     }
-    await route.fulfill({ status: 200, contentType: 'application/json', json: responseBody })
+    if (route.request().method().toUpperCase() !== operation.method.toUpperCase()) {
+      await route.fallback()
+      return
+    }
+    if (options.stream) {
+      const { event, id } = options.stream
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        body: `${id ? `id: ${id}\n` : ''}event: ${event}\ndata: ${JSON.stringify(responseBody)}\n\n`
+      })
+    } else {
+      if (responseBody === undefined) await route.fulfill({ status: 204 })
+      else await route.fulfill({ status: 200, contentType: 'application/json', json: responseBody })
+    }
   })
 }
