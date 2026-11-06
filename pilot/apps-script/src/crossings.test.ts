@@ -162,6 +162,38 @@ function findChange(doc: SkyCrossingDocument, scope: string): SkyCrossingChange 
 }
 
 describe('Task 3 #55 stage 2: planSkyCrossings pure crossing planner', () => {
+  test('unknown edited clause keys survive evaluator-to-crossing diagnostics without invented inputs', () => {
+    const tEval = '2026-11-02T12:05:00+08:00'
+    const snapshot = makeSnapshot({
+      tEval,
+      readings: makeApimsReadingsAt('2026-11-02T12:00:00+08:00', { CA16W: 50, CA19B: 50, CA17W: 50 })
+    })
+    const defaults = defaultSkyClauseRows()
+    const clauses = [...defaults, { ...defaults.find((row) => row.key === 'haze_severe')!, key: 'haze_sever_typo' }]
+    const verdicts = evaluateSkyClauses({ tEval, snapshot, clauses, clauseVersion: 2 })
+    const site = verdicts.find((verdict) => verdict.scope === 'site')!
+    expect(site.verdict).toBe('no_call')
+    expect(site.blockedDetails).toEqual([
+      { input: 'clauses', state: 'malformed', stateSince: tEval, clauses: ['haze_sever_typo'] }
+    ])
+    expect(site.blockedClauses).toEqual([])
+    expect(site.clauses.haze_severe.status).toBe('not')
+    const plan = planSkyCrossings({
+      tEval,
+      verdicts,
+      previousState: [],
+      ledgerSourceRefs: [],
+      windows: [],
+      sequence: 1
+    })
+    expect(plan.crossing).not.toBeNull()
+    const change = findChange(plan.crossing!.document, 'site')
+    expect(change.to).toBe('no_call')
+    expect(change.blocked).toEqual(['haze_sever_typo'])
+    expect(change.fired).toEqual([])
+    expect(change.inputs).toEqual([])
+  })
+
   test('(1) unchanged Normal and watch-only evaluations emit no crossing file and preserve prior since, last_crossing_id, and retained state rows', () => {
     const tEval = '2026-11-02T14:15:00+08:00'
     const windowRow: Row<'windows'> = {

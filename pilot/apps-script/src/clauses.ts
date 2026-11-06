@@ -609,6 +609,7 @@ function parseAndValidateClauseRow(row: Row<'clauses'>): ParsedClauseRow {
       days === null ||
       !Number.isInteger(days) ||
       days < 1 ||
+      days > 3 ||
       !isNumericOp(apiMaxOp) ||
       !isNumericOp(api0600Op) ||
       (join !== 'or' && join !== 'and')

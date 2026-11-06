@@ -7762,7 +7762,7 @@
       "file_type": "code",
       "norm_label": "syntheticcase",
       "source_file": "pilot/apps-script/src/clauses.test.ts",
-      "source_location": "L892"
+      "source_location": "L970"
     },
     {
       "id": "pilot_apps_script_src_clauses_validatedclausespec",
@@ -25063,7 +25063,7 @@
       "file_type": "code",
       "norm_label": "evaluatecamerabranch()",
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L821"
+      "source_location": "L822"
     },
     {
       "id": "pilot_apps_script_src_clauses_evaluateskyclauses",
@@ -25075,7 +25075,7 @@
       "file_type": "code",
       "norm_label": "evaluateskyclauses()",
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L923"
+      "source_location": "L924"
     },
     {
       "id": "pilot_apps_script_src_clauses_getindicatorevidence",
@@ -25087,7 +25087,7 @@
       "file_type": "code",
       "norm_label": "getindicatorevidence()",
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L852"
+      "source_location": "L853"
     },
     {
       "id": "pilot_apps_script_src_clauses_hasconsecutivedaysmeetingthreshold",
@@ -25099,7 +25099,7 @@
       "file_type": "code",
       "norm_label": "hasconsecutivedaysmeetingthreshold()",
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L770"
+      "source_location": "L771"
     },
     {
       "id": "pilot_apps_script_src_clauses_isenabledcell",
@@ -25195,7 +25195,7 @@
       "file_type": "code",
       "norm_label": "parseutcdayms()",
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L760"
+      "source_location": "L761"
     },
     {
       "id": "pilot_apps_script_src_clauses_resolvewindowspan",
@@ -25207,7 +25207,7 @@
       "file_type": "code",
       "norm_label": "resolvewindowspan()",
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L876"
+      "source_location": "L877"
     },
     {
       "id": "pilot_apps_script_src_clauses_test_adaptjpsreadings",
@@ -103173,7 +103173,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L830",
+      "source_location": "L831",
       "weight": 1.0
     },
     {
@@ -103185,7 +103185,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L832",
+      "source_location": "L833",
       "weight": 1.0
     },
     {
@@ -103197,24 +103197,12 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L1045",
+      "source_location": "L1046",
       "weight": 1.0
     },
     {
       "source": "pilot_apps_script_src_clauses_evaluateskyclauses",
       "target": "pilot_apps_script_src_clauses_tofinitenumber",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L1076",
-      "weight": 1.0
-    },
-    {
-      "source": "pilot_apps_script_src_clauses_evaluateskyclauses",
-      "target": "pilot_apps_script_src_clauses_comparenumeric",
       "relation": "calls",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -103226,7 +103214,7 @@
     },
     {
       "source": "pilot_apps_script_src_clauses_evaluateskyclauses",
-      "target": "pilot_apps_script_src_clauses_evaluatecamerabranch",
+      "target": "pilot_apps_script_src_clauses_comparenumeric",
       "relation": "calls",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -103238,6 +103226,18 @@
     },
     {
       "source": "pilot_apps_script_src_clauses_evaluateskyclauses",
+      "target": "pilot_apps_script_src_clauses_evaluatecamerabranch",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "pilot/apps-script/src/clauses.ts",
+      "source_location": "L1079",
+      "weight": 1.0
+    },
+    {
+      "source": "pilot_apps_script_src_clauses_evaluateskyclauses",
       "target": "pilot_apps_script_src_clauses_hasconsecutivedaysmeetingthreshold",
       "relation": "calls",
       "_origin": "ast",
@@ -103245,7 +103245,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L1124",
+      "source_location": "L1125",
       "weight": 1.0
     },
     {
@@ -103257,7 +103257,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L924",
+      "source_location": "L925",
       "weight": 1.0
     },
     {
@@ -103269,7 +103269,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L952",
+      "source_location": "L953",
       "weight": 1.0
     },
     {
@@ -103281,7 +103281,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L793",
+      "source_location": "L794",
       "weight": 1.0
     },
     {
@@ -103293,7 +103293,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L794",
+      "source_location": "L795",
       "weight": 1.0
     },
     {
@@ -103305,7 +103305,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L804",
+      "source_location": "L805",
       "weight": 1.0
     },
     {
@@ -103413,7 +103413,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L882",
+      "source_location": "L883",
       "weight": 1.0
     },
     {
@@ -103425,7 +103425,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L916",
+      "source_location": "L917",
       "weight": 1.0
     },
     {
@@ -103593,7 +103593,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/crossings.ts",
-      "source_location": "L316",
+      "source_location": "L321",
       "weight": 1.0
     },
     {
@@ -106533,7 +106533,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/indicators.ts",
-      "source_location": "L796",
+      "source_location": "L797",
       "weight": 1.0
     },
     {
@@ -106605,7 +106605,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/indicators.ts",
-      "source_location": "L1154",
+      "source_location": "L1161",
       "weight": 1.0
     },
     {
@@ -106617,7 +106617,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/indicators.ts",
-      "source_location": "L1161",
+      "source_location": "L1168",
       "weight": 1.0
     },
     {
@@ -106629,7 +106629,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/indicators.ts",
-      "source_location": "L1166",
+      "source_location": "L1173",
       "weight": 1.0
     },
     {
@@ -117579,7 +117579,7 @@
       "confidence_score": 1.0,
       "context": "field",
       "source_file": "pilot/apps-script/src/clauses.test.ts",
-      "source_location": "L898",
+      "source_location": "L976",
       "weight": 1.0
     },
     {
@@ -238625,7 +238625,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L760",
+      "source_location": "L761",
       "weight": 1.0
     },
     {
@@ -238636,7 +238636,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L770",
+      "source_location": "L771",
       "weight": 1.0
     },
     {
@@ -238658,7 +238658,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L821",
+      "source_location": "L822",
       "weight": 1.0
     },
     {
@@ -238680,7 +238680,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L852",
+      "source_location": "L853",
       "weight": 1.0
     },
     {
@@ -238691,7 +238691,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L876",
+      "source_location": "L877",
       "weight": 1.0
     },
     {
@@ -238713,7 +238713,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L923",
+      "source_location": "L924",
       "weight": 1.0
     },
     {
@@ -238856,7 +238856,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/clauses.test.ts",
-      "source_location": "L892",
+      "source_location": "L970",
       "weight": 1.0
     },
     {
@@ -255514,7 +255514,7 @@
       "confidence_score": 0.85,
       "context": "argument",
       "source_file": "pilot/apps-script/src/clauses.ts",
-      "source_location": "L939",
+      "source_location": "L940",
       "weight": 1.0
     },
     {
@@ -256167,5 +256167,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "ebd77da6605f3f0feea5302751b4d40763a9bb5a"
+  "built_at_commit": "387a4727cb5a661da26146fcd90a19d1acc255e9"
 }

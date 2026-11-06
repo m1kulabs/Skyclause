@@ -380,6 +380,84 @@ describe('Task 3 #55 stage 1: defaultSkyClauseRows and pure evaluateSkyClauses',
     expect(splitStations.clauses.haze_severe.status).toBe('not')
   })
 
+  test('haze_watch keeps empty camera gauge intervals unavailable and preserves measured zero rain', () => {
+    const tEval = '2026-11-02T12:05:00+08:00'
+    const frames = makeCameraFrames([
+      ['2026-11-02T11:35:00+08:00', 0.4],
+      ['2026-11-02T11:45:00+08:00', 0.4],
+      ['2026-11-02T11:55:00+08:00', 0.4]
+    ])
+    const currentReadings = [
+      ...makeApimsReadingsAt('2026-11-02T12:00:00+08:00', { CA16W: 50, CA19B: 50, CA17W: 50 }),
+      makeGaugeReading('2026-11-02T12:00:00+08:00', 0),
+      ...frames
+    ]
+    const measuredZero = makeGaugeReading('2026-11-02T11:50:00+08:00', 0)
+
+    for (const hasObservation of [false, true]) {
+      const snapshot = makeSnapshot({
+        tEval,
+        readings: hasObservation ? [...currentReadings, measuredZero] : currentReadings
+      })
+      const site = findVerdict(evaluateSkyClauses({ tEval, snapshot, clauses: defaultSkyClauseRows() }), 'site')
+      const rain = snapshot.evidenceByScope.site!['site.gauge_rain_last3frames_mm']!
+      const rainRow = snapshot.indicatorRows.find((row) => row.name === rain.name)!
+      expect(snapshot.inputs.gauge.state).toBe('fresh')
+      expect(snapshot.inputs.camera.state).toBe('fresh')
+      expect(site.clauses.haze_watch.status).toBe(hasObservation ? 'fired' : 'not')
+      expect(site.verdict).toBe(hasObservation ? 'outdoor_limited' : 'normal')
+      expect(rain.value).toBe(hasObservation ? 0 : '')
+      expect(rain.sourceIds).toEqual(['0232901RF', 'cam_01'])
+      expect(rain.observedAt).toBe(hasObservation ? '2026-11-02T11:50:00+08:00' : null)
+      expect(rain.ageMin).toBe(hasObservation ? 15 : null)
+      expect(rain.readingIds).toEqual(
+        hasObservation
+          ? [
+              '0232901RF:rain_5m_mm:2026-11-02T11:50:00+08:00',
+              'cam_01:contrast_far:2026-11-02T11:55:00+08:00',
+              'cam_01:contrast_far:2026-11-02T11:45:00+08:00',
+              'cam_01:contrast_far:2026-11-02T11:35:00+08:00'
+            ]
+          : []
+      )
+      expect(rainRow.value).toBe(hasObservation ? 0 : '')
+      expect(rainRow.observed_at).toBe(hasObservation ? '2026-11-02T11:50:00+08:00' : '')
+      expect(rainRow.age_min).toBe(hasObservation ? 15 : '')
+      expect(JSON.parse(String(rainRow.reading_ids))).toEqual(rain.readingIds)
+    }
+  })
+
+  test('haze_severe blocks edited days above the three-reading snapshot capacity', () => {
+    const tEval = '2026-11-02T12:05:00+08:00'
+    const snapshot = makeSnapshot({
+      tEval,
+      readings: [
+        ...['2026-10-30', '2026-10-31', '2026-11-01', '2026-11-02'].flatMap((date) =>
+          makeApimsReadingsAt(`${date}T06:00:00+08:00`, { CA16W: 160 })
+        ),
+        ...makeApimsReadingsAt('2026-11-02T12:00:00+08:00', { CA16W: 50, CA19B: 50, CA17W: 50 })
+      ]
+    })
+    const history = JSON.parse(String(snapshot.evidenceByScope.site!['site.api_0600']!.value))
+    expect(history.CA16W).toEqual([
+      { date: '2026-11-02', value: 160 },
+      { date: '2026-11-01', value: 160 },
+      { date: '2026-10-31', value: 160 }
+    ])
+    const defaults = defaultSkyClauseRows()
+    const defaultSite = findVerdict(evaluateSkyClauses({ tEval, snapshot, clauses: defaults }), 'site')
+    expect(defaultSite.clauses.haze_severe.status).toBe('fired')
+    expect(defaultSite.verdict).toBe('hybrid_recommended')
+
+    const clauses = defaults.map((row) =>
+      row.key === 'haze_severe' ? { ...row, threshold: JSON.stringify({ api_max: 180, api_0600: 150, days: 4 }) } : row
+    )
+    const editedSite = findVerdict(evaluateSkyClauses({ tEval, snapshot, clauses }), 'site')
+    expect(editedSite.clauses.haze_severe.status).toBe('blocked:clauses')
+    expect(editedSite.blockedInputs).toEqual(['clauses'])
+    expect(editedSite.verdict).toBe('no_call')
+  })
+
   test('haze_watch camera branch (#60): fires on 3 fresh daylight frames < 0.5 with 0 mm fresh gauge rain even when API < 101; respects boundaries and optional camera states', () => {
     const tEval = '2026-11-02T12:00:00+08:00'
     const clauses = defaultSkyClauseRows()

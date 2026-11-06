@@ -28,7 +28,7 @@ export interface SkyCrossingChange {
   from: SkyVerdictValue
   to: SkyVerdictValue
   fired: SkyClauseKey[]
-  blocked: SkyClauseKey[]
+  blocked: string[]
   inputs: SkyCrossingInputEvidence[]
 }
 
@@ -312,7 +312,12 @@ export function planSkyCrossings(input: SkyCrossingInput): SkyCrossingPlan {
         from: fromVerdict,
         to: toVerdict,
         fired: [...verdict.firedClauses],
-        blocked: [...verdict.blockedClauses],
+        blocked: [
+          ...new Set([
+            ...verdict.blockedClauses,
+            ...verdict.blockedDetails.filter((detail) => detail.input === 'clauses').flatMap((detail) => detail.clauses)
+          ])
+        ],
         inputs: collectChangeInputs(verdict)
       })
       stateRows.push({
