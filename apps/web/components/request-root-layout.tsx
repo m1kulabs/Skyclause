@@ -1,14 +1,16 @@
 import type { ReactNode } from 'react'
 import { headers, cookies } from 'next/headers'
-import { t } from '@skyclause/i18n'
-import { Announcer } from '../lib/announce'
-import { WebVitals } from '../features/quality/web-vitals'
-import { APPEARANCE_SCRIPT, DEFAULT_APPEARANCE, resolveAppearance, type Appearance } from '../lib/theme'
-import '../styles/globals.css'
+import type { RouteGroup } from '@skyclause/contracts/analytics'
+import { DEFAULT_APPEARANCE, resolveAppearance, type Appearance } from '../lib/theme'
+import { RootDocument } from './root-document'
 
-export const metadata = { title: 'Skyclause' }
+interface Props {
+  children: ReactNode
+  routeGroup?: RouteGroup
+}
 
-export default async function RootLayout({ children }: { children: ReactNode }) {
+export async function RequestRootLayout({ children, routeGroup }: Props) {
+  // These roots set instant=false so request hints resolve before their document starts streaming.
   const requestHeaders = await headers()
   let appearance = DEFAULT_APPEARANCE
   // No account storage before #99. The test-only cookie exercises SSR preferences without granting production controls.
@@ -36,30 +38,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     motion: hint('sec-ch-prefers-reduced-motion')
   })
   return (
-    <html
-      lang="en"
-      className={resolved.className}
-      style={{ colorScheme: resolved.mode }}
-      data-theme={appearance.theme}
-      data-contrast={appearance.contrast}
-      data-motion-preference={appearance.motion}
-      data-motion={resolved.motion}
-      suppressHydrationWarning
-    >
-      <head>
-        <meta name="theme-color" content={resolved.color} suppressHydrationWarning />
-        <script dangerouslySetInnerHTML={{ __html: APPEARANCE_SCRIPT }} />
-      </head>
-      <body>
-        <a className="skip-link" href="#main-content">
-          {t('shell.skip_to_content')}
-        </a>
-        <div id="main-content" tabIndex={-1}>
-          {children}
-        </div>
-        <Announcer />
-        <WebVitals />
-      </body>
-    </html>
+    <RootDocument appearance={appearance} resolved={resolved} routeGroup={routeGroup}>
+      {children}
+    </RootDocument>
   )
 }

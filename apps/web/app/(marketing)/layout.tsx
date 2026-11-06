@@ -1,14 +1,18 @@
 import { Suspense, type ReactNode } from 'react'
 import { MarketingLanguageSuggestion } from './language-suggestion'
+import { RootDocument } from '../../components/root-document'
+
+export const metadata = { title: 'Skyclause' }
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <div data-surface="marketing" className="dark">
-      {/* Root theme hints currently require request rendering; keep this request-only hole separate. */}
-      <Suspense fallback={null}>
-        <MarketingLanguageSuggestion />
-      </Suspense>
-      {children}
-    </div>
+    <RootDocument routeGroup="marketing">
+      <div data-surface="marketing" className="dark">
+        <Suspense fallback={null}>
+          <MarketingLanguageSuggestion />
+        </Suspense>
+        {children}
+      </div>
+    </RootDocument>
   )
 }

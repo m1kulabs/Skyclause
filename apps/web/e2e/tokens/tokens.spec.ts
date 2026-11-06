@@ -131,7 +131,13 @@ for (const source of ['OS', 'attribute'] as const) {
 
 test('marketing stays dark when the viewer selects light', async ({ page, baseURL }) => {
   await appearance(page, baseURL!, { theme: 'light' })
-  await page.goto('/')
+  await page.emulateMedia({ colorScheme: 'light', contrast: 'no-preference' })
+  const response = await page.goto('/')
+  const html = await response!.text()
+  expect(html).toContain('class="dark" style="color-scheme:dark"')
+  expect(html).toContain('<meta name="theme-color" content="#171719"')
+  await expect(page.locator('html')).toHaveClass('dark')
+  await expect(page.locator('body')).toHaveCSS('font-family', /Work Sans/)
   await expect(page.locator('[data-surface="marketing"]')).toHaveCSS('background-color', 'rgb(10, 10, 10)')
   await expect(page.locator('[data-surface="marketing"]')).toHaveCSS('color-scheme', 'dark')
   expect(
@@ -139,6 +145,45 @@ test('marketing stays dark when the viewer selects light', async ({ page, baseUR
       .locator('[data-surface="marketing"]')
       .evaluate((element) => getComputedStyle(element).getPropertyValue('--card').trim())
   ).toBe('#131217')
+})
+
+test('marketing follows OS contrast and motion while keeping a dark document', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light', contrast: 'more', reducedMotion: 'reduce' })
+  const response = await page.goto('/')
+  const html = await response!.text()
+  expect(html.indexOf('prefers-contrast: more')).toBeLessThan(html.indexOf('<body>'))
+  expect(html.indexOf('prefers-reduced-motion: reduce')).toBeLessThan(html.indexOf('<body>'))
+  await expect(page.locator('html')).toHaveClass('dark hc')
+  await expect(page.locator('html')).toHaveAttribute('data-motion', 'reduce')
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#000000')
+  await page.keyboard.press('Tab')
+  await expect(page.locator('.skip-link')).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page.locator('#main-content')).toBeFocused()
+  await page.emulateMedia({ contrast: 'no-preference', reducedMotion: 'no-preference' })
+  await expect(page.locator('html')).toHaveClass('dark')
+  await expect(page.locator('html')).toHaveAttribute('data-motion', 'full')
+})
+
+test('unmatched routes keep request-time appearance in their own document', async ({ page, baseURL }) => {
+  await appearance(page, baseURL!, { theme: 'system' })
+  const response = await page.request.get('/no-such-route-95s', {
+    headers: {
+      'sec-ch-prefers-color-scheme': '"light"',
+      'sec-ch-prefers-contrast': '"more"',
+      'sec-ch-prefers-reduced-motion': '"reduce"'
+    }
+  })
+  expect(response.status()).toBe(404)
+  const html = await response.text()
+  expect(html).toContain('class="light hc"')
+  expect(html).toContain('style="color-scheme:light"')
+  expect(html).toContain('data-motion="reduce"')
+  expect(html).toContain('<meta name="theme-color" content="#ffffff"')
+  expect(html).toContain('class="skip-link"')
+  expect(html).toContain('id="skyclause-announcer"')
+  expect(html.match(/<html\b/g)).toHaveLength(1)
+  expect(html.match(/<body\b/g)).toHaveLength(1)
 })
 
 test('forced colours retain system surfaces and a visible focus outline', async ({ page }) => {
