@@ -113,7 +113,7 @@ The desk edits it. Starting values come from the backtest's surge definition and
 
 - **Listing:** proposed → approved → listed → changed or cancelled (needs approval). **Night:** forecast → drafted → **Needs Review** → sent → pending grade → in band, or out of band → Jira open → Done → re-forecast.
 - **Late or changed ridership file:** the grade shows "pending" with the metadata's `next_update`, never an old number; a schema change fails the Pi job and writes an error row.
-- **Pi offline:** an hourly Apps Script check writes "Pi offline since HH:MM" when posts stop; the Pi buffers rows on disk and uploads them on reconnect with their original timestamps. Missing bus positions mean missing telemetry, not a cancelled bus ([platform constraints](/docs/research/gemini-enterprise.md#platform-constraints-and-design-consequences)).
+- **Pi offline:** the Apps Script auditor writes "Pi offline since HH:MM" within 5 minutes of posts stopping for 60 minutes ([SIG-12](/docs/PRD.md#signals-sig)); the Pi buffers rows on disk and uploads them on reconnect with their original timestamps. Missing bus positions mean missing telemetry, not a cancelled bus ([platform constraints](/docs/research/gemini-enterprise.md#platform-constraints-and-design-consequences)).
 - **Failed feed or wrong listing:** an error row, and the outlook names the feed that is down. Cancelled shows can stay listed and Wikipedia can be vandalised, so every listing carries URL and revision and passes a person before it drives a bundle.
 - **Quota or credentials:** event runs that fail on quota aren't retried, so the 07:00 run re-reads everything; schedule credentials are refreshed every 14 days ([limits](/docs/research/gemini-enterprise.md#limits-that-bite-in-a-one-week-build)).
 
