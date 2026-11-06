@@ -1,0 +1,70 @@
+{
+  "pack": "sky",
+  "clauses": [
+    {
+      "key": "haze_watch",
+      "name": "Haze watch",
+      "enabled": true,
+      "scope": "site",
+      "requires": ["site.api_max"],
+      "optional": ["site.camera_far_low_frames", "site.rain_60m_mm"],
+      "when": "site.api_max >= 101 || (has(site.camera_far_low_frames) && has(site.rain_60m_mm) && site.camera_far_low_frames >= 3 && site.rain_60m_mm == 0)",
+      "proposes": { "mode": "outdoor_limited" },
+      "wording": { "en": "Haze watch: API {site.api_max.value}; limit outdoor activity for the window" }
+    },
+    {
+      "key": "haze_severe",
+      "name": "Haze severe",
+      "enabled": true,
+      "scope": "site",
+      "requires": ["site.api_max", "site.api_0600_min_last3_max"],
+      "when": "site.api_max > 180 || site.api_0600_min_last3_max > 150",
+      "proposes": { "mode": "hybrid_recommended" },
+      "wording": { "en": "Hybrid is recommended. Teaching mode is the lecturer's and the university's decision" }
+    },
+    {
+      "key": "storm_watch",
+      "name": "Storm watch",
+      "enabled": true,
+      "scope": "window",
+      "requires": ["w.met_warning_in_force"],
+      "when": "w.met_warning_in_force",
+      "proposes": { "watch": true },
+      "wording": { "en": "A warning naming W.P. Kuala Lumpur is valid across the window" }
+    },
+    {
+      "key": "storm_confirmed",
+      "name": "Storm confirmed",
+      "enabled": true,
+      "scope": "window",
+      "requires": ["w.rain_max_60m_mm"],
+      "span": { "from": "end-30m", "to": "end+60m" },
+      "when": "w.rain_max_60m_mm >= 31.0",
+      "expiry": "end",
+      "proposes": { "mode": "commute_disruption" },
+      "wording": { "en": "Storm confirmed at the JPS gauge (Lebat class)" }
+    },
+    {
+      "key": "flash_flood_risk",
+      "name": "Flash-flood risk",
+      "enabled": true,
+      "scope": "window",
+      "requires": ["w.rain_max_4h_mm"],
+      "when": "w.rain_max_4h_mm > 60",
+      "expiry": "end",
+      "proposes": { "mode": "commute_disruption", "note": "flood_note" },
+      "wording": { "en": "Flash-flood risk: {w.rain_max_4h_mm.value} {w.rain_max_4h_mm.unit}" }
+    },
+    {
+      "key": "silent_input",
+      "name": "Silent input",
+      "enabled": true,
+      "builtin": "silent_input",
+      "scope": "site",
+      "requires": [],
+      "when": "true",
+      "proposes": {},
+      "wording": { "en": "No call for clauses needing a silent input" }
+    }
+  ]
+}
