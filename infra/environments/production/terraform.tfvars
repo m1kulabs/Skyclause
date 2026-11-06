@@ -21,9 +21,8 @@ app_config = {
   TURNSTILE_SITE_KEY = "0x4AAAAAAF1nsaULaL3xWos0"
 }
 
-# #118 gate 3: each has a version from infra/wizards/google-sign-in.sh. SKYCLAUSE_STAFF_EMAILS
-# joins once infra/wizards/staff-and-ses.sh has stored one.
-supplied_secrets = ["GOOGLE_CLIENT_SECRET", "TURNSTILE_SECRET_KEY"]
+# #118 gate 3: each has a version, from infra/wizards/google-sign-in.sh and staff-and-ses.sh.
+supplied_secrets = ["GOOGLE_CLIENT_SECRET", "SKYCLAUSE_STAFF_EMAILS", "TURNSTILE_SECRET_KEY"]
 
 # VAPID_PRIVATE_KEY has its one version (#113), so the worker mounts it.
 vapid_private_key_ready = true
