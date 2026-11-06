@@ -38,12 +38,15 @@ updates:
       prefix: ci
     labels: [devops]
 
-  # The root bun.lock covers every workspace. Minor and patch bumps share one PR; each major gets its own.
+  # The root bun.lock covers every workspace. OpenTelemetry's packages move together, so all their updates share
+  # one PR; other minor and patch bumps share another; each other major gets its own.
   - package-ecosystem: bun
     directory: /
     schedule:
       interval: weekly
     groups:
+      opentelemetry:
+        patterns: ['@opentelemetry/*']
       npm:
         update-types: [minor, patch]
     ignore:
