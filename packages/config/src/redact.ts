@@ -1,5 +1,5 @@
 import type { Context } from '@opentelemetry/api'
-import type { ReadableSpan, Span, SpanProcessor } from '@opentelemetry/sdk-trace-base'
+import type { ReadableSpan, Span, SpanProcessor } from '@opentelemetry/sdk-trace'
 
 // #114 ticket decision: Skyclause tokens, Authorization and Cookie values, provider key shapes and email
 // addresses never leave the process in a log field, span attribute or error message (TRD BYOK).
