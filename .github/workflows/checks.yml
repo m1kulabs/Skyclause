@@ -145,9 +145,9 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
-      # GHSA-g3hv-75wg-m249 (minimatch below 11.0.1, moderate) reaches only lint tooling through
-      # typescript-eslint's minimatch ^10, which has no fixed 10.x release; #214 drops the ignore.
-      - run: bun audit --ignore=GHSA-g3hv-75wg-m249
+      # GHSA-g3hv-75wg-m249 covers minimatch 7.0.0 to below 11.0.1, so package.json overrides only typescript-estree's
+      # minimatch ^10 to ^11.0.1; ESLint 9's ^3 is outside it. #214 drops the override once typescript-eslint has a fix.
+      - run: bun audit
 
   # P0's gitleaks job (#48) is the secret scan; until it is on main this runs the pinned CLI (#215 removes it).
   secrets:
