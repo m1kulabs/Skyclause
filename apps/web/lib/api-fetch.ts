@@ -45,6 +45,8 @@ export interface ApiFetchOptions<Operation> {
   query?: RequestInput<Operation, 'query'>
   body?: RequestInput<Operation, 'body'>
   signal?: AbortSignal
+  /** Forwarded to fetch so undoable actions can flush with keepalive on pagehide. */
+  keepalive?: boolean
   /** Device operations supply their bearer and stable capture idempotency key. */
   headers?: HeadersInit
   credentials?: RequestCredentials
