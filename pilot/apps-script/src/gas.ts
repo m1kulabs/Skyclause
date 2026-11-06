@@ -71,7 +71,9 @@ export const drive: DrivePort = {
   findSpreadsheet: (folderId, name) =>
     firstLive(
       DriveApp.getFolderById(folderId).getFilesByName(name),
-      (file) => file.getMimeType() === MimeType.GOOGLE_SHEETS
+      (file) =>
+        // The camera page needs the DOM lib, whose global MimeType hides the GAS enum; reach it by type.
+        file.getMimeType() === (MimeType as unknown as GoogleAppsScript.Base.MimeType).GOOGLE_SHEETS
     )?.getId() ?? null,
   createSpreadsheet: (folderId, name, firstTab) => {
     const spreadsheet = SpreadsheetApp.create(name)

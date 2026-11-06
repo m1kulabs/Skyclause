@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Skyline camera: a daylight phone camera that posts masked skyline contrast every 10 minutes."
+    />
+    <title>Skyline camera</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #171719;
+        --card: #131217;
+        --fg: #ffffff;
+        --secondary: #bdbdc0;
+        --muted: #8a8c92;
+        --border: #222224;
+        --input: #6a6c72;
+        --ring: #ffffff;
+        --warn-bg: #2a2416;
+        --warn-fg: #d9a441;
+        --crit-bg: #2c1a20;
+        --crit-fg: #f0566c;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family:
+          'Work Sans',
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+        font-variant-numeric: tabular-nums;
+        line-height: 1.55;
+      }
+      main {
+        max-width: 760px;
+        margin-inline: auto;
+        padding: 32px 20px 64px;
+        overflow-wrap: anywhere;
+      }
+      h1 {
+        font-size: 26px;
+        font-weight: 700;
+        text-wrap: balance;
+        margin: 0 0 8px;
+      }
+      h2 {
+        font-size: 18px;
+        margin: 32px 0 8px;
+      }
+      p {
+        color: var(--secondary);
+        margin-block: 12px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px;
+        margin-block: 16px;
+      }
+      .card p {
+        margin-block: 8px;
+      }
+      #status {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px 16px;
+        color: var(--fg);
+        background: var(--card);
+        font-weight: 600;
+      }
+      #status[data-tone='warn'] {
+        background: var(--warn-bg);
+        color: var(--warn-fg);
+      }
+      #status[data-tone='crit'] {
+        background: var(--crit-bg);
+        color: var(--crit-fg);
+      }
+      #status[data-tone='muted'] {
+        color: var(--muted);
+      }
+      ol.steps {
+        margin: 8px 0;
+        padding-inline-start: 24px;
+        color: var(--secondary);
+      }
+      ol.steps li {
+        margin-block: 6px;
+      }
+      .preview {
+        position: relative;
+        background: #000000;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .preview canvas {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      .region {
+        position: absolute;
+        border: 2px solid #ffffff;
+        outline: 1px solid #000000;
+        pointer-events: none;
+      }
+      .region[data-region='far'] {
+        border-style: dashed;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-block: 16px;
+      }
+      form {
+        margin-top: 24px;
+      }
+      fieldset {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        min-width: 0;
+        margin: 0 0 16px;
+        padding: 16px;
+      }
+      legend {
+        font-size: 16px;
+        font-weight: 600;
+        padding-inline: 8px;
+      }
+      label {
+        display: block;
+        font-weight: 600;
+        margin-block: 12px 4px;
+      }
+      .hint {
+        color: var(--muted);
+        margin-block: 4px 0;
+        font-size: 14px;
+      }
+      input {
+        width: 100%;
+        min-height: 44px;
+        font: inherit;
+        font-size: 16px;
+        color: var(--fg);
+        background: transparent;
+        border: 1px solid var(--input);
+        border-radius: 6px;
+        padding: 10px 12px;
+      }
+      input:disabled {
+        color: var(--muted);
+        border-color: var(--border);
+      }
+      button {
+        min-height: 44px;
+        min-width: 44px;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        border-radius: 6px;
+        padding: 10px 18px;
+        border: 1px solid var(--ring);
+      }
+      button.primary {
+        background: var(--ring);
+        color: #131217;
+      }
+      button.ghost {
+        background: transparent;
+        color: var(--fg);
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      :focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+      }
+      .grid2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0 16px;
+      }
+      .grid2 > div {
+        min-width: 0;
+      }
+      .consent {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        cursor: pointer;
+        line-height: 1.55;
+        font-weight: 400;
+      }
+      .consent input {
+        flex: 0 0 24px;
+        width: 24px;
+        min-height: 24px;
+        margin-top: 4px;
+        accent-color: var(--ring);
+      }
+      #form-error {
+        color: var(--crit-fg);
+        font-weight: 600;
+      }
+      .meta {
+        color: var(--muted);
+        font-size: 14px;
+      }
+      @media (min-width: 640px) {
+        .grid4 {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 0 16px;
+        }
+      }
+      @media (max-width: 360px) {
+        .grid2 {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Skyline camera</h1>
+        <p>
+          Keep this phone on a charger, with this page in front. Capture runs every 10 minutes in daylight. The lower
+          third is painted black on the phone, before scoring and before the JPEG is made, so no faces or homes ever
+          leave it.
+        </p>
+      </header>
+
+      <p id="status" role="status" aria-live="polite" aria-atomic="true" data-tone="muted">
+        Loading camera setup from this phone…
+      </p>
+
+      <section class="card" aria-labelledby="setup-steps-h">
+        <h2 id="setup-steps-h">One-page setup (about 15 minutes)</h2>
+        <ol class="steps">
+          <li>
+            Mount the phone at a high window on a charger, keep Chrome in front, and turn off battery optimisation for
+            Chrome.
+          </li>
+          <li>Open this page and choose Allow camera.</li>
+          <li>
+            Paste the <code>/exec</code> URL and <code>CAMERA_TOKEN</code>, and enter the distance to campus in
+            kilometres.
+          </li>
+          <li>
+            Set the near-landmark and far-skyline regions in the upper two-thirds: tap “place by tap”, then tap the
+            preview, or type the percentages.
+          </li>
+          <li>On a clear moment, capture the clear-day reference. Do not recapture it during probation.</li>
+          <li>
+            Tick consent, then Save and start. Keep this page in front; check it each morning and evening until 8
+            November. If posts fail, frames stay queued on the phone and upload in order with their original times.
+          </li>
+        </ol>
+      </section>
+
+      <section aria-label="Masked camera preview">
+        <div class="preview">
+          <video id="live" autoplay muted playsinline hidden aria-hidden="true"></video>
+          <canvas
+            id="preview"
+            width="640"
+            height="480"
+            role="img"
+            aria-label="Masked camera preview. The lower third stays black."
+            aria-describedby="regions-help"
+          ></canvas>
+        </div>
+        <p class="meta" id="queue">No frames queued. Complete setup and keep this page in front.</p>
+        <p class="meta" id="wake">Screen lock not held yet.</p>
+        <p class="meta" id="daylight">Daylight 07:15–19:00 MYT (project default).</p>
+      </section>
+
+      <div class="actions">
+        <button type="button" class="ghost" id="allow-camera">Allow camera</button>
+        <button type="button" class="ghost" id="hold-wake">Hold the screen on</button>
+      </div>
+
+      <form id="setup-form" novalidate>
+        <fieldset>
+          <legend>Phone setup (stays on this phone, never in the repo)</legend>
+          <label for="exec-url">Web app /exec URL</label>
+          <input
+            id="exec-url"
+            name="exec_url"
+            type="url"
+            inputmode="url"
+            autocomplete="off"
+            autocapitalize="none"
+            spellcheck="false"
+            required
+          />
+          <p class="hint">The pilot web app address ending in /exec. Device id is fixed: cam-1.</p>
+
+          <label for="device-token">Device token (CAMERA_TOKEN)</label>
+          <input
+            id="device-token"
+            name="device_token"
+            type="password"
+            autocomplete="off"
+            autocapitalize="none"
+            spellcheck="false"
+            required
+          />
+
+          <label for="distance-km">Distance to campus (km)</label>
+          <input
+            id="distance-km"
+            name="distance_km"
+            type="number"
+            inputmode="decimal"
+            autocomplete="off"
+            min="0.001"
+            step="any"
+            required
+          />
+          <p class="hint">Measure from a map. The far region is the landmark the labellers judge.</p>
+        </fieldset>
+
+        <fieldset id="regions-box">
+          <legend>Regions (upper two-thirds only)</legend>
+          <p class="hint" id="regions-help">
+            Enter each rectangle as percentages of the full frame. Or choose a region, then tap the preview to place a
+            10% square. Number fields give the keyboard path.
+          </p>
+          <div class="actions">
+            <button type="button" class="ghost" id="place-near">Place near region by tap</button>
+            <button type="button" class="ghost" id="place-far">Place far region by tap</button>
+          </div>
+          <div class="grid2">
+            <div>
+              <h2>Near landmark</h2>
+              <div class="grid4 grid2">
+                <div>
+                  <label for="near-x">Left (%)</label>
+                  <input id="near-x" type="number" inputmode="decimal" step="any" required />
+                </div>
+                <div>
+                  <label for="near-y">Top (%)</label>
+                  <input id="near-y" type="number" inputmode="decimal" step="any" required />
+                </div>
+                <div>
+                  <label for="near-width">Width (%)</label>
+                  <input id="near-width" type="number" inputmode="decimal" step="any" required />
+                </div>
+                <div>
+                  <label for="near-height">Height (%)</label>
+                  <input id="near-height" type="number" inputmode="decimal" step="any" required />
+                </div>
+              </div>
+            </div>
+            <div>
+              <h2>Far skyline</h2>
+              <div class="grid4 grid2">
+                <div>
+                  <label for="far-x">Left (%)</label>
+                  <input id="far-x" type="number" inputmode="decimal" step="any" required />
+                </div>
+                <div>
+                  <label for="far-y">Top (%)</label>
+                  <input id="far-y" type="number" inputmode="decimal" step="any" required />
+                </div>
+                <div>
+                  <label for="far-width">Width (%)</label>
+                  <input id="far-width" type="number" inputmode="decimal" step="any" required />
+                </div>
+                <div>
+                  <label for="far-height">Height (%)</label>
+                  <input id="far-height" type="number" inputmode="decimal" step="any" required />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="actions">
+            <button type="button" class="ghost" id="capture-reference" disabled>Capture clear-day reference</button>
+          </div>
+          <p class="meta" id="reference-state">No reference yet. Set both regions, then capture.</p>
+        </fieldset>
+
+        <fieldset>
+          <legend>Consent and start</legend>
+          <p id="privacy">
+            The URL, token, regions and reference stay on this phone. Only masked frames leave it, into the project's
+            Drive. Protect access to this phone.
+          </p>
+          <label class="consent" for="camera-consent">
+            <input id="camera-consent" name="camera_consent" type="checkbox" required />
+            <span>I agree to send masked frames and measurements to this project.</span>
+          </label>
+          <p id="form-error" role="alert" tabindex="-1" hidden></p>
+          <div class="actions">
+            <button type="submit" class="primary" id="save-setup">Save and start</button>
+          </div>
+        </fieldset>
+      </form>
+    </main>
+    <script src="./app.js" defer></script>
+  </body>
+</html>
