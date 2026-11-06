@@ -1,6 +1,7 @@
-# Deploys main straight to production (#90): re-runs #86's checks, builds one image, migrates, then puts that
-# digest on web, worker and every Cloud Run job. DEPLOY_FREEZE=true skips it; rollback moves revision traffic
-# (the commands are in each run's summary). A pull request touching the image only builds and checks it.
+# Deploys main straight to production (#90): re-runs #86's checks, builds one image, waits for a terraform apply on
+# the same push (#226), migrates, then puts that digest on web, worker and every Cloud Run job. DEPLOY_FREEZE=true
+# skips it; rollback moves revision traffic (the commands are in each run's summary). A pull request touching the
+# image only builds and checks it.
 name: deploy
 
 on:
@@ -17,6 +18,7 @@ on:
       - scripts/container-entry.sh
       - scripts/check-image.sh
       - scripts/check-deployed.ts
+      - scripts/wait-for-terraform.sh
       - .github/actions/build-image/**
       - .github/workflows/deploy.yml
   pull_request:
@@ -76,6 +78,29 @@ jobs:
     if: github.ref == 'refs/heads/main' && (vars.DEPLOY_FREEZE != 'true' || inputs.override_freeze)
     uses: ./.github/workflows/checks.yml
 
+  # A push that changed infra/ also runs terraform.yml; deploy lists Cloud Run jobs only after that apply succeeds, so
+  # a job it creates gets this image (#226). Other pushes and dispatches pass at once.
+  wait-for-terraform:
+    if: github.ref == 'refs/heads/main' && (vars.DEPLOY_FREEZE != 'true' || inputs.override_freeze)
+    runs-on: ubuntu-24.04
+    # An apply can queue behind earlier ones in terraform-production.
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - if: github.event_name == 'push'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Wait for this push's terraform apply
+        if: github.event_name == 'push'
+        env:
+          BEFORE: ${{ github.event.before }}
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/wait-for-terraform.sh "$BEFORE" "$GITHUB_SHA"
+
   image:
     if: github.ref == 'refs/heads/main' && (vars.DEPLOY_FREEZE != 'true' || inputs.override_freeze)
     runs-on: ubuntu-24.04
@@ -105,7 +130,7 @@ jobs:
           echo "image=$image" | tee -a "$GITHUB_OUTPUT"
 
   deploy:
-    needs: [checks, image]
+    needs: [checks, image, wait-for-terraform]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
