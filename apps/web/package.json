@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "tsc -b && next build && cp -R .next/static .next/standalone/apps/web/.next/static",
     "start": "node .next/standalone/apps/web/server.js",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test && I18N_PSEUDO=1 playwright test --project=pseudo"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",
@@ -30,7 +30,8 @@
     "tailwindcss": "4.3.4",
     "web-vitals": "6.2.3",
     "class-variance-authority": "0.7.1",
-    "lucide-react": "1.70.0"
+    "lucide-react": "1.70.0",
+    "@skyclause/auth": "workspace:*"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",

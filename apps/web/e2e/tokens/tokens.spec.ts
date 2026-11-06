@@ -74,7 +74,7 @@ test('system follows colour, contrast and motion changes without reloading', asy
   await expect(page.locator('html')).toHaveClass('light hc')
   await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#ffffff')
   await page.emulateMedia({ colorScheme: 'dark' })
-  await expect(page.locator('html')).toHaveClass('dark hc')
+  await expect(page.locator('html')).toHaveClass(/^(dark hc|hc dark)$/)
   await page.emulateMedia({ contrast: 'no-preference', reducedMotion: 'reduce' })
   await expect(page.locator('html')).toHaveClass('dark')
   await expect(page.locator('html')).toHaveAttribute('data-motion', 'reduce')

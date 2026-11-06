@@ -1,14 +1,23 @@
+import enShell from '../catalogue/en/shell.json'
+import msShell from '../catalogue/ms/shell.json'
+import enFormat from '../catalogue/en/format.json'
+import msFormat from '../catalogue/ms/format.json'
+import enMarketing from '../catalogue/en/marketing.json'
+import msMarketing from '../catalogue/ms/marketing.json'
+
 interface Catalogue {
   [key: string]: string | Catalogue
 }
 
-type GlobImportMeta = ImportMeta & {
-  glob: <Module>(pattern: string, options: { eager: true }) => Record<string, Module>
+// Explicit imports work in Next, Bun and Vitest and keep filesystem access out of client bundles.
+export const catalogueFiles: Record<string, { default: unknown }> = {
+  '../catalogue/en/shell.json': { default: enShell },
+  '../catalogue/ms/shell.json': { default: msShell },
+  '../catalogue/en/format.json': { default: enFormat },
+  '../catalogue/ms/format.json': { default: msFormat },
+  '../catalogue/en/marketing.json': { default: enMarketing },
+  '../catalogue/ms/marketing.json': { default: msMarketing }
 }
-
-export const catalogueFiles = (import.meta as GlobImportMeta).glob<unknown>('../catalogue/*/*.json', {
-  eager: true
-})
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null

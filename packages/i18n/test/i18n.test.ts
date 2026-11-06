@@ -76,3 +76,13 @@ test('pseudo lengthens strings by 30 percent, rounded up to a whole character', 
   expect(pseudo('abcdefghij')).toHaveLength(13)
   expect(pseudo('')).toBe('')
 })
+
+test('the test-build flag lengthens translated copy after interpolation', () => {
+  vi.stubEnv('NEXT_PUBLIC_SKYCLAUSE_PSEUDO', '1')
+  try {
+    expect(t('shell.skip_to_content')).toBe(pseudo('Skip to content'))
+    expect(t('format.ageMinute', { value: 12 })).toBe(pseudo('12 min old'))
+  } finally {
+    vi.unstubAllEnvs()
+  }
+})

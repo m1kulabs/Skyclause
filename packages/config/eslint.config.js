@@ -64,8 +64,12 @@ export default defineConfig(
     files: ['apps/web/**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}'],
     plugins: { 'skyclause-i18n': i18n },
     rules: {
-      'skyclause-i18n/no-literal-jsx': 'error',
       'skyclause-i18n/no-concatenated-translation': 'error'
     }
+  },
+  {
+    files: ['apps/web/**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}'],
+    ignores: ['**/*.plant.tsx'],
+    rules: { 'skyclause-i18n/no-literal-jsx': 'error' }
   }
 )

@@ -446,6 +446,30 @@
 [data-surface='auth'] {
   padding: 40px 20px;
 }
+.language-suggestion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 24px;
+  overflow-wrap: anywhere;
+}
+.language-suggestion a {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.language-suggestion button {
+  min-height: 34px;
+  padding: 7px 14px;
+  cursor: pointer;
+}
+.language-suggestion button:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
 .auth-column {
   width: min(100%, 520px);
   margin-inline: auto;
@@ -503,6 +527,8 @@
   }
 }
 @media (pointer: coarse) {
+  .language-suggestion button,
+  .language-suggestion a,
   [data-slot='button'],
   [data-slot='select-trigger'],
   [data-slot='tabs-trigger'],

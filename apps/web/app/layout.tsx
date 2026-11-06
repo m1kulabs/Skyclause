@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { headers, cookies } from 'next/headers'
 import { t } from '@skyclause/i18n'
-import { Providers } from '../components/providers'
+import { Announcer } from '../lib/announce'
 import { WebVitals } from '../features/quality/web-vitals'
 import { APPEARANCE_SCRIPT, DEFAULT_APPEARANCE, resolveAppearance, type Appearance } from '../lib/theme'
 import '../styles/globals.css'
@@ -54,11 +54,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <a className="skip-link" href="#main-content">
           {t('shell.skip_to_content')}
         </a>
-        <Providers>
-          <div id="main-content" tabIndex={-1}>
-            {children}
-          </div>
-        </Providers>
+        <div id="main-content" tabIndex={-1}>
+          {children}
+        </div>
+        <Announcer />
         <WebVitals />
       </body>
     </html>
