@@ -47,6 +47,8 @@ export interface ApiFetchOptions<Operation> {
   signal?: AbortSignal
   /** Required when calling from a server context without an organisation in the URL. */
   org?: string
+  /** Reuse across a recent-auth retry of the same logical write. */
+  idempotencyKey?: string
 }
 
 export type ApiFetch<Registry extends ApiRegistry> = <OperationId extends keyof Registry & string>(
@@ -110,7 +112,7 @@ export function createApiFetch<const Registry extends ApiRegistry>(
     options: ApiFetchOptions<Registry[OperationId]>
   ): Promise<OutputOf<Registry[OperationId]['response']>> {
     const operation = registry[operationId]!
-    const organization = typeof window === 'undefined' ? options.org : organizationFromBrowser()
+    const organization = options.org ?? (typeof window === 'undefined' ? undefined : organizationFromBrowser())
     const requestOptions = options as ApiFetchOptions<Registry[OperationId]> & {
       params?: unknown
       query?: unknown
@@ -122,7 +124,7 @@ export function createApiFetch<const Registry extends ApiRegistry>(
     const headers = new Headers({ Accept: 'application/json' })
 
     if (organization) headers.set('Skyclause-Organization', organization)
-    if (operation.idempotent) headers.set('Idempotency-Key', globalThis.crypto.randomUUID())
+    if (operation.idempotent) headers.set('Idempotency-Key', options.idempotencyKey ?? globalThis.crypto.randomUUID())
 
     const init: RequestInit = {
       method: operation.method,
