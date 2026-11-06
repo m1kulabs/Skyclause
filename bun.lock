@@ -116,6 +116,7 @@
       "dependencies": {
         "@aws-sdk/client-s3": "3.1163.0",
         "@aws-sdk/client-sesv2": "3.1163.0",
+        "@skyclause/config": "workspace:*",
         "postal-mime": "4.2.0",
       },
     },
