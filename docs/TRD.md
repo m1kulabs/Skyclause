@@ -359,9 +359,10 @@ After the model returns, `validate` enforces what the schema can't, and a failur
 - every number in a notice appears in the snapshot or the window times (the model never computes);
 - recipients are a subset of that window's candidates; links point only at sources and Skyclause;
 - the not-a-safety-service line, attributions, unsubscribe and, for Hybrid recommended, the teaching-mode line come from templates, not the model ([CAL-15](/docs/PRD.md#calls-and-approvals-cal));
+- drafts and approver edits must pass the English and Malay attendance-excuse deny-lists; a match blocks drafting or approval ([CAL-15](/docs/PRD.md#calls-and-approvals-cal));
 - a Malay notice needs a Malay-reading approver on the rota, or the call is drafted in English.
 
-Then each call is compared with the shadow verdict (`agrees`), and disagreements go first in the bundle ([CAL-4](/docs/PRD.md#calls-and-approvals-cal)).
+Then each call is compared with the shadow verdict (`agrees`), and disagreements go first in the bundle with both verdicts. The shadow pick uses the clause wording ([CAL-4](/docs/PRD.md#calls-and-approvals-cal)).
 
 ### Model routing for the agent
 
@@ -400,7 +401,7 @@ stateDiagram-v2
   NeedsReview --> Superseded: newer run covers the same windows
   NeedsReview --> Expired: last call expires
   NeedsReview --> Reconfirm: Approve, inputs changed since drafting
-  Reconfirm --> Approved: approver confirms the diff
+  Reconfirm --> Approved: approver confirms; validate passes
   Reconfirm --> NeedsReview: approver backs out
   NeedsReview --> Approved: Approve, inputs unchanged
   Approved --> Sending: per call approved, edited or rejected
@@ -413,7 +414,8 @@ stateDiagram-v2
 
 - **Supersession:** a newer bundle covering every window of an open one supersedes it, links to it and blocks its approval; with partial overlap only the overlapping calls are superseded ([CAL-7](/docs/PRD.md#calls-and-approvals-cal)).
 - **Expiry** ([CAL-8](/docs/PRD.md#calls-and-approvals-cal)): each call's `expires_at` is its window's start by default or with `expiry: 'start'`, and its end with `expiry: 'end'`; pack-level items such as a surge-night entry expire when the night's arrival period starts. A Cloud Tasks task per call marks it expired, an expired call is never sent, and the bundle expires when its last call does. Expired calls are still graded, so an unapproved crossing shows up in review.
-- **Re-check at approval** ([CAL-9](/docs/PRD.md#calls-and-approvals-cal)): Approve sends the `review_hash` the approver saw; the server re-evaluates with current inputs and, if any input value, state or verdict differs, answers 409 `inputs-changed` with a "changed since drafting" diff; confirming records `reconfirm` and approves against the new snapshot.
+- **Guest-window bundles** ([GST-5](/docs/PRD.md#guest-access-and-the-commons-gst)): they are `draft_only`, labelled "Draft: not reviewed, not sent"; they never send or appear on the conditions calendar or public ledger, and are excluded from published grades.
+- **Re-check at approval** ([CAL-9](/docs/PRD.md#calls-and-approvals-cal)): Approve sends the `review_hash` the approver saw; the server re-evaluates with current inputs and, if any input value, state or verdict differs, answers 409 `inputs-changed` with a "changed since drafting" diff; confirming records `reconfirm` and reruns `validate` against the new snapshot, approving only if it passes and otherwise returning `redraft-required`.
 - **Who can approve** is PRD's [roles matrix](/docs/PRD.md#roles-and-permissions), checked at approval time, from a human session with recent authentication ([ACC-8](/docs/PRD.md#accounts-and-sign-in-acc)). The approve endpoint is first-party only (`app.skyclause.m1ku.tech/api/bundles/{id}/approve`), absent from `/openapi.json` and the SDKs; API keys and OAuth tokens get 403.
 - **Listings** use the same queue and `approval` rows: `proposed` → `listed` (action `list`), `rejected`, `cancelled`; nights add `unlisted`. A change or cancellation needs approval ([CAL-14](/docs/PRD.md#calls-and-approvals-cal)).
 
