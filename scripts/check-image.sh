@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # check-image.sh <image> (#90): checks a built image before it's pushed. It runs as non-root, the web and worker
-# roles start and answer /healthz, a job runs through the worker's registry, and APP_ENV=test refuses to start.
+# roles start and answer /health, a job runs through the worker's registry, and APP_ENV=test refuses to start.
 set -euo pipefail
 
 image=${1:?usage: check-image.sh <image>}
@@ -18,20 +18,20 @@ else
   echo "ok   runs as $user (uid $uid)"
 fi
 
-# serves <role> <env...>: starts the role and waits up to 30 s for /healthz to answer ok.
+# serves <role> <env...>: starts the role and waits up to 30 s for /health to answer ok.
 serves() {
   local role=$1 container port body=''
   shift
   container=$(docker run -d --rm -p 127.0.0.1::8080 -e "K_SERVICE=$role" "$@" "$image")
   port=$(docker port "$container" 8080/tcp | head -n1 | cut -d: -f2)
   for _ in $(seq 30); do
-    body=$(curl -fsS "http://127.0.0.1:$port/healthz" 2>/dev/null) && break
+    body=$(curl -fsS "http://127.0.0.1:$port/health" 2>/dev/null) && break
     sleep 1
   done
   if [ "$body" = ok ]; then
-    echo "ok   $role answers /healthz"
+    echo "ok   $role answers /health"
   else
-    fail "$role didn't answer /healthz with ok; its log:"
+    fail "$role didn't answer /health with ok; its log:"
     docker logs "$container" >&2 || true
   fi
   docker stop "$container" >/dev/null || true

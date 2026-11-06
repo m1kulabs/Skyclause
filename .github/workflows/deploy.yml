@@ -186,13 +186,13 @@ jobs:
             while read -r job; do
               gcloud run jobs update "$job" --image="$IMAGE" --region="$REGION" --project="$PROJECT" --quiet
             done
-      - name: Smoke /healthz
+      - name: Smoke /health
         run: |
           for service in web worker; do
             url="$(gcloud run services describe "$service" --region="$REGION" --project="$PROJECT" --format='value(status.url)')"
-            body="$(curl -fsS --retry 5 --retry-all-errors "$url/healthz")"
-            [ "$body" = ok ] || { echo "::error::$service /healthz answered '$body'"; exit 1; }
-            echo "$service /healthz: ok"
+            body="$(curl -fsS --retry 5 --retry-all-errors "$url/health")"
+            [ "$body" = ok ] || { echo "::error::$service /health answered '$body'"; exit 1; }
+            echo "$service /health: ok"
           done
       - name: Read back APP_ENV and the digest
         run: |
@@ -237,5 +237,5 @@ jobs:
         env:
           IMAGE: ${{ needs.image.outputs.image }}
         run: |
-          echo "### Deployed"$'\n\n'"Commit \`$GITHUB_SHA\` runs \`$IMAGE\` on web, worker and every job; /healthz and @smoke passed." >> "$GITHUB_STEP_SUMMARY"
+          echo "### Deployed"$'\n\n'"Commit \`$GITHUB_SHA\` runs \`$IMAGE\` on web, worker and every job; /health and @smoke passed." >> "$GITHUB_STEP_SUMMARY"
           echo "::notice::Deployed $IMAGE to web, worker and every job."
