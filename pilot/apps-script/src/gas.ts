@@ -2,6 +2,7 @@
 import { toMytIso } from '../../shared/time.ts'
 import type { SourceStateUpdate } from './indicators.ts'
 import type { JpsHttpResponse } from './jps.ts'
+import type { CameraDrive, CameraFrameStore, RetentionStore } from './camera.ts'
 import type { PiRowsStore } from './pi-rows.ts'
 import type { GetProperty } from './properties.ts'
 import { validateReading } from './readings.ts'
@@ -292,10 +293,105 @@ export function piRowsStore(spreadsheetId: string): PiRowsStore {
 function appendTabRow<T extends Tab>(spreadsheetId: string, tab: T, row: Row<T>): void {
   appendTabRows(spreadsheetId, tab, [row])
 }
-
 function appendTabRows<T extends Tab>(spreadsheetId: string, tab: T, rows: Row<T>[]): void {
   const target = sheet(spreadsheetId, tab)
   target
     .getRange(target.getLastRow() + 1, 1, rows.length, columnsOf(tab).length)
     .setValues(rows.map((row) => toRow(tab, row)))
+}
+
+// The first data row whose match column holds the value, as a 1-based sheet row.
+function findSheetRow(spreadsheetId: string, tab: Tab, matchColumn: string, value: Cell): number | null {
+  const columns: readonly string[] = columnsOf(tab)
+  const target = sheet(spreadsheetId, tab)
+  const rows = target.getLastRow() - 1
+  if (rows < 1) return null
+  const cells = target.getRange(2, columns.indexOf(matchColumn) + 1, rows, 1).getValues()
+  for (let index = 0; index < rows; index++) {
+    if (String(cells[index]?.[0] ?? '') === String(value)) return index + 2
+  }
+  return null
+}
+
+function setSheetCell(
+  spreadsheetId: string,
+  tab: Tab,
+  matchColumn: string,
+  matchValue: Cell,
+  setColumn: string,
+  setValue: Cell
+): void {
+  const found = findSheetRow(spreadsheetId, tab, matchColumn, matchValue)
+  if (found === null) return
+  sheet(spreadsheetId, tab)
+    .getRange(found, (columnsOf(tab) as readonly string[]).indexOf(setColumn) + 1)
+    .setValue(setValue)
+}
+
+// The sheet rows the `camera_frame` handler reads and writes, through `SHEET_ID`.
+export function cameraFrameStore(spreadsheetId: string): CameraFrameStore {
+  if (!spreadsheetId) throw new Error('SHEET_ID is not set; run setup()')
+  return {
+    sourceRow: (sourceId) =>
+      readColumns(spreadsheetId, 'sources', columnsOf('sources')).find((row) => row.source_id === sourceId) ?? null,
+    appendSource: (row) => appendTabRow(spreadsheetId, 'sources', row),
+    updateSourceDistance: (sourceId, distanceKm) =>
+      setSheetCell(spreadsheetId, 'sources', 'source_id', sourceId, 'distance_km', distanceKm),
+    deviceRow: (deviceId) =>
+      readColumns(spreadsheetId, 'devices', columnsOf('devices')).find((row) => row.device_id === deviceId) ?? null,
+    appendDevice: (row) => appendTabRow(spreadsheetId, 'devices', row),
+    touchDevice: (deviceId, receivedAt) =>
+      setSheetCell(spreadsheetId, 'devices', 'device_id', deviceId, 'last_row_at', receivedAt),
+    knownCapture: (captureId) =>
+      readColumns(spreadsheetId, 'probation', ['capture_id']).some((row) => row.capture_id === captureId),
+    appendPoll: (row) => appendTabRow(spreadsheetId, 'polls', row),
+    appendReadings: (rows) => appendTabRows(spreadsheetId, 'readings', rows),
+    appendProbation: (row) => appendTabRow(spreadsheetId, 'probation', row)
+  }
+}
+
+// The Drive folders and files the camera handler and the retention job need.
+export const cameraDrive: CameraDrive = {
+  saveFrame: (framesRootId, day, captureId, jpegB64) => {
+    if (!framesRootId) throw new Error('FRAMES_FOLDER_ID is not set; run setup()')
+    const root = DriveApp.getFolderById(framesRootId)
+    const dayFolder = firstLive(root.getFoldersByName(day)) ?? root.createFolder(day)
+    return dayFolder
+      .createFile(Utilities.newBlob(Utilities.base64Decode(jpegB64), 'image/jpeg', `${captureId}.jpg`))
+      .getId()
+  },
+  dayFolders: (framesRootId) => {
+    if (!framesRootId) throw new Error('FRAMES_FOLDER_ID is not set; run setup()')
+    const folders = DriveApp.getFolderById(framesRootId).getFolders()
+    const out: { id: string; name: string }[] = []
+    while (folders.hasNext()) {
+      const folder = folders.next()
+      if (!folder.isTrashed()) out.push({ id: folder.getId(), name: folder.getName() })
+    }
+    return out
+  },
+  folderFiles: (folderId) => {
+    const files = DriveApp.getFolderById(folderId).getFiles()
+    const out: { id: string }[] = []
+    while (files.hasNext()) {
+      const file = files.next()
+      if (!file.isTrashed()) out.push({ id: file.getId() })
+    }
+    return out
+  },
+  trashFile: (fileId) => void DriveApp.getFileById(fileId).setTrashed(true),
+  trashFolder: (folderId) => void DriveApp.getFolderById(folderId).setTrashed(true)
+}
+
+// The probation rows and frame folders the retention job reads, through `SHEET_ID`.
+export function cameraRetentionStore(spreadsheetId: string): RetentionStore {
+  if (!spreadsheetId) throw new Error('SHEET_ID is not set; run setup()')
+  const framesRootId = getProperty('FRAMES_FOLDER_ID') ?? ''
+  return {
+    probationFrames: () => readColumns(spreadsheetId, 'probation', ['frame_file_id', 'device_time']),
+    dayFolders: () => cameraDrive.dayFolders(framesRootId),
+    folderFiles: (folderId) => cameraDrive.folderFiles(folderId),
+    trashFile: (fileId) => cameraDrive.trashFile(fileId),
+    trashFolder: (folderId) => cameraDrive.trashFolder(folderId)
+  }
 }
