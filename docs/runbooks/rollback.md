@@ -31,7 +31,7 @@ When rolling back is forbidden, fix forward: keep `DEPLOY_FREEZE` set, merge the
 
 ## Roll back a service
 
-For `web`, then `worker`. List the revisions, newest first, with the image each runs:
+For `web`, then `worker`. Each deploy run's summary prints, under "Rollback", the traffic before that deploy with the exact command that moves it back, and each job's image before it. Or list the revisions, newest first, with the image each runs:
 
 ```shell
 gcloud run revisions list --service=web --region=asia-southeast1 --project=skyclause \
@@ -46,7 +46,7 @@ gcloud run services update-traffic web --to-revisions=<previous-revision>=100 \
 gcloud run services describe web --region=asia-southeast1 --project=skyclause --format='value(status.traffic)'
 ```
 
-Repeat both with `--service=worker` and `worker`. Until traffic is moved back to latest, a new deploy creates revisions that get no traffic.
+Repeat both with `--service=worker` and `worker`. Traffic stays on that revision until the next deploy, which moves it to its own new revision, so keep `DEPLOY_FREEZE` set until the deploy that carries the fix.
 
 ## Roll back a job
 
@@ -63,23 +63,24 @@ An execution already running keeps the image it started with.
 
 ## Roll forward again
 
-Once the fix is deployed, give the services' latest revisions their traffic back:
+The fix's deploy moves `web` and `worker` to its new revisions and puts its digest on every job, so nothing is left pinned. To give the latest revisions their traffic back without a deploy, for example after a false alarm:
 
 ```shell
 gcloud run services update-traffic web --to-latest --region=asia-southeast1 --project=skyclause
 gcloud run services update-traffic worker --to-latest --region=asia-southeast1 --project=skyclause
 ```
 
-The deploy puts the fix's digest on every job itself. Clear `DEPLOY_FREEZE` if nothing else holds it.
+Clear `DEPLOY_FREEZE` if nothing else holds it.
 
 ## Rollback dry runs
 
 A dry run moves `web`'s traffic to the previous revision and back to latest, with the commands above, and records the result here.
 
-Waiting for #90's second deploy: on 6 November 2026 `web` and `worker` each had a single revision (`web-00001-k55`, `worker-00001-qg9`), so there was no previous revision to move to.
+| Date (MYT)             | Run by                    | Service | Moved to        | Moved back to           | Result                                                                                                |
+| ---------------------- | ------------------------- | ------- | --------------- | ----------------------- | ----------------------------------------------------------------------------------------------------- |
+| 2026-11-06 08:31–08:33 | The #90 agent, for kymil4 | `web`   | `web-00004-2jl` | Latest, `web-00005-dxl` | `GET /health` 200 after each move; commands and output in [#90's evidence comment][rollback evidence] |
 
-| Date (MYT) | Run by | Service | Moved to | Moved back to | Result |
-| ---------- | ------ | ------- | -------- | ------------- | ------ |
+[rollback evidence]: https://github.com/m1kulabs/Skyclause/issues/90#issuecomment-6673305288
 
 ## See also
 
