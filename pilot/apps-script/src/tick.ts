@@ -1,5 +1,5 @@
 import { toMytIso } from '../../shared/time.ts'
-import { getProperty, skyEvaluationStore, withLock } from './gas.ts'
+import { getProperty, readLastClauseEditor, skyClauseRuntimePorts, skyEvaluationStore, withLock } from './gas.ts'
 import {
   computeSkySnapshot,
   GAUGE_SOURCE_ID,
@@ -8,6 +8,7 @@ import {
   type SourceStateUpdate
 } from './indicators.ts'
 import type { Cell, Row } from './schema.ts'
+import { runSkyClauseTick } from './sky-runtime.ts'
 
 export type SkyEvaluationTab = 'sources' | 'readings' | 'polls' | 'warnings' | 'forecast' | 'windows' | 'indicators'
 
@@ -21,6 +22,7 @@ export interface SkyEvaluationStore {
 export interface SkyEvaluationPorts {
   store: SkyEvaluationStore
   daylight: DaylightWindow
+  onSnapshot?: (snapshot: SkySnapshot, normalizedWindows: readonly Row<'windows'>[], tEval: string) => void
 }
 
 const MINUTE_MS = 60_000
@@ -188,7 +190,7 @@ function requireDaylightTime(name: 'CAMERA_DAY_START' | 'CAMERA_DAY_END', raw: s
   return normalized
 }
 
-export function runSkyEvaluation({ store, daylight }: SkyEvaluationPorts): SkySnapshot {
+export function runSkyEvaluation({ store, daylight, onSnapshot }: SkyEvaluationPorts): SkySnapshot {
   const rawSources = store.readRows('sources')
   const rawReadings = store.readRows('readings')
   const rawPolls = store.readRows('polls')
@@ -269,21 +271,46 @@ export function runSkyEvaluation({ store, daylight }: SkyEvaluationPorts): SkySn
     store.updateSourceStates(sourceUpdates)
   }
 
+  if (onSnapshot) {
+    onSnapshot(snapshot, windows, tEval)
+  }
+
   return snapshot
 }
 
 // The 5-minute evaluation tick. #51's JPS handler calls executeEvaluationTick under the polling lock.
-export function executeEvaluationTick(): SkySnapshot {
+export function executeEvaluationTick(trigger: 'schedule' | 'request' = 'schedule'): SkySnapshot {
   const sheetId = getProperty('SHEET_ID')
   if (!sheetId || !sheetId.trim()) {
     throw new Error('SHEET_ID is not set; run setup()')
   }
   const start = requireDaylightTime('CAMERA_DAY_START', getProperty('CAMERA_DAY_START'))
   const end = requireDaylightTime('CAMERA_DAY_END', getProperty('CAMERA_DAY_END'))
+  const crossingFolderId = getProperty('CROSSINGS_SKY_FOLDER_ID')
+  if (!crossingFolderId || !crossingFolderId.trim()) {
+    throw new Error('CROSSINGS_SKY_FOLDER_ID is not set; run setup()')
+  }
   const store = skyEvaluationStore(sheetId)
-  return runSkyEvaluation({ store, daylight: { start, end } })
+  const runtimePorts = skyClauseRuntimePorts(sheetId, crossingFolderId)
+  return runSkyEvaluation({
+    store,
+    daylight: { start, end },
+    onSnapshot(snapshot, normalizedWindows, tEval) {
+      runSkyClauseTick(
+        {
+          tEval,
+          recordedAt: toMytIso(new Date()),
+          editor: readLastClauseEditor(),
+          snapshot,
+          windows: normalizedWindows,
+          trigger
+        },
+        runtimePorts
+      )
+    }
+  })
 }
 
 export function runEvaluationTick(): SkySnapshot {
-  return withLock(() => executeEvaluationTick())
+  return withLock(() => executeEvaluationTick('request'))
 }

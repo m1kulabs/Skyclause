@@ -793,8 +793,8 @@ function computeCameraAndFrameRainIndicators(
   const spanGaugeReadings = gaugeReadings.filter(
     (r) => r.observedAtMs > oldestFrame.observedAtMs && r.observedAtMs <= newestFrame.observedAtMs
   )
-  const rainSum = roundMetric(spanGaugeReadings.reduce((sum, r) => sum + r.value, 0))
   const newestGaugeInSpan = spanGaugeReadings.length > 0 ? spanGaugeReadings[spanGaugeReadings.length - 1]! : null
+  const rainSum = newestGaugeInSpan ? roundMetric(spanGaugeReadings.reduce((sum, r) => sum + r.value, 0)) : ''
 
   return {
     farRatioLast3: farRatioJson,
@@ -802,11 +802,11 @@ function computeCameraAndFrameRainIndicators(
     farRatioAge: newestFrameAge,
     farRatioReadingIds: frameReadingIds,
     rainLast3Frames: rainSum,
-    rainLast3Obs: newestGaugeInSpan?.observedAt ?? newestFrame.observedAt,
+    rainLast3Obs: newestGaugeInSpan?.observedAt ?? null,
     rainLast3Age: newestGaugeInSpan
       ? Math.max(0, Math.floor((tEvalMs - newestGaugeInSpan.observedAtMs) / MINUTE_MS))
-      : newestFrameAge,
-    rainLast3ReadingIds: [...spanGaugeReadings.map((r) => r.readingId), ...frameReadingIds]
+      : null,
+    rainLast3ReadingIds: newestGaugeInSpan ? [...spanGaugeReadings.map((r) => r.readingId), ...frameReadingIds] : []
   }
 }
 
@@ -1076,12 +1076,19 @@ export function computeSkySnapshot(input: SkySnapshotInput): SkySnapshot {
     ageMin: cameraIndicators.farRatioAge,
     readingIds: cameraIndicators.farRatioReadingIds
   })
-  recordIndicator('site', 'site.gauge_rain_last3frames_mm', cameraIndicators.rainLast3Frames, 'mm', gaugeState, {
-    observedAt: cameraIndicators.rainLast3Obs,
-    ageMin: cameraIndicators.rainLast3Age,
-    readingIds: cameraIndicators.rainLast3ReadingIds,
-    sourceIds: [...gaugeState.sourceIds, ...cameraState.sourceIds]
-  })
+  recordIndicator(
+    'site',
+    'site.gauge_rain_last3frames_mm',
+    cameraIndicators.rainLast3Frames,
+    'mm',
+    {
+      ...gaugeState,
+      observedAt: cameraIndicators.rainLast3Obs,
+      ageMin: cameraIndicators.rainLast3Age,
+      readingIds: cameraIndicators.rainLast3ReadingIds
+    },
+    { sourceIds: [...gaugeState.sourceIds, ...cameraState.sourceIds] }
+  )
   recordIndicator('site', 'site.met_afternoon_thunderstorm', forecastIndicator.value, 'bool', forecastState, {
     observedAt: forecastIndicator.observedAt,
     ageMin: forecastIndicator.ageMin,

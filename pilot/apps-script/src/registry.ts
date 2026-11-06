@@ -9,5 +9,6 @@ export const triggerRegistry: TriggerEntry[] = [
   { kind: 'on_form_submit', handler: 'onWindowFormSubmit', spreadsheet: 'RESPONSES_SHEET_ID' },
   { kind: 'time', handler: 'sweep', every: { minutes: 5 } },
   { kind: 'time', handler: 'forecastCrowd', every: { hours: 1 } },
-  { kind: 'time', handler: 'gradeCrowd', every: { minutes: 30 } }
+  { kind: 'time', handler: 'gradeCrowd', every: { minutes: 30 } },
+  { kind: 'on_edit', handler: 'on_edit_clauses', spreadsheet: 'SHEET_ID' }
 ]

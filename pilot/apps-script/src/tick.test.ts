@@ -317,3 +317,166 @@ describe('tick runtime evaluation (#54)', () => {
     }
   })
 })
+
+describe('tick onSnapshot callback seam (#55)', () => {
+  test('invokes onSnapshot once after #54 persistence with the exact snapshot, normalized A-I windows, and fixed poll minute without extra table reads', () => {
+    const { store, tables, sourceUpdateCalls } = createMemoryStore({
+      sources: [
+        buildGaugeSource({
+          state: 'stale',
+          state_since: '2026-11-02T14:50:00+08:00'
+        })
+      ],
+      windows: [
+        buildCommuteWindow({
+          date: new Date('2026-11-02T00:00:00+08:00'),
+          start_myt: new Date('1899-12-30T14:30:00+08:00'),
+          end_myt: new Date('1899-12-30T15:30:00+08:00'),
+          declared_at: new Date('2026-11-02T08:00:00+08:00')
+        })
+      ]
+    })
+
+    const readTabs: ReadTab[] = []
+    const events: string[] = []
+    const trackedStore: SkyEvaluationStore = {
+      readRows<T extends ReadTab>(tab: T): Row<T>[] {
+        readTabs.push(tab)
+        events.push(`read:${tab}`)
+        return store.readRows(tab)
+      },
+      replaceNow(rows: readonly Row<'now'>[]): void {
+        events.push('replaceNow')
+        store.replaceNow(rows)
+      },
+      appendIndicators(rows: readonly Row<'indicators'>[]): void {
+        events.push('appendIndicators')
+        store.appendIndicators(rows)
+      },
+      updateSourceStates(updates: readonly SourceStateUpdate[]): void {
+        events.push('updateSourceStates')
+        store.updateSourceStates(updates)
+      }
+    }
+
+    const callbackInvocations: Array<{
+      snapshot: ReturnType<typeof runSkyEvaluation>
+      windows: readonly Row<'windows'>[]
+      tEval: string
+      nowCountAtCall: number
+      indicatorCountAtCall: number
+      sourceStateAtCall: Row<'sources'>['state']
+    }> = []
+
+    const returnedSnapshot = runSkyEvaluation({
+      store: trackedStore,
+      daylight: DAYLIGHT,
+      onSnapshot(snapshot, normalizedWindows, tEval) {
+        events.push('onSnapshot')
+        callbackInvocations.push({
+          snapshot,
+          windows: normalizedWindows,
+          tEval,
+          nowCountAtCall: tables.now.length,
+          indicatorCountAtCall: tables.indicators.length,
+          sourceStateAtCall: tables.sources[0]?.state
+        })
+      }
+    })
+
+    expect(callbackInvocations).toHaveLength(1)
+    const call = callbackInvocations[0]!
+    expect(call.snapshot).toBe(returnedSnapshot)
+    expect(call.tEval).toBe('2026-11-02T15:05:00+08:00')
+    expect(call.windows).toEqual([
+      buildCommuteWindow({
+        date: '2026-11-02',
+        start_myt: '14:30',
+        end_myt: '15:30',
+        declared_at: '2026-11-02T08:00:00+08:00'
+      })
+    ])
+
+    expect(readTabs).toEqual(['sources', 'readings', 'polls', 'warnings', 'forecast', 'windows', 'indicators'])
+    expect(events.slice(-4)).toEqual(['replaceNow', 'appendIndicators', 'updateSourceStates', 'onSnapshot'])
+    expect(call.nowCountAtCall).toBe(tables.now.length)
+    expect(call.indicatorCountAtCall).toBe(tables.indicators.length)
+    expect(call.sourceStateAtCall).toBe('recovered')
+    expect(sourceUpdateCalls).toHaveLength(1)
+  })
+
+  test('propagates onSnapshot errors and never calls onSnapshot when #54 persistence fails', () => {
+    const { store, tables } = createMemoryStore()
+    expect(() =>
+      runSkyEvaluation({
+        store,
+        daylight: DAYLIGHT,
+        onSnapshot() {
+          throw new Error('clause runtime failure')
+        }
+      })
+    ).toThrow('clause runtime failure')
+    expect(tables.now.length).toBeGreaterThan(0)
+    expect(tables.indicators.length).toBeGreaterThan(0)
+
+    let callbackCount = 0
+    const failingNowStore: SkyEvaluationStore = {
+      ...store,
+      replaceNow() {
+        throw new Error('replaceNow failed before callback')
+      }
+    }
+    expect(() =>
+      runSkyEvaluation({
+        store: failingNowStore,
+        daylight: DAYLIGHT,
+        onSnapshot() {
+          callbackCount += 1
+        }
+      })
+    ).toThrow('replaceNow failed before callback')
+
+    const { store: freshIndicatorStore } = createMemoryStore()
+    const failingIndicatorsStore: SkyEvaluationStore = {
+      ...freshIndicatorStore,
+      appendIndicators() {
+        throw new Error('appendIndicators failed before callback')
+      }
+    }
+    expect(() =>
+      runSkyEvaluation({
+        store: failingIndicatorsStore,
+        daylight: DAYLIGHT,
+        onSnapshot() {
+          callbackCount += 1
+        }
+      })
+    ).toThrow('appendIndicators failed before callback')
+
+    const { store: staleStore } = createMemoryStore({
+      sources: [
+        buildGaugeSource({
+          state: 'stale',
+          state_since: '2026-11-02T14:50:00+08:00'
+        })
+      ]
+    })
+    const failingSourceUpdateStore: SkyEvaluationStore = {
+      ...staleStore,
+      updateSourceStates() {
+        throw new Error('updateSourceStates failed before callback')
+      }
+    }
+    expect(() =>
+      runSkyEvaluation({
+        store: failingSourceUpdateStore,
+        daylight: DAYLIGHT,
+        onSnapshot() {
+          callbackCount += 1
+        }
+      })
+    ).toThrow('updateSourceStates failed before callback')
+
+    expect(callbackCount).toBe(0)
+  })
+})
