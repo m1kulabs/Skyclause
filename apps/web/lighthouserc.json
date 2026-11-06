@@ -1,0 +1,18 @@
+{
+  "ci": {
+    "collect": {
+      "url": ["https://skyclause.m1ku.tech/"],
+      "numberOfRuns": 3,
+      "settings": { "formFactor": "mobile" }
+    },
+    "assert": {
+      "aggregationMethod": "median",
+      "assertions": {
+        "largest-contentful-paint": ["error", { "maxNumericValue": 2500 }],
+        "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
+        "total-blocking-time": ["error", { "maxNumericValue": 200 }]
+      }
+    },
+    "upload": { "target": "filesystem", "outputDir": "lighthouse-results" }
+  }
+}

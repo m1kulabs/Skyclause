@@ -1,0 +1,107 @@
+# Quality gates beyond the pull request checks (#116). Pull requests already get the crawl in Chromium from
+# checks.yml's e2e job, which runs `bun run test:e2e` only when apps/web/** or packages/** change; running it here
+# too would build Next twice per PR on GitHub Free's minutes. Here: every browser on main and nightly, and
+# Lighthouse on production after each deploy.
+name: quality
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/web/**
+      - packages/**
+      - bun.lock
+      - .github/workflows/quality.yml
+  # 03:00 MYT.
+  schedule:
+    - cron: '0 19 * * *'
+  workflow_dispatch:
+  workflow_run:
+    workflows: [deploy]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A newer push, deploy or nightly run supersedes an older one of the same kind, never one of another kind.
+concurrency:
+  group: quality-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  crawl:
+    if: github.event_name != 'workflow_run'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      # The nightly run re-checks main only when no crawl has passed on its commit yet.
+      - id: seen
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          passed="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow quality.yml --commit "$GITHUB_SHA" \
+            --status success --json event --jq '[.[] | select(.event != "workflow_run")] | length')"
+          if [ "$passed" -gt 0 ]; then
+            echo "::notice::The crawl already passed on $GITHUB_SHA, so tonight's run is skipped."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.seen.outputs.skip != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - if: steps.seen.outputs.skip != 'true'
+        uses: ./.github/actions/setup
+      - if: steps.seen.outputs.skip != 'true'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-all-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+      - if: steps.seen.outputs.skip != 'true'
+        run: bunx playwright install --with-deps --only-shell chromium firefox webkit
+        working-directory: apps/web
+      - if: steps.seen.outputs.skip != 'true'
+        run: bun run test:e2e
+        env:
+          QUALITY_BROWSERS: all
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: crawl-results-${{ github.run_id }}
+          path: apps/web/test-results
+          retention-days: 7
+
+  # NFR-9 in the lab: Lighthouse CI's mobile profile on production after each real deploy (D44: no staging).
+  # Lab runs have no interactions, so total blocking time stands in for INP (apps/web/lighthouserc.json).
+  lighthouse:
+    if: >-
+      github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event != 'pull_request' && vars.DEPLOY_FREEZE != 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: apps/web/lighthouserc.json
+          sparse-checkout-cone-mode: false
+      # The marketing host exists once its domain mapping does (#118 gate 1); until then there is nothing to measure.
+      - id: host
+        run: |
+          if getent hosts skyclause.m1ku.tech > /dev/null; then
+            echo "live=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::skyclause.m1ku.tech doesn't resolve yet (#118 gate 1), so Lighthouse has no page to load."
+          fi
+      - if: steps.host.outputs.live == 'true'
+        run: npx --yes @lhci/cli@0.16.0 autorun --config=apps/web/lighthouserc.json
+      - if: always() && steps.host.outputs.live == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lighthouse-${{ github.event.workflow_run.head_sha }}
+          path: lighthouse-results
+          retention-days: 14
