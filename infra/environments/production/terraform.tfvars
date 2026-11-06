@@ -27,3 +27,8 @@ supplied_secrets = ["GOOGLE_CLIENT_SECRET", "TURNSTILE_SECRET_KEY"]
 
 # VAPID_PRIVATE_KEY has its one version (#113), so the worker mounts it.
 vapid_private_key_ready = true
+
+# #118 gate 1: Search Console lists skyclause.m1ku.tech as verified (infra/wizards/search-console.sh,
+# 6 Nov 2026) with skyclause-terraform added as an owner. host_mode stays single until each
+# mapping's certificate is active (infra/README.md, "Custom hosts").
+map_domains = true
