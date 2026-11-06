@@ -33,7 +33,7 @@ export default defineConfig({
     command: 'bun run build && bun run start',
     // PLANTED_ROUTES builds the test-only `page.plant.tsx` routes the quality suites assert on.
     env: { APP_ENV: 'test', PORT: String(port), HOSTNAME: 'localhost', PLANTED_ROUTES: '1' },
-    url: `http://localhost:${port}/healthz`,
+    url: `http://localhost:${port}/health`,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000
   }

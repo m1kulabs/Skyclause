@@ -6,6 +6,6 @@ test('the home page has no serious or critical axe findings', async ({ page, exp
   await expectAxeClean(page)
 })
 
-test('GET /healthz answers 200', async ({ request }) => {
-  expect((await request.get('/healthz')).status()).toBe(200)
+test('GET /health answers 200', async ({ request }) => {
+  expect((await request.get('/health')).status()).toBe(200)
 })
