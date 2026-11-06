@@ -82,9 +82,6 @@
     "packages/clauses": {
       "name": "@skyclause/clauses",
       "version": "0.0.0",
-      "dependencies": {
-        "zod": "4.6.7",
-      },
     },
     "packages/cli": {
       "name": "@skyclause/cli",
