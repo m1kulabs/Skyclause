@@ -156,6 +156,20 @@ export async function upsertRecord(wanted: WantedRecord, options: UpsertOptions)
   const same = others.find((record) => record.type === wanted.type && stored(record) === content)
   if (same) return { action: 'unchanged', id: same.id }
 
+  // A name holds at most one DMARC or SPF record (RFC 7489 §6.6.3, RFC 7208 §4.5), so a TXT with a
+  // v= tag replaces ours with the same tag instead of joining it.
+  const tag = wanted.type === 'TXT' ? /^v=[^;\s]+/i.exec(content)?.[0].toLowerCase() : undefined
+  if (tag) {
+    const tagged = others.filter((record) => record.type === 'TXT' && stored(record).toLowerCase().startsWith(tag))
+    if (tagged.length > 1)
+      throw new Error(`${name} already has ${tagged.length} TXT records with ${tag}; fix them by hand`)
+    if (tagged[0]) {
+      if (options.dryRun) return { action: 'updated', id: tagged[0].id }
+      const updated = await call<CloudflareRecord>(`${recordsPath}/${tagged[0].id}`, { method: 'PATCH', body })
+      return { action: 'updated', id: updated.id }
+    }
+  }
+
   if (options.dryRun) return { action: 'created', id: null }
   const created = await call<CloudflareRecord>(recordsPath, { method: 'POST', body })
   return { action: 'created', id: created.id }

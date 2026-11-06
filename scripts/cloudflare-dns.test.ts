@@ -422,3 +422,49 @@ test('compares a TXT value case-sensitively, so a mixed-case value already there
   ).resolves.toEqual({ action: 'unchanged', id: 'ours' })
   expect(cf.writes).toEqual([])
 })
+
+test('replaces our one TXT with the same v= tag in place, since a name may hold only one DMARC or SPF record', async () => {
+  const cf = fakeCloudflare([
+    {
+      id: 'dmarc',
+      type: 'TXT',
+      name: '_dmarc.notices.skyclause.m1ku.tech',
+      content: '"v=DMARC1; p=quarantine"',
+      comment: 'owner: skyclause'
+    }
+  ])
+
+  const result = await upsertRecord(
+    {
+      type: 'TXT',
+      name: '_dmarc.notices.skyclause.m1ku.tech',
+      content: 'v=DMARC1; p=quarantine; rua=mailto:dmarc@in.skyclause.m1ku.tech'
+    },
+    { token: 'test-token', fetch: cf.fetch }
+  )
+
+  expect(result).toEqual({ action: 'updated', id: 'dmarc' })
+  expect(cf.writes).toEqual(['PATCH dmarc'])
+  expect(cf.records).toHaveLength(1)
+  expect(cf.records[0]).toMatchObject({ content: 'v=DMARC1; p=quarantine; rua=mailto:dmarc@in.skyclause.m1ku.tech' })
+})
+
+test('refuses a v= TXT when our name already holds two with that tag, rather than pick one', async () => {
+  const cf = fakeCloudflare(
+    ['"v=spf1 -all"', '"v=spf1 include:amazonses.com ~all"'].map((content, i) => ({
+      id: `spf-${i}`,
+      type: 'TXT',
+      name: 'bounce.notices.skyclause.m1ku.tech',
+      content,
+      comment: 'owner: skyclause'
+    }))
+  )
+
+  await expect(
+    upsertRecord(
+      { type: 'TXT', name: 'bounce.notices.skyclause.m1ku.tech', content: 'v=spf1 include:amazonses.com -all' },
+      { token: 'test-token', fetch: cf.fetch }
+    )
+  ).rejects.toThrow(/2 TXT records with v=spf1/)
+  expect(cf.writes).toEqual([])
+})

@@ -146,3 +146,5 @@ A person with AWS access to account `776566309118` applies `aws/` after the prod
 1.  Copy the `app_config` output into `app_config` in `environments/production/terraform.tfvars` in a pull request.
 1.  While `aws sesv2 get-account --region ap-southeast-2` shows `ProductionAccessEnabled: false`, SES delivers only to verified addresses, so live checks use team addresses verified with `infra/wizards/staff-and-ses.sh`. Mail to anyone else fails with `MessageRejected` until SES production access is granted (#118).
 1.  Turn on `inbound_email` with the audited `flag:set` script (#92).
+
+DMARC aggregate reports for `notices.` go to `rua=mailto:dmarc@in.skyclause.m1ku.tech`. Both names share the Organizational Domain `m1ku.tech`, so RFC 7489 §7.1 needs no `_report._dmarc` record. The receipt rule `dmarc-reports` runs before `inbound`, stores each report in `skyclause-production-dmarc-776566309118` for 30 days and stops, so the worker never sees them. Read them with `aws s3 ls s3://skyclause-production-dmarc-776566309118/ --region ap-southeast-2`.
