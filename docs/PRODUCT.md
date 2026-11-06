@@ -336,7 +336,7 @@ Dates, themes and owners per phase. [PRD](/docs/PRD.md#scope-and-release-phases)
 ### P0 pilot
 
 - **Dates:** 5–17 November 2026: prototype due 23:59 MYT on 10 November, assessment 11–14 November, top five on 15 November, final on 17 November ([brief](/docs/BRIEF.md#key-dates)).
-- **Themes:** the idea docs' builds on Gemini Enterprise workflows, Workspace connectors, Apps Script feeders, Jira Cloud Free, the phone camera on probation and the Pi 5. One pack first: the Sky storm crossing plus evidence by email. The Crowd outlook and next-day grading join only if the Sky path works end to end by 7 November; otherwise the Crowd pack ships as surge-night entries on the public conditions calendar plus daily grading.
+- **Themes:** the idea docs' builds on Gemini Enterprise workflows, Workspace connectors, Apps Script feeders, Jira Cloud Free, the phone camera on probation and the Pi 5. One pack first: the Sky storm crossing plus evidence by email. The Crowd pack follows as its fallback, surge-night entries on the public conditions calendar plus forecasts and next-day grading; the 07:00 Crowd outlook, the listing feeds and their review, and the bus probe join only if the Sky path works end to end by the end of 7 November.
 - **Owners:** a teammate on the approver rota approves; the team runs the desk.
 - **Assumptions:** the licence sits on a Workspace domain; reviewers reach the team inbox or the review calendar; [IDEA's kill criteria](/docs/IDEA.md#risks-and-kill-criteria) hold.
 
