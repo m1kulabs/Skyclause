@@ -31,7 +31,7 @@ When rolling back is forbidden, fix forward: keep `DEPLOY_FREEZE` set, merge the
 
 ## Roll back a service
 
-For `web`, then `worker`. List the revisions, newest first, with the image each runs:
+For `web`, then `worker`. Each deploy run's summary prints, under "Rollback", the traffic before that deploy with the exact command that moves it back, and each job's image before it. Or list the revisions, newest first, with the image each runs:
 
 ```shell
 gcloud run revisions list --service=web --region=asia-southeast1 --project=skyclause \
@@ -46,7 +46,7 @@ gcloud run services update-traffic web --to-revisions=<previous-revision>=100 \
 gcloud run services describe web --region=asia-southeast1 --project=skyclause --format='value(status.traffic)'
 ```
 
-Repeat both with `--service=worker` and `worker`. Until traffic is moved back to latest, a new deploy creates revisions that get no traffic.
+Repeat both with `--service=worker` and `worker`. Traffic stays on that revision until the next deploy, which moves it to its own new revision, so keep `DEPLOY_FREEZE` set until the deploy that carries the fix.
 
 ## Roll back a job
 
@@ -63,14 +63,14 @@ An execution already running keeps the image it started with.
 
 ## Roll forward again
 
-Once the fix is deployed, give the services' latest revisions their traffic back:
+The fix's deploy moves `web` and `worker` to its new revisions and puts its digest on every job, so nothing is left pinned. To give the latest revisions their traffic back without a deploy, for example after a false alarm:
 
 ```shell
 gcloud run services update-traffic web --to-latest --region=asia-southeast1 --project=skyclause
 gcloud run services update-traffic worker --to-latest --region=asia-southeast1 --project=skyclause
 ```
 
-The deploy puts the fix's digest on every job itself. Clear `DEPLOY_FREEZE` if nothing else holds it.
+Clear `DEPLOY_FREEZE` if nothing else holds it.
 
 ## Rollback dry runs
 
