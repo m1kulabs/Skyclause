@@ -2,18 +2,20 @@
 // following #118's rules: names under skyclause.m1ku.tech only, DNS only (not proxied), comment
 // `owner: skyclause`, and never a record someone else owns.
 
+import { isIP } from 'node:net'
+
 const api = 'https://api.cloudflare.com/client/v4'
 const zoneName = 'm1ku.tech'
 const base = 'skyclause.m1ku.tech'
 const comment = 'owner: skyclause'
 const label = /^[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9])?$/
 
-export type RecordType = 'CNAME' | 'TXT' | 'MX'
+export type RecordType = 'A' | 'AAAA' | 'CNAME' | 'TXT' | 'MX'
 
 export interface WantedRecord {
   type: RecordType
   name: string
-  /** A CNAME's target, a TXT's value, or an MX's `<priority> <host>`. */
+  /** An A or AAAA address, a CNAME's target, a TXT's value, or an MX's `<priority> <host>`. */
   content: string
 }
 
@@ -56,10 +58,16 @@ function ownName(name: string): string {
 }
 
 /**
- * The content to store: a CNAME target as a lowercase hostname without the trailing dot, a TXT value
- * as given, or an MX host the same way with its priority apart.
+ * The content to store: an A or AAAA address in lowercase, a CNAME target as a lowercase hostname
+ * without the trailing dot, a TXT value as given, or an MX host the same way with its priority apart.
  */
 function validContent(wanted: WantedRecord): { content: string; priority?: number } {
+  if (wanted.type === 'A' || wanted.type === 'AAAA') {
+    if (isIP(wanted.content) !== (wanted.type === 'A' ? 4 : 6)) {
+      throw new Error(`${wanted.type} content ${wanted.content} is not an IPv${wanted.type === 'A' ? 4 : 6} address`)
+    }
+    return { content: wanted.content.toLowerCase() }
+  }
   if (wanted.type === 'CNAME') {
     const target = hostname(wanted.content)
     if (!target?.includes('.')) throw new Error(`CNAME content ${wanted.content} is not a hostname`)
@@ -113,7 +121,7 @@ export async function upsertRecord(wanted: WantedRecord, options: UpsertOptions)
     }
   }
 
-  const proxied = wanted.type === 'CNAME' ? { proxied: false } : {}
+  const proxied = ['A', 'AAAA', 'CNAME'].includes(wanted.type) ? { proxied: false } : {}
   const body = JSON.stringify({ type: wanted.type, name, content, priority, ...proxied, ttl: 1, comment })
   const cname = atName.find((record) => record.type === 'CNAME')
   const others = atName.filter((record) => record.type !== 'CNAME')
@@ -142,10 +150,10 @@ export async function upsertRecord(wanted: WantedRecord, options: UpsertOptions)
     }
   }
 
-  // Cloudflare may return TXT content wrapped in quotes.
-  const same = others.find(
-    (record) => record.type === wanted.type && record.content.replace(/^"(.*)"$/, '$1') === content
-  )
+  // Cloudflare may return TXT content wrapped in quotes; addresses compare case-insensitively.
+  const stored = (record: CloudflareRecord) =>
+    record.type === 'TXT' ? record.content.replace(/^"(.*)"$/, '$1') : record.content.toLowerCase()
+  const same = others.find((record) => record.type === wanted.type && stored(record) === content)
   if (same) return { action: 'unchanged', id: same.id }
 
   if (options.dryRun) return { action: 'created', id: null }
