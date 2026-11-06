@@ -19,12 +19,12 @@ export default defineConfig({
   timeout: process.env.E2E_TIMEOUT ? Number(process.env.E2E_TIMEOUT) : 30_000,
   reporter: process.env.CI ? [['github'], ['list']] : 'list',
   use: { baseURL: deployed ?? `http://localhost:${port}` },
-  testIgnore: pseudo ? undefined : /(?:quality|camera)\/pseudo\.spec\.ts$/,
+  testIgnore: pseudo ? undefined : [/(?:quality|camera)\/pseudo\.spec\.ts$/, /bundles\/mobile\.spec\.ts$/],
   projects: pseudo
     ? [
         {
           name: 'pseudo',
-          testMatch: /(?:quality\/pseudo|connect\/connect|camera\/pseudo|brand\/badge)\.spec\.ts$/,
+          testMatch: /(?:quality\/pseudo|connect\/connect|camera\/pseudo|brand\/badge|bundles\/bundle)\.spec\.ts$/,
           use: { ...devices['Desktop Chrome'] }
         }
       ]
@@ -35,6 +35,13 @@ export default defineConfig({
           name: 'chromium-no-js',
           testMatch: /quality\/crawl\.spec\.ts$/,
           use: { ...devices['Desktop Chrome'], javaScriptEnabled: false }
+        },
+        {
+          name: 'bundle-mobile',
+          testMatch: /bundles\/mobile\.spec\.ts$/,
+          testIgnore: [],
+          dependencies: ['chromium', 'chromium-no-js'],
+          use: { ...devices['Desktop Chrome'] }
         },
         ...(allBrowsers
           ? [

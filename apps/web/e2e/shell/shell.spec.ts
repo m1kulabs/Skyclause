@@ -32,7 +32,7 @@ async function openShell(page: Page, shellData: ShellData = data, scope = '?org=
     {
       name: 'skyclause-test-shell',
       value: encodeURIComponent(JSON.stringify(shellData)),
-      url: process.env.E2E_BASE_URL ?? 'http://localhost:3100',
+      url: process.env.E2E_BASE_URL ?? `http://localhost:${process.env.E2E_PORT ?? 3100}`,
       httpOnly: true
     }
   ])
@@ -183,7 +183,7 @@ for (const theme of ['dark', 'light', 'high contrast'] as const) {
           theme: theme === 'light' ? 'light' : 'dark',
           contrast: theme === 'high contrast' ? 'more' : 'standard'
         }),
-        url: process.env.E2E_BASE_URL ?? 'http://localhost:3100'
+        url: process.env.E2E_BASE_URL ?? `http://localhost:${process.env.E2E_PORT ?? 3100}`
       }
     ])
     await openShell(page)

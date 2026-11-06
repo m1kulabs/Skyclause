@@ -5,6 +5,7 @@ export interface SseEvent {
 }
 
 export interface ReadSseOptions {
+  headers?: HeadersInit
   onEvent: (event: SseEvent) => void | Promise<void>
   signal?: AbortSignal
   lastEventId?: string
@@ -57,7 +58,8 @@ export async function readSse(url: string | URL, options: ReadSseOptions): Promi
     }
 
     try {
-      const headers = new Headers({ Accept: 'text/event-stream' })
+      const headers = new Headers(options.headers)
+      headers.set('Accept', 'text/event-stream')
       if (lastEventId !== undefined) headers.set('Last-Event-ID', lastEventId)
       const response = await fetch(url, { headers, signal: options.signal })
       if (!response.ok || !response.body) throw new Error(`SSE request failed with status ${response.status}`)
