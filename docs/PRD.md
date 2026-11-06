@@ -361,7 +361,7 @@ Calls are graded after the fact and the numbers are published with n and interva
 - **ANL-4** (P1) A miss, false alarm, out-of-band night or unlisted surge opens a review item for the project's members with the Approver role or above; Jira is optional (NTC-11). Acceptance: each such grade has exactly one review item.
 - **ANL-5** (P1) Project analysis and the roll-up at `/{org}/analysis` show precision, recall and false-alarm ratio with n and Wilson 95% intervals per pack and per clause; Crowd forecast error and band coverage; agent–shadow agreement with the kill line (disagreement on more than 1 in 10 graded windows for reasons other than stale inputs); minutes from crossing to approved notice; evidence-assembly minutes. Acceptance: every figure prints its n, and with n=0 it prints "n=0" and no interval.
 - **ANL-6** (P1) What-if replays of clause changes over recorded history are labelled replay and never mixed with live grades. Acceptance: no live chart includes a replayed point.
-- **ANL-7** (P1) After each graded window, subscribers may get a one-tap "Did the weather change your plan?" email, counted per window. Acceptance: answers are stored as counts only, with no free text.
+- **ANL-7** (P1) After each graded window, subscribers may get a two-tap "Did the weather change your plan?" email, counted per window. Acceptance: answers are stored as counts only, with no free text.
 
 ### Developer playground (DEV)
 
