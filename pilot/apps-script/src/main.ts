@@ -3,6 +3,7 @@
 import {
   appendReadings,
   appendRows,
+  cameraRetentionStore,
   drive,
   fetchUrl,
   getProperty,
@@ -14,6 +15,7 @@ import {
 } from './gas.ts'
 import { buildHealth } from './health.ts'
 import { newUuidV7, runJpsHandler } from './jps.ts'
+import { runCameraRetention } from './camera.ts'
 import { triggerRegistry } from './registry.ts'
 import { handleGet, handlePost } from './router.ts'
 import { getRoutes, postRoutes } from './routes.ts'
@@ -67,6 +69,18 @@ export function pollJps(): void {
       appendPoll: (row) => appendRows(sheetId, 'polls', [row]),
       evaluate: executeEvaluationTick
     }
+  })
+}
+
+// The daily frame retention job (AUD-5, NFR-14); installed by the trigger registry.
+export function retainCameraFrames(): void {
+  const sheetId = getProperty('SHEET_ID')
+  if (!sheetId) throw new Error('SHEET_ID is not set; run setup()')
+  runCameraRetention(cameraRetentionStore(sheetId), {
+    now: () => new Date(),
+    semesterEndsOn: getProperty('SEMESTER_ENDS_ON'),
+    log: (line) => console.log(line),
+    error: (line) => console.error(line)
   })
 }
 
