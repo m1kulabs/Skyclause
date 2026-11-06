@@ -24,6 +24,8 @@ test.describe('WEB-1 in HOST_MODE=single and multi', () => {
         ...process.env,
         APP_ENV: 'test',
         HOST_MODE: 'multi',
+        // The camera page needs an API origin in multi-host mode (#129).
+        API_ORIGIN: multiOrigin,
         HOSTNAME: 'localhost',
         PORT: '3101'
       },
@@ -57,7 +59,9 @@ test.describe('WEB-1 in HOST_MODE=single and multi', () => {
       const url = route.path.replace(/\[\.\.\.[^\]]+\]|\[[^\]]+\]/g, 'brand-test')
       for (const origin of [baseURL!, multiOrigin]) {
         await page.goto(`${origin}${url}`)
+        // The camera PWA links its own per-source manifest (#129); every other link is the static set.
         for (const { rel, url, sizes, type } of iconLinks) {
+          if (rel === 'manifest' && route.path.includes('/camera/')) continue
           const link = page.locator(`head link[rel="${rel}"][href="${url}"]`)
           await expect(link).toHaveCount(1)
           if (sizes) await expect(link).toHaveAttribute('sizes', sizes)
