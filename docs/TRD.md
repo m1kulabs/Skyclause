@@ -515,6 +515,7 @@ This section enforces PRD's [roles and permissions](/docs/PRD.md#roles-and-permi
 - **Roles and scopes** follow PRD's [roles matrix](/docs/PRD.md#roles-and-permissions): one `createAccessControl` statement per matrix row, and API key scopes (`read`, `draft`, `admin`) and MCP token scopes (`read`, `draft`) mapped to the same statements; no scope maps to approve or publish.
 - **Recent authentication:** approving, publishing a clause version and creating a key need a session authenticated within 12 hours, otherwise a passkey or magic-link step ([ACC-8](/docs/PRD.md#accounts-and-sign-in-acc)).
 - **CLI device code** (RFC 8628) at `/device`, codes valid 10 minutes; whether Better Auth ships a device-authorisation plugin is Not verified, and without one we implement the two endpoints over Better Auth sessions. The result is a human session, so the CLI can approve interactively.
+- **Staff:** `requireStaff()` matches `SKYCLAUSE_STAFF_EMAILS`; staff access is audited and confers no role. Staff writes to G tables (`guest_block`, `incident`) run in `withTenant` on `commons` as `system` job `staff:{accountId}`, committing with their audit row.
 - **Every Server Action and Route Handler checks auth itself**: in Next.js 16 Server Functions are POSTs to the page route, and `proxy.ts` only maps hosts to route groups ([Next.js proxy]).
 
 [Better Auth organization]: https://www.better-auth.com/docs/plugins/organization
