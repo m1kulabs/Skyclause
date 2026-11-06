@@ -137,3 +137,21 @@ test('a failing handler marks its request span as an error', async () => {
   expect(span?.attributes['http.response.status_code']).toBe(500)
   expect(span?.status.code).toBe(2)
 })
+
+test('each request records http.server.request.duration under its route template', async () => {
+  const fetch = worker({ owner: 'test', queues: { 'bundle-timers': async () => {} } })
+  expect((await fetch(post('/tasks/bundle-timers', '{}'))).status).toBe(204)
+  expect((await fetch(post('/tasks/bundle-timers', '{}', { authorization: 'Bearer nope' }))).status).toBe(401)
+  // An unrouted path has no template, so it records nothing rather than a raw path.
+  expect((await fetch(post('/no-such-path', '{}'))).status).toBe(404)
+  const recorded = metrics
+    .getMetrics()
+    .flatMap((resource) => resource.scopeMetrics.flatMap((scope) => scope.metrics))
+    .filter((metric) => metric.descriptor.name === 'http.server.request.duration')
+    .at(-1)
+    ?.dataPoints.map((point) => [point.attributes, (point.value as { count: number }).count])
+  expect(recorded).toEqual([
+    [{ 'http.request.method': 'POST', 'http.route': '/tasks/:queue', 'http.response.status_code': 204 }, 1],
+    [{ 'http.request.method': 'POST', 'http.route': '/tasks/:queue', 'http.response.status_code': 401 }, 1]
+  ])
+})

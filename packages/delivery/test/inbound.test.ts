@@ -1,4 +1,5 @@
 import { DeleteObjectCommand, GetObjectCommand, NoSuchKey } from '@aws-sdk/client-s3'
+import { startTelemetry, traceContext, withTrace } from '@skyclause/config'
 import { describe, expect, test } from 'vitest'
 import { createInboundRouter, type InboundMessage } from '../src/inbound'
 import { certificates, region, signed, topicArn } from './sns-double'
@@ -232,4 +233,37 @@ describe('/ses/inbound', () => {
     expect(statuses.map((res) => res.status)).toEqual([204, 204])
     expect(t.evidence).toHaveLength(1)
   })
+})
+
+test('inbound lines go through the shared logger, carrying the request trace (#245)', async () => {
+  const lines: string[] = []
+  const telemetry = startTelemetry('job', {
+    env: { APP_ENV: 'production', GCP_PROJECT: 'skyclause' },
+    traceExporter: { export: (_spans, done) => done({ code: 0 }), shutdown: async () => {} },
+    metricExporter: {
+      export: (_metrics, done) => done({ code: 0 }),
+      forceFlush: async () => {},
+      shutdown: async () => {}
+    },
+    write: (line) => void lines.push(line)
+  })
+  try {
+    const t = setup({})
+    const subscribeUrl = `https://sns.${region}.amazonaws.com/?Action=ConfirmSubscription&TopicArn=${topicArn}&Token=abc`
+    const traceId = await withTrace({}, 'POST /ses/inbound', async () => {
+      await t.post(
+        signed({ Type: 'SubscriptionConfirmation', Message: 'Confirm', Token: 'abc', SubscribeURL: subscribeUrl })
+      )
+      return traceContext().traceparent?.split('-')[1]
+    })
+    expect(lines.map((line) => JSON.parse(line))).toContainEqual(
+      expect.objectContaining({
+        severity: 'INFO',
+        message: 'inbound subscription confirmed',
+        'logging.googleapis.com/trace': `projects/skyclause/traces/${traceId}`
+      })
+    )
+  } finally {
+    await telemetry.shutdown()
+  }
 })

@@ -1,4 +1,5 @@
 import { webcrypto } from 'node:crypto'
+import { startTelemetry } from '@skyclause/config'
 import { describe, expect, test } from 'vitest'
 import { ensureVapidKeys } from '../src/vapid'
 
@@ -85,4 +86,22 @@ describe('vapid-keys', () => {
       'Secret Manager list VAPID_PRIVATE_KEY versions failed (HTTP 403)'
     )
   })
+})
+
+test('without a log option, the job logs through the shared logger (#245)', async () => {
+  const lines: string[] = []
+  const telemetry = startTelemetry('job', {
+    env: { APP_ENV: 'dev' },
+    write: (line) => void lines.push(line)
+  })
+  try {
+    const { publicKey } = await ensureVapidKeys({ project: 'skyclause', fetch: secretManager().fetch })
+    expect(lines.map((line) => JSON.parse(line))).toContainEqual({
+      severity: 'INFO',
+      message: 'vapid public key',
+      VAPID_PUBLIC_KEY: publicKey
+    })
+  } finally {
+    await telemetry.shutdown()
+  }
 })

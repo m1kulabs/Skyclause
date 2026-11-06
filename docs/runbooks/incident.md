@@ -18,14 +18,14 @@ Contents:
 
 ## Incident clocks and owners
 
-| Clock                            | Limit                             | Starts at                    | Owner                                       |
-| -------------------------------- | --------------------------------- | ---------------------------- | ------------------------------------------- |
-| Acknowledge the page             | 15 minutes in P1, 5 minutes in P2 | The page                     | On-call primary; then the on-call secondary |
-| Open the `/status` incident      | 15 minutes                        | A page that affects users    | Whoever acknowledged                        |
-| Update the `/status` incident    | At least hourly                   | The last update              | Whoever acknowledged                        |
-| Post the summary                 | 5 working days                    | Resolution                   | Whoever acknowledged                        |
-| Notify the Commissioner (breach) | 72 hours                          | Becoming aware of the breach | Breach owner; then the breach deputy        |
-| Notify affected people (breach)  | 7 days                            | Notifying the Commissioner   | Breach owner; then the breach deputy        |
+| Clock                            | Limit                             | Starts at                    | Owner                                                              |
+| -------------------------------- | --------------------------------- | ---------------------------- | ------------------------------------------------------------------ |
+| Acknowledge the page             | 15 minutes in P1, 5 minutes in P2 | The page                     | On-call primary `kymil4`; then the on-call secondary `AlaskanTuna` |
+| Open the `/status` incident      | 15 minutes                        | A page that affects users    | Whoever acknowledged                                               |
+| Update the `/status` incident    | At least hourly                   | The last update              | Whoever acknowledged                                               |
+| Post the summary                 | 5 working days                    | Resolution                   | Whoever acknowledged                                               |
+| Notify the Commissioner (breach) | 72 hours                          | Becoming aware of the breach | Breach owner `kymil4`; then the breach deputy `AlaskanTuna`        |
+| Notify affected people (breach)  | 7 days                            | Notifying the Commissioner   | Breach owner `kymil4`; then the breach deputy `AlaskanTuna`        |
 
 The on-call primary and secondary are named in the [on-call runbook](on-call.md). The breach owner and deputy are named in the [breach runbook](breach.md#breach-owner-and-deputy); both clocks and their source are under [breach clocks](breach.md#breach-clocks).
 

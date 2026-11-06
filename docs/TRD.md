@@ -705,7 +705,7 @@ Sources: [Skyclause loop](/docs/ideas/02-skyclause.md#day-to-day-loop), [Skyclau
 
 - **Secrets** live in Secret Manager (database password, Stripe, SES, Turnstile, OAuth client secrets) and mount per service; CI deploys through Workload Identity Federation with no service-account keys.
 - **CSP:** the app sends a nonce-based `script-src` with `'strict-dynamic'`, `frame-ancestors 'none'` and HSTS; the embed origin sets `frame-ancestors` per project ([NFR-10](/docs/PRD.md#non-functional-requirements)).
-- **Patching:** Next.js ships security patches monthly (the latest on 3 November 2026, out-of-band ones on 22 September and 14 October) ([Next.js blog]); patches land within 7 days and out-of-band ones within 48 hours.
+- **Patching:** Next.js ships security patches monthly (the latest on 3 November 2026, out-of-band ones on 22 September and 14 October) ([Next.js blog]); patches land within 7 days and out-of-band ones within 48 hours. Dependabot has no security updates for Bun, so a daily `bun audit --production` on `main` fails and opens one devops issue when a production dependency has an advisory: work starts within a day of the advisory reaching `bun audit`, which can trail the release that fixes it.
 - **Dependencies:** exact versions in `bun.lock`, weekly update PRs, a stated reason for every new dependency, dependency and secret scanning in CI, an SBOM per image and base images pinned by digest. No package is published, so npm provenance doesn't apply: public releases were dropped on 6 November 2026.
 
 [Next.js blog]: https://nextjs.org/blog
