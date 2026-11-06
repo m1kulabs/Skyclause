@@ -28,6 +28,17 @@ supplied_secrets = ["GOOGLE_CLIENT_SECRET", "SKYCLAUSE_STAFF_EMAILS", "TURNSTILE
 vapid_private_key_ready = true
 
 # #118 gate 1: Search Console lists skyclause.m1ku.tech as verified (infra/wizards/search-console.sh,
-# 6 Nov 2026) with skyclause-terraform added as an owner. host_mode stays single until each
-# mapping's certificate is active (infra/README.md, "Custom hosts").
+# 6 Nov 2026) with skyclause-terraform added as an owner.
 map_domains = true
+
+# #118 gate 1: every mapping's certificate is active (Ready, CertificateProvisioned), so each surface
+# gets its own host (infra/README.md, "Custom hosts").
+host_mode = "multi"
+origins = {
+  marketing = "https://skyclause.m1ku.tech"
+  app       = "https://app.skyclause.m1ku.tech"
+  api       = "https://api.skyclause.m1ku.tech"
+  mcp       = "https://mcp.skyclause.m1ku.tech"
+  embed     = "https://embed.skyclause.m1ku.tech"
+  docs      = "https://docs.skyclause.m1ku.tech"
+}
