@@ -7,7 +7,4 @@ export interface KnownGap {
   why: string
 }
 
-export const KNOWN_GAPS: KnownGap[] = [
-  { route: '/', check: 'skip-link', issue: 95, why: 'the skip link comes with the route-group layouts' },
-  { route: '/_not-found', check: 'skip-link', issue: 95, why: 'the skip link comes with the route-group layouts' }
-]
+export const KNOWN_GAPS: KnownGap[] = []

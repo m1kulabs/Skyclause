@@ -41,3 +41,9 @@ test('loading strings end with "…" and no string uses three dots (NFR-6, NFR-8
     'windows.list.loadingMore is loading text without a closing "…": "Loading more"'
   ])
 })
+
+test('minified important declarations keep the same transition properties', () => {
+  expect(checks('.a{transition:none!important}')).toEqual([])
+  expect(checks('.a{transition:transform .2s,opacity .1s!important}')).toEqual([])
+  expect(checks('.a{transition:color .2s!important}')).toHaveLength(1)
+})

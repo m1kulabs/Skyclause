@@ -1,0 +1,9 @@
+{
+  "time": "{time} {zone}",
+  "zone": "MYT",
+  "date": "{day} {month} {year}",
+  "dateLong": "{weekday} {day} {month} {year}",
+  "dateTime": "{date}, {time}",
+  "ageMinute": "{value} minit lalu",
+  "ageHour": "{value} jam lalu"
+}

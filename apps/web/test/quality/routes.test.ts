@@ -7,7 +7,7 @@ const manifest = {
   '/_global-error/page': '/_global-error',
   '/_not-found/page': '/_not-found',
   '/health/route': '/health',
-  '/page': '/',
+  '/(marketing)/page': '/',
   '/quality-planted/unlabelled-input/page': '/quality-planted/unlabelled-input',
   '/(public)/p/[org]/[project]/page': '/p/[org]/[project]',
   '/(app)/[org]/settings/(scope)/members/page': '/[org]/settings/members'
@@ -15,7 +15,7 @@ const manifest = {
 
 test('every built page is crawled with its route group, and route handlers are not', () => {
   expect(crawlRoutes(manifest)).toEqual([
-    { path: '/', group: null, dynamic: false, status: 200 },
+    { path: '/', group: 'marketing', dynamic: false, status: 200 },
     { path: '/[org]/settings/members', group: 'app', dynamic: true, status: 200 },
     { path: '/_not-found', group: null, dynamic: false, status: 404 },
     { path: '/p/[org]/[project]', group: 'public', dynamic: true, status: 200 },

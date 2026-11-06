@@ -1,7 +1,7 @@
 import { ROUTE_GROUPS, type RouteGroup, type VitalBody, type VitalMetric } from '@skyclause/contracts/analytics'
 import { onCLS, onFCP, onINP, onLCP, onTTFB } from 'web-vitals'
 
-/** The route group of the page under the root layout, from `useSelectedLayoutSegments()` there; null outside the five. */
+/** Extract a known route group from Next layout segments; null outside the five. */
 export function routeGroupOf(segments: readonly string[]): RouteGroup | null {
   for (const segment of segments) {
     const match = /^\((.+)\)$/.exec(segment)

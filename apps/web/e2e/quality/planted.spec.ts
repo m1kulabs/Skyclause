@@ -2,9 +2,13 @@
 // @smoke run against production (#90, E2E_BASE_URL) checks that none ever ships.
 import { expect, test } from '@playwright/test'
 
-test('@smoke production serves no planted test route', async ({ request }) => {
+test('@smoke production serves no test route', async ({ request }) => {
   test.skip(!process.env.E2E_BASE_URL, 'runs against a deployed build: deploy.yml sets E2E_BASE_URL (#90)')
-  for (const path of ['/quality-planted/unlabelled-input', '/quality-planted/vitals']) {
-    expect((await request.get(path)).status(), path).toBe(404)
+  for (const path of ['/_test/tokens', '/quality-planted/unlabelled-input', '/quality-planted/vitals']) {
+    const response = await request.get(path)
+    expect(response.status(), path).toBe(404)
+    const html = await response.text()
+    expect(html, path).toContain('class="skip-link"')
+    expect(html, path).toContain('id="skyclause-announcer"')
   }
 })

@@ -12,7 +12,17 @@
       }
     ]
   },
-  "include": ["app", "features", "lib", "test", "e2e", "instrumentation.ts", "next.config.ts", "playwright.config.ts"],
+  "include": [
+    "app",
+    "components",
+    "features",
+    "lib",
+    "test",
+    "e2e",
+    "instrumentation.ts",
+    "next.config.ts",
+    "playwright.config.ts"
+  ],
   "references": [
     {
       "path": "../../packages/config"
@@ -22,6 +32,12 @@
     },
     {
       "path": "../../packages/db"
+    },
+    {
+      "path": "../../packages/i18n"
+    },
+    {
+      "path": "../../packages/auth"
     }
   ]
 }

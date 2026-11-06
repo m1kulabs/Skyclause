@@ -41,9 +41,16 @@ test('a page in a route group beacons LCP, CLS, FCP and TTFB as {type, metric, v
 
 test('a page outside the route groups sends no vitals, since it has no route_group', async ({ page }) => {
   const sent = beacons(page)
-  await visitAndHide(page, '/')
+  await visitAndHide(page, '/_test/tokens')
   // The grouped page's beacons arrive after any the landing page would have sent.
   await visitAndHide(page, GROUPED)
   await expect.poll(() => sent.some(({ from }) => from === GROUPED)).toBe(true)
   expect(sent.filter(({ from }) => from !== GROUPED)).toEqual([])
+})
+
+test('the landing page beacons its marketing route group', async ({ page }) => {
+  const sent = beacons(page)
+  await visitAndHide(page, '/')
+  await expect.poll(() => sent.some(({ body }) => body.metric === 'LCP')).toBe(true)
+  expect(sent.every(({ body }) => body.route_group === 'marketing')).toBe(true)
 })

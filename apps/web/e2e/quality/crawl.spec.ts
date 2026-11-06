@@ -2,6 +2,7 @@
 // at 320 px (200% zoom) and under reduced motion. One failure lists route, role, theme, size and rule.
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { inspectPage, motionFindings, type Finding } from './checks'
+import { expectZonedTimes } from '../harness/expect-zoned-times'
 import { KNOWN_GAPS } from './known-gaps'
 import { STAND_IN_REASON, sessions, type Session } from './roles'
 import { builtRoutes, type CrawlRoute } from './routes'
@@ -37,6 +38,7 @@ function note(info: TestInfo, type: string, description: string) {
 
 async function visit(page: Page, route: CrawlRoute): Promise<Finding[]> {
   const response = await page.goto(route.path)
+  await expectZonedTimes(page)
   // Firefox revalidates a static page it has cached; 304 is its 200.
   const status = response?.status() === 304 ? 200 : response?.status()
   return status === route.status ? [] : [{ check: 'status', detail: `answered ${status}, expected ${route.status}` }]

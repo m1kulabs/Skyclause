@@ -57,8 +57,9 @@ export function cssFindings(css: string): Finding[] {
   }
   for (const match of css.matchAll(/(?:^|[{;\s])(transition(?:-property)?)\s*:\s*([^;}]+)/g)) {
     const [, name, value] = match as unknown as [string, string, string]
-    if (value.trim() === 'none') continue
-    for (const property of transitionedProperties(name, value.trim())) {
+    const normalized = value.replace(/\s*!important\s*$/i, '').trim()
+    if (normalized === 'none') continue
+    for (const property of transitionedProperties(name, normalized)) {
       if (property === 'none' || ANIMATABLE.has(property) || property.startsWith('var(')) continue
       findings.push({ check: 'css-transition', detail: `transition animates ${property}: ${name}:${value.trim()}` })
     }
