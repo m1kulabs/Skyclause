@@ -456,6 +456,7 @@ Outcomes are PRD's [Grades and analysis (ANL)](/docs/PRD.md#grades-and-analysis-
 
 - **Base** `https://api.skyclause.m1ku.tech/v1`. OpenAPI 3.1 at `skyclause.m1ku.tech/openapi.json`, generated from the zod route schemas in `packages/api`; CI fails when the committed document drifts.
 - **Auth:** `Authorization: Bearer` with an organisation API key (scopes `read`, `draft`, `admin`, capped by the creator's role), an OAuth access token (`read`, `draft`; audience-checked) or a first-party session ([roles](/docs/PRD.md#roles-and-permissions)). Approval and clause publishing are not in `/v1`.
+- **Organisation:** named in the path (`/api/orgs/{org}`, `/v1/public/{org}/{project}`) or carried by the principal; sessions send `Skyclause-Organization: <slug or id>`, which `apiFetch` sets from the URL. Missing: `400` `organization-required`; not a member or mismatched: `404`.
 - **Shape:** JSON with `snake_case` fields, RFC 3339 UTC timestamps, ages in whole seconds. A source failure is data, not an empty value: readings and indicators carry `state`, and No call carries the input and since when.
 - **Pagination:** `limit` (1–200, default 50) and an opaque `cursor`; responses are `{ "data": [...], "next_cursor": null }` with a string cursor while more remain.
 - **Rate limits:** per key from the api-key plugin, and per IP hash for public and guest routes; over the limit, `429` with `Retry-After` (seconds). CORS is `*` without credentials on public read routes only.
