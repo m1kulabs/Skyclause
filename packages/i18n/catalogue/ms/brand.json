@@ -1,0 +1,24 @@
+{
+  "name": "Skyclause",
+  "non_affiliation": "Tidak mempunyai hubungan dengan APU, KPT, JPS, MET, DOE, Prasarana/Rapid KL atau pihak stadium.",
+  "not_safety_service": "Skyclause bukan perkhidmatan keselamatan atau kecemasan. Jika berlaku kecemasan, hubungi 999.",
+  "badge_with_pack": "{pack}: {mode}",
+  "packs": { "sky": "Sky", "crowd": "Crowd" },
+  "states": {
+    "normal": "Biasa",
+    "storm_watch": "Pemantauan ribut",
+    "outdoor_limited": "Aktiviti luar terhad",
+    "commute_disruption": "Gangguan perjalanan",
+    "hybrid_recommended": "Mod hibrid disyorkan",
+    "surge_night": "Malam lonjakan penumpang",
+    "no_call": "Tiada keputusan",
+    "fresh": "Input terkini",
+    "stale": "Input lapuk",
+    "error": "Ralat input",
+    "recovered": "Input pulih",
+    "pending": "Input belum diterima",
+    "probation": "Input dalam tempoh percubaan",
+    "off_hours": "Di luar waktu input"
+  },
+  "test": { "title": "Aset jenama", "back": "Kembali ke token", "after": "Selepas lencana" }
+}

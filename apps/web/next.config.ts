@@ -14,6 +14,7 @@ const config: NextConfig = {
   outputFileTracingRoot: root,
   turbopack: { root },
   transpilePackages: [
+    '@skyclause/elements',
     '@skyclause/config',
     '@skyclause/contracts',
     '@skyclause/db',

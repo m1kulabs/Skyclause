@@ -1,8 +1,10 @@
 {
   "extends": "../config/tsconfig.base.json",
   "compilerOptions": {
+    "types": ["node"],
     "rootDir": ".",
     "outDir": "dist/types"
   },
-  "include": ["src", "test"]
+  "include": ["src", "test"],
+  "references": [{ "path": "../contracts" }, { "path": "../i18n" }]
 }

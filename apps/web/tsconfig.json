@@ -17,6 +17,7 @@
     "components",
     "features",
     "lib",
+    "scripts",
     "test",
     "e2e",
     "instrumentation.ts",
@@ -24,6 +25,7 @@
     "playwright.config.ts"
   ],
   "references": [
+    { "path": "../../packages/elements" },
     {
       "path": "../../packages/config"
     },

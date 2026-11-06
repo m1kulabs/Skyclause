@@ -1,0 +1,43 @@
+.mode-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  min-width: 24px;
+  max-width: 100%;
+  vertical-align: middle;
+}
+.mode-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 20px;
+  max-width: 100%;
+  padding: 1px 8px;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+.mode-badge-pill > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mode-badge-pill[data-status='neutral'] {
+  color: var(--status-neutral-foreground);
+  background: var(--status-neutral-background);
+}
+.mode-badge-pill[data-status='warning'] {
+  color: var(--status-warning-foreground);
+  background: var(--status-warning-background);
+}
+.mode-badge-pill[data-status='critical'] {
+  color: var(--status-critical-foreground);
+  background: var(--status-critical-background);
+}
+.mode-badge-pill[data-status='no-call'] {
+  color: var(--status-no-call-foreground);
+  background: var(--status-no-call-background);
+  border-color: var(--status-no-call-border);
+  border-style: dashed;
+}

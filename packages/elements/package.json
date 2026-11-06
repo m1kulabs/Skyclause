@@ -3,6 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "dependencies": {
+    "@skyclause/contracts": "workspace:*",
+    "@skyclause/i18n": "workspace:*"
+  },
   "exports": {
     ".": "./src/index.ts"
   }

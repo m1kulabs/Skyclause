@@ -38,6 +38,7 @@
         "@skyclause/config": "workspace:*",
         "@skyclause/contracts": "workspace:*",
         "@skyclause/db": "workspace:*",
+        "@skyclause/elements": "workspace:*",
         "@skyclause/i18n": "workspace:*",
         "@tailwindcss/postcss": "4.3.4",
         "class-variance-authority": "0.7.1",
@@ -160,6 +161,10 @@
     "packages/elements": {
       "name": "@skyclause/elements",
       "version": "0.0.0",
+      "dependencies": {
+        "@skyclause/contracts": "workspace:*",
+        "@skyclause/i18n": "workspace:*",
+      },
     },
     "packages/forecast": {
       "name": "@skyclause/forecast",
