@@ -548,7 +548,7 @@ Each screen answers one question first, states its one finding under the title, 
 ### Approver alert
 
 - **Job:** tell the approver on duty that a bundle needs them, and open it; an alert never approves ([CAL-10](/docs/PRD.md#calls-and-approvals-cal), [NTC-6](/docs/PRD.md#notices-and-channels-ntc)).
-- **Channels:** email and in-app first (the sidebar count, the tab favicon, a toast); web push later ([NTC-12](/docs/PRD.md#notices-and-channels-ntc), after a terms check).
+- **Channels:** email and in-app (the sidebar count, the tab favicon, a toast), and web push in P1 ([NTC-12](/docs/PRD.md#notices-and-channels-ntc)).
 - **Permission prompt:** never on page load. When a person is first assigned a shift, the rota page shows a card "Get an alert on this device when a bundle needs you during your shifts" with "Turn on alerts"; only that press calls the browser prompt. Denied shows how to re-enable it in the browser; the state is listed in Account › Notifications.
 - **Content:** title "`{n}` calls need review · `{project}`"; body "`{mode}` for `{window}` · `{m}` min of SLA left · `{input}` `{value}`, `{age}` old"; escalation "Escalated to you: `{mode}` for `{window}`, `{m}` min past SLA". One alert per bundle, replaced rather than stacked; no recipient names or window titles from subscribers.
 
