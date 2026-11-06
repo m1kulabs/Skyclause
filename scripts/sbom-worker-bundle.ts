@@ -32,30 +32,31 @@ const lock = JSON.parse(readFileSync(lockPath, 'utf8').replace(/,(\s*[\]}])/g, '
 // Every version bun.lock resolves each package name to (`"<name>@<version>"`; nested keys hold the duplicates).
 const locked = new Map<string, string[]>()
 for (const [resolution] of Object.values(lock.packages)) {
-  const at = resolution.lastIndexOf('@')
-  const name = resolution.slice(0, at)
-  locked.set(name, [...(locked.get(name) ?? []), resolution.slice(at + 1)])
+  const versionAt = resolution.lastIndexOf('@')
+  const name = resolution.slice(0, versionAt)
+  locked.set(name, [...(locked.get(name) ?? []), resolution.slice(versionAt + 1)])
 }
 
 // An input such as `../../node_modules/.bun/@hono+node-server@2.1.6+<peer hash>/node_modules/@hono/node-server/…`:
 // the package is the path after the last node_modules/, and Bun's store directory before it pins the version.
 const bundled = new Map<string, { name: string; version: string }>()
-const problems: string[] = []
+const problems = new Map<string, string>()
 for (const output of Object.values(meta.outputs)) {
   for (const [path, { bytesInOutput }] of Object.entries(output.inputs)) {
-    const at = path.lastIndexOf('node_modules/')
-    const name = /^((?:@[^/]+\/)?[^/]+)\//.exec(path.slice(at + 'node_modules/'.length))?.[1]
-    if (at === -1 || !name || bytesInOutput === 0) continue
-    const store = /\.bun\/([^/]+)\/$/.exec(path.slice(0, at))?.[1]
+    const modules = path.lastIndexOf('node_modules/')
+    if (modules === -1 || bytesInOutput === 0) continue
+    const name = /^((?:@[^/]+\/)?[^/]+)\//.exec(path.slice(modules + 'node_modules/'.length))?.[1]
+    if (!name) continue
+    const store = /\.bun\/([^/]+)\/$/.exec(path.slice(0, modules))?.[1]
     const storeVersion = store?.slice(name.replace('/', '+').length + 1).replace(/\+[0-9a-f]{16}$/, '')
     const candidates = (locked.get(name) ?? []).filter((version) => !storeVersion || version === storeVersion)
     const [version] = candidates
     if (version && candidates.length === 1) bundled.set(`${name}@${version}`, { name, version })
-    else problems.push(`${name}: bundled from ${path}, but bun.lock has ${candidates.length} matching versions`)
+    else problems.set(name, `${name}: bundled from ${path}, but bun.lock has ${candidates.length} matching versions`)
   }
 }
-if (problems.length) {
-  for (const problem of new Set(problems)) console.error(problem)
+if (problems.size) {
+  for (const problem of problems.values()) console.error(problem)
   process.exit(1)
 }
 

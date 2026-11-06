@@ -37,34 +37,23 @@ function merge(files: { meta: string; lock: string }) {
   return { ...result, sbom: JSON.parse(readFileSync(sbom, 'utf8')) as SpdxDocument }
 }
 
-// Real data: bundle the worker as its build script does, then merge with the repository's bun.lock (#227).
+// Real data: the worker's own build script, whose metafile the image carries, merged with the repository's bun.lock.
 test("the worker bundle's packages join the SBOM with their bun.lock versions", { timeout: 60_000 }, () => {
-  const out = plantRepo({})
-  const build = spawnSync(
-    'bun',
-    [
-      'build',
-      'src/main.ts',
-      '--target=node',
-      '--format=esm',
-      `--outdir=${out}`,
-      `--metafile=${join(out, 'meta.json')}`
-    ],
-    { cwd: join(repoRoot, 'apps/worker'), encoding: 'utf8' }
-  )
+  const worker = join(repoRoot, 'apps/worker')
+  const build = spawnSync('bun', ['run', 'build'], { cwd: worker, encoding: 'utf8' })
   expect(build.status, build.stderr).toBe(0)
 
-  const result = merge({ meta: join(out, 'meta.json'), lock: join(repoRoot, 'bun.lock') })
+  const result = merge({ meta: join(worker, 'dist/meta.json'), lock: join(repoRoot, 'bun.lock') })
   expect(result.stderr).toBe('')
   expect(result.status).toBe(0)
 
   // apps/worker/package.json pins exact versions, which bun.lock resolves to.
   const pinned = JSON.parse(readFileSync(join(repoRoot, 'apps/worker/package.json'), 'utf8')).dependencies
-  for (const name of ['hono', '@hono/node-server', 'jose']) {
+  const purls = { hono: 'pkg:npm/hono@', '@hono/node-server': 'pkg:npm/%40hono/node-server@', jose: 'pkg:npm/jose@' }
+  for (const [name, purl] of Object.entries(purls)) {
     const pkg = result.sbom.packages.find((candidate) => candidate.name === name)
     expect(pkg?.versionInfo, name).toBe(pinned[name])
-    const purl = `pkg:npm/${name.replace('@', '%40')}@${pinned[name]}`
-    expect(pkg?.externalRefs?.find((ref) => ref.referenceType === 'purl')?.referenceLocator).toBe(purl)
+    expect(pkg?.externalRefs?.find((ref) => ref.referenceType === 'purl')?.referenceLocator).toBe(purl + pinned[name])
     expect(result.sbom.relationships).toContainEqual({
       spdxElementId: ROOT,
       relatedSpdxElement: pkg?.SPDXID,

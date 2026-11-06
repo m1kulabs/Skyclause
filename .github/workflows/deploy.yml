@@ -23,6 +23,7 @@ on:
   pull_request:
     paths:
       - Dockerfile
+      - apps/worker/package.json
       - .dockerignore
       - scripts/container-entry.sh
       - scripts/check-image.sh
