@@ -3,6 +3,13 @@ import { toMytIso } from '../../shared/time.ts'
 import type { SourceStateUpdate } from './indicators.ts'
 import type { JpsHttpResponse } from './jps.ts'
 import type { CameraDrive, CameraFrameStore, RetentionStore } from './camera.ts'
+import {
+  OPTIN_TITLES,
+  REJECT_COLUMN,
+  type OptinFieldSpec,
+  type OptinStores,
+  type WindowFormPort
+} from './optin-form.ts'
 import type { PiRowsStore } from './pi-rows.ts'
 import type { GetProperty } from './properties.ts'
 import { validateReading } from './readings.ts'
@@ -396,4 +403,136 @@ export function cameraRetentionStore(spreadsheetId: string): RetentionStore {
     trashFile: (fileId) => cameraDrive.trashFile(fileId),
     trashFolder: (folderId) => cameraDrive.trashFolder(folderId)
   }
+}
+// The rows the WIN-1 submit handler reads and writes: `windows` and `subscribers` through `SHEET_ID`, and the
+// reject reason through the response sheet's first tab.
+export function optinStores(sheetId: string, responsesSheetId: string): OptinStores {
+  if (!sheetId) throw new Error('SHEET_ID is not set; run setup()')
+  if (!responsesSheetId) throw new Error('RESPONSES_SHEET_ID is not set; run createWindowForm()')
+  return {
+    windowIds: () => readColumns(sheetId, 'windows', ['window_id']).map((row) => String(row.window_id)),
+    subscriberIds: () => readColumns(sheetId, 'subscribers', ['subscriber_id']).map((row) => String(row.subscriber_id)),
+    subscriberByEmail: (email) =>
+      readColumns(sheetId, 'subscribers', columnsOf('subscribers')).find(
+        (row) => String(row.email).toLowerCase() === email
+      ) ?? null,
+    appendWindow: (row) => appendRows(sheetId, 'windows', [row]),
+    appendSubscriber: (row) => appendRows(sheetId, 'subscribers', [row]),
+    updateSubscriber: (email, patch) => {
+      const target = sheet(sheetId, 'subscribers')
+      const emails = target.getRange(2, columnsOf('subscribers').indexOf('email') + 1, target.getLastRow() - 1, 1)
+      const values = emails.getValues()
+      const index = values.findIndex((cell) => String(cell[0]).toLowerCase() === email)
+      if (index === -1) throw new Error(`subscriber ${email} is missing from subscribers`)
+      const columns = columnsOf('subscribers')
+      const updates: Partial<Record<Column<'subscribers'>, Cell>> = { ...patch }
+      for (const [column, value] of Object.entries(updates)) {
+        target.getRange(index + 2, columns.indexOf(column as Column<'subscribers'>) + 1).setValue(value ?? '')
+      }
+    },
+    writeReject: (rowNumber, reason) => {
+      const target = SpreadsheetApp.openById(responsesSheetId).getSheets()[0]
+      if (!target) throw new Error('the response spreadsheet has no tabs; run createWindowForm()')
+      const width = target.getLastColumn()
+      const header = target.getRange(1, 1, 1, width).getValues()[0]?.map(String) ?? []
+      let column = header.indexOf(REJECT_COLUMN) + 1
+      if (column === 0) {
+        column = width + 1
+        target.getRange(1, column).setValue(REJECT_COLUMN)
+      }
+      target.getRange(rowNumber, column).setValue(reason)
+    }
+  }
+}
+
+function addOptinField(form: GoogleAppsScript.Forms.Form, field: OptinFieldSpec): void {
+  switch (field.item) {
+    case 'text': {
+      const item = form.addTextItem().setTitle(field.title).setRequired(field.required)
+      if (field.help) item.setHelpText(field.help)
+      if (field.email) item.setValidation(FormApp.createTextValidation().requireTextIsEmail().build())
+      break
+    }
+    case 'choice': {
+      const item = form.addMultipleChoiceItem().setTitle(field.title).setRequired(field.required)
+      item.setChoices(field.choices.map((label) => item.createChoice(label)))
+      if (field.help) item.setHelpText(field.help)
+      break
+    }
+    case 'date': {
+      const item = form.addDateItem().setTitle(field.title).setRequired(field.required)
+      if (field.help) item.setHelpText(field.help)
+      break
+    }
+    case 'time': {
+      const item = form.addTimeItem().setTitle(field.title).setRequired(field.required)
+      if (field.help) item.setHelpText(field.help)
+      break
+    }
+    case 'section':
+      form.addSectionHeaderItem().setTitle(field.title).setHelpText(field.description)
+      break
+    case 'checkbox': {
+      const item = form.addCheckboxItem().setTitle(field.title).setRequired(field.required)
+      item.setChoices(field.choices.map((label) => item.createChoice(label)))
+      if (field.help) item.setHelpText(field.help)
+      break
+    }
+  }
+}
+
+// The WIN-1 form through FormApp: anyone with the link answers with no sign-in, into the responses workbook.
+export function windowFormPort(responsesSheetId: string): WindowFormPort {
+  if (!responsesSheetId) throw new Error('RESPONSES_SHEET_ID is not set; run createWindowForm()')
+  return {
+    linkedForm: () => {
+      const url = SpreadsheetApp.openById(responsesSheetId).getFormUrl()
+      if (!url) return null
+      const form = FormApp.openByUrl(url)
+      return { id: form.getId(), publishedUrl: form.getPublishedUrl() }
+    },
+    createForm: (title, description, fields) => {
+      const form = FormApp.create(title)
+      form.setDescription(description)
+      for (const field of fields) addOptinField(form, field)
+      // Email is a text question with validation, not Forms' collect-email setting, so nobody signs in.
+      form.setCollectEmail(false)
+      form.setRequireLogin(false)
+      form.setLimitOneResponsePerUser(false)
+      form.setDestination(FormApp.DestinationType.SPREADSHEET, responsesSheetId)
+      return { id: form.getId(), publishedUrl: form.getPublishedUrl() }
+    },
+    ensureRejectColumn: () => {
+      const target = SpreadsheetApp.openById(responsesSheetId).getSheets()[0]
+      if (!target) throw new Error('the response spreadsheet has no tabs; run createWindowForm()')
+      const width = target.getLastColumn()
+      if (width === 0) {
+        target.getRange(1, 1).setValue(REJECT_COLUMN)
+        return
+      }
+      const header = target.getRange(1, 1, 1, width).getValues()[0]?.map(String) ?? []
+      if (!header.includes(REJECT_COLUMN)) target.getRange(1, width + 1).setValue(REJECT_COLUMN)
+    }
+  }
+}
+
+// One answer per question title for a submitted response row. It reads the cells, not `namedValues`, because
+// `namedValues` formats dates and times by the response sheet's locale ("11/7/2026", "1:30:00 PM"); the cells hold
+// Dates, formatted here in the sheet's time zone as `yyyy-MM-dd` and `HH:mm`.
+export function formAnswers(range: GoogleAppsScript.Spreadsheet.Range): Record<string, string> {
+  const target = range.getSheet()
+  const zone = target.getParent().getSpreadsheetTimeZone()
+  const width = target.getLastColumn()
+  const header = target.getRange(1, 1, 1, width).getValues()[0] ?? []
+  const cells = target.getRange(range.getRow(), 1, 1, width).getValues()[0] ?? []
+  const values: Record<string, string> = {}
+  header.forEach((title, index) => {
+    const cell: unknown = cells[index]
+    const name = String(title)
+    if (cell instanceof Date) {
+      const pattern = name === OPTIN_TITLES.date ? 'yyyy-MM-dd' : 'HH:mm'
+      values[name] = Utilities.formatDate(cell, zone, pattern)
+    } else values[name] = String(cell ?? '')
+  })
+  return values
 }
