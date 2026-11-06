@@ -266,6 +266,8 @@ No card: Apps Script, Sheets, Drive, Gmail and Calendar on the licensed Workspac
 - Whether a MET warning named Kuala Lumpur on the afternoon of 2 November; no public history exists.
 - Which JPS view is right for 3 November: the KL portal's daily field says 46 mm, Public Infobanjir 39 mm.
 - Whether FSSW exists under that name and what it decides, and the gauge's own coordinates (JPS publishes none; it is named for LRT Bukit Jalil station).
+- Whether MET still listed the 15 October thunderstorm warning on 5 November: the fetch that showed it wasn't stored; the [stored 21:13 MYT capture](/docs/sources/api.data.gov.my/weather-warning.md) shows the same rule on a warning valid only from 8 November.
+- Whether the haze backtest's 9 Hybrid recommended, 5 Outdoor-limited, 7 Normal and 1 day with no data hold: the Malaysia Haze Monitor log it ran on has no stored copy, so it can't be re-run from the repo.
 
 ## See also
 

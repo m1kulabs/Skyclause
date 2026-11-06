@@ -855,6 +855,7 @@ Platform and technical unknowns; market and evidence unknowns are in IDEA's [Not
 - **Web:** X card types and limits (the docs returned 402 and 404); whether a JavaScript favicon swap works in Safari 26 and Chrome; Lit SSR maturity; how often Outlook and Google Calendar refresh subscribed ICS feeds.
 - **Feeds:** whether GoLive's `Z` times are local show times.
 - **Tooling:** versions of packages the 5 November checks didn't cover (Hono, zod, Drizzle, DuckDB, `gtfs-realtime-bindings`, the Stripe SDK, test and OpenTelemetry packages) are pinned at implementation; OS keychain access from Bun.
+- **Haze regression:** the expected 9 Hybrid recommended, 5 Outdoor-limited, 7 Normal and 1 no data in [Testing](#testing) come from the Malaysia Haze Monitor log, which has no stored copy, so they can't be re-derived from the repo.
 
 ## See also
 
