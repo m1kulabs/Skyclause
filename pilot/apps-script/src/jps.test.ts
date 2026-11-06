@@ -608,6 +608,8 @@ describe('failure handling and runtime wiring', () => {
     events.length = 0
     const globals = globalThis as unknown as Record<string, unknown>
     const previous = globals.LockService
+    const previousProperties = globals.PropertiesService
+    globals.PropertiesService = { getScriptProperties: () => ({ getProperty: () => null }) }
     globals.LockService = {
       getScriptLock: () => ({
         waitLock: () => {
@@ -619,10 +621,12 @@ describe('failure handling and runtime wiring', () => {
       })
     }
     try {
-      runEvaluationTick()
+      expect(() => runEvaluationTick()).toThrow('SHEET_ID')
     } finally {
       if (previous === undefined) delete globals.LockService
       else globals.LockService = previous
+      if (previousProperties === undefined) delete globals.PropertiesService
+      else globals.PropertiesService = previousProperties
     }
     expect(events).toEqual(['lock:acquire', 'lock:release'])
   })
