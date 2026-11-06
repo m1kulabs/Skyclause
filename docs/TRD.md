@@ -676,12 +676,14 @@ TRD owns this contract for public projects only; DESIGN draws it.
 
 The pilot (5–17 November 2026) runs the idea docs' builds on Gemini Enterprise, Sky storm crossing and evidence-by-email first; nothing is built yet. Each part maps to its platform replacement. Pilot data is never imported into the platform's hash-chained ledger: the Sheets ledger, the Jira register export and the run traces are archived read-only as `pilot_archive` files in Cloud Storage, each with its SHA-256 and capture time, and linked from the project as "Pilot archive (Gemini Enterprise, November 2026)".
 
+P1 has no pilot sheet importer or server-side undo; SET-7 undo stays on the client.
+
 ### Pilot parts and platform replacements
 
 | Pilot part           | In the pilot                                                                                                                                            | On the platform                                                                                            |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | Feeders              | Apps Script time triggers for JPS, MET, APIMS, GoLive and Wikipedia; error rows in Sheets                                                               | Adapter jobs on Cloud Scheduler writing `poll` and `reading`                                               |
-| Clause sheet         | A Sheet with formula shadow check                                                                                                                       | `sheet_version` with CEL in `packages/clauses`; an importer for the pilot sheet                            |
+| Clause sheet         | A Sheet with formula shadow check                                                                                                                       | `sheet_version` with CEL in `packages/clauses`                                                             |
 | Readings and windows | Sheets tabs and an opt-in Form                                                                                                                          | Postgres; windows from the app, API and MCP                                                                |
 | Crossing hand-off    | A file in Drive `crossings/`, because there is no webhook trigger                                                                                       | A `crossing` row and a Pub/Sub message                                                                     |
 | Triggers             | Schedules at 06:45 Monday to Friday and 07:00 daily; Drive, Gmail and Calendar event triggers (5–10 min)                                                | Per-pack schedules, crossings, change events and requests                                                  |
