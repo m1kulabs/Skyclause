@@ -20,27 +20,34 @@ locals {
   ]
 }
 
+# The JSON matches what the API stores (zero positions and empty lists left out, `targetAxis` spelled out), so
+# later plans show no change.
 resource "google_monitoring_dashboard" "web_vitals" {
   dashboard_json = jsonencode({
     displayName = "Web vitals p75 by route group"
     mosaicLayout = {
       columns = 48
-      tiles = [for i, vital in local.vitals : {
-        xPos   = (i % 2) * 24
-        yPos   = floor(i / 2) * 16
-        width  = 24
-        height = 16
-        widget = {
-          title = "${vital.metric} p75 (${vital.unit})"
-          xyChart = {
-            dataSets = [{
-              plotType        = "LINE"
-              timeSeriesQuery = { prometheusQuery = "histogram_quantile(0.75, sum by (le, route_group) (rate({\"skyclause.web_vitals_bucket\", metric=\"${vital.metric}\"}[1h])))" }
-            }]
-            thresholds = vital.threshold == null ? [] : [{ value = vital.threshold, label = "NFR-9" }]
+      tiles = [for i, vital in local.vitals : merge(
+        i % 2 == 0 ? {} : { xPos = 24 },
+        i < 2 ? {} : { yPos = floor(i / 2) * 16 },
+        {
+          width  = 24
+          height = 16
+          widget = {
+            title = "${vital.metric} p75 (${vital.unit})"
+            xyChart = merge(
+              {
+                dataSets = [{
+                  plotType        = "LINE"
+                  targetAxis      = "Y1"
+                  timeSeriesQuery = { prometheusQuery = "histogram_quantile(0.75, sum by (le, route_group) (rate({\"skyclause.web_vitals_bucket\", metric=\"${vital.metric}\"}[1h])))" }
+                }]
+              },
+              vital.threshold == null ? {} : { thresholds = [{ value = vital.threshold, label = "NFR-9" }] }
+            )
           }
         }
-      }]
+      )]
     }
   })
 }
@@ -50,9 +57,7 @@ resource "google_monitoring_dashboard" "api_latency" {
     displayName = "API p95 latency, server side"
     mosaicLayout = {
       columns = 48
-      tiles = [for i, kind in local.api_latency : {
-        xPos   = i * 24
-        yPos   = 0
+      tiles = [for i, kind in local.api_latency : merge(i == 0 ? {} : { xPos = i * 24 }, {
         width  = 24
         height = 16
         widget = {
@@ -60,12 +65,13 @@ resource "google_monitoring_dashboard" "api_latency" {
           xyChart = {
             dataSets = [{
               plotType        = "LINE"
+              targetAxis      = "Y1"
               timeSeriesQuery = { prometheusQuery = "histogram_quantile(0.95, sum by (le) (rate({\"http.server.request.duration_bucket\", \"http.request.method\"=~\"${kind.methods}\", \"http.route\"=~\"/(v1|api)/.*\"}[5m])))" }
             }]
             thresholds = [{ value = kind.threshold, label = "NFR-9" }]
           }
         }
-      }]
+      })]
     }
   })
 }
