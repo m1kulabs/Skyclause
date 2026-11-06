@@ -1,0 +1,241 @@
+# Deploys main straight to production (#90): re-runs #86's checks, builds one image, migrates, then puts that
+# digest on web, worker and every Cloud Run job. DEPLOY_FREEZE=true skips it; rollback moves revision traffic
+# (the commands are in each run's summary). A pull request touching the image only builds and checks it.
+name: deploy
+
+on:
+  push:
+    branches: [main]
+    # What goes into the image (see .dockerignore) and the deploy itself; pilot/, docs/ and the rest deploy nothing.
+    paths:
+      - apps/**
+      - packages/**
+      - package.json
+      - bun.lock
+      - Dockerfile
+      - .dockerignore
+      - scripts/container-entry.sh
+      - scripts/check-image.sh
+      - scripts/check-deployed.ts
+      - .github/actions/build-image/**
+      - .github/workflows/deploy.yml
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - scripts/container-entry.sh
+      - scripts/check-image.sh
+      - .github/actions/build-image/**
+      - .github/workflows/deploy.yml
+  workflow_dispatch:
+    inputs:
+      override_freeze:
+        description: Deploy even though DEPLOY_FREEZE is true, for a fix
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# An explicit bash runs with pipefail, so a failing command before `| tee` or `| while` fails its step.
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('deploy-{0}', github.ref) || 'deploy-production' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  PROJECT: skyclause
+  REGION: asia-southeast1
+  REPOSITORY: asia-southeast1-docker.pkg.dev/skyclause/skyclause/app
+  DEPLOYER: skyclause-deployer@skyclause.iam.gserviceaccount.com
+
+jobs:
+  freeze:
+    if: github.ref == 'refs/heads/main' && vars.DEPLOY_FREEZE == 'true' && !inputs.override_freeze
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - run: echo "::notice::DEPLOY_FREEZE is true, so this deploy is skipped. For a fix, dispatch deploy with override_freeze."
+
+  image-check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/build-image
+        with:
+          tag: app:${{ github.sha }}
+
+  checks:
+    if: github.ref == 'refs/heads/main' && (vars.DEPLOY_FREEZE != 'true' || inputs.override_freeze)
+    uses: ./.github/workflows/checks.yml
+
+  image:
+    if: github.ref == 'refs/heads/main' && (vars.DEPLOY_FREEZE != 'true' || inputs.override_freeze)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      image: ${{ steps.push.outputs.image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/build-image
+        with:
+          tag: ${{ env.REPOSITORY }}:${{ github.sha }}
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOYER }}
+      - name: Push by digest
+        id: push
+        run: |
+          gcloud auth configure-docker "${REPOSITORY%%/*}" --quiet
+          docker push "$REPOSITORY:$GITHUB_SHA"
+          image="$(docker inspect --format '{{index .RepoDigests 0}}' "$REPOSITORY:$GITHUB_SHA")"
+          echo "image=$image" | tee -a "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: [checks, image]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      web_url: ${{ steps.services.outputs.web_url }}
+    env:
+      IMAGE: ${{ needs.image.outputs.image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - name: Report unbuilt placeholders
+        run: |
+          status=0
+          bun scripts/check-unbuilt.ts > "$RUNNER_TEMP/unbuilt.txt" || status=$?
+          { echo '### Unbuilt placeholders (a report, not a gate)'; echo '```text'; cat "$RUNNER_TEMP/unbuilt.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          # Exit 1 only means placeholders remain; anything else is a broken script.
+          [ "$status" -le 1 ]
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOYER }}
+      - name: Read back APP_ENV before anything runs
+        run: |
+          gcloud run services list --region="$REGION" --project="$PROJECT" --format=json > "$RUNNER_TEMP/services.json"
+          gcloud run jobs list --region="$REGION" --project="$PROJECT" --format=json > "$RUNNER_TEMP/jobs.json"
+          bun scripts/check-deployed.ts "$RUNNER_TEMP/services.json" "$RUNNER_TEMP/jobs.json"
+          jq -e '.[] | select(.metadata.name == "migrate")' "$RUNNER_TEMP/jobs.json" > /dev/null ||
+            { echo '::error::Cloud Run job migrate is missing; infra/ creates it (#89).'; exit 1; }
+          {
+            echo '### Rollback'
+            echo 'Traffic before this deploy, and the command that moves it back:'
+            echo '```sh'
+            jq -r --arg region "$REGION" --arg project "$PROJECT" '.[] | .metadata.name as $s | .status.traffic[]
+              | select((.percent // 0) > 0) | "gcloud run services update-traffic \($s) --to-revisions=\(.revisionName)=\(.percent) --region=\($region) --project=\($project)"' \
+              "$RUNNER_TEMP/services.json"
+            echo '```'
+            echo "Each job ran this image before; pin it back with \`gcloud run jobs update <job> --image=<image>\`:"
+            echo '```text'
+            jq -r '.[] | "\(.metadata.name) \(.spec.template.spec.template.spec.containers[0].image)"' "$RUNNER_TEMP/jobs.json"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Migrate
+        run: |
+          gcloud run jobs update migrate --image="$IMAGE" --region="$REGION" --project="$PROJECT" --quiet
+          # The same signal as #86's db:* stubs: migrations exist once a .sql file is under packages/db.
+          if find packages/db -name '*.sql' -not -path '*/node_modules/*' | grep -q .; then
+            gcloud run jobs execute migrate --wait --region="$REGION" --project="$PROJECT"
+          else
+            echo '::notice::No migrations under packages/db yet (#91), so migrate is deployed but not executed.'
+          fi
+      - name: Provision the Commons
+        run: |
+          if jq -e '.[] | select(.metadata.name == "commons-provision")' "$RUNNER_TEMP/jobs.json" > /dev/null; then
+            gcloud run jobs update commons-provision --image="$IMAGE" --region="$REGION" --project="$PROJECT" --quiet
+            gcloud run jobs execute commons-provision --wait --region="$REGION" --project="$PROJECT"
+          else
+            echo "::notice::Job commons-provision doesn't exist yet (#179), so it isn't run."
+          fi
+      - name: Deploy web and worker
+        id: services
+        run: |
+          for service in web worker; do
+            gcloud run services update "$service" --image="$IMAGE" --region="$REGION" --project="$PROJECT" --quiet
+            # After a rollback traffic is pinned to a revision, so move it to the new one explicitly.
+            gcloud run services update-traffic "$service" --to-latest --region="$REGION" --project="$PROJECT" --quiet
+          done
+          url="$(gcloud run services describe web --region="$REGION" --project="$PROJECT" --format='value(status.url)')"
+          echo "web_url=$url" >> "$GITHUB_OUTPUT"
+      - name: Deploy every other job
+        run: |
+          jq -r '.[].metadata.name | select(. != "migrate" and . != "commons-provision")' "$RUNNER_TEMP/jobs.json" |
+            while read -r job; do
+              gcloud run jobs update "$job" --image="$IMAGE" --region="$REGION" --project="$PROJECT" --quiet
+            done
+      - name: Smoke /health
+        run: |
+          for service in web worker; do
+            url="$(gcloud run services describe "$service" --region="$REGION" --project="$PROJECT" --format='value(status.url)')"
+            body="$(curl -fsS --retry 5 --retry-all-errors "$url/health")"
+            [ "$body" = ok ] || { echo "::error::$service /health answered '$body'"; exit 1; }
+            echo "$service /health: ok"
+          done
+      - name: Read back APP_ENV and the digest
+        run: |
+          gcloud run services list --region="$REGION" --project="$PROJECT" --format=json > "$RUNNER_TEMP/services.json"
+          gcloud run jobs list --region="$REGION" --project="$PROJECT" --format=json > "$RUNNER_TEMP/jobs.json"
+          bun scripts/check-deployed.ts --image "$IMAGE" "$RUNNER_TEMP/services.json" "$RUNNER_TEMP/jobs.json" |
+            tee "$RUNNER_TEMP/deployed.txt"
+          {
+            echo '### Read back'
+            echo '```text'
+            cat "$RUNNER_TEMP/deployed.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  smoke:
+    needs: deploy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+      - run: bunx playwright install --with-deps --only-shell chromium
+        working-directory: apps/web
+      - name: Run the @smoke tests against production
+        run: bunx playwright test --grep @smoke
+        working-directory: apps/web
+        env:
+          E2E_BASE_URL: ${{ needs.deploy.outputs.web_url }}
+
+  record:
+    needs: [image, smoke]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Record the digest
+        env:
+          IMAGE: ${{ needs.image.outputs.image }}
+        run: |
+          echo "### Deployed"$'\n\n'"Commit \`$GITHUB_SHA\` runs \`$IMAGE\` on web, worker and every job; /health and @smoke passed." >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice::Deployed $IMAGE to web, worker and every job."

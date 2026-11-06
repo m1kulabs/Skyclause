@@ -1,0 +1,15 @@
+# The build context is an allow-list: only what `bun install` and the app builds read, so no .env, pilot/ or
+# local build output reaches the image.
+*
+!package.json
+!bun.lock
+!apps/
+!packages/
+!scripts/container-entry.sh
+**/node_modules
+**/.next
+**/dist
+**/out
+**/test-results
+**/playwright-report
+**/.env*

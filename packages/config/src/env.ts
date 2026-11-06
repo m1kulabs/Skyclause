@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 // Spec §6. Owners add their variables to the service that reads them.
 const base = z.object({
-  APP_ENV: z.enum(['dev', 'staging', 'production', 'test']),
+  APP_ENV: z.enum(['dev', 'production', 'test']),
   // a-observability; telemetry exports only where Terraform sets GCP_PROJECT (f-infra).
   OTEL_SERVICE_NAME: z.string().min(1).optional(),
   // Unset means info (telemetry.ts).

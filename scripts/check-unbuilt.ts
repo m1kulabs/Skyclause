@@ -1,5 +1,6 @@
 // `check:unbuilt [--owner <key>]` (spec §7): lists every `notBuilt('<key>')` and `data-unbuilt="<key>"` in apps and
-// packages outside tests, grouped by owner, and fails while any remain. `promote.yml` gates on it; PR CI doesn't.
+// packages outside tests, grouped by owner, and fails while any remain. `deploy.yml` prints it as a report; nothing
+// gates on it.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { isSource, isTestFile, listFiles } from './files'
