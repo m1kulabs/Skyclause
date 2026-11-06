@@ -365,3 +365,60 @@ test.each([
   ).rejects.toThrow(/content/)
   expect(cf.calls).toEqual([])
 })
+
+test("creates a mapping's DNS-only A and AAAA records side by side, then leaves them unchanged", async () => {
+  const cf = fakeCloudflare()
+  const options = { token: 'test-token', fetch: cf.fetch }
+  const wanted = [
+    { type: 'A' as const, name: 'skyclause.m1ku.tech', content: '216.239.32.21' },
+    { type: 'A' as const, name: 'skyclause.m1ku.tech', content: '216.239.34.21' },
+    { type: 'AAAA' as const, name: 'skyclause.m1ku.tech', content: '2001:4860:4802:32::15' }
+  ]
+
+  for (const record of wanted) await expect(upsertRecord(record, options)).resolves.toMatchObject({ action: 'created' })
+  for (const record of wanted)
+    await expect(upsertRecord(record, options)).resolves.toMatchObject({ action: 'unchanged' })
+
+  expect(cf.writes).toEqual([
+    'POST A skyclause.m1ku.tech',
+    'POST A skyclause.m1ku.tech',
+    'POST AAAA skyclause.m1ku.tech'
+  ])
+  expect(cf.records[2]).toEqual({
+    id: 'new-3',
+    type: 'AAAA',
+    name: 'skyclause.m1ku.tech',
+    content: '2001:4860:4802:32::15',
+    proxied: false,
+    ttl: 1,
+    comment: 'owner: skyclause'
+  })
+})
+
+test.each([
+  { type: 'A' as const, content: '2001:4860:4802:32::15' },
+  { type: 'A' as const, content: '216.239.32' },
+  { type: 'AAAA' as const, content: '216.239.32.21' },
+  { type: 'AAAA' as const, content: 'ghs.googlehosted.com' }
+])('refuses $type content $content that is not an address of that family', async (wanted) => {
+  const cf = fakeCloudflare()
+
+  await expect(
+    upsertRecord({ ...wanted, name: 'skyclause.m1ku.tech' }, { token: 'test-token', fetch: cf.fetch })
+  ).rejects.toThrow(/content/)
+  expect(cf.calls).toEqual([])
+})
+
+test('compares a TXT value case-sensitively, so a mixed-case value already there stays unchanged', async () => {
+  const cf = fakeCloudflare([
+    { id: 'ours', type: 'TXT', name: 'skyclause.m1ku.tech', content: '"Token=AbC"', comment: 'owner: skyclause' }
+  ])
+
+  await expect(
+    upsertRecord(
+      { type: 'TXT', name: 'skyclause.m1ku.tech', content: 'Token=AbC' },
+      { token: 'test-token', fetch: cf.fetch }
+    )
+  ).resolves.toEqual({ action: 'unchanged', id: 'ours' })
+  expect(cf.writes).toEqual([])
+})
