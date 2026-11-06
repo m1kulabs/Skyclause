@@ -7,15 +7,19 @@ import {
   drive,
   fetchUrl,
   getProperty,
+  formAnswers,
+  optinStores,
   properties,
   readColumns,
   triggers,
+  windowFormPort,
   withLock,
   workbooks
 } from './gas.ts'
 import { buildHealth } from './health.ts'
 import { newUuidV7, runJpsHandler } from './jps.ts'
 import { runCameraRetention } from './camera.ts'
+import { ensureResponsesSheetId, runCreateWindowForm, runOptinSubmit } from './optin-form.ts'
 import { triggerRegistry } from './registry.ts'
 import { handleGet, handlePost } from './router.ts'
 import { getRoutes, postRoutes } from './routes.ts'
@@ -82,6 +86,30 @@ export function retainCameraFrames(): void {
     log: (line) => console.log(line),
     error: (line) => console.error(line)
   })
+}
+
+// The WIN-1 form-submit handler, installed on the responses workbook by the
+// registry. Runs under the script lock; a reject writes its reason and nothing else.
+export function onWindowFormSubmit(event: GoogleAppsScript.Events.SheetsOnFormSubmit): void {
+  const sheetId = getProperty('SHEET_ID')
+  if (!sheetId) throw new Error('SHEET_ID is not set; run setup()')
+  const responsesId = getProperty('RESPONSES_SHEET_ID')
+  if (!responsesId) throw new Error('RESPONSES_SHEET_ID is not set; run createWindowForm()')
+  const values = formAnswers(event.range)
+  withLock(() => {
+    runOptinSubmit(
+      { rowNumber: event.range.getRow(), values, submittedAt: new Date() },
+      optinStores(sheetId, responsesId)
+    )
+  })
+}
+
+// Run once in the editor per project: creates the WIN-1 form on the responses
+// workbook (or reuses its linked form) and grants the manifest's scopes.
+export function createWindowForm(): void {
+  const responsesId = ensureResponsesSheetId({ properties, drive })
+  const report = runCreateWindowForm(windowFormPort(responsesId), properties.get('TEAM_ALERT_EMAILS') ?? '{team inbox}')
+  console.log(JSON.stringify(report, null, 2))
 }
 
 // Run once in the editor per project: it grants the manifest's scopes and makes the folders, workbooks and tabs.
