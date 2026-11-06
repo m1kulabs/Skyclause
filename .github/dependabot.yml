@@ -50,6 +50,15 @@ updates:
       # Types follow the Node 22 runtime.
       - dependency-name: '@types/node'
         update-types: ['version-update:semver-major']
+      # TypeScript 7 is the native port without the JS API, which typescript-eslint and scripts/boundaries.ts need.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+      # eslint-plugin-jsx-a11y supports ESLint 9 at most, and ESLint 10's @eslint/config-array brings back
+      # minimatch 10 (GHSA-g3hv-75wg-m249, #214). @eslint/js moves with ESLint.
+      - dependency-name: eslint
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@eslint/js'
+        update-types: ['version-update:semver-major']
     commit-message:
       prefix: build
     labels: [devops]
