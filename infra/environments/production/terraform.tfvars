@@ -11,4 +11,11 @@ app_config = {
   SES_CONFIGURATION_SET    = "skyclause-production"
   SES_EVENTS_SNS_TOPIC_ARN = "arn:aws:sns:ap-southeast-2:776566309118:skyclause-production-ses-events"
   SES_REGION               = "ap-southeast-2"
+
+  # #113: logged by the vapid-keys job's first run (vapid-keys-wg7x9), 6 Nov 2026. VAPID_SUBJECT is
+  # APP_ORIGIN, set in run.tf.
+  VAPID_PUBLIC_KEY = "BA3OuKdQLlNKGUWzWI4yKm7YRt0quF-UVkAfYZ7SWlvNp5tA7nFX0M4hesxjmVsfkup-jgs2BUlV4CmdrDML1NE"
 }
+
+# VAPID_PRIVATE_KEY has its one version (#113), so the worker mounts it.
+vapid_private_key_ready = true

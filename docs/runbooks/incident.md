@@ -81,13 +81,13 @@ When a 30-day error budget is spent, feature deploys touching that path stop unt
     ```
 
 1.  Hold feature pull requests that touch the path: don't merge them until the budget recovers.
-1.  Ship a fix: merge it, clear the freeze, re-run the fix's skipped deploy run, and set the freeze again once that deploy is done:
+1.  Ship a fix: merge it, then dispatch `deploy` on `main` with `override_freeze`, which deploys it while the freeze stays on:
 
     ```shell
-    gh variable set DEPLOY_FREEZE --body false --repo m1kulabs/Skyclause
-    gh run rerun <run-id> --repo m1kulabs/Skyclause
-    gh variable set DEPLOY_FREEZE --body true --repo m1kulabs/Skyclause
+    gh workflow run deploy.yml --ref main -f override_freeze=true --repo m1kulabs/Skyclause
     ```
+
+    The `terraform` workflow has no override: for an infrastructure fix, clear the freeze, dispatch `terraform` on `main` and set the freeze again once it has applied.
 
 1.  Once the budget has recovered, clear the freeze and say so in the incident summary.
 
