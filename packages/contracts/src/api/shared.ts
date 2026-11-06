@@ -650,6 +650,8 @@ export type PushSubscription = z.infer<typeof PushSubscription>
 export const AnalysisMetric = z.object({
   metric: z.string(),
   x: z.number().nullable(),
+  // Scalar metrics (minutes and forecast error) are returned by c-analysis-api, never computed by a screen.
+  value: z.number().nullable().optional(),
   n: z.number().int(),
   low: z.number().nullable(),
   high: z.number().nullable()
