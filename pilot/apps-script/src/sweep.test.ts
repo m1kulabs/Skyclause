@@ -359,6 +359,111 @@ describe('CAL-12 delay line', () => {
 })
 
 describe('CAL-3 post-check', () => {
+  test.each([2, ' 2 '])('a live crossing pins version %s saved after its snapshot', (pin) => {
+    const versions: Row<'clause_versions'>[] = [
+      { version_n: 1, saved_at: '2026-11-02T14:00:00+08:00', content_json: '{"threshold":71}' },
+      { version_n: '2', saved_at: '2026-11-02T15:05:10+08:00', content_json: '{"threshold":83}' }
+    ]
+    const originalVersions = structuredClone(versions)
+    const text = JSON.stringify({ ...JSON.parse(crossingText()), clause_version: pin })
+    for (const [number, expected] of [
+      [83, []],
+      [71, [{ callId: CALL_ID, number: 71, line: 'Threshold 71' }]]
+    ] as const) {
+      const harness = fake({
+        sky: skyFile(text),
+        versions,
+        ledger: [callRow({ body: JSON.stringify({ subject: SUBJECT, body: `Threshold ${number}` }) })]
+      })
+      expect(runSweep(harness.ports).mismatches).toEqual([...expected])
+      expect(harness.ledger[0]?.snapshot_id).toBe(SNAPSHOT)
+    }
+    expect(versions).toEqual(originalVersions)
+  })
+
+  test.each([undefined, null])('legacy live pin %s retains timestamp version selection', (pin) => {
+    const harness = fake({
+      sky: skyFile(JSON.stringify({ ...JSON.parse(crossingText()), clause_version: pin })),
+      versions: [
+        { version_n: 1, saved_at: '2026-11-02T14:00:00+08:00', content_json: '{"threshold":71}' },
+        { version_n: 2, saved_at: '2026-11-02T15:05:10+08:00', content_json: '{"threshold":83}' }
+      ],
+      ledger: [callRow({ body: JSON.stringify({ subject: SUBJECT, body: 'Threshold 71' }) })]
+    })
+    expect(runSweep(harness.ports).mismatches).toEqual([])
+  })
+
+  test.each(['', 'wrong', 0, -1, 1.5, 'Infinity', 999, false, {}])(
+    'invalid or unresolved live pin %j never falls back',
+    (pin) => {
+      const harness = fake({
+        sky: skyFile(JSON.stringify({ ...JSON.parse(crossingText()), clause_version: pin })),
+        ledger: [callRow({ body: JSON.stringify({ subject: SUBJECT, body: 'Threshold 31' }) })]
+      })
+      expect(runSweep(harness.ports).mismatches).toEqual([{ callId: CALL_ID, number: 31, line: 'Threshold 31' }])
+    }
+  )
+
+  test.each(['schedule', 'request'])('an unassociated %s call retains timestamp version selection', (trigger) => {
+    const harness = fake({
+      sky: skyFile(JSON.stringify({ ...JSON.parse(crossingText()), clause_version: 2 })),
+      versions: [
+        { version_n: 1, saved_at: '2026-11-02T14:00:00+08:00', content_json: '{"threshold":71}' },
+        { version_n: 2, saved_at: '2026-11-02T15:05:10+08:00', content_json: '{"threshold":83}' }
+      ],
+      ledger: [
+        callRow({ trigger, source_ref: 'scheduled', body: JSON.stringify({ subject: SUBJECT, body: 'Threshold 71' }) })
+      ]
+    })
+    expect(runSweep(harness.ports).mismatches).toEqual([])
+  })
+
+  test.each([31, 180, 150, 3, 42, 43])('schema threshold cells authorize %s', (number) => {
+    const harness = fake({
+      versions: [
+        {
+          version_n: 1,
+          saved_at: SNAPSHOT,
+          content_json: JSON.stringify({
+            clauses: [
+              { key: 'storm_confirmed', threshold: ' 31 ' },
+              { key: 'haze', threshold: '{"api_max":180,"api_0600":"150","days":3}' },
+              { key: 'other', threshold: '[42,"43"]' }
+            ]
+          })
+        }
+      ],
+      ledger: [callRow({ body: JSON.stringify({ subject: SUBJECT, body: `Threshold ${number}` }) })]
+    })
+    expect(runSweep(harness.ports).mismatches).toEqual([])
+  })
+
+  test.each([71, 72, 73, 74, 75, 76])('prose, IDs and malformed threshold cells cannot authorize %s', (number) => {
+    const harness = fake({
+      versions: [
+        {
+          version_n: 1,
+          saved_at: SNAPSHOT,
+          content_json: JSON.stringify({
+            clauses: [
+              { key: 'clause-71', wording_en: '72 mm', metadata: '{"threshold":73}', count: 74 },
+              { threshold: '75 mm' },
+              { threshold: '{"broken":76' },
+              { threshold: '' },
+              { threshold: ' ' },
+              { threshold: true },
+              { threshold: null },
+              { threshold: 'Infinity' },
+              { threshold: '"77"' }
+            ]
+          })
+        }
+      ],
+      ledger: [callRow({ body: JSON.stringify({ subject: SUBJECT, body: `Threshold ${number}` }) })]
+    })
+    expect(runSweep(harness.ports).mismatches).toEqual([{ callId: CALL_ID, number, line: `Threshold ${number}` }])
+  })
+
   test('the 2 November wording passes against the replay snapshot, and 39.5 fails naming that number', () => {
     const passing = fake({ ledger: [callRow()] })
     const first = runSweep(passing.ports)
@@ -388,6 +493,182 @@ describe('CAL-3 post-check', () => {
     const third = runSweep(failing.ports)
     expect(third.mismatches).toEqual([])
     expect(failing.sentMails).toHaveLength(1)
+  })
+
+  test.each([
+    ['corrupt', '{'],
+    ['wrong pack', JSON.stringify({ ...JSON.parse(crossingText()), pack: 'crowd' })],
+    ['wrong scope', JSON.stringify({ ...JSON.parse(crossingText()), changes: [{ scope: 'W-other' }] })],
+    ['wrong snapshot', JSON.stringify({ ...JSON.parse(crossingText()), snapshot_id: '2026-11-02T14:00:00+08:00' })]
+  ])('recognized replay with %s content cannot use live evidence', (_case, text) => {
+    const harness = fake({
+      replay: [{ id: 'r1', name: 'replay.json', text }],
+      versions: [{ version_n: 1, saved_at: SNAPSHOT, content_json: '{"threshold":77}' }],
+      now: '2026-11-02T16:00:00+08:00',
+      ledger: [
+        callRow({ source_ref: 'replay.json', body: JSON.stringify({ subject: 'Notice', body: 'Threshold 77' }) })
+      ]
+    })
+    expect(runSweep(harness.ports).mismatches).toEqual([{ callId: CALL_ID, number: 77, line: 'Threshold 77' }])
+    expect(harness.notifications).toEqual([expect.objectContaining({ kind: 'cal3_mismatch', ref: CALL_ID })])
+    expect(harness.sentMails[0]?.body).toContain('Number: 77')
+    expect(runSweep(harness.ports).mismatches).toEqual([])
+    expect(harness.sentMails).toHaveLength(1)
+  })
+
+  test('a recognized malformed replay with no checkable numbers seals without inventing a mismatch', () => {
+    const harness = fake({
+      replay: [{ id: 'r1', name: 'replay.json', text: '{' }],
+      ledger: [
+        callRow({
+          source_ref: 'replay.json',
+          body: JSON.stringify({ subject: 'Notice', body: 'Disruption confirmed' })
+        })
+      ],
+      now: '2026-11-02T16:00:00+08:00'
+    })
+    const result = runSweep(harness.ports)
+    expect(result.sealed).toEqual([2])
+    expect(result.mismatches).toEqual([])
+  })
+
+  test.each([31, 47, 77])('legacy replay cannot obtain %s from live versions, windows or indicators', (number) => {
+    const harness = fake({
+      replay: [{ id: 'r1', name: 'replay.json', text: crossingText() }],
+      windows: [{ window_id: 'W-0001', start_myt: '15:47' }],
+      indicators: [{ snapshot_id: SNAPSHOT, scope: 'W-0001', value: 77 }],
+      ledger: [
+        callRow({ source_ref: 'replay.json', body: JSON.stringify({ subject: SUBJECT, body: `Evidence ${number}` }) })
+      ]
+    })
+    expect(runSweep(harness.ports).mismatches).toEqual([{ callId: CALL_ID, number, line: `Evidence ${number}` }])
+  })
+
+  test('verified replay clause bytes authorize thresholds independently of changing live evidence', () => {
+    const content = JSON.stringify({ clauses: [{ key: 'haze', threshold: '{"api_max":180}' }] })
+    const text = JSON.stringify({
+      ...JSON.parse(crossingText({ replay: true })),
+      clause_version: `replay:${sha256Hex(content)}`,
+      replay_clause_content_json: content
+    })
+    for (const liveThreshold of [71, 83]) {
+      const harness = fake({
+        replay: [{ id: 'r1', name: 'replay.json', text }],
+        versions: [{ version_n: 1, saved_at: SNAPSHOT, content_json: JSON.stringify({ threshold: liveThreshold }) }],
+        indicators: [{ snapshot_id: SNAPSHOT, scope: 'W-0001', value: liveThreshold }],
+        windows: [{ window_id: 'W-0001', start_myt: `15:${liveThreshold}` }],
+        ledger: [
+          callRow({
+            source_ref: 'replay.json',
+            body: JSON.stringify({ subject: SUBJECT, body: `${BODY}\nThreshold 180` })
+          })
+        ]
+      })
+      expect(runSweep(harness.ports).mismatches).toEqual([])
+    }
+  })
+
+  test.each([
+    ['missing context', { clause_version: `replay:${sha256Hex('{"threshold":83}')}` }],
+    [
+      'nonstring context',
+      { clause_version: `replay:${sha256Hex('{"threshold":83}')}`, replay_clause_content_json: { threshold: 83 } }
+    ],
+    ['missing pin', { replay_clause_content_json: '{"threshold":83}' }],
+    ['malformed pin', { clause_version: 'replay:invalid', replay_clause_content_json: '{"threshold":83}' }],
+    [
+      'uppercase pin',
+      {
+        clause_version: `replay:${sha256Hex('{"threshold":83}').toUpperCase()}`,
+        replay_clause_content_json: '{"threshold":83}'
+      }
+    ],
+    [
+      'different bytes',
+      { clause_version: `replay:${sha256Hex('{"threshold":83}')}`, replay_clause_content_json: ' {"threshold":83}' }
+    ],
+    [
+      'invalid JSON',
+      { clause_version: `replay:${sha256Hex('{"threshold":83')}`, replay_clause_content_json: '{"threshold":83' }
+    ]
+  ])('replay with %s retains trace numbers but grants no thresholds', (_case, metadata) => {
+    const text = JSON.stringify({ ...JSON.parse(crossingText()), ...metadata })
+    for (const includeThreshold of [false, true]) {
+      const harness = fake({
+        replay: [{ id: 'r1', name: 'replay.json', text }],
+        versions: [{ version_n: 1, saved_at: SNAPSHOT, content_json: '{"threshold":83}' }],
+        ledger: [
+          callRow({
+            source_ref: 'replay.json',
+            body: JSON.stringify({ subject: SUBJECT, body: `${BODY}${includeThreshold ? '\nThreshold 83' : ''}` })
+          })
+        ]
+      })
+      expect(runSweep(harness.ports).mismatches).toEqual(
+        includeThreshold ? [{ callId: CALL_ID, number: 83, line: 'Threshold 83' }] : []
+      )
+    }
+  })
+
+  test('replay filenames route exactly when live and replay files share an X-ID', () => {
+    const live = JSON.stringify({ ...JSON.parse(crossingText()), clause_version: 3 })
+    const replay = JSON.stringify({
+      ...JSON.parse(crossingText({ replay: true })),
+      changes: [{ scope: 'W-0001', inputs: [{ name: 'rain', value: 83 }] }]
+    })
+    for (const [source_ref, number] of [
+      ['X-20261102-1505-01', 31],
+      ['replay.json', 83]
+    ] as const) {
+      const harness = fake({
+        sky: skyFile(live),
+        replay: [{ id: 'r1', name: 'replay.json', text: replay }],
+        ledger: [callRow({ source_ref, body: JSON.stringify({ subject: 'Notice', body: `Value ${number}` }) })],
+        now: '2026-11-02T16:00:00+08:00'
+      })
+      expect(runSweep(harness.ports).mismatches).toEqual([])
+      expect(harness.ledger[0]?.source_ref).toBe(source_ref)
+    }
+  })
+
+  test('replay site inputs are allowed without borrowing inputs from another window', () => {
+    const text = JSON.stringify({
+      ...JSON.parse(crossingText()),
+      changes: [
+        { scope: 'site', inputs: [{ name: 'site.api', value: 83 }] },
+        { scope: 'W-other', inputs: [{ name: 'rain', value: 71 }] }
+      ]
+    })
+    for (const [number, expected] of [
+      [83, []],
+      [71, [{ callId: CALL_ID, number: 71, line: 'Value 71' }]]
+    ] as const) {
+      const harness = fake({
+        replay: [{ id: 'r1', name: 'replay.json', text }],
+        ledger: [
+          callRow({ source_ref: 'replay.json', body: JSON.stringify({ subject: 'Notice', body: `Value ${number}` }) })
+        ],
+        now: '2026-11-02T16:00:00+08:00'
+      })
+      expect(runSweep(harness.ports).mismatches).toEqual([...expected])
+    }
+  })
+
+  test('legacy replay retains the original trace and rejects a changed decimal', () => {
+    for (const tamper of [false, true]) {
+      const harness = fake({
+        replay: [{ id: 'r1', name: 'replay.json', text: crossingText() }],
+        ledger: [
+          callRow({
+            source_ref: 'replay.json',
+            body: JSON.stringify({ subject: SUBJECT, body: tamper ? BODY.replace('39.0 mm', '39.5 mm') : BODY })
+          })
+        ]
+      })
+      expect(runSweep(harness.ports).mismatches).toEqual(
+        tamper ? [{ callId: CALL_ID, number: 39.5, line: expect.stringContaining('39.5 mm') as string }] : []
+      )
+    }
   })
 
   test('a replay row is checked against the replay file inputs instead of the indicators tab', () => {

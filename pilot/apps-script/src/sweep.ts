@@ -40,6 +40,8 @@ export interface CrossingFile {
   snapshot_id: string
   pack: string
   replay: boolean
+  clause_version?: number | string | null
+  replay_clause_content_json?: string
   changes: CrossingChange[]
 }
 
@@ -166,6 +168,19 @@ export function parseCrossingFile(raw: RawFile): CrossingFile | null {
     snapshot_id: typeof json.snapshot_id === 'string' && json.snapshot_id ? json.snapshot_id : json.t_eval,
     pack: 'sky',
     replay: json.replay === true,
+    ...(Object.prototype.hasOwnProperty.call(json, 'clause_version')
+      ? {
+          clause_version:
+            json.clause_version === null ||
+            typeof json.clause_version === 'number' ||
+            typeof json.clause_version === 'string'
+              ? json.clause_version
+              : ''
+        }
+      : {}),
+    ...(typeof json.replay_clause_content_json === 'string'
+      ? { replay_clause_content_json: json.replay_clause_content_json }
+      : {}),
     changes
   }
 }
@@ -377,6 +392,18 @@ function addTextNumbers(set: Set<number>, value: unknown): void {
 }
 
 function collectThresholds(node: unknown, underThreshold: boolean, out: Set<number>): void {
+  if (typeof node === 'string') {
+    if (!underThreshold) return
+    const text = node.trim()
+    if (text.startsWith('{') || text.startsWith('[')) {
+      try {
+        collectThresholds(JSON.parse(text), true, out)
+      } catch {
+        // Malformed threshold cells contribute no evidence.
+      }
+    } else addNumber(out, text)
+    return
+  }
   if (typeof node === 'number') {
     if (underThreshold && Number.isFinite(node)) out.add(node)
     return
@@ -429,11 +456,18 @@ export function checkNoticeNumbers(
   return null
 }
 
+function positiveVersion(value: unknown): number | null {
+  const number =
+    typeof value === 'number' ? value : typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN
+  return Number.isSafeInteger(number) && number > 0 ? number : null
+}
+
 function allowedLiveNumbers(
   row: Row<'ledger'>,
   indicators: Row<'indicators'>[],
   versions: Row<'clause_versions'>[],
-  windows: Row<'windows'>[]
+  windows: Row<'windows'>[],
+  crossing: CrossingFile | undefined
 ): Set<number> {
   const allowed = new Set<number>()
   const snapshot = cellText(row.snapshot_id)
@@ -454,7 +488,14 @@ function allowedLiveNumbers(
     addTextNumbers(allowed, cellText(window.start_myt))
     addTextNumbers(allowed, cellText(window.end_myt))
   }
-  const version = versionInForce(versions, parseMs(snapshot))
+  const pin = crossing?.clause_version
+  const pinnedVersion = positiveVersion(pin)
+  const version =
+    pin === undefined || pin === null
+      ? versionInForce(versions, parseMs(snapshot))
+      : pinnedVersion === null
+        ? null
+        : versions.find((entry) => positiveVersion(entry.version_n) === pinnedVersion)
   if (version) {
     const raw = cellText(version.content_json)
     if (raw) {
@@ -472,14 +513,14 @@ function allowedLiveNumbers(
 // for the call's window (plus site-wide changes) instead of the indicators tab.
 function allowedReplayNumbers(
   row: Row<'ledger'>,
-  file: CrossingFile,
-  versions: Row<'clause_versions'>[],
-  windows: Row<'windows'>[]
-): Set<number> | null {
+  file: CrossingFile | null,
+  sha256Hex: (text: string) => string
+): Set<number> {
+  const allowed = new Set<number>()
+  if (!file || file.snapshot_id !== cellText(row.snapshot_id)) return allowed
   const scope = cellText(row['window_id or night_id'])
   const matching = file.changes.filter((change) => change.scope === scope || change.scope === 'site')
-  if (matching.length === 0) return null
-  const allowed = new Set<number>()
+  if (matching.length === 0) return allowed
   for (const change of matching) {
     for (const input of change.inputs ?? []) {
       addNumber(allowed, input.value)
@@ -494,18 +535,14 @@ function allowedReplayNumbers(
     }
   }
   addTextNumbers(allowed, file.snapshot_id)
-  const window = windows.find((entry) => cellText(entry.window_id) === scope)
-  if (window) {
-    addTextNumbers(allowed, cellText(window.date))
-    addTextNumbers(allowed, cellText(window.start_myt))
-    addTextNumbers(allowed, cellText(window.end_myt))
-  }
-  const version = versionInForce(versions, parseMs(file.snapshot_id))
-  if (version) {
+  const content = file.replay_clause_content_json
+  const hash =
+    typeof file.clause_version === 'string' ? /^replay:([a-f0-9]{64})$/.exec(file.clause_version)?.[1] : undefined
+  if (content !== undefined && hash !== undefined && sha256Hex(content) === hash) {
     try {
-      collectThresholds(JSON.parse(cellText(version.content_json)), false, allowed)
+      collectThresholds(JSON.parse(content), false, allowed)
     } catch {
-      // As for live rows: no thresholds, so the numbers fail loudly below.
+      // Invalid embedded content contributes no thresholds; trace evidence remains usable.
     }
   }
   return allowed
@@ -546,9 +583,13 @@ export function runSweep(ports: SweepPorts): SweepResult {
     logged.some((row) => cellText(row.kind) === kind && cellText(row.ref) === ref)
 
   // CAL-10: one email per new live crossing file, to the approver on duty, else to the team.
-  const rawFiles = [...ports.skyFiles(), ...ports.crowdFiles()]
-  for (const raw of rawFiles) {
-    const file = parseCrossingFile(raw)
+  const skyFiles = ports.skyFiles().map((raw) => ({ raw, file: parseCrossingFile(raw) }))
+  const liveById = new Map<string, CrossingFile>()
+  for (const { file } of skyFiles) {
+    if (file && !file.replay) liveById.set(file.crossing_id, file)
+  }
+  const rawFiles = [...skyFiles, ...ports.crowdFiles().map((raw) => ({ raw, file: parseCrossingFile(raw) }))]
+  for (const { raw, file } of rawFiles) {
     if (!file) {
       result.crossingsSkipped.push(raw.name)
       continue
@@ -636,10 +677,9 @@ export function runSweep(ports: SweepPorts): SweepResult {
   const indicators = ports.indicators()
   const versions = ports.clauseVersions()
   const ledgerWindows = ports.windows()
-  const replayByName = new Map<string, CrossingFile>()
+  const replayByName = new Map<string, CrossingFile | null>()
   for (const raw of ports.replayFiles()) {
-    const file = parseCrossingFile(raw)
-    if (file) replayByName.set(raw.name, file)
+    replayByName.set(raw.name, parseCrossingFile(raw))
   }
   const sent = ports.sent()
 
@@ -722,10 +762,9 @@ export function runSweep(ports: SweepPorts): SweepResult {
       const notice = noticeText(row.body)
       if (notice) {
         const sourceRef = cellText(row.source_ref)
-        const replay = replayByName.get(sourceRef)
-        const allowed = replay
-          ? allowedReplayNumbers(row, replay, versions, ledgerWindows)
-          : allowedLiveNumbers(row, indicators, versions, ledgerWindows)
+        const allowed = replayByName.has(sourceRef)
+          ? allowedReplayNumbers(row, replayByName.get(sourceRef) ?? null, ports.sha256Hex)
+          : allowedLiveNumbers(row, indicators, versions, ledgerWindows, liveById.get(sourceRef))
         if (allowed) {
           const bad = checkNoticeNumbers(notice, allowed)
           if (bad) {
