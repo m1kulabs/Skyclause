@@ -8,6 +8,8 @@ on:
   push:
     branches: [main]
     # What goes into the image (see .dockerignore) and the deploy itself; pilot/, docs/ and the rest deploy nothing.
+    # infra/environments/ too: a Cloud Run job it adds runs Google's placeholder until a deploy gives it the image,
+    # which happens after wait-for-terraform sees the apply succeed (#226).
     paths:
       - apps/**
       - packages/**
@@ -22,6 +24,7 @@ on:
       - scripts/wait-for-terraform.sh
       - .github/actions/build-image/**
       - .github/workflows/deploy.yml
+      - infra/environments/**
   pull_request:
     paths:
       - Dockerfile
