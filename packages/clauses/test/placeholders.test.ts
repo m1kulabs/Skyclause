@@ -8,7 +8,6 @@ const placeholders = [
   { name: 'evaluate', owner: 'b-clauses' },
   { name: 'explain', owner: 'b-clauses' },
   { name: 'replay', owner: 'b-replay' },
-  { name: 'canonicalHash', owner: 'b-clauses' },
   { name: 'diff', owner: 'b-clauses' },
   { name: 'deriveInputState', owner: 'b-clauses' }
 ] as const
