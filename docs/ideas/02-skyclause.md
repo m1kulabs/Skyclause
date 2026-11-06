@@ -158,7 +158,7 @@ The owner edits thresholds and wording in a Sheet; defaults come from the publis
 - **Live:** the JPS 5-minute JSON (undocumented, no terms found), MET warnings and forecast (CC BY 4.0), DOE APIMS (undocumented endpoint, no terms) ([data sources][ds apims]), the team's camera, and the opt-in Form.
 - **Replayed, labelled:** the Malaysia Haze Monitor hourly API log and the [Sensor.Community archive](https://archive.sensor.community/) (DbCL), only for the haze backtest and never shown when a live source fails ([data rulings](/docs/CONTEXT.md#decisions-so-far)).
 - **Not read:** APU's timetable feed, until APU gives written permission; then the feeder keeps counts per wave and drops `NAME`, `SAMACCOUNTNAME` and `LECTID` at ingest ([APU research](/docs/research/apu.md#personal-data-in-the-timetable-feed)).
-- **Privacy:** the Form collects an email address, a role and the declared windows, with a notice and an unsubscribe link; the camera masks the lower third and points at the skyline, so no faces are captured ([PDPA](/docs/research/judging.md#malaysias-pdpa-and-the-2024-amendment)); frames are deleted after one semester; no personal data goes to any free-tier model.
+- **Privacy:** the Form collects an email address, a role and the declared windows, with a notice, and a reply of "unsubscribe" stops the notices; the camera masks the lower third and points at the skyline, so no faces are captured ([PDPA](/docs/research/judging.md#malaysias-pdpa-and-the-2024-amendment)); frames are deleted after one semester; no personal data goes to any free-tier model.
 
 ## Why people will use it
 
