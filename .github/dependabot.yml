@@ -1,0 +1,53 @@
+# Update PRs for the image's base digests, bun.lock and the pinned Actions (#228). A merged bump deploys
+# through deploy.yml like any other change. Commit prefixes match commitlint.config.mjs.
+version: 2
+updates:
+  # Daily (Monday to Friday) so a rebuilt node:22-slim reaches production within TRD Security's 7-day patching
+  # window; weekly could leave one waiting 7 days before its PR opened. Ungrouped, so titles fit commitlint's 50.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: daily
+    # A rebuilt runtime base carries Node and Debian security fixes: don't hold it for the 3-day default.
+    cooldown:
+      exclude: [node]
+    ignore:
+      # Node 22 is the runtime; a new major is a deliberate change. 22-slim's digest still refreshes.
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
+      # The Bun binary must match packageManager, which CI's setup-bun reads and Dependabot doesn't bump,
+      # so a Bun upgrade changes both by hand. 1.4.4-slim's digest still refreshes.
+      - dependency-name: oven/bun
+        update-types: ['version-update:semver-major', 'version-update:semver-minor', 'version-update:semver-patch']
+    commit-message:
+      prefix: ci
+    labels: [devops]
+
+  # Pins stay commit SHAs, as the repository's Actions policy (#48) requires, and a bump only moves an action
+  # already on its allow-list. `/` covers .github/workflows only, so the composite actions are listed too.
+  - package-ecosystem: github-actions
+    directories: [/, /.github/actions/*]
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
+    commit-message:
+      prefix: ci
+    labels: [devops]
+
+  # The root bun.lock covers every workspace. Minor and patch bumps share one PR; each major gets its own.
+  - package-ecosystem: bun
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        update-types: [minor, patch]
+    ignore:
+      # Types follow the Node 22 runtime.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+    commit-message:
+      prefix: build
+    labels: [devops]
