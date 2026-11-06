@@ -652,7 +652,7 @@ Requirements are PRD's [WEB](/docs/PRD.md#web-components-web); visuals are DESIG
 
 ### Custom elements and iframe fallback
 
-TRD owns this contract; DESIGN draws it.
+TRD owns this contract for public projects only; DESIGN draws it.
 
 ```html
 <skyclause-status project="{org}/{project}" theme="light|dark|auto"></skyclause-status>
@@ -664,7 +664,7 @@ TRD owns this contract; DESIGN draws it.
 - **Theming:** CSS custom properties `--skyclause-bg`, `--skyclause-fg`, `--skyclause-muted`, `--skyclause-accent`, `--skyclause-radius` and `--skyclause-font`; parts `mode`, `window`, `strip`, `age`, `source`, `link` and `attribution` for `::part()`. Nothing else is public styling API.
 - Lit 3.3.3 with open shadow roots (closed mode is no security boundary) and styles shared through `adoptedStyleSheets` ([MDN shadow DOM]). Data comes from the public read routes (CORS `*`, no credentials) and the SSE stream; errors render as errors, never a cached value.
 - **Distribution:** only the versioned `embed.skyclause.m1ku.tech/elements/v1.js` with published SRI hashes, not npm, as public releases were dropped on 6 November 2026; host pages must allow the embed origin in `script-src` and the API in `connect-src`.
-- **Iframe fallback** at `embed.skyclause.m1ku.tech/{org}/{project}` (and `/window/{windowId}`) for hosts whose CSP blocks third-party scripts: `frame-ancestors`, which works only as an HTTP header and supersedes `X-Frame-Options`, is `*` for public projects or the organisation's allow-list ([MDN frame-ancestors]); hosts are told to use `sandbox="allow-scripts allow-popups"` and `loading="lazy"` ([MDN iframe]); height arrives by `postMessage` (`skyclause:resize`).
+- **Iframe fallback** at `embed.skyclause.m1ku.tech/{org}/{project}` (and `/window/{windowId}`) for hosts whose CSP blocks third-party scripts: `frame-ancestors`, which works only as an HTTP header and supersedes `X-Frame-Options`, is `*` ([MDN frame-ancestors]); hosts are told to use `sandbox="allow-scripts allow-popups"` and `loading="lazy"` ([MDN iframe]); height arrives by `postMessage` (`skyclause:resize`).
 - Every embed carries its attribution line (MET, Rapid Rail and data.gov.my under CC BY 4.0; Wikipedia under CC BY-SA 4.0; links for JPS, APIMS and GoLive), the non-affiliation line and the not-a-safety-service line ([PUB-4, PUB-5](/docs/PRD.md#public-pages-pub)).
 
 [MDN shadow DOM]: https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM
@@ -715,7 +715,7 @@ Sources: [Skyclause loop](/docs/ideas/02-skyclause.md#day-to-day-loop), [Skyclau
 | Stolen device token         | One source per token, rotation, rate limits, readings marked by device                                                                                                                                                                                            |
 
 - **Secrets** live in Secret Manager (database password, Stripe, SES, Turnstile, OAuth client secrets) and mount per service; CI deploys through Workload Identity Federation with no service-account keys.
-- **CSP:** the app sends a nonce-based `script-src` with `'strict-dynamic'`, `frame-ancestors 'none'` and HSTS; the embed origin sets `frame-ancestors` per project ([NFR-10](/docs/PRD.md#non-functional-requirements)).
+- **CSP:** the app sends a nonce-based `script-src` with `'strict-dynamic'`, `frame-ancestors 'none'` and HSTS; the embed origin serves only public projects and sets `frame-ancestors *` ([NFR-10](/docs/PRD.md#non-functional-requirements)).
 - **Patching:** Next.js ships security patches monthly (the latest on 3 November 2026, out-of-band ones on 22 September and 14 October) ([Next.js blog]); patches land within 7 days and out-of-band ones within 48 hours. Dependabot has no security updates for Bun, so a daily `bun audit --production` on `main` fails and opens one devops issue when a production dependency has an advisory: work starts within a day of the advisory reaching `bun audit`, which can trail the release that fixes it.
 - **Dependencies:** exact versions in `bun.lock`, weekly update PRs, a stated reason for every new dependency, dependency and secret scanning in CI, an SBOM per image and base images pinned by digest. No package is published, so npm provenance doesn't apply: public releases were dropped on 6 November 2026.
 
