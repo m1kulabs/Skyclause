@@ -1,5 +1,5 @@
 import { SpanKind, type Histogram, type Meter } from '@opentelemetry/api'
-import type { ReadableSpan, SpanProcessor } from '@opentelemetry/sdk-trace-base'
+import type { ReadableSpan, SpanProcessor } from '@opentelemetry/sdk-trace'
 
 // OTel HTTP semantic conventions' server duration, which #116's API p95 dashboard reads.
 const NAME = 'http.server.request.duration'

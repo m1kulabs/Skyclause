@@ -1,6 +1,6 @@
 import { SpanKind, SpanStatusCode, trace } from '@opentelemetry/api'
 import { AggregationTemporality, DataPointType, InMemoryMetricExporter } from '@opentelemetry/sdk-metrics'
-import { InMemorySpanExporter } from '@opentelemetry/sdk-trace-base'
+import { InMemorySpanExporter } from '@opentelemetry/sdk-trace'
 import { afterEach, describe, expect, test } from 'vitest'
 import {
   log,

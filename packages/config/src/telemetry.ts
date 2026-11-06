@@ -24,12 +24,7 @@ import {
   PeriodicExportingMetricReader,
   type PushMetricExporter
 } from '@opentelemetry/sdk-metrics'
-import {
-  AlwaysOnSampler,
-  BasicTracerProvider,
-  BatchSpanProcessor,
-  type SpanExporter
-} from '@opentelemetry/sdk-trace-base'
+import { AlwaysOnSampler, BatchSpanProcessor, TracerProvider, type SpanExporter } from '@opentelemetry/sdk-trace'
 import { METRICS, type HeartbeatName } from '@skyclause/contracts'
 import { GoogleAuth } from 'google-auth-library'
 import { loadEnv, type Service } from './env'
@@ -175,12 +170,12 @@ export function startTelemetry(service: Service, options: TelemetryOptions = {})
     ...((source.K_SERVICE || source.CLOUD_RUN_JOB) && { 'cloud.platform': 'gcp_cloud_run' })
   })
 
-  const tracerProvider = new BasicTracerProvider({
+  const tracerProvider = new TracerProvider({
     resource,
     sampler: new AlwaysOnSampler(),
     spanProcessors: [
       new HttpServerDurationProcessor(),
-      ...(traceExporter ? [new RedactingSpanProcessor(new BatchSpanProcessor(traceExporter))] : [])
+      ...(traceExporter ? [new RedactingSpanProcessor(new BatchSpanProcessor({ exporter: traceExporter }))] : [])
     ]
   })
   const meterProvider = new MeterProvider({

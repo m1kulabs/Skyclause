@@ -1,5 +1,5 @@
 import { SpanStatusCode, trace } from '@opentelemetry/api'
-import { InMemorySpanExporter } from '@opentelemetry/sdk-trace-base'
+import { InMemorySpanExporter } from '@opentelemetry/sdk-trace'
 import fc from 'fast-check'
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import { log, startTelemetry, type Telemetry } from '@skyclause/config'

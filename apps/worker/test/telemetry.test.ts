@@ -1,6 +1,6 @@
 import { trace } from '@opentelemetry/api'
 import { AggregationTemporality, InMemoryMetricExporter } from '@opentelemetry/sdk-metrics'
-import { InMemorySpanExporter } from '@opentelemetry/sdk-trace-base'
+import { InMemorySpanExporter } from '@opentelemetry/sdk-trace'
 import { log, startTelemetry, traceContext, type Telemetry } from '@skyclause/config'
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose'
 import { afterEach, beforeAll, beforeEach, expect, test } from 'vitest'
