@@ -1,7 +1,6 @@
 // Apps Script adapters for the ports the pure modules take. Tests use doubles instead of these.
 import { toMytIso } from '../../shared/time.ts'
 import type { SourceStateUpdate } from './indicators.ts'
-import type { JpsHttpResponse } from './jps.ts'
 import type { CameraDrive, CameraFrameStore, RetentionStore } from './camera.ts'
 import {
   OPTIN_TITLES,
@@ -10,6 +9,9 @@ import {
   type OptinStores,
   type WindowFormPort
 } from './optin-form.ts'
+import type { LabelSlot, ProbationLabel, ProbationRow } from '../../shared/probation.ts'
+import type { JpsHttpResponse } from './jps.ts'
+import type { LabelStore } from './label.ts'
 import type { PiRowsStore } from './pi-rows.ts'
 import type { GetProperty } from './properties.ts'
 import { validateReading } from './readings.ts'
@@ -535,4 +537,90 @@ export function formAnswers(range: GoogleAppsScript.Spreadsheet.Range): Record<s
     } else values[name] = String(cell ?? '')
   })
   return values
+}
+// The sheet number (1-based) of the first data row whose column holds the value, or -1.
+function findRowNumber(spreadsheetId: string, tab: Tab, column: string, value: string): number {
+  const target = sheet(spreadsheetId, tab)
+  const rows = target.getLastRow() - 1
+  if (rows < 1) return -1
+  const index = columnsOf(tab).indexOf(column as never) + 1
+  const values = target.getRange(2, index, rows, 1).getValues()
+  for (let n = 0; n < values.length; n++) {
+    if (String(values[n]?.[0] ?? '') === value) return n + 2
+  }
+  return -1
+}
+
+function setCell(spreadsheetId: string, tab: Tab, rowNumber: number, column: string, value: Cell): void {
+  const index = columnsOf(tab).indexOf(column as never) + 1
+  sheet(spreadsheetId, tab).getRange(rowNumber, index).setValue(value)
+}
+
+// The `label` page's sheet reads and writes, through `SHEET_ID`. Labels go into the
+// existing `probation` rows, since that tab isn't append-only.
+export function labelStore(spreadsheetId: string): LabelStore {
+  if (!spreadsheetId) throw new Error('SHEET_ID is not set; run setup()')
+  const probationNumber = (captureId: string): number => {
+    const found = findRowNumber(spreadsheetId, 'probation', 'capture_id', captureId)
+    if (found < 0) throw new Error(`no probation row for capture ${captureId}`)
+    return found
+  }
+  // The camera's `sources` row, by the #59 ingest kind; null until ingest creates it.
+  const cameraNumber = (): number | null => {
+    const target = sheet(spreadsheetId, 'sources')
+    const rows = target.getLastRow() - 1
+    if (rows < 1) return null
+    const kind = columnsOf('sources').indexOf('kind') + 1
+    const kinds = target.getRange(2, kind, rows, 1).getValues()
+    for (let n = 0; n < kinds.length; n++) {
+      if (String(kinds[n]?.[0] ?? '') === 'camera') return n + 2
+    }
+    return null
+  }
+  return {
+    probationRows: () =>
+      readColumns(spreadsheetId, 'probation', [...columnsOf('probation')]).map((row) => ({
+        capture_id: String(row.capture_id),
+        frame_file_id: String(row.frame_file_id),
+        device_time: String(row.device_time),
+        phone_flag: String(row.phone_flag),
+        label_a: String(row.label_a),
+        label_b: String(row.label_b),
+        settled: String(row.settled),
+        agrees: row.agrees
+      })) satisfies ProbationRow[],
+    writeLabel: (captureId: string, slot: LabelSlot, label: ProbationLabel): void => {
+      setCell(spreadsheetId, 'probation', probationNumber(captureId), slot === 'a' ? 'label_a' : 'label_b', label)
+    },
+    writeSettlement: (captureId: string, settled: ProbationLabel, agrees: boolean): void => {
+      const rowNumber = probationNumber(captureId)
+      setCell(spreadsheetId, 'probation', rowNumber, 'settled', settled)
+      setCell(spreadsheetId, 'probation', rowNumber, 'agrees', agrees)
+    },
+    frameDataUrl: (fileId: string): string | null => {
+      try {
+        const blob = DriveApp.getFileById(fileId).getBlob()
+        const mime = blob.getContentType() ?? ''
+        if (!mime.startsWith('image/')) return null
+        return `data:${mime};base64,${Utilities.base64Encode(blob.getBytes())}`
+      } catch {
+        return null
+      }
+    },
+    writeFigures: (n: number, agreement: number | null): void => {
+      const rowNumber = cameraNumber()
+      if (rowNumber === null) return
+      setCell(spreadsheetId, 'sources', rowNumber, 'probation_n', n)
+      setCell(spreadsheetId, 'sources', rowNumber, 'probation_agreement', agreement ?? '')
+    },
+    recordVerdict: (note: string, passed: boolean, n: number, agreement: number | null): void => {
+      const rowNumber = cameraNumber()
+      if (rowNumber === null) return
+      setCell(spreadsheetId, 'sources', rowNumber, 'probation', !passed)
+      setCell(spreadsheetId, 'sources', rowNumber, 'probation_n', n)
+      setCell(spreadsheetId, 'sources', rowNumber, 'probation_agreement', agreement ?? '')
+      const index = columnsOf('sources').indexOf('probation') + 1
+      sheet(spreadsheetId, 'sources').getRange(rowNumber, index).setNote(note)
+    }
+  }
 }
