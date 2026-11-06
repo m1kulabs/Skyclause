@@ -76,10 +76,11 @@ Clear `DEPLOY_FREEZE` if nothing else holds it.
 
 A dry run moves `web`'s traffic to the previous revision and back to latest, with the commands above, and records the result here.
 
-Waiting for #90's second deploy: on 6 November 2026 `web` and `worker` each had a single revision (`web-00001-k55`, `worker-00001-qg9`), so there was no previous revision to move to.
+| Date (MYT)             | Run by                    | Service | Moved to        | Moved back to           | Result                                                                                                |
+| ---------------------- | ------------------------- | ------- | --------------- | ----------------------- | ----------------------------------------------------------------------------------------------------- |
+| 2026-11-06 08:31–08:33 | The #90 agent, for kymil4 | `web`   | `web-00004-2jl` | Latest, `web-00005-dxl` | `GET /health` 200 after each move; commands and output in [#90's evidence comment][rollback evidence] |
 
-| Date (MYT) | Run by | Service | Moved to | Moved back to | Result |
-| ---------- | ------ | ------- | -------- | ------------- | ------ |
+[rollback evidence]: https://github.com/m1kulabs/Skyclause/issues/90#issuecomment-6673305288
 
 ## See also
 
