@@ -82,7 +82,7 @@ Set these in a pull request, in `environments/production/terraform.tfvars`, whic
 
 `environments/production/monitoring.tf` holds #114's uptime checks, SLOs and alert policies. Every policy notifies the platform on-call's email and SMS channels.
 
-- **Availability:** an uptime check every minute on `/healthz` of each distinct app, API and MCP origin, one while `HOST_MODE=single`, with a 99.5% 30-day SLO and fast- and slow-burn pages.
+- **Availability:** an uptime check every minute on `/health` of each distinct app, API and MCP origin, one while `HOST_MODE=single`, with a 99.5% 30-day SLO and fast- and slow-burn pages.
 - **Jobs:** a page on any failed Cloud Run job execution.
 - **Pipeline:** a PromQL page per TRD SLI row, on the `breach` stat the worker's `sli` handler records each batch, and one per absent heartbeat (`auditor`, `minute_tick`). Each starts disabled; once its metric has flowed for a day, check its query in Metrics Explorer and set its `enabled` to `true`.
 - **On-call contacts:** a person runs `infra/wizards/oncall-contacts.sh` (10 minutes), which stores them hidden. After `oncall_contacts_ready` is applied, run it again to verify the SMS numbers, since an unverified number isn't paged.

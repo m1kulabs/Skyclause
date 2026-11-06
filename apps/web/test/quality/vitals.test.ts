@@ -9,7 +9,7 @@ test('the route group is the first route-group segment under the root layout', (
 
 test('a page outside the five route groups has no route group, so it sends no vital', () => {
   expect(routeGroupOf([])).toBeNull()
-  expect(routeGroupOf(['healthz'])).toBeNull()
+  expect(routeGroupOf(['health'])).toBeNull()
   expect(routeGroupOf(['(admin)', 'x'])).toBeNull()
 })
 

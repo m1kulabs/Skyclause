@@ -6,7 +6,7 @@ const manifest = {
   '/(marketing)/quality-planted/vitals/page': '/quality-planted/vitals',
   '/_global-error/page': '/_global-error',
   '/_not-found/page': '/_not-found',
-  '/healthz/route': '/healthz',
+  '/health/route': '/health',
   '/page': '/',
   '/quality-planted/unlabelled-input/page': '/quality-planted/unlabelled-input',
   '/(public)/p/[org]/[project]/page': '/p/[org]/[project]',
