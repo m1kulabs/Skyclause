@@ -221,7 +221,7 @@ A window (a class, an event, a commute wave) is what gets a call; guest windows 
 - **WIN-5** (P2) Import windows from chosen Microsoft 365 (Outlook) calendars, read-only. Acceptance: only the calendars the user picks are read.
 - **WIN-6** (P1) Declare windows by API, SDK, CLI and MCP with an idempotency key. Acceptance: repeating a request with the same key creates one window.
 - **WIN-7** (P1) Editing a window's times starts a run; cancelling a window with a sent call keeps the call and adds a ledger entry. Acceptance: the ledger shows the cancellation with who and when.
-- **WIN-8** (P1) Validation: end after start; at most 12 hours long; start no more than 90 days ahead; past windows only through evidence requests. Acceptance: each violation shows inline next to its field.
+- **WIN-8** (P1) Validation: end after start, except a zero-length commute wave is valid; at most 12 hours long; start no more than 90 days ahead; series materialise 90 days ahead; past windows only through evidence requests. Acceptance: each violation shows inline next to its field.
 
 ### Signals (SIG)
 
