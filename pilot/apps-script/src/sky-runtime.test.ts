@@ -712,3 +712,97 @@ describe('Sky runtime versioning and durable crossing coordination', () => {
     expect(lockCount).toBe(4)
   })
 })
+
+describe('Sky runtime historical version ledger reconciliation (#55)', () => {
+  test('repairs missing CV ledger row for an older persisted version when clauses are edited before retry, without duplicating rows on subsequent ticks', () => {
+    const harness = createHarness({ clauses: defaultSkyClauseRows() })
+    let failFirstLedgerBeforePersist = true
+    const origAppend = harness.store.appendRows.bind(harness.store)
+    harness.store.appendRows = <T extends 'clauses' | 'clause_versions' | 'ledger'>(
+      tab: T,
+      rows: readonly Row<T>[]
+    ): void => {
+      if (tab === 'ledger' && failFirstLedgerBeforePersist) {
+        failFirstLedgerBeforePersist = false
+        throw new Error('Ledger write failed before persistence on version 1')
+      }
+      origAppend(tab, rows)
+    }
+
+    expect(() =>
+      runSkyClauseTick(
+        buildTickInput({
+          recordedAt: '2026-11-02T15:05:09+08:00',
+          editor: 'alice@apu.edu.my'
+        }),
+        harness.ports
+      )
+    ).toThrow('Ledger write failed before persistence on version 1')
+
+    expect(harness.clauseVersions).toHaveLength(1)
+    const v1 = structuredClone(harness.clauseVersions[0]!)
+    expect(v1.version_n).toBe(1)
+    expect(v1.editor).toBe('alice@apu.edu.my')
+    expect(v1.saved_at).toBe('2026-11-02T15:05:09+08:00')
+    expect(harness.ledgerFull).toHaveLength(0)
+
+    // Owner edits clauses before the next tick runs, so version 1 is no longer the active hash
+    harness.clauses[0]!.wording_en = 'Updated haze watch wording before version 1 ledger retry.'
+
+    const second = runSkyClauseTick(
+      buildTickInput({
+        recordedAt: '2026-11-02T15:10:00+08:00',
+        editor: 'bob@apu.edu.my'
+      }),
+      harness.ports
+    )
+
+    expect(second.version.version_n).toBe(2)
+    expect(harness.clauseVersions).toHaveLength(2)
+    expect(harness.clauseVersions[0]).toEqual(v1)
+    const v2 = structuredClone(harness.clauseVersions[1]!)
+    expect(v2.version_n).toBe(2)
+    expect(v2.editor).toBe('bob@apu.edu.my')
+    expect(v2.saved_at).toBe('2026-11-02T15:10:00+08:00')
+    expect(v2.content_hash).not.toBe(v1.content_hash)
+
+    expect(harness.ledgerFull.map((row) => row.entry_id)).toEqual([
+      `CV-1-${v1.content_hash}`,
+      `CV-2-${v2.content_hash}`
+    ])
+    expect(harness.ledgerFull[0]?.kind).toBe('clause_version')
+    expect(harness.ledgerFull[0]?.pack).toBe('sky')
+    expect(harness.ledgerFull[0]?.source_ref).toBe('')
+    expect(harness.ledgerFull[0]?.recorded_at).toBe('2026-11-02T15:10:00+08:00')
+    expect(harness.ledgerFull[0]?.snapshot_id ?? '').toBe('')
+    expect(harness.ledgerFull[0]?.trigger ?? '').toBe('')
+    expect(JSON.parse(String(harness.ledgerFull[0]?.body))).toEqual({
+      version_n: 1,
+      content_hash: v1.content_hash
+    })
+    expect(harness.ledgerFull[1]?.kind).toBe('clause_version')
+    expect(harness.ledgerFull[1]?.pack).toBe('sky')
+    expect(harness.ledgerFull[1]?.source_ref).toBe('')
+    expect(harness.ledgerFull[1]?.recorded_at).toBe('2026-11-02T15:10:00+08:00')
+    expect(JSON.parse(String(harness.ledgerFull[1]?.body))).toEqual({
+      version_n: 2,
+      content_hash: v2.content_hash
+    })
+
+    // Subsequent unchanged tick preserves both versions and appends no duplicate ledger rows
+    const third = runSkyClauseTick(
+      buildTickInput({
+        recordedAt: '2026-11-02T15:15:00+08:00',
+        editor: 'bob@apu.edu.my'
+      }),
+      harness.ports
+    )
+    expect(third.version.version_n).toBe(2)
+    expect(harness.clauseVersions).toEqual([v1, v2])
+    expect(harness.ledgerFull).toHaveLength(2)
+    expect(harness.ledgerFull.map((row) => row.entry_id)).toEqual([
+      `CV-1-${v1.content_hash}`,
+      `CV-2-${v2.content_hash}`
+    ])
+  })
+})

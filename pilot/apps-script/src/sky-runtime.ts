@@ -131,6 +131,41 @@ function findLatestClauseVersion(
   return { row: { ...latestRow }, versionN: latestVersionN }
 }
 
+function collectMissingVersionLedgerRows(
+  durableVersions: readonly Row<'clause_versions'>[],
+  knownLedgerEntryIds: Set<string>,
+  recordedAtIso: string,
+  canonicalJson: (value: unknown) => string
+): Row<'ledger'>[] {
+  const ordered = durableVersions
+    .map((row) => {
+      const versionN = typeof row.version_n === 'number' ? row.version_n : Number(String(row.version_n ?? '').trim())
+      const contentHash = String(row.content_hash ?? '').trim()
+      return { versionN, contentHash }
+    })
+    .filter((item) => Number.isInteger(item.versionN) && item.versionN >= 1 && item.contentHash.length > 0)
+    .sort((a, b) => a.versionN - b.versionN)
+
+  const missing: Row<'ledger'>[] = []
+  for (const { versionN, contentHash } of ordered) {
+    const entryId = `CV-${versionN}-${contentHash}`
+    if (knownLedgerEntryIds.has(entryId)) continue
+    knownLedgerEntryIds.add(entryId)
+    missing.push({
+      entry_id: entryId,
+      kind: 'clause_version',
+      pack: 'sky',
+      source_ref: '',
+      body: canonicalJson({
+        version_n: versionN,
+        content_hash: contentHash
+      }),
+      recorded_at: recordedAtIso
+    })
+  }
+  return missing
+}
+
 function formatEvalStampToken(tEvalIso: string): string {
   const yyyyMMdd = `${tEvalIso.slice(0, 4)}${tEvalIso.slice(5, 7)}${tEvalIso.slice(8, 10)}`
   const HHmm = `${tEvalIso.slice(11, 13)}${tEvalIso.slice(14, 16)}`
@@ -195,15 +230,14 @@ export function runSkyClauseTick(input: SkyClauseTickInput, ports: SkyClauseRunt
 
   let activeVersionRow: Row<'clause_versions'>
   let activeVersionN: number
-  let activeContentHash: string
+  let durableVersions: readonly Row<'clause_versions'>[]
 
   if (latestVersion && String(latestVersion.row.content_hash ?? '').trim() === contentHash) {
     activeVersionRow = latestVersion.row
     activeVersionN = latestVersion.versionN
-    activeContentHash = contentHash
+    durableVersions = existingVersions
   } else {
     activeVersionN = latestVersion ? latestVersion.versionN + 1 : 1
-    activeContentHash = contentHash
     const editor = bootstrappedDefaults ? 'system' : normalizeEditor(input.editor)
     activeVersionRow = {
       version_n: activeVersionN,
@@ -213,25 +247,21 @@ export function runSkyClauseTick(input: SkyClauseTickInput, ports: SkyClauseRunt
       content_json: contentJson
     }
     ports.store.appendRows('clause_versions', [activeVersionRow])
+    durableVersions = [...existingVersions, activeVersionRow]
   }
 
   const ledgerRows = ports.store.readRows('ledger')
-  const expectedLedgerEntryId = `CV-${activeVersionN}-${activeContentHash}`
-  const hasVersionLedgerRow = ledgerRows.some((row) => String(row.entry_id ?? '').trim() === expectedLedgerEntryId)
-
-  if (!hasVersionLedgerRow) {
-    const versionLedgerRow: Row<'ledger'> = {
-      entry_id: expectedLedgerEntryId,
-      kind: 'clause_version',
-      pack: 'sky',
-      source_ref: '',
-      body: ports.canonicalJson({
-        version_n: activeVersionN,
-        content_hash: activeContentHash
-      }),
-      recorded_at: recordedAtIso
-    }
-    ports.store.appendRows('ledger', [versionLedgerRow])
+  const knownLedgerEntryIds = new Set(
+    ledgerRows.map((row) => String(row.entry_id ?? '').trim()).filter((id) => id.length > 0)
+  )
+  const missingVersionLedgerRows = collectMissingVersionLedgerRows(
+    durableVersions,
+    knownLedgerEntryIds,
+    recordedAtIso,
+    ports.canonicalJson
+  )
+  if (missingVersionLedgerRows.length > 0) {
+    ports.store.appendRows('ledger', missingVersionLedgerRows)
   }
 
   const previousState = ports.store.readRows('shadow_state')
