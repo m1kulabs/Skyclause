@@ -17,7 +17,8 @@ export function LedgerTable({
   locale,
   onRequest,
   correctionHref,
-  selectedEntry
+  selectedEntry,
+  busy
 }: {
   rows: LedgerRow[]
   total: number
@@ -26,6 +27,7 @@ export function LedgerTable({
   onRequest: (target: { call_id?: string; span?: { from: string; to: string } }) => void
   correctionHref: (id: string) => string
   selectedEntry: string | null
+  busy: boolean
 }) {
   const frame = useRef<HTMLDivElement>(null)
   const scrolledEntry = useRef<string | null>(null)
@@ -68,6 +70,7 @@ export function LedgerTable({
       tabIndex={0}
       role="region"
       aria-label={t('ledger.frame', {}, locale)}
+      aria-busy={busy}
       onScroll={(event) => {
         const top = event.currentTarget.scrollTop
         startTransition(() => setScroll(top))

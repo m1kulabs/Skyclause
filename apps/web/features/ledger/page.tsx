@@ -16,6 +16,7 @@ import { RequestEvidence, type EvidenceTarget } from '../evidence/request'
 import { EvidenceSheet } from '../evidence/pack'
 import { EvidenceList } from '../evidence/list'
 import { apiFetch } from './operations'
+import { readLedgerPage } from './read-page'
 import { useRead } from './use-read'
 import { Failure, Loading } from './feedback'
 import { t } from './i18n'
@@ -105,7 +106,7 @@ function LedgerContent({
   const readLedger = useCallback(
     async (signal: AbortSignal) => {
       const query = JSON.parse(filterKey) as ReturnType<typeof filtersFromSearch>
-      let page = await apiFetch('listLedgerEntries', {
+      let page = await readLedgerPage({
         params: { id: project.id },
         query: { ...query, cursor, limit: 50 },
         signal
@@ -115,7 +116,7 @@ function LedgerContent({
         while (!page.data.some((row) => row.id === selectedEntry) && page.next_cursor) {
           if (seen.has(page.next_cursor)) throw new Error('Repeated ledger cursor')
           seen.add(page.next_cursor)
-          const next = await apiFetch('listLedgerEntries', {
+          const next = await readLedgerPage({
             params: { id: project.id },
             query: { ...query, cursor: page.next_cursor, limit: 50 },
             signal
@@ -123,21 +124,22 @@ function LedgerContent({
           page = { ...next, data: [...page.data, ...next.data] }
         }
       }
-      return page
+      return { ...page, view: { key: `${filterKey}-${cursor ?? ''}`, offset } }
     },
-    [project.id, filterKey, cursor, selectedEntry]
+    [project.id, filterKey, cursor, selectedEntry, offset]
   )
-  const ledger = useRead(readLedger)
+  const ledger = useRead(readLedger, false, { keepPreviousData: true })
   const verification = useRead(
     useCallback((signal) => apiFetch('verifyLedger', { params: { id: project.id }, signal }), [project.id])
   )
   const archive = useRead(
     useCallback((signal) => apiFetch('getPilotArchive', { params: { id: project.id }, signal }), [project.id])
   )
-  const openRequest = (target: EvidenceTarget) => {
+  const openRequest = useCallback((target: EvidenceTarget) => {
     requestTrigger.current = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null
     setTarget(target)
-  }
+  }, [])
+  const correctionHref = useCallback((id: string) => ledgerHref(path, new URLSearchParams(), { entry: id }), [path])
   const closeRequest = () => {
     setTarget(null)
     requestAnimationFrame(() => requestTrigger.current?.focus())
@@ -275,16 +277,18 @@ function LedgerContent({
             <>
               <div className="ledger-toolbar">
                 <p data-ledger-total aria-live="polite">
-                  {ledger.data &&
-                    t(
-                      'ledger.total',
-                      {
-                        from: formatNumber(ledger.data.data.length ? offset + 1 : 0, locale),
-                        to: formatNumber(offset + ledger.data.data.length, locale),
-                        n: formatNumber(ledger.data.total, locale)
-                      },
-                      locale
-                    )}
+                  {ledger.loading
+                    ? t('ledger.loading', {}, locale)
+                    : ledger.data &&
+                      t(
+                        'ledger.total',
+                        {
+                          from: formatNumber(ledger.data.data.length ? offset + 1 : 0, locale),
+                          to: formatNumber(offset + ledger.data.data.length, locale),
+                          n: formatNumber(ledger.data.total, locale)
+                        },
+                        locale
+                      )}
                 </p>
                 <div className="ledger-actions">
                   <Button
@@ -323,7 +327,7 @@ function LedgerContent({
                 </p>
               )}
               {verification.error && <Failure error={verification.error} retry={verification.retry} locale={locale} />}
-              {ledger.loading ? (
+              {ledger.loading && !ledger.data ? (
                 <Loading locale={locale} />
               ) : ledger.error ? (
                 <Failure error={ledger.error} retry={ledger.retry} locale={locale} />
@@ -331,14 +335,15 @@ function LedgerContent({
                 ledger.data &&
                 (ledger.data.data.length ? (
                   <LedgerTable
-                    key={`${filterKey}-${cursor ?? ''}`}
+                    key={ledger.data.view.key}
                     rows={ledger.data.data}
                     total={ledger.data.total}
-                    offset={offset}
+                    offset={ledger.data.view.offset}
                     locale={locale}
                     onRequest={openRequest}
-                    correctionHref={(id) => ledgerHref(path, new URLSearchParams(), { entry: id })}
+                    correctionHref={correctionHref}
                     selectedEntry={selectedEntry}
+                    busy={ledger.loading}
                   />
                 ) : (
                   <Empty>
@@ -351,13 +356,18 @@ function LedgerContent({
               )}
               <div className="ledger-actions">
                 {cursor && (
-                  <Button variant="outline" onClick={() => navigate({ cursor: null, offset: null })}>
+                  <Button
+                    variant="outline"
+                    disabled={ledger.loading}
+                    onClick={() => navigate({ cursor: null, offset: null })}
+                  >
                     {t('ledger.firstPage', {}, locale)}
                   </Button>
                 )}
                 {ledger.data?.next_cursor && (
                   <Button
                     variant="outline"
+                    disabled={ledger.loading}
                     onClick={() =>
                       navigate({ cursor: ledger.data!.next_cursor!, offset: String(offset + ledger.data!.data.length) })
                     }

@@ -1,9 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { startTransition, useEffect, useState } from 'react'
 
 /** Abort old reads on URL changes; never present an unavailable source as an empty result. */
-export function useRead<Value>(read: (signal: AbortSignal) => Promise<Value>, poll = false) {
+export function useRead<Value>(
+  read: (signal: AbortSignal) => Promise<Value>,
+  poll = false,
+  { keepPreviousData = false } = {}
+) {
   const [state, setState] = useState<{ read: typeof read; data?: Value; error?: unknown; loading: boolean }>({
     read,
     loading: true
@@ -11,14 +15,16 @@ export function useRead<Value>(read: (signal: AbortSignal) => Promise<Value>, po
   const [revision, setRevision] = useState(0)
   useEffect(() => {
     const controller = new AbortController()
-    setState({ read, loading: true })
+    startTransition(() =>
+      setState((previous) => ({ read, data: keepPreviousData ? previous.data : undefined, loading: true }))
+    )
     let timer: ReturnType<typeof setTimeout> | undefined
     async function load() {
       try {
         const data = await read(controller.signal)
-        if (!controller.signal.aborted) setState({ read, data, loading: false })
+        if (!controller.signal.aborted) startTransition(() => setState({ read, data, loading: false }))
       } catch (error) {
-        if (!controller.signal.aborted) setState({ read, error, loading: false })
+        if (!controller.signal.aborted) startTransition(() => setState({ read, error, loading: false }))
       }
       if (!controller.signal.aborted && poll)
         timer = setTimeout(() => {
@@ -31,10 +37,12 @@ export function useRead<Value>(read: (signal: AbortSignal) => Promise<Value>, po
       controller.abort()
       clearTimeout(timer)
     }
-  }, [read, revision, poll])
-  // A changed URL must not remount the old table under the new filters before the effect runs.
+  }, [read, revision, poll, keepPreviousData])
+  // Only callers that mark retained results as busy may show data from the previous URL.
   return {
-    ...(state.read === read ? state : { data: undefined, error: undefined, loading: true }),
+    ...(state.read === read
+      ? state
+      : { data: keepPreviousData ? state.data : undefined, error: undefined, loading: true }),
     retry: () => setRevision((value) => value + 1)
   }
 }
