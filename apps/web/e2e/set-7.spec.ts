@@ -1,12 +1,19 @@
 import { test, expect } from './fixtures'
+import type { Page } from '@playwright/test'
 import { t } from './palette/messages'
 import { expectUnclippedText } from './harness/expect-unclipped-text'
 
 const route = '/_test/set-7'
 const name = t('set7.harness.name')
 
-test('TypedConfirmDialog stays disabled until the exact name and resets after closing', async ({ page }) => {
+// Controlled inputs can be filled before hydration; wait for the harness's existing ready signal.
+async function openHarness(page: Page) {
   await page.goto(route)
+  await expect(page.getByRole('button', { name: t('set7.harness.focus'), exact: true })).toBeEnabled()
+}
+
+test('TypedConfirmDialog stays disabled until the exact name and resets after closing', async ({ page }) => {
+  await openHarness(page)
   await page.getByRole('button', { name: t('set7.harness.open_typed'), exact: true }).click()
   const dialog = page.getByRole('alertdialog')
   const confirm = dialog.getByRole('button', { name: t('set7.harness.typed', { name }), exact: true })
@@ -29,7 +36,7 @@ test('TypedConfirmDialog stays disabled until the exact name and resets after cl
 })
 
 test('ConfirmDialog names the object in its title and button, traps focus and returns it', async ({ page }) => {
-  await page.goto(route)
+  await openHarness(page)
   const trigger = page.getByRole('button', { name: t('set7.harness.open_confirm'), exact: true })
   await trigger.focus()
   await page.keyboard.press('Enter')
@@ -48,7 +55,7 @@ test('ConfirmDialog names the object in its title and button, traps focus and re
 
 test('dialogs wrap long and non-Latin object names at 320px and reject an empty typed name', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 812 })
-  await page.goto(route)
+  await openHarness(page)
   // Organisation names have no maximum in the operation schema; use a plausible long name and identifier.
   for (const objectName of [
     'Persatuan Kebajikan dan Pendidikan Komuniti Wilayah Persekutuan Kuala Lumpur dan Selangor',
@@ -78,7 +85,7 @@ test('undo hook commits once after 10 seconds, with no earlier write', async ({ 
     await route.fulfill({ status: 204 })
   })
   await page.clock.install()
-  await page.goto(route)
+  await openHarness(page)
   await page.getByRole('button', { name: t('set7.harness.queue'), exact: true }).click()
   await page.clock.runFor(9_000)
   expect(commits).toBe(0)
@@ -96,7 +103,7 @@ test('undo hook never writes after Undo, including on pagehide', async ({ page }
     await route.fulfill({ status: 204 })
   })
   await page.clock.install()
-  await page.goto(route)
+  await openHarness(page)
   await page.getByRole('button', { name: t('set7.harness.queue'), exact: true }).click()
   await page.clock.runFor(9_000)
   await page.getByRole('button', { name: t('set7.undo'), exact: true }).click()
@@ -122,7 +129,7 @@ test('undo hook commits on pagehide with keepalive and never twice', async ({ pa
     }
   })
   await page.clock.install()
-  await page.goto(route)
+  await openHarness(page)
   await page.getByRole('button', { name: t('set7.harness.queue'), exact: true }).click()
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })))
   await expect(page.locator('html')).toHaveAttribute('data-commit-keepalive', 'true')
@@ -132,7 +139,7 @@ test('undo hook commits on pagehide with keepalive and never twice', async ({ pa
 })
 
 test('guard prompts on beforeunload and stops prompting after saving', async ({ page }) => {
-  await page.goto(route)
+  await openHarness(page)
   await page.getByRole('textbox', { name: t('set7.harness.edit') }).fill('Unsaved test edit')
   const prompt = page.waitForEvent('dialog')
   const reload = page.evaluate(() => window.location.reload())
@@ -149,8 +156,7 @@ test('guard prompts on beforeunload and stops prompting after saving', async ({ 
 })
 
 test('guard cancels browser history traversal before changing the URL', async ({ page }) => {
-  await page.goto(route)
-  await expect(page.getByRole('button', { name: t('set7.harness.focus'), exact: true })).toBeEnabled()
+  await openHarness(page)
   await page.evaluate(() => history.pushState(history.state, '', '?edited=1'))
   const field = page.getByRole('textbox', { name: t('set7.harness.edit') })
   await field.fill('Unsaved history test')
@@ -165,7 +171,7 @@ test('guard cancels browser history traversal before changing the URL', async ({
 
 for (const kind of ['link', 'imperative'] as const) {
   test(`guard prompts on ${kind} in-app navigation and keeps edits after cancellation`, async ({ page }) => {
-    await page.goto(route)
+    await openHarness(page)
     const field = page.getByRole('textbox', { name: t('set7.harness.edit') })
     await field.fill('Unsaved test edit')
     const target =
@@ -204,7 +210,7 @@ for (const theme of ['dark', 'light', 'high-contrast'] as const) {
       }
     ])
     await page.setViewportSize({ width: 375, height: 812 })
-    await page.goto(route)
+    await openHarness(page)
     for (const key of ['set7.harness.open_confirm', 'set7.harness.open_typed']) {
       await page.getByRole('button', { name: t(key), exact: true }).click()
       await expect(page.getByRole('alertdialog')).toBeVisible()

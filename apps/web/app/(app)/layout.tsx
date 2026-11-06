@@ -1,3 +1,4 @@
+import { brandMetadata } from '../../features/brand/metadata'
 import type { ReactNode } from 'react'
 import { Providers } from '../../components/providers'
 import { RequestRootLayout } from '../../components/request-root-layout'
@@ -8,7 +9,7 @@ import { ApprovalsCount } from '../../features/org-live'
 import { CommandPalette } from '../../features/palette'
 import { t } from '../../features/shell/i18n'
 
-export const metadata = { title: t('app-shell.brand') }
+export const metadata = { ...brandMetadata, title: t('app-shell.brand') }
 export const instant = false
 
 export default async function Layout({ children }: { children: ReactNode }) {

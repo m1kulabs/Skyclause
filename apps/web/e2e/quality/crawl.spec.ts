@@ -81,6 +81,7 @@ for (const route of builtRoutes()) {
     const standIns = session.standIns.length ? ` (standing in for ${session.standIns.join(', ')})` : ''
     test(`${route.path} as ${session.role}${standIns}`, async ({ page }, info) => {
       const jsOn = info.project.use.javaScriptEnabled !== false
+      test.slow(jsOn, 'One case runs five complete axe audits plus the reduced-motion check')
       test.skip(!jsOn && !(route.group && PUBLIC_GROUPS.has(route.group)), 'JavaScript off covers public pages only')
       test.fixme(route.dynamic, `${route.path} needs param fixtures with stubApi bodies (#95)`)
       if (session.standIns.length) {

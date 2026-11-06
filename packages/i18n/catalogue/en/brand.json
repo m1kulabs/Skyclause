@@ -1,0 +1,61 @@
+{
+  "name": "Skyclause",
+  "non_affiliation": "Not affiliated with APU, KPT, JPS, MET, DOE, Prasarana/Rapid KL or the stadium.",
+  "not_safety_service": "Skyclause is not a safety or emergency service. In an emergency, call 999.",
+  "badge_with_pack": "{pack}: {mode}",
+  "packs": { "sky": "Sky", "crowd": "Crowd" },
+  "states": {
+    "normal": "Normal",
+    "storm_watch": "Storm watch",
+    "outdoor_limited": "Outdoor-limited",
+    "commute_disruption": "Commute disruption",
+    "hybrid_recommended": "Hybrid recommended",
+    "surge_night": "Surge night",
+    "no_call": "No call",
+    "fresh": "Fresh input",
+    "stale": "Stale input",
+    "error": "Input error",
+    "recovered": "Recovered input",
+    "pending": "Pending input",
+    "probation": "Input on probation",
+    "off_hours": "Outside input hours"
+  },
+  "attribution": {
+    "jps_rain": { "licence_name": null, "licence_url": null, "derived_only": true },
+    "met_warning": {
+      "licence_name": "CC BY 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+      "derived_only": false
+    },
+    "met_forecast": {
+      "licence_name": "CC BY 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+      "derived_only": false
+    },
+    "apims": { "licence_name": null, "licence_url": null, "derived_only": true },
+    "rapidrail_od": {
+      "licence_name": "CC BY 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+      "derived_only": false
+    },
+    "gtfs_static": {
+      "licence_name": "CC BY 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+      "derived_only": false
+    },
+    "gtfs_rt": {
+      "licence_name": "CC BY 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+      "derived_only": false
+    },
+    "golive": { "licence_name": null, "licence_url": null, "derived_only": true },
+    "wikipedia": {
+      "licence_name": "CC BY-SA 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "derived_only": false
+    },
+    "camera": { "licence_name": null, "licence_url": null, "derived_only": true },
+    "pi": { "licence_name": null, "licence_url": null, "derived_only": true }
+  },
+  "test": { "title": "Brand assets", "back": "Back to tokens", "after": "After badges" }
+}

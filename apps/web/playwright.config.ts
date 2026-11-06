@@ -13,6 +13,8 @@ const crawl = /quality\/(crawl|checks)\.spec\.ts$/
 
 export default defineConfig({
   testDir: 'e2e',
+  // Allow constrained development machines to run the same matrix without competing browser workers.
+  workers: process.env.E2E_WORKERS ? Number(process.env.E2E_WORKERS) : undefined,
   forbidOnly: !!process.env.CI,
   workers: process.env.E2E_WORKERS ? Number(process.env.E2E_WORKERS) : undefined,
   timeout: process.env.E2E_TIMEOUT ? Number(process.env.E2E_TIMEOUT) : 30_000,
@@ -23,7 +25,7 @@ export default defineConfig({
     ? [
         {
           name: 'pseudo',
-          testMatch: /(?:quality\/pseudo|connect\/connect|camera\/pseudo)\.spec\.ts$/,
+          testMatch: /(?:quality\/pseudo|connect\/connect|camera\/pseudo|brand\/badge)\.spec\.ts$/,
           use: { ...devices['Desktop Chrome'] }
         }
       ]
@@ -50,6 +52,7 @@ export default defineConfig({
         // PLANTED_ROUTES builds the test-only `page.plant.tsx` routes the quality suites assert on.
         env: {
           APP_ENV: 'test',
+          HOST_MODE: 'single',
           PORT: String(port),
           HOSTNAME: 'localhost',
           PLANTED_ROUTES: '1',
