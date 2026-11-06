@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@hono/zod-openapi": "1.6.3",
+    "@skyclause/clauses": "workspace:*",
     "zod": "4.6.7"
   }
 }

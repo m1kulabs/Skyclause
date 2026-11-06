@@ -20,3 +20,5 @@ export {
   type SesInboundOptions
 } from './inbound'
 export { ensureVapidKeys, type VapidKeysOptions } from './vapid'
+export * from './placeholders/c-notice-templates'
+export * from './placeholders/c-subscribers'

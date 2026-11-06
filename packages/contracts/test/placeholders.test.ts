@@ -1,0 +1,75 @@
+/// <reference types="node" />
+
+import { describe, expect, it } from 'vitest'
+import { NotBuiltError } from '../src/not-built'
+
+// Load workspace entrypoints at runtime: this integration check must not add reverse project references to contracts.
+const packages: Array<{ name: string; owners: Record<string, string[]> }> = [
+  {
+    name: 'auth',
+    owners: { 'f-auth': ['resolvePrincipal', 'can'] }
+  },
+  {
+    name: 'api',
+    owners: {
+      'f-api': ['setPrincipalResolver', 'setPermissionCheck'],
+      'b-auditor': ['registerAuditCheck']
+    }
+  },
+  {
+    name: 'db',
+    owners: {
+      'f-db-schema': ['recordAudit', 'emitEvent', 'track', 'projectGate'],
+      'c-ledger-chain': ['appendLedger'],
+      'c-run-orchestrator': ['requestRun'],
+      'a-org-projects': ['createOrganisation'],
+      'c-notifications': ['notify'],
+      'd-org-api': ['listenEvents'],
+      'a-subscriber-rights': ['eraseSubscriber']
+    }
+  },
+  {
+    name: 'delivery',
+    owners: {
+      'c-subscribers': ['issueSubscriberToken', 'verifySubscriberToken', 'emailHash'],
+      'c-notice-templates': [
+        'renderNotice',
+        'checkRequiredLines',
+        'findAttendanceExcuse',
+        'malayApprovalPolicy',
+        'recipientsByLanguage'
+      ]
+    }
+  },
+  {
+    name: 'config',
+    owners: { 'e-byok-api': ['sealSecret', 'openSecret'], 'a-hardening': ['assertPublicUrl', 'safeFetch'] }
+  },
+  {
+    name: 'forecast',
+    owners: { 'b-forecast': ['baseline', 'uplift', 'periods', 'backtest', 'forecastNight'] }
+  },
+  {
+    name: 'sources',
+    owners: { 'b-adapter-listings': ['parseListingPage'] }
+  },
+  {
+    name: 'agent',
+    owners: { 'c-agent-core': ['draftBundle'] }
+  }
+]
+
+describe.each(packages)('$name placeholders', ({ name, owners }) => {
+  for (const [owner, exports] of Object.entries(owners)) {
+    it.each(exports)('%s throws NotBuiltError with its owner', async (nameOfExport) => {
+      const entrypoint = new URL(`../../${name}/src/index.ts`, import.meta.url).pathname
+      const module: Record<string, unknown> = await import(entrypoint)
+      const placeholder = module[nameOfExport]
+      expect(placeholder).toBeTypeOf('function')
+      expect(() => Reflect.apply(placeholder as (...args: unknown[]) => unknown, undefined, [])).toThrow(
+        expect.objectContaining({ name: 'NotBuiltError', owner })
+      )
+      expect(() => Reflect.apply(placeholder as (...args: unknown[]) => unknown, undefined, [])).toThrow(NotBuiltError)
+    })
+  }
+})
