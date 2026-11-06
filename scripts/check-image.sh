@@ -41,11 +41,11 @@ serves web -e APP_ENV=production
 serves worker -e APP_ENV=production -e WORKER_URL=https://worker.example.test \
   -e WORKER_INVOKER_SA=skyclause-invoker@skyclause.iam.gserviceaccount.com
 
-# exits <expected stderr> <env...>: the container exits non-zero and says why.
+# exits <expected stderr> <docker run arguments...>: the container exits non-zero and says why.
 exits() {
   local expected=$1 output status=0
   shift
-  output=$(docker run --rm "$@" "$image" 2>&1) || status=$?
+  output=$(docker run --rm "$@" 2>&1) || status=$?
   if [ "$status" -ne 0 ] && grep -q -- "$expected" <<<"$output"; then
     echo "ok   exits $status: $expected"
   else
@@ -53,8 +53,10 @@ exits() {
   fi
 }
 
-exits 'unknown job no-such-job' -e CLOUD_RUN_JOB=no-such-job -e APP_ENV=production
-exits 'APP_ENV=test is refused on Cloud Run' -e K_SERVICE=web -e APP_ENV=test
-exits 'K_SERVICE' -e APP_ENV=production
+# A job runs main.js with its container args (infra/ sets `job <name>`), else the job named like the Cloud Run job.
+exits 'unknown job no-such-job' -e CLOUD_RUN_JOB=no-such-job -e APP_ENV=production "$image"
+exits 'unknown job from-args;' -e CLOUD_RUN_JOB=other-name -e APP_ENV=production "$image" job from-args
+exits 'APP_ENV=test is refused on Cloud Run' -e K_SERVICE=web -e APP_ENV=test "$image"
+exits 'K_SERVICE' -e APP_ENV=production "$image"
 
 [ "$failures" -eq 0 ] || exit 1
