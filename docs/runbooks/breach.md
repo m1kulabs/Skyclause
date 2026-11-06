@@ -17,10 +17,12 @@ Contents:
 
 ## Breach owner and deputy
 
-| Role          | Name                                               | Holds                                                                                                  |
-| ------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Breach owner  | Named by the product lead in this runbook's review | Decides whether it is a breach, runs both clocks, sends both notifications and keeps the breach record |
-| Breach deputy | Named by the product lead in this runbook's review | Acts as owner whenever the owner can't be reached, with the same authority                             |
+| Role          | Name          | Holds                                                                                                  |
+| ------------- | ------------- | ------------------------------------------------------------------------------------------------------ |
+| Breach owner  | `kymil4`      | Decides whether it is a breach, runs both clocks, sends both notifications and keeps the breach record |
+| Breach deputy | `AlaskanTuna` | Acts as owner whenever the owner can't be reached, with the same authority                             |
+
+Names are GitHub handles, named by the product lead on 6 November 2026. Phone numbers and email addresses are in the Secret Manager secret `ONCALL_CONTACTS` (`gcloud secrets versions access latest --secret=ONCALL_CONTACTS --project=skyclause`), never in this repository.
 
 The platform on-call ([on-call](on-call.md)) who first hears of a possible breach tells the owner, or the deputy if the owner doesn't answer, and keeps running the incident ([incident runbook](incident.md)) alongside.
 

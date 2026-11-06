@@ -12,12 +12,14 @@ Contents:
 
 ## On-call rota
 
-| Role      | Name                                               | Carries                                                                                 |
-| --------- | -------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Primary   | Named by the product lead in this runbook's review | Every Cloud Monitoring page; acknowledges within 15 minutes in P1 and 5 minutes from P2 |
-| Secondary | Named by the product lead in this runbook's review | Pages the primary hasn't acknowledged in time                                           |
+| Role      | Name          | Carries                                                                                 |
+| --------- | ------------- | --------------------------------------------------------------------------------------- |
+| Primary   | `kymil4`      | Every Cloud Monitoring page; acknowledges within 15 minutes in P1 and 5 minutes from P2 |
+| Secondary | `AlaskanTuna` | Pages the primary hasn't acknowledged in time                                           |
 
-The breach owner and deputy are separate roles, named in the [breach runbook](breach.md#breach-owner-and-deputy). The same person may hold both.
+Names are GitHub handles, named by the product lead on 6 November 2026. Phone numbers and email addresses are in the Secret Manager secret `ONCALL_CONTACTS` (`gcloud secrets versions access latest --secret=ONCALL_CONTACTS --project=skyclause`), never in this repository.
+
+The breach owner and deputy are separate roles, named in the [breach runbook](breach.md#breach-owner-and-deputy); the same people hold them today.
 
 ## On-call access
 
