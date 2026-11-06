@@ -14,6 +14,12 @@ export function expectedStatus(route: CrawlRoute, role: Role) {
 
 export async function visit(page: Page, route: CrawlRoute, role: Role = 'signed out'): Promise<Finding[]> {
   const response = await page.goto(route.path)
+  if (route.path === '/connect' && (role === 'signed out' || role === 'guest')) {
+    await expect(page).toHaveURL(/\/sign-up$/)
+    await expect(page.locator('[data-connect-page]')).toHaveCount(0)
+    // #97 owns sign-up; the gate is testable before that destination is built.
+    return []
+  }
   await expectZonedTimes(page)
   const expected = expectedStatus(route, role)
   // Firefox revalidates a static page it has cached; 304 is its 200.

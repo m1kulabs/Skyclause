@@ -72,3 +72,27 @@ function typeChecks(fetcher: ReturnType<typeof createApiFetch<typeof testRegistr
 }
 
 void typeChecks
+
+test('step-up retries can retain the same idempotency key', async () => {
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse(validProblem))
+  vi.stubGlobal('fetch', fetchMock)
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await apiFetch('createProject', {
+      params: { instance: 'acme' },
+      body: { detail: 'Retry the same write' },
+      idempotencyKey: 'same-write'
+    })
+  }
+  expect(fetchMock.mock.calls.map(([, init]) => new Headers(init?.headers).get('Idempotency-Key'))).toEqual([
+    'same-write',
+    'same-write'
+  ])
+})
+
+test('explicit organisation wins over the global connect route for client creation', async () => {
+  vi.stubGlobal('window', { location: { pathname: '/connect' } })
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse(validProblem))
+  vi.stubGlobal('fetch', fetchMock)
+  await apiFetch('getProjects', { params: { instance: 'chosen-org' }, org: 'chosen-org' })
+  expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Skyclause-Organization')).toBe('chosen-org')
+})

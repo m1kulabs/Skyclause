@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const port = 3100
+const port = Number(process.env.E2E_PORT ?? 3100)
 // deploy.yml points the @smoke tests at the deployed web service; otherwise the suite builds and starts its own.
 const deployed = process.env.E2E_BASE_URL
 const pseudo = process.env.I18N_PSEUDO === '1'
@@ -14,11 +14,18 @@ const crawl = /quality\/(crawl|checks)\.spec\.ts$/
 export default defineConfig({
   testDir: 'e2e',
   forbidOnly: !!process.env.CI,
+  workers: process.env.E2E_WORKERS ? Number(process.env.E2E_WORKERS) : undefined,
   reporter: process.env.CI ? [['github'], ['list']] : 'list',
   use: { baseURL: deployed ?? `http://localhost:${port}` },
   testIgnore: pseudo ? undefined : /quality\/pseudo\.spec\.ts$/,
   projects: pseudo
-    ? [{ name: 'pseudo', testMatch: /quality\/pseudo\.spec\.ts$/, use: { ...devices['Desktop Chrome'] } }]
+    ? [
+        {
+          name: 'pseudo',
+          testMatch: /(?:quality\/pseudo|connect\/connect)\.spec\.ts$/,
+          use: { ...devices['Desktop Chrome'] }
+        }
+      ]
     : [
         { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
         // NFR-13: public pages readable without JavaScript.
