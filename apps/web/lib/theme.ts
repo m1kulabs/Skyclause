@@ -50,8 +50,10 @@ function followSystem(colors: typeof THEME_COLORS) {
     root.classList.toggle('hc', hc)
     root.style.colorScheme = light ? 'light' : 'dark'
     root.dataset.motion = reduce ? 'reduce' : 'full'
-    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
-    if (meta) meta.content = light ? (hc ? colors.lightHc : colors.light) : hc ? colors.darkHc : colors.dark
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]') ?? document.createElement('meta')
+    meta.name = 'theme-color'
+    meta.content = light ? (hc ? colors.lightHc : colors.light) : hc ? colors.darkHc : colors.dark
+    if (!meta.isConnected) document.head.append(meta)
   }
   apply()
   for (const query of [scheme, contrast, motion]) query.addEventListener('change', apply)

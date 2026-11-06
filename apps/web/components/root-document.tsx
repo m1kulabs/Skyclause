@@ -29,12 +29,11 @@ export function RootDocument({
       suppressHydrationWarning
     >
       {/* eslint-disable-next-line @next/next/no-head-element -- Shared App Router document; appearance runs before the body paints. */}
-      <head
-        // Keep the script-owned meta out of React's hoistable metadata cache: its prepaint content can change for HC.
-        dangerouslySetInnerHTML={{
-          __html: `<meta name="theme-color" content="${resolved.color}"><script>${APPEARANCE_SCRIPT}</script>`
-        }}
-      />
+      <head>
+        {/* JavaScript owns the live meta; keeping it out of React's hoist cache avoids a duplicate after prepaint. */}
+        <noscript dangerouslySetInnerHTML={{ __html: `<meta name="theme-color" content="${resolved.color}">` }} />
+        <script dangerouslySetInnerHTML={{ __html: APPEARANCE_SCRIPT }} />
+      </head>
       <body>
         <a className="skip-link" href="#main-content">
           {t('shell.skip_to_content')}

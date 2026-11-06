@@ -2,10 +2,10 @@
 // at 320 px (200% zoom) and under reduced motion. One failure lists route, role, theme, size and rule.
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { inspectPage, motionFindings, type Finding } from './checks'
-import { expectZonedTimes } from '../harness/expect-zoned-times'
 import { KNOWN_GAPS } from './known-gaps'
-import { STAND_IN_REASON, sessions, type Session } from './roles'
+import { STAND_IN_REASON, sessions, signedOut, type Session } from './roles'
 import { builtRoutes, type CrawlRoute } from './routes'
+import { visit } from './visit'
 
 const PLANTED_FAILURE = '/quality-planted/unlabelled-input'
 const PUBLIC_GROUPS = new Set(['marketing', 'public'])
@@ -36,18 +36,11 @@ function note(info: TestInfo, type: string, description: string) {
   console.log(`${type}: ${description}`)
 }
 
-async function visit(page: Page, route: CrawlRoute): Promise<Finding[]> {
-  const response = await page.goto(route.path)
-  await expectZonedTimes(page)
-  // Firefox revalidates a static page it has cached; 304 is its 200.
-  const status = response?.status() === 304 ? 200 : response?.status()
-  return status === route.status ? [] : [{ check: 'status', detail: `answered ${status}, expected ${route.status}` }]
-}
-
 async function crawl(page: Page, route: CrawlRoute, session: Session, info: TestInfo): Promise<Located[]> {
   const jsOn = info.project.use.javaScriptEnabled !== false
   const found: Located[] = []
-  await session.signIn?.(page)
+  if (session.signIn) await session.signIn(page)
+  else await signedOut(page)
   for (const variant of jsOn ? VARIANTS : VARIANTS.slice(0, 1)) {
     await page.emulateMedia({
       colorScheme: variant.theme === 'light' ? 'light' : 'dark',
@@ -55,7 +48,7 @@ async function crawl(page: Page, route: CrawlRoute, session: Session, info: Test
       reducedMotion: 'no-preference'
     })
     if (variant.viewport) await page.setViewportSize(variant.viewport)
-    const findings = await visit(page, route)
+    const findings = await visit(page, route, session.role)
     if (
       variant.theme === 'high contrast' &&
       !(await page.evaluate(() => matchMedia('(prefers-contrast: more)').matches))
@@ -68,7 +61,7 @@ async function crawl(page: Page, route: CrawlRoute, session: Session, info: Test
   }
   if (jsOn) {
     await page.emulateMedia({ colorScheme: 'dark', contrast: 'no-preference', reducedMotion: 'reduce' })
-    const findings = [...(await visit(page, route)), ...(await motionFindings(page))]
+    const findings = [...(await visit(page, route, session.role)), ...(await motionFindings(page))]
     found.push(...findings.map((finding) => ({ ...finding, theme: 'dark, reduced motion', size: 'project size' })))
   } else {
     note(info, 'JavaScript off', 'axe and reduced motion need page scripts; they run in the JavaScript projects')

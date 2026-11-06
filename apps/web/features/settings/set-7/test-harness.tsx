@@ -108,7 +108,7 @@ export function Set7Harness() {
         <Button className="min-h-11 justify-self-start" onClick={() => setSaved(value)}>
           {t('set7.harness.save')}
         </Button>
-        <Link href="/_test/tokens" className="w-fit underline">
+        <Link href="/_test/tokens" className="flex min-h-11 w-fit items-center underline">
           {t('set7.harness.leave')}
         </Link>
         <Button

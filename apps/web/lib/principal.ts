@@ -7,11 +7,13 @@ export const TEST_PRINCIPAL_COOKIE = 'skyclause_test_principal'
 export function principalFromTestCookie(
   value: string | undefined,
   appEnv = process.env.APP_ENV
-): Principal | undefined {
+): Principal | null | undefined {
   if (appEnv !== 'test' || !value) return undefined
 
   try {
-    const principal = JSON.parse(decodeURIComponent(value)) as Principal
+    const principal = JSON.parse(decodeURIComponent(value)) as Principal | null
+    // An explicit null lets browser tests exercise signed-out gates before real sessions land.
+    if (principal === null) return null
     if (principal.kind === 'session' && typeof principal.authenticatedAt === 'string') {
       return { ...principal, authenticatedAt: new Date(principal.authenticatedAt) }
     }
@@ -35,7 +37,7 @@ export async function getPrincipal(): Promise<Principal | null> {
 
   if (process.env.APP_ENV === 'test') {
     const principal = principalFromTestCookie(cookieValue(requestHeaders.get('cookie'), TEST_PRINCIPAL_COOKIE), 'test')
-    if (principal) return principal
+    if (principal !== undefined) return principal
   }
 
   const host = requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host') ?? 'localhost'

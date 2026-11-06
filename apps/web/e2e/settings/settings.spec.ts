@@ -122,7 +122,8 @@ for (const mode of [
 
 test('settings frame uses 428/24/700 columns and stacks below 640px', async ({ page }, testInfo) => {
   await asPage(page, principal())
-  await page.setViewportSize({ width: 1440, height: 900 })
+  // The full frame needs room for the 224px app sidebar and both layers of padding.
+  await page.setViewportSize({ width: 1680, height: 900 })
   await page.goto('/account/profile')
   const columns = await page.locator('[data-settings-columns]').evaluate((element) => {
     const style = getComputedStyle(element)
@@ -133,6 +134,15 @@ test('settings frame uses 428/24/700 columns and stacks below 640px', async ({ p
   await expect(rules).toHaveCount(2)
   for (const rule of await rules.all()) await expect(rule).toHaveCSS('height', '1px')
   await page.screenshot({ path: testInfo.outputPath('settings-desktop.png'), fullPage: true })
+  for (const width of [1440, 900]) {
+    await page.setViewportSize({ width, height: 900 })
+    const tracks = await page
+      .locator('[data-settings-columns]')
+      .evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').map(parseFloat))
+    expect(tracks).toHaveLength(2)
+    expect(tracks[0]! / tracks[1]!).toBeCloseTo(428 / 700, 2)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width)
+  }
   await page.setViewportSize({ width: 375, height: 812 })
   await expectUnclippedText(page)
   const label = await page.locator('[data-settings-label]').boundingBox()
