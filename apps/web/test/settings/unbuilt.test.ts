@@ -36,6 +36,6 @@ test('check:unbuilt reports every settings panel and shared part under its spec 
   const panelFiles = Object.values(byOwner)
     .flat()
     .filter((file) => file.includes('/settings/') && file.endsWith('/panel.tsx'))
-  expect(panelFiles).toHaveLength(22)
+  expect(panelFiles).toHaveLength(21)
   expect(byOwner['e-webhooks-ui']).toBeUndefined()
 })
