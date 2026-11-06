@@ -20,7 +20,7 @@ updates:
       - dependency-name: oven/bun
         update-types: ['version-update:semver-major', 'version-update:semver-minor', 'version-update:semver-patch']
     commit-message:
-      prefix: build
+      prefix: ci
     labels: [devops]
 
   # Pins stay commit SHAs, as the repository's Actions policy (#48) requires, and a bump only moves an action
