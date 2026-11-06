@@ -136,7 +136,7 @@ export function createServer(options: ServerOptions) {
     return c.text('handler failed', 500)
   })
 
-  app.get('/healthz', (c) => c.text('ok'))
+  app.get('/health', (c) => c.text('ok'))
 
   const googleOidc: MiddlewareHandler = async (c, next) => {
     const token = c.req.header('authorization')?.match(/^Bearer (.+)$/i)?.[1]

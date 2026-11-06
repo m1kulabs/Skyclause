@@ -165,8 +165,8 @@ describe('worker minute tick', () => {
 })
 
 describe('worker routes', () => {
-  test('GET /healthz is 200 without a token', async () => {
-    expect((await server().request('/healthz')).status).toBe(200)
+  test('GET /health is 200 without a token', async () => {
+    expect((await server().request('/health')).status).toBe(200)
   })
 
   test('an internal route needs a token and reaches its handler with path params', async () => {

@@ -1,7 +1,7 @@
 # Monitoring (#114): uptime checks and NFR-3's 99.5% SLOs with burn-rate pages, TRD's pipeline pages, a failed
 # job page and the platform on-call's channels. Every policy pages the on-call channels. The budget alert is
 # infra/bootstrap's, so this account needs no billing role.
-# Uptime checks hit /healthz, which never queries the database (D45), and run within the free 1 million
+# Uptime checks hit /health, which never queries the database (D45), and run within the free 1 million
 # executions a month: three regions every minute is 129,600 per check.
 
 locals {
@@ -84,16 +84,18 @@ locals {
   oncall_channel_names = [for channel in google_monitoring_notification_channel.oncall : channel.name]
 }
 
+# The address and the SLO's slo_id keep the name healthz from before #240 moved the path: renaming slo_id
+# replaces the SLO, and renaming the address needs a moved block.
 resource "google_monitoring_uptime_check_config" "healthz" {
   for_each = local.availability
 
-  display_name     = "${each.key} /healthz"
+  display_name     = "${each.key} /health"
   period           = "60s"
   timeout          = "10s"
   selected_regions = ["ASIA_PACIFIC", "EUROPE", "USA_OREGON"]
 
   http_check {
-    path         = "/healthz"
+    path         = "/health"
     port         = 443
     use_ssl      = true
     validate_ssl = true
@@ -162,7 +164,7 @@ resource "google_monitoring_alert_policy" "burn" {
 
   documentation {
     mime_type = "text/markdown"
-    content   = "${local.availability[each.value.surface]}/healthz is failing its uptime checks: ${local.burns[each.value.speed].about} (NFR-3, 99.5% a month). Runbooks: #117."
+    content   = "${local.availability[each.value.surface]}/health is failing its uptime checks: ${local.burns[each.value.speed].about} (NFR-3, 99.5% a month). Runbooks: #117."
   }
 }
 

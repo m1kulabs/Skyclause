@@ -88,6 +88,8 @@ dist/
 next-env.d.ts
 test-results/
 playwright-report/
+.lighthouseci/
+lighthouse-results/
 
 # Environment
 .env*

@@ -5,9 +5,16 @@ import { test as base, type Page } from '@playwright/test'
 const WCAG_22_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 const BLOCKING = new Set(['serious', 'critical'])
 
-export async function expectAxeClean(page: Page) {
+type Violation = Awaited<ReturnType<AxeBuilder['analyze']>>['violations'][number]
+
+/** The serious and critical axe violations on the page, against WCAG 2.2 AA. */
+export async function blockingViolations(page: Page): Promise<Violation[]> {
   const { violations } = await new AxeBuilder({ page }).withTags(WCAG_22_AA).analyze()
-  const blocking = violations.filter((violation) => violation.impact && BLOCKING.has(violation.impact))
+  return violations.filter((violation) => violation.impact && BLOCKING.has(violation.impact))
+}
+
+export async function expectAxeClean(page: Page) {
+  const blocking = await blockingViolations(page)
   if (blocking.length) {
     const lines = blocking.map(
       (v) => `${v.id} (${v.impact}): ${v.help} at ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`
