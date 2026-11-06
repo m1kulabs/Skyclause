@@ -8,15 +8,17 @@ updates:
     directory: /
     schedule:
       interval: daily
-    # A rebuilt runtime base carries Node and Debian security fixes: don't hold it for the 3-day default.
+    # A rebuilt runtime base carries Node and Debian security fixes, so node skips the cooldown. A cooldown block
+    # without default-days sends 0 (#267), so oven/bun's 3 days are set here.
     cooldown:
+      default-days: 3
       exclude: [node]
     ignore:
       # Node 22 is the runtime; a new major is a deliberate change. 22-slim's digest still refreshes.
       - dependency-name: node
         update-types: ['version-update:semver-major']
       # The Bun binary must match packageManager, which CI's setup-bun reads and Dependabot doesn't bump,
-      # so a Bun upgrade changes both by hand. 1.4.4-slim's digest still refreshes.
+      # so a Bun upgrade changes both by hand. 1.4.4-slim's digest refreshes through the Dockerfile's bun stage.
       - dependency-name: oven/bun
         update-types: ['version-update:semver-major', 'version-update:semver-minor', 'version-update:semver-patch']
     commit-message:
@@ -36,17 +38,29 @@ updates:
       prefix: ci
     labels: [devops]
 
-  # The root bun.lock covers every workspace. Minor and patch bumps share one PR; each major gets its own.
+  # The root bun.lock covers every workspace. OpenTelemetry's packages move together, so all their updates share
+  # one PR; other minor and patch bumps share another; each other major gets its own.
   - package-ecosystem: bun
     directory: /
     schedule:
       interval: weekly
     groups:
+      opentelemetry:
+        patterns: ['@opentelemetry/*']
       npm:
         update-types: [minor, patch]
     ignore:
       # Types follow the Node 22 runtime.
       - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+      # TypeScript 7 is the native port without the JS API, which typescript-eslint and scripts/boundaries.ts need.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+      # eslint-plugin-jsx-a11y supports ESLint 9 at most, and ESLint 10's @eslint/config-array brings back
+      # minimatch 10 (GHSA-g3hv-75wg-m249, #214). @eslint/js moves with ESLint.
+      - dependency-name: eslint
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@eslint/js'
         update-types: ['version-update:semver-major']
     commit-message:
       prefix: build

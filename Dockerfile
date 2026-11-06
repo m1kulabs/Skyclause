@@ -1,9 +1,12 @@
 # One image for web, worker and every Cloud Run job (#90); scripts/container-entry.sh picks the role.
 # Bases are pinned by their multi-platform index digest (TRD security):
 # node:22-slim (Debian bookworm) and oven/bun:1.4.4-slim, which only supplies the Bun binary to the build.
+# Bun gets its own stage because Dependabot reads FROM lines only (#267).
+
+FROM oven/bun:1.4.4-slim@sha256:1846adf22496bd711036aae8be147e57bdebbaea2e5264e3e0b5af1db187d9a4 AS bun
 
 FROM node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d AS build
-COPY --from=oven/bun:1.4.4-slim@sha256:1846adf22496bd711036aae8be147e57bdebbaea2e5264e3e0b5af1db187d9a4 /usr/local/bin/bun /usr/local/bin/bun
+COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 ENV HUSKY=0 NEXT_TELEMETRY_DISABLED=1
 WORKDIR /repo
 COPY . .
