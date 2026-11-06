@@ -28,6 +28,19 @@ const IngestResponse = z.object({
   camera_day_end: z.string()
 })
 
+// SIG-8 / #129: device camera posts retain capture times and a stable capture key.
+const CameraFrame = z.object({
+  kind: z.literal('camera_frame'),
+  capture_id: z.uuidv7(),
+  device_time: z.iso.datetime({ offset: true }),
+  ratio_near: z.number().nonnegative(),
+  ratio_far: z.number().nonnegative(),
+  flag: z.enum(['visible', 'obscured']),
+  distance_km: z.number().positive(),
+  buffered: z.boolean(),
+  jpeg_b64: z.string().min(1)
+})
+
 export const ingestReadings = createRoute({
   method: 'post',
   path: '/v1/ingest/{sourceId}',
@@ -36,12 +49,16 @@ export const ingestReadings = createRoute({
   request: {
     params: SourceParams,
     headers: IdempotencyHeaders,
-    body: { content: { 'application/json': { schema: IngestRequest } } }
+    body: { content: { 'application/json': { schema: z.union([IngestRequest, CameraFrame]) } } }
   },
   responses: {
     200: {
       description: 'Ingest result and camera daylight hours',
-      content: { 'application/json': { schema: IngestResponse } }
+      content: {
+        'application/json': {
+          schema: z.union([IngestResponse, z.object({ ok: z.literal(true), duplicate: z.literal(true) })])
+        }
+      }
     },
     400: problemResponse('The request is invalid.'),
     401: problemResponse('Device authentication is required.'),

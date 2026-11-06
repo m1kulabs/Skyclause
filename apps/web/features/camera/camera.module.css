@@ -1,0 +1,100 @@
+.camera {
+  max-width: 760px;
+  margin-inline: auto;
+  padding: 32px 20px 64px;
+  color: var(--foreground);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.camera h1 {
+  font-size: 26px;
+  font-weight: 700;
+  text-wrap: balance;
+}
+.camera p {
+  color: var(--secondary-foreground);
+  margin-block: 12px;
+  line-height: 1.55;
+}
+.camera header {
+  margin-bottom: 24px;
+}
+.camera form {
+  margin-top: 32px;
+}
+.camera button,
+.camera input {
+  min-height: 44px;
+}
+.camera button {
+  height: auto;
+  white-space: normal;
+}
+.camera input {
+  min-width: 0;
+}
+.preview {
+  position: relative;
+  background: #000000;
+}
+.preview canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.region {
+  position: absolute;
+  border: 2px solid #ffffff;
+  outline: 1px solid #000000;
+  pointer-events: none;
+}
+.region[data-region='far'] {
+  border-style: dashed;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-block: 16px;
+}
+.hours,
+.coordinates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.regions {
+  min-width: 0;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+.regions legend {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.consent {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  line-height: 1.55;
+}
+.consent input {
+  flex: 0 0 24px;
+  width: 24px;
+  accent-color: var(--primary);
+}
+.camera .error {
+  color: var(--destructive);
+}
+@media (min-width: 640px) {
+  .coordinates {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 360px) {
+  .hours {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
