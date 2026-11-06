@@ -6,6 +6,7 @@ import {
   cameraRetentionStore,
   crowdForecastStore,
   crowdHistoryStore,
+  crowdGradeStore,
   drive,
   fetchUrl,
   fetchWikiText,
@@ -23,6 +24,7 @@ import {
   workbooks
 } from './gas.ts'
 import { buildHealth } from './health.ts'
+import { METADATA_URL, runCrowdGrading } from './crowd-grades.ts'
 import { newUuidV7, runJpsHandler } from './jps.ts'
 import { runCameraRetention } from './camera.ts'
 import { ensureResponsesSheetId, runCreateWindowForm, runOptinSubmit } from './optin-form.ts'
@@ -101,6 +103,28 @@ export function pollJps(): void {
       appendPoll: (row) => appendRows(sheetId, 'polls', [row]),
       evaluate: executeEvaluationTick
     }
+  })
+}
+
+// The Crowd D+1 grader (#70), every 30 minutes: grades every night from 3
+// November 2026 once D+1 has begun, or pends it on the metadata's next_update.
+export function gradeCrowd(): void {
+  const sheetId = getProperty('SHEET_ID')
+  if (!sheetId) throw new Error('SHEET_ID is not set; run setup()')
+  withLock(() => {
+    const summary = runCrowdGrading({
+      store: crowdGradeStore(sheetId),
+      fetchMetadata: (url) => {
+        if (url !== METADATA_URL) throw new Error(`the grader fetches only ${METADATA_URL}`)
+        const response = fetchUrl(url)
+        return { status: response.status, text: response.body }
+      },
+      now: () => new Date(),
+      newPollId: () => newUuidV7()
+    })
+    console.log(JSON.stringify(summary))
+    if (summary.kill.fired)
+      console.log('Kill criterion fired: both Weeknd nights out of band above 40%; comment on #74')
   })
 }
 

@@ -3,6 +3,9 @@ import { toMytIso } from '../../shared/time.ts'
 import type { CrowdTickStore } from './crowd-tick.ts'
 import type { HistoryBuildRow } from './crowd-history.ts'
 import type { ClausesPort } from './setup.ts'
+import type { CrowdGradeStore } from './crowd-grades.ts'
+import { baselineFor } from './crowd.ts'
+import { dailyFromReadings } from './crowd-tick.ts'
 import type { SourceStateUpdate } from './indicators.ts'
 import type { CameraDrive, CameraFrameStore, RetentionStore } from './camera.ts'
 import {
@@ -400,6 +403,37 @@ export const cameraDrive: CameraDrive = {
   },
   trashFile: (fileId) => void DriveApp.getFileById(fileId).setTrashed(true),
   trashFolder: (folderId) => void DriveApp.getFolderById(folderId).setTrashed(true)
+}
+
+// The grade files the Crowd grader writes to `grades/crowd/`.
+export const gradeDrive = {
+  saveGrade(gradesRootId: string, name: string, text: string): string {
+    if (!gradesRootId) throw new Error('GRADES_FOLDER_ID is not set; run setup()')
+    return DriveApp.getFolderById(gradesRootId).createFile(name, text, 'application/json').getId()
+  }
+}
+
+// The sheet rows the Crowd D+1 grader reads and writes, through `SHEET_ID`.
+// The baseline is #69's SIG-7 baseline over stored readings: the median of the 8 latest same-weekday nights.
+export function crowdGradeStore(spreadsheetId: string): CrowdGradeStore {
+  if (!spreadsheetId) throw new Error('SHEET_ID is not set; run setup()')
+  return {
+    readings: () =>
+      readColumns(spreadsheetId, 'readings', ['source_id', 'metric', 'observed_at', 'value', 'revision', 'note']),
+    forecasts: () => readColumns(spreadsheetId, 'forecasts', columnsOf('forecasts')),
+    listings: () => readColumns(spreadsheetId, 'listings', columnsOf('listings')),
+    clauses: () => readColumns(spreadsheetId, 'clauses', columnsOf('clauses')),
+    grades: () => readColumns(spreadsheetId, 'crowd_grades', columnsOf('crowd_grades')),
+    appendGrades: (rows) => appendRows(spreadsheetId, 'crowd_grades', rows),
+    appendPoll: (row) => appendRows(spreadsheetId, 'polls', [row]),
+    saveGradeFile: (name, text) => gradeDrive.saveGrade(getProperty('GRADES_FOLDER_ID') ?? '', name, text),
+    baselineFor: (nightDate) => medianSameWeekday(spreadsheetId, nightDate)
+  }
+}
+
+function medianSameWeekday(spreadsheetId: string, nightDate: string): number | null {
+  const readings = readColumns(spreadsheetId, 'readings', columnsOf('readings'))
+  return baselineFor(dailyFromReadings(readings, `${nightDate}T00:00:00+08:00`), nightDate)
 }
 
 // The probation rows and frame folders the retention job reads, through `SHEET_ID`.
