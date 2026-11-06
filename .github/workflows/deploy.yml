@@ -222,6 +222,11 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
       - run: bunx playwright install --with-deps --only-shell chromium
         working-directory: apps/web
+      # Playwright loads every spec to pick the @smoke ones, and #116's quality specs read web's build output as
+      # they load; with E2E_BASE_URL set there's no webServer to build it.
+      - name: Build web for the specs that read its output
+        run: bun run build
+        working-directory: apps/web
       - name: Run the @smoke tests against production
         run: bunx playwright test --grep @smoke
         working-directory: apps/web
