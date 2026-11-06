@@ -1,14 +1,29 @@
 // Apps Script adapters for the ports the pure modules take. Tests use doubles instead of these.
 import { toMytIso } from '../../shared/time.ts'
+import type { SourceStateUpdate } from './indicators.ts'
 import type { JpsHttpResponse } from './jps.ts'
 import type { PiRowsStore } from './pi-rows.ts'
 import type { GetProperty } from './properties.ts'
 import { validateReading } from './readings.ts'
 import { columnsOf, toRow, type Cell, type Column, type Row, type Tab } from './schema.ts'
 import type { DrivePort, PropertyPort, WorkbookPort } from './setup.ts'
+import { normalizeDateCell, normalizeWindowRow, type SkyEvaluationStore, type SkyEvaluationTab } from './tick.ts'
 import type { InstalledTrigger, TriggerPort } from './triggers.ts'
 
 const LOCK_WAIT_MS = 30_000
+
+// Windows columns A–I only; column J (`title`) is private and never read by evaluation.
+export const WINDOWS_PUBLIC_COLUMNS = [
+  'window_id',
+  'subscriber_id',
+  'kind',
+  'date',
+  'start_myt',
+  'end_myt',
+  'language',
+  'status',
+  'declared_at'
+] as const satisfies readonly Column<'windows'>[]
 
 export const properties: PropertyPort = {
   get: (name) => PropertiesService.getScriptProperties().getProperty(name),
@@ -135,6 +150,91 @@ export function appendReadings(spreadsheetId: string, records: readonly Row<'rea
     }
   }
   appendRows(spreadsheetId, 'readings', records)
+}
+
+function replaceNowRows(spreadsheetId: string, records: readonly Row<'now'>[]): void {
+  const target = sheet(spreadsheetId, 'now')
+  const width = columnsOf('now').length
+  const previousDataRows = Math.max(0, target.getLastRow() - 1)
+  const rows = records.map((record) => toRow('now', record))
+  if (rows.length > 0) {
+    target.getRange(2, 1, rows.length, width).setValues(rows)
+  }
+  if (previousDataRows > rows.length) {
+    const staleStartRow = 2 + rows.length
+    const staleRowCount = previousDataRows - rows.length
+    const staleRange = target.getRange(staleStartRow, 1, staleRowCount, width)
+    if (typeof staleRange.clearContent === 'function') {
+      staleRange.clearContent()
+    } else {
+      const blankRow = Array.from({ length: width }, () => '')
+      staleRange.setValues(Array.from({ length: staleRowCount }, () => [...blankRow]))
+    }
+  }
+}
+
+function updateStoredSourceStates(spreadsheetId: string, updates: readonly SourceStateUpdate[]): void {
+  if (updates.length === 0) return
+  const target = sheet(spreadsheetId, 'sources')
+  const rows = target.getLastRow() - 1
+  if (rows < 1) return
+  const all: readonly string[] = columnsOf('sources')
+  const sourceIdCol = all.indexOf('source_id') + 1
+  const stateCol = all.indexOf('state') + 1
+  const stateSinceCol = all.indexOf('state_since') + 1
+  const ids = target.getRange(2, sourceIdCol, rows, 1).getValues()
+
+  const rowBySourceId = new Map<string, number>()
+  for (let i = 0; i < rows; i++) {
+    const id = String(ids[i]?.[0] ?? '')
+    if (id && !rowBySourceId.has(id)) {
+      rowBySourceId.set(id, i + 2)
+    }
+  }
+
+  for (const update of updates) {
+    if (typeof update.source_id !== 'string' || !update.source_id) continue
+    const sheetRow = rowBySourceId.get(update.source_id)
+    if (sheetRow === undefined) continue
+    const stateVal = update.state ?? ''
+    const stateSinceVal = update.state_since ?? ''
+    if (stateSinceCol === stateCol + 1) {
+      target.getRange(sheetRow, stateCol, 1, 2).setValues([[stateVal, stateSinceVal]])
+    } else {
+      target.getRange(sheetRow, stateCol, 1, 1).setValues([[stateVal]])
+      target.getRange(sheetRow, stateSinceCol, 1, 1).setValues([[stateSinceVal]])
+    }
+  }
+}
+
+export function skyEvaluationStore(spreadsheetId: string): SkyEvaluationStore {
+  if (!spreadsheetId) throw new Error('SHEET_ID is not set; run setup()')
+  return {
+    readRows<T extends SkyEvaluationTab>(tab: T): Row<T>[] {
+      switch (tab) {
+        case 'windows':
+          return readColumns(spreadsheetId, 'windows', WINDOWS_PUBLIC_COLUMNS).map(normalizeWindowRow) as Row<T>[]
+        case 'forecast':
+          return readColumns(spreadsheetId, 'forecast', columnsOf('forecast')).map((row) => ({
+            ...row,
+            date: normalizeDateCell(row.date) ?? ''
+          })) as Row<T>[]
+        case 'sources':
+        case 'readings':
+        case 'polls':
+        case 'warnings':
+        case 'indicators':
+          return readColumns(spreadsheetId, tab, columnsOf(tab)) as Row<T>[]
+        default: {
+          const exhaustive: never = tab
+          throw new Error(`Unsupported Sky evaluation tab: ${String(exhaustive)}`)
+        }
+      }
+    },
+    appendIndicators: (rows) => appendRows(spreadsheetId, 'indicators', rows),
+    replaceNow: (rows) => replaceNowRows(spreadsheetId, rows),
+    updateSourceStates: (updates) => updateStoredSourceStates(spreadsheetId, updates)
+  }
 }
 
 function kindOf(trigger: GoogleAppsScript.Script.Trigger): InstalledTrigger['kind'] {
