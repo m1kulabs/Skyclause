@@ -3,6 +3,7 @@ import { test, expect } from './fixtures'
 import type { Page } from '@playwright/test'
 import { t } from './palette/messages'
 import { expectUnclippedText } from './harness/expect-unclipped-text'
+import { windowUndoCase, windowUnsavedCase } from './windows/set7-cases'
 
 const route = '/_test/set-7'
 const name = t('set7.harness.name')
@@ -233,7 +234,6 @@ for (const title of [
   'remove member — #104 a-members-ui',
   'lower role — #104 a-members-ui',
   'unsaved rota — #104 a-members-ui',
-  'cancel window — #143 b-windows-ui',
   'remove subscriber — #169 c-channels-ui',
   'delete clause sheet draft — #144'
 ]) {
@@ -243,3 +243,5 @@ for (const title of [
 test('notifications panel removes a registered device immediately by keyboard — #170', async ({ page }) => {
   await removeDeviceScenario(page)
 })
+test('cancel window — #143 b-windows-ui', async ({ page }) => windowUndoCase(page))
+test('unsaved window warns before leaving — #143 b-windows-ui', async ({ page }) => windowUnsavedCase(page))

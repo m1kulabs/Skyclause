@@ -48,6 +48,8 @@ export interface ApiFetchOptions<Operation> {
   /** Device operations supply their bearer and stable capture idempotency key. */
   headers?: HeadersInit
   credentials?: RequestCredentials
+  /** Deferred SET-7 writes must survive pagehide. */
+  keepalive?: boolean
   /** Required when calling from a server context without an organisation in the URL. */
   org?: string
   /** Reuse across a recent-auth retry of the same logical write. */
@@ -139,7 +141,8 @@ export function createApiFetch<const Registry extends ApiRegistry>(
       method: operation.method,
       headers,
       signal: options.signal,
-      ...(options.credentials ? { credentials: options.credentials } : {})
+      ...(options.credentials ? { credentials: options.credentials } : {}),
+      ...(options.keepalive ? { keepalive: true } : {})
     }
     if (requestOptions.body !== undefined) {
       headers.set('Content-Type', 'application/json')

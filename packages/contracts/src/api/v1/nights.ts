@@ -6,8 +6,13 @@ import {
 
 import { createRoute } from '../create-route'
 import { Forecast, Night, Page, PageQuery } from '../shared'
+import { z } from '@hono/zod-openapi'
 
-const NightView = Night.extend({ forecast: Forecast.nullable() })
+const NightView = Night.extend({
+  forecast: Forecast.nullable(),
+  show_name: z.string().optional(),
+  source_url: z.url().optional()
+})
 
 export const listNights = createRoute({
   method: 'get',

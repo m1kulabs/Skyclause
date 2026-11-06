@@ -185,7 +185,12 @@ export const Window = z.object({
   moderation: z.enum(['visible', 'hidden_pending_review', 'removed'])
 })
 export type Window = z.infer<typeof Window>
-export const IcsFeed = z.object({ id: z.string(), project_id: z.string(), url: z.url() })
+export const IcsFeed = z.object({
+  id: z.string(),
+  project_id: z.string(),
+  url: z.url().nullable(),
+  filename: z.string().optional()
+})
 export type IcsFeed = z.infer<typeof IcsFeed>
 export const SourceKind = z.enum([
   'jps_rain',

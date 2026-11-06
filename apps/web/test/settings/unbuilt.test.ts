@@ -18,8 +18,7 @@ export const expectedOwners: Record<string, string[]> = {
   'c-channels-ui': panels('project', ['channels']),
   'd-public-project-page': panels('project', ['public']),
   'a-step-up': ['apps/web/features/reauth/use-reauth.ts', 'apps/web/features/reauth/reauth-dialog.tsx'],
-  'd-org-live': ['apps/web/features/org-live/index.tsx'],
-  'b-windows-ui': ['apps/web/features/windows/declare-window-dialog.tsx']
+  'd-org-live': ['apps/web/features/org-live/index.tsx']
 }
 
 test('check:unbuilt reports every settings panel and shared part under its spec owner', () => {
