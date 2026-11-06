@@ -195,6 +195,7 @@ These feeds suit "connecting devices with useful actions": thresholds and warnin
 - **Terms:** CC BY 4.0 ([FAQ][dgm_faq]).
 - **Updates and sensor:** daily. The metadata showed data as of 2026-11-01 23:59, with the next update due 2026-11-03 22:00. Sensor feed: no as published (a daily aggregate of gate taps).
 - **Live, APU relevance:** columns `origin, destination, date, ridership`, with 5,293,275 rows from 1 January to 1 November 2026. Trips starting at `SP17` Bukit Jalil were 3,256 (28 Oct), 3,085 (29 Oct), 3,321 (30 Oct), 4,201 (31 Oct), and 5,016 (1 Nov). Each side also has an `A0: All Stations` row that already totals the others, so exclude it when summing, or every count doubles (rechecked 4 Nov 2026).
+- **Pilot choice (7 November 2026):** the pilot counts `SP17` exits, trips with destination `SP17` excluding origin `A0: All Stations`, not the trips starting there above. The 10 January 2026 total of 38,447 exits settles the direction ([stored capture](/docs/sources/storage.data.gov.my/rapidrail-od.md)).
 
 ### data.gov.my catalogue and OpenDOSM
 
