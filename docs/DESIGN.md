@@ -652,7 +652,7 @@ Each screen answers one question first, states its one finding under the title, 
 
 ### Public project page and public ledger
 
-- **Question:** what is the call here now, and how good have the calls been? ([PUB-1 to PUB-5](/docs/PRD.md#public-pages-pub)) **Finding:** the current mode per pack and the input that decides it.
+- **Question:** what is the call here now, and how good have the calls been? ([PUB-1 to PUB-5](/docs/PRD.md#public-pages-pub)) **Finding:** the approved call in force per pack (until its window's last span end or the night's exit end; highest mode wins), or "No approved call yet".
 - **Blocks:** the current mode per pack with fired clauses and input ages; the window strip for the next hour; upcoming conditions calendar entries and "Subscribe"; recent approved calls; grades with n and intervals; attribution per source (MET, Rapid Rail and data.gov.my CC BY 4.0; Wikipedia CC BY-SA 4.0; JPS, APIMS and GoLive shown derived with a link to the source); the non-affiliation and not-a-safety-service lines. The public ledger is the Ledger screen without names, read-only.
 - **States:** "No approved call yet (n=0)"; erroring inputs show No call; works without JavaScript.
 
@@ -696,7 +696,7 @@ Each screen answers one question first, states its one finding under the title, 
 
 ### Open Graph card
 
-1200×630, dark ground ([WEB-4](/docs/PRD.md#web-components-web)). Top-left the mark and "Skyclause · `{project}`"; the one large element is the mode word with its glyph at 96px; under it the window and date at 40px; the bottom 220px hold the window strip at true proportions; the bottom-right corner carries the data's capture time. A call card (`/c/{callId}/og.png`) adds "Approved `{HH:MM}` MYT" and exists only for real calls. Until one exists, previews use the 2 November replay with a "Replay" badge and the clause engine's verdict: "Commute disruption · 15:30 release wave, Monday 2 November 2026 · gauge `0232901RF` 39.0 mm in 60 min to 15:00". Alt text states the mode, window and deciding reading.
+1200×630, dark ground ([WEB-4](/docs/PRD.md#web-components-web)). Top-left the mark and "Skyclause · `{project}`"; the one large element is the approved call's mode word with its glyph at 96px, or "No approved call yet"; under it the window and date at 40px; the bottom 220px hold the window strip at true proportions; the bottom-right corner carries the data's capture time. A call card (`/c/{callId}/og.png`) adds "Approved `{HH:MM}` MYT" and exists only for real calls. The 2 November replay is an internal design example only and never reaches a public card: "Commute disruption · 15:30 release wave, Monday 2 November 2026 · gauge `0232901RF` 39.0 mm in 60 min to 15:00". Alt text states the approved mode or "No approved call yet", the window and deciding reading when present.
 
 ### oEmbed card
 
