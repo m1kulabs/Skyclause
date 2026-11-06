@@ -8,15 +8,17 @@ updates:
     directory: /
     schedule:
       interval: daily
-    # A rebuilt runtime base carries Node and Debian security fixes: don't hold it for the 3-day default.
+    # A rebuilt runtime base carries Node and Debian security fixes, so node skips the cooldown. A cooldown block
+    # without default-days sends 0 (#267), so oven/bun's 3 days are set here.
     cooldown:
+      default-days: 3
       exclude: [node]
     ignore:
       # Node 22 is the runtime; a new major is a deliberate change. 22-slim's digest still refreshes.
       - dependency-name: node
         update-types: ['version-update:semver-major']
       # The Bun binary must match packageManager, which CI's setup-bun reads and Dependabot doesn't bump,
-      # so a Bun upgrade changes both by hand. 1.4.4-slim's digest still refreshes.
+      # so a Bun upgrade changes both by hand. 1.4.4-slim's digest refreshes through the Dockerfile's bun stage.
       - dependency-name: oven/bun
         update-types: ['version-update:semver-major', 'version-update:semver-minor', 'version-update:semver-patch']
     commit-message:
