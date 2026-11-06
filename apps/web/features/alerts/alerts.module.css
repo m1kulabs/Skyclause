@@ -1,0 +1,88 @@
+.panel {
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.panel h3,
+.device h2,
+.device h3 {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0 0 8px;
+}
+.panel section + section {
+  margin-top: 32px;
+  border-top: 1px solid var(--border);
+  padding-top: 32px;
+}
+.panel p,
+.device p {
+  margin: 8px 0;
+}
+.panel ul {
+  padding: 0;
+  margin: 16px 0;
+  list-style: none;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.details {
+  min-width: 0;
+  flex: 1 1 200px;
+}
+.details a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.details time {
+  display: block;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+.status {
+  display: inline-block;
+  min-height: 20px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding-inline: 6px;
+}
+.action {
+  min-height: 44px;
+  height: auto;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  padding-block: 8px;
+}
+.device {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.device > button + button {
+  margin-inline-start: 8px;
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.card {
+  padding: 24px;
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--card-foreground);
+  min-width: 0;
+}

@@ -42,3 +42,24 @@ test('reconnects after EOF and resumes with the last event ID', async () => {
     { id: '43', event: 'message', data: 'resumed' }
   ])
 })
+
+test('snapshot streams reconnect without Last-Event-ID when resume is disabled', async () => {
+  const controller = new AbortController()
+  const headers: Headers[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (_url, init) => {
+      headers.push(new Headers(init.headers))
+      return new Response('id: 42\nevent: snapshot\ndata: {}\n\n')
+    })
+  )
+  await readSse('/api/notifications/stream', {
+    resume: false,
+    signal: controller.signal,
+    onEvent() {
+      if (headers.length === 2) controller.abort()
+    }
+  })
+  expect(headers).toHaveLength(2)
+  expect(headers.every((header) => !header.has('Last-Event-ID'))).toBe(true)
+})

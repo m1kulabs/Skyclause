@@ -9,6 +9,9 @@ export interface ReadSseOptions {
   onEvent: (event: SseEvent) => void | Promise<void>
   signal?: AbortSignal
   lastEventId?: string
+  /** Snapshot streams reopen from current state rather than a previous event. */
+  resume?: boolean
+  onError?: (error: unknown) => void
 }
 
 const INITIAL_BACKOFF_MS = 250
@@ -60,7 +63,7 @@ export async function readSse(url: string | URL, options: ReadSseOptions): Promi
     try {
       const headers = new Headers(options.headers)
       headers.set('Accept', 'text/event-stream')
-      if (lastEventId !== undefined) headers.set('Last-Event-ID', lastEventId)
+      if (options.resume !== false && lastEventId !== undefined) headers.set('Last-Event-ID', lastEventId)
       const response = await fetch(url, { headers, signal: options.signal })
       if (!response.ok || !response.body) throw new Error(`SSE request failed with status ${response.status}`)
 
@@ -119,7 +122,7 @@ export async function readSse(url: string | URL, options: ReadSseOptions): Promi
       if (callbackFailed) throw callbackError
       if (options.signal?.aborted) return
       // A dropped stream or failed request is retried below with the latest event ID.
-      void error
+      options.onError?.(error)
     }
 
     if (options.signal?.aborted) return

@@ -1,3 +1,4 @@
+import { removeDeviceScenario } from './alerts/support'
 import { test, expect } from './fixtures'
 import type { Page } from '@playwright/test'
 import { t } from './palette/messages'
@@ -238,3 +239,7 @@ for (const title of [
 ]) {
   test.fixme(title, async () => {})
 }
+
+test('notifications panel removes a registered device immediately by keyboard — #170', async ({ page }) => {
+  await removeDeviceScenario(page)
+})
