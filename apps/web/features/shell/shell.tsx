@@ -187,6 +187,7 @@ export function AppShell({ data, children, approvalsCount, freshnessStamp, palet
                 <EmptyDescription>{t('app-shell.loadUnavailable')}</EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
+                {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Next's greedy dynamic-route regexp mistakes the camera path for this unbuilt route. */}
                 <a href="/new">{t('app-shell.createOrganisation')}</a>
                 <Button variant="ghost" onClick={() => window.location.reload()}>
                   {t('app-shell.reload')}

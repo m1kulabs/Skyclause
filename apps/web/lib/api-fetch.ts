@@ -45,6 +45,9 @@ export interface ApiFetchOptions<Operation> {
   query?: RequestInput<Operation, 'query'>
   body?: RequestInput<Operation, 'body'>
   signal?: AbortSignal
+  /** Device operations supply their bearer and stable capture idempotency key. */
+  headers?: HeadersInit
+  credentials?: RequestCredentials
   /** Required when calling from a server context without an organisation in the URL. */
   org?: string
   /** Reuse across a recent-auth retry of the same logical write. */
@@ -58,6 +61,7 @@ export type ApiFetch<Registry extends ApiRegistry> = <OperationId extends keyof 
 
 export interface ApiFetchConfig {
   baseUrl?: string
+  organization?: false
 }
 
 function organizationFromBrowser(): string | undefined {
@@ -112,7 +116,10 @@ export function createApiFetch<const Registry extends ApiRegistry>(
     options: ApiFetchOptions<Registry[OperationId]>
   ): Promise<OutputOf<Registry[OperationId]['response']>> {
     const operation = registry[operationId]!
-    const organization = options.org ?? (typeof window === 'undefined' ? undefined : organizationFromBrowser())
+    const organization =
+      config.organization === false
+        ? undefined
+        : (options.org ?? (typeof window === 'undefined' ? undefined : organizationFromBrowser()))
     const requestOptions = options as ApiFetchOptions<Registry[OperationId]> & {
       params?: unknown
       query?: unknown
@@ -121,15 +128,18 @@ export function createApiFetch<const Registry extends ApiRegistry>(
     const path = fillPath(operation.path, requestOptions.params, organization)
     const baseUrl = config.baseUrl ?? defaultBaseUrl()
     const requestUrl = addQuery(baseUrl ? new URL(path, baseUrl) : path, requestOptions.query)
-    const headers = new Headers({ Accept: 'application/json' })
+    const headers = new Headers(options.headers)
+    headers.set('Accept', 'application/json')
 
     if (organization) headers.set('Skyclause-Organization', organization)
-    if (operation.idempotent) headers.set('Idempotency-Key', options.idempotencyKey ?? globalThis.crypto.randomUUID())
+    if (operation.idempotent && !headers.has('Idempotency-Key'))
+      headers.set('Idempotency-Key', options.idempotencyKey ?? globalThis.crypto.randomUUID())
 
     const init: RequestInit = {
       method: operation.method,
       headers,
-      signal: options.signal
+      signal: options.signal,
+      ...(options.credentials ? { credentials: options.credentials } : {})
     }
     if (requestOptions.body !== undefined) {
       headers.set('Content-Type', 'application/json')

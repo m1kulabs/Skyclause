@@ -15,14 +15,15 @@ export default defineConfig({
   testDir: 'e2e',
   forbidOnly: !!process.env.CI,
   workers: process.env.E2E_WORKERS ? Number(process.env.E2E_WORKERS) : undefined,
+  timeout: process.env.E2E_TIMEOUT ? Number(process.env.E2E_TIMEOUT) : 30_000,
   reporter: process.env.CI ? [['github'], ['list']] : 'list',
   use: { baseURL: deployed ?? `http://localhost:${port}` },
-  testIgnore: pseudo ? undefined : /quality\/pseudo\.spec\.ts$/,
+  testIgnore: pseudo ? undefined : /(?:quality|camera)\/pseudo\.spec\.ts$/,
   projects: pseudo
     ? [
         {
           name: 'pseudo',
-          testMatch: /(?:quality\/pseudo|connect\/connect)\.spec\.ts$/,
+          testMatch: /(?:quality\/pseudo|connect\/connect|camera\/pseudo)\.spec\.ts$/,
           use: { ...devices['Desktop Chrome'] }
         }
       ]

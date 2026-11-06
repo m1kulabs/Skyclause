@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { formatDate } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
@@ -48,7 +49,7 @@ export function Enterprise({ orgId }: { orgId: string | null }) {
       ) : memberships.value.length === 0 ? (
         <div>
           <p>{t('connect.no_org')}</p>
-          <a href="/new">{t('connect.create_org')}</a>
+          <Link href="/new">{t('connect.create_org')}</Link>
         </div>
       ) : (
         <label className="connect-org">
