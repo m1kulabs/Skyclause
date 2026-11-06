@@ -11,6 +11,8 @@ import {
   optinStores,
   properties,
   readColumns,
+  sweepStore,
+  sha256HexDigest,
   triggers,
   windowFormPort,
   withLock,
@@ -20,6 +22,8 @@ import { buildHealth } from './health.ts'
 import { newUuidV7, runJpsHandler } from './jps.ts'
 import { runCameraRetention } from './camera.ts'
 import { ensureResponsesSheetId, runCreateWindowForm, runOptinSubmit } from './optin-form.ts'
+import { columnsOf } from './schema.ts'
+import { runSweep, verifyLedgerChain } from './sweep.ts'
 import { triggerRegistry } from './registry.ts'
 import { handleGet, handlePost } from './router.ts'
 import { getRoutes, postRoutes } from './routes.ts'
@@ -55,6 +59,23 @@ export function doGet(event: GoogleAppsScript.Events.DoGet) {
 
 export function doPost(event: GoogleAppsScript.Events.DoPost) {
   return json(handlePost(event.postData?.contents, postRoutes, { getProperty, withLock }))
+}
+
+// The 5-minute sweeper (#62): crossing notifications, ledger sealing, the delay line and the post-check.
+export function sweep(): void {
+  const sheetId = getProperty('SHEET_ID')
+  if (!sheetId) throw new Error('SHEET_ID is not set; run setup()')
+  withLock(() => {
+    console.log(JSON.stringify(runSweep(sweepStore(sheetId))))
+  })
+}
+
+// The ledger integrity check (#62 LED-1), run by hand in the editor: recomputes the chain and names the
+// first bad row. Paste both the sealed and the edited results for the live checks.
+export function verifyLedger(): void {
+  const sheetId = getProperty('SHEET_ID')
+  if (!sheetId) throw new Error('SHEET_ID is not set; run setup()')
+  console.log(JSON.stringify(verifyLedgerChain(readColumns(sheetId, 'ledger', columnsOf('ledger')), sha256HexDigest)))
 }
 
 export function pollJps(): void {
