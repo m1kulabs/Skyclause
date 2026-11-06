@@ -236,6 +236,7 @@ export interface SourceAdapter<Raw> {
 - Adapters on one data.gov.my API take a slot from a per-API budget of 4 requests a minute (a Postgres advisory lock and counter) ([data.gov.my notes][dgm]); a `429` is an error poll and the next scheduled poll is the retry. Paths always end with `/`, since a missing slash returns `301` with HTML.
 - Only adapters call upstream. The app, API, playground, embeds and MCP read stored rows, so tenants and guests add no upstream requests.
 - Times are stored in UTC and shown in MYT.
+- Catalogue rows come from adapters' `discover()` methods via daily `catalogue-sync`; nobody types coordinates.
 
 [dgm]: /docs/research/data-sources.md#shared-notes-on-the-datagovmy-api
 
