@@ -1,6 +1,7 @@
 // Apps Script adapters for the ports the pure modules take. Tests use doubles instead of these.
+import type { PiRowsStore } from './pi-rows.ts'
 import type { GetProperty } from './properties.ts'
-import { columnsOf, type Cell, type Column, type Tab } from './schema.ts'
+import { columnsOf, toRow, type Cell, type Column, type Row, type Tab } from './schema.ts'
 import type { DrivePort, PropertyPort, WorkbookPort } from './setup.ts'
 import type { InstalledTrigger, TriggerPort } from './triggers.ts'
 
@@ -138,4 +139,28 @@ export const triggers: TriggerPort = {
     const trigger = ScriptApp.getProjectTriggers().find((candidate) => candidate.getUniqueId() === id)
     if (trigger) ScriptApp.deleteTrigger(trigger)
   }
+}
+
+// The sheet rows the `pi_rows` handler reads and writes, through `SHEET_ID`.
+export function piRowsStore(spreadsheetId: string): PiRowsStore {
+  if (!spreadsheetId) throw new Error('SHEET_ID is not set; run setup()')
+  return {
+    sourceRow: (sourceId) =>
+      readColumns(spreadsheetId, 'sources', columnsOf('sources')).find((row) => row.source_id === sourceId) ?? null,
+    appendSource: (row) => appendTabRow(spreadsheetId, 'sources', row),
+    storedReadings: () => readColumns(spreadsheetId, 'readings', ['reading_id', 'observed_at', 'value', 'revision']),
+    appendPoll: (row) => appendTabRow(spreadsheetId, 'polls', row),
+    appendReadings: (rows) => appendTabRows(spreadsheetId, 'readings', rows)
+  }
+}
+
+function appendTabRow<T extends Tab>(spreadsheetId: string, tab: T, row: Row<T>): void {
+  appendTabRows(spreadsheetId, tab, [row])
+}
+
+function appendTabRows<T extends Tab>(spreadsheetId: string, tab: T, rows: Row<T>[]): void {
+  const target = sheet(spreadsheetId, tab)
+  target
+    .getRange(target.getLastRow() + 1, 1, rows.length, columnsOf(tab).length)
+    .setValues(rows.map((row) => toRow(tab, row)))
 }
