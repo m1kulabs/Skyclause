@@ -1,0 +1,9 @@
+# Wikipedia complex history
+
+The three MediaWiki API responses the Crowd `history` build reads (#69): the stadium page's concert table, the arena page's concert table and live-events list, and the national team results page's home matches at Bukit Jalil. Captured at 19:22 UTC on 6 November 2026 (03:22 MYT on 7 November), each HTTP 200, stored byte for byte as returned.
+
+- [`bukit-jalil-stadium-20261106T1922Z.json`](bukit-jalil-stadium-20261106T1922Z.json): `action=query` for `Bukit Jalil National Stadium`, revision 1381307107 (21 October 2026), 32,107 bytes. The "Notable Music Performances" table carries the Weeknd nights (4–5 November 2026) and My Chemical Romance (19–20 November).
+- [`unifi-arena-20261106T1922Z.json`](unifi-arena-20261106T1922Z.json): `action=query` for `Unifi Arena`, revision 1381135293 (20 October 2026), 23,070 bytes. The "Live Concerts" table carries BABYMONSTER (14 November) and 5 Seconds of Summer (17 November); the "Live Events" bullets carry the dated awards, expos and fight nights.
+- [`malaysia-results-20261106T1922Z.json`](malaysia-results-20261106T1922Z.json): `action=query` for `Malaysia national football team results (2020–present)`, revision 1378642889 (5 October 2026), 64,069 bytes. Twenty-one Bukit Jalil boxes, sixteen of them on or after 1 January 2023.
+
+The pages are CC BY-SA 4.0, so derived `history` and `listings` rows carry their URL and revision. The parser lives in [`crowd-history.ts`](/pilot/apps-script/src/crowd-history.ts): stadium rows become `stadium_concert`, football boxes at Bukit Jalil become `stadium_football`, arena concerts and dated arena events become `arena_show`; postponed and cancelled rows are dropped, multi-night events expand to one row per night, and rows land in `history` with blank labels for the two-teammate pass.

@@ -1,5 +1,8 @@
 // Apps Script adapters for the ports the pure modules take. Tests use doubles instead of these.
 import { toMytIso } from '../../shared/time.ts'
+import type { CrowdTickStore } from './crowd-tick.ts'
+import type { HistoryBuildRow } from './crowd-history.ts'
+import type { ClausesPort } from './setup.ts'
 import type { SourceStateUpdate } from './indicators.ts'
 import type { CameraDrive, CameraFrameStore, RetentionStore } from './camera.ts'
 import {
@@ -165,11 +168,11 @@ export function appendReadings(spreadsheetId: string, records: readonly Row<'rea
   appendRows(spreadsheetId, 'readings', records)
 }
 
-function replaceNowRows(spreadsheetId: string, records: readonly Row<'now'>[]): void {
-  const target = sheet(spreadsheetId, 'now')
-  const width = columnsOf('now').length
+function replaceTabRows<T extends Tab>(spreadsheetId: string, tab: T, records: readonly Row<T>[]): void {
+  const target = sheet(spreadsheetId, tab)
+  const width = columnsOf(tab).length
   const previousDataRows = Math.max(0, target.getLastRow() - 1)
-  const rows = records.map((record) => toRow('now', record))
+  const rows = records.map((record) => toRow(tab, record))
   if (rows.length > 0) {
     target.getRange(2, 1, rows.length, width).setValues(rows)
   }
@@ -184,6 +187,10 @@ function replaceNowRows(spreadsheetId: string, records: readonly Row<'now'>[]): 
       staleRange.setValues(Array.from({ length: staleRowCount }, () => [...blankRow]))
     }
   }
+}
+
+function replaceNowRows(spreadsheetId: string, records: readonly Row<'now'>[]): void {
+  replaceTabRows(spreadsheetId, 'now', records)
 }
 
 function updateStoredSourceStates(spreadsheetId: string, updates: readonly SourceStateUpdate[]): void {
@@ -623,6 +630,68 @@ export function labelStore(spreadsheetId: string): LabelStore {
       const index = columnsOf('sources').indexOf('probation') + 1
       sheet(spreadsheetId, 'sources').getRange(rowNumber, index).setNote(note)
     }
+  }
+}
+
+// --- Crowd (#69) adapters: the forecast tick, the one-off history build and setup's clause defaults. ---
+
+// The response body of a MediaWiki API call; a non-2xx is an error, never a silent empty history.
+export function fetchWikiText(url: string): string {
+  const response = fetchUrl(url)
+  if (response.status < 200 || response.status >= 300) {
+    throw new Error(`MediaWiki request failed with HTTP ${response.status}`)
+  }
+  return response.body
+}
+
+export function crowdForecastStore(spreadsheetId: string): CrowdTickStore {
+  if (!spreadsheetId) throw new Error('SHEET_ID is not set; run setup()')
+  const folderId = getProperty('CROSSINGS_CROWD_FOLDER_ID')
+  return {
+    readReadings: () =>
+      readColumns(spreadsheetId, 'readings', [
+        'reading_id',
+        'source_kind',
+        'source_id',
+        'metric',
+        'observed_at',
+        'received_at',
+        'value',
+        'revision'
+      ]),
+    readPolls: () => readColumns(spreadsheetId, 'polls', ['source_id', 'outcome', 'received_at']),
+    readHistory: () => readColumns(spreadsheetId, 'history', columnsOf('history')),
+    readListings: () => readColumns(spreadsheetId, 'listings', columnsOf('listings')),
+    readForecasts: () => readColumns(spreadsheetId, 'forecasts', columnsOf('forecasts')),
+    readClauses: () => readColumns(spreadsheetId, 'clauses', ['pack', 'key', 'threshold', 'op', 'enabled', 'Proposes']),
+    appendForecast: (row) => appendRows(spreadsheetId, 'forecasts', [row]),
+    replaceCrowdShadow: (rows) => replaceTabRows(spreadsheetId, 'crowd_shadow', rows),
+    crowdFiles: () => listFiles(folderId),
+    writeCrowdFile: (name, text) => {
+      if (!folderId) throw new Error('CROSSINGS_CROWD_FOLDER_ID is not set; run setup()')
+      DriveApp.getFolderById(folderId).createFile(name, text, 'application/json')
+    }
+  }
+}
+
+// The `history` rows the one-off build reads and writes, through `SHEET_ID`.
+export function crowdHistoryStore(spreadsheetId: string): {
+  readHistory(): { night_date: Cell; venue: Cell; show: Cell }[]
+  appendHistory(rows: HistoryBuildRow[]): void
+} {
+  if (!spreadsheetId) throw new Error('SHEET_ID is not set; run setup()')
+  return {
+    readHistory: () => readColumns(spreadsheetId, 'history', ['night_date', 'venue', 'show']),
+    appendHistory: (rows) => appendRows(spreadsheetId, 'history', rows)
+  }
+}
+
+// The `clauses` tab for setup's Crowd defaults: existing packs, then the six rows.
+export function setupClausesStore(spreadsheetId: string): ClausesPort {
+  if (!spreadsheetId) throw new Error('SHEET_ID is not set; run setup()')
+  return {
+    packs: () => readColumns(spreadsheetId, 'clauses', ['pack']).map((row) => String(row.pack ?? '')),
+    append: (rows) => appendRows(spreadsheetId, 'clauses', rows)
   }
 }
 

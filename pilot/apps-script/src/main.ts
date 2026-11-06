@@ -4,13 +4,17 @@ import {
   appendReadings,
   appendRows,
   cameraRetentionStore,
+  crowdForecastStore,
+  crowdHistoryStore,
   drive,
   fetchUrl,
+  fetchWikiText,
   getProperty,
   formAnswers,
   optinStores,
   properties,
   readColumns,
+  setupClausesStore,
   sweepStore,
   sha256HexDigest,
   triggers,
@@ -29,6 +33,9 @@ import { handleGet, handlePost } from './router.ts'
 import { getRoutes, postRoutes } from './routes.ts'
 import { runSetup } from './setup.ts'
 import { executeEvaluationTick } from './tick.ts'
+import { recordWeekndForecasts, runCrowdForecast } from './crowd-tick.ts'
+import { runHistoryBuild } from './crowd-history.ts'
+import { toMytIso } from '../../shared/time.ts'
 
 export { runEvaluationTick } from './tick.ts'
 
@@ -133,6 +140,46 @@ export function createWindowForm(): void {
   console.log(JSON.stringify(report, null, 2))
 }
 
+// The hourly Crowd forecast tick (#69): frozen forecasts, crowd_shadow and crossing files.
+export function forecastCrowd(): void {
+  const sheetId = getProperty('SHEET_ID')
+  if (!sheetId) throw new Error('SHEET_ID is not set; run setup()')
+  withLock(() => {
+    console.log(JSON.stringify(runCrowdForecast(crowdForecastStore(sheetId), new Date())))
+  })
+}
+
+// One-off, run by hand in the editor: the current Wikipedia revisions become `history` rows.
+export function buildCrowdHistory(): void {
+  const sheetId = getProperty('SHEET_ID')
+  if (!sheetId) throw new Error('SHEET_ID is not set; run setup()')
+  withLock(() => {
+    const today = toMytIso(new Date()).slice(0, 10)
+    const store = crowdHistoryStore(sheetId)
+    console.log(
+      JSON.stringify(
+        runHistoryBuild(
+          {
+            fetch: (url) => fetchWikiText(url),
+            readHistory: () => store.readHistory(),
+            appendHistory: (rows) => store.appendHistory(rows)
+          },
+          today
+        )
+      )
+    )
+  })
+}
+
+// One-off, run by hand in the editor: the two frozen Weeknd forecasts, idempotently.
+export function recordWeekndForecastsOnce(): void {
+  const sheetId = getProperty('SHEET_ID')
+  if (!sheetId) throw new Error('SHEET_ID is not set; run setup()')
+  withLock(() => {
+    console.log(JSON.stringify(recordWeekndForecasts(crowdForecastStore(sheetId))))
+  })
+}
+
 // Run once in the editor per project: it grants the manifest's scopes and makes the folders, workbooks and tabs.
 // Only the script whose ID CI stamped gets triggers.
 export function setup() {
@@ -140,6 +187,11 @@ export function setup() {
     properties,
     drive,
     workbooks,
+    // SHEET_ID is ensured above the clause seeding inside runSetup, so this resolves it lazily.
+    clauses: {
+      packs: () => setupClausesStore(getProperty('SHEET_ID') ?? '').packs(),
+      append: (rows) => setupClausesStore(getProperty('SHEET_ID') ?? '').append(rows)
+    },
     triggers,
     scriptId: ScriptApp.getScriptId(),
     pilotScriptId: __PILOT_SCRIPT_ID__,
