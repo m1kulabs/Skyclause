@@ -1,0 +1,38 @@
+import { expect, test } from 'vitest'
+import { updateWindow, cancelWindow, listWindows } from '../../src/api/v1/windows'
+import { createIcsFeed } from '../../src/api/v1/ics-feeds'
+
+test('#139 series scope survives request parsing and rejects unknown scopes', () => {
+  for (const operation of [updateWindow, cancelWindow]) {
+    expect(operation.request.query.parse({ scope: 'series' })).toEqual({ scope: 'series' })
+    expect(operation.request.query.parse({ scope: 'occurrence' })).toEqual({ scope: 'occurrence' })
+    expect(operation.request.query.safeParse({ scope: 'all_projects' }).success).toBe(false)
+  }
+})
+
+test('#143 list filters include calls and dates without changing pagination', () => {
+  expect(listWindows.request.query.parse({ include: 'calls', from: '2026-11-02', to: '2026-11-16' })).toMatchObject({
+    include: 'calls',
+    from: '2026-11-02',
+    to: '2026-11-16',
+    limit: 50
+  })
+})
+
+test('#139 ICS import accepts exactly one URL or file and does not parse calendar data in the UI', () => {
+  const schema = createIcsFeed.request.body.content['application/json'].schema
+  expect(
+    schema.safeParse({
+      file: { name: '2-november-replay.ics', content: 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR' }
+    }).success
+  ).toBe(true)
+  expect(schema.safeParse({ url: 'https://calendar.example.org/replay.ics' }).success).toBe(true)
+  expect(schema.safeParse({}).success).toBe(false)
+  expect(schema.safeParse({ file: { name: 'replay.ics', content: '' } }).success).toBe(false)
+  expect(
+    schema.safeParse({
+      url: 'https://calendar.example.org/replay.ics',
+      file: { name: 'replay.ics', content: 'BEGIN:VCALENDAR' }
+    }).success
+  ).toBe(false)
+})

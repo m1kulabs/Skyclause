@@ -10,7 +10,23 @@ import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
 import { IcsFeed, Page, PageQuery } from '../shared'
 
-const IcsFeedBody = z.object({ url: z.url() })
+// #143 uploads the original bytes as text; #139 owns calendar parsing and validation.
+const IcsFeedBody = z.union([
+  z.object({ url: z.url() }).strict(),
+  z
+    .object({
+      file: z
+        .object({
+          name: z.string().min(1).max(255),
+          content: z
+            .string()
+            .min(1)
+            .max(5 * 1024 * 1024)
+        })
+        .strict()
+    })
+    .strict()
+])
 
 export const listIcsFeeds = createRoute({
   method: 'get',

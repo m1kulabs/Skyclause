@@ -31,6 +31,7 @@ const WindowCallSummary = z.object({
   mode: Mode.nullable()
 })
 const WindowView = WindowSchema.extend({
+  recurrence: Recurrence.nullable().optional(),
   latest_calls: z.object({ sky: WindowCallSummary.nullable(), crowd: WindowCallSummary.nullable() })
 })
 const WindowReport = z.object({
@@ -44,7 +45,17 @@ export const listWindows = createRoute({
   path: '/v1/projects/{id}/windows',
   operationId: 'listWindows',
   tags: ['windows'],
-  request: { params: IdParams, headers: OrganizationHeader, query: PageQuery },
+  request: {
+    params: IdParams,
+    headers: OrganizationHeader,
+    query: PageQuery.extend({
+      include: z.literal('calls').optional(),
+      from: LocalDate.optional(),
+      to: LocalDate.optional(),
+      kind: WindowFields.shape.kind.optional(),
+      at_risk: z.enum(['true', 'false']).optional()
+    })
+  },
   responses: {
     200: {
       description: 'Windows and their latest calls for the project',
@@ -81,6 +92,7 @@ export const updateWindow = createRoute({
   request: {
     params: IdParams,
     headers: OrganizationHeader,
+    query: z.object({ scope: z.enum(['occurrence', 'series']).default('occurrence') }),
     body: { content: { 'application/json': { schema: WindowFields.partial() } } }
   },
   responses: {
@@ -96,7 +108,11 @@ export const cancelWindow = createRoute({
   path: '/v1/windows/{id}',
   operationId: 'cancelWindow',
   tags: ['windows'],
-  request: { params: IdParams, headers: OrganizationHeader },
+  request: {
+    params: IdParams,
+    headers: OrganizationHeader,
+    query: z.object({ scope: z.enum(['occurrence', 'series']).default('occurrence') })
+  },
   responses: {
     200: {
       description: 'The cancelled window and its retained call state',

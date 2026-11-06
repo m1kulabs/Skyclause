@@ -63,6 +63,19 @@ test('throws ApiProblem with the RFC 9457 body on a 4xx response', async () => {
   expect(error).toMatchObject({ status: 422, body: problem })
 })
 
+test('SET-7 deferred writes forward keepalive only when requested', async () => {
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse(validProblem))
+  vi.stubGlobal('fetch', fetchMock)
+  await apiFetch('createProject', {
+    params: { instance: 'acme' },
+    body: { detail: 'Deferred write test' },
+    keepalive: true
+  })
+  await apiFetch('getProjects', { params: { instance: 'acme' } })
+  expect(fetchMock.mock.calls[0]?.[1]?.keepalive).toBe(true)
+  expect(fetchMock.mock.calls[1]?.[1]?.keepalive).toBeUndefined()
+})
+
 function typeChecks(fetcher: ReturnType<typeof createApiFetch<typeof testRegistry>>) {
   fetcher('getProjects', { params: { instance: 'acme' }, query: { title: 'active' } })
   // @ts-expect-error Operation IDs must come from the bound registry.
