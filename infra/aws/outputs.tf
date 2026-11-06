@@ -30,7 +30,7 @@ output "dns_records" {
     [
       { name = local.mail_from_domain, type = "MX", value = "10 feedback-smtp.${local.region}.amazonses.com" },
       { name = local.mail_from_domain, type = "TXT", value = "v=spf1 include:amazonses.com ~all" },
-      { name = "_dmarc.${local.sending_domain}", type = "TXT", value = "v=DMARC1; p=quarantine" },
+      { name = "_dmarc.${local.sending_domain}", type = "TXT", value = "v=DMARC1; p=quarantine; rua=mailto:${local.dmarc_address}" },
       { name = local.inbound_domain, type = "MX", value = "10 inbound-smtp.${local.region}.amazonaws.com" },
     ],
   )

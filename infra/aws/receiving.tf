@@ -140,10 +140,12 @@ resource "aws_ses_receipt_rule_set" "this" {
 resource "aws_ses_receipt_rule" "inbound" {
   name          = local.receipt_rule_name
   rule_set_name = aws_ses_receipt_rule_set.this.rule_set_name
-  recipients    = [local.inbound_domain]
-  enabled       = true
-  scan_enabled  = true
-  tls_policy    = "Require"
+  # After the DMARC rule, which stops evaluation for dmarc@, so the worker never sees reports.
+  after        = aws_ses_receipt_rule.dmarc.name
+  recipients   = [local.inbound_domain]
+  enabled      = true
+  scan_enabled = true
+  tls_policy   = "Require"
 
   s3_action {
     position    = 1
@@ -159,5 +161,109 @@ resource "aws_ses_receipt_rule" "inbound" {
 resource "aws_ses_active_receipt_rule_set" "this" {
   rule_set_name = aws_ses_receipt_rule_set.this.rule_set_name
 
-  depends_on = [aws_ses_receipt_rule.inbound]
+  depends_on = [aws_ses_receipt_rule.dmarc, aws_ses_receipt_rule.inbound]
+}
+
+# DMARC aggregate reports to dmarc@in.skyclause.m1ku.tech (the rua of _dmarc.notices.) are kept for
+# 30 days for a person to read. Their rule runs first and stops there.
+resource "aws_s3_bucket" "dmarc" {
+  bucket = "${local.prefix}-dmarc-${local.account_id}"
+}
+
+resource "aws_s3_bucket_public_access_block" "dmarc" {
+  bucket = aws_s3_bucket.dmarc.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "dmarc" {
+  bucket = aws_s3_bucket.dmarc.id
+
+  rule {
+    id     = "expire"
+    status = "Enabled"
+
+    filter {}
+
+    expiration {
+      days = 30
+    }
+  }
+}
+
+data "aws_iam_policy_document" "dmarc_bucket" {
+  # Only this account's DMARC rule may write (confused-deputy guard).
+  statement {
+    sid       = "AllowSESPuts"
+    actions   = ["s3:PutObject"]
+    resources = ["${aws_s3_bucket.dmarc.arn}/*"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["ses.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [local.account_id]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceArn"
+      values   = [local.dmarc_rule_arn]
+    }
+  }
+
+  statement {
+    sid       = "DenyInsecureTransport"
+    effect    = "Deny"
+    actions   = ["s3:*"]
+    resources = [aws_s3_bucket.dmarc.arn, "${aws_s3_bucket.dmarc.arn}/*"]
+
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+
+    condition {
+      test     = "Bool"
+      variable = "aws:SecureTransport"
+      values   = ["false"]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "dmarc" {
+  bucket = aws_s3_bucket.dmarc.id
+  policy = data.aws_iam_policy_document.dmarc_bucket.json
+
+  depends_on = [aws_s3_bucket_public_access_block.dmarc]
+}
+
+# Created with no `after`, so SES puts it first in the rule set.
+resource "aws_ses_receipt_rule" "dmarc" {
+  name          = local.dmarc_rule_name
+  rule_set_name = aws_ses_receipt_rule_set.this.rule_set_name
+  recipients    = [local.dmarc_address]
+  enabled       = true
+  scan_enabled  = true
+  tls_policy    = "Require"
+
+  s3_action {
+    position    = 1
+    bucket_name = aws_s3_bucket.dmarc.id
+  }
+
+  stop_action {
+    position = 2
+    scope    = "RuleSet"
+  }
+
+  # SES checks it can write to the bucket when the rule is saved.
+  depends_on = [aws_s3_bucket_policy.dmarc]
 }
