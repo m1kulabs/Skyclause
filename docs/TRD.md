@@ -146,7 +146,7 @@ skyclause/
 ├── apps/
 │   ├── web/            Next.js 16.4: marketing, app, public pages, /v1 API, /mcp, OAuth, /oembed, OG images, embed frames
 │   ├── worker/         Cloud Run image: adapter and batch job entry points, plus the worker service (evaluator, orchestrator, sender, auditor)
-│   └── docs/           docs.skyclause.m1ku.tech: guides, API reference from /openapi.json, examples captured from real calls
+│   └── docs/           Fumadocs static export at docs.skyclause.m1ku.tech: guides, API reference from /openapi.json, examples captured from real calls in `apps/docs/examples/<operationId>/`, each with "Captured {YYYY-MM-DD HH:MM} MYT · station `{id}`" or "Captured {YYYY-MM-DD HH:MM} MYT · project `{org}/{project}`" when no station applies
 ├── packages/
 │   ├── contracts/      seam types and schemas, operation registry, catalogues, `notBuilt(owner)`
 │   ├── clauses/        CEL parse, type-check, evaluate, explain; precedence and No call; replay; the deep shared module
