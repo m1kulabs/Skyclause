@@ -37,7 +37,7 @@ resource "google_monitoring_dashboard" "web_vitals" {
               plotType        = "LINE"
               timeSeriesQuery = { prometheusQuery = "histogram_quantile(0.75, sum by (le, route_group) (rate({\"skyclause.web_vitals_bucket\", metric=\"${vital.metric}\"}[1h])))" }
             }]
-            thresholds = vital.threshold == null ? [] : [{ value = vital.threshold, color = "RED", direction = "ABOVE", label = "NFR-9" }]
+            thresholds = vital.threshold == null ? [] : [{ value = vital.threshold, label = "NFR-9" }]
           }
         }
       }]
@@ -62,7 +62,7 @@ resource "google_monitoring_dashboard" "api_latency" {
               plotType        = "LINE"
               timeSeriesQuery = { prometheusQuery = "histogram_quantile(0.95, sum by (le) (rate({\"http.server.request.duration_bucket\", \"http.request.method\"=~\"${kind.methods}\", \"http.route\"=~\"/(v1|api)/.*\"}[5m])))" }
             }]
-            thresholds = [{ value = kind.threshold, color = "RED", direction = "ABOVE", label = "NFR-9" }]
+            thresholds = [{ value = kind.threshold, label = "NFR-9" }]
           }
         }
       }]
