@@ -718,7 +718,7 @@ One outlined round button "Subscribe to the conditions calendar" opening a menu:
 
 ### Email notice and ICS entry
 
-Templates with named fields, filled from a real approved call; previews before the first call fill only the measured parts from the 2 November replay and say n=0 for the rest ([NTC-7](/docs/PRD.md#notices-and-channels-ntc)).
+Templates with named fields, filled from a real approved call; previews before the first call fill only the measured parts from the 2 November replay and say n=0 for the rest ([NTC-7](/docs/PRD.md#notices-and-channels-ntc)). In the P0 pilot, notices link the public calendar event URL in place of `/c/{callId}`, which is P1 ([PUB-3](/docs/PRD.md#public-pages-pub)), and end with `Reply "unsubscribe" to stop these notices.` in place of the one-click link, also P1 ([NTC-9](/docs/PRD.md#notices-and-channels-ntc)).
 
 ```text
 Subject: {Mode}: {window}, {Ddd D Mmm} ({project})
