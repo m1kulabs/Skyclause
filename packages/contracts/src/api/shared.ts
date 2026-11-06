@@ -1,5 +1,6 @@
 import { z } from '@hono/zod-openapi'
 import { ROLES } from '../auth'
+import { SheetInput } from '../clauses'
 
 // Spec conventions and TRD "API conventions": snake_case, RFC 3339 UTC, whole-second ages.
 export const Instant = z.iso.datetime()
@@ -581,28 +582,8 @@ export const PublicProjectState = z.object({
 })
 export type PublicProjectState = z.infer<typeof PublicProjectState>
 
-// Spec §1 clause fields and §3 version metadata, used by read/draft/evaluate/publish operations.
-export const Clause = z.object({
-  key: z.string(),
-  name: z.string(),
-  enabled: z.boolean(),
-  builtin: z.literal('silent_input').optional(),
-  scope: z.enum(['site', 'window', 'night']),
-  requires: z.array(z.string()),
-  optional: z.array(z.string()).optional(),
-  span: z.object({ from: z.string(), to: z.string() }).optional(),
-  when: z.string(),
-  expiry: z.enum(['start', 'end']).optional(),
-  proposes: z.object({
-    mode: Mode.optional(),
-    watch: z.literal(true).optional(),
-    recommendations: z.array(Recommendation).optional(),
-    note: z.enum(['flood_note', 'single_source_flag', 'calendar_entry']).optional()
-  }),
-  wording: z.object({ en: z.string().optional(), ms: z.string().optional() })
-})
-export type Clause = z.infer<typeof Clause>
-export const SheetContent = z.object({ pack: Pack, clauses: z.array(Clause) })
+// Spec §1 clause fields (`../clauses`) and §3 version metadata, used by read/draft/evaluate/publish operations.
+export const SheetContent = SheetInput
 export type SheetContent = z.infer<typeof SheetContent>
 export const SheetVersion = z.object({
   id: z.string(),
