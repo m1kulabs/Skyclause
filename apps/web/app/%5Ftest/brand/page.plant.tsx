@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Mode } from '@skyclause/contracts'
 import { brandStates } from '@skyclause/elements'
@@ -14,9 +15,9 @@ export default async function BrandHarness({ searchParams }: { searchParams: Pro
   return (
     <main className="p-4" lang={locale}>
       <h1>{t('brand.test.title', {}, locale)}</h1>
-      <a href="/_test/tokens" data-before className="inline-flex min-h-6 items-center">
+      <Link href="/_test/tokens" data-before className="inline-flex min-h-6 items-center">
         {t('brand.test.back', {}, locale)}
-      </a>
+      </Link>
       <div className="flex flex-col items-start gap-2" data-badges>
         {([...Mode.options, 'storm_watch', 'no_call'] as const).map((mode) => (
           <div className="flex max-w-full flex-col items-start gap-1" key={mode}>
@@ -39,9 +40,9 @@ export default async function BrandHarness({ searchParams }: { searchParams: Pro
           </div>
         ))}
       </div>
-      <a href="/_test/tokens" data-after className="inline-flex min-h-6 items-center">
+      <Link href="/_test/tokens" data-after className="inline-flex min-h-6 items-center">
         {t('brand.test.after', {}, locale)}
-      </a>
+      </Link>
     </main>
   )
 }

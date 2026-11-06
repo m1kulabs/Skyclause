@@ -16,7 +16,6 @@ export default defineConfig({
   // Allow constrained development machines to run the same matrix without competing browser workers.
   workers: process.env.E2E_WORKERS ? Number(process.env.E2E_WORKERS) : undefined,
   forbidOnly: !!process.env.CI,
-  workers: process.env.E2E_WORKERS ? Number(process.env.E2E_WORKERS) : undefined,
   timeout: process.env.E2E_TIMEOUT ? Number(process.env.E2E_TIMEOUT) : 30_000,
   reporter: process.env.CI ? [['github'], ['list']] : 'list',
   use: { baseURL: deployed ?? `http://localhost:${port}` },
