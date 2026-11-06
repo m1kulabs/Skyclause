@@ -115,6 +115,9 @@
     "packages/clauses": {
       "name": "@skyclause/clauses",
       "version": "0.0.0",
+      "devDependencies": {
+        "@playwright/test": "1.65.0",
+      },
     },
     "packages/cli": {
       "name": "@skyclause/cli",
