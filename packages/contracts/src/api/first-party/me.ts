@@ -1,3 +1,4 @@
+import { problemResponse, SessionErrors as sessionErrors, IdempotencyHeaders as idempotencyHeaders } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
 import {
@@ -9,19 +10,8 @@ import {
   NotificationPreference,
   Page,
   PageQuery,
-  Preferences,
-  Problem
+  Preferences
 } from '../shared'
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
-})
-
-const sessionErrors = {
-  401: problemResponse('A signed-in session is required.'),
-  429: problemResponse('The request is rate limited.')
-}
 
 const validationErrors = {
   ...sessionErrors,
@@ -38,7 +28,6 @@ const exportSummary = ExportJob.extend({
 })
 const notificationPreferences = z.object({ data: z.array(NotificationPreference) })
 
-const idempotencyHeaders = z.object({ 'Idempotency-Key': z.string().min(1) })
 const apiKeyScopes = z.enum(['read', 'draft', 'admin'])
 const aiProvider = z.enum(['google_ai_studio', 'vertex_ai', 'anthropic', 'openai', 'openrouter'])
 const aiKeyUsageSummary = z.object({

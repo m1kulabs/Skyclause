@@ -1,9 +1,10 @@
+import { IdempotencyHeaders, ProblemResponse, SubscriberProblems as CommonProblems } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Instant, Language, LocalDate, ProjectRef, Subscriber, Window, Problem } from '../shared'
+import { Instant, Language, LocalDate, ProjectRef, Subscriber, Window } from '../shared'
 
 const TokenParams = z.object({ token: z.string() })
-const IdempotencyHeaders = z.object({ 'Idempotency-Key': z.string().min(1) })
+
 const SubscriberFields = Subscriber.pick({ email: true, role: true, window_ids: true, channels: true, language: true })
 const SubscriberPatch = SubscriberFields.partial()
 const ConsentRecord = z.object({ at: Instant, form: z.string(), notice_version: LocalDate, language: Language })
@@ -24,20 +25,6 @@ const CrowdReply = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('shift'), shift_to: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/) }),
   z.object({ kind: z.literal('shuttle') })
 ])
-
-const ProblemResponse = { description: 'Request failed', content: { 'application/problem+json': { schema: Problem } } }
-const CommonProblems = {
-  401: { ...ProblemResponse, description: 'Authentication required' },
-  403: { ...ProblemResponse, description: 'insufficient-scope' },
-  404: { ...ProblemResponse, description: 'Resource not found or inaccessible' },
-  410: { ...ProblemResponse, description: 'link-expired: subscriber token has expired or was revoked' },
-  422: { ...ProblemResponse, description: 'validation-failed or idempotency-mismatch' },
-  429: {
-    ...ProblemResponse,
-    description: 'rate-limited',
-    headers: z.object({ 'Retry-After': z.string().regex(/^\d+$/) })
-  }
-}
 
 export const getSubscription = createRoute({
   method: 'get',

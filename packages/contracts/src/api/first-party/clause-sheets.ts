@@ -1,9 +1,9 @@
+import { IdParams, ProblemResponse, ReauthProblems as CommonProblems, IdempotencyHeaders } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Instant, SheetVersion, Verdict, Problem } from '../shared'
+import { Instant, SheetVersion, Verdict } from '../shared'
 import { Clause } from '../../clauses'
 
-const IdParams = z.object({ id: z.string() })
 const PublishSelection = z.object({ draft_id: z.string() })
 const PublishedSheetVersion = SheetVersion.extend({ published_at: Instant.nullable() })
 const PublishPreview = z.object({
@@ -22,19 +22,6 @@ const PublishPreview = z.object({
     changes: z.array(z.object({ call_id: z.string(), before: Verdict, after: Verdict }))
   })
 })
-
-const ProblemResponse = { description: 'Request failed', content: { 'application/problem+json': { schema: Problem } } }
-const CommonProblems = {
-  401: { ...ProblemResponse, description: 'Authentication required or reauth-required' },
-  403: { ...ProblemResponse, description: 'insufficient-scope' },
-  404: { ...ProblemResponse, description: 'Resource not found or inaccessible' },
-  422: { ...ProblemResponse, description: 'validation-failed or idempotency-mismatch' },
-  429: {
-    ...ProblemResponse,
-    description: 'rate-limited',
-    headers: z.object({ 'Retry-After': z.string().regex(/^\d+$/) })
-  }
-}
 
 export const getClauseSheetPublishPreview = createRoute({
   method: 'get',
@@ -57,7 +44,7 @@ export const publishClauseSheet = createRoute({
   tags: ['clause-sheets'],
   request: {
     params: IdParams,
-    headers: z.object({ 'Idempotency-Key': z.string().min(1) }),
+    headers: IdempotencyHeaders,
     body: {
       required: true,
       content: { 'application/json': { schema: PublishSelection.extend({ preview_hash: z.string() }) } }

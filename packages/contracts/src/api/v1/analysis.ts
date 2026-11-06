@@ -1,33 +1,12 @@
+import {
+  ScopedOrganizationHeaders as OrganizationHeaders,
+  NonEmptyIdParams as IdParams,
+  ProblemResponses
+} from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { AnalysisMetric, Grade, Instant, LocalDate, Pack, Page, PageQuery, Problem, Verdicts } from '../shared'
+import { AnalysisMetric, Grade, Instant, LocalDate, Pack, Page, PageQuery, Verdicts } from '../shared'
 import { SheetInput } from '../../clauses'
-
-// D2: sessions select an organisation by slug or ID; scoped keys and grants already carry it.
-const OrganizationHeaders = z.object({
-  'Skyclause-Organization': z.string().min(1).optional().describe('Required for sessions; organisation slug or ID')
-})
-const IdParams = z.object({ id: z.string().min(1) })
-const ProblemResponses = {
-  400: {
-    description: 'organization-required or validation-failed.',
-    content: { 'application/problem+json': { schema: Problem } }
-  },
-  401: { description: 'Authentication required.', content: { 'application/problem+json': { schema: Problem } } },
-  403: {
-    description: 'insufficient-scope: permission denied.',
-    content: { 'application/problem+json': { schema: Problem } }
-  },
-  404: {
-    description: 'Resource not found, including a row in another organisation.',
-    content: { 'application/problem+json': { schema: Problem } }
-  },
-  429: {
-    description: 'rate-limited or budget-exhausted.',
-    headers: z.object({ 'Retry-After': z.string().regex(/^\d+$/).describe('Retry delay in seconds') }),
-    content: { 'application/problem+json': { schema: Problem } }
-  }
-}
 
 // ANL-5: the same metrics power project and organisation views; n=0 keeps null intervals.
 const ScopedMetric = AnalysisMetric.extend({ pack: Pack, clause_key: z.string().nullable() })

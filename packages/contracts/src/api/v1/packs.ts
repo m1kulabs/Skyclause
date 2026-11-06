@@ -1,15 +1,10 @@
+import { OrganizationHeaders, problemResponse, IdParams } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Pack, Problem, ProjectPack } from '../shared'
+import { Pack, ProjectPack } from '../shared'
 
-const OrganizationHeaders = z.object({ 'Skyclause-Organization': z.string().min(1) })
-const PackParams = z.object({ id: z.string(), pack: Pack })
+const PackParams = IdParams.extend({ pack: Pack })
 const PackUpdate = z.object({ enabled: z.boolean() })
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
-})
 
 export const updateProjectPack = createRoute({
   method: 'patch',

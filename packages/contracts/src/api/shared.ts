@@ -1,6 +1,8 @@
 import { z } from '@hono/zod-openapi'
 import { ROLES } from '../auth'
 import { SheetInput } from '../clauses'
+import { JsonValue } from './common'
+export { Problem } from './common'
 
 // Spec conventions and TRD "API conventions": snake_case, RFC 3339 UTC, whole-second ages.
 export const Instant = z.iso.datetime()
@@ -29,14 +31,6 @@ export const ScopeRef = z.object({ kind: z.enum(['site', 'window', 'night']), id
 export type ScopeRef = z.infer<typeof ScopeRef>
 
 // TRD "API conventions": RFC 9457 errors and cursor pagination.
-export const Problem = z.object({
-  type: z.url(),
-  title: z.string(),
-  status: z.number().int(),
-  detail: z.string(),
-  instance: z.string()
-})
-export type Problem = z.infer<typeof Problem>
 export function Page<T extends z.ZodType>(item: T) {
   return z.object({ data: z.array(item), next_cursor: z.string().nullable() })
 }
@@ -252,7 +246,7 @@ export const Reading = z.object({
   received_at: Instant,
   value: z.number().nullable(),
   value_text: z.string().nullable(),
-  value_json: z.json().nullable(),
+  value_json: JsonValue.nullable(),
   device_time: Instant.nullable(),
   item_key: z.string().nullable(),
   revision: z.string()
@@ -281,7 +275,7 @@ export const Listing = z.object({
   single_source: z.boolean(),
   historical: z.boolean(),
   night_id: z.string().nullable(),
-  pending_change: z.json().nullable()
+  pending_change: JsonValue.nullable()
 })
 export type Listing = z.infer<typeof Listing>
 export const Night = z.object({
@@ -427,7 +421,7 @@ export const LedgerEntry = z.object({
   seq: z.number().int(),
   kind: LedgerKind,
   refs: z.record(z.string(), z.string()),
-  body: z.json(),
+  body: JsonValue,
   prev_hash: z.string(),
   hash: z.string(),
   at: Instant,

@@ -1,8 +1,8 @@
+import { IdParams, ProblemResponse, CommonProblems } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Project, ProjectPack, RotaShift, Problem } from '../shared'
+import { Project, ProjectPack, RotaShift } from '../shared'
 
-const IdParams = z.object({ id: z.string() })
 const RotaOverride = z.array(RotaShift.omit({ id: true, project_id: true })).nullable()
 const ProjectSettings = Project.extend({ rota_override: RotaOverride })
 const ProjectUpdate = Project.pick({
@@ -23,19 +23,6 @@ const ProjectUpdate = Project.pick({
     rota_override: RotaOverride
   })
   .partial()
-
-const ProblemResponse = { description: 'Request failed', content: { 'application/problem+json': { schema: Problem } } }
-const CommonProblems = {
-  401: { ...ProblemResponse, description: 'Authentication required' },
-  403: { ...ProblemResponse, description: 'insufficient-scope' },
-  404: { ...ProblemResponse, description: 'Resource not found or inaccessible' },
-  422: { ...ProblemResponse, description: 'validation-failed or idempotency-mismatch' },
-  429: {
-    ...ProblemResponse,
-    description: 'rate-limited',
-    headers: z.object({ 'Retry-After': z.string().regex(/^\d+$/) })
-  }
-}
 
 // Changing public also requires public_pages.edit (spec §4).
 export const updateProject = createRoute({

@@ -1,19 +1,13 @@
+import { OrganizationHeaders, IdParams as ProjectParams, problemResponse } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { LocalDate, Page, PageQuery, Problem } from '../shared'
+import { LocalDate, Page, PageQuery } from '../shared'
 
-const OrganizationHeaders = z.object({ 'Skyclause-Organization': z.string().min(1) })
-const ProjectParams = z.object({ id: z.string() })
 const ProjectDay = z.object({
   date: LocalDate,
   reading_count: z.number().int(),
   error_count: z.number().int(),
   window_count: z.number().int()
-})
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
 })
 
 export const listProjectDays = createRoute({

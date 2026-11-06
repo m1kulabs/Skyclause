@@ -1,23 +1,15 @@
+import {
+  UuidIdParams as IdParams,
+  OrganizationHeaders as OrganizationHeader,
+  IdempotentOrganizationHeaders as IdempotentHeaders,
+  problemResponse,
+  CommonErrors as commonErrors
+} from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Pack, Page, PageQuery, Problem, Run } from '../shared'
+import { Pack, Page, PageQuery, Run } from '../shared'
 
-const IdParams = z.object({ id: z.uuidv7() })
-const OrganizationHeader = z.object({ 'Skyclause-Organization': z.string().min(1) })
-const IdempotentHeaders = OrganizationHeader.extend({ 'Idempotency-Key': z.string().min(1) })
 const CreateRunBody = z.object({ pack: Pack, window_ids: z.array(z.uuidv7()).optional() })
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
-})
-const commonErrors = {
-  400: problemResponse('Invalid request'),
-  401: problemResponse('Authentication required'),
-  403: problemResponse('Insufficient permission'),
-  404: problemResponse('Resource not found in this organisation'),
-  429: problemResponse('Rate limit exceeded')
-}
 
 export const listRuns = createRoute({
   method: 'get',

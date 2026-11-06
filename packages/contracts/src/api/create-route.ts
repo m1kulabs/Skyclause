@@ -8,9 +8,10 @@ export interface RouteMetadata {
   idempotent: boolean
 }
 
-export function createRoute<P extends string, R extends Omit<RouteConfig, 'path'> & { path: P; x: RouteMetadata }>(
-  route: R
-) {
+export function createRoute<
+  P extends string,
+  const R extends Omit<RouteConfig, 'path'> & { path: P; x: RouteMetadata }
+>(route: R) {
   const { x, ...config } = route
   return honoCreateRoute({ ...config, 'x-skyclause': x })
 }

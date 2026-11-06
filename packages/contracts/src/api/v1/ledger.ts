@@ -1,3 +1,9 @@
+import {
+  ScopedOrganizationHeaders as OrganizationHeaders,
+  NonEmptyIdParams as IdParams,
+  ProblemResponses,
+  JsonValue
+} from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
 import {
@@ -12,40 +18,9 @@ import {
   Pack,
   Page,
   PageQuery,
-  Problem,
   Window
 } from '../shared'
 import { ROLES } from '../../auth'
-
-// D2: sessions select an organisation by slug or ID; scoped keys and grants already carry it.
-const OrganizationHeaders = z.object({
-  'Skyclause-Organization': z.string().min(1).optional().describe('Required for sessions; organisation slug or ID')
-})
-const IdParams = z.object({ id: z.string().min(1) })
-const ProblemResponses = {
-  400: {
-    description: 'organization-required or validation-failed.',
-    content: { 'application/problem+json': { schema: Problem } }
-  },
-  401: { description: 'Authentication required.', content: { 'application/problem+json': { schema: Problem } } },
-  403: {
-    description: 'insufficient-scope: permission denied.',
-    content: { 'application/problem+json': { schema: Problem } }
-  },
-  404: {
-    description: 'Resource not found, including a row in another organisation.',
-    content: { 'application/problem+json': { schema: Problem } }
-  },
-  429: {
-    description: 'rate-limited or budget-exhausted.',
-    headers: z.object({ 'Retry-After': z.string().regex(/^\d+$/).describe('Retry delay in seconds') }),
-    content: { 'application/problem+json': { schema: Problem } }
-  }
-}
-
-// z.json() is recursive; explicit JSON Schema types prevent the OpenAPI converter from recursing forever.
-// Keep the shared JSON validator, including nested objects and arrays, unchanged at runtime.
-const JsonValue = LedgerEntry.shape.body.openapi({ type: ['string', 'number', 'boolean', 'object', 'array', 'null'] })
 
 // LED-7: both the list and CSV export accept the screen's URL filters.
 const LedgerFilters = z.object({

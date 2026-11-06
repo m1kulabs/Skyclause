@@ -1,3 +1,4 @@
+import { OrganizationStreamHeaders as OrganizationHeaders, IdParams as ProjectParams, problemResponse } from '../common'
 import { z } from '@hono/zod-openapi'
 import {
   PollRecordedEventSchema,
@@ -6,24 +7,13 @@ import {
   SourceStaleEventSchema
 } from '../../events'
 import { createRoute } from '../create-route'
-import { Problem } from '../shared'
 
-const OrganizationHeaders = z.object({
-  'Skyclause-Organization': z.string().min(1),
-  'Last-Event-ID': z.string().optional()
-})
-const ProjectParams = z.object({ id: z.string() })
 const ReadingStreamEvent = z.union([
   SourceErrorEventSchema,
   SourceStaleEventSchema,
   SourceRecoveredEventSchema,
   PollRecordedEventSchema
 ])
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
-})
 
 export const streamReadings = createRoute({
   method: 'get',

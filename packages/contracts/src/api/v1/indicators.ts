@@ -1,9 +1,8 @@
+import { OrganizationHeaders, IdParams as ProjectParams, problemResponse } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Forecast, InputValue, Instant, Night, Pack, Problem, SourceState } from '../shared'
+import { Forecast, InputValue, Instant, Night, Pack, SourceState } from '../shared'
 
-const OrganizationHeaders = z.object({ 'Skyclause-Organization': z.string().min(1) })
-const ProjectParams = z.object({ id: z.string() })
 const IndicatorQuery = z.object({ pack: Pack })
 const IndicatorSourceState = SourceState.extend({
   source_id: z.string(),
@@ -24,11 +23,6 @@ const IndicatorSnapshot = z.object({
   nights: z.array(IndicatorNight),
   registry_hash: z.string(),
   hash: z.string()
-})
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
 })
 
 export const getProjectIndicators = createRoute({

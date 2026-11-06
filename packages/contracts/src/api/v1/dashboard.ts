@@ -1,23 +1,7 @@
+import { problemResponse, OrganizationHeaders } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import {
-  Grade,
-  Instant,
-  LocalDate,
-  Mode,
-  Pack,
-  Problem,
-  ProjectRef,
-  Source,
-  SourceState,
-  Verdict,
-  Window
-} from '../shared'
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
-})
+import { Grade, Instant, LocalDate, Mode, Pack, ProjectRef, Source, SourceState, Verdict, Window } from '../shared'
 
 const dashboardBlock = <Item extends z.ZodType>(item: Item) =>
   z.object({
@@ -63,7 +47,7 @@ export const getDashboard = createRoute({
   operationId: 'getDashboard',
   tags: ['Dashboard'],
   request: {
-    headers: z.object({ 'Skyclause-Organization': z.string().min(1) })
+    headers: OrganizationHeaders
   },
   responses: {
     200: {

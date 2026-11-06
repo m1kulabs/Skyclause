@@ -1,9 +1,8 @@
+import { OrganizationHeaders, IdParams as ProjectParams, problemResponse } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { ClauseResult, Instant, Problem, Verdict, Verdicts } from '../shared'
+import { ClauseResult, Instant, Verdict, Verdicts } from '../shared'
 
-const OrganizationHeaders = z.object({ 'Skyclause-Organization': z.string().min(1) })
-const ProjectParams = z.object({ id: z.string() })
 const ClauseResultWithLastFiredAt = ClauseResult.extend({ last_fired_at: Instant.nullable() })
 const VerdictWithLastFiredAt = Verdict.extend({ clauses: z.array(ClauseResultWithLastFiredAt) })
 const VerdictsWithLastFiredAt = Verdicts.extend({
@@ -12,11 +11,6 @@ const VerdictsWithLastFiredAt = Verdicts.extend({
   nights: z.array(VerdictWithLastFiredAt)
 })
 const ProjectVerdicts = z.object({ project_id: z.string(), packs: z.array(VerdictsWithLastFiredAt) })
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
-})
 
 export const getProjectVerdicts = createRoute({
   method: 'get',

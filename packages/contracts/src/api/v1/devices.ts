@@ -1,12 +1,11 @@
+import {
+  IdempotentOrganizationHeaders as OrganizationHeaders,
+  IdParams as ProjectParams,
+  problemResponse
+} from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Problem } from '../shared'
 
-const OrganizationHeaders = z.object({
-  'Skyclause-Organization': z.string().min(1),
-  'Idempotency-Key': z.string().min(1)
-})
-const ProjectParams = z.object({ id: z.string() })
 const DeviceInput = z.object({ kind: z.enum(['camera', 'pi']), name: z.string().min(1) })
 const DeviceCredential = z.object({
   source_id: z.string(),
@@ -14,11 +13,6 @@ const DeviceCredential = z.object({
   scope: z.literal('ingest')
 })
 const CreatedDevice = DeviceCredential.extend({ kind: z.enum(['camera', 'pi']), name: z.string() })
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
-})
 
 export const createDevice = createRoute({
   method: 'post',

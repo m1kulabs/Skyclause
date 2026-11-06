@@ -1,8 +1,8 @@
+import { IdParams, CommonProblems, IdempotencyHeaders } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Instant, Problem } from '../shared'
+import { Instant } from '../shared'
 
-const IdParams = z.object({ id: z.string() })
 const ProbationStatus = z.object({
   source_id: z.string(),
   probation: z.boolean(),
@@ -12,19 +12,6 @@ const ProbationStatus = z.object({
   agreement: z.number().min(0).max(1).nullable()
 })
 const ProbationLabel = z.object({ frame_reading_id: z.string(), label: z.enum(['landmark_visible', 'obscured']) })
-
-const ProblemResponse = { description: 'Request failed', content: { 'application/problem+json': { schema: Problem } } }
-const CommonProblems = {
-  401: { ...ProblemResponse, description: 'Authentication required' },
-  403: { ...ProblemResponse, description: 'insufficient-scope' },
-  404: { ...ProblemResponse, description: 'Resource not found or inaccessible' },
-  422: { ...ProblemResponse, description: 'validation-failed or idempotency-mismatch' },
-  429: {
-    ...ProblemResponse,
-    description: 'rate-limited',
-    headers: z.object({ 'Retry-After': z.string().regex(/^\d+$/) })
-  }
-}
 
 export const setSourceProbation = createRoute({
   method: 'put',
@@ -78,7 +65,7 @@ export const createProbationLabel = createRoute({
   tags: ['sources'],
   request: {
     params: IdParams,
-    headers: z.object({ 'Idempotency-Key': z.string().min(1) }),
+    headers: IdempotencyHeaders,
     body: { required: true, content: { 'application/json': { schema: ProbationLabel } } }
   },
   responses: {

@@ -1,11 +1,7 @@
+import { problemResponse } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { OwnershipTransfer, Problem } from '../shared'
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
-})
+import { OwnershipTransfer } from '../shared'
 
 export const acceptOwnershipTransfer = createRoute({
   method: 'post',

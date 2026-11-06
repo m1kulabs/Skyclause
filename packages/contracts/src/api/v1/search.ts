@@ -1,11 +1,7 @@
+import { problemResponse, OrganizationHeaders } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Page, PageQuery, Problem } from '../shared'
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
-})
+import { Page, PageQuery } from '../shared'
 
 const searchResultSchema = z.object({
   kind: z.enum(['project', 'source', 'window', 'call']),
@@ -22,7 +18,7 @@ export const searchOrganisation = createRoute({
   operationId: 'searchOrganisation',
   tags: ['Search'],
   request: {
-    headers: z.object({ 'Skyclause-Organization': z.string().min(1) }),
+    headers: OrganizationHeaders,
     query: PageQuery.extend({ q: z.string().trim().min(1).max(200) })
   },
   responses: {

@@ -1,19 +1,7 @@
+import { CommonProblems, IdParams } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Notification, Page, PageQuery, Problem } from '../shared'
-
-const ProblemResponse = { description: 'Request failed', content: { 'application/problem+json': { schema: Problem } } }
-const CommonProblems = {
-  401: { ...ProblemResponse, description: 'Authentication required' },
-  403: { ...ProblemResponse, description: 'insufficient-scope' },
-  404: { ...ProblemResponse, description: 'Resource not found or inaccessible' },
-  422: { ...ProblemResponse, description: 'validation-failed or idempotency-mismatch' },
-  429: {
-    ...ProblemResponse,
-    description: 'rate-limited',
-    headers: z.object({ 'Retry-After': z.string().regex(/^\d+$/) })
-  }
-}
+import { Notification, Page, PageQuery } from '../shared'
 
 export const listNotifications = createRoute({
   method: 'get',
@@ -49,7 +37,7 @@ export const markNotificationRead = createRoute({
   path: '/api/notifications/{id}/read',
   operationId: 'markNotificationRead',
   tags: ['notifications'],
-  request: { params: z.object({ id: z.string() }) },
+  request: { params: IdParams },
   responses: {
     ...CommonProblems,
     200: { description: 'Success', content: { 'application/json': { schema: Notification } } }

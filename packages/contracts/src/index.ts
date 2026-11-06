@@ -1,5 +1,6 @@
 export * from './analytics'
 export * from './api/create-route'
+export * from './api/registry'
 export * from './api/shared'
 export * from './audit'
 export * from './auth'

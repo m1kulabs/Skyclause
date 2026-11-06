@@ -1,3 +1,4 @@
+import { problemResponse } from '../common'
 import { z } from '@hono/zod-openapi'
 import { ROLES } from '../../auth'
 import { createRoute } from '../create-route'
@@ -12,15 +13,9 @@ import {
   Pack,
   Page,
   PageQuery,
-  Problem,
   PublicProjectState,
   Verdicts
 } from '../shared'
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
-})
 
 const orgProjectParams = z.object({ org: z.string().min(1), project: z.string().min(1) })
 

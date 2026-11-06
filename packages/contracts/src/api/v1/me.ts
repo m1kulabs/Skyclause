@@ -1,6 +1,6 @@
+import { problemResponse } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Problem } from '../shared'
 
 const Me = z.object({
   account_id: z.string().nullable(),
@@ -10,11 +10,6 @@ const Me = z.object({
   organization_id: z.string().nullable(),
   role: z.enum(['owner', 'admin', 'approver', 'editor', 'viewer', 'guest']).nullable(),
   scopes: z.array(z.enum(['read', 'draft', 'admin', 'ingest']))
-})
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
 })
 
 export const getMe = createRoute({

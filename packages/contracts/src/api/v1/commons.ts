@@ -1,11 +1,7 @@
+import { problemResponse } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Instant, Problem } from '../shared'
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
-})
+import { Instant } from '../shared'
 
 const budgetCounterSchema = z.object({
   used: z.number().int().nonnegative(),

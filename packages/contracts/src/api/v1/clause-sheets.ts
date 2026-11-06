@@ -1,13 +1,18 @@
+import {
+  UuidIdParams as IdParams,
+  OrganizationHeaders as OrganizationHeader,
+  IdempotentOrganizationHeaders as IdempotentHeaders,
+  problemResponse,
+  CommonErrors as commonErrors,
+  UuidIdParams
+} from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Page, PageQuery, Problem, ClauseSheet, SheetVersion, Verdicts } from '../shared'
+import { Page, PageQuery, ClauseSheet, SheetVersion, Verdicts } from '../shared'
 import { Clause, SheetInput } from '../../clauses'
 
-const IdParams = z.object({ id: z.uuidv7() })
-const VersionParams = z.object({ id: z.uuidv7(), n: z.coerce.number().int().positive() })
-const DraftParams = z.object({ id: z.uuidv7(), draftId: z.uuidv7() })
-const OrganizationHeader = z.object({ 'Skyclause-Organization': z.string().min(1) })
-const IdempotentHeaders = OrganizationHeader.extend({ 'Idempotency-Key': z.string().min(1) })
+const VersionParams = IdParams.extend({ n: z.coerce.number().int().positive() })
+const DraftParams = IdParams.extend({ draftId: IdParams.shape.id })
 
 const CheckIssue = z.object({
   clause_key: z.string().nullable(),
@@ -31,18 +36,6 @@ const ReplayRequest = z.object({
   step: z.string().regex(/^(reading|PT\d+M)$/),
   dataset_id: z.string().optional()
 })
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
-})
-const commonErrors = {
-  400: problemResponse('Invalid request'),
-  401: problemResponse('Authentication required'),
-  403: problemResponse('Insufficient permission'),
-  404: problemResponse('Resource not found in this organisation'),
-  429: problemResponse('Rate limit exceeded')
-}
 
 export const listClauseSheets = createRoute({
   method: 'get',
@@ -183,7 +176,7 @@ export const deleteClauseSheetDraft = createRoute({
   responses: {
     200: {
       description: 'The deleted draft identifier',
-      content: { 'application/json': { schema: z.object({ id: z.uuidv7() }) } }
+      content: { 'application/json': { schema: UuidIdParams } }
     },
     ...commonErrors
   },

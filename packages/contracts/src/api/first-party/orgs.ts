@@ -1,3 +1,4 @@
+import { IdempotencyHeaders, ProblemContent as JsonProblem, JsonValue as AuditJson, UuidIdParams } from '../common'
 import { z } from '@hono/zod-openapi'
 import { AUDIT_ACTIONS } from '../../audit'
 import { ROLES } from '../../auth'
@@ -17,20 +18,19 @@ import {
   Pack,
   Page,
   PageQuery,
-  Problem,
   Project,
   RotaShift
 } from '../shared'
 
-const Id = z.uuidv7()
+const Id = UuidIdParams.shape.id
 const OrgParams = z.object({ org: z.union([Id, slugSchema]) })
-const OrgItemParams = OrgParams.extend({ id: Id })
-const IdempotencyHeaders = z.object({ 'Idempotency-Key': z.string().min(1) })
+const OrgItemParams = OrgParams.extend(UuidIdParams.shape)
+
 const Role = z.enum(ROLES)
 const AssignableRole = Role.exclude(['owner', 'guest'])
 const ApiKeyScopes = ApiKey.shape.scopes.min(1)
 const OAuthScopes = OAuthGrant.shape.scopes.min(1)
-const JsonProblem = { 'application/problem+json': { schema: Problem } }
+
 const Unauthorized = { description: 'A human session or recent authentication is required.', content: JsonProblem }
 const Forbidden = { description: 'The session does not have permission for this action.', content: JsonProblem }
 const NotFound = {
@@ -80,12 +80,7 @@ const Rota = RotaSettings.extend({
 
 // AUD-1/2: actor, client, target and before/after remain explicit on the wire.
 const AuditAction = z.enum(AUDIT_ACTIONS)
-// A named recursive schema lets OpenAPI emit references instead of expanding z.json() forever.
-const AuditJson: z.ZodType<z.infer<ReturnType<typeof z.json>>> = z
-  .lazy(() =>
-    z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(AuditJson), z.record(z.string(), AuditJson)])
-  )
-  .openapi('OrganisationAuditJson')
+
 const AuditEntry = z.object({
   id: Id,
   project_id: Id.nullable(),

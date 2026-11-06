@@ -1,11 +1,7 @@
+import { problemResponse, OrganizationHeaders } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { AiUsage, Instant, PageQuery, Problem } from '../shared'
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
-})
+import { AiUsage, Instant, PageQuery } from '../shared'
 
 const usageItemSchema = AiUsage.extend({ estimated_cost_myr: z.number().nonnegative().nullable() })
 
@@ -22,7 +18,7 @@ export const getUsage = createRoute({
   operationId: 'getUsage',
   tags: ['Usage'],
   request: {
-    headers: z.object({ 'Skyclause-Organization': z.string().min(1) }),
+    headers: OrganizationHeaders,
     query: PageQuery
   },
   responses: {

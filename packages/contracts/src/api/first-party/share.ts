@@ -1,18 +1,7 @@
+import { ProblemResponse, GuestProblems as CommonProblems } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { ProjectRef, ShareLink, Problem } from '../shared'
-
-const ProblemResponse = { description: 'Request failed', content: { 'application/problem+json': { schema: Problem } } }
-const CommonProblems = {
-  403: { ...ProblemResponse, description: 'Bot check failed' },
-  404: { ...ProblemResponse, description: 'Resource not found or inaccessible' },
-  422: { ...ProblemResponse, description: 'validation-failed or idempotency-mismatch' },
-  429: {
-    ...ProblemResponse,
-    description: 'rate-limited',
-    headers: z.object({ 'Retry-After': z.string().regex(/^\d+$/) })
-  }
-}
+import { ProjectRef, ShareLink } from '../shared'
 
 export const openShareLink = createRoute({
   method: 'post',

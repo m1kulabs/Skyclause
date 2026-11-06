@@ -1,12 +1,8 @@
+import { problemResponse, OrganizationHeaders } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
 import { Clause } from '../../clauses'
-import { InputValue, Pack, Problem } from '../shared'
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
-})
+import { InputValue, Pack } from '../shared'
 
 const typeErrorSchema = z.object({ path: z.array(z.string()), message: z.string() })
 
@@ -16,7 +12,7 @@ export const evaluateSandbox = createRoute({
   operationId: 'evaluateSandbox',
   tags: ['Sandbox'],
   request: {
-    headers: z.object({ 'Skyclause-Organization': z.string().min(1) }),
+    headers: OrganizationHeaders,
     body: {
       required: true,
       content: {

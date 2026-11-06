@@ -1,19 +1,21 @@
+import {
+  OrganizationHeaders,
+  IdempotentOrganizationHeaders,
+  IdParams as ProjectParams,
+  IdParams as SourceParams,
+  problemResponse
+} from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Page, PageQuery, Poll, Problem, Reading, Source, SourceRole, SourceState } from '../shared'
+import { Page, PageQuery, Poll, Reading, Source, SourceRole, SourceState } from '../shared'
 
-const OrganizationHeaders = z.object({ 'Skyclause-Organization': z.string().min(1) })
-const IdempotentOrganizationHeaders = OrganizationHeaders.extend({ 'Idempotency-Key': z.string().min(1) })
-const ProjectParams = z.object({ id: z.string() })
-const SourceParams = z.object({ id: z.string() })
-const ProjectSourceParams = z.object({ id: z.string(), sourceId: z.string() })
+const ProjectSourceParams = ProjectParams.extend({ sourceId: ProjectParams.shape.id })
 const PageRequest = z.object({ ...PageQuery.shape })
-const ReadingForOpenApi = Reading.omit({ value_json: true }).extend({ value_json: z.unknown().nullable() })
 const ProjectSource = Source.extend({
   project_id: z.string(),
   role: SourceRole,
   state: SourceState,
-  latest_reading: ReadingForOpenApi.nullable(),
+  latest_reading: Reading.nullable(),
   age_s: z.number().int().nonnegative().nullable(),
   recent_errors: z.array(Poll)
 })
@@ -23,10 +25,6 @@ const DeviceCredential = z.object({
   scope: z.literal('ingest')
 })
 
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
-})
 const projectErrors = {
   400: problemResponse('The organization header is missing or invalid.'),
   401: problemResponse('Authentication is required.'),
@@ -105,7 +103,7 @@ export const listSourceReadings = createRoute({
   tags: ['Readings'],
   request: { headers: OrganizationHeaders, params: SourceParams, query: PageRequest },
   responses: {
-    200: { description: 'Source readings', content: { 'application/json': { schema: Page(ReadingForOpenApi) } } },
+    200: { description: 'Source readings', content: { 'application/json': { schema: Page(Reading) } } },
     ...projectErrors
   },
   x: { owner: 'b-signals-api', statement: 'project.view', idempotent: false }

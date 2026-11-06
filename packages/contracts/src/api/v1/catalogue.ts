@@ -1,17 +1,11 @@
+import { OrganizationHeaders, problemResponse } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Page, PageQuery, Problem, Reading, Source } from '../shared'
+import { Page, PageQuery, Reading, Source } from '../shared'
 
-const OrganizationHeaders = z.object({ 'Skyclause-Organization': z.string().min(1) })
-const ReadingForOpenApi = Reading.omit({ value_json: true }).extend({ value_json: z.unknown().nullable() })
 const CatalogueSource = Source.extend({
-  latest_reading: ReadingForOpenApi.nullable(),
+  latest_reading: Reading.nullable(),
   age_s: z.number().int().nonnegative().nullable()
-})
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
 })
 
 export const listCatalogueSources = createRoute({

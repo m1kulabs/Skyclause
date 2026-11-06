@@ -1,6 +1,7 @@
+import { problemResponse, IdempotencyHeaders, JsonValue } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Instant, Problem } from '../shared'
+import { Instant } from '../shared'
 
 const SourceParams = z.object({ sourceId: z.string() })
 const IngestReading = z.object({
@@ -9,7 +10,7 @@ const IngestReading = z.object({
   observed_at: Instant,
   value: z.number().nullable().optional(),
   value_text: z.string().nullable().optional(),
-  value_json: z.unknown().nullable().optional(),
+  value_json: JsonValue.nullable().optional(),
   device_time: Instant.nullable().optional(),
   item_key: z.string().nullable().optional()
 })
@@ -27,11 +28,6 @@ const IngestResponse = z.object({
   camera_day_end: z.string()
 })
 
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
-})
-
 export const ingestReadings = createRoute({
   method: 'post',
   path: '/v1/ingest/{sourceId}',
@@ -39,7 +35,7 @@ export const ingestReadings = createRoute({
   tags: ['Ingest'],
   request: {
     params: SourceParams,
-    headers: z.object({ 'Idempotency-Key': z.string().min(1) }),
+    headers: IdempotencyHeaders,
     body: { content: { 'application/json': { schema: IngestRequest } } }
   },
   responses: {

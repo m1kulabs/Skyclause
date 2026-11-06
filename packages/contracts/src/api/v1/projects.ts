@@ -1,9 +1,8 @@
+import { OrganizationHeaders, IdParams as ProjectParams, problemResponse } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Bundle, InputState, LocalDate, Night, PackState, Page, PageQuery, Problem, Project } from '../shared'
+import { Bundle, InputState, LocalDate, Night, PackState, Page, PageQuery, Project } from '../shared'
 
-const OrganizationHeaders = z.object({ 'Skyclause-Organization': z.string().min(1) })
-const ProjectParams = z.object({ id: z.string() })
 const ProjectSummary = z.object({
   pack_states: z.array(PackState),
   windows_at_risk: z.number().int(),
@@ -24,10 +23,6 @@ const ProjectListQuery = z.object({
   include: z.enum(['summary']).optional()
 })
 
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
-})
 const organizationErrors = {
   400: problemResponse('The organization header is missing or invalid.'),
   401: problemResponse('Authentication is required.'),

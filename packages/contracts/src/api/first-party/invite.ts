@@ -1,16 +1,7 @@
+import { problemResponse, SessionErrors as sessionErrors } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Membership, Problem } from '../shared'
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
-})
-
-const sessionErrors = {
-  401: problemResponse('A signed-in session is required.'),
-  429: problemResponse('The request is rate limited.')
-}
+import { Membership } from '../shared'
 
 const membershipSummary = Membership.extend({ org_name: z.string(), org_slug: z.string() })
 

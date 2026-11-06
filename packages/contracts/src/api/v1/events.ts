@@ -1,12 +1,7 @@
+import { problemResponse } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
 import { DomainEventSchema } from '../../events'
-import { Problem } from '../shared'
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
-})
 
 export const streamOrganisationEvents = createRoute({
   method: 'get',

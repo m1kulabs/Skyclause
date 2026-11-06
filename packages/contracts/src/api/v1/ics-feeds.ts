@@ -1,24 +1,16 @@
+import {
+  UuidIdParams as ProjectParams,
+  UuidIdParams as FeedParams,
+  OrganizationHeaders as OrganizationHeader,
+  IdempotentOrganizationHeaders as IdempotentHeaders,
+  problemResponse,
+  CommonErrors as commonErrors
+} from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { IcsFeed, Page, PageQuery, Problem } from '../shared'
+import { IcsFeed, Page, PageQuery } from '../shared'
 
-const ProjectParams = z.object({ id: z.uuidv7() })
-const FeedParams = z.object({ id: z.uuidv7() })
-const OrganizationHeader = z.object({ 'Skyclause-Organization': z.string().min(1) })
-const IdempotentHeaders = OrganizationHeader.extend({ 'Idempotency-Key': z.string().min(1) })
 const IcsFeedBody = z.object({ url: z.url() })
-
-const problemResponse = (description: string) => ({
-  description,
-  content: { 'application/problem+json': { schema: Problem } }
-})
-const commonErrors = {
-  400: problemResponse('Invalid request'),
-  401: problemResponse('Authentication required'),
-  403: problemResponse('Insufficient permission'),
-  404: problemResponse('Resource not found in this organisation'),
-  429: problemResponse('Rate limit exceeded')
-}
 
 export const listIcsFeeds = createRoute({
   method: 'get',

@@ -1,37 +1,14 @@
+import {
+  ScopedOrganizationHeaders as OrganizationHeaders,
+  NonEmptyIdParams as IdParams,
+  ScopedIdempotentOrganizationHeaders as IdempotentHeaders,
+  ProblemResponses,
+  JsonValue,
+  ProblemContent
+} from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { CallView, EvidenceRequest, Grade, Instant, LedgerEntry, Problem, Reading, Source } from '../shared'
-
-// D2: sessions select an organisation by slug or ID; scoped keys and grants already carry it.
-const OrganizationHeaders = z.object({
-  'Skyclause-Organization': z.string().min(1).optional().describe('Required for sessions; organisation slug or ID')
-})
-const IdParams = z.object({ id: z.string().min(1) })
-const IdempotentHeaders = OrganizationHeaders.extend({ 'Idempotency-Key': z.string().min(1) })
-const ProblemResponses = {
-  400: {
-    description: 'organization-required or validation-failed.',
-    content: { 'application/problem+json': { schema: Problem } }
-  },
-  401: { description: 'Authentication required.', content: { 'application/problem+json': { schema: Problem } } },
-  403: {
-    description: 'insufficient-scope: permission denied.',
-    content: { 'application/problem+json': { schema: Problem } }
-  },
-  404: {
-    description: 'Resource not found, including a row in another organisation.',
-    content: { 'application/problem+json': { schema: Problem } }
-  },
-  429: {
-    description: 'rate-limited or budget-exhausted.',
-    headers: z.object({ 'Retry-After': z.string().regex(/^\d+$/).describe('Retry delay in seconds') }),
-    content: { 'application/problem+json': { schema: Problem } }
-  }
-}
-
-// z.json() is recursive; explicit JSON Schema types prevent the OpenAPI converter from recursing forever.
-// Keep the shared JSON validator, including nested objects and arrays, unchanged at runtime.
-const JsonValue = LedgerEntry.shape.body.openapi({ type: ['string', 'number', 'boolean', 'object', 'array', 'null'] })
+import { CallView, EvidenceRequest, Grade, Instant, LedgerEntry, Reading, Source } from '../shared'
 
 // LED-5: each quoted reading, warning and retained frame keeps its stored reading ID.
 const EvidencePack = z.object({
@@ -88,7 +65,7 @@ export const createEvidenceRequest = createRoute({
     },
     422: {
       description: 'idempotency-mismatch or validation-failed.',
-      content: { 'application/problem+json': { schema: Problem } }
+      content: ProblemContent
     }
   },
   x: { owner: 'c-evidence', statement: 'evidence.request', idempotent: true }
