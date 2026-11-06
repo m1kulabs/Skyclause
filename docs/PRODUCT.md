@@ -95,7 +95,7 @@ flowchart LR
   LED --> GR[Next-day grade] --> TUNE[Clause tuning] --> ENG
 ```
 
-1.  **Sources to readings.** Source adapters fetch each catalogued source on its own interval (the JPS gauge `0232901RF` every 5 minutes, APIMS hourly, Rapid Rail's daily file when it lands) and store each reading with source time, receipt time, status and latency. A failed fetch stores an error, never the last value.
+1.  **Sources to readings.** Source adapters fetch each catalogued source on its own interval (the JPS gauge `0232901RF` every 5 minutes, APIMS every 15 minutes for its hourly index, Rapid Rail's daily file when it lands) and store each reading with source time, receipt time, status and latency. A failed fetch stores an error, never the last value.
 1.  **Readings to indicators.** Rain in the last 60 minutes and 2–4 hours, the highest API across three stations, warnings in force, and the Crowd pack's baseline, uplift, forecast and band from the forecast module. Every indicator carries its age.
 1.  **Indicators to clauses.** The clause engine evaluates the project's clause sheet and gives a shadow verdict per window. A change of verdict is a crossing, and a crossing wakes a run.
 1.  **Run to the agent's call.** A schedule (06:45 on weekdays for the Sky pack), a crossing, a calendar or listing change, or a request starts a run for one project and one pack. The decision agent reads the sheet, raw indicators with ages, MET warning text verbatim and the declared windows, and proposes each call, its recipients and wording; it does no arithmetic. Its proposal is the call of record, and a disagreement with the shadow verdict is listed first.
