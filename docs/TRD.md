@@ -148,13 +148,16 @@ skyclause/
 │   ├── worker/         Cloud Run image: adapter and batch job entry points, plus the worker service (evaluator, orchestrator, sender, auditor)
 │   └── docs/           docs.skyclause.m1ku.tech: guides, API reference from /openapi.json, examples captured from real calls
 ├── packages/
+│   ├── contracts/      seam types and schemas, operation registry, catalogues, `notBuilt(owner)`
 │   ├── clauses/        CEL parse, type-check, evaluate, explain; precedence and No call; replay; the deep shared module
 │   ├── sources/        source adapters, indicator definitions and the registry, the Pi device agent
 │   ├── forecast/       Crowd baseline, uplift, forecast and band for a night
 │   ├── agent/          decision agent: input assembly, output schema, validation, model table, routing
 │   ├── db/             Drizzle schema, SQL migrations, RLS policies, the withTenant query layer
+│   ├── auth/           Better Auth, `resolvePrincipal`, `can`, page helpers
 │   ├── api/            Hono routes and zod schemas; generates OpenAPI 3.1
 │   ├── delivery/       outbox, email templates, ICS writer, webhook signer and retrier
+│   ├── i18n/           `t()`, `catalogue/{en,ms}/<feature>.json`, formatters
 │   ├── mcp/            MCP tools, resources and prompts, shared by the remote server and `skyclause mcp`
 │   ├── sdk/            @skyclause/sdk: generated types plus pagination, SSE and webhook helpers
 │   ├── sdk-python/     skyclause for Python (P2), generated from the same document
