@@ -441,6 +441,7 @@ const expected = hex(hmacSha256(endpointSecret, `${id}.${timestamp}.${rawBody}`)
 
 - **In-app:** the bundle event stream updates the dashboard, approvals queue and the live favicon.
 - **P2:** Microsoft Graph (Outlook mail and calendar, since APU runs Microsoft 365) and Jira Cloud as a decision register mirroring ledger entries and review items, each a per-organisation OAuth connection whose refresh token is KMS-wrapped; both send through the same outbox ([NTC-11](/docs/PRD.md#notices-and-channels-ntc)).
+- **GET-safe links:** email links open a page whose one button POSTs.
 
 ## Grading
 
