@@ -342,7 +342,7 @@ Dates, themes and owners per phase. [PRD](/docs/PRD.md#scope-and-release-phases)
 
 ### P1 beta
 
-- **Dates:** by 5 February 2027, for invited organisations and the 3-month owners.
+- **Dates:** by 5 February 2027, any signed-in account can create an organisation; the beta serves the 3-month owners.
 - **Themes:** the platform takes over from the pilot: the core for both packs; accounts, organisations, projects and the dashboard; guest sign-in, the Commons and share links; rota, SLA and escalation; email, the ICS calendar, webhooks and in-app; BYOK; the API, SDK, CLI and remote MCP with read and draft tools; published grades and analysis; public pages, web components, the developer playground and connect your AI; the live landing. No payment is collected.
 - **Owners:** the FSSW manager if FSSW agrees, otherwise the GDGoC APU committee (Sky); the agreeing club's events lead, with the team as desk operator (Crowd).
 - **Assumptions:** a club agrees; the undocumented endpoints stay up; the surge nights listed to January 2027 go ahead.
