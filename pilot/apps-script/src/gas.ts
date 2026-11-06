@@ -1,6 +1,9 @@
 // Apps Script adapters for the ports the pure modules take. Tests use doubles instead of these.
+import { toMytIso } from '../../shared/time.ts'
+import type { JpsHttpResponse } from './jps.ts'
 import type { PiRowsStore } from './pi-rows.ts'
 import type { GetProperty } from './properties.ts'
+import { validateReading } from './readings.ts'
 import { columnsOf, toRow, type Cell, type Column, type Row, type Tab } from './schema.ts'
 import type { DrivePort, PropertyPort, WorkbookPort } from './setup.ts'
 import type { InstalledTrigger, TriggerPort } from './triggers.ts'
@@ -21,6 +24,14 @@ export function withLock<T>(fn: () => T): T {
     return fn()
   } finally {
     lock.releaseLock()
+  }
+}
+
+export function fetchUrl(url: string): JpsHttpResponse {
+  const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true })
+  return {
+    status: response.getResponseCode(),
+    body: response.getContentText()
   }
 }
 
@@ -98,8 +109,32 @@ export function readColumns<T extends Tab, C extends Column<T>>(
   const values = wanted.map((column) => target.getRange(2, all.indexOf(column) + 1, rows, 1).getValues())
   return Array.from(
     { length: rows },
-    (_, row) => Object.fromEntries(wanted.map((column, n) => [column, values[n]?.[row]?.[0] ?? ''])) as Record<C, Cell>
+    (_, row) =>
+      Object.fromEntries(
+        wanted.map((column, n) => {
+          const cell = values[n]?.[row]?.[0] ?? ''
+          return [column, cell instanceof Date ? toMytIso(cell) : cell]
+        })
+      ) as Record<C, Cell>
   )
+}
+
+export function appendRows<T extends Tab>(spreadsheetId: string, tab: T, records: readonly Row<T>[]): void {
+  if (records.length === 0) return
+  const rows = records.map((record) => toRow(tab, record))
+  const target = sheet(spreadsheetId, tab)
+  const startRow = target.getLastRow() + 1
+  target.getRange(startRow, 1, rows.length, columnsOf(tab).length).setValues(rows)
+}
+
+export function appendReadings(spreadsheetId: string, records: readonly Row<'readings'>[]): void {
+  for (const record of records) {
+    const problems = validateReading(record)
+    if (problems.length > 0) {
+      throw new Error(`Invalid reading row: ${problems.join('; ')}`)
+    }
+  }
+  appendRows(spreadsheetId, 'readings', records)
 }
 
 function kindOf(trigger: GoogleAppsScript.Script.Trigger): InstalledTrigger['kind'] {
