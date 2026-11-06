@@ -10,7 +10,12 @@ import { SheetInput } from '../../clauses'
 
 // ANL-5: the same metrics power project and organisation views; n=0 keeps null intervals.
 const ScopedMetric = AnalysisMetric.extend({ pack: Pack, clause_key: z.string().nullable() })
-const AnalysisQuery = PageQuery.extend({ from: LocalDate.optional(), to: LocalDate.optional(), pack: Pack.optional() })
+const AnalysisQuery = PageQuery.extend({
+  from: LocalDate.optional(),
+  to: LocalDate.optional(),
+  pack: Pack.optional(),
+  period: z.enum(['7d', '30d', '90d', 'all']).optional()
+})
 const Analysis = z.object({
   from: LocalDate,
   to: LocalDate,
@@ -29,7 +34,8 @@ const ReplayRange = z.object({
 const WhatIfReplay = z.object({
   label: z.literal('replay'),
   steps: z.array(z.object({ t_eval: Instant, verdicts: Verdicts })),
-  summary: z.record(z.string(), z.number())
+  summary: z.record(z.string(), z.number()),
+  metrics: z.array(ScopedMetric).optional()
 })
 
 export const getProjectAnalysis = createRoute({
