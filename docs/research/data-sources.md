@@ -56,6 +56,7 @@ These apply to every data.gov.my endpoint below (GTFS, weather, data catalogue, 
 - **Terms:** CC BY 4.0 ([GTFS Realtime docs][dgm_gtfsr]).
 - **Updates and sensor:** every 30 seconds ([GTFS Realtime docs][dgm_gtfsr]). Sensor feed: yes, GPS transponders on vehicles.
 - **Live, 10:13 MYT:** GTFS-rt 2.0 protobuf `FeedMessage`; each entity carries `trip.route_id`, `trip.trip_id`, `vehicle.id` (the plate), `position` (lat, lon, speed), and a timestamp. Rapid Bus KL had 98 vehicles on 46 routes, MRT feeder 114 vehicles on 77 routes, KTMB 13 trains; header timestamps were about 12 seconds old. Decoding needs a GTFS-rt protobuf library (I used the `gtfs-realtime-bindings` Python package).
+- **Pilot choice (7 November 2026):** the pilot's Pi agent is Bun TypeScript compiled for `bun-linux-arm64`, posting to the pilot's Apps Script web app, so it doesn't use the Python package.
 - The docs warn that bus GPS occasionally places vehicles outside the service area (validator error E028), and that Rapid Penang trip IDs need prefix matching against the static feed ([GTFS Realtime docs][dgm_gtfsr]).
 
 ### Routes and stops near APU (GTFS Static)
