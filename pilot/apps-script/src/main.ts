@@ -1,11 +1,24 @@
 // Apps Script entry points. The build turns every function exported here into a top-level function in dist/Code.js,
 // so trigger handlers, doGet, doPost and functions run by hand in the editor must be exported from this file.
-import { getProperty, properties, drive, readColumns, triggers, withLock, workbooks } from './gas.ts'
+import {
+  appendReadings,
+  appendRows,
+  drive,
+  fetchUrl,
+  getProperty,
+  properties,
+  readColumns,
+  triggers,
+  withLock,
+  workbooks
+} from './gas.ts'
 import { buildHealth } from './health.ts'
+import { newUuidV7, runJpsHandler } from './jps.ts'
 import { triggerRegistry } from './registry.ts'
 import { handleGet, handlePost } from './router.ts'
 import { getRoutes, postRoutes } from './routes.ts'
 import { runSetup } from './setup.ts'
+import { executeEvaluationTick } from './tick.ts'
 
 export { runEvaluationTick } from './tick.ts'
 
@@ -36,6 +49,25 @@ export function doGet(event: GoogleAppsScript.Events.DoGet) {
 
 export function doPost(event: GoogleAppsScript.Events.DoPost) {
   return json(handlePost(event.postData?.contents, postRoutes, { getProperty, withLock }))
+}
+
+export function pollJps(): void {
+  const sheetId = getProperty('SHEET_ID')
+  if (!sheetId) throw new Error('SHEET_ID is not set; run setup()')
+  runJpsHandler({
+    withLock,
+    ports: {
+      now: () => new Date(),
+      newPollId: () => newUuidV7(),
+      fetch: fetchUrl,
+      readSources: () => readColumns(sheetId, 'sources', ['source_id']),
+      appendSource: (row) => appendRows(sheetId, 'sources', [row]),
+      readReadings: () => readColumns(sheetId, 'readings', ['source_id', 'metric', 'observed_at', 'value', 'revision']),
+      appendReadings: (rows) => appendReadings(sheetId, rows),
+      appendPoll: (row) => appendRows(sheetId, 'polls', [row]),
+      evaluate: executeEvaluationTick
+    }
+  })
 }
 
 // Run once in the editor per project: it grants the manifest's scopes and makes the folders, workbooks and tabs.
