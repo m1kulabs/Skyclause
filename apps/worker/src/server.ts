@@ -1,6 +1,8 @@
+import { trace } from '@opentelemetry/api'
 import { log as telemetryLog } from '@skyclause/config'
 import type { HeartbeatName } from '@skyclause/contracts'
 import { Hono, type MiddlewareHandler } from 'hono'
+import { routePath } from 'hono/route'
 import { jwtVerify, type JWTPayload, type JWTVerifyGetKey } from 'jose'
 
 /** A Pub/Sub push message, `data` decoded from base64 JSON. */
@@ -130,6 +132,14 @@ const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com']
 export function createServer(options: ServerOptions) {
   const { registry } = options
   const app = new Hono()
+
+  // Names the request span's route template, so it records http.server.request.duration (#114). A path no
+  // route matched ends at a middleware wildcard and gets none.
+  app.use(async (c, next) => {
+    await next()
+    const route = routePath(c, -1)
+    if (!route.endsWith('*')) trace.getActiveSpan()?.setAttribute('http.route', route)
+  })
 
   app.onError((error, c) => {
     log('ERROR', 'handler failed', { path: c.req.path, error: String(error) })

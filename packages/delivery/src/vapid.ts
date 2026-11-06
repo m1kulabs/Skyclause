@@ -4,6 +4,7 @@
 // printed for TF `VAPID_PUBLIC_KEY`. Keys never rotate by themselves: rotation drops every push
 // subscription, so any existing version, even a disabled one, stops the job.
 import { createECDH } from 'node:crypto'
+import { log as sharedLog } from '@skyclause/config'
 
 export interface VapidKeysOptions {
   /** `GCP_PROJECT` */
@@ -16,7 +17,10 @@ const TOKEN_URL = 'http://metadata.google.internal/computeMetadata/v1/instance/s
 
 export async function ensureVapidKeys(options: VapidKeysOptions): Promise<{ created: boolean; publicKey?: string }> {
   const fetchImpl = options.fetch ?? fetch
-  const log = options.log ?? ((line) => console.log(JSON.stringify(line)))
+  const log =
+    options.log ??
+    (({ severity, message, ...fields }) =>
+      (severity === 'ERROR' ? sharedLog.error : sharedLog.info)(String(message), fields))
   const secret = `https://secretmanager.googleapis.com/v1/projects/${options.project}/secrets/VAPID_PRIVATE_KEY`
 
   const tokenResponse = await fetchImpl(TOKEN_URL, { headers: { 'Metadata-Flavor': 'Google' } })

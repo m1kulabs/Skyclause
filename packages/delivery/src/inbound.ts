@@ -3,6 +3,7 @@
 // reads the object, hands it to the matching consumer and deletes it. Bodies and addresses never
 // reach the logs.
 import { DeleteObjectCommand, GetObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { log as sharedLog } from '@skyclause/config'
 import PostalMime from 'postal-mime'
 import { webIdentityCredentials } from './aws-credentials'
 import { isSnsUrl, SnsVerificationError, verifySnsMessage } from './sns'
@@ -52,10 +53,10 @@ interface Receipt {
   action?: { type: string; bucketName?: string; objectKey?: string }
 }
 
+// The shared logger: redacted and linked to the request's trace (#114, #245).
 function log(severity: 'INFO' | 'ERROR', message: string, fields: Record<string, unknown>) {
-  const line = JSON.stringify({ severity, message, ...fields })
-  if (severity === 'ERROR') console.error(line)
-  else console.log(line)
+  if (severity === 'ERROR') sharedLog.error(message, fields)
+  else sharedLog.info(message, fields)
 }
 
 export function createInboundRouter() {

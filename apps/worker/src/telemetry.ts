@@ -17,6 +17,7 @@ export function traceRequests<A extends unknown[]>(
         Object.fromEntries(request.headers),
         `${request.method} ${pathname}`,
         async () => {
+          trace.getActiveSpan()?.setAttribute('http.request.method', request.method)
           const response = await fetch(request, ...rest)
           const span = trace.getActiveSpan()
           span?.setAttribute('http.response.status_code', response.status)
