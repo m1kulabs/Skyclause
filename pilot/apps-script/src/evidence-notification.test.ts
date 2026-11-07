@@ -229,6 +229,38 @@ describe('durable evidence notices', () => {
     expect(f.sends).toBe(1)
   })
 
+  test('finishes a known successful send log after the original requester disappears', () => {
+    const f = fixture()
+    f.ports.appendNotification = () => {
+      throw new Error('notification storage unavailable')
+    }
+    expect(deliverEvidenceNotice('req-1', f.ports).status).toBe('pending')
+    expect(f.intent!.gmailMessageId).toBe('sent-message-1')
+    expect(f.intent!.recipient).toBe('approver@example.test')
+    f.ports.requesterAddress = () => null
+    f.ports.dutyAt = () => {
+      throw new Error('no new routing needed')
+    }
+    f.ports.findSent = () => {
+      throw new Error('known real ID needs no provider search')
+    }
+    f.ports.appendNotification = (row) => {
+      f.notifications.push(row)
+    }
+    expect(deliverEvidenceNotice('req-1', f.ports)).toEqual({ status: 'reconciled', gmailMessageId: 'sent-message-1' })
+    expect(f.notifications).toEqual([
+      {
+        at: '2026-11-07T10:00:00+08:00',
+        kind: 'evidence_request',
+        to: 'approver@example.test',
+        ref: 'req-1',
+        gmail_message_id: 'sent-message-1'
+      }
+    ])
+    expect(f.sends).toBe(1)
+    expect(f.intent).toBeNull()
+  })
+
   test('uses the durable log after an append persisted then threw', () => {
     const f = fixture()
     f.logFails = true

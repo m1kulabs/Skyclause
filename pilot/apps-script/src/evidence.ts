@@ -1,5 +1,9 @@
 import { toMytIso } from '../../shared/time.ts'
-import { deliverEvidenceNotice, type EvidenceNotificationPorts } from './evidence-notification.ts'
+import {
+  deliverEvidenceNotice,
+  type EvidenceNoticeIntent,
+  type EvidenceNotificationPorts
+} from './evidence-notification.ts'
 import { buildEvidencePack, serializeEvidencePack } from './evidence-pack.ts'
 import { projectEvidenceRows, type EvidencePackData, type EvidenceStoredRows } from './evidence-projections.ts'
 import { parseEvidenceRequest, type ParsedEvidenceRequest } from './evidence-request.ts'
@@ -72,8 +76,8 @@ export function runEvidenceInbox(ports: EvidenceInboxPorts): EvidenceInboxReport
   let stage = 'cursor_read_failed'
   let requestId: string | undefined
   const pending = new Set<string>()
-  const notice = (id: string) => {
-    const result = deliverEvidenceNotice(id, ports.notices)
+  const notice = (id: string, recoveryIntent?: EvidenceNoticeIntent) => {
+    const result = deliverEvidenceNotice(id, ports.notices, recoveryIntent)
     if (result.status === 'pending') {
       pending.add(id)
       report.errors.push({ requestId: id, code: result.code })
@@ -104,7 +108,7 @@ export function runEvidenceInbox(ports: EvidenceInboxPorts): EvidenceInboxReport
     for (const intent of recovery) {
       if (drained > 0 && ports.now().getTime() - startedAt >= 20_000) break
       if (recorded.has(intent.requestId)) {
-        notice(intent.requestId)
+        notice(intent.requestId, intent)
         drained++
       }
     }
@@ -158,6 +162,13 @@ export function runEvidenceInbox(ports: EvidenceInboxPorts): EvidenceInboxReport
           const parsed: ParsedEvidenceRequest = message.decodeError
             ? { kind: 'unparseable', spanStart: null, spanEnd: null }
             : parseEvidenceRequest({ subject: message.subject, body: message.body, receivedAt })
+          if (parsed.kind === 'evidence' || parsed.kind === 'call') {
+            // Freeze the first processing time before fallible public reads or pack assembly.
+            stage = 'intent_save_failed'
+            if (!ports.notices.intent(requestId))
+              ports.notices.saveIntent({ requestId, routingAt, marker: `evidence:${ports.notices.hashId(requestId)}` })
+            pending.add(requestId)
+          }
           stage = 'pack_build_failed'
           // Header-only kinds never read public storage and cannot leak private request fields.
           const packData =
@@ -183,12 +194,6 @@ export function runEvidenceInbox(ports: EvidenceInboxPorts): EvidenceInboxReport
             )
           )
           const notifiable = serialized.kind === 'evidence' || serialized.kind === 'call'
-          if (notifiable) {
-            stage = 'intent_save_failed'
-            if (!ports.notices.intent(requestId))
-              ports.notices.saveIntent({ requestId, routingAt, marker: `evidence:${ports.notices.hashId(requestId)}` })
-            pending.add(requestId)
-          }
           if (serialized.kind === 'unsubscribe') {
             stage = 'unsubscribe_failed'
             ports.unsubscribe(message.fromAddress, receivedAt)

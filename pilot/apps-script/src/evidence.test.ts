@@ -562,4 +562,101 @@ describe('evidence inbox orchestration', () => {
     expect(f.intents.size).toBe(0)
     expect(f.sent).toHaveLength(0)
   })
+
+  test.each(['notification', 'evidence', 'intent'] as const)(
+    'recovery advances despite a slow failing %s read for the oldest intent',
+    (read) => {
+      const f = fixture()
+      f.arm()
+      let nowMs = Date.parse('2026-11-07T10:00:05.750+08:00')
+      f.ports.now = f.ports.notices.now = () => new Date(nowMs)
+      for (const [id, at] of [
+        ['old-a', '2026-11-07T09:00:00+08:00'],
+        ['old-b', '2026-11-07T09:01:00+08:00']
+      ]) {
+        f.messages.set(id!, mail(id!, { inInbox: false }))
+        f.evidence.push({
+          request_id: id!,
+          kind: 'call',
+          span_start: '2026-11-07T00:00:00+08:00',
+          span_end: '2026-11-08T00:00:00+08:00',
+          status: 'parsed'
+        })
+        f.intents.set(id!, { requestId: id!, routingAt: at!, marker: `evidence:${id}` })
+      }
+      const slow = (id: string) => {
+        if (id === 'old-a') {
+          nowMs += 21_000
+          throw new Error('slow unavailable private store')
+        }
+      }
+      const notification = f.ports.notices.notification,
+        evidence = f.ports.notices.evidence,
+        intent = f.ports.notices.intent
+      if (read === 'notification')
+        f.ports.notices.notification = (id) => {
+          slow(id)
+          return notification(id)
+        }
+      if (read === 'evidence')
+        f.ports.notices.evidence = (id) => {
+          slow(id)
+          return evidence(id)
+        }
+      if (read === 'intent')
+        f.ports.notices.intent = (id) => {
+          slow(id)
+          return intent(id)
+        }
+      f.pages = () => ({ messageIds: [] })
+      for (let n = 0; n < 3; n++) runEvidenceInbox(f.ports)
+      expect(f.notifications.filter((row) => row.ref === 'old-b')).toHaveLength(1)
+      expect(f.sent.every((message) => message.to === 'approver@example.test')).toBe(true)
+    }
+  )
+
+  test('retains first-processing routing across a pack-storage failure and shift change', () => {
+    const f = fixture()
+    f.arm()
+    f.messages.set('one', mail('one'))
+    const packRows = f.ports.packRows
+    f.ports.packRows = () => {
+      throw new Error('public storage unavailable')
+    }
+    expect(runEvidenceInbox(f.ports).errors).toContainEqual({ requestId: 'one', code: 'pack_build_failed' })
+    expect(f.evidence).toHaveLength(0)
+    expect(f.sent).toHaveLength(0)
+    expect(f.intents.get('one')?.routingAt).toBe('2026-11-07T10:00:05.750+08:00')
+    f.instant = new Date('2026-11-07T11:00:00+08:00')
+    f.ports.packRows = packRows
+    f.ports.notices.dutyAt = (at) =>
+      at === '2026-11-07T10:00:05.750+08:00' ? 'approver@example.test' : 'next-shift@example.test'
+    expect(runEvidenceInbox(f.ports).processed).toEqual(['one'])
+    expect(f.sent.map((message) => message.to)).toEqual(['approver@example.test'])
+  })
+
+  test('cancels a newly saved provisional routing intent when the completed pack is oversized', () => {
+    const f = fixture()
+    f.arm()
+    f.messages.set('one', mail('one'))
+    f.rows = {
+      ...emptyRows(),
+      warnings: [
+        {
+          warning_key: 'warning',
+          issued: '2026-11-02T13:00:00+08:00',
+          valid_from: '2026-11-02T14:00:00+08:00',
+          valid_to: '2026-11-02T17:00:00+08:00',
+          names_kl: true,
+          text_en: 'x'.repeat(51000),
+          first_seen_at: '2026-11-02T13:00:00+08:00'
+        }
+      ]
+    }
+    expect(runEvidenceInbox(f.ports).processed).toEqual(['one'])
+    expect(f.evidence[0]!.pack_json).toBe('{"error":"pack too large"}')
+    expect(f.evidence[0]!.kind).toBe('unparseable')
+    expect(f.intents.size).toBe(0)
+    expect(f.sent).toHaveLength(0)
+  })
 })

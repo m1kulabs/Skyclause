@@ -63,10 +63,32 @@ function matches(message: EvidenceNoticeMail, expected: EvidenceNoticeMail): boo
   )
 }
 
-export function deliverEvidenceNotice(requestId: string, ports: EvidenceNotificationPorts): EvidenceNoticeResult {
-  let stage = 'notice_read_failed'
+export function deliverEvidenceNotice(
+  requestId: string,
+  ports: EvidenceNotificationPorts,
+  // Latest durable snapshot from intents(), under the same orchestration lock.
+  recoveryIntent?: EvidenceNoticeIntent
+): EvidenceNoticeResult {
+  let stage = 'intent_read_failed'
   const pending = (code: string): EvidenceNoticeResult => ({ status: 'pending', code })
   try {
+    // Recovery already loaded this durable snapshot. Stamp it before another store read can fail slowly.
+    let intent = recoveryIntent ?? ports.intent(requestId)
+    if (intent && intent.requestId !== requestId) return pending('intent_missing')
+    if (intent) {
+      const attempt = ports.now()
+      const attemptBase = toMytIso(attempt)
+      const milliseconds = attempt.getUTCMilliseconds()
+      intent = {
+        ...intent,
+        lastAttemptAt: milliseconds
+          ? `${attemptBase.slice(0, 19)}.${String(milliseconds).padStart(3, '0')}+08:00`
+          : attemptBase
+      }
+      stage = 'intent_save_failed'
+      ports.saveIntent(intent)
+    }
+    stage = 'notice_read_failed'
     const logged = ports.notification(requestId)
     if (
       logged?.kind === 'evidence_request' &&
@@ -86,32 +108,21 @@ export function deliverEvidenceNotice(requestId: string, ports: EvidenceNotifica
       return { status: 'skipped' }
     }
     if (row.kind !== 'evidence' && row.kind !== 'call') return pending('invalid_evidence_kind')
-    let intent = ports.intent(requestId)
-    if (!intent || intent.requestId !== requestId) return pending('intent_missing')
-    const attempt = ports.now()
-    const attemptBase = toMytIso(attempt)
-    const milliseconds = attempt.getUTCMilliseconds()
-    intent = {
-      ...intent,
-      lastAttemptAt: milliseconds
-        ? `${attemptBase.slice(0, 19)}.${String(milliseconds).padStart(3, '0')}+08:00`
-        : attemptBase
-    }
-    stage = 'intent_save_failed'
-    ports.saveIntent(intent)
-    stage = 'routing_read_failed'
-    const requester = ports.requesterAddress(requestId)
-    if (!address(requester)) return pending('requester_unavailable')
-    const recipient = intent.recipient ?? ports.dutyAt(intent.routingAt)
-    if (!address(recipient)) return pending('duty_unavailable')
-    if (recipient.toLowerCase() === requester.toLowerCase()) return pending('requester_is_duty')
-    const mail: EvidenceNoticeMail = {
-      to: recipient,
-      subject: `Evidence request [${intent.marker}]`,
-      body: `Request: ${requestId}\nKind: ${row.kind}\nSpan: ${String(row.span_start)} – ${String(row.span_end)}\nWorkbook: ${ports.workbookReference()}\n[${intent.marker}]`
-    }
+    if (!intent) return pending('intent_missing')
+    let recipient = intent.recipient
     let outcome: 'sent' | 'reconciled' = 'reconciled'
     if (!intent.gmailMessageId) {
+      stage = 'routing_read_failed'
+      const requester = ports.requesterAddress(requestId)
+      if (!address(requester)) return pending('requester_unavailable')
+      recipient = intent.recipient ?? ports.dutyAt(intent.routingAt) ?? undefined
+      if (!address(recipient)) return pending('duty_unavailable')
+      if (recipient.toLowerCase() === requester.toLowerCase()) return pending('requester_is_duty')
+      const mail: EvidenceNoticeMail = {
+        to: recipient,
+        subject: `Evidence request [${intent.marker}]`,
+        body: `Request: ${requestId}\nKind: ${row.kind}\nSpan: ${String(row.span_start)} – ${String(row.span_end)}\nWorkbook: ${ports.workbookReference()}\n[${intent.marker}]`
+      }
       let draft: EvidenceDraft | null = null
       if (intent.draftCreationAttempted || intent.draftId) {
         stage = 'sent_search_failed'
@@ -156,6 +167,7 @@ export function deliverEvidenceNotice(requestId: string, ports: EvidenceNotifica
       }
     }
     if (!intent.gmailMessageId) return pending('provider_id_missing')
+    if (!address(recipient)) return pending('frozen_recipient_missing')
     stage = 'notification_append_failed'
     ports.appendNotification({
       at: toMytIso(ports.now()),
