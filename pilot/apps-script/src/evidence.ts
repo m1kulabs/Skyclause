@@ -173,7 +173,7 @@ export function runEvidenceInbox(ports: EvidenceInboxPorts): EvidenceInboxReport
           // Header-only kinds never read public storage and cannot leak private request fields.
           const packData =
             parsed.kind === 'evidence' || parsed.kind === 'call'
-              ? (data ??= projectEvidenceRows(ports.packRows()))
+              ? (data ?? (data = projectEvidenceRows(ports.packRows())))
               : {
                   readings: [],
                   warnings: [],
