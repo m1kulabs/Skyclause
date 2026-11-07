@@ -297,6 +297,17 @@ describe('native evidence Gmail protocol', () => {
     expect(parseEvidenceRequest(result).kind).toBe('call')
   })
 
+  test.each(['style-scope', 'script-widget'])('preserves a fresh request in the ordinary custom wrapper %s', (tag) => {
+    provider([{ body: htmlMessage(`<${tag}><p>call for today</p></${tag}>`) }])
+    const result = evidenceGmailPorts().message('m1')!
+    expect(result.body).toBe('call for today')
+    expect(parseEvidenceRequest(result)).toEqual({
+      kind: 'call',
+      spanStart: '2026-11-07T00:00:00+08:00',
+      spanEnd: '2026-11-08T00:00:00+08:00'
+    })
+  })
+
   test('quoted-only HTML leaves subscriptions unchanged through the real adapter and controller', () => {
     provider([{ body: htmlMessage('<blockquote><blockquote>old history</blockquote><p>unsubscribe</p></blockquote>') }])
     let cursor: EvidenceInboxCursor = {

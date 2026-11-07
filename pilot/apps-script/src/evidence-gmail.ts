@@ -105,7 +105,7 @@ function encodedWord(value: string): string {
 function htmlText(html: string): string {
   return html
     .replace(
-      /<!--[\s\S]*?(?:-->|$)|<(script|style)\b(?:"[^"]*(?:"|$)|'[^']*(?:'|$)|[^"'<>])*(?:>|$)[\s\S]*?(?:<\/\1\s*>|$)|<(?:"[^"]*(?:"|$)|'[^']*(?:'|$)|[^"'<>])*(?:>|$)/gi,
+      /<!--[\s\S]*?(?:-->|$)|<(script|style)(?=[\s/>]|$)(?:"[^"]*(?:"|$)|'[^']*(?:'|$)|[^"'<>])*(?:>|$)[\s\S]*?(?:<\/\1\s*>|$)|<(?:"[^"]*(?:"|$)|'[^']*(?:'|$)|[^"'<>])*(?:>|$)/gi,
       (tag: string, hidden: string | undefined) => {
         if (hidden || tag.startsWith('<!--')) return ''
         // Preserve the first quote boundary even for nested or unclosed history.
