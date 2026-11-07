@@ -69,6 +69,7 @@ describe('the Apps Script bundle in dist/', () => {
       timeZone: 'Asia/Kuala_Lumpur',
       runtimeVersion: 'V8',
       exceptionLogging: 'STACKDRIVER',
+      dependencies: { enabledAdvancedServices: [{ userSymbol: 'Gmail', serviceId: 'gmail', version: 'v1' }] },
       oauthScopes: [
         'https://www.googleapis.com/auth/spreadsheets',
         'https://www.googleapis.com/auth/drive',

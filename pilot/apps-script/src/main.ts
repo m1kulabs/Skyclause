@@ -10,6 +10,7 @@ import {
   crowdHistoryStore,
   crowdGradeStore,
   drive,
+  evidenceInboxPorts,
   fetchUrl,
   fetchWikiText,
   getProperty,
@@ -28,6 +29,7 @@ import {
   workbooks
 } from './gas.ts'
 import { buildHealth } from './health.ts'
+import { runEvidenceInbox } from './evidence.ts'
 import { METADATA_URL, runCrowdGrading } from './crowd-grades.ts'
 import { newUuidV7, runJpsHandler } from './jps.ts'
 import { runCameraRetention } from './camera.ts'
@@ -312,4 +314,18 @@ export function setup() {
     registry: triggerRegistry
   })
   console.log(JSON.stringify(report, null, 2))
+}
+
+// #58 materializes public packs and retries private duty notices under one orchestration lock.
+export function pollEvidenceInbox(): void {
+  const sheetId = getProperty('SHEET_ID')
+  if (!sheetId) throw new Error('SHEET_ID is not set; run setup()')
+  const projectSlug = getProperty('PROJECT_SLUG')
+  if (!projectSlug) throw new Error('PROJECT_SLUG is not set')
+  withLock(() => {
+    const ports = evidenceInboxPorts(sheetId, projectSlug)
+    // Prove Gmail access before activation, without scanning old messages or sending mail.
+    ports.ownerEmail()
+    console.log(JSON.stringify(runEvidenceInbox(ports)))
+  })
 }

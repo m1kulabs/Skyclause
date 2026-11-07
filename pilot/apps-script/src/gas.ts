@@ -1,5 +1,8 @@
 // Apps Script adapters for the ports the pure modules take. Tests use doubles instead of these.
 import { toMytIso } from '../../shared/time.ts'
+import type { EvidenceInboxPorts } from './evidence.ts'
+import { evidenceGmailPorts } from './evidence-gmail.ts'
+import { evidenceStoragePorts } from './evidence-storage.ts'
 import type { CrowdTickStore } from './crowd-tick.ts'
 import type { HistoryBuildRow } from './crowd-history.ts'
 import type { ClausesPort } from './setup.ts'
@@ -33,7 +36,13 @@ import type {
   SkyClauseRuntimePorts,
   SkyClauseStorePort
 } from './sky-runtime.ts'
-import { normalizeDateCell, normalizeWindowRow, type SkyEvaluationStore, type SkyEvaluationTab } from './tick.ts'
+import {
+  normalizeDateCell,
+  normalizeWindowRow,
+  normalizeWindowTimeCell,
+  type SkyEvaluationStore,
+  type SkyEvaluationTab
+} from './tick.ts'
 import type { InstalledTrigger, TriggerPort } from './triggers.ts'
 
 const LOCK_WAIT_MS = 30_000
@@ -1095,4 +1104,22 @@ export function sweepStore(spreadsheetId: string): SweepPorts {
       event.setDescription(current ? `${current}\n${line}` : line)
     }
   }
+}
+
+// Construct without accessing native services; the outer handler supplies the single script lock.
+export function evidenceInboxPorts(sheetId: string, projectSlug: string): EvidenceInboxPorts {
+  if (!sheetId.trim()) throw new Error('SHEET_ID is not set; run setup()')
+  if (!projectSlug.trim()) throw new Error('PROJECT_SLUG is not set')
+  return evidenceStoragePorts(
+    sheetId,
+    projectSlug,
+    {
+      appendRows,
+      hash: sha256HexDigest,
+      normalizeWindow: normalizeWindowRow,
+      normalizeDate: normalizeDateCell,
+      normalizeTime: normalizeWindowTimeCell
+    },
+    evidenceGmailPorts()
+  )
 }
