@@ -4,6 +4,7 @@ import type { TriggerEntry } from './triggers.ts'
 // exported from main.ts so the build makes it a top-level function. Apps Script can't read a trigger's cadence, so
 // changing the cadence of a handler that keeps its number of lines takes a manual delete of its old trigger.
 export const triggerRegistry: TriggerEntry[] = [
+  { kind: 'time', handler: 'pollEvidenceInbox', every: { minutes: 1 } },
   { kind: 'time', handler: 'pollJps', every: { minutes: 5 } },
   { kind: 'time', handler: 'retainCameraFrames', every: { atHour: 3, nearMinute: 0 } },
   { kind: 'on_form_submit', handler: 'onWindowFormSubmit', spreadsheet: 'RESPONSES_SHEET_ID' },

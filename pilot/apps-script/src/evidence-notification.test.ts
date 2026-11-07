@@ -165,6 +165,54 @@ describe('durable evidence notices', () => {
     expect(f.intent).toBeNull()
   })
 
+  test('accepts sparse create/send IDs, hydrates before send and retains the real final ID', () => {
+    const f = fixture()
+    const create = f.ports.createDraft
+    const send = f.ports.sendDraft
+    f.ports.createDraft = (mail) => ({ id: create(mail).id })
+    f.ports.sendDraft = (id) => ({ id: send(id).id })
+    const read = f.ports.draft
+    f.ports.draft = (id) => {
+      expect(f.intent!.draftId).toBe(id)
+      f.events.push('hydrate')
+      return read(id)
+    }
+    f.ports.appendNotification = (row) => {
+      expect(f.intent!.gmailMessageId).toBe('sent-message-1')
+      expect(f.intent!.threadId).toBe('thread-1')
+      f.notifications.push(row)
+    }
+    expect(deliverEvidenceNotice('req-1', f.ports).status).toBe('sent')
+    expect(f.events.indexOf('hydrate')).toBeLessThan(f.events.indexOf('send'))
+    expect(f.sent[0]!.to).toBe('approver@example.test')
+    expect(f.notifications[0]!.gmail_message_id).toBe('sent-message-1')
+  })
+
+  test('keeps the known container after hydrate failure and recovers without creating again', () => {
+    const f = fixture()
+    const read = f.ports.draft
+    f.ports.draft = () => {
+      throw new Error('unavailable')
+    }
+    expect(deliverEvidenceNotice('req-1', f.ports)).toEqual({ status: 'pending', code: 'draft_read_failed' })
+    expect(f.intent!.draftId).toBe('draft-1')
+    expect(f.sends).toBe(0)
+    f.ports.draft = read
+    expect(deliverEvidenceNotice('req-1', f.ports).status).toBe('sent')
+    expect(f.creates).toBe(1)
+    expect(f.sends).toBe(1)
+    expect(f.sent[0]!.to).toBe('approver@example.test')
+  })
+
+  test.each(['create', 'send'])('rejects an empty %s acknowledgement ID', (stage) => {
+    const f = fixture()
+    if (stage === 'create') f.ports.createDraft = () => ({ id: '' })
+    else f.ports.sendDraft = () => ({ id: '' })
+    expect(deliverEvidenceNotice('req-1', f.ports).status).toBe('pending')
+    expect(f.notifications).toHaveLength(0)
+    expect(f.intent!.gmailMessageId).toBeUndefined()
+  })
+
   test.each([null, 'requester@example.test', 'REQUESTER@example.test', 'bad\naddress@example.test'])(
     'keeps unsuitable duty %s pending without a send',
     (duty) => {

@@ -28,6 +28,13 @@ export interface EvidenceSentMessage extends EvidenceNoticeMail {
   id: string
   threadId: string
 }
+export interface EvidenceDraftAcknowledgement {
+  id: string
+}
+export interface EvidenceSendAcknowledgement {
+  id: string
+  threadId?: string
+}
 export interface EvidenceNotificationPorts {
   now(): Date
   intent(requestId: string): EvidenceNoticeIntent | null
@@ -40,9 +47,9 @@ export interface EvidenceNotificationPorts {
   dutyAt(at: string): string | null
   hashId(id: string): string
   workbookReference(): string
-  createDraft(mail: EvidenceNoticeMail): EvidenceDraft
+  createDraft(mail: EvidenceNoticeMail): EvidenceDraftAcknowledgement
   draft(id: string): EvidenceDraft | null
-  sendDraft(id: string): EvidenceSentMessage
+  sendDraft(id: string): EvidenceSendAcknowledgement
   // Must scan the complete provider result set, or throw. Never return a partial search as complete.
   findSent(marker: string): EvidenceSentMessage[]
   appendNotification(row: Row<'notifications'>): void
@@ -150,17 +157,24 @@ export function deliverEvidenceNotice(
         stage = 'intent_save_failed'
         ports.saveIntent(intent)
         stage = 'draft_create_failed'
-        draft = ports.createDraft(mail)
-        if (!draft.id || !draft.messageId || !matches(draft, mail)) return pending('draft_mismatch')
-        intent = { ...intent, draftId: draft.id, threadId: draft.threadId }
+        const created = ports.createDraft(mail)
+        if (typeof created.id !== 'string' || !created.id.trim()) return pending('draft_mismatch')
+        intent = { ...intent, draftId: created.id }
+        stage = 'intent_save_failed'
+        ports.saveIntent(intent)
+        stage = 'draft_read_failed'
+        draft = ports.draft(created.id)
+        if (!draft || draft.id !== created.id || !draft.messageId || !matches(draft, mail))
+          return pending('draft_mismatch')
+        intent = { ...intent, threadId: draft.threadId }
         stage = 'intent_save_failed'
         ports.saveIntent(intent)
       }
       if (draft && !intent.gmailMessageId) {
         stage = 'send_ambiguous'
         const sent = ports.sendDraft(draft.id)
-        if (!sent.id || !matches(sent, mail)) return pending('sent_response_invalid')
-        intent = { ...intent, gmailMessageId: sent.id, threadId: sent.threadId }
+        if (typeof sent.id !== 'string' || !sent.id.trim()) return pending('sent_response_invalid')
+        intent = { ...intent, gmailMessageId: sent.id, threadId: sent.threadId ?? intent.threadId }
         stage = 'intent_save_failed'
         ports.saveIntent(intent)
         outcome = 'sent'
