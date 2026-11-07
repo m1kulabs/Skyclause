@@ -179,9 +179,14 @@ export function readColumns<T extends Tab, C extends Column<T>>(
   )
 }
 
+// These rows hold data, including the clause operator '==', rather than Sheets formulas.
+function toSheetRow<T extends Tab>(tab: T, record: Row<T>): Cell[] {
+  return toRow(tab, record).map((value) => (typeof value === 'string' && value.startsWith('=') ? `'${value}` : value))
+}
+
 export function appendRows<T extends Tab>(spreadsheetId: string, tab: T, records: readonly Row<T>[]): void {
   if (records.length === 0) return
-  const rows = records.map((record) => toRow(tab, record))
+  const rows = records.map((record) => toSheetRow(tab, record))
   const target = sheet(spreadsheetId, tab)
   const startRow = target.getLastRow() + 1
   target.getRange(startRow, 1, rows.length, columnsOf(tab).length).setValues(rows)
@@ -201,7 +206,7 @@ function replaceTabRows<T extends Tab>(spreadsheetId: string, tab: T, records: r
   const target = sheet(spreadsheetId, tab)
   const width = columnsOf(tab).length
   const previousDataRows = Math.max(0, target.getLastRow() - 1)
-  const rows = records.map((record) => toRow(tab, record))
+  const rows = records.map((record) => toSheetRow(tab, record))
   if (rows.length > 0) {
     target.getRange(2, 1, rows.length, width).setValues(rows)
   }
@@ -302,7 +307,7 @@ function replacePaddedTabRows<T extends Tab>(spreadsheetId: string, tab: T, reco
   const target = sheet(spreadsheetId, tab)
   const width = columnsOf(tab).length
   const previousDataRows = Math.max(0, target.getLastRow() - 1)
-  const rows = records.map((record) => toRow(tab, record))
+  const rows = records.map((record) => toSheetRow(tab, record))
   const totalRows = Math.max(rows.length, previousDataRows)
   if (totalRows === 0) return
   const blankRow: Cell[] = Array.from({ length: width }, () => '')
@@ -550,7 +555,7 @@ function appendTabRows<T extends Tab>(spreadsheetId: string, tab: T, rows: Row<T
   const target = sheet(spreadsheetId, tab)
   target
     .getRange(target.getLastRow() + 1, 1, rows.length, columnsOf(tab).length)
-    .setValues(rows.map((row) => toRow(tab, row)))
+    .setValues(rows.map((row) => toSheetRow(tab, row)))
 }
 
 // The first data row whose match column holds the value, as a 1-based sheet row.
