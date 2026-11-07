@@ -1,0 +1,413 @@
+{
+  "capturedOn": "2026-11-07",
+  "timezone": "Asia/Kuala_Lumpur",
+  "requests": [
+    {
+      "file": "apitablehourly-state14-20261031T230000-20261107T080610Z.json",
+      "url": "https://eqms.doe.gov.my/api3/publicportalapims/apitablehourly?stateid=14&datetime=2026-10-31T23%3A00%3A00",
+      "stateId": 14,
+      "stationId": "CA16W",
+      "requestedThroughMyt": "2026-10-31T23:00:00",
+      "capturedAtUtc": "2026-11-07T08:06:10.339244+00:00",
+      "httpStatus": 200,
+      "bytes": 23,
+      "sha256": "4ad0ac3b132e800f01a31b37b45c434c038f2c6b1a6225432add8a571685453f",
+      "responseRows": 0,
+      "boundStationRows": 0,
+      "earliest": null,
+      "latest": null,
+      "sixAmRows": [],
+      "available": false,
+      "fields": []
+    },
+    {
+      "file": "apitablehourly-state14-20261101T230000-20261107T080610Z.json",
+      "url": "https://eqms.doe.gov.my/api3/publicportalapims/apitablehourly?stateid=14&datetime=2026-11-01T23%3A00%3A00",
+      "stateId": 14,
+      "stationId": "CA16W",
+      "requestedThroughMyt": "2026-11-01T23:00:00",
+      "capturedAtUtc": "2026-11-07T08:06:10.405612+00:00",
+      "httpStatus": 200,
+      "bytes": 13535,
+      "sha256": "e5dbbb353ab4f5993e0c1152eaa24d0c3abc5a0a826ee0664be26f3982389543",
+      "responseRows": 50,
+      "boundStationRows": 25,
+      "earliest": "2026-10-31T23:00:00",
+      "latest": "2026-11-01T23:00:00",
+      "sixAmRows": [
+        {
+          "STATION_ID": "CA16W",
+          "DATETIME": "2026-11-01T06:00:00",
+          "API": 81
+        }
+      ],
+      "available": true,
+      "fields": [
+        "PAGE_ROWNUM",
+        "PAGE_TOTALROW",
+        "PAGE",
+        "PAGE_TOTAL",
+        "STATION_ID",
+        "STATE_ID",
+        "STATION_NAME",
+        "STATION_LOCATION",
+        "LATITUDE",
+        "LONGITUDE",
+        "DATETIME",
+        "API",
+        "PARAM_SYMBOL"
+      ]
+    },
+    {
+      "file": "apitablehourly-state14-20261102T230000-20261107T080610Z.json",
+      "url": "https://eqms.doe.gov.my/api3/publicportalapims/apitablehourly?stateid=14&datetime=2026-11-02T23%3A00%3A00",
+      "stateId": 14,
+      "stationId": "CA16W",
+      "requestedThroughMyt": "2026-11-02T23:00:00",
+      "capturedAtUtc": "2026-11-07T08:06:10.475865+00:00",
+      "httpStatus": 200,
+      "bytes": 13537,
+      "sha256": "21dc6e4f182187e652afd7b1a8388297b71bac565254a5e30d34c0c10b0060e1",
+      "responseRows": 50,
+      "boundStationRows": 25,
+      "earliest": "2026-11-01T23:00:00",
+      "latest": "2026-11-02T23:00:00",
+      "sixAmRows": [
+        {
+          "STATION_ID": "CA16W",
+          "DATETIME": "2026-11-02T06:00:00",
+          "API": 83
+        }
+      ],
+      "available": true,
+      "fields": [
+        "PAGE_ROWNUM",
+        "PAGE_TOTALROW",
+        "PAGE",
+        "PAGE_TOTAL",
+        "STATION_ID",
+        "STATE_ID",
+        "STATION_NAME",
+        "STATION_LOCATION",
+        "LATITUDE",
+        "LONGITUDE",
+        "DATETIME",
+        "API",
+        "PARAM_SYMBOL"
+      ]
+    },
+    {
+      "file": "apitablehourly-state14-20261103T230000-20261107T080610Z.json",
+      "url": "https://eqms.doe.gov.my/api3/publicportalapims/apitablehourly?stateid=14&datetime=2026-11-03T23%3A00%3A00",
+      "stateId": 14,
+      "stationId": "CA16W",
+      "requestedThroughMyt": "2026-11-03T23:00:00",
+      "capturedAtUtc": "2026-11-07T08:06:10.562724+00:00",
+      "httpStatus": 200,
+      "bytes": 13533,
+      "sha256": "e28a7585975cdcf52bc75fb640c66dcaac3cda0454d896b9e5e1c291e5cf895e",
+      "responseRows": 50,
+      "boundStationRows": 25,
+      "earliest": "2026-11-02T23:00:00",
+      "latest": "2026-11-03T23:00:00",
+      "sixAmRows": [
+        {
+          "STATION_ID": "CA16W",
+          "DATETIME": "2026-11-03T06:00:00",
+          "API": 65
+        }
+      ],
+      "available": true,
+      "fields": [
+        "PAGE_ROWNUM",
+        "PAGE_TOTALROW",
+        "PAGE",
+        "PAGE_TOTAL",
+        "STATION_ID",
+        "STATE_ID",
+        "STATION_NAME",
+        "STATION_LOCATION",
+        "LATITUDE",
+        "LONGITUDE",
+        "DATETIME",
+        "API",
+        "PARAM_SYMBOL"
+      ]
+    },
+    {
+      "file": "apitablehourly-state10-20261031T230000-20261107T080610Z.json",
+      "url": "https://eqms.doe.gov.my/api3/publicportalapims/apitablehourly?stateid=10&datetime=2026-10-31T23%3A00%3A00",
+      "stateId": 10,
+      "stationId": "CA19B",
+      "requestedThroughMyt": "2026-10-31T23:00:00",
+      "capturedAtUtc": "2026-11-07T08:06:10.657041+00:00",
+      "httpStatus": 200,
+      "bytes": 23,
+      "sha256": "4ad0ac3b132e800f01a31b37b45c434c038f2c6b1a6225432add8a571685453f",
+      "responseRows": 0,
+      "boundStationRows": 0,
+      "earliest": null,
+      "latest": null,
+      "sixAmRows": [],
+      "available": false,
+      "fields": []
+    },
+    {
+      "file": "apitablehourly-state10-20261101T230000-20261107T080610Z.json",
+      "url": "https://eqms.doe.gov.my/api3/publicportalapims/apitablehourly?stateid=10&datetime=2026-11-01T23%3A00%3A00",
+      "stateId": 10,
+      "stationId": "CA19B",
+      "requestedThroughMyt": "2026-11-01T23:00:00",
+      "capturedAtUtc": "2026-11-07T08:06:10.725288+00:00",
+      "httpStatus": 200,
+      "bytes": 40064,
+      "sha256": "7d04af19d1a2419b16cc436d88936545e27a35e1bfbad55ea14da65a512e10ce",
+      "responseRows": 150,
+      "boundStationRows": 25,
+      "earliest": "2026-10-31T23:00:00",
+      "latest": "2026-11-01T23:00:00",
+      "sixAmRows": [
+        {
+          "STATION_ID": "CA19B",
+          "DATETIME": "2026-11-01T06:00:00",
+          "API": 65
+        }
+      ],
+      "available": true,
+      "fields": [
+        "PAGE_ROWNUM",
+        "PAGE_TOTALROW",
+        "PAGE",
+        "PAGE_TOTAL",
+        "STATION_ID",
+        "STATE_ID",
+        "STATION_NAME",
+        "STATION_LOCATION",
+        "LATITUDE",
+        "LONGITUDE",
+        "DATETIME",
+        "API",
+        "PARAM_SYMBOL"
+      ]
+    },
+    {
+      "file": "apitablehourly-state10-20261102T230000-20261107T080610Z.json",
+      "url": "https://eqms.doe.gov.my/api3/publicportalapims/apitablehourly?stateid=10&datetime=2026-11-02T23%3A00%3A00",
+      "stateId": 10,
+      "stationId": "CA19B",
+      "requestedThroughMyt": "2026-11-02T23:00:00",
+      "capturedAtUtc": "2026-11-07T08:06:10.807439+00:00",
+      "httpStatus": 200,
+      "bytes": 40064,
+      "sha256": "13b0b7fa1393ee1d6a5a5599a41720f0e1007b5b99c58dee88f2b51534cd8eb8",
+      "responseRows": 150,
+      "boundStationRows": 25,
+      "earliest": "2026-11-01T23:00:00",
+      "latest": "2026-11-02T23:00:00",
+      "sixAmRows": [
+        {
+          "STATION_ID": "CA19B",
+          "DATETIME": "2026-11-02T06:00:00",
+          "API": 70
+        }
+      ],
+      "available": true,
+      "fields": [
+        "PAGE_ROWNUM",
+        "PAGE_TOTALROW",
+        "PAGE",
+        "PAGE_TOTAL",
+        "STATION_ID",
+        "STATE_ID",
+        "STATION_NAME",
+        "STATION_LOCATION",
+        "LATITUDE",
+        "LONGITUDE",
+        "DATETIME",
+        "API",
+        "PARAM_SYMBOL"
+      ]
+    },
+    {
+      "file": "apitablehourly-state10-20261103T230000-20261107T080610Z.json",
+      "url": "https://eqms.doe.gov.my/api3/publicportalapims/apitablehourly?stateid=10&datetime=2026-11-03T23%3A00%3A00",
+      "stateId": 10,
+      "stationId": "CA19B",
+      "requestedThroughMyt": "2026-11-03T23:00:00",
+      "capturedAtUtc": "2026-11-07T08:06:10.895223+00:00",
+      "httpStatus": 200,
+      "bytes": 40064,
+      "sha256": "921bfc074f9ebc364407d69a3026cc29e7ff5de5baa7f7bff77831563420384b",
+      "responseRows": 150,
+      "boundStationRows": 25,
+      "earliest": "2026-11-02T23:00:00",
+      "latest": "2026-11-03T23:00:00",
+      "sixAmRows": [
+        {
+          "STATION_ID": "CA19B",
+          "DATETIME": "2026-11-03T06:00:00",
+          "API": 62
+        }
+      ],
+      "available": true,
+      "fields": [
+        "PAGE_ROWNUM",
+        "PAGE_TOTALROW",
+        "PAGE",
+        "PAGE_TOTAL",
+        "STATION_ID",
+        "STATE_ID",
+        "STATION_NAME",
+        "STATION_LOCATION",
+        "LATITUDE",
+        "LONGITUDE",
+        "DATETIME",
+        "API",
+        "PARAM_SYMBOL"
+      ]
+    },
+    {
+      "file": "apitablehourly-state16-20261031T230000-20261107T080610Z.json",
+      "url": "https://eqms.doe.gov.my/api3/publicportalapims/apitablehourly?stateid=16&datetime=2026-10-31T23%3A00%3A00",
+      "stateId": 16,
+      "stationId": "CA17W",
+      "requestedThroughMyt": "2026-10-31T23:00:00",
+      "capturedAtUtc": "2026-11-07T08:06:10.979599+00:00",
+      "httpStatus": 200,
+      "bytes": 23,
+      "sha256": "4ad0ac3b132e800f01a31b37b45c434c038f2c6b1a6225432add8a571685453f",
+      "responseRows": 0,
+      "boundStationRows": 0,
+      "earliest": null,
+      "latest": null,
+      "sixAmRows": [],
+      "available": false,
+      "fields": []
+    },
+    {
+      "file": "apitablehourly-state16-20261101T230000-20261107T080611Z.json",
+      "url": "https://eqms.doe.gov.my/api3/publicportalapims/apitablehourly?stateid=16&datetime=2026-11-01T23%3A00%3A00",
+      "stateId": 16,
+      "stationId": "CA17W",
+      "requestedThroughMyt": "2026-11-01T23:00:00",
+      "capturedAtUtc": "2026-11-07T08:06:11.037872+00:00",
+      "httpStatus": 200,
+      "bytes": 6737,
+      "sha256": "a39605476060f90aedfc72cc20d30686acf041ea7b6990cb96e701fd8a8e3dee",
+      "responseRows": 25,
+      "boundStationRows": 25,
+      "earliest": "2026-10-31T23:00:00",
+      "latest": "2026-11-01T23:00:00",
+      "sixAmRows": [
+        {
+          "STATION_ID": "CA17W",
+          "DATETIME": "2026-11-01T06:00:00",
+          "API": 73
+        }
+      ],
+      "available": true,
+      "fields": [
+        "PAGE_ROWNUM",
+        "PAGE_TOTALROW",
+        "PAGE",
+        "PAGE_TOTAL",
+        "STATION_ID",
+        "STATE_ID",
+        "STATION_NAME",
+        "STATION_LOCATION",
+        "LATITUDE",
+        "LONGITUDE",
+        "DATETIME",
+        "API",
+        "PARAM_SYMBOL"
+      ]
+    },
+    {
+      "file": "apitablehourly-state16-20261102T230000-20261107T080611Z.json",
+      "url": "https://eqms.doe.gov.my/api3/publicportalapims/apitablehourly?stateid=16&datetime=2026-11-02T23%3A00%3A00",
+      "stateId": 16,
+      "stationId": "CA17W",
+      "requestedThroughMyt": "2026-11-02T23:00:00",
+      "capturedAtUtc": "2026-11-07T08:06:11.099020+00:00",
+      "httpStatus": 200,
+      "bytes": 6738,
+      "sha256": "eff9981ecd7655be8ce194e8d2d84154eebff660f5223ff3daae6707103b3663",
+      "responseRows": 25,
+      "boundStationRows": 25,
+      "earliest": "2026-11-01T23:00:00",
+      "latest": "2026-11-02T23:00:00",
+      "sixAmRows": [
+        {
+          "STATION_ID": "CA17W",
+          "DATETIME": "2026-11-02T06:00:00",
+          "API": 84
+        }
+      ],
+      "available": true,
+      "fields": [
+        "PAGE_ROWNUM",
+        "PAGE_TOTALROW",
+        "PAGE",
+        "PAGE_TOTAL",
+        "STATION_ID",
+        "STATE_ID",
+        "STATION_NAME",
+        "STATION_LOCATION",
+        "LATITUDE",
+        "LONGITUDE",
+        "DATETIME",
+        "API",
+        "PARAM_SYMBOL"
+      ]
+    },
+    {
+      "file": "apitablehourly-state16-20261103T230000-20261107T080611Z.json",
+      "url": "https://eqms.doe.gov.my/api3/publicportalapims/apitablehourly?stateid=16&datetime=2026-11-03T23%3A00%3A00",
+      "stateId": 16,
+      "stationId": "CA17W",
+      "requestedThroughMyt": "2026-11-03T23:00:00",
+      "capturedAtUtc": "2026-11-07T08:06:11.166021+00:00",
+      "httpStatus": 200,
+      "bytes": 6738,
+      "sha256": "303679adedf8e51278c8a322d50a9e693b17d141fe742da21ba5737fff59dcbd",
+      "responseRows": 25,
+      "boundStationRows": 25,
+      "earliest": "2026-11-02T23:00:00",
+      "latest": "2026-11-03T23:00:00",
+      "sixAmRows": [
+        {
+          "STATION_ID": "CA17W",
+          "DATETIME": "2026-11-03T06:00:00",
+          "API": 67
+        }
+      ],
+      "available": true,
+      "fields": [
+        "PAGE_ROWNUM",
+        "PAGE_TOTALROW",
+        "PAGE",
+        "PAGE_TOTAL",
+        "STATION_ID",
+        "STATE_ID",
+        "STATION_NAME",
+        "STATION_LOCATION",
+        "LATITUDE",
+        "LONGITUDE",
+        "DATETIME",
+        "API",
+        "PARAM_SYMBOL"
+      ]
+    }
+  ],
+  "invalidDatetimeProbe": {
+    "file": "apitablehourly-state14-invalid-datetime-20261107T080654Z.json",
+    "url": "https://eqms.doe.gov.my/api3/publicportalapims/apitablehourly?stateid=14&datetime=not-an-hour",
+    "capturedAtUtc": "2026-11-07T08:06:54.433268+00:00",
+    "httpStatus": 200,
+    "bytes": 12728,
+    "sha256": "d6fb2b228f21f1f1e889438c878afea9944ed57eec5dda3480bc79f93df5529a",
+    "responseRows": 47,
+    "earliest": "2026-11-06T17:00:00",
+    "latest": "2026-11-07T16:00:00"
+  }
+}
