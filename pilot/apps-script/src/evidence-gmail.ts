@@ -147,12 +147,29 @@ function labels(message: Resource): string[] {
     throw new Error('gmail_invalid_message')
   return message.labelIds as string[]
 }
+// Generated notices are one inline text/plain part. Incoming extraction deliberately has a broader policy.
+class UncontrolledMime extends Error {
+  constructor() {
+    super('gmail_uncontrolled_mime')
+  }
+}
+function controlledBody(payload: Resource): string {
+  if (
+    payload.mimeType !== 'text/plain' ||
+    payload.filename ||
+    payload.parts !== undefined ||
+    header(payload, 'content-disposition') ||
+    object(payload.body).attachmentId !== undefined
+  )
+    throw new UncontrolledMime()
+  return body(payload)
+}
 function notice(message: Resource): EvidenceNoticeMail {
   const payload = object(message.payload)
   const to = mailbox(header(payload, 'To'))
   // No Cc/Bcc is allowed on a verified controlled notification draft or Sent candidate.
   if (!to || header(payload, 'Cc') || header(payload, 'Bcc')) throw new Error('mime_invalid')
-  return { to, subject: encodedWord(header(payload, 'Subject')), body: body(payload) }
+  return { to, subject: encodedWord(header(payload, 'Subject')), body: controlledBody(payload) }
 }
 function page(result: Resource, limit = 500): { messageIds: string[]; nextPageToken?: string } {
   if (result.messages !== undefined && (!Array.isArray(result.messages) || result.messages.length > limit))
@@ -278,8 +295,14 @@ export function evidenceGmailPorts(now: () => Date = () => new Date()): Evidence
         )
         for (const messageId of found.messageIds) {
           const message = getMessage(messageId)
-          if (message && labels(message).includes('SENT'))
-            results.push({ ...notice(message), id: id(message.id), threadId: id(message.threadId) })
+          if (message && labels(message).includes('SENT')) {
+            try {
+              results.push({ ...notice(message), id: id(message.id), threadId: id(message.threadId) })
+            } catch (error) {
+              // A known nonmatching MIME shape cannot establish controlled Sent delivery. Finish every page.
+              if (!(error instanceof UncontrolledMime)) throw error
+            }
+          }
         }
         token = found.nextPageToken
         if (token && tokens.has(token)) throw new Error('gmail_repeated_page')

@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { evidenceGmailPorts } from './evidence-gmail.ts'
+import {
+  deliverEvidenceNotice,
+  type EvidenceNoticeIntent,
+  type EvidenceNotificationPorts
+} from './evidence-notification.ts'
+import type { Row } from './schema.ts'
 
 const originals = new Map<string, PropertyDescriptor | undefined>()
 function install(name: string, value: unknown) {
@@ -58,6 +64,71 @@ function provider(replies: Array<{ status?: number; body?: unknown; network?: bo
     }
   })
   return calls
+}
+
+function controlledNoticeFixture(change: (payload: Record<string, unknown>) => Record<string, unknown>) {
+  const marker = `evidence:${'a'.repeat(64)}`
+  const mail = {
+    to: 'approver@example.test',
+    subject: `Evidence request [${marker}]`,
+    body: `Request: m1\nKind: evidence\nSpan: 2026-11-02T14:00:00+08:00 – 2026-11-02T16:30:00+08:00\nWorkbook: https://docs.google.com/spreadsheets/d/test\n[${marker}]`
+  }
+  const payload = change({
+    ...text(mail.body),
+    headers: [
+      { name: 'To', value: mail.to },
+      { name: 'Subject', value: mail.subject }
+    ]
+  })
+  const calls = provider([
+    { body: { payload: { headers: [{ name: 'From', value: 'requester@example.test' }] } } },
+    { body: { messages: [] } },
+    { body: { id: 'container', message: { id: 'draft-message', threadId: 'thread', payload } } },
+    { body: { id: 'final-real', threadId: 'thread' } }
+  ])
+  let intent: EvidenceNoticeIntent | null = {
+    requestId: 'm1',
+    routingAt: '2026-11-07T10:00:00+08:00',
+    marker,
+    recipient: mail.to,
+    draftCreationAttempted: true,
+    draftId: 'container'
+  }
+  const logged: Row<'notifications'>[] = []
+  const ports: EvidenceNotificationPorts = {
+    ...evidenceGmailPorts(),
+    now: () => new Date('2026-11-07T10:00:00+08:00'),
+    intent: () => intent,
+    saveIntent: (value) => {
+      intent = value
+    },
+    removeIntent: () => {
+      intent = null
+    },
+    intents: () => (intent ? [intent] : []),
+    evidence: () => ({
+      request_id: 'm1',
+      kind: 'evidence',
+      span_start: '2026-11-02T14:00:00+08:00',
+      span_end: '2026-11-02T16:30:00+08:00',
+      status: 'parsed'
+    }),
+    notification: () => null,
+    dutyAt: () => null,
+    hashId: () => 'a'.repeat(64),
+    workbookReference: () => 'https://docs.google.com/spreadsheets/d/test',
+    appendNotification: (row) => {
+      logged.push(row)
+    }
+  }
+  return {
+    ports,
+    calls,
+    logged,
+    get intent() {
+      return intent
+    }
+  }
 }
 
 describe('native evidence Gmail protocol', () => {
@@ -320,6 +391,67 @@ describe('native evidence Gmail protocol', () => {
         .map((r) => r.id)
     ).toEqual(['s1', 's2'])
     expect(new URL(calls[2]!.url).searchParams.get('pageToken')).toBe('next')
+  })
+
+  test.each(['attachment filename', 'attachment disposition', 'alternate HTML', 'detached body', 'extra part'])(
+    'keeps an edited outgoing draft with %s pending without sending',
+    (edit) => {
+      const f = controlledNoticeFixture((payload) => {
+        if (edit === 'detached body')
+          return { ...payload, body: { ...(payload.body as object), attachmentId: 'private-attachment' } }
+        if (edit === 'extra part') return { ...payload, parts: [] }
+        const extra =
+          edit === 'alternate HTML'
+            ? { mimeType: 'text/html', body: { data: encoded('<p>Different private content</p>') } }
+            : text(
+                'Private attachment content',
+                edit === 'attachment filename'
+                  ? { filename: 'private.txt' }
+                  : { headers: [{ name: 'Content-Disposition', value: 'attachment' }] }
+              )
+        return { mimeType: 'multipart/mixed', headers: payload.headers, parts: [payload, extra] }
+      })
+      expect(deliverEvidenceNotice('m1', f.ports).status).toBe('pending')
+      expect(f.calls.filter((call) => call.url.endsWith('/drafts/send'))).toHaveLength(0)
+      expect(f.logged).toEqual([])
+      expect(f.intent!.draftId).toBe('container')
+      expect(f.intent!.gmailMessageId).toBeUndefined()
+    }
+  )
+
+  test('sends the controlled single plain MIME draft and logs its real final ID', () => {
+    const f = controlledNoticeFixture((payload) => payload)
+    expect(deliverEvidenceNotice('m1', f.ports)).toEqual({ status: 'sent', gmailMessageId: 'final-real' })
+    expect(f.calls.filter((call) => call.url.endsWith('/drafts/send'))).toHaveLength(1)
+    expect(f.logged[0]!.gmail_message_id).toBe('final-real')
+  })
+
+  test('rejects unsupported outgoing MIME distinctly and excludes it from complete Sent candidates', () => {
+    const payload = {
+      mimeType: 'multipart/alternative',
+      headers: [
+        { name: 'To', value: 'approver@example.test' },
+        { name: 'Subject', value: 'Controlled' }
+      ],
+      parts: [text('Controlled'), { mimeType: 'text/html', body: { data: encoded('<p>Other content</p>') } }]
+    }
+    const calls = provider([
+      { body: { id: 'container', message: { id: 'draft-message', threadId: 'thread', payload } } },
+      { body: { messages: [{ id: 'edited' }], nextPageToken: 'next' } },
+      { body: message({ id: 'edited', labelIds: ['SENT'], payload }) },
+      { body: { messages: [{ id: 'controlled' }] } },
+      {
+        body: message({
+          id: 'controlled',
+          labelIds: ['SENT'],
+          payload: { ...text('Controlled'), headers: payload.headers }
+        })
+      }
+    ])
+    const ports = evidenceGmailPorts()
+    expect(() => ports.draft('container')).toThrow('gmail_uncontrolled_mime')
+    expect(ports.findSent('evidence:123').map((item) => item.id)).toEqual(['controlled'])
+    expect(new URL(calls[3]!.url).searchParams.get('pageToken')).toBe('next')
   })
 
   test('preserves positive send acknowledgement when optional thread metadata is unusable', () => {
