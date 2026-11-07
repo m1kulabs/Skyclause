@@ -1,4 +1,5 @@
 import { toMytIso } from '../../shared/time.ts'
+import { BOUND_APIMS_STATION_IDS } from './indicators.ts'
 import type { Cell, Row } from './schema.ts'
 
 export interface EvidenceStoredRows {
@@ -107,6 +108,15 @@ export interface EvidenceFrame {
   frame_file_id: string | null
   device_time: string | null
 }
+export interface EvidenceApi0600Observation {
+  date: string
+  value: number
+}
+export interface EvidenceApi0600History {
+  CA16W?: EvidenceApi0600Observation[]
+  CA19B?: EvidenceApi0600Observation[]
+  CA17W?: EvidenceApi0600Observation[]
+}
 export interface EvidenceNow {
   snapshot_id: string | null
   scope: string | null
@@ -116,7 +126,7 @@ export interface EvidenceNow {
   'w.rain_max_4h_mm': number | null
   'site.api_max': number | null
   'site.api_max_station': string | null
-  'site.api_0600': number | null
+  'site.api_0600': string | null
   'w.met_kl_warning_in_force': boolean | null
   'w.met_warning_keys': string | null
   'site.camera_far_ratio_last3': string | null
@@ -179,6 +189,38 @@ function jsonArray(value: Cell | undefined): unknown[] | null {
 function warningKeys(value: Cell | undefined): string | null {
   const parsed = jsonArray(value)
   return parsed && parsed.every((key) => typeof key === 'string') ? JSON.stringify(parsed) : null
+}
+function api0600History(value: Cell | undefined): string | null {
+  if (typeof value !== 'string') return null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    return null
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null
+  const source = parsed as Record<string, unknown>
+  const history: EvidenceApi0600History = {}
+  for (const station of BOUND_APIMS_STATION_IDS) {
+    if (!Object.prototype.hasOwnProperty.call(source, station)) continue
+    const observations = source[station]
+    if (!Array.isArray(observations)) return null
+    const projected: EvidenceApi0600Observation[] = []
+    for (const item of observations) {
+      if (typeof item !== 'object' || item === null || Array.isArray(item)) return null
+      const row = item as Record<string, unknown>
+      if (
+        typeof row.date !== 'string' ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(row.date) ||
+        typeof row.value !== 'number' ||
+        !Number.isFinite(row.value)
+      )
+        return null
+      projected.push({ date: row.date, value: row.value })
+    }
+    history[station] = projected
+  }
+  return Object.keys(history).length ? JSON.stringify(history) : null
 }
 function cameraRatios(value: Cell | undefined): string | null {
   const parsed = jsonArray(value)
@@ -348,7 +390,7 @@ export function projectEvidenceRows(rows: EvidenceStoredRows): EvidencePackData 
       'w.rain_max_4h_mm': number(r['w.rain_max_4h_mm']),
       'site.api_max': number(r['site.api_max']),
       'site.api_max_station': text(r['site.api_max_station']),
-      'site.api_0600': number(r['site.api_0600']),
+      'site.api_0600': api0600History(r['site.api_0600']),
       'w.met_kl_warning_in_force': boolean(r['w.met_kl_warning_in_force']),
       'w.met_warning_keys': warningKeys(r['w.met_warning_keys']),
       'site.camera_far_ratio_last3': cameraRatios(r['site.camera_far_ratio_last3']),

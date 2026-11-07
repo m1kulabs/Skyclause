@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test'
 import { buildEvidencePack, serializeEvidencePack } from './evidence-pack.ts'
 import { projectEvidenceRows, type EvidenceStoredRows } from './evidence-projections.ts'
 import { parseEvidenceRequest } from './evidence-request.ts'
+import { computeSkySnapshot } from './indicators.ts'
 import type { Cell, Row } from './schema.ts'
 
 const secret = 'PRIVATE-name-title-email@example.invalid'
@@ -169,4 +170,74 @@ test('now warning-key lists preserve public IDs and reject nested objects', () =
   expect(projected.now[0]?.['w.met_warning_keys']).toBe('["test-warning"]')
   expect(projected.now[1]?.['w.met_warning_keys']).toBeNull()
   expect(JSON.stringify(projected)).not.toContain(secret)
+})
+
+test('call packs preserve producer API 0600 station histories and remove nested private fields', () => {
+  // Controlled test readings exercise the unchanged producer's real JSON format.
+  const stations = [
+    { id: 'CA16W', value: 67 },
+    { id: 'CA19B', value: 57 },
+    { id: 'CA17W', value: 0 }
+  ]
+  const snapshot = computeSkySnapshot({
+    tEval: '2026-11-02T06:01:00+08:00',
+    sources: stations.map(({ id }) => ({
+      source_id: id,
+      kind: 'apims',
+      freshness: 'observed',
+      cadence_min: 60,
+      stale_after_min: 120,
+      state: 'fresh',
+      state_since: '2026-11-01T00:00:00+08:00',
+      probation: false
+    })),
+    readings: stations.map(({ id, value }) => ({
+      reading_id: `test-only-${id}`,
+      source_kind: 'apims',
+      source_id: id,
+      metric: 'api',
+      unit: 'API',
+      observed_at: '2026-11-02T06:00:00+08:00',
+      received_at: '2026-11-02T06:00:00+08:00',
+      value,
+      revision: 1
+    })),
+    polls: [],
+    warnings: [],
+    forecast: [],
+    windows: [],
+    daylight: { start: '07:00', end: '19:00' }
+  })
+  const producerRow = snapshot.nowRows.find((row) => row.scope === 'site')!
+  const expected =
+    '{"CA16W":[{"date":"2026-11-02","value":67}],"CA19B":[{"date":"2026-11-02","value":57}],"CA17W":[{"date":"2026-11-02","value":0}]}'
+  expect(producerRow['site.api_0600']).toBe(expected)
+  const history = JSON.parse(String(producerRow['site.api_0600'])) as Record<string, { date: string; value: number }[]>
+  const contaminated = {
+    ...history,
+    CA16W: history.CA16W!.map((entry) => ({ ...entry, email: secret, nested: { secret } })),
+    private: { email: secret },
+    [secret]: [{ date: '2026-11-02', value: 99 }]
+  }
+  const projected = projectEvidenceRows({
+    readings: [],
+    warnings: [],
+    forecast: [],
+    glossary: [],
+    ledger: [],
+    grades: [],
+    probation: [],
+    windows: [{ window_id: 'test-window', date: '2026-11-02', start_myt: '14:00', end_myt: '16:00' }],
+    now: [{ ...producerRow, scope: 'test-window', 'site.api_0600': JSON.stringify(contaminated) }]
+  })
+  expect(projected.now[0]?.['site.api_0600']).toBe(expected)
+  expect(JSON.stringify(projected)).not.toContain(secret)
+  const result = buildEvidencePack(
+    parseEvidenceRequest({ subject: 'call for today', body: '', receivedAt: at }),
+    context,
+    projected
+  )
+  if (!('now' in result)) throw new Error('expected call pack')
+  expect(result.now[0]?.['site.api_0600']).toBe(expected)
+  expect(serializeEvidencePack('call', result).packJson).not.toContain(secret)
 })
