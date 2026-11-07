@@ -104,10 +104,15 @@ function encodedWord(value: string): string {
 }
 function htmlText(html: string): string {
   return html
-    .replace(/<(script|style|blockquote)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/<(?:br|\/p|\/div|\/li|\/tr)\b[^>]*>/gi, '\n')
-    .replace(/<[^>]*>/g, '')
+    .replace(
+      /<!--[\s\S]*?(?:-->|$)|<(script|style)\b(?:"[^"]*(?:"|$)|'[^']*(?:'|$)|[^"'<>])*(?:>|$)[\s\S]*?(?:<\/\1\s*>|$)|<(?:"[^"]*(?:"|$)|'[^']*(?:'|$)|[^"'<>])*(?:>|$)/gi,
+      (tag: string, hidden: string | undefined) => {
+        if (hidden || tag.startsWith('<!--')) return ''
+        // Preserve the first quote boundary even for nested or unclosed history.
+        if (/^<\/?blockquote(?:[\s/>]|$)/i.test(tag)) return '\n>'
+        return /^<(?:br|\/p|\/div|\/li|\/tr)\b/i.test(tag) ? '\n' : ''
+      }
+    )
     .replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos|nbsp);/gi, (full, entity: string) => {
       const named: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' }
       if (named[entity.toLowerCase()]) return named[entity.toLowerCase()]!

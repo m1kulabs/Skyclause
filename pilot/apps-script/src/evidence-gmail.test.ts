@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { evidenceGmailPorts } from './evidence-gmail.ts'
+import { parseEvidenceRequest } from './evidence-request.ts'
+import { runEvidenceInbox, type EvidenceInboxCursor } from './evidence.ts'
 import {
   deliverEvidenceNotice,
   type EvidenceNoticeIntent,
@@ -39,6 +41,18 @@ function message(extra = {}) {
     },
     ...extra
   }
+}
+function htmlMessage(value: string, subject = 'Unrelated subject') {
+  return message({
+    payload: {
+      mimeType: 'text/html',
+      headers: [
+        { name: 'From', value: 'requester@example.test' },
+        { name: 'Subject', value: subject }
+      ],
+      body: { data: encoded(value) }
+    }
+  })
 }
 function provider(replies: Array<{ status?: number; body?: unknown; network?: boolean }>) {
   const calls: { url: string; options: Record<string, unknown> }[] = []
@@ -207,6 +221,136 @@ describe('native evidence Gmail protocol', () => {
     expect(result.body).toBe('call for tomorrow')
     expect(result.inInbox).toBe(false)
     expect(result.mailerDaemon).toBe(true)
+  })
+
+  test.each(['unsubscribe', 'evidence for 2 Nov 14:00–16:30', 'call for today'])(
+    'never promotes nested quoted %s into a current request',
+    (command) => {
+      provider([
+        { body: htmlMessage(`<blockquote><blockquote>old history</blockquote><p>${command}</p></blockquote>`) }
+      ])
+      const result = evidenceGmailPorts().message('m1')!
+      expect(result.body).toBe('')
+      expect(parseEvidenceRequest(result)).toEqual({ kind: 'unparseable', spanStart: null, spanEnd: null })
+    }
+  )
+
+  test('keeps a genuine fresh body request before nested quoted history', () => {
+    provider([
+      {
+        body: htmlMessage(
+          '<p>call for tomorrow</p><blockquote><blockquote>old history</blockquote><p>unsubscribe</p></blockquote>'
+        )
+      }
+    ])
+    const result = evidenceGmailPorts().message('m1')!
+    expect(result.body).toBe('call for tomorrow')
+    expect(parseEvidenceRequest(result)).toEqual({
+      kind: 'call',
+      spanStart: '2026-11-08T00:00:00+08:00',
+      spanEnd: '2026-11-09T00:00:00+08:00'
+    })
+  })
+
+  test('quoted unsubscribe cannot override a fresh valid subject', () => {
+    provider([
+      {
+        body: htmlMessage(
+          '<blockquote><blockquote>old history</blockquote><p>unsubscribe</p></blockquote>',
+          'evidence for 2 Nov 14:00–16:30'
+        )
+      }
+    ])
+    expect(parseEvidenceRequest(evidenceGmailPorts().message('m1')!)).toEqual({
+      kind: 'evidence',
+      spanStart: '2026-11-02T14:00:00+08:00',
+      spanEnd: '2026-11-02T16:30:00+08:00'
+    })
+  })
+
+  test.each([
+    '<blockquote><p>unsubscribe</p>',
+    '<blockquote><blockquote>old history</blockquote><p>unsubscribe</p>',
+    '<blockquote title="unfinished>unsubscribe',
+    '</blockquote><p>unsubscribe</p>',
+    '<blockquote>old history</blockquote><p>unsubscribe</p>'
+  ])('stops eligible body extraction at malformed or earlier quotation: %s', (html) => {
+    provider([{ body: htmlMessage(html) }])
+    const result = evidenceGmailPorts().message('m1')!
+    expect(result.body).toBe('')
+    expect(parseEvidenceRequest(result).kind).toBe('unparseable')
+  })
+
+  test('ignores fake quote boundaries in comments, script, style and quoted attributes', () => {
+    provider([
+      {
+        body: htmlMessage(
+          '<!-- <blockquote>old history</blockquote> -->' +
+            '<script>const quote = "<blockquote>"; unsubscribe</script>' +
+            '<style>p::before { content: "<blockquote>"; }</style>' +
+            `<div title="<blockquote>" data-note='>'>call&nbsp;for today</div>`
+        )
+      }
+    ])
+    const result = evidenceGmailPorts().message('m1')!
+    expect(result.body).toBe('call for today')
+    expect(parseEvidenceRequest(result).kind).toBe('call')
+  })
+
+  test('quoted-only HTML leaves subscriptions unchanged through the real adapter and controller', () => {
+    provider([{ body: htmlMessage('<blockquote><blockquote>old history</blockquote><p>unsubscribe</p></blockquote>') }])
+    let cursor: EvidenceInboxCursor = {
+      activatedAt: '2026-11-07T10:00:00+08:00',
+      lowerBound: '2026-11-07T10:00:00+08:00'
+    }
+    const subscribers: Row<'subscribers'>[] = [
+      { subscriber_id: 'test-only', email: 'requester@example.test', unsubscribed_at: '' }
+    ]
+    const evidence: Row<'evidence'>[] = []
+    const unexpected = () => {
+      throw new Error('quoted-only mail must not build a pack or notify')
+    }
+    const report = runEvidenceInbox({
+      now: () => new Date('2026-11-07T10:00:01+08:00'),
+      ownerEmail: () => 'owner@example.test',
+      projectSlug: () => 'test-only',
+      cursor: () => cursor,
+      saveCursor: (value) => {
+        cursor = value
+      },
+      listMessages: () => ({ messageIds: ['m1'] }),
+      message: evidenceGmailPorts().message,
+      evidenceRows: () => evidence,
+      packRows: unexpected,
+      appendEvidence: (row) => {
+        evidence.push(row)
+      },
+      unsubscribe: (address, at) => {
+        for (const row of subscribers) if (row.email === address) row.unsubscribed_at = at
+      },
+      notices: {
+        now: () => new Date('2026-11-07T10:00:01+08:00'),
+        intents: () => [],
+        notification: () => null,
+        intent: unexpected,
+        saveIntent: unexpected,
+        removeIntent: unexpected,
+        evidence: unexpected,
+        requesterAddress: unexpected,
+        dutyAt: unexpected,
+        hashId: unexpected,
+        workbookReference: unexpected,
+        createDraft: unexpected,
+        draft: unexpected,
+        sendDraft: unexpected,
+        findSent: unexpected,
+        appendNotification: unexpected
+      }
+    })
+    expect(report.errors).toEqual([])
+    expect(report.processed).toEqual(['m1'])
+    expect(subscribers[0]!.unsubscribed_at).toBe('')
+    expect(evidence.map((row) => row.kind)).toEqual(['unparseable'])
   })
 
   test('malformed MIME is an explicit decode error, malformed receipt is an API data error', () => {

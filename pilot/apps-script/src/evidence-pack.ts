@@ -206,7 +206,10 @@ export function buildEvidencePack(
     span_end: spanEnd,
     date_label: dateLabel(spanStart),
     start_time: spanStart.slice(11, 16),
-    end_time: spanEnd.slice(11, 16)
+    end_time:
+      spanEnd.slice(11, 16) === '00:00' && spanEnd.slice(0, 10) !== spanStart.slice(0, 10)
+        ? '24:00'
+        : spanEnd.slice(11, 16)
   }
   const windows = data.windows.filter(
     (r) =>

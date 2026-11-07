@@ -81,6 +81,49 @@ describe('evidence packs', () => {
     })
   })
 
+  test.each([
+    {
+      subject: 'call for today',
+      kind: 'call',
+      start: '2026-11-07T00:00:00+08:00',
+      end: '2026-11-08T00:00:00+08:00',
+      date: 'Saturday 7 November 2026',
+      startTime: '00:00',
+      endTime: '24:00'
+    },
+    {
+      subject: 'evidence for 2 Nov 23:00–24:00',
+      kind: 'evidence',
+      start: '2026-11-02T23:00:00+08:00',
+      end: '2026-11-03T00:00:00+08:00',
+      date: 'Monday 2 November 2026',
+      startTime: '23:00',
+      endTime: '24:00'
+    },
+    {
+      subject: 'evidence for 2 Nov 00:00–00:00',
+      kind: 'evidence',
+      start: '2026-11-02T00:00:00+08:00',
+      end: '2026-11-02T00:00:00+08:00',
+      date: 'Monday 2 November 2026',
+      startTime: '00:00',
+      endTime: '00:00'
+    }
+  ])('labels midnight accurately for $subject while preserving ISO span instants', (example) => {
+    const result = pack({}, example.subject)
+    expect(result.header).toEqual({
+      kind: example.kind,
+      project_slug: 'test-only-receipt',
+      received_at: context.receivedAt,
+      assembled_at: context.assembledAt,
+      span_start: example.start,
+      span_end: example.end,
+      date_label: example.date,
+      start_time: example.startTime,
+      end_time: example.endTime
+    })
+  })
+
   test('missing warm-up stamps yield null while complete genuine zero stays zero', () => {
     const missing = rows().filter((row) => row.observed_at !== '2026-11-02T13:10:00+08:00')
     expect(
