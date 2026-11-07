@@ -95,7 +95,8 @@ export function evidenceStoragePorts(
 ): EvidenceInboxPorts {
   let evidenceCache: Row<'evidence'>[] | undefined, notificationCache: Row<'notifications'>[] | undefined
   const evidenceRows = () =>
-    (evidenceCache ??= read(sheetId, 'evidence', [
+    evidenceCache ??
+    (evidenceCache = read(sheetId, 'evidence', [
       'request_id',
       'received_at',
       'kind',
@@ -108,7 +109,7 @@ export function evidenceStoragePorts(
       )
     ))
   const notifications = () =>
-    (notificationCache ??= read(sheetId, 'notifications', ['kind', 'ref', 'gmail_message_id']))
+    notificationCache ?? (notificationCache = read(sheetId, 'notifications', ['kind', 'ref', 'gmail_message_id']))
   return {
     ...gmail,
     now: () => new Date(),
@@ -158,7 +159,7 @@ export function evidenceStoragePorts(
       for (let n = 0; n < ledger.length; n++) {
         const row = ledger[n]!
         if (row.kind !== 'clause_version') continue
-        ledgerSheet ??= target(sheetId, 'ledger')
+        ledgerSheet = ledgerSheet ?? target(sheetId, 'ledger')
         const value = ledgerSheet.getRange(n + 2, 21, 1, 1).getValues()[0]?.[0] as Cell | undefined
         const body = projectEvidenceRows({ ...empty, ledger: [{ kind: 'clause_version', body: value }] }).ledger[0]
           ?.body

@@ -3,6 +3,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createContext, runInContext } from 'node:vm'
+import ts from 'typescript'
 import { build } from './build.ts'
 import { triggerRegistry } from './src/registry.ts'
 
@@ -44,6 +45,32 @@ describe('the Apps Script bundle in dist/', () => {
     const declared = [...code.matchAll(/^function (\w+)\(/gm)].map((match) => match[1])
     expect(declared).toEqual(expect.arrayContaining(['doGet', 'doPost', 'setup', 'runEvaluationTick']))
     for (const entry of triggerRegistry) expect(declared).toContain(entry.handler)
+  })
+
+  test('avoids logical assignment syntax rejected by the native Apps Script parser', () => {
+    // This guards a known native-parser incompatibility, not the entire Apps Script grammar.
+    const source = ts.createSourceFile('Code.js', code, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS)
+    const assignments: { operator: string; line: number; column: number }[] = []
+    function visit(node: ts.Node): void {
+      if (
+        ts.isBinaryExpression(node) &&
+        [
+          ts.SyntaxKind.QuestionQuestionEqualsToken,
+          ts.SyntaxKind.AmpersandAmpersandEqualsToken,
+          ts.SyntaxKind.BarBarEqualsToken
+        ].includes(node.operatorToken.kind)
+      ) {
+        const position = source.getLineAndCharacterOfPosition(node.operatorToken.getStart(source))
+        assignments.push({
+          operator: node.operatorToken.getText(source),
+          line: position.line + 1,
+          column: position.character + 1
+        })
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(source)
+    expect(assignments).toEqual([])
   })
 
   test('loads with no browser or Node globals and answers through the routers', () => {
