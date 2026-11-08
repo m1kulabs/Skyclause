@@ -28,6 +28,10 @@ const MULTI: Array<[string, string, [string, string] | null]> = [
   ['skyclause.m1ku.tech', '/openapi.json', ['/openapi.json', '/openapi.json']],
   ['skyclause.m1ku.tech', '/skills', ['/skills', '/skills']],
   ['skyclause.m1ku.tech', '/e', ['/e', '/e']],
+  // Test-only routes sit on the marketing host, where deploy's @smoke run checks production ships none.
+  ['skyclause.m1ku.tech', '/_test/tokens', ['planted', '/_test/tokens']],
+  ['skyclause.m1ku.tech', '/quality-planted/vitals', ['planted', '/quality-planted/vitals']],
+  ['app.skyclause.m1ku.tech', '/_test/tokens', null],
   ['skyclause.m1ku.tech', '/apu', null],
   ['skyclause.m1ku.tech', '/sign-in', null],
   ['skyclause.m1ku.tech', '/v1/projects', null],

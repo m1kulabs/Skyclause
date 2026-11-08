@@ -70,6 +70,8 @@ const ROUTES: Array<{ group: string; surface: Surface | null; match: (path: stri
   { group: '/elements', surface: 'embed', match: under('/elements') },
   { group: '(embed)', surface: 'embed', match: under('/embed') },
   { group: 'docs', surface: 'docs', match: under('/docs') },
+  // Test builds only (PLANTED_ROUTES=1); on the marketing host, where deploy's @smoke run checks production has none.
+  { group: 'planted', surface: 'marketing', match: under('/_test', '/quality-planted') },
   { group: '(marketing)', surface: 'marketing', match: (path) => path === '/' || under('/ms', '/legal')(path) },
   { group: '(public)', surface: 'marketing', match: under('/status', '/p', '/c') },
   {
