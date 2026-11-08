@@ -208,7 +208,10 @@ describe('durable evidence notices', () => {
     const f = fixture()
     if (stage === 'create') f.ports.createDraft = () => ({ id: '' })
     else f.ports.sendDraft = () => ({ id: '' })
-    expect(deliverEvidenceNotice('req-1', f.ports).status).toBe('pending')
+    expect(deliverEvidenceNotice('req-1', f.ports)).toEqual({
+      status: 'pending',
+      code: stage === 'create' ? 'draft_mismatch' : 'sent_response_invalid'
+    })
     expect(f.notifications).toHaveLength(0)
     expect(f.intent!.gmailMessageId).toBeUndefined()
   })
@@ -285,14 +288,28 @@ describe('durable evidence notices', () => {
     expect(deliverEvidenceNotice('req-1', f.ports).status).toBe('pending')
     expect(f.intent!.gmailMessageId).toBe('sent-message-1')
     expect(f.intent!.recipient).toBe('approver@example.test')
-    f.ports.requesterAddress = () => null
+    f.ports.requesterAddress = () => {
+      throw new Error('known real ID needs no requester read')
+    }
     f.ports.dutyAt = () => {
       throw new Error('no new routing needed')
     }
     f.ports.findSent = () => {
       throw new Error('known real ID needs no provider search')
     }
+    f.ports.createDraft =
+      f.ports.draft =
+      f.ports.sendDraft =
+        () => {
+          throw new Error('known real ID needs no provider operation')
+        }
+    f.ports.workbookReference = () => {
+      throw new Error('known real ID needs no message composition')
+    }
+    const savesBeforeRetry = f.events.filter((event) => event === 'save').length
     f.ports.appendNotification = (row) => {
+      // Only the caller's established lastAttemptAt save precedes the append.
+      expect(f.events.filter((event) => event === 'save')).toHaveLength(savesBeforeRetry + 1)
       f.notifications.push(row)
     }
     expect(deliverEvidenceNotice('req-1', f.ports)).toEqual({ status: 'reconciled', gmailMessageId: 'sent-message-1' })
@@ -344,7 +361,15 @@ describe('durable evidence notices', () => {
       if (scenario === 'wrong body') f.sent[0]!.body += ' extra'
       if (scenario === 'incomplete search') f.searchFails = true
       const result = deliverEvidenceNotice('req-1', f.ports)
-      expect(result.status).toBe('pending')
+      expect(result).toEqual({
+        status: 'pending',
+        code:
+          scenario === 'ambiguous'
+            ? 'sent_ambiguous'
+            : scenario === 'incomplete search'
+              ? 'sent_search_failed'
+              : 'draft_missing_no_sent_match'
+      })
       expect(JSON.stringify(result)).not.toContain('@')
       expect(f.creates).toBe(1)
       expect(f.sends).toBe(1)
@@ -366,7 +391,7 @@ describe('durable evidence notices', () => {
     deliverEvidenceNotice('req-1', f.ports)
     f.drafts.get('draft-1')!.to = 'requester@example.test'
     f.sendFails = false
-    expect(deliverEvidenceNotice('req-1', f.ports).status).toBe('pending')
+    expect(deliverEvidenceNotice('req-1', f.ports)).toEqual({ status: 'pending', code: 'draft_mismatch' })
     expect(f.sends).toBe(1)
     expect(f.notifications).toHaveLength(0)
   })
@@ -374,11 +399,72 @@ describe('durable evidence notices', () => {
   test('keeps failed draft creation durable without an unchecked replacement', () => {
     const f = fixture()
     f.createFails = true
-    expect(deliverEvidenceNotice('req-1', f.ports).status).toBe('pending')
+    expect(deliverEvidenceNotice('req-1', f.ports)).toEqual({ status: 'pending', code: 'draft_create_failed' })
     f.createFails = false
-    expect(deliverEvidenceNotice('req-1', f.ports).status).toBe('pending')
+    expect(deliverEvidenceNotice('req-1', f.ports)).toEqual({ status: 'pending', code: 'draft_missing_no_sent_match' })
     expect(f.creates).toBe(1)
     expect(f.sends).toBe(0)
+    expect(f.notifications).toHaveLength(0)
+  })
+
+  test.each([1, 2, 3, 4, 5])('retains the last durable intent when save %s throws', (failAt) => {
+    const f = fixture()
+    const input = Object.freeze({ ...f.intent! })
+    const original = { ...input }
+    const save = f.ports.saveIntent
+    let calls = 0
+    let lastDurable = original
+    f.ports.saveIntent = (next) => {
+      if (++calls === failAt) throw new Error('private storage failure')
+      save(next)
+      lastDurable = { ...next }
+    }
+    expect(deliverEvidenceNotice('req-1', f.ports, input)).toEqual({ status: 'pending', code: 'intent_save_failed' })
+    expect(input).toEqual(original)
+    expect(f.intent).toEqual(lastDurable)
+    expect(f.intent!.gmailMessageId).toBeUndefined()
+    expect(f.notifications).toHaveLength(0)
+    if (failAt === 2) {
+      expect(f.intent!.recipient).toBeUndefined()
+      expect(f.intent!.draftCreationAttempted).toBeUndefined()
+      expect(f.creates).toBe(0)
+    }
+  })
+
+  test('persists recipient and attempted creation together before provider work', () => {
+    const f = fixture()
+    const create = f.ports.createDraft
+    f.ports.createDraft = (mail) => {
+      expect(f.intent).toEqual({
+        requestId: 'req-1',
+        routingAt: '2026-11-07T09:00:00+08:00',
+        marker: 'evidence:abc123',
+        lastAttemptAt: '2026-11-07T10:00:00+08:00',
+        recipient: 'approver@example.test',
+        draftCreationAttempted: true
+      })
+      expect(f.events).toEqual(['save', 'save'])
+      return create(mail)
+    }
+    expect(deliverEvidenceNotice('req-1', f.ports).status).toBe('sent')
+  })
+
+  test.each(['create', 'send'])('keeps thrown native %s errors distinct from malformed acknowledgements', (stage) => {
+    const f = fixture()
+    if (stage === 'create') {
+      f.ports.createDraft = () => {
+        throw new Error('gmail_invalid_acknowledgement')
+      }
+    } else {
+      f.ports.sendDraft = () => {
+        throw new Error('gmail_invalid_acknowledgement')
+      }
+    }
+    expect(deliverEvidenceNotice('req-1', f.ports)).toEqual({
+      status: 'pending',
+      code: stage === 'create' ? 'draft_create_failed' : 'send_ambiguous'
+    })
+    expect(f.intent!.gmailMessageId).toBeUndefined()
     expect(f.notifications).toHaveLength(0)
   })
 

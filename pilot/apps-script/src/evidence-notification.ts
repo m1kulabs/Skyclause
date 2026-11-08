@@ -1,33 +1,24 @@
 import { toMytIso } from '../../shared/time.ts'
 import type { Row } from './schema.ts'
+import {
+  deliverControlledDraft,
+  type ControlledMail,
+  type ControlledDraft,
+  type ControlledSent,
+  type DraftAttemptState
+} from './draft-delivery.ts'
 
 // Private recovery state: never put this object, addresses or draft content in a pack.
-export interface EvidenceNoticeIntent {
+export interface EvidenceNoticeIntent extends DraftAttemptState {
   requestId: string
   routingAt: string
   marker: string
   lastAttemptAt?: string
-  recipient?: string
-  draftCreationAttempted?: boolean
-  draftId?: string
-  threadId?: string
-  gmailMessageId?: string
 }
 
-export interface EvidenceNoticeMail {
-  to: string
-  subject: string
-  body: string
-}
-export interface EvidenceDraft extends EvidenceNoticeMail {
-  id: string
-  messageId: string
-  threadId: string
-}
-export interface EvidenceSentMessage extends EvidenceNoticeMail {
-  id: string
-  threadId: string
-}
+export type EvidenceNoticeMail = ControlledMail
+export type EvidenceDraft = ControlledDraft
+export type EvidenceSentMessage = ControlledSent
 export interface EvidenceDraftAcknowledgement {
   id: string
 }
@@ -62,14 +53,6 @@ export type EvidenceNoticeResult =
 function address(value: string | null | undefined): value is string {
   return typeof value === 'string' && /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(value)
 }
-function matches(message: EvidenceNoticeMail, expected: EvidenceNoticeMail): boolean {
-  return (
-    message.to.toLowerCase() === expected.to.toLowerCase() &&
-    message.subject === expected.subject &&
-    message.body === expected.body
-  )
-}
-
 export function deliverEvidenceNotice(
   requestId: string,
   ports: EvidenceNotificationPorts,
@@ -130,55 +113,20 @@ export function deliverEvidenceNotice(
         subject: `Evidence request [${intent.marker}]`,
         body: `Request: ${requestId}\nKind: ${row.kind}\nSpan: ${String(row.span_start)} – ${String(row.span_end)}\nWorkbook: ${ports.workbookReference()}\n[${intent.marker}]`
       }
-      let draft: EvidenceDraft | null = null
-      if (intent.draftCreationAttempted || intent.draftId) {
-        stage = 'sent_search_failed'
-        const candidates = ports.findSent(intent.marker)
-        const verified = new Map(
-          candidates
-            .filter((candidate) => candidate.id && matches(candidate, mail))
-            .map((candidate) => [candidate.id, candidate])
-        )
-        if (verified.size > 1) return pending('sent_ambiguous')
-        const found = verified.values().next().value as EvidenceSentMessage | undefined
-        if (found) {
-          intent = { ...intent, gmailMessageId: found.id, threadId: found.threadId }
-          stage = 'intent_save_failed'
-          ports.saveIntent(intent)
-        } else {
-          stage = 'draft_read_failed'
-          draft = intent.draftId ? ports.draft(intent.draftId) : null
-          if (!draft) return pending('draft_missing_no_sent_match')
-          if (draft.id !== intent.draftId || !matches(draft, mail)) return pending('draft_mismatch')
-        }
-      } else {
-        // Persist the attempt before the provider operation: a lost create response is ambiguous too.
-        intent = { ...intent, recipient, draftCreationAttempted: true }
-        stage = 'intent_save_failed'
-        ports.saveIntent(intent)
-        stage = 'draft_create_failed'
-        const created = ports.createDraft(mail)
-        if (typeof created.id !== 'string' || !created.id.trim()) return pending('draft_mismatch')
-        intent = { ...intent, draftId: created.id }
-        stage = 'intent_save_failed'
-        ports.saveIntent(intent)
-        stage = 'draft_read_failed'
-        draft = ports.draft(created.id)
-        if (!draft || draft.id !== created.id || !draft.messageId || !matches(draft, mail))
-          return pending('draft_mismatch')
-        intent = { ...intent, threadId: draft.threadId }
-        stage = 'intent_save_failed'
-        ports.saveIntent(intent)
-      }
-      if (draft && !intent.gmailMessageId) {
-        stage = 'send_ambiguous'
-        const sent = ports.sendDraft(draft.id)
-        if (typeof sent.id !== 'string' || !sent.id.trim()) return pending('sent_response_invalid')
-        intent = { ...intent, gmailMessageId: sent.id, threadId: sent.threadId ?? intent.threadId }
-        stage = 'intent_save_failed'
-        ports.saveIntent(intent)
-        outcome = 'sent'
-      }
+      const delivery = deliverControlledDraft(intent, intent.marker, mail, {
+        saveAttempt: (next) => {
+          const saved = { ...intent!, ...next }
+          ports.saveIntent(saved)
+          intent = saved
+        },
+        createDraft: (value) => ports.createDraft(value),
+        draft: (id) => ports.draft(id),
+        sendDraft: (id) => ports.sendDraft(id),
+        findSent: (marker) => ports.findSent(marker)
+      })
+      if (delivery.status === 'pending') return delivery
+      intent = { ...intent, ...delivery.attempt }
+      outcome = delivery.status
     }
     if (!intent.gmailMessageId) return pending('provider_id_missing')
     if (!address(recipient)) return pending('frozen_recipient_missing')

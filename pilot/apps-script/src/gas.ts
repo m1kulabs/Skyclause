@@ -6,6 +6,8 @@ import type { MetPollPorts } from './met.ts'
 import type { EvidenceInboxPorts } from './evidence.ts'
 import { evidenceGmailPorts } from './evidence-gmail.ts'
 import { evidenceStoragePorts } from './evidence-storage.ts'
+import { auditorStoragePorts } from './auditor-storage.ts'
+import type { AuditorPorts } from './auditor.ts'
 import type { CrowdTickStore } from './crowd-tick.ts'
 import type { HistoryBuildRow } from './crowd-history.ts'
 import type { ClausesPort } from './setup.ts'
@@ -173,7 +175,8 @@ export const workbooks: WorkbookPort = {
 export function readColumns<T extends Tab, C extends Column<T>>(
   spreadsheetId: string,
   tab: T,
-  wanted: readonly C[]
+  wanted: readonly C[],
+  preserveNativeTypes = false
 ): Record<C, Cell>[] {
   const target = sheet(spreadsheetId, tab)
   const rows = target.getLastRow() - 1
@@ -186,7 +189,7 @@ export function readColumns<T extends Tab, C extends Column<T>>(
       Object.fromEntries(
         wanted.map((column, n) => {
           const cell = values[n]?.[row]?.[0] ?? ''
-          return [column, cell instanceof Date ? toMytIso(cell) : cell]
+          return [column, cell instanceof Date && !preserveNativeTypes ? toMytIso(cell) : cell]
         })
       ) as Record<C, Cell>
   )
@@ -1128,6 +1131,15 @@ export function evidenceInboxPorts(sheetId: string, projectSlug: string): Eviden
     },
     evidenceGmailPorts()
   )
+}
+
+export function auditorPorts(sheetId: string, skyFolderId: string, crowdFolderId: string): AuditorPorts {
+  return auditorStoragePorts(sheetId, skyFolderId, crowdFolderId, {
+    read: readColumns,
+    append: appendRows,
+    newEventId: () => newUuidV7(),
+    hashId: sha256HexDigest
+  })
 }
 
 // No native service is accessed until the locked poller calls one of these ports.

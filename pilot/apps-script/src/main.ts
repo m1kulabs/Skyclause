@@ -13,6 +13,7 @@ import {
   crowdGradeStore,
   drive,
   evidenceInboxPorts,
+  auditorPorts,
   fetchUrl,
   fetchWikiText,
   getProperty,
@@ -35,6 +36,7 @@ import type { MetKind } from './met-parser.ts'
 import { runApimsHandler } from './apims.ts'
 import { buildHealth } from './health.ts'
 import { runEvidenceInbox } from './evidence.ts'
+import { runAuditor as executeAuditor, parseAuditRecipients } from './auditor.ts'
 import { METADATA_URL, runCrowdGrading } from './crowd-grades.ts'
 import { newUuidV7, runJpsHandler } from './jps.ts'
 import { runCameraRetention } from './camera.ts'
@@ -377,5 +379,16 @@ export function pollEvidenceInbox(): void {
     // Prove Gmail access before activation, without scanning old messages or sending mail.
     ports.ownerEmail()
     console.log(JSON.stringify(runEvidenceInbox(ports)))
+  })
+}
+
+export function runAuditor(): void {
+  withLock(() => {
+    const sheetId = getProperty('SHEET_ID')?.trim() ?? ''
+    const skyFolderId = getProperty('CROSSINGS_SKY_FOLDER_ID')?.trim() ?? ''
+    const crowdFolderId = getProperty('CROSSINGS_CROWD_FOLDER_ID')?.trim() ?? ''
+    parseAuditRecipients(getProperty('TEAM_ALERT_EMAILS'))
+    const report = executeAuditor(auditorPorts(sheetId, skyFolderId, crowdFolderId))
+    console.log(JSON.stringify({ ...report, problems: report.problems.map((problem) => problem.code) }))
   })
 }
