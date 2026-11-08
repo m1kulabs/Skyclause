@@ -32,9 +32,14 @@ export function connection(login: Login) {
   if (!found) {
     // D45: nothing holds an idle connection, so a sleeping Neon compute stays asleep.
     const pool = new pg.Pool({ connectionString: url, idleTimeoutMillis: 5_000, allowExitOnIdle: true })
-    // An idle client that errors (the server ended it) leaves the pool, and the next query connects again; without a
-    // listener the error would crash the process.
-    pool.on('error', (error) => log.warn('idle database connection failed', { login, error: String(error) }))
+    // A client whose connection fails (the server ended it) emits `error`, which would crash the process with no
+    // listener, and pg-pool listens only while the client is idle; so each client keeps one of its own, checked out or
+    // not. A query on it still rejects for its caller, the pool drops the client, and the next query connects again.
+    pool.on('connect', (client) =>
+      client.on('error', (error) => log.warn('database connection failed', { login, error: String(error) }))
+    )
+    // pg-pool re-emits an idle client's error here, and throws it without a listener; the client's own logged it.
+    pool.on('error', () => {})
     found = { pool, db: drizzle(pool, { schema }) }
     connections.set(url, found)
   }
