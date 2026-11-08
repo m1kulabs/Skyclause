@@ -66,7 +66,7 @@ function strip(): string {
   const parts: string[] = []
   parts.push(
     `<rect x="${left}" y="${yTotal(60)}" width="${W - left - right}" height="${yTotal(31) - yTotal(60)}" fill="${C.lebatFill}"/>`,
-    `<text x="${W - right - 8}" y="${yTotal(60) + 26}" text-anchor="end" fill="${C.lebatInk}" font-size="20" ${FONT}>Lebat · 31–60 mm in an hour (JPS)</text>`
+    `<text x="${left + 12}" y="${yTotal(31) - 12}" fill="${C.lebatInk}" font-size="20" ${FONT}>Lebat · 31–60 mm in an hour (JPS)</text>`
   )
   for (const mm of [0, 20, 40, 60])
     parts.push(
@@ -116,7 +116,7 @@ function bars(): string {
   const W = 1200,
     H = 480,
     left = 64,
-    right = 24,
+    right = 48,
     top = 30,
     plotH = 360
   const from = ms('14:00'),

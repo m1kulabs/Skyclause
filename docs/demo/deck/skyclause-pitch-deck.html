@@ -64,7 +64,7 @@
         margin: -540px 0 0 -960px;
         transform: scale(var(--fit, 1));
         background: var(--ground);
-        padding: 64px 96px 0;
+        padding: 56px 96px 32px;
         display: none;
         flex-direction: column;
         overflow: hidden;
@@ -121,7 +121,9 @@
       }
       .ft {
         margin-top: auto;
-        height: 72px;
+        flex: none;
+        height: 56px;
+        padding-top: 4px;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -129,13 +131,17 @@
         font-size: 17px;
         color: var(--soft);
       }
+      .band + .ft,
+      .team + .ft {
+        margin-top: 0;
+      }
       .ft .pg {
         color: var(--ink-2);
       }
 
       /* Type */
       .eyebrow {
-        margin-top: 64px;
+        margin-top: 48px;
         font-size: 18px;
         font-weight: 600;
         letter-spacing: 0.16em;
@@ -149,8 +155,8 @@
         line-height: 1.02;
       }
       h2 {
-        margin-top: 20px;
-        font-size: 88px;
+        margin-top: 18px;
+        font-size: 84px;
         font-weight: 600;
         max-width: 1450px;
       }
@@ -253,7 +259,7 @@
       }
       .band {
         margin-top: auto;
-        margin-bottom: 36px;
+        margin-bottom: 28px;
         background: var(--surface-2);
         border: 1px solid var(--border);
         border-radius: 6px;
@@ -360,7 +366,7 @@
       /* 02 · Problem */
       .s2 .grid {
         display: grid;
-        grid-template-columns: 1200px 1fr;
+        grid-template-columns: 1080px 1fr;
         gap: 56px;
         margin-top: 48px;
         align-items: end;
@@ -705,7 +711,7 @@
       svg.arch {
         flex: none;
         display: block;
-        width: 1620px;
+        width: 1460px;
         align-self: center;
         height: auto;
         margin-top: 30px;
@@ -998,12 +1004,7 @@
 
       <!-- 02 · The problem -->
       <section class="slide s2" data-label="02 Problem">
-        <img
-          class="art"
-          src="assets/art/storm.webp"
-          alt=""
-          style="right: -30px; top: 60px; width: 820px; opacity: 0.95"
-        />
+        <img class="art" src="assets/art/storm.webp" alt="" style="right: 0; top: 40px; width: 640px" />
         <header class="hd">
           <div class="brand">
             <svg><use href="#mark" /></svg>Skyclause<span class="chip">The existing problem</span>
@@ -1019,7 +1020,7 @@
               role="img"
               aria-label="Replay of 2 November 2026: 63.0 mm of rain fell between 14:00 and 16:00 at gauge 0232901RF, across the 15:30 exit wave."
             >
-              <line x1="64" x2="1176" y1="390" y2="390" stroke="#2a292e" stroke-width="1" />
+              <line x1="64" x2="1152" y1="390" y2="390" stroke="#2a292e" stroke-width="1" />
               <text
                 x="52"
                 y="396"
@@ -1030,7 +1031,7 @@
               >
                 0
               </text>
-              <line x1="64" x2="1176" y1="270" y2="270" stroke="#2a292e" stroke-width="1" />
+              <line x1="64" x2="1152" y1="270" y2="270" stroke="#2a292e" stroke-width="1" />
               <text
                 x="52"
                 y="276"
@@ -1041,7 +1042,7 @@
               >
                 5
               </text>
-              <line x1="64" x2="1176" y1="150" y2="150" stroke="#2a292e" stroke-width="1" />
+              <line x1="64" x2="1152" y1="150" y2="150" stroke="#2a292e" stroke-width="1" />
               <text
                 x="52"
                 y="156"
@@ -1052,7 +1053,7 @@
               >
                 10
               </text>
-              <line x1="64" x2="1176" y1="30" y2="30" stroke="#2a292e" stroke-width="1" />
+              <line x1="64" x2="1152" y1="30" y2="30" stroke="#2a292e" stroke-width="1" />
               <text
                 x="52"
                 y="36"
@@ -1063,24 +1064,24 @@
               >
                 15
               </text>
-              <rect x="355.0" y="378.0" width="33.4" height="12.0" fill="#bdbdc0" />
-              <rect x="401.3" y="330.0" width="33.4" height="60.0" fill="#bdbdc0" />
-              <rect x="447.6" y="174.0" width="33.4" height="216.0" fill="#bdbdc0" />
-              <rect x="494.0" y="174.0" width="33.4" height="216.0" fill="#bdbdc0" />
-              <rect x="540.3" y="186.0" width="33.4" height="204.0" fill="#bdbdc0" />
-              <rect x="586.6" y="162.0" width="33.4" height="228.0" fill="#bdbdc0" />
-              <rect x="633.0" y="258.0" width="33.4" height="132.0" fill="#bdbdc0" />
-              <rect x="679.3" y="270.0" width="33.4" height="120.0" fill="#bdbdc0" />
-              <rect x="725.6" y="282.0" width="33.4" height="108.0" fill="#bdbdc0" />
-              <rect x="772.0" y="342.0" width="33.4" height="48.0" fill="#bdbdc0" />
-              <rect x="818.3" y="354.0" width="33.4" height="36.0" fill="#bdbdc0" />
-              <rect x="864.6" y="366.0" width="33.4" height="24.0" fill="#bdbdc0" />
-              <rect x="911.0" y="354.0" width="33.4" height="36.0" fill="#bdbdc0" />
-              <rect x="957.3" y="378.0" width="33.4" height="12.0" fill="#bdbdc0" />
-              <rect x="1003.6" y="366.0" width="33.4" height="24.0" fill="#bdbdc0" />
-              <rect x="1050.0" y="378.0" width="33.4" height="12.0" fill="#bdbdc0" />
-              <rect x="1096.3" y="378.0" width="33.4" height="12.0" fill="#bdbdc0" />
-              <rect x="1142.6" y="378.0" width="33.4" height="12.0" fill="#bdbdc0" />
+              <rect x="348.7" y="378.0" width="32.6" height="12.0" fill="#bdbdc0" />
+              <rect x="394.0" y="330.0" width="32.6" height="60.0" fill="#bdbdc0" />
+              <rect x="439.4" y="174.0" width="32.6" height="216.0" fill="#bdbdc0" />
+              <rect x="484.7" y="174.0" width="32.6" height="216.0" fill="#bdbdc0" />
+              <rect x="530.0" y="186.0" width="32.6" height="204.0" fill="#bdbdc0" />
+              <rect x="575.4" y="162.0" width="32.6" height="228.0" fill="#bdbdc0" />
+              <rect x="620.7" y="258.0" width="32.6" height="132.0" fill="#bdbdc0" />
+              <rect x="666.0" y="270.0" width="32.6" height="120.0" fill="#bdbdc0" />
+              <rect x="711.4" y="282.0" width="32.6" height="108.0" fill="#bdbdc0" />
+              <rect x="756.7" y="342.0" width="32.6" height="48.0" fill="#bdbdc0" />
+              <rect x="802.0" y="354.0" width="32.6" height="36.0" fill="#bdbdc0" />
+              <rect x="847.4" y="366.0" width="32.6" height="24.0" fill="#bdbdc0" />
+              <rect x="892.7" y="354.0" width="32.6" height="36.0" fill="#bdbdc0" />
+              <rect x="938.0" y="378.0" width="32.6" height="12.0" fill="#bdbdc0" />
+              <rect x="983.4" y="366.0" width="32.6" height="24.0" fill="#bdbdc0" />
+              <rect x="1028.7" y="378.0" width="32.6" height="12.0" fill="#bdbdc0" />
+              <rect x="1074.0" y="378.0" width="32.6" height="12.0" fill="#bdbdc0" />
+              <rect x="1119.4" y="378.0" width="32.6" height="12.0" fill="#bdbdc0" />
               <text
                 x="64"
                 y="422"
@@ -1092,7 +1093,7 @@
                 14:00
               </text>
               <text
-                x="342"
+                x="336"
                 y="422"
                 text-anchor="middle"
                 fill="#8c8c8c"
@@ -1102,7 +1103,7 @@
                 14:30
               </text>
               <text
-                x="620"
+                x="608"
                 y="422"
                 text-anchor="middle"
                 fill="#8c8c8c"
@@ -1112,7 +1113,7 @@
                 15:00
               </text>
               <text
-                x="898"
+                x="880"
                 y="422"
                 text-anchor="middle"
                 fill="#8c8c8c"
@@ -1122,7 +1123,7 @@
                 15:30
               </text>
               <text
-                x="1176"
+                x="1152"
                 y="422"
                 text-anchor="middle"
                 fill="#8c8c8c"
@@ -1131,8 +1132,8 @@
               >
                 16:00
               </text>
-              <line x1="898" x2="898" y1="30" y2="390" stroke="#f0566c" stroke-width="2" />
-              <text x="910" y="50" fill="#f0566c" font-size="20" font-family="Work Sans, sans-serif">
+              <line x1="880" x2="880" y1="30" y2="390" stroke="#f0566c" stroke-width="2" />
+              <text x="892" y="50" fill="#f0566c" font-size="20" font-family="Work Sans, sans-serif">
                 15:30 exit wave
               </text>
               <text x="64" y="472" fill="#8c8c8c" font-size="16" font-family="Work Sans, sans-serif">
@@ -1209,7 +1210,7 @@
 
       <!-- 04 · Who it is for -->
       <section class="slide s4" data-label="04 Who it is for">
-        <img class="art" src="assets/art/commute.webp" alt="" style="right: -30px; top: 90px; width: 700px" />
+        <img class="art" src="assets/art/commute.webp" alt="" style="right: 0; top: 70px; width: 620px" />
         <header class="hd">
           <div class="brand">
             <svg><use href="#mark" /></svg>Skyclause<span class="chip">Target users</span>
@@ -1265,7 +1266,7 @@
           </div>
           <span class="replay">Replay (2 Nov 2026)</span>
         </header>
-        <div class="eyebrow">Window · clause · call</div>
+        <div class="eyebrow" style="margin-top: auto">Window · clause · call</div>
         <h2 style="font-size: 80px">The clause watches.<span class="lt">A person approves.</span></h2>
         <div class="flow3">
           <div class="panel">
@@ -1353,14 +1354,7 @@
               aria-label="Replay of 2 November 2026: the 60-minute rain total at gauge 0232901RF reaches the Lebat class at 15:00, before 89 sessions end at 15:30."
             >
               <rect x="96" y="85.71428571428572" width="1464" height="132.57142857142856" fill="#2a2416" />
-              <text
-                x="1552"
-                y="111.71428571428572"
-                text-anchor="end"
-                fill="#d9a441"
-                font-size="20"
-                font-family="Work Sans, sans-serif"
-              >
+              <text x="108" y="206.28571428571428" fill="#d9a441" font-size="20" font-family="Work Sans, sans-serif">
                 Lebat · 31–60 mm in an hour (JPS)
               </text>
               <line x1="96" x2="1560" y1="360" y2="360" stroke="#2a292e" stroke-width="1" />
@@ -1569,7 +1563,7 @@
             <svg><use href="#mark" /></svg>Skyclause<span class="chip">Demo</span>
           </div>
         </header>
-        <div class="eyebrow" style="margin-top: 210px">Recorded from the live system · captured {capture date}</div>
+        <div class="eyebrow" style="margin-top: auto">Recorded from the live system · captured {capture date}</div>
         <h2 style="font-size: 120px; letter-spacing: -0.05em">One window,<span class="lt">gauge to record.</span></h2>
         <div class="watch">
           <div><span class="n">01</span><b>Window</b></div>
@@ -1597,7 +1591,7 @@
             <svg><use href="#mark" /></svg>Skyclause<span class="chip">Innovation</span>
           </div>
         </header>
-        <div class="eyebrow">What people use today</div>
+        <div class="eyebrow" style="margin-top: auto">What people use today</div>
         <h2 style="font-size: 80px">Others show the weather.<span class="lt">Skyclause makes the call.</span></h2>
         <table class="cmp">
           <thead>
@@ -1670,8 +1664,8 @@
             <svg><use href="#mark" /></svg>Skyclause<span class="chip">Technical architecture</span>
           </div>
         </header>
-        <div class="eyebrow" style="margin-top: 36px">Feeders · workflow · actions</div>
-        <h2 style="font-size: 64px">Code watches the sky.<span class="lt">Gemini drafts. A person sends.</span></h2>
+        <div class="eyebrow" style="margin-top: 28px">Feeders · workflow · actions</div>
+        <h2 style="font-size: 60px">Code watches the sky.<span class="lt">Gemini drafts. A person sends.</span></h2>
         <svg
           class="arch"
           viewBox="0 0 1728 560"
@@ -1840,7 +1834,7 @@
 
       <!-- 10 · Impact -->
       <section class="slide s10" data-label="10 Impact">
-        <img class="art" src="assets/art/ledger.webp" alt="" style="right: -60px; top: 20px; width: 700px" />
+        <img class="art" src="assets/art/ledger.webp" alt="" style="right: -10px; top: 24px; width: 520px" />
         <header class="hd">
           <div class="brand">
             <svg><use href="#mark" /></svg>Skyclause<span class="chip">Impact</span>
@@ -1908,7 +1902,7 @@
             <svg><use href="#mark" /></svg>Skyclause<span class="chip">Research</span>
           </div>
         </header>
-        <div class="eyebrow">The research we did · how we keep it responsible</div>
+        <div class="eyebrow" style="margin-top: auto">The research we did · how we keep it responsible</div>
         <h2>Every number has a source.<span class="lt">Every notice has a person.</span></h2>
         <div class="cards" style="grid-template-columns: repeat(3, 1fr)">
           <div class="card">
