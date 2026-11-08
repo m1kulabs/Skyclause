@@ -77,7 +77,7 @@ function unique<T>(rows: T[], key: (row: T) => string): T[] {
     const identity = key(row)
     const previous = found.get(identity)
     if (previous !== undefined && JSON.stringify(previous) !== JSON.stringify(row)) {
-      throw new Error(`Conflicting MET duplicate ${identity}`)
+      throw new Error('Conflicting MET duplicate')
     }
     if (previous === undefined) found.set(identity, row)
   }
@@ -147,7 +147,7 @@ export function parseMetForecast(payload: unknown): ParsedMetForecast[] {
       summary_when: text(row.summary_when, 'summary_when'),
       min_temp,
       max_temp,
-      afternoon_thunderstorm: /ribut petir|thunderstorm/i.test(afternoon_forecast)
+      afternoon_thunderstorm: /ribut petir/i.test(afternoon_forecast)
     })
   }
   if (rows.length === 0) throw new Error('No MET forecast for Ds058')

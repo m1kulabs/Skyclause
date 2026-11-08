@@ -127,6 +127,17 @@ describe('MET real source captures', () => {
 })
 
 describe('MET strict validation with test-only mutations', () => {
+  test.each([
+    { afternoon: '  Hujan dan rIbUt PeTiR di beberapa tempat\n', storm: true },
+    { afternoon: 'No thunderstorm', storm: false }
+  ])('classifies only the Malay storm substring and preserves exact text: %p', ({ afternoon, storm }) => {
+    const row = forecast().find((entry) => (entry.location as Raw).location_id === 'Ds058')!
+    row.afternoon_forecast = afternoon
+    expect(parseMetForecast([row])[0]).toMatchObject({
+      afternoon_forecast: afternoon,
+      afternoon_thunderstorm: storm
+    })
+  })
   test('rejects malformed envelopes, nested metadata and corrupt last rows', () => {
     for (const payload of [undefined, null, {}, { data: [] }, 'bad', [null], [[]]]) {
       expect(() => parseMetWarnings(payload)).toThrow()

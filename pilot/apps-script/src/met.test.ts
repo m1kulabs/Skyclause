@@ -11,7 +11,7 @@ import {
   type MetRawBody,
   type MetReceipt
 } from './met.ts'
-import { MET_FORECAST_ENDPOINT, MET_WARNING_ENDPOINT, type MetKind } from './met-parser.ts'
+import { MET_FORECAST_ENDPOINT, MET_WARNING_ENDPOINT, parseMetWarnings, type MetKind } from './met-parser.ts'
 import type { Row } from './schema.ts'
 
 const warningText = readFileSync(join(import.meta.dir, '../../fixtures/weather-warning-20261105T1313Z.json'), 'utf8')
@@ -147,6 +147,36 @@ function changedForecast(): string {
 }
 
 describe('MET ingestion', () => {
+  test('records a bounded schema error for conflicting warnings with a 50000-unit key', () => {
+    const h = harness()
+    const warning = JSON.parse(warningText)[0]
+    warning.warning_issue.title_en = 'x'.repeat(49948)
+    const parsed = parseMetWarnings([warning])[0]!
+    expect(parsed.warning_key.length).toBe(50000)
+    expect(parsed.title_en).toBe(warning.warning_issue.title_en)
+    h.set(JSON.stringify([warning, { ...warning, text_en: 'changed' }]))
+    const appendPoll = h.ports.appendPoll
+    h.ports.appendPoll = (row) => {
+      if (typeof row.error === 'string' && row.error.length > 50000) throw new Error('poll error exceeds Sheets limit')
+      appendPoll(row)
+    }
+
+    const report = h.run()
+
+    expect(report).toMatchObject({
+      appendedRows: 0,
+      touchedWarnings: 0,
+      rawCreated: false,
+      poll: { outcome: 'error', new_rows: 0, http_status: 200 }
+    })
+    expect(h.state.polls).toHaveLength(1)
+    expect(report.poll.error).toMatch(/conflict/i)
+    expect(String(report.poll.error).length).toBeLessThanOrEqual(50000)
+    expect(h.state.warnings).toHaveLength(0)
+    expect(h.state.forecast).toHaveLength(0)
+    expect(h.state.raw.size).toBe(0)
+    expect(h.state.events.filter((event) => ['warnings', 'forecast', 'archive', 'touch'].includes(event))).toEqual([])
+  })
   test('initializes exact sources and six glossary pairs while preserving human configuration', () => {
     const h = harness()
     h.run()
@@ -321,6 +351,10 @@ describe('MET recoverable receipts', () => {
     const receipt = h.state.pending!
     const dirty = { ...receipt, body: 'secret', person: 'person', poll: { ...receipt.poll, person: 'person' } }
     expect(decodeMetReceipt(JSON.stringify(dirty), 'warning')).toEqual(receipt)
+    for (const outcome of ['ok', 'unchanged']) {
+      const valid = { ...receipt, poll: { ...receipt.poll, outcome } }
+      expect(decodeMetReceipt(JSON.stringify(valid), 'warning')).toEqual(valid)
+    }
     const bad = [
       { ...receipt, kind: 'forecast' },
       { ...receipt, sha256: 'bad' },
@@ -341,6 +375,26 @@ describe('MET recoverable receipts', () => {
     ]
     for (const value of [undefined, {}, [], ...bad])
       expect(() => decodeMetReceipt(JSON.stringify(value) ?? '', 'warning')).toThrow(/receipt/i)
+  })
+  test.each([
+    { outcome: ['ok'] },
+    { outcome: ['unchanged'] },
+    { outcome: {} },
+    { outcome: { value: 'ok' } },
+    { outcome: null }
+  ])('rejects non-string receipt outcome %p before recovery writes', ({ outcome }) => {
+    const h = harness()
+    h.state.fail = 'warnings'
+    expect(() => h.run()).toThrow(/storage/)
+    const receipt = { ...h.state.pending!, poll: { ...h.state.pending!.poll, outcome } }
+    expect(() => decodeMetReceipt(JSON.stringify(receipt), 'warning')).toThrow(/receipt/i)
+    h.ports.readPending = () => receipt as unknown as MetReceipt
+    const events = [...h.state.events]
+    expect(() => h.run()).toThrow(/receipt/i)
+    expect(h.state.events).toEqual(events)
+    expect(h.state.fetches).toHaveLength(1)
+    expect(h.state.warnings).toHaveLength(0)
+    expect(h.state.polls).toHaveLength(0)
   })
   test.each(['archive', 'receipt', 'warnings', 'poll', 'clear'])(
     'recovers %s failures before and after persistence without duplicate row or poll',

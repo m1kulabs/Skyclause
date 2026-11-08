@@ -144,7 +144,7 @@ function pollMetadata(input: unknown, kind: MetKind, fileId: string): Row<'polls
     input.latency_ms < 0 ||
     !Number.isSafeInteger(input.new_rows) ||
     (input.new_rows as number) < 0 ||
-    !['ok', 'unchanged'].includes(String(input.outcome)) ||
+    (input.outcome !== 'ok' && input.outcome !== 'unchanged') ||
     input.raw_file_id !== fileId ||
     (input.error !== undefined && input.error !== '')
   )
