@@ -135,7 +135,15 @@ test('every table in public has a factory', async () => {
 
 // #79 §3: G is read-only to app and public_reader; S is system and retention only.
 const G = ['component_check', 'feature_flag', 'guest_block', 'incident', 'incident_update', 'verification']
-const S = ['analytics_event', 'event_counter', 'export_job', 'guest_budget', 'handled_event']
+const S = [
+  'analytics_event',
+  'event_counter',
+  'export_job',
+  'guest_budget',
+  'handled_event',
+  'idempotency_key',
+  'rate_limit'
+]
 
 test('app and public_reader read G tables and write none; neither reaches an S table', async () => {
   const privileges = await asLogin('postgres', async (client) => {
