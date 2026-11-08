@@ -15,6 +15,7 @@ import type {
 } from './evidence-projections.ts'
 import { BOUND_APIMS_STATION_IDS } from './indicators.ts'
 import { JPS_METRIC, JPS_SOURCE_ID, JPS_SOURCE_KIND } from './jps.ts'
+import { metWarningInForce } from './met-warning.ts'
 
 export interface EvidenceHeader {
   kind: EvidenceKind
@@ -169,7 +170,7 @@ function selectWarnings(data: EvidencePackData, start: number, end: number, cuto
       r.names_kl &&
       !/no advisory|strong winds and rough seas/i.test(r.title_en ?? '') &&
       !/for malaysian waters/i.test(r.text_en ?? '') &&
-      overlaps(r.valid_from, r.valid_to, start, end)
+      metWarningInForce({ valid_from: new Date(ms(r.valid_from)), valid_to: new Date(ms(r.valid_to)) }, start, end)
   )
 }
 

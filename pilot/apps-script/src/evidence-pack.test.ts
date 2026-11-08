@@ -198,6 +198,27 @@ describe('evidence packs', () => {
     expect(result.frames).toEqual([{ frame_file_id: 'test-only-frame', device_time: '2026-11-02T15:00:00+08:00' }])
   })
 
+  test('direct warning projections retain native Date.parse validity interpretation', () => {
+    const warning = {
+      warning_key: 'test-only-direct-warning',
+      issued: '2026-11-02T13:00:00+08:00',
+      first_seen_at: '2026-11-02T13:01:00+08:00',
+      valid_from: 'November 2, 2026 14:00:00 GMT+0800',
+      valid_to: 'November 2, 2026 17:00:00 GMT+0800',
+      names_kl: true,
+      title_en: 'Thunderstorms Warning'
+    }
+    const data = projectEvidenceRows({ ...empty, warnings: [warning] })
+    const result = buildEvidencePack(request, context, {
+      ...data,
+      warnings: [{ ...data.warnings[0]!, valid_from: warning.valid_from, valid_to: warning.valid_to }]
+    })
+    if (!('warnings' in result)) throw new Error('expected evidence pack')
+    expect(result.warnings).toEqual([
+      { ...data.warnings[0]!, valid_from: warning.valid_from, valid_to: warning.valid_to }
+    ])
+  })
+
   test('latest warning revision is selected before testing validity and KL/marine/advisory exclusions', () => {
     const base: Row<'warnings'> = {
       warning_key: 'test-warning',

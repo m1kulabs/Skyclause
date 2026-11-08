@@ -1,4 +1,5 @@
 import { toMytIso } from '../../shared/time.ts'
+import { metWarningInForce } from './met-warning.ts'
 import type { Cell, Row } from './schema.ts'
 
 export const GAUGE_SOURCE_ID = '0232901RF'
@@ -886,15 +887,11 @@ function computeWindowWarningIndicators(
 
     const validFromIso = normalizeIsoCell(row.valid_from)
     const validToIso = normalizeIsoCell(row.valid_to)
-    if (!validFromIso || !validToIso) continue
-    const validFromMs = Date.parse(validFromIso)
-    const validToMs = Date.parse(validToIso)
-    if (!Number.isFinite(validFromMs) || !Number.isFinite(validToMs) || validFromMs > validToMs) continue
 
     const firstSeenMs = parseTimestampMs(row.first_seen_at)
     if (firstSeenMs !== null && floorToMinuteMs(firstSeenMs) > evalMinuteMs) continue
 
-    if (validFromMs <= windowScope.endMs && validToMs >= windowScope.startMs) {
+    if (metWarningInForce({ valid_from: validFromIso, valid_to: validToIso }, windowScope.startMs, windowScope.endMs)) {
       const key = String(row.warning_key ?? '').trim()
       if (key && !seenKeys.has(key)) {
         seenKeys.add(key)
