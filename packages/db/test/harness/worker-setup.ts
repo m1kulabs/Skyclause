@@ -2,8 +2,7 @@
 // every DATABASE_URL_* (#79 §6) points at it, so parallel workers never share rows.
 import { afterAll, inject } from 'vitest'
 import { closeConnections } from '../../src/client'
-import { localUrl } from '../../scripts/local'
-import { createDatabase, dropDatabase } from '.'
+import { createDatabase, dropDatabase, localUrl } from '../../scripts/local'
 
 const template = inject('dbTemplate')
 const database = `${template}_w${process.env.VITEST_POOL_ID ?? '1'}`

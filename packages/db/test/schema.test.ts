@@ -4,12 +4,12 @@ import { fileURLToPath } from 'node:url'
 import { expect, test } from 'vitest'
 import { asLogin } from './harness'
 
-test('every table with org_id has RLS enabled and forced and a policy on app.org_id', async () => {
+test('every table with org_id has RLS enabled and forced and a policy on current_org_id()', async () => {
   const tables = await asLogin('postgres', async (client) => {
     const { rows } = await client.query(`
       SELECT n.nspname || '.' || c.relname AS name, c.relrowsecurity AS enabled, c.relforcerowsecurity AS forced,
         EXISTS (SELECT FROM pg_policy p WHERE p.polrelid = c.oid
-          AND pg_get_expr(p.polqual, p.polrelid) LIKE '%current_setting(''app.org_id''%') AS policy
+          AND pg_get_expr(p.polqual, p.polrelid) LIKE '%current_org_id()%') AS policy
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE n.nspname IN ('public', 'auth') AND c.relkind IN ('r', 'p')
         AND EXISTS (SELECT FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attname = 'org_id' AND NOT a.attisdropped)

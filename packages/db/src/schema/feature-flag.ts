@@ -1,6 +1,6 @@
-import { boolean, foreignKey, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core'
+import { boolean, foreignKey, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
 import { organization } from './auth'
-import { id } from './tenant'
+import { id, timestamps } from './columns'
 
 /**
  * Feature flags (#79 §6, G): a row with `org_id` null is global, else it sets the flag for one organisation. Read-only to
@@ -13,8 +13,7 @@ export const featureFlag = pgTable(
     key: text('key').notNull(),
     orgId: uuid('org_id'),
     enabled: boolean('enabled').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+    ...timestamps()
   },
   (self) => [
     foreignKey({ columns: [self.orgId], foreignColumns: [organization.id] }).onDelete('cascade'),

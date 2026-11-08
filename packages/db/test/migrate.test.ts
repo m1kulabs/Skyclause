@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from 'vitest'
 import { migrate } from '../src/migrate'
-import { localUrl, migrationsFolder } from '../scripts/local'
-import { asLogin, createDatabase, dropDatabase, migrationsWith } from './harness'
+import { createDatabase, dropDatabase, localUrl, migrationsFolder } from '../scripts/local'
+import { asLogin, migrationsWith } from './harness'
 
 const created: string[] = []
 afterEach(async () => {

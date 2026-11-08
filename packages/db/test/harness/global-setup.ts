@@ -1,8 +1,7 @@
 // Vitest globalSetup: migrates one template database per test project with the deploy's own `migrate()`.
 import type { TestProject } from 'vitest/node'
 import { migrate } from '../../src/migrate'
-import { localUrl, migrationsFolder } from '../../scripts/local'
-import { asLogin, createDatabase, dropDatabase } from '.'
+import { createDatabase, dropDatabase, localUrl, migrationsFolder, scratchName, withLocal } from '../../scripts/local'
 
 declare module 'vitest' {
   export interface ProvidedContext {
@@ -11,7 +10,7 @@ declare module 'vitest' {
 }
 
 export default async function setup(project: TestProject) {
-  const template = `skyclause_t_${process.pid}_${Date.now().toString(36)}`
+  const template = scratchName('skyclause_t')
   try {
     await createDatabase(template)
   } catch (error) {
@@ -22,11 +21,8 @@ export default async function setup(project: TestProject) {
   await migrate(localUrl('migrator', template), migrationsFolder)
   project.provide('dbTemplate', template)
   return async () => {
-    const { rows } = await asLogin(
-      'postgres',
-      (admin) =>
-        admin.query<{ datname: string }>('SELECT datname FROM pg_database WHERE datname LIKE $1', [`${template}%`]),
-      'postgres'
+    const { rows } = await withLocal('postgres', 'postgres', (admin) =>
+      admin.query<{ datname: string }>('SELECT datname FROM pg_database WHERE datname LIKE $1', [`${template}%`])
     )
     for (const { datname } of rows) await dropDatabase(datname)
   }

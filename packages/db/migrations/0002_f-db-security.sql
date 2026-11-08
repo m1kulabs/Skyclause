@@ -1,7 +1,10 @@
 -- #79 §3 RLS letters, TRD "Tenancy, append-only tables and partitions" and "Tenancy enforcement". Runs as `owner`.
---
--- The tenant policy reads `nullif(current_setting('app.org_id', true), '')`: a pooled connection that once ran
--- set_config('app.org_id', …, true) reads '' afterwards, and ''::uuid would raise instead of matching no row.
+
+-- The organisation withTenant set for this transaction, or NULL. A pooled connection that once ran
+-- set_config('app.org_id', …, true) reads '' afterwards, and ''::uuid would raise instead of matching no row. Policies
+-- call it; Postgres inlines it, so `org_id = current_org_id()` still uses the org_id index.
+CREATE FUNCTION current_org_id() RETURNS uuid LANGUAGE sql STABLE PARALLEL SAFE
+  RETURN nullif(current_setting('app.org_id', true), '')::uuid;
 
 -- TRD append-only tables: UPDATE, DELETE and TRUNCATE are refused unless the current role is `retention`.
 CREATE FUNCTION append_only() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -27,18 +30,13 @@ BEGIN
 END
 $$;
 
--- The SQL half of a T table (src/schema/tenant.ts holds the columns): RLS enabled and forced, so `owner` is held to it
--- too; the tenant policy; a `retention` policy, since retention sweeps and erasure work across organisations and no
--- login has BYPASSRLS; and the grants.
+-- The SQL half of a T table (src/schema/columns.ts holds the columns): RLS enabled and forced, so `owner` is held to it
+-- too; the tenant policy `org_id = current_org_id()`; a `retention` policy, since retention sweeps and erasure work
+-- across organisations and no login has BYPASSRLS; and the grants.
 CREATE FUNCTION tenant_table(t regclass) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
   EXECUTE format('ALTER TABLE %s ENABLE ROW LEVEL SECURITY, FORCE ROW LEVEL SECURITY', t);
-  EXECUTE format(
-    $policy$CREATE POLICY tenant ON %s
-      USING (org_id = nullif(current_setting('app.org_id', true), '')::uuid)
-      WITH CHECK (org_id = nullif(current_setting('app.org_id', true), '')::uuid)$policy$,
-    t
-  );
+  EXECUTE format('CREATE POLICY tenant ON %s USING (org_id = current_org_id())', t);
   EXECUTE format('CREATE POLICY retention ON %s TO retention USING (true)', t);
   EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON %s TO app, "system"', t);
   EXECUTE format('GRANT SELECT, UPDATE, DELETE ON %s TO retention', t);
@@ -54,10 +52,8 @@ SELECT tenant_table('project_pack');
 
 -- withSystem sees every organisation's projects read-only, and only while no organisation is set, so withTenant as a
 -- system principal stays scoped.
-CREATE POLICY system_read ON project FOR SELECT TO "system"
-  USING (nullif(current_setting('app.org_id', true), '') IS NULL);
-CREATE POLICY system_read ON project_pack FOR SELECT TO "system"
-  USING (nullif(current_setting('app.org_id', true), '') IS NULL);
+CREATE POLICY system_read ON project FOR SELECT TO "system" USING (current_org_id() IS NULL);
+CREATE POLICY system_read ON project_pack FOR SELECT TO "system" USING (current_org_id() IS NULL);
 
 -- A view reads its tables as its owner, and FORCE holds `owner` to RLS, so these let the views see public rows.
 -- public_reader gets the views only, never the base tables.
@@ -83,8 +79,7 @@ GRANT SELECT ON public_project, public_project_pack TO public_reader;
 
 -- feature_flag: G, read-only to app and public_reader; an organisation sees the global rows and its own.
 ALTER TABLE feature_flag ENABLE ROW LEVEL SECURITY, FORCE ROW LEVEL SECURITY;
-CREATE POLICY read ON feature_flag FOR SELECT
-  USING (org_id IS NULL OR org_id = nullif(current_setting('app.org_id', true), '')::uuid);
+CREATE POLICY read ON feature_flag FOR SELECT USING (org_id IS NULL OR org_id = current_org_id());
 CREATE POLICY "system" ON feature_flag TO "system" USING (true);
 GRANT SELECT ON feature_flag TO app, public_reader;
 GRANT SELECT, INSERT, UPDATE, DELETE ON feature_flag TO "system";

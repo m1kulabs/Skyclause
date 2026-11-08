@@ -5,8 +5,8 @@ import { cpSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Principal } from '@skyclause/contracts'
-import pg from 'pg'
-import { localUrl, migrationsFolder, type LocalLogin } from '../../scripts/local'
+import type pg from 'pg'
+import { migrationsFolder, withLocal, type LocalLogin } from '../../scripts/local'
 
 /** The database this test file runs against (set by worker-setup.ts). */
 export function testDatabase() {
@@ -19,27 +19,8 @@ export function testDatabase() {
  * Runs `fn` on a raw client for a local login in this file's database, outside the `with*` helpers: `postgres` (the
  * superuser, which bypasses RLS) for setup and assertions, or another login to probe its grants and policies.
  */
-export async function asLogin<T>(login: LocalLogin, fn: (client: pg.Client) => Promise<T>, database = testDatabase()) {
-  const client = new pg.Client({ connectionString: localUrl(login, database) })
-  await client.connect()
-  try {
-    return await fn(client)
-  } finally {
-    await client.end()
-  }
-}
-
-/** A database on the local server owned by `migrator`, as production's is; dropped by `dropDatabase`. */
-export async function createDatabase(name: string, template?: string) {
-  await asLogin(
-    'postgres',
-    (admin) => admin.query(`CREATE DATABASE "${name}" ${template ? `TEMPLATE "${template}" ` : ''}OWNER migrator`),
-    'postgres'
-  )
-}
-
-export async function dropDatabase(name: string) {
-  await asLogin('postgres', (admin) => admin.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`), 'postgres')
+export function asLogin<T>(login: LocalLogin, fn: (client: pg.Client) => Promise<T>, database = testDatabase()) {
+  return withLocal(login, database, fn)
 }
 
 /** A copy of the repo's migrations with one more appended through the journal, as `drizzle-kit generate` would. */

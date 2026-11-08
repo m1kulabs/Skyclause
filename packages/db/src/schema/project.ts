@@ -10,21 +10,14 @@ import {
   pgView,
   text,
   time,
-  timestamp,
   unique,
   uuid
 } from 'drizzle-orm/pg-core'
 import { organization } from './auth'
-import { id, tenantTable } from './tenant'
+import { id, instant, tenantTable, timestamps } from './columns'
 
 /** `Pack` (#79 §1). */
 export const pack = pgEnum('pack', ['sky', 'crowd'])
-
-const instant = (name: string) => timestamp(name, { withTimezone: true })
-const timestamps = {
-  createdAt: instant('created_at').notNull().defaultNow(),
-  updatedAt: instant('updated_at').notNull().defaultNow()
-}
 
 /** TRD entities' project plus #79 §3's listed columns; `b-projects-api` adds the rest. RLS T and P. */
 export const project = tenantTable(
@@ -46,7 +39,7 @@ export const project = tenantTable(
       .array()
       .notNull()
       .default(sql`'{}'`),
-    ...timestamps
+    ...timestamps()
   },
   (self) => [
     foreignKey({ columns: [self.orgId], foreignColumns: [organization.id] }),
@@ -68,7 +61,7 @@ export const projectPack = tenantTable(
     sheetId: uuid('sheet_id'),
     schedule: jsonb('schedule'),
     slaS: integer('sla_s'),
-    ...timestamps
+    ...timestamps()
   },
   (self) => [
     foreignKey({ columns: [self.orgId, self.projectId], foreignColumns: [project.orgId, project.id] }).onDelete(
