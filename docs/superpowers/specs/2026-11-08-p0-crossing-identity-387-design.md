@@ -45,7 +45,7 @@ A small feature-specific helper may encapsulate reservation extraction/native it
 
 ## Native reservation scan
 
-- Read only the configured opposite live folder, never global Drive names or unrelated properties. No native access during factory construction.
+- Read only the configured opposite live folder, never global Drive names or unrelated properties. Adding reservations must introduce no new native access during factory construction; Crowd's existing destination-property read remains unchanged.
 - Skip trashed files as existing readers do. A contract-shaped physical filename independently reserves its token.
 - For readable JSON objects, a contract-shaped `crossing_id` independently reserves the corresponding filename token. Reserve both if the filename and JSON claim disagree.
 - A JSON syntax/schema mismatch supplies no JSON claim; it must not release a valid physical filename reservation or feed fabricated data to a semantic parser. Do not catch folder iteration, blob-read or other storage failures as malformed JSON.
