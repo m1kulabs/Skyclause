@@ -1175,7 +1175,7 @@ test('historical requirements come from the same validated enabled clause parser
     const rows = defaultSkyClauseRows().map((row) =>
       row.key === 'haze_severe' ? { ...row, threshold: JSON.stringify({ api_max: 180, api_0600: 150, days }) } : row
     )
-    expect(skyClauseEvidenceRequirements(rows).morningDays).toBe(days)
+    expect(skyClauseEvidenceRequirements(rows).morningDays).toBe(3)
   }
   for (const change of [
     { key: 'unknown' },

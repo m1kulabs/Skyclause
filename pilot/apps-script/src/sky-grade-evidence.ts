@@ -186,7 +186,7 @@ export function evaluateSkyGradeEvidence(input: SkyGradeEvidenceInput): {
   if (problems.length) return noCall()
 
   // Restrict historical APIMS context to what the selected clauses actually require.
-  // The live snapshot still exposes its existing last-three-mornings context.
+  // The fixed three-morning indicator horizon matches the live snapshot.
   const historicalReadings = input.readings.filter((row) => {
     const id = String(row.source_id ?? '')
     if (!(BOUND_APIMS_STATION_IDS as readonly string[]).includes(id) || row.metric !== 'api') return true

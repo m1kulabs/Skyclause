@@ -127,6 +127,26 @@ function enabledHaze(days = 2): SkyGradeEvidenceInput['version'] {
   }
 }
 
+// Test-only version keeps actual APIMS capture gaps visible while exercising its current-hour branch.
+function apiOnlyFixtureVersion(): SkyGradeEvidenceInput['version'] {
+  return {
+    ...enabledHaze(3),
+    hash: 'labelled-api-only-fixture',
+    clauses: defaultSkyClauseRows().map((row) => (row.key === 'haze_severe' ? { ...row, enabled: false } : row))
+  }
+}
+// Independent controlled inputs for complete three-morning semantics; never appended to real captures.
+function syntheticApims(): Row<'readings'>[] {
+  return ['CA16W', 'CA19B', 'CA17W'].flatMap((id) =>
+    [
+      '2026-11-02T16:00:00+08:00',
+      '2026-11-02T06:00:00+08:00',
+      '2026-11-01T06:00:00+08:00',
+      '2026-10-31T06:00:00+08:00'
+    ].map((stamp) => reading(id, 'api', stamp, 50))
+  )
+}
+
 describe('complete historical Sky evidence', () => {
   test('real 15:30 wave has 66 required gauge stamps, original receipts, and labelled haze-off commute disruption', () => {
     const stamps = gauge.filter(
@@ -148,8 +168,9 @@ describe('complete historical Sky evidence', () => {
     const result = mode({ version: enabledHaze(3) })
     expect(result.observedMode).toBe('no_call')
     expect(result.problems.join(' ')).toContain('2026-10-31T06:00:00+08:00')
-    expect(mode({ version: enabledHaze(2) }).observedMode).toBe('commute_disruption')
-    expect(mode({ version: enabledHaze(1) }).observedMode).toBe('commute_disruption')
+    expect(mode({ version: apiOnlyFixtureVersion() }).observedMode).toBe('commute_disruption')
+    expect(mode({ version: enabledHaze(1) }).observedMode).toBe('no_call')
+    expect(mode({ version: enabledHaze(2) }).observedMode).toBe('no_call')
   })
   test('missing 15:00–16:00 gauge blocks even a fired rank-three haze clause', () => {
     const readings = [
@@ -157,13 +178,13 @@ describe('complete historical Sky evidence', () => {
         (r) =>
           String(r.observed_at) < '2026-11-02T15:00:00+08:00' || String(r.observed_at) > '2026-11-02T16:00:00+08:00'
       ),
-      ...apims,
+      ...syntheticApims(),
       reading('CA16W', 'api', '2026-11-02T16:00:00+08:00', 200)
     ]
     expect(mode({ readings, version: enabledHaze(2) }).observedMode).toBe('no_call')
     expect(
       mode({
-        readings: [...gauge, ...apims, reading('CA16W', 'api', '2026-11-02T16:00:00+08:00', 200)],
+        readings: [...gauge, ...syntheticApims(), reading('CA16W', 'api', '2026-11-02T16:00:00+08:00', 200)],
         version: enabledHaze(2)
       }).observedMode
     ).toBe('hybrid_recommended')
@@ -215,12 +236,20 @@ describe('complete historical Sky evidence', () => {
     expect(mode({ window: win, readings: readings.slice(1) }).observedMode).toBe('no_call')
   })
   test('each expected APIMS floor-hour and every required morning is mandatory', () => {
+    expect(mode({ version: enabledHaze(2), readings: [...gauge, ...syntheticApims()] }).observedMode).toBe(
+      'commute_disruption'
+    )
     for (const id of ['CA16W', 'CA19B', 'CA17W']) {
-      for (const stamp of ['2026-11-02T16:00:00+08:00', '2026-11-02T06:00:00+08:00', '2026-11-01T06:00:00+08:00']) {
+      for (const stamp of [
+        '2026-11-02T16:00:00+08:00',
+        '2026-11-02T06:00:00+08:00',
+        '2026-11-01T06:00:00+08:00',
+        '2026-10-31T06:00:00+08:00'
+      ]) {
         expect(
           mode({
             version: enabledHaze(2),
-            readings: [...gauge, ...apims.filter((r) => !(r.source_id === id && r.observed_at === stamp))]
+            readings: [...gauge, ...syntheticApims().filter((r) => !(r.source_id === id && r.observed_at === stamp))]
           }).observedMode
         ).toBe('no_call')
       }
@@ -228,18 +257,18 @@ describe('complete historical Sky evidence', () => {
   })
   test('facts received after knownAt cannot prove the past', () => {
     expect(mode({ knownAt: new Date('2026-11-04T00:00:00+08:00') }).observedMode).toBe('no_call')
-    expect(mode({ version: enabledHaze(2), knownAt: new Date('2026-11-06T00:00:00+08:00') }).observedMode).toBe(
-      'no_call'
-    )
+    expect(
+      mode({ version: apiOnlyFixtureVersion(), knownAt: new Date('2026-11-06T00:00:00+08:00') }).observedMode
+    ).toBe('no_call')
     expect(
       mode({
-        version: enabledHaze(2),
+        version: apiOnlyFixtureVersion(),
         readings: [...gauge, ...apims, reading('CA16W', 'api', '2026-11-09T16:00:00+08:00', 999)]
       }).observedMode
     ).toBe('commute_disruption')
   })
   test('unsupported enabled clause gives an explicit problem and no_call', () => {
-    const version = enabledHaze(2)
+    const version = apiOnlyFixtureVersion()
     version.clauses.push({ pack: 'sky', key: 'unsupported', enabled: true })
     const result = mode({ version })
     expect(result.observedMode).toBe('no_call')
@@ -281,12 +310,14 @@ describe('actual poll intervals', () => {
       expect(
         mode({
           version: enabledHaze(2),
+          readings: [...gauge, ...syntheticApims()],
           polls: [errorPoll(id, 'apims', '2026-11-02T16:05:00+08:00', '2026-11-02T16:06:00+08:00')]
         }).observedMode
       ).toBe('no_call')
       expect(
         mode({
           version: enabledHaze(2),
+          readings: [...gauge, ...syntheticApims()],
           polls: [errorPoll(id, 'apims', '2026-11-01T06:45:00+08:00', '2026-11-01T06:46:00+08:00')]
         }).observedMode
       ).toBe('no_call')
@@ -335,7 +366,7 @@ describe('public window validation', () => {
 
 function cameraInput(): SkyGradeEvidenceInput {
   const current = input({
-    version: enabledHaze(2),
+    version: apiOnlyFixtureVersion(),
     readings: [
       ...gauge.map((r) => ({ ...r, value: 0 })),
       ...apims,
@@ -492,7 +523,8 @@ describe('strict observed clocks and midnight evaluation', () => {
       readings.push(
         reading(id, 'api', '2026-11-03T00:00:00+08:00', 50),
         reading(id, 'api', '2026-11-02T06:00:00+08:00', 50),
-        reading(id, 'api', '2026-11-01T06:00:00+08:00', 50)
+        reading(id, 'api', '2026-11-01T06:00:00+08:00', 50),
+        reading(id, 'api', '2026-10-31T06:00:00+08:00', 50)
       )
     }
     expect(mode({ window: parsed, readings, version: enabledHaze(2) }).observedMode).toBe('normal')
@@ -513,7 +545,7 @@ test('off-grid input just outside aligned union cannot change rolling sums or re
   }
   expect(
     mode({
-      version: enabledHaze(2),
+      version: apiOnlyFixtureVersion(),
       readings: [...gauge, ...apims, reading('CA16W', 'api', '2026-11-02T16:01:00+08:00', 200)]
     }).observedMode
   ).toBe('no_call')
@@ -534,14 +566,21 @@ describe('root-confirmed historical consumption rules', () => {
     current.sources = current.sources.map((s) => (s.kind === 'camera' ? { ...s, probation: true } : s))
     expect(evaluateSkyGradeEvidence(current).observedMode).toBe('normal')
   })
-  test.each([1, 2])('days=%s consumes only its exact most recent required calendar mornings', (days) => {
+  test.each([1, 2])('days=%s retains the three-morning indicator horizon and its older qualifying streak', (days) => {
     const readings = [
       ...gauge.map((r) => ({ ...r, value: 0 })),
-      ...apims.map((r) => ({ ...r, value: 50 })),
+      ...syntheticApims(),
       reading('CA16W', 'api', '2026-10-31T06:00:00+08:00', 200),
       reading('CA16W', 'api', '2026-11-01T06:00:00+08:00', 200)
     ]
-    expect(mode({ readings, version: enabledHaze(days) }).observedMode).toBe('normal')
+    expect(mode({ readings, version: enabledHaze(days) }).observedMode).toBe('hybrid_recommended')
+    const olderOnly = [
+      ...gauge.map((r) => ({ ...r, value: 0 })),
+      ...syntheticApims(),
+      reading('CA16W', 'api', '2026-10-30T06:00:00+08:00', 200),
+      reading('CA16W', 'api', '2026-10-29T06:00:00+08:00', 200)
+    ]
+    expect(mode({ readings: olderOnly, version: enabledHaze(days) }).observedMode).toBe('normal')
     expect(
       mode({
         readings: readings.filter((r) => !(r.source_id === 'CA16W' && r.observed_at === '2026-11-02T06:00:00+08:00')),

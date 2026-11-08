@@ -1358,7 +1358,8 @@ export function skyClauseEvidenceRequirements(clauses: readonly Row<'clauses'>[]
     }
     if (parsed.spec?.kind === 'haze_severe') {
       apims = true
-      morningDays = Math.max(morningDays, parsed.spec.days)
+      // site.api_0600 has a fixed three-morning horizon; days controls the streak predicate.
+      morningDays = 3
     }
   }
   return { apims, camera, morningDays, problems }
