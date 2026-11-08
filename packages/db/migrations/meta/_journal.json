@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1794138037315,
+      "tag": "0000_f-db-roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794138061127,
+      "tag": "0001_f-db-tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794138068164,
+      "tag": "0002_f-db-security",
+      "breakpoints": true
+    }
+  ]
+}
