@@ -6,6 +6,7 @@ import type { TriggerEntry } from './triggers.ts'
 export const triggerRegistry: TriggerEntry[] = [
   { kind: 'time', handler: 'pollEvidenceInbox', every: { minutes: 1 } },
   { kind: 'time', handler: 'pollJps', every: { minutes: 5 } },
+  { kind: 'time', handler: 'pollApims', every: { minutes: 15 } },
   { kind: 'time', handler: 'retainCameraFrames', every: { atHour: 3, nearMinute: 0 } },
   { kind: 'on_form_submit', handler: 'onWindowFormSubmit', spreadsheet: 'RESPONSES_SHEET_ID' },
   { kind: 'time', handler: 'sweep', every: { minutes: 5 } },

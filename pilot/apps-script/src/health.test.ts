@@ -73,3 +73,73 @@ describe('buildHealth', () => {
     })
   })
 })
+
+describe('APIMS station health receipts', () => {
+  for (const sourceKind of ['apims', 'apims_backfill']) {
+    test(`joins a successful ${sourceKind} receipt only to stations with an actual stored reading`, () => {
+      const input = {
+        stamp,
+        now,
+        sources: [
+          { source_id: 'CA16W', kind: 'apims', freshness: 'observed', state: 'fresh', stale_after_min: 120 },
+          { source_id: 'CA19B', kind: 'apims', freshness: 'observed', state: 'unknown', stale_after_min: 120 },
+          { source_id: 'other', kind: 'jps', freshness: 'observed', state: 'fresh', stale_after_min: 10 }
+        ],
+        polls: [
+          {
+            poll_id: 'shared',
+            source_kind: sourceKind,
+            source_id: sourceKind === 'apims' ? 'apims' : 'apims:backfill:14:2026-11-06T15:00:00+08:00',
+            outcome: 'ok',
+            received_at: '2026-11-06T15:10:00+08:00'
+          },
+          {
+            poll_id: 'unchanged',
+            source_kind: sourceKind,
+            source_id: 'apims',
+            outcome: 'unchanged',
+            received_at: '2026-11-06T15:12:00+08:00'
+          },
+          {
+            poll_id: 'error',
+            source_kind: sourceKind,
+            source_id: 'apims',
+            outcome: 'error',
+            received_at: '2026-11-06T15:13:00+08:00'
+          },
+          {
+            poll_id: 'wrong-kind',
+            source_kind: 'jps',
+            source_id: 'apims',
+            outcome: 'ok',
+            received_at: '2026-11-06T15:13:10+08:00'
+          }
+        ],
+        readings: [
+          { source_id: 'CA16W', poll_id: 'shared' },
+          { source_id: 'CA16W', poll_id: 'unchanged' },
+          { source_id: 'CA16W', poll_id: 'error' },
+          { source_id: 'CA16W', poll_id: 'wrong-kind' },
+          { source_id: 'other', poll_id: 'shared' },
+          { source_id: 'CA19B', poll_id: 'missing' }
+        ]
+      }
+      expect(buildHealth(input)).toEqual({
+        ok: true,
+        sha: stamp.sha,
+        built_at: stamp.builtAt,
+        sources: [
+          {
+            source_id: 'CA16W',
+            state: 'fresh',
+            received_at: '2026-11-06T15:10:00+08:00',
+            age_min: 3,
+            stale_after_min: 120
+          },
+          { source_id: 'CA19B', state: 'unknown', received_at: null, age_min: null, stale_after_min: 120 },
+          { source_id: 'other', state: 'fresh', received_at: null, age_min: null, stale_after_min: 10 }
+        ]
+      })
+    })
+  }
+})

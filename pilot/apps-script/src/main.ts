@@ -3,6 +3,7 @@
 import { toMytIso } from '../../shared/time.ts'
 import { defaultSkyClauseRows } from './clauses.ts'
 import {
+  apimsPollPorts,
   appendReadings,
   appendRows,
   cameraRetentionStore,
@@ -28,6 +29,7 @@ import {
   withLock,
   workbooks
 } from './gas.ts'
+import { runApimsHandler } from './apims.ts'
 import { buildHealth } from './health.ts'
 import { runEvidenceInbox } from './evidence.ts'
 import { METADATA_URL, runCrowdGrading } from './crowd-grades.ts'
@@ -66,8 +68,9 @@ function health() {
   return buildHealth({
     stamp: { sha: __BUILD_SHA__, builtAt: __BUILD_TIME__ },
     now: new Date(),
-    sources: readColumns(sheetId, 'sources', ['source_id', 'freshness', 'state', 'stale_after_min']),
-    polls: readColumns(sheetId, 'polls', ['source_id', 'outcome', 'received_at'])
+    sources: readColumns(sheetId, 'sources', ['source_id', 'kind', 'freshness', 'state', 'stale_after_min']),
+    polls: readColumns(sheetId, 'polls', ['poll_id', 'source_kind', 'source_id', 'outcome', 'received_at']),
+    readings: readColumns(sheetId, 'readings', ['source_id', 'poll_id'])
   })
 }
 
@@ -114,6 +117,19 @@ export function pollJps(): void {
       evaluate: executeEvaluationTick
     }
   })
+}
+
+export function pollApims(): void {
+  const sheetId = getProperty('SHEET_ID')
+  if (!sheetId || !sheetId.trim()) throw new Error('SHEET_ID is not set; run setup()')
+  const report = runApimsHandler({ withLock, ports: apimsPollPorts(sheetId, executeEvaluationTick) })
+  console.log(
+    JSON.stringify({
+      polls: 1 + report.historyPolls.length,
+      newReadings: report.newReadings.length,
+      pendingHistory: report.pendingHistory
+    })
+  )
 }
 
 // The Crowd D+1 grader (#70), every 30 minutes: grades every night from 3

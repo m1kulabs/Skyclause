@@ -43,7 +43,7 @@ describe('the Apps Script bundle in dist/', () => {
 
   test('declares the entry points as top-level functions, including every registry handler', () => {
     const declared = [...code.matchAll(/^function (\w+)\(/gm)].map((match) => match[1])
-    expect(declared).toEqual(expect.arrayContaining(['doGet', 'doPost', 'setup', 'runEvaluationTick']))
+    expect(declared).toEqual(expect.arrayContaining(['doGet', 'doPost', 'setup', 'runEvaluationTick', 'pollApims']))
     for (const entry of triggerRegistry) expect(declared).toContain(entry.handler)
   })
 
