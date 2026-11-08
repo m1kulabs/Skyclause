@@ -7,20 +7,28 @@ import { domainEvent, handledEvent, handledMessage } from './schema'
 // #79 §5 "Write": the domain event outbox. emitEvent writes in the caller's transaction; the Pub/Sub publish happens
 // only after commit, through the injected publisher; the 15-minute batch republishes what that missed (D45).
 
-/** Publishes one `{event_id}` message to Pub/Sub `domain-events`; the composition root injects the real one. */
+/** The Pub/Sub topic emitEvent publishes to (#79 §5; infra/environments/production/messaging.tf). */
+export const DOMAIN_EVENTS_TOPIC = 'domain-events'
+
+/** Publishes one `{event_id}` message to `DOMAIN_EVENTS_TOPIC`; the composition roots inject the real one. */
 export type EventPublisher = (message: { event_id: string }) => Promise<void>
 
-let publisher: EventPublisher | null = null
+// On globalThis, not in a module variable: Next.js may instantiate this module once for instrumentation.ts, where
+// the composition root sets the publisher, and again for the route handlers that emit.
+const slot = Symbol.for('skyclause.db.eventPublisher')
+const store = globalThis as { [slot]?: EventPublisher | null }
+const currentPublisher = () => store[slot] ?? null
 
-/** Sets the publisher emitEvent and the republish use; `null` unsets it (tests). */
+/** Sets the publisher emitEvent and the republish use, process-wide; `null` unsets it (tests). */
 export function setEventPublisher(next: EventPublisher | null) {
-  publisher = next
+  store[slot] = next
 }
 
 const pending = new WeakMap<object, string[]>()
 
 /** After commit: publish each event, then mark the published ones in a new transaction in the same context. */
 async function publishCommitted(ids: string[], inSameContext: InSameContext) {
+  const publisher = currentPublisher()
   if (!publisher) return
   const published: string[] = []
   for (const id of ids) {
@@ -75,7 +83,7 @@ export const emitEvent: EmitEvent = async (handle, { projectId, type, data }) =>
  * marks them. Throws without a publisher, so a missing one fails the batch instead of passing silently (D9).
  */
 export async function republishEvents(now: Date): Promise<number> {
-  const publish = publisher
+  const publish = currentPublisher()
   if (!publish) throw new Error('no event publisher: the composition root must call setEventPublisher')
   return withSystem('domain-events-republish', async (tx) => {
     const due = await tx
