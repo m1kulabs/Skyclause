@@ -39,11 +39,9 @@ export function testOrg(slug: string): { id: string; slug: string } {
 }
 
 export const testMembership: MembershipLookup = {
-  async organisation(ref) {
-    return [...orgs.values()].find((org) => org.slug === ref || org.id === ref) ?? null
-  },
-  async role(accountId, orgId) {
-    return roles.get(`${accountId} ${orgId}`) ?? null
+  async lookup(ref, accountId) {
+    const org = [...orgs.values()].find((org) => org.slug === ref || org.id === ref)
+    return org ? { ...org, role: (accountId && roles.get(`${accountId} ${org.id}`)) || null } : null
   }
 }
 

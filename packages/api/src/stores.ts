@@ -40,7 +40,9 @@ export interface RateLimitStore {
 
 /** `requireOrg` reads `auth.organization` and `auth.member` through this (#93 ticket decision). */
 export interface MembershipLookup {
-  /** By slug or ID. */
-  organisation(ref: string): Promise<{ id: string; slug: string } | null>
-  role(accountId: string, orgId: string): Promise<Role | null>
+  /**
+   * The organisation named by slug or ID, with `accountId`'s role in it: null when the account isn't a member or no
+   * account is given. Null for an unknown organisation.
+   */
+  lookup(ref: string, accountId: string | null): Promise<{ id: string; slug: string; role: Role | null } | null>
 }
