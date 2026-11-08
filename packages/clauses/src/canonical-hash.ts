@@ -46,8 +46,13 @@ function serialize(value: unknown, ancestors: Set<object>): string {
   }
 }
 
+/** The RFC 8785 JCS text of a JSON value; throws on anything JSON can't hold. */
+export function canonicalJson(value: unknown): string {
+  return serialize(value, new Set())
+}
+
 export function canonicalHash(value: unknown): string {
-  const canonical = serialize(value, new Set())
+  const canonical = canonicalJson(value)
   const bytes: number[] = []
   // Strings have already been checked for lone surrogates, so iteration yields Unicode scalars.
   for (const character of canonical) {
