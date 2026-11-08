@@ -38,6 +38,7 @@
         "@base-ui/react": "1.9.0",
         "@fontsource-variable/jetbrains-mono": "5.3.0",
         "@fontsource-variable/work-sans": "5.3.0",
+        "@fontsource/work-sans": "5.3.0",
         "@skyclause/api": "workspace:*",
         "@skyclause/auth": "workspace:*",
         "@skyclause/config": "workspace:*",
@@ -601,6 +602,8 @@
     "@fontsource-variable/jetbrains-mono": ["@fontsource-variable/jetbrains-mono@5.3.0", "", {}, "sha512-F32xpS2NsGYoQi2ADSkKTgpJj7ozajsGgDJ8woTnqjmIB+dxDIqImjl4pXZVEExu8UFZ2ndhmX18EBS/hdz3Lw=="],
 
     "@fontsource-variable/work-sans": ["@fontsource-variable/work-sans@5.3.0", "", {}, "sha512-le8h/OIIuhm5Z7TdvuMw0yKg2gaCZUiMec8zaumsVVjzeJRBPEF0bQI/MkaZDHCVzZDvZoP/O2LiGOSfDLSbaw=="],
+
+    "@fontsource/work-sans": ["@fontsource/work-sans@5.3.0", "", {}, "sha512-3cKV28+bEiLGdyOl0VgEGCFWE1XdZJu/K+nH4Jt76XC3T//XrRtm2EF7jA61GSMIy8sYp6ZFTE01nD3lLaBV9A=="],
 
     "@google-cloud/paginator": ["@google-cloud/paginator@7.2.0", "", { "dependencies": { "extend": "^3.0.2" } }, "sha512-l+x6YObHGTuqBCMvC0SXo3Cnyqg4FkWWKYRptf46PACHJ5GAUuhsd2b3wphgGrg1ybs/LAb+q5MnUTuG/3+v7w=="],
 
