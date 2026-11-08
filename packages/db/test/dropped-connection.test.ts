@@ -42,13 +42,12 @@ test('a backend terminated during a withSystem transaction rejects the call with
 
 test('a shared backend terminated between turns rejects the next call without an uncaught exception', async () => {
   let backend = 0
-  await expect(
-    shareSystemConnection(async () => {
-      backend = await withSystem('batch', pid)
-      await terminate(backend)
-      return withSystem('batch', pid)
-    })
-  ).rejects.toThrow()
+  const second = await shareSystemConnection(async () => {
+    backend = await withSystem('batch', pid)
+    await terminate(backend)
+    return withSystem('batch', pid).catch((error: unknown) => error)
+  })
+  expect(second).toBeInstanceOf(Error)
   const next = await withSystem('batch', pid)
   expect(next).not.toBe(backend)
   expect(uncaught.map(String)).toEqual([])
