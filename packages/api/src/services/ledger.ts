@@ -94,7 +94,7 @@ const csvLine = (fields: string[]) => `${fields.map(csvField).join(',')}\r\n`
 export async function exportLedgerCsv(
   ctx: ServiceContext,
   q: { projectId: string; timeZone: string; filters: LedgerFilters },
-  inPage: <T>(fn: (ctx: ServiceContext) => Promise<T>) => Promise<T>
+  inTransaction: <T>(fn: (ctx: ServiceContext) => Promise<T>) => Promise<T>
 ): Promise<ReadableStream<Uint8Array>> {
   const uptoSeq = await ledgerHeadSeq(ctx.tx, q.projectId)
   const encoder = new TextEncoder()
@@ -104,7 +104,7 @@ export async function exportLedgerCsv(
       controller.enqueue(encoder.encode(csvLine(CSV_COLUMNS)))
     },
     async pull(controller) {
-      const rows = await inPage((page) => ledgerCsvPage(page.tx, { ...q, afterSeq, uptoSeq, limit: CSV_PAGE }))
+      const rows = await inTransaction((next) => ledgerCsvPage(next.tx, { ...q, afterSeq, uptoSeq, limit: CSV_PAGE }))
       const text = rows.map((row) =>
         csvLine([
           String(row.seq),

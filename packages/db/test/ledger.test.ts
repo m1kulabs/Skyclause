@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm'
 import { beforeAll, expect, test } from 'vitest'
 import { appendLedger, ledgerEntry, systemPrincipal, verifyLedger, withSystem, withTenant, type Tx } from '../src'
 import { makeOrganization, makeProject } from './factories'
-import { memberOf, refusal } from './harness'
+import { expectLedgerEntry, memberOf, refusal } from './harness'
 
 let orgId: string
 const asMember = <T>(fn: (tx: Tx) => Promise<T>) => withTenant({ orgId, principal: memberOf(orgId) }, fn)
@@ -44,6 +44,7 @@ test('appendLedger chains each entry to the last: seq + 1, prev_hash, and D11’
     )
   )
   expect(one.hash).toBe(first.hash)
+  expect(await expectLedgerEntry('call_sent', { orgId, projectId })).toMatchObject({ id: second.id, seq: '2' })
   expect(two.prevHash).toBe(first.hash)
   expect(second.hash).toBe(
     sha256(
