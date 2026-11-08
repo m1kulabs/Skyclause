@@ -1,5 +1,6 @@
-// #150 test helpers, for this package and for #151, #153 and the API tests: a project with a pack, a published sheet
-// version carrying clause expiries, a snapshot and a run ready to hand calls to `createBundle`. Tests only (NFR-15).
+// #150 test helpers, for this package and for #151, #153 and the API tests: a project with a pack, its default sheet
+// published as version 1 (D18), a snapshot and a run ready to hand calls to `createBundle`. Tests only (NFR-15).
+import { readFileSync } from 'node:fs'
 import type { Json, Pack } from '@skyclause/contracts'
 import type { CallDraft } from '../../src/bundles/repository'
 import type { Tx } from '../../src/client'
@@ -13,14 +14,9 @@ import {
   makeWindow
 } from '../factories/index'
 
-/** The default sheets' clause expiries (#79 §1 Defaults: `storm_confirmed` and `flash_flood_risk` end). */
-export const DEFAULT_EXPIRIES: Record<string, 'start' | 'end'> = {
-  haze_watch: 'start',
-  haze_severe: 'start',
-  storm_watch: 'start',
-  storm_confirmed: 'end',
-  flash_flood_risk: 'end'
-}
+/** `packages/clauses/defaults/<pack>.json`, the sheet every project starts with (#79 §1 Defaults, D18). */
+export const defaultSheet = (pack: Pack): Json =>
+  JSON.parse(readFileSync(new URL(`../../../clauses/defaults/${pack}.json`, import.meta.url), 'utf8'))
 
 export interface Scene {
   projectId: string
@@ -29,14 +25,13 @@ export interface Scene {
   snapshotId: string
 }
 
-/** A project (or `projectId`) with `pack` at `slaS`, a published sheet version and a snapshot. */
+/** A project (or `projectId`) with `pack` at `slaS`, its default sheet published as version 1 and a snapshot. */
 export async function bundleScene(
   tx: Tx,
   o: {
     projectId?: string
     pack?: Pack
     slaS?: number | null
-    expiries?: Record<string, 'start' | 'end'>
     snapshot?: { site?: Json; inputs?: Json; tEval?: Date; hash?: string }
   } = {}
 ): Promise<Scene> {
@@ -44,11 +39,10 @@ export async function bundleScene(
   const projectId = o.projectId ?? (await makeProject(tx)).id
   await makeProjectPack(tx, { projectId, pack, slaS: o.slaS === undefined ? 300 : o.slaS })
   const sheet = await makeClauseSheet(tx, { projectId, pack })
-  const clauses = Object.entries(o.expiries ?? DEFAULT_EXPIRIES).map(([key, expiry]) => ({ key, expiry }))
   const version = await makeSheetVersion(tx, {
     sheetId: sheet.id,
     status: 'published',
-    content: { pack, clauses },
+    content: defaultSheet(pack),
     publishedAt: new Date()
   })
   const snapshot = await makeIndicatorSnapshot(tx, { projectId, pack, ...o.snapshot })

@@ -8,6 +8,7 @@ import {
   expireCall,
   markSending,
   reviewHash,
+  startOfLocalDay,
   transition
 } from '../../src/bundles/repository'
 import { systemPrincipal, withTenant, type Tx } from '../../src/client'
@@ -394,4 +395,10 @@ describe('review_hash', () => {
     expect(after.reviewHash).not.toBe(drafted.reviewHash)
     expect(await inOrg((tx) => reviewHash(tx, made.bundleId))).toBe(after.reviewHash)
   })
+})
+
+test('startOfLocalDay is the instant local midnight starts a date in the project’s zone', async () => {
+  expect(await inOrg((tx) => startOfLocalDay(tx, '2026-11-02', 'Asia/Kuala_Lumpur'))).toEqual(
+    at('2026-11-01T16:00:00Z')
+  )
 })

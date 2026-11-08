@@ -1,6 +1,6 @@
 import { canonicalHash } from '@skyclause/clauses'
 import type { Json, Pack } from '@skyclause/contracts'
-import { and, asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { track } from '../analytics'
 import type { Tx } from '../client'
@@ -446,4 +446,10 @@ export async function transition(
 export async function markSending(tx: Tx, bundleId: string, callIds: string[], now: Date = new Date()) {
   const { slot } = await lockSlot(tx, bundleId)
   await writeSlot(tx, slot, sendStep(slot, callIds, now), { now })
+}
+
+/** The instant local midnight starts `date` (`YYYY-MM-DD`) in `timeZone`, for reads filtered by local dates. */
+export async function startOfLocalDay(tx: Tx, date: string, timeZone: string): Promise<Date> {
+  const { rows } = await tx.execute<{ at: Date }>(sql`SELECT (${date}::date::timestamp AT TIME ZONE ${timeZone}) AS at`)
+  return new Date(rows[0]!.at)
 }
