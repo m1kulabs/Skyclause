@@ -19,6 +19,6 @@ export {
   type InboundMessage,
   type SesInboundOptions
 } from './inbound'
+export { renderSubscriberEmail, type SubscriberEmailKind } from './subscriber-emails'
 export { ensureVapidKeys, type VapidKeysOptions } from './vapid'
 export * from './placeholders/c-notice-templates'
-export * from './placeholders/c-subscribers'

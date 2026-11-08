@@ -1,4 +1,11 @@
-import type { Can, Principal, RecordAudit, ResolvePrincipal, SkyclauseRoute } from '@skyclause/contracts'
+import type {
+  Can,
+  EmailTransport,
+  Principal,
+  RecordAudit,
+  ResolvePrincipal,
+  SkyclauseRoute
+} from '@skyclause/contracts'
 import type { IdempotencyStore, MembershipLookup, RateLimitStore } from './stores'
 import type { WithTenant } from './tenancy'
 
@@ -18,6 +25,8 @@ export interface ApiDeps {
   rateLimits: RateLimitStore
   withTenant: WithTenant
   recordAudit: RecordAudit
+  /** Spec §1 `EmailTransport` for the emails a route sends itself (c-subscribers' confirmations). */
+  email: EmailTransport
   config: () => ApiConfig
   now: () => Date
 }

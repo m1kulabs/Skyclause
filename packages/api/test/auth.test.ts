@@ -151,7 +151,8 @@ describe('/api surface', () => {
   it('lets a token route through with no principal', async () => {
     const { api } = createTestApi()
     const response = await apiRequest(api, { method: 'GET', path: '/api/subscribe/token-1' })
-    expect(response.status).toBe(501)
+    // c-subscribers' handler answers: the token is unknown.
+    expect(response.status).toBe(410)
   })
 })
 

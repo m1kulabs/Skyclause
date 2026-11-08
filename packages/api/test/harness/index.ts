@@ -236,6 +236,7 @@ export function testDeps(overrides: Partial<ApiDeps> = {}): TestDeps {
       const { orgId, principal } = tx as unknown as FakeTx
       audits.push({ orgId, actor: principal, action: e.action, target: e.target, after: e.after })
     },
+    email: createMailbox(),
     config: () => ({ appEnv: 'test', appOrigin: TEST_APP_ORIGIN, ipHashKey: 'test-only-ip-hash-key-for-the-harness' }),
     now: () => new Date(now),
     ...overrides,

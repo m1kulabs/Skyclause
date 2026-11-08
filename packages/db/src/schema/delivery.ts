@@ -3,6 +3,7 @@ import { boolean, check, foreignKey, integer, text, unique, uuid } from 'drizzle
 import { organization } from './auth'
 import { id, instant, orgKey, sameOrg, tenantTable, timestamps } from './columns'
 import {
+  consentForm,
   crowdReplyKind,
   noticeChannel,
   noticeKind,
@@ -53,6 +54,9 @@ export const subscriber = tenantTable(
       .notNull()
       .default(sql`'{email}'`),
     confirmedAt: instant('confirmed_at'),
+    /** `emailHash(email)`, kept beside the address so status and sends match `suppression` (c-subscribers). */
+    emailHash: text('email_hash'),
+    unsubscribedAt: instant('unsubscribed_at'),
     ...timestamps()
   },
   (self) => [
@@ -72,7 +76,10 @@ export const subscriberToken = tenantTable(
     purpose: subscriberTokenPurpose('purpose').notNull(),
     callId: uuid('call_id'),
     windowId: uuid('window_id'),
-    expiresAt: instant('expires_at').notNull(),
+    /** Null: no expiry (`unsubscribe` lives as long as its subscriber). */
+    expiresAt: instant('expires_at'),
+    /** Set once a single-use token is spent. */
+    usedAt: instant('used_at'),
     createdAt: instant('created_at').notNull().defaultNow()
   },
   (self) => [
@@ -100,7 +107,16 @@ export const consentRecord = tenantTable(
   {
     id: id(),
     subscriberId: uuid('subscriber_id').notNull(),
+    form: consentForm('form').notNull(),
     noticeVersion: text('notice_version').notNull(),
+    language: text('language').notNull(),
+    /** The account that imported the address; null when the subscriber acted. */
+    actorId: uuid('actor_id'),
+    /** The fields a preference write changed, by name only, so no address outlives an erasure here. */
+    changed: text('changed')
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
     ipHash: text('ip_hash'),
     at: instant('at').notNull().defaultNow()
   },

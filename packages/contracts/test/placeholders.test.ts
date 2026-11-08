@@ -24,7 +24,6 @@ const packages: Array<{ name: string; owners: Record<string, string[]> }> = [
   {
     name: 'delivery',
     owners: {
-      'c-subscribers': ['issueSubscriberToken', 'verifySubscriberToken', 'emailHash'],
       'c-notice-templates': [
         'renderNotice',
         'checkRequiredLines',

@@ -4,6 +4,7 @@ export const TEST_AUTH_ENV = {
   APP_ENV: 'test',
   BETTER_AUTH_SECRET: 'test-only-better-auth-secret-for-vitest-runs',
   IP_HASH_KEY: 'test-only-ip-hash-key-for-vitest-runs-only',
+  EMAIL_HASH_KEY: 'test-only-email-hash-key-for-vitest-runs-only',
   APP_ORIGIN: 'https://app.skyclause.m1ku.tech',
   API_ORIGIN: 'https://api.skyclause.m1ku.tech',
   MCP_ORIGIN: 'https://mcp.skyclause.m1ku.tech'
