@@ -57,8 +57,8 @@ interface Shared {
   db: NodePgDatabase<Schema>
   /** The end of the queue: sibling calls on the shared connection take turns. */
   tail: Promise<unknown>
-  /** Set once `fn` has settled and the connection is back in the pool. */
-  released: boolean
+  /** Set once `fn` has settled: later calls are refused, and those already queued finish before the release. */
+  ended: boolean
 }
 const sharedConnection = new AsyncLocalStorage<{ shared: Shared; inside: boolean }>()
 
@@ -70,12 +70,12 @@ const sharedConnection = new AsyncLocalStorage<{ shared: Shared; inside: boolean
  */
 export async function shareSystemConnection<T>(fn: () => Promise<T>): Promise<T> {
   const client = await connection('SYSTEM').pool.connect()
-  const shared: Shared = { db: drizzle(client, { schema }), tail: Promise.resolve(), released: false }
+  const shared: Shared = { db: drizzle(client, { schema }), tail: Promise.resolve(), ended: false }
   try {
     return await sharedConnection.run({ shared, inside: false }, fn)
   } finally {
+    shared.ended = true
     await shared.tail
-    shared.released = true
     client.release()
   }
 }
@@ -88,8 +88,8 @@ async function run<T, P extends Principal | null>(
   const share = login === 'SYSTEM' ? sharedConnection.getStore() : undefined
   if (!share) return transaction(connection(login).db, context, fn)
   const { shared, inside } = share
-  if (shared.released) throw new Error('the shared system connection was released when its shareSystemConnection ended')
   if (inside) throw new Error('a with* call inside another on the shared system connection needs a second connection')
+  if (shared.ended) throw new Error('the shared system connection was released when its shareSystemConnection ended')
   const turn = shared.tail.then(() =>
     sharedConnection.run({ shared, inside: true }, () => transaction(shared.db, context, fn))
   )
