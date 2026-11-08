@@ -2,12 +2,20 @@
   "extends": "../config/tsconfig.base.json",
   "compilerOptions": {
     "rootDir": ".",
-    "outDir": "dist/types"
+    "outDir": "dist/types",
+    "types": ["node"],
+    "stripInternal": true
   },
-  "include": ["src", "test"],
+  "include": ["src", "test", "vitest.config.ts"],
   "references": [
     {
+      "path": "../config"
+    },
+    {
       "path": "../contracts"
+    },
+    {
+      "path": "../db"
     }
   ]
 }

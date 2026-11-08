@@ -1,1 +1,5 @@
-export * from './placeholders/f-auth'
+export { ac, roles } from './access'
+export { can } from './can'
+export { authHandler, type AuthSettings } from './instance'
+export { pagePrincipal } from './pages'
+export { resolvePrincipal } from './principal'
