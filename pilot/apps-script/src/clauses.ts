@@ -1,5 +1,5 @@
 import { toMytIso } from '../../shared/time.ts'
-import type { IndicatorEvidence, ResolvedInputState, SkySnapshot } from './indicators.ts'
+import type { IndicatorEvidence, ResolvedInputState, SkySnapshotFacts } from './indicators.ts'
 import type { Cell, Row } from './schema.ts'
 
 export const SKY_CLAUSE_KEYS = [
@@ -56,7 +56,7 @@ export interface SkyBlockedInputDetail {
 
 export interface SkyClauseInput {
   tEval: string
-  snapshot: SkySnapshot
+  snapshot: SkySnapshotFacts
   clauses: readonly Row<'clauses'>[]
   windows?: readonly Row<'windows'>[]
   clauseVersion?: string | number | null
@@ -851,7 +851,7 @@ function evaluateCameraBranch(
 }
 
 function getIndicatorEvidence(
-  snapshot: SkySnapshot,
+  snapshot: SkySnapshotFacts,
   scope: string,
   name: string,
   nowRow: Row<'now'> | undefined,

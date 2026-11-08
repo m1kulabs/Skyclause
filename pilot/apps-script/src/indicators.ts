@@ -66,6 +66,8 @@ export interface SkySnapshot {
   evidenceByScope: Record<string, Record<string, IndicatorEvidence>>
 }
 
+export type SkySnapshotFacts = Omit<SkySnapshot, 'sourceUpdates'>
+
 interface NormalizedReading {
   readingId: string
   sourceKind: string
@@ -918,6 +920,10 @@ function computeWindowWarningIndicators(
 }
 
 export function computeSkySnapshot(input: SkySnapshotInput): SkySnapshot {
+  return computeSnapshot(input, resolveSingleSourceState)
+}
+
+function computeSnapshot(input: SkySnapshotInput, resolveSourceState: typeof resolveSingleSourceState): SkySnapshot {
   const tEvalIso = normalizeIsoCell(input.tEval)
   if (!tEvalIso) {
     throw new Error(`Invalid tEval timestamp: ${String(input.tEval)}`)
@@ -946,15 +952,7 @@ export function computeSkySnapshot(input: SkySnapshotInput): SkySnapshot {
   for (const src of input.sources) {
     const id = String(src.source_id ?? '').trim()
     if (!id) continue
-    const resolved = resolveSingleSourceState(
-      src,
-      readings,
-      polls,
-      previousIndicators,
-      input.daylight,
-      tEvalIso,
-      tEvalMs
-    )
+    const resolved = resolveSourceState(src, readings, polls, previousIndicators, input.daylight, tEvalIso, tEvalMs)
     sourceStates[id] = resolved
     if (resolved.state !== null && resolved.stateSince !== null) {
       sourceUpdates.push({
