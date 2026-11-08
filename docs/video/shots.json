@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "owner": "Director (docs/video/director-script.md). The Recorder films each recorded shot from this contract and reports any difference as a deviation, never a change.",
+  "viewport": { "width": 1920, "height": 1080, "deviceScaleFactor": 1 },
+  "fps": 30,
+  "timezone": "Asia/Kuala_Lumpur",
+  "needs": {
+    "none": "Rendered in Remotion from stored captures or slides; nothing to film.",
+    "dev-pilot": "Filmed on a developer's own Apps Script project and dev workbook (pilot/README.md, Set up your dev project). Google surfaces load with a saved, signed-in storage state; the Recorder never types a password.",
+    "ge": "Needs the Gemini Enterprise licence and the shared pilot (#7, #49). Never filmed on a stand-in; the cut shows a title card until then."
+  },
+  "replay": {
+    "label": "Replay (2 Nov 2026)",
+    "gauge": "0232901RF",
+    "capture": "pilot/fixtures/rainfall-graph-75-20261105T1312Z.json",
+    "window": { "title": "15:30 release wave", "date": "2026-11-02", "start": "15:30", "end": "15:30" },
+    "clause_span": { "start": "15:00", "end": "16:30" },
+    "lebat_mm_per_hour": [31, 60],
+    "expected_totals_60min_mm": { "14:55": 29.5, "15:00": 39.0, "15:35": 59.5, "16:00": 24.0 },
+    "expected_total_14_to_16_mm": 63.0,
+    "verdict_before": "Normal",
+    "verdict_after": "Commute disruption",
+    "fired_clause": "Storm confirmed",
+    "flip_at_poll": "15:05"
+  },
+  "shots": [
+    {
+      "id": "V2",
+      "needs": "none",
+      "kind": "motion",
+      "target_s": 25,
+      "on_camera": "The 2 November 5-minute rain bars from the capture rise in time order from 14:00 to 16:00; the 15:30 exit wave is one 1px crimson line; 63.0 mm over the two hours prints at the end.",
+      "data": ["replay.capture"],
+      "cues": ["bars-start", "exit-wave-line", "two-hour-total"]
+    },
+    {
+      "id": "D1",
+      "needs": "dev-pilot",
+      "kind": "recorded",
+      "target_s": 12,
+      "surface": "The window Form made by createWindowForm (#50), then the windows tab of the dev workbook.",
+      "setup_off_camera": "Form open in a fresh tab; the windows tab scrolled to its last row.",
+      "on_camera": "Type a club window (title, kind event, a real upcoming date, start and end in MYT), tick consent, submit; cut to the new windows row.",
+      "privacy": "Use the team's own test address, masked in the edit; no subscriber's name or email on screen.",
+      "cues": ["form-title", "consent-ticked", "submitted", "windows-row"]
+    },
+    {
+      "id": "D2",
+      "needs": "dev-pilot",
+      "kind": "recorded",
+      "target_s": 15,
+      "surface": "The readings tab of the dev workbook while the dev JPS, MET and APIMS pollers run by hand.",
+      "setup_off_camera": "Run each poller once so the newest rows are minutes old.",
+      "on_camera": "The newest readings rows: source, station, value, observed time and age; a slow pan across the age column.",
+      "cues": ["readings-tab", "jps-row", "apims-row", "met-row", "age-column"]
+    },
+    {
+      "id": "D3",
+      "needs": "none",
+      "kind": "motion",
+      "target_s": 30,
+      "on_camera": "The window strip for the 15:30 release wave from the capture: 5-minute bars, the rolling 60-minute total against the Lebat band, the window as a 1px crimson line. Hold at 14:55 (29.5 mm, Normal); the 15:00 bar lands and the total crosses at 39.0 mm, slowed; at the 15:05 poll the mode word flips to Commute disruption with 'Storm confirmed · gauge 39.0 mm in 60 min to 15:00 (Lebat) · 5 min old' under it.",
+      "data": ["replay.capture", "replay.expected_totals_60min_mm"],
+      "label": "replay.label",
+      "cues": ["hold-1455", "bar-1500", "cross-lebat", "poll-1505", "verdict-flip", "fired-clause"]
+    },
+    {
+      "id": "D4",
+      "needs": "ge",
+      "kind": "recorded",
+      "target_s": 20,
+      "surface": "The Gemini Enterprise replay workflow (pilot/workflows/sky-crossing-replay.md) on the shared pilot.",
+      "on_camera": "The bundle: the agent's call per window with reasons and input ages, the clause engine's shadow verdict beside it, Needs Review, then the approver's approval.",
+      "cues": ["bundle-open", "agent-call", "shadow-line", "approve"]
+    },
+    {
+      "id": "D5",
+      "needs": "dev-pilot",
+      "kind": "recorded",
+      "target_s": 10,
+      "surface": "The ledger tab of the dev workbook and the Apps Script execution log.",
+      "setup_off_camera": "Seal a dev ledger row with the #62 sweep; keep a second tab on the editor with verifyLedger selected.",
+      "on_camera": "The sealed row and its hash; edit one cell of an earlier row; run verifyLedger; the log names the broken row; undo the edit.",
+      "cues": ["ledger-row", "hash-cell", "edited-cell", "verify-run", "broken-row-named"]
+    },
+    {
+      "id": "D6",
+      "needs": "dev-pilot",
+      "kind": "recorded",
+      "target_s": 13,
+      "surface": "Gmail of a teammate's account and the team inbox after the dev evidence poll (#58).",
+      "setup_off_camera": "Activate the dev inbox per #58; send 'evidence for 2 Nov 14:00–16:30' from a teammate's account; run the poll.",
+      "on_camera": "The request in the sent folder, then the pack reply opened: readings, sources and times.",
+      "privacy": "Mask both addresses in the edit.",
+      "cues": ["request-sent", "reply-arrived", "pack-readings", "pack-sources"]
+    },
+    {
+      "id": "V3",
+      "needs": "none",
+      "kind": "motion",
+      "target_s": 25,
+      "on_camera": "The haze replay tally builds one weekday at a time: 9 Hybrid recommended, 5 Outdoor-limited, 7 Normal, 1 no data (22 weekdays, 5 Oct to 3 Nov 2026, Cheras CA16W at 06:00); then 'Live grades: n=0'.",
+      "data": ["docs/IDEA.md#haze-and-storms-at-the-exit-wave"],
+      "cues": ["tally-start", "tally-done", "grades-n0"]
+    }
+  ]
+}
