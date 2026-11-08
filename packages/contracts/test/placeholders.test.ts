@@ -18,7 +18,6 @@ const packages: Array<{ name: string; owners: Record<string, string[]> }> = [
   {
     name: 'db',
     owners: {
-      'c-ledger-chain': ['appendLedger'],
       'c-run-orchestrator': ['requestRun'],
       'a-org-projects': ['createOrganisation'],
       'c-notifications': ['notify'],

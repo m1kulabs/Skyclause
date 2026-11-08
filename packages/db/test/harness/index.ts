@@ -74,4 +74,4 @@ export async function refusal(work: Promise<unknown>): Promise<string> {
   throw new Error('expected the database to refuse it')
 }
 
-export { expectEvent, expectOneAudit } from './expect'
+export { expectEvent, expectLedgerEntry, expectOneAudit } from './expect'

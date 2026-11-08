@@ -1,25 +1,22 @@
-import { randomUUID } from 'node:crypto'
+import type { AppendLedger } from '@skyclause/contracts'
 import type { Tx } from '../../src/client'
+import { appendLedger } from '../../src/ledger'
 import { ledgerEntry, project } from '../../src/schema'
 import { makeProject } from './project'
-import { nextSeq, rowOf } from './rows'
+import { rowOf } from './rows'
 
-/** The next ledger entry of `projectId`, or the first of a new project. */
-export async function makeLedgerEntry(tx: Tx, overrides: Partial<typeof ledgerEntry.$inferInsert> = {}) {
+/** The next entry of `projectId`'s chain (or the first of a new project), appended as writers do (#146). */
+export async function makeLedgerEntry(
+  tx: Tx,
+  overrides: Partial<Omit<Parameters<AppendLedger>[1], 'projectId'>> & { projectId?: string } = {}
+) {
   const parent = overrides.projectId ? await rowOf(tx, project, overrides.projectId) : await makeProject(tx)
-  const [row] = await tx
-    .insert(ledgerEntry)
-    .values({
-      orgId: tx.orgId!,
-      seq: overrides.seq ?? (await nextSeq(tx, 'ledger_entry', parent.id)),
-      kind: 'clause_version',
-      refs: {},
-      body: {},
-      prevHash: '0'.repeat(64),
-      hash: randomUUID(),
-      ...overrides,
-      projectId: parent.id
-    })
-    .returning()
-  return row!
+  const { id } = await appendLedger(tx, {
+    kind: 'clause_version',
+    refs: {},
+    body: {},
+    ...overrides,
+    projectId: parent.id
+  })
+  return rowOf(tx, ledgerEntry, id)
 }
