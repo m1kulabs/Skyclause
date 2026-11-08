@@ -25,12 +25,16 @@ export interface IdempotencyRecord extends IdempotencyKey {
   response: StoredResponse | null
 }
 
+/** A key as the request that reserved it holds it; another request that took over an expired key has another hash. */
+export type IdempotencyClaim = IdempotencyKey & { requestHash: string }
+
 export interface IdempotencyStore {
   /** Inserts a pending record unless an unexpired one holds the key, which it returns instead. */
   reserve(record: IdempotencyRecord, now: Date): Promise<IdempotencyRecord | null>
-  complete(key: IdempotencyKey, response: StoredResponse): Promise<void>
-  /** Frees a reserved key whose request didn't succeed, so a retry runs again. */
-  release(key: IdempotencyKey): Promise<void>
+  /** Stores the response on the pending key this request reserved. */
+  complete(claim: IdempotencyClaim, response: StoredResponse): Promise<void>
+  /** Frees the pending key this request reserved, so a retry runs again; a completed key stays. */
+  release(claim: IdempotencyClaim): Promise<void>
 }
 
 export interface RateLimitStore {

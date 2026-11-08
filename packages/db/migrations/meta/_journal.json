@@ -64,6 +64,20 @@
       "when": 1794209040069,
       "tag": "0008_c-bundle-lifecycle-call-content",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794215400795,
+      "tag": "0009_f-api-stores",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794215406223,
+      "tag": "0010_f-api-stores-grants",
+      "breakpoints": true
     }
   ]
 }

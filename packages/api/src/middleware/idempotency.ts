@@ -54,14 +54,15 @@ export const requireIdempotency: MiddlewareHandler<ApiEnv> = async (c, next) => 
 
   // Hono turns an error thrown downstream into `c.res` before `next()` resolves.
   await next()
+  const claim = { ...id, requestHash }
   if (c.res.status >= 200 && c.res.status < 400) {
-    await idempotency.complete(id, {
+    await idempotency.complete(claim, {
       status: c.res.status,
       contentType: c.res.headers.get('Content-Type'),
       location: c.res.headers.get('Location'),
       body: await c.res.clone().text()
     })
   } else {
-    await idempotency.release(id)
+    await idempotency.release(claim)
   }
 }
