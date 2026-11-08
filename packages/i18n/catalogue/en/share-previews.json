@@ -9,7 +9,9 @@
   "reading": "{value} {unit} {name} at {time}",
   "alt": {
     "state": "{state}.",
-    "window": "{window}.",
-    "reading": "Deciding reading: {reading}."
+    "window": "{state}. {window}.",
+    "reading": "{state}. Deciding reading: {reading}.",
+    "full": "{state}. {window}. Deciding reading: {reading}.",
+    "noCall": "{alt} {noCall}."
   }
 }

@@ -67,12 +67,20 @@ function stripOf(values: readonly InputValue[], window: Range | null, now: Date)
     )
     .sort((a, b) => at(a.at) - at(b.at))
   if (rain60.length < 2) return null
-  const nowAt = now.toISOString()
+  const from = rain60[0]!.at
+  const to = at(rain60.at(-1)!.at) > now.getTime() ? rain60.at(-1)!.at : now.toISOString()
+  // The window's box, cut to the strip's range so it stays on the plot; none when they don't meet.
+  const shown = window && at(window.starts_at) < at(to) && at(window.ends_at) > at(from)
   return {
-    from: rain60[0]!.at,
-    to: at(rain60.at(-1)!.at) > now.getTime() ? rain60.at(-1)!.at : nowAt,
-    now: nowAt,
-    window: window && { from: window.starts_at, to: window.ends_at },
+    from,
+    to,
+    now: now.toISOString(),
+    window: shown
+      ? {
+          from: at(window.starts_at) > at(from) ? window.starts_at : from,
+          to: at(window.ends_at) < at(to) ? window.ends_at : to
+        }
+      : null,
     rain5: [],
     rain60
   }
@@ -138,13 +146,14 @@ export function windowCard(status: PublicStatus, window: PublicWindow, call: Pub
 export const stateWord = (state: BrandState | null) =>
   state ? t(brandStates[state].word) : t('share-previews.noApprovedCall')
 
-/** Alt text for the pages' `og:image:alt` (#188, #189): the mode, the window and the deciding reading. */
+/** Alt text for the pages' `og:image:alt` (#188, #189): the mode, the window, the deciding reading and No call (D3). */
 export function cardAlt(card: Card): string {
-  return [
-    t('share-previews.alt.state', { state: stateWord(card.state) }),
-    card.window && t('share-previews.alt.window', { window: card.window }),
-    card.reading && t('share-previews.alt.reading', { reading: card.reading })
-  ]
-    .filter(Boolean)
-    .join(' ')
+  const { window, reading } = card
+  const key = window ? (reading ? 'full' : 'window') : reading ? 'reading' : 'state'
+  const alt = t(`share-previews.alt.${key}`, {
+    state: stateWord(card.state),
+    window: window ?? '',
+    reading: reading ?? ''
+  })
+  return card.noCall ? t('share-previews.alt.noCall', { alt, noCall: card.noCall }) : alt
 }

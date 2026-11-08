@@ -91,6 +91,13 @@ describe('the glyph is D3 public state only', () => {
     )
   })
 
+  test('a Storm watch has no mode glyph, so it neither outranks a Normal call nor colours the mark alone', async () => {
+    const watch = pack({ pack: 'sky', basis: 'approved_call', call_id: call().id, mode: null, watch: true })
+    const crowdNormal = pack({ pack: 'crowd', basis: 'approved_call', call_id: 'c2', mode: 'normal' })
+    expect(await svgFor([watch, crowdNormal])).toBe(projectFaviconSvg({ mode: 'normal' }))
+    expect(await svgFor([watch])).toBe(markSvg)
+  })
+
   test('a failing required input in any pack shows the crimson cross over the call', async () => {
     const crowd = { ...inForce('surge_night'), no_call: failing }
     expect(await svgFor([inForce('commute_disruption'), crowd])).toBe(projectFaviconSvg({ error: true }))

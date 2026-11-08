@@ -27,7 +27,7 @@ describe('card models', () => {
         from: '2026-11-02T06:00:00Z',
         to: '2026-11-02T07:05:00.000Z',
         now: '2026-11-02T07:05:00.000Z',
-        window: { from: '2026-11-02T07:30:00Z', to: '2026-11-02T09:00:00Z' },
+        window: null,
         rain5: [],
         rain60: [
           { at: '2026-11-02T06:00:00Z', value: 3 },
@@ -41,6 +41,14 @@ describe('card models', () => {
     expect(cardAlt(card)).toBe(
       'Commute disruption. 15:30 MYT – 17:00 MYT · Monday 2 November 2026. Deciding reading: 39 mm site.rain_60m_mm at 15:00 MYT.'
     )
+  })
+
+  test("the window's box is cut to the strip's range, and left out when they don't meet", () => {
+    const strip = [rain60('2026-11-02T06:00:00Z', 3), rain60('2026-11-02T07:00:00Z', 39)]
+    const early = call({ window: { starts_at: '2026-11-02T06:45:00Z', ends_at: '2026-11-02T09:00:00Z' } })
+    const card = projectCard(status({ packs: [inForce], strip }), early, NOW)
+    expect(card.strip?.window).toEqual({ from: '2026-11-02T06:45:00Z', to: '2026-11-02T07:05:00.000Z' })
+    expect(projectCard(status({ packs: [inForce], strip }), call(), NOW).strip?.window).toBeNull()
   })
 
   test('with no call in force it reads "No approved call yet" and invents no window, strip or capture time', () => {
@@ -64,6 +72,9 @@ describe('card models', () => {
     )
 
     expect(card.noCall).toBe('No call: site.rain_60m_mm failing since 14:50 MYT')
+    expect(cardAlt(card)).toBe(
+      'Commute disruption. 15:30 MYT – 17:00 MYT · Monday 2 November 2026. Deciding reading: 39 mm site.rain_60m_mm at 15:00 MYT. No call: site.rain_60m_mm failing since 14:50 MYT.'
+    )
     expect(card.strip).toBeNull()
     expect(card.captured).toBe('2 November 2026, 15:00 MYT')
   })
@@ -82,6 +93,15 @@ describe('card models', () => {
       captured: '2 November 2026, 15:00 MYT',
       reading: '39 mm site.rain_60m_mm at 15:00 MYT'
     })
+  })
+
+  test('alt text leaves out what a card lacks, as whole sentences', () => {
+    expect(cardAlt(callCard(call({ fired: [] })))).toBe(
+      'Commute disruption. 15:30 MYT – 17:00 MYT · Monday 2 November 2026.'
+    )
+    expect(cardAlt(callCard(call({ window: null })))).toBe(
+      'Commute disruption. Deciding reading: 39 mm site.rain_60m_mm at 15:00 MYT.'
+    )
   })
 
   test('a window card is untitled and takes its capture time from its call', () => {

@@ -1,12 +1,20 @@
 /* eslint-disable @next/next/no-img-element -- Satori draws plain <img>; next/image has no place in an ImageResponse. */
-import { brandStates, glyphSvg, layoutStrip, markSvg, statusColours, stripSvg } from '@skyclause/elements'
+import {
+  brandStates,
+  glyphSvg,
+  layoutStrip,
+  markSvg,
+  statusColours,
+  stripSvg,
+  type StripInput
+} from '@skyclause/elements'
 import { ImageResponse } from 'next/og'
 import { readFile } from 'node:fs/promises'
 import { stateWord, type Card } from './card'
 import { t } from './i18n'
 
 // DESIGN "Open Graph card": 1200×630 on the dark ground, Work Sans throughout. Colours are f-ui's dark tokens.
-const SIZE = { width: 1200, height: 630 }
+export const CARD_SIZE = { width: 1200, height: 630 }
 const PAD = 56
 const BAND = 220
 const GROUND = '#171719'
@@ -67,8 +75,8 @@ export function splitStrip(svg: string) {
 
 const SHIFT = { start: '0%', middle: '-50%', end: '-100%' }
 
-function Strip({ card }: { card: Card & { strip: NonNullable<Card['strip']> } }) {
-  const layout = layoutStrip(card.strip)
+function Strip({ strip }: { strip: StripInput }) {
+  const layout = layoutStrip(strip)
   const { geometry, labels } = splitStrip(stripSvg(layout))
   const scale = Math.min((BAND - 24) / layout.height, 680 / layout.width)
   const width = layout.width * scale
@@ -154,7 +162,7 @@ export function CardView({ card }: { card: Card }) {
         }}
       >
         {card.strip ? (
-          <Strip card={{ ...card, strip: card.strip }} />
+          <Strip strip={card.strip} />
         ) : (
           <span style={{ fontSize: 40, color: INK }}>{card.range ?? ''}</span>
         )}
@@ -172,5 +180,9 @@ export function CardView({ card }: { card: Card }) {
 /** The card as a 1200×630 PNG, with the route's caching. */
 export function cardImage(card: Card, cacheControl: string): Response {
   // Lower case, so it replaces `next/og`'s own default rather than joining it.
-  return new ImageResponse(<CardView card={card} />, { ...SIZE, fonts, headers: { 'cache-control': cacheControl } })
+  return new ImageResponse(<CardView card={card} />, {
+    ...CARD_SIZE,
+    fonts,
+    headers: { 'cache-control': cacheControl }
+  })
 }

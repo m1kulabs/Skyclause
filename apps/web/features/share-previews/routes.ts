@@ -31,11 +31,9 @@ function handler<P>(fn: (request: Request, params: P, deps: PreviewDeps) => Prom
     } catch (error) {
       if (error instanceof NotBuiltError) return problem(501, problemType('not-built'), 'Not built', error.message)
       if (!(error instanceof ReadFailed)) throw error
-      const { body, status, headers } = error.response
-      return new Response(body, {
-        status,
-        headers: { 'Content-Type': headers.get('Content-Type') ?? 'text/plain', 'Cache-Control': 'no-store' }
-      })
+      const headers = new Headers(error.response.headers)
+      headers.set('Cache-Control', 'no-store')
+      return new Response(error.response.body, { status: error.response.status, headers })
     }
   }
 }
@@ -49,8 +47,9 @@ export const favicon = handler<ProjectParams>(async (request, { org, project }, 
   if (!state) return notFound()
   const headers = { 'Cache-Control': MINUTE, ETag: `"${state.state_version}"` }
   if (matches(request.headers.get('If-None-Match'), headers.ETag)) return new Response(null, { status: 304, headers })
+  // `projectFaviconSvg` (#171) draws modes only, so a Storm watch alone keeps the plain mark.
   const svg = projectFaviconSvg({
-    mode: headline(state.packs)?.mode ?? null,
+    mode: headline(state.packs.filter((pack) => pack.mode !== null))?.mode ?? null,
     error: failingInputs(state.packs).length > 0
   })
   return new Response(svg, { headers: { ...headers, 'Content-Type': 'image/svg+xml' } })
@@ -72,7 +71,10 @@ export const callOg = handler<{ callId: string }>(async (request, { callId }, { 
   return cardImage(callCard(call), call.state === 'sent' ? 'public, max-age=31536000, immutable' : MINUTE)
 })
 
-/** WEB-4 and D32: a public, non-guest window, untitled. */
+/**
+ * WEB-4 and D32: a public, non-guest window, untitled. `getPublicWindow` doesn't carry the window's project, so a public
+ * window under another public project's path isn't told apart yet.
+ */
 export const windowOg = handler<ProjectParams & { id: string }>(async (request, { org, project, id }, { reads }) => {
   const read = reads(request)
   const [state, window] = await Promise.all([read.projectStatus(org, project), read.window(id)])

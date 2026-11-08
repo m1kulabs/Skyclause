@@ -1,7 +1,10 @@
 import { layoutStrip, stripSvg } from '@skyclause/elements'
 import { describe, expect, test } from 'vitest'
-import { projectCard } from '../../features/share-previews/card'
-import { splitStrip } from '../../features/share-previews/og-card'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { createElement } from 'react'
+import { callCard, projectCard } from '../../features/share-previews/card'
+import { CardView, splitStrip } from '../../features/share-previews/og-card'
+import { ReadFailed } from '../../features/share-previews/reads'
 import { callOg, projectOg, windowOg } from '../../features/share-previews/routes'
 import type { PreviewReads } from '../../features/share-previews/reads'
 import { call, pack, publicWindow, rain60, readsOf, status } from './doubles'
@@ -106,6 +109,62 @@ describe('WEB-4: Open Graph cards', () => {
     )
     expect(new Set(answers).size).toBe(1)
     expect(responses[0]!.status).toBe(404)
+  })
+})
+
+describe('what a card draws', () => {
+  const text = (card: Parameters<typeof CardView>[0]['card']) =>
+    renderToStaticMarkup(createElement(CardView, { card }))
+      .replace(/<[^>]+>/g, '|')
+      .split('|')
+      .filter(Boolean)
+
+  test('a project card sets its label, mode, window, strip labels and capture time', () => {
+    const card = projectCard(status({ packs: [inForce], strip }), call(), NOW)
+    expect(text(card)).toEqual(
+      expect.arrayContaining([
+        'Skyclause · bukit-jalil',
+        'Commute disruption',
+        '15:30 MYT – 17:00 MYT · Monday 2 November 2026',
+        'Lebat 31 mm',
+        'Data captured',
+        '2 November 2026, 15:00 MYT'
+      ])
+    )
+  })
+
+  test('a call card adds its approval time; with no strip its band prints the window range', () => {
+    expect(text(callCard(call()))).toEqual(
+      expect.arrayContaining([
+        'Skyclause',
+        'Commute disruption',
+        '15:30 MYT – 17:00 MYT · Monday 2 November 2026',
+        'Approved 15:12 MYT',
+        '15:30 MYT – 17:00 MYT',
+        '2 November 2026, 15:00 MYT'
+      ])
+    )
+  })
+})
+
+describe('a failed read', () => {
+  test('passes on as it came, Retry-After included, never cached', async () => {
+    const limited = new Response('{"status":429}', {
+      status: 429,
+      headers: { 'Content-Type': 'application/problem+json', 'Retry-After': '17', 'Cache-Control': 'public' }
+    })
+    const failing: PreviewReads = {
+      projectStatus: async () => {
+        throw new ReadFailed(limited)
+      },
+      call: async () => null,
+      window: async () => null
+    }
+    const response = await projectOg(new Request(`${ORIGIN}/p/apu/bukit-jalil/og.png`), project, deps(failing))
+    expect(response.status).toBe(429)
+    expect(response.headers.get('Retry-After')).toBe('17')
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(await response.text()).toBe('{"status":429}')
   })
 })
 

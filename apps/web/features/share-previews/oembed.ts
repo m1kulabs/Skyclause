@@ -1,13 +1,13 @@
 import { problemType } from '@skyclause/api'
 import { notBuilt, slugSchema } from '@skyclause/contracts'
 import { t } from './i18n'
+import { CARD_SIZE } from './og-card'
 import { notFound, problem } from './problems'
 import type { PreviewReads, PublicCall } from './reads'
 
 // WEB-5, TRD "Open Graph and oEmbed" and DESIGN "oEmbed card": https://oembed.com/ 1.0, `rich`, JSON only.
 
 const FRAME = { width: 480, height: 200 }
-const CARD = { width: 1200, height: 630 }
 const CACHE_AGE = 60
 
 interface Origins {
@@ -107,10 +107,15 @@ export async function oembedAnswer(request: Request, reads: PreviewReads): Promi
       cache_age: CACHE_AGE,
       width,
       height,
-      html: `<iframe src="${origins.embed}/${org}/${project}" width="${width}" height="${height}" title="${escapeAttribute(title)}" style="border:0" loading="lazy"></iframe>`,
-      thumbnail_url: `${origins.marketing}/p/${org}/${project}/og.png`,
-      thumbnail_width: CARD.width,
-      thumbnail_height: CARD.height
+      html: `<iframe src="${origins.embed}/${org}/${project}" width="${width}" height="${height}" title="${escapeAttribute(title)}" sandbox="allow-scripts allow-popups" style="border:0" loading="lazy"></iframe>`,
+      // oEmbed 1.0 §2.3.4: the thumbnail must respect maxwidth and maxheight, so a smaller limit leaves it out.
+      ...(CARD_SIZE.width <= maxWidth && CARD_SIZE.height <= maxHeight
+        ? {
+            thumbnail_url: `${origins.marketing}/p/${org}/${project}/og.png`,
+            thumbnail_width: CARD_SIZE.width,
+            thumbnail_height: CARD_SIZE.height
+          }
+        : {})
     },
     { headers: { 'Cache-Control': `public, max-age=${CACHE_AGE}` } }
   )

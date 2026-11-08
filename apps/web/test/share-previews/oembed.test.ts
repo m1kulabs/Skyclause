@@ -60,7 +60,7 @@ describe('WEB-5: /oembed', () => {
       cache_age: 60,
       width: 480,
       height: 200,
-      html: `<iframe src="${SINGLE}/embed/apu/bukit-jalil" width="480" height="200" title="Skyclause · bukit-jalil" style="border:0" loading="lazy"></iframe>`,
+      html: `<iframe src="${SINGLE}/embed/apu/bukit-jalil" width="480" height="200" title="Skyclause · bukit-jalil" sandbox="allow-scripts allow-popups" style="border:0" loading="lazy"></iframe>`,
       thumbnail_url: `${SINGLE}/p/apu/bukit-jalil/og.png`,
       thumbnail_width: 1200,
       thumbnail_height: 630
@@ -84,16 +84,19 @@ describe('WEB-5: /oembed', () => {
     expect(body.provider_url).toBe('https://skyclause.m1ku.tech/')
   })
 
-  test('maxwidth=320 scales the iframe down, keeping its proportions; larger limits leave it at 480×200', async () => {
+  test('maxwidth=320 scales the iframe down and drops the 1200×630 thumbnail, which must respect the limits', async () => {
     const small = await (await ask({ url: `${SINGLE}/p/apu/bukit-jalil`, maxwidth: '320' })).json()
     expect([small.width, small.height]).toEqual([320, 133])
     expect(small.html).toContain('width="320" height="133"')
+    expectRich(small)
+    expect(small).not.toHaveProperty('thumbnail_url')
 
     const short = await (await ask({ url: `${SINGLE}/p/apu/bukit-jalil`, maxwidth: '320', maxheight: '100' })).json()
     expect([short.width, short.height]).toEqual([240, 100])
 
-    const roomy = await (await ask({ url: `${SINGLE}/p/apu/bukit-jalil`, maxwidth: '1000', maxheight: '900' })).json()
+    const roomy = await (await ask({ url: `${SINGLE}/p/apu/bukit-jalil`, maxwidth: '1200', maxheight: '630' })).json()
     expect([roomy.width, roomy.height]).toEqual([480, 200])
+    expect([roomy.thumbnail_width, roomy.thumbnail_height]).toEqual([1200, 630])
   })
 
   test('404 for an unknown URL, and the same 404 for a private or missing project', async () => {
