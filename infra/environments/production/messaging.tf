@@ -1,5 +1,5 @@
-# Pub/Sub topics, Cloud Tasks queues and the minute tick (#79 §5). Every call to the worker
-# carries an OIDC token for the invoker account with audience WORKER_URL.
+# Pub/Sub topics, Cloud Tasks queues, the minute tick and the 15-minute batch (#79 §5, D45). Every
+# call to the worker carries an OIDC token for the invoker account with audience WORKER_URL.
 
 module "topic" {
   source   = "../../modules/topic"
@@ -40,6 +40,23 @@ resource "google_cloud_scheduler_job" "ticks_minute" {
   http_target {
     http_method = "POST"
     uri         = "${local.worker_url}/ticks/minute"
+
+    oidc_token {
+      service_account_email = local.sa.invoker
+      audience              = local.worker_url
+    }
+  }
+}
+
+resource "google_cloud_scheduler_job" "ticks_batch" {
+  name      = "ticks-batch"
+  region    = local.region
+  schedule  = "*/15 * * * *"
+  time_zone = "Etc/UTC"
+
+  http_target {
+    http_method = "POST"
+    uri         = "${local.worker_url}/ticks/batch"
 
     oidc_token {
       service_account_email = local.sa.invoker

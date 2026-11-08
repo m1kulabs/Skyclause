@@ -164,6 +164,62 @@ describe('worker minute tick', () => {
   })
 })
 
+describe('worker 15-minute batch', () => {
+  test('runs every batch handler at the same instant', async () => {
+    const ran: Array<[string, Date]> = []
+    const app = server(
+      { owner: 'a-observability', batch: { sli: async (now) => void ran.push(['sli', now]) } },
+      { owner: 'b-auditor', batch: { auditor: async (now) => void ran.push(['auditor', now]) } }
+    )
+    const res = await post(app, '/ticks/batch', { bearer: await token() })
+    expect(res.status).toBe(204)
+    expect(ran.map(([name]) => name).sort()).toEqual(['auditor', 'sli'])
+    expect(ran[0]?.[1]).toBe(ran[1]?.[1])
+  })
+
+  test('the batch needs a valid token from the invoker, and runs nothing without one', async () => {
+    const ran: string[] = []
+    const app = server({ owner: 'a-observability', batch: { sli: async () => void ran.push('sli') } })
+    expect((await post(app, '/ticks/batch')).status).toBe(401)
+    expect(
+      (await post(app, '/ticks/batch', { bearer: await token({ aud: 'https://elsewhere.example' }) })).status
+    ).toBe(401)
+    const stranger = await token({ email: 'someone-else@skyclause.iam.gserviceaccount.com' })
+    expect((await post(app, '/ticks/batch', { bearer: stranger })).status).toBe(403)
+    expect(ran).toEqual([])
+  })
+
+  test('one failing batch handler does not stop the others, and the batch names it', async () => {
+    const ran: string[] = []
+    const app = server(
+      { owner: 'a-observability', batch: { sli: () => Promise.reject(new Error('database asleep')) } },
+      { owner: 'b-auditor', batch: { auditor: async () => void ran.push('auditor') } }
+    )
+    const res = await post(app, '/ticks/batch', { bearer: await token() })
+    expect(ran).toEqual(['auditor'])
+    expect(res.status).toBe(500)
+    expect(await res.json()).toEqual({ failed: ['sli'] })
+  })
+
+  test('a batch with no handlers is 204', async () => {
+    expect((await post(server(), '/ticks/batch', { bearer: await token() })).status).toBe(204)
+  })
+
+  test('the minute tick runs no batch handler, and the batch no tick handler', async () => {
+    const ran: string[] = []
+    const app = server({
+      owner: 'test',
+      ticks: { evaluator: async () => void ran.push('tick') },
+      batch: { sli: async () => void ran.push('batch') }
+    })
+    const bearer = await token()
+    await post(app, '/ticks/minute', { bearer })
+    expect(ran).toEqual(['tick'])
+    await post(app, '/ticks/batch', { bearer })
+    expect(ran).toEqual(['tick', 'batch'])
+  })
+})
+
 describe('worker routes', () => {
   test('GET /health is 200 without a token', async () => {
     expect((await server().request('/health')).status).toBe(200)
@@ -193,6 +249,15 @@ describe('worker registry', () => {
         { owner: 'b', topics: { 'readings-updated': async () => {} } }
       ])
     ).toThrow(/readings-updated.*a.*b/)
+  })
+
+  test('a batch handler registered by two owners is refused, naming both', () => {
+    expect(() =>
+      defineRegistry([
+        { owner: 'a-observability', batch: { sli: async () => {} } },
+        { owner: 'b-auditor', batch: { sli: async () => {} } }
+      ])
+    ).toThrow('batch sli is registered by a-observability and b-auditor')
   })
 
   test('collects onEvent consumers for the domain-events dispatch', () => {

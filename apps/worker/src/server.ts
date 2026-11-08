@@ -26,6 +26,8 @@ export type QueueHandler = (task: Task) => Promise<void>
 
 export type TickHandler = (now: Date) => Promise<void>
 
+export type BatchHandler = (now: Date) => Promise<void>
+
 export type RouteHandler = (request: Request, params: Record<string, string>) => Promise<Response>
 
 export type JobHandler = (args: string[]) => Promise<void>
@@ -46,6 +48,8 @@ export interface WorkerPart {
   queues?: Record<string, QueueHandler>
   /** Run on every Cloud Scheduler `POST /ticks/minute`, keyed by a name for logs. */
   ticks?: Record<string, TickHandler>
+  /** Run on every Cloud Scheduler `POST /ticks/batch`, every 15 minutes (D45), keyed by a name for logs. */
+  batch?: Record<string, BatchHandler>
   /** `POST /internal<path>`, with Hono path params such as `/ai-keys/:id/test`. */
   internal?: Record<string, RouteHandler>
   /** `POST /ses<path>`, without Google OIDC: the handler checks the SNS signature. */
@@ -55,14 +59,23 @@ export interface WorkerPart {
   events?: EventConsumer[]
 }
 
-type KeyedKind = 'topics' | 'queues' | 'ticks' | 'internal' | 'ses' | 'jobs'
+type KeyedKind = 'topics' | 'queues' | 'ticks' | 'batch' | 'internal' | 'ses' | 'jobs'
 
 export type Registry = { [K in KeyedKind]: NonNullable<WorkerPart[K]> } & { events: EventConsumer[] }
 
-const KEYED_KINDS: KeyedKind[] = ['topics', 'queues', 'ticks', 'internal', 'ses', 'jobs']
+const KEYED_KINDS: KeyedKind[] = ['topics', 'queues', 'ticks', 'batch', 'internal', 'ses', 'jobs']
 
 export function defineRegistry(parts: WorkerPart[]): Registry {
-  const registry: Registry = { topics: {}, queues: {}, ticks: {}, internal: {}, ses: {}, jobs: {}, events: [] }
+  const registry: Registry = {
+    topics: {},
+    queues: {},
+    ticks: {},
+    batch: {},
+    internal: {},
+    ses: {},
+    jobs: {},
+    events: []
+  }
   const owners = new Map<string, string>()
   const claim = (key: string, owner: string) => {
     const previous = owners.get(key)
@@ -127,6 +140,18 @@ function decodePush(text: string): PushMessage {
   }
 }
 
+/** Runs every handler at `now` side by side, so one failure stops none of the others; returns the failed names. */
+async function runAll(label: string, handlers: Record<string, TickHandler | BatchHandler>, now: Date) {
+  const entries = Object.entries(handlers)
+  const results = await Promise.allSettled(entries.map(([, handler]) => handler(now)))
+  return entries.flatMap(([name], i) => {
+    const result = results[i]
+    if (result?.status !== 'rejected') return []
+    log('ERROR', `${label} handler failed`, { [label]: name, error: String(result.reason) })
+    return [name]
+  })
+}
+
 const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com']
 
 export function createServer(options: ServerOptions) {
@@ -165,7 +190,7 @@ export function createServer(options: ServerOptions) {
     await next()
   }
 
-  for (const path of ['/pubsub/*', '/tasks/*', '/ticks/minute', '/internal/*']) app.use(path, googleOidc)
+  for (const path of ['/pubsub/*', '/tasks/*', '/ticks/*', '/internal/*']) app.use(path, googleOidc)
 
   app.post('/pubsub/:topic', async (c) => {
     const handler = registry.topics[c.req.param('topic')]
@@ -200,15 +225,13 @@ export function createServer(options: ServerOptions) {
 
   app.post('/ticks/minute', async (c) => {
     ;(options.heartbeat ?? logHeartbeat)('minute_tick')
-    const now = new Date()
-    const ticks = Object.entries(registry.ticks)
-    const results = await Promise.allSettled(ticks.map(([, tick]) => tick(now)))
-    const failed = ticks.flatMap(([name], i) => {
-      const result = results[i]
-      if (result?.status !== 'rejected') return []
-      log('ERROR', 'tick handler failed', { tick: name, error: String(result.reason) })
-      return [name]
-    })
+    const failed = await runAll('tick', registry.ticks, new Date())
+    return failed.length ? c.json({ failed }, 500) : c.body(null, 204)
+  })
+
+  // D45: the route itself never reads or writes Postgres; only its handlers do.
+  app.post('/ticks/batch', async (c) => {
+    const failed = await runAll('batch', registry.batch, new Date())
     return failed.length ? c.json({ failed }, 500) : c.body(null, 204)
   })
 
