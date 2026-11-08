@@ -21559,7 +21559,7 @@
       "file_type": "code",
       "norm_label": "runclauseedithandler()",
       "source_file": "pilot/apps-script/src/sky-runtime.ts",
-      "source_location": "L369"
+      "source_location": "L373"
     },
     {
       "id": "pilot_apps_script_src_sky_runtime_runskyclausetick",
@@ -21751,7 +21751,7 @@
       "file_type": "code",
       "norm_label": "saveeditor()",
       "source_file": "pilot/apps-script/src/sky-runtime.test.ts",
-      "source_location": "L721"
+      "source_location": "L750"
     },
     {
       "id": "pilot_apps_script_src_sky_runtime_test_sha256",
@@ -21775,7 +21775,7 @@
       "file_type": "code",
       "norm_label": "withlock()",
       "source_file": "pilot/apps-script/src/sky-runtime.test.ts",
-      "source_location": "L717"
+      "source_location": "L746"
     },
     {
       "id": "pilot_apps_script_src_sky_sweep_integration_test_appendrows",
@@ -119647,7 +119647,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/sky-runtime.ts",
-      "source_location": "L378",
+      "source_location": "L382",
       "weight": 1.0
     },
     {
@@ -119659,7 +119659,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/sky-runtime.ts",
-      "source_location": "L379",
+      "source_location": "L383",
       "weight": 1.0
     },
     {
@@ -119671,7 +119671,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/sky-runtime.ts",
-      "source_location": "L380",
+      "source_location": "L384",
       "weight": 1.0
     },
     {
@@ -119899,7 +119899,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/sky-runtime.ts",
-      "source_location": "L353",
+      "source_location": "L357",
       "weight": 1.0
     },
     {
@@ -263803,7 +263803,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/sky-runtime.ts",
-      "source_location": "L369",
+      "source_location": "L373",
       "weight": 1.0
     },
     {
@@ -264045,7 +264045,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/sky-runtime.test.ts",
-      "source_location": "L717",
+      "source_location": "L746",
       "weight": 1.0
     },
     {
@@ -264056,7 +264056,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/sky-runtime.test.ts",
-      "source_location": "L762",
+      "source_location": "L791",
       "weight": 1.0
     },
     {
@@ -276472,5 +276472,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "20f3cb37b180a2f4270b975c6d26e242f679a149"
+  "built_at_commit": "9de263dbf42b7aa43eb02b9a7286f826ef6f5512"
 }
