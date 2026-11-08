@@ -15,6 +15,7 @@ import type {
 } from './evidence-projections.ts'
 import { BOUND_APIMS_STATION_IDS } from './indicators.ts'
 import { JPS_METRIC, JPS_SOURCE_ID, JPS_SOURCE_KIND } from './jps.ts'
+import { latestMetWarningRows, metWarningInForce } from './met-warning.ts'
 
 export interface EvidenceHeader {
   kind: EvidenceKind
@@ -152,25 +153,25 @@ function readingSeries(data: EvidencePackData, start: number, end: number, cutof
   return series
 }
 function selectWarnings(data: EvidencePackData, start: number, end: number, cutoff: number): EvidenceWarning[] {
-  const latest = new Map<string, EvidenceWarning>()
-  for (const row of data.warnings) {
-    if (!row.warning_key || !available(row.first_seen_at, cutoff) || !available(row.issued, cutoff)) continue
-    const current = latest.get(row.warning_key)
-    if (
-      !current ||
-      (ms(row.issued) || 0) > (ms(current.issued) || 0) ||
-      ((ms(row.issued) || 0) === (ms(current.issued) || 0) &&
-        (ms(row.first_seen_at) || 0) >= (ms(current.first_seen_at) || 0))
-    )
-      latest.set(row.warning_key, row)
-  }
-  return [...latest.values()].filter(
-    (r) =>
-      r.names_kl &&
-      !/no advisory|strong winds and rough seas/i.test(r.title_en ?? '') &&
-      !/for malaysian waters/i.test(r.text_en ?? '') &&
-      overlaps(r.valid_from, r.valid_to, start, end)
+  const eligible = data.warnings.filter((row) => available(row.first_seen_at, cutoff) && available(row.issued, cutoff))
+  // Direct projections retain Date.parse compatibility without changing output rows.
+  const latest = latestMetWarningRows(
+    eligible.map((row) => ({
+      row,
+      warning_key: row.warning_key,
+      issued: new Date(ms(row.issued)),
+      first_seen_at: new Date(ms(row.first_seen_at))
+    }))
   )
+  return latest
+    .map(({ row }) => row)
+    .filter(
+      (r) =>
+        r.names_kl &&
+        !/no advisory|strong winds and rough seas/i.test(r.title_en ?? '') &&
+        !/for malaysian waters/i.test(r.text_en ?? '') &&
+        metWarningInForce({ valid_from: new Date(ms(r.valid_from)), valid_to: new Date(ms(r.valid_to)) }, start, end)
+    )
 }
 
 export function buildEvidencePack(

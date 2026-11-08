@@ -770,6 +770,122 @@ describe('Task 2 #54: computeSkySnapshot pure indicator and source-state core', 
     expect(findNow(withKl, 'w-2100')['w.met_warning_keys']).toBe(JSON.stringify(['met:kl:2026-11-05T21:05:00+08:00']))
   })
 
+  describe('current MET warning revisions', () => {
+    const warning: Row<'warnings'> = {
+      warning_key: '2026-11-05T21:00:00+08:00·Thunderstorms Warning·2026-11-05T20:00:00+08:00',
+      issued: '2026-11-05T21:00:00+08:00',
+      first_seen_at: '2026-11-05T21:01:00+08:00',
+      valid_from: '2026-11-05T20:00:00+08:00',
+      valid_to: '2026-11-05T22:00:00+08:00',
+      title_en: 'Thunderstorms Warning',
+      text_en: 'Kuala Lumpur',
+      names_kl: true
+    }
+    function current(
+      warnings: Row<'warnings'>[],
+      polls: Row<'polls'>[] = [
+        {
+          poll_id: 'test-only-met-poll',
+          source_kind: 'met_warning',
+          source_id: 'met_warning',
+          received_at: '2026-11-05T21:13:00+08:00',
+          outcome: 'ok'
+        }
+      ]
+    ) {
+      return findNow(
+        computeSkySnapshot(
+          makeInput({
+            tEval: '2026-11-05T21:13:00+08:00',
+            warnings,
+            polls,
+            windows: [
+              {
+                window_id: 'test-only-warning-window',
+                date: '2026-11-05',
+                start_myt: '21:00',
+                end_myt: '22:00',
+                status: 'active'
+              }
+            ]
+          })
+        ),
+        'test-only-warning-window'
+      )
+    }
+
+    test.each([
+      { names_kl: false },
+      { valid_to: '2026-11-05T20:59:00+08:00' },
+      { title_en: 'No Advisory' },
+      { title_en: 'Strong Winds and Rough Seas Warning' },
+      { text_en: 'FOR MALAYSIAN WATERS' }
+    ])('newest eligible revision removes the old active warning: %j', (change) => {
+      const newer = { ...warning, ...change, first_seen_at: '2026-11-05T21:02:00+08:00' }
+      for (const rows of [
+        [warning, newer],
+        [newer, warning]
+      ]) {
+        const now = current(rows)
+        expect(now['w.met_kl_warning_in_force']).toBe(false)
+        expect(now['w.met_warning_keys']).toBe('[]')
+      }
+    })
+
+    test('minute availability precedes latest selection, including receipt seconds in the evaluation minute', () => {
+      const nextMinute = { ...warning, names_kl: false, first_seen_at: '2026-11-05T21:14:00+08:00' }
+      expect(current([warning, nextMinute])['w.met_kl_warning_in_force']).toBe(true)
+      const sameMinute = { ...nextMinute, first_seen_at: '2026-11-05T21:13:59+08:00' }
+      expect(current([warning, sameMinute])['w.met_kl_warning_in_force']).toBe(false)
+    })
+
+    test('A to B to A uses the last receipt rather than historical content or input sorting', () => {
+      const removed = { ...warning, names_kl: false, first_seen_at: '2026-11-05T21:02:00+08:00' }
+      const restored = { ...warning, first_seen_at: '2026-11-05T21:03:00+08:00' }
+      const now = current([restored, warning, removed])
+      expect(now['w.met_kl_warning_in_force']).toBe(true)
+      expect(now['w.met_warning_keys']).toBe(JSON.stringify([warning.warning_key]))
+    })
+
+    test('equal issued and receipt instants use the later physical revision', () => {
+      const removed = { ...warning, names_kl: false }
+      expect(current([warning, removed])['w.met_kl_warning_in_force']).toBe(false)
+      expect(current([removed, warning])['w.met_kl_warning_in_force']).toBe(true)
+    })
+
+    test('issued precedence does not add an indicator issued-availability cutoff', () => {
+      const newerIssue = {
+        ...warning,
+        issued: '2026-11-05T21:14:00+08:00',
+        names_kl: false
+      }
+      const laterReceipt = { ...warning, first_seen_at: '2026-11-05T21:12:00+08:00' }
+      expect(current([newerIssue, laterReceipt])['w.met_kl_warning_in_force']).toBe(false)
+    })
+
+    test('native and padded metadata retain indicator timestamp interpretation', () => {
+      const base = {
+        ...warning,
+        issued: new Date('2026-11-05T21:00:00+08:00'),
+        first_seen_at: new Date('2026-11-05T21:01:00+08:00')
+      }
+      const removed = {
+        ...warning,
+        issued: '2026-11-05T13:00:00Z ',
+        first_seen_at: '2026-11-05T13:02:00Z ',
+        names_kl: false
+      }
+      expect(current([base])['w.met_kl_warning_in_force']).toBe(true)
+      expect(current([base, removed])['w.met_kl_warning_in_force']).toBe(false)
+    })
+
+    test('unknown MET state keeps warning indicators blank', () => {
+      const now = current([warning], [])
+      expect(now['w.met_kl_warning_in_force']).toBe('')
+      expect(now['w.met_warning_keys']).toBe('')
+    })
+  })
+
   test('camera daylight/probation/last3frames rain sum, forecast today newest vs blank, and schema row compatibility', () => {
     const camFrames: Row<'readings'>[] = [
       { t: '2026-11-02T14:45:00+08:00', v: 0.42 },

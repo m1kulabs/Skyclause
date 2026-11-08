@@ -1,4 +1,5 @@
 import { toMytIso } from '../../shared/time.ts'
+import { latestMetWarningRows, metWarningInForce } from './met-warning.ts'
 import type { Cell, Row } from './schema.ts'
 
 export const GAUGE_SOURCE_ID = '0232901RF'
@@ -877,7 +878,20 @@ function computeWindowWarningIndicators(
   const matchingKeys: string[] = []
   const seenKeys = new Set<string>()
 
-  for (const row of warnings) {
+  const eligible = warnings.filter((row) => {
+    const firstSeenMs = parseTimestampMs(row.first_seen_at)
+    return firstSeenMs === null || floorToMinuteMs(firstSeenMs) <= evalMinuteMs
+  })
+  // Preserve caller timestamp interpretation while selecting the original rows.
+  const latest = latestMetWarningRows(
+    eligible.map((row) => ({
+      row,
+      warning_key: row.warning_key,
+      issued: normalizeIsoCell(row.issued),
+      first_seen_at: normalizeIsoCell(row.first_seen_at)
+    }))
+  )
+  for (const { row } of latest) {
     if (row.names_kl !== true) continue
     const titleEn = String(row.title_en ?? '')
     const textEn = String(row.text_en ?? '')
@@ -886,15 +900,8 @@ function computeWindowWarningIndicators(
 
     const validFromIso = normalizeIsoCell(row.valid_from)
     const validToIso = normalizeIsoCell(row.valid_to)
-    if (!validFromIso || !validToIso) continue
-    const validFromMs = Date.parse(validFromIso)
-    const validToMs = Date.parse(validToIso)
-    if (!Number.isFinite(validFromMs) || !Number.isFinite(validToMs) || validFromMs > validToMs) continue
 
-    const firstSeenMs = parseTimestampMs(row.first_seen_at)
-    if (firstSeenMs !== null && floorToMinuteMs(firstSeenMs) > evalMinuteMs) continue
-
-    if (validFromMs <= windowScope.endMs && validToMs >= windowScope.startMs) {
+    if (metWarningInForce({ valid_from: validFromIso, valid_to: validToIso }, windowScope.startMs, windowScope.endMs)) {
       const key = String(row.warning_key ?? '').trim()
       if (key && !seenKeys.has(key)) {
         seenKeys.add(key)

@@ -1,0 +1,53 @@
+{
+  "url": "https://api.data.gov.my/weather/forecast/?contains=Kuala%20Lumpur@location__location_name",
+  "capturedAt": "2026-11-08T01:44:13.158881+00:00",
+  "status": 200,
+  "contentType": "application/json",
+  "sha256": "1a4ec347805b28a3a5492513e922bd91fc177b3b8715c2efcab355d766487877",
+  "rows": 21,
+  "locationIds": [
+    "Ds058",
+    "St009",
+    "Tn079"
+  ],
+  "dates": [
+    "2026-11-14",
+    "2026-11-13",
+    "2026-11-12",
+    "2026-11-11",
+    "2026-11-10",
+    "2026-11-09",
+    "2026-11-08",
+    "2026-11-14",
+    "2026-11-13",
+    "2026-11-12",
+    "2026-11-11",
+    "2026-11-10",
+    "2026-11-09",
+    "2026-11-08",
+    "2026-11-14",
+    "2026-11-13",
+    "2026-11-12",
+    "2026-11-11",
+    "2026-11-10",
+    "2026-11-09",
+    "2026-11-08"
+  ],
+  "firstRecord": {
+    "location": {
+      "location_id": "Ds058",
+      "location_name": "Kuala Lumpur"
+    },
+    "date": "2026-11-14",
+    "morning_forecast": "Tiada Hujan",
+    "afternoon_forecast": "Ribut petir di beberapa tempat",
+    "night_forecast": "Hujan di beberapa tempat",
+    "summary_forecast": "Ribut petir di beberapa tempat",
+    "summary_when": "Petang dan Malam",
+    "min_temp": 23,
+    "max_temp": 33
+  },
+  "bytes": 6653,
+  "licence": "CC BY 4.0",
+  "attribution": "MET Malaysia via data.gov.my"
+}

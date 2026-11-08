@@ -7,6 +7,8 @@ export const triggerRegistry: TriggerEntry[] = [
   { kind: 'time', handler: 'pollEvidenceInbox', every: { minutes: 1 } },
   { kind: 'time', handler: 'pollJps', every: { minutes: 5 } },
   { kind: 'time', handler: 'pollApims', every: { minutes: 15 } },
+  { kind: 'time', handler: 'pollMetWarnings', every: { minutes: 10 } },
+  { kind: 'time', handler: 'pollMetForecast', every: { hours: 6 } },
   { kind: 'time', handler: 'retainCameraFrames', every: { atHour: 3, nearMinute: 0 } },
   { kind: 'on_form_submit', handler: 'onWindowFormSubmit', spreadsheet: 'RESPONSES_SHEET_ID' },
   { kind: 'time', handler: 'sweep', every: { minutes: 5 } },

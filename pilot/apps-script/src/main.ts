@@ -4,6 +4,7 @@ import { toMytIso } from '../../shared/time.ts'
 import { defaultSkyClauseRows } from './clauses.ts'
 import {
   apimsPollPorts,
+  metPollPorts,
   appendReadings,
   appendRows,
   cameraRetentionStore,
@@ -29,6 +30,8 @@ import {
   withLock,
   workbooks
 } from './gas.ts'
+import { runMetHandler, verifyMetWarningText as verifyStoredMetWarningText } from './met.ts'
+import type { MetKind } from './met-parser.ts'
 import { runApimsHandler } from './apims.ts'
 import { buildHealth } from './health.ts'
 import { runEvidenceInbox } from './evidence.ts'
@@ -130,6 +133,37 @@ export function pollApims(): void {
       pendingHistory: report.pendingHistory
     })
   )
+}
+
+function metPorts() {
+  const sheetId = getProperty('SHEET_ID')
+  if (!sheetId?.trim()) throw new Error('SHEET_ID is not set; run setup()')
+  const rawFolderId = getProperty('RAW_FOLDER_ID')
+  if (!rawFolderId?.trim()) throw new Error('RAW_FOLDER_ID is not set; run setup()')
+  return metPollPorts(sheetId, rawFolderId, executeEvaluationTick)
+}
+function pollMet(kind: MetKind): void {
+  const report = runMetHandler({ kind, withLock, ports: metPorts() })
+  console.log(
+    JSON.stringify({
+      polls: 1 + report.recoveredPollIds.length,
+      outcome: report.poll.outcome,
+      appendedRows: report.appendedRows,
+      touchedWarnings: report.touchedWarnings,
+      recoveredPolls: report.recoveredPollIds.length,
+      rawCreated: report.rawCreated
+    })
+  )
+}
+export function pollMetWarnings(): void {
+  pollMet('warning')
+}
+export function pollMetForecast(): void {
+  pollMet('forecast')
+}
+export function verifyMetWarningText(): void {
+  const ports = metPorts()
+  withLock(() => console.log(JSON.stringify(verifyStoredMetWarningText(ports))))
 }
 
 // The Crowd D+1 grader (#70), every 30 minutes: grades every night from 3

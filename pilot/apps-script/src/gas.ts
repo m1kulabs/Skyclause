@@ -1,5 +1,7 @@
 // Apps Script adapters for the ports the pure modules take. Tests use doubles instead of these.
 import { toMytIso } from '../../shared/time.ts'
+import { metStoragePorts } from './met-storage.ts'
+import type { MetPollPorts } from './met.ts'
 import type { EvidenceInboxPorts } from './evidence.ts'
 import { evidenceGmailPorts } from './evidence-gmail.ts'
 import { evidenceStoragePorts } from './evidence-storage.ts'
@@ -1161,4 +1163,18 @@ export function apimsPollPorts(sheetId: string, evaluate: () => void): ApimsPoll
     saveBackfillState: (state) => PropertiesService.getScriptProperties().setProperty(key, JSON.stringify(state)),
     evaluate
   }
+}
+
+export function metPollPorts(sheetId: string, rawFolderId: string, evaluate: () => void): MetPollPorts {
+  return metStoragePorts(
+    sheetId,
+    rawFolderId,
+    {
+      read: readColumns,
+      append: appendRows,
+      newPollId: () => newUuidV7(),
+      normalizeDate: normalizeDateCell
+    },
+    evaluate
+  )
 }

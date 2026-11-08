@@ -43,8 +43,37 @@ describe('the Apps Script bundle in dist/', () => {
 
   test('declares the entry points as top-level functions, including every registry handler', () => {
     const declared = [...code.matchAll(/^function (\w+)\(/gm)].map((match) => match[1])
-    expect(declared).toEqual(expect.arrayContaining(['doGet', 'doPost', 'setup', 'runEvaluationTick', 'pollApims']))
+    expect(declared).toEqual(
+      expect.arrayContaining([
+        'doGet',
+        'doPost',
+        'setup',
+        'runEvaluationTick',
+        'pollApims',
+        'pollMetWarnings',
+        'pollMetForecast',
+        'verifyMetWarningText'
+      ])
+    )
     for (const entry of triggerRegistry) expect(declared).toContain(entry.handler)
+  })
+
+  test('declares parameterless MET source exports and ships no runtime fixture or Node imports', () => {
+    const source = ts.createSourceFile(
+      'main.ts',
+      readFileSync(join(import.meta.dir, 'src/main.ts'), 'utf8'),
+      ts.ScriptTarget.Latest,
+      true
+    )
+    for (const name of ['pollMetWarnings', 'pollMetForecast', 'verifyMetWarningText']) {
+      const declaration = source.statements.find(
+        (node) => ts.isFunctionDeclaration(node) && node.name?.text === name
+      ) as ts.FunctionDeclaration
+      expect(declaration).toBeDefined()
+      expect(declaration.parameters.length).toBe(0)
+      expect(declaration.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword)).toBe(true)
+    }
+    expect(code).not.toMatch(/node:|readFileSync|weather-warning-20261105|weather-forecast-kl-20261108/)
   })
 
   test('avoids logical assignment syntax rejected by the native Apps Script parser', () => {
