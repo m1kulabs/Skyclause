@@ -1,4 +1,4 @@
-import type { TxHandle } from '@skyclause/contracts'
+import type { RegisterAuditCheck, TxHandle } from '@skyclause/contracts'
 import { expect, test } from 'vitest'
 import { modelRetirement } from '../src/agent-evals/retirement'
 
@@ -30,4 +30,24 @@ test('counts days by the MYT date: 16:30 UTC on 2 August is 3 August in Kuala Lu
 
 test('keeps the same key open past the floor, so the auditor never recovers it early', async () => {
   expect(await modelRetirement.run(tx, '2027-09-10T00:00:00Z')).toEqual([finding])
+})
+
+test('registered with the auditor, staff hear once when it opens and nothing more through the floor', async () => {
+  const checks: Array<Parameters<RegisterAuditCheck>[0]> = []
+  const registerAuditCheck: RegisterAuditCheck = (check) => void checks.push(check)
+  registerAuditCheck(modelRetirement)
+  // An auditor double (#132, spec §1): a platform check runs once per tick and emails once per opened key and once
+  // per recovery. Here one tick a day at 09:00 MYT, from 1 August (32 days out) to 10 September 2027.
+  const open = new Set<string>()
+  const emails: string[] = []
+  for (let day = 1; day <= 41; day++) {
+    const now = new Date(Date.UTC(2027, 7, day, 1)).toISOString()
+    const keys = new Set((await checks[0]!.run(tx, now)).map((f) => f.key))
+    for (const key of keys) if (!open.has(key)) emails.push(`opened ${key} on ${now.slice(0, 10)}`)
+    for (const key of open) if (!keys.has(key)) emails.push(`recovered ${key} on ${now.slice(0, 10)}`)
+    open.clear()
+    for (const key of keys) open.add(key)
+  }
+  expect(checks.map((c) => [c.name, c.scope])).toEqual([['model_retirement', 'platform']])
+  expect(emails).toEqual(['opened model_retirement:gemini-3.8-flash on 2027-08-03'])
 })
