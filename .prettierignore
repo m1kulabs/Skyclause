@@ -6,3 +6,5 @@ packages/elements/test/fixtures/rainfall-graph-*.json
 # drizzle-kit writes and rereads these; never hand-edit them (#79 §3).
 packages/db/migrations/meta/
 packages/api/openapi.json
+packages/agent/test/fixtures/rainfall-graph-*.json
+packages/agent/test/fixtures/weather-warning-*.json
