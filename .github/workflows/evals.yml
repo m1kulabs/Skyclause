@@ -1,0 +1,39 @@
+# The decision agent's eval suite (#149) on live Vertex, for pull requests that touch packages/agent and on dispatch.
+# No key or secret: the job signs in through #89's eval pool, whose account holds only roles/aiplatform.user, and the
+# runner stops before its cost estimate passes the EVAL_MAX_USD repository variable. The report goes to the summary.
+name: evals
+
+on:
+  pull_request:
+    paths:
+      - packages/agent/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evals-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  agent:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: projects/413187272599/locations/global/workloadIdentityPools/github-eval/providers/skyclause-pr
+          service_account: skyclause-eval@skyclause.iam.gserviceaccount.com
+      - run: bun packages/agent/test/evals/run.ts
+        env:
+          EVAL_MAX_USD: ${{ vars.EVAL_MAX_USD }}
+          GCP_PROJECT: skyclause
+          VERTEX_LOCATION: global
