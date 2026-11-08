@@ -141,7 +141,7 @@ function decodePush(text: string): PushMessage {
 }
 
 /** Runs every handler at `now` side by side, so one failure stops none of the others; returns the failed names. */
-async function runAll(label: string, handlers: Record<string, TickHandler>, now: Date) {
+async function runAll(label: string, handlers: Record<string, TickHandler | BatchHandler>, now: Date) {
   const entries = Object.entries(handlers)
   const results = await Promise.allSettled(entries.map(([, handler]) => handler(now)))
   return entries.flatMap(([name], i) => {
@@ -229,7 +229,7 @@ export function createServer(options: ServerOptions) {
     return failed.length ? c.json({ failed }, 500) : c.body(null, 204)
   })
 
-  // D45: the batch opens no connection itself; its handlers do their own reads and writes.
+  // D45: the route itself never reads or writes Postgres; only its handlers do.
   app.post('/ticks/batch', async (c) => {
     const failed = await runAll('batch', registry.batch, new Date())
     return failed.length ? c.json({ failed }, 500) : c.body(null, 204)
