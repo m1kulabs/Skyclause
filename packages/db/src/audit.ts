@@ -26,16 +26,18 @@ function actorOf(principal: Principal): { actorType: typeof auditEvent.$inferIns
   }
 }
 
-/** Throws if any key or string value anywhere in `value` looks like an email address. */
+/** Whether any key or string value anywhere in `value` looks like an email address. */
+export function holdsEmail(value: unknown): boolean {
+  if (typeof value === 'string') return EMAIL.test(value)
+  if (Array.isArray(value)) return value.some(holdsEmail)
+  if (value && typeof value === 'object')
+    return Object.entries(value).some(([key, child]) => EMAIL.test(key) || holdsEmail(child))
+  return false
+}
+
 function refuseEmails(value: unknown, field: string) {
-  const walk = (node: unknown): boolean => {
-    if (typeof node === 'string') return EMAIL.test(node)
-    if (Array.isArray(node)) return node.some(walk)
-    if (node && typeof node === 'object')
-      return Object.entries(node).some(([key, child]) => EMAIL.test(key) || walk(child))
-    return false
-  }
-  if (walk(value)) throw new Error(`recordAudit: ${field} holds an email address; audit rows carry no personal data`)
+  if (holdsEmail(value))
+    throw new Error(`recordAudit: ${field} holds an email address; audit rows carry no personal data`)
 }
 
 /** One `audit_event` row in the transaction's organisation (`withTenant`). */
