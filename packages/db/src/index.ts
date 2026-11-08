@@ -11,7 +11,7 @@ export {
 export { track } from './analytics'
 export { recordAudit } from './audit'
 export { emitEvent, handleOnce, loadEvent, republishEvents, setEventPublisher, type EventPublisher } from './events'
-export { isFlagEnabled } from './flags'
+export { FEATURE_FLAGS, isFlagEnabled, setFlag, type FeatureFlagKey } from './flags'
 export { projectGate } from './gate'
 export { migrate } from './migrate'
 export * from './placeholders/a-org-projects'

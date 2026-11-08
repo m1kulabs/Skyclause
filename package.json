@@ -21,6 +21,7 @@
     "db:seed-check": "bun packages/db/scripts/seed-check.ts",
     "db:up": "docker compose -f packages/db/compose.yaml up -d --build --wait",
     "db:migrate": "bun packages/db/scripts/migrate.ts",
+    "flag:set": "bun packages/db/scripts/flag-set.ts",
     "check:unbuilt": "bun scripts/check-unbuilt.ts",
     "prepare": "husky"
   },
