@@ -783,3 +783,63 @@ test('reports elapsed budget even when fresh observations need no delivery', () 
   expect(report.pendingTransitions).toBe(0)
   expect(world.sent).toHaveLength(0)
 })
+
+describe('multi-recipient ambiguous save recovery', () => {
+  for (const [boundary, saveNumber] of [
+    ['draft ID', 4],
+    ['final ID', 6]
+  ] as const) {
+    test(`preserves an after-persistence ${boundary} save across another recipient and unrelated ref`, () => {
+      const world = new World()
+      world.audience = 'one@example.test,two@example.test'
+      world.data = {
+        ...world.data,
+        devices: [{ device_id: 'pi-independent', kind: 'pi', last_heartbeat_at: at('20:00:00') }]
+      }
+      world.fail('save', 'after', saveNumber)
+
+      const first = runAuditor(world)
+      const durable = decodeAuditTransition(world.records.get(world.key())!)
+      const firstRecipient = durable.recipients[0]!
+      expect(firstRecipient.attempt.draftId).toBe('draft-1')
+      if (boundary === 'final ID') expect(firstRecipient.attempt.gmailMessageId).toBe('actual-2')
+      expect(durable.recipients[1]!.attempt).toEqual({})
+      expect(first.problems).toContainEqual({ code: 'intent_save_failed', ref: '0232901RF' })
+      expect(first.pendingTransitions).toBe(1)
+      expect(world.rows.map((item) => item.kind)).toEqual(['pi_offline', 'pi_offline'])
+      expect(world.counts.get('create')).toBe(3)
+      if (boundary === 'draft ID') {
+        expect(firstRecipient.attempt.gmailMessageId).toBeUndefined()
+        expect(world.drafts.has('draft-1')).toBe(true)
+        expect(world.sent).toHaveLength(2)
+      } else {
+        expect(firstRecipient.attempt.gmailMessageId).toBe('actual-2')
+        expect(firstRecipient.attempt.gmailMessageId).toBe(world.sent[0]!.id)
+        expect(world.sent).toHaveLength(3)
+      }
+
+      const recovered = runAuditor(world)
+      expect(recovered.problems).toEqual([])
+      expect(recovered.pendingTransitions).toBe(0)
+      expect(world.records.size).toBe(0)
+      expect(world.drafts.size).toBe(0)
+      expect(world.counts.get('create')).toBe(4)
+      expect(world.sent).toHaveLength(4)
+      expect(world.rows).toHaveLength(4)
+      for (const to of ['one@example.test', 'two@example.test']) {
+        const receipt = world.rows.filter((item) => item.kind === 'feed_silent' && item.to === to)
+        const message = world.sent.filter(
+          (item) => item.to === to && item.body.includes(durable.recipients.find((item) => item.to === to)!.marker)
+        )
+        expect(receipt).toHaveLength(1)
+        expect(message).toHaveLength(1)
+        expect(receipt[0]!.gmail_message_id).toBe(message[0]!.id)
+      }
+      expect(world.rows.map((item) => item.kind)).toEqual(['pi_offline', 'pi_offline', 'feed_silent', 'feed_silent'])
+      runAuditor(world)
+      expect(world.counts.get('create')).toBe(4)
+      expect(world.sent).toHaveLength(4)
+      expect(world.rows).toHaveLength(4)
+    })
+  }
+})

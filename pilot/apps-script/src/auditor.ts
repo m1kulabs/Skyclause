@@ -220,6 +220,8 @@ export function runAuditor(ports: AuditorPorts): AuditorReport {
       if (result.status === 'pending') {
         complete = false
         problem(result.code, current.ref)
+        // A thrown save may have persisted; another recipient must not overwrite it with stale state.
+        if (result.code === 'intent_save_failed') return
         continue
       }
       if (result.status === 'sent') report.sentMessages++
