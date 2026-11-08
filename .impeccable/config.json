@@ -1,0 +1,15 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "kicker-above-heading",
+        "value": "*",
+        "files": ["docs/demo/deck/skyclause-pitch-deck.html"],
+        "createdAt": "2026-11-08T09:18:48.938Z",
+        "reason": "Claude, intentional: the user asked the deck to follow their reference deck's storytelling, which puts an eyebrow line above every slide headline"
+      }
+    ]
+  }
+}

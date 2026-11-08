@@ -1,0 +1,259 @@
+{
+  "gauge": "0232901RF",
+  "date": "2026-11-02",
+  "timezone": "Asia/Kuala_Lumpur",
+  "capture": "pilot/fixtures/rainfall-graph-75-20261105T1312Z.json",
+  "reading_semantics": "A reading stamped T covers (T−5 min, T].",
+  "window": {
+    "start": "13:00",
+    "end": "17:00"
+  },
+  "total_14_to_16_mm": 63,
+  "readings": [
+    {
+      "timestamp": "2026-11-02T13:00:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 0
+    },
+    {
+      "timestamp": "2026-11-02T13:05:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 0
+    },
+    {
+      "timestamp": "2026-11-02T13:10:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 0
+    },
+    {
+      "timestamp": "2026-11-02T13:15:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 0
+    },
+    {
+      "timestamp": "2026-11-02T13:20:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 0
+    },
+    {
+      "timestamp": "2026-11-02T13:25:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 0
+    },
+    {
+      "timestamp": "2026-11-02T13:30:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 0
+    },
+    {
+      "timestamp": "2026-11-02T13:35:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 0
+    },
+    {
+      "timestamp": "2026-11-02T13:40:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 0
+    },
+    {
+      "timestamp": "2026-11-02T13:45:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 0
+    },
+    {
+      "timestamp": "2026-11-02T13:50:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 0
+    },
+    {
+      "timestamp": "2026-11-02T13:55:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 0
+    },
+    {
+      "timestamp": "2026-11-02T14:00:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 0
+    },
+    {
+      "timestamp": "2026-11-02T14:05:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 0
+    },
+    {
+      "timestamp": "2026-11-02T14:10:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 0
+    },
+    {
+      "timestamp": "2026-11-02T14:15:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 0
+    },
+    {
+      "timestamp": "2026-11-02T14:20:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 0
+    },
+    {
+      "timestamp": "2026-11-02T14:25:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 0
+    },
+    {
+      "timestamp": "2026-11-02T14:30:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 0
+    },
+    {
+      "timestamp": "2026-11-02T14:35:00",
+      "rain_mm": 0.5,
+      "rolling_60min_mm": 0.5
+    },
+    {
+      "timestamp": "2026-11-02T14:40:00",
+      "rain_mm": 2.5,
+      "rolling_60min_mm": 3
+    },
+    {
+      "timestamp": "2026-11-02T14:45:00",
+      "rain_mm": 9,
+      "rolling_60min_mm": 12
+    },
+    {
+      "timestamp": "2026-11-02T14:50:00",
+      "rain_mm": 9,
+      "rolling_60min_mm": 21
+    },
+    {
+      "timestamp": "2026-11-02T14:55:00",
+      "rain_mm": 8.5,
+      "rolling_60min_mm": 29.5
+    },
+    {
+      "timestamp": "2026-11-02T15:00:00",
+      "rain_mm": 9.5,
+      "rolling_60min_mm": 39
+    },
+    {
+      "timestamp": "2026-11-02T15:05:00",
+      "rain_mm": 5.5,
+      "rolling_60min_mm": 44.5
+    },
+    {
+      "timestamp": "2026-11-02T15:10:00",
+      "rain_mm": 5,
+      "rolling_60min_mm": 49.5
+    },
+    {
+      "timestamp": "2026-11-02T15:15:00",
+      "rain_mm": 4.5,
+      "rolling_60min_mm": 54
+    },
+    {
+      "timestamp": "2026-11-02T15:20:00",
+      "rain_mm": 2,
+      "rolling_60min_mm": 56
+    },
+    {
+      "timestamp": "2026-11-02T15:25:00",
+      "rain_mm": 1.5,
+      "rolling_60min_mm": 57.5
+    },
+    {
+      "timestamp": "2026-11-02T15:30:00",
+      "rain_mm": 1,
+      "rolling_60min_mm": 58.5
+    },
+    {
+      "timestamp": "2026-11-02T15:35:00",
+      "rain_mm": 1.5,
+      "rolling_60min_mm": 59.5
+    },
+    {
+      "timestamp": "2026-11-02T15:40:00",
+      "rain_mm": 0.5,
+      "rolling_60min_mm": 57.5
+    },
+    {
+      "timestamp": "2026-11-02T15:45:00",
+      "rain_mm": 1,
+      "rolling_60min_mm": 49.5
+    },
+    {
+      "timestamp": "2026-11-02T15:50:00",
+      "rain_mm": 0.5,
+      "rolling_60min_mm": 41
+    },
+    {
+      "timestamp": "2026-11-02T15:55:00",
+      "rain_mm": 0.5,
+      "rolling_60min_mm": 33
+    },
+    {
+      "timestamp": "2026-11-02T16:00:00",
+      "rain_mm": 0.5,
+      "rolling_60min_mm": 24
+    },
+    {
+      "timestamp": "2026-11-02T16:05:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 18.5
+    },
+    {
+      "timestamp": "2026-11-02T16:10:00",
+      "rain_mm": 0.5,
+      "rolling_60min_mm": 14
+    },
+    {
+      "timestamp": "2026-11-02T16:15:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 9.5
+    },
+    {
+      "timestamp": "2026-11-02T16:20:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 7.5
+    },
+    {
+      "timestamp": "2026-11-02T16:25:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 6
+    },
+    {
+      "timestamp": "2026-11-02T16:30:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 5
+    },
+    {
+      "timestamp": "2026-11-02T16:35:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 3.5
+    },
+    {
+      "timestamp": "2026-11-02T16:40:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 3
+    },
+    {
+      "timestamp": "2026-11-02T16:45:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 2
+    },
+    {
+      "timestamp": "2026-11-02T16:50:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 1.5
+    },
+    {
+      "timestamp": "2026-11-02T16:55:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 1
+    },
+    {
+      "timestamp": "2026-11-02T17:00:00",
+      "rain_mm": 0,
+      "rolling_60min_mm": 0.5
+    }
+  ]
+}

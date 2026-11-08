@@ -316,7 +316,8 @@ for (const theme of ['dark', 'light', 'high-contrast'] as const) {
     for (const width of [1280, 375, 320]) {
       await page.setViewportSize({ width, height: 900 })
       await expectUnclippedText(page)
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      // Recharts re-measures after a resize, so poll until the layout settles.
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     }
     await expectAxeClean(page)
     await page.screenshot({ path: info.outputPath(`${theme}.png`), fullPage: true })
@@ -338,7 +339,8 @@ test.describe('Malay browser', () => {
         await page.setViewportSize({ width, height: 900 })
         await expectUnclippedText(page)
         await expectZonedTimes(page)
-        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+        // Recharts re-measures after a resize, so poll until the layout settles.
+        await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
       }
     }
   })
