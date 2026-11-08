@@ -931,12 +931,7 @@ export function evaluateSkyClauses(input: SkyClauseInput): SkyVerdict[] {
   const clauseVersion = input.clauseVersion ?? null
   const windows = input.windows ?? []
 
-  const skyRows = input.clauses.filter((row) => {
-    const pack = String(row.pack ?? 'sky')
-      .trim()
-      .toLowerCase()
-    return !pack || pack === 'sky'
-  })
+  const skyRows = skyClauseRows(input.clauses)
   const parsedRows = skyRows.map(parseAndValidateClauseRow)
 
   const nowRows: Row<'now'>[] =
@@ -1329,4 +1324,42 @@ export function evaluateSkyClauses(input: SkyClauseInput): SkyVerdict[] {
       shadowRow
     }
   })
+}
+
+function skyClauseRows(clauses: readonly Row<'clauses'>[]): Row<'clauses'>[] {
+  return clauses.filter((row) => {
+    const pack = String(row.pack ?? 'sky')
+      .trim()
+      .toLowerCase()
+    return !pack || pack === 'sky'
+  })
+}
+
+export function skyClauseEvidenceRequirements(clauses: readonly Row<'clauses'>[]): {
+  apims: boolean
+  morningDays: number
+  camera: boolean
+  problems: string[]
+} {
+  let apims = false
+  let camera = false
+  let morningDays = 0
+  const problems: string[] = []
+  for (const row of skyClauseRows(clauses)) {
+    const parsed = parseAndValidateClauseRow(row)
+    if (!parsed.enabled) continue
+    if (parsed.errorReason || (!parsed.spec && parsed.knownKey !== 'silent_input')) {
+      problems.push(`clauses:${parsed.key}:${parsed.errorReason ?? 'Unsupported clause'}`)
+      continue
+    }
+    if (parsed.spec?.kind === 'haze_watch') {
+      apims = true
+      camera = true
+    }
+    if (parsed.spec?.kind === 'haze_severe') {
+      apims = true
+      morningDays = Math.max(morningDays, parsed.spec.days)
+    }
+  }
+  return { apims, camera, morningDays, problems }
 }

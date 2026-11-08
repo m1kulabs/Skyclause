@@ -68,6 +68,67 @@ export interface SkySnapshot {
 
 export type SkySnapshotFacts = Omit<SkySnapshot, 'sourceUpdates'>
 
+export interface SkyObservedSnapshotInput extends Omit<
+  SkySnapshotInput,
+  'previousIndicators' | 'daylight' | 'forecast'
+> {
+  knownAt: string
+  daylight: DaylightWindow | null
+  cameraEligibility: 'passed' | 'probation' | 'unknown'
+}
+
+export function computeSkyObservedSnapshot(input: SkyObservedSnapshotInput): SkySnapshotFacts {
+  const knownAtMs = parseTimestampMs(input.knownAt)
+  const evalMs = parseTimestampMs(input.tEval)
+  if (knownAtMs === null || evalMs === null || knownAtMs < evalMs) throw new Error('Invalid observed snapshot clocks')
+  const camera = input.sources.find((source) => source.kind === 'camera')
+  if (camera && input.cameraEligibility === 'passed') {
+    const validClock = (clock: string) => (/^\d{2}:\d{2}(?::00)?$/.test(clock) ? parseClockMinutes(clock) : null)
+    const start = input.daylight && validClock(input.daylight.start)
+    const end = input.daylight && validClock(input.daylight.end)
+    if (start === null || end === null || start >= end) throw new Error('Invalid camera daylight')
+  }
+  const warnings = input.warnings.filter((row) => {
+    const seen = skyEvidenceTimestamp(row.first_seen_at)
+    const issued = skyEvidenceTimestamp(row.issued)
+    return seen !== null && seen <= knownAtMs && issued !== null && issued <= evalMs
+  })
+  const snapshot = computeSnapshot(
+    { ...input, warnings, forecast: [] },
+    (source, readings, polls, _previous, daylight, tEvalIso, tEvalMs) => {
+      if (!source) return emptyInputState()
+      const id = String(source.source_id ?? '').trim()
+      const kind = String(source.kind ?? '').trim()
+      const metric = expectedMetricForKind(kind)
+      const matching = readings.filter((row) => row.sourceId === id && row.metric === metric)
+      const newest = matching.at(-1)
+      const result = emptyInputState(id ? [id] : [])
+      if (kind === 'met_warning') {
+        const warning = warnings.at(-1)
+        if (warning) return { ...result, state: 'fresh', observedAt: normalizeIsoCell(warning.issued) }
+        return result
+      }
+      if (!newest) return result
+      const ageMin = Math.floor((tEvalMs - newest.observedAtMs) / MINUTE_MS)
+      const staleAfter = Number(source.stale_after_min)
+      let state: SourceState | null =
+        Number.isFinite(staleAfter) && staleAfter > 0 && ageMin <= staleAfter ? 'fresh' : 'stale'
+      if (kind === 'camera') {
+        if (input.cameraEligibility !== 'passed') state = input.cameraEligibility === 'probation' ? 'probation' : null
+        else if (!daylight || !isWithinDaylight(tEvalIso, daylight)) state = 'off_hours'
+        else {
+          const lastPoll = latestPollOf(pollsForSource(source, polls, matching))
+          if (lastPoll && lastPoll.outcome !== 'ok' && lastPoll.outcome !== 'unchanged') state = 'error'
+        }
+      }
+      return { ...result, state, observedAt: newest.observedAt, ageMin, readingIds: [newest.readingId] }
+    },
+    knownAtMs
+  )
+  const { sourceUpdates: _updates, ...facts } = snapshot
+  return facts
+}
+
 interface NormalizedReading {
   readingId: string
   sourceKind: string
@@ -125,6 +186,31 @@ function normalizeIsoCell(cell: Cell | undefined): string | null {
   return toMytIso(new Date(ms))
 }
 
+export function skyEvidenceTimestamp(value: unknown): number | null {
+  if (value instanceof Date) return Number.isFinite(value.getTime()) ? value.getTime() : null
+  if (
+    typeof value !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/.test(value)
+  )
+    return null
+  const [hour, minute, second = 0] = value
+    .slice(11)
+    .split(/[:Z+-]/)
+    .map(Number)
+  if (hour! > 23 || minute! > 59 || second >= 60) return null
+  const ms = Date.parse(value)
+  if (!Number.isFinite(ms)) return null
+  // Date.parse accepts impossible dates by rolling them into the following month.
+  const date = value.slice(0, 10)
+  const midnight = Date.parse(`${date}T00:00:00Z`)
+  if (!Number.isFinite(midnight) || new Date(midnight).toISOString().slice(0, 10) !== date) return null
+  return ms
+}
+function observedIsoCell(value: Cell | undefined): string | null {
+  const ms = skyEvidenceTimestamp(value)
+  return ms === null ? null : toMytIso(new Date(ms))
+}
+
 function parseTimestampMs(cell: Cell | undefined): number | null {
   const iso = normalizeIsoCell(cell)
   if (!iso) return null
@@ -175,21 +261,36 @@ function roundMetric(value: number): number {
   return Math.round(value * 1_000_000) / 1_000_000
 }
 
-function normalizeAndDedupeReadings(readings: readonly Row<'readings'>[], tEvalMs: number): NormalizedReading[] {
+export function normalizeAndDedupeReadings(
+  readings: readonly Row<'readings'>[],
+  tEvalMs: number,
+  knownAtMs?: number
+): NormalizedReading[] {
   const byIdentity = new Map<string, NormalizedReading>()
   for (const row of readings) {
     const sourceId = String(row.source_id ?? '').trim()
     const sourceKind = String(row.source_kind ?? '').trim()
     const metric = String(row.metric ?? '').trim()
-    const observedAt = normalizeIsoCell(row.observed_at)
+    const observedAt = knownAtMs === undefined ? normalizeIsoCell(row.observed_at) : observedIsoCell(row.observed_at)
     if (!sourceId || !metric || !observedAt) continue
     const observedAtMs = Date.parse(observedAt)
     if (!Number.isFinite(observedAtMs) || observedAtMs > tEvalMs) continue
-    const numValue = typeof row.value === 'number' ? row.value : Number(row.value)
-    if (row.value === '' || row.value === undefined || !Number.isFinite(numValue)) continue
+    let numValue = typeof row.value === 'number' ? row.value : Number(row.value)
+    const invalidValue = row.value === '' || row.value === undefined || !Number.isFinite(numValue)
+    if (knownAtMs === undefined && invalidValue) continue
+    if (
+      knownAtMs !== undefined &&
+      (invalidValue ||
+        (typeof row.value === 'string' && !row.value.trim()) ||
+        typeof row.value === 'boolean' ||
+        row.value instanceof Date ||
+        numValue < 0)
+    )
+      numValue = NaN
 
-    const receivedAt = normalizeIsoCell(row.received_at)
+    const receivedAt = knownAtMs === undefined ? normalizeIsoCell(row.received_at) : observedIsoCell(row.received_at)
     const receivedAtMs = receivedAt ? Date.parse(receivedAt) : null
+    if (knownAtMs !== undefined && (receivedAtMs === null || receivedAtMs > knownAtMs)) continue
     const revisionRaw = typeof row.revision === 'number' ? row.revision : Number(row.revision ?? 0)
     const revision = Number.isFinite(revisionRaw) ? revisionRaw : 0
     const readingId = String(row.reading_id ?? '').trim() || `${sourceId}:${metric}:${observedAt}`
@@ -215,10 +316,16 @@ function normalizeAndDedupeReadings(readings: readonly Row<'readings'>[], tEvalM
       })
     }
   }
-  return Array.from(byIdentity.values()).sort((a, b) => a.observedAtMs - b.observedAtMs)
+  return Array.from(byIdentity.values())
+    .filter((row) => Number.isFinite(row.value))
+    .sort((a, b) => a.observedAtMs - b.observedAtMs)
 }
 
-function normalizePolls(polls: readonly Row<'polls'>[], tEvalMs: number): NormalizedPoll[] {
+export function normalizePolls(
+  polls: readonly Row<'polls'>[],
+  tEvalMs: number,
+  includeUntimed = false
+): NormalizedPoll[] {
   const evalMinuteMs = floorToMinuteMs(tEvalMs)
   const result: NormalizedPoll[] = []
   for (const row of polls) {
@@ -227,10 +334,10 @@ function normalizePolls(polls: readonly Row<'polls'>[], tEvalMs: number): Normal
     const outcome = String(row.outcome ?? '').trim()
     if (!sourceId && !sourceKind) continue
 
-    const startedAt = normalizeIsoCell(row.started_at)
-    const receivedAt = normalizeIsoCell(row.received_at)
-    const effectiveAt = receivedAt ?? startedAt
-    if (!effectiveAt) continue
+    const startedAt = includeUntimed ? observedIsoCell(row.started_at) : normalizeIsoCell(row.started_at)
+    const receivedAt = includeUntimed ? observedIsoCell(row.received_at) : normalizeIsoCell(row.received_at)
+    const effectiveAt = receivedAt ?? startedAt ?? ''
+    if (!effectiveAt && !includeUntimed) continue
     const effectiveAtMs = Date.parse(effectiveAt)
     const startedAtMs = startedAt ? Date.parse(startedAt) : null
     const receivedAtMs = receivedAt ? Date.parse(receivedAt) : null
@@ -253,7 +360,7 @@ function normalizePolls(polls: readonly Row<'polls'>[], tEvalMs: number): Normal
   return result
 }
 
-function pollsForSource(
+export function pollsForSource(
   source: Row<'sources'>,
   polls: readonly NormalizedPoll[],
   sourceReadings: readonly NormalizedReading[]
@@ -346,7 +453,7 @@ function resolveSingleSourceState(
   readings: readonly NormalizedReading[],
   polls: readonly NormalizedPoll[],
   previousIndicators: readonly Row<'indicators'>[],
-  daylight: DaylightWindow,
+  daylight: DaylightWindow | null,
   tEvalIso: string,
   tEvalMs: number
 ): ResolvedInputState {
@@ -388,7 +495,7 @@ function resolveSingleSourceState(
     observedAt
   })
 
-  if (kind === 'camera' && !isWithinDaylight(tEvalIso, daylight)) {
+  if (kind === 'camera' && daylight && !isWithinDaylight(tEvalIso, daylight)) {
     return finalize('off_hours')
   }
 
@@ -722,7 +829,7 @@ function computeCameraAndFrameRainIndicators(
   gaugeState: ResolvedInputState,
   cameraReadings: readonly NormalizedReading[],
   gaugeReadings: readonly NormalizedReading[],
-  daylight: DaylightWindow,
+  daylight: DaylightWindow | null,
   tEvalMs: number
 ): {
   farRatioLast3: Cell
@@ -734,7 +841,7 @@ function computeCameraAndFrameRainIndicators(
   rainLast3Age: number | null
   rainLast3ReadingIds: string[]
 } {
-  if (!isUsableMeasurementState(cameraState.state)) {
+  if (!daylight || !isUsableMeasurementState(cameraState.state)) {
     return {
       farRatioLast3: '',
       farRatioObs: null,
@@ -866,7 +973,8 @@ function computeWindowWarningIndicators(
   metState: ResolvedInputState,
   warnings: readonly Row<'warnings'>[],
   windowScope: WindowScope,
-  tEvalMs: number
+  tEvalMs: number,
+  knownAtMs = tEvalMs
 ): {
   inForce: Cell
   warningKeysJson: Cell
@@ -876,7 +984,7 @@ function computeWindowWarningIndicators(
     return { inForce: '', warningKeysJson: '', warningKeys: [] }
   }
 
-  const evalMinuteMs = floorToMinuteMs(tEvalMs)
+  const evalMinuteMs = floorToMinuteMs(knownAtMs)
   const matchingKeys: string[] = []
   const seenKeys = new Set<string>()
 
@@ -923,7 +1031,11 @@ export function computeSkySnapshot(input: SkySnapshotInput): SkySnapshot {
   return computeSnapshot(input, resolveSingleSourceState)
 }
 
-function computeSnapshot(input: SkySnapshotInput, resolveSourceState: typeof resolveSingleSourceState): SkySnapshot {
+function computeSnapshot(
+  input: Omit<SkySnapshotInput, 'daylight'> & { daylight: DaylightWindow | null },
+  resolveSourceState: typeof resolveSingleSourceState,
+  knownAtMs?: number
+): SkySnapshot {
   const tEvalIso = normalizeIsoCell(input.tEval)
   if (!tEvalIso) {
     throw new Error(`Invalid tEval timestamp: ${String(input.tEval)}`)
@@ -932,8 +1044,13 @@ function computeSnapshot(input: SkySnapshotInput, resolveSourceState: typeof res
   const evalDate = tEvalIso.slice(0, 10)
   const previousIndicators = input.previousIndicators ?? []
 
-  const readings = normalizeAndDedupeReadings(input.readings, tEvalMs)
-  const polls = normalizePolls(input.polls, tEvalMs)
+  const readings = normalizeAndDedupeReadings(input.readings, tEvalMs, knownAtMs)
+  const polls = normalizePolls(
+    input.polls.filter(
+      (row) => knownAtMs === undefined || (parseTimestampMs(row.received_at) ?? Infinity) <= knownAtMs
+    ),
+    tEvalMs
+  )
 
   const sourceById = new Map<string, Row<'sources'>>()
   for (const src of input.sources) {
@@ -1175,7 +1292,7 @@ function computeSnapshot(input: SkySnapshotInput, resolveSourceState: typeof res
     const rain4h = gaugeAllowRain
       ? computeRollingRainMax(gaugeReadings, win.spanFromMs, win.spanToMs, tEvalMs, 240)
       : null
-    const warningsResult = computeWindowWarningIndicators(metState, input.warnings, win, tEvalMs)
+    const warningsResult = computeWindowWarningIndicators(metState, input.warnings, win, tEvalMs, knownAtMs)
 
     recordIndicator(win.windowId, 'w.rain_max_60m_mm', rain60 ? rain60.value : '', 'mm', gaugeState, {
       observedAt: rain60?.observedAt ?? null,

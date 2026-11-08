@@ -1,7 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { computeSkySnapshot, type SkySnapshot, type SkySnapshotInput } from './indicators.ts'
+import {
+  computeSkyObservedSnapshot,
+  computeSkySnapshot,
+  type SkySnapshot,
+  type SkySnapshotInput
+} from './indicators.ts'
 import { type Cell, type Row, toRow } from './schema.ts'
 
 interface JpsCapture {
@@ -1468,4 +1473,108 @@ describe('Task 2 #54: Round 1 regressions for forecast checkpoint, post-error da
     expect(winNow['w.met_kl_warning_in_force']).toBe('')
     expect(winNow['site.met_afternoon_thunderstorm']).toBe('')
   })
+})
+
+describe('observed Sky snapshot', () => {
+  const window: Row<'windows'> = {
+    window_id: 'wave',
+    date: '2026-11-02',
+    start_myt: '14:00',
+    end_myt: '15:30',
+    status: 'active'
+  }
+  function observed(overrides: Partial<Parameters<typeof computeSkyObservedSnapshot>[0]> = {}) {
+    return computeSkyObservedSnapshot({
+      tEval: '2026-11-02T16:30:00+08:00',
+      knownAt: '2026-11-08T00:00:00+08:00',
+      sources: baseSources({ '0232901RF': { state: 'error', state_since: '2026-11-07T12:00:00+08:00' } }),
+      readings: adaptJpsReadings(),
+      polls: [],
+      warnings: [],
+      windows: [window],
+      daylight: null,
+      cameraEligibility: 'unknown',
+      ...overrides
+    })
+  }
+  test('uses actual late receipts and observations without live recovery state or source updates', () => {
+    const snapshot = observed()
+    const rain = snapshot.evidenceByScope.wave!['w.rain_max_60m_mm']!
+    expect(rain.value).toBe(59.5)
+    expect(rain.observedAt).toBe('2026-11-02T15:35:00+08:00')
+    expect(snapshot.evidenceByScope.wave!['w.rain_max_4h_mm']!.value).toBe(63.5)
+    expect(snapshot.evidenceByScope.wave!['w.rain_max_4h_mm']!.observedAt).toBe('2026-11-02T16:10:00+08:00')
+    expect(snapshot.inputs.gauge.state).toBe('fresh')
+    expect(snapshot).not.toHaveProperty('sourceUpdates')
+    expect(snapshot.inputs.camera.state).not.toBe('fresh')
+  })
+  test('ignores old gauge errors outside the historical range', () => {
+    expect(
+      observed({
+        polls: [
+          {
+            source_id: '0232901RF',
+            source_kind: 'jps_rain',
+            started_at: '2026-10-31T00:00:00+08:00',
+            received_at: '2026-10-31T00:01:00+08:00',
+            outcome: 'error'
+          }
+        ]
+      }).inputs.gauge.state
+    ).toBe('fresh')
+  })
+  test('does not admit future receipts or rewrite captures to historical dates', () => {
+    expect(observed({ knownAt: '2026-11-04T00:00:00+08:00' }).inputs.gauge.state).not.toBe('fresh')
+    const original = adaptJpsReadings()
+    const before = JSON.stringify(original)
+    observed({ readings: original })
+    expect(JSON.stringify(original)).toBe(before)
+  })
+  test('a late-known warning uses actual issue and validity without rewriting first receipt', () => {
+    const warning: Row<'warnings'> = {
+      warning_key: 'actual-late',
+      issued: '2026-11-02T13:00:00+08:00',
+      valid_from: '2026-11-02T13:00:00+08:00',
+      valid_to: '2026-11-02T17:00:00+08:00',
+      first_seen_at: '2026-11-05T21:13:00+08:00',
+      names_kl: true,
+      title_en: 'Thunderstorm warning'
+    }
+    expect(observed({ warnings: [warning] }).evidenceByScope.wave!['w.met_kl_warning_in_force']!.value).toBe(true)
+    expect(
+      observed({ warnings: [warning], knownAt: '2026-11-04T00:00:00+08:00' }).evidenceByScope.wave![
+        'w.met_kl_warning_in_force'
+      ]!.value
+    ).not.toBe(true)
+    expect(warning.first_seen_at).toBe('2026-11-05T21:13:00+08:00')
+  })
+  test('eligible camera requires actual valid daylight hours', () => {
+    expect(() => observed({ cameraEligibility: 'passed' })).toThrow('daylight')
+    expect(() => observed({ cameraEligibility: 'passed', daylight: { start: '25:00', end: '19:00' } })).toThrow(
+      'daylight'
+    )
+    expect(() =>
+      observed({ sources: baseSources().filter((s) => s.kind !== 'camera'), cameraEligibility: 'passed' })
+    ).not.toThrow()
+  })
+})
+
+test('observed warnings preserve actual MET provenance and its absence of a KL warning', () => {
+  const warnings = adaptMetWarnings()
+  const before = JSON.stringify(warnings)
+  const snapshot = computeSkyObservedSnapshot({
+    tEval: '2026-11-05T22:10:00+08:00',
+    knownAt: '2026-11-08T00:00:00+08:00',
+    sources: baseSources(),
+    readings: [],
+    polls: [],
+    warnings,
+    windows: [
+      { window_id: 'actual-warning', date: '2026-11-05', start_myt: '21:00', end_myt: '21:10', status: 'active' }
+    ],
+    daylight: null,
+    cameraEligibility: 'unknown'
+  })
+  expect(snapshot.evidenceByScope['actual-warning']!['w.met_kl_warning_in_force']!.value).toBe(false)
+  expect(JSON.stringify(warnings)).toBe(before)
 })
