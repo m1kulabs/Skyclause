@@ -332,6 +332,42 @@ describe('stored audit policy', () => {
     ).toBe('unavailable')
   })
 
+  test('Rapid Rail retains unreadable timestamp uncertainty across nights until a later usable row repairs it', () => {
+    const resolved = grade('resolved', at('19:00:00'), 'in_band', '')
+    for (const gradedAt of [undefined, '', 'invalid', '2026-02-30T18:00:00+08:00']) {
+      const unreadable = grade('uncertain', gradedAt)
+      const evaluate = (crowdGrades: Row<'crowd_grades'>[]) =>
+        observation(input({ crowdGrades }), at('21:15:00'), 'rapidrail_od')
+      expect(evaluate([resolved, unreadable])?.state).toBe('unavailable')
+      expect(evaluate([resolved, unreadable, grade('known-overdue', at('19:30:00'))])?.state).toBe('active')
+      expect(evaluate([unreadable, grade('uncertain', at('20:00:00'), 'no_surge', ''), resolved])?.state).toBe('clear')
+      expect(evaluate([grade('uncertain', at('20:00:00'), 'no_surge', ''), unreadable, resolved])?.state).toBe(
+        'unavailable'
+      )
+      expect(evaluate([unreadable, grade('uncertain', at('21:16:00'), 'no_surge', ''), resolved])?.state).toBe(
+        'unavailable'
+      )
+    }
+    expect(
+      observation(
+        input({ crowdGrades: [resolved, grade('future-only', at('21:16:00'))] }),
+        at('21:15:00'),
+        'rapidrail_od'
+      )?.state
+    ).toBe('clear')
+  })
+
+  test('Rapid Rail selects the later physical revised night when selected grade times tie', () => {
+    const crowdGrades = [
+      grade('night-a', at('17:00:00')),
+      grade('night-b', at('19:00:00')),
+      grade('night-a', at('19:00:00'))
+    ]
+    const result = observation(input({ crowdGrades }), at('21:15:00'), 'rapidrail_od')
+    expect(result?.state).toBe('active')
+    expect(result?.body).toContain('Night night-a remains pending')
+  })
+
   test('crossing stall uses real file write time, both producer envelopes, and exact ledger refs', () => {
     const sky = crossing()
     const crowd = crossing('crowd', [

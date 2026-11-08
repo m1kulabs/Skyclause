@@ -306,19 +306,25 @@ export function evaluateAudit(input: AuditInput, at: Date): AuditPolicyResult {
     )
   }
 
-  const nights = new Map<string, { row: Row<'crowd_grades'>; ms: number }>()
-  for (const row of input.crowdGrades) {
+  const nights = new Map<string, { row: Row<'crowd_grades'>; ms: number; index: number }>()
+  const unreadableGradeIndices = new Map<string, number>()
+  for (const [index, row] of input.crowdGrades.entries()) {
     const ref = text(row.night_id)
-    const ms = asOf(row.graded_at, now)
+    const ms = instant(row.graded_at)
     if (!ref || ms === null) {
       problem('rapidrail_grade_unavailable', ref || 'rapidrail_od')
+      unreadableGradeIndices.set(ref, index)
       continue
     }
+    if (ms > now) continue
     const previous = nights.get(ref)
-    if (!previous || ms >= previous.ms) nights.set(ref, { row, ms })
+    if (!previous || ms >= previous.ms) nights.set(ref, { row, ms, index })
   }
-  let unknown = nights.size === 0
-  let overdue: { night: string; due: number; graded: number } | null = null
+  // A later usable selected row repairs historical corruption for its own night.
+  // An unreadable latest row cannot prove recovery, even when other nights resolved.
+  let unknown =
+    nights.size === 0 || [...unreadableGradeIndices].some(([ref, index]) => index > (nights.get(ref)?.index ?? -1))
+  let overdue: { night: string; due: number; graded: number; index: number } | null = null
   const finals = new Set(['in_band', 'out_of_band', 'unlisted_surge', 'no_surge'])
   for (const [night, grade] of nights) {
     if (finals.has(text(grade.row.outcome))) continue
@@ -328,7 +334,11 @@ export function evaluateAudit(input: AuditInput, at: Date): AuditPolicyResult {
       problem('rapidrail_pending_unavailable', night)
       continue
     }
-    if (now - due > 120 * MINUTE && (!overdue || grade.ms >= overdue.graded)) overdue = { night, due, graded: grade.ms }
+    if (
+      now - due > 120 * MINUTE &&
+      (!overdue || grade.ms > overdue.graded || (grade.ms === overdue.graded && grade.index > overdue.index))
+    )
+      overdue = { night, due, graded: grade.ms, index: grade.index }
   }
   const railPolls = input.polls.filter((row) => row.source_kind === 'rapidrail_od' && row.source_id === 'SP17')
   result.observations.push(
