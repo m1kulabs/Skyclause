@@ -21,6 +21,7 @@ const sha256Hex = (text: string) => createHash('sha256').update(text, 'utf8').di
 
 const TEAM = ['team-a@example.com', 'team-b@example.com']
 const SNAPSHOT = '2026-11-02T15:05:00+08:00'
+const CROWD_SNAPSHOT = '2026-11-03T10:00:00+08:00'
 const CALL_ID = 'B-crossing-20261102-1505-W-0001'
 const SUBJECT = 'Commute disruption: commute wave 15:30–15:30, Mon 2 Nov (Skyclause pilot)'
 const BODY =
@@ -55,6 +56,45 @@ function crossingText(overrides?: { replay?: boolean; to?: string }): string {
             source_id: '0232901RF',
             observed_at: '2026-11-02T15:00:00+08:00',
             age_min: 5,
+            state: 'fresh'
+          }
+        ]
+      }
+    ]
+  })
+}
+
+function crowdCrossingText(overrides?: { replay?: boolean; to?: string }): string {
+  return JSON.stringify({
+    crossing_id: 'X-20261103-1000-01',
+    pack: 'crowd',
+    replay: overrides?.replay ?? false,
+    t_eval: CROWD_SNAPSHOT,
+    snapshot_id: CROWD_SNAPSHOT,
+    changes: [
+      {
+        scope: 'N-20261104',
+        night: {
+          night_id: 'N-20261104',
+          venue: 'stadium',
+          show: 'Show',
+          doors_myt: '18:00',
+          show_myt: '20:30',
+          show_end_myt: '22:30',
+          listing_ids: ['L-20261104-stadium-show']
+        },
+        from: 'normal',
+        to: overrides?.to ?? 'surge_night',
+        fired: ['surge_night'],
+        blocked: [],
+        inputs: [
+          {
+            name: 'site.night.forecast',
+            value: 27016,
+            unit: 'exits',
+            source_id: 'SP17',
+            observed_at: '2026-11-02T00:00:00+08:00',
+            age_min: 2040,
             state: 'fresh'
           }
         ]
@@ -102,6 +142,7 @@ interface Fake {
 function fake(options?: {
   now?: string
   sky?: RawFile[]
+  crowd?: RawFile[]
   rota?: Row<'rota'>[]
   ledger?: Row<'ledger'>[]
   indicators?: Row<'indicators'>[]
@@ -123,7 +164,7 @@ function fake(options?: {
     now: () => new Date(options?.now ?? '2026-11-02T15:20:00+08:00'),
     sha256Hex,
     skyFiles: () => options?.sky ?? [],
-    crowdFiles: () => [],
+    crowdFiles: () => options?.crowd ?? [],
     replayFiles: () => options?.replay ?? [],
     rota: () =>
       options?.rota ?? [
@@ -191,6 +232,7 @@ function fake(options?: {
 }
 
 const skyFile = (text: string): RawFile[] => [{ id: 'file-1', name: 'crossing-20261102-1505-01.json', text }]
+const crowdFile = (text: string): RawFile[] => [{ id: 'crowd-file-1', name: 'crossing-20261103-1000-01.json', text }]
 
 describe('CAL-10 crossing notifications', () => {
   test('a new crossing file gives one notifications row, and a second sweep adds none', () => {
@@ -210,6 +252,53 @@ describe('CAL-10 crossing notifications', () => {
     const second = runSweep(harness.ports)
     expect(second.crossingsNotified).toEqual([])
     expect(harness.notifications).toHaveLength(1)
+  })
+
+  test('a Crowd crossing without Sky window or clause fields sends once with the returned message ID', () => {
+    const text = crowdCrossingText()
+    const parsed = parseCrossingFile({ id: 'crowd-file-1', name: 'crossing.json', text })
+    expect(parsed).not.toBeNull()
+    expect(parsed?.pack).toBe('crowd')
+    expect(parsed?.changes[0]?.window).toBeUndefined()
+
+    const harness = fake({
+      now: '2026-11-03T10:05:00+08:00',
+      crowd: crowdFile(text),
+      rota: [
+        { date: '2026-11-03', start: '09:00', end: '11:00', approver: 'A. Approver', email: 'approver@example.com' }
+      ]
+    })
+    const first = runSweep(harness.ports)
+    expect(first.crossingsNotified).toEqual(['X-20261103-1000-01'])
+    expect(harness.notifications).toEqual([
+      {
+        at: '2026-11-03T10:05:00+08:00',
+        kind: 'crossing',
+        to: 'approver@example.com',
+        ref: 'X-20261103-1000-01',
+        gmail_message_id: 'msg-1'
+      }
+    ])
+    expect(harness.sentMails).toHaveLength(1)
+    expect(harness.sentMails[0]?.body).not.toContain('stadium')
+    expect(harness.sentMails[0]?.body).not.toContain('Show')
+    expect(harness.sentMails[0]?.body).not.toContain('L-20261104-stadium-show')
+    expect(harness.sentMails[0]?.body).not.toContain('@')
+
+    const second = runSweep(harness.ports)
+    expect(second.crossingsNotified).toEqual([])
+    expect(harness.notifications).toHaveLength(1)
+    expect(harness.sentMails).toHaveLength(1)
+  })
+
+  test('replay and all-Normal Crowd crossings are skipped', () => {
+    const replay = fake({ crowd: crowdFile(crowdCrossingText({ replay: true })) })
+    expect(runSweep(replay.ports).crossingsNotified).toEqual([])
+    expect(replay.notifications).toHaveLength(0)
+
+    const normal = fake({ crowd: crowdFile(crowdCrossingText({ to: 'normal' })) })
+    expect(runSweep(normal.ports).crossingsNotified).toEqual([])
+    expect(normal.notifications).toHaveLength(0)
   })
 
   test('the body lists the crossing ID and time and each change, and ends with the Runs-tab line', () => {
@@ -695,6 +784,23 @@ describe('CAL-3 post-check', () => {
     expect(runSweep(failing.ports).mismatches).toEqual([
       { callId: CALL_ID, number: 6, line: expect.stringContaining('6 min old') as string }
     ])
+  })
+
+  test('a Crowd file in the Sky replay folder cannot authorize notice numbers', () => {
+    const harness = fake({
+      now: '2026-11-03T10:05:00+08:00',
+      sent: [{ subject: 'Crowd notice', date: '2026-11-03T10:01:00+08:00' }],
+      replay: crowdFile(crowdCrossingText()).map((file) => ({ ...file, name: 'replay.json' })),
+      ledger: [
+        callRow({
+          source_ref: 'replay.json',
+          snapshot_id: CROWD_SNAPSHOT,
+          'window_id or night_id': 'N-20261104',
+          body: JSON.stringify({ subject: 'Crowd notice', body: 'Forecast 27016' })
+        })
+      ]
+    })
+    expect(runSweep(harness.ports).mismatches).toEqual([{ callId: CALL_ID, number: 27016, line: 'Forecast 27016' }])
   })
 
   test('checkNoticeNumbers leaves the fixed lines out and compares decimals', () => {
