@@ -41,6 +41,17 @@ test('--owner of an owner with nothing left passes', () => {
   expect(result.stdout).not.toContain('panel.tsx')
 })
 
+test('lists each operation without a handler under its owner, from packages/api', () => {
+  const root = plantRepo({
+    'packages/api/src/unbuilt.ts':
+      "export const unbuiltOperations = () => [{ owner: 'b-windows-api', operationId: 'listWindows', method: 'GET', path: '/v1/projects/{id}/windows' }]\n"
+  })
+  const result = spawnSync('bun', [script], { cwd: root, encoding: 'utf8' })
+  expect(result.status).toBe(1)
+  expect(result.stdout).toContain('b-windows-api\n  GET /v1/projects/{id}/windows (listWindows): no handler\n')
+  expect(spawnSync('bun', [script, '--owner', 'y'], { cwd: root, encoding: 'utf8' }).status).toBe(0)
+})
+
 test('a tree without placeholders passes', () => {
   const result = spawnSync('bun', [script], {
     cwd: plantRepo({ 'packages/db/src/index.ts': 'export {}\n' }),

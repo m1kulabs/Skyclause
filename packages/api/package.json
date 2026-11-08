@@ -4,9 +4,15 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./testing": "./test/harness/index.ts"
   },
   "dependencies": {
-    "@skyclause/contracts": "workspace:*"
+    "@hono/zod-openapi": "1.6.3",
+    "@skyclause/config": "workspace:*",
+    "@skyclause/contracts": "workspace:*",
+    "@skyclause/db": "workspace:*",
+    "hono": "4.13.16",
+    "zod": "4.6.7"
   }
 }

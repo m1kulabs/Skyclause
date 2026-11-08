@@ -38,6 +38,7 @@
         "@base-ui/react": "1.9.0",
         "@fontsource-variable/jetbrains-mono": "5.3.0",
         "@fontsource-variable/work-sans": "5.3.0",
+        "@skyclause/api": "workspace:*",
         "@skyclause/auth": "workspace:*",
         "@skyclause/config": "workspace:*",
         "@skyclause/contracts": "workspace:*",
@@ -103,7 +104,12 @@
       "name": "@skyclause/api",
       "version": "0.0.0",
       "dependencies": {
+        "@hono/zod-openapi": "1.6.3",
+        "@skyclause/config": "workspace:*",
         "@skyclause/contracts": "workspace:*",
+        "@skyclause/db": "workspace:*",
+        "hono": "4.13.16",
+        "zod": "4.6.7",
       },
     },
     "packages/auth": {

@@ -59,6 +59,8 @@ export default defineConfig({
         // PLANTED_ROUTES builds the test-only `page.plant.tsx` routes the quality suites assert on.
         env: {
           APP_ENV: 'test',
+          // A test-only key: IP_HASH_KEY is required to start (#93).
+          IP_HASH_KEY: 'test-only-ip-hash-key-for-playwright-runs',
           HOST_MODE: 'single',
           PORT: String(port),
           HOSTNAME: 'localhost',

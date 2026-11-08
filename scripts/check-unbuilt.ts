@@ -1,7 +1,8 @@
 // `check:unbuilt [--owner <key>]` (spec §7): lists every `notBuilt('<key>')` and `data-unbuilt="<key>"` in apps and
-// packages outside tests, grouped by owner, and fails while any remain. `deploy.yml` prints it as a report; nothing
+// packages outside tests, and every registry operation without a handler (#93), grouped by owner, and fails while
+// any remain. `deploy.yml` prints it as a report; nothing
 // gates on it.
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { isSource, isTestFile, listFiles } from './files'
 
@@ -28,6 +29,18 @@ for (const file of listFiles(process.cwd(), ['apps', 'packages']).filter(
         byOwner.set(owner, [...(byOwner.get(owner) ?? []), `${file}:${i + 1}`])
       }
     })
+}
+
+// packages/api's operations without a handler, read from the tree being checked.
+const unbuilt = join(process.cwd(), 'packages/api/src/unbuilt.ts')
+if (existsSync(unbuilt)) {
+  const { unbuiltOperations } = (await import(unbuilt)) as {
+    unbuiltOperations: () => Array<{ owner: string; operationId: string; method: string; path: string }>
+  }
+  for (const { owner, operationId, method, path } of unbuiltOperations()) {
+    if (ownerFilter && owner !== ownerFilter) continue
+    byOwner.set(owner, [...(byOwner.get(owner) ?? []), `${method} ${path} (${operationId}): no handler`])
+  }
 }
 
 for (const [owner, places] of [...byOwner].sort(([a], [b]) => a.localeCompare(b))) {
