@@ -286,9 +286,21 @@ export function runAuditor(ports: AuditorPorts): AuditorReport {
     }
     ready.push(value)
   }
+  // Durable attempt times keep a slow unresolved ref from monopolizing successive invocations.
+  ready.sort((left, right) => {
+    const leftAttempt = left.lastAttemptAt === undefined ? -Infinity : Date.parse(left.lastAttemptAt)
+    const rightAttempt = right.lastAttemptAt === undefined ? -Infinity : Date.parse(right.lastAttemptAt)
+    if (leftAttempt !== rightAttempt) return leftAttempt < rightAttempt ? -1 : 1
+    const detected = Date.parse(left.detectedAt) - Date.parse(right.detectedAt)
+    if (detected !== 0) return detected
+    const leftIdentity = `${left.family}\0${left.ref}\0${left.eventId}`
+    const rightIdentity = `${right.family}\0${right.ref}\0${right.eventId}`
+    return leftIdentity < rightIdentity ? -1 : leftIdentity > rightIdentity ? 1 : 0
+  })
   for (const value of ready) {
     if (!invalidRefs.has(keyFor(value.family, value.ref))) deliver(value, true)
   }
+  if (exhausted()) return finish()
   let input: AuditInput
   try {
     input = ports.readInput()
@@ -296,13 +308,15 @@ export function runAuditor(ports: AuditorPorts): AuditorReport {
     problem('input_unavailable')
     return finish()
   }
-  const at = ports.now()
+  if (exhausted()) return finish()
   try {
     history = ports.notifications()
   } catch {
     problem('notification_read_failed')
     return finish()
   }
+  if (exhausted()) return finish()
+  const at = ports.now()
   let policy
   try {
     policy = evaluateAudit(input, at)

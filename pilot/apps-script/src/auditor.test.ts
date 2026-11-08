@@ -572,12 +572,36 @@ describe('one-shots and credential episodes', () => {
 })
 
 describe('bounded work', () => {
-  test('uses actual clock for the 240000ms budget and counts fresh deferred refs', () => {
+  function storePending(world: World, ref: string, overrides: Partial<AuditTransition> = {}): AuditTransition {
+    const eventId = `persisted-${ref}`
+    const value: AuditTransition = {
+      version: 1,
+      eventId,
+      family: 'pi',
+      ref,
+      kind: 'pi_offline',
+      detectedAt: at('21:10:00').toISOString(),
+      subject: 'Frozen subject',
+      body: 'Frozen body',
+      recipients: [
+        {
+          to: 'one@example.test',
+          marker: `audit:${world.hashId(`${eventId}\0one@example.test`)}`,
+          attempt: { recipient: 'one@example.test', draftCreationAttempted: true }
+        }
+      ],
+      ...overrides
+    }
+    world.records.set(world.key(value.family, value.ref), encodeAuditTransition(value))
+    return value
+  }
+  test('uses actual clock for the 240000ms budget without claiming unread fresh refs', () => {
     const world = new World()
     world.clockStep = 120_001
     const report = runAuditor(world)
     expect(report.budgetExhausted).toBe(true)
-    expect(report.deferredRefs).toBe(1)
+    expect(report.observedRefs).toBe(0)
+    expect(report.deferredRefs).toBe(0)
     expect(report.pendingTransitions).toBe(0)
     expect(world.sent).toHaveLength(0)
     expect(world.counts.get('create')).toBeUndefined()
@@ -604,6 +628,159 @@ describe('bounded work', () => {
     expect(world.sent).toHaveLength(1)
     expect(world.rows).toHaveLength(1)
   })
+  test('durable retry priority lets an unrelated ready receipt finish on a later invocation', () => {
+    const world = new World()
+    world.data = input({ sources: [] })
+    const slow = storePending(world, 'pi-slow')
+    const ready = storePending(world, 'pi-ready', { detectedAt: at('21:11:00').toISOString() })
+    ready.recipients[0]!.attempt.gmailMessageId = 'actual-ready'
+    world.records.set(world.key('pi', ready.ref), encodeAuditTransition(ready))
+    const findSent = world.findSent.bind(world)
+    world.findSent = (marker) => {
+      const result = findSent(marker)
+      world.clock = new Date(world.clock.getTime() + 240_001)
+      return result
+    }
+
+    const first = runAuditor(world)
+    expect(first.pendingTransitions).toBe(2)
+    expect(first.deferredRefs).toBe(1)
+    expect(first.budgetExhausted).toBe(true)
+    expect(world.rows).toHaveLength(0)
+    expect(decodeAuditTransition(world.records.get(world.key('pi', slow.ref))!).lastAttemptAt).toBeDefined()
+    expect(decodeAuditTransition(world.records.get(world.key('pi', ready.ref))!).lastAttemptAt).toBeUndefined()
+
+    const second = runAuditor(world)
+    expect(world.rows).toEqual([
+      {
+        at: at('21:19:00.001').toISOString(),
+        kind: 'pi_offline',
+        ref: 'pi-ready',
+        to: 'one@example.test',
+        gmail_message_id: 'actual-ready'
+      }
+    ])
+    expect(second.reconciledMessages).toBe(1)
+    expect(second.pendingTransitions).toBe(1)
+    expect(second.deferredRefs).toBe(0)
+    expect(second.budgetExhausted).toBe(true)
+    expect(world.records.has(world.key('pi', ready.ref))).toBe(false)
+    expect(second.problems).toContainEqual({ code: 'draft_missing_no_sent_match', ref: 'pi-slow' })
+    expect(runAuditor(world).pendingTransitions).toBe(1)
+    expect(world.rows).toHaveLength(1)
+    expect(world.counts.get('create')).toBeUndefined()
+    expect(world.counts.get('send')).toBeUndefined()
+    expect(world.trace.filter((item) => item.op === 'search').map((item) => item.value)).toEqual([
+      slow.recipients[0]!.marker,
+      slow.recipients[0]!.marker,
+      slow.recipients[0]!.marker
+    ])
+  })
+  test('does not start a fresh snapshot after pending recovery consumes the budget', () => {
+    const world = new World()
+    storePending(world, 'pi-slow')
+    const findSent = world.findSent.bind(world)
+    world.findSent = (marker) => {
+      const result = findSent(marker)
+      world.clock = new Date(world.clock.getTime() + 240_000)
+      return result
+    }
+    const report = runAuditor(world)
+    expect(world.counts.get('input')).toBeUndefined()
+    expect(world.counts.get('history')).toBe(1)
+    expect(world.counts.get('observerRead')).toBeUndefined()
+    expect(report.budgetExhausted).toBe(true)
+    expect(report.observedRefs).toBe(0)
+    expect(report.plannedTransitions).toBe(0)
+    expect(report.pendingTransitions).toBe(1)
+    expect(report.deferredRefs).toBe(0)
+    expect(report.problems).toContainEqual({ code: 'draft_missing_no_sent_match', ref: 'pi-slow' })
+  })
+  test('retains one eligible pending attempt after initial history consumes the budget', () => {
+    const world = new World()
+    const ready = storePending(world, 'pi-ready')
+    ready.recipients[0]!.attempt.gmailMessageId = 'actual-ready'
+    world.records.set(world.key('pi', ready.ref), encodeAuditTransition(ready))
+    const notifications = world.notifications.bind(world)
+    world.notifications = () => {
+      const rows = notifications()
+      world.clock = new Date(world.clock.getTime() + 240_000)
+      return rows
+    }
+    const report = runAuditor(world)
+    expect(world.rows.map((value) => value.gmail_message_id)).toEqual(['actual-ready'])
+    expect(report.reconciledMessages).toBe(1)
+    expect(report.pendingTransitions).toBe(0)
+    expect(report.deferredRefs).toBe(0)
+    expect(report.observedRefs).toBe(0)
+    expect(report.budgetExhausted).toBe(true)
+    expect(world.counts.get('input')).toBeUndefined()
+    expect(world.counts.get('history')).toBe(1)
+  })
+  for (const [priority, first, second, expectedRef] of [
+    [
+      'never attempted before an older retry',
+      { lastAttemptAt: at('21:00:00').toISOString() },
+      { detectedAt: at('21:14:00').toISOString() },
+      'pi-a'
+    ],
+    [
+      'least recent durable attempt',
+      { lastAttemptAt: at('21:13:00').toISOString() },
+      { lastAttemptAt: '2026-11-05T13:12:00Z' },
+      'pi-a'
+    ],
+    ['detection time on tied attempts', { detectedAt: at('21:09:00').toISOString() }, {}, 'pi-z'],
+    ['identity on tied detection times', {}, {}, 'pi-a']
+  ] as const) {
+    test(`orders pending recovery by ${priority}`, () => {
+      const world = new World()
+      world.data = input({ sources: [] })
+      const values = [storePending(world, 'pi-z', first), storePending(world, 'pi-a', second)]
+      const findSent = world.findSent.bind(world)
+      world.findSent = (marker) => {
+        const result = findSent(marker)
+        world.clock = new Date(world.clock.getTime() + 240_000)
+        return result
+      }
+      const report = runAuditor(world)
+      expect(world.trace.filter((item) => item.op === 'search').map((item) => item.value)).toEqual([
+        values.find((value) => value.ref === expectedRef)!.recipients[0]!.marker
+      ])
+      expect(report.pendingTransitions).toBe(2)
+      expect(report.deferredRefs).toBe(1)
+      expect(report.budgetExhausted).toBe(true)
+    })
+  }
+  for (const stage of ['initial history', 'input', 'fresh history'] as const) {
+    test(`stops optional fresh work when ${stage} consumes the remaining budget`, () => {
+      const world = new World()
+      const spendBudget = () => {
+        world.clock = new Date(world.clock.getTime() + 240_000)
+      }
+      if (stage === 'input') world.onInput = spendBudget
+      else {
+        const notifications = world.notifications.bind(world)
+        world.notifications = () => {
+          const rows = notifications()
+          if (world.counts.get('history') === (stage === 'initial history' ? 1 : 2)) spendBudget()
+          return rows
+        }
+      }
+      const report = runAuditor(world)
+      expect(world.counts.get('input') ?? 0).toBe(stage === 'initial history' ? 0 : 1)
+      expect(world.counts.get('history')).toBe(stage === 'fresh history' ? 2 : 1)
+      expect(world.counts.get('observerRead')).toBeUndefined()
+      expect(world.counts.get('observerSave')).toBeUndefined()
+      expect(world.records.size).toBe(0)
+      expect(world.rows).toHaveLength(0)
+      expect(report.budgetExhausted).toBe(true)
+      expect(report.observedRefs).toBe(0)
+      expect(report.plannedTransitions).toBe(0)
+      expect(report.pendingTransitions).toBe(0)
+      expect(report.deferredRefs).toBe(0)
+    })
+  }
 })
 
 describe('closed state and recovery edges', () => {
