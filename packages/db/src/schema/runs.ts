@@ -116,6 +116,14 @@ export const call = tenantTable(
       .notNull()
       .default(sql`'{}'`),
     reason: text('reason'),
+    // c-bundle-lifecycle: the drafted wording per language and the candidate recipient IDs (TRD agent output).
+    notices: jsonb('notices')
+      .notNull()
+      .default(sql`'[]'`),
+    recipients: text('recipients')
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
     shadow: jsonb('shadow').notNull(),
     chosen: text('chosen').notNull(),
     agrees: boolean('agrees').notNull(),
