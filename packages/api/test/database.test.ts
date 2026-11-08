@@ -51,10 +51,20 @@ const getTestStatus = createRoute({
   responses: { 200: { description: 'Up', content: { 'application/json': { schema: z.object({ up: z.boolean() }) } } } },
   x: { owner: 'test', statement: 'public', idempotent: false }
 })
+const approveTestBundle = createRoute({
+  method: 'post',
+  path: '/api/test-bundles/{id}/approve',
+  operationId: 'approveTestBundle',
+  request: { params: z.object({ id: z.string() }) },
+  responses: {
+    200: { description: 'Approved', content: { 'application/json': { schema: z.object({ ok: z.boolean() }) } } }
+  },
+  x: { owner: 'test', statement: 'bundle.approve', idempotent: false }
+})
 const routes = [getTestProject, renameTestProject, getTestStatus] as SkyclauseRoute[]
 
 let renames = 0
-const { v1 } = createApi(
+const { v1, api } = createApi(
   {
     ...productionDeps,
     resolvePrincipal: async () => null,
@@ -63,8 +73,9 @@ const { v1 } = createApi(
   },
   {
     v1: routes,
-    api: [],
+    api: [approveTestBundle] as SkyclauseRoute[],
     handlers: {
+      approveTestBundle: { handler: (c) => c.json({ ok: true }, 200) },
       getTestProject: {
         handler: (c) =>
           inTenant(c, async ({ tx }) => {
@@ -169,4 +180,53 @@ describe('on the test database', () => {
     expect(stored.some((value) => /^ip:[0-9a-f]{64}$/.test(value))).toBe(true)
     expect(stored.filter((value) => value.includes(address))).toEqual([])
   })
+
+  it('writes one mcp.tool_called row to audit_event for a tool-bearing Skyclause-Client', async () => {
+    const a = await organisation()
+    await apiRequest(v1, {
+      as: a.as,
+      method: 'GET',
+      path: `/v1/test-projects/${a.project.id}`,
+      org: a.org.slug,
+      headers: { 'Skyclause-Client': 'mcp; name="claude-code"; tool="get_project"' }
+    })
+    expect(await audits(a.org.id)).toEqual([
+      {
+        action: 'mcp.tool_called',
+        target_type: 'mcp_tool',
+        target_id: 'get_project',
+        actor_id: a.as.kind === 'session' && a.as.accountId
+      }
+    ])
+  })
+
+  it('refuses a viewer bundle.approve with 403 and writes one bundle.approve_denied row', async () => {
+    const a = await organisation('viewer')
+    const response = await apiRequest(api, {
+      as: a.as,
+      method: 'POST',
+      path: '/api/test-bundles/b-1/approve',
+      org: a.org.slug
+    })
+    expect(response.status).toBe(403)
+    expect(await audits(a.org.id)).toEqual([
+      {
+        action: 'bundle.approve_denied',
+        target_type: 'test_bundle',
+        target_id: 'b-1',
+        actor_id: a.as.kind === 'session' && a.as.accountId
+      }
+    ])
+  })
 })
+
+/** The organisation's audit rows, read as the superuser. */
+function audits(orgId: string) {
+  return asLogin('postgres', async (client) => {
+    const { rows } = await client.query(
+      'SELECT action, target_type, target_id, actor_id FROM audit_event WHERE org_id = $1 ORDER BY at',
+      [orgId]
+    )
+    return rows
+  })
+}
