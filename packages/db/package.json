@@ -4,9 +4,29 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./auth": "./src/auth.ts",
+    "./test/*": "./test/*.ts"
+  },
+  "scripts": {
+    "generate": "drizzle-kit generate",
+    "generate:auth": "bun scripts/generate-auth.ts"
   },
   "dependencies": {
-    "@skyclause/contracts": "workspace:*"
+    "@skyclause/config": "workspace:*",
+    "@skyclause/contracts": "workspace:*",
+    "drizzle-orm": "0.45.4",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@better-auth/api-key": "1.7.17",
+    "@better-auth/cimd": "1.7.17",
+    "@better-auth/mcp": "1.7.17",
+    "@better-auth/oauth-provider": "1.7.17",
+    "@better-auth/passkey": "1.7.17",
+    "@types/pg": "8.23.1",
+    "auth": "1.7.17",
+    "better-auth": "1.7.17",
+    "drizzle-kit": "0.31.11"
   }
 }

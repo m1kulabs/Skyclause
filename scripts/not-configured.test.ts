@@ -35,10 +35,7 @@ test('the root stubs pass on this tree and fail once their owner’s artifact ex
     string
   >
   const artifacts: Record<string, string> = {
-    'openapi:check': 'packages/api/openapi.json',
-    'db:seed-check': 'packages/db/migrations/0000_roles.sql',
-    'db:up': 'packages/db/migrations/0000_roles.sql',
-    'db:migrate': 'packages/db/migrations/0000_roles.sql'
+    'openapi:check': 'packages/api/openapi.json'
   }
   for (const [name, artifact] of Object.entries(artifacts)) {
     const args = scripts[name]!.replace(/^bun scripts\/not-configured\.ts /, '').split(' ')

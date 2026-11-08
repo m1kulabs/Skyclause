@@ -139,6 +139,7 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
+      - run: bun run db:up
       - run: bun run db:seed-check
 
   audit:
@@ -153,4 +154,6 @@ jobs:
           bun-version-file: package.json
       # GHSA-g3hv-75wg-m249 covers minimatch 7.0.0 to below 11.0.1, so package.json overrides only typescript-estree's
       # minimatch ^10 to ^11.0.1; ESLint 9's ^3 is outside it. #214 drops the override once typescript-eslint has a fix.
+      # drizzle-kit 0.31's @esbuild-kit/core-utils pins esbuild ~0.18.20, inside GHSA-67mh-4wv8-2f99 (<=0.24.2), so
+      # package.json moves it to ^0.25, the line drizzle-kit itself uses (#91).
       - run: bun audit

@@ -34,6 +34,14 @@ const APPS = ['web', 'worker', 'docs']
 /** `packages/clauses` is pure and browser-safe: its only runtime dependency is its CEL library (TRD layout). */
 const CLAUSES_ONLY = '@bufbuild/cel'
 const SCOPE = '@skyclause/'
+/**
+ * #79 §7: `packages/db/test` (factories, and the harness's superuser client) is used only in tests, by path or through
+ * the package's `./test/*` export; a Vitest config may import `test/harness/config`.
+ */
+const DB_TEST = /^(packages\/db|@skyclause\/db)\/test(\/|$)/
+const DB_TEST_CONFIG = /^(packages\/db|@skyclause\/db)\/test\/harness\/config$/
+/** `authDatabase()` is Better Auth's client (#91), for packages/auth alone. */
+const DB_AUTH = '@skyclause/db/auth'
 
 interface Unit {
   dir: string // e.g. `packages/db`
@@ -122,6 +130,11 @@ export function checkBoundaries(root: string): string[] {
     for (const file of listFiles(root, [unit.dir]).filter(isSource)) {
       const isTest = isTestFile(file)
       for (const { spec, typeOnly } of specifiers(file, readFileSync(join(root, file), 'utf8'))) {
+        const resolved = spec.startsWith('.') ? toPosix(relative(root, resolve(root, dirname(file), spec))) : spec
+        if (!isTest && DB_TEST.test(resolved) && !DB_TEST_CONFIG.test(resolved))
+          problems.push(`${file} imports packages/db/test outside a test file`)
+        if (!isTest && resolved === DB_AUTH && unit.name !== 'auth')
+          problems.push(`${file} imports ${DB_AUTH} outside packages/auth`)
         if (spec.startsWith('.')) {
           const path = toPosix(relative(root, resolve(root, dirname(file), spec)))
           const target = unitAt(path)

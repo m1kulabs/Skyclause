@@ -18,9 +18,9 @@
     "test:e2e": "bun run --cwd apps/web test:e2e",
     "build": "bun pilot/apps-script/build.ts && bun run --filter './apps/*' build",
     "openapi:check": "bun scripts/not-configured.ts f-api openapi.json apps packages",
-    "db:seed-check": "bun scripts/not-configured.ts f-db .sql packages/db",
-    "db:up": "bun scripts/not-configured.ts f-db .sql packages/db",
-    "db:migrate": "bun scripts/not-configured.ts f-db .sql packages/db",
+    "db:seed-check": "bun packages/db/scripts/seed-check.ts",
+    "db:up": "docker compose -f packages/db/compose.yaml up -d --build --wait",
+    "db:migrate": "bun packages/db/scripts/migrate.ts",
     "check:unbuilt": "bun scripts/check-unbuilt.ts",
     "prepare": "husky"
   },
@@ -53,6 +53,9 @@
   "overrides": {
     "@typescript-eslint/typescript-estree": {
       "minimatch": "^11.0.1"
+    },
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.0"
     }
   }
 }
