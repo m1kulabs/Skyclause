@@ -65,7 +65,7 @@ describe('the Apps Script bundle in dist/', () => {
       ts.ScriptTarget.Latest,
       true
     )
-    for (const name of ['pollMetWarnings', 'pollMetForecast', 'verifyMetWarningText']) {
+    for (const name of ['pollMetWarnings', 'pollMetForecast', 'verifyMetWarningText', 'runAuditor']) {
       const declaration = source.statements.find(
         (node) => ts.isFunctionDeclaration(node) && node.name?.text === name
       ) as ts.FunctionDeclaration
@@ -74,6 +74,12 @@ describe('the Apps Script bundle in dist/', () => {
       expect(declaration.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword)).toBe(true)
     }
     expect(code).not.toMatch(/node:|readFileSync|weather-warning-20261105|weather-forecast-kl-20261108/)
+  })
+
+  test('registers exactly one five-minute auditor under the existing pilot setup', () => {
+    expect(triggerRegistry.filter((entry) => entry.handler === 'runAuditor')).toEqual([
+      { kind: 'time', handler: 'runAuditor', every: { minutes: 5 } }
+    ])
   })
 
   test('avoids logical assignment syntax rejected by the native Apps Script parser', () => {

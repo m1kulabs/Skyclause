@@ -5,6 +5,7 @@ import type { TriggerEntry } from './triggers.ts'
 // changing the cadence of a handler that keeps its number of lines takes a manual delete of its old trigger.
 export const triggerRegistry: TriggerEntry[] = [
   { kind: 'time', handler: 'pollEvidenceInbox', every: { minutes: 1 } },
+  { kind: 'time', handler: 'runAuditor', every: { minutes: 5 } },
   { kind: 'time', handler: 'pollJps', every: { minutes: 5 } },
   { kind: 'time', handler: 'pollApims', every: { minutes: 15 } },
   { kind: 'time', handler: 'pollMetWarnings', every: { minutes: 10 } },
