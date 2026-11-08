@@ -127,6 +127,18 @@ function decodePush(text: string): PushMessage {
   }
 }
 
+/** Runs every handler at `now` side by side, so one failure stops none of the others; returns the failed names. */
+async function runAll(label: string, handlers: Record<string, TickHandler>, now: Date) {
+  const entries = Object.entries(handlers)
+  const results = await Promise.allSettled(entries.map(([, handler]) => handler(now)))
+  return entries.flatMap(([name], i) => {
+    const result = results[i]
+    if (result?.status !== 'rejected') return []
+    log('ERROR', `${label} handler failed`, { [label]: name, error: String(result.reason) })
+    return [name]
+  })
+}
+
 const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com']
 
 export function createServer(options: ServerOptions) {
@@ -200,15 +212,7 @@ export function createServer(options: ServerOptions) {
 
   app.post('/ticks/minute', async (c) => {
     ;(options.heartbeat ?? logHeartbeat)('minute_tick')
-    const now = new Date()
-    const ticks = Object.entries(registry.ticks)
-    const results = await Promise.allSettled(ticks.map(([, tick]) => tick(now)))
-    const failed = ticks.flatMap(([name], i) => {
-      const result = results[i]
-      if (result?.status !== 'rejected') return []
-      log('ERROR', 'tick handler failed', { tick: name, error: String(result.reason) })
-      return [name]
-    })
+    const failed = await runAll('tick', registry.ticks, new Date())
     return failed.length ? c.json({ failed }, 500) : c.body(null, 204)
   })
 
