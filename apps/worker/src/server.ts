@@ -1,6 +1,7 @@
 import { trace } from '@opentelemetry/api'
 import { log as telemetryLog } from '@skyclause/config'
 import type { HeartbeatName } from '@skyclause/contracts'
+import { shareSystemConnection } from '@skyclause/db'
 import { Hono, type MiddlewareHandler } from 'hono'
 import { routePath } from 'hono/route'
 import { jwtVerify, type JWTPayload, type JWTVerifyGetKey } from 'jose'
@@ -48,7 +49,11 @@ export interface WorkerPart {
   queues?: Record<string, QueueHandler>
   /** Run on every Cloud Scheduler `POST /ticks/minute`, keyed by a name for logs. */
   ticks?: Record<string, TickHandler>
-  /** Run on every Cloud Scheduler `POST /ticks/batch`, every 15 minutes (D45), keyed by a name for logs. */
+  /**
+   * Run on every Cloud Scheduler `POST /ticks/batch`, every 15 minutes (D45), keyed by a name for logs. A run's
+   * handlers take turns on one connection, which only `withSystem` and `withTenant` for a system principal share, called
+   * as `shareSystemConnection` says; await every call before the handler settles.
+   */
   batch?: Record<string, BatchHandler>
   /** `POST /internal<path>`, with Hono path params such as `/ai-keys/:id/test`. */
   internal?: Record<string, RouteHandler>
@@ -140,10 +145,13 @@ function decodePush(text: string): PushMessage {
   }
 }
 
-/** Runs every handler at `now` side by side, so one failure stops none of the others; returns the failed names. */
+/**
+ * Runs every handler at `now` side by side, so one failure stops none of the others, even a handler that throws
+ * before returning its promise; resolves once every handler has settled, with the failed names.
+ */
 async function runAll(label: string, handlers: Record<string, TickHandler | BatchHandler>, now: Date) {
   const entries = Object.entries(handlers)
-  const results = await Promise.allSettled(entries.map(([, handler]) => handler(now)))
+  const results = await Promise.allSettled(entries.map(async ([, handler]) => handler(now)))
   return entries.flatMap(([name], i) => {
     const result = results[i]
     if (result?.status !== 'rejected') return []
@@ -229,9 +237,16 @@ export function createServer(options: ServerOptions) {
     return failed.length ? c.json({ failed }, 500) : c.body(null, 204)
   })
 
-  // D45: the route itself never reads or writes Postgres; only its handlers do.
+  // D45: the route itself never reads or writes Postgres; its handlers do, sharing one connection per run, which goes
+  // back to the pool once runAll has seen every handler settle. If it can't be opened, no handler can work, so the
+  // batch names them all.
   app.post('/ticks/batch', async (c) => {
-    const failed = await runAll('batch', registry.batch, new Date())
+    const now = new Date()
+    const failed = await shareSystemConnection(() => runAll('batch', registry.batch, now)).catch((error: unknown) => {
+      const names = Object.keys(registry.batch)
+      log('ERROR', 'batch connection failed', { handlers: names, error: String(error) })
+      return names
+    })
     return failed.length ? c.json({ failed }, 500) : c.body(null, 204)
   })
 
