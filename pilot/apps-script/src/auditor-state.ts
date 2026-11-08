@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '../../shared/utf8.ts'
 import type { AuditFamily } from './auditor-policy.ts'
 import type { DraftAttemptState } from './draft-delivery.ts'
 
@@ -71,16 +72,8 @@ function email(value: unknown): string {
     return fail()
   return raw
 }
-function utf8(value: string): number {
-  let bytes = 0
-  for (const character of value) {
-    const point = character.codePointAt(0)!
-    bytes += point <= 0x7f ? 1 : point <= 0x7ff ? 2 : point <= 0xffff ? 3 : 4
-  }
-  return bytes
-}
 function bounded(raw: string): string {
-  if (utf8(raw) > LIMIT) throw new Error('audit_state_overflow')
+  if (utf8ByteLength(raw) > LIMIT) throw new Error('audit_state_overflow')
   return raw
 }
 function attempt(value: unknown, to: string): DraftAttemptState {
