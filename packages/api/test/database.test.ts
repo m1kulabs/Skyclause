@@ -6,6 +6,7 @@ import { asLogin } from '@skyclause/db/test/harness/index'
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { createApi } from '../src/app'
+import { IP_LIMIT } from '../src/middleware/rate-limit'
 import { ApiError } from '../src/problems'
 import { productionDeps } from '../src/production'
 import { inTenant } from '../src/tenancy'
@@ -164,7 +165,11 @@ describe('on the test database', () => {
     expect(replay.status).toBe(201)
     expect(await replay.json()).toEqual(await first.json())
     expect(renames - before).toBe(1)
-    expect((await rename('Cheras')).status).toBe(422)
+    const mismatch = await rename('Cheras')
+    expect(mismatch.status).toBe(422)
+    expect(((await mismatch.json()) as { type: string }).type).toBe(
+      'https://docs.skyclause.m1ku.tech/problems/idempotency-mismatch'
+    )
   })
 
   it('rate-limits by an IP hash in rate_limit, and never stores the address', async () => {
@@ -179,6 +184,12 @@ describe('on the test database', () => {
     })
     expect(stored.some((value) => /^ip:[0-9a-f]{64}$/.test(value))).toBe(true)
     expect(stored.filter((value) => value.includes(address))).toEqual([])
+
+    // The same address, counted in rate_limit, passes IP_LIMIT within the minute.
+    for (let hit = 2; hit <= IP_LIMIT; hit++) expect((await status()).status).toBe(200)
+    const limited = await status()
+    expect(limited.status).toBe(429)
+    expect(Number(limited.headers.get('Retry-After'))).toBeGreaterThan(0)
   })
 
   it('writes one mcp.tool_called row to audit_event for a tool-bearing Skyclause-Client', async () => {
