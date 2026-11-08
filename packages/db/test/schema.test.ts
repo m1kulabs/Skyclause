@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { expect, test } from 'vitest'
 import { asLogin } from './harness'
 
+// Partitions are left out: queries through the parent use its policies, and no role but owner has a grant on a partition.
 test('every table with org_id has RLS enabled and forced and a policy on current_org_id()', async () => {
   const tables = await asLogin('postgres', async (client) => {
     const { rows } = await client.query(`
@@ -11,7 +12,7 @@ test('every table with org_id has RLS enabled and forced and a policy on current
         EXISTS (SELECT FROM pg_policy p WHERE p.polrelid = c.oid
           AND pg_get_expr(p.polqual, p.polrelid) LIKE '%current_org_id()%') AS policy
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-      WHERE n.nspname IN ('public', 'auth') AND c.relkind IN ('r', 'p')
+      WHERE n.nspname IN ('public', 'auth') AND c.relkind IN ('r', 'p') AND NOT c.relispartition
         AND EXISTS (SELECT FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attname = 'org_id' AND NOT a.attisdropped)
       ORDER BY 1`)
     return rows as Array<{ name: string; enabled: boolean; forced: boolean; policy: boolean }>

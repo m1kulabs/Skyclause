@@ -6,10 +6,11 @@
 CREATE FUNCTION current_org_id() RETURNS uuid LANGUAGE sql STABLE PARALLEL SAFE
   RETURN nullif(current_setting('app.org_id', true), '')::uuid;
 
--- TRD append-only tables: UPDATE, DELETE and TRUNCATE are refused unless the current role is `retention`.
+-- TRD append-only tables: UPDATE, DELETE and TRUNCATE are refused unless the current role is `retention`. A foreign-key
+-- cascade runs as the table's owner, so a cascade from the `retention` login's own delete (erasure) passes too.
 CREATE FUNCTION append_only() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-  IF current_user = 'retention' THEN
+  IF current_user = 'retention' OR session_user = 'retention' THEN
     IF TG_OP = 'DELETE' THEN
       RETURN OLD;
     END IF;
@@ -21,7 +22,8 @@ END
 $$;
 
 -- `SELECT attach_append_only('<table>')` after `tenant_table` (or a table's own grants). Row triggers are cloned to
--- partitions; TRUNCATE gets a statement trigger. `app` and `system` keep INSERT and SELECT only.
+-- partitions; TRUNCATE gets a statement trigger on the table named (not its partitions, which only `owner` may
+-- truncate). `app` and `system` keep INSERT and SELECT only.
 CREATE FUNCTION attach_append_only(t regclass) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
   EXECUTE format('CREATE TRIGGER append_only BEFORE UPDATE OR DELETE ON %s FOR EACH ROW EXECUTE FUNCTION append_only()', t);
