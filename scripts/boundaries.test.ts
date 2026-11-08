@@ -61,6 +61,29 @@ describe('dependency boundaries (spec §1, D10)', () => {
     ])
   })
 
+  test('db test factories imported outside a test file fail (#79 §7)', () => {
+    const root = repo({
+      'packages/db': {
+        files: {
+          'src/index.ts': "import { makeProject } from '../test/factories/project'\n",
+          'test/tenancy.test.ts': "import { makeProject } from './factories'\n"
+        }
+      },
+      'packages/api': {
+        dependencies: { '@skyclause/db': 'workspace:*' },
+        references: ['../db'],
+        files: {
+          'src/services/projects.ts': "import { makeProject } from '@skyclause/db/test/factories/project'\n",
+          'test/projects.test.ts': "import { makeProject } from '@skyclause/db/test/factories/project'\n"
+        }
+      }
+    })
+    expect(checkBoundaries(root)).toEqual([
+      'packages/api/src/services/projects.ts imports db test factories outside a test file',
+      'packages/db/src/index.ts imports db test factories outside a test file'
+    ])
+  })
+
   test('a package importing an app by relative path fails', () => {
     const root = repo({
       'packages/db': { files: { 'src/index.ts': "import '../../../apps/web/lib/db'\n" } },
