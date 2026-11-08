@@ -201,8 +201,8 @@ describe('evidence packs', () => {
   test('direct warning projections retain native Date.parse validity interpretation', () => {
     const warning = {
       warning_key: 'test-only-direct-warning',
-      issued: '2026-11-02T13:00:00+08:00',
-      first_seen_at: '2026-11-02T13:01:00+08:00',
+      issued: 'November 2, 2026 13:00:00 GMT+0800',
+      first_seen_at: 'November 2, 2026 13:01:00 GMT+0800',
       valid_from: 'November 2, 2026 14:00:00 GMT+0800',
       valid_to: 'November 2, 2026 17:00:00 GMT+0800',
       names_kl: true,
@@ -211,11 +211,25 @@ describe('evidence packs', () => {
     const data = projectEvidenceRows({ ...empty, warnings: [warning] })
     const result = buildEvidencePack(request, context, {
       ...data,
-      warnings: [{ ...data.warnings[0]!, valid_from: warning.valid_from, valid_to: warning.valid_to }]
+      warnings: [
+        {
+          ...data.warnings[0]!,
+          issued: warning.issued,
+          first_seen_at: warning.first_seen_at,
+          valid_from: warning.valid_from,
+          valid_to: warning.valid_to
+        }
+      ]
     })
     if (!('warnings' in result)) throw new Error('expected evidence pack')
     expect(result.warnings).toEqual([
-      { ...data.warnings[0]!, valid_from: warning.valid_from, valid_to: warning.valid_to }
+      {
+        ...data.warnings[0]!,
+        issued: warning.issued,
+        first_seen_at: warning.first_seen_at,
+        valid_from: warning.valid_from,
+        valid_to: warning.valid_to
+      }
     ])
   })
 
@@ -224,7 +238,7 @@ describe('evidence packs', () => {
       warning_key: 'test-warning',
       issued: '2026-11-02T13:00:00+08:00',
       first_seen_at: '2026-11-02T13:00:00+08:00',
-      valid_from: '2026-11-02T14:00:00+08:00',
+      valid_from: '2026-11-02T13:00:00+08:00',
       valid_to: '2026-11-02T17:00:00+08:00',
       names_kl: true,
       title_en: 'Thunderstorms Warning',
@@ -254,6 +268,54 @@ describe('evidence packs', () => {
     if (typeof selected !== 'string') {
       expect(selected[0]?.text_en).toBe('Published text\nverbatim')
       expect(selected[0]?.text_bm).toBe('Teks asal')
+    }
+  })
+
+  test('warning replacement, reversion and physical ties preserve current published text', () => {
+    const original: Row<'warnings'> = {
+      warning_key: '2026-11-02T13:00:00+08:00·Thunderstorms Warning·2026-11-02T14:00:00+08:00',
+      issued: '2026-11-02T13:00:00+08:00',
+      first_seen_at: '2026-11-02T13:01:00+08:00',
+      valid_from: '2026-11-02T14:00:00+08:00',
+      valid_to: '2026-11-02T17:00:00+08:00',
+      title_en: 'Thunderstorms Warning',
+      text_en: 'Published English\nverbatim',
+      text_bm: 'Teks asal',
+      names_kl: true
+    }
+    const removed = { ...original, names_kl: false, first_seen_at: '2026-11-02T13:02:00+08:00' }
+    expect(pack({ warnings: [original, removed] }).warnings).toBe('No warning record for this window')
+    const restored = { ...original, first_seen_at: '2026-11-02T13:03:00+08:00' }
+    const result = pack({ warnings: [restored, original, removed] }).warnings
+    expect(Array.isArray(result)).toBe(true)
+    if (Array.isArray(result)) {
+      expect(result).toHaveLength(1)
+      expect(result[0]?.first_seen_at).toBe('2026-11-02T13:03:00+08:00')
+      expect(result[0]?.text_en).toBe('Published English\nverbatim')
+      expect(result[0]?.text_bm).toBe('Teks asal')
+    }
+    const tied = { ...original, names_kl: false }
+    expect(pack({ warnings: [original, tied] }).warnings).toBe('No warning record for this window')
+    expect(Array.isArray(pack({ warnings: [tied, original] }).warnings)).toBe(true)
+  })
+
+  test('exact assembled cutoff filters receipt and issued availability before selecting latest warnings', () => {
+    const original: Row<'warnings'> = {
+      warning_key: 'test-only-cutoff-warning',
+      issued: '2026-11-02T13:00:00+08:00',
+      first_seen_at: '2026-11-02T13:01:00+08:00',
+      valid_from: '2026-11-02T14:00:00+08:00',
+      valid_to: '2026-11-02T17:00:00+08:00',
+      names_kl: true
+    }
+    const atCutoff = { ...original, first_seen_at: context.assembledAt, names_kl: false }
+    expect(pack({ warnings: [original, atCutoff] }).warnings).toBe('No warning record for this window')
+    const afterReceipt = { ...atCutoff, first_seen_at: '2026-11-07T16:01:01+08:00' }
+    const afterIssued = { ...atCutoff, issued: '2026-11-07T16:01:01+08:00' }
+    for (const future of [afterReceipt, afterIssued]) {
+      const result = pack({ warnings: [original, future] }).warnings
+      expect(Array.isArray(result)).toBe(true)
+      if (Array.isArray(result)) expect(result[0]?.first_seen_at).toBe('2026-11-02T13:01:00+08:00')
     }
   })
 
