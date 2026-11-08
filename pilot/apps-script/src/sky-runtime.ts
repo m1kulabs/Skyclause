@@ -23,6 +23,7 @@ export interface SkyClauseRuntimePorts {
   store: SkyClauseStorePort
   canonicalJson(value: unknown): string
   sha256(text: string): string
+  reservedCrossingNames(): readonly string[]
   listCrossings(): readonly PlannedSkyCrossingFile[]
   createCrossing(file: PlannedSkyCrossingFile): void
 }
@@ -316,7 +317,12 @@ export function runSkyClauseTick(input: SkyClauseTickInput, ports: SkyClauseRunt
       }
     }
 
+    const peerNames = new Set(ports.reservedCrossingNames())
     if (matchedSeq !== null) {
+      const reusableName = `crossing-${stampToken}-${String(matchedSeq).padStart(2, '0')}.json`
+      if (peerNames.has(reusableName)) {
+        throw new Error(`Ambiguous crossing identity reserved by peer: ${reusableName}`)
+      }
       if (matchedSeq !== 1) {
         plan = planSkyCrossings({
           ...baseCrossingInput,
@@ -325,7 +331,19 @@ export function runSkyClauseTick(input: SkyClauseTickInput, ports: SkyClauseRunt
       }
       fileReused = true
     } else {
+      for (const name of peerNames) {
+        const match = CROSSING_FILENAME_RE.exec(name)
+        if (match?.[1] !== stampToken) continue
+        const sequence = Number(match[2])
+        if (!Number.isSafeInteger(sequence) || sequence < 1) {
+          throw new Error(`Invalid peer crossing sequence: ${name}`)
+        }
+        maxSameStampSeq = Math.max(maxSameStampSeq, sequence)
+      }
       const nextSeq = maxSameStampSeq + 1
+      if (!Number.isSafeInteger(nextSeq)) {
+        throw new Error(`Invalid crossing sequence: ${nextSeq}`)
+      }
       if (nextSeq !== 1) {
         plan = planSkyCrossings({
           ...baseCrossingInput,

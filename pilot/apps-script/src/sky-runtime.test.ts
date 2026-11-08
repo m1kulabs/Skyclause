@@ -163,6 +163,7 @@ function createHarness(initial?: {
   shadowState?: Row<'shadow_state'>[]
   ledgerFull?: Row<'ledger'>[]
   crossings?: PlannedSkyCrossingFile[]
+  peerReservations?: string[]
 }): InMemoryHarness {
   const clauses = structuredClone(initial?.clauses ?? [])
   const clauseVersions = structuredClone(initial?.clauseVersions ?? [])
@@ -231,6 +232,7 @@ function createHarness(initial?: {
     store,
     canonicalJson,
     sha256,
+    reservedCrossingNames: () => initial?.peerReservations ?? [],
     listCrossings(): readonly PlannedSkyCrossingFile[] {
       ops.push('listCrossings')
       return structuredClone(crossings)
@@ -270,6 +272,64 @@ function buildTickInput(overrides?: Partial<SkyClauseTickInput>): SkyClauseTickI
 }
 
 describe('Sky runtime versioning and durable crossing coordination', () => {
+  test('reserves a same-stamp Crowd identity and carries the allocated ID into state', () => {
+    const harness = createHarness()
+    harness.ports.reservedCrossingNames = () => ['crossing-20261102-1505-01.json']
+    runSkyClauseTick(buildTickInput(), harness.ports)
+    expect(harness.crossings[0]?.filename).toBe('crossing-20261102-1505-02.json')
+    expect(harness.shadowState.some((r) => r.last_crossing_id === 'X-20261102-1505-02')).toBe(true)
+  })
+
+  test('ignores different-stamp peers and extends the same-stamp maximum rather than filling gaps', () => {
+    const harness = createHarness({
+      peerReservations: ['crossing-20261102-1435-99.json', 'crossing-20261102-1505-03.json']
+    })
+    runSkyClauseTick(buildTickInput(), harness.ports)
+    expect(harness.crossings[0]?.filename).toBe('crossing-20261102-1505-04.json')
+    const different = createHarness({ peerReservations: ['crossing-20261102-1435-99.json'] })
+    runSkyClauseTick(buildTickInput(), different.ports)
+    expect(different.crossings[0]?.filename).toBe('crossing-20261102-1505-01.json')
+  })
+
+  test('reuses its persisted crossing before considering higher peer ordinals and rejects a claimed reusable identity', () => {
+    const harness = createHarness()
+    const create = harness.ports.createCrossing
+    harness.ports.createCrossing = (file) => {
+      create(file)
+      throw new Error('Drive timeout after persisting crossing file')
+    }
+    expect(() => runSkyClauseTick(buildTickInput(), harness.ports)).toThrow(
+      'Drive timeout after persisting crossing file'
+    )
+    harness.ports.reservedCrossingNames = () => ['crossing-20261102-1505-09.json']
+    const retry = runSkyClauseTick(buildTickInput(), harness.ports)
+    expect(retry.fileReused).toBe(true)
+    expect(retry.plan.crossing?.document.crossing_id).toBe('X-20261102-1505-01')
+    expect(harness.crossings).toHaveLength(1)
+    harness.shadowState.splice(0)
+    const stateBefore = structuredClone(harness.shadowState)
+    harness.ports.reservedCrossingNames = () => ['crossing-20261102-1505-01.json']
+    expect(() => runSkyClauseTick(buildTickInput(), harness.ports)).toThrow(/reserved|ambiguous/i)
+    expect(harness.crossings).toHaveLength(1)
+    expect(harness.shadowState).toEqual(stateBefore)
+  })
+
+  test('does not read peer reservations when the verdict produces no crossing', () => {
+    const harness = createHarness()
+    runSkyClauseTick(buildTickInput(), harness.ports)
+    harness.ports.reservedCrossingNames = () => {
+      throw new Error('unexpected reservation read')
+    }
+    expect(runSkyClauseTick(buildTickInput(), harness.ports).plan.crossing).toBeNull()
+  })
+
+  test('rejects unsafe peer sequence calculations before file creation', () => {
+    const harness = createHarness({ peerReservations: ['crossing-20261102-1505-9007199254740991.json'] })
+    expect(() => runSkyClauseTick(buildTickInput(), harness.ports)).toThrow(/sequence/i)
+    expect(harness.crossings).toHaveLength(0)
+    expect(harness.shadowState).toHaveLength(0)
+  })
+
   test('bootstraps 6 default Sky rows while preserving Crowd row, logs version 1 and ledger entry, writes shadow then crossing then state without mutating input', () => {
     const harness = createHarness({ clauses: [buildCrowdRow()] })
     const input = buildTickInput()

@@ -41,6 +41,7 @@ export interface CrowdTickStore {
   readClauses(): Pick<Row<'clauses'>, 'pack' | 'key' | 'threshold' | 'op' | 'enabled' | 'Proposes'>[]
   appendForecast(row: Row<'forecasts'>): void
   replaceCrowdShadow(rows: Row<'crowd_shadow'>[]): void
+  reservedCrossingNames(): readonly string[]
   crowdFiles(): RawFile[]
   writeCrowdFile(name: string, text: string): void
 }
@@ -456,7 +457,7 @@ export function runCrowdForecast(store: CrowdTickStore, now: Date, thresholdOver
   report.shadowRows = shadow.length
 
   if (changes.length > 0) {
-    const taken = new Set(store.crowdFiles().map((file) => file.name))
+    const taken = new Set([...store.crowdFiles().map((file) => file.name), ...store.reservedCrossingNames()])
     const { file, id } = crossingName(tEval, taken)
     store.writeCrowdFile(
       file,

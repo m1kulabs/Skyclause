@@ -1,5 +1,6 @@
 // Apps Script adapters for the ports the pure modules take. Tests use doubles instead of these.
 import { toMytIso } from '../../shared/time.ts'
+import { peerCrossingReservations } from './crossing-reservations.ts'
 import { metStoragePorts } from './met-storage.ts'
 import type { MetPollPorts } from './met.ts'
 import type { EvidenceInboxPorts } from './evidence.ts'
@@ -437,6 +438,7 @@ export function skyClauseRuntimePorts(spreadsheetId: string, crossingFolderId: s
     store,
     canonicalJson: canonicalJsonSerialize,
     sha256: sha256Hex,
+    reservedCrossingNames: () => peerCrossingReservations(crossingFolderId, getProperty('CROSSINGS_CROWD_FOLDER_ID')),
     listCrossings(): readonly PlannedSkyCrossingFile[] {
       const folderId = requireCrossingFolderId(crossingFolderId)
       const folder = DriveApp.getFolderById(folderId)
@@ -948,6 +950,7 @@ export function crowdForecastStore(spreadsheetId: string): CrowdTickStore {
     readClauses: () => readColumns(spreadsheetId, 'clauses', ['pack', 'key', 'threshold', 'op', 'enabled', 'Proposes']),
     appendForecast: (row) => appendRows(spreadsheetId, 'forecasts', [row]),
     replaceCrowdShadow: (rows) => replaceTabRows(spreadsheetId, 'crowd_shadow', rows),
+    reservedCrossingNames: () => peerCrossingReservations(folderId ?? '', getProperty('CROSSINGS_SKY_FOLDER_ID')),
     crowdFiles: () => listFiles(folderId),
     writeCrowdFile: (name, text) => {
       if (!folderId) throw new Error('CROSSINGS_CROWD_FOLDER_ID is not set; run setup()')

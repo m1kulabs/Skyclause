@@ -201,6 +201,7 @@ describe('Sky producers → CAL-3 sweep', () => {
     const ports: SkyClauseRuntimePorts = {
       canonicalJson,
       sha256,
+      reservedCrossingNames: () => [],
       listCrossings: () => files,
       createCrossing: (file) => {
         files.push(structuredClone(file))
