@@ -50,10 +50,6 @@ const packages: Array<{ name: string; owners: Record<string, string[]> }> = [
   {
     name: 'sources',
     owners: { 'b-adapter-listings': ['parseListingPage'] }
-  },
-  {
-    name: 'agent',
-    owners: { 'c-agent-core': ['draftBundle'] }
   }
 ]
 
