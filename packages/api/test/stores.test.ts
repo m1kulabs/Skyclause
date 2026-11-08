@@ -29,8 +29,26 @@ describe.each<[string, () => { idempotency: IdempotencyStore; rateLimits: RateLi
       requestHash: 'hash-a',
       response: null
     })
-    await idempotency.complete(first, response)
+    await idempotency.complete(first, response, new Date(now.getTime() + day))
     expect(await idempotency.reserve(first, now)).toMatchObject({ requestHash: 'hash-a', response })
+  })
+
+  it('frees a pending key whose lease ran out, so a crashed request never blocks retries for a day', async () => {
+    const { idempotency } = stores()
+    const lease = 600_000
+    const first = { ...record('hash-a'), expiresAt: new Date(now.getTime() + lease) }
+    await idempotency.reserve(first, now)
+    const later = new Date(now.getTime() + lease)
+    expect(await idempotency.reserve({ ...first, expiresAt: new Date(later.getTime() + lease) }, later)).toBeNull()
+  })
+
+  it('keeps a completed key until the expiry complete sets, past the pending lease', async () => {
+    const { idempotency } = stores()
+    const first = { ...record('hash-a'), expiresAt: new Date(now.getTime() + 600_000) }
+    await idempotency.reserve(first, now)
+    await idempotency.complete(first, response, new Date(now.getTime() + day))
+    const afterLease = new Date(now.getTime() + 3_600_000)
+    expect(await idempotency.reserve(first, afterLease)).toMatchObject({ response })
   })
 
   it('releases only a pending key it reserved, with its own request hash', async () => {
@@ -42,7 +60,7 @@ describe.each<[string, () => { idempotency: IdempotencyStore; rateLimits: RateLi
     await idempotency.release(first)
     expect(await idempotency.reserve(first, now)).toBeNull()
 
-    await idempotency.complete(first, response)
+    await idempotency.complete(first, response, new Date(now.getTime() + day))
     await idempotency.release(first)
     expect(await idempotency.reserve(first, now)).toMatchObject({ response })
   })
@@ -51,7 +69,7 @@ describe.each<[string, () => { idempotency: IdempotencyStore; rateLimits: RateLi
     const { idempotency } = stores()
     const first = record('hash-a')
     await idempotency.reserve(first, now)
-    await idempotency.complete(first, response)
+    await idempotency.complete(first, response, new Date(now.getTime() + day))
     const later = new Date(now.getTime() + day)
     const retry = { ...first, requestHash: 'hash-b', expiresAt: new Date(later.getTime() + day) }
     expect(await idempotency.reserve(retry, later)).toBeNull()

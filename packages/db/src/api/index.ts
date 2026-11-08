@@ -4,6 +4,7 @@ export {
   hitRateLimit,
   releaseIdempotencyKey,
   reserveIdempotencyKey,
+  type IdempotencyClaim,
   type IdempotencyHolder,
   type IdempotencyKeyId,
   type IdempotencyResponse

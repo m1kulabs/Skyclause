@@ -182,9 +182,11 @@ export function memoryIdempotencyStore(): IdempotencyStore {
       records.set(id(record), record)
       return null
     },
-    async complete(claim, response) {
+    async complete(claim, response, expiresAt) {
       const held = records.get(id(claim))
-      if (held?.requestHash === claim.requestHash && !held.response) records.set(id(claim), { ...held, response })
+      if (held?.requestHash === claim.requestHash && !held.response) {
+        records.set(id(claim), { ...held, response, expiresAt })
+      }
     },
     async release(claim) {
       const held = records.get(id(claim))

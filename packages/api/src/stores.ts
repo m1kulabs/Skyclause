@@ -21,7 +21,7 @@ export interface StoredResponse {
 export interface IdempotencyRecord extends IdempotencyKey {
   requestHash: string
   expiresAt: Date
-  /** Null while the first request is still running. */
+  /** Null while the first request is still running, whose reservation expires sooner (the pending lease). */
   response: StoredResponse | null
 }
 
@@ -31,8 +31,8 @@ export type IdempotencyClaim = IdempotencyKey & { requestHash: string }
 export interface IdempotencyStore {
   /** Inserts a pending record unless an unexpired one holds the key, which it returns instead. */
   reserve(record: IdempotencyRecord, now: Date): Promise<IdempotencyRecord | null>
-  /** Stores the response on the pending key this request reserved. */
-  complete(claim: IdempotencyClaim, response: StoredResponse): Promise<void>
+  /** Stores the response on the pending key this request reserved, kept until `expiresAt`. */
+  complete(claim: IdempotencyClaim, response: StoredResponse, expiresAt: Date): Promise<void>
   /** Frees the pending key this request reserved, so a retry runs again; a completed key stays. */
   release(claim: IdempotencyClaim): Promise<void>
 }

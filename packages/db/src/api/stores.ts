@@ -24,8 +24,14 @@ export interface IdempotencyHolder {
   response: IdempotencyResponse | null
 }
 
+/** A key as the request that reserved it holds it: a request that took over after expiry has another hash. */
+export type IdempotencyClaim = IdempotencyKeyId & { requestHash: string }
+
 const keyed = (id: IdempotencyKeyId) =>
   and(eq(idempotencyKey.scope, id.scope), eq(idempotencyKey.route, id.route), eq(idempotencyKey.key, id.key))
+/** This request's own row, still pending. */
+const claimed = (claim: IdempotencyClaim) =>
+  and(keyed(claim), eq(idempotencyKey.requestHash, claim.requestHash), isNull(idempotencyKey.status))
 
 /**
  * Reserves `id` for a new request, taking over an expired holder's row, and returns null; or returns the unexpired
@@ -33,7 +39,7 @@ const keyed = (id: IdempotencyKeyId) =>
  */
 export async function reserveIdempotencyKey(
   tx: Tx<SystemPrincipal>,
-  record: IdempotencyKeyId & { requestHash: string; expiresAt: Date },
+  record: IdempotencyClaim & { expiresAt: Date },
   now: Date
 ): Promise<IdempotencyHolder | null> {
   const pending = { requestHash: record.requestHash, expiresAt: record.expiresAt, status: null, contentType: null }
@@ -60,23 +66,22 @@ export async function reserveIdempotencyKey(
   }
 }
 
-/** Stores the response a repeat replays, on the row this request reserved. */
+/** Stores the response a repeat replays, on the row this request reserved, kept until `expiresAt`. */
 export async function completeIdempotencyKey(
   tx: Tx<SystemPrincipal>,
-  id: IdempotencyKeyId & { requestHash: string },
-  response: IdempotencyResponse
+  claim: IdempotencyClaim,
+  response: IdempotencyResponse,
+  expiresAt: Date
 ) {
   await tx
     .update(idempotencyKey)
-    .set(response)
-    .where(and(keyed(id), eq(idempotencyKey.requestHash, id.requestHash), isNull(idempotencyKey.status)))
+    .set({ ...response, expiresAt })
+    .where(claimed(claim))
 }
 
 /** Frees the row this request reserved, so a retry runs again; a row another request took over stays. */
-export async function releaseIdempotencyKey(tx: Tx<SystemPrincipal>, id: IdempotencyKeyId & { requestHash: string }) {
-  await tx
-    .delete(idempotencyKey)
-    .where(and(keyed(id), eq(idempotencyKey.requestHash, id.requestHash), isNull(idempotencyKey.status)))
+export async function releaseIdempotencyKey(tx: Tx<SystemPrincipal>, claim: IdempotencyClaim) {
+  await tx.delete(idempotencyKey).where(claimed(claim))
 }
 
 /** Counts one request in `bucket`'s fixed window, opening a new window once the last one has ended. */
