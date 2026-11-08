@@ -5,7 +5,8 @@ import { evalModel } from './doubles'
 import type { Report } from './harness'
 import { main } from './run'
 
-// The CI path end to end: only the Vertex provider factory is replaced, so no test reaches Google.
+// The runner end to end on model doubles, in `bun run test`: only the Vertex provider factory is replaced, so no test
+// reaches Google.
 const vertex = vi.hoisted(() => ({ model: undefined as unknown, settings: [] as unknown[] }))
 vi.mock('@ai-sdk/google-vertex', () => ({
   createGoogleVertex: (settings: unknown) => {

@@ -1,6 +1,6 @@
-// `bun packages/agent/test/evals/run.ts`: the eval suite on the platform's Vertex model, as `evals.yml` runs it. Prints
-// the report as JSON and Markdown, appends the Markdown to the job summary and exits 1 when the gate fails.
-import { appendFileSync } from 'node:fs'
+// `bun packages/agent/test/evals/run.ts`: the eval suite on the platform's Vertex model, run by hand; pull requests
+// never call a live model (decided 8 November 2026), so `bun run test` drives `main` on model doubles instead. Prints
+// the report as JSON and Markdown and exits 1 when the gate fails.
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { ModelEntry } from '@skyclause/contracts'
@@ -50,6 +50,5 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const run = await main(process.env)
   if (run.json) console.log(run.json)
   console.log(run.markdown)
-  if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, run.markdown)
   process.exitCode = run.code
 }
