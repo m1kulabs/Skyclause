@@ -1,4 +1,5 @@
 import { email } from './email'
+import { migrator } from './migrate'
 import { restoreDrill } from './restore-drill'
 import { defineRegistry } from './server'
 
@@ -6,5 +7,6 @@ import { defineRegistry } from './server'
 // for example `evaluator, // b-evaluator`.
 export const registry = defineRegistry([
   restoreDrill, // a-ops-runbooks
-  email // a-email-transport
+  email, // a-email-transport
+  migrator // f-db
 ])
