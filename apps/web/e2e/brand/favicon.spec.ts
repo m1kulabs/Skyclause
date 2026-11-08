@@ -23,6 +23,7 @@ test.describe('WEB-1 in HOST_MODE=single and multi', () => {
       env: {
         ...process.env,
         APP_ENV: 'test',
+        IP_HASH_KEY: 'test-only-ip-hash-key-for-playwright-runs',
         HOST_MODE: 'multi',
         // HOST_MODE=multi needs all six origins to start (#93); the camera page needs an API origin (#129).
         MARKETING_ORIGIN: 'https://skyclause.m1ku.tech',

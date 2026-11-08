@@ -7,8 +7,9 @@ const worker = {
   WORKER_INVOKER_SA: 'worker-invoker@skyclause.iam.gserviceaccount.com'
 }
 
-// IP_HASH_KEY is required on web in production; shaped like the generated secret, not the real one.
-const web = { APP_ENV: 'production', IP_HASH_KEY: 'k'.repeat(48) }
+// IP_HASH_KEY is required on web; shaped like the generated secret, not the real one.
+const key = { IP_HASH_KEY: 'k'.repeat(48) }
+const web = { APP_ENV: 'production', ...key }
 const origins = {
   MARKETING_ORIGIN: 'https://skyclause.m1ku.tech',
   APP_ORIGIN: 'https://app.skyclause.m1ku.tech',
@@ -33,7 +34,7 @@ describe('loadEnv', () => {
   })
 
   test('allows APP_ENV=test outside Cloud Run', () => {
-    expect(loadEnv('web', { APP_ENV: 'test' })).toEqual({ APP_ENV: 'test' })
+    expect(loadEnv('web', { APP_ENV: 'test', ...key })).toEqual({ APP_ENV: 'test', ...key })
   })
 
   test('refuses an APP_ENV outside dev, production and test, staging included (D44)', () => {
@@ -121,11 +122,11 @@ describe('loadEnv', () => {
       GCP_REGION: 'asia-southeast1'
     })
     expect(env).toMatchObject({ OTEL_SERVICE_NAME: 'web', GCP_PROJECT: 'skyclause', GCP_REGION: 'asia-southeast1' })
-    expect(loadEnv('web', { APP_ENV: 'dev' }).GCP_PROJECT).toBeUndefined()
+    expect(loadEnv('web', { APP_ENV: 'dev', ...key }).GCP_PROJECT).toBeUndefined()
   })
 
   test('web reads HOST_MODE and the six origins; multi needs all six (spec §4 Hosts)', () => {
-    expect(loadEnv('web', { APP_ENV: 'dev' }).HOST_MODE).toBeUndefined()
+    expect(loadEnv('web', { APP_ENV: 'dev', ...key }).HOST_MODE).toBeUndefined()
     expect(loadEnv('web', { ...web, HOST_MODE: 'multi', ...origins })).toEqual({
       ...web,
       HOST_MODE: 'multi',
@@ -142,9 +143,10 @@ describe('loadEnv', () => {
     expect(() => loadEnv('web', { ...web, APP_ORIGIN: 'app.skyclause.m1ku.tech' })).toThrow(/APP_ORIGIN/)
   })
 
-  test('web needs IP_HASH_KEY in production only, at least 32 characters', () => {
-    expect(() => loadEnv('web', { APP_ENV: 'production' })).toThrow(/IP_HASH_KEY: required in production/)
+  test('web needs IP_HASH_KEY of at least 32 characters, in every environment', () => {
+    for (const APP_ENV of ['dev', 'test', 'production']) {
+      expect(() => loadEnv('web', { APP_ENV }), APP_ENV).toThrow(/IP_HASH_KEY/)
+    }
     expect(() => loadEnv('web', { APP_ENV: 'production', IP_HASH_KEY: 'short' })).toThrow(/IP_HASH_KEY/)
-    expect(loadEnv('web', { APP_ENV: 'test' }).IP_HASH_KEY).toBeUndefined()
   })
 })

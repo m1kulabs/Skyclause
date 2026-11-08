@@ -54,7 +54,7 @@ function together(names: string[]) {
 }
 
 // f-api (#93): spec §4 Hosts. Unset HOST_MODE is single (laptops and CI); multi needs all six origins, which
-// Terraform sets. IP_HASH_KEY keys the rate limiter's IP hash and is required in production (Secret Manager).
+// Terraform sets. IP_HASH_KEY keys the rate limiter's IP hash (Secret Manager in production).
 const ORIGINS = ['MARKETING_ORIGIN', 'APP_ORIGIN', 'API_ORIGIN', 'MCP_ORIGIN', 'EMBED_ORIGIN', 'DOCS_ORIGIN'] as const
 const hosts = {
   HOST_MODE: z.enum(['single', 'multi']).optional(),
@@ -62,17 +62,14 @@ const hosts = {
     (typeof ORIGINS)[number],
     z.ZodOptional<z.ZodURL>
   >),
-  IP_HASH_KEY: z.string().min(32).optional()
+  IP_HASH_KEY: z.string().min(32)
 }
 
-function hostRules(env: Record<string, unknown>, ctx: z.RefinementCtx) {
+function multiNeedsOrigins(env: Record<string, unknown>, ctx: z.RefinementCtx) {
   if (env.HOST_MODE === 'multi') {
     for (const name of ORIGINS.filter((name) => env[name] === undefined)) {
       ctx.addIssue({ code: 'custom', path: [name], message: 'required when HOST_MODE is multi' })
     }
-  }
-  if (env.APP_ENV === 'production' && env.IP_HASH_KEY === undefined) {
-    ctx.addIssue({ code: 'custom', path: ['IP_HASH_KEY'], message: 'required in production' })
   }
 }
 
@@ -80,7 +77,7 @@ const schemas = {
   web: base
     .extend({ ...optional(sending), ...vapidPublic, ...hosts })
     .superRefine(together(Object.keys(sending)))
-    .superRefine(hostRules),
+    .superRefine(multiNeedsOrigins),
   worker: base
     .extend({
       WORKER_URL: z.url(),
