@@ -1,9 +1,12 @@
 import { sql, type BuildExtraConfigColumns } from 'drizzle-orm'
 import {
+  foreignKey,
   index,
   pgTable,
   timestamp,
+  unique,
   uuid,
+  type AnyPgColumn,
   type PgColumnBuilderBase,
   type PgTableExtraConfigValue
 } from 'drizzle-orm/pg-core'
@@ -42,4 +45,31 @@ export function tenantTable<TName extends string, TColumns extends Record<string
     index(`${name}_org_id_idx`).on(self.orgId),
     ...(extra?.(self) ?? [])
   ])
+}
+
+interface OrgRow {
+  orgId: AnyPgColumn
+  id: AnyPgColumn
+}
+
+/** `UNIQUE (org_id, id)` on a T table: the target of its children's composite foreign keys (TRD tenancy). */
+export const orgKey = (table: string, self: OrgRow) => unique(`${table}_org_id_id_key`).on(self.orgId, self.id)
+
+/**
+ * A composite foreign key `(org_id, <column>) → parent (org_id, id)`, so a child row can't point into another
+ * organisation (TRD tenancy). The parent needs `orgKey`. Named `<name>_fk`; cascades only when `cascade` is set.
+ */
+export function sameOrg(
+  name: string,
+  self: { orgId: AnyPgColumn },
+  column: AnyPgColumn,
+  parent: OrgRow,
+  cascade = false
+) {
+  const key = foreignKey({
+    name: `${name}_fk`,
+    columns: [self.orgId, column],
+    foreignColumns: [parent.orgId, parent.id]
+  })
+  return cascade ? key.onDelete('cascade') : key
 }

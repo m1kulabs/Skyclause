@@ -8,7 +8,10 @@ import { fileURLToPath } from 'node:url'
 import { migrate } from '../src/migrate'
 import { createDatabase, dropDatabase, localUrl, migrationsFolder, scratchName, withLocal } from './local'
 
-/** Organisations, members, projects, windows, polls, readings, runs, bundles, calls, ledger entries and grades. */
+/**
+ * Organisations, members, projects, windows, polls, readings, runs, bundles, calls, ledger entries and grades. Every one
+ * exists since #92, so a renamed or dropped one fails the check instead of passing it vacuously.
+ */
 const SEED_TABLES = [
   'organization',
   'member',
@@ -22,8 +25,6 @@ const SEED_TABLES = [
   'ledger_entry',
   'grade'
 ]
-/** Tables this ticket creates, so a renamed or dropped one can't make the check pass vacuously. */
-const ALWAYS = ['organization', 'member', 'project']
 
 export async function seedCheck(folder = migrationsFolder) {
   const database = scratchName('skyclause_seed')
@@ -36,7 +37,7 @@ export async function seedCheck(folder = migrationsFolder) {
           WHERE n.nspname IN ('public', 'auth') AND c.relkind IN ('r', 'p') AND c.relname = ANY($1) ORDER BY 2`,
         [SEED_TABLES]
       )
-      const problems = ALWAYS.filter((name) => !tables.some((table) => table.name === name)).map(
+      const problems = SEED_TABLES.filter((name) => !tables.some((table) => table.name === name)).map(
         (name) => `${name} is missing from the migrated schema`
       )
       const counts: Record<string, number> = {}

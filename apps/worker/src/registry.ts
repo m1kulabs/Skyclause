@@ -1,4 +1,5 @@
 import { email } from './email'
+import { domainEvents } from './events'
 import { migrations } from './migrate'
 import { restoreDrill } from './restore-drill'
 import { defineRegistry } from './server'
@@ -8,5 +9,6 @@ import { defineRegistry } from './server'
 export const registry = defineRegistry([
   restoreDrill, // a-ops-runbooks
   email, // a-email-transport
-  migrations // f-db
+  migrations, // f-db
+  domainEvents // f-db-schema
 ])
