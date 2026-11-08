@@ -140,10 +140,13 @@ function decodePush(text: string): PushMessage {
   }
 }
 
-/** Runs every handler at `now` side by side, so one failure stops none of the others; returns the failed names. */
+/**
+ * Runs every handler at `now` side by side, so one failure stops none of the others, even a handler that throws
+ * before returning its promise; resolves once every handler has settled, with the failed names.
+ */
 async function runAll(label: string, handlers: Record<string, TickHandler | BatchHandler>, now: Date) {
   const entries = Object.entries(handlers)
-  const results = await Promise.allSettled(entries.map(([, handler]) => handler(now)))
+  const results = await Promise.allSettled(entries.map(async ([, handler]) => handler(now)))
   return entries.flatMap(([name], i) => {
     const result = results[i]
     if (result?.status !== 'rejected') return []

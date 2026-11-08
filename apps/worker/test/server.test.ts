@@ -201,6 +201,25 @@ describe('worker 15-minute batch', () => {
     expect(await res.json()).toEqual({ failed: ['sli'] })
   })
 
+  test('a handler that throws before returning a promise stops none of the others', async () => {
+    const ran: string[] = []
+    const app = server(
+      {
+        owner: 'a-observability',
+        batch: {
+          sli: () => {
+            throw new Error('not configured')
+          }
+        }
+      },
+      { owner: 'b-auditor', batch: { auditor: async () => void ran.push('auditor') } }
+    )
+    const res = await post(app, '/ticks/batch', { bearer: await token() })
+    expect(ran).toEqual(['auditor'])
+    expect(res.status).toBe(500)
+    expect(await res.json()).toEqual({ failed: ['sli'] })
+  })
+
   test('a batch with no handlers is 204', async () => {
     expect((await post(server(), '/ticks/batch', { bearer: await token() })).status).toBe(204)
   })
