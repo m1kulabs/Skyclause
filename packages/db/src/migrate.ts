@@ -7,7 +7,8 @@ import pg from 'pg'
  * Applies the pending migrations in `folder` (drizzle-kit's journal and SQL) on the `migrator` login, one transaction
  * each, recording them in `drizzle.__drizzle_migrations` as drizzle-kit does. The first migration creates the roles, so
  * it runs as the login; every later one runs as `owner`, which then owns every object. A migration that needs the
- * login's own rights wraps the statement in `RESET ROLE; …; SET LOCAL ROLE "owner";`. Returns the applied tags.
+ * login's own rights wraps the statement in `RESET ROLE; …; SET LOCAL ROLE "owner";`. An advisory lock makes a second
+ * run at the same time wait, then apply nothing. Returns the applied tags.
  */
 export async function migrate(url: string, folder: string): Promise<string[]> {
   const migrations = readMigrationFiles({ migrationsFolder: folder })
@@ -17,6 +18,7 @@ export async function migrate(url: string, folder: string): Promise<string[]> {
   const client = new pg.Client({ connectionString: url })
   await client.connect()
   try {
+    await client.query("SELECT pg_advisory_lock(hashtext('skyclause.migrate'))")
     await client.query('CREATE SCHEMA IF NOT EXISTS drizzle')
     await client.query(
       'CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint)'
@@ -39,7 +41,8 @@ export async function migrate(url: string, folder: string): Promise<string[]> {
         ])
         await client.query('COMMIT')
       } catch (error) {
-        await client.query('ROLLBACK')
+        // A failed ROLLBACK means the connection is gone, which ends the transaction anyway; report the first error.
+        await client.query('ROLLBACK').catch(() => {})
         throw error
       }
       applied.push(entries[i]!.tag)

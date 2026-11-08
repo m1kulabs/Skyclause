@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
+import { log } from '@skyclause/config'
 import type { Principal, TxHandle } from '@skyclause/contracts'
 import { sql, type ExtractTablesWithRelations } from 'drizzle-orm'
 import { drizzle, type NodePgDatabase, type NodePgTransaction } from 'drizzle-orm/node-postgres'
@@ -10,15 +11,12 @@ type Schema = typeof schema
 /**
  * The Drizzle transaction `fn` gets from a `with*` helper, carrying who runs it. `principal` is null only in
  * `withPublicReader` (`Tx<null>`); `orgId` is the organisation in `app.org_id`, or null outside `withTenant`.
- * Contracts see it as the `TxHandle` brand (#79 §1); `asTx` turns one back.
+ * Contracts see it as the `TxHandle` brand (#79 §1); a §1 helper given a `TxHandle` casts it back with `as Tx`.
  */
 export type Tx<P extends Principal | null = Principal> = NodePgTransaction<Schema, ExtractTablesWithRelations<Schema>> &
   TxHandle & { readonly principal: P; readonly orgId: string | null }
 
 export type SystemPrincipal = Extract<Principal, { kind: 'system' }>
-
-/** For §1 helpers that take a contract `TxHandle`: every `TxHandle` is a `Tx` from this package. */
-export const asTx = (handle: TxHandle) => handle as Tx<Principal | null>
 
 /** The #79 §6 `DATABASE_URL_*` suffixes the runtime connects with; `MIGRATE` is `migrate()`'s alone. */
 export type Login = 'APP' | 'AUTH' | 'SYSTEM' | 'RETENTION'
@@ -36,7 +34,7 @@ export function connection(login: Login) {
     const pool = new pg.Pool({ connectionString: url, idleTimeoutMillis: 5_000, allowExitOnIdle: true })
     // An idle client that errors (the server ended it) leaves the pool, and the next query connects again; without a
     // listener the error would crash the process.
-    pool.on('error', () => {})
+    pool.on('error', (error) => log.warn('idle database connection failed', { login, error: String(error) }))
     found = { pool, db: drizzle(pool, { schema }) }
     connections.set(url, found)
   }

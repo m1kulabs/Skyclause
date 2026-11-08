@@ -8,6 +8,9 @@
   "include": ["src", "test", "scripts", "drizzle.config.ts", "vitest.config.ts"],
   "references": [
     {
+      "path": "../config"
+    },
+    {
       "path": "../contracts"
     }
   ]

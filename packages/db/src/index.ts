@@ -1,5 +1,4 @@
 export {
-  asTx,
   closeConnections,
   shareSystemConnection,
   withPublicReader,

@@ -157,6 +157,7 @@
       "name": "@skyclause/db",
       "version": "0.0.0",
       "dependencies": {
+        "@skyclause/config": "workspace:*",
         "@skyclause/contracts": "workspace:*",
         "drizzle-orm": "0.45.4",
         "pg": "8.23.1",
