@@ -1,4 +1,4 @@
-import { resolvePrincipal } from '@skyclause/auth'
+import { pagePrincipal, resolvePrincipal } from '@skyclause/auth'
 import type { Principal } from '@skyclause/contracts'
 import { headers } from 'next/headers'
 
@@ -44,4 +44,21 @@ export async function getPrincipal(): Promise<Principal | null> {
   const scheme = requestHeaders.get('x-forwarded-proto') ?? 'http'
   const request = new Request(`${scheme}://${host}/`, { headers: requestHeaders })
   return resolvePrincipal(request, { surface: 'api' })
+}
+
+/**
+ * For a page under `/{org}`: the principal, a member's session filled with the URL organisation's `orgId` and `role`
+ * (#94's page helper), and that organisation's ID, null when none exists. A Playwright test principal keeps its own
+ * `orgId`, and the URL's name stands in for the ID.
+ */
+export async function getOrgPrincipal(org: string): Promise<{ principal: Principal | null; orgId: string | null }> {
+  const requestHeaders = new Headers(await headers())
+
+  if (process.env.APP_ENV === 'test') {
+    const principal = principalFromTestCookie(cookieValue(requestHeaders.get('cookie'), TEST_PRINCIPAL_COOKIE), 'test')
+    if (principal !== undefined) return { principal, orgId: org }
+  }
+
+  const { principal, org: found } = await pagePrincipal(requestHeaders, { org })
+  return { principal, orgId: found?.id ?? null }
 }

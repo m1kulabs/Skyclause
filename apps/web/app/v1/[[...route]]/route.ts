@@ -1,4 +1,4 @@
-import { v1 } from '@skyclause/api'
+import { v1 } from '../../../lib/api'
 
 // Every `/v1` operation (spec §4), served by packages/api. Never pass Next's second argument on: Hono would read it
 // as the in-process principal binding (D5).

@@ -1,4 +1,4 @@
-import { api } from '@skyclause/api'
+import { api } from '../../../lib/api'
 
 // Every first-party `/api` operation (spec §4), served by packages/api; Better Auth's `/api/auth/*` is its own,
 // more specific route (#94). Never pass Next's second argument on: Hono would read it as the principal binding.
