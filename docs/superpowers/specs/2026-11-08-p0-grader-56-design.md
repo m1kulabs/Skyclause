@@ -18,7 +18,7 @@ Grade closed Sky windows once, using complete observed evidence and the clause v
 
 [Issue #56](https://github.com/m1kulabs/Skyclause/issues/56), the #47 workbook contract, and the grading sections of the PRD/TRD are authoritative. The ticket's explicit 06:00 catch-up overrides the stale TRD 06:30 text; correct that text in a separate documentation commit. Base is `b633b930d9880b6ae5eea012eec933d72fefc91a` on `codex/p0-grader-56`. The auditor is merged in #393, and the completed-worktree cleanup rule in #395.
 
-The existing approved autonomous core workflow covers design, planning and technical review without repeated approval prompts. Choices here are root author calls. A separate optional camera question remains open; the stated assumption is recorded eligibility at the time, with no invented earlier clearance dates.
+The existing approved autonomous core workflow covers design, planning and technical review without repeated approval prompts. Other technical choices here are root author calls. The user explicitly selected camera eligibility recorded at the time: add timestamped decisions for future runs and leave unprovable older camera evidence unused, with no invented earlier clearance dates.
 
 Preserve workbook columns, existing live evaluation/replay behavior, the nine OAuth scopes, Gmail v1, literal-cell safety, lazy native loading, and the executable-AST bundle guard. Add Sheets v4 for the required named view and atomic grade writes. No runtime Node APIs or logical assignment syntax. Only tests use controlled service doubles. Keep real capture timestamps unchanged.
 
@@ -126,7 +126,7 @@ Push/merge under existing authorization and verify the merged tree. Keep #56 ope
 - Use actual attempt intervals for relevant error-poll overlap. Cost if wrong: a boundary error can conservatively invalidate a grade and needs a documented policy adjustment.
 - Select saved versions by time/physical tie and defer missing/corrupt versions. Cost if wrong: a window waits for a usable genuine historical version rather than receiving a guessed grade.
 - Select calls by physical append order; distinguish proposed mode from actual body mode and keep No call separate. Cost if wrong: ledger-order/edited-call compatibility adjustments, not silently rewriting grades.
-- Record future camera decisions at real times and exclude unprovable past eligibility, under the stated optional-question assumption. Cost if wrong: historical camera contributions remain unavailable and the eligibility policy may need rework.
+- Use a bounded private journal to implement the user's recorded-at-the-time camera rule. Cost if wrong: history/mirror compatibility work may be needed; unprovable older camera evidence remains unused as requested.
 - Freeze bounded grade batches and fixed targets before atomic provider writes. Cost if wrong: a corrupt/conflicting intent blocks fresh appends until repaired; no automatic overwrite or regrade.
 - Reserve the required view's title/shape and use stable add IDs. Cost if wrong: the feature resets manual edits to that particular view, or a rare ID collision requires repair.
 - Add Sheets v4 while retaining existing OAuth scopes/Gmail. Cost if wrong: API enablement or native binding compatibility work is needed, with no Cloud-project switch.
