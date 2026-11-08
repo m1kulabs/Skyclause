@@ -19,7 +19,6 @@ const packages: Array<{ name: string; owners: Record<string, string[]> }> = [
   {
     name: 'db',
     owners: {
-      'f-db-schema': ['recordAudit', 'emitEvent', 'track', 'projectGate'],
       'c-ledger-chain': ['appendLedger'],
       'c-run-orchestrator': ['requestRun'],
       'a-org-projects': ['createOrganisation'],
