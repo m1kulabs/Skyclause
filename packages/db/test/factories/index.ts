@@ -25,6 +25,7 @@ import { makeGuestBlock } from './guest_block'
 import { makeGuestBudget } from './guest_budget'
 import { makeGuestToken } from './guest_token'
 import { makeHandledEvent } from './handled_event'
+import { makeIdempotencyKey } from './idempotency_key'
 import { makeIcsFeed } from './ics_feed'
 import { makeIncident } from './incident'
 import { makeIncidentUpdate } from './incident_update'
@@ -48,6 +49,7 @@ import { makeProjectChannel } from './project_channel'
 import { makeProjectPack } from './project_pack'
 import { makeProjectSource } from './project_source'
 import { makePushSubscription } from './push_subscription'
+import { makeRateLimit } from './rate_limit'
 import { makeReading } from './reading'
 import { makeReplayResult } from './replay_result'
 import { makeReviewItem } from './review_item'
@@ -227,9 +229,11 @@ export const sharedFactories: Record<string, (tx: Tx) => Promise<unknown>> = {
   guest_block: makeGuestBlock,
   guest_budget: makeGuestBudget,
   handled_event: makeHandledEvent,
+  idempotency_key: makeIdempotencyKey,
   incident: makeIncident,
   incident_update: makeIncidentUpdate,
   poll: makePoll,
+  rate_limit: makeRateLimit,
   reading: makeReading,
   source: makeSource,
   source_state: makeSourceState,
