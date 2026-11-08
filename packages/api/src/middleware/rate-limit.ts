@@ -11,7 +11,7 @@ export const CREDENTIAL_LIMIT = 600
 export const IP_LIMIT = 120
 
 /** The credential a principal arrived with, as a rate-limit bucket and idempotency scope. */
-export function credentialOf(principal: Principal): string | null {
+export function credentialOf(principal: Principal): string {
   switch (principal.kind) {
     case 'session':
       return `session:${principal.sessionId}`
