@@ -23,6 +23,7 @@ export interface SkyClauseRuntimePorts {
   store: SkyClauseStorePort
   canonicalJson(value: unknown): string
   sha256(text: string): string
+  reservedCrossingNames(): readonly string[]
   listCrossings(): readonly PlannedSkyCrossingFile[]
   createCrossing(file: PlannedSkyCrossingFile): void
 }
@@ -298,7 +299,7 @@ export function runSkyClauseTick(input: SkyClauseTickInput, ports: SkyClauseRunt
     const stampToken = formatEvalStampToken(tEvalIso)
     const targetIdentity = canonicalCrossingIdentity(plan.crossing.document, ports.canonicalJson)
 
-    let matchedSeq: number | null = null
+    let matched: { file: PlannedSkyCrossingFile; sequence: number } | null = null
     let maxSameStampSeq = 0
 
     for (const existing of existingCrossings) {
@@ -308,15 +309,24 @@ export function runSkyClauseTick(input: SkyClauseTickInput, ports: SkyClauseRunt
         maxSameStampSeq = seq
       }
       if (
-        matchedSeq === null &&
+        matched === null &&
         existing.document &&
         canonicalCrossingIdentity(existing.document, ports.canonicalJson) === targetIdentity
       ) {
-        matchedSeq = seq
+        matched = { file: existing, sequence: seq }
       }
     }
 
-    if (matchedSeq !== null) {
+    const peerNames = new Set(ports.reservedCrossingNames())
+    if (matched !== null) {
+      const matchedSeq = matched.sequence
+      const reusableNames = [matched.file.filename]
+      const idMatch = CROSSING_ID_RE.exec(String(matched.file.document.crossing_id).trim())
+      if (idMatch) reusableNames.push(`crossing-${idMatch[1]}-${idMatch[2]}.json`)
+      const reservedName = reusableNames.find((name) => peerNames.has(name))
+      if (reservedName) {
+        throw new Error(`Ambiguous crossing identity reserved by peer: ${reservedName}`)
+      }
       if (matchedSeq !== 1) {
         plan = planSkyCrossings({
           ...baseCrossingInput,
@@ -325,7 +335,19 @@ export function runSkyClauseTick(input: SkyClauseTickInput, ports: SkyClauseRunt
       }
       fileReused = true
     } else {
+      for (const name of peerNames) {
+        const match = CROSSING_FILENAME_RE.exec(name)
+        if (match?.[1] !== stampToken) continue
+        const sequence = Number(match[2])
+        if (!Number.isSafeInteger(sequence) || sequence < 1) {
+          throw new Error(`Invalid peer crossing sequence: ${name}`)
+        }
+        maxSameStampSeq = Math.max(maxSameStampSeq, sequence)
+      }
       const nextSeq = maxSameStampSeq + 1
+      if (!Number.isSafeInteger(nextSeq)) {
+        throw new Error(`Invalid crossing sequence: ${nextSeq}`)
+      }
       if (nextSeq !== 1) {
         plan = planSkyCrossings({
           ...baseCrossingInput,

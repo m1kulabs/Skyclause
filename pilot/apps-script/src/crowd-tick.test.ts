@@ -54,6 +54,7 @@ interface Seed {
   forecasts: Row<'forecasts'>[]
   clauses?: Pick<Row<'clauses'>, 'pack' | 'key' | 'threshold' | 'op' | 'enabled' | 'Proposes'>[]
   files: [string, string][]
+  peerReservations?: string[]
 }
 
 function fakeStore(seed: Partial<Seed> = {}): CrowdTickStore & {
@@ -79,6 +80,7 @@ function fakeStore(seed: Partial<Seed> = {}): CrowdTickStore & {
       ],
     appendForecast: (row) => void forecasts.push(row),
     replaceCrowdShadow: (rows) => void shadow.push(...rows),
+    reservedCrossingNames: () => seed.peerReservations ?? [],
     crowdFiles: () => [...files].map(([name, text]) => ({ id: name, name, text }) satisfies RawFile),
     writeCrowdFile: (name, text) => void files.set(name, text)
   }
@@ -173,6 +175,44 @@ describe('the surge tick', () => {
       files: []
     }
   }
+
+  test('reserves Sky identities without treating peers as previous Crowd verdicts', () => {
+    const store = fakeStore({ ...surgeSeed(), peerReservations: ['crossing-20261103-1000-01.json'] })
+    const report = runCrowdForecast(store, new Date('2026-11-03T10:00:00+08:00'))
+    expect(report.crossingFile).toBe('crossing-20261103-1000-02.json')
+    const document = JSON.parse(store.files.get(report.crossingFile!)!)
+    expect(document.crossing_id).toBe('X-20261103-1000-02')
+    expect(document.changes[0].from).toBe('normal')
+    expect(previousVerdicts(store.crowdFiles())).toEqual({ 'N-20261104': 'surge_night' })
+  })
+
+  test('keeps first-gap allocation and ignores different-stamp peers', () => {
+    const store = fakeStore({
+      ...surgeSeed(),
+      peerReservations: ['crossing-20261103-1000-03.json', 'crossing-20261102-1000-01.json']
+    })
+    expect(runCrowdForecast(store, new Date('2026-11-03T10:00:00+08:00')).crossingFile).toBe(
+      'crossing-20261103-1000-01.json'
+    )
+  })
+
+  test('does not read reservations when no crossing is needed', () => {
+    const store = fakeStore(surgeSeed())
+    runCrowdForecast(store, new Date('2026-11-03T10:00:00+08:00'))
+    store.reservedCrossingNames = () => {
+      throw new Error('unexpected reservation read')
+    }
+    expect(runCrowdForecast(store, new Date('2026-11-03T10:00:00+08:00')).crossingFile).toBeNull()
+  })
+
+  test('preserves the 1–99 exhaustion policy across peer and own names', () => {
+    const peers = Array.from({ length: 99 }, (_, n) => `crossing-20261103-1000-${String(n + 1).padStart(2, '0')}.json`)
+    const store = fakeStore({ ...surgeSeed(), peerReservations: peers })
+    expect(() => runCrowdForecast(store, new Date('2026-11-03T10:00:00+08:00'))).toThrow(
+      'too many crowd crossing files'
+    )
+    expect(store.files.size).toBe(0)
+  })
 
   test('an uplift reaching 5,000 writes one crossing file', () => {
     const store = fakeStore(surgeSeed())

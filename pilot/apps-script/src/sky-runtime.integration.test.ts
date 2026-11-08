@@ -5,9 +5,12 @@ import { join } from 'node:path'
 import { describe, expect, test } from 'bun:test'
 import { build } from '../build.ts'
 import * as gas from './gas.ts'
+import { runCrowdForecast } from './crowd-tick.ts'
+import { computeSkySnapshot } from './indicators.ts'
 import type { ScriptProperty } from './properties.ts'
 import { triggerRegistry } from './registry.ts'
-import type { SkyClauseRuntimePorts } from './sky-runtime.ts'
+import type { Row } from './schema.ts'
+import { runSkyClauseTick, type SkyClauseRuntimePorts } from './sky-runtime.ts'
 import {
   MAX_TRIGGERS,
   syncTriggers,
@@ -26,6 +29,170 @@ function getRuntimePortsFactory(): SkyClauseRuntimePortsFactory {
 }
 
 describe('Sky clause runtime integration (#55)', () => {
+  test('live factories defer new native reads and allocate distinct IDs in both serial pack orders', () => {
+    const originals = new Map(
+      ['DriveApp', 'PropertiesService'].map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)])
+    )
+    const propertyReads: string[] = []
+    const folderReads: string[] = []
+    const folders = new Map<string, { name: string; text: string }[]>([
+      ['sky', []],
+      ['crowd', []]
+    ])
+    const props: Record<string, string> = {
+      CROSSINGS_SKY_FOLDER_ID: 'sky',
+      CROSSINGS_CROWD_FOLDER_ID: 'crowd',
+      CROSSINGS_REPLAY_FOLDER_ID: 'replay-must-not-be-read'
+    }
+    Object.defineProperty(globalThis, 'PropertiesService', {
+      configurable: true,
+      value: {
+        getScriptProperties: () => ({
+          getProperty: (key: string) => {
+            propertyReads.push(key)
+            return props[key] ?? null
+          }
+        })
+      }
+    })
+    Object.defineProperty(globalThis, 'DriveApp', {
+      configurable: true,
+      value: {
+        getFolderById: (id: string) => {
+          folderReads.push(id)
+          const entries = folders.get(id)
+          if (!entries) throw new Error(`Unexpected folder: ${id}`)
+          return {
+            getFiles: () => {
+              let index = 0
+              return {
+                hasNext: () => index < entries.length,
+                next: () => {
+                  const file = entries[index++]!
+                  return {
+                    isTrashed: () => false,
+                    getId: () => file.name,
+                    getName: () => file.name,
+                    getBlob: () => ({ getDataAsString: () => file.text })
+                  }
+                }
+              }
+            },
+            createFile: (name: string, text: string) => entries.push({ name, text })
+          }
+        }
+      }
+    })
+    try {
+      const sky = gas.skyClauseRuntimePorts('sheet', 'sky')
+      expect(propertyReads).toEqual([])
+      const crowd = gas.crowdForecastStore('sheet')
+      expect(propertyReads).toEqual(['CROSSINGS_CROWD_FOLDER_ID'])
+      expect(folderReads).toEqual([])
+      folders
+        .get('crowd')!
+        .push({ name: 'crossing-20261102-1505-01.json', text: '{"crossing_id":"X-20261102-1505-03"}' })
+      expect([...sky.reservedCrossingNames()].sort()).toEqual([
+        'crossing-20261102-1505-01.json',
+        'crossing-20261102-1505-03.json'
+      ])
+      folders.get('sky')!.push({ name: 'crossing-20261102-1505-02.json', text: '{"crossing_id":"X-20261102-1505-04"}' })
+      expect([...crowd.reservedCrossingNames()].sort()).toEqual([
+        'crossing-20261102-1505-02.json',
+        'crossing-20261102-1505-04.json'
+      ])
+
+      const tEval = '2026-11-02T15:05:00+08:00'
+      for (const order of ['sky-first', 'crowd-first']) {
+        folders.set('sky', [])
+        folders.set('crowd', [])
+        const liveSky = gas.skyClauseRuntimePorts('sheet', 'sky')
+        const tables = { clauses: [], clause_versions: [], ledger: [], shadow_state: [], shadow: [] } as {
+          [T in 'clauses' | 'clause_versions' | 'ledger' | 'shadow_state' | 'shadow']: Row<T>[]
+        }
+        liveSky.sha256 = (text) => createHash('sha256').update(text).digest('hex')
+        liveSky.store = {
+          readRows: (tab) => tables[tab],
+          appendRows: (tab, rows) => {
+            ;(tables[tab] as Row<typeof tab>[]).push(...rows)
+          },
+          replaceRows: (tab, rows) => {
+            tables[tab] = [...rows]
+          }
+        }
+        const liveCrowd = gas.crowdForecastStore('sheet')
+        Object.assign(liveCrowd, {
+          readReadings: () => [],
+          readPolls: () => [],
+          readHistory: () => [],
+          readForecasts: () => [],
+          readClauses: () => [],
+          readListings: () => [
+            {
+              listing_id: 'L-integration',
+              night_date: '2026-11-03',
+              state: 'listed',
+              class: 'other',
+              doors_myt: '18:00',
+              show_myt: '20:00'
+            }
+          ],
+          appendForecast: () => {},
+          replaceCrowdShadow: () => {}
+        })
+        const runSky = () =>
+          runSkyClauseTick(
+            {
+              tEval,
+              recordedAt: tEval,
+              editor: null,
+              windows: [],
+              snapshot: computeSkySnapshot({
+                tEval,
+                sources: [],
+                readings: [],
+                polls: [],
+                warnings: [],
+                forecast: [],
+                windows: [],
+                daylight: { start: '07:15', end: '19:00' }
+              })
+            },
+            liveSky
+          )
+        const runCrowd = () => runCrowdForecast(liveCrowd, new Date(tEval))
+        if (order === 'sky-first') {
+          runSky()
+          runCrowd()
+        } else {
+          runCrowd()
+          runSky()
+        }
+        const skyDocument = JSON.parse(folders.get('sky')![0]!.text)
+        const crowdDocument = JSON.parse(folders.get('crowd')![0]!.text)
+        expect(skyDocument.crossing_id).toBe(`X-20261102-1505-${order === 'sky-first' ? '01' : '02'}`)
+        expect(crowdDocument.crossing_id).toBe(`X-20261102-1505-${order === 'sky-first' ? '02' : '01'}`)
+        expect(crowdDocument.changes[0].from).toBe('normal')
+      }
+      props.CROSSINGS_CROWD_FOLDER_ID = 'sky'
+      expect(() => sky.reservedCrossingNames()).toThrow(/separate/i)
+      props.CROSSINGS_CROWD_FOLDER_ID = 'unreadable'
+      expect(() => sky.reservedCrossingNames()).toThrow('Unexpected folder: unreadable')
+      props.CROSSINGS_CROWD_FOLDER_ID = 'crowd'
+      props.CROSSINGS_SKY_FOLDER_ID = 'crowd'
+      expect(() => crowd.reservedCrossingNames()).toThrow(/separate/i)
+      props.CROSSINGS_SKY_FOLDER_ID = 'unreadable'
+      expect(() => crowd.reservedCrossingNames()).toThrow('Unexpected folder: unreadable')
+      expect(propertyReads).not.toContain('CROSSINGS_REPLAY_FOLDER_ID')
+      expect(folderReads).not.toContain('replay-must-not-be-read')
+    } finally {
+      for (const [key, original] of originals) {
+        if (original) Object.defineProperty(globalThis, key, original)
+        else delete (globalThis as Record<string, unknown>)[key]
+      }
+    }
+  })
+
   test('triggerRegistry includes on_edit_clauses and pollJps within MAX_TRIGGERS, and syncTriggers honors pilot/dev guard', () => {
     expect(triggerRegistry.length).toBeLessThanOrEqual(MAX_TRIGGERS)
     expect(triggerRegistry).toContainEqual({
