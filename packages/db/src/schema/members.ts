@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { foreignKey, integer, text, time, uuid } from 'drizzle-orm/pg-core'
-import { member, organization } from './auth'
+import { organization } from './auth'
 import { id, instant, orgKey, sameOrg, tenantTable, timestamps } from './columns'
 import { alertChannel, alertLevel, rotaTemplate } from './enums'
 import { project } from './project'
@@ -13,12 +13,10 @@ export const ownershipTransfer = tenantTable(
   'ownership_transfer',
   {
     id: id(),
-    fromMemberId: uuid('from_member_id')
-      .notNull()
-      .references(() => member.id, { onDelete: 'cascade' }),
-    toMemberId: uuid('to_member_id')
-      .notNull()
-      .references(() => member.id, { onDelete: 'cascade' }),
+    // Composite (org_id, member) foreign keys into auth.member are in migration 0004, beside the UNIQUE
+    // (organization_id, id) they need, which the generated Better Auth schema can't carry.
+    fromMemberId: uuid('from_member_id').notNull(),
+    toMemberId: uuid('to_member_id').notNull(),
     tokenHash: text('token_hash').notNull().unique(),
     status: text('status').notNull().default('pending'),
     expiresAt: instant('expires_at').notNull(),

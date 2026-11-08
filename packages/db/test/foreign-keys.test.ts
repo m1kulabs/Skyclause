@@ -2,8 +2,8 @@
 // another organisation. Read from the live catalogue, so a later migration's keys join the test without edits.
 import { expect, test } from 'vitest'
 import { withTenant } from '../src'
-import { makeOrganization, tenantFactories } from './factories'
-import { asLogin, memberOf, tenantTables } from './harness'
+import { makeMember, makeOrganization, makeOwnershipTransfer, tenantFactories } from './factories'
+import { asLogin, memberOf, refusal, tenantTables } from './harness'
 
 interface Key {
   name: string
@@ -80,3 +80,13 @@ test('a child row pointing at another organisation’s parent fails on its compo
   }
   expect(failures).toEqual(Object.fromEntries(keys.map(({ name }) => [name, `23503 ${name}`])))
 }, 120_000)
+
+test('an ownership transfer can name only members of its own organisation', async () => {
+  const [a, b] = [(await makeOrganization()).id, (await makeOrganization()).id]
+  const outsider = await makeMember({ organizationId: b })
+  const transfer = (overrides: { fromMemberId?: string; toMemberId?: string }) =>
+    withTenant({ orgId: a, principal: memberOf(a) }, (tx) => makeOwnershipTransfer(tx, overrides))
+  expect(await refusal(transfer({ toMemberId: outsider.id }))).toMatch(/ownership_transfer_to_member_fk/)
+  expect(await refusal(transfer({ fromMemberId: outsider.id }))).toMatch(/ownership_transfer_from_member_fk/)
+  await expect(transfer({})).resolves.toMatchObject({ orgId: a })
+})

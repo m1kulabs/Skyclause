@@ -59,8 +59,6 @@ export const webhookDelivery = tenantTable(
     attempt: integer('attempt').notNull(),
     statusCode: integer('status_code'),
     latencyMs: integer('latency_ms'),
-    excerpt: text('excerpt'),
-    error: text('error'),
     createdAt: instant('created_at').notNull().defaultNow()
   },
   (self) => [

@@ -78,7 +78,6 @@ CREATE TABLE "guest_token" (
 	"device_hash" text,
 	"ip_hash" text,
 	"expires_at" timestamp with time zone NOT NULL,
-	"revoked_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"org_id" uuid NOT NULL,
 	CONSTRAINT "guest_token_token_hash_unique" UNIQUE("token_hash")
@@ -229,7 +228,6 @@ CREATE TABLE "probation_resolution" (
 	"project_id" uuid NOT NULL,
 	"source_id" uuid NOT NULL,
 	"outcome" text NOT NULL,
-	"resolved_by" uuid,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"org_id" uuid NOT NULL
 );
@@ -292,7 +290,6 @@ CREATE TABLE "crowd_reply" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"project_id" uuid NOT NULL,
 	"window_id" uuid NOT NULL,
-	"subscriber_id" uuid,
 	"kind" "crowd_reply_kind" NOT NULL,
 	"shift_to" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -346,7 +343,6 @@ CREATE TABLE "notification_preference" (
 CREATE TABLE "plan_feedback" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"project_id" uuid NOT NULL,
-	"call_id" uuid,
 	"answer" text NOT NULL,
 	"count" integer DEFAULT 1 NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -383,7 +379,6 @@ CREATE TABLE "subscribe_link" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"project_id" uuid NOT NULL,
 	"token_hash" text NOT NULL,
-	"revoked_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"org_id" uuid NOT NULL,
 	CONSTRAINT "subscribe_link_token_hash_unique" UNIQUE("token_hash")
@@ -592,7 +587,6 @@ CREATE TABLE "guest_block" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"subject_kind" "guest_subject_kind" NOT NULL,
 	"subject_hash" text NOT NULL,
-	"reason" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "guest_block_subject_key" UNIQUE("subject_kind","subject_hash")
 );
@@ -609,24 +603,11 @@ CREATE TABLE "guest_budget" (
 	CONSTRAINT "guest_budget_day_subject_key" UNIQUE("day","subject_kind","subject_hash")
 );
 --> statement-breakpoint
-CREATE TABLE "idempotency_key" (
-	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
-	"scope" text NOT NULL,
-	"route" text NOT NULL,
-	"key" text NOT NULL,
-	"request_hash" text NOT NULL,
-	"response" jsonb,
-	"expires_at" timestamp with time zone NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "idempotency_key_scope_route_key_key" UNIQUE("scope","route","key")
-);
---> statement-breakpoint
 CREATE TABLE "incident" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"scope" "incident_scope" NOT NULL,
 	"component" text NOT NULL,
 	"source_id" uuid,
-	"resolved_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -649,14 +630,6 @@ CREATE TABLE "pilot_archive" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"org_id" uuid NOT NULL,
 	CONSTRAINT "pilot_archive_object_path_under_org" CHECK ("pilot_archive"."object_path" LIKE 'orgs/' || "pilot_archive"."org_id" || '/%')
-);
---> statement-breakpoint
-CREATE TABLE "rate_limit" (
-	"bucket" text NOT NULL,
-	"window_start" timestamp with time zone NOT NULL,
-	"count" integer NOT NULL,
-	"reset_at" timestamp with time zone NOT NULL,
-	CONSTRAINT "rate_limit_bucket_window_start_pk" PRIMARY KEY("bucket","window_start")
 );
 --> statement-breakpoint
 CREATE TABLE "approval" (
@@ -828,8 +801,6 @@ CREATE TABLE "webhook_delivery" (
 	"attempt" integer NOT NULL,
 	"status_code" integer,
 	"latency_ms" integer,
-	"excerpt" text,
-	"error" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"org_id" uuid NOT NULL
 );
@@ -917,7 +888,6 @@ CREATE TABLE "share_link" (
 	"project_id" uuid NOT NULL,
 	"token_hash" text NOT NULL,
 	"access" "share_access" NOT NULL,
-	"created_by" uuid,
 	"expires_at" timestamp with time zone NOT NULL,
 	"revoked_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -1020,7 +990,6 @@ ALTER TABLE "sheet_version" ADD CONSTRAINT "sheet_version_sheet_fk" FOREIGN KEY 
 ALTER TABLE "consent_record" ADD CONSTRAINT "consent_record_subscriber_fk" FOREIGN KEY ("org_id","subscriber_id") REFERENCES "public"."subscriber"("org_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "crowd_reply" ADD CONSTRAINT "crowd_reply_project_fk" FOREIGN KEY ("org_id","project_id") REFERENCES "public"."project"("org_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "crowd_reply" ADD CONSTRAINT "crowd_reply_window_fk" FOREIGN KEY ("org_id","window_id") REFERENCES "public"."window"("org_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "crowd_reply" ADD CONSTRAINT "crowd_reply_subscriber_fk" FOREIGN KEY ("org_id","subscriber_id") REFERENCES "public"."subscriber"("org_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "notice" ADD CONSTRAINT "notice_project_fk" FOREIGN KEY ("org_id","project_id") REFERENCES "public"."project"("org_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "notice" ADD CONSTRAINT "notice_call_fk" FOREIGN KEY ("org_id","call_id") REFERENCES "public"."call"("org_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "notice" ADD CONSTRAINT "notice_subscriber_fk" FOREIGN KEY ("org_id","subscriber_id") REFERENCES "public"."subscriber"("org_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -1028,7 +997,6 @@ ALTER TABLE "notification" ADD CONSTRAINT "notification_org_id_organization_id_f
 ALTER TABLE "notification" ADD CONSTRAINT "notification_project_fk" FOREIGN KEY ("org_id","project_id") REFERENCES "public"."project"("org_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "notification_preference" ADD CONSTRAINT "notification_preference_org_id_organization_id_fk" FOREIGN KEY ("org_id") REFERENCES "auth"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "plan_feedback" ADD CONSTRAINT "plan_feedback_project_fk" FOREIGN KEY ("org_id","project_id") REFERENCES "public"."project"("org_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "plan_feedback" ADD CONSTRAINT "plan_feedback_call_fk" FOREIGN KEY ("org_id","call_id") REFERENCES "public"."call"("org_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "project_channel" ADD CONSTRAINT "project_channel_project_fk" FOREIGN KEY ("org_id","project_id") REFERENCES "public"."project"("org_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "push_subscription" ADD CONSTRAINT "push_subscription_org_id_organization_id_fk" FOREIGN KEY ("org_id") REFERENCES "auth"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "subscribe_link" ADD CONSTRAINT "subscribe_link_project_fk" FOREIGN KEY ("org_id","project_id") REFERENCES "public"."project"("org_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -1049,8 +1017,6 @@ ALTER TABLE "ledger_entry" ADD CONSTRAINT "ledger_entry_project_fk" FOREIGN KEY 
 ALTER TABLE "ledger_entry" ADD CONSTRAINT "ledger_entry_corrects_fk" FOREIGN KEY ("org_id","corrects") REFERENCES "public"."ledger_entry"("org_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "review_item" ADD CONSTRAINT "review_item_grade_fk" FOREIGN KEY ("org_id","grade_id") REFERENCES "public"."grade"("org_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "bundle_alert" ADD CONSTRAINT "bundle_alert_bundle_fk" FOREIGN KEY ("org_id","bundle_id") REFERENCES "public"."bundle"("org_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "ownership_transfer" ADD CONSTRAINT "ownership_transfer_from_member_id_member_id_fk" FOREIGN KEY ("from_member_id") REFERENCES "auth"."member"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "ownership_transfer" ADD CONSTRAINT "ownership_transfer_to_member_id_member_id_fk" FOREIGN KEY ("to_member_id") REFERENCES "auth"."member"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ownership_transfer" ADD CONSTRAINT "ownership_transfer_org_id_organization_id_fk" FOREIGN KEY ("org_id") REFERENCES "auth"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "rota_shift" ADD CONSTRAINT "rota_shift_org_id_organization_id_fk" FOREIGN KEY ("org_id") REFERENCES "auth"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "rota_shift" ADD CONSTRAINT "rota_shift_project_fk" FOREIGN KEY ("org_id","project_id") REFERENCES "public"."project"("org_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

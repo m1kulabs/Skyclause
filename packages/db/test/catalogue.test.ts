@@ -4,7 +4,16 @@ import type { Principal } from '@skyclause/contracts'
 import { inArray, sql } from 'drizzle-orm'
 import { beforeAll, expect, test } from 'vitest'
 import { poll, reading, source, sourceState, withPublicReader, withSystem, withTenant, type Tx } from '../src'
-import { makeOrganization, makePoll, makeReading, makeSource, makeSourceState } from './factories'
+import {
+  makeOrganization,
+  makePoll,
+  makeProbationLabel,
+  makeProbationResolution,
+  makeProjectSource,
+  makeReading,
+  makeSource,
+  makeSourceState
+} from './factories'
 import { memberOf, refusal } from './harness'
 
 let a: string
@@ -72,4 +81,19 @@ test('an organisation can write neither catalogue rows nor another organisationâ
 
 test('public_reader writes no source row', async () => {
   expect(await refusal(withPublicReader((tx) => tx.execute(sql`DELETE FROM source`)))).toMatch(/permission denied/)
+})
+
+test('a project binds, and labels, only sources its organisation can see: catalogue ones or its own devices', async () => {
+  const asB = <T>(fn: (tx: Tx) => Promise<T>) => withTenant({ orgId: b, principal: memberOf(b) }, fn)
+  await expect(
+    asB((tx) => makeProjectSource(tx, { sourceId: made.catalogue, role: 'rain_gauge' }))
+  ).resolves.toBeTruthy()
+  const makers: Array<(tx: Tx, o: { sourceId: string }) => Promise<unknown>> = [
+    makeProjectSource,
+    makeProbationLabel,
+    makeProbationResolution
+  ]
+  for (const make of makers) {
+    expect(await refusal(asB((tx) => make(tx, { sourceId: made.device })))).toMatch(/row-level security/)
+  }
 })

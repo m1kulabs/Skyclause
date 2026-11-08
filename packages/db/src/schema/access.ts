@@ -56,7 +56,6 @@ export const guestToken = tenantTable(
     deviceHash: text('device_hash'),
     ipHash: text('ip_hash'),
     expiresAt: instant('expires_at').notNull(),
-    revokedAt: instant('revoked_at'),
     createdAt: instant('created_at').notNull().defaultNow()
   },
   (self) => [foreignKey({ columns: [self.orgId], foreignColumns: [organization.id] }).onDelete('cascade')]

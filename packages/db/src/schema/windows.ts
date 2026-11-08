@@ -15,7 +15,6 @@ export const shareLink = tenantTable(
     projectId: uuid('project_id').notNull(),
     tokenHash: text('token_hash').notNull().unique(),
     access: shareAccess('access').notNull(),
-    createdBy: uuid('created_by'),
     expiresAt: instant('expires_at').notNull(),
     revokedAt: instant('revoked_at'),
     ...timestamps()

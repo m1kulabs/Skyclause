@@ -89,7 +89,6 @@ export const subscribeLink = tenantTable(
     id: id(),
     projectId: uuid('project_id').notNull(),
     tokenHash: text('token_hash').notNull().unique(),
-    revokedAt: instant('revoked_at'),
     createdAt: instant('created_at').notNull().defaultNow()
   },
   (self) => [sameOrg('subscribe_link_project', self, self.projectId, project, true)]
@@ -156,15 +155,13 @@ export const crowdReply = tenantTable(
     id: id(),
     projectId: uuid('project_id').notNull(),
     windowId: uuid('window_id').notNull(),
-    subscriberId: uuid('subscriber_id'),
     kind: crowdReplyKind('kind').notNull(),
     shiftTo: instant('shift_to'),
     createdAt: instant('created_at').notNull().defaultNow()
   },
   (self) => [
     sameOrg('crowd_reply_project', self, self.projectId, project, true),
-    sameOrg('crowd_reply_window', self, self.windowId, window, true),
-    sameOrg('crowd_reply_subscriber', self, self.subscriberId, subscriber, true)
+    sameOrg('crowd_reply_window', self, self.windowId, window, true)
   ]
 )
 
@@ -174,14 +171,12 @@ export const planFeedback = tenantTable(
   {
     id: id(),
     projectId: uuid('project_id').notNull(),
-    callId: uuid('call_id'),
     answer: text('answer').notNull(),
     count: integer('count').notNull().default(1),
     createdAt: instant('created_at').notNull().defaultNow()
   },
   (self) => [
     sameOrg('plan_feedback_project', self, self.projectId, project, true),
-    sameOrg('plan_feedback_call', self, self.callId, call, true),
     check('plan_feedback_count_one', sql`${self.count} = 1`)
   ]
 )

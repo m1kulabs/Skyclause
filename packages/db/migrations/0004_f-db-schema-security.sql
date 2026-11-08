@@ -133,10 +133,21 @@ SELECT catalogue_child_table('reading');
 SELECT catalogue_child_table('source_state');
 --> statement-breakpoint
 
+-- A T row that names a source may name only one its organisation can see (catalogue, or its own device source):
+-- `source` is C, so no composite key can say so. RESTRICTIVE, so it narrows tenant_table's policies below.
+CREATE FUNCTION names_visible_source(t regclass) RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+  EXECUTE format('CREATE POLICY visible_source ON %s AS RESTRICTIVE USING (true) '
+    'WITH CHECK (source_id IN (SELECT id FROM source))', t);
+END
+$$;
+REVOKE EXECUTE ON FUNCTION names_visible_source(regclass) FROM PUBLIC;
+--> statement-breakpoint
+
 SELECT global_table(t) FROM unnest(ARRAY['verification', 'guest_block', 'incident', 'incident_update',
   'component_check']::regclass[]) AS t;
-SELECT system_table(t) FROM unnest(ARRAY['analytics_event', 'event_counter', 'handled_event', 'idempotency_key',
-  'rate_limit', 'export_job', 'guest_budget']::regclass[]) AS t;
+SELECT system_table(t) FROM unnest(ARRAY['analytics_event', 'event_counter', 'handled_event', 'export_job',
+  'guest_budget']::regclass[]) AS t;
 SELECT tenant_table(t) FROM unnest(ARRAY['oauth_grant', 'oauth_org_client', 'guest_token', 'ai_key', 'ai_usage',
   'audit_event', 'domain_event', 'clause_sheet', 'sheet_version', 'clause', 'replay_result', 'indicator_snapshot',
   'shadow_state', 'crossing', 'probation_label', 'probation_resolution', 'project_channel', 'subscriber',
@@ -146,6 +157,23 @@ SELECT tenant_table(t) FROM unnest(ARRAY['oauth_grant', 'oauth_org_client', 'gue
   'pilot_archive', 'run', 'run_step', 'bundle', 'call', 'approval', 'project_source', 'webhook', 'webhook_dispatch',
   'webhook_delivery', 'share_link', 'window_series', 'ics_feed', 'window', 'window_report', 'night', 'listing',
   'forecast']::regclass[]) AS t;
+--> statement-breakpoint
+
+SELECT names_visible_source(t) FROM unnest(ARRAY['project_source', 'probation_label',
+  'probation_resolution']::regclass[]) AS t;
+
+-- ownership_transfer points at two members of its own organisation (TRD tenancy): composite keys into auth.member,
+-- whose generated Drizzle schema can't carry the UNIQUE they need.
+ALTER TABLE auth.member ADD CONSTRAINT member_organization_id_id_key UNIQUE (organization_id, id);
+ALTER TABLE ownership_transfer
+  ADD CONSTRAINT ownership_transfer_from_member_fk FOREIGN KEY (org_id, from_member_id)
+    REFERENCES auth.member (organization_id, id) ON DELETE CASCADE,
+  ADD CONSTRAINT ownership_transfer_to_member_fk FOREIGN KEY (org_id, to_member_id)
+    REFERENCES auth.member (organization_id, id) ON DELETE CASCADE;
+
+-- #79 §3's plans; Better Auth's generator types the column as text.
+ALTER TABLE auth.organization ADD CONSTRAINT organization_plan_check
+  CHECK (plan IN ('community', 'team', 'campus', 'commons'));
 --> statement-breakpoint
 
 -- Append-only (#79 §3): TRD's eleven and the ten §3 adds.
@@ -220,18 +248,22 @@ CREATE POLICY public_read ON grade FOR SELECT TO "owner" USING (project_id IN (S
 CREATE POLICY public_read ON ledger_entry FOR SELECT TO "owner"
   USING (project_id IN (SELECT id FROM project WHERE public));
 
+-- Calls once approved (D3: public surfaces show approved calls; drafts, rejections and guest-window calls, which are
+-- draft_only (D23), never reach public_reader), and grades of those calls or of nights. `published_grade` (#187)
+-- narrows grades further.
 CREATE VIEW public_call WITH (security_barrier) AS
   SELECT c.id, c.org_id, c.project_id, c.bundle_id, c.window_id, c.night_id, c.mode, c.watch, c.no_call, c.fired,
     c.shadow, c.chosen, c.agrees, c.decision, c.state, c.superseded_by_call_id, c.ics_uid, c.ics_sequence,
     c.expires_at, c.triggered_at, c.drafted_at, c.approved_at, c.sent_at
   FROM "call" c JOIN project p ON p.id = c.project_id
-  WHERE p.public;
+  WHERE p.public AND c.approved_at IS NOT NULL;
 
 CREATE VIEW public_grade WITH (security_barrier) AS
   SELECT g.id, g.org_id, g.project_id, g.pack, g.call_id, g.night_id, g.window_id, g.sheet_version_id, g.outcome,
     g.proposed_mode, g.observed_mode, g.mode_diff, g.no_call, g.agrees, g.stale_inputs, g.created_at
   FROM grade g JOIN project p ON p.id = g.project_id
-  WHERE p.public;
+  WHERE p.public AND (g.call_id IS NULL
+    OR EXISTS (SELECT FROM "call" c WHERE c.id = g.call_id AND c.approved_at IS NOT NULL));
 
 CREATE VIEW public_ledger_entry WITH (security_barrier) AS
   SELECT l.id, l.org_id, l.project_id, l.seq, l.kind, l.refs, l.body, l.prev_hash, l.hash, l.at, l.corrects

@@ -6,10 +6,32 @@ import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getTableConfig } from 'drizzle-orm/pg-core'
 import { expect, test } from 'vitest'
+import {
+  BundleState,
+  CallState,
+  InputState,
+  Mode,
+  NOTIFICATION_KINDS,
+  Pack,
+  RunTrigger,
+  SourceKind,
+  SourceRole
+} from '@skyclause/contracts'
 import { migrationsFolder } from '../scripts/local'
+import {
+  bundleState,
+  callState,
+  inputState,
+  mode,
+  notificationKind,
+  pack,
+  runTrigger,
+  sourceKind,
+  sourceRole
+} from '../src/schema'
 import { poll, reading } from '../src/schema/partitioned'
 import { sharedFactories, tenantFactories } from './factories'
-import { asLogin } from './harness'
+import { asLogin, refusal } from './harness'
 
 // Partitions are left out: queries through the parent use its policies, and no role but owner has a grant on a partition.
 test('every table with org_id has RLS enabled and forced and a policy on current_org_id()', async () => {
@@ -113,15 +135,7 @@ test('every table in public has a factory', async () => {
 
 // #79 §3: G is read-only to app and public_reader; S is system and retention only.
 const G = ['component_check', 'feature_flag', 'guest_block', 'incident', 'incident_update', 'verification']
-const S = [
-  'analytics_event',
-  'event_counter',
-  'export_job',
-  'guest_budget',
-  'handled_event',
-  'idempotency_key',
-  'rate_limit'
-]
+const S = ['analytics_event', 'event_counter', 'export_job', 'guest_budget', 'handled_event']
 
 test('app and public_reader read G tables and write none; neither reaches an S table', async () => {
   const privileges = await asLogin('postgres', async (client) => {
@@ -138,4 +152,40 @@ test('app and public_reader read G tables and write none; neither reaches an S t
       .concat(G.map((t) => `public_reader SELECT ${t}`))
       .sort()
   )
+})
+
+test('the schema’s enums hold the same values as the f-contracts sets they store', () => {
+  expect({
+    pack: pack.enumValues,
+    sourceKind: sourceKind.enumValues,
+    sourceRole: sourceRole.enumValues,
+    inputState: inputState.enumValues,
+    mode: mode.enumValues,
+    runTrigger: runTrigger.enumValues,
+    callState: callState.enumValues,
+    bundleState: bundleState.enumValues,
+    notificationKind: notificationKind.enumValues
+  }).toEqual({
+    pack: Pack.options,
+    sourceKind: SourceKind.options,
+    sourceRole: SourceRole.options,
+    inputState: InputState.options,
+    mode: Mode.options,
+    runTrigger: RunTrigger.options,
+    callState: CallState.options,
+    bundleState: BundleState.options,
+    notificationKind: [...NOTIFICATION_KINDS]
+  })
+})
+
+test('auth.organization accepts only #79 §3’s plans', async () => {
+  expect(
+    await asLogin('auth_app', (client) =>
+      refusal(
+        client.query(
+          "INSERT INTO auth.organization (name, slug, created_at, plan) VALUES ('x', 'plan-probe', now(), 'enterprise')"
+        )
+      )
+    )
+  ).toMatch(/organization_plan_check/)
 })

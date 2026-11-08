@@ -182,7 +182,6 @@ export const probationResolution = tenantTable(
       .notNull()
       .references(() => source.id, { onDelete: 'cascade' }),
     outcome: text('outcome').notNull(),
-    resolvedBy: uuid('resolved_by'),
     createdAt: instant('created_at').notNull().defaultNow()
   },
   (self) => [sameOrg('probation_resolution_project', self, self.projectId, project, true)]

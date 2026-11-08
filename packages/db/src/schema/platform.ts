@@ -1,17 +1,5 @@
 import { sql } from 'drizzle-orm'
-import {
-  boolean,
-  check,
-  date,
-  foreignKey,
-  integer,
-  jsonb,
-  pgTable,
-  primaryKey,
-  text,
-  unique,
-  uuid
-} from 'drizzle-orm/pg-core'
+import { boolean, check, date, foreignKey, integer, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
 import { organization } from './auth'
 import { id, instant, sameOrg, tenantTable, timestamps } from './columns'
 import { exportScope, guestSubjectKind, incidentScope, pilotArchiveKind, verificationTarget } from './enums'
@@ -19,35 +7,8 @@ import { project } from './project'
 import { source } from './sources'
 
 // #79 §3's S and G rows, and TRD's pilot_archive. S: `system` and `retention` only. G: read-only to `app` and
-// `public_reader`, written by `system` (staff writes run as system, D30).
-
-/** `requireIdempotency`'s store (`f-api`, #93): `scope` is the organisation, else the credential, else the IP hash. S. */
-export const idempotencyKey = pgTable(
-  'idempotency_key',
-  {
-    id: id(),
-    scope: text('scope').notNull(),
-    route: text('route').notNull(),
-    key: text('key').notNull(),
-    requestHash: text('request_hash').notNull(),
-    response: jsonb('response'),
-    expiresAt: instant('expires_at').notNull(),
-    createdAt: instant('created_at').notNull().defaultNow()
-  },
-  (self) => [unique('idempotency_key_scope_route_key_key').on(self.scope, self.route, self.key)]
-)
-
-/** `rateLimit`'s fixed windows (`f-api`, #93), per credential or IP hash. S. */
-export const rateLimit = pgTable(
-  'rate_limit',
-  {
-    bucket: text('bucket').notNull(),
-    windowStart: instant('window_start').notNull(),
-    count: integer('count').notNull(),
-    resetAt: instant('reset_at').notNull()
-  },
-  (self) => [primaryKey({ columns: [self.bucket, self.windowStart] })]
-)
+// `public_reader`, written by `system` (staff writes run as system, D30). `idempotency_key` and `rate_limit` are
+// `f-api`'s (#93), which migrates them.
 
 /** An account or organisation export (`a-data-rights`); objects sit under `orgs/{org_id}/`. S. */
 export const exportJob = pgTable(
@@ -94,7 +55,6 @@ export const guestBlock = pgTable(
     id: id(),
     subjectKind: guestSubjectKind('subject_kind').notNull(),
     subjectHash: text('subject_hash').notNull(),
-    reason: text('reason'),
     createdAt: instant('created_at').notNull().defaultNow()
   },
   (self) => [unique('guest_block_subject_key').on(self.subjectKind, self.subjectHash)]
@@ -121,7 +81,6 @@ export const incident = pgTable('incident', {
   scope: incidentScope('scope').notNull(),
   component: text('component').notNull(),
   sourceId: uuid('source_id').references(() => source.id, { onDelete: 'cascade' }),
-  resolvedAt: instant('resolved_at'),
   ...timestamps()
 })
 

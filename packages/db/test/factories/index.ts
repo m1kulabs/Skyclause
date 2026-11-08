@@ -26,7 +26,6 @@ import { makeGuestBudget } from './guest_budget'
 import { makeGuestToken } from './guest_token'
 import { makeHandledEvent } from './handled_event'
 import { makeIcsFeed } from './ics_feed'
-import { makeIdempotencyKey } from './idempotency_key'
 import { makeIncident } from './incident'
 import { makeIncidentUpdate } from './incident_update'
 import { makeIndicatorSnapshot } from './indicator_snapshot'
@@ -49,7 +48,6 @@ import { makeProjectChannel } from './project_channel'
 import { makeProjectPack } from './project_pack'
 import { makeProjectSource } from './project_source'
 import { makePushSubscription } from './push_subscription'
-import { makeRateLimit } from './rate_limit'
 import { makeReading } from './reading'
 import { makeReplayResult } from './replay_result'
 import { makeReviewItem } from './review_item'
@@ -101,7 +99,6 @@ export { makeGuestBudget } from './guest_budget'
 export { makeGuestToken } from './guest_token'
 export { makeHandledEvent } from './handled_event'
 export { makeIcsFeed } from './ics_feed'
-export { makeIdempotencyKey } from './idempotency_key'
 export { makeIncident } from './incident'
 export { makeIncidentUpdate } from './incident_update'
 export { makeIndicatorSnapshot } from './indicator_snapshot'
@@ -126,7 +123,6 @@ export { makeProjectChannel } from './project_channel'
 export { makeProjectPack } from './project_pack'
 export { makeProjectSource } from './project_source'
 export { makePushSubscription } from './push_subscription'
-export { makeRateLimit } from './rate_limit'
 export { makeReading } from './reading'
 export { makeReplayResult } from './replay_result'
 export { makeReviewItem } from './review_item'
@@ -231,11 +227,9 @@ export const sharedFactories: Record<string, (tx: Tx) => Promise<unknown>> = {
   guest_block: makeGuestBlock,
   guest_budget: makeGuestBudget,
   handled_event: makeHandledEvent,
-  idempotency_key: makeIdempotencyKey,
   incident: makeIncident,
   incident_update: makeIncidentUpdate,
   poll: makePoll,
-  rate_limit: makeRateLimit,
   reading: makeReading,
   source: makeSource,
   source_state: makeSourceState,
