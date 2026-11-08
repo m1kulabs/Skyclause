@@ -84,19 +84,20 @@ test('withSystem lists projects across organisations and reads no T-only rows un
       tx.execute(sql`INSERT INTO tenant_probe (org_id) VALUES (${orgId})`)
     )
 
-  const seen = await withSystem('test-batch', async (tx) => {
-    const projects = await tx.select({ id: project.id, orgId: project.orgId }).from(project)
-    const packs = await tx.select({ id: projectPack.id }).from(projectPack)
-    const probes = await count(tx, 'tenant_probe')
-    const perOrg: Record<string, number> = {}
-    for (const orgId of [a, b])
-      perOrg[orgId] = await withTenant({ orgId, principal: tx.principal }, async (inner) => {
-        // Scoped again: the system login sees only this organisation's projects inside withTenant.
-        expect(await count(inner, 'project', sql`org_id <> ${orgId}`)).toBe(0)
-        return count(inner, 'tenant_probe')
-      })
-    return { projects, packs, probes, perOrg }
-  })
+  // The batch pattern: list the targets in one withSystem, then one withTenant per organisation after it returns.
+  const seen = await withSystem('test-batch', async (tx) => ({
+    principal: tx.principal,
+    projects: await tx.select({ id: project.id, orgId: project.orgId }).from(project),
+    packs: await tx.select({ id: projectPack.id }).from(projectPack),
+    probes: await count(tx, 'tenant_probe')
+  }))
+  const perOrg: Record<string, number> = {}
+  for (const orgId of [a, b])
+    perOrg[orgId] = await withTenant({ orgId, principal: seen.principal }, async (tx) => {
+      // Scoped again: the system login sees only this organisation's projects inside withTenant.
+      expect(await count(tx, 'project', sql`org_id <> ${orgId}`)).toBe(0)
+      return count(tx, 'tenant_probe')
+    })
   expect(seen.projects).toEqual(
     expect.arrayContaining([
       { id: packA.projectId, orgId: a },
@@ -105,7 +106,7 @@ test('withSystem lists projects across organisations and reads no T-only rows un
   )
   expect(seen.packs.map(({ id }) => id)).toEqual(expect.arrayContaining([packA.id, packB.id]))
   expect(seen.probes).toBe(0)
-  expect(seen.perOrg).toEqual({ [a]: 1, [b]: 1 })
+  expect(perOrg).toEqual({ [a]: 1, [b]: 1 })
 })
 
 test('withSystem reads projects read-only', async () => {

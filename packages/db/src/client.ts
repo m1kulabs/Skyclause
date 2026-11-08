@@ -52,22 +52,25 @@ interface Shared {
   db: NodePgDatabase<Schema>
   /** The end of the queue: sibling calls on the shared connection take turns. */
   tail: Promise<unknown>
+  /** Set once `fn` has settled and the connection is back in the pool. */
+  released: boolean
 }
 const sharedConnection = new AsyncLocalStorage<{ shared: Shared; inside: boolean }>()
 
 /**
  * Runs `fn` with one `system` connection that every `withSystem`, and `withTenant` for a system principal, inside it
  * share, one transaction at a time; it goes back to the pool when `fn` settles. For a batch run whose handlers must share
- * one connection (D45, #235). A `with*` call nested inside another's callback on the shared connection throws, since it
- * would need a second connection; finish the outer transaction first.
+ * one connection (D45, #235). On it, call `withTenant` after `withSystem` returns, not inside its callback: a nested
+ * call would need a second connection, so it throws, as does a call made after `fn` settles.
  */
 export async function shareSystemConnection<T>(fn: () => Promise<T>): Promise<T> {
   const client = await connection('SYSTEM').pool.connect()
-  const shared: Shared = { db: drizzle(client, { schema }), tail: Promise.resolve() }
+  const shared: Shared = { db: drizzle(client, { schema }), tail: Promise.resolve(), released: false }
   try {
     return await sharedConnection.run({ shared, inside: false }, fn)
   } finally {
     await shared.tail
+    shared.released = true
     client.release()
   }
 }
@@ -79,9 +82,9 @@ async function run<T, P extends Principal | null>(
 ): Promise<T> {
   const share = login === 'SYSTEM' ? sharedConnection.getStore() : undefined
   if (!share) return transaction(connection(login).db, context, fn)
-  if (share.inside)
-    throw new Error('a with* call inside another on the shared system connection needs a second connection')
-  const { shared } = share
+  const { shared, inside } = share
+  if (shared.released) throw new Error('the shared system connection was released when its shareSystemConnection ended')
+  if (inside) throw new Error('a with* call inside another on the shared system connection needs a second connection')
   const turn = shared.tail.then(() =>
     sharedConnection.run({ shared, inside: true }, () => transaction(shared.db, context, fn))
   )
@@ -121,8 +124,8 @@ const system = (job: string): SystemPrincipal => ({ kind: 'system', job, client:
 
 /**
  * One transaction on the `system` login with no organisation set: S and G tables, and `project` and `project_pack`
- * read-only across organisations, so a worker lists its targets, then calls `withTenant` per organisation with
- * `tx.principal`. T tables show no rows here.
+ * read-only across organisations, so a worker lists its targets and returns them, then calls `withTenant` per
+ * organisation with a system principal. T tables show no rows here.
  */
 export function withSystem<T>(job: string, fn: (tx: Tx<SystemPrincipal>) => Promise<T>) {
   return run('SYSTEM', { principal: system(job), orgId: null }, fn)

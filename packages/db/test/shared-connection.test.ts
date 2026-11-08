@@ -31,3 +31,11 @@ test('a with* call nested in another on the shared connection throws instead of 
   // Outside it, nesting uses the pool as usual.
   expect(await withSystem('batch', () => withSystem('batch', async () => 'inner'))).toBe('inner')
 })
+
+test('a with* call left running after shareSystemConnection settles fails instead of using a returned connection', async () => {
+  let late: Promise<unknown> = Promise.resolve()
+  await shareSystemConnection(async () => {
+    late = new Promise((resolve) => setTimeout(resolve, 20)).then(() => withSystem('batch', async () => 'late'))
+  })
+  await expect(late).rejects.toThrow(/was released/)
+})
