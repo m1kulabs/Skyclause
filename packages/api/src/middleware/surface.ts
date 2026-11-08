@@ -16,8 +16,7 @@ export const apiSurfaceGate: MiddlewareHandler<ApiEnv> = async (c, next) => {
   }
   if (principal?.kind === 'session' && principal.via === 'cookie' && !SAFE_METHODS.has(c.req.method)) {
     const appOrigin = c.get('deps').config().appOrigin
-    if (!appOrigin)
-      throw new ApiError(403, 'insufficient-scope', 'APP_ORIGIN is not set, so cookie writes are refused.')
+    if (!appOrigin) throw new Error('APP_ORIGIN is not set, so a cookie write cannot be checked')
     if (c.req.header('Origin') !== new URL(appOrigin).origin) {
       throw new ApiError(403, 'insufficient-scope', 'A cookie write must come from the app origin.')
     }

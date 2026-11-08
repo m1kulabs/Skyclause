@@ -24,7 +24,7 @@ export const requireIdempotency: MiddlewareHandler<ApiEnv> = async (c, next) => 
   const { idempotency, now } = c.get('deps')
   const principal = c.get('principal')
   const id: IdempotencyKey = {
-    scope: c.get('orgId') ?? (principal && credentialOf(principal)) ?? `ip:${ipHash(c)}`,
+    scope: c.get('orgId') ?? (principal ? credentialOf(principal) : `ip:${ipHash(c)}`),
     route: `${c.req.method} ${routePath(c, -1)}`,
     key
   }

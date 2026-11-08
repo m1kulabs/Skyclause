@@ -11,7 +11,7 @@ import {
   requirePrincipal,
   requireSession,
   requireStaff,
-  resolveRequestPrincipal
+  takePrincipal
 } from './middleware/auth'
 import { requireIdempotency } from './middleware/idempotency'
 import { recordDuration } from './middleware/metrics'
@@ -106,8 +106,8 @@ function mount(app: OpenAPIHono<ApiEnv>, surface: Surface, route: SkyclauseRoute
       c.set('operation', route)
       await next()
     },
-    // Public reads need no principal; `/api` still resolves one, so a key or token gets its 403.
-    ...(surface === 'v1' && x.statement === 'public' ? [] : [resolveRequestPrincipal]),
+    // Public reads resolve no principal; `/api` still does, so a key or token gets its 403.
+    takePrincipal(!(surface === 'v1' && x.statement === 'public')),
     rateLimit,
     ...(surface === 'api' ? [apiSurfaceGate] : []),
     ...gate(x.statement),

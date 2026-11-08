@@ -45,11 +45,18 @@ export function principalOf(c: Context<ApiEnv>): Principal {
   return principal
 }
 
-/** Takes the in-process principal as is (D5), else resolves one from the request; leaves null when none. */
-export const resolveRequestPrincipal: Middleware = async (c, next) => {
-  const given = c.env?.principal
-  c.set('principal', given ?? (await c.get('deps').resolvePrincipal(c.req.raw, { surface: c.get('surface') })))
-  await next()
+/**
+ * Takes an in-process principal as is (D5); otherwise resolves one from the request when `resolve` is set (public
+ * `/v1` reads don't). Leaves null when there is none.
+ */
+export function takePrincipal(resolve: boolean): Middleware {
+  return async (c, next) => {
+    const given = c.env?.principal
+    const resolved =
+      !given && resolve ? await c.get('deps').resolvePrincipal(c.req.raw, { surface: c.get('surface') }) : null
+    c.set('principal', given ?? resolved)
+    await next()
+  }
 }
 
 export const requirePrincipal: Middleware = async (c, next) => {

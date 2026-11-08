@@ -10,7 +10,7 @@ export const RATE_LIMIT_WINDOW_S = 60
 export const CREDENTIAL_LIMIT = 600
 export const IP_LIMIT = 120
 
-/** The credential a principal arrived with, as a bucket and idempotency scope; null for the in-process `system`. */
+/** The credential a principal arrived with, as a rate-limit bucket and idempotency scope. */
 export function credentialOf(principal: Principal): string | null {
   switch (principal.kind) {
     case 'session':
@@ -25,7 +25,7 @@ export function credentialOf(principal: Principal): string | null {
     case 'share_link':
       return `share_link:${principal.linkId}`
     case 'system':
-      return null
+      return `system:${principal.job}`
   }
 }
 
@@ -46,9 +46,11 @@ const IP_STATEMENTS = new Set<RouteMetadata['statement']>(['public', 'guest', 't
 export const rateLimit: MiddlewareHandler<ApiEnv> = async (c, next) => {
   const { rateLimits, now } = c.get('deps')
   const principal = c.get('principal')
-  const credential = principal && credentialOf(principal)
+  // `system` is in-process work and never limited; an in-process call (D5) has no client IP to bucket.
+  const credential = principal && principal.kind !== 'system' ? credentialOf(principal) : null
   const buckets: Array<[string, number]> = credential ? [[credential, CREDENTIAL_LIMIT]] : []
-  if (!principal || IP_STATEMENTS.has(c.get('operation')['x-skyclause'].statement)) {
+  const fromNetwork = !c.env?.principal
+  if (fromNetwork && (!principal || IP_STATEMENTS.has(c.get('operation')['x-skyclause'].statement))) {
     buckets.push([`ip:${ipHash(c)}`, IP_LIMIT])
   }
   for (const [bucket, limit] of buckets) {

@@ -27,8 +27,12 @@ export class ApiError extends Error {
 export function toApiError(error: unknown): ApiError {
   if (error instanceof ApiError) return error
   if (error instanceof NotBuiltError) return new ApiError(501, 'not-built', error.message, { owner: error.owner })
-  // zod-openapi's media-type gate throws 415 for a body it can't read.
-  if (error instanceof HTTPException) return new ApiError(error.status, 'validation-failed', error.message)
+  // The validators throw for a body they can't read (malformed JSON, an undeclared media type).
+  if (error instanceof HTTPException) {
+    return new ApiError(422, 'validation-failed', error.message, {
+      errors: [{ in: 'body', pointer: '', detail: error.message }]
+    })
+  }
   return new ApiError(500, 'internal-error', 'The server failed to answer this request.')
 }
 

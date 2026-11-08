@@ -2,7 +2,7 @@ import { z } from '@hono/zod-openapi'
 import { createRoute, Problem, type SkyclauseRoute } from '@skyclause/contracts'
 import { describe, expect, it, vi } from 'vitest'
 import { IP_LIMIT } from '../src/middleware/rate-limit'
-import { apiRequest, asApiKey, asSession, createTestApi, TEST_APP_ORIGIN, testDeps } from './harness'
+import { apiRequest, asApiKey, asOAuth, asSession, createTestApi, TEST_APP_ORIGIN, testDeps } from './harness'
 
 type Json = Record<string, unknown>
 const Note = z.object({ id: z.string(), text: z.string() })
@@ -127,6 +127,20 @@ describe('validation', () => {
     expect(body.errors).toEqual([{ in: 'body', pointer: '/text', detail: expect.any(String) }])
   })
 
+  it('answers malformed JSON as 422 validation-failed', async () => {
+    const { v1 } = notesApi()
+    const response = await v1.fetch(
+      new Request('https://api.skyclause.m1ku.tech/v1/projects/p-1/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Skyclause-Organization': 'notes', 'Idempotency-Key': 'key-6' },
+        body: '{"text":'
+      }),
+      { principal: editor() }
+    )
+    expect(response.status).toBe(422)
+    expect(((await response.json()) as Json).type).toBe('https://docs.skyclause.m1ku.tech/problems/validation-failed')
+  })
+
   it('fails a response that does not match its schema outside production, as a 500 without a stack', async () => {
     const { v1 } = createTestApi({
       v1: [createNote] as SkyclauseRoute[],
@@ -193,6 +207,30 @@ describe('rate limits', () => {
     expect(hits[0]).toBe(`api_key:${key.kind === 'api_key' && key.keyId}`)
     expect(hits[1]).toMatch(/^ip:[0-9a-f]{64}$/)
     expect(hits.join()).not.toContain('203.0.113.9')
+  })
+})
+
+describe('in-process calls (D5)', () => {
+  it('keep their principal on a public route, rate-limited by it and never by a shared IP bucket', async () => {
+    const hits: string[] = []
+    const deps = testDeps({
+      rateLimits: {
+        async hit({ bucket, now }) {
+          hits.push(bucket)
+          return { count: 1, resetAt: now }
+        }
+      }
+    })
+    const { v1 } = createTestApi({ deps })
+    const grant = asOAuth({ org: 'public-mcp', role: 'viewer' })
+    await apiRequest(v1, {
+      as: grant,
+      method: 'GET',
+      path: '/v1/public/status',
+      headers: { 'Skyclause-Client': 'mcp; name="claude-code"; tool="get_status"' }
+    })
+    expect(hits).toEqual([`oauth:${grant.kind === 'oauth' && grant.grantId}`])
+    expect(deps.audits).toMatchObject([{ action: 'mcp.tool_called', target: { id: 'get_status' } }])
   })
 })
 
