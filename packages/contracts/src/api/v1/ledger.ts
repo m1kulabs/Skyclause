@@ -45,7 +45,11 @@ const LedgerVerification = z.object({
   checked_entries: z.number().int().nonnegative(),
   first_bad_entry_id: z.string().nullable(),
   head_hash: z.string(),
-  verified_at: Instant
+  verified_at: Instant,
+  // #146: the first bad entry's `seq` and why it broke the chain.
+  first_bad: z
+    .object({ id: z.string(), seq: z.number().int(), reason: z.enum(['seq_gap', 'prev_hash', 'hash']) })
+    .optional()
 })
 
 export const listLedgerEntries = createRoute({
