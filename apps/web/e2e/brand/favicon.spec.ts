@@ -24,8 +24,13 @@ test.describe('WEB-1 in HOST_MODE=single and multi', () => {
         ...process.env,
         APP_ENV: 'test',
         HOST_MODE: 'multi',
-        // The camera page needs an API origin in multi-host mode (#129).
+        // HOST_MODE=multi needs all six origins to start (#93); the camera page needs an API origin (#129).
+        MARKETING_ORIGIN: 'https://skyclause.m1ku.tech',
+        APP_ORIGIN: 'https://app.skyclause.m1ku.tech',
         API_ORIGIN: multiOrigin,
+        MCP_ORIGIN: 'https://mcp.skyclause.m1ku.tech',
+        EMBED_ORIGIN: 'https://embed.skyclause.m1ku.tech',
+        DOCS_ORIGIN: 'https://docs.skyclause.m1ku.tech',
         HOSTNAME: 'localhost',
         PORT: '3101'
       },

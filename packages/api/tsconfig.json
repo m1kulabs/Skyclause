@@ -2,12 +2,19 @@
   "extends": "../config/tsconfig.base.json",
   "compilerOptions": {
     "rootDir": ".",
-    "outDir": "dist/types"
+    "outDir": "dist/types",
+    "types": ["node"]
   },
-  "include": ["src", "test"],
+  "include": ["src", "test", "scripts"],
   "references": [
     {
       "path": "../contracts"
+    },
+    {
+      "path": "../config"
+    },
+    {
+      "path": "../db"
     }
   ]
 }

@@ -12,7 +12,6 @@ const packages: Array<{ name: string; owners: Record<string, string[]> }> = [
   {
     name: 'api',
     owners: {
-      'f-api': ['setPrincipalResolver', 'setPermissionCheck'],
       'b-auditor': ['registerAuditCheck']
     }
   },

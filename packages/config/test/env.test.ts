@@ -7,6 +7,17 @@ const worker = {
   WORKER_INVOKER_SA: 'worker-invoker@skyclause.iam.gserviceaccount.com'
 }
 
+// IP_HASH_KEY is required on web in production; shaped like the generated secret, not the real one.
+const web = { APP_ENV: 'production', IP_HASH_KEY: 'k'.repeat(48) }
+const origins = {
+  MARKETING_ORIGIN: 'https://skyclause.m1ku.tech',
+  APP_ORIGIN: 'https://app.skyclause.m1ku.tech',
+  API_ORIGIN: 'https://api.skyclause.m1ku.tech',
+  MCP_ORIGIN: 'https://mcp.skyclause.m1ku.tech',
+  EMBED_ORIGIN: 'https://embed.skyclause.m1ku.tech',
+  DOCS_ORIGIN: 'https://docs.skyclause.m1ku.tech'
+}
+
 describe('loadEnv', () => {
   test('fails the start naming the missing variable', () => {
     const { WORKER_URL: _, ...missing } = worker
@@ -57,19 +68,19 @@ describe('loadEnv', () => {
       ...inbound,
       PORT: 8080
     })
-    expect(loadEnv('web', { APP_ENV: 'production', ...email })).toEqual({ APP_ENV: 'production', ...email })
+    expect(loadEnv('web', { ...web, ...email })).toEqual({ ...web, ...email })
   })
 
   test('a partial email set fails the start naming what is missing', () => {
     const { AWS_ROLE_ARN: _, ...partial } = email
-    expect(() => loadEnv('web', { APP_ENV: 'production', ...partial })).toThrow(/AWS_ROLE_ARN/)
+    expect(() => loadEnv('web', { ...web, ...partial })).toThrow(/AWS_ROLE_ARN/)
     expect(() => loadEnv('worker', { ...worker, ...email })).toThrow(/INBOUND_SNS_TOPIC_ARN/)
   })
 
   test('refuses an AWS_ROLE_ARN or topic that is not an ARN', () => {
-    expect(() =>
-      loadEnv('web', { APP_ENV: 'production', ...email, AWS_ROLE_ARN: 'skyclause-production-email' })
-    ).toThrow(/AWS_ROLE_ARN/)
+    expect(() => loadEnv('web', { ...web, ...email, AWS_ROLE_ARN: 'skyclause-production-email' })).toThrow(
+      /AWS_ROLE_ARN/
+    )
     expect(() => loadEnv('worker', { ...worker, ...email, ...inbound, INBOUND_SNS_TOPIC_ARN: 'inbound' })).toThrow(
       /INBOUND_SNS_TOPIC_ARN/
     )
@@ -84,8 +95,8 @@ describe('loadEnv', () => {
     }
     expect(loadEnv('worker', { ...worker, ...vapid })).toMatchObject(vapid)
     const { VAPID_PRIVATE_KEY: _, ...publicOnly } = vapid
-    expect(loadEnv('web', { APP_ENV: 'production', ...publicOnly })).toEqual({ APP_ENV: 'production', ...publicOnly })
-    expect(() => loadEnv('web', { APP_ENV: 'production', VAPID_PUBLIC_KEY: 'not-a-key' })).toThrow(/VAPID_PUBLIC_KEY/)
+    expect(loadEnv('web', { ...web, ...publicOnly })).toEqual({ ...web, ...publicOnly })
+    expect(() => loadEnv('web', { ...web, VAPID_PUBLIC_KEY: 'not-a-key' })).toThrow(/VAPID_PUBLIC_KEY/)
     expect(() => loadEnv('worker', { ...worker, ...vapid, VAPID_PRIVATE_KEY: 'short' })).toThrow(/VAPID_PRIVATE_KEY/)
   })
 
@@ -104,12 +115,36 @@ describe('loadEnv', () => {
 
   test('reads OTEL_SERVICE_NAME and the project and region telemetry exports to, all optional', () => {
     const env = loadEnv('web', {
-      APP_ENV: 'production',
+      ...web,
       OTEL_SERVICE_NAME: 'web',
       GCP_PROJECT: 'skyclause',
       GCP_REGION: 'asia-southeast1'
     })
     expect(env).toMatchObject({ OTEL_SERVICE_NAME: 'web', GCP_PROJECT: 'skyclause', GCP_REGION: 'asia-southeast1' })
     expect(loadEnv('web', { APP_ENV: 'dev' }).GCP_PROJECT).toBeUndefined()
+  })
+
+  test('web reads HOST_MODE and the six origins; multi needs all six (spec §4 Hosts)', () => {
+    expect(loadEnv('web', { APP_ENV: 'dev' }).HOST_MODE).toBeUndefined()
+    expect(loadEnv('web', { ...web, HOST_MODE: 'multi', ...origins })).toEqual({
+      ...web,
+      HOST_MODE: 'multi',
+      ...origins
+    })
+    expect(loadEnv('web', { ...web, HOST_MODE: 'single', APP_ORIGIN: origins.APP_ORIGIN }).APP_ORIGIN).toBe(
+      origins.APP_ORIGIN
+    )
+    const { EMBED_ORIGIN: _, ...five } = origins
+    expect(() => loadEnv('web', { ...web, HOST_MODE: 'multi', ...five })).toThrow(
+      /EMBED_ORIGIN: required when HOST_MODE is multi/
+    )
+    expect(() => loadEnv('web', { ...web, HOST_MODE: 'both' })).toThrow(/HOST_MODE/)
+    expect(() => loadEnv('web', { ...web, APP_ORIGIN: 'app.skyclause.m1ku.tech' })).toThrow(/APP_ORIGIN/)
+  })
+
+  test('web needs IP_HASH_KEY in production only, at least 32 characters', () => {
+    expect(() => loadEnv('web', { APP_ENV: 'production' })).toThrow(/IP_HASH_KEY: required in production/)
+    expect(() => loadEnv('web', { APP_ENV: 'production', IP_HASH_KEY: 'short' })).toThrow(/IP_HASH_KEY/)
+    expect(loadEnv('web', { APP_ENV: 'test' }).IP_HASH_KEY).toBeUndefined()
   })
 })

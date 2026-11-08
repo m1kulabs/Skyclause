@@ -25,7 +25,9 @@
     "playwright.config.ts"
   ],
   "references": [
-    { "path": "../../packages/elements" },
+    {
+      "path": "../../packages/elements"
+    },
     {
       "path": "../../packages/config"
     },
@@ -40,6 +42,9 @@
     },
     {
       "path": "../../packages/auth"
+    },
+    {
+      "path": "../../packages/api"
     }
   ]
 }

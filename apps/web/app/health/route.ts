@@ -1,3 +1,5 @@
+import { health } from '@skyclause/api'
+
 export function GET() {
-  return new Response('ok')
+  return health()
 }
