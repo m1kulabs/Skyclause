@@ -153,7 +153,7 @@ Five of us, one tracker.
 Lim Yuh Kang led and built the pilot's workflows and deployment.
 Jeremy built the feeds and the clause engine.
 Zi Jie built the camera, the windows and the Crowd pack.
-{chaosiris's and DrxgClanPC's lanes; confirm before recording}
+Li Hao and Jin Siang lead the pitch.
 
 ### V6: Close
 
@@ -189,6 +189,5 @@ The repo and the live links are below.
 ## Open items
 
 - **V4 research:** which interviews and timed tasks happened, with their counts and what changed. Fill from the team before the voice render.
-- **V5 team lanes:** chaosiris's and DrxgClanPC's lanes, and whether full names or GitHub names appear.
 - **D4:** filmed only after the licence arrives (#7, #49). The cut ships without it if the licence is late.
 - **Live crossing:** if a real crossing happens before recording, D3 shows it live instead of the replay, and the replay label comes off.
