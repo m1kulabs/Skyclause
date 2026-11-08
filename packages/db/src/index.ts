@@ -14,6 +14,7 @@ export { emitEvent, handleOnce, loadEvent, republishEvents, setEventPublisher, t
 export { FEATURE_FLAGS, isFlagEnabled, setFlag, type FeatureFlagKey } from './flags'
 export { projectGate } from './gate'
 export { migrate } from './migrate'
+export { maintainPartitions } from './partitions'
 export * from './placeholders/a-org-projects'
 export * from './placeholders/a-subscriber-rights'
 export * from './placeholders/c-ledger-chain'
