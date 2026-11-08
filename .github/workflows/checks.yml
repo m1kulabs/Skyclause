@@ -139,6 +139,7 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
+      - run: bun run db:up
       - run: bun run db:seed-check
 
   audit:
