@@ -171,7 +171,11 @@ export async function runSuite(o: {
         call !== undefined &&
         call.mode === ref.mode &&
         call.watch === ref.watch &&
-        (call.no_call !== null) === ref.noCall
+        (call.no_call !== null) === ref.noCall &&
+        call.fired
+          .map((f) => f.clause)
+          .sort()
+          .join() === [...ref.fired].sort().join()
     }
     if (item.kind !== 'graded' && item.source.injection) {
       const { surface, marker, effect } = item.source.injection
@@ -294,7 +298,7 @@ export function renderMarkdown(r: Report): string {
   const lines = [
     `## Agent evals: ${r.passed ? 'PASS' : 'FAIL'}`,
     '',
-    `${r.models.join(', ') || 'No model called'} · ${r.cases.length} of ${run} cases run · ${usd(r.costUsd)} of EVAL_MAX_USD ${usd(r.maxUsd)} · ${r.tokens.input} input and ${r.tokens.output} output tokens`,
+    `${r.models.join(', ') || 'No model called'} · ${r.cases.length} of ${run} cases run · ${usd(r.costUsd)} of EVAL_MAX_USD ${usd(r.maxUsd)} · ${r.tokens.input} input and ${r.tokens.output} output tokens reported`,
     '',
     '| Metric | Result | Cases |',
     '| --- | --- | --- |',

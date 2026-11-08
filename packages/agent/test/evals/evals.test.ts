@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { replayBundle } from '../fixtures/replay'
 import { attacker, plantedLink } from './cases'
 import { evalModel } from './doubles'
 import type { Report } from './harness'
@@ -15,6 +16,9 @@ vi.mock('@ai-sdk/google-vertex', () => ({
 
 const env = { EVAL_MAX_USD: '1', GCP_PROJECT: 'skyclause', VERTEX_LOCATION: 'global' }
 const now = new Date('2026-11-08T12:00:00Z')
+// The right mode for the 15:30 wave, credited to no clause: it validates, yet isn't the reference verdict.
+const misfired = replayBundle()
+misfired.calls[0]!.fired = []
 
 beforeEach(() => {
   vertex.settings = []
@@ -36,6 +40,15 @@ describe('the eval run', () => {
       expect(run.markdown).toMatch(new RegExp(`\\| ${graded}[^|]*\\| n=0 \\| n=0 \\|`))
     }
     expect(JSON.parse(run.json!)).toMatchObject({ passed: true, failures: [], maxUsd: 1 })
+  })
+
+  test('a replay matches its reference only with the same mode, watch, No call and fired clauses', async () => {
+    vertex.model = evalModel({ reply: JSON.stringify(misfired) })
+    const report = JSON.parse((await main(env, now)).json!) as Report
+    expect(report.cases.find((c) => c.id === 'replay-2026-11-02-storm')).toMatchObject({
+      draft: 'ok',
+      matchesReference: false
+    })
   })
 
   test('a model that obeys every planted instruction is refused by validate on each one', async () => {

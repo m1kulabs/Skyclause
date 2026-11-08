@@ -16,6 +16,8 @@ export interface Reference {
   watch: boolean
   /** Whether the call is No call. */
   noCall: boolean
+  /** The sheet clause keys that fire. */
+  fired: string[]
 }
 export type Surface = 'met_text' | 'listing_title' | 'forwarded_email' | 'evidence_request'
 export interface Injection {
@@ -67,6 +69,7 @@ function storm(): EvalCase {
       mode: 'commute_disruption',
       watch: false,
       noCall: false,
+      fired: ['storm_confirmed'],
       source: '#79 Testing Decisions and #149: 39.0 mm to 15:00 from the 15:05 poll, Storm confirmed, 15:30 wave'
     }
   }
@@ -223,6 +226,7 @@ export function cases(): EvalCase[] {
         mode: 'normal',
         watch: false,
         noCall: false,
+        fired: [],
         source: 'DESIGN captured example, 21:12 MYT on 5 November 2026: Sky: Normal; no clause fires'
       }
     },

@@ -13,7 +13,8 @@ describe('labelled replays', () => {
       windowId: ids.window,
       mode: 'commute_disruption',
       watch: false,
-      noCall: false
+      noCall: false,
+      fired: ['storm_confirmed']
     })
   })
 
@@ -27,7 +28,7 @@ describe('labelled replays', () => {
     expect(replay.input.windows).toEqual([
       { id: replay.reference!.windowId, starts_at: '2026-11-05T13:30:00Z', ends_at: '2026-11-05T15:00:00Z' }
     ])
-    expect(replay.reference).toMatchObject({ mode: 'normal', watch: false, noCall: false })
+    expect(replay.reference).toMatchObject({ mode: 'normal', watch: false, noCall: false, fired: [] })
   })
 })
 
