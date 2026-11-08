@@ -12,8 +12,33 @@ export const auth: { options: BetterAuthOptions } = betterAuth({
   // The MCP plugin reads origins at init; these are the production hosts (#79 §4).
   baseURL: 'https://app.skyclause.m1ku.tech',
   advanced: { database: { generateId: 'uuid' } },
+  // #79 §3's columns on Better Auth tables (#92); #94's runtime config declares the same additionalFields.
+  user: {
+    additionalFields: {
+      preferences: { type: 'json', required: false },
+      magicLinkEnabled: { type: 'boolean', required: true, defaultValue: true },
+      deletedAt: { type: 'date', required: false },
+      lastActiveAt: { type: 'date', required: false }
+    }
+  },
+  session: { additionalFields: { reauthenticatedAt: { type: 'date', required: false } } },
   plugins: [
-    organization(),
+    organization({
+      schema: {
+        organization: {
+          additionalFields: {
+            plan: { type: ['community', 'team', 'campus', 'commons'], required: true, defaultValue: 'community' },
+            deletionRequestedAt: { type: 'date', required: false },
+            purgeAfter: { type: 'date', required: false },
+            onboardingSkipped: { type: 'boolean', required: true, defaultValue: false },
+            aiFallbackEnabled: { type: 'boolean', required: true, defaultValue: false },
+            allowMemberAiKeys: { type: 'boolean', required: true, defaultValue: false }
+          }
+        },
+        member: { additionalFields: { readsMalay: { type: 'boolean', required: true, defaultValue: false } } },
+        invitation: { additionalFields: { tokenHash: { type: 'string', required: false } } }
+      }
+    }),
     anonymous(),
     apiKey({ references: 'organization' }),
     passkey(),

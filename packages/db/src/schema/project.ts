@@ -14,7 +14,8 @@ import {
   uuid
 } from 'drizzle-orm/pg-core'
 import { organization } from './auth'
-import { id, instant, tenantTable, timestamps } from './columns'
+import { clauseSheet } from './clauses'
+import { id, instant, sameOrg, tenantTable, timestamps } from './columns'
 
 /** `Pack` (#79 §1). */
 export const pack = pgEnum('pack', ['sky', 'crowd'])
@@ -57,7 +58,6 @@ export const projectPack = tenantTable(
     projectId: uuid('project_id').notNull(),
     pack: pack('pack').notNull(),
     enabled: boolean('enabled').notNull().default(false),
-    // clause_sheet is #92's; it adds the foreign key.
     sheetId: uuid('sheet_id'),
     schedule: jsonb('schedule'),
     slaS: integer('sla_s'),
@@ -67,6 +67,7 @@ export const projectPack = tenantTable(
     foreignKey({ columns: [self.orgId, self.projectId], foreignColumns: [project.orgId, project.id] }).onDelete(
       'cascade'
     ),
+    sameOrg('project_pack_sheet', self, self.sheetId, clauseSheet),
     unique('project_pack_project_id_pack_key').on(self.projectId, self.pack)
   ]
 )

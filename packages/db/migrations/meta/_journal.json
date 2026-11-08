@@ -22,6 +22,20 @@
       "when": 1794138068164,
       "tag": "0002_f-db-security",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794149817867,
+      "tag": "0003_f-db-schema-tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794149907824,
+      "tag": "0004_f-db-schema-security",
+      "breakpoints": true
     }
   ]
 }

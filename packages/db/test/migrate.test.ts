@@ -1,7 +1,14 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { afterEach, expect, test } from 'vitest'
 import { migrate } from '../src/migrate'
 import { createDatabase, dropDatabase, localUrl, migrationsFolder } from '../scripts/local'
 import { asLogin, migrationsWith } from './harness'
+
+/** The repository's migrations, in order, from drizzle-kit's journal. */
+const tags = (
+  JSON.parse(readFileSync(join(migrationsFolder, 'meta/_journal.json'), 'utf8')) as { entries: Array<{ tag: string }> }
+).entries.map(({ tag }) => tag)
 
 const created: string[] = []
 afterEach(async () => {
@@ -41,7 +48,8 @@ test('an empty database migrates, and a second run changes nothing', async () =>
   const database = await emptyDatabase()
   const url = localUrl('migrator', database)
 
-  expect(await migrate(url, migrationsFolder)).toEqual(['0000_f-db-roles', '0001_f-db-tables', '0002_f-db-security'])
+  expect(tags.slice(0, 3)).toEqual(['0000_f-db-roles', '0001_f-db-tables', '0002_f-db-security'])
+  expect(await migrate(url, migrationsFolder)).toEqual(tags)
   const after = await catalogue(database)
   expect(await migrate(url, migrationsFolder)).toEqual([])
   expect(await catalogue(database)).toEqual(after)
@@ -66,7 +74,7 @@ test('owner owns every table, view, type, function and schema the migrations cre
 test('a failing migration rolls back and leaves no record, so the next run applies it once fixed', async () => {
   const database = await emptyDatabase()
   const url = localUrl('migrator', database)
-  const broken = migrationsWith('0003_test-broken', 'CREATE TABLE half_done (id int);\nSELECT 1 / 0;\n')
+  const broken = migrationsWith('9000_test-broken', 'CREATE TABLE half_done (id int);\nSELECT 1 / 0;\n')
   await expect(migrate(url, broken)).rejects.toThrow(/division by zero/)
 
   const state = () =>
@@ -78,9 +86,9 @@ test('a failing migration rolls back and leaves no record, so the next run appli
       }),
       database
     )
-  expect(await state()).toEqual({ recorded: 3, table: null })
+  expect(await state()).toEqual({ recorded: tags.length, table: null })
 
-  const fixed = migrationsWith('0003_test-fixed', 'CREATE TABLE half_done (id int);\n')
-  expect(await migrate(url, fixed)).toEqual(['0003_test-fixed'])
-  expect(await state()).toEqual({ recorded: 4, table: 'half_done' })
+  const fixed = migrationsWith('9000_test-fixed', 'CREATE TABLE half_done (id int);\n')
+  expect(await migrate(url, fixed)).toEqual(['9000_test-fixed'])
+  expect(await state()).toEqual({ recorded: tags.length + 1, table: 'half_done' })
 })

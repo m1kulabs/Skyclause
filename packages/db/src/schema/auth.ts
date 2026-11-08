@@ -17,7 +17,11 @@ export const user = authSchema.table('user', {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
-  isAnonymous: boolean('is_anonymous').default(false)
+  isAnonymous: boolean('is_anonymous').default(false),
+  preferences: jsonb('preferences'),
+  magicLinkEnabled: boolean('magic_link_enabled').default(true).notNull(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  lastActiveAt: timestamp('last_active_at', { withTimezone: true })
 })
 
 export const session = authSchema.table(
@@ -37,7 +41,8 @@ export const session = authSchema.table(
     userId: uuid('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
-    activeOrganizationId: text('active_organization_id')
+    activeOrganizationId: text('active_organization_id'),
+    reauthenticatedAt: timestamp('reauthenticated_at', { withTimezone: true })
   },
   (table) => [index('session_userId_idx').on(table.userId)]
 )
@@ -94,7 +99,15 @@ export const organization = authSchema.table('organization', {
   slug: text('slug').notNull().unique(),
   logo: text('logo'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
-  metadata: text('metadata')
+  metadata: text('metadata'),
+  plan: text('plan', { enum: ['community', 'team', 'campus', 'commons'] })
+    .default('community')
+    .notNull(),
+  deletionRequestedAt: timestamp('deletion_requested_at', { withTimezone: true }),
+  purgeAfter: timestamp('purge_after', { withTimezone: true }),
+  onboardingSkipped: boolean('onboarding_skipped').default(false).notNull(),
+  aiFallbackEnabled: boolean('ai_fallback_enabled').default(false).notNull(),
+  allowMemberAiKeys: boolean('allow_member_ai_keys').default(false).notNull()
 })
 
 export const member = authSchema.table(
@@ -110,7 +123,8 @@ export const member = authSchema.table(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
     role: text('role').default('member').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull()
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    readsMalay: boolean('reads_malay').default(false).notNull()
   },
   (table) => [index('member_organizationId_idx').on(table.organizationId), index('member_userId_idx').on(table.userId)]
 )
@@ -131,7 +145,8 @@ export const invitation = authSchema.table(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     inviterId: uuid('inviter_id')
       .notNull()
-      .references(() => user.id, { onDelete: 'cascade' })
+      .references(() => user.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash')
   },
   (table) => [
     index('invitation_organizationId_idx').on(table.organizationId),
