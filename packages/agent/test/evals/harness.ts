@@ -99,13 +99,14 @@ export async function runSuite(o: {
   const count = { outputs: 0, unsupported: 0, calls: 0, estimatesHeld: 0 }
   const outputDates: string[] = []
   const callDates: string[] = []
+  // Each `*Dates` list holds one MYT date per case the metric counts.
   const graded = {
-    compared: [] as string[],
+    comparedDates: [] as string[],
     agree: 0,
     chosen: 0,
     kept: 0,
-    precision: [] as string[],
-    edits: [] as string[],
+    precisionDates: [] as string[],
+    editDates: [] as string[],
     edited: 0
   }
   let spent = 0
@@ -180,18 +181,18 @@ export async function runSuite(o: {
     }
     if (item.kind === 'graded') {
       const { verdicts, approved } = item.source
-      graded.edits.push(date)
+      graded.editDates.push(date)
       if (approved.edited) graded.edited++
       const call = result.ok ? result.bundle.calls.find((c) => c.window_id === approved.windowId) : undefined
       const compared = result.ok
         ? compare(result.bundle, verdicts).find((r) => r.windowId === approved.windowId)
         : undefined
       if (compared && !compared.staleInputs) {
-        graded.compared.push(date)
+        graded.comparedDates.push(date)
         if (compared.agrees) graded.agree++
       }
       if (call) {
-        graded.precision.push(date)
+        graded.precisionDates.push(date)
         graded.chosen += call.recipients.length
         graded.kept += call.recipients.filter((id) => approved.recipients.includes(id)).length
       }
@@ -235,23 +236,25 @@ export async function runSuite(o: {
     },
     {
       name: 'Agent–shadow agreement, graded, excluding stale inputs (kill line: 1 in 10 disagree)',
-      result: `${graded.agree} of ${graded.compared.length} agree${
-        graded.compared.length - graded.agree > KILL_LINE * graded.compared.length ? ', over the kill line' : ''
+      result: `${graded.agree} of ${graded.comparedDates.length} agree${
+        graded.comparedDates.length - graded.agree > KILL_LINE * graded.comparedDates.length
+          ? ', over the kill line'
+          : ''
       }`,
-      n: graded.compared.length,
-      dates: graded.compared
+      n: graded.comparedDates.length,
+      dates: graded.comparedDates
     },
     {
       name: 'Recipient precision, graded',
       result: `${graded.kept} of ${graded.chosen} recipients kept`,
-      n: graded.precision.length,
-      dates: graded.precision
+      n: graded.precisionDates.length,
+      dates: graded.precisionDates
     },
     {
       name: 'Approver edit rate, graded',
-      result: `${graded.edited} of ${graded.edits.length} edited`,
-      n: graded.edits.length,
-      dates: graded.edits
+      result: `${graded.edited} of ${graded.editDates.length} edited`,
+      n: graded.editDates.length,
+      dates: graded.editDates
     }
   ]
   return {

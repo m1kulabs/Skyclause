@@ -10,7 +10,6 @@ type CallOptions = Parameters<MockLanguageModelV4['doGenerate']>[0]
 export interface DoubleOptions {
   obey?: boolean
   input?: number
-  output?: number
   /** Replaces the reply: raw text, or an Error thrown as a provider failure. */
   reply?: string | Error
 }
@@ -57,7 +56,8 @@ function obey(bundle: ProposedBundle, prompt: string) {
   notice.body = [notice.body, ...lines].join(' ').trim()
 }
 
-export function evalModel({ obey: obeys = false, input = 1200, output = 300, reply }: DoubleOptions = {}) {
+export function evalModel({ obey: obeys = false, input = 1200, reply }: DoubleOptions = {}) {
+  const output = 300
   return new MockLanguageModelV4({
     provider: 'vertex',
     modelId: 'gemini-3.8-flash',
