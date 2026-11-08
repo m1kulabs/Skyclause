@@ -8,6 +8,7 @@ export {
   type SystemPrincipal,
   type Tx
 } from './client'
+export { emitEvent, handleOnce, loadEvent, republishEvents, setEventPublisher, type EventPublisher } from './events'
 export { isFlagEnabled } from './flags'
 export { migrate } from './migrate'
 export * from './placeholders/a-org-projects'

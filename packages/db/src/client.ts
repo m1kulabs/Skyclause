@@ -92,12 +92,30 @@ async function run<T, P extends Principal | null>(
   return turn
 }
 
-function transaction<T, P extends Principal | null>(
+/** Runs `fn` in another transaction with the same login, connection pool and context as the one that committed. */
+export type Again = <T>(fn: (tx: Tx) => Promise<T>) => Promise<T>
+type CommitHook = (again: Again) => Promise<void>
+const commitHooks = new WeakMap<object, CommitHook[]>()
+
+/**
+ * Runs `hook` once the transaction `tx` belongs to commits (never on rollback), for §1 writes with an effect outside
+ * Postgres, such as emitEvent's publish. The commit already happened, so a failing hook is logged, never thrown.
+ */
+export function afterCommit(tx: Tx<Principal | null>, hook: CommitHook) {
+  const hooks = commitHooks.get(tx)
+  if (!hooks) throw new Error('afterCommit needs a transaction from a with* helper')
+  hooks.push(hook)
+}
+
+async function transaction<T, P extends Principal | null>(
   db: NodePgDatabase<Schema>,
-  { principal, orgId, setRole }: { principal: P; orgId: string | null; setRole?: 'public_reader' },
+  context: { principal: P; orgId: string | null; setRole?: 'public_reader' },
   fn: (tx: Tx<P>) => Promise<T>
 ): Promise<T> {
-  return db.transaction(async (tx) => {
+  const { principal, orgId, setRole } = context
+  const hooks: CommitHook[] = []
+  const result = await db.transaction(async (tx) => {
+    commitHooks.set(tx, hooks)
     if (setRole) await tx.execute(sql.raw(`SET LOCAL ROLE ${setRole}`))
     if (orgId !== null && principal) {
       const accountId = 'accountId' in principal ? principal.accountId : ''
@@ -109,6 +127,11 @@ function transaction<T, P extends Principal | null>(
     }
     return fn(Object.assign(tx, { principal, orgId }) as unknown as Tx<P>)
   })
+  const again: Again = (next) => transaction(db, context as { principal: Principal; orgId: string | null }, next)
+  for (const hook of hooks) {
+    await hook(again).catch((error: unknown) => log.error('after-commit hook failed', { error: String(error) }))
+  }
+  return result
 }
 
 /**
