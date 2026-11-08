@@ -190,6 +190,21 @@ describe('controlled draft delivery', () => {
     expect(f.sendCalls).toBe(1)
   })
 
+  test('persists a recovered hydrated thread when optional send thread acknowledgement is absent', () => {
+    const f = fixture({ recipient: mail.to, draftCreationAttempted: true, draftId: 'draft-1' })
+    f.drafts.set('draft-1', { ...mail, id: 'draft-1', messageId: 'draft-message-1', threadId: 'thread-1' })
+    const save = f.ports.saveAttempt
+    f.ports.saveAttempt = (next) => {
+      if ('threadId' in next && typeof next.threadId !== 'string') throw new Error('invalid persisted thread')
+      save(next)
+    }
+    expect(f.deliver()).toMatchObject({ status: 'sent', attempt: { gmailMessageId: 'sent-1', threadId: 'thread-1' } })
+    expect(f.retry()).toMatchObject({ status: 'reconciled', gmailMessageId: 'sent-1' })
+    expect(f.sendCalls).toBe(1)
+    expect(f.createCalls).toBe(0)
+    expect(f.events).toEqual(['search', 'hydrate', 'send', 'save'])
+  })
+
   test('reconciles a lost send response with exact content and case-insensitive recipient', () => {
     const f = fixture()
     const send = f.ports.sendDraft

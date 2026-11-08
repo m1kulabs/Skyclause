@@ -92,7 +92,7 @@ export function deliverControlledDraft(
         stage = 'send_ambiguous'
         const sent = ports.sendDraft(draft.id)
         if (typeof sent.id !== 'string' || !sent.id.trim()) return pending('sent_response_invalid')
-        save({ ...current, gmailMessageId: sent.id, threadId: sent.threadId ?? current.threadId })
+        save({ ...current, gmailMessageId: sent.id, threadId: sent.threadId ?? current.threadId ?? draft.threadId })
         outcome = 'sent'
       }
     }
