@@ -112,3 +112,6 @@ graphify-out/*
 
 # The fallback runner's memory of the last posted data_as_of (#68)
 pilot/pi/.ridership-state.json
+
+# Impeccable design-hook cache
+.impeccable/hook.cache.json

@@ -1,0 +1,2053 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Skyclause Pitch Deck</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Work+Sans:wght@300;400;500;600;700&display=swap"
+    />
+    <style>
+      /* Tokens from docs/DESIGN.md: the landing palette for the ground, the dark app palette inside data fragments. */
+      :root {
+        --ground: #0a0a0a;
+        --surface: #131217;
+        --surface-2: #151515;
+        --popover: #212023;
+        --ink: #efefef;
+        --ink-2: #bdbdc0;
+        --soft: #8c8c8c;
+        --muted: #8a8c92;
+        --border: #222224;
+        --rule: #1b1a1f;
+        --control: #3a3a3e;
+        --grid: #2a292e;
+        --crimson: #b11226;
+        --crimson-lift: #f0566c;
+        --warning-bg: #2a2416;
+        --warning: #d9a441;
+        --critical-bg: #2c1a20;
+        --sans: 'Work Sans', system-ui, sans-serif;
+        --mono: 'JetBrains Mono', ui-monospace, monospace;
+        --ease: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      @page {
+        size: 1920px 1080px;
+        margin: 0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: #000;
+        color: var(--ink);
+        font-family: var(--sans);
+        font-variant-numeric: tabular-nums;
+        -webkit-font-smoothing: antialiased;
+      }
+      .deck {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+      }
+      .slide {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 1920px;
+        height: 1080px;
+        margin: -540px 0 0 -960px;
+        transform: scale(var(--fit, 1));
+        background: var(--ground);
+        padding: 64px 96px 0;
+        display: none;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .slide.on {
+        display: flex;
+      }
+      .slide > * {
+        position: relative;
+        z-index: 1;
+      }
+      .notes {
+        display: none;
+      }
+
+      /* Frame: header and footer on every slide */
+      .hd {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 40px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 26px;
+        font-weight: 500;
+        letter-spacing: -0.02em;
+      }
+      .brand svg {
+        width: 30px;
+        height: 30px;
+      }
+      .chip {
+        margin-left: 22px;
+        padding: 7px 14px;
+        border: 1px solid var(--control);
+        border-radius: 999px;
+        font-size: 17px;
+        font-weight: 500;
+        color: var(--ink-2);
+        letter-spacing: 0;
+      }
+      .event {
+        font-size: 17px;
+        color: var(--soft);
+        text-align: right;
+        line-height: 1.35;
+      }
+      .event b {
+        color: var(--ink-2);
+        font-weight: 500;
+      }
+      .ft {
+        margin-top: auto;
+        height: 72px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-top: 1px solid var(--border);
+        font-size: 17px;
+        color: var(--soft);
+      }
+      .ft .pg {
+        color: var(--ink-2);
+      }
+
+      /* Type */
+      .eyebrow {
+        margin-top: 64px;
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--soft);
+      }
+      h1,
+      h2 {
+        margin: 0;
+        letter-spacing: -0.035em;
+        line-height: 1.02;
+      }
+      h2 {
+        margin-top: 20px;
+        font-size: 88px;
+        font-weight: 600;
+        max-width: 1450px;
+      }
+      h2 .lt,
+      h1 .lt {
+        display: block;
+        font-weight: 300;
+        color: var(--ink-2);
+      }
+      .lede {
+        margin-top: 28px;
+        font-size: 30px;
+        line-height: 1.4;
+        color: var(--ink-2);
+        max-width: 1050px;
+      }
+      .lede b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .mono {
+        font-family: var(--mono);
+      }
+      .replay {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-family: var(--mono);
+        font-size: 18px;
+        color: var(--warning);
+        background: var(--warning-bg);
+        padding: 7px 14px;
+        border-radius: 6px;
+        white-space: nowrap;
+      }
+      .replay::before {
+        content: '';
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--warning);
+      }
+
+      /* Art */
+      .art {
+        position: absolute;
+        z-index: 0;
+        pointer-events: none;
+      }
+
+      /* Cards and bands */
+      .cards {
+        display: grid;
+        gap: 24px;
+        margin-top: 56px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 32px 32px 30px;
+        position: relative;
+      }
+      .card.mark {
+        border-top: 1px solid var(--crimson-lift);
+      }
+      .k {
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--soft);
+      }
+      .card h3 {
+        margin: 14px 0 0;
+        font-size: 36px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1.12;
+      }
+      .card p {
+        margin: 14px 0 0;
+        font-size: 23px;
+        line-height: 1.45;
+        color: var(--ink-2);
+      }
+      .card .src {
+        margin-top: 18px;
+        font-size: 16px;
+        color: var(--soft);
+      }
+      .ico {
+        width: 36px;
+        height: 36px;
+        stroke: var(--ink);
+        fill: none;
+        stroke-width: 1.75;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .band {
+        margin-top: auto;
+        margin-bottom: 36px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 26px 36px;
+        display: flex;
+        align-items: baseline;
+        gap: 28px;
+        font-size: 28px;
+        font-weight: 500;
+        line-height: 1.35;
+      }
+      .band .k {
+        color: var(--ink-2);
+        white-space: nowrap;
+      }
+      .band.split {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 56px;
+        align-items: start;
+      }
+      .band.split > div > div:last-child {
+        margin-top: 10px;
+        font-size: 26px;
+      }
+      .stat b {
+        display: block;
+        font-size: 120px;
+        font-weight: 300;
+        letter-spacing: -0.045em;
+        line-height: 0.95;
+      }
+      .stat b small {
+        font-size: 0.42em;
+        letter-spacing: -0.02em;
+        margin-left: 6px;
+        color: var(--ink-2);
+      }
+
+      /* 01 · Title */
+      .s1 h1 {
+        margin-top: 150px;
+        font-size: 148px;
+        font-weight: 600;
+        letter-spacing: -0.05em;
+        line-height: 0.94;
+      }
+      .s1 .lede {
+        max-width: 860px;
+      }
+      .team {
+        margin-top: auto;
+        margin-bottom: 32px;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 20px;
+        border-top: 1px solid var(--border);
+        padding-top: 30px;
+      }
+      .member {
+        display: flex;
+        gap: 18px;
+        align-items: center;
+      }
+      .avatar {
+        width: 72px;
+        height: 72px;
+        border-radius: 6px;
+        background: var(--popover);
+        border: 1px solid var(--control);
+        display: grid;
+        place-items: center;
+        font-size: 26px;
+        font-weight: 500;
+        color: var(--ink-2);
+        flex: none;
+      }
+      .member b {
+        display: block;
+        font-size: 24px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      .member span {
+        display: block;
+        margin-top: 4px;
+        font-family: var(--mono);
+        font-size: 16px;
+        color: var(--soft);
+      }
+      .member em {
+        display: inline-block;
+        margin-top: 8px;
+        font-style: normal;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--ink);
+        border-bottom: 1px solid var(--crimson-lift);
+        padding-bottom: 2px;
+      }
+
+      /* 02 · Problem */
+      .s2 .grid {
+        display: grid;
+        grid-template-columns: 1200px 1fr;
+        gap: 56px;
+        margin-top: 48px;
+        align-items: end;
+      }
+      .chartbox svg,
+      .crux svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      .side-stat .stat b {
+        font-size: 150px;
+      }
+      .side-stat p {
+        font-size: 24px;
+        line-height: 1.45;
+        color: var(--ink-2);
+        margin: 18px 0 0;
+      }
+
+      /* 05 · How it works */
+      .flow3 {
+        display: grid;
+        grid-template-columns: 1fr 64px 1fr 64px 1fr;
+        align-items: stretch;
+        margin-top: 44px;
+      }
+      .arrow {
+        display: grid;
+        place-items: center;
+        color: var(--soft);
+        font-size: 34px;
+      }
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 30px 30px 28px;
+        display: flex;
+        flex-direction: column;
+      }
+      .panel.mark {
+        border-top: 1px solid var(--crimson-lift);
+      }
+      .panel h3 {
+        margin: 10px 0 0;
+        font-size: 46px;
+        font-weight: 600;
+        letter-spacing: -0.025em;
+      }
+      .panel .sub {
+        font-size: 22px;
+        color: var(--ink-2);
+        margin-top: 6px;
+        padding-bottom: 22px;
+        border-bottom: 1px solid var(--border);
+      }
+      .field {
+        margin-top: 18px;
+      }
+      .field label {
+        display: block;
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--soft);
+      }
+      .field div {
+        margin-top: 8px;
+        height: 48px;
+        border: 1px solid var(--input, #6a6c72);
+        border-radius: 6px;
+        padding: 0 16px;
+        display: flex;
+        align-items: center;
+        font-size: 22px;
+      }
+      .tick {
+        margin-top: 20px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        font-size: 20px;
+        color: var(--ink-2);
+      }
+      .tick i {
+        width: 22px;
+        height: 22px;
+        border: 1px solid #6a6c72;
+        border-radius: 4px;
+        display: grid;
+        place-items: center;
+        font-style: normal;
+        font-size: 15px;
+      }
+      .clause {
+        margin-top: 22px;
+        font-family: var(--mono);
+        font-size: 19px;
+        line-height: 1.75;
+        background: var(--ground);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 18px 20px;
+        color: var(--ink-2);
+      }
+      .clause .kw {
+        color: var(--soft);
+      }
+      .clause .v {
+        color: var(--ink);
+      }
+      .rows {
+        margin-top: 20px;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 20px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--rule);
+        color: var(--ink-2);
+      }
+      .row b {
+        font-weight: 500;
+        color: var(--ink);
+      }
+      .notice {
+        margin-top: 22px;
+        font-size: 22px;
+        line-height: 1.5;
+      }
+      .notice .mode {
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      .notice .mode::before {
+        content: '▲';
+        font-size: 20px;
+        margin-right: 10px;
+        vertical-align: 4px;
+      }
+      .notice p {
+        margin: 12px 0 0;
+        color: var(--ink-2);
+      }
+      .btn {
+        margin-top: auto;
+        align-self: flex-start;
+        height: 46px;
+        padding: 0 22px;
+        border-radius: 999px;
+        background: var(--ink);
+        color: var(--ground);
+        display: inline-flex;
+        align-items: center;
+        font-size: 20px;
+        font-weight: 600;
+      }
+      .fine {
+        margin-top: 16px;
+        font-size: 16px;
+        line-height: 1.45;
+        color: var(--soft);
+      }
+
+      /* 06 · Crux */
+      .crux {
+        display: grid;
+        grid-template-columns: 1fr 470px;
+        gap: 48px;
+        margin-top: 36px;
+        align-items: start;
+      }
+      .verdict {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-top: 1px solid var(--crimson-lift);
+        border-radius: 6px;
+        padding: 30px;
+      }
+      .verdict .was {
+        display: flex;
+        justify-content: space-between;
+        font-size: 20px;
+        color: var(--soft);
+        padding-bottom: 18px;
+        border-bottom: 1px solid var(--border);
+      }
+      .verdict .was s {
+        color: var(--ink-2);
+        text-decoration-color: var(--soft);
+      }
+      .verdict .at {
+        margin-top: 20px;
+        font-family: var(--mono);
+        font-size: 18px;
+        color: var(--soft);
+      }
+      .verdict .mode {
+        margin-top: 8px;
+        font-size: 54px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        line-height: 1.02;
+      }
+      .verdict .mode::before {
+        content: '▲';
+        font-size: 30px;
+        margin-right: 12px;
+        vertical-align: 10px;
+      }
+      .verdict .why {
+        margin-top: 20px;
+        font-size: 21px;
+        line-height: 1.55;
+        color: var(--ink-2);
+      }
+
+      /* 07 · Demo */
+      .s7 .watch {
+        margin-top: 64px;
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        border-top: 1px solid var(--border);
+        max-width: 1180px;
+      }
+      .watch div {
+        padding: 22px 18px 0 0;
+      }
+      .watch .n {
+        font-family: var(--mono);
+        font-size: 17px;
+        color: var(--soft);
+      }
+      .watch b {
+        display: block;
+        margin-top: 10px;
+        font-size: 26px;
+        font-weight: 600;
+      }
+      .qr {
+        position: absolute;
+        right: 96px;
+        top: 300px;
+        width: 360px;
+        text-align: left;
+      }
+      .qr .code {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 34px;
+      }
+      .qr img {
+        display: block;
+        width: 100%;
+      }
+      .qr b {
+        display: block;
+        margin-top: 22px;
+        font-size: 28px;
+        font-weight: 600;
+      }
+      .qr span {
+        display: block;
+        margin-top: 6px;
+        font-family: var(--mono);
+        font-size: 18px;
+        color: var(--soft);
+      }
+
+      /* 08 · Comparison */
+      table.cmp {
+        margin-top: 44px;
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .cmp th {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--soft);
+        text-align: center;
+        padding: 0 10px 18px;
+        line-height: 1.4;
+      }
+      .cmp th:first-child {
+        text-align: left;
+      }
+      .cmp td {
+        border-top: 1px solid var(--border);
+        padding: 15px 10px;
+        text-align: center;
+        font-size: 28px;
+        color: var(--soft);
+      }
+      .cmp td:first-child {
+        text-align: left;
+        color: var(--ink);
+        font-size: 28px;
+        font-weight: 600;
+      }
+      .cmp td:first-child span {
+        display: block;
+        margin-top: 2px;
+        font-size: 17px;
+        font-weight: 400;
+        color: var(--soft);
+      }
+      .cmp .yes {
+        display: inline-grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: var(--ink);
+        color: var(--ground);
+        font-size: 22px;
+        font-weight: 700;
+      }
+      .cmp .maybe {
+        display: inline-grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        border: 1px dashed var(--soft);
+        font-size: 20px;
+      }
+      .cmp tr.us td {
+        background: var(--surface);
+        border-top: 1px solid var(--crimson-lift);
+      }
+
+      /* 09 · Architecture (inline SVG, archify style) */
+      svg.arch {
+        flex: none;
+        display: block;
+        width: 1620px;
+        align-self: center;
+        height: auto;
+        margin-top: 30px;
+      }
+      .arch .zone {
+        fill: none;
+        stroke: var(--control);
+        stroke-width: 1.5;
+        stroke-dasharray: 7 6;
+      }
+      .arch .zone.wait {
+        stroke: var(--warning);
+        stroke-opacity: 0.55;
+      }
+      .arch .zl {
+        font: 600 15px/1 var(--sans);
+        letter-spacing: 0.14em;
+        fill: var(--soft);
+      }
+      .arch .zl.wait {
+        fill: var(--warning);
+      }
+      .arch .box {
+        fill: var(--surface);
+        stroke: var(--control);
+        stroke-width: 1.5;
+      }
+      .arch .box.hot {
+        stroke: var(--crimson-lift);
+        stroke-width: 2;
+      }
+      .arch .t1 {
+        font: 600 25px/1 var(--sans);
+        fill: var(--ink);
+        letter-spacing: -0.01em;
+      }
+      .arch .t2 {
+        font: 400 16px/1 var(--mono);
+        fill: var(--soft);
+      }
+      .arch .edge {
+        fill: none;
+        stroke: var(--ink-2);
+        stroke-width: 1.75;
+      }
+      .arch .edge.dash {
+        stroke-dasharray: 6 6;
+      }
+      .arch .el {
+        font: 500 16px/1 var(--mono);
+        fill: var(--ink-2);
+      }
+      .arch .elbg {
+        fill: var(--ground);
+      }
+      .arch .ln {
+        fill: none;
+        stroke: var(--ink);
+        stroke-width: 1.75;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      /* 10 · Impact */
+      .s10 .cards {
+        grid-template-columns: repeat(4, 1fr);
+      }
+      .s10 .card .stat b {
+        font-size: 96px;
+      }
+      .tally {
+        margin-top: 16px;
+        display: flex;
+        gap: 6px;
+      }
+      .tally i {
+        flex: 1;
+        height: 10px;
+        border-radius: 2px;
+        background: var(--control);
+      }
+      .tally i.h {
+        background: var(--ink);
+      }
+      .tally i.o {
+        background: var(--ink-2);
+      }
+      .tally i.n {
+        background: var(--muted);
+        opacity: 0.55;
+      }
+      .tally i.x {
+        background: transparent;
+        border: 1px dashed var(--soft);
+      }
+
+      /* 12 · Team */
+      .lanes {
+        margin-top: 56px;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 20px;
+      }
+      .lane {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 28px;
+      }
+      .lane .avatar {
+        width: 84px;
+        height: 84px;
+        font-size: 30px;
+      }
+      .lane b {
+        display: block;
+        margin-top: 22px;
+        font-size: 28px;
+        font-weight: 600;
+      }
+      .lane .gh {
+        margin-top: 4px;
+        font-family: var(--mono);
+        font-size: 16px;
+        color: var(--soft);
+      }
+      .lane p {
+        margin: 18px 0 0;
+        font-size: 21px;
+        line-height: 1.45;
+        color: var(--ink-2);
+      }
+
+      /* 13 · Close */
+      .s13 h1 {
+        margin-top: 120px;
+        font-size: 132px;
+        font-weight: 600;
+        letter-spacing: -0.05em;
+        line-height: 0.96;
+      }
+      .links {
+        margin-top: 64px;
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 36px;
+        align-items: center;
+        max-width: 900px;
+      }
+      .links .code {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 22px;
+      }
+      .links img {
+        display: block;
+        width: 100%;
+      }
+      .linklist div {
+        font-size: 24px;
+        line-height: 1.9;
+        color: var(--ink-2);
+      }
+      .linklist b {
+        display: inline-block;
+        width: 150px;
+        color: var(--soft);
+        font-weight: 500;
+      }
+
+      @media print {
+        html,
+        body {
+          background: var(--ground);
+        }
+        .deck {
+          position: static;
+          overflow: visible;
+        }
+        .slide {
+          position: relative;
+          left: auto;
+          top: auto;
+          margin: 0;
+          transform: none;
+          display: flex;
+          break-after: page;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <symbol id="mark" viewBox="0 0 16 16">
+        <rect x="2" y="2" width="12" height="12" fill="none" stroke="#efefef" stroke-width="2" />
+        <path d="M1 10.5h14" fill="none" stroke="#b11226" stroke-width="1" />
+      </symbol>
+      <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z" /></symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24">
+        <path d="M12 4 2.5 20h19L12 4z" />
+        <path d="M12 10v4" />
+        <path d="M12 17h.01" />
+      </symbol>
+      <symbol id="i-haze" viewBox="0 0 24 24">
+        <path d="M3 8h13a3 3 0 1 0-3-3" />
+        <path d="M3 12h17" />
+        <path d="M3 16h11a3 3 0 1 1-3 3" />
+      </symbol>
+      <symbol id="i-cam" viewBox="0 0 24 24">
+        <rect x="6" y="2.5" width="12" height="19" rx="2.5" />
+        <circle cx="12" cy="8" r="2.5" />
+      </symbol>
+      <symbol id="i-train" viewBox="0 0 24 24">
+        <rect x="5" y="3" width="14" height="14" rx="3" />
+        <path d="M5 11h14" />
+        <path d="M8 21l2-4M16 21l-2-4" />
+      </symbol>
+      <symbol id="i-user" viewBox="0 0 24 24">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" />
+      </symbol>
+      <symbol id="i-users" viewBox="0 0 24 24">
+        <circle cx="9" cy="8" r="3.5" />
+        <path d="M2.5 20c1-3.5 3.5-5.5 6.5-5.5s5.5 2 6.5 5.5" />
+        <path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.5.8 2.5 2.6 3 5.2" />
+      </symbol>
+      <symbol id="i-calendar" viewBox="0 0 24 24">
+        <rect x="3" y="5" width="18" height="16" rx="2" />
+        <path d="M3 10h18M8 3v4M16 3v4" />
+      </symbol>
+      <symbol id="i-stadium" viewBox="0 0 24 24">
+        <ellipse cx="12" cy="9" rx="9" ry="4" />
+        <path d="M3 9v6c0 2.2 4 4 9 4s9-1.8 9-4V9" />
+      </symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" /></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24">
+        <path d="M12 3 4 6v6c0 4.5 3.3 8 8 9 4.7-1 8-4.5 8-9V6l-8-3z" />
+        <path d="m8.5 12 2.5 2.5 4.5-5" />
+      </symbol>
+    </svg>
+
+    <main class="deck">
+      <!-- 01 · Title and team -->
+      <section class="slide s1" data-label="01 Title">
+        <img class="art" src="assets/art/window.webp" alt="" style="right: 10px; top: 150px; width: 820px" />
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg>Skyclause<span class="chip">Team</span>
+          </div>
+          <div class="event">
+            <b>APU Cloud Innovation Hackathon 2026</b><br />Intelligent Automation &amp; Digital Transformation
+          </div>
+        </header>
+        <h1>The call for<span class="lt">every window.</span></h1>
+        <p class="lede">
+          When rain, haze or a stadium crowd will meet a class, an event or a commute, Skyclause makes
+          <b>one approved call</b>, writes it down, and <b>grades it the next day</b>.
+        </p>
+        <div class="team">
+          <div class="member">
+            <div class="avatar">LY</div>
+            <div><b>Lim Yuh Kang</b><span>@kymil4</span><em>Team leader</em></div>
+          </div>
+          <div class="member">
+            <div class="avatar">HZ</div>
+            <div><b>Hee Zi Jie</b><span>@AlaskanTuna</span></div>
+          </div>
+          <div class="member">
+            <div class="avatar">JW</div>
+            <div><b>Jeremy Woon</b><span>@WhiteAvocad0</span></div>
+          </div>
+          <div class="member">
+            <div class="avatar">YL</div>
+            <div><b>Yow Li Hao</b><span>@chaosiris</span></div>
+          </div>
+          <div class="member">
+            <div class="avatar">LJ</div>
+            <div><b>Liau Jin Siang</b><span>@DrxgClanPC</span></div>
+          </div>
+        </div>
+        <footer class="ft">
+          <span class="pg">01 / 13 · Team</span><span>github.com/m1kulabs/Skyclause · video {video link}</span>
+        </footer>
+        <aside class="notes">
+          This is Skyclause. It makes one approved call for every class, event or commute window when the sky turns
+          against it. And it writes every call down.
+        </aside>
+      </section>
+
+      <!-- 02 · The problem -->
+      <section class="slide s2" data-label="02 Problem">
+        <img
+          class="art"
+          src="assets/art/storm.webp"
+          alt=""
+          style="right: -30px; top: 60px; width: 820px; opacity: 0.95"
+        />
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg>Skyclause<span class="chip">The existing problem</span>
+          </div>
+        </header>
+        <div class="eyebrow">Bukit Jalil · Monday 2 November 2026</div>
+        <h2>63 mm of rain in two hours.<span class="lt">89 classes let out into it.</span></h2>
+        <div class="grid">
+          <div class="chartbox">
+            <!-- chart:bars-2nov --><svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 1200 480"
+              role="img"
+              aria-label="Replay of 2 November 2026: 63.0 mm of rain fell between 14:00 and 16:00 at gauge 0232901RF, across the 15:30 exit wave."
+            >
+              <line x1="64" x2="1176" y1="390" y2="390" stroke="#2a292e" stroke-width="1" />
+              <text
+                x="52"
+                y="396"
+                text-anchor="end"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                0
+              </text>
+              <line x1="64" x2="1176" y1="270" y2="270" stroke="#2a292e" stroke-width="1" />
+              <text
+                x="52"
+                y="276"
+                text-anchor="end"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                5
+              </text>
+              <line x1="64" x2="1176" y1="150" y2="150" stroke="#2a292e" stroke-width="1" />
+              <text
+                x="52"
+                y="156"
+                text-anchor="end"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                10
+              </text>
+              <line x1="64" x2="1176" y1="30" y2="30" stroke="#2a292e" stroke-width="1" />
+              <text
+                x="52"
+                y="36"
+                text-anchor="end"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                15
+              </text>
+              <rect x="355.0" y="378.0" width="33.4" height="12.0" fill="#bdbdc0" />
+              <rect x="401.3" y="330.0" width="33.4" height="60.0" fill="#bdbdc0" />
+              <rect x="447.6" y="174.0" width="33.4" height="216.0" fill="#bdbdc0" />
+              <rect x="494.0" y="174.0" width="33.4" height="216.0" fill="#bdbdc0" />
+              <rect x="540.3" y="186.0" width="33.4" height="204.0" fill="#bdbdc0" />
+              <rect x="586.6" y="162.0" width="33.4" height="228.0" fill="#bdbdc0" />
+              <rect x="633.0" y="258.0" width="33.4" height="132.0" fill="#bdbdc0" />
+              <rect x="679.3" y="270.0" width="33.4" height="120.0" fill="#bdbdc0" />
+              <rect x="725.6" y="282.0" width="33.4" height="108.0" fill="#bdbdc0" />
+              <rect x="772.0" y="342.0" width="33.4" height="48.0" fill="#bdbdc0" />
+              <rect x="818.3" y="354.0" width="33.4" height="36.0" fill="#bdbdc0" />
+              <rect x="864.6" y="366.0" width="33.4" height="24.0" fill="#bdbdc0" />
+              <rect x="911.0" y="354.0" width="33.4" height="36.0" fill="#bdbdc0" />
+              <rect x="957.3" y="378.0" width="33.4" height="12.0" fill="#bdbdc0" />
+              <rect x="1003.6" y="366.0" width="33.4" height="24.0" fill="#bdbdc0" />
+              <rect x="1050.0" y="378.0" width="33.4" height="12.0" fill="#bdbdc0" />
+              <rect x="1096.3" y="378.0" width="33.4" height="12.0" fill="#bdbdc0" />
+              <rect x="1142.6" y="378.0" width="33.4" height="12.0" fill="#bdbdc0" />
+              <text
+                x="64"
+                y="422"
+                text-anchor="middle"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                14:00
+              </text>
+              <text
+                x="342"
+                y="422"
+                text-anchor="middle"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                14:30
+              </text>
+              <text
+                x="620"
+                y="422"
+                text-anchor="middle"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                15:00
+              </text>
+              <text
+                x="898"
+                y="422"
+                text-anchor="middle"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                15:30
+              </text>
+              <text
+                x="1176"
+                y="422"
+                text-anchor="middle"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                16:00
+              </text>
+              <line x1="898" x2="898" y1="30" y2="390" stroke="#f0566c" stroke-width="2" />
+              <text x="910" y="50" fill="#f0566c" font-size="20" font-family="Work Sans, sans-serif">
+                15:30 exit wave
+              </text>
+              <text x="64" y="472" fill="#8c8c8c" font-size="16" font-family="Work Sans, sans-serif">
+                Rain per 5 min, mm. JPS gauge 0232901RF, Sg. Kuyoh di LRT Bukit Jalil.
+              </text></svg
+            ><!-- /chart:bars-2nov -->
+          </div>
+          <div class="side-stat">
+            <div class="stat"><b>15:30</b></div>
+            <p>
+              89 physical sessions ended at the release wave, inside the heaviest hour. A traffic account listed a flash
+              flood "Bukit Jalil arah Puchong".
+            </p>
+          </div>
+        </div>
+        <div class="band">
+          <span class="k">Nobody made the call</span>And nobody wrote down what was decided, or why.
+        </div>
+        <footer class="ft">
+          <span class="pg">02 / 13 · The existing problem</span
+          ><span
+            ><span class="replay">Replay (2 Nov 2026)</span>&ensp;JPS gauge 0232901RF, 5-minute series captured 5 Nov ·
+            APU timetable, one research fetch</span
+          >
+        </footer>
+        <aside class="notes">
+          On the second of November, 63 millimetres of rain fell on Bukit Jalil in two hours. 89 classes ended at 15:30,
+          straight into it. Nobody made the call. Nobody wrote it down.
+        </aside>
+      </section>
+
+      <!-- 03 · The gap -->
+      <section class="slide s3" data-label="03 The gap">
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg>Skyclause<span class="chip">The existing problem</span>
+          </div>
+        </header>
+        <div class="eyebrow">The ministry asked · the campus has no answer</div>
+        <h2>Watch your local readings.<span class="lt">Then decide alone, with no record.</span></h2>
+        <div class="cards" style="grid-template-columns: repeat(3, 1fr); margin-top: 72px">
+          <div class="card">
+            <div class="stat"><b>7 Oct</b></div>
+            <p>
+              KPT tells every university to monitor API readings in its own locality. Schools got thresholds.
+              Universities didn't.
+            </p>
+            <div class="src">KPT instruction, 7 October 2026</div>
+          </div>
+          <div class="card mark">
+            <div class="stat"><b>0</b></div>
+            <p>pages on haze, jerebu, thunderstorm or lightning in APU's public knowledge base.</p>
+            <div class="src">Searched 5 November 2026</div>
+          </div>
+          <div class="card">
+            <div class="stat"><b>139–174</b></div>
+            <p>physical sessions end in each weekday exit wave, 16:30–19:15, straight onto LRT Bukit Jalil.</p>
+            <div class="src">APU timetable, 2–6 November 2026</div>
+          </div>
+        </div>
+        <div class="band">
+          <span class="k">Today</span>Students check AirVisual, organisers check Instagram, lecturers switch online ad
+          hoc. Each one decides alone.
+        </div>
+        <footer class="ft">
+          <span class="pg">03 / 13 · The existing problem</span
+          ><span>KPT via X research · APU knowledge base · APU timetable feed · Reddit and forum research</span>
+        </footer>
+        <aside class="notes">
+          On the seventh of October, the ministry told every university to watch its local air readings. APU has no
+          written rule for haze or storms, and no record of what it decided.
+        </aside>
+      </section>
+
+      <!-- 04 · Who it is for -->
+      <section class="slide s4" data-label="04 Who it is for">
+        <img class="art" src="assets/art/commute.webp" alt="" style="right: -30px; top: 90px; width: 700px" />
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg>Skyclause<span class="chip">Target users</span>
+          </div>
+        </header>
+        <div class="eyebrow">Who hears the call · when · who approves</div>
+        <h2>For anyone with a window<span class="lt">to protect.</span></h2>
+        <div class="cards" style="grid-template-columns: repeat(4, 1fr); margin-top: 120px">
+          <div class="card mark">
+            <svg class="ico"><use href="#i-users" /></svg>
+            <div class="k" style="margin-top: 22px">Who uses it</div>
+            <h3>Club and event organisers</h3>
+            <p>Outdoor and evening events around Bukit Jalil.</p>
+          </div>
+          <div class="card">
+            <svg class="ico"><use href="#i-train" /></svg>
+            <div class="k" style="margin-top: 22px">Also for</div>
+            <h3>Commuting students</h3>
+            <p>The release wave onto LRT Bukit Jalil.</p>
+          </div>
+          <div class="card">
+            <svg class="ico"><use href="#i-stadium" /></svg>
+            <div class="k" style="margin-top: 22px">Stadium nights</div>
+            <h3>38,447 exits on 10 January</h3>
+            <p>The Crowd pack, graded against gate taps.</p>
+          </div>
+          <div class="card">
+            <svg class="ico"><use href="#i-shield" /></svg>
+            <div class="k" style="margin-top: 22px">Who approves</div>
+            <h3>One person on the rota</h3>
+            <p>Every notice, before anyone hears it.</p>
+          </div>
+        </div>
+        <div class="band">
+          <span class="k">The moment</span>A storm cell at 15:00. A class that ends at 15:30. Thirty minutes to make the
+          call.
+        </div>
+        <footer class="ft">
+          <span class="pg">04 / 13 · Target users</span
+          ><span>Rapid Rail SP17 exits, 10 January 2026 · opt-in subscribers only</span>
+        </footer>
+        <aside class="notes">
+          It starts with a window. A club, a class or a commuter declares one: a title, a day, a start and an end.
+          Opt-in, with consent.
+        </aside>
+      </section>
+
+      <!-- 05 · How it works -->
+      <section class="slide s5" data-label="05 How it works">
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg>Skyclause<span class="chip">How it works</span>
+          </div>
+          <span class="replay">Replay (2 Nov 2026)</span>
+        </header>
+        <div class="eyebrow">Window · clause · call</div>
+        <h2 style="font-size: 80px">The clause watches.<span class="lt">A person approves.</span></h2>
+        <div class="flow3">
+          <div class="panel">
+            <div class="k">01 · You</div>
+            <h3>Declare</h3>
+            <div class="sub">A window, with consent</div>
+            <div class="field">
+              <label>Window</label>
+              <div>15:30 release wave</div>
+            </div>
+            <div class="field">
+              <label>Kind</label>
+              <div>Commute wave</div>
+            </div>
+            <div class="field">
+              <label>Date and time</label>
+              <div>Mon 2 Nov 2026 · 15:30 MYT</div>
+            </div>
+            <div class="tick"><i>✓</i>I agree to the PDPA notice</div>
+          </div>
+          <div class="arrow">→</div>
+          <div class="panel">
+            <div class="k">02 · The clause</div>
+            <h3>Decide</h3>
+            <div class="sub">Live signals meet the clause sheet</div>
+            <div class="clause">
+              <span class="kw">clause</span> <span class="v">Storm confirmed</span><br />
+              <span class="kw">when</span> gauge 60 min ≥ <span class="v">31 mm</span><br />
+              <span class="kw">span</span> 15:00–16:30<br />
+              <span class="kw">then</span> <span class="v">Commute disruption</span>
+            </div>
+            <div class="rows">
+              <div class="row"><span>Gauge 0232901RF</span><b>39.0 mm · 5 min old</b></div>
+              <div class="row"><span>Verdict at 15:05</span><b>Crossing</b></div>
+              <div class="row" style="border: 0"><span>Agent and engine</span><b>Disagreement shows first</b></div>
+            </div>
+          </div>
+          <div class="arrow">→</div>
+          <div class="panel mark">
+            <div class="k">03 · You get</div>
+            <h3>Act</h3>
+            <div class="sub">One notice, approved first</div>
+            <div class="notice">
+              <div class="mode">Commute disruption</div>
+              <p>
+                for the 15:30 release wave, Monday 2 November 2026. Why: Storm confirmed, gauge 39.0 mm in 60 min to
+                15:00 (Lebat), 5 min old at the 15:05 poll.
+              </p>
+            </div>
+            <div class="btn">Approve 1 call</div>
+            <div class="fine">
+              Template from the replay: not reviewed, not sent. Skyclause is not a safety or emergency service. In an
+              emergency, call 999.
+            </div>
+          </div>
+        </div>
+        <footer class="ft">
+          <span class="pg">05 / 13 · How it works</span
+          ><span>Call wording from DESIGN · clause span 30 min before to 60 min after the window</span>
+        </footer>
+        <aside class="notes">
+          Then Skyclause watches the public signals for it. The JPS rain gauge every 5 minutes. MET warnings every 10.
+          The DOE haze index every hour. Every reading carries its age. A silent feed is a No call, never an old number.
+        </aside>
+      </section>
+
+      <!-- 06 · The crossing -->
+      <section class="slide s6" data-label="06 The crossing">
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg>Skyclause<span class="chip">The crossing</span>
+          </div>
+          <span class="replay">Replay (2 Nov 2026)</span>
+        </header>
+        <div class="eyebrow">Gauge 0232901RF · Sg. Kuyoh di LRT Bukit Jalil</div>
+        <h2 style="font-size: 80px">
+          15:00, the gauge crosses Lebat.<span class="lt">15:05, the verdict flips.</span>
+        </h2>
+        <div class="crux">
+          <div>
+            <!-- chart:strip-2nov --><svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 1600 620"
+              role="img"
+              aria-label="Replay of 2 November 2026: the 60-minute rain total at gauge 0232901RF reaches the Lebat class at 15:00, before 89 sessions end at 15:30."
+            >
+              <rect x="96" y="85.71428571428572" width="1464" height="132.57142857142856" fill="#2a2416" />
+              <text
+                x="1552"
+                y="111.71428571428572"
+                text-anchor="end"
+                fill="#d9a441"
+                font-size="20"
+                font-family="Work Sans, sans-serif"
+              >
+                Lebat · 31–60 mm in an hour (JPS)
+              </text>
+              <line x1="96" x2="1560" y1="360" y2="360" stroke="#2a292e" stroke-width="1" />
+              <text
+                x="82"
+                y="366"
+                text-anchor="end"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                0
+              </text>
+              <line
+                x1="96"
+                x2="1560"
+                y1="268.57142857142856"
+                y2="268.57142857142856"
+                stroke="#2a292e"
+                stroke-width="1"
+              />
+              <text
+                x="82"
+                y="274.57142857142856"
+                text-anchor="end"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                20
+              </text>
+              <line
+                x1="96"
+                x2="1560"
+                y1="177.14285714285717"
+                y2="177.14285714285717"
+                stroke="#2a292e"
+                stroke-width="1"
+              />
+              <text
+                x="82"
+                y="183.14285714285717"
+                text-anchor="end"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                40
+              </text>
+              <line x1="96" x2="1560" y1="85.71428571428572" y2="85.71428571428572" stroke="#2a292e" stroke-width="1" />
+              <text
+                x="82"
+                y="91.71428571428572"
+                text-anchor="end"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                60
+              </text>
+              <text x="96" y="28" fill="#8c8c8c" font-size="18" font-family="Work Sans, sans-serif">
+                Rain in the last 60 min, mm
+              </text>
+              <text x="96" y="406" fill="#8c8c8c" font-size="18" font-family="Work Sans, sans-serif">
+                Rain per 5 min, mm (0–15)
+              </text>
+              <rect x="403.4" y="555.3" width="34.2" height="4.7" fill="#bdbdc0" />
+              <rect x="452.2" y="536.7" width="34.2" height="23.3" fill="#bdbdc0" />
+              <rect x="501.0" y="476.0" width="34.2" height="84.0" fill="#bdbdc0" />
+              <rect x="549.8" y="476.0" width="34.2" height="84.0" fill="#bdbdc0" />
+              <rect x="598.6" y="480.7" width="34.2" height="79.3" fill="#bdbdc0" />
+              <rect x="647.4" y="471.3" width="34.2" height="88.7" fill="#bdbdc0" />
+              <rect x="696.2" y="508.7" width="34.2" height="51.3" fill="#bdbdc0" />
+              <rect x="745.0" y="513.3" width="34.2" height="46.7" fill="#bdbdc0" />
+              <rect x="793.8" y="518.0" width="34.2" height="42.0" fill="#bdbdc0" />
+              <rect x="842.6" y="541.3" width="34.2" height="18.7" fill="#bdbdc0" />
+              <rect x="891.4" y="546.0" width="34.2" height="14.0" fill="#bdbdc0" />
+              <rect x="940.2" y="550.7" width="34.2" height="9.3" fill="#bdbdc0" />
+              <rect x="989.0" y="546.0" width="34.2" height="14.0" fill="#bdbdc0" />
+              <rect x="1037.8" y="555.3" width="34.2" height="4.7" fill="#bdbdc0" />
+              <rect x="1086.6" y="550.7" width="34.2" height="9.3" fill="#bdbdc0" />
+              <rect x="1135.4" y="555.3" width="34.2" height="4.7" fill="#bdbdc0" />
+              <rect x="1184.2" y="555.3" width="34.2" height="4.7" fill="#bdbdc0" />
+              <rect x="1233.0" y="555.3" width="34.2" height="4.7" fill="#bdbdc0" />
+              <rect x="1330.6" y="555.3" width="34.2" height="4.7" fill="#bdbdc0" />
+              <polyline
+                points="96.0,360.0 144.8,360.0 193.6,360.0 242.4,360.0 291.2,360.0 340.0,360.0 388.8,360.0 437.6,357.7 486.4,346.3 535.2,305.1 584.0,264.0 632.8,225.1 681.6,181.7 730.4,156.6 779.2,133.7 828.0,113.1 876.8,104.0 925.6,97.1 974.4,92.6 1023.2,88.0 1072.0,97.1 1120.8,133.7 1169.6,172.6 1218.4,209.1 1267.2,250.3 1316.0,275.4 1364.8,296.0 1413.6,316.6 1462.4,325.7 1511.2,332.6 1560.0,337.1"
+                fill="none"
+                stroke="#efefef"
+                stroke-width="3"
+              />
+              <line x1="96" x2="1560" y1="560" y2="560" stroke="#2a292e" stroke-width="1" />
+              <text
+                x="96"
+                y="594"
+                text-anchor="middle"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                14:00
+              </text>
+              <text
+                x="388.8"
+                y="594"
+                text-anchor="middle"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                14:30
+              </text>
+              <text
+                x="681.6"
+                y="594"
+                text-anchor="middle"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                15:00
+              </text>
+              <text
+                x="974.4"
+                y="594"
+                text-anchor="middle"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                15:30
+              </text>
+              <text
+                x="1267.2"
+                y="594"
+                text-anchor="middle"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                16:00
+              </text>
+              <text
+                x="1560"
+                y="594"
+                text-anchor="middle"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                16:30
+              </text>
+              <circle cx="632.8" cy="225.14285714285714" r="7" fill="#0a0a0a" stroke="#efefef" stroke-width="3" />
+              <text x="650.8" y="259.1428571428571" fill="#efefef" font-size="22" font-family="Work Sans, sans-serif">
+                14:55 · 29.5 mm · Normal
+              </text>
+              <circle cx="681.6" cy="181.71428571428572" r="8" fill="#efefef" />
+              <text
+                x="665.6"
+                y="163.71428571428572"
+                text-anchor="end"
+                fill="#efefef"
+                font-size="22"
+                font-weight="600"
+                font-family="Work Sans, sans-serif"
+              >
+                15:00 · 39.0 mm · Lebat
+              </text>
+              <line x1="974.4" x2="974.4" y1="40" y2="560" stroke="#f0566c" stroke-width="2" />
+              <text x="986.4" y="58" fill="#f0566c" font-size="20" font-family="Work Sans, sans-serif">
+                15:30 · 89 sessions end
+              </text></svg
+            ><!-- /chart:strip-2nov -->
+          </div>
+          <div class="verdict">
+            <div class="was"><span>14:55 · 29.5 mm</span><s>Normal</s></div>
+            <div class="at">15:05 poll</div>
+            <div class="mode">Commute disruption</div>
+            <div class="why">
+              Storm confirmed · gauge <span class="mono">0232901RF</span> 39.0 mm in 60 min to 15:00 (Lebat) · 5 min old
+            </div>
+            <div class="band" style="margin: 24px 0 0; padding: 18px 22px; font-size: 22px; display: block">
+              <span class="k" style="display: block; margin-bottom: 6px">25 minutes</span>before 89 sessions end at
+              15:30.
+            </div>
+          </div>
+        </div>
+        <footer class="ft">
+          <span class="pg">06 / 13 · The crossing</span
+          ><span
+            >Clause engine verdict on the stored JPS series · not reviewed, not sent: no call was made that day</span
+          >
+        </footer>
+        <aside class="notes">
+          Here is the second of November, replayed from the gauge's own record. At 14:55, 29.5 millimetres in the last
+          hour. The clause says Normal. At 15:00, the hour reaches 39. That's Lebat, JPS's heavy class. At the 15:05
+          poll, the clause engine flips the verdict: Commute disruption. 25 minutes before the wave.
+        </aside>
+      </section>
+
+      <!-- 07 · Demo -->
+      <section class="slide s7" data-label="07 Demo">
+        <img class="art" src="assets/art/gauge.webp" alt="" style="left: 1010px; top: 150px; width: 600px" />
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg>Skyclause<span class="chip">Demo</span>
+          </div>
+        </header>
+        <div class="eyebrow" style="margin-top: 210px">Recorded from the live system · captured {capture date}</div>
+        <h2 style="font-size: 120px; letter-spacing: -0.05em">One window,<span class="lt">gauge to record.</span></h2>
+        <div class="watch">
+          <div><span class="n">01</span><b>Window</b></div>
+          <div><span class="n">02</span><b>Signals</b></div>
+          <div><span class="n">03</span><b>Crossing</b></div>
+          <div><span class="n">04</span><b>Call</b></div>
+          <div><span class="n">05</span><b>Record</b></div>
+          <div><span class="n">06</span><b>Evidence</b></div>
+        </div>
+        <div class="qr">
+          <div class="code"><img src="assets/qr/repo.svg" alt="QR code for github.com/m1kulabs/Skyclause" /></div>
+          <b>Read the code</b><span>github.com/m1kulabs/Skyclause</span>
+        </div>
+        <footer class="ft">
+          <span class="pg">07 / 13 · Demo</span
+          ><span>Recording, not a live demo · cuts only, marked on screen · no staged data</span>
+        </footer>
+        <aside class="notes">Data decides when to look. Let's watch one window from the gauge to the record.</aside>
+      </section>
+
+      <!-- 08 · What exists -->
+      <section class="slide s8" data-label="08 Innovation">
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg>Skyclause<span class="chip">Innovation</span>
+          </div>
+        </header>
+        <div class="eyebrow">What people use today</div>
+        <h2 style="font-size: 80px">Others show the weather.<span class="lt">Skyclause makes the call.</span></h2>
+        <table class="cmp">
+          <thead>
+            <tr>
+              <th style="width: 30%">What exists</th>
+              <th>Knows your<br />window</th>
+              <th>A person<br />approves</th>
+              <th>Says "No call"<br />when a feed is stale</th>
+              <th>Written<br />record</th>
+              <th>Graded<br />next day</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>MET Malaysia warnings<span>state and district thunderstorm warnings</span></td>
+              <td>×</td>
+              <td>×</td>
+              <td>×</td>
+              <td>×</td>
+              <td>×</td>
+            </tr>
+            <tr>
+              <td>AirVisual and aqicn<span>air quality apps students use</span></td>
+              <td>×</td>
+              <td>×</td>
+              <td>×</td>
+              <td>×</td>
+              <td>×</td>
+            </tr>
+            <tr>
+              <td>PredictHQ<span>paid event-demand forecasts</span></td>
+              <td>×</td>
+              <td>×</td>
+              <td>×</td>
+              <td>×</td>
+              <td><span class="maybe">?</span></td>
+            </tr>
+            <tr>
+              <td>A group chat<span>someone posts "class online?"</span></td>
+              <td><span class="maybe">?</span></td>
+              <td><span class="maybe">?</span></td>
+              <td>×</td>
+              <td>×</td>
+              <td>×</td>
+            </tr>
+            <tr class="us">
+              <td>Skyclause<span>this project</span></td>
+              <td><span class="yes">✓</span></td>
+              <td><span class="yes">✓</span></td>
+              <td><span class="yes">✓</span></td>
+              <td><span class="yes">✓</span></td>
+              <td><span class="yes">✓</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <footer class="ft">
+          <span class="pg">08 / 13 · Innovation</span
+          ><span>? = sometimes, not by design · substitutes from the Skyclause idea's research · predicthq.com</span>
+        </footer>
+        <aside class="notes">
+          A weather app has no declared window. A crowd forecaster has no approved call. Skyclause writes the call down
+          and grades it.
+        </aside>
+      </section>
+
+      <!-- 09 · Architecture -->
+      <section class="slide s9" data-label="09 Architecture">
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg>Skyclause<span class="chip">Technical architecture</span>
+          </div>
+        </header>
+        <div class="eyebrow" style="margin-top: 36px">Feeders · workflow · actions</div>
+        <h2 style="font-size: 64px">Code watches the sky.<span class="lt">Gemini drafts. A person sends.</span></h2>
+        <svg
+          class="arch"
+          viewBox="0 0 1728 560"
+          role="img"
+          aria-label="Skyclause architecture: public signals feed Apps Script pollers and the clause engine; crossing files start the Gemini Enterprise workflow, which drafts a bundle for approval and then writes Gmail, Calendar, Sheets and Jira."
+        >
+          <defs>
+            <marker id="ar" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+              <path d="M0 0 L10 4 L0 8 z" fill="#bdbdc0" />
+            </marker>
+          </defs>
+          <rect class="zone" x="2" y="2" width="372" height="556" rx="12" />
+          <text class="zl" x="22" y="32">PUBLIC SIGNALS</text>
+          <rect class="zone" x="410" y="2" width="420" height="556" rx="12" />
+          <text class="zl" x="430" y="32">APPS SCRIPT · LIVE ON DEV</text>
+          <rect class="zone wait" x="866" y="2" width="420" height="556" rx="12" />
+          <text class="zl wait" x="886" y="32">GEMINI · AWAITING LICENCE</text>
+          <rect class="zone" x="1322" y="2" width="404" height="556" rx="12" />
+          <text class="zl" x="1342" y="32">ACTIONS · CONNECTORS</text>
+
+          <!-- Sources -->
+          <g>
+            <rect class="box" x="22" y="56" width="332" height="96" rx="6" />
+            <use class="ln" href="#i-drop" x="40" y="74" width="28" height="28" />
+            <text class="t1" x="80" y="96">JPS rain gauge</text>
+            <text class="t2" x="40" y="132">0232901RF · every 5 min</text>
+          </g>
+          <g>
+            <rect class="box" x="22" y="168" width="332" height="96" rx="6" />
+            <use class="ln" href="#i-alert" x="40" y="186" width="28" height="28" />
+            <text class="t1" x="80" y="208">MET warnings</text>
+            <text class="t2" x="40" y="244">data.gov.my · every 10 min</text>
+          </g>
+          <g>
+            <rect class="box" x="22" y="280" width="332" height="96" rx="6" />
+            <use class="ln" href="#i-haze" x="40" y="298" width="28" height="28" />
+            <text class="t1" x="80" y="320">DOE APIMS</text>
+            <text class="t2" x="40" y="356">CA16W · hourly</text>
+          </g>
+          <g>
+            <rect class="box" x="22" y="392" width="160" height="146" rx="6" />
+            <use class="ln" href="#i-cam" x="40" y="410" width="28" height="28" />
+            <text class="t1" x="40" y="476">Camera</text>
+            <text class="t2" x="40" y="504">phone</text>
+            <text class="t2" x="40" y="524">probation</text>
+            <rect class="box" x="194" y="392" width="160" height="146" rx="6" />
+            <image href="assets/icons/raspberrypi.svg" x="212" y="410" width="28" height="28" />
+            <text class="t1" x="212" y="476">Pi 5</text>
+            <text class="t2" x="212" y="504">Rapid Rail</text>
+            <text class="t2" x="212" y="524">SP17 taps</text>
+          </g>
+
+          <!-- Apps Script -->
+          <g>
+            <rect class="box" x="430" y="56" width="380" height="110" rx="6" />
+            <image href="assets/icons/googleappsscript.svg" x="448" y="74" width="28" height="28" />
+            <text class="t1" x="488" y="96">Pollers</text>
+            <text class="t2" x="448" y="132">readings · ages · error rows</text>
+            <text class="t2" x="448" y="152">"No call" when a feed is silent</text>
+          </g>
+          <g>
+            <rect class="box hot" x="430" y="196" width="380" height="110" rx="6" />
+            <image href="assets/icons/googlesheets.svg" x="448" y="214" width="28" height="28" />
+            <text class="t1" x="488" y="236">Clause engine</text>
+            <text class="t2" x="448" y="272">clause sheet · shadow verdict</text>
+            <text class="t2" x="448" y="292">writes the crossing file</text>
+          </g>
+          <g>
+            <rect class="box" x="430" y="336" width="380" height="96" rx="6" />
+            <image href="assets/icons/googledrive.svg" x="448" y="354" width="28" height="28" />
+            <text class="t1" x="488" y="376">Crossing files</text>
+            <text class="t2" x="448" y="412">Drive · one per verdict change</text>
+          </g>
+          <g>
+            <rect class="box" x="430" y="448" width="380" height="90" rx="6" />
+            <use class="ln" href="#i-shield" x="448" y="466" width="28" height="28" />
+            <text class="t1" x="488" y="488">Sealed ledger</text>
+            <text class="t2" x="448" y="522">each row hashed to the last</text>
+          </g>
+
+          <!-- Gemini Enterprise -->
+          <g>
+            <rect class="box" x="886" y="96" width="380" height="140" rx="6" />
+            <image href="assets/icons/googlegemini.svg" x="904" y="114" width="28" height="28" />
+            <text class="t1" x="944" y="136">Decision agent</text>
+            <text class="t2" x="904" y="172">drafts a call per window</text>
+            <text class="t2" x="904" y="194">reasons · input ages</text>
+            <text class="t2" x="904" y="216">engine verdict beside it</text>
+          </g>
+          <g>
+            <rect class="box" x="886" y="300" width="380" height="140" rx="6" />
+            <use class="ln" href="#i-user" x="904" y="318" width="28" height="28" />
+            <text class="t1" x="944" y="340">Approval</text>
+            <text class="t2" x="904" y="376">one per bundle · the rota</text>
+            <text class="t2" x="904" y="398">approve · edit · reject</text>
+            <text class="t2" x="904" y="420">disagreement shows first</text>
+          </g>
+
+          <!-- Actions -->
+          <g>
+            <rect class="box" x="1342" y="56" width="364" height="96" rx="6" />
+            <image href="assets/icons/gmail.svg" x="1360" y="74" width="28" height="28" />
+            <text class="t1" x="1400" y="96">Gmail</text>
+            <text class="t2" x="1360" y="132">notices · evidence replies</text>
+          </g>
+          <g>
+            <rect class="box" x="1342" y="168" width="364" height="96" rx="6" />
+            <image href="assets/icons/googlecalendar.svg" x="1360" y="186" width="28" height="28" />
+            <text class="t1" x="1400" y="208">Google Calendar</text>
+            <text class="t2" x="1360" y="244">conditions calendar</text>
+          </g>
+          <g>
+            <rect class="box" x="1342" y="280" width="364" height="96" rx="6" />
+            <image href="assets/icons/googlesheets.svg" x="1360" y="298" width="28" height="28" />
+            <text class="t1" x="1400" y="320">Sheets ledger</text>
+            <text class="t2" x="1360" y="356">call rows · next-day grades</text>
+          </g>
+          <g>
+            <rect class="box" x="1342" y="392" width="364" height="96" rx="6" />
+            <image href="assets/icons/jira.svg" x="1360" y="410" width="28" height="28" />
+            <text class="t1" x="1400" y="432">Jira Cloud</text>
+            <text class="t2" x="1360" y="468">decision record</text>
+          </g>
+
+          <!-- Edges -->
+          <path class="edge" d="M354 104 H392 V250 H426" marker-end="url(#ar)" />
+          <path class="edge" d="M354 216 H392" />
+          <path class="edge" d="M354 328 H392 V250" />
+          <path class="edge" d="M354 465 H392 V328" />
+          <path class="edge" d="M620 166 V192" marker-end="url(#ar)" />
+          <path class="edge" d="M620 306 V332" marker-end="url(#ar)" />
+          <path class="edge" d="M810 384 H848 V166 H882" marker-end="url(#ar)" />
+          <rect class="elbg" x="826" y="258" width="44" height="22" />
+          <text class="el" x="848" y="274" text-anchor="middle">file</text>
+          <path class="edge" d="M1076 236 V296" marker-end="url(#ar)" />
+          <path class="edge" d="M1266 370 H1304 V104 H1338" marker-end="url(#ar)" />
+          <path class="edge" d="M1304 216 H1338" marker-end="url(#ar)" />
+          <path class="edge" d="M1304 328 H1338" marker-end="url(#ar)" />
+          <path class="edge" d="M1304 370 V440 H1338" marker-end="url(#ar)" />
+          <rect class="elbg" x="1276" y="452" width="56" height="22" />
+          <text class="el" x="1304" y="468" text-anchor="middle">sent</text>
+          <path class="edge dash" d="M1342 500 H1230 V520 H814" marker-end="url(#ar)" />
+          <rect class="elbg" x="960" y="508" width="190" height="24" />
+          <text class="el" x="1055" y="525" text-anchor="middle">evidence on request</text>
+        </svg>
+        <div class="band split" style="margin-top: 18px; margin-bottom: 24px; padding: 18px 32px">
+          <div>
+            <span class="k">Built, not mocked</span>
+            <div>910 pilot tests pass, run on stored captures of the public feeds.</div>
+          </div>
+          <div>
+            <span class="k">AI drafts, never sends</span>
+            <div>No notice leaves without one person's approval.</div>
+          </div>
+        </div>
+        <footer class="ft">
+          <span class="pg">09 / 13 · Technical architecture</span
+          ><span>Apps Script · Sheets · Drive · Gemini Enterprise · Gmail · Calendar · Jira Cloud Free</span>
+        </footer>
+        <aside class="notes">
+          The decision agent drafts the call for each window at risk, with its reasons and every input's age. The clause
+          engine checks it. If they disagree, that shows first. Then one person on the rota approves, and the notice
+          goes out.
+        </aside>
+      </section>
+
+      <!-- 10 · Impact -->
+      <section class="slide s10" data-label="10 Impact">
+        <img class="art" src="assets/art/ledger.webp" alt="" style="right: -60px; top: 20px; width: 700px" />
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg>Skyclause<span class="chip">Impact</span>
+          </div>
+        </header>
+        <div class="eyebrow">What a campus walks away with</div>
+        <h2>Every call on the record,<span class="lt">graded the next morning.</span></h2>
+        <div class="cards">
+          <div class="card mark">
+            <div class="stat">
+              <b>25<small>min</small></b>
+            </div>
+            <p>from the crossing to the 15:30 wave on 2 November, enough to approve one call.</p>
+            <div class="src">Replay · inferred, not measured</div>
+          </div>
+          <div class="card">
+            <div class="stat"><b>22</b></div>
+            <p>weekdays of October haze, replayed through the same clauses.</p>
+            <div class="tally" aria-label="9 Hybrid recommended, 5 Outdoor-limited, 7 Normal, 1 no data">
+              <i class="h"></i><i class="h"></i><i class="h"></i><i class="h"></i><i class="h"></i><i class="h"></i
+              ><i class="h"></i><i class="h"></i><i class="h"></i><i class="o"></i><i class="o"></i><i class="o"></i
+              ><i class="o"></i><i class="o"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i
+              ><i class="n"></i><i class="n"></i><i class="n"></i><i class="x"></i>
+            </div>
+            <div class="src">9 Hybrid · 5 Outdoor-limited · 7 Normal · 1 no data</div>
+          </div>
+          <div class="card">
+            <div class="stat"><b>n=0</b></div>
+            <p>live grades so far. Every grade is published with its count and a 95% interval.</p>
+            <div class="src">We say so until it isn't zero</div>
+          </div>
+          <div class="card">
+            <div class="stat"><b>0</b></div>
+            <p>apps to install. Notices arrive by email, calls on a calendar URL.</p>
+            <div class="src">Outlook and Google Calendar</div>
+          </div>
+        </div>
+        <div class="band split">
+          <div>
+            <span class="k">3 months · Feb 2027</span>
+            <div>Calls through the monsoon for subscribed organisers and students.</div>
+          </div>
+          <div>
+            <span class="k">6 months · May 2027</span>
+            <div>Measured outcomes for both packs; the owner sets a false-alarm ceiling.</div>
+          </div>
+        </div>
+        <footer class="ft">
+          <span class="pg">10 / 13 · Impact</span
+          ><span
+            ><span class="replay">Replay</span>&ensp;Cheras CA16W at 06:00, 5 Oct–3 Nov 2026 · roadmap in PRODUCT</span
+          >
+        </footer>
+        <aside class="notes">
+          We replayed October's haze through the same clauses. 22 weekdays: 9 Hybrid recommended, 5 Outdoor-limited, 7
+          Normal, and 1 day with no data. Every live call is graded the next morning against the gauge, and published
+          with its count. Today that count is zero. We'll say so until it isn't.
+        </aside>
+      </section>
+
+      <!-- 11 · Research and responsibility -->
+      <section class="slide s11" data-label="11 Research">
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg>Skyclause<span class="chip">Research</span>
+          </div>
+        </header>
+        <div class="eyebrow">The research we did · how we keep it responsible</div>
+        <h2>Every number has a source.<span class="lt">Every notice has a person.</span></h2>
+        <div class="cards" style="grid-template-columns: repeat(3, 1fr)">
+          <div class="card">
+            <div class="stat"><b>2,269</b></div>
+            <p>JPS 5-minute readings stored for gauge <span class="mono">0232901RF</span>, 29 Oct to 5 Nov.</p>
+          </div>
+          <div class="card">
+            <div class="stat"><b>59</b></div>
+            <p>stadium surge nights at LRT Bukit Jalil since March 2024, from Rapid Rail gate taps.</p>
+          </div>
+          <div class="card">
+            <div class="stat"><b>508–563</b></div>
+            <p>physical sessions a weekday at APU, 2–6 November, from the timetable feed.</p>
+          </div>
+        </div>
+        <div class="cards" style="grid-template-columns: repeat(3, 1fr); margin-top: 24px">
+          <div class="card">
+            <div class="k">Consent</div>
+            <p>Opt-in windows, a PDPA notice and an unticked box. Only the fields a call needs.</p>
+          </div>
+          <div class="card">
+            <div class="k">The camera</div>
+            <p>Points at the skyline, not at people. On probation until labelled.</p>
+          </div>
+          <div class="card mark">
+            <div class="k">Limits</div>
+            <p>Not a safety or emergency service. Never excuses attendance.</p>
+          </div>
+        </div>
+        <footer class="ft">
+          <span class="pg">11 / 13 · Research</span
+          ><span>Feeds re-checked live on 5 Nov 2026 · interviews and timed tasks: {confirm before export}</span>
+        </footer>
+        <aside class="notes">
+          {research findings: interviews held, the timed evidence task, and what each changed; confirm before recording}
+        </aside>
+      </section>
+
+      <!-- 12 · Team -->
+      <section class="slide s12" data-label="12 Team">
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg>Skyclause<span class="chip">How we worked</span>
+          </div>
+        </header>
+        <div class="eyebrow">Five people · one tracker</div>
+        <h2>390 issues and pull requests<span class="lt">in under a week.</span></h2>
+        <div class="lanes">
+          <div class="lane">
+            <div class="avatar">LY</div>
+            <b>Lim Yuh Kang</b>
+            <div class="gh">@kymil4 · lead</div>
+            <p>Pilot workflows, Gemini Enterprise set-up, deployment and CI.</p>
+          </div>
+          <div class="lane">
+            <div class="avatar">JW</div>
+            <b>Jeremy Woon</b>
+            <div class="gh">@WhiteAvocad0</div>
+            <p>Feeds, the clause engine and evidence packs.</p>
+          </div>
+          <div class="lane">
+            <div class="avatar">HZ</div>
+            <b>Hee Zi Jie</b>
+            <div class="gh">@AlaskanTuna</div>
+            <p>Camera, windows, the sealed ledger and the Crowd pack.</p>
+          </div>
+          <div class="lane">
+            <div class="avatar">YL</div>
+            <b>Yow Li Hao</b>
+            <div class="gh">@chaosiris</div>
+            <p>The pitch and the live final.</p>
+          </div>
+          <div class="lane">
+            <div class="avatar">LJ</div>
+            <b>Liau Jin Siang</b>
+            <div class="gh">@DrxgClanPC</div>
+            <p>The pitch and the live final.</p>
+          </div>
+        </div>
+        <div class="band">
+          <span class="k">How</span>Issues specified before code. Changes tested locally before they merge. Decisions
+          recorded in the tracker.
+        </div>
+        <footer class="ft">
+          <span class="pg">12 / 13 · How we worked</span><span>github.com/m1kulabs/Skyclause · 3–8 November 2026</span>
+        </footer>
+        <aside class="notes">Five of us, one tracker.</aside>
+      </section>
+
+      <!-- 13 · Close -->
+      <section class="slide s13" data-label="13 Close">
+        <img class="art" src="assets/art/window.webp" alt="" style="right: -60px; top: 120px; width: 900px" />
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg>Skyclause<span class="chip">Try it</span>
+          </div>
+        </header>
+        <h1>The call for<span class="lt">every window.</span></h1>
+        <p class="lede">Signals in. One person approves. The gauge grades it.</p>
+        <div class="links">
+          <div class="code"><img src="assets/qr/repo.svg" alt="QR code for github.com/m1kulabs/Skyclause" /></div>
+          <div class="linklist">
+            <div><b>Code</b>github.com/m1kulabs/Skyclause</div>
+            <div><b>Video</b>{video link}</div>
+            <div><b>Live access</b>{reviewer route}</div>
+          </div>
+        </div>
+        <footer class="ft">
+          <span class="pg">13 / 13 · Thank you</span
+          ><span>Skyclause is not a safety or emergency service. In an emergency, call 999.</span>
+        </footer>
+        <aside class="notes">
+          Skyclause. The call for every window. Signals in. One person approves. The gauge grades it. The repo and the
+          live links are below.
+        </aside>
+      </section>
+    </main>
+    <script>
+      ;(() => {
+        const slides = [...document.querySelectorAll('.slide')]
+        let i = Math.max(0, Math.min(slides.length - 1, Number(location.hash.slice(1)) - 1 || 0))
+        const fit = () =>
+          document.documentElement.style.setProperty('--fit', Math.min(innerWidth / 1920, innerHeight / 1080))
+        const show = (n) => {
+          i = Math.max(0, Math.min(slides.length - 1, n))
+          slides.forEach((s, k) => s.classList.toggle('on', k === i))
+          history.replaceState(null, '', `#${i + 1}`)
+        }
+        addEventListener('resize', fit)
+        addEventListener('keydown', (e) => {
+          if (['ArrowRight', 'PageDown', ' '].includes(e.key)) show(i + 1)
+          if (['ArrowLeft', 'PageUp'].includes(e.key)) show(i - 1)
+          if (e.key === 'Home') show(0)
+          if (e.key === 'End') show(slides.length - 1)
+        })
+        addEventListener('click', (e) => show(e.clientX > innerWidth / 2 ? i + 1 : i - 1))
+        fit()
+        show(i)
+      })()
+    </script>
+  </body>
+</html>
