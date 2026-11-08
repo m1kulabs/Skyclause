@@ -1,13 +1,13 @@
-// `bun run flag:set <key> on|off [--org <id>]` (#79 §6): the only way a feature flag changes, audited as system job
+// `bun run flag:set <key> on|off [--org <id>]`, `--org` for `pack_crowd` only (#79 §6): the only way a feature flag changes, audited as system job
 // `flag:set`. Connects as DATABASE_URL_SYSTEM, else the local container's `system` login (`bun run db:up`).
 import { closeConnections, FEATURE_FLAGS, setFlag, type FeatureFlagKey } from '../src'
 import { localUrl } from './local'
 
-const USAGE = `usage: flag:set <${FEATURE_FLAGS.join('|')}> on|off [--org <organisation id>]`
+const USAGE = `usage: flag:set <${Object.keys(FEATURE_FLAGS).join('|')}> on|off [--org <organisation id>]`
 
 function parse([key, state, ...rest]: string[]) {
   const org = rest[0] === '--org' && rest.length === 2 ? rest[1] : undefined
-  if (!FEATURE_FLAGS.includes(key as FeatureFlagKey) || !['on', 'off'].includes(state ?? '') || (rest.length && !org)) {
+  if (!Object.hasOwn(FEATURE_FLAGS, key ?? '') || !['on', 'off'].includes(state ?? '') || (rest.length && !org)) {
     throw new Error(USAGE)
   }
   return { key: key as FeatureFlagKey, enabled: state === 'on', orgId: org }

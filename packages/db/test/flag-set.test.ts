@@ -62,6 +62,14 @@ test('flag:set refuses an unknown flag or state, writing nothing', () => {
   }
 })
 
+test('flag:set keeps each flag to its #79 §6 scope: pack_crowd per organisation, guest_entry global', async () => {
+  const orgId = (await makeOrganization()).id
+  const global = flagSet('pack_crowd', 'on')
+  expect([global.status, global.stderr]).toEqual([1, 'pack_crowd is set per organisation, with --org\n'])
+  const scoped = flagSet('guest_entry', 'on', '--org', orgId)
+  expect([scoped.status, scoped.stderr]).toEqual([1, 'guest_entry is set globally, without --org\n'])
+})
+
 test('app can’t change feature_flag', async () => {
   const orgId = (await makeOrganization()).id
   const asApp = withTenant({ orgId, principal: memberOf(orgId) }, (tx) =>
