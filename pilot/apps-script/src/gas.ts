@@ -20,7 +20,8 @@ import {
   type WindowFormPort
 } from './optin-form.ts'
 import type { LabelSlot, ProbationLabel, ProbationRow } from '../../shared/probation.ts'
-import type { JpsHttpResponse } from './jps.ts'
+import { newUuidV7, type JpsHttpResponse } from './jps.ts'
+import { decodeApimsBackfillState, type ApimsPollPorts } from './apims.ts'
 import type { LabelStore } from './label.ts'
 import type { PiRowsStore } from './pi-rows.ts'
 import type { RawFile, SentMessage, SweepPorts } from './sweep.ts'
@@ -1122,4 +1123,42 @@ export function evidenceInboxPorts(sheetId: string, projectSlug: string): Eviden
     },
     evidenceGmailPorts()
   )
+}
+
+// No native service is accessed until the locked poller calls one of these ports.
+export function apimsPollPorts(sheetId: string, evaluate: () => void): ApimsPollPorts {
+  if (!sheetId.trim()) throw new Error('SHEET_ID is not set; run setup()')
+  const key = 'SKY_APIMS_BACKFILL_V1'
+  return {
+    now: () => new Date(),
+    newPollId: () => newUuidV7(),
+    fetch: fetchUrl,
+    readSources: () =>
+      readColumns(sheetId, 'sources', [
+        'source_id',
+        'kind',
+        'name',
+        'cadence_min',
+        'stale_after_min',
+        'freshness',
+        'licence',
+        'url'
+      ]),
+    appendSources: (rows) => {
+      appendRows(sheetId, 'sources', rows)
+      SpreadsheetApp.flush()
+    },
+    readReadings: () =>
+      readColumns(sheetId, 'readings', ['source_kind', 'source_id', 'metric', 'observed_at', 'value', 'revision']),
+    readPolls: () => readColumns(sheetId, 'polls', ['poll_id', 'source_kind', 'source_id', 'outcome']),
+    appendReadings: (rows) => appendReadings(sheetId, rows),
+    appendPoll: (row) => {
+      appendRows(sheetId, 'polls', [row])
+      // Commit preceding reading writes and this poll before the core checkpoints completion.
+      SpreadsheetApp.flush()
+    },
+    readBackfillState: () => decodeApimsBackfillState(PropertiesService.getScriptProperties().getProperty(key)),
+    saveBackfillState: (state) => PropertiesService.getScriptProperties().setProperty(key, JSON.stringify(state)),
+    evaluate
+  }
 }

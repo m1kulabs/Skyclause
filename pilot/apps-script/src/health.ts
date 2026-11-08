@@ -24,8 +24,9 @@ export interface Health {
 interface Input {
   stamp: Stamp
   now: Date
-  sources: { source_id: Cell; freshness: Cell; state: Cell; stale_after_min: Cell }[]
-  polls: { source_id: Cell; outcome: Cell; received_at: Cell }[]
+  sources: { source_id: Cell; kind?: Cell; freshness: Cell; state: Cell; stale_after_min: Cell }[]
+  polls: { source_id: Cell; poll_id?: Cell; source_kind?: Cell; outcome: Cell; received_at: Cell }[]
+  readings?: { source_id: Cell; poll_id: Cell }[]
 }
 
 // An `observed` source counts only polls that stored a new value, so a frozen gauge still ages; a `polled` source
@@ -37,16 +38,33 @@ function time(cell: Cell): number {
 }
 
 // `doGet?health=1`: the deployed build and, per `sources` row, the newest successful poll's receipt time and age.
-export function buildHealth({ stamp, now, sources, polls }: Input): Health {
+export function buildHealth({ stamp, now, sources, polls, readings = [] }: Input): Health {
   const counted = new Map(
     sources.map((source) => [String(source.source_id), SUCCESSFUL[String(source.freshness)] ?? ['ok']])
   )
+  const apimsIds = new Set(
+    sources.filter((source) => source.kind === 'apims').map((source) => String(source.source_id))
+  )
+  const stationsByPoll = new Map<string, Set<string>>()
+  for (const reading of readings) {
+    const id = String(reading.source_id)
+    const pollId = String(reading.poll_id)
+    if (!apimsIds.has(id) || !pollId) continue
+    const stations = stationsByPoll.get(pollId) ?? new Set<string>()
+    stations.add(id)
+    stationsByPoll.set(pollId, stations)
+  }
   const newest = new Map<string, number>()
   for (const poll of polls) {
-    const id = String(poll.source_id)
-    if (!counted.get(id)?.includes(String(poll.outcome))) continue
+    const ids = new Set([String(poll.source_id)])
+    if ((poll.source_kind === 'apims' || poll.source_kind === 'apims_backfill') && poll.poll_id) {
+      for (const id of stationsByPoll.get(String(poll.poll_id)) ?? []) ids.add(id)
+    }
     const at = time(poll.received_at)
-    if (!Number.isNaN(at) && at > (newest.get(id) ?? -Infinity)) newest.set(id, at)
+    if (Number.isNaN(at)) continue
+    for (const id of ids) {
+      if (counted.get(id)?.includes(String(poll.outcome)) && at > (newest.get(id) ?? -Infinity)) newest.set(id, at)
+    }
   }
   return {
     ok: true,
