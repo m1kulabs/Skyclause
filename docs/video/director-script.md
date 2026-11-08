@@ -50,7 +50,7 @@ Planned at 140 words a minute plus the picture's holds. Time a real voice render
 | V5      | 3:10–3:30 |     42 | Slide: five people, five lanes                           | none      |
 | V6      | 3:30–3:45 |     30 | End card: repo, video, live links, capture date          | none      |
 
-The budget column is words. Written so far: 422 words, without the open lines in V4 and V5, about 3:01 of voice inside 3:45 of picture.
+The budget column is words. The script now runs 491 words, about 3:30 of voice at 140 words a minute inside 3:45 of picture; V4 runs about 5 seconds over its slot.
 
 ## Narration
 
@@ -143,7 +143,10 @@ Today that count is zero. We'll say so until it isn't.
 
 `[ slide: the methods in three lines, and what each one changed ]`
 
-{research findings: interviews held, the timed evidence task, and what each changed; confirm before recording}
+We stored 2,269 five-minute readings, replayed a month of haze, and counted the classes in every exit wave.
+Two findings changed the design.
+No public record shows which storm warnings were in force, so the gauge confirms every storm call.
+And heavy rain hit only 4 of 74 release waves. Most calls are Normal, so the grade is what earns trust.
 
 ### V5: How we worked
 
@@ -184,10 +187,12 @@ The repo and the live links are below.
 | Lebat is 31–60 mm in an hour                                                  | [IDEA: haze and storms](/docs/IDEA.md#haze-and-storms-at-the-exit-wave)                                                                 |
 | Poll cadences: gauge 5 min, MET warnings 10 min, APIMS hourly                 | [pilot README](/pilot/README.md#work-in-dev), [DESIGN: landing copy deck](/docs/DESIGN.md#landing-copy-deck)                            |
 | Haze replay: 9 Hybrid recommended, 5 Outdoor-limited, 7 Normal, 1 no data     | [IDEA: haze and storms](/docs/IDEA.md#haze-and-storms-at-the-exit-wave)                                                                 |
+| 2,269 JPS 5-minute readings stored, 29 Oct to 5 Nov                           | [fixtures README](/pilot/fixtures/README.md)                                                                                            |
+| No public history shows which MET warnings were in force on 2 November        | [Skyclause idea: origins](/docs/ideas/02-skyclause.md#origins)                                                                          |
+| Heavy rain hit 4 of 74 weekday release waves, 29 Oct to 4 Nov                 | [IDEA: haze and storms](/docs/IDEA.md#haze-and-storms-at-the-exit-wave)                                                                 |
 | Live grades: n=0                                                              | [DESIGN: landing copy deck](/docs/DESIGN.md#landing-copy-deck) FAQ; recheck on the recording day                                        |
 
 ## Open items
 
-- **V4 research:** which interviews and timed tasks happened, with their counts and what changed. Fill from the team before the voice render.
 - **D4:** filmed only after the licence arrives (#7, #49). The cut ships without it if the licence is late.
 - **Live crossing:** if a real crossing happens before recording, D3 shows it live instead of the replay, and the replay label comes off.
