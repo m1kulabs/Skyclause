@@ -93,8 +93,8 @@ async function run<T, P extends Principal | null>(
 }
 
 /** Runs `fn` in another transaction with the same login, connection pool and context as the one that committed. */
-export type Again = <T>(fn: (tx: Tx) => Promise<T>) => Promise<T>
-type CommitHook = (again: Again) => Promise<void>
+export type InSameContext = <T>(fn: (tx: Tx) => Promise<T>) => Promise<T>
+type CommitHook = (inSameContext: InSameContext) => Promise<void>
 const commitHooks = new WeakMap<object, CommitHook[]>()
 
 /**
@@ -127,9 +127,10 @@ async function transaction<T, P extends Principal | null>(
     }
     return fn(Object.assign(tx, { principal, orgId }) as unknown as Tx<P>)
   })
-  const again: Again = (next) => transaction(db, context as { principal: Principal; orgId: string | null }, next)
+  const inSameContext: InSameContext = (next) =>
+    transaction(db, context as { principal: Principal; orgId: string | null }, next)
   for (const hook of hooks) {
-    await hook(again).catch((error: unknown) => log.error('after-commit hook failed', { error: String(error) }))
+    await hook(inSameContext).catch((error: unknown) => log.error('after-commit hook failed', { error: String(error) }))
   }
   return result
 }
@@ -143,7 +144,13 @@ export function withTenant<T>(ctx: { orgId: string; principal: Principal }, fn: 
   return run(ctx.principal.kind === 'system' ? 'SYSTEM' : 'APP', ctx, fn)
 }
 
-const system = (job: string): SystemPrincipal => ({ kind: 'system', job, client: 'worker', clientName: null })
+/** The principal of a worker job or script, `job` naming it in audit rows (#79 §1). */
+export const systemPrincipal = (job: string): SystemPrincipal => ({
+  kind: 'system',
+  job,
+  client: 'worker',
+  clientName: null
+})
 
 /**
  * One transaction on the `system` login with no organisation set: S and G tables, and `project` and `project_pack`
@@ -151,7 +158,7 @@ const system = (job: string): SystemPrincipal => ({ kind: 'system', job, client:
  * organisation with a system principal. T tables show no rows here.
  */
 export function withSystem<T>(job: string, fn: (tx: Tx<SystemPrincipal>) => Promise<T>) {
-  return run('SYSTEM', { principal: system(job), orgId: null }, fn)
+  return run('SYSTEM', { principal: systemPrincipal(job), orgId: null }, fn)
 }
 
 /** One transaction as `public_reader` on the `app` login: only the `public_*` views and G tables. */
@@ -164,5 +171,5 @@ export function withPublicReader<T>(fn: (tx: Tx<null>) => Promise<T>) {
  * delete append-only rows, and it sees every organisation's rows in T tables.
  */
 export function withRetention<T>(job: string, fn: (tx: Tx<SystemPrincipal>) => Promise<T>) {
-  return run('RETENTION', { principal: system(job), orgId: null }, fn)
+  return run('RETENTION', { principal: systemPrincipal(job), orgId: null }, fn)
 }

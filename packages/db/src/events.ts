@@ -1,7 +1,7 @@
 import { log } from '@skyclause/config'
 import { DOMAIN_EVENT_SCHEMAS, type EmitEvent, type EventEnvelope, type EventType } from '@skyclause/contracts'
 import { and, asc, eq, inArray, isNull, lt, sql } from 'drizzle-orm'
-import { afterCommit, withSystem, type Again, type SystemPrincipal, type Tx } from './client'
+import { afterCommit, withSystem, type InSameContext, type SystemPrincipal, type Tx } from './client'
 import { domainEvent, handledEvent } from './schema'
 
 // #79 §5 "Write": the domain event outbox. emitEvent writes in the caller's transaction; the Pub/Sub publish happens
@@ -20,7 +20,7 @@ export function setEventPublisher(next: EventPublisher | null) {
 const pending = new WeakMap<object, string[]>()
 
 /** After commit: publish each event, then mark the published ones in a new transaction in the same context. */
-async function publishCommitted(ids: string[], again: Again) {
+async function publishCommitted(ids: string[], inSameContext: InSameContext) {
   if (!publisher) return
   const published: string[] = []
   for (const id of ids) {
@@ -32,7 +32,7 @@ async function publishCommitted(ids: string[], again: Again) {
     }
   }
   if (published.length) {
-    await again((tx) =>
+    await inSameContext((tx) =>
       tx
         .update(domainEvent)
         .set({ publishedAt: sql`now()` })
@@ -64,7 +64,7 @@ export const emitEvent: EmitEvent = async (handle, { projectId, type, data }) =>
     ids = []
     pending.set(tx, ids)
     const committed = ids
-    afterCommit(tx, (again) => publishCommitted(committed, again))
+    afterCommit(tx, (inSameContext) => publishCommitted(committed, inSameContext))
   }
   ids.push(id)
   return { id, seq }

@@ -4,9 +4,9 @@ import {
   loadEvent,
   maintainPartitions,
   republishEvents,
+  systemPrincipal,
   withSystem,
   withTenant,
-  type SystemPrincipal,
   type Tx
 } from '@skyclause/db'
 import { log, type EventConsumer, type WorkerPart } from '../server'
@@ -24,7 +24,7 @@ export function onEvent<T extends EventType>(
   consumer: string,
   handler: (event: Event<T>, tx: Tx) => Promise<void>
 ): EventConsumer {
-  const principal: SystemPrincipal = { kind: 'system', job: `event:${consumer}`, client: 'worker', clientName: null }
+  const principal = systemPrincipal(`event:${consumer}`)
   return {
     consumer,
     types,

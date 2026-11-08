@@ -1,6 +1,7 @@
 export {
   closeConnections,
   shareSystemConnection,
+  systemPrincipal,
   withPublicReader,
   withRetention,
   withSystem,
