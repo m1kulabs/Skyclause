@@ -61,7 +61,7 @@ describe('dependency boundaries (spec §1, D10)', () => {
     ])
   })
 
-  test('db test factories imported outside a test file fail (#79 §7)', () => {
+  test('packages/db/test outside a test file, or @skyclause/db/auth outside packages/auth, fails (#79 §7)', () => {
     const root = repo({
       'packages/db': {
         files: {
@@ -73,14 +73,22 @@ describe('dependency boundaries (spec §1, D10)', () => {
         dependencies: { '@skyclause/db': 'workspace:*' },
         references: ['../db'],
         files: {
-          'src/services/projects.ts': "import { makeProject } from '@skyclause/db/test/factories/project'\n",
-          'test/projects.test.ts': "import { makeProject } from '@skyclause/db/test/factories/project'\n"
+          'src/services/projects.ts': "import { asLogin } from '@skyclause/db/test/harness'\n",
+          'src/services/members.ts': "import { authDatabase } from '@skyclause/db/auth'\n",
+          'test/projects.test.ts': "import { makeProject } from '@skyclause/db/test/factories/project'\n",
+          'vitest.config.ts': "import { databaseTest } from '@skyclause/db/test/harness/config'\n"
         }
+      },
+      'packages/auth': {
+        dependencies: { '@skyclause/db': 'workspace:*' },
+        references: ['../db'],
+        files: { 'src/auth.ts': "import { authDatabase } from '@skyclause/db/auth'\n" }
       }
     })
     expect(checkBoundaries(root)).toEqual([
-      'packages/api/src/services/projects.ts imports db test factories outside a test file',
-      'packages/db/src/index.ts imports db test factories outside a test file'
+      'packages/api/src/services/members.ts imports @skyclause/db/auth outside packages/auth',
+      'packages/api/src/services/projects.ts imports packages/db/test outside a test file',
+      'packages/db/src/index.ts imports packages/db/test outside a test file'
     ])
   })
 
