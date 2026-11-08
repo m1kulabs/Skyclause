@@ -1,6 +1,7 @@
 import type { MiddlewareHandler } from 'hono'
 import type { ApiEnv } from '../context'
 import { ApiError } from '../problems'
+import { principalOf } from './auth'
 
 const notFound = () => new ApiError(404, 'not-found', 'No such organisation, or you are not a member of it.')
 
@@ -10,8 +11,7 @@ const notFound = () => new ApiError(404, 'not-found', 'No such organisation, or 
  * the principal's organisation is 404, never 403 (NFR-10). Fills a session's `orgId` and `role`.
  */
 export const requireOrg: MiddlewareHandler<ApiEnv> = async (c, next) => {
-  const principal = c.get('principal')
-  if (!principal) throw new ApiError(401, 'unauthenticated', 'Sign in, or send an API key or token.')
+  const principal = principalOf(c)
   const { membership } = c.get('deps')
   const ref = c.req.param('org') ?? c.req.header('Skyclause-Organization')
 

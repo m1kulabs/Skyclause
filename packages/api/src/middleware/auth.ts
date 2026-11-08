@@ -13,6 +13,7 @@ import {
 import type { Context, MiddlewareHandler } from 'hono'
 import type { ApiEnv } from '../context'
 import { ApiError } from '../problems'
+import { auditIn } from '../tenancy'
 
 // Spec §1: f-auth (#94) registers `resolvePrincipal` and `can` at the composition root; packages/api never
 // imports packages/auth. Until then both fail as not built by f-auth.
@@ -38,7 +39,7 @@ type Middleware = MiddlewareHandler<ApiEnv>
 
 const insufficient = (detail: string) => new ApiError(403, 'insufficient-scope', detail)
 
-function principalOf(c: Context<ApiEnv>): Principal {
+export function principalOf(c: Context<ApiEnv>): Principal {
   const principal = c.get('principal')
   if (!principal) throw new ApiError(401, 'unauthenticated', 'Sign in, or send an API key or token.')
   return principal
@@ -90,8 +91,7 @@ export function requireRecentAuth(hours = 12): Middleware {
 export const requireStaff: Middleware = async (c, next) => {
   const principal = principalOf(c)
   if (principal.kind !== 'session' || !principal.staff) throw insufficient('This operation is for staff.')
-  const { membership, withTenant, recordAudit } = c.get('deps')
-  const commons = await membership.organisation('commons')
+  const commons = await c.get('deps').membership.organisation('commons')
   if (!commons) throw new Error('requireStaff audits in the commons organisation, which does not exist')
   const job: Principal = {
     kind: 'system',
@@ -99,8 +99,13 @@ export const requireStaff: Middleware = async (c, next) => {
     client: principal.client,
     clientName: null
   }
-  await withTenant({ orgId: commons.id, principal: job }, (tx) =>
-    recordAudit(tx, { action: 'staff.action', target: { type: 'operation', id: c.get('operation').operationId } })
+  await auditIn(
+    c,
+    { orgId: commons.id, principal: job },
+    {
+      action: 'staff.action',
+      target: { type: 'operation', id: c.get('operation').operationId }
+    }
   )
   await next()
 }
@@ -142,18 +147,19 @@ const targetType = (path: string) =>
 export function requirePermission(statement: Statement): Middleware {
   return async (c, next) => {
     const principal = principalOf(c)
-    const { can, withTenant, recordAudit } = c.get('deps')
+    const { can } = c.get('deps')
     const scopes = scopesOf(principal)
     const scoped = !scopes || scopes.some((scope) => SCOPE_STATEMENTS[scope].includes(statement))
     if (!scoped || !can(principal, statement)) {
       const orgId = c.get('orgId')
       if (statement === 'bundle.approve' && orgId) {
-        const path = c.get('operation').path
-        await withTenant({ orgId, principal }, (tx) =>
-          recordAudit(tx, {
+        await auditIn(
+          c,
+          { orgId, principal },
+          {
             action: 'bundle.approve_denied',
-            target: { type: targetType(path), id: c.req.param('id') ?? '' }
-          })
+            target: { type: targetType(c.get('operation').path), id: c.req.param('id') ?? '' }
+          }
         )
       }
       throw insufficient(`This operation needs ${statement}.`)

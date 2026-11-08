@@ -1,4 +1,4 @@
-import type { Principal, TxHandle } from '@skyclause/contracts'
+import type { Principal, RecordAudit, TxHandle } from '@skyclause/contracts'
 import type { Context } from 'hono'
 import type { ApiEnv } from './context'
 
@@ -23,4 +23,14 @@ export function inTenant<T>(c: Context<ApiEnv>, fn: (ctx: ServiceContext) => Pro
   const orgId = c.get('orgId')
   if (!principal || !orgId) throw new Error('inTenant needs requireOrg to have run on this route')
   return c.get('deps').withTenant({ orgId, principal }, (tx) => fn({ principal, tx }))
+}
+
+/** One audit row in its own `withTenant` transaction, for the middleware's own audits (GST-7, AGT-6, D30). */
+export function auditIn(
+  c: Context<ApiEnv>,
+  ctx: { orgId: string; principal: Principal },
+  entry: Parameters<RecordAudit>[1]
+): Promise<void> {
+  const { withTenant, recordAudit } = c.get('deps')
+  return withTenant(ctx, (tx) => recordAudit(tx, entry))
 }

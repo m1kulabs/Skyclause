@@ -1,6 +1,7 @@
 import type { MiddlewareHandler } from 'hono'
 import type { ApiEnv } from '../context'
 import { ApiError } from '../problems'
+import { auditIn } from '../tenancy'
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
@@ -38,13 +39,14 @@ export const auditToolCall: MiddlewareHandler<ApiEnv> = async (c, next) => {
   const principal = c.get('principal')
   const orgId = c.get('orgId') ?? (principal && 'orgId' in principal ? principal.orgId : null)
   if (tool && principal && orgId) {
-    const { withTenant, recordAudit } = c.get('deps')
-    await withTenant({ orgId, principal }, (tx) =>
-      recordAudit(tx, {
+    await auditIn(
+      c,
+      { orgId, principal },
+      {
         action: 'mcp.tool_called',
         target: { type: 'mcp_tool', id: tool },
         after: { operation_id: c.get('operation').operationId }
-      })
+      }
     )
   }
   await next()
