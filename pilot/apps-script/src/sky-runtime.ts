@@ -299,7 +299,7 @@ export function runSkyClauseTick(input: SkyClauseTickInput, ports: SkyClauseRunt
     const stampToken = formatEvalStampToken(tEvalIso)
     const targetIdentity = canonicalCrossingIdentity(plan.crossing.document, ports.canonicalJson)
 
-    let matchedSeq: number | null = null
+    let matched: { file: PlannedSkyCrossingFile; sequence: number } | null = null
     let maxSameStampSeq = 0
 
     for (const existing of existingCrossings) {
@@ -309,19 +309,23 @@ export function runSkyClauseTick(input: SkyClauseTickInput, ports: SkyClauseRunt
         maxSameStampSeq = seq
       }
       if (
-        matchedSeq === null &&
+        matched === null &&
         existing.document &&
         canonicalCrossingIdentity(existing.document, ports.canonicalJson) === targetIdentity
       ) {
-        matchedSeq = seq
+        matched = { file: existing, sequence: seq }
       }
     }
 
     const peerNames = new Set(ports.reservedCrossingNames())
-    if (matchedSeq !== null) {
-      const reusableName = `crossing-${stampToken}-${String(matchedSeq).padStart(2, '0')}.json`
-      if (peerNames.has(reusableName)) {
-        throw new Error(`Ambiguous crossing identity reserved by peer: ${reusableName}`)
+    if (matched !== null) {
+      const matchedSeq = matched.sequence
+      const reusableNames = [matched.file.filename]
+      const idMatch = CROSSING_ID_RE.exec(String(matched.file.document.crossing_id).trim())
+      if (idMatch) reusableNames.push(`crossing-${idMatch[1]}-${idMatch[2]}.json`)
+      const reservedName = reusableNames.find((name) => peerNames.has(name))
+      if (reservedName) {
+        throw new Error(`Ambiguous crossing identity reserved by peer: ${reservedName}`)
       }
       if (matchedSeq !== 1) {
         plan = planSkyCrossings({

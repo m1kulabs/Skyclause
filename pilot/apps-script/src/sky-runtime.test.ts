@@ -323,6 +323,35 @@ describe('Sky runtime versioning and durable crossing coordination', () => {
     expect(runSkyClauseTick(buildTickInput(), harness.ports).plan.crossing).toBeNull()
   })
 
+  test('rejects reuse when a peer claims the actual JSON ID of a differently named own file', () => {
+    const harness = createHarness()
+    runSkyClauseTick(buildTickInput(), harness.ports)
+    harness.crossings[0]!.document.crossing_id = 'X-20261102-1505-03'
+    harness.shadowState.splice(0)
+    harness.ports.reservedCrossingNames = () => ['crossing-20261102-1505-03.json']
+    const filesBefore = structuredClone(harness.crossings)
+    const stateBefore = structuredClone(harness.shadowState)
+
+    expect(() => runSkyClauseTick(buildTickInput(), harness.ports)).toThrow(/reserved|ambiguous/i)
+    expect(harness.crossings).toEqual(filesBefore)
+    expect(harness.shadowState).toEqual(stateBefore)
+  })
+
+  test('preserves existing mismatched own metadata reuse when neither actual claim is peer-reserved', () => {
+    const harness = createHarness()
+    runSkyClauseTick(buildTickInput(), harness.ports)
+    harness.crossings[0]!.document.crossing_id = 'X-20261102-1505-03'
+    harness.shadowState.splice(0)
+    harness.ports.reservedCrossingNames = () => ['crossing-20261102-1505-09.json']
+    const filesBefore = structuredClone(harness.crossings)
+
+    const retry = runSkyClauseTick(buildTickInput(), harness.ports)
+    expect(retry.fileReused).toBe(true)
+    expect(retry.fileCreated).toBe(false)
+    expect(retry.plan.crossing?.document.crossing_id).toBe('X-20261102-1505-01')
+    expect(harness.crossings).toEqual(filesBefore)
+  })
+
   test('rejects unsafe peer sequence calculations before file creation', () => {
     const harness = createHarness({ peerReservations: ['crossing-20261102-1505-9007199254740991.json'] })
     expect(() => runSkyClauseTick(buildTickInput(), harness.ports)).toThrow(/sequence/i)
