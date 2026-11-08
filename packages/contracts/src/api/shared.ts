@@ -372,6 +372,14 @@ export const CallView = z.object({
   ics_sequence: z.number().int()
 })
 export type CallView = z.infer<typeof CallView>
+// #150: a call's recipients, counted by language (c-notice-templates' `recipientsByLanguage`), by channel and
+// suppressed (from its `notice` rows), on the getBundle and getCall reads.
+export const RecipientCounts = z.object({
+  by_language: z.object({ en: z.number().int().nonnegative(), ms: z.number().int().nonnegative() }),
+  by_channel: z.object({ email: z.number().int().nonnegative(), push: z.number().int().nonnegative() }),
+  suppressed: z.number().int().nonnegative()
+})
+export type RecipientCounts = z.infer<typeof RecipientCounts>
 // TRD "Bundle state machine": edited/rejected are per-call states (PRD CAL-7).
 export const BundleState = z.enum([
   'drafted',

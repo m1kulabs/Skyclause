@@ -4994,6 +4994,54 @@
                           },
                           "ics_sequence": {
                             "type": "integer"
+                          },
+                          "recipient_counts": {
+                            "type": "object",
+                            "properties": {
+                              "by_language": {
+                                "type": "object",
+                                "properties": {
+                                  "en": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "ms": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  }
+                                },
+                                "required": [
+                                  "en",
+                                  "ms"
+                                ]
+                              },
+                              "by_channel": {
+                                "type": "object",
+                                "properties": {
+                                  "email": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "push": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  }
+                                },
+                                "required": [
+                                  "email",
+                                  "push"
+                                ]
+                              },
+                              "suppressed": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "by_language",
+                              "by_channel",
+                              "suppressed"
+                            ]
                           }
                         },
                         "required": [
@@ -5063,6 +5111,137 @@
                           "account_id",
                           "notified_at",
                           "level"
+                        ]
+                      }
+                    },
+                    "summary": {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string"
+                        },
+                        "inputs": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "value": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "unit": {
+                                "type": "string"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "fresh",
+                                  "stale",
+                                  "error",
+                                  "recovered",
+                                  "pending",
+                                  "probation",
+                                  "off_hours"
+                                ]
+                              },
+                              "since": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "date-time"
+                              },
+                              "age_s": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ],
+                                "minimum": 0
+                              },
+                              "source_ids": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "source_url": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uri"
+                              },
+                              "reading_ids": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "observed_at": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "value",
+                              "unit",
+                              "state",
+                              "since",
+                              "age_s",
+                              "source_ids",
+                              "source_url",
+                              "reading_ids",
+                              "observed_at"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "text",
+                        "inputs"
+                      ]
+                    },
+                    "escalations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "actor_id": {
+                            "type": "string"
+                          },
+                          "at": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "actor_id",
+                          "at"
                         ]
                       }
                     }
@@ -8441,6 +8620,54 @@
                           "accepted_at"
                         ]
                       }
+                    },
+                    "recipient_counts": {
+                      "type": "object",
+                      "properties": {
+                        "by_language": {
+                          "type": "object",
+                          "properties": {
+                            "en": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "ms": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "en",
+                            "ms"
+                          ]
+                        },
+                        "by_channel": {
+                          "type": "object",
+                          "properties": {
+                            "email": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "push": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "email",
+                            "push"
+                          ]
+                        },
+                        "suppressed": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "by_language",
+                        "by_channel",
+                        "suppressed"
+                      ]
                     }
                   },
                   "required": [

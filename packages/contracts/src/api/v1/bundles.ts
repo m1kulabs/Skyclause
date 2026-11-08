@@ -5,7 +5,18 @@ import {
 } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Bundle, BundleState, Instant, Pack, Page, PageQuery, RunTrigger } from '../shared'
+import {
+  Bundle,
+  BundleState,
+  CallView,
+  InputValue,
+  Instant,
+  Pack,
+  Page,
+  PageQuery,
+  RecipientCounts,
+  RunTrigger
+} from '../shared'
 import {
   BundleDraftedEventSchema,
   BundleNeedsReviewEventSchema,
@@ -21,6 +32,13 @@ const BundleView = Bundle.extend({
   triggered_at: Instant,
   sheet_version_id: z.string(),
   alerts: z.array(z.object({ account_id: z.string(), notified_at: Instant, level: z.string() }))
+})
+// #150 (optional, getBundle only): CAL-5's trace line for a bundle with every call Normal ("Normal; N inputs fresh",
+// with each fresh input and its age), CAL-11's escalations from `approval`, and each call's recipient counts.
+const BundleDetail = BundleView.extend({
+  calls: z.array(CallView.extend({ recipient_counts: RecipientCounts.optional() })),
+  summary: z.object({ text: z.string(), inputs: z.array(InputValue) }).optional(),
+  escalations: z.array(z.object({ actor_id: z.string(), at: Instant })).optional()
 })
 const BundlePage = Page(BundleView)
 const BundleQuery = PageQuery.extend({ pack: Pack.optional(), state: BundleState.optional() })
@@ -74,7 +92,7 @@ export const getBundle = createRoute({
   request: { headers: OrganizationHeaders, params: IdParams },
   responses: {
     ...ProblemResponses,
-    200: { description: 'Success', content: { 'application/json': { schema: BundleView } } }
+    200: { description: 'Success', content: { 'application/json': { schema: BundleDetail } } }
   },
   x: { owner: 'c-bundle-lifecycle', statement: 'project.view', idempotent: false }
 })
