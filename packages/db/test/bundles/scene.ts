@@ -13,6 +13,7 @@ import {
   makeSheetVersion,
   makeWindow
 } from '../factories/index'
+import { asLogin } from '../harness/index'
 
 /** `packages/clauses/defaults/<pack>.json`, the sheet every project starts with (#79 §1 Defaults, D18). */
 export const defaultSheet = (pack: Pack): Json =>
@@ -96,4 +97,15 @@ export function callDraft(o: Partial<CallDraft> & ({ windowId: string } | { nigh
     agrees: true,
     ...o
   }
+}
+
+/** The project's ledger entries in `seq` order, read as the superuser so RLS hides nothing. */
+export function ledgerOf(projectId: string) {
+  return asLogin('postgres', async (client) => {
+    const { rows } = await client.query<{ kind: string; refs: Record<string, string>; body: unknown }>(
+      'SELECT kind, refs, body FROM ledger_entry WHERE project_id = $1 ORDER BY seq',
+      [projectId]
+    )
+    return rows
+  })
 }

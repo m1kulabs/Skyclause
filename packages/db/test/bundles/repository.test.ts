@@ -1,7 +1,7 @@
 // #150: createBundle, expireCall, approveGuard, transition, markSending and reviewHash on the #79 §7 test database.
 import { randomUUID } from 'node:crypto'
 import { eq } from 'drizzle-orm'
-import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
   approveGuard,
   createBundle,
@@ -12,22 +12,15 @@ import {
   transition
 } from '../../src/bundles/repository'
 import { systemPrincipal, withTenant, type Tx } from '../../src/client'
-import { appendLedger } from '../../src/placeholders/c-ledger-chain'
 import { bundle, call } from '../../src/schema'
 import { makeNight, makeOrganization } from '../factories/index'
 import { asLogin } from '../harness/index'
-import { bundleScene, callDraft, runOf, windowOf, type Scene } from './scene'
-
-// c-ledger-chain (#146) is not built: a double records what expireCall appends.
-vi.mock('../../src/placeholders/c-ledger-chain', () => ({
-  appendLedger: vi.fn(async () => ({ id: crypto.randomUUID(), seq: 1, hash: 'double' }))
-}))
+import { bundleScene, callDraft, ledgerOf, runOf, windowOf, type Scene } from './scene'
 
 let orgId: string
 beforeAll(async () => {
   orgId = (await makeOrganization()).id
 })
-beforeEach(() => vi.mocked(appendLedger).mockClear())
 
 const inOrg = <T>(fn: (tx: Tx) => Promise<T>) => withTenant({ orgId, principal: systemPrincipal('test') }, fn)
 const at = (iso: string) => new Date(iso)
@@ -122,7 +115,7 @@ describe('createBundle closes what would send nothing (CAL-5, D21, D23)', () => 
     const row = await inOrg((tx) => rowOf(tx, made.bundleId))
     expect(row).toMatchObject({ state: 'closed', slaDueAt: null, needsReviewAt: null, draftOnly: false })
     expect((await eventsOf(scene.projectId)).map((e) => e.type)).toEqual(['bundle.drafted'])
-    expect(appendLedger).not.toHaveBeenCalled()
+    expect(await ledgerOf(scene.projectId)).toEqual([])
     expect(await noticesOf(scene.projectId)).toBe(0)
     expect(await analyticsOf(scene.projectId)).toEqual([
       { name: 'bundle_drafted', props: { pack: 'sky', calls: 2, non_normal: 0, disagreements: 0, no_call: false } }
@@ -323,9 +316,8 @@ describe('expireCall (the expiry-{call_id} task)', () => {
       outcome: 'not_open',
       bundleExpired: false
     })
-    expect(vi.mocked(appendLedger).mock.calls.map(([, entry]) => entry)).toEqual([
+    expect(await ledgerOf(scene.projectId)).toEqual([
       {
-        projectId: scene.projectId,
         kind: 'call_expired',
         refs: { call_id: early!.id, bundle_id: made.bundleId, window_id: first },
         body: { expires_at: '2026-11-02T07:30:00.000Z', mode: 'commute_disruption', watch: false }
@@ -365,7 +357,7 @@ describe('expireCall (the expiry-{call_id} task)', () => {
     const made = await inOrg((tx) => draft(tx, scene, [{ windowId: first }]))
     expect((await inOrg((tx) => expireCall(tx, made.callIds[0]!, at('2026-11-03T00:00:00Z')))).outcome).toBe('not_open')
     expect((await inOrg((tx) => expireCall(tx, randomUUID()))).outcome).toBe('missing')
-    expect(appendLedger).not.toHaveBeenCalled()
+    expect(await ledgerOf(scene.projectId)).toEqual([])
   })
 })
 

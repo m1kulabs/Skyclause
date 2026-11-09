@@ -4,17 +4,12 @@
 // so the fired clause is given, and its input is the capture's 60-minute total. Every time below is MYT (UTC+8).
 import { readFileSync } from 'node:fs'
 import { eq } from 'drizzle-orm'
-import { beforeAll, expect, test, vi } from 'vitest'
+import { beforeAll, expect, test } from 'vitest'
 import { approveGuard, createBundle, expireCall, markSending, transition } from '../../src/bundles/repository'
 import { systemPrincipal, withTenant, type Tx } from '../../src/client'
-import { appendLedger } from '../../src/placeholders/c-ledger-chain'
 import { call } from '../../src/schema'
 import { makeOrganization } from '../factories/index'
-import { bundleScene, callDraft, runOf, windowOf } from './scene'
-
-vi.mock('../../src/placeholders/c-ledger-chain', () => ({
-  appendLedger: vi.fn(async () => ({ id: crypto.randomUUID(), seq: 1, hash: 'double' }))
-}))
+import { bundleScene, callDraft, ledgerOf, runOf, windowOf } from './scene'
 
 const capture: { stationId: string; data: Array<{ timestamp: string; rf: number }> } = JSON.parse(
   readFileSync(new URL('../fixtures/rainfall-graph-75-20261105T1312Z.json', import.meta.url), 'utf8')
@@ -106,7 +101,7 @@ test('replay: the 15:30 call expires unsent and only the 15:45 call reaches send
   const byWindow = Object.fromEntries(calls.map((c) => [c.windowId, c]))
   expect(byWindow[early]).toMatchObject({ state: 'expired', expiresAt: myt('15:30'), approvedAt: null, sentAt: null })
   expect(byWindow[late]).toMatchObject({ state: 'sending', expiresAt: myt('15:45'), approvedAt })
-  expect(vi.mocked(appendLedger).mock.calls.map(([, entry]) => [entry.kind, entry.refs.call_id])).toEqual([
+  expect((await ledgerOf(scene.projectId)).map((entry) => [entry.kind, entry.refs.call_id])).toEqual([
     ['call_expired', first]
   ])
 })

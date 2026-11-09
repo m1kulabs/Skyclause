@@ -1,25 +1,18 @@
 // #150: the worker's `expiry-{call_id}` timers on `bundle-timers` (#79 §5, CAL-8) and the Cloud Tasks client they use.
 import { createBundle, systemPrincipal, withTenant, type Tx } from '@skyclause/db'
-import { bundleScene, callDraft, runOf, windowOf } from '@skyclause/db/test/bundles/scene'
+import { bundleScene, callDraft, ledgerOf, runOf, windowOf } from '@skyclause/db/test/bundles/scene'
 import { makeOrganization } from '@skyclause/db/test/factories/index'
 import { asLogin } from '@skyclause/db/test/harness/index'
-import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
-import { appendLedger } from '../../../packages/db/src/placeholders/c-ledger-chain'
+import { beforeAll, describe, expect, test, vi } from 'vitest'
 import { createBundlesPart } from '../src/bundles'
 import { cloudTasks, type TimerTask } from '../src/bundles/cloud-tasks'
 import { dispatchEvent } from '../src/events'
 import { registry } from '../src/registry'
 
-// c-ledger-chain (#146) is not built: a double records what the expiry appends.
-vi.mock('../../../packages/db/src/placeholders/c-ledger-chain', () => ({
-  appendLedger: vi.fn(async () => ({ id: crypto.randomUUID(), seq: 1, hash: 'double' }))
-}))
-
 let orgId: string
 beforeAll(async () => {
   orgId = (await makeOrganization()).id
 })
-beforeEach(() => vi.mocked(appendLedger).mockClear())
 const inOrg = <T>(fn: (tx: Tx) => Promise<T>) => withTenant({ orgId, principal: systemPrincipal('test') }, fn)
 const at = (iso: string) => new Date(iso)
 
@@ -69,7 +62,7 @@ describe('the bundle-timers queue', () => {
     await part.queues!['bundle-timers']!({ ...task, retryCount: 1 })
     expect(await stateOf(made.callIds[0]!)).toBe('expired')
     expect(await stateOf(made.callIds[1]!)).toBe('drafted')
-    expect(vi.mocked(appendLedger)).toHaveBeenCalledTimes(1)
+    expect((await ledgerOf(made.projectId)).map((entry) => entry.kind)).toEqual(['call_expired'])
   })
 
   test('an early task fails so Cloud Tasks retries it, and an unknown timer fails', async () => {
