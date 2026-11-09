@@ -34,7 +34,8 @@ export function periodRange(period: Period, today: string, start: string) {
   return { from: period === 'all' ? start : addDays(today, 1 - DAYS[period]), to: today }
 }
 
-const localDate = (instant: unknown, timeZone: string) => sql<string>`(${instant} AT TIME ZONE ${timeZone})::date::text`
+const localDate = (instant: unknown, timeZone: unknown) =>
+  sql<string>`(${instant} AT TIME ZONE ${timeZone})::date::text`
 const minutesBetween = (from: unknown, to: unknown) => sql<number>`extract(epoch FROM ${to} - ${from}) / 60`
 
 /** The clause keys a stored verdict (`call.shadow`, `shadow_state.verdict`) fired. */

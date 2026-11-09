@@ -375,6 +375,51 @@
                     },
                     "kill_line_exceeded": {
                       "type": "boolean"
+                    },
+                    "evidence_minutes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "metric": {
+                            "type": "string"
+                          },
+                          "x": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "value": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "n": {
+                            "type": "integer"
+                          },
+                          "low": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "high": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "metric",
+                          "x",
+                          "n",
+                          "low",
+                          "high"
+                        ]
+                      }
                     }
                   },
                   "required": [
@@ -936,6 +981,51 @@
                     },
                     "kill_line_exceeded": {
                       "type": "boolean"
+                    },
+                    "evidence_minutes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "metric": {
+                            "type": "string"
+                          },
+                          "x": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "value": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "n": {
+                            "type": "integer"
+                          },
+                          "low": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "high": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "metric",
+                          "x",
+                          "n",
+                          "low",
+                          "high"
+                        ]
+                      }
                     }
                   },
                   "required": [
