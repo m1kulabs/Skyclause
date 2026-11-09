@@ -27,8 +27,14 @@ export interface ReviewData {
   errors: string[]
 }
 
-export function useBundleReview(bundleId: string, org: string) {
-  const [data, setData] = useState<ReviewData>()
+/** The page's server read of the review (#372) and the instant it rendered, so hydration renders the same markup. */
+export interface InitialReview {
+  data: ReviewData
+  now: number
+}
+
+export function useBundleReview(bundleId: string, org: string, initial?: InitialReview) {
+  const [data, setData] = useState(initial?.data)
   const [loadError, setLoadError] = useState(false)
   const [revision, setRevision] = useState(0)
   const [decisions, setDecisions] = useState<Decisions>({})
@@ -36,7 +42,7 @@ export function useBundleReview(bundleId: string, org: string) {
   const [conflict, setConflict] = useState<Conflict>()
   const [error, setError] = useState<{ message: string; callIds: string[] }>()
   const [reauth, setReauth] = useState<ApprovalBody>()
-  const [now, setNow] = useState(Date.now)
+  const [now, setNow] = useState(() => initial?.now ?? Date.now())
   const locked = useRef(false)
   const terminal = useRef(false)
   const generation = useRef(0)
@@ -51,7 +57,8 @@ export function useBundleReview(bundleId: string, org: string) {
     generation.current += 1
     terminal.current = false
     locked.current = false
-    setData(undefined)
+    // The server's read of this bundle stays on screen while the client reads it again (#372); a retry starts blank.
+    setData((current) => (revision === 0 && current?.bundle.id === bundleId ? current : undefined))
     setLoadError(false)
     setDecisions({})
     setConflict(undefined)
@@ -109,7 +116,10 @@ export function useBundleReview(bundleId: string, org: string) {
             errors
           })
       } catch {
-        if (!signal.aborted) setLoadError(true)
+        if (!signal.aborted) {
+          setData(undefined)
+          setLoadError(true)
+        }
       }
     }
     void load()
