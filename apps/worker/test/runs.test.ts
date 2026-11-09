@@ -175,7 +175,7 @@ describe('the runs-requested handler', () => {
     expect(d.consumed).toEqual(['system:run'])
   })
 
-  test('a draft that drops the storm call records a missing-call disagreement in its compare step', async () => {
+  test('a draft that drops the storm call sends its bundle to Needs review with the window missing (#499)', async () => {
     const m = await made()
     const { runId } = await crossingRun(m)
     const dropped = JSON.stringify({ pack: 'sky', calls: [], items: [] })
@@ -185,8 +185,32 @@ describe('the runs-requested handler', () => {
 
     const compared = (await stepsOf(runId)).find((s) => s.step === 'compare')!
     expect(compared.output).toEqual([{ windowId: m.windowId, agrees: false, staleInputs: false, missing: true }])
-    // No call row carries the disagreement: the bundle holds no calls and closes at once (reported on the PR).
-    expect(await bundlesOf(runId)).toMatchObject([{ state: 'closed' }])
+    const [held] = await bundlesOf(runId)
+    expect(held).toMatchObject({ state: 'needs_review', missing: [{ windowId: m.windowId, nightId: null }] })
+    expect(held!.slaDueAt).not.toBeNull()
+    // The engine's verdict the run saw, and the wave's confirmed subscriber as the drafted call's recipient.
+    expect(held!.missing).toMatchObject([
+      {
+        shadow: { scope: { kind: 'window', id: m.windowId }, mode: 'commute_disruption' },
+        recipients: [m.subscriberId],
+        resolution: null
+      }
+    ])
+    expect(await inOrg((tx) => tx.select().from(call).where(eq(call.bundleId, held!.id)))).toEqual([])
+    // #155's alerts and #156's notifications consume bundle.needs_review; the missing call counts as a disagreement.
+    const { rows } = await asLogin('postgres', (client) =>
+      client.query<{ type: string; props: Record<string, unknown> | null }>(
+        `SELECT type, NULL AS props FROM domain_event WHERE project_id = $1 AND type = 'bundle.needs_review'
+         UNION ALL SELECT name, props FROM analytics_event WHERE project_id = $1 AND name = 'bundle_drafted'`,
+        [m.projectId]
+      )
+    )
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        { type: 'bundle.needs_review', props: null },
+        { type: 'bundle_drafted', props: expect.objectContaining({ calls: 0, disagreements: 1 }) }
+      ])
+    )
   })
 
   test('killed after each step and redelivered, it ends with one bundle and one model call', async () => {
