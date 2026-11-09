@@ -9,8 +9,7 @@ export {
   closes,
   type BundleState,
   type CallState,
-  type MissingCall,
-  type MissingResolution
+  type MissingCall
 } from './machine'
 export {
   approveGuard,

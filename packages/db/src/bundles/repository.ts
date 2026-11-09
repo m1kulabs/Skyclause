@@ -525,8 +525,8 @@ export async function markSending(tx: Tx, bundleId: string, callIds: string[], n
 }
 
 /**
- * #499: an approver dismisses a missing call of a bundle under review with a reason. Returns the resolved row; #153's
- * approval writes its ledger entry and audit event.
+ * #499: an approver dismisses a missing call of a bundle under review with a reason; #153's approval writes its ledger
+ * entry and audit event.
  */
 export async function dismissMissing(
   tx: Tx,
@@ -534,11 +534,10 @@ export async function dismissMissing(
   scope: Scope,
   o: { reason: string; by: string },
   now: Date = new Date()
-): Promise<MissingCall> {
+) {
   const { slot } = await lockSlot(tx, bundleId)
   const next = resolveStep(slot, scope, { action: 'dismissed', reason: o.reason, by: o.by, at: now.toISOString() })
   await writeSlot(tx, slot, next, { now })
-  return next.missing!.find((m, i) => m.resolution !== slot.missing![i]!.resolution)!
 }
 
 /**

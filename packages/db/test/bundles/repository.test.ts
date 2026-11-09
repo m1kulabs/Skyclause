@@ -550,12 +550,14 @@ describe('missing calls (#499)', () => {
     const before = (await inOrg((tx) => rowOf(tx, made.bundleId))).reviewHash
     const by = randomUUID()
     const now = at('2026-11-02T07:11:00Z')
-    const dismissed = await inOrg((tx) =>
-      dismissMissing(tx, made.bundleId, { windowId: first }, { reason: 'Gauge fault', by }, now)
-    )
-    expect(dismissed.resolution).toEqual({ action: 'dismissed', reason: 'Gauge fault', by, at: now.toISOString() })
+    await inOrg((tx) => dismissMissing(tx, made.bundleId, { windowId: first }, { reason: 'Gauge fault', by }, now))
     const row = await inOrg((tx) => rowOf(tx, made.bundleId))
-    expect(row.missing).toEqual([dismissed])
+    expect(row.missing).toEqual([
+      {
+        ...missingDraft({ windowId: first }),
+        resolution: { action: 'dismissed', reason: 'Gauge fault', by, at: now.toISOString() }
+      }
+    ])
     expect(row.reviewHash).not.toBe(before)
     await expect(
       inOrg((tx) => dismissMissing(tx, made.bundleId, { windowId: first }, { reason: 'Again', by }, now))
