@@ -8,9 +8,8 @@ import { auditEvent } from '../schema'
 export type ReplyDropReason = 'unparsed' | 'verdict' | 'sender'
 
 /**
- * Audits a dropped reply once per SES message ID, so a redelivery of the same mail (#113: possible across worker
- * instances) adds nothing. `AUDIT_ACTIONS` has no reply action, so it is `staff.action` on target `crowd_reply`, as
- * #146 audits its archive job.
+ * Audits a dropped reply as `crowd_reply.dropped` once per SES message ID, so a redelivery of the same mail (#113:
+ * possible across worker instances) adds nothing.
  */
 export async function recordReplyDrop(
   tx: Tx,
@@ -20,10 +19,10 @@ export async function recordReplyDrop(
   const [earlier] = await tx
     .select({ id: auditEvent.id })
     .from(auditEvent)
-    .where(and(eq(auditEvent.targetType, 'crowd_reply'), eq(auditEvent.targetId, d.messageId)))
+    .where(and(eq(auditEvent.action, 'crowd_reply.dropped'), eq(auditEvent.targetId, d.messageId)))
   if (earlier) return
   await recordAudit(tx, {
-    action: 'staff.action',
+    action: 'crowd_reply.dropped',
     target: { type: 'crowd_reply', id: d.messageId },
     projectId: d.projectId,
     after: { dropped: d.reason }

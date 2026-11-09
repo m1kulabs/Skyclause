@@ -158,7 +158,7 @@ describe('crowd-replies: a reply to a Crowd notice’s Reply-To', () => {
       await handleCrowdReply(message)
       if (kind === null) {
         expect(await drops(message.messageId), text).toEqual([
-          { action: 'staff.action', after: { dropped: 'unparsed' }, actor_id: 'inbound:crowd-replies' }
+          { action: 'crowd_reply.dropped', after: { dropped: 'unparsed' }, actor_id: 'inbound:crowd-replies' }
         ])
       } else expect(await drops(message.messageId), text).toEqual([])
     }
