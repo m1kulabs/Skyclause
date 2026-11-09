@@ -36,7 +36,9 @@ const EvidencePack = z.object({
   ),
   grades: z.array(Grade),
   ledger: z.array(LedgerEntry.extend({ body: JsonValue })),
-  frames: z.array(z.object({ reading_id: z.string(), url: z.url(), captured_at: Instant }))
+  frames: z.array(z.object({ reading_id: z.string(), url: z.url(), captured_at: Instant })),
+  // #159: readings in the span that `Reading` can't carry (no unit or no poll), named so none is left out unseen.
+  omitted_reading_ids: z.array(z.string()).optional()
 })
 const EvidenceRequestView = EvidenceRequest.extend({ pack: EvidencePack.nullable() })
 // Requester, via, organisation and leaves_org are resolved from the principal, never supplied by a body.

@@ -22662,6 +22662,12 @@
                               "captured_at"
                             ]
                           }
+                        },
+                        "omitted_reading_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
                         }
                       },
                       "required": [
@@ -23950,6 +23956,12 @@
                               "url",
                               "captured_at"
                             ]
+                          }
+                        },
+                        "omitted_reading_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
                           }
                         }
                       },
