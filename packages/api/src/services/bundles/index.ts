@@ -190,20 +190,38 @@ async function visibleBundle(ctx: ServiceContext, id: string) {
   return row
 }
 
-/** Counts by language (#152's `recipientsByLanguage`), only asked for a call that has recipients, and by notice. */
-async function recipientCounts(ctx: ServiceContext, c: { id: string; recipients: string[] }) {
-  const notices = await tx(ctx)
-    .select({ channel: notice.channel, status: notice.status })
-    .from(notice)
-    .where(and(eq(notice.callId, c.id), eq(notice.kind, 'call')))
-  return {
-    by_language: c.recipients.length ? await recipientsByLanguage(ctx.tx, c.id) : { en: 0, ms: 0 },
-    by_channel: {
-      email: notices.filter((n) => n.channel === 'email').length,
-      push: notices.filter((n) => n.channel === 'push').length
-    },
-    suppressed: notices.filter((n) => n.status === 'suppressed').length
+/**
+ * Each call's recipients counted by language (#152's `recipientsByLanguage`, asked only for a call with recipients),
+ * and its notices by channel and suppression, in one query for all the calls; in the order given.
+ */
+async function recipientCounts(ctx: ServiceContext, calls: Array<{ id: string; recipients: string[] }>) {
+  const notices = calls.length
+    ? await tx(ctx)
+        .select({ callId: notice.callId, channel: notice.channel, status: notice.status })
+        .from(notice)
+        .where(
+          and(
+            inArray(
+              notice.callId,
+              calls.map((c) => c.id)
+            ),
+            eq(notice.kind, 'call')
+          )
+        )
+    : []
+  const counts = []
+  for (const c of calls) {
+    const own = notices.filter((n) => n.callId === c.id)
+    counts.push({
+      by_language: c.recipients.length ? await recipientsByLanguage(ctx.tx, c.id) : { en: 0, ms: 0 },
+      by_channel: {
+        email: own.filter((n) => n.channel === 'email').length,
+        push: own.filter((n) => n.channel === 'push').length
+      },
+      suppressed: own.filter((n) => n.status === 'suppressed').length
+    })
   }
+  return counts
 }
 
 // #79 §1 IndicatorValue as #133 stores it in `indicator_snapshot.site`.
@@ -272,8 +290,8 @@ export async function getBundle(ctx: ServiceContext, input: { id: string }): Pro
     .from(approval)
     .where(and(eq(approval.bundleId, row.id), eq(approval.action, 'escalate')))
     .orderBy(asc(approval.createdAt))
-  const calls = []
-  for (const c of view!.calls) calls.push({ ...c, recipient_counts: await recipientCounts(ctx, c) })
+  const counts = await recipientCounts(ctx, view!.calls)
+  const calls = view!.calls.map((c, i) => ({ ...c, recipient_counts: counts[i]! }))
   const normal = calls.every((c) => c.mode === 'normal' && !c.no_call)
   return {
     ...view!,
@@ -506,6 +524,6 @@ export async function getCall(ctx: ServiceContext, input: { id: string; origin: 
       status: d.status,
       accepted_at: at(d.acceptedAt)
     })),
-    recipient_counts: await recipientCounts(ctx, row)
+    recipient_counts: (await recipientCounts(ctx, [row]))[0]!
   }
 }
