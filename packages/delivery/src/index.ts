@@ -19,6 +19,20 @@ export {
   type InboundMessage,
   type SesInboundOptions
 } from './inbound'
+export {
+  checkRequiredLines,
+  findAttendanceExcuse,
+  malayApprovalPolicy,
+  renderNotice,
+  renderReplayPreview,
+  REPLAY_2_NOVEMBER,
+  type CheckRequiredLines,
+  type FindAttendanceExcuse,
+  type MalayApprovalPolicy,
+  type NoticeContext,
+  type NoticeLinks,
+  type Rendered,
+  type RenderNotice
+} from './notices'
 export { renderSubscriberEmail, type SubscriberEmailKind } from './subscriber-emails'
 export { ensureVapidKeys, type VapidKeysOptions } from './vapid'
-export * from './placeholders/c-notice-templates'

@@ -22,18 +22,6 @@ const packages: Array<{ name: string; owners: Record<string, string[]> }> = [
     }
   },
   {
-    name: 'delivery',
-    owners: {
-      'c-notice-templates': [
-        'renderNotice',
-        'checkRequiredLines',
-        'findAttendanceExcuse',
-        'malayApprovalPolicy',
-        'recipientsByLanguage'
-      ]
-    }
-  },
-  {
     name: 'config',
     owners: { 'e-byok-api': ['sealSecret', 'openSecret'], 'a-hardening': ['assertPublicUrl', 'safeFetch'] }
   },
