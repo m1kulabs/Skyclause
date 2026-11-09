@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { boolean, check, foreignKey, index, integer, text, unique, uuid } from 'drizzle-orm/pg-core'
+import { boolean, check, foreignKey, index, integer, text, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { organization } from './auth'
 import { id, instant, orgKey, sameOrg, tenantTable, timestamps } from './columns'
 import {
@@ -233,7 +233,11 @@ export const notification = tenantTable(
   },
   (self) => [
     foreignKey({ columns: [self.orgId], foreignColumns: [organization.id] }).onDelete('cascade'),
-    sameOrg('notification_project', self, self.projectId, project, true)
+    sameOrg('notification_project', self, self.projectId, project, true),
+    // #156: `notify` dedupes an unread item; once read, the same condition notifies again.
+    uniqueIndex('notification_unread_key')
+      .on(self.orgId, self.accountId, self.kind, self.refType, self.refId, self.recovered)
+      .where(sql`${self.readAt} IS NULL`)
   ]
 )
 
