@@ -34,7 +34,18 @@ import { and, asc, eq, gt, lte } from 'drizzle-orm'
 import { beforeAll, describe, expect, test } from 'vitest'
 import { setRecheckPorts } from '../src/services/approvals'
 import type { WithTenant } from '../src/tenancy'
-import { apiRequest, asSession, createTestApi, testDeps, testOrg } from './harness'
+import {
+  apiRequest,
+  asApiKey,
+  asGuestToken,
+  asOAuth,
+  asSession,
+  asShareLink,
+  createTestApi,
+  crossOrgCase,
+  testDeps,
+  testOrg
+} from './harness'
 
 const capture: { stationId: string; data: Array<{ timestamp: string; rf: number }> } = JSON.parse(
   readFileSync(new URL('./fixtures/rainfall-graph-75-20261105T1312Z.json', import.meta.url), 'utf8')
@@ -43,6 +54,7 @@ const myt = (local: string) => new Date(`2026-11-02T${local}:00+08:00`)
 const GAUGE = 'site.rain_60m_mm'
 
 const A = 'approvals-a'
+const B = 'approvals-b'
 let clock = myt('15:07')
 const deps = testDeps({ withTenant: withTenant as unknown as WithTenant, recordAudit, now: () => clock })
 const { api } = createTestApi({ deps })
@@ -134,8 +146,8 @@ const shadow: ShadowEvaluator = {
 }
 setRecheckPorts({ snapshots, shadow })
 
-/** The engine's verdict as `call.shadow` holds it on the wire (#150's `Verdict`). */
-function wire(v: Verdict) {
+/** The engine's verdict as `call.shadow` holds it on the wire (#150's `Verdict`), with the gauge's URL. */
+function wire(v: Verdict, url: string) {
   return {
     scope: v.scope,
     pack: v.pack,
@@ -155,7 +167,7 @@ function wire(v: Verdict) {
         since: i.since,
         age_s: i.ageS,
         source_ids: i.sourceIds,
-        source_url: null,
+        source_url: url,
         reading_ids: i.readingIds,
         observed_at: i.observedAt
       }))
@@ -178,14 +190,19 @@ interface Made {
   bundleId: string
   callIds: string[]
   subscribers: { en: string; en2: string; ms: string; unconfirmed: string }
+  gauge: { id: string; externalId: string }
 }
+
+type Wording = { language: 'en' | 'ms'; subject: string; body: string }
 
 /**
  * A project whose gauge holds the capture's readings up to `until`, with its email channel on, four subscribers and
  * a Storm confirmed bundle drafted at 15:05 for the 15:15, 15:30 and 15:45 release waves.
  */
-async function draft(o: { station?: string; until?: string; calls?: number } = {}): Promise<Made> {
-  return inOrg(A, async (tx) => {
+async function draft(
+  o: { org?: string; station?: string; until?: string; calls?: number; notices?: Wording[] } = {}
+): Promise<Made> {
+  return inOrg(o.org ?? A, async (tx) => {
     const scene = await bundleScene(tx, { slaS: 600 })
     const gauge = await makeSource(tx, {
       kind: 'jps_rain',
@@ -232,15 +249,21 @@ async function draft(o: { station?: string; until?: string; calls?: number } = {
           mode: 'commute_disruption',
           fired: [{ clause: 'storm_confirmed', inputs: [GAUGE] }],
           recipients: Object.values(subscribers),
-          notices: [WORDING.en, WORDING.ms],
+          notices: o.notices ?? [WORDING.en, WORDING.ms],
           reason: 'Storm confirmed at the gauge.',
-          shadow: wire(verdicts.windows[i]!)
+          shadow: wire(verdicts.windows[i]!, gauge.url)
         })
       ),
       triggeredAt: r.triggeredAt,
       now: myt('15:05')
     })
-    return { scene, bundleId: created.bundleId, callIds: created.callIds, subscribers }
+    return {
+      scene,
+      bundleId: created.bundleId,
+      callIds: created.callIds,
+      subscribers,
+      gauge: { id: gauge.id, externalId: gauge.externalId }
+    }
   })
 }
 
@@ -303,13 +326,18 @@ function approve(
   })
 }
 
+async function bundleState(made: Made) {
+  const { bundle } = await import('@skyclause/db')
+  return inOrg(A, async (tx) => (await tx.select().from(bundle).where(eq(bundle.id, made.bundleId)))[0]!.state)
+}
+
 async function currentHash(made: Made) {
   const { bundle } = await import('@skyclause/db')
   return inOrg(A, async (tx) => (await tx.select().from(bundle).where(eq(bundle.id, made.bundleId)))[0]!.reviewHash)
 }
 
 beforeAll(async () => {
-  await makeOrganization({ id: testOrg(A).id, slug: A })
+  for (const slug of [A, B]) await makeOrganization({ id: testOrg(slug).id, slug })
 })
 
 describe('CAL-6: one approval per bundle with per-call edit and reject', () => {
@@ -375,5 +403,192 @@ describe('CAL-6: one approval per bundle with per-call edit and reject', () => {
     expect(audit).toMatchObject({ actor_id: as.accountId, target_type: 'bundle', target_id: made.bundleId })
     await expectOneAudit('call.edited', { targetId: second })
     await expectOneAudit('call.rejected', { targetId: third })
+  })
+})
+
+interface Conflict {
+  type: string
+  review_hash: string
+  changed_inputs: Array<{ call_id: string; before: Record<string, unknown>; after: Record<string, unknown> }>
+  changed_verdicts: unknown[]
+}
+
+/** Every call approved as drafted. */
+const approveAll = (made: Made) => made.callIds.map((call_id) => ({ call_id, action: 'approve' }))
+
+describe('CAL-9: a reading arriving between draft and approval is re-checked', () => {
+  test('replay: the 15:10 reading answers 409 inputs-changed naming 0232901RF before and after; the token approves', async () => {
+    clock = myt('15:12')
+    const made = await draft({ station: capture.stationId, calls: 1 })
+    expect(made.gauge.externalId).toBe('0232901RF')
+    await inOrg(A, (tx) => storeReadings(tx, made.gauge.id, '15:05', '15:10'))
+    const as = await approver()
+
+    const first = await approve(as, made, { review_hash: await currentHash(made), calls: approveAll(made) })
+    expect(first.status).toBe(409)
+    const conflict = (await first.json()) as Conflict
+    expect(conflict.type).toBe('https://docs.skyclause.m1ku.tech/problems/inputs-changed')
+    expect(conflict.changed_verdicts).toEqual([])
+    expect(conflict.changed_inputs).toHaveLength(1)
+    const [change] = conflict.changed_inputs
+    expect(change!.call_id).toBe(made.callIds[0])
+    // The gauge's 60-minute totals (D12): (14:05, 15:05] = 44.5 mm and (14:10, 15:10] = 49.5 mm.
+    expect(change!.before).toMatchObject({
+      name: GAUGE,
+      value: 44.5,
+      source_ids: [made.gauge.id],
+      source_url: 'https://infobanjirjpskl.water.gov.my/Rainfall/GetRainfallGraph/75',
+      observed_at: myt('15:05').toISOString()
+    })
+    expect(change!.after).toMatchObject({
+      name: GAUGE,
+      value: 49.5,
+      source_ids: [made.gauge.id],
+      source_url: 'https://infobanjirjpskl.water.gov.my/Rainfall/GetRainfallGraph/75',
+      observed_at: myt('15:10').toISOString()
+    })
+    // The 409 committed its snapshot and moved the bundle to Reconfirm, with nothing approved or queued.
+    let rows = await bundleRow(made)
+    expect(rows.calls.map((c) => c.state)).toEqual(['drafted'])
+    expect(rows.notices).toEqual([])
+    expect(await bundleState(made)).toBe('reconfirm')
+
+    const confirmed = await approve(as, made, {
+      review_hash: conflict.review_hash,
+      reconfirm: true,
+      calls: approveAll(made)
+    })
+    expect(confirmed.status, await confirmed.clone().text()).toBe(200)
+    rows = await bundleRow(made)
+    expect(rows.calls.map((c) => c.state)).toEqual(['sending'])
+    const reconfirm = rows.approvals.filter((a) => a.action === 'reconfirm')
+    expect(reconfirm).toHaveLength(1)
+    expect(reconfirm[0]!.diff).toMatchObject({ confirmed_snapshot_id: conflict.review_hash.split('.')[1] })
+  })
+
+  test('a stale review_hash without a token counts as changed; its token then approves', async () => {
+    clock = myt('15:07')
+    const made = await draft({ calls: 1 })
+    const as = await approver()
+    const stale = await approve(as, made, { review_hash: 'not-the-hash-shown', calls: approveAll(made) })
+    expect(stale.status).toBe(409)
+    const conflict = (await stale.json()) as Conflict
+    expect(conflict).toMatchObject({ changed_inputs: [], changed_verdicts: [] })
+    expect(conflict.review_hash).toMatch(/^recheck\./)
+    const confirmed = await approve(as, made, {
+      review_hash: conflict.review_hash,
+      reconfirm: true,
+      calls: approveAll(made)
+    })
+    expect(confirmed.status).toBe(200)
+  })
+
+  test('a reading after the 409 answers 409 again with a new token', async () => {
+    clock = myt('15:07')
+    const made = await draft({ calls: 1 })
+    await inOrg(A, (tx) => storeReadings(tx, made.gauge.id, '15:05', '15:10'))
+    clock = myt('15:12')
+    const as = await approver()
+    const first = (await (
+      await approve(as, made, { review_hash: await currentHash(made), calls: approveAll(made) })
+    ).json()) as Conflict
+    await inOrg(A, (tx) => storeReadings(tx, made.gauge.id, '15:10', '15:15'))
+    clock = myt('15:16')
+    const again = await approve(as, made, { review_hash: first.review_hash, reconfirm: true, calls: approveAll(made) })
+    expect(again.status).toBe(409)
+    const second = (await again.json()) as Conflict
+    expect(second.review_hash).not.toBe(first.review_hash)
+    expect(second.changed_inputs[0]!.after).toMatchObject({ value: 54, observed_at: myt('15:15').toISOString() })
+    expect((await bundleRow(made)).approvals).toEqual([])
+  })
+
+  test('D23: a confirmed change that fails validate answers 422 redraft-required and records the reconfirm', async () => {
+    clock = myt('15:12')
+    // The wording quotes the 15:05 total, which the 15:12 snapshot no longer holds.
+    const made = await draft({
+      calls: 1,
+      notices: [{ language: 'en', subject: 'Storm', body: 'The gauge read 44.5 mm in the last hour.' }]
+    })
+    await inOrg(A, (tx) => storeReadings(tx, made.gauge.id, '15:05', '15:10'))
+    const as = await approver()
+    const conflict = (await (
+      await approve(as, made, { review_hash: await currentHash(made), calls: approveAll(made) })
+    ).json()) as Conflict
+    const response = await approve(as, made, {
+      review_hash: conflict.review_hash,
+      reconfirm: true,
+      calls: approveAll(made)
+    })
+    expect(response.status).toBe(422)
+    const problem = (await response.json()) as { type: string; reasons: string[] }
+    expect(problem.type).toBe('https://docs.skyclause.m1ku.tech/problems/redraft-required')
+    expect(problem.reasons.join('\n')).toContain('44.5 is not a quotable number')
+    const rows = await bundleRow(made)
+    expect(rows.approvals.map((a) => a.action)).toEqual(['reconfirm'])
+    expect(rows.calls.map((c) => c.state)).toEqual(['drafted'])
+    expect(await bundleState(made)).toBe('reconfirm')
+  })
+})
+
+describe('#79 §4 and §7: who may approve', () => {
+  const body = { review_hash: 'shown', reconfirm: false, calls: [{ call_id: randomUUID(), action: 'approve' }] }
+  const attempt = (as: Principal, id = randomUUID()) =>
+    apiRequest(api, {
+      as,
+      method: 'POST',
+      path: `/api/bundles/${id}/approve`,
+      org: as.kind === 'session' ? A : undefined,
+      body
+    })
+
+  test('GST-7: API keys, OAuth tokens, guest tokens and share links get 403, each writing one bundle.approve_denied', async () => {
+    const principals: Principal[] = [
+      asApiKey({ org: A, role: 'owner', scopes: ['read', 'draft', 'admin'] }),
+      asOAuth({ org: A, role: 'owner', resource: 'api', scopes: ['read', 'draft'] }),
+      asGuestToken({ org: A, scopes: ['read', 'draft'] }),
+      asShareLink({ org: A, access: 'reviewer' })
+    ]
+    for (const principal of principals) {
+      const id = randomUUID()
+      const response = await attempt(principal, id)
+      expect(response.status, principal.kind).toBe(403)
+      const row = await expectOneAudit('bundle.approve_denied', { orgId: testOrg(A).id, targetId: id })
+      expect(row, principal.kind).toMatchObject({ target_type: 'bundle' })
+    }
+  })
+
+  test('GST-7: a guest session gets 403 and is logged; an Editor gets 403', async () => {
+    const id = randomUUID()
+    expect((await attempt(asSession({ org: A, role: 'guest', guest: true, authenticatedAt: clock }), id)).status).toBe(
+      403
+    )
+    await expectOneAudit('bundle.approve_denied', { orgId: testOrg(A).id, targetId: id })
+    expect((await attempt(await approver({ role: 'editor' }))).status).toBe(403)
+  })
+
+  test('ACC-8: a 13-hour-old session gets 401 reauth-required', async () => {
+    const principal = asSession({
+      org: A,
+      role: 'approver',
+      authenticatedAt: new Date(clock.getTime() - 13 * 3_600_000)
+    })
+    const response = await attempt(principal)
+    expect(response.status).toBe(401)
+    expect(((await response.json()) as { type: string }).type).toBe(
+      'https://docs.skyclause.m1ku.tech/problems/reauth-required'
+    )
+  })
+
+  test('another organisation’s bundle answers 404', async () => {
+    clock = myt('15:07')
+    const other = await draft({ org: B, calls: 1 })
+    const as = await approver()
+    await crossOrgCase('approveBundle', {
+      app: api,
+      as,
+      org: A,
+      params: { id: other.bundleId },
+      body: { review_hash: 'shown', reconfirm: false, calls: approveAll(other) }
+    }).run()
   })
 })
