@@ -180,6 +180,77 @@ function emitBundle(
   })
 }
 
+/** The run's pinned sheet version's clause expiry, by clause key (CAL-8). */
+async function clauseExpiryOf(tx: Tx, sheetVersionId: string) {
+  const [version] = await tx
+    .select({ content: sheetVersion.content })
+    .from(sheetVersion)
+    .where(eq(sheetVersion.id, sheetVersionId))
+  return Object.fromEntries(SheetContent.parse(version?.content).clauses.map(({ key, expiry }) => [key, expiry]))
+}
+
+type Scope = { windowId?: string | null; nightId?: string | null }
+
+/** Each scope's window or night in `projectId`, refusing one that names neither, both, or another project's. */
+async function scopeRows(tx: Tx, projectId: string, scopes: Scope[]) {
+  for (const scope of scopes) {
+    if (Boolean(scope.windowId) === Boolean(scope.nightId))
+      throw new Error('a call needs a window or a night, not both')
+  }
+  const windowIds = scopes.flatMap((d) => (d.windowId ? [d.windowId] : []))
+  const nightIds = scopes.flatMap((d) => (d.nightId ? [d.nightId] : []))
+  const windows = windowIds.length
+    ? await tx
+        .select()
+        .from(window)
+        .where(and(inArray(window.id, windowIds), eq(window.projectId, projectId)))
+    : []
+  const nights = nightIds.length
+    ? await tx
+        .select()
+        .from(night)
+        .where(and(inArray(night.id, nightIds), eq(night.projectId, projectId)))
+    : []
+  return scopes.map((scope) => {
+    const w = scope.windowId ? windows.find((row) => row.id === scope.windowId) : undefined
+    const n = scope.nightId ? nights.find((row) => row.id === scope.nightId) : undefined
+    if (!w && !n) throw new Error(`no window or night ${scope.windowId ?? scope.nightId} in project ${projectId}`)
+    return { window: w, night: n }
+  })
+}
+
+/** A drafted call row of `bundleId`. */
+function callRow(
+  tx: Tx,
+  o: { projectId: string; bundleId: string; draft: CallDraft; expiresAt: Date; triggeredAt: Date; now: Date }
+) {
+  const { draft, now } = o
+  return {
+    orgId: tx.orgId!,
+    projectId: o.projectId,
+    bundleId: o.bundleId,
+    windowId: draft.windowId ?? null,
+    nightId: draft.nightId ?? null,
+    mode: draft.mode,
+    watch: draft.watch,
+    noCall: draft.noCall,
+    fired: draft.fired,
+    recommendations: draft.recommendations,
+    recipients: draft.recipients,
+    notices: draft.notices,
+    reason: draft.reason,
+    shadow: draft.shadow,
+    chosen: draft.chosen,
+    agrees: draft.agrees,
+    decision: draft.decision ?? null,
+    expiresAt: o.expiresAt,
+    triggeredAt: o.triggeredAt,
+    draftedAt: now,
+    createdAt: now,
+    updatedAt: now
+  }
+}
+
 /**
  * Hands a run's calls over as a bundle (#151). It closes at once when nothing would send or it is a guest window's
  * draft (CAL-5, D23), with no ledger entry (D21) and no `bundle.needs_review`; otherwise it waits in Needs review with
@@ -196,43 +267,15 @@ export async function createBundle(tx: Tx, input: CreateBundleInput) {
   if (!parent.sheetVersionId) throw new Error(`run ${parent.id} has no pinned sheet version`)
   const { projectId, pack } = parent
 
-  const [version] = await tx
-    .select({ content: sheetVersion.content })
-    .from(sheetVersion)
-    .where(eq(sheetVersion.id, parent.sheetVersionId))
-  const clauseExpiry = Object.fromEntries(
-    SheetContent.parse(version?.content).clauses.map(({ key, expiry }) => [key, expiry])
-  )
+  const clauseExpiry = await clauseExpiryOf(tx, parent.sheetVersionId)
   const [packRow] = await tx
     .select({ slaS: projectPack.slaS })
     .from(projectPack)
     .where(and(eq(projectPack.projectId, projectId), eq(projectPack.pack, pack)))
   const slaS = packRow?.slaS ?? DEFAULT_SLA_S[pack]
 
-  for (const draft of input.calls) {
-    if (Boolean(draft.windowId) === Boolean(draft.nightId))
-      throw new Error('a call needs a window or a night, not both')
-  }
-  const windowIds = input.calls.flatMap((d) => (d.windowId ? [d.windowId] : []))
-  const nightIds = input.calls.flatMap((d) => (d.nightId ? [d.nightId] : []))
-  const windows = windowIds.length
-    ? await tx
-        .select()
-        .from(window)
-        .where(and(inArray(window.id, windowIds), eq(window.projectId, projectId)))
-    : []
-  const nights = nightIds.length
-    ? await tx
-        .select()
-        .from(night)
-        .where(and(inArray(night.id, nightIds), eq(night.projectId, projectId)))
-    : []
-  const expiries = input.calls.map((draft) => {
-    const w = draft.windowId ? windows.find((row) => row.id === draft.windowId) : undefined
-    const n = draft.nightId ? nights.find((row) => row.id === draft.nightId) : undefined
-    if (!w && !n) throw new Error(`no window or night ${draft.windowId ?? draft.nightId} in project ${projectId}`)
-    return expiresAt({ window: w, night: n }, draft.fired, clauseExpiry)
-  })
+  const targets = await scopeRows(tx, projectId, input.calls)
+  const expiries = input.calls.map((draft, i) => expiresAt(targets[i]!, draft.fired, clauseExpiry))
 
   const state: BundleState = closes(input.calls, input.draftOnly) ? 'closed' : 'needs_review'
   const review = state === 'needs_review'
@@ -268,30 +311,16 @@ export async function createBundle(tx: Tx, input: CreateBundleInput) {
     ? await tx
         .insert(call)
         .values(
-          input.calls.map((draft, i) => ({
-            orgId: tx.orgId!,
-            projectId,
-            bundleId: created!.id,
-            windowId: draft.windowId ?? null,
-            nightId: draft.nightId ?? null,
-            mode: draft.mode,
-            watch: draft.watch,
-            noCall: draft.noCall,
-            fired: draft.fired,
-            recommendations: draft.recommendations,
-            recipients: draft.recipients,
-            notices: draft.notices,
-            reason: draft.reason,
-            shadow: draft.shadow,
-            chosen: draft.chosen,
-            agrees: draft.agrees,
-            decision: draft.decision ?? null,
-            expiresAt: expiries[i]!,
-            triggeredAt: input.triggeredAt,
-            draftedAt: now,
-            createdAt: now,
-            updatedAt: now
-          }))
+          input.calls.map((draft, i) =>
+            callRow(tx, {
+              projectId,
+              bundleId: created!.id,
+              draft,
+              expiresAt: expiries[i]!,
+              triggeredAt: input.triggeredAt,
+              now
+            })
+          )
         )
         .returning()
     : []
