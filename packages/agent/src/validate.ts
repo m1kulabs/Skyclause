@@ -16,6 +16,9 @@ const LETTER = /[\p{L}_]/u
 const NUMBER = /(\d{4}-\d{2}-\d{2})|(\d{1,2}:\d{2})(?![\d:])|(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)/g
 // After NFKC (which folds fullwidth and superscript digits to 0-9), any other digit is refused outright.
 const OTHER_DIGIT = /[^\P{N}0-9]+/gu
+// Invisible to a reader: a zero-width space inside a figure (12, U+200B, 0) makes a person read 120 where the checks see 12 and 0.
+// Unicode's Default_Ignorable_Code_Point plus category Cf (format characters); nothing legitimate in a notice needs them.
+const INVISIBLE = /[\p{Default_Ignorable_Code_Point}\p{Cf}]/gu
 // Spelled-out numbers from eleven up, English and Malay; "one window" stays fine.
 const NUMBER_WORD =
   /\b(?:eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|sebelas|belas|puluh|(?:se)?ratus|(?:se)?ribu|(?:se)?juta)\b/gi
@@ -181,13 +184,25 @@ export function validate(p: ProposedBundle, input: AgentInput): Validation {
       if (!candidates.has(id)) reasons.push(`${at}: recipient ${id} is not a candidate for this window`)
     }
     // Links and numbers: the same rules for everything an approver or recipient reads, the reason included.
-    const checkFigures = (where: string, text: string) => {
+    const refuseInvisible = (where: string, text: string) => {
+      for (const char of new Set(text.match(INVISIBLE) ?? [])) {
+        const code = char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')
+        reasons.push(`${where}: contains the invisible character U+${code}; remove it`)
+      }
+    }
+    const checkFigures = (where: string, written: string) => {
+      refuseInvisible(where, written)
+      const text = written.normalize('NFKC')
       const { links, rest } = linksIn(text, names)
       figures(where, rest)
       for (const link of links) {
         const free = allowsLink(link)
         if (free === null) reasons.push(`${where}: link ${link} is not a source URL or Skyclause origin`)
-        else figures(`${where} (link ${link})`, free)
+        else {
+          // A percent-encoded character decodes in the free text, where a person reads it as written.
+          refuseInvisible(`${where} (link ${link})`, free)
+          figures(`${where} (link ${link})`, free)
+        }
       }
     }
     // Numbers in text with the links already taken out. An allowed link's path counts too: it is free text.
@@ -205,14 +220,14 @@ export function validate(p: ProposedBundle, input: AgentInput): Validation {
     call.notices.forEach((notice, j) => {
       for (const field of ['subject', 'body'] as const) {
         const where = `${at} notices[${j}].${field}`
+        checkFigures(where, notice[field])
         const text = notice[field].normalize('NFKC')
-        checkFigures(where, text)
         for (const line of TEMPLATE_LINES) {
           if (line.test(text)) reasons.push(`${where}: writes a template line (${line.source}); templates add it`)
         }
       }
     })
-    checkFigures(`${at}.reason`, call.reason.normalize('NFKC'))
+    checkFigures(`${at}.reason`, call.reason)
   })
   bundle.items.forEach((item, i) => {
     if (!nights.has(item.night_id)) reasons.push(`items[${i}]: night ${item.night_id} is not in the snapshot`)

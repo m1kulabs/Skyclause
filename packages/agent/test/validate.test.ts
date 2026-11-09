@@ -244,3 +244,46 @@ describe('review findings: bypasses and false results', () => {
     }
   })
 })
+
+describe('invisible characters', () => {
+  const failing = (change: (bundle: ReturnType<typeof replayBundle>) => void) => {
+    const bundle = replayBundle()
+    change(bundle)
+    const result = validate(bundle, replayInput())
+    return result.ok ? [] : result.reasons
+  }
+  // Zero width space, word joiner, byte order mark, soft hyphen, Mongolian vowel separator, a tag, a variation selector, Hangul filler.
+  const invisible = ['\u{200B}', '\u{2060}', '\u{FEFF}', '\u{AD}', '\u{180E}', '\u{E0041}', '\u{FE0F}', '\u{3164}']
+
+  test.each(invisible)('refuses invisible character %j inside a figure in a body, a subject and the reason', (char) => {
+    const code = `U+${char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}`
+    const text = `Gauge 5${char}60 mm.`
+    for (const set of [
+      (b: ReturnType<typeof replayBundle>) => (b.calls[0]!.notices[0]!.body = text),
+      (b: ReturnType<typeof replayBundle>) => (b.calls[0]!.notices[0]!.subject = text),
+      (b: ReturnType<typeof replayBundle>) => (b.calls[0]!.reason = text)
+    ]) {
+      expect(failing(set)).toEqual([expect.stringContaining(`invisible character ${code}; remove it`)])
+    }
+  })
+
+  test('refuses an invisible character a link path hides as a percent escape', () => {
+    expect(failing((b) => (b.calls[0]!.reason = 'See https://skyclause.m1ku.tech/r/x-5%E2%80%8B60'))).toEqual([
+      expect.stringContaining('invisible character U+200B')
+    ])
+  })
+
+  test('refuses the character even where no figure is split', () => {
+    expect(failing((b) => (b.calls[0]!.notices[0]!.body = `Gauge 39.0 mm\u{200B} in 60 min.`))).toEqual([
+      expect.stringContaining('invisible character U+200B')
+    ])
+  })
+
+  test('still accepts Malay and English text with accents, curly quotes, dashes and ellipses', () => {
+    const text = 'Hujan lebat di Cheras — “jangan” keluar; it’s 39.0 mm per jam… Jalan ditutup. Kuala Lumpur ≥ rendah.'
+    expect(failing((b) => (b.calls[0]!.notices[0]!.body = text))).toEqual([])
+    expect(
+      failing((b) => (b.calls[0]!.reason = 'Hujan lebat di Cheras — “jangan” keluar; it’s 39.0 mm per jam…'))
+    ).toEqual([])
+  })
+})
