@@ -30,7 +30,7 @@ type Group = { windowId: string; pack: 'sky' | 'crowd' } | { nightId: string }
 
 /**
  * Calls the feed may show (CAL-14, GST-5): sent, outside a `draft_only` bundle and a guest window. Every call is a
- * window's or a night's here, which the joins require. `loadIcsEntries` applies the same rule to the public views.
+ * window's or a night's here, which the joins require. Migration 0008's views hold the same rule for the feed.
  */
 const eligible = and(
   eq(call.state, 'sent'),
@@ -161,9 +161,10 @@ const latestOf = (...dates: Array<Date | null>) => new Date(Math.max(...dates.ma
 /**
  * The project's entries (ticket decision): one per window and pack, and per night, among calls with an identity.
  * Windows span `starts_at` to `ends_at`; nights the arrival period's start to the exit period's end, or to the
- * arrival period's end while exit times are unknown (D19). A night shows only once a listing of it was listed
- * (CAL-14), and never without an arrival period. Cancelled: a Normal head, a cancelled window, an unlisted night, or a
- * night with no listing still listed. Read as `public_reader`, so a private project has none.
+ * arrival period's end while exit times are unknown (D19). A night never shows without an arrival period. Cancelled:
+ * a Normal head, a cancelled window, an unlisted night, or a night with no listing still listed. Read as
+ * `public_reader`: the views hold only the rows the feed may show (a public project's, without draft-only bundles,
+ * guest windows or never-listed nights; CAL-14, GST-5), so a call whose bundle, window or night they lack has no entry.
  */
 export async function loadIcsEntries(tx: Tx<null>, projectId: string): Promise<IcsEntry[]> {
   const rows = await tx
@@ -182,8 +183,7 @@ export async function loadIcsEntries(tx: Tx<null>, projectId: string): Promise<I
         eq(publicCall.projectId, projectId),
         isNotNull(publicCall.icsUid),
         eq(publicCall.state, 'sent'),
-        eq(publicBundle.draftOnly, false),
-        or(isNotNull(publicCall.nightId), eq(publicWindow.guest, false))
+        or(isNotNull(publicWindow.id), isNotNull(publicNight.id))
       )
     )
     .orderBy(asc(publicCall.sentAt), asc(publicCall.id))
@@ -208,7 +208,6 @@ export async function loadIcsEntries(tx: Tx<null>, projectId: string): Promise<I
     let start: Date, end: Date, withdrawn: boolean
     if (nightRow) {
       const states = listings.filter((row) => row.nightId === nightRow.id).map((row) => row.state)
-      if (!states.some((state) => state === 'listed' || state === 'cancelled')) continue
       const until = nightRow.exitEnd ?? nightRow.arrivalEnd
       if (!nightRow.arrivalStart || !until) {
         // #150 dates a night call from the arrival start, so this can't be; one bad row doesn't freeze the feed.

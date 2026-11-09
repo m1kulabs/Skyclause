@@ -1,28 +1,34 @@
 -- c-ics-feed (#154): the conditions calendar reads as public_reader (P, #79 §3), as public_call does in 0004. Each view
--- shows only what the feed needs: a public project's rows that a sent call refers to, and of those nights' listings
--- only `listed` and `cancelled` ones (CAL-14). The owner policies let the views, which run as owner, see public rows.
+-- holds only the columns the feed reads and the rows it may show: a public project's bundles, windows and nights that
+-- a sent call refers to, without draft-only bundles or guest windows (GST-5, D23) or nights never listed (CAL-14), and
+-- of those nights' listings only `listed` and `cancelled` ones. The owner policies let the views, which run as owner,
+-- see public rows. c-ics-feed's consumer applies the same exclusions on the tables when it assigns identities.
 CREATE POLICY public_read ON bundle FOR SELECT TO "owner" USING (project_id IN (SELECT id FROM project WHERE public));
 CREATE POLICY public_read ON "window" FOR SELECT TO "owner" USING (project_id IN (SELECT id FROM project WHERE public));
 CREATE POLICY public_read ON night FOR SELECT TO "owner" USING (project_id IN (SELECT id FROM project WHERE public));
 CREATE POLICY public_read ON listing FOR SELECT TO "owner" USING (project_id IN (SELECT id FROM project WHERE public));
 
 CREATE VIEW public_bundle WITH (security_barrier) AS
-  SELECT b.id, b.org_id, b.project_id, b.pack, b.draft_only
+  SELECT b.id, b.pack
   FROM bundle b JOIN project p ON p.id = b.project_id
-  WHERE p.public AND EXISTS (SELECT FROM "call" c WHERE c.bundle_id = b.id AND c.state = 'sent');
+  WHERE p.public AND NOT b.draft_only
+    AND EXISTS (SELECT FROM "call" c WHERE c.bundle_id = b.id AND c.state = 'sent');
 
 CREATE VIEW public_window WITH (security_barrier) AS
-  SELECT w.id, w.org_id, w.project_id, w.starts_at, w.ends_at, w.guest, w.cancelled_at, w.updated_at
+  SELECT w.id, w.starts_at, w.ends_at, w.cancelled_at, w.updated_at
   FROM "window" w JOIN project p ON p.id = w.project_id
-  WHERE p.public AND EXISTS (SELECT FROM "call" c WHERE c.window_id = w.id AND c.state = 'sent');
+  WHERE p.public AND NOT w.guest
+    AND EXISTS (SELECT FROM "call" c WHERE c.window_id = w.id AND c.state = 'sent');
 
 CREATE VIEW public_night WITH (security_barrier) AS
-  SELECT n.id, n.org_id, n.project_id, n.state, n.arrival_start, n.arrival_end, n.exit_end, n.updated_at
+  SELECT n.id, n.state, n.arrival_start, n.arrival_end, n.exit_end, n.updated_at
   FROM night n JOIN project p ON p.id = n.project_id
-  WHERE p.public AND EXISTS (SELECT FROM "call" c WHERE c.night_id = n.id AND c.state = 'sent');
+  WHERE p.public
+    AND EXISTS (SELECT FROM "call" c WHERE c.night_id = n.id AND c.state = 'sent')
+    AND EXISTS (SELECT FROM listing l WHERE l.night_id = n.id AND l.state IN ('listed', 'cancelled'));
 
 CREATE VIEW public_listing WITH (security_barrier) AS
-  SELECT l.id, l.org_id, l.project_id, l.night_id, l.state
+  SELECT l.night_id, l.state
   FROM listing l JOIN project p ON p.id = l.project_id
   WHERE p.public AND l.state IN ('listed', 'cancelled')
     AND EXISTS (SELECT FROM "call" c WHERE c.night_id = l.night_id AND c.state = 'sent');
