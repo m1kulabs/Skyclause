@@ -111,9 +111,16 @@ export function evaluateSkyGradeEvidence(input: SkyGradeEvidenceInput): {
     problems.push('window_not_closed')
     return noCall()
   }
+  // Match shared reading normalization before any historical filter, while retaining
+  // invalid values, revisions, and original timestamps for the evidence checks.
+  const readingRows = input.readings.map((row) => ({
+    ...row,
+    source_id: String(row.source_id ?? '').trim(),
+    metric: String(row.metric ?? '').trim()
+  }))
   const requirements = skyClauseEvidenceRequirements(input.version.clauses)
   problems.push(...requirements.problems)
-  const readings = normalizeAndDedupeReadings(input.readings, close, known)
+  const readings = normalizeAndDedupeReadings(readingRows, close, known)
   const first = Math.ceil(input.window.spanFrom.getTime() / STEP) * STEP
   const last = Math.floor(close / STEP) * STEP
   const gaugeFrom = first - 235 * MINUTE
@@ -148,7 +155,7 @@ export function evaluateSkyGradeEvidence(input: SkyGradeEvidenceInput): {
       if (!stamps.has(stamp)) problems.push(`reading_missing:${id}:${toMytIso(new Date(stamp))}`)
     }
     if (
-      input.readings.some((row) => {
+      readingRows.some((row) => {
         const observed = timestamp(row.observed_at)
         const received = timestamp(row.received_at)
         return (
@@ -187,7 +194,7 @@ export function evaluateSkyGradeEvidence(input: SkyGradeEvidenceInput): {
 
   // Restrict historical APIMS context to what the selected clauses actually require.
   // The fixed three-morning indicator horizon matches the live snapshot.
-  const historicalReadings = input.readings.filter((row) => {
+  const historicalReadings = readingRows.filter((row) => {
     const id = String(row.source_id ?? '')
     if (!(BOUND_APIMS_STATION_IDS as readonly string[]).includes(id) || row.metric !== 'api') return true
     const observed = timestamp(row.observed_at)

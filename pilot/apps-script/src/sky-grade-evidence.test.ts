@@ -589,3 +589,77 @@ describe('root-confirmed historical consumption rules', () => {
     ).toBe('no_call')
   })
 })
+
+describe('canonical identities at every historical boundary', () => {
+  function padded(row: Row<'readings'>, field: 'source_id' | 'metric'): Row<'readings'> {
+    return { ...row, [field]: ` ${String(row[field])} ` }
+  }
+  test.each(['source_id', 'metric'] as const)(
+    'padded gauge %s cannot hide off-grid evidence, including invalid values',
+    (field) => {
+      const readings = gauge.map((row) => ({ ...row, value: 0 }))
+      expect(mode({ readings }).observedMode).toBe('normal')
+      for (const value of [40, 'invalid']) {
+        const offGrid = { ...reading('0232901RF', 'rain_5m_mm', '2026-11-02T15:31:00+08:00', 40), value }
+        const expected = mode({ readings: [...readings, offGrid] })
+        expect(expected.observedMode).toBe('no_call')
+        expect(expected.problems).toContain('reading_off_grid:0232901RF')
+        expect(mode({ readings: [...readings, padded(offGrid, field)] })).toEqual(expected)
+      }
+    }
+  )
+  test.each(['source_id', 'metric'] as const)('padded APIMS %s cannot bypass the required-hour boundary', (field) => {
+    const readings = [...gauge.map((row) => ({ ...row, value: 0 })), ...syntheticApims()]
+    const version = apiOnlyFixtureVersion()
+    expect(mode({ readings, version }).observedMode).toBe('normal')
+    const offGrid = reading('CA16W', 'api', '2026-11-02T16:01:00+08:00', 200)
+    const expected = mode({ readings: [...readings, offGrid], version })
+    expect(expected.observedMode).toBe('no_call')
+    expect(expected.problems).toContain('reading_off_grid:CA16W')
+    expect(mode({ readings: [...readings, padded(offGrid, field)], version })).toEqual(expected)
+  })
+  test.each(['source_id', 'metric'] as const)(
+    'padded camera %s retains an eligible frame without mutating input',
+    (field) => {
+      const eligible = cameraInput()
+      const before = JSON.stringify(eligible)
+      expect(evaluateSkyGradeEvidence(eligible).observedMode).toBe('outdoor_limited')
+      const eligiblePadded = {
+        ...eligible,
+        readings: eligible.readings.map((row) => (row.source_id === 'cam' ? padded(row, field) : row))
+      }
+      expect(evaluateSkyGradeEvidence(eligiblePadded).observedMode).toBe('outdoor_limited')
+      expect(JSON.stringify(eligible)).toBe(before)
+    }
+  )
+  test.each(['source_id', 'metric'] as const)('padded camera %s cannot admit a pre-pass frame', (field) => {
+    const eligible = cameraInput()
+    const firstPass = {
+      ...eligible,
+      cameraHistory: {
+        ...eligible.cameraHistory!,
+        decisions: [{ sourceId: 'cam', passed: true, at: '2026-11-02T08:15:00.000Z' }]
+      }
+    }
+    expect(evaluateSkyGradeEvidence(firstPass).observedMode).toBe('normal')
+    const firstPassPadded = {
+      ...firstPass,
+      readings: firstPass.readings.map((row) =>
+        row.source_id === 'cam' && row.observed_at === '2026-11-02T16:10:00+08:00' ? padded(row, field) : row
+      )
+    }
+    expect(evaluateSkyGradeEvidence(firstPassPadded).observedMode).toBe('normal')
+  })
+  test.each(['source_id', 'metric'] as const)(
+    'canonical %s preserves invalid dominant revisions and actual receipt cutoffs',
+    (field) => {
+      const readings = gauge.map((row) => ({ ...row, value: 0 }))
+      const original = readings.find((row) => row.observed_at === '2026-11-02T15:30:00+08:00')!
+      const revised = padded({ ...original, value: 'invalid', revision: 2 }, field)
+      expect(mode({ readings: [...readings, revised] }).observedMode).toBe('no_call')
+      const future = { ...revised, value: 40, received_at: '2026-11-09T00:00:00+08:00' }
+      expect(mode({ readings: [...readings, future] }).observedMode).toBe('normal')
+      expect(future.received_at).toBe('2026-11-09T00:00:00+08:00')
+    }
+  )
+})
