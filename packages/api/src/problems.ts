@@ -3,18 +3,15 @@ import type { Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import type { ZodError } from 'zod'
 
-// TRD "API conventions": RFC 9457 problems. PROBLEM_SLUGS has no slug for a missing credential, an unknown route, a
-// key still being processed, a write the resource's state no longer allows or a server fault, so these are API-local.
-export type HttpSlug = 'unauthenticated' | 'not-found' | 'idempotency-in-progress' | 'conflict' | 'internal-error'
-export type Slug = ProblemSlug | HttpSlug
+// TRD "API conventions": RFC 9457 problems; the slugs live in @skyclause/contracts.
 
-export const problemType = (slug: Slug) => `https://docs.skyclause.m1ku.tech/problems/${slug}`
+export const problemType = (slug: ProblemSlug) => `https://docs.skyclause.m1ku.tech/problems/${slug}`
 
 /** Thrown anywhere in a request to answer with a problem; extension members and headers ride along. */
 export class ApiError extends Error {
   constructor(
     readonly status: number,
-    readonly slug: Slug,
+    readonly slug: ProblemSlug,
     detail: string,
     readonly extra: Record<string, unknown> = {},
     readonly headers: Record<string, string> = {}
