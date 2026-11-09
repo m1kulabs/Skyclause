@@ -358,8 +358,8 @@ export const ProposedBundle = z.object({
 After the model returns, `validate` enforces what the schema can't, and a failure leaves the run "No draft" with the reason (after one repair attempt):
 
 - every fired clause exists in the pinned version, and every cited input exists in the snapshot;
-- every number in a notice appears in the snapshot or the window times (the model never computes);
-- recipients are a subset of that window's candidates; links point only at sources and Skyclause;
+- every number in a notice or a call's reason appears in the snapshot or the window times (the model never computes);
+- recipients are a subset of that window's candidates; links, in a notice or a reason, point only at sources and Skyclause;
 - the not-a-safety-service line, attributions, unsubscribe and, for Hybrid recommended, the teaching-mode line come from templates, not the model ([CAL-15](/docs/PRD.md#calls-and-approvals-cal));
 - drafts and approver edits must pass the English and Malay attendance-excuse deny-lists; a match blocks drafting or approval ([CAL-15](/docs/PRD.md#calls-and-approvals-cal));
 - from P1, a Malay notice needs a Malay-reading approver on the rota, or the call is drafted in English ([LOC-5](/docs/PRD.md#localisation-loc)); P0 notices are English only.
