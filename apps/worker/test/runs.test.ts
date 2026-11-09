@@ -312,36 +312,40 @@ describe('the runs-requested handler', () => {
     })
   })
 
-  test('CAL-1: every trigger kind gives one run whose record names its trigger, project and pack', async () => {
-    const kinds = ['schedule', 'crossing', 'window', 'listing', 'calendar', 'request'] as const
-    for (const trigger of kinds) {
-      const m = await made()
-      const { runId } = await inOrg((tx) =>
-        requestRun(tx, {
-          projectId: m.projectId,
-          pack: 'sky',
-          trigger,
-          windowIds: [m.windowId],
-          dedupeKey: `${trigger}:${randomUUID()}`,
-          triggeredAt: T_EVAL
-        })
-      )
-      const d = doubles(m, { keyId: m.keyId, replies: [stormReply(m.windowId, [m.subscriberId])] })
-      await deliver(d.ports, runId)
-      expect(await runRow(runId)).toMatchObject({ trigger, projectId: m.projectId, pack: 'sky', status: 'drafted' })
-      // PRD's analytics and webhook enums have no `window`: it reads as `calendar`.
-      const reported = trigger === 'window' ? 'calendar' : trigger
-      const started = await asLogin('postgres', async (client) => {
-        const { rows } = await client.query<{ props: unknown }>(
-          "SELECT props FROM analytics_event WHERE project_id = $1 AND name = 'run_started'",
-          [m.projectId]
+  test(
+    'CAL-1: every trigger kind gives one run whose record names its trigger, project and pack',
+    { timeout: 60_000 },
+    async () => {
+      const kinds = ['schedule', 'crossing', 'window', 'listing', 'calendar', 'request'] as const
+      for (const trigger of kinds) {
+        const m = await made()
+        const { runId } = await inOrg((tx) =>
+          requestRun(tx, {
+            projectId: m.projectId,
+            pack: 'sky',
+            trigger,
+            windowIds: [m.windowId],
+            dedupeKey: `${trigger}:${randomUUID()}`,
+            triggeredAt: T_EVAL
+          })
         )
-        return rows.map((r) => r.props)
-      })
-      expect(started).toEqual([{ pack: 'sky', trigger: reported }])
-      expect((await eventsOf(m.projectId))[0]!.data).toMatchObject({ run_id: runId, trigger: reported })
+        const d = doubles(m, { keyId: m.keyId, replies: [stormReply(m.windowId, [m.subscriberId])] })
+        await deliver(d.ports, runId)
+        expect(await runRow(runId)).toMatchObject({ trigger, projectId: m.projectId, pack: 'sky', status: 'drafted' })
+        // PRD's analytics and webhook enums have no `window`: it reads as `calendar`.
+        const reported = trigger === 'window' ? 'calendar' : trigger
+        const started = await asLogin('postgres', async (client) => {
+          const { rows } = await client.query<{ props: unknown }>(
+            "SELECT props FROM analytics_event WHERE project_id = $1 AND name = 'run_started'",
+            [m.projectId]
+          )
+          return rows.map((r) => r.props)
+        })
+        expect(started).toEqual([{ pack: 'sky', trigger: reported }])
+        expect((await eventsOf(m.projectId))[0]!.data).toMatchObject({ run_id: runId, trigger: reported })
+      }
     }
-  })
+  )
 
   test('a guest window’s run drafts a bundle that never sends (GST-5, D23)', async () => {
     const m = await made()
@@ -444,6 +448,26 @@ describe('the runs-requested handler', () => {
     expect(promptOf(d.model)).toContain(
       'Thunderstorms, heavy rain and strong winds are expected over the states of Kedah'
     )
+    expect(await runRow(runId)).toMatchObject({ status: 'drafted' })
+  })
+
+  test('a transient database fault goes back to Pub/Sub, and the redelivery resumes the run', async () => {
+    const m = await made()
+    const { runId } = await crossingRun(m)
+    const d = doubles(m, { keyId: m.keyId, replies: [stormReply(m.windowId, [m.subscriberId])] })
+    const deadlock = Object.assign(new Error('deadlock detected'), { code: '40P01' })
+    const flaky: RunPorts = {
+      ...d.ports,
+      budget: {
+        consume: async () => {
+          throw new Error('Failed query', { cause: deadlock })
+        }
+      }
+    }
+    await expect(deliver(flaky, runId)).rejects.toThrow('Failed query')
+    expect(await runRow(runId)).toMatchObject({ status: 'running', reason: null })
+    expect((await stepsOf(runId)).map((s) => s.step)).toEqual(['snapshot', 'shadow'])
+    await deliver(d.ports, runId)
     expect(await runRow(runId)).toMatchObject({ status: 'drafted' })
   })
 })

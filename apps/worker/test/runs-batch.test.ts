@@ -114,10 +114,27 @@ describe('runs-republish', () => {
     const running = await inOrg((tx) =>
       makeRun(tx, { projectId: p.id, status: 'running', createdAt: new Date(now.getTime() - 600_000) })
     )
+    // Running, with its last step just now.
     await batch('runs-republish', now)
     expect(published).toContain(old.id)
     expect(published).not.toContain(fresh.id)
     expect(published).not.toContain(running.id)
+  })
+
+  test('publishes a running run with no step for 10 minutes, so it resumes; not one whose last step is recent', async () => {
+    const now = new Date()
+    const published: string[] = []
+    setRunPublisher(async ({ run_id }) => void published.push(run_id))
+    const [p1, p2] = [await inOrg((tx) => makeProject(tx)), await inOrg((tx) => makeProject(tx))]
+    const stalled = await inOrg((tx) =>
+      makeRun(tx, { projectId: p1.id, status: 'running', updatedAt: new Date(now.getTime() - 11 * 60_000) })
+    )
+    const walking = await inOrg((tx) =>
+      makeRun(tx, { projectId: p2.id, status: 'running', updatedAt: new Date(now.getTime() - 60_000) })
+    )
+    await batch('runs-republish', now)
+    expect(published).toContain(stalled.id)
+    expect(published).not.toContain(walking.id)
   })
 
   test('fails the batch without a publisher (D9)', async () => {

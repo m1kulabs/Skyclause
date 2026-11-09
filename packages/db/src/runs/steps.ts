@@ -82,6 +82,11 @@ export async function recordStep(
     startedAt,
     finishedAt: sql`now()`
   })
+  // A running run's `updated_at` is its last step, which the batch's republish reads to find a stalled run.
+  await tx
+    .update(run)
+    .set({ updatedAt: sql`now()` })
+    .where(eq(run.id, runId))
 }
 
 export type RunOutcome = { shadowMode: boolean } & (

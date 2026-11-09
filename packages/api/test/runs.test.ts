@@ -143,6 +143,33 @@ describe('POST /v1/projects/{id}/runs', () => {
   })
 })
 
+describe('POST /v1/projects/{id}/runs: keys', () => {
+  test('a key reused for another project of the organisation answers 422 idempotency-mismatch', async () => {
+    const other = await skyProject(A)
+    const key = randomUUID()
+    expect((await send(editor(), other.projectId, { pack: 'sky' }, key)).status).toBe(202)
+    const reused = await send(editor(), a.projectId, { pack: 'sky' }, key)
+    expect(reused.status).toBe(422)
+    expect(await reused.json()).toMatchObject({
+      type: 'https://docs.skyclause.m1ku.tech/problems/idempotency-mismatch'
+    })
+  })
+
+  test('a guest’s key that already has a run spends no budget', async () => {
+    const key = randomUUID()
+    const first = await json<Run>(
+      send(asSession({ org: A, role: 'viewer', guest: true }), a.projectId, { pack: 'sky' }, key)
+    )
+    // Another guest credential sends the same key past the idempotency store, whose records are per credential.
+    const again = await json<Run>(
+      send(asSession({ org: A, role: 'viewer', guest: true }), a.projectId, { pack: 'sky' }, key)
+    )
+    expect(again.id).toBe(first.id)
+    expect(consume).toHaveBeenCalledTimes(1)
+    await inOrg(A, (tx) => tx.update(run).set({ status: 'drafted' }).where(eq(run.id, first.id)))
+  })
+})
+
 describe('GET /v1/projects/{id}/runs and /v1/runs/{id}', () => {
   let normal: { runId: string; bundleId: string }
   let budget: string

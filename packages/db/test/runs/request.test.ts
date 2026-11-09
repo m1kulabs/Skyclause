@@ -150,4 +150,13 @@ describe('requestRun', () => {
     )
     expect(await inOrg((tx) => tx.select().from(run).where(eq(run.projectId, project.id)), suspendedOrg)).toEqual([])
   })
+
+  test('a key reused for another project never names that project’s run', async () => {
+    const [mine, theirs] = [await inOrg((tx) => makeProject(tx)), await inOrg((tx) => makeProject(tx))]
+    const r = crossing(theirs.id)
+    await inOrg((tx) => requestRun(tx, r))
+    // Dedupe keys are unique across projects, so the reuse is refused rather than answered with another project's run.
+    await expect(inOrg((tx) => requestRun(tx, { ...r, projectId: mine.id }))).rejects.toThrow()
+    expect(await runsOf(mine.id)).toEqual([])
+  })
 })

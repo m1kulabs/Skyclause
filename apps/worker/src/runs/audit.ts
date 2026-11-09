@@ -29,7 +29,7 @@ export const crossingWithoutBundle: Parameters<RegisterAuditCheck>[0] = {
     for (const c of crossings) {
       if ((await projectGate(tx, c.projectId)) !== 'open') continue
       const key = `crossing:${c.id}`
-      const serving = await runsServing(tx, key)
+      const serving = await runsServing(tx, key, { projectId: c.projectId, pack: c.pack })
       const met =
         serving.length > 0 ||
         (await startsRun(tx, {

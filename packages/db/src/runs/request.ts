@@ -84,7 +84,7 @@ export function runsServing(tx: Tx, key: string, scope?: { projectId: string; pa
 
 /**
  * #79 §1, in the caller's `withTenant` transaction. Unless `projectGate` is `open` it throws `RunRefused`. A dedupe key
- * seen before, as a run's own or coalesced into it, returns that run. Otherwise the project and pack's one queued run
+ * seen before for the project and pack, as a run's own or coalesced into it, returns that run. Otherwise the project and pack's one queued run
  * takes the trigger (its windows and nights unioned in, `coalescedInto` set), or a new queued run is written and
  * published after commit.
  */
@@ -96,7 +96,7 @@ export const requestRun: RequestRun = async (handle, r) => {
   await lockRuns(tx, r.projectId, r.pack)
   const add = { windowIds: r.windowIds ?? [], nightIds: r.nightIds ?? [] }
 
-  const [seen] = await runsServing(tx, r.dedupeKey)
+  const [seen] = await runsServing(tx, r.dedupeKey, r)
   if (seen) {
     if (seen.status === 'queued') await merge(tx, seen, add)
     return seen.dedupeKey === r.dedupeKey ? { runId: seen.id } : { runId: seen.id, coalescedInto: seen.id }

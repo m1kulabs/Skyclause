@@ -282,12 +282,26 @@ const STEPS: { [K in RunStepName]: Step<K> } = {
 const outputsOf = (recorded: Awaited<ReturnType<typeof runSteps>>) =>
   Object.fromEntries([...recorded].map(([name, row]) => [name, row.output])) as Done
 
+/**
+ * A database fault that a later delivery can outlast: a lost or refused connection (SQLSTATE classes 08, 53 and 57,
+ * or a socket error) or a rolled-back transaction (class 40, such as a deadlock), under Drizzle's wrapper.
+ */
+export function transient(error: unknown): boolean {
+  for (let e = error as { code?: unknown; cause?: unknown } | undefined; e; e = e.cause as typeof e) {
+    if (typeof e.code !== 'string') continue
+    if (/^(08|40|53|57)[0-9A-Z]{3}$/.test(e.code)) return true
+    if (['ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'EPIPE'].includes(e.code)) return true
+  }
+  return false
+}
+
 const errorText = (error: unknown) => (error instanceof Error ? `${error.name}: ${error.message}` : String(error))
 
 /**
  * The `runs-requested` handler's work for one message: claim the run (a second run of the project and pack stays
  * queued), then walk its unfinished steps. A step that throws fails the run (`{step}_failed`, the error in its
- * `run_step` row) and publishes the next; only a failure to record that reaches Pub/Sub, which redelivers.
+ * `run_step` row) and publishes the next, unless the fault is a transient database one, which goes back to Pub/Sub to
+ * redeliver, as does a failure to record the failed run.
  */
 export async function executeRun(
   ports: RunPorts,
@@ -321,6 +335,8 @@ export async function executeRun(
       }))
     } catch (error) {
       log('ERROR', 'run step failed', { run_id: message.runId, step, error: errorText(error) })
+      // Pub/Sub redelivers, and the run resumes at this step.
+      if (transient(error)) throw error
       await inOrg(async (tx) => {
         const r = await lockRun(tx, message.runId)
         if (r.status !== 'running') return

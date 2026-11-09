@@ -9,6 +9,7 @@ import {
   run,
   runStep,
   RunRefused,
+  runsServing,
   window,
   type Tx
 } from '@skyclause/db'
@@ -93,7 +94,10 @@ export async function createRun(
     if (missing >= 0) throw invalid(`/window_ids/${missing}`, 'Not an open window of this project')
   }
 
-  if (isGuest(ctx.principal)) {
+  // A key that already has a run in this project and pack spends nothing: requestRun returns that run.
+  const dedupeKey = `request:${input.idempotencyKey}`
+  const served = await runsServing(tx(ctx), dedupeKey, { projectId: input.projectId, pack: input.pack })
+  if (isGuest(ctx.principal) && !served.length) {
     const budget = await budgetGate.consume(ctx.tx, ctx.principal, 'run')
     if (!budget.ok) {
       const seconds = Math.max(1, Math.ceil((Date.parse(budget.resetsAt) - input.now.getTime()) / 1000))
@@ -115,12 +119,12 @@ export async function createRun(
       trigger: 'request',
       windowIds,
       requestedBy: ctx.principal,
-      dedupeKey: `request:${input.idempotencyKey}`,
+      dedupeKey,
       triggeredAt: instant(input.now)
     }))
   } catch (error) {
     if (error instanceof RunRefused) throw new ApiError(422, 'validation-failed', error.message)
-    // Another organisation's run already holds this key (dedupe keys are unique across organisations).
+    // Another project's or organisation's run holds this key (dedupe keys are unique across organisations).
     if (violates(error, 'run_dedupe_key_key')) {
       throw new ApiError(422, 'idempotency-mismatch', 'This Idempotency-Key is already in use; send a new one.')
     }

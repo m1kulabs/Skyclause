@@ -8,14 +8,14 @@ import {
   withSystem,
   withTenant
 } from '@skyclause/db'
-import { and, asc, eq, lt } from 'drizzle-orm'
+import { and, asc, eq, lt, or } from 'drizzle-orm'
 import { z } from 'zod'
 import { log } from '../server'
 import { requestUnlessRefused } from './consumers'
 import { minutesOf } from './inputs'
 
 // #151, D45: the run orchestrator's work in the 15-minute batch: the Sky schedule (CAL-1) and the republish of runs
-// still queued. Each lists its targets under `withSystem`, then works per organisation in `withTenant` as `system`, one
+// still queued or stalled. Each lists its targets under `withSystem`, then works per organisation in `withTenant` as `system`, one
 // call after another, as `shareSystemConnection` needs.
 
 /** PRD CAL-1: 06:45 Monday to Friday in the project's zone, when `project_pack.schedule` is unset. */
@@ -83,9 +83,14 @@ export async function requestScheduledRuns(now: Date) {
   }
 }
 
+/** A running run whose last step is this old has lost its message (Pub/Sub retries for 7 days, then drops it). */
+export const STALLED_AFTER_MS = 10 * 60_000
+
 /**
  * Runs `queued` for over 60 s, published again: their message was lost, or their project and pack's running run
- * finished without publishing them. Throws without a publisher, so a missing one fails the batch (D9).
+ * finished without publishing them. A `running` run with no step for 10 minutes is published too, and resumes at its
+ * first unfinished step (a live handler still holds the run's lock, so nothing runs twice). Throws without a
+ * publisher, so a missing one fails the batch (D9).
  */
 export async function republishQueuedRuns(now: Date) {
   const publish = runPublisher()
@@ -94,14 +99,19 @@ export async function republishQueuedRuns(now: Date) {
   const orgs = await withSystem(job, (tx) => tx.selectDistinct({ orgId: project.orgId }).from(project))
   let published = 0
   for (const { orgId } of orgs) {
-    const queued = await withTenant({ orgId, principal: systemPrincipal(job) }, (tx) =>
+    const due = await withTenant({ orgId, principal: systemPrincipal(job) }, (tx) =>
       tx
         .select({ id: run.id })
         .from(run)
-        .where(and(eq(run.status, 'queued'), lt(run.createdAt, new Date(now.getTime() - 60_000))))
+        .where(
+          or(
+            and(eq(run.status, 'queued'), lt(run.createdAt, new Date(now.getTime() - 60_000))),
+            and(eq(run.status, 'running'), lt(run.updatedAt, new Date(now.getTime() - STALLED_AFTER_MS)))
+          )
+        )
         .orderBy(asc(run.createdAt))
     )
-    for (const { id } of queued) {
+    for (const { id } of due) {
       await publish({ run_id: id, org_id: orgId })
       published++
     }
