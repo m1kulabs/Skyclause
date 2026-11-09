@@ -36,7 +36,8 @@ test('lists each documented audit action once', () => {
     'bundle.approve_denied',
     'source.probation_passed',
     'evidence_reply.approved',
-    'evidence_request.dropped'
+    'evidence_request.dropped',
+    'review_item.explained'
   ])
   expect(new Set(AUDIT_ACTIONS).size).toBe(AUDIT_ACTIONS.length)
 })
