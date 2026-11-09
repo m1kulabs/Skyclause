@@ -1,0 +1,28 @@
+{
+  "email": {
+    "subject": "Bukti untuk {project}: {from} hingga {to}",
+    "intro": "Pek bukti untuk {project}, {from} hingga {to}, daripada rekod tersimpan Skyclause. Seorang Pelulus telah meluluskan balasan ini.",
+    "times": "Diterima {received}. Didrafkan {drafted}. Diluluskan {approved}. Dibalas {replied}.",
+    "hash": "Cincangan pek (SHA-256): {hash}",
+    "readings": "Bacaan ({count})",
+    "reading": "{time} · stesen {station} · {metric} {value} · bacaan {id}",
+    "no_readings": "Tiada bacaan tersimpan bagi tempoh ini.",
+    "omitted": "Turut disimpan bagi tempoh ini, tidak disenaraikan di sini ({count}): {ids}",
+    "warnings": "Amaran yang berkuat kuasa ({count})",
+    "warning": "Sah {from} hingga {to} · bacaan {id}",
+    "warning_english": "Teks Inggeris MET: {text}",
+    "no_warnings": "Tiada rekod amaran bagi tempoh ini.",
+    "calls": "Panggilan ({count})",
+    "call": "Panggilan {id} · {mode} · {state}",
+    "no_mode": "tiada panggilan",
+    "approvals": "Kelulusan ({count})",
+    "approval": "{time} · panggilan {call} · kelulusan {id}",
+    "grades": "Gred ({count})",
+    "grade": "Panggilan {call} · {outcome} · gred {id}",
+    "ledger": "Entri lejar ({count})",
+    "ledger_entry": "No. {seq} · {kind} · cincangan {hash}",
+    "frames": "Bingkai kamera ({count})",
+    "frame": "{time} · bacaan {id}",
+    "no_value": "tiada nilai"
+  }
+}
