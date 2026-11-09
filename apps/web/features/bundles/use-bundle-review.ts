@@ -14,7 +14,7 @@ import {
   type RunDetail,
   type StripDetail
 } from './operations'
-import { canReviewCall, decisionsFor, teachingLineMissing, type Decisions } from './model'
+import { approves, canReviewCall, decisionsFor, teachingLineMissing, type Decisions } from './model'
 import { t } from './i18n'
 
 export interface ReviewData {
@@ -76,7 +76,7 @@ export function useBundleReview(bundleId: string, org: string) {
           do {
             const page = await apiFetch('listMyMemberships', { query: { cursor }, signal })
             const membership = page.data.find((item) => item.org_slug === org)
-            if (membership) return ['approver', 'admin', 'owner'].includes(membership.role)
+            if (membership) return approves(membership.role)
             cursor = page.next_cursor ?? undefined
             if (cursor && seen.has(cursor)) throw new Error('Repeated membership cursor')
             if (cursor) seen.add(cursor)
