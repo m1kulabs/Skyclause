@@ -368,7 +368,9 @@ describe('worker 15-minute batch connection', () => {
         'partition-maintenance',
         'runs-sky-schedule',
         'runs-republish',
-        'notice-sweep'
+        'notice-sweep',
+        'shift-reminder-plan',
+        'approver-alert-resend'
       ])
       expect((await post(app, '/ticks/batch', { bearer: await token() })).status).toBe(204)
       expect(published).toEqual([id])

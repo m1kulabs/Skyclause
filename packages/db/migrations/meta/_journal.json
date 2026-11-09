@@ -127,6 +127,13 @@
       "when": 1794235382175,
       "tag": "0017_c-sender-email-lookup",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1794237268579,
+      "tag": "0018_c-approver-alerts-keys",
+      "breakpoints": true
     }
   ]
 }
