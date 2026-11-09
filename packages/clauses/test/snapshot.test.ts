@@ -103,12 +103,30 @@ describe('deriveInputState and snapshotAt', () => {
       httpStatus: 500
     })
 
+    // The cutoff test needs an explicitly measured complete dry leading grid.
+    for (let ms = Date.parse('2026-11-02T06:05:00Z'); ms < Date.parse('2026-11-02T07:00:00Z'); ms += 300000) {
+      const ts = new Date(ms).toISOString().replace('.000Z', 'Z')
+      h.readings.push({
+        id: `dry-${ms}`,
+        sourceId: '0232901RF',
+        metric: 'rain_5m_mm',
+        observedAt: ts,
+        receivedAt: ts,
+        value: 0,
+        valueText: null,
+        valueJson: null,
+        itemKey: ts,
+        revision: 1
+      })
+    }
     const tEval = '2026-11-02T07:05:00Z'
     expect(deriveInputState(h, '0232901RF', tEval)).toBe('fresh')
 
     const snap = snapshotAt(h, TEST_REGISTRY, 'proj-1', 'sky', tEval)
     expect(snap.site['site.rain_60m_mm']?.value).toBe(5.0)
-    expect(snap.site['site.rain_60m_mm']?.readingIds).toEqual(['r-on-time'])
+    expect(snap.site['site.rain_60m_mm']?.readingIds).toHaveLength(12)
+    expect(snap.site['site.rain_60m_mm']?.readingIds).toContain('r-on-time')
+    expect(snap.site['site.rain_60m_mm']?.readingIds).not.toContain('r-late-arrival')
     expect(snap.site['site.rain_60m_mm']?.ageS).toBe(300)
   })
 

@@ -7,6 +7,7 @@ import { canonicalVectors } from './canonical-vectors'
 import { sha256Vectors } from './sha256-vectors'
 import { TEST_REGISTRY } from './test-helpers'
 import { nestedMacroVectors } from './nested-macro-vectors'
+import { runFinalReviewCases } from './final-review-cases'
 
 function equal(actual: unknown, expected: unknown, name: string): void {
   if (actual !== expected) throw new Error(`${name}: expected ${expected}, got ${actual}`)
@@ -23,6 +24,7 @@ function rejects(value: unknown, name: string): void {
 }
 
 export function runHashAssertions(): {
+  finalReviewCases: number
   nestedMacros: number
   canonical: number
   sha256: number
@@ -295,6 +297,26 @@ export function runHashAssertions(): {
     ]
   }
 
+  // Separately labelled synthetic cross-source integration: every five-minute
+  // gauge measurement is supplied explicitly, with 19mm/20mm bursts at the named slots.
+  history.readings = history.readings.filter((reading) => reading.sourceId !== 'jps-75')
+  for (let ms = Date.parse('2026-11-02T03:05:00Z'); ms <= Date.parse('2026-11-02T07:10:00Z'); ms += 300000) {
+    const observedAt = new Date(ms).toISOString().replace('.000Z', 'Z')
+    const value = observedAt === '2026-11-02T06:45:00Z' ? 19 : observedAt === '2026-11-02T07:00:00Z' ? 20 : 0
+    history.readings.push({
+      id: `jps-${ms}`,
+      sourceId: 'jps-75',
+      metric: 'rain_5m_mm',
+      observedAt,
+      receivedAt: new Date(ms + 240000).toISOString().replace('.000Z', 'Z'),
+      value,
+      valueText: null,
+      valueJson: null,
+      itemKey: observedAt,
+      revision: 1
+    })
+  }
+
   equal(deriveInputState(history, 'jps-75', tEval), 'fresh', 'deriveInputState jps-75 fresh')
 
   const snap = snapshotAt(history, TEST_REGISTRY, 'apu-bukit-jalil', 'sky', tEval)
@@ -353,6 +375,7 @@ export function runHashAssertions(): {
   equal(sheetDiff.length, 0, 'identical sheet diff is empty')
 
   return {
+    finalReviewCases: runFinalReviewCases(),
     nestedMacros: nestedMacroVectors.length,
     canonical: canonicalVectors.length + 4,
     sha256: sha256Vectors.length,

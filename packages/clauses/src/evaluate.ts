@@ -1,7 +1,8 @@
 import { canonicalHash } from './canonical-hash'
 import { evalCelCondition, indicatorValToCel, toCelDuration, toCelTimestamp } from './cel'
 import { formatInstant, resolveWindowSpan } from './span'
-import { toLocalMinutes, toMytDateString } from './snapshot'
+import { localCalendarAt } from './local-calendar'
+import { rainPeriod } from './rain'
 import type { WarningObservation } from './snapshot'
 import type {
   BlockedInput,
@@ -45,10 +46,6 @@ function modeRank(mode: SkyMode | CrowdMode | undefined | null): number {
   if (mode in SKY_MODE_RANK) return SKY_MODE_RANK[mode as SkyMode]
   if (mode in CROWD_MODE_RANK) return CROWD_MODE_RANK[mode as CrowdMode]
   return 0
-}
-
-function roundMetric(value: number): number {
-  return Math.round(value * 1_000_000) / 1_000_000
 }
 
 const KNOWN_INDICATOR_UNITS: Readonly<Record<string, string>> = {
@@ -164,7 +161,7 @@ function computeWindowRainIndicator(
       name: indName,
       value: null,
       unit: 'mm',
-      state,
+      state: state === 'fresh' ? 'stale' : state,
       since,
       ageS: null,
       sourceIds,
@@ -177,7 +174,7 @@ function computeWindowRainIndicator(
     .map(([iso, val, id]) => ({
       iso,
       ms: Date.parse(iso),
-      val,
+      value: val,
       id
     }))
     .filter((s) => Number.isFinite(s.ms) && s.ms <= tEvalMs)
@@ -213,16 +210,13 @@ function computeWindowRainIndicator(
   let sawNullSample = false
 
   for (const tMs of sortedCandidates) {
-    const startExclusive = tMs - durationMs
-    const contributing = parsedSamples.filter((s) => s.ms > startExclusive && s.ms <= tMs)
-    if (contributing.length === 0) continue
-
-    if (contributing.some((s) => s.val === null || typeof s.val !== 'number' || !Number.isFinite(s.val))) {
+    const period = rainPeriod(parsedSamples, tMs, durationMs)
+    if (!period || period.total === null) {
       sawNullSample = true
       break
     }
-
-    const total = roundMetric(contributing.reduce((acc, s) => acc + (s.val as number), 0))
+    const contributing = period.samples
+    const total = period.total
     const latestContributing = contributing[contributing.length - 1]!
     if (bestTotal === null || total > bestTotal) {
       bestTotal = total
@@ -432,8 +426,8 @@ function buildWindowIntrinsicValues(
   const endMs = Date.parse(window.endsAt)
   const startIso = formatInstant(startMs)
   const endIso = formatInstant(endMs)
-  const startLocalMin = toLocalMinutes(startMs, window.tz)
-  const endLocalMin = toLocalMinutes(endMs, window.tz)
+  const startLocalMin = localCalendarAt(startMs, window.tz).minutes
+  const endLocalMin = localCalendarAt(endMs, window.tz).minutes
   const durationSec = Math.max(0, Math.floor((endMs - startMs) / 1_000))
 
   const baseIv = (name: string, value: IndicatorValue['value'], unit = ''): IndicatorValue => ({
@@ -481,19 +475,15 @@ function setNestedBinding(
   fullName: string,
   celVal: unknown
 ) {
-  if (celVal === undefined || celVal === null) return
   const parts = fullName.split('.')
-  if (parts[0] === 'site') {
-    if (parts.length === 2) {
-      root.site[parts[1]!] = celVal
-    } else if (parts.length === 3 && parts[1] === 'night') {
-      const nightObj = (root.site.night as Record<string, unknown> | undefined) ?? {}
-      nightObj[parts[2]!] = celVal
-      root.site.night = nightObj
-    }
-  } else if (parts[0] === 'w' && parts.length === 2) {
-    root.w[parts[1]!] = celVal
+  let namespace = parts[0] === 'site' ? root.site : root.w
+  for (const part of parts.slice(1, -1)) {
+    const child = (namespace[part] as Record<string, unknown> | undefined) ?? {}
+    namespace[part] = child
+    namespace = child
   }
+  // Keep parents for has(), but leave absent/unusable optional leaves absent.
+  if (celVal !== undefined && celVal !== null) namespace[parts.at(-1)!] = celVal
 }
 
 function evaluateClauseInScope(
@@ -670,6 +660,7 @@ function evaluateClauseInScope(
 
   for (const optName of clause.optional ?? []) {
     const resolved = resolveIndicatorValue(optName)
+    setNestedBinding(bindings, optName, undefined)
     if (resolved.status.state === 'fresh' && resolved.celVal !== undefined) {
       inputs.push(resolved.iv)
       setNestedBinding(bindings, optName, resolved.celVal)
@@ -869,8 +860,8 @@ export const evaluate: Evaluate = (
   const windowApplicableClauses = enabledClauses.filter((c) => c.scope === 'window' || c.scope === 'site')
   const windowVerdicts: Verdict[] = []
   for (const win of windows) {
-    const winDate = toMytDateString(Date.parse(win.startsAt))
-    const matchingNight = snapshot.nights.find((n) => n.date === winDate) ?? snapshot.nights[0]
+    const winDate = localCalendarAt(Date.parse(win.startsAt), win.tz).date
+    const matchingNight = snapshot.nights.find((n) => n.date === winDate)
     const evals = windowApplicableClauses.map((clause) => ({
       clause,
       evaluation: evaluateClauseInScope(

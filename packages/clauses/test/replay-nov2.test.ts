@@ -16,6 +16,12 @@ const captureBytes = readFileSync(`${import.meta.dirname}/fixtures/rainfall-grap
 const capture = JSON.parse(captureBytes.toString('utf8')) as JpsCapture
 
 const skyDefault = JSON.parse(readFileSync(`${import.meta.dirname}/../defaults/sky.json`, 'utf8')) as SheetInput
+const rainOnlySheet: SheetInput = {
+  ...skyDefault,
+  clauses: skyDefault.clauses.filter((clause) =>
+    ['storm_confirmed', 'flash_flood_risk', 'silent_input'].includes(clause.key)
+  )
+}
 
 function mytToUtc(mytTimestamp: string): string {
   const iso = new Date(`${mytTimestamp}+08:00`).toISOString()
@@ -43,82 +49,6 @@ function buildNov2History(): ReadingHistory {
       }
     })
 
-  // Fresh APIMS and MET sources so only rainfall drives the window transition
-  const extraReadings: ReadingHistory['readings'] = [
-    {
-      id: 'CA16W:api:2026-10-30T22:00:00Z',
-      sourceId: 'CA16W',
-      metric: 'api',
-      observedAt: '2026-10-30T22:00:00Z',
-      receivedAt: '2026-10-30T22:05:00Z',
-      value: 55,
-      valueText: null,
-      valueJson: null,
-      itemKey: '2026-10-30T22:00:00Z',
-      revision: 1
-    },
-    {
-      id: 'CA16W:api:2026-10-31T22:00:00Z',
-      sourceId: 'CA16W',
-      metric: 'api',
-      observedAt: '2026-10-31T22:00:00Z',
-      receivedAt: '2026-10-31T22:05:00Z',
-      value: 58,
-      valueText: null,
-      valueJson: null,
-      itemKey: '2026-10-31T22:00:00Z',
-      revision: 1
-    },
-    {
-      id: 'CA16W:api:2026-11-01T22:00:00Z',
-      sourceId: 'CA16W',
-      metric: 'api',
-      observedAt: '2026-11-01T22:00:00Z',
-      receivedAt: '2026-11-01T22:05:00Z',
-      value: 60,
-      valueText: null,
-      valueJson: null,
-      itemKey: '2026-11-01T22:00:00Z',
-      revision: 1
-    },
-    {
-      id: 'CA16W:api:2026-11-02T06:00:00Z',
-      sourceId: 'CA16W',
-      metric: 'api',
-      observedAt: '2026-11-02T06:00:00Z',
-      receivedAt: '2026-11-02T06:00:00Z',
-      value: 61,
-      valueText: null,
-      valueJson: null,
-      itemKey: '2026-11-02T06:00:00Z',
-      revision: 1
-    },
-    {
-      id: 'CA16W:api:2026-11-02T07:00:00Z',
-      sourceId: 'CA16W',
-      metric: 'api',
-      observedAt: '2026-11-02T07:00:00Z',
-      receivedAt: '2026-11-02T07:00:00Z',
-      value: 62,
-      valueText: null,
-      valueJson: null,
-      itemKey: '2026-11-02T07:00:00Z',
-      revision: 1
-    },
-    {
-      id: 'CA16W:api:2026-11-02T08:00:00Z',
-      sourceId: 'CA16W',
-      metric: 'api',
-      observedAt: '2026-11-02T08:00:00Z',
-      receivedAt: '2026-11-02T08:00:00Z',
-      value: 61,
-      valueText: null,
-      valueJson: null,
-      itemKey: '2026-11-02T08:00:00Z',
-      revision: 1
-    }
-  ]
-
   return {
     sources: [
       {
@@ -129,33 +59,10 @@ function buildNov2History(): ReadingHistory {
         freshness: 'observed',
         probation: false,
         meta: {}
-      },
-      {
-        id: 'CA16W',
-        kind: 'apims',
-        cadenceS: 3600,
-        staleAfterS: 7200,
-        freshness: 'observed',
-        probation: false,
-        meta: {}
-      },
-      {
-        id: 'met-warn',
-        kind: 'met_warning',
-        cadenceS: 600,
-        staleAfterS: 1200,
-        freshness: 'polled',
-        probation: false,
-        meta: {}
       }
     ],
-    polls: [
-      { id: 'mw-p1', sourceId: 'met-warn', startedAt: '2026-11-02T07:00:00Z', outcome: 'ok', httpStatus: 200 },
-      { id: 'mw-p2', sourceId: 'met-warn', startedAt: '2026-11-02T07:10:00Z', outcome: 'ok', httpStatus: 200 },
-      { id: 'mw-p3', sourceId: 'met-warn', startedAt: '2026-11-02T08:00:00Z', outcome: 'ok', httpStatus: 200 },
-      { id: 'mw-p4', sourceId: 'met-warn', startedAt: '2026-11-02T08:30:00Z', outcome: 'ok', httpStatus: 200 }
-    ],
-    readings: [...readings, ...extraReadings]
+    polls: [],
+    readings
   }
 }
 
@@ -174,6 +81,16 @@ describe('2 November 2026 stored JPS rainfall replay (SIG-6, CLS-4)', () => {
     kind: 'commute_wave',
     tz: 'Asia/Kuala_Lumpur'
   }
+
+  test('ticket replay binds only the captured gauge and the three rainfall clauses', () => {
+    expect(buildNov2History().sources.map((source) => source.kind)).toEqual(['jps_rain'])
+    expect(buildNov2History().readings.every((reading) => reading.sourceId === '0232901RF')).toBe(true)
+    expect(rainOnlySheet.clauses.map((clause) => clause.key)).toEqual([
+      'storm_confirmed',
+      'flash_flood_risk',
+      'silent_input'
+    ])
+  })
 
   test('verifies capture provenance, byte-for-byte SHA-256, and totals: trailing sum over (14:00, 16:00] is 63.0 mm and first 60-min total >= 31 mm is 39.0 at 15:00', () => {
     expect(captureBytes.byteLength).toBe(127043)
@@ -205,7 +122,7 @@ describe('2 November 2026 stored JPS rainfall replay (SIG-6, CLS-4)', () => {
   })
 
   test('evaluates 15:04 MYT (Normal, 29.5 mm), 15:05 MYT (Commute disruption, 39.0 mm, 15:45 not_open), 15:15 MYT, and 16:05 MYT (59.5 mm at 15:35)', () => {
-    const checked = check(skyDefault, TEST_REGISTRY).sheet!
+    const checked = check(rainOnlySheet, TEST_REGISTRY).sheet!
     const history = buildNov2History()
 
     // 1. At 15:04 MYT (07:04:00Z): 15:00 reading (received at 15:05) is not yet received; latest is 14:55 (29.5 mm)

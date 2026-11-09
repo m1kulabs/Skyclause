@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
 import { check, diff, evaluate, explain, snapshotAt } from '../src'
 import type { IndicatorSnapshot, NightInput, ReadingHistory, SheetInput, Window } from '../src/types'
-import { TEST_REGISTRY } from './test-helpers'
+import { TEST_REGISTRY, completeRainSeries } from './test-helpers'
 
 const readDefault = (pack: 'sky' | 'crowd'): SheetInput =>
   JSON.parse(readFileSync(`${import.meta.dirname}/../defaults/${pack}.json`, 'utf8')) as SheetInput
@@ -87,8 +87,8 @@ function makeSkySnapshot(overrides: Partial<IndicatorSnapshot> = {}): IndicatorS
       }
     },
     series: {
-      'w.rain_max_60m_mm': [['2026-11-02T07:00:00Z', 39.0, 'r-rain']],
-      'w.rain_max_4h_mm': [['2026-11-02T07:00:00Z', 39.0, 'r-rain']],
+      'w.rain_max_60m_mm': completeRainSeries(obs, 39.0, 60),
+      'w.rain_max_4h_mm': completeRainSeries(obs, 39.0, 240),
       'w.met_warning_in_force': []
     },
     nights: [],

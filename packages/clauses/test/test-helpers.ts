@@ -149,3 +149,13 @@ export const TEST_REGISTRY: IndicatorRegistry = [
     sourceKind: 'golive'
   }
 ]
+
+// Complete simulated measurement grid: a dry period followed by one measured burst.
+// This declares test history; it never fills gaps in source/runtime data.
+export function completeRainSeries(end: string, total: number, minutes: number): Array<[string, number, string]> {
+  const endMs = Date.parse(end)
+  return Array.from({ length: minutes / 5 }, (_, index) => {
+    const ms = endMs - (minutes - 5 - index * 5) * 60_000
+    return [new Date(ms).toISOString().replace('.000Z', 'Z'), ms === endMs ? total : 0, `rain-${ms}`]
+  })
+}

@@ -5,7 +5,7 @@ import fc from 'fast-check'
 import { describe, expect, test } from 'vitest'
 import { check, evaluate, explain, snapshotAt } from '../src'
 import type { IndicatorSnapshot, InputState, ReadingHistory, SheetInput, SkyMode, Window } from '../src/types'
-import { TEST_REGISTRY } from './test-helpers'
+import { TEST_REGISTRY, completeRainSeries } from './test-helpers'
 
 const skySheet = JSON.parse(readFileSync(`${import.meta.dirname}/../defaults/sky.json`, 'utf8')) as SheetInput
 
@@ -103,8 +103,8 @@ function buildSnapshotFromValues(params: {
       }
     },
     series: {
-      'w.rain_max_60m_mm': rainState === 'fresh' ? [[obs, params.rain60m, 'r-rain-60']] : [],
-      'w.rain_max_4h_mm': rainState === 'fresh' ? [[obs, params.rain4h, 'r-rain-4h']] : [],
+      'w.rain_max_60m_mm': rainState === 'fresh' ? completeRainSeries(obs, params.rain60m, 60) : [],
+      'w.rain_max_4h_mm': rainState === 'fresh' ? completeRainSeries(obs, params.rain4h, 240) : [],
       'w.met_warning_in_force':
         warnState === 'fresh' && params.metWarn
           ? [['2026-11-02T06:00:00Z', Date.parse('2026-11-02T09:00:00Z'), 'mw-1']]

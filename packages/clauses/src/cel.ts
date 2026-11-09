@@ -140,7 +140,7 @@ function dottedSpan(source: string, rootOffset: number, fullName: string): { off
   const slice = source.slice(rootOffset)
   const match = /^[a-zA-Z_]\w*(?:\s*\.\s*[a-zA-Z_]\w*)*/.exec(slice)
   if (match && match[0].replace(/\s+/g, '').startsWith(fullName)) {
-    return { offset: rootOffset, length: fullName.length }
+    return { offset: rootOffset, length: match[0].length }
   }
   const idx = source.indexOf(fullName, Math.max(0, rootOffset - 4))
   if (idx >= 0) {
@@ -693,7 +693,11 @@ export function checkCelCondition(
           }
           const argType = inferExprType(args[0]!, localVars, allowHeterogeneousEq)
           if (argType === 'error') return 'error'
-          if (!isNumeric(argType) && argType !== 'string' && argType !== 'timestamp' && argType !== 'duration') {
+          if (
+            !isNumeric(argType) &&
+            argType !== 'string' &&
+            !(fn === 'int' && (argType === 'timestamp' || argType === 'duration'))
+          ) {
             const argOffset = posOf(args[0]!.id, sourceInfo)
             issues.push({
               clauseKey,

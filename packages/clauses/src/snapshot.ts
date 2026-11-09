@@ -1,5 +1,6 @@
 import { canonicalHash } from './canonical-hash'
 import { formatInstant } from './span'
+import { rainPeriod } from './rain'
 import type {
   DeriveInputState,
   IndicatorDefinition,
@@ -17,6 +18,10 @@ import type {
 
 const MYT_OFFSET_MS = 8 * 3_600_000
 const MINUTE_MS = 60_000
+
+function compareIds(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0
+}
 
 export interface NormalizedReading {
   id: string
@@ -50,10 +55,6 @@ export interface NormalizedPoll {
   httpStatus: number | null
 }
 
-function roundMetric(value: number): number {
-  return Math.round(value * 1_000_000) / 1_000_000
-}
-
 function parseClockMinutes(clock: string): number | null {
   const m = /^(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(clock.trim())
   if (!m) return null
@@ -63,7 +64,7 @@ function parseClockMinutes(clock: string): number | null {
   return hh * 60 + mm
 }
 
-export function toLocalMinutes(epochMs: number, _tz = 'Asia/Kuala_Lumpur'): number {
+export function toLocalMinutes(epochMs: number): number {
   const shifted = new Date(epochMs + MYT_OFFSET_MS)
   return shifted.getUTCHours() * 60 + shifted.getUTCMinutes()
 }
@@ -115,9 +116,9 @@ export function dedupeReadingsAt(h: ReadingHistory, tEvalMs: number): Normalized
 
   return Array.from(byKey.values()).sort((a, b) => {
     if (a.observedMs !== b.observedMs) return a.observedMs - b.observedMs
-    if (a.sourceId !== b.sourceId) return a.sourceId.localeCompare(b.sourceId)
-    if (a.metric !== b.metric) return a.metric.localeCompare(b.metric)
-    return a.id.localeCompare(b.id)
+    if (a.sourceId !== b.sourceId) return compareIds(a.sourceId, b.sourceId)
+    if (a.metric !== b.metric) return compareIds(a.metric, b.metric)
+    return compareIds(a.id, b.id)
   })
 }
 
@@ -137,7 +138,7 @@ export function filterPollsAt(h: ReadingHistory, tEvalMs: number): NormalizedPol
   }
   return out.sort((a, b) => {
     if (a.startedMs !== b.startedMs) return a.startedMs - b.startedMs
-    return a.id.localeCompare(b.id)
+    return compareIds(a.id, b.id)
   })
 }
 
@@ -458,17 +459,20 @@ function isKlMetWarningReading(r: NormalizedReading): {
   const textBm = typeof json.text_bm === 'string' ? json.text_bm : ''
   const combined = `${titleEn} ${titleBm} ${textEn} ${textBm}`.toLowerCase()
 
-  const validFromRaw =
-    typeof json.valid_from === 'string'
-      ? json.valid_from
-      : typeof json.valid_from_utc === 'string'
-        ? json.valid_from_utc
-        : r.observedAt
-  const validToRaw =
-    typeof json.valid_to === 'string' ? json.valid_to : typeof json.valid_to_utc === 'string' ? json.valid_to_utc : null
-
-  const validFromMs = Number.isFinite(Date.parse(validFromRaw)) ? Date.parse(validFromRaw) : r.observedMs
-  const validToMs = validToRaw && Number.isFinite(Date.parse(validToRaw)) ? Date.parse(validToRaw) : null
+  const validityMs = (normalized: unknown, raw: unknown): number | null => {
+    // Source contract provides UTC normalization; raw MET local timestamps are MYT.
+    for (const candidate of [normalized, raw]) {
+      if (typeof candidate !== 'string') continue
+      const explicit = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(candidate)
+      const localMyt = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(candidate)
+      if (!explicit && !localMyt) continue
+      const ms = Date.parse(explicit ? candidate : `${candidate}+08:00`)
+      if (Number.isFinite(ms)) return ms
+    }
+    return null
+  }
+  const validFromMs = validityMs(json.valid_from_utc, json.valid_from) ?? r.observedMs
+  const validToMs = validityMs(json.valid_to_utc, json.valid_to)
 
   if (r.value === false || r.value === 0) {
     return { isKlWarning: false, validFromIso: formatInstant(validFromMs), validFromMs, validToMs }
@@ -498,6 +502,7 @@ export const snapshotAt: SnapshotAt = (
   pack: Pack,
   tEval: Instant
 ): IndicatorSnapshot => {
+  h = { ...h, sources: [...h.sources].sort((a, b) => compareIds(a.id, b.id)) }
   const tEvalMs = Date.parse(tEval)
   const tEvalIso = formatInstant(tEvalMs)
   const readings = dedupeReadingsAt(h, tEvalMs)
@@ -613,32 +618,29 @@ export const snapshotAt: SnapshotAt = (
     }
 
     if (def.name === 'site.rain_60m_mm') {
-      const windowStartExclusive = tEvalMs - 60 * MINUTE_MS
-      const inHour = jpsReadings.filter((rd) => rd.observedMs > windowStartExclusive && rd.observedMs <= tEvalMs)
-      const staleLimitMs = (jpsSources[0]?.staleAfterS ?? 600) * 1_000
-      let hasGapOrNull = inHour.length === 0
-      for (let i = 0; i < inHour.length; i++) {
-        const cur = inHour[i]!
-        if (typeof cur.value !== 'number' || !Number.isFinite(cur.value)) {
-          hasGapOrNull = true
-          break
-        }
-        if (i > 0 && cur.observedMs - inHour[i - 1]!.observedMs > staleLimitMs) {
-          hasGapOrNull = true
-          break
-        }
-      }
-      const newest = inHour.length > 0 ? inHour[inHour.length - 1]! : null
-      const total = hasGapOrNull ? null : roundMetric(inHour.reduce((sum, rd) => sum + (rd.value as number), 0))
-      const obsAgeS = newest ? Math.max(0, Math.floor((tEvalMs - newest.observedMs) / 1_000)) : null
+      const period = rainPeriod(
+        jpsReadings.map((rd) => ({
+          iso: rd.observedAt,
+          ms: rd.observedMs,
+          value: typeof rd.value === 'number' ? rd.value : null,
+          id: rd.id,
+          sourceId: rd.sourceId
+        })),
+        tEvalMs,
+        60 * MINUTE_MS
+      )
+      const coverageState = period?.total === null || !period ? 'stale' : res.state
+      const effective = res.state === 'fresh' ? { ...res, state: coverageState } : res
+      const input = inputs.find((input) => input.name === def.name)
+      if (input) input.state = effective.state
       site[def.name] = makeSiteIndicator(
         def,
-        res,
-        total,
-        newest ? [newest.sourceId] : boundSourceIds,
-        inHour.map((rd) => rd.id),
-        newest?.observedAt ?? null,
-        obsAgeS
+        effective,
+        period?.total ?? null,
+        boundSourceIds,
+        period?.samples.map((sample) => sample.id) ?? [],
+        period?.observedAt ?? null,
+        period ? Math.max(0, Math.floor((tEvalMs - period.endMs) / 1000)) : null
       )
       continue
     }
@@ -678,6 +680,7 @@ export const snapshotAt: SnapshotAt = (
       const contributingIds: string[] = []
       let newestObsMs: number | null = null
       let newestObsIso: Instant | null = null
+      let missingStationId: string | null = null
 
       for (const sid of boundSourceIds) {
         const dayMs = 24 * 60 * MINUTE_MS
@@ -701,27 +704,31 @@ export const snapshotAt: SnapshotAt = (
 
         if (morning.length === 3) {
           const stationMin = Math.min(...morning.map((m) => Math.round(m.value as number)))
-          if (maxAcrossStations === null || stationMin > maxAcrossStations) {
-            maxAcrossStations = stationMin
-          }
-          for (const m of morning) {
-            contributingIds.push(m.id)
-            if (newestObsMs === null || m.observedMs > newestObsMs) {
-              newestObsMs = m.observedMs
-              newestObsIso = m.observedAt
-            }
+          if (maxAcrossStations === null || stationMin > maxAcrossStations) maxAcrossStations = stationMin
+        } else {
+          missingStationId ??= sid
+        }
+        for (const m of morning) {
+          contributingIds.push(m.id)
+          if (newestObsMs === null || m.observedMs > newestObsMs) {
+            newestObsMs = m.observedMs
+            newestObsIso = m.observedAt
           }
         }
       }
 
-      const obsAgeS = newestObsMs !== null ? Math.max(0, Math.floor((tEvalMs - newestObsMs) / 1_000)) : res.ageS
+      if (missingStationId !== null) maxAcrossStations = null
+      const obsAgeS = newestObsMs !== null ? Math.max(0, Math.floor((tEvalMs - newestObsMs) / 1_000)) : null
       const morningResolution =
         maxAcrossStations === null && res.state === 'fresh' ? { ...res, state: 'stale' as const } : res
       const input = inputs.find((input) => input.name === def.name)
-      if (input) input.state = morningResolution.state
+      if (input) {
+        input.state = morningResolution.state
+        if (missingStationId && res.state === 'fresh') input.sourceId = missingStationId
+      }
       site[def.name] = makeSiteIndicator(
         def,
-        morningResolution,
+        { ...morningResolution, ageS: obsAgeS },
         maxAcrossStations,
         boundSourceIds,
         contributingIds,
