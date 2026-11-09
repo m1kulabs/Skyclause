@@ -6,7 +6,7 @@ import {
   type Operations,
   type Principal
 } from '@skyclause/contracts'
-import { accountMemberships, listenEvents, withSystem } from '@skyclause/db'
+import { accountOrganisations, listenEvents, withSystem } from '@skyclause/db'
 import type { Context } from 'hono'
 import type { ApiEnv } from '../../context'
 import { principalOf } from '../../middleware/auth'
@@ -45,7 +45,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 async function inEachOrg<T>(c: Context<ApiEnv>, fn: (ctx: ServiceContext, orgId: string) => Promise<T>): Promise<T[]> {
   const session = principalOf(c)
   if (session.kind !== 'session') throw new Error('requireSession must run first')
-  const orgs = await withSystem('notifications', (tx) => accountMemberships(tx, session.accountId))
+  const orgs = await withSystem('notifications', (tx) => accountOrganisations(tx, session.accountId))
   const results: T[] = []
   for (const org of orgs) {
     const principal: Principal = { ...session, orgId: org.orgId, role: org.role }

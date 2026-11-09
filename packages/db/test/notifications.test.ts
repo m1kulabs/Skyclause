@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import type { Principal } from '@skyclause/contracts'
 import { beforeAll, describe, expect, test } from 'vitest'
 import {
-  accountMemberships,
+  accountOrganisations,
   markNotificationRead,
   notificationPreferences,
   notificationRows,
@@ -137,7 +137,7 @@ describe('preferences', () => {
 })
 
 describe('members', () => {
-  test("orgMembers lists the organisation's members with §1 roles; accountMemberships lists an account's organisations", async () => {
+  test("orgMembers lists the organisation's members with §1 roles; accountOrganisations lists an account's organisations", async () => {
     const other = await makeOrganization()
     const ana = await makeUser()
     await makeMember({ organizationId: orgId, userId: ana.id, role: 'approver' })
@@ -146,12 +146,12 @@ describe('members', () => {
     const members = await inOrg((tx) => orgMembers(tx))
     expect(members).toContainEqual({ accountId: ana.id, role: 'approver' })
     expect(members.map((m) => m.accountId)).not.toContain(ben.userId)
-    expect(await withSystem('test', (tx) => accountMemberships(tx, ana.id))).toEqual(
+    expect(await withSystem('test', (tx) => accountOrganisations(tx, ana.id))).toEqual(
       expect.arrayContaining([
-        { orgId, slug: org.slug, role: 'approver' },
-        { orgId: other.id, slug: other.slug, role: 'viewer' }
+        { orgId, role: 'approver' },
+        { orgId: other.id, role: 'viewer' }
       ])
     )
-    expect(await withSystem('test', (tx) => accountMemberships(tx, ben.userId))).toEqual([])
+    expect(await withSystem('test', (tx) => accountOrganisations(tx, ben.userId))).toEqual([])
   })
 })
