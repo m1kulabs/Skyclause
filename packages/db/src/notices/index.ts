@@ -8,6 +8,7 @@ export {
   noticeOrgsToSweep,
   recordCallNotice,
   sendingCallIds,
+  settleBundle,
   settleCall,
   type CallNoticeOutcome,
   type ClaimedNotice,

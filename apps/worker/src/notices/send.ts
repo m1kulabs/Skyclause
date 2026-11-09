@@ -7,6 +7,7 @@ import {
   leaseCallNotice,
   projectGate,
   recordCallNotice,
+  settleBundle,
   settleCall,
   systemPrincipal,
   withTenant,
@@ -154,4 +155,9 @@ export async function settleCalls(deps: SenderDeps, orgId: string, callIds: Iter
   for (const callId of callIds) {
     await withTenant({ orgId, principal }, (tx) => settleCall(tx, callId, deps.now()))
   }
+}
+
+/** Settles a bundle left with nothing to send, such as one whose every call was rejected (`settleBundle`). */
+export async function settleApprovedBundle(deps: SenderDeps, orgId: string, bundleId: string) {
+  await withTenant({ orgId, principal }, (tx) => settleBundle(tx, bundleId, deps.now()))
 }

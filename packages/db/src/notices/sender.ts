@@ -1,8 +1,7 @@
-import { log } from '@skyclause/config'
 import type { CallView, Pack } from '@skyclause/contracts'
 import { and, asc, eq, gt, gte, inArray, isNull, lte, or, sql, type SQL } from 'drizzle-orm'
 import { track } from '../analytics'
-import { transition } from '../bundles'
+import { markSending, transition } from '../bundles'
 import type { SystemPrincipal, Tx } from '../client'
 import { emitEvent } from '../events'
 import { appendLedger } from '../ledger'
@@ -251,7 +250,7 @@ export type SettleOutcome = 'sent' | 'failed'
  * Settles a `sending` call once none of its `call` notices is queued: `failed` when it has notices and none reached
  * the provider (every one `failed` or `expired`), else `sent`, through #150's `transition` under the bundle's lock; the
  * bundle goes to `sent` with its last sending call. Appends `call_sent` with the notices counted by status and
- * language (never an address) and emits `call.sent`. Null, writing nothing, when the call isn't `sending` or still has
+ * language (never an address) and emits `call.sent` (`mode` null for a No call). Null, writing nothing, when the call isn't `sending` or still has
  * a queued notice.
  */
 export async function settleCall(tx: Tx, callId: string, now: Date): Promise<SettleOutcome | null> {
@@ -288,15 +287,25 @@ export async function settleCall(tx: Tx, callId: string, now: Date): Promise<Set
     },
     body: { pack: parent!.pack, mode: settled!.mode, outcome, notices: counts }
   })
-  // #79 §5's `call.sent` has a non-null `mode`, so a No call (mode null) sends no event until the contract allows it.
-  if (settled!.mode) {
-    await emitEvent(tx, {
-      projectId: settled!.projectId,
-      type: 'call.sent',
-      data: { call_id: settled!.id, mode: settled!.mode, outcome }
-    })
-  } else {
-    log.warn('call.sent not emitted: the event has no No call mode', { call_id: settled!.id, outcome })
-  }
+  await emitEvent(tx, {
+    projectId: settled!.projectId,
+    type: 'call.sent',
+    data: { call_id: settled!.id, mode: settled!.mode, outcome }
+  })
   return outcome
+}
+
+/**
+ * Moves an `approved` or `sending` bundle with nothing left to send (no call `approved`, `edited` or `sending`) to
+ * `sent`, through `markSending` and `transition`. #153 leaves a bundle whose every call it rejected `approved`, with
+ * no sending call; a bundle with sent calls already moved with its last one. Returns whether it moved.
+ */
+export async function settleBundle(tx: Tx, bundleId: string, now: Date): Promise<boolean> {
+  const [row] = await tx.select({ state: bundle.state }).from(bundle).where(eq(bundle.id, bundleId)).for('update')
+  if (row?.state !== 'approved' && row?.state !== 'sending') return false
+  const calls = await tx.select({ state: call.state }).from(call).where(eq(call.bundleId, bundleId))
+  if (calls.some((c) => c.state === 'approved' || c.state === 'edited' || c.state === 'sending')) return false
+  if (row.state === 'approved') await markSending(tx, bundleId, [], now)
+  await transition(tx, bundleId, { bundle: 'sent' }, now)
+  return true
 }

@@ -1,6 +1,6 @@
-// #158 test helpers: a call approved the way #153 leaves it (approved by an Approver, `sending`, one queued `call`
-// notice per recipient, `bundle.approved` emitted), a mailbox double for SES and the sender's injected clock. Tests
-// only (NFR-15).
+// #158 test helpers: a call approved the way #153 (PR #437) leaves it (approved by an Approver, `sending`, one queued
+// `call` notice per recipient keyed like its `noticeIdempotencyKey`, `bundle.approved` emitted; a rejected call stays
+// `rejected` in an `approved` bundle), a mailbox double for SES and the sender's injected clock. Tests only (NFR-15).
 import { createHash, randomUUID } from 'node:crypto'
 import type { EmailTransport, EventEnvelope, Pack } from '@skyclause/contracts'
 import { createBundle, emitEvent, markSending, systemPrincipal, transition, withTenant, type Tx } from '@skyclause/db'
@@ -31,7 +31,16 @@ export interface Recipient {
 /** One approved call to `recipients`, as #153 hands it to the sender; returns its IDs and its `bundle.approved`. */
 export async function approvedCall(
   orgId: string,
-  o: { pack?: Pack; recipients: Recipient[]; projectId?: string; window?: typeof WINDOW }
+  o: {
+    pack?: Pack
+    recipients: Recipient[]
+    projectId?: string
+    window?: typeof WINDOW
+    /** A No call: mode null, with the input that blocks it. */
+    noCall?: boolean
+    /** The approver rejects the bundle's only call. */
+    rejected?: boolean
+  }
 ) {
   const pack = o.pack ?? 'sky'
   const approver = await makeMember({ organizationId: orgId, role: 'approver' })
@@ -47,7 +56,8 @@ export async function approvedCall(
       calls: [
         callDraft({
           windowId: w.id,
-          mode: pack === 'crowd' ? 'surge_night' : 'commute_disruption',
+          mode: o.noCall ? null : pack === 'crowd' ? 'surge_night' : 'commute_disruption',
+          noCall: o.noCall ? ['site.rain_60m_mm'] : null,
           fired: [{ clause: pack === 'crowd' ? 'surge_night' : 'storm_confirmed', inputs: ['site.rain_60m_mm'] }],
           notices: [
             { language: 'en', subject: 'Commute disruption', body: 'Why: Storm confirmed at the gauge.' },
@@ -62,10 +72,10 @@ export async function approvedCall(
     await transition(
       tx,
       made.bundleId,
-      { bundle: 'approved', calls: { [callId]: 'approved' }, approvedBy: approver.userId },
+      { bundle: 'approved', calls: { [callId]: o.rejected ? 'rejected' : 'approved' }, approvedBy: approver.userId },
       APPROVED_AT
     )
-    await markSending(tx, made.bundleId, [callId], APPROVED_AT)
+    if (!o.rejected) await markSending(tx, made.bundleId, [callId], APPROVED_AT)
     const subscribers = []
     for (const recipient of o.recipients) {
       const s = await makeSubscriber(tx, {
@@ -75,7 +85,7 @@ export async function approvedCall(
         confirmedAt: recipient.confirmed === false ? null : at('2026-11-01T00:00:00Z'),
         unsubscribedAt: recipient.unsubscribed ? at('2026-11-01T12:00:00Z') : null
       })
-      const idempotencyKey = createHash('sha256').update(`${made.bundleId}\n${callId}\n${s.id}\nemail`).digest('hex')
+      const idempotencyKey = createHash('sha256').update(`${made.bundleId}:${callId}:${s.id}:email`).digest('hex')
       const n = await makeNotice(tx, {
         projectId: scene.projectId,
         callId,
@@ -91,8 +101,8 @@ export async function approvedCall(
       state: 'approved' as const,
       call_ids: made.callIds,
       sla_due_at: null,
-      sending_call_ids: [callId],
-      rejected_call_ids: []
+      sending_call_ids: o.rejected ? [] : [callId],
+      rejected_call_ids: o.rejected ? [callId] : []
     }
     const emitted = await emitEvent(tx, { projectId: scene.projectId, type: 'bundle.approved', data })
     const event: EventEnvelope = {

@@ -69,6 +69,33 @@ describe('the sender on bundle.approved', () => {
     expect(event.data).toEqual({ call_id: made.callId, mode: 'commute_disruption', outcome: 'sent' })
   })
 
+  test('a No call is sent and announced with a null mode', async () => {
+    const made = await approvedCall(orgId, { recipients: [{}], noCall: true })
+    const box = mailbox()
+    await senderPart(box).approve(made.event)
+    expect(box.sent[0]!.subject).toMatch(/^No call: 15:30–16:30 MYT/)
+    expect(await stateOf('call', made.callId)).toBe('sent')
+    expect((await ledgerOf(made.projectId))[0]!.body).toMatchObject({ mode: null, outcome: 'sent' })
+    const event = await expectEvent('call.sent', { projectId: made.projectId })
+    expect(event.data).toEqual({ call_id: made.callId, mode: null, outcome: 'sent' })
+  })
+
+  test('a bundle whose only call was rejected is settled: sent, with no send, ledger entry or call.sent', async () => {
+    const made = await approvedCall(orgId, { recipients: [], rejected: true })
+    expect(await stateOf('bundle', made.bundleId)).toBe('approved')
+    const box = mailbox()
+    const { approve } = senderPart(box)
+    await approve(made.event)
+    await approve(made.event)
+    expect(await stateOf('bundle', made.bundleId)).toBe('sent')
+    expect(await stateOf('call', made.callId)).toBe('rejected')
+    expect(box.sent).toEqual([])
+    expect(await ledgerOf(made.projectId)).toEqual([])
+    expect(
+      await sql('SELECT 1 FROM domain_event WHERE project_id = $1 AND type = $2', [made.projectId, 'call.sent'])
+    ).toEqual([])
+  })
+
   test('NFR-2, NFR-3: approval to provider within 60 s, stamped as accepted_at', async () => {
     const made = await approvedCall(orgId, { recipients: [{}] })
     const { approve, clock } = senderPart(mailbox())

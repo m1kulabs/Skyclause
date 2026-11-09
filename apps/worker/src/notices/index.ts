@@ -12,7 +12,7 @@ import {
 } from '@skyclause/db'
 import { emailTransportForAws, sesEventsHandler, type SesEvent } from '@skyclause/delivery'
 import { log, type WorkerPart } from '../server'
-import { sendCallNotices, settleCalls, type SenderConfig, type SenderDeps } from './send'
+import { sendCallNotices, settleApprovedBundle, settleCalls, type SenderConfig, type SenderDeps } from './send'
 
 // #158 c-sender-email's part: consumer `sender` on `bundle.approved`, the `notice-sweep` in the 15-minute batch (D45:
 // the minute tick never touches Postgres) that retries failed sends and settles calls, and `POST /ses/events`.
@@ -56,9 +56,11 @@ export function createNoticesPart(deps: NoticesDeps): WorkerPart {
         types: ['bundle.approved'],
         handler: async (raw) => {
           const event = raw as EventEnvelope
-          const { sending_call_ids } = BundleApprovedEventSchema.shape.data.parse(event.data)
+          const { bundle_id, sending_call_ids } = BundleApprovedEventSchema.shape.data.parse(event.data)
           await sendCallNotices(deps, event.org_id, { callIds: sending_call_ids })
           await settleCalls(deps, event.org_id, sending_call_ids)
+          // A bundle with no sending call (every call rejected) has nothing to wait for.
+          if (!sending_call_ids.length) await settleApprovedBundle(deps, event.org_id, bundle_id)
         }
       }
     ],
