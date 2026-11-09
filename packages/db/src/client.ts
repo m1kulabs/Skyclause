@@ -32,9 +32,14 @@ export function connection(login: Login) {
   if (!found) {
     // D45: nothing holds an idle connection, so a sleeping Neon compute stays asleep.
     const pool = new pg.Pool({ connectionString: url, idleTimeoutMillis: 5_000, allowExitOnIdle: true })
-    // An idle client that errors (the server ended it) leaves the pool, and the next query connects again; without a
-    // listener the error would crash the process.
-    pool.on('error', (error) => log.warn('idle database connection failed', { login, error: String(error) }))
+    // A client whose connection fails (the server ended it) emits `error`, which would crash the process with no
+    // listener, and pg-pool listens only while the client is idle; so each client keeps one of its own, checked out or
+    // not. A query on it still rejects for its caller, the pool drops the client, and the next query connects again.
+    pool.on('connect', (client) =>
+      client.on('error', (error) => log.warn('database connection failed', { login, error: String(error) }))
+    )
+    // pg-pool re-emits an idle client's error here, and throws it without a listener; the client's own logged it.
+    pool.on('error', () => {})
     found = { pool, db: drizzle(pool, { schema }) }
     connections.set(url, found)
   }
@@ -52,8 +57,8 @@ interface Shared {
   db: NodePgDatabase<Schema>
   /** The end of the queue: sibling calls on the shared connection take turns. */
   tail: Promise<unknown>
-  /** Set once `fn` has settled and the connection is back in the pool. */
-  released: boolean
+  /** Set once `fn` has settled: later calls are refused, and those already queued finish before the release. */
+  ended: boolean
 }
 const sharedConnection = new AsyncLocalStorage<{ shared: Shared; inside: boolean }>()
 
@@ -65,12 +70,12 @@ const sharedConnection = new AsyncLocalStorage<{ shared: Shared; inside: boolean
  */
 export async function shareSystemConnection<T>(fn: () => Promise<T>): Promise<T> {
   const client = await connection('SYSTEM').pool.connect()
-  const shared: Shared = { db: drizzle(client, { schema }), tail: Promise.resolve(), released: false }
+  const shared: Shared = { db: drizzle(client, { schema }), tail: Promise.resolve(), ended: false }
   try {
     return await sharedConnection.run({ shared, inside: false }, fn)
   } finally {
+    shared.ended = true
     await shared.tail
-    shared.released = true
     client.release()
   }
 }
@@ -83,8 +88,8 @@ async function run<T, P extends Principal | null>(
   const share = login === 'SYSTEM' ? sharedConnection.getStore() : undefined
   if (!share) return transaction(connection(login).db, context, fn)
   const { shared, inside } = share
-  if (shared.released) throw new Error('the shared system connection was released when its shareSystemConnection ended')
   if (inside) throw new Error('a with* call inside another on the shared system connection needs a second connection')
+  if (shared.ended) throw new Error('the shared system connection was released when its shareSystemConnection ended')
   const turn = shared.tail.then(() =>
     sharedConnection.run({ shared, inside: true }, () => transaction(shared.db, context, fn))
   )

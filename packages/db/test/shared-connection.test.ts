@@ -39,3 +39,23 @@ test('a with* call left running after shareSystemConnection settles fails instea
   })
   await expect(late).rejects.toThrow(/was released/)
 })
+
+test('a with* call made while a left-running one holds the shared connection as it ends fails instead of running after it', async () => {
+  let left: Promise<unknown> = Promise.resolve()
+  let late: Promise<unknown> = Promise.resolve()
+  let ran = false
+  await shareSystemConnection(async () => {
+    left = withSystem('batch', (tx) => tx.execute(sql`SELECT pg_sleep(0.2)`))
+    // Called while the share waits for `left`; its expectation is attached at once, before the share settles.
+    late = expect(
+      new Promise((resolve) => setTimeout(resolve, 50)).then(() =>
+        withSystem('batch', async () => {
+          ran = true
+        })
+      )
+    ).rejects.toThrow(/was released/)
+  })
+  await late
+  expect(ran).toBe(false)
+  await left
+})

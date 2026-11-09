@@ -24,7 +24,8 @@ async function nightGrade(tx: Tx, projectId: string, nightId: string) {
     nightId,
     sheetVersionId,
     pack: 'crowd' as const,
-    outcome: 'in_band' as const
+    outcome: 'in_band' as const,
+    localDate: '2026-11-14'
   }
   const [row] = await tx
     .insert(grade)

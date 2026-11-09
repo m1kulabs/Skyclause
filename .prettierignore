@@ -12,3 +12,4 @@ packages/agent/test/fixtures/rainfall-graph-*.json
 packages/agent/test/fixtures/weather-warning-*.json
 packages/delivery/test/fixtures/rainfall-graph-*.json
 packages/db/test/fixtures/rainfall-graph-*.json
+apps/worker/test/fixtures/rapidrail-sp17-*.json

@@ -13,7 +13,10 @@ const GradeView = Grade.extend({
   forecast: Forecast.nullable(),
   actual: z.number().nullable(),
   reading_ids: z.array(z.string()),
-  graded_at: Instant
+  graded_at: Instant,
+  // #161: the window's start or the night's date in the project's zone; for a pending night, when the file is next due.
+  local_date: LocalDate.optional(),
+  pending_until: Instant.nullable().optional()
 })
 
 export const listGrades = createRoute({

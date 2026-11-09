@@ -2,8 +2,10 @@ import { bundles } from './bundles'
 import { email } from './email'
 import { evidence } from './evidence'
 import { domainEvents } from './events'
+import { grades } from './grades'
 import { migrations } from './migrate'
 import { pilotArchive } from './pilot-archive'
+import { replies } from './replies'
 import { restoreDrill } from './restore-drill'
 import { defineRegistry } from './server'
 
@@ -16,5 +18,7 @@ export const registry = defineRegistry([
   domainEvents, // f-db-schema
   pilotArchive, // c-ledger-chain
   bundles, // c-bundle-lifecycle
-  evidence // c-evidence
+  evidence, // c-evidence
+  grades, // c-grades
+  replies // c-recipient-replies
 ])

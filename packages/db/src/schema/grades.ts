@@ -1,5 +1,17 @@
 import { sql } from 'drizzle-orm'
-import { bigint, boolean, check, doublePrecision, integer, jsonb, text, unique, uuid } from 'drizzle-orm/pg-core'
+import {
+  bigint,
+  boolean,
+  check,
+  date,
+  doublePrecision,
+  integer,
+  jsonb,
+  text,
+  unique,
+  uniqueIndex,
+  uuid
+} from 'drizzle-orm/pg-core'
 import { sheetVersion } from './clauses'
 import { id, instant, orgKey, sameOrg, tenantTable, timestamps } from './columns'
 import { subscriber } from './delivery'
@@ -10,7 +22,11 @@ import { night, window } from './windows'
 
 // TRD entities and #79 §3 rows for `c-grades`, `c-evidence`, `c-analysis-api` and `c-ledger-chain`. All T.
 
-/** A live call's or night's grade (`c-grades`); append-only. P through `public_grade`. */
+/**
+ * A live call's, window's or night's grade (`c-grades`); append-only. P through `public_grade`. A Sky grade names its
+ * call, or only its window when the shadow verdict fired and no call was drafted (ANL-2); a Crowd grade names its
+ * night. One grade per call, per callless window and per night: the partial unique indexes make re-runs no-ops.
+ */
 export const grade = tenantTable(
   'grade',
   {
@@ -28,6 +44,20 @@ export const grade = tenantTable(
     noCall: boolean('no_call').notNull(),
     agrees: boolean('agrees').notNull(),
     staleInputs: boolean('stale_inputs').notNull(),
+    // The window's start or the night's date, in the project's time zone.
+    localDate: date('local_date').notNull(),
+    // Crowd: the night's actual exits and the forecast graded against, as it stood before the night. `forecast` has
+    // no `(org_id, id)` key to point a composite foreign key at; RLS keeps the read in the organisation.
+    actual: doublePrecision('actual'),
+    forecastId: uuid('forecast_id'),
+    bandLow: doublePrecision('band_low'),
+    bandHigh: doublePrecision('band_high'),
+    // What the grade read: the observation's readings, or the exits and baseline readings. Partitioned `reading`
+    // can't be a foreign key target by `id` alone.
+    readingIds: uuid('reading_ids')
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
     createdAt: instant('created_at').notNull().defaultNow()
   },
   (self) => [
@@ -37,11 +67,37 @@ export const grade = tenantTable(
     sameOrg('grade_night', self, self.nightId, night, true),
     sameOrg('grade_window', self, self.windowId, window, true),
     sameOrg('grade_sheet_version', self, self.sheetVersionId, sheetVersion),
-    check('grade_call_or_night', sql`num_nonnulls(${self.callId}, ${self.nightId}) = 1`)
+    check(
+      'grade_call_or_night',
+      sql`num_nonnulls(${self.callId}, ${self.nightId}) = 1 OR (${self.callId} IS NULL AND ${self.nightId} IS NULL AND ${self.windowId} IS NOT NULL)`
+    ),
+    uniqueIndex('grade_call_id_key')
+      .on(self.callId)
+      .where(sql`${self.callId} IS NOT NULL`),
+    uniqueIndex('grade_night_id_key')
+      .on(self.nightId)
+      .where(sql`${self.nightId} IS NOT NULL`),
+    uniqueIndex('grade_window_id_key')
+      .on(self.windowId)
+      .where(sql`${self.callId} IS NULL AND ${self.nightId} IS NULL`)
   ]
 )
 
-/** A grade that needs a person's explanation (D26); unlike its grade, the explanation stays editable. */
+/** Why a grade needs a person (ANL-2, ANL-4, TRD grading). */
+export const REVIEW_REASONS = [
+  'miss',
+  'false_alarm',
+  'expired_above_normal',
+  'out_of_band',
+  'unlisted_surge',
+  'no_call'
+] as const
+export type ReviewReason = (typeof REVIEW_REASONS)[number]
+
+/**
+ * A grade that needs a person's explanation (D26), one per grade. Unlike its grade, the explanation stays editable,
+ * and only it: migration `c-grades-review-guard` grants `app` and `system` UPDATE on the explanation columns alone.
+ */
 export const reviewItem = tenantTable(
   'review_item',
   {
@@ -49,9 +105,21 @@ export const reviewItem = tenantTable(
     gradeId: uuid('grade_id').notNull().unique(),
     state: text('state').notNull().default('open'),
     explanation: text('explanation'),
+    reasons: text('reasons')
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    explainedBy: uuid('explained_by'),
+    explainedAt: instant('explained_at'),
     ...timestamps()
   },
-  (self) => [sameOrg('review_item_grade', self, self.gradeId, grade, true)]
+  (self) => [
+    sameOrg('review_item_grade', self, self.gradeId, grade, true),
+    check(
+      'review_item_reasons',
+      sql`${self.reasons} <@ ARRAY[${sql.raw(REVIEW_REASONS.map((r) => `'${r}'`).join(', '))}]::text[]`
+    )
+  ]
 )
 
 /**
