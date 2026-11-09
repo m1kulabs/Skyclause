@@ -50,15 +50,12 @@ export function compare(p: ProposedBundle, verdicts: Verdicts): Comparison[] {
     }
   })
   const called = new Set(p.calls.map((call) => call.window_id))
-  for (const v of scoped) {
+  scoped.forEach((v, rank) => {
     const fired = v.watch || (v.mode !== null && v.mode !== 'normal')
-    if (fired && !called.has(v.scope.id)) {
-      rows.push({
-        row: { windowId: v.scope.id, agrees: false, staleInputs: false, missing: true },
-        rank: order.get(v.scope.id)!
-      })
+    if (fired && v.scope.id !== null && !called.has(v.scope.id)) {
+      rows.push({ row: { windowId: v.scope.id, agrees: false, staleInputs: false, missing: true }, rank })
     }
-  }
+  })
   rows.sort((a, b) => Number(a.row.agrees) - Number(b.row.agrees) || a.rank - b.rank)
   return rows.map(({ row }) => row)
 }
