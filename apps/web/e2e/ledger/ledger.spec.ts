@@ -377,6 +377,7 @@ for (const theme of ['dark', 'light', 'high-contrast']) {
     await expect(page.getByRole('button', { name: copy('evidence.request'), exact: true }).first()).toBeFocused()
     await page.getByRole('link', { name: copy('ledger.archive'), exact: true }).press('Enter')
     await expect(page.getByRole('dialog')).toContainText(copy('ledger.kinds.sheets_ledger'))
+    await expect(page.locator('.ledger-sheet')).toHaveCSS('opacity', '1')
     await expectAxeClean(page)
     await expectUnclippedText(page)
     await page.keyboard.press('Escape')

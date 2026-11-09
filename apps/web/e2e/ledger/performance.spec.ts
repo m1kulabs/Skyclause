@@ -53,6 +53,15 @@ test('LED-7 Moto G Power (2022), 4x CPU: 10000 stub entries scroll and every fil
         for (const entry of list.getEntries())
           target.ledgerLastEvent = Math.max(target.ledgerLastEvent, entry.startTime)
       }).observe({ type: 'event', durationThreshold: 0 } as PerformanceObserverInit)
+      // Chrome omits Event Timing entries shorter than its 16 ms reporting floor.
+      // A trusted keydown still marks the date-filter interaction for this test.
+      window.addEventListener(
+        'keydown',
+        (event) => {
+          if (event.isTrusted) target.ledgerLastEvent = performance.now()
+        },
+        { capture: true }
+      )
       target.webVitals.onINP(
         (metric) => {
           target.ledgerINP.push(metric.value)
