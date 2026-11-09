@@ -42,6 +42,22 @@ export const now = new Date('2026-11-02T07:07:00Z')
 export const rain60 = capture.data
   .filter((row) => row.timestamp > '2026-11-02T14:00:00' && row.timestamp <= '2026-11-02T15:00:00')
   .reduce((sum, row) => sum + row.rf, 0)
+const stripRows = capture.data.filter(
+  (row) => row.timestamp >= '2026-11-02T14:00:00' && row.timestamp <= '2026-11-02T16:00:00'
+)
+const stripSeries = {
+  'site.rain_5m_mm': stripRows.map((row) => [new Date(`${row.timestamp}+08:00`).toISOString(), row.rf, 'received']),
+  'site.rain_60m_mm': stripRows.map((row) => {
+    const at = new Date(`${row.timestamp}+08:00`).getTime()
+    const value = capture.data
+      .filter((sample) => {
+        const sampleAt = new Date(`${sample.timestamp}+08:00`).getTime()
+        return sampleAt > at - 60 * 60_000 && sampleAt <= at
+      })
+      .reduce((sum, sample) => sum + sample.rf, 0)
+    return [new Date(at).toISOString(), Math.round(value * 10) / 10, 'received']
+  })
+}
 export const gauge = {
   name: 'gauge',
   value: rain60,
@@ -267,7 +283,7 @@ export async function prepare(
       project_id: ids.project,
       range: { from: '2026-11-02T06:00:00Z', to: '2026-11-02T08:00:00Z' },
       window: null,
-      series: {},
+      series: stripSeries,
       inputs: [gauge],
       packs: [],
       verdicts: [],
