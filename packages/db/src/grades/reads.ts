@@ -50,10 +50,8 @@ export function listGradeRows(
 export async function pendingNights(tx: Tx, q: { projectId: string; today: string }) {
   const live = await liveSheet(tx, q.projectId, 'crowd')
   if (!live) return []
-  const [nights, station] = await Promise.all([
-    crowdNights(tx, { projectId: q.projectId, before: q.today }),
-    railStation(tx, q.projectId)
-  ])
+  const nights = await crowdNights(tx, { projectId: q.projectId, before: q.today })
+  const station = await railStation(tx, q.projectId)
   return nights.map((night) => ({
     ...night,
     pendingUntil: station?.pendingUntil ?? null,

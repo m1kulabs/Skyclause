@@ -97,38 +97,40 @@ export async function skyCandidates(
       eq(table.scopeKind, 'window'),
       inArray(table.scopeId, ids)
     )
-  const [calls, fired, shadows, graded] = await Promise.all([
-    tx
-      .select({
-        id: call.id,
-        windowId: call.windowId,
-        mode: call.mode,
-        watch: call.watch,
-        noCall: call.noCall,
-        fired: call.fired,
-        shadow: call.shadow,
-        agrees: call.agrees,
-        state: call.state,
-        approvedAt: call.approvedAt,
-        draftOnly: bundle.draftOnly,
-        bundleState: bundle.state,
-        sheetVersionId: run.sheetVersionId
-      })
-      .from(call)
-      .innerJoin(bundle, eq(bundle.id, call.bundleId))
-      .innerJoin(run, eq(run.id, bundle.runId))
-      .where(and(inArray(call.windowId, ids), eq(bundle.pack, 'sky'), ne(call.state, 'superseded')))
-      .orderBy(asc(call.draftedAt), asc(call.id)),
-    tx
-      .selectDistinct({ windowId: crossing.scopeId })
-      .from(crossing)
-      .where(and(scoped(crossing), isNotNull(crossing.to), ne(crossing.to, 'normal'))),
-    tx
-      .select({ windowId: shadowState.scopeId, verdict: shadowState.verdict, versionId: shadowState.sheetVersionId })
-      .from(shadowState)
-      .where(scoped(shadowState)),
-    tx.select({ windowId: grade.windowId, callId: grade.callId }).from(grade).where(inArray(grade.windowId, ids))
-  ])
+  // One transaction holds one connection, so its queries run in turn.
+  const calls = await tx
+    .select({
+      id: call.id,
+      windowId: call.windowId,
+      mode: call.mode,
+      watch: call.watch,
+      noCall: call.noCall,
+      fired: call.fired,
+      shadow: call.shadow,
+      agrees: call.agrees,
+      state: call.state,
+      approvedAt: call.approvedAt,
+      draftOnly: bundle.draftOnly,
+      bundleState: bundle.state,
+      sheetVersionId: run.sheetVersionId
+    })
+    .from(call)
+    .innerJoin(bundle, eq(bundle.id, call.bundleId))
+    .innerJoin(run, eq(run.id, bundle.runId))
+    .where(and(inArray(call.windowId, ids), eq(bundle.pack, 'sky'), ne(call.state, 'superseded')))
+    .orderBy(asc(call.draftedAt), asc(call.id))
+  const fired = await tx
+    .selectDistinct({ windowId: crossing.scopeId })
+    .from(crossing)
+    .where(and(scoped(crossing), isNotNull(crossing.to), ne(crossing.to, 'normal')))
+  const shadows = await tx
+    .select({ windowId: shadowState.scopeId, verdict: shadowState.verdict, versionId: shadowState.sheetVersionId })
+    .from(shadowState)
+    .where(scoped(shadowState))
+  const graded = await tx
+    .select({ windowId: grade.windowId, callId: grade.callId })
+    .from(grade)
+    .where(inArray(grade.windowId, ids))
   return windows.map((w) => {
     const shadow = shadows.find((s) => s.windowId === w.id)
     const shadowMode = (shadow?.verdict as { mode?: unknown } | null)?.mode
