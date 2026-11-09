@@ -18,6 +18,7 @@ import {
   source,
   startOfLocalDay,
   window,
+  type MissingCall,
   type Tx
 } from '@skyclause/db'
 import { and, asc, desc, eq, gte, inArray, lt, or, type SQL } from 'drizzle-orm'
@@ -104,6 +105,23 @@ export function callView(row: CallRow): CallView {
   }
 }
 
+/** #499: a stored missing call as its wire `MissingCall`. */
+function missingView(m: MissingCall): NonNullable<BundleView['missing']>[number] {
+  const r = m.resolution
+  return {
+    window_id: m.windowId,
+    night_id: m.nightId,
+    shadow: m.shadow as CallView['shadow'],
+    recipients: m.recipients,
+    resolution: r?.action ?? null,
+    call_id: r?.action === 'drafted' ? r.callId : null,
+    reason: r?.action === 'dismissed' ? r.reason : null,
+    resolved_by: r && r.action !== 'superseded' ? r.by : null,
+    resolved_at: r ? instant(new Date(r.at)) : null,
+    superseded_by: r?.action === 'superseded' ? r.bundleId : null
+  }
+}
+
 /** The bundles' calls, runs and alerts in three queries, so a page of bundles costs no more than one. */
 async function bundleViews(ctx: ServiceContext, rows: BundleRow[]): Promise<BundleView[]> {
   if (!rows.length) return []
@@ -125,6 +143,7 @@ async function bundleViews(ctx: ServiceContext, rows: BundleRow[]): Promise<Bund
     .orderBy(asc(bundleAlert.acceptedAt))
   return rows.map((row) => {
     const parent = runs.find((r) => r.id === row.runId)!
+    const missing = row.missing as MissingCall[]
     return {
       id: row.id,
       project_id: row.projectId,
@@ -140,6 +159,7 @@ async function bundleViews(ctx: ServiceContext, rows: BundleRow[]): Promise<Bund
       escalation_level: row.escalationLevel,
       draft_only: row.draftOnly,
       calls: calls.filter((c) => c.bundleId === row.id).map(callView),
+      ...(missing.length ? { missing: missing.map(missingView) } : {}),
       trigger: parent.trigger,
       triggered_at: instant(parent.triggeredAt),
       sheet_version_id: parent.sheetVersionId,
@@ -281,8 +301,8 @@ async function sourceUrls(ctx: ServiceContext, ids: string[]) {
 }
 
 /**
- * `GET /v1/bundles/{id}`: the bundle with its calls and their recipient counts, alerts, escalations and, when every
- * call is Normal (a Watch included) with no No call, CAL-5's trace line.
+ * `GET /v1/bundles/{id}`: the bundle with its calls and their recipient counts, alerts, escalations, missing calls
+ * and, when every call is Normal (a Watch included) with no No call and none is missing, CAL-5's trace line.
  */
 export async function getBundle(ctx: ServiceContext, input: { id: string }): Promise<BundleDetail> {
   const row = await visibleBundle(ctx, input.id)
@@ -295,7 +315,8 @@ export async function getBundle(ctx: ServiceContext, input: { id: string }): Pro
     .orderBy(asc(approval.createdAt))
   const counts = await recipientCounts(ctx, view!.calls)
   const calls = view!.calls.map((c, i) => ({ ...c, recipient_counts: counts[i]! }))
-  const normal = calls.every((c) => c.mode === 'normal' && !c.no_call)
+  // A missing call (#499) fired, so the bundle isn't all Normal.
+  const normal = !view!.missing && calls.every((c) => c.mode === 'normal' && !c.no_call)
   return {
     ...view!,
     calls,

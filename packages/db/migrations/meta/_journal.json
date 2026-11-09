@@ -169,6 +169,13 @@
       "when": 1794244875352,
       "tag": "0023_c-analysis-api-columns",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794247592936,
+      "tag": "0024_c-bundle-lifecycle-missing-calls",
+      "breakpoints": true
     }
   ]
 }

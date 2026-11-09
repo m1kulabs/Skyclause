@@ -364,7 +364,7 @@ After the model returns, `validate` enforces what the schema can't, and a failur
 - drafts and approver edits must pass the English and Malay attendance-excuse deny-lists; a match blocks drafting or approval ([CAL-15](/docs/PRD.md#calls-and-approvals-cal));
 - from P1, a Malay notice needs a Malay-reading approver on the rota, or the call is drafted in English ([LOC-5](/docs/PRD.md#localisation-loc)); P0 notices are English only.
 
-Then each call is compared with the shadow verdict (`agrees`), and disagreements go first in the bundle with both verdicts. The shadow pick uses the clause wording ([CAL-4](/docs/PRD.md#calls-and-approvals-cal)).
+Then each call is compared with the shadow verdict (`agrees`), and disagreements go first in the bundle with both verdicts. The shadow pick uses the clause wording ([CAL-4](/docs/PRD.md#calls-and-approvals-cal)). A window or night whose shadow verdict fired with no call in the draft is a disagreement too: the bundle stores it as a missing call (`bundle.missing`) and needs review even with no calls.
 
 ### Model routing for the agent
 
@@ -399,15 +399,15 @@ Behaviour is PRD's [Calls and approvals (CAL)](/docs/PRD.md#calls-and-approvals-
 stateDiagram-v2
   [*] --> Drafted
   Drafted --> Closed: no call would send (all Normal or Watch only)
-  Drafted --> NeedsReview: a call would send
+  Drafted --> NeedsReview: a call would send, or a call is missing
   NeedsReview --> NeedsReview: SLA timer escalates
   NeedsReview --> Superseded: newer run covers the same windows
-  NeedsReview --> Expired: last call expires
+  NeedsReview --> Expired: last call expires, no missing call unresolved
   NeedsReview --> Reconfirm: Approve, inputs changed since drafting
   Reconfirm --> Approved: approver confirms; validate passes
   Reconfirm --> NeedsReview: approver backs out
   Reconfirm --> Superseded: newer run covers the same windows
-  Reconfirm --> Expired: last call expires
+  Reconfirm --> Expired: last call expires, no missing call unresolved
   NeedsReview --> Approved: Approve, inputs unchanged
   Approved --> Sending: per call approved, edited or rejected
   Sending --> Sent: every approved call delivered or failed terminally
@@ -417,11 +417,11 @@ stateDiagram-v2
   Superseded --> [*]
 ```
 
-- **Supersession:** a newer bundle covering every window of an open one supersedes it, links to it and blocks its approval; with partial overlap only the overlapping calls are superseded ([CAL-7](/docs/PRD.md#calls-and-approvals-cal)).
-- **Expiry** ([CAL-8](/docs/PRD.md#calls-and-approvals-cal)): each call's `expires_at` is its window's start by default or with `expiry: 'start'`, and its end with `expiry: 'end'`; pack-level items such as a surge-night entry expire when the night's arrival period starts. A Cloud Tasks task per call marks it expired, an expired call is never sent, and the bundle expires when its last call does. Expired calls are still graded, so an unapproved crossing shows up in review.
+- **Supersession:** a newer bundle covering every window of an open one supersedes it, links to it and blocks its approval; with partial overlap only the overlapping calls are superseded ([CAL-7](/docs/PRD.md#calls-and-approvals-cal)). A newer bundle's missing call covers its window or night too: it supersedes an open call there, with no newer call to link to, so an approver can't send the window from both bundles under review.
+- **Expiry** ([CAL-8](/docs/PRD.md#calls-and-approvals-cal)): each call's `expires_at` is its window's start by default or with `expiry: 'start'`, and its end with `expiry: 'end'`; pack-level items such as a surge-night entry expire when the night's arrival period starts. A Cloud Tasks task per call marks it expired, an expired call is never sent, and the bundle expires when its last call does, unless a missing call is still unresolved: a missing call has no timer and holds the bundle in review until an approver acts on it or a newer bundle covering its window or night supersedes it. Expired calls are still graded, so an unapproved crossing shows up in review.
 - **Guest-window bundles** ([GST-5](/docs/PRD.md#guest-access-and-the-commons-gst)): they are `draft_only`, labelled "Draft: not reviewed, not sent"; they never send or appear on the conditions calendar or public ledger, and are excluded from published grades.
 - **Re-check at approval** ([CAL-9](/docs/PRD.md#calls-and-approvals-cal)): Approve sends the `review_hash` the approver saw; the server re-evaluates with current inputs and, if any input value, state or verdict differs, answers 409 `inputs-changed` with a "changed since drafting" diff; confirming records `reconfirm` and reruns `validate` against the new snapshot, approving only if it passes and otherwise returning `redraft-required`. The 409's `review_hash` is a `recheck.{snapshot_id}.{diff hash}` token, and confirming sends it back with `reconfirm: true`; the hash covers the bundle's `review_hash` and each change's value, state and `observed_at`, so a confirm takes a fresh snapshot and answers 409 again with a new token when anything else changed.
-- **Per call** ([CAL-4](/docs/PRD.md#calls-and-approvals-cal), [CAL-6](/docs/PRD.md#calls-and-approvals-cal), [LOC-5](/docs/PRD.md#localisation-loc)): every open call needs approve, edit or reject, and a disagreeing one a pick. A shadow pick writes the engine's mode, fired clauses and clause wording onto the call, keeping the agent's call on its `choose_verdict` row. An edit replaces the wording per language and only removes recipients. A non-reader's approval of a model-written Malay notice drops the Malay wording, so Malay recipients get English.
+- **Per call** ([CAL-4](/docs/PRD.md#calls-and-approvals-cal), [CAL-6](/docs/PRD.md#calls-and-approvals-cal), [LOC-5](/docs/PRD.md#localisation-loc)): every open call needs approve, edit or reject, and a disagreeing one a pick. Every missing call needs a draft, which adds the shadow verdict's call worded by its clauses and approves it, or a dismissal with a reason. A dismissal appends `call_rejected` to the ledger without the reason, which goes on the approval row and the audit event. A shadow pick writes the engine's mode, fired clauses and clause wording onto the call, keeping the agent's call on its `choose_verdict` row. An edit replaces the wording per language and only removes recipients. A non-reader's approval of a model-written Malay notice drops the Malay wording, so Malay recipients get English.
 - **Who can approve** is PRD's [roles matrix](/docs/PRD.md#roles-and-permissions), checked at approval time, from a human session with recent authentication ([ACC-8](/docs/PRD.md#accounts-and-sign-in-acc)). The approve endpoint is first-party only (`app.skyclause.m1ku.tech/api/bundles/{id}/approve`), absent from `/openapi.json` and the SDKs; API keys and OAuth tokens get 403.
 - **Listings** use the same queue and `approval` rows: `proposed` → `listed` (action `list`), `rejected`, `cancelled`; nights add `unlisted`. A change or cancellation needs approval ([CAL-14](/docs/PRD.md#calls-and-approvals-cal)).
 

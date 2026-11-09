@@ -2,7 +2,7 @@
 // the resend sweep and the auditor's no-approver check, through the worker part's handlers on the test database,
 // with push, email, Cloud Tasks, rota and shift-condition doubles and an injected clock.
 import type { EmailTransport, PushTransport, ShiftConditions } from '@skyclause/contracts'
-import { emitEvent, systemPrincipal, withTenant, type Tx } from '@skyclause/db'
+import { bundle, emitEvent, systemPrincipal, withTenant, type Tx } from '@skyclause/db'
 import {
   makeBundle,
   makeCall,
@@ -18,6 +18,7 @@ import {
 } from '@skyclause/db/test/factories/index'
 import { asLogin, expectEvent, expectOneAudit } from '@skyclause/db/test/harness/index'
 import { SesError } from '@skyclause/delivery'
+import { eq } from 'drizzle-orm'
 import { afterAll, describe, expect, test } from 'vitest'
 import { createAlertsPart, noApproverCheck, slaTimer, type AlertsDeps } from '../src/alerts'
 import type { TimerTask } from '../src/bundles/cloud-tasks'
@@ -95,8 +96,11 @@ const inOrg = <T>(orgId: string, fn: (tx: Tx) => Promise<T>) =>
 const account = async (orgId: string, role = 'approver') =>
   (await makeMember({ organizationId: orgId, role, userId: (await makeUser()).id })).userId
 
-/** A Commute disruption bundle in Needs review for a 15:15 MYT–15:30 MYT window, with its `bundle.needs_review`. */
-async function reviewBundle(orgId: string, o: { state?: 'needs_review' | 'approved' } = {}) {
+/**
+ * A Commute disruption bundle in Needs review for a 15:15 MYT–15:30 MYT window, with its `bundle.needs_review`; with
+ * `missing`, the draft left that call out and the bundle holds it as a missing call (#499).
+ */
+async function reviewBundle(orgId: string, o: { state?: 'needs_review' | 'approved'; missing?: true } = {}) {
   return inOrg(orgId, async (tx) => {
     const project = await makeProject(tx, { name: 'Bukit Jalil' })
     const run = await makeRun(tx, { projectId: project.id })
@@ -120,11 +124,26 @@ async function reviewBundle(orgId: string, o: { state?: 'needs_review' | 'approv
         }
       ]
     }
-    const c = await makeCall(tx, { bundleId: b.id, windowId: w.id, mode: 'commute_disruption', shadow })
+    let callIds: string[] = []
+    if (o.missing) {
+      const held = { windowId: w.id, nightId: null, shadow: { mode: 'commute_disruption', ...shadow } }
+      await tx
+        .update(bundle)
+        .set({ missing: [{ ...held, recipients: [], resolution: null }] })
+        .where(eq(bundle.id, b.id))
+    } else {
+      callIds = [(await makeCall(tx, { bundleId: b.id, windowId: w.id, mode: 'commute_disruption', shadow })).id]
+    }
     const event = await emitEvent(tx, {
       projectId: project.id,
       type: 'bundle.needs_review',
-      data: { bundle_id: b.id, pack: 'sky', state: 'needs_review', call_ids: [c.id], sla_due_at: SLA_DUE.toISOString() }
+      data: {
+        bundle_id: b.id,
+        pack: 'sky',
+        state: 'needs_review',
+        call_ids: callIds,
+        sla_due_at: SLA_DUE.toISOString()
+      }
     })
     return { projectId: project.id, projectSlug: project.slug, bundleId: b.id, eventId: event.id }
   })
@@ -146,6 +165,23 @@ describe('the alerts part', () => {
 })
 
 describe('CAL-18 and CAL-10: Needs review alerts everyone on duty', () => {
+  test('#499: a bundle holding only a missing call alerts with that call’s mode and window', async () => {
+    const o = await org()
+    const a = await account(o.id)
+    const made = await reviewBundle(o.id, { missing: true })
+    const d = doubles({ clock: at('2026-11-02T07:10:02Z'), onDuty: [a] })
+    await inOrg(o.id, (tx) => makePushSubscription(tx, { accountId: a }))
+
+    await dispatchEvent(createAlertsPart(d.deps).events!, made.eventId)
+
+    expect(d.pushes.map((p) => [p.payload.title, p.payload.body])).toEqual([
+      [
+        '1 call needs review · Bukit Jalil',
+        'Commute disruption for 15:15 MYT–15:30 MYT · 10 min of SLA left · site.rain_60m_mm 39 mm, 5 min old'
+      ]
+    ])
+  })
+
   test('a push on each device and an email, within 30 s, once per account, channel and level', async () => {
     const o = await org()
     const [a, b] = [await account(o.id), await account(o.id)]

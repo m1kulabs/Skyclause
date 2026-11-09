@@ -6,6 +6,7 @@ import type { EventEnvelope, Page, Principal } from '@skyclause/contracts'
 import {
   bundle,
   createBundle,
+  dismissMissing,
   emitEvent,
   listenEvents,
   markSending,
@@ -230,6 +231,58 @@ describe('GET /v1/bundles/{id}', () => {
       suppressed: 1
     })
     expect(vi.mocked(recipientsByLanguage).mock.calls.map(([, id]) => id)).toEqual([first])
+  })
+
+  test('#499: a bundle with a missing call lists it, unresolved, and has no Normal line; once dismissed it reads why', async () => {
+    const { projectId, bundleId, windowId } = await inOrg(A, async (tx) => {
+      const scene = await bundleScene(tx)
+      const w = await windowOf(tx, scene, at('2026-11-02T07:15:00Z'), at('2026-11-02T07:30:00Z'))
+      const r = await runOf(tx, scene, at('2026-11-02T07:05:00Z'))
+      const { shadow } = callDraft({ windowId: w.id, ...storm })
+      const b = await createBundle(tx, {
+        runId: r.id,
+        pack: 'sky',
+        draftOnly: false,
+        calls: [],
+        missing: [{ windowId: w.id, nightId: null, shadow, recipients: ['subscriber-1'] }],
+        triggeredAt: r.triggeredAt,
+        now: at('2026-11-02T07:10:00Z')
+      })
+      return { projectId: scene.projectId, bundleId: b.bundleId, windowId: w.id }
+    })
+    const unresolved = {
+      window_id: windowId,
+      night_id: null,
+      shadow: expect.objectContaining({ scope: { kind: 'window', id: windowId }, mode: 'commute_disruption' }),
+      recipients: ['subscriber-1'],
+      resolution: null,
+      call_id: null,
+      reason: null,
+      resolved_by: null,
+      resolved_at: null,
+      superseded_by: null
+    }
+    const body = await json<BundleDetail>(read(as(), `/v1/bundles/${bundleId}`))
+    expect(body).toMatchObject({ state: 'needs_review', calls: [], missing: [unresolved] })
+    expect(body.summary).toBeUndefined()
+    const listed = await json<Page<BundleView>>(read(as(), `/v1/projects/${projectId}/bundles`))
+    expect(listed.data).toMatchObject([{ id: bundleId, missing: [unresolved] }])
+    // A bundle with no missing call leaves the field out.
+    expect(await json<BundleDetail>(read(as(), `/v1/bundles/${made.review.bundleId}`))).not.toHaveProperty('missing')
+
+    const by = '0190f5a0-0000-7000-8000-000000000001'
+    await inOrg(A, (tx) =>
+      dismissMissing(tx, bundleId, { windowId }, { reason: 'Gauge under repair', by }, at('2026-11-02T07:12:00Z'))
+    )
+    expect((await json<BundleDetail>(read(as(), `/v1/bundles/${bundleId}`))).missing).toEqual([
+      {
+        ...unresolved,
+        resolution: 'dismissed',
+        reason: 'Gauge under repair',
+        resolved_by: by,
+        resolved_at: '2026-11-02T07:12:00Z'
+      }
+    ])
   })
 
   test('a run with no pinned sheet version reads sheet_version_id null', async () => {

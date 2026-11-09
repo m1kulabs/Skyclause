@@ -2,6 +2,7 @@ import { ROLES, type Role } from '@skyclause/contracts'
 import { and, asc, eq, inArray, isNotNull, isNull, lt, lte, sql, type SQL } from 'drizzle-orm'
 import { track } from '../analytics'
 import { recordAudit } from '../audit'
+import type { MissingCall } from '../bundles'
 import type { SystemPrincipal, Tx } from '../client'
 import { emitEvent } from '../events'
 import {
@@ -143,7 +144,10 @@ export async function lockBundle(tx: Tx, bundleId: string) {
   return row
 }
 
-/** What an alert about a bundle prints: its project, organisation slug and the calls still waiting on review. */
+/**
+ * What an alert about a bundle prints: its project, organisation slug and the calls still waiting on review, its
+ * unresolved missing calls first (#499, CAL-4), each with the engine's mode.
+ */
 export async function bundleForAlert(tx: Tx, bundleId: string) {
   const [row] = await tx
     .select({ bundle, project: { id: project.id, slug: project.slug, name: project.name }, orgSlug: organization.slug })
@@ -164,7 +168,22 @@ export async function bundleForAlert(tx: Tx, bundleId: string) {
     .leftJoin(night, eq(night.id, call.nightId))
     .where(and(eq(call.bundleId, bundleId), eq(call.state, 'drafted')))
     .orderBy(asc(call.id))
-  return { ...row, calls }
+  const missing = (row.bundle.missing as MissingCall[]).filter((m) => m.resolution === null)
+  const windowIds = missing.flatMap((m) => (m.windowId ? [m.windowId] : []))
+  const nightIds = missing.flatMap((m) => (m.nightId ? [m.nightId] : []))
+  const windows = windowIds.length ? await tx.select().from(window).where(inArray(window.id, windowIds)) : []
+  const nights = nightIds.length ? await tx.select().from(night).where(inArray(night.id, nightIds)) : []
+  const held = missing.map((m) => {
+    const w = windows.find((r) => r.id === m.windowId)
+    const n = nights.find((r) => r.id === m.nightId)
+    return {
+      mode: (m.shadow as { mode: (typeof calls)[number]['mode'] }).mode,
+      shadow: m.shadow,
+      startsAt: w?.startsAt ?? n?.arrivalStart ?? null,
+      endsAt: w?.endsAt ?? n?.exitEnd ?? null
+    }
+  })
+  return { ...row, calls: [...held, ...calls] }
 }
 
 export async function orgSlug(tx: Tx): Promise<string> {
