@@ -42,7 +42,7 @@
       },
       "members": {
         "title": "Members and roles",
-        "description": "Manage membership, invitations and roles."
+        "description": "Manage membership and invitations. Roles are cumulative; at least one Owner must remain."
       },
       "rota": {
         "title": "Approver rota",

@@ -4,6 +4,7 @@ import type { Page } from '@playwright/test'
 import { t } from './palette/messages'
 import { expectUnclippedText } from './harness/expect-unclipped-text'
 import { windowUndoCase, windowUnsavedCase } from './windows/set7-cases'
+import { prepareSettings } from './members/stubs'
 
 const route = '/_test/set-7'
 const name = t('set7.harness.name')
@@ -223,7 +224,7 @@ for (const theme of ['dark', 'light', 'high-contrast'] as const) {
   })
 }
 
-// Domain owners replace these cases with their real action flow when their panels land (spec §7).
+// Remaining spec-owned actions stay disabled until their owning issue lands.
 for (const title of [
   'delete organisation — #108 a-settings-pages',
   'delete account — #108 a-settings-pages',
@@ -231,13 +232,115 @@ for (const title of [
   'revoke AI key — #105 a-keys-ui',
   'revoke share link — #174 b-project-ui',
   'archive project — #174 b-project-ui',
-  'remove member — #104 a-members-ui',
-  'lower role — #104 a-members-ui',
-  'unsaved rota — #104 a-members-ui',
   'remove subscriber — #169 c-channels-ui',
   'delete clause sheet draft — #144'
 ]) {
   test.fixme(title, async () => {})
+}
+
+test('remove member — #104: confirmation names the member', async ({ page }) => {
+  await prepareSettings(page, 'members')
+  await page.goto('/test-org/settings/members')
+
+  await page.getByRole('button', { name: 'Remove member: Aisha Rahman' }).click()
+  const dialog = page.getByRole('alertdialog')
+  await expect(dialog.getByRole('heading', { name: 'Remove “Aisha Rahman”?' })).toBeVisible()
+  await expect(dialog).toContainText('Aisha Rahman')
+})
+
+test('lower role — #104: confirmation names the member and new role', async ({ page }) => {
+  await prepareSettings(page, 'members', 'admin')
+  await page.goto('/test-org/settings/members')
+
+  await page.getByRole('combobox', { name: 'Role for Aisha Rahman' }).click()
+  await page.getByRole('option', { name: 'Editor' }).click()
+  const dialog = page.getByRole('alertdialog')
+  await expect(dialog.getByRole('heading', { name: 'Change “Aisha Rahman” to Editor?' })).toBeVisible()
+  await expect(dialog).toContainText('Editor')
+})
+
+test('last-owner — #104: the refusal reason appears next to the role control', async ({ page }) => {
+  await prepareSettings(page, 'members')
+  await page.route('**/api/orgs/test-org/members/**', async (route) => {
+    if (route.request().method() === 'PUT') {
+      await route.fulfill({
+        status: 409,
+        contentType: 'application/problem+json',
+        json: { type: 'last-owner', title: 'An organisation must keep an Owner.', status: 409 }
+      })
+    } else await route.fallback()
+  })
+  await page.goto('/test-org/settings/members')
+
+  const role = page.getByRole('combobox', { name: 'Role for Morgan Owner' })
+  await role.click()
+  await page.getByRole('option', { name: 'Admin' }).click()
+  const dialog = page.getByRole('alertdialog')
+  await expect(dialog.getByRole('heading', { name: 'Change “Morgan Owner” to Admin?' })).toBeVisible()
+  await dialog.getByRole('button', { name: /Change role to Admin/ }).click()
+  const ownerRow = page.getByRole('row', { name: /Morgan Owner/ })
+  await expect(ownerRow.getByRole('alert')).toHaveText('The organisation must retain at least one Owner.')
+})
+
+test('unsaved rota — #104: closing the tab prompts before the shift is saved', async ({ page }) => {
+  await prepareSettings(page, 'rota')
+  await page.goto('/test-org/settings/rota')
+  await page.getByRole('button', { name: 'Add an approver' }).click()
+  await page.getByRole('checkbox', { name: 'Monday' }).click()
+  await page.getByRole('button', { name: 'Add shift' }).click()
+  await expect(page.getByText('Rota shifts (n=1)')).toBeVisible()
+
+  const prompt = page.waitForEvent('dialog')
+  const reload = page.evaluate(() => window.location.reload())
+  const dialog = await prompt
+  expect(dialog.type()).toBe('beforeunload')
+  await dialog.dismiss()
+  await reload
+  await expect(page).toHaveURL(/\/test-org\/settings\/rota$/)
+})
+
+test('ORG-4: a new organisation shows both empty rota templates and Add an approver', async ({ page }) => {
+  await prepareSettings(page, 'rota')
+  await page.goto('/test-org/settings/rota')
+  const templates = page.locator('section[aria-labelledby="rota-templates-heading"]')
+  await expect(templates.getByText('Storm afternoons')).toBeVisible()
+  await expect(templates.getByText('Surge nights')).toBeVisible()
+  await expect(templates.getByText('No one assigned')).toHaveCount(2)
+  await expect(page.getByRole('button', { name: 'Add an approver' })).toBeVisible()
+  await expect(page.getByText('Rota shifts (n=0)')).toBeVisible()
+})
+
+test('ORG settings tables and timeline fit the 375px viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 })
+  await prepareSettings(page, 'members')
+  await page.goto('/test-org/settings/members')
+  await expect(page.getByRole('table', { name: 'Organisation members' })).toBeVisible()
+  await expect(page.getByRole('cell', { name: /Aisha Rahman/ })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375)
+
+  await prepareSettings(page, 'rota')
+  await page.goto('/test-org/settings/rota')
+  const timeline = page.getByRole('region', { name: 'Approver rota for the next 7 days' })
+  await expect(timeline).toBeVisible()
+  await expect(timeline).toHaveCSS('overflow-x', 'auto')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375)
+})
+
+for (const mode of [
+  { name: 'dark', theme: 'dark', contrast: 'standard' },
+  { name: 'light', theme: 'light', contrast: 'standard' },
+  { name: 'high contrast', theme: 'dark', contrast: 'more' }
+] as const) {
+  test(`#104 members and rota axe: ${mode.name}`, async ({ page, baseURL, expectAxeClean }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.context().addCookies([{ name: 'skyclause-test-appearance', value: JSON.stringify(mode), url: baseURL! }])
+    await prepareSettings(page, 'members')
+    await page.goto('/test-org/settings/members')
+    await expectAxeClean(page)
+    await prepareSettings(page, 'rota')
+    await page.goto('/test-org/settings/rota')
+    await expectAxeClean(page)
+  })
 }
 
 test('notifications panel removes a registered device immediately by keyboard — #170', async ({ page }) => {

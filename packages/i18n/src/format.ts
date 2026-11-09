@@ -58,14 +58,38 @@ function dateParts(value: DateValue, locale: Locale, withWeekday = false) {
 }
 
 export function formatTime(value: DateValue, locale: Locale): string {
-  const time = new Intl.DateTimeFormat(intlLocale(locale), {
+  const time = formatClock(value, locale)
+
+  return t('format.time', { time, zone: t('format.zone', {}, locale) }, locale)
+}
+
+export function formatClock(value: DateValue, locale: Locale): string {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
     timeZone: TIME_ZONE,
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23'
   }).format(asDate(value))
+}
 
-  return t('format.time', { time, zone: t('format.zone', {}, locale) }, locale)
+export function formatDateKey(value: DateValue): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(asDate(value))
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)!.value
+  return `${part('year')}-${part('month')}-${part('day')}`
+}
+
+export function formatDateCompact(value: DateValue, locale: Locale): string {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
+    timeZone: TIME_ZONE,
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short'
+  }).format(asDate(value))
 }
 
 export function formatDate(value: DateValue, locale: Locale): string {
