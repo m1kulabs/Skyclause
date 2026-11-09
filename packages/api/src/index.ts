@@ -56,6 +56,7 @@ export {
 export { createRun, getRun, listRuns, type RunView } from './services/runs'
 export { sseResponse, type SseMessage, type SseOptions } from './sse'
 export type * from './stores'
+export { calendarFeed, serveCalendarFeed, type CalendarFeed, type CalendarFeedDeps } from './services/ics'
 export { inTenant, type ServiceContext, type WithTenant } from './tenancy'
 export { unbuiltOperations } from './unbuilt'
 export * from './placeholders/b-auditor'
