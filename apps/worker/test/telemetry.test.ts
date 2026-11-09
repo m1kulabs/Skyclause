@@ -35,7 +35,13 @@ beforeEach(() => {
   spans = new InMemorySpanExporter()
   metrics = new InMemoryMetricExporter(AggregationTemporality.CUMULATIVE)
   telemetry = startTelemetry('worker', {
-    env: { APP_ENV: 'production', GCP_PROJECT: 'skyclause', WORKER_URL: audience, WORKER_INVOKER_SA: invoker },
+    env: {
+      APP_ENV: 'production',
+      GCP_PROJECT: 'skyclause',
+      WORKER_URL: audience,
+      WORKER_INVOKER_SA: invoker,
+      EMAIL_HASH_KEY: 'e'.repeat(48)
+    },
     traceExporter: spans,
     metricExporter: metrics,
     write: (line) => void lines.push(line)
