@@ -14,8 +14,8 @@ const packages: Array<{ name: string; owners: Record<string, string[]> }> = [
   {
     name: 'db',
     owners: {
-      'c-run-orchestrator': ['requestRun'],
       'a-org-projects': ['createOrganisation'],
+      'd-guest-rules': ['budgetGate'],
       'c-notifications': ['notify'],
       'd-org-api': ['listenEvents'],
       'a-subscriber-rights': ['eraseSubscriber']
