@@ -36,17 +36,19 @@ const gradesOf = async (projectId: string) =>
   }))
 
 describe('ANL-1: every Sky window with a call by 23:59 has a grade by 06:45 next day', () => {
-  test('23:55 grades spans that closed; a span past midnight waits for the 06:30 run', async () => {
-    const { projectId, versionId, early, late } = await tx(async (t) => {
+  test('23:55 grades spans that closed; spans past midnight, up to the run itself, wait for 06:30', async () => {
+    const { projectId, versionId, early, late, dawn } = await tx(async (t) => {
       const { projectId, versionId } = await skyProject(t)
-      // Storm confirmed's span ends an hour after each window: 22:30 and 00:30.
+      // Storm confirmed's span ends an hour after each window: 22:30, 00:30 and 06:30.
       const early = await windowAt(t, projectId, '2026-11-09 20:00', '2026-11-09 21:30')
       const late = await windowAt(t, projectId, '2026-11-09 22:00', '2026-11-09 23:30')
+      const dawn = await windowAt(t, projectId, '2026-11-10 04:30', '2026-11-10 05:30')
       await skyBundle(t, projectId, versionId, [
         { windowId: early.id, mode: 'commute_disruption' },
-        { windowId: late.id, mode: 'outdoor_limited' }
+        { windowId: late.id, mode: 'outdoor_limited' },
+        { windowId: dawn.id, mode: 'normal' }
       ])
-      return { projectId, versionId, early, late }
+      return { projectId, versionId, early, late, dawn }
     })
     const { engine, seen } = skyEngine(new Map([[early.id, 'commute_disruption' as SkyMode]]))
 
@@ -64,16 +66,18 @@ describe('ANL-1: every Sky window with a call by 23:59 has a grade by 06:45 next
     await gradeSky(engine, myt('2026-11-10 06:30'))
     expect((await gradesOf(projectId)).map((g) => [g.window, g.outcome])).toEqual([
       [early.id, 'hit'],
-      [late.id, 'false_alarm']
+      [late.id, 'false_alarm'],
+      [dawn.id, 'correct_normal']
     ])
     // Each observation is the call's pinned version, evaluated at the last span end over the span's history.
     expect(seen.checked.every((sheet) => sheet.clauses[0]!.key === STORM_CONFIRMED.key)).toBe(true)
-    expect(seen.evaluatedAt.filter((e) => [early.id, late.id].includes(e.windowId))).toEqual([
+    expect(seen.evaluatedAt.filter((e) => [early.id, late.id, dawn.id].includes(e.windowId))).toEqual([
       { windowId: early.id, tEval: '2026-11-09T14:30:00.000Z' },
-      { windowId: late.id, tEval: '2026-11-09T16:30:00.000Z' }
+      { windowId: late.id, tEval: '2026-11-09T16:30:00.000Z' },
+      { windowId: dawn.id, tEval: '2026-11-09T22:30:00.000Z' }
     ])
-    expect((await rowsOf('grade', projectId)).map((g) => g.sheet_version_id)).toEqual([versionId, versionId])
-    expect(await localDatesOf(projectId)).toEqual(['2026-11-09', '2026-11-09'])
+    expect((await rowsOf('grade', projectId)).map((g) => g.sheet_version_id)).toEqual([versionId, versionId, versionId])
+    expect(await localDatesOf(projectId)).toEqual(['2026-11-09', '2026-11-09', '2026-11-10'])
   })
 
   test('the observation reads gauge, APIMS, warnings and devices past probation; never forecasts or a probation camera', async () => {

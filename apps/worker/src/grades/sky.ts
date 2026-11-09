@@ -21,11 +21,6 @@ const MINUTE = 60_000
 const DAY = 24 * 60 * MINUTE
 /** Windows that ended this far back still get graded, so a missed run catches up. */
 const LOOKBACK = 14 * DAY
-/**
- * A span is graded once its readings are in: D45's 15-minute batch writes them after the poll that fetched them, so
- * the grader waits 30 minutes past the last span end ("complete readings for the span").
- */
-const SETTLE = 30 * MINUTE
 /** History before the window: `site.api_0600_min_last3_max` reads three days of APIMS. */
 const HISTORY_BEFORE = 4 * DAY
 /** TRD grading's observed inputs: gauge, APIMS and warnings in force; a camera only once its probation passed. */
@@ -159,7 +154,7 @@ async function gradeProject(
   return graded
 }
 
-/** The pinned version's window verdict over the span's observed readings, or null while the span hasn't settled. */
+/** The pinned version's window verdict over the span's observed readings, or null while its last span is open. */
 async function observe(
   tx: Tx,
   engine: ReturnType<typeof requireEngine<'history' | 'registry'>>,
@@ -173,7 +168,7 @@ async function observe(
     throw new Error(`sheet version ${versionId} doesn't check: ${checked.issues.map((i) => i.message).join('; ')}`)
   }
   const end = lastSpanEnd(w, checked.sheet.clauses)
-  if (q.now.getTime() < end.getTime() + SETTLE) return null
+  if (q.now < end) return null
   const tEval = end.toISOString()
   const history = await engine.history(tx, {
     projectId: q.projectId,

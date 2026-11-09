@@ -103,7 +103,10 @@ async function gradeProject(
     const exits = await engine.forecast.exits(tx, { stationId: station.stationId, date })
     if ('pendingUntil' in exits) continue
     const baseline = await engine.forecast.baseline(tx, { stationId: station.stationId, date })
-    if (!baseline) continue
+    if (!baseline) {
+      log('INFO', `${JOB}: no baseline, so no unlisted-surge check`, { projectId: q.projectId, date })
+      continue
+    }
     const night = { date, actual: exits.value, baseline: baseline.value, start: startsAt }
     if (!surgeFires(engine, live.content as SheetInput, q.projectId, night, q.now)) continue
     const nightId = await insertUnlistedNight(tx, { projectId: q.projectId, date })
