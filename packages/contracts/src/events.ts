@@ -122,9 +122,10 @@ export const BundleApprovedEventSchema = eventEnvelope(
   })
 )
 
+// `mode` is null for a No call, which is approved and sent like any other call (#158).
 export const CallSentEventSchema = eventEnvelope(
   'call.sent',
-  z.object({ call_id: idSchema, mode: modeSchema, outcome: z.string() })
+  z.object({ call_id: idSchema, mode: modeSchema.nullable(), outcome: z.string() })
 )
 
 export const CallGradedEventSchema = eventEnvelope('call.graded', z.object({ call_id: idSchema, outcome: gradeSchema }))

@@ -35,5 +35,7 @@ export {
   type RenderNotice
 } from './notices'
 export { renderFeedbackEmail } from './feedback-email'
+export { callNoticeEmail, type CallNoticeOptions } from './call-notice'
+export { parseSesEvent, sesEventsHandler, type SesEvent, type SesEventsOptions } from './ses-events'
 export { renderSubscriberEmail, type SubscriberEmailKind } from './subscriber-emails'
 export { ensureVapidKeys, type VapidKeysOptions } from './vapid'
