@@ -245,7 +245,7 @@ describe('GET /v1/projects/{id}/bundles and /calls', () => {
 
 describe('GET /v1/calls/{id}', () => {
   test('CAL-12: the trigger, drafted, approved and sent instants, null until reached', async () => {
-    const [, second] = made.review.callIds as [string, string]
+    const [first, second] = made.review.callIds as [string, string]
     const before = await json<CallDetail>(read(as(), `/v1/calls/${second}`))
     expect(before).toMatchObject({
       triggered_at: '2026-11-02T07:05:00Z',
@@ -257,7 +257,7 @@ describe('GET /v1/calls/{id}', () => {
       await transition(
         tx,
         made.review.bundleId,
-        { bundle: 'approved', calls: { [second]: 'approved' } },
+        { bundle: 'approved', calls: { [first]: 'rejected', [second]: 'approved' } },
         at('2026-11-02T07:12:00Z')
       )
       await markSending(tx, made.review.bundleId, [second], at('2026-11-02T07:12:00Z'))

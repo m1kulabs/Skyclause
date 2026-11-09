@@ -32,9 +32,9 @@ const op = fc.oneof(
 )
 type Op = typeof op extends fc.Arbitrary<infer T> ? T : never
 
-const fresh = (expiries: number[]): BundleSlot => ({
+const fresh = (expiries: number[], state: BundleSlot['state'] = 'needs_review'): BundleSlot => ({
   id: 'b',
-  state: 'needs_review',
+  state,
   supersededBy: null,
   calls: expiries.map((m, i) => ({
     id: `c${i}`,
@@ -86,6 +86,17 @@ test('no call reaches sending, sent or failed after it was expired or superseded
           if (['sending', 'sent', 'failed'].includes(call.state)) expect(final.has(call.id)).toBe(false)
         }
       })
+    })
+  )
+})
+
+test('nothing in a closed bundle moves, so an all-Normal or draft-only bundle never sends (CAL-5, D23)', () => {
+  fc.assert(
+    fc.property(expiries, fc.array(op, { maxLength: 30 }), (start, ops) => {
+      let bundle = fresh(start, 'closed')
+      ops.forEach((o, n) => (bundle = apply(bundle, o, n)))
+      expect(bundle.state).toBe('closed')
+      expect(bundle.calls.every((call) => call.state === 'drafted')).toBe(true)
     })
   )
 })

@@ -53,6 +53,21 @@ async function analyticsOf(projectId: string) {
   })
 }
 
+/** Resolves once a session of this test database waits on a lock, as a second run's transaction does. */
+async function untilWaitingOnALock() {
+  for (let tries = 0; tries < 250; tries++) {
+    const waiting = await asLogin('postgres', async (client) => {
+      const { rows } = await client.query<{ n: number }>(
+        "SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'"
+      )
+      return rows[0]!.n
+    })
+    if (waiting > 0) return
+    await new Promise((resolve) => setTimeout(resolve, 20))
+  }
+  throw new Error('no transaction waited on a lock within 5 seconds')
+}
+
 const rowOf = (tx: Tx, id: string) =>
   tx
     .select()
@@ -152,6 +167,13 @@ describe('createBundle waits in Needs review when a call would send', () => {
     const made = await inOrg((tx) => draft(tx, scene, [{ windowId: first, mode: null, noCall: ['site.rain_60m_mm'] }]))
     expect(made.state).toBe('needs_review')
   })
+
+  test('a run with no calls hands over an empty bundle, which closes', async () => {
+    const { scene } = await inOrg((tx) => twoWindows(tx))
+    const made = await inOrg((tx) => draft(tx, scene, []))
+    expect(made).toMatchObject({ state: 'closed', callIds: [] })
+    expect((await eventsOf(scene.projectId)).map((e) => e.type)).toEqual(['bundle.drafted'])
+  })
 })
 
 describe('expires_at (CAL-8)', () => {
@@ -236,6 +258,27 @@ describe('supersession (CAL-7)', () => {
       successor: { bundleId: newer.bundleId, callIds: newer.callIds }
     })
     expect(await inOrg((tx) => approveGuard(tx, older.bundleId, [other!.id], DRAFTED))).toEqual({ ok: true })
+  })
+
+  test('two runs of one pack take turns: the later supersedes a bundle drafted while it waited', async () => {
+    const { scene, first } = await inOrg((tx) => twoWindows(tx))
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    let drafted!: () => void
+    const inserted = new Promise<void>((resolve) => (drafted = resolve))
+    // The older run drafts its bundle and holds its transaction open while the newer run starts.
+    const older = inOrg(async (tx) => {
+      const made = await draft(tx, scene, [{ windowId: first, ...storm }])
+      drafted()
+      await held
+      return made
+    })
+    await inserted
+    const newer = inOrg((tx) => draft(tx, scene, [{ windowId: first, ...storm }], { now: at('2026-11-02T07:12:00Z') }))
+    await untilWaitingOnALock()
+    release()
+    const [o, n] = await Promise.all([older, newer])
+    expect(await inOrg((tx) => rowOf(tx, o.bundleId))).toMatchObject({ state: 'superseded', supersededBy: n.bundleId })
   })
 
   test('another pack’s bundle, and a bundle no longer under review, are left alone', async () => {
@@ -373,13 +416,35 @@ describe('approveGuard, transition and markSending', () => {
     ])
   })
 
-  test('transition refuses the moves createBundle and expireCall own', async () => {
+  test('transition refuses the moves createBundle, expireCall and markSending own', async () => {
     const { scene, first } = await inOrg((tx) => twoWindows(tx))
     const made = await inOrg((tx) => draft(tx, scene, [{ windowId: first, ...storm }]))
     await expect(inOrg((tx) => transition(tx, made.bundleId, { bundle: 'expired' }))).rejects.toThrow(/on its own/)
     await expect(
       inOrg((tx) => transition(tx, made.bundleId, { calls: { [made.callIds[0]!]: 'superseded' } }))
     ).rejects.toThrow(/on its own/)
+    const callId = made.callIds[0]!
+    await inOrg((tx) => transition(tx, made.bundleId, { bundle: 'approved', calls: { [callId]: 'approved' } }))
+    await expect(inOrg((tx) => transition(tx, made.bundleId, { calls: { [callId]: 'sending' } }))).rejects.toThrow(
+      /through markSending/
+    )
+    await expect(inOrg((tx) => transition(tx, made.bundleId, { bundle: 'sending' }))).rejects.toThrow(
+      /through markSending/
+    )
+  })
+
+  test('approveGuard links to the newest bundle along a chain of supersessions (CAL-7)', async () => {
+    const { scene, first } = await inOrg((tx) => twoWindows(tx))
+    const oldest = await inOrg((tx) => draft(tx, scene, [{ windowId: first, ...storm }]))
+    await inOrg((tx) => draft(tx, scene, [{ windowId: first, ...storm }], { now: at('2026-11-02T07:11:00Z') }))
+    const newest = await inOrg((tx) =>
+      draft(tx, scene, [{ windowId: first, ...storm }], { now: at('2026-11-02T07:12:00Z') })
+    )
+    expect(await inOrg((tx) => approveGuard(tx, oldest.bundleId, oldest.callIds, DRAFTED))).toEqual({
+      ok: false,
+      problem: 'bundle-superseded',
+      successor: { bundleId: newest.bundleId, callIds: newest.callIds }
+    })
   })
 })
 

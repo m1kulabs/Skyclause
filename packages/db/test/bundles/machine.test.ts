@@ -8,6 +8,7 @@ import {
   expiresAt,
   sendStep,
   supersedeStep,
+  transitionStep,
   type BundleSlot
 } from '../../src/bundles/machine'
 
@@ -212,5 +213,38 @@ describe('sendStep', () => {
       calls: [call('a', 'approved', '2026-11-02T07:30:00Z')]
     }
     expect(() => sendStep(bundle, ['a'], at('2026-11-02T07:35:00Z'))).toThrow(/expired/)
+  })
+
+  test('refuses a bundle that is not approved, such as a closed or a draft-only one (CAL-5, D23)', () => {
+    for (const state of ['closed', 'needs_review'] as const) {
+      const bundle: BundleSlot = {
+        id: 'b',
+        state,
+        supersededBy: null,
+        calls: [call('a', 'approved', '2026-11-02T07:45:00Z')]
+      }
+      expect(() => sendStep(bundle, ['a'], at('2026-11-02T07:35:00Z'))).toThrow(new RegExp(`bundle b is ${state}`))
+    }
+  })
+})
+
+describe('transitionStep', () => {
+  const review: BundleSlot = {
+    id: 'b',
+    state: 'needs_review',
+    supersededBy: null,
+    calls: [call('a', 'drafted', '2026-11-02T07:45:00Z'), call('b', 'drafted', '2026-11-02T07:45:00Z')]
+  }
+
+  test("a closed bundle's calls never move, so a draft-only bundle can't be approved (CAL-5, D23)", () => {
+    const closed: BundleSlot = { ...review, state: 'closed' }
+    expect(() => transitionStep(closed, { calls: { a: 'approved' } })).toThrow(/bundle b is closed/)
+  })
+
+  test('approves a bundle only once every call still drafted is decided (TRD: per call approved, edited or rejected)', () => {
+    expect(() => transitionStep(review, { bundle: 'approved', calls: { a: 'approved' } })).toThrow(/undecided: b$/)
+    const next = transitionStep(review, { bundle: 'approved', calls: { a: 'approved', b: 'rejected' } })
+    expect(next.state).toBe('approved')
+    expect(next.calls.map((c) => c.state)).toEqual(['approved', 'rejected'])
   })
 })

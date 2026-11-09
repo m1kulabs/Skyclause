@@ -42,6 +42,11 @@ export const BUNDLE_TRANSITIONS: Readonly<Record<BundleState, readonly BundleSta
 export const OPEN_CALL_STATES: readonly CallState[] = ['drafted', 'approved', 'edited']
 /** A bundle waiting on an approver. */
 export const REVIEW_STATES: readonly BundleState[] = ['needs_review', 'reconfirm']
+/**
+ * The bundle states whose calls may still be decided, sent or delivered. A closed bundle (all Normal, or a guest
+ * window's draft) never sends (CAL-5, D23), and a superseded or expired one has no open call left.
+ */
+const LIVE_STATES: readonly BundleState[] = [...REVIEW_STATES, 'approved', 'sending']
 
 export const canMoveCall = (from: string, to: string) =>
   (CALL_TRANSITIONS[from as CallState] ?? []).includes(to as CallState)
@@ -142,10 +147,14 @@ export function supersedeStep(
 }
 
 /**
- * `markSending`: approved or edited calls go to `sending`, and an approved bundle with them. Refuses any other call,
- * and one past its `expires_at` whose timer hasn't fired yet, since an expired call never sends (CAL-8).
+ * `markSending`: approved or edited calls of an approved bundle go to `sending`, and the bundle with them. Refuses any
+ * other call or bundle, and a call past its `expires_at` whose timer hasn't fired yet, since an expired call never
+ * sends (CAL-8).
  */
 export function sendStep(bundle: BundleSlot, callIds: string[], now: Date): BundleSlot {
+  if (bundle.state !== 'approved' && bundle.state !== 'sending') {
+    throw new Error(`bundle ${bundle.id} is ${bundle.state}; only an approved bundle sends`)
+  }
   for (const id of callIds) {
     const call = bundle.calls.find((c) => c.id === id)
     if (!call) throw new Error(`call ${id} is not in bundle ${bundle.id}`)
@@ -159,7 +168,8 @@ export function sendStep(bundle: BundleSlot, callIds: string[], now: Date): Bund
 
 /**
  * The guarded move behind `transition` (#153's decisions, #158's sent and failed): each named call and the bundle go
- * where the tables above allow, or the whole step is refused.
+ * where the tables above allow, or the whole step is refused. Calls move only in a live bundle, and a bundle is
+ * approved only once no call is left drafted (TRD: "per call approved, edited or rejected").
  */
 export function transitionStep(
   bundle: BundleSlot,
@@ -169,6 +179,9 @@ export function transitionStep(
     throw new Error(`bundle ${bundle.id} can't go from ${bundle.state} to ${change.bundle}`)
   }
   const moves = change.calls ?? {}
+  if (Object.keys(moves).length && !LIVE_STATES.includes(bundle.state)) {
+    throw new Error(`bundle ${bundle.id} is ${bundle.state}; its calls don't move`)
+  }
   for (const [id, to] of Object.entries(moves)) {
     const call = bundle.calls.find((c) => c.id === id)
     if (!call) throw new Error(`call ${id} is not in bundle ${bundle.id}`)
@@ -176,9 +189,16 @@ export function transitionStep(
       throw new Error(`call ${id} can't go from ${call.state} to ${to}`)
     }
   }
-  return {
+  const next = {
     ...bundle,
     state: change.bundle ?? bundle.state,
     calls: bundle.calls.map((call) => (moves[call.id] ? { ...call, state: moves[call.id]! } : call))
   }
+  const undecided = next.calls.filter((call) => call.state === 'drafted')
+  if (next.state === 'approved' && bundle.state !== 'approved' && undecided.length) {
+    throw new Error(
+      `bundle ${bundle.id} can't be approved with calls undecided: ${undecided.map((c) => c.id).join(', ')}`
+    )
+  }
+  return next
 }

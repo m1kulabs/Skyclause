@@ -238,7 +238,9 @@ export async function createBundle(tx: Tx, input: CreateBundleInput) {
   const review = state === 'needs_review'
   const slaDueAt = review ? new Date(now.getTime() + slaS * 1000) : null
 
-  // Lock the bundles a supersession may change before writing, so two runs of one pack take turns.
+  // Two runs of one project and pack take turns, so the later one sees the earlier bundle and can supersede it; then
+  // lock the bundles a supersession may change, against their expiry timers and approvals.
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`bundle:${projectId}:${pack}`}, 0))`)
   const open = await tx
     .select({ id: bundle.id })
     .from(bundle)
@@ -262,35 +264,37 @@ export async function createBundle(tx: Tx, input: CreateBundleInput) {
       updatedAt: now
     })
     .returning()
-  const calls = await tx
-    .insert(call)
-    .values(
-      input.calls.map((draft, i) => ({
-        orgId: tx.orgId!,
-        projectId,
-        bundleId: created!.id,
-        windowId: draft.windowId ?? null,
-        nightId: draft.nightId ?? null,
-        mode: draft.mode,
-        watch: draft.watch,
-        noCall: draft.noCall,
-        fired: draft.fired,
-        recommendations: draft.recommendations,
-        recipients: draft.recipients,
-        notices: draft.notices,
-        reason: draft.reason,
-        shadow: draft.shadow,
-        chosen: draft.chosen,
-        agrees: draft.agrees,
-        decision: draft.decision ?? null,
-        expiresAt: expiries[i]!,
-        triggeredAt: input.triggeredAt,
-        draftedAt: now,
-        createdAt: now,
-        updatedAt: now
-      }))
-    )
-    .returning()
+  const calls = input.calls.length
+    ? await tx
+        .insert(call)
+        .values(
+          input.calls.map((draft, i) => ({
+            orgId: tx.orgId!,
+            projectId,
+            bundleId: created!.id,
+            windowId: draft.windowId ?? null,
+            nightId: draft.nightId ?? null,
+            mode: draft.mode,
+            watch: draft.watch,
+            noCall: draft.noCall,
+            fired: draft.fired,
+            recommendations: draft.recommendations,
+            recipients: draft.recipients,
+            notices: draft.notices,
+            reason: draft.reason,
+            shadow: draft.shadow,
+            chosen: draft.chosen,
+            agrees: draft.agrees,
+            decision: draft.decision ?? null,
+            expiresAt: expiries[i]!,
+            triggeredAt: input.triggeredAt,
+            draftedAt: now,
+            createdAt: now,
+            updatedAt: now
+          }))
+        )
+        .returning()
+    : []
   const b = { id: created!.id, projectId, pack, slaDueAt }
   const callIds = calls.map((c) => c.id)
   await refreshReviewHash(tx, b.id)
@@ -378,8 +382,9 @@ export type ApproveGuard =
 
 /**
  * #153's check before approving `callIds` of a bundle (CAL-7, CAL-8), holding the bundle's row lock to commit. A
- * superseded bundle, or an asked call that is superseded, gives `bundle-superseded` with the newer bundle and calls;
- * an asked call that is expired, or open past `expires_at` before its timer ran, gives `call-expired`.
+ * superseded bundle, or an asked call that is superseded, gives `bundle-superseded` with the newest bundle along the
+ * chain of supersessions and its calls; an asked call that is expired, or open past `expires_at` before its timer ran,
+ * gives `call-expired`.
  */
 export async function approveGuard(
   tx: Tx,
@@ -393,14 +398,26 @@ export async function approveGuard(
     if (!found) throw new Error(`call ${id} is not in bundle ${bundleId}`)
     return found
   })
-  const successorCallIds = asked.flatMap((c) =>
-    c.state === 'superseded' && c.supersededByCallId ? [c.supersededByCallId] : []
-  )
+  const supersededBy = (c: { state: CallState; supersededByCallId: string | null }) =>
+    c.state === 'superseded' ? c.supersededByCallId : null
+  const successorCallIds = asked.flatMap((c) => supersededBy(c) ?? [])
   if (successorCallIds.length) {
-    const successors = await tx
-      .select({ id: call.id, bundleId: call.bundleId, createdAt: call.createdAt })
-      .from(call)
-      .where(inArray(call.id, successorCallIds))
+    // Follow each link to a call that isn't itself superseded; a newer bundle is always created later, so this ends.
+    const successorsOf = (ids: string[]) =>
+      tx
+        .select({
+          id: call.id,
+          bundleId: call.bundleId,
+          createdAt: call.createdAt,
+          state: call.state,
+          supersededByCallId: call.supersededByCallId
+        })
+        .from(call)
+        .where(inArray(call.id, ids))
+    let successors = await successorsOf(successorCallIds)
+    while (successors.some(supersededBy)) {
+      successors = await successorsOf([...new Set(successors.map((s) => supersededBy(s) ?? s.id))])
+    }
     const newest = successors.reduce((a, c) => (c.createdAt > a.createdAt ? c : a))
     return {
       ok: false,
@@ -412,7 +429,16 @@ export async function approveGuard(
     }
   }
   if (row.state === 'superseded' && row.supersededBy) {
-    return { ok: false, problem: 'bundle-superseded', successor: { bundleId: row.supersededBy, callIds: [] } }
+    let successor = row.supersededBy
+    for (;;) {
+      const [next] = await tx
+        .select({ state: bundle.state, supersededBy: bundle.supersededBy })
+        .from(bundle)
+        .where(eq(bundle.id, successor))
+      if (next?.state !== 'superseded' || !next.supersededBy) break
+      successor = next.supersededBy
+    }
+    return { ok: false, problem: 'bundle-superseded', successor: { bundleId: successor, callIds: [] } }
   }
   const expired = asked.filter(
     (c) => c.state === 'expired' || (OPEN_CALL_STATES.includes(c.state) && c.expiresAt <= now)
@@ -422,9 +448,10 @@ export async function approveGuard(
 }
 
 /**
- * Moves a bundle and its calls where the machine allows (#153: approved, edited, rejected, reconfirm, approved; #158:
- * sent, failed), stamping `approved_at`, `approved_by` and `sent_at`; refuses the moves `createBundle` and `expireCall`
- * own (closed, needs review, superseded, expired), which carry events and ledger entries.
+ * Moves a bundle and its calls where the machine allows (#153: approved, edited, rejected, reconfirm, needs review
+ * after a reconfirm, approved; #158: sent, failed), stamping `approved_at`, `approved_by` and `sent_at`. Refuses the
+ * moves that carry events and ledger entries, which `createBundle` and `expireCall` own (drafted, closed, superseded,
+ * expired), and `sending`, which goes through `markSending`'s expiry check.
  */
 export async function transition(
   tx: Tx,
@@ -433,11 +460,12 @@ export async function transition(
   now: Date = new Date()
 ) {
   const owned: string[] = ['closed', 'superseded', 'expired', 'drafted']
-  if (change.bundle && owned.includes(change.bundle))
-    throw new Error(`a bundle reaches ${change.bundle} only on its own`)
-  for (const to of Object.values(change.calls ?? {})) {
-    if (owned.includes(to)) throw new Error(`a call reaches ${to} only on its own`)
+  const refuse = (what: string, to: string) => {
+    if (to === 'sending') throw new Error(`a ${what} reaches sending through markSending`)
+    if (owned.includes(to)) throw new Error(`a ${what} reaches ${to} only on its own`)
   }
+  if (change.bundle) refuse('bundle', change.bundle)
+  for (const to of Object.values(change.calls ?? {})) refuse('call', to)
   const { slot } = await lockSlot(tx, bundleId)
   await writeSlot(tx, slot, transitionStep(slot, change), { now, approvedBy: change.approvedBy })
 }
