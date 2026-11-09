@@ -71,6 +71,7 @@ test('Admin saves two labellers, and a third is refused inline', async ({ page }
   await pickMember(page, 'Bala')
   const chips = page.locator('[data-slot="combobox-chip"]')
   await page.getByRole('combobox', { name: t('picker_search'), exact: true }).fill('Citra')
+  await expect(page.getByRole('option')).toHaveCount(1)
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('Enter')
   await expect(page.getByText(t('picker_limit'), { exact: true })).toBeVisible()

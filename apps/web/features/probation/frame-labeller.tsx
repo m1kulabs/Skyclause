@@ -205,9 +205,7 @@ export function FrameLabeller({ sourceId, mode, locale = 'en', onStatus, onDisag
                 {t('probation.retry', {}, locale)}
               </Button>
             </div>
-          ) : (
-            <p>{t('probation.loading_frame', {}, locale)}</p>
-          )}
+          ) : null}
           <div className="probation-actions">
             {labelValues.map((label) => (
               <Button
