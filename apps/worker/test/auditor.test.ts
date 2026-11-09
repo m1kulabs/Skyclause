@@ -398,3 +398,25 @@ test('staff addresses are read lazily from the worker environment', async () => 
   await tick(now)
   expect(send.mock.calls.map(([m]) => m.to)).toEqual(['a@example.org', 'b@example.org'])
 })
+
+test('a terminated check connection is fatal and emits no completion heartbeat', async () => {
+  await makeOrganization()
+  const heartbeat = vi.fn()
+  const tick = tickOf({
+    heartbeat,
+    checks: () => [
+      {
+        name: 'broken-transport',
+        run: async (handle) => {
+          // Terminate only this test's active connection: rollback cannot succeed, so traversal must stop.
+          await (handle as Tx).execute(sql`SELECT pg_terminate_backend(pg_backend_pid())`)
+          return []
+        }
+      }
+    ]
+  })
+  await expect(shareSystemConnection(() => tick(now))).rejects.toThrow()
+  expect(heartbeat).not.toHaveBeenCalled()
+  expect(log.error).not.toHaveBeenCalledWith('auditor check failed', expect.anything())
+  expect(await stored()).toEqual([])
+})

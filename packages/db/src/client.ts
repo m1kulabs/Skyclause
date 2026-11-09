@@ -54,6 +54,8 @@ interface Shared {
   tail: Promise<unknown>
   /** Set once `fn` has settled and the connection is back in the pool. */
   released: boolean
+  /** A checked-out client error makes the whole batch unusable, including queued transactions. */
+  failure?: Error
 }
 const sharedConnection = new AsyncLocalStorage<{ shared: Shared; inside: boolean }>()
 
@@ -66,12 +68,22 @@ const sharedConnection = new AsyncLocalStorage<{ shared: Shared; inside: boolean
 export async function shareSystemConnection<T>(fn: () => Promise<T>): Promise<T> {
   const client = await connection('SYSTEM').pool.connect()
   const shared: Shared = { db: drizzle(client, { schema }), tail: Promise.resolve(), released: false }
+  // pg-pool removes its idle error listener while a client is checked out; this scope owns those errors.
+  const failed = (error: Error) => {
+    shared.failure ??= error
+  }
+  client.on('error', failed)
   try {
-    return await sharedConnection.run({ shared, inside: false }, fn)
+    const result = await sharedConnection.run({ shared, inside: false }, fn)
+    await shared.tail
+    if (shared.failure) throw shared.failure
+    return result
   } finally {
     await shared.tail
     shared.released = true
-    client.release()
+    // Passing the error discards the client. Release installs the pool listener before ours is removed.
+    client.release(shared.failure)
+    client.off('error', failed)
   }
 }
 
@@ -85,9 +97,10 @@ async function run<T, P extends Principal | null>(
   const { shared, inside } = share
   if (shared.released) throw new Error('the shared system connection was released when its shareSystemConnection ended')
   if (inside) throw new Error('a with* call inside another on the shared system connection needs a second connection')
-  const turn = shared.tail.then(() =>
-    sharedConnection.run({ shared, inside: true }, () => transaction(shared.db, context, fn))
-  )
+  const turn = shared.tail.then(() => {
+    if (shared.failure) throw shared.failure
+    return sharedConnection.run({ shared, inside: true }, () => transaction(shared.db, context, fn))
+  })
   shared.tail = turn.catch(() => {})
   return turn
 }
