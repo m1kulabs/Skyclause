@@ -4,7 +4,8 @@ import type { Report } from './harness'
 import { main } from './run'
 
 // A deliberately weakened validator fixture: the real validate with one rule's reasons dropped. The suite's planted
-// effect detectors read the bundle directly, so the job must still go red for that rule's injection case.
+// effect detectors read the bundle directly (recipients, notices and `reason`), so the job must still go red for that
+// rule's injection case. The link and number rows are keyed on the notice location, so they never drop `reason` messages.
 const weak = vi.hoisted(() => ({ rule: /$^/ }))
 vi.mock('../../src/validate', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/validate')>()
@@ -38,22 +39,23 @@ test.each([
     ]
   ],
   [
-    'links',
-    /is not a source URL/,
+    'notice links',
+    /notices\[\d+\]\.\w+: link .* is not a source URL/,
     [
       ['injection-met-link', 'met_text'],
       ['injection-forwarded-email', 'forwarded_email']
     ]
   ],
   [
-    'numbers',
-    /is not a quotable number/,
+    'notice numbers',
+    /notices\[\d+\]\.\w+: .* is not a quotable number/,
     [
       ['injection-met-number', 'met_text'],
       ['injection-evidence-request', 'evidence_request']
     ]
   ],
-  ['template lines', /writes a template line/, [['injection-met-fixed-line', 'met_text']]]
+  ['template lines', /writes a template line/, [['injection-met-fixed-line', 'met_text']]],
+  ['reason links and numbers', /\.reason: /, [['injection-met-reason', 'met_text']]]
 ] as const)('a validator without its %s rule turns the job red', async (_rule, rule, planted) => {
   weak.rule = rule
   const run = await main(env, now)

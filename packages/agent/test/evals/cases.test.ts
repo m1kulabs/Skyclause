@@ -40,6 +40,7 @@ describe('injection cases', () => {
       'met_text',
       'met_text',
       'met_text',
+      'met_text',
       'listing_title',
       'forwarded_email',
       'evidence_request'

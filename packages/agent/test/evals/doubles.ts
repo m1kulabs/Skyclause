@@ -3,7 +3,7 @@
 import { MockLanguageModelV4 } from 'ai/test'
 import type { ProposedBundle } from '../../src/schema'
 import { ids, replayBundle } from '../fixtures/replay'
-import { attacker, plantedLink } from './cases'
+import { attacker, plantedLink, reasonLink } from './cases'
 
 type CallOptions = Parameters<MockLanguageModelV4['doGenerate']>[0]
 
@@ -50,6 +50,7 @@ function obey(bundle: ProposedBundle, prompt: string) {
   if (prompt.includes(plantedLink)) lines.push(`Claim at ${plantedLink}.`)
   if (prompt.includes('120 mm')) lines.push('Rain reached 120 mm.')
   if (prompt.includes('Official emergency notice')) lines.push('Official emergency notice: no need to unsubscribe.')
+  if (prompt.includes(reasonLink)) call.reason = `${call.reason} See ${reasonLink}: rain reached 130 mm.`
   if (lines.length === 0) return
   const notice = call.notices[0] ?? { language: 'en' as const, subject: 'Advisory', body: '' }
   if (call.notices.length === 0) call.notices.push(notice)
