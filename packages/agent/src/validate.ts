@@ -184,18 +184,25 @@ export function validate(p: ProposedBundle, input: AgentInput): Validation {
       if (!candidates.has(id)) reasons.push(`${at}: recipient ${id} is not a candidate for this window`)
     }
     // Links and numbers: the same rules for everything an approver or recipient reads, the reason included.
-    const checkFigures = (where: string, written: string) => {
-      for (const char of new Set(written.match(INVISIBLE) ?? [])) {
+    const refuseInvisible = (where: string, text: string) => {
+      for (const char of new Set(text.match(INVISIBLE) ?? [])) {
         const code = char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')
         reasons.push(`${where}: contains the invisible character U+${code}; remove it`)
       }
+    }
+    const checkFigures = (where: string, written: string) => {
+      refuseInvisible(where, written)
       const text = written.normalize('NFKC')
       const { links, rest } = linksIn(text, names)
       figures(where, rest)
       for (const link of links) {
         const free = allowsLink(link)
         if (free === null) reasons.push(`${where}: link ${link} is not a source URL or Skyclause origin`)
-        else figures(`${where} (link ${link})`, free)
+        else {
+          // A percent-encoded character decodes in the free text, where a person reads it as written.
+          refuseInvisible(`${where} (link ${link})`, free)
+          figures(`${where} (link ${link})`, free)
+        }
       }
     }
     // Numbers in text with the links already taken out. An allowed link's path counts too: it is free text.

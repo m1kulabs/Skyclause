@@ -257,14 +257,20 @@ describe('invisible characters', () => {
 
   test.each(invisible)('refuses invisible character %j inside a figure in a body, a subject and the reason', (char) => {
     const code = `U+${char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}`
-    const text = `Rain reached 12${char}0 mm.`
+    const text = `Gauge 5${char}60 mm.`
     for (const set of [
       (b: ReturnType<typeof replayBundle>) => (b.calls[0]!.notices[0]!.body = text),
       (b: ReturnType<typeof replayBundle>) => (b.calls[0]!.notices[0]!.subject = text),
       (b: ReturnType<typeof replayBundle>) => (b.calls[0]!.reason = text)
     ]) {
-      expect(failing(set)).toContainEqual(expect.stringContaining(`invisible character ${code}`))
+      expect(failing(set)).toEqual([expect.stringContaining(`invisible character ${code}; remove it`)])
     }
+  })
+
+  test('refuses an invisible character a link path hides as a percent escape', () => {
+    expect(failing((b) => (b.calls[0]!.reason = 'See https://skyclause.m1ku.tech/r/x-5%E2%80%8B60'))).toEqual([
+      expect.stringContaining('invisible character U+200B')
+    ])
   })
 
   test('refuses the character even where no figure is split', () => {
