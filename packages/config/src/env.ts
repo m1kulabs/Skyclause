@@ -93,8 +93,9 @@ const schemas = {
       WORKER_URL: z.url(),
       WORKER_INVOKER_SA: z.email(),
       PORT: z.coerce.number().int().positive().default(8080),
-      // c-recipient-replies (#163), c-sender-email (#158): the links in feedback and notice emails (Terraform sets
-      // every origin on every service) and the suppression hash.
+      // c-recipient-replies (#163), c-sender-email (#158), c-approver-alerts (#155): the links in feedback, notice and
+      // approver alert emails (Terraform sets every
+      // origin on every service) and the suppression hash.
       APP_ORIGIN: z.url().optional(),
       MARKETING_ORIGIN: z.url().optional(),
       ...emailHashKey,

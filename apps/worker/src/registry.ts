@@ -1,3 +1,4 @@
+import { alerts } from './alerts'
 import { bundles } from './bundles'
 import { email } from './email'
 import { evidence } from './evidence'
@@ -24,5 +25,6 @@ export const registry = defineRegistry([
   grades, // c-grades
   replies, // c-recipient-replies
   runs, // c-run-orchestrator
-  notices // c-sender-email
+  notices, // c-sender-email
+  alerts // c-approver-alerts
 ])
