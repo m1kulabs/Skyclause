@@ -1,5 +1,6 @@
 // Regenerates src/confusables.ts from Unicode's confusables.txt (UTS #39):
 //   bun packages/agent/scripts/confusables.ts <path to confusables.txt>
+//   bunx prettier --write packages/agent/src/confusables.ts
 // Keeps the single-character sources whose skeleton is plain ASCII letters, the only ones validate's word checks need.
 import { readFileSync, writeFileSync } from 'node:fs'
 
