@@ -1,5 +1,5 @@
 import type { z } from '@hono/zod-openapi'
-import type { Operations } from '@skyclause/contracts'
+import type { Operations, RecordAudit } from '@skyclause/contracts'
 import {
   explainReviewItem,
   isFlagEnabled,
@@ -7,7 +7,7 @@ import {
   listReviewItemRows,
   pendingNights,
   projectToday,
-  reviewItemProject,
+  reviewItemTarget,
   type Tx
 } from '@skyclause/db'
 import { decodeCursor, page } from '../pagination'
@@ -153,7 +153,7 @@ export async function listProjectGrades(
 /** The project's review items, newest first, each with its grade, reasons and explanation (ANL-2, ANL-4). */
 export async function listProjectReviewItems(
   ctx: ServiceContext,
-  q: { projectId: string; state?: string; limit: number; cursor?: string }
+  q: { projectId: string; state?: string; reason?: string; limit: number; cursor?: string }
 ): Promise<Ok<'listReviewItems'>> {
   let beforeId: string | undefined
   if (q.cursor !== undefined) {
@@ -167,12 +167,14 @@ export async function listProjectReviewItems(
 
 /**
  * Sets a review item's explanation, and who gave it when (#79 §3: the explanation alone is editable, so a `state` is
- * refused). 404 when the item is another organisation's or its project is out of the principal's reach.
+ * refused), audited as `review_item.explained` with the times only, since an explanation is free text. 404 when the
+ * item is another organisation's or its project is out of the principal's reach.
  */
 export async function explainProjectReviewItem(
   ctx: ServiceContext,
   q: { id: string; body: { state?: string; explanation?: string }; now: Date },
-  canExplain: (projectId: string) => boolean
+  canExplain: (projectId: string) => boolean,
+  recordAudit: RecordAudit
 ): Promise<ItemView> {
   if (q.body.state !== undefined) {
     throw new ApiError(422, 'validation-failed', 'Only a review item’s explanation can change.', {
@@ -180,9 +182,16 @@ export async function explainProjectReviewItem(
     })
   }
   const tx = ctx.tx as Tx
-  const projectId = await reviewItemProject(tx, q.id)
-  if (!projectId || !canExplain(projectId)) throw notFound()
+  const target = await reviewItemTarget(tx, q.id)
+  if (!target || !canExplain(target.projectId)) throw notFound()
   const accountId = 'accountId' in ctx.principal ? ctx.principal.accountId : null
   const row = await explainReviewItem(tx, { id: q.id, explanation: q.body.explanation!, accountId, at: q.now })
+  await recordAudit(ctx.tx, {
+    action: 'review_item.explained',
+    target: { type: 'review_item', id: q.id },
+    projectId: target.projectId,
+    before: { explained_at: target.explainedAt ? instant(target.explainedAt) : null },
+    after: { explained_at: instant(q.now) }
+  })
   return itemView(row)
 }

@@ -59,10 +59,14 @@ export async function pendingNights(tx: Tx, q: { projectId: string; today: strin
   }))
 }
 
-/** Up to `limit` review items of the project's grades, newest first, below `beforeId`. */
-export function listReviewItemRows(tx: Tx, q: { projectId: string; state?: string; beforeId?: string; limit: number }) {
+/** Up to `limit` review items of the project's grades, newest first, below `beforeId`; with `reason`, only those. */
+export function listReviewItemRows(
+  tx: Tx,
+  q: { projectId: string; state?: string; reason?: string; beforeId?: string; limit: number }
+) {
   const where: SQL[] = [eq(grade.projectId, q.projectId)]
   if (q.state) where.push(eq(reviewItem.state, q.state))
+  if (q.reason) where.push(sql`${q.reason} = ANY(${reviewItem.reasons})`)
   if (q.beforeId) where.push(sql`${reviewItem.id} < ${q.beforeId}::uuid`)
   return tx
     .select({ item: getTableColumns(reviewItem), grade: getTableColumns(grade) })
@@ -73,15 +77,15 @@ export function listReviewItemRows(tx: Tx, q: { projectId: string; state?: strin
     .limit(q.limit)
 }
 
-/** The project a review item's grade belongs to, or null when this transaction can't see the item. */
-export async function reviewItemProject(tx: Tx, id: string) {
+/** A review item's project and when it was last explained, or null when this transaction can't see the item. */
+export async function reviewItemTarget(tx: Tx, id: string) {
   if (!UUID.test(id)) return null
   const [row] = await tx
-    .select({ projectId: grade.projectId })
+    .select({ projectId: grade.projectId, explainedAt: reviewItem.explainedAt })
     .from(reviewItem)
     .innerJoin(grade, eq(grade.id, reviewItem.gradeId))
     .where(eq(reviewItem.id, id))
-  return row?.projectId ?? null
+  return row ?? null
 }
 
 /** Sets a review item's explanation and who gave it when (the only columns that change); the item and its grade. */

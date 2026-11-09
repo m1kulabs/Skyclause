@@ -31,6 +31,7 @@ import {
 } from '@skyclause/db/test/factories/index'
 import { sheetVersionIn } from '@skyclause/db/test/factories/rows'
 import { eq } from 'drizzle-orm'
+import { asLogin, expectOneAudit } from '@skyclause/db/test/harness/index'
 import { beforeAll, describe, expect, test } from 'vitest'
 import { apiRequest, asSession, createTestApi, crossOrgCase, testDeps, testOrg } from './harness'
 
@@ -236,6 +237,17 @@ describe('review items', () => {
     expect(open.data).toHaveLength(2)
   })
 
+  test('ANL-2: ?reason=no_call lists each window whose shadow verdict fired with no approved call', async () => {
+    const s = await scene()
+    const path = `/v1/projects/${s.projectId}/review-items`
+    const byReason = async (reason: string) =>
+      ((await (await get(path, { reason })).json()) as ItemPage).data.map((item) => item.id)
+    expect(await byReason('no_call')).toEqual([s.callless.reviewItemId])
+    expect(await byReason('false_alarm')).toEqual([s.sky.reviewItemId])
+    expect(await byReason('out_of_band')).toEqual([])
+    expect((await get(path, { reason: 'late' })).status).toBe(422)
+  })
+
   test('an Approver sets the explanation; who and when are recorded, and it reads back', async () => {
     const s = await scene()
     const response = await patch(s.callless.reviewItemId!, { explanation: 'Gauge 0232901RF was down for repair' })
@@ -253,6 +265,49 @@ describe('review items', () => {
       explanation: 'Gauge 0232901RF was down for repair',
       explained_by: accountId
     })
+  })
+
+  test('the PATCH is audited once, with when it was explained and none of the text', async () => {
+    const s = await scene()
+    await patch(s.sky.reviewItemId!, { explanation: 'Rain stopped at 15:20 MYT, before the release wave' })
+    const audit = await expectOneAudit('review_item.explained', { targetId: s.sky.reviewItemId! })
+    expect(audit).toMatchObject({
+      org_id: testOrg(ORG).id,
+      project_id: s.projectId,
+      actor_type: 'account',
+      target_type: 'review_item',
+      before: { explained_at: null },
+      after: { explained_at: '2026-11-08T02:00:00Z' }
+    })
+    expect(JSON.stringify(audit)).not.toContain('Rain stopped')
+
+    await patch(s.sky.reviewItemId!, { explanation: 'Rain stopped at 15:20 MYT' })
+    const audits = await asLogin('postgres', async (client) => {
+      const { rows } = await client.query(
+        "SELECT before, after FROM audit_event WHERE action = 'review_item.explained' AND target_id = $1 ORDER BY id",
+        [s.sky.reviewItemId]
+      )
+      return rows
+    })
+    expect(audits).toEqual([
+      { before: { explained_at: null }, after: { explained_at: '2026-11-08T02:00:00Z' } },
+      { before: { explained_at: '2026-11-08T02:00:00Z' }, after: { explained_at: '2026-11-08T02:00:00Z' } }
+    ])
+  })
+
+  test('a refused or hidden PATCH writes no audit row', async () => {
+    const s = await scene()
+    await patch(s.sky.reviewItemId!, { state: 'closed' })
+    const elsewhere = await scene(OTHER)
+    expect((await patch(elsewhere.sky.reviewItemId!, { explanation: 'x' })).status).toBe(404)
+    const count = await asLogin('postgres', async (client) => {
+      const { rows } = await client.query(
+        "SELECT count(*)::int AS n FROM audit_event WHERE action = 'review_item.explained' AND target_id = ANY($1)",
+        [[s.sky.reviewItemId, elsewhere.sky.reviewItemId]]
+      )
+      return rows[0].n as number
+    })
+    expect(count).toBe(0)
   })
 
   test('only the explanation changes: a state in the body is refused', async () => {
