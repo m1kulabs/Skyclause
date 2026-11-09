@@ -30,3 +30,5 @@ export * from './placeholders/d-org-api'
 export * from './schema'
 export * from './schema/partitioned'
 export * from './subscribers'
+
+export * from './auditor'
