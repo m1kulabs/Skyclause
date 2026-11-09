@@ -1,4 +1,9 @@
-import { problemResponse, SessionErrors as sessionErrors, IdempotencyHeaders as idempotencyHeaders } from '../common'
+import {
+  problemResponse,
+  SessionErrors as sessionErrors,
+  IdempotencyHeaders as idempotencyHeaders,
+  UuidIdParams
+} from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
 import {
@@ -113,7 +118,7 @@ export const listMyApiKeys = createRoute({
     ...sessionErrors,
     403: problemResponse('The session cannot manage API keys.')
   },
-  x: { owner: 'a-api-keys', statement: 'api_key.create', idempotent: false }
+  x: { owner: 'a-api-keys', statement: 'session', idempotent: false }
 })
 
 export const createMyApiKey = createRoute({
@@ -137,8 +142,8 @@ export const createMyApiKey = createRoute({
   },
   responses: {
     201: {
-      description: 'The created API key. The secret is returned only once.',
-      content: { 'application/json': { schema: ApiKey.extend({ secret: z.string() }) } }
+      description: 'The created API key. The key is returned only once.',
+      content: { 'application/json': { schema: ApiKey.extend({ key: z.string() }) } }
     },
     ...validationErrors,
     401: problemResponse('Recent authentication is required to create an API key.'),
@@ -153,14 +158,14 @@ export const revokeMyApiKey = createRoute({
   path: '/api/me/api-keys/{id}',
   operationId: 'revokeMyApiKey',
   tags: ['API Keys'],
-  request: { params: z.object({ id: z.string().min(1) }) },
+  request: { params: UuidIdParams },
   responses: {
     204: { description: 'The API key was revoked immediately.' },
     ...sessionErrors,
     403: problemResponse('The session cannot revoke API keys.'),
     404: problemResponse('The API key does not exist for this account.')
   },
-  x: { owner: 'a-api-keys', statement: 'api_key.create', idempotent: false }
+  x: { owner: 'a-api-keys', statement: 'session', idempotent: false }
 })
 
 export const listMyAiKeys = createRoute({

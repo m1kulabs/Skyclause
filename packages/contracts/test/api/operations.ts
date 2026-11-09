@@ -1324,7 +1324,7 @@ export const OPERATIONS: readonly ExpandedOperation[] = [
     surface: 'api',
     operationId: 'listMyApiKeys',
     owner: 'a-api-keys',
-    statement: 'api_key.create',
+    statement: 'session',
     idempotent: false,
     crossOrg: false,
     note: 'API keys use collection GET/POST and item DELETE for listing, creation and immediate revocation (SET-6).'
@@ -1346,7 +1346,7 @@ export const OPERATIONS: readonly ExpandedOperation[] = [
     surface: 'api',
     operationId: 'revokeMyApiKey',
     owner: 'a-api-keys',
-    statement: 'api_key.create',
+    statement: 'session',
     idempotent: false,
     crossOrg: false,
     note: 'API keys use collection GET/POST and item DELETE for listing, creation and immediate revocation (SET-6).'

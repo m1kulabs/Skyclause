@@ -4,7 +4,9 @@ import type {
   Principal,
   RecordAudit,
   ResolvePrincipal,
-  SkyclauseRoute
+  SkyclauseRoute,
+  ApiKeyManager,
+  Track
 } from '@skyclause/contracts'
 import type { IdempotencyStore, MembershipLookup, RateLimitStore } from './stores'
 import type { WithTenant } from './tenancy'
@@ -27,6 +29,8 @@ export interface ApiDeps {
   rateLimits: RateLimitStore
   withTenant: WithTenant
   recordAudit: RecordAudit
+  apiKeys: ApiKeyManager
+  track: Track
   /** Spec §1 `EmailTransport` for the emails a route sends itself (c-subscribers' confirmations). */
   email: EmailTransport
   config: () => ApiConfig

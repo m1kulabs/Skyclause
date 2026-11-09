@@ -1,10 +1,11 @@
 import { loadEnv } from '@skyclause/config'
 import type { EmailTransport } from '@skyclause/contracts'
-import { recordAudit, withTenant } from '@skyclause/db'
+import { recordAudit, track, withTenant } from '@skyclause/db'
 import { emailTransportForAws } from '@skyclause/delivery'
 import type { ApiConfig, ApiDeps } from './context'
 import { registeredPermission, registeredPrincipal } from './middleware/auth'
 import { postgresIdempotency, postgresMembership, postgresRateLimits } from './postgres-stores'
+import { registeredApiKeyManager } from './api-key-manager'
 
 let config: ApiConfig | undefined
 
@@ -45,6 +46,8 @@ export const productionDeps: ApiDeps = {
   rateLimits: postgresRateLimits,
   withTenant,
   recordAudit,
+  apiKeys: registeredApiKeyManager,
+  track,
   email: { send: (message) => (ses ??= loadEmail()).send(message) },
   config: () => (config ??= loadConfig()),
   now: () => new Date()

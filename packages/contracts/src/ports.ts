@@ -9,7 +9,7 @@ import type {
 import type { AnalyticsEvent, AnalyticsEventType } from './analytics'
 import type { Instant, LedgerEntry, LedgerKind, LocalDate, NotificationKind, Pack, Plan } from './api/shared'
 import type { AuditAction } from './audit'
-import type { Principal } from './auth'
+import type { Principal, Scope } from './auth'
 import type { DomainEvent, DomainEventType, EventEnvelope } from './events'
 
 // Spec §1: db's Tx implements this brand. Contracts never import the database package.
@@ -114,6 +114,34 @@ export type Track = <N extends AnalyticsName>(
   props: AnalyticsProps<N>,
   ids?: { projectId?: string }
 ) => Promise<void>
+
+/** Better Auth's organisation API-key table as the API package needs to manage it. */
+export interface ManagedApiKey {
+  id: string
+  organizationId: string
+  creatorId: string
+  name: string
+  prefix: string
+  scopes: Scope[]
+  createdAt: Date
+  expiresAt: Date | null
+  lastUsedAt: Date | null
+  enabled: boolean
+}
+
+/** The auth package implements this port; API routes never depend on Better Auth directly. */
+export interface ApiKeyManager {
+  create(input: {
+    organizationId: string
+    creatorId: string
+    name: string
+    scopes: Array<Extract<Scope, 'read' | 'draft' | 'admin'>>
+    expiresInDays: number
+  }): Promise<{ record: ManagedApiKey; key: string }>
+  list(query: { organizationId?: string; creatorId?: string }): Promise<ManagedApiKey[]>
+  find(query: { id: string; organizationId?: string }): Promise<ManagedApiKey | null>
+  revoke(query: { id: string; organizationId?: string }): Promise<boolean>
+}
 
 // c-ledger-chain
 export type AppendLedger = (

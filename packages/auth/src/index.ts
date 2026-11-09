@@ -1,4 +1,5 @@
 export { ac, roles } from './access'
+export { apiKeyManager } from './api-keys'
 export { can } from './can'
 export { authHandler, type AuthSettings } from './instance'
 export { pagePrincipal } from './pages'

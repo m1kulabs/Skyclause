@@ -6,6 +6,7 @@ import { bundleHandlers } from './bundles'
 import { channelHandlers } from './channels'
 import { evidenceHandlers } from './evidence'
 import { gradesHandlers } from './grades'
+import { apiKeyHandlers } from './api-keys'
 import { ledgerHandlers } from './ledger'
 import { subscriberHandlers } from './subscribers'
 
@@ -31,6 +32,7 @@ export type Handlers = { [Id in OperationId]?: HandlerEntry<Operations[Id]> }
  * line; an operation without an entry answers 501 `not-built` naming its owner.
  */
 export const HANDLERS: Handlers = {
+  ...apiKeyHandlers, // a-api-keys
   ...channelHandlers, // c-notice-templates
   ...ledgerHandlers, // c-ledger-chain
   ...subscriberHandlers,

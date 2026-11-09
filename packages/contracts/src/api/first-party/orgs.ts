@@ -501,9 +501,13 @@ export const createOrganisationApiKey = createRoute({
       required: true,
       content: {
         'application/json': {
-          schema: ApiKey.pick({ name: true, expires_at: true })
-            .extend({ scopes: ApiKeyScopes })
-            .describe('Expiry must be no more than 365 days after creation.')
+          schema: z
+            .object({
+              name: z.string().min(1),
+              scopes: ApiKeyScopes,
+              expires_in_days: z.number().int().min(1).max(365)
+            })
+            .describe('Expiry must be from 1 to 365 days after creation.')
         }
       }
     }
