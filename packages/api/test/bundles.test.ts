@@ -4,10 +4,12 @@
 import { readFileSync } from 'node:fs'
 import type { EventEnvelope, Page, Principal } from '@skyclause/contracts'
 import {
+  bundle,
   createBundle,
   emitEvent,
   listenEvents,
   markSending,
+  run,
   systemPrincipal,
   transition,
   withTenant,
@@ -25,6 +27,7 @@ import {
 } from '@skyclause/db/test/factories/index'
 import { asLogin } from '@skyclause/db/test/harness/index'
 import { recipientsByLanguage } from '@skyclause/delivery'
+import { eq } from 'drizzle-orm'
 import { beforeAll, describe, expect, test, vi } from 'vitest'
 import type { BundleDetail, BundleView, CallDetail, CallExplanation, CallView } from '../src/services/bundles'
 import type { WithTenant } from '../src/tenancy'
@@ -168,7 +171,14 @@ describe('GET /v1/bundles/{id}', () => {
     const response = await read(as(), `/v1/bundles/${made.normal.bundleId}`)
     expect(response.status).toBe(200)
     const body = (await response.json()) as BundleDetail
-    expect(body).toMatchObject({ state: 'closed', needs_review_at: null, draft_only: false, trigger: 'crossing' })
+    expect(body).toMatchObject({
+      state: 'closed',
+      sla_due_at: null,
+      needs_review_at: null,
+      draft_only: false,
+      trigger: 'crossing',
+      sheet_version_id: made.scene.sheetVersionId
+    })
     expect(body.summary!.text).toBe('Normal; 2 inputs fresh')
     expect(body.summary!.inputs.map((i) => [i.name, i.age_s])).toEqual([
       ['site.rain_60m_mm', 600],
@@ -214,6 +224,18 @@ describe('GET /v1/bundles/{id}', () => {
     })
     expect(vi.mocked(recipientsByLanguage).mock.calls.map(([, id]) => id)).toEqual([first])
   })
+
+  test('a run with no pinned sheet version reads sheet_version_id null', async () => {
+    const bundleId = await inOrg(A, async (tx) => {
+      const scene = await bundleScene(tx)
+      const w = await windowOf(tx, scene, at('2026-11-02T07:15:00Z'), at('2026-11-02T07:30:00Z'))
+      const b = await draftIn(tx, scene, [{ windowId: w.id }], at('2026-11-02T07:10:00Z'))
+      const [row] = await tx.select({ runId: bundle.runId }).from(bundle).where(eq(bundle.id, b.bundleId))
+      await tx.update(run).set({ sheetVersionId: null }).where(eq(run.id, row!.runId))
+      return b.bundleId
+    })
+    expect((await json<BundleDetail>(read(as(), `/v1/bundles/${bundleId}`))).sheet_version_id).toBeNull()
+  })
 })
 
 describe('GET /v1/projects/{id}/bundles and /calls', () => {
@@ -253,7 +275,8 @@ describe('GET /v1/calls/{id}', () => {
       triggered_at: '2026-11-02T07:05:00Z',
       drafted_at: '2026-11-02T07:10:00Z',
       approved_at: null,
-      sent_at: null
+      sent_at: null,
+      ics_uid: null
     })
     await inOrg(A, async (tx) => {
       await transition(

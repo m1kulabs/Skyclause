@@ -95,8 +95,8 @@ function callView(row: CallRow): CallView {
     approved_at: at(row.approvedAt),
     sent_at: at(row.sentAt),
     superseded_by_call_id: row.supersededByCallId,
-    // D20: the ICS UID is set when the call is first sent (#154, #158); the contract's string reads empty until then.
-    ics_uid: row.icsUid ?? '',
+    // D20: the ICS UID is set when the call is first sent (#154, #158).
+    ics_uid: row.icsUid,
     ics_sequence: row.icsSequence
   }
 }
@@ -130,8 +130,8 @@ async function bundleViews(ctx: ServiceContext, rows: BundleRow[]): Promise<Bund
       state: row.state,
       superseded_by: row.supersededBy,
       review_hash: row.reviewHash,
-      // A closed bundle has no SLA (it needs no review); the contract's instant reads its drafting time then.
-      sla_due_at: instant(row.slaDueAt ?? row.createdAt),
+      // A closed bundle has no SLA (it needs no review).
+      sla_due_at: at(row.slaDueAt),
       needs_review_at: at(row.needsReviewAt),
       approved_by: row.approvedBy,
       escalation_level: row.escalationLevel,
@@ -139,7 +139,7 @@ async function bundleViews(ctx: ServiceContext, rows: BundleRow[]): Promise<Bund
       calls: calls.filter((c) => c.bundleId === row.id).map(callView),
       trigger: parent.trigger,
       triggered_at: instant(parent.triggeredAt),
-      sheet_version_id: parent.sheetVersionId ?? '',
+      sheet_version_id: parent.sheetVersionId,
       alerts: alerts
         .filter((a) => a.bundleId === row.id)
         .map((a) => ({ account_id: a.accountId, notified_at: instant(a.acceptedAt), level: a.level }))
