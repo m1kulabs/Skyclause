@@ -385,3 +385,89 @@ describe('look-alike separators in figures', () => {
     for (const set of Object.values(where)) expect(failing((b) => set(b, text))).toEqual([])
   })
 })
+
+describe('look-alike punctuation, letter-digits and small capitals', () => {
+  const failing = (change: (bundle: ReturnType<typeof replayBundle>) => void) => {
+    const bundle = replayBundle()
+    change(bundle)
+    const result = validate(bundle, replayInput())
+    return result.ok ? [] : result.reasons
+  }
+  const where = {
+    body: (b: ReturnType<typeof replayBundle>, text: string) => (b.calls[0]!.notices[0]!.body = text),
+    subject: (b: ReturnType<typeof replayBundle>, text: string) => (b.calls[0]!.notices[0]!.subject = text),
+    reason: (b: ReturnType<typeof replayBundle>, text: string) => (b.calls[0]!.reason = text)
+  }
+  const refused = (text: string, expected: string) => {
+    for (const [name, set] of Object.entries(where)) {
+      expect(
+        failing((b) => set(b, text)),
+        name
+      ).toContainEqual(expect.stringContaining(expected))
+    }
+  }
+
+  test.each(['\u{201A}', '\u{2236}', '\u{B7}', '\u{2D9}', '\u{2800}', '\u{F0B}', '\u{3001}', '\u{66B}', '\u{FF0C}'])(
+    'refuses the look-alike punctuation %j between digits',
+    (char) => {
+      refused(`Gauge 5${char}60 mm.`, 'look-alike punctuation')
+    }
+  )
+
+  test.each(['ꓹ', 'ꓸ', 'ꓽ', 'ː', 'ˑ', 'ꞏ', 'ᐧ', 'ʼ', "'", '`', '.\u0323'])(
+    'refuses %j between digits, a letter or ASCII mark that reads as a separator',
+    (char) => {
+      refused(`Gauge 5${char}60 mm.`, char === '.\u0323' ? 'combining mark' : 'look-alike punctuation')
+    }
+  )
+
+  test.each(['5,OOO mm', 'At 5:OO MYT', '5OMM', '5Ominit', 'O.5 mm'])('refuses %j, letters read as digits', (text) => {
+    refused(`Gauge ${text}.`, 'letters read as digits')
+  })
+
+  test.each(['тwenтy', 'нundred', 'seraтus', 'seriвu', 'lima puluн', 'lima ᴩuluh'])(
+    'refuses %j, letters UTS #39 maps onto small capitals',
+    (text) => {
+      refused(`Rain reached ${text} mm.`, 'spelled-out number')
+    }
+  )
+
+  test('refuses a comma between digits that is not a thousands group', () => {
+    refused('Gauge 5,60 mm.', 'comma between digits')
+    refused('Gauge 5,6000 mm.', 'comma between digits')
+  })
+
+  test.each(['5OO mm', '5l mm', '5Ο mm', '5ОО mm', '5ᴏᴏ mm', '5I mm', '5oo mm', 'l5 mm', 'O5 mm'])(
+    'refuses %j, letters read as digits',
+    (text) => {
+      refused(`Gauge ${text}.`, 'letters read as digits')
+    }
+  )
+
+  test.each(['ʜᴜɴᴅʀᴇᴅ', 'ᴛᴡᴇɴᴛʏ', 'ꜰɪꜰᴛʏ', 'ᴍɪʟʟɪᴏɴ', 'ᴛʜᴏᴜꜱᴀɴᴅ', 'sɪxᴛʏ'])(
+    'refuses the small capitals %j in a spelled-out number',
+    (text) => {
+      refused(`Rain reached ${text} mm.`, 'spelled-out number')
+    }
+  )
+
+  test('refuses a template line written in small capitals', () => {
+    for (const set of [where.body, where.subject]) {
+      expect(failing((b) => set(b, 'Reply ᴜɴꜱᴜʙꜱᴄʀɪʙᴇ to stop.'))).toContainEqual(
+        expect.stringContaining('template line')
+      )
+    }
+  })
+
+  test('still accepts Malay and English text, ranges, ordinals, units and thousands groups', () => {
+    const text =
+      'Hujan lebat 5–60 mm, 5mm, 60min, 5ml, 5th, 5 mm, 60 min. Cuaca: ok, Ill Oloo olive lol, 5 l, I 5, hello, Cheras.'
+    for (const set of Object.values(where)) expect(failing((b) => set(b, text))).toEqual([])
+    const crowd = { ...replayInput(), quotable: ['27,044', '3,928'] }
+    for (const text of ['Forecast 27,044, then rain.', 'Baseline 3,928, forecast 27,044.']) {
+      const result = validate(replayBundle(text), crowd)
+      expect(result.ok ? [] : result.reasons).toEqual([])
+    }
+    for (const set of Object.values(where)) expect(failing((b) => set(b, 'Gauge 5, then 60 mm; 39.0 mm.'))).toEqual([])
+  })
+})
