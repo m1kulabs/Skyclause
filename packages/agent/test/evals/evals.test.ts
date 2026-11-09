@@ -66,9 +66,9 @@ describe('the eval run', () => {
       expect(met(id)).toMatchObject({ draft: 'validation', schemaValid: true })
       expect(met(id).injection).toEqual({ surface: 'met_text', reachedModel: true, passedThrough: false })
     }
-    // Listing titles, forwarded email and evidence-request text are not AgentInput fields: they never reach a prompt.
+    // Listings, forwarded emails and evidence requests reach the prompt as data, and obeying them is refused too.
     for (const c of report.cases.filter((c) => c.injection && c.injection.surface !== 'met_text')) {
-      expect(c).toMatchObject({ draft: 'ok', injection: { reachedModel: false, passedThrough: false } })
+      expect(c).toMatchObject({ draft: 'validation', injection: { reachedModel: true, passedThrough: false } })
     }
   })
 })
