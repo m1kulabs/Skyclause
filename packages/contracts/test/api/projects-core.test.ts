@@ -125,6 +125,26 @@ describe('project core contracts (#137)', () => {
     }
   })
 
+  test('time-zone strings reach authoritative database validation on both owned write contracts', () => {
+    expect(
+      createBodySchema.parse({
+        name: 'Valid zone',
+        slug: 'valid-zone',
+        site_name: 'APU',
+        site_lat: 3.05,
+        site_lon: 101.7,
+        packs: ['sky'],
+        time_zone: 'America/New_York'
+      }).time_zone
+    ).toBe('America/New_York')
+    expect(updateBodySchema.parse({ name: 'Mixed patch', time_zone: 'America/New_York' }).time_zone).toBe(
+      'America/New_York'
+    )
+    expect(updateBodySchema.parse({ time_zone: 'not-a-time-zone' }).time_zone).toBe('not-a-time-zone')
+    expect(createProject.responses[422]).toBeDefined()
+    expect(updateProject.responses[422]).toBeDefined()
+  })
+
   test('updateProject accepts nullable owned fields and format-valid reserved slugs while rejecting malformed slugs', () => {
     expect(
       updateBodySchema.safeParse({

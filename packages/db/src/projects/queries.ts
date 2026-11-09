@@ -313,7 +313,10 @@ export async function getProjectSummaryRecord(handle: TxHandle, projectId: strin
   const activeShadows = shadows.filter((s) => {
     if (s.scopeKind === 'window') {
       const win = s.scopeId ? windowById.get(s.scopeId) : null
-      return win !== undefined && win !== null && win.cancelledAt === null && win.endsAt > now
+      if (!win || win.cancelledAt !== null) return false
+      const spanEnd = extractShadowSpanEnd(shadowVerdicts.get(s.id)!)
+      const effectiveEnd = spanEnd && spanEnd > win.endsAt ? spanEnd : win.endsAt
+      return effectiveEnd > now
     }
     if (s.scopeKind === 'night') {
       const n = s.scopeId ? nightById.get(s.scopeId) : null

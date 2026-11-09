@@ -2,6 +2,7 @@ export {
   archiveProjectRecord,
   createProjectRecord,
   ProjectSlugError,
+  ProjectTimeZoneError,
   restoreProjectRecord,
   updateProjectRecord,
   validateProjectSlug,

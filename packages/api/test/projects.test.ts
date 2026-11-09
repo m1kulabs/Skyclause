@@ -281,6 +281,76 @@ describe('POST /api/orgs/{org}/projects and service seams (#137)', () => {
 })
 
 describe('PATCH /api/projects/{id}, archive, restore and ledger read while archived (#137)', () => {
+  test('rejects unsupported time zones on create and mixed PATCH without breaking following summaries', async () => {
+    const invalidCreate = await apiRequest(api, {
+      as: admin,
+      method: 'POST',
+      path: `/api/orgs/${ORG}/projects`,
+      idempotencyKey: randomUUID(),
+      body: {
+        name: 'Invalid zone',
+        slug: 'invalid-zone-api',
+        site_name: 'APU',
+        site_lat: 3.05,
+        site_lon: 101.7,
+        packs: ['sky'],
+        time_zone: 'not-a-time-zone'
+      }
+    })
+    expect(invalidCreate.status).toBe(422)
+    expect(await invalidCreate.json()).toMatchObject({
+      type: problemType('validation-failed'),
+      field: 'time_zone',
+      errors: [expect.objectContaining({ in: 'body', pointer: '/time_zone' })]
+    })
+    expect(await inOrg((tx) => tx.select().from(project).where(eq(project.slug, 'invalid-zone-api')))).toEqual([])
+    const created = await inOrg((tx) =>
+      createProject(
+        { principal: memberOf(orgId), tx },
+        {
+          name: 'Valid zone',
+          slug: 'valid-zone-api',
+          site_name: 'APU',
+          site_lat: 3.05,
+          site_lon: 101.7,
+          packs: ['sky'],
+          time_zone: 'America/New_York'
+        }
+      )
+    )
+    const readRow = () => inOrg(async (tx) => (await tx.select().from(project).where(eq(project.id, created.id)))[0]!)
+    const before = await readRow()
+    for (const time_zone of ['not-a-time-zone', '']) {
+      const patch = await apiRequest(api, {
+        as: admin,
+        org: ORG,
+        method: 'PATCH',
+        path: `/api/projects/${created.id}`,
+        body: { name: 'Must not persist', time_zone }
+      })
+      expect(patch.status).toBe(422)
+      expect(await patch.json()).toMatchObject({
+        type: problemType('validation-failed'),
+        field: 'time_zone',
+        errors: [expect.objectContaining({ in: 'body', pointer: '/time_zone' })]
+      })
+      expect(await readRow()).toEqual(before)
+    }
+    const listed = await apiRequest(v1, {
+      as: viewer,
+      org: ORG,
+      method: 'GET',
+      path: '/v1/projects',
+      query: { include: 'summary' }
+    })
+    expect(listed.status).toBe(200)
+    expect((await listed.json()) as { data: unknown[] }).toMatchObject({
+      data: expect.arrayContaining([
+        expect.objectContaining({ id: created.id, time_zone: 'America/New_York', summary: expect.any(Object) })
+      ])
+    })
+  })
+
   test('refuses unsupported packs/rota writes before any owned mutation, including empty arrays', async () => {
     const created = await inOrg((tx) =>
       createProject(

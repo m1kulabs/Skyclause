@@ -6,6 +6,7 @@ import {
   getProjectSummaryRecord,
   listProjectRecords,
   ProjectSlugError,
+  ProjectTimeZoneError,
   restoreProjectRecord,
   updateProjectRecord,
   type project,
@@ -105,7 +106,14 @@ function serializeProject(row: typeof project.$inferSelect, packs: Array<typeof 
   }
 }
 
-function toSlugApiError(error: unknown): never {
+function toProjectApiError(error: unknown): never {
+  if (error instanceof ProjectTimeZoneError) {
+    throw new ApiError(422, 'validation-failed', error.message, {
+      field: error.field,
+      reason: 'invalid',
+      errors: [{ in: 'body', pointer: '/time_zone', detail: error.message }]
+    })
+  }
   if (error instanceof ProjectSlugError) {
     throw new ApiError(422, error.code, error.message, {
       field: 'slug',
@@ -156,7 +164,7 @@ export async function createProject(
     )
     return serializeProject(created.project, created.packs)
   } catch (error) {
-    toSlugApiError(error)
+    toProjectApiError(error)
   }
 }
 
@@ -257,7 +265,7 @@ export async function updateProject(
       rota_override: updated.rotaOverride
     }
   } catch (error) {
-    toSlugApiError(error)
+    toProjectApiError(error)
   }
 }
 

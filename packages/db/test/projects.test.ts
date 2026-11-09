@@ -274,6 +274,56 @@ describe('createProjectRecord atomic bootstrap (#137)', () => {
   })
 })
 
+describe('supported project time zones', () => {
+  test('rejects unsupported create/update zones before any write, even if the caller catches the refusal', async () => {
+    await inOrg(async (tx) => {
+      await expect(
+        createProjectRecord(tx, {
+          name: 'Invalid zone',
+          slug: 'invalid-zone-db',
+          siteName: 'APU',
+          siteLat: 3.05,
+          siteLon: 101.7,
+          packs: ['sky'],
+          timeZone: 'not-a-time-zone'
+        })
+      ).rejects.toMatchObject({ name: 'ProjectTimeZoneError', field: 'time_zone' })
+      expect(await tx.select().from(project).where(eq(project.slug, 'invalid-zone-db'))).toEqual([])
+      const { project: created } = await createProjectRecord(tx, {
+        name: 'Valid zone',
+        slug: 'valid-zone-db',
+        siteName: 'APU',
+        siteLat: 3.05,
+        siteLon: 101.7,
+        packs: ['sky'],
+        timeZone: 'America/New_York'
+      })
+      await expect(
+        updateProjectRecord(tx, created.id, { name: 'Must not persist', timeZone: 'not-a-time-zone' })
+      ).rejects.toMatchObject({ name: 'ProjectTimeZoneError', field: 'time_zone' })
+      expect((await getProjectRecord(tx, created.id))?.project).toEqual(created)
+      expect((await getProjectSummaryRecord(tx, created.id)).next_action).toBe('bind_source')
+    })
+  })
+
+  test('invalid pre-existing stored zone surfaces an error without inventing a replacement', async () => {
+    await expect(
+      inOrg(async (tx) => {
+        const { project: created } = await createProjectRecord(tx, {
+          name: 'Corrupt stored zone',
+          slug: 'corrupt-stored-zone',
+          siteName: 'APU',
+          siteLat: 3.05,
+          siteLon: 101.7,
+          packs: ['sky']
+        })
+        await tx.update(project).set({ timeZone: 'not-a-time-zone' }).where(eq(project.id, created.id))
+        return getProjectSummaryRecord(tx, created.id)
+      })
+    ).rejects.toMatchObject({ cause: { code: '22023' } })
+  })
+})
+
 describe('update, archive, restore and projectGate (#137)', () => {
   test('updates owned fields, archives and restores idempotently without audit or domain events, and keeps ledger readable', async () => {
     const t1 = new Date('2026-11-08T03:00:00Z')
@@ -563,6 +613,101 @@ describe('getProjectSummaryRecord (D3 precedence and counts)', () => {
     expect(refusal).toBeTypeOf('function')
     expect(getProjectRecord).toBeTypeOf('function')
   })
+
+  test.each([true, false])(
+    'post-window span keeps current blockers and engine basis through span end (approved=%s)',
+    async (approved) => {
+      await inOrg(async (tx) => {
+        const { project: created } = await createProjectRecord(tx, {
+          name: 'Post-window span',
+          slug: approved ? 'span-approved' : 'span-engine',
+          siteName: 'APU',
+          siteLat: 3.05,
+          siteLon: 101.7,
+          packs: ['sky']
+        })
+        const win = await makeWindow(tx, {
+          projectId: created.id,
+          startsAt: new Date('2026-11-08T06:00:00Z'),
+          endsAt: new Date('2026-11-08T07:00:00Z')
+        })
+        const gauge = await makeSource(tx)
+        await makeProjectSource(tx, { projectId: created.id, sourceId: gauge.id, role: 'rain_gauge' })
+        await makeSourceState(tx, { sourceId: gauge.id, state: 'error', since: new Date('2026-11-08T07:15:00Z') })
+        const scope = { kind: 'window', id: win.id }
+        const span = { from: '2026-11-08T06:30:00Z', to: '2026-11-08T08:00:00Z', complete: true }
+        const blocker = {
+          name: 'w.rain_max_60m_mm',
+          source_id: gauge.id,
+          state: 'error',
+          since: '2026-11-08T07:15:00Z'
+        }
+        let callId: string | null = null
+        if (approved) {
+          const b = await makeBundle(tx, {
+            runId: (await makeRun(tx, { projectId: created.id, pack: 'sky' })).id,
+            pack: 'sky',
+            state: 'sent'
+          })
+          callId = (
+            await makeCall(tx, {
+              bundleId: b.id,
+              windowId: win.id,
+              mode: 'normal',
+              state: 'sent',
+              approvedAt: new Date('2026-11-08T06:45:00Z'),
+              shadow: {
+                scope,
+                pack: 'sky',
+                mode: 'normal',
+                watch: false,
+                no_call: null,
+                recommendations: [],
+                clauses: [{ key: 'storm_confirmed', result: 'not_fired', blocked_by: [], inputs: [], span }],
+                open_from: null
+              }
+            })
+          ).id
+        }
+        await makeShadowState(tx, {
+          projectId: created.id,
+          pack: 'sky',
+          scopeKind: 'window',
+          scopeId: win.id,
+          verdict: {
+            scope,
+            pack: 'sky',
+            mode: 'outdoor_limited',
+            watch: false,
+            no_call: { inputs: [blocker] },
+            recommendations: [],
+            clauses: [{ key: 'storm_confirmed', result: 'blocked', blocked_by: [blocker], inputs: [], span }],
+            open_from: null
+          }
+        })
+        const open = await getProjectSummaryRecord(tx, created.id, new Date('2026-11-08T07:30:00Z'))
+        expect(open.pack_states[0]).toEqual({
+          pack: 'sky',
+          basis: approved ? 'approved_call' : 'engine_verdict',
+          call_id: callId,
+          mode: approved ? 'normal' : 'outdoor_limited',
+          watch: false,
+          no_call: { inputs: [blocker] }
+        })
+        expect(open.windows_at_risk).toBe(0)
+        const ended = await getProjectSummaryRecord(tx, created.id, new Date('2026-11-08T08:00:00Z'))
+        expect(ended.pack_states[0]).toEqual({
+          pack: 'sky',
+          basis: null,
+          call_id: null,
+          mode: null,
+          watch: false,
+          no_call: null
+        })
+        expect(ended.windows_at_risk).toBe(0)
+      })
+    }
+  )
 
   test('windows_at_risk restricts to today in the project local time zone (including non-MYT) and respects approved Normal over risky shadow unless No call applies', async () => {
     // 2026-11-08T22:30:00Z is 2026-11-08 17:30:00 in America/New_York (UTC-5), where local today ends at 2026-11-09T05:00:00Z.

@@ -29,6 +29,21 @@ export class ProjectSlugError extends Error {
   }
 }
 
+export class ProjectTimeZoneError extends Error {
+  readonly field = 'time_zone' as const
+  constructor() {
+    super('time_zone must name a supported PostgreSQL time zone.')
+    this.name = 'ProjectTimeZoneError'
+  }
+}
+
+async function validateProjectTimeZone(tx: Tx, timeZone: string): Promise<void> {
+  const result = await tx.execute<{ valid: boolean }>(sql`
+    SELECT EXISTS (SELECT 1 FROM pg_timezone_names WHERE lower(name) = lower(${timeZone})) AS valid
+  `)
+  if (!result.rows[0]?.valid) throw new ProjectTimeZoneError()
+}
+
 export function validateProjectSlug(slug: string): void {
   if (!SLUG_REGEX.test(slug)) {
     throw new ProjectSlugError('validation-failed', 'invalid', slug, `The slug "${slug}" is invalid.`)
@@ -76,6 +91,7 @@ export async function createProjectRecord(handle: TxHandle, input: CreateProject
   const tx = handle as Tx
   const orgId = tx.orgId!
   validateProjectSlug(input.slug)
+  await validateProjectTimeZone(tx, input.timeZone ?? 'Asia/Kuala_Lumpur')
 
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`project-slug:${orgId}:${input.slug}`}, 0))`)
 
@@ -195,6 +211,8 @@ export async function updateProjectRecord(
 
   const [existing] = await tx.select().from(project).where(eq(project.id, projectId)).for('update')
   if (!existing) return null
+
+  if (patch.timeZone !== undefined) await validateProjectTimeZone(tx, patch.timeZone)
 
   if (patch.slug !== undefined) {
     validateProjectSlug(patch.slug)
