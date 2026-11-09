@@ -47,13 +47,14 @@ function dataBlock(name: string, value: unknown): string {
 
 /**
  * The user message: every input as a data block, built from picked fields only, so a title, name or email a caller
- * passes at runtime never reaches the model. `roles: false` (free-tier and unknown keys) drops recipient roles.
+ * passes at runtime never reaches the model. `roles: false` (free-tier and unknown keys) drops recipient roles, forwarded emails and evidence requests.
  */
 export function serialise(input: AgentInput, o: { roles: boolean }): string {
   // Untrusted third-party text, present only when the caller has some: quoted like MET text and never quotable.
-  const untrusted = (['listings', 'forwarded_emails', 'evidence_requests'] as const).flatMap((name) =>
-    input[name] === undefined ? [] : [dataBlock(name, input[name])]
-  )
+  // Listings are public venue text. Forwarded emails and evidence requests can name people, so they go to paid and
+  // platform models only (the same tiers that get roles).
+  const names = o.roles ? (['listings', 'forwarded_emails', 'evidence_requests'] as const) : (['listings'] as const)
+  const untrusted = names.flatMap((name) => (input[name] === undefined ? [] : [dataBlock(name, input[name])]))
   const { snapshot } = input
   const candidates = Object.fromEntries(
     Object.entries(input.candidates).map(([windowId, list]) => [

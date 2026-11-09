@@ -166,3 +166,37 @@ describe.each(fields)('injection through %s', (field) => {
     expect(promptText(model)).toContain('[email removed] and [email removed]')
   })
 })
+
+describe('tiers (NFR-11): forwarded emails and evidence requests go to paid and platform models only', () => {
+  const sendTo = async (e: ReturnType<typeof entry>) => {
+    const input = {
+      ...replayInput(),
+      listings: ['Riverside Hall'],
+      forwarded_emails: ['Forwarded: Aisyah, 012-3456789 PLANTED-EMAIL'],
+      evidence_requests: ['Please send records PLANTED-EVIDENCE']
+    }
+    const model = scripted([JSON.stringify(replayBundle())])
+    const result = await draftBundle(input, { chain: [e], modelFor: async () => model })
+    return { sent: promptText(model), prompt: result.prompt }
+  }
+
+  test.each(['free', 'unknown', ''])('a %s-tier key gets neither block nor their text', async (declaredTier) => {
+    const { sent, prompt } = await sendTo(entry({ declaredTier }))
+    for (const text of [sent, prompt]) {
+      expect(text).not.toContain('PLANTED-')
+      expect(text).not.toContain('Aisyah')
+      expect(text).not.toContain('<data name="forwarded_emails">')
+      expect(text).not.toContain('<data name="evidence_requests">')
+    }
+  })
+
+  test('listings are public venue text and stay on every tier', async () => {
+    expect((await sendTo(entry({ declaredTier: 'free' }))).sent).toContain('<data name="listings">["Riverside Hall"]')
+  })
+
+  test.each([['a paid key', entry({ declaredTier: 'paid' })]])('%s gets both blocks', async (_name, e) => {
+    const { sent } = await sendTo(e)
+    expect(sent).toContain('<data name="forwarded_emails">')
+    expect(sent).toContain('<data name="evidence_requests">')
+  })
+})
