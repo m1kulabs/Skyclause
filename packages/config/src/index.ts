@@ -10,5 +10,4 @@ export {
   type Telemetry,
   type TelemetryOptions
 } from './telemetry'
-export * from './placeholders/a-hardening'
 export * from './placeholders/e-byok-api'

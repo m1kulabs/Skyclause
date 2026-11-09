@@ -10,12 +10,15 @@ export function RootDocument({
   children,
   appearance = DEFAULT_APPEARANCE,
   resolved = resolveAppearance(appearance),
-  routeGroup
+  routeGroup,
+  nonce
 }: {
   children: ReactNode
   appearance?: Appearance
   resolved?: ReturnType<typeof resolveAppearance>
   routeGroup?: RouteGroup
+  /** The per-request CSP nonce; static shells omit it and run on the appearance hash. */
+  nonce?: string
 }) {
   return (
     <html
@@ -32,7 +35,7 @@ export function RootDocument({
       <head>
         {/* JavaScript owns the live meta; keeping it out of React's hoist cache avoids a duplicate after prepaint. */}
         <noscript dangerouslySetInnerHTML={{ __html: `<meta name="theme-color" content="${resolved.color}">` }} />
-        <script dangerouslySetInnerHTML={{ __html: APPEARANCE_SCRIPT }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: APPEARANCE_SCRIPT }} />
       </head>
       <body>
         <a className="skip-link" href="#main-content">
