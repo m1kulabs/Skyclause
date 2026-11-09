@@ -12,6 +12,7 @@ import { ImageResponse } from 'next/og'
 import { readFile } from 'node:fs/promises'
 import { stateWord, type Card } from './card'
 import { t } from './i18n'
+import type { Locale } from './i18n'
 
 // DESIGN "Open Graph card": 1200×630 on the dark ground, Work Sans throughout. Colours are f-ui's dark tokens.
 export const CARD_SIZE = { width: 1200, height: 630 }
@@ -103,9 +104,11 @@ function Strip({ strip }: { strip: StripInput }) {
   )
 }
 
-export function CardView({ card }: { card: Card }) {
+export function CardView({ card, locale = 'en' }: { card: Card; locale?: Locale }) {
   const level = card.state && brandStates[card.state].level
-  const title = card.project ? t('share-previews.title', { brand: t('brand.name'), project: card.project }) : null
+  const title = card.project
+    ? t('share-previews.title', { brand: t('brand.name', {}, locale), project: card.project }, locale)
+    : null
   return (
     <div
       style={{
@@ -123,7 +126,7 @@ export function CardView({ card }: { card: Card }) {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 30, fontWeight: 500 }}>
         <img src={dataUri(inked(markSvg, INK))} width={36} height={36} alt="" />
-        <span>{title ?? t('brand.name')}</span>
+        <span>{title ?? t('brand.name', {}, locale)}</span>
       </div>
       <div
         style={{
@@ -140,7 +143,7 @@ export function CardView({ card }: { card: Card }) {
         {card.state && (
           <img src={dataUri(inked(glyphSvg(card.state), statusColours.dark[level!]))} width={96} height={96} alt="" />
         )}
-        <span style={{ lineHeight: 1 }}>{stateWord(card.state)}</span>
+        <span style={{ lineHeight: 1 }}>{stateWord(card.state, locale)}</span>
       </div>
       {card.window && <span style={{ marginTop: 16, fontSize: 40 }}>{card.window}</span>}
       {card.approved && <span style={{ marginTop: 8, fontSize: 32, color: MUTED }}>{card.approved}</span>}
@@ -168,7 +171,7 @@ export function CardView({ card }: { card: Card }) {
         )}
         {card.captured && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', fontSize: 24 }}>
-            <span>{t('share-previews.captured')}</span>
+            <span>{t('share-previews.captured', {}, locale)}</span>
             <span>{card.captured}</span>
           </div>
         )}
@@ -178,11 +181,11 @@ export function CardView({ card }: { card: Card }) {
 }
 
 /** The card as a 1200×630 PNG, with the route's caching. */
-export function cardImage(card: Card, cacheControl: string): Response {
+export function cardImage(card: Card, cacheControl: string, locale: Locale = 'en'): Response {
   // Lower case, so it replaces `next/og`'s own default rather than joining it.
-  return new ImageResponse(<CardView card={card} />, {
+  return new ImageResponse(<CardView card={card} locale={locale} />, {
     ...CARD_SIZE,
     fonts,
-    headers: { 'cache-control': cacheControl }
+    headers: { 'cache-control': cacheControl, 'content-language': locale, vary: 'Accept-Language' }
   })
 }

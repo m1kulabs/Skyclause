@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { callCard, cardAlt, projectCard, windowCard } from '../../features/share-previews/card'
+import { previewLocale } from '../../features/share-previews/i18n'
 import { call, pack, publicWindow, rain60, status } from './doubles'
 
 const NOW = new Date('2026-11-02T07:05:00Z')
@@ -40,6 +41,24 @@ describe('card models', () => {
     })
     expect(cardAlt(card)).toBe(
       'Commute disruption. 15:30 MYT – 17:00 MYT · Monday 2 November 2026. Deciding reading: 39 mm Rain in the last 60 minutes at 15:00 MYT.'
+    )
+  })
+
+  test('a Malay card and its alt text use the Malay catalogue', () => {
+    const locale = previewLocale(
+      new Request('https://skyclause.m1ku.tech/p/apu/bukit-jalil/og.png', {
+        headers: { 'Accept-Language': 'ms-MY, en;q=0.8' }
+      })
+    )
+    const card = projectCard(status({ packs: [inForce] }), call(), NOW, locale)
+
+    expect(card).toMatchObject({
+      range: '15:30 MYT – 17:00 MYT',
+      window: '15:30 MYT – 17:00 MYT · Isnin 2 November 2026',
+      reading: '39 mm site.rain_60m_mm pada 15:00 MYT'
+    })
+    expect(cardAlt(card, locale)).toBe(
+      'Gangguan perjalanan. 15:30 MYT – 17:00 MYT · Isnin 2 November 2026. Bacaan penentu: 39 mm site.rain_60m_mm pada 15:00 MYT.'
     )
   })
 
