@@ -18,7 +18,7 @@ import {
 import type { Tx } from '@skyclause/db'
 import { expect } from 'vitest'
 import { createApi, type ApiApp, type Registry } from '../../src/app'
-import type { ApiDeps } from '../../src/context'
+import type { ApiDeps, OAuthManagement } from '../../src/context'
 import { HANDLERS } from '../../src/routes'
 import type { IdempotencyRecord, IdempotencyStore, MembershipLookup, RateLimitStore } from '../../src/stores'
 
@@ -221,6 +221,35 @@ export interface TestDeps extends ApiDeps {
   clock: { advance(ms: number): void }
 }
 
+const oauthDouble: OAuthManagement = {
+  async listClients() {
+    return { data: [], next_cursor: null }
+  },
+  async createClient(input) {
+    return {
+      id: randomUUID(),
+      client_id: 'test-oauth-client',
+      client_name: input.clientName,
+      redirect_uris: input.redirectUris,
+      scopes: input.scopes,
+      created_at: TEST_NOW.toISOString(),
+      client_secret: 'test-only-secret',
+      redirect_uri: 'https://vertexaisearch.cloud.google.com/oauth-redirect',
+      authorization_url: `${TEST_APP_ORIGIN}/api/auth/oauth2/authorize`,
+      token_url: `${TEST_APP_ORIGIN}/api/auth/oauth2/token`
+    }
+  },
+  async deleteClient() {
+    return true
+  },
+  async listGrants() {
+    return { data: [], next_cursor: null }
+  },
+  async revokeGrant() {
+    return true
+  }
+}
+
 /** In-memory stores, the membership and `can` doubles, a `withTenant` double and a clock starting at TEST_NOW. */
 export function testDeps(overrides: Partial<ApiDeps> = {}): TestDeps {
   let now = TEST_NOW.getTime()
@@ -237,6 +266,7 @@ export function testDeps(overrides: Partial<ApiDeps> = {}): TestDeps {
       const { orgId, principal } = tx as unknown as FakeTx
       audits.push({ orgId, actor: principal, action: e.action, target: e.target, after: e.after })
     },
+    oauth: oauthDouble,
     email: createMailbox(),
     config: () => ({ appEnv: 'test', appOrigin: TEST_APP_ORIGIN, ipHashKey: 'test-only-ip-hash-key-for-the-harness' }),
     now: () => new Date(now),

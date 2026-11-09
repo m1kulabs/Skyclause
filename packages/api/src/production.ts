@@ -4,6 +4,7 @@ import { recordAudit, withTenant } from '@skyclause/db'
 import { emailTransportForAws } from '@skyclause/delivery'
 import type { ApiConfig, ApiDeps } from './context'
 import { registeredPermission, registeredPrincipal } from './middleware/auth'
+import { registeredOAuthManagement } from './middleware/oauth'
 import { postgresIdempotency, postgresMembership, postgresRateLimits } from './postgres-stores'
 
 let config: ApiConfig | undefined
@@ -46,6 +47,7 @@ export const productionDeps: ApiDeps = {
   rateLimits: postgresRateLimits,
   withTenant,
   recordAudit,
+  oauth: registeredOAuthManagement,
   email: { send: (message) => (ses ??= loadEmail()).send(message) },
   config: () => (config ??= loadConfig()),
   now: () => new Date()

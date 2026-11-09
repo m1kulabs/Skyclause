@@ -15,6 +15,8 @@ export const oauthGrant = tenantTable(
     id: id(),
     clientId: text('client_id').notNull(),
     accountId: uuid('account_id').notNull(),
+    // #198 D37: persisting the selected resource keeps each consent grant distinct and listable.
+    resource: text('resource').$type<'api' | 'mcp'>().notNull().default('mcp'),
     projectIds: uuid('project_ids').array(),
     scopes: text('scopes')
       .array()

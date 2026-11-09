@@ -646,6 +646,7 @@ export const OAuthGrant = z.object({
   id: z.string(),
   client_id: z.string(),
   org_id: z.string(),
+  resource: z.enum(['api', 'mcp']),
   project_ids: z.union([z.array(z.string()), z.literal('all')]),
   scopes: z.array(z.enum(['read', 'draft'])),
   share_link_id: z.string().nullable(),
