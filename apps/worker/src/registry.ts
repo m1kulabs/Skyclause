@@ -1,3 +1,4 @@
+import { auditor } from './auditor'
 import { bundles } from './bundles'
 import { email } from './email'
 import { evidence } from './evidence'
@@ -16,5 +17,6 @@ export const registry = defineRegistry([
   domainEvents, // f-db-schema
   pilotArchive, // c-ledger-chain
   bundles, // c-bundle-lifecycle
-  evidence // c-evidence
+  evidence, // c-evidence
+  auditor // b-auditor
 ])
