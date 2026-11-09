@@ -3,10 +3,9 @@
 // membership lookup reads them, as production's does.
 import { randomUUID } from 'node:crypto'
 import type { Principal, Role } from '@skyclause/contracts'
-import { member, organization, recordAudit, systemPrincipal, withSystem, withTenant, type Tx } from '@skyclause/db'
+import { findMembership, recordAudit, systemPrincipal, withSystem, withTenant, type Tx } from '@skyclause/db'
 import { makeMember, makeOrganization, makePushSubscription, makeUser } from '@skyclause/db/test/factories/index'
 import { asLogin } from '@skyclause/db/test/harness/index'
-import { and, eq } from 'drizzle-orm'
 import { beforeAll, describe, expect, test } from 'vitest'
 import type { MembershipLookup } from '../src/stores'
 import { apiRequest, asApiKey, asSession, createTestApi, crossOrgCase, testDeps, TEST_APP_ORIGIN } from './harness'
@@ -18,22 +17,8 @@ const config = (vapidPublicKey?: string) => () => ({
   ipHashKey: 'test-only-ip-hash-key-for-the-harness',
   vapidPublicKey
 })
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const dbMembership: MembershipLookup = {
-  organisation: (ref) =>
-    withSystem('test', async (tx) => {
-      const by = UUID.test(ref) ? eq(organization.id, ref) : eq(organization.slug, ref)
-      const [org] = await tx.select({ id: organization.id, slug: organization.slug }).from(organization).where(by)
-      return org ?? null
-    }),
-  role: (accountId, orgId) =>
-    withSystem('test', async (tx) => {
-      const [row] = await tx
-        .select({ role: member.role })
-        .from(member)
-        .where(and(eq(member.userId, accountId), eq(member.organizationId, orgId)))
-      return (row?.role as Role | undefined) ?? null
-    })
+  lookup: (ref, accountId) => withSystem('test', (tx) => findMembership(tx, ref, accountId))
 }
 const deps = (vapidPublicKey?: string) =>
   testDeps({ withTenant, recordAudit, membership: dbMembership, config: config(vapidPublicKey) })

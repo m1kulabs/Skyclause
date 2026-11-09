@@ -39,11 +39,10 @@ async function scope(c: Context<ApiEnv>): Promise<{ named: boolean; orgs: OrgSco
   if (session.kind !== 'session') throw new Error('requireSession must run first')
   const { membership } = c.get('deps')
   const ref = c.req.header('Skyclause-Organization')
-  const org = ref ? await membership.organisation(ref) : null
+  const org = ref ? await membership.lookup(ref, session.accountId) : null
   if (org) {
-    const role = await membership.role(session.accountId, org.id)
-    if (!role) throw notFound('No such organisation, or you are not a member of it.')
-    return { named: true, orgs: [{ orgId: org.id, principal: { ...session, orgId: org.id, role } }] }
+    if (!org.role) throw notFound('No such organisation, or you are not a member of it.')
+    return { named: true, orgs: [{ orgId: org.id, principal: { ...session, orgId: org.id, role: org.role } }] }
   }
   const memberships = await withSystem('push-subscriptions', (tx) => accountOrganisations(tx, session.accountId))
   return {
