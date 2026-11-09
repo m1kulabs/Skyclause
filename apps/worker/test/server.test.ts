@@ -354,7 +354,7 @@ describe('worker 15-minute batch connection', () => {
     vi.setSystemTime(Math.ceil(Date.now() / 3_600_000) * 3_600_000 + 5 * 60_000)
     try {
       const app = createServer({ registry, audience, invoker, jwks, heartbeat: () => {} })
-      expect(Object.keys(registry.batch)).toEqual(['domain-events-republish', 'partition-maintenance'])
+      expect(Object.keys(registry.batch)).toEqual(['domain-events-republish', 'partition-maintenance', 'auditor'])
       expect((await post(app, '/ticks/batch', { bearer: await token() })).status).toBe(204)
       expect(published).toEqual([id])
       expect(await systemBackends()).toHaveLength(1)
