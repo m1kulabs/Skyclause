@@ -170,7 +170,8 @@ test('archived projects sit behind ?archived=1', async ({ page }) => {
 })
 
 test('general panel renames the organisation with the slug read-only', async ({ page }) => {
-  const org = await makeOrg()
+  // An explicit slug also names the organisation after it, so the field's starting value is known.
+  const org = await makeOrg({ slug: `rename-${crypto.randomUUID().slice(0, 8)}` })
   await signInAs(page, 'owner', org)
   await page.goto(`/${org.slug}/settings/general`)
   await expect(page.getByLabel('Organisation name')).toHaveValue(org.slug)
