@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./format": "./src/format.ts",
-    "./brand": "./src/brand.ts"
+    "./brand": "./src/brand.ts",
+    "./subscriber-emails": "./src/subscriber-emails.ts"
   }
 }

@@ -10,6 +10,7 @@ it('answers 501 not-built by f-auth until a resolver is registered, then resolve
   vi.stubEnv('APP_ENV', 'test')
   vi.stubEnv('IP_HASH_KEY', 'k'.repeat(48))
   vi.stubEnv('BETTER_AUTH_SECRET', 's'.repeat(48))
+  vi.stubEnv('EMAIL_HASH_KEY', 'e'.repeat(48))
   const before = await me()
   expect(before.status).toBe(501)
   expect(await before.json()).toMatchObject({ owner: 'f-auth' })

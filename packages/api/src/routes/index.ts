@@ -3,6 +3,7 @@ import type { OperationId, Operations } from '@skyclause/contracts'
 import type { Context, MiddlewareHandler } from 'hono'
 import type { ApiEnv } from '../context'
 import { ledgerHandlers } from './ledger'
+import { subscriberHandlers } from './subscribers'
 
 /**
  * One operation's handler, typed by its registry route, plus middleware the route's metadata can't express, such as
@@ -26,5 +27,6 @@ export type Handlers = { [Id in OperationId]?: HandlerEntry<Operations[Id]> }
  * line; an operation without an entry answers 501 `not-built` naming its owner.
  */
 export const HANDLERS: Handlers = {
-  ...ledgerHandlers // c-ledger-chain
+  ...ledgerHandlers, // c-ledger-chain
+  ...subscriberHandlers
 }

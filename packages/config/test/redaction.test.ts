@@ -42,7 +42,15 @@ const plants: fc.Arbitrary<Plant> = fc.oneof(
   chars(`${ALNUM}+/`, 40, 80).map((body) => ({
     text: `-----BEGIN PRIVATE KEY-----\n${body}\n-----END PRIVATE KEY-----`,
     secret: body
-  }))
+  })),
+  // Subscriber link tokens (#157): 32 bytes of base64url in a `/subscribe/` path, page or API.
+  fc
+    .tuple(
+      fc.constantFrom('/subscribe/', '/api/subscribe/'),
+      chars(`${ALNUM}_-`, 43, 43),
+      fc.constantFrom('', '/confirm')
+    )
+    .map(([path, token, rest]) => ({ text: `https://app.skyclause.m1ku.tech${path}${token}${rest}`, secret: token }))
 )
 
 /** Surrounding text, kept apart from the secret by a separator a real message would have. */

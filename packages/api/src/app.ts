@@ -2,6 +2,7 @@ import { OpenAPIHono } from '@hono/zod-openapi'
 import { log } from '@skyclause/config'
 import { API_ROUTES, NotBuiltError, V1_ROUTES, type RouteMetadata, type SkyclauseRoute } from '@skyclause/contracts'
 import type { Context, MiddlewareHandler } from 'hono'
+import { routePath } from 'hono/route'
 import type { ZodType } from 'zod'
 import type { ApiDeps, ApiEnv, Surface } from './context'
 import { v1Cors } from './cors'
@@ -68,7 +69,8 @@ function surfaceApp(
   app.onError((error, c) => {
     const problem = toApiError(error)
     if (problem.status >= 500 && problem.slug !== 'not-built') {
-      log.error('api request failed', { route: c.req.path, error: error.stack ?? String(error) })
+      // The route template, never the path: a path can carry a link token (subscribe and share links).
+      log.error('api request failed', { route: routePath(c, -1), error: error.stack ?? String(error) })
     }
     return problemResponse(c, problem)
   })

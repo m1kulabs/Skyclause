@@ -37,8 +37,9 @@ serves() {
   docker stop "$container" >/dev/null || true
 }
 
-# A throwaway IP_HASH_KEY: web needs one to start (#93); production mounts the real one.
-serves web -e APP_ENV=production -e IP_HASH_KEY=check-image-only-ip-hash-key-0000000000
+# Throwaway hash keys: web needs both to start (IP_HASH_KEY #93, EMAIL_HASH_KEY #157); production mounts the real ones.
+serves web -e APP_ENV=production -e IP_HASH_KEY=check-image-only-ip-hash-key-0000000000 \
+  -e EMAIL_HASH_KEY=check-image-only-email-hash-key-0000000
 serves worker -e APP_ENV=production -e WORKER_URL=https://worker.example.test \
   -e WORKER_INVOKER_SA=skyclause-invoker@skyclause.iam.gserviceaccount.com
 
