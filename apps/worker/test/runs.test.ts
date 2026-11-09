@@ -175,6 +175,20 @@ describe('the runs-requested handler', () => {
     expect(d.consumed).toEqual(['system:run'])
   })
 
+  test('a draft that drops the storm call records a missing-call disagreement in its compare step', async () => {
+    const m = await made()
+    const { runId } = await crossingRun(m)
+    const dropped = JSON.stringify({ pack: 'sky', calls: [], items: [] })
+    const d = doubles(m, { keyId: m.keyId, replies: [dropped] })
+
+    await deliver(d.ports, runId)
+
+    const compared = (await stepsOf(runId)).find((s) => s.step === 'compare')!
+    expect(compared.output).toEqual([{ windowId: m.windowId, agrees: false, staleInputs: false, missing: true }])
+    // No call row carries the disagreement: the bundle holds no calls and closes at once (reported on the PR).
+    expect(await bundlesOf(runId)).toMatchObject([{ state: 'closed' }])
+  })
+
   test('killed after each step and redelivered, it ends with one bundle and one model call', async () => {
     const m = await made()
     const { runId } = await crossingRun(m)
