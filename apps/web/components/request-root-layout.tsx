@@ -34,8 +34,9 @@ export async function RequestRootLayout({ children, routeGroup, locale: requeste
     }
   }
   const hint = (key: string) => requestHeaders.get(key)?.replaceAll('"', '')
+  const colorSchemeHint = hint('sec-ch-prefers-color-scheme')
   const resolved = resolveAppearance(appearance, {
-    colorScheme: hint('sec-ch-prefers-color-scheme'),
+    colorScheme: colorSchemeHint,
     contrast: hint('sec-ch-prefers-contrast'),
     motion: hint('sec-ch-prefers-reduced-motion')
   })
@@ -43,6 +44,9 @@ export async function RequestRootLayout({ children, routeGroup, locale: requeste
     <RootDocument
       appearance={appearance}
       resolved={resolved}
+      colorScheme={
+        appearance.theme === 'system' && colorSchemeHint ? (resolved.mode === 'light' ? 'light' : 'dark') : undefined
+      }
       routeGroup={routeGroup}
       locale={locale}
       skipTarget={routeGroup === 'public' ? 'public-main' : 'main-content'}

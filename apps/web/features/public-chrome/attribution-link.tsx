@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useRef, type MouseEvent, type ReactNode } from 'react'
+import { useId, useRef, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import styles from './public-chrome.module.css'
 
 export function AttributionLink({
@@ -28,6 +28,24 @@ export function AttributionLink({
     dialog.current.showModal()
   }
 
+  function keepFocusInside(event: KeyboardEvent<HTMLDialogElement>) {
+    if (event.key !== 'Tab' || !dialog.current) return
+    const focusable = dialog.current.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+    const first = focusable.item(0)
+    const last = focusable.item(focusable.length - 1)
+    if (!first || !last) return
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
+
   return (
     <>
       <a
@@ -45,6 +63,7 @@ export function AttributionLink({
         className={styles.attributionDialog}
         aria-labelledby={titleId}
         onClose={() => trigger.current?.focus()}
+        onKeyDown={keepFocusInside}
       >
         <div className={styles.dialogHeader}>
           <h2 id={titleId}>

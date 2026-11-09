@@ -1,21 +1,21 @@
-import Link from 'next/link'
-import Image from 'next/image'
 import { t } from '@skyclause/i18n'
 import type { ReactNode } from 'react'
 import type { PublicLocale } from './attribution'
+import { BrandLines } from './brand-lines'
 import './catalogue'
 import styles from './public-chrome.module.css'
 
-export function BrandLines({ locale = 'en' }: { locale?: PublicLocale }) {
-  return (
-    <div className={styles.disclosures}>
-      <p>{t('brand.non_affiliation', {}, locale)}</p>
-      <p>{t('brand.not_safety_service', {}, locale)}</p>
-    </div>
-  )
-}
+export { BrandLines } from './brand-lines'
 
-export function PublicChrome({ children, locale = 'en' }: { children: ReactNode; locale?: PublicLocale }) {
+export function PublicChrome({
+  children,
+  locale = 'en',
+  includeSafetyLine = true
+}: {
+  children: ReactNode
+  locale?: PublicLocale
+  includeSafetyLine?: boolean
+}) {
   const links = [
     { label: t('legal.frame.docs', {}, locale), href: 'https://docs.skyclause.m1ku.tech' },
     { label: t('legal.frame.status', {}, locale), href: '/status' },
@@ -27,22 +27,24 @@ export function PublicChrome({ children, locale = 'en' }: { children: ReactNode;
   return (
     <div className={styles.frame} data-surface="public">
       <header className={styles.header}>
-        <Link className={styles.home} href="/" aria-label={t('legal.frame.home', {}, locale)}>
-          <Image className={styles.mark} src="/icon.svg" width={24} height={24} alt="" />
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Public navigation stays server-rendered and works without JavaScript. */}
+        <a className={styles.home} href="/" aria-label={t('legal.frame.home', {}, locale)}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- The fixed SVG mark needs no optimization or client code. */}
+          <img className={styles.mark} src="/icon.svg" width={24} height={24} alt="" />
           <span className={styles.wordmark} translate="no">
             {t('brand.name', {}, locale)}
           </span>
-        </Link>
+        </a>
       </header>
       <div id="public-main" className={styles.content} tabIndex={-1}>
         {children}
       </div>
       <footer className={styles.footer}>
-        <BrandLines locale={locale} />
+        <BrandLines locale={locale} includeSafetyLine={includeSafetyLine} />
         <nav className={styles.footerNav} aria-label={t('legal.frame.navigation', {}, locale)}>
           {links.map(({ label, href }) => (
             <span className={styles.footerLink} key={href}>
-              <Link href={href}>{label}</Link>
+              <a href={href}>{label}</a>
             </span>
           ))}
         </nav>

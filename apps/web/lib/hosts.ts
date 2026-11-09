@@ -121,6 +121,7 @@ export function proxyResponse(request: NextRequest, config: HostConfig): NextRes
   if (target.group === '(public)') {
     const requestHeaders = new Headers(request.headers)
     requestHeaders.set('x-skyclause-locale', pathname.startsWith('/ms/legal') ? 'ms' : 'en')
+    requestHeaders.set('x-skyclause-public-path', pathname)
     return NextResponse.next({ request: { headers: requestHeaders } })
   }
   return NextResponse.next()

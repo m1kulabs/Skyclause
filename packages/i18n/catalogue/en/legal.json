@@ -20,7 +20,7 @@
     "close": "Close attribution"
   },
   "notFound": {
-    "label": "404 · NOT FOUND",
+    "label": "Page not found",
     "sentence": "This page may be missing or private.",
     "home": "Home",
     "status": "Status",

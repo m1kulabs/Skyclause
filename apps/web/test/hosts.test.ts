@@ -176,6 +176,9 @@ describe('proxy.ts', () => {
     const malay = run('https://skyclause.m1ku.tech/ms/legal/privacy')
     expect(malay.headers.get('x-middleware-request-x-skyclause-locale')).toBe('ms')
 
+    const terms = run('https://skyclause.m1ku.tech/legal/terms')
+    expect(terms.headers.get('x-middleware-request-x-skyclause-public-path')).toBe('/legal/terms')
+
     // Cookies stay host-only: the proxy never writes one, and every rewrite stays on the request's own host.
     for (const response of [embed, unknown, passed]) expect(response.headers.get('set-cookie')).toBeNull()
     for (const response of [embed, unknown]) {

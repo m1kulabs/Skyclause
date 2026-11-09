@@ -8,11 +8,15 @@ export const metadata = { ...brandMetadata, title: 'Skyclause' }
 export const instant = false
 
 export default async function Layout({ children }: { children: ReactNode }) {
-  const locale = (await headers()).get('x-skyclause-locale') === 'ms' ? 'ms' : 'en'
+  const requestHeaders = await headers()
+  const locale = requestHeaders.get('x-skyclause-locale') === 'ms' ? 'ms' : 'en'
+  const includeSafetyLine = requestHeaders.get('x-skyclause-public-path') !== '/legal/terms'
 
   return (
     <RequestRootLayout routeGroup="public" locale={locale}>
-      <PublicChrome locale={locale}>{children}</PublicChrome>
+      <PublicChrome locale={locale} includeSafetyLine={includeSafetyLine}>
+        {children}
+      </PublicChrome>
     </RequestRootLayout>
   )
 }

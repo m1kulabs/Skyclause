@@ -1,5 +1,5 @@
 import { t } from '@skyclause/i18n'
-import { BrandLines } from '../../features/public-chrome/frame'
+import { BrandLines } from '../../features/public-chrome/brand-lines'
 
 export default function Home() {
   return (

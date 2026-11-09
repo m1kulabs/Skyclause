@@ -12,6 +12,7 @@ export function RootDocument({
   children,
   appearance = DEFAULT_APPEARANCE,
   resolved = resolveAppearance(appearance),
+  colorScheme,
   routeGroup,
   locale = 'en',
   skipTarget = 'main-content'
@@ -19,6 +20,7 @@ export function RootDocument({
   children: ReactNode
   appearance?: Appearance
   resolved?: ReturnType<typeof resolveAppearance>
+  colorScheme?: 'light' | 'dark' | 'light dark'
   routeGroup?: RouteGroup
   locale?: Locale
   skipTarget?: string
@@ -27,14 +29,15 @@ export function RootDocument({
     <html
       lang={locale}
       className={resolved.className}
-      style={{ colorScheme: appearance.theme === 'system' ? 'light dark' : resolved.mode }}
+      style={{
+        colorScheme: colorScheme ?? (appearance.theme === 'system' ? 'light dark' : resolved.mode)
+      }}
       data-theme={appearance.theme}
       data-contrast={appearance.contrast}
       data-motion-preference={appearance.motion}
       data-motion={resolved.motion}
       suppressHydrationWarning
     >
-      {/* eslint-disable-next-line @next/next/no-head-element -- Shared App Router document; appearance runs before the body paints. */}
       <head>
         {/* JavaScript owns the live meta; keeping it out of React's hoist cache avoids a duplicate after prepaint. */}
         <noscript dangerouslySetInnerHTML={{ __html: `<meta name="theme-color" content="${resolved.color}">` }} />

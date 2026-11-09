@@ -149,6 +149,8 @@
 }
 
 .attributionTrigger {
+  display: inline-block;
+  min-height: 24px;
   color: inherit;
   text-decoration: underline;
   text-decoration-color: var(--selection);
@@ -220,6 +222,8 @@
 }
 
 .sourceDetails a {
+  display: inline-block;
+  min-height: 24px;
   color: inherit;
   text-decoration-color: var(--selection);
   text-underline-offset: 3px;
