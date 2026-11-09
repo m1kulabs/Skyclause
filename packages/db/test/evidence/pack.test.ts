@@ -5,7 +5,6 @@ import type { CallView } from '@skyclause/contracts'
 import fc from 'fast-check'
 import { afterEach, beforeAll, describe, expect, test } from 'vitest'
 import { assembleEvidencePack, setEvidenceCallViews, warningInForce, withSystem, withTenant, type Tx } from '../../src'
-import { evidenceCallViews } from '../../src/placeholders/c-bundle-lifecycle'
 import {
   makeApproval,
   makeBundle,
@@ -54,7 +53,7 @@ beforeAll(async () => {
   orgId = (await makeOrganization()).id
 })
 
-afterEach(() => setEvidenceCallViews(evidenceCallViews))
+afterEach(() => setEvidenceCallViews(undefined))
 
 describe('LED-5: each value in a pack resolves to a reading ID', () => {
   test('every reading ID in a pack is a reading of a source bound to the project, and none in the span is missing', async () => {
@@ -232,7 +231,7 @@ test('a span without calls never asks for call views, and the same rows give the
   const projectId = await asMember(async (tx) => (await makeProject(tx)).id)
   const gauge = await boundSource(projectId)
   await rain(gauge.id, gauge.pollId, minutes(5), 1)
-  // The placeholder throws not-built; a span with no calls never reaches it.
+  // No loader is set here; a span with no calls never asks for one.
   const first = await pack(projectId)
   const second = await pack(projectId)
   expect(first.calls).toEqual([])

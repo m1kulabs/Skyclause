@@ -2,23 +2,28 @@ import type { z } from '@hono/zod-openapi'
 import type { BudgetGate, Can, EmailTransport, Operations, Principal } from '@skyclause/contracts'
 import {
   approveEvidenceReply,
+  call,
   draftEvidenceRequest,
   evidenceCall,
   evidenceProject,
   evidenceWindow,
   findEvidenceRequest,
   listEvidenceRequestRows,
+  setEvidenceCallViews,
   type DraftEvidenceInput,
   type EvidenceReplyNotice,
   type EvidenceRequestOwner,
   type EvidenceRequestRow,
-  type StoredEvidencePack
+  type StoredEvidencePack,
+  type Tx
 } from '@skyclause/db'
+import { asc, inArray } from 'drizzle-orm'
 import { budgetGate } from '../../placeholders/d-guest-rules'
 import { decodeCursor, page } from '../../pagination'
 import { ApiError } from '../../problems'
 import { instant } from '../../serialize'
 import type { ServiceContext, WithTenant } from '../../tenancy'
+import { callView } from '../bundles'
 import { deliverSubscriberEmail } from '../subscribers'
 import { signFrameUrl, type FrameUrlSigner } from './transports'
 import { renderEvidenceReply } from './reply'
@@ -44,6 +49,13 @@ export interface EvidenceSeams {
   budget: BudgetGate
   signFrameUrl: FrameUrlSigner
 }
+
+// A pack lists its calls as #150's `CallView`s, which this package assembles.
+setEvidenceCallViews(async (tx, ids) =>
+  (await (tx as Tx).select().from(call).where(inArray(call.id, ids)).orderBy(asc(call.draftedAt), asc(call.id))).map(
+    callView
+  )
+)
 
 let seams: EvidenceSeams = { budget: budgetGate, signFrameUrl }
 

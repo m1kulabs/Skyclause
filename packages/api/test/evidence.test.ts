@@ -5,11 +5,14 @@ import type { BudgetGate, Principal } from '@skyclause/contracts'
 import { draftEvidenceRequest, recordAudit, subscriber as subscriberTable, withTenant, type Tx } from '@skyclause/db'
 import { eq as drizzleEq } from 'drizzle-orm'
 import {
+  makeBundle,
+  makeCall,
   makeOrganization,
   makePoll,
   makeProject,
   makeProjectSource,
   makeReading,
+  makeRun,
   makeSubscriber,
   makeSuppression,
   makeWindow
@@ -403,6 +406,30 @@ describe('requests', () => {
     expect(request).toMatchObject({ span, pack: { window_id: window.id } })
     expect((await post(member(), { window_id: crypto.randomUUID() })).status).toBe(404)
     expect((await post(member(), { call_id: crypto.randomUUID() })).status).toBe(404)
+  })
+
+  test('a span with a call lists it as #150’s call view, not 501', async () => {
+    const scene = await inOrg(async (tx) => {
+      const own = (await makeProject(tx)).id
+      const window = await makeWindow(tx, { projectId: own, startsAt: new Date(span.from), endsAt: new Date(span.to) })
+      const bundle = await makeBundle(tx, { runId: (await makeRun(tx, { projectId: own })).id })
+      const shadow = {
+        scope: { kind: 'window', id: window.id },
+        pack: 'sky',
+        mode: 'normal',
+        watch: false,
+        no_call: null,
+        recommendations: [],
+        clauses: [],
+        open_from: null
+      }
+      const made = await makeCall(tx, { projectId: own, bundleId: bundle.id, windowId: window.id, shadow })
+      return { own, made }
+    })
+    const response = await post(member(), { span }, scene.own)
+    expect(response.status).toBe(202)
+    const { pack } = (await response.json()) as { pack: { calls: { id: string; bundle_id: string }[] } }
+    expect(pack.calls).toMatchObject([{ id: scene.made.id, bundle_id: scene.made.bundleId }])
   })
 
   test('a span must end after it starts and cover at most 31 days (422)', async () => {

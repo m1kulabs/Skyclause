@@ -2,7 +2,6 @@ import type { CallView, Operations, TxHandle } from '@skyclause/contracts'
 import { and, asc, desc, eq, gt, inArray, isNull, lt, lte, ne, or, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import type { Tx } from '../client'
-import { evidenceCallViews } from '../placeholders/c-bundle-lifecycle'
 import { approval, call, grade, ledgerEntry, project, projectSource, source, window } from '../schema'
 import { reading } from '../schema/partitioned'
 
@@ -22,13 +21,13 @@ export interface StoredFrame {
 /** The pack as `evidence_request.pack` holds it and `pack_hash` covers it. */
 export type StoredEvidencePack = Omit<EvidencePack, 'frames'> & { frames: StoredFrame[] }
 
-/** Loads #150's call views for the pack's calls; `evidenceCallViews` until `setEvidenceCallViews` replaces it. */
+/** Loads #150's call views for the pack's calls; `@skyclause/api` sets it (`callView` lives there). */
 export type EvidenceCallViews = (tx: TxHandle, callIds: string[]) => Promise<CallView[]>
 
-let callViews: EvidenceCallViews = evidenceCallViews
+let callViews: EvidenceCallViews | undefined
 
-/** Replaces the call-view loader (tests, and the composition root once #150's assembly is wired). */
-export function setEvidenceCallViews(next: EvidenceCallViews) {
+/** Sets the call-view loader: `@skyclause/api`'s evidence service at import, or a test. */
+export function setEvidenceCallViews(next: EvidenceCallViews | undefined) {
   callViews = next
 }
 
@@ -200,7 +199,9 @@ export async function assembleEvidencePack(
     .orderBy(asc(call.draftedAt), asc(call.id))
   const callIds = callRows.map((row) => row.id)
   const bundleIds = [...new Set(callRows.map((row) => row.bundleId))]
-  const calls = callIds.length ? await callViews(tx, callIds) : []
+  if (callIds.length && !callViews)
+    throw new Error('assembleEvidencePack needs setEvidenceCallViews for a span with calls')
+  const calls = callIds.length ? await callViews!(tx, callIds) : []
 
   const approvals = callIds.length
     ? (
