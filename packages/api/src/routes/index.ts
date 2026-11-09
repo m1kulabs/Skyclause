@@ -7,6 +7,7 @@ import { channelHandlers } from './channels'
 import { evidenceHandlers } from './evidence'
 import { gradesHandlers } from './grades'
 import { ledgerHandlers } from './ledger'
+import { replyHandlers } from './replies'
 import { subscriberHandlers } from './subscribers'
 
 /**
@@ -36,5 +37,6 @@ export const HANDLERS: Handlers = {
   ...subscriberHandlers,
   ...bundleHandlers, // c-bundle-lifecycle
   ...evidenceHandlers, // c-evidence
-  ...gradesHandlers // c-grades
+  ...gradesHandlers // c-grades,
+  ...replyHandlers // c-recipient-replies
 }
