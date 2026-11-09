@@ -1,7 +1,7 @@
 // #154 c-ics-feed: the `ics` consumer (#79 §5) through dispatchEvent on emitted events, observed in the feed it
 // writes for, `serveCalendarFeed` (renderNotice is #152's, doubled here). Calls come from factories (NFR-15).
 import { serveCalendarFeed, type CalendarFeedDeps } from '@skyclause/api'
-import { emitEvent, withPublicReader, withTenant, type Tx } from '@skyclause/db'
+import { emitEvent, withTenant, type Tx } from '@skyclause/db'
 import {
   makeBundle,
   makeCall,
@@ -21,8 +21,6 @@ import { icsPart } from '../src/ics'
 const ORIGIN = 'https://skyclause.m1ku.tech'
 const DECLARED = { createdAt: new Date('2026-11-01T02:00:00Z'), updatedAt: new Date('2026-11-01T02:00:00Z') }
 const deps: CalendarFeedDeps = {
-  withPublicReader,
-  withTenant,
   render: (call) => ({ subject: `${call.mode}`, text: `Call ${call.id}` }),
   origin: () => ORIGIN
 }

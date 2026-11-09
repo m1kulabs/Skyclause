@@ -3,8 +3,9 @@ import { assignIcsIdentity, bumpNightEntry, bumpWindowEntries } from '@skyclause
 import { onEvent } from '../events'
 import type { WorkerPart } from '../server'
 
-// #154 c-ics-feed: consumer `ics` (#79 §5) keeps each conditions calendar entry's UID and SEQUENCE (D20) on the call
-// rows the feed reads. `now` stamps each write, which the feed shows as the entry's DTSTAMP and Last-Modified.
+// #154 c-ics-feed: consumer `ics` (the ticket's, over #79 §5's events) keeps each conditions calendar entry's UID and
+// SEQUENCE (D20) on the call rows the feed reads. `now` stamps each write, which the feed shows as the entry's DTSTAMP
+// and Last-Modified.
 
 const TYPES = ['call.sent', 'window.cancelled', 'window.updated', 'listing.changed'] as const
 

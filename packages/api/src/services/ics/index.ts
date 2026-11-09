@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { loadEnv } from '@skyclause/config'
 import type { CallView } from '@skyclause/contracts'
 import {
   findPublicFeedProject,
@@ -26,7 +27,7 @@ export interface CalendarFeed {
   lastModified: Date | null
 }
 
-const at = (date: Date | null) => (date ? instant(date) : null)
+const instantOrNull = (date: Date | null) => (date ? instant(date) : null)
 
 /**
  * The call renderNotice gets, from the entry's head call. `notices` and `recipients` stay empty until #150 adds their
@@ -54,8 +55,8 @@ function callView({ call, uid, sequence }: IcsEntry): CallView {
     expires_at: instant(call.expiresAt),
     triggered_at: instant(call.triggeredAt),
     drafted_at: instant(call.draftedAt),
-    approved_at: at(call.approvedAt),
-    sent_at: at(call.sentAt),
+    approved_at: instantOrNull(call.approvedAt),
+    sent_at: instantOrNull(call.sentAt),
     superseded_by_call_id: call.supersededByCallId,
     ics_uid: uid,
     ics_sequence: sequence
@@ -97,19 +98,21 @@ export async function calendarFeed(
 }
 
 export interface CalendarFeedDeps {
-  withPublicReader: typeof withPublicReader
-  withTenant: typeof withTenant
   render: RenderNotice
   /** The permalinks' origin. */
   origin(request: Request): string
 }
 
+let marketingOrigin: string | undefined | null = null
+
 const productionDeps: CalendarFeedDeps = {
-  withPublicReader,
-  withTenant,
   render: renderNotice,
-  // #158's permalink host. Terraform sets it in both host modes; local runs, which leave it unset, have one origin.
-  origin: (request) => process.env.MARKETING_ORIGIN ?? new URL(request.url).origin
+  // #158's permalink host, read once on the first request (as production.ts reads the web env). Terraform sets it in
+  // both host modes; a local run, which leaves it unset, has one origin.
+  origin: (request) => {
+    if (marketingOrigin === null) marketingOrigin = loadEnv('web').MARKETING_ORIGIN
+    return marketingOrigin ?? new URL(request.url).origin
+  }
 }
 
 /** One RFC 9457 404 for private, unknown and suspended projects alike, never cached. */
@@ -151,11 +154,11 @@ export async function serveCalendarFeed(
   params: { org: string; project: string },
   deps: CalendarFeedDeps = productionDeps
 ): Promise<Response> {
-  const found = await deps.withPublicReader((tx) => findPublicFeedProject(tx, params.org, params.project))
+  const found = await withPublicReader((tx) => findPublicFeedProject(tx, params.org, params.project))
   const principal = systemPrincipal('ics-feed')
   const feed =
     found &&
-    (await deps.withTenant({ orgId: found.orgId, principal }, async (tx) =>
+    (await withTenant({ orgId: found.orgId, principal }, async (tx) =>
       (await projectGate(tx, found.id)) === 'suspended'
         ? null
         : calendarFeed(

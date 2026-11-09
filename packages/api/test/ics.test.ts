@@ -2,7 +2,7 @@
 // renderNotice double (#152 renders the real text). Calls come from factories only (NFR-15).
 import { createHash } from 'node:crypto'
 import type { CallView } from '@skyclause/contracts'
-import { assignIcsIdentity, window as windowTable, withPublicReader, withTenant, type Tx } from '@skyclause/db'
+import { assignIcsIdentity, window as windowTable, withTenant, type Tx } from '@skyclause/db'
 import {
   makeBundle,
   makeCall,
@@ -33,7 +33,7 @@ const render: RenderNotice = (call, o) => {
   rendered.push({ call, o })
   return { subject: `${call.mode} ${call.id}`, text: `Approved; see ${o.links.permalink}` }
 }
-const deps: CalendarFeedDeps = { withPublicReader, withTenant, render, origin: () => ORIGIN }
+const deps: CalendarFeedDeps = { render, origin: () => ORIGIN }
 
 type Mode = 'normal' | 'commute_disruption' | 'outdoor_limited' | 'surge_night' | null
 

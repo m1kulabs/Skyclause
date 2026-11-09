@@ -35,12 +35,12 @@ type Identity = { icsUid: string; icsSequence: number }
  */
 function identities(calls: CallRow[]): Identity[] {
   let previous: Identity | null = null
-  return calls.map((c) => {
-    if (c.icsUid) previous = { icsUid: c.icsUid, icsSequence: c.icsSequence }
+  return calls.map((sent) => {
+    if (sent.icsUid) previous = { icsUid: sent.icsUid, icsSequence: sent.icsSequence }
     else if (previous) previous = { icsUid: previous.icsUid, icsSequence: previous.icsSequence + 1 }
     else
       previous = {
-        icsUid: c.nightId ? `night-${c.nightId}@${UID_DOMAIN}` : `call-${c.id}@${UID_DOMAIN}`,
+        icsUid: sent.nightId ? `night-${sent.nightId}@${UID_DOMAIN}` : `call-${sent.id}@${UID_DOMAIN}`,
         icsSequence: 0
       }
     return previous
@@ -140,7 +140,7 @@ export interface IcsEntry {
   call: CallRow
 }
 
-const latest = (...dates: Array<Date | null>) => new Date(Math.max(...dates.map((d) => d?.getTime() ?? 0)))
+const latestOf = (...dates: Array<Date | null>) => new Date(Math.max(...dates.map((date) => date?.getTime() ?? 0)))
 
 /**
  * The project's entries (ticket decision): one per window and pack, and per night, among calls with an identity.
@@ -174,18 +174,19 @@ export async function loadIcsEntries(tx: Tx, projectId: string): Promise<IcsEntr
   const entries: IcsEntry[] = []
   for (const group of groups.values()) {
     if (!group.some((row) => hasConditions(row.call.mode))) continue
-    const { call: head, window: w, night: n } = group.at(-1)!
+    const { call: head, window: windowRow, night: nightRow } = group.at(-1)!
     let start: Date, end: Date, withdrawn: boolean
-    if (n) {
-      const states = listings.filter((l) => l.nightId === n.id).map((l) => l.state)
+    if (nightRow) {
+      const states = listings.filter((row) => row.nightId === nightRow.id).map((row) => row.state)
       if (!states.some((state) => state === 'listed' || state === 'cancelled')) continue
-      const until = n.exitEnd ?? n.arrivalEnd
-      if (!n.arrivalStart || !until) throw new Error(`night ${n.id} has a sent call but no arrival period`)
-      ;[start, end] = [n.arrivalStart, until]
-      withdrawn = n.state === 'unlisted' || !states.includes('listed')
+      const until = nightRow.exitEnd ?? nightRow.arrivalEnd
+      if (!nightRow.arrivalStart || !until)
+        throw new Error(`night ${nightRow.id} has a sent call but no arrival period`)
+      ;[start, end] = [nightRow.arrivalStart, until]
+      withdrawn = nightRow.state === 'unlisted' || !states.includes('listed')
     } else {
-      ;[start, end] = [w!.startsAt, w!.endsAt]
-      withdrawn = w!.cancelledAt !== null
+      ;[start, end] = [windowRow!.startsAt, windowRow!.endsAt]
+      withdrawn = windowRow!.cancelledAt !== null
     }
     entries.push({
       uid: head.icsUid!,
@@ -193,7 +194,7 @@ export async function loadIcsEntries(tx: Tx, projectId: string): Promise<IcsEntr
       status: withdrawn || head.mode === 'normal' ? 'CANCELLED' : 'CONFIRMED',
       start,
       end,
-      changedAt: latest(head.sentAt, head.updatedAt, (n ?? w)!.updatedAt),
+      changedAt: latestOf(head.sentAt, head.updatedAt, (nightRow ?? windowRow)!.updatedAt),
       call: head
     })
   }

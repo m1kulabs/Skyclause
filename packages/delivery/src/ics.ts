@@ -24,7 +24,7 @@ export interface IcsCalendar {
   events: IcsEvent[]
 }
 
-export const ICS_TIME_ZONE = 'Asia/Kuala_Lumpur'
+const ICS_TIME_ZONE = 'Asia/Kuala_Lumpur'
 // Malaysia keeps UTC+8 all year (no daylight saving), so one STANDARD rule covers every P1 date.
 const OFFSET_MS = 8 * 60 * 60 * 1000
 
@@ -50,7 +50,7 @@ const isTextSafe = (character: string) => {
  * RFC 5545 §3.3.11 TEXT: backslash, semicolon and comma are escaped, and every line break becomes `\n`. Other control
  * characters are dropped.
  */
-export function escapeText(value: string): string {
+function escapeText(value: string): string {
   const escaped = value.replace(/[\\;,]/g, (character) => `\\${character}`).replace(/\r\n|\r|\n/g, '\\n')
   return [...escaped].filter(isTextSafe).join('')
 }
@@ -61,7 +61,7 @@ const encoder = new TextEncoder()
  * RFC 5545 §3.1: a content line over 75 octets folds into lines of at most 75, each continuation starting with one
  * space. It splits between characters, never inside a UTF-8 sequence.
  */
-export function foldLine(line: string): string {
+function foldLine(line: string): string {
   const parts: string[] = []
   let current = ''
   let octets = 0
@@ -81,26 +81,29 @@ export function foldLine(line: string): string {
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
-function stamp(date: Date, offsetMs: number) {
-  const d = new Date(date.getTime() + offsetMs)
+/** RFC 5545 §3.3.5 DATE-TIME digits, `YYYYMMDDTHHMMSS`, of `date` shifted by `offsetMs`. */
+function dateTime(date: Date, offsetMs: number) {
+  const shifted = new Date(date.getTime() + offsetMs)
   return (
-    `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}` +
-    `T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}`
+    `${shifted.getUTCFullYear()}${pad(shifted.getUTCMonth() + 1)}${pad(shifted.getUTCDate())}` +
+    `T${pad(shifted.getUTCHours())}${pad(shifted.getUTCMinutes())}${pad(shifted.getUTCSeconds())}`
   )
 }
 
-const utc = (date: Date) => `${stamp(date, 0)}Z`
-const local = (date: Date) => `;TZID=${ICS_TIME_ZONE}:${stamp(date, OFFSET_MS)}`
+/** A UTC value, `…Z`, as DTSTAMP needs. */
+const utcValue = (date: Date) => `${dateTime(date, 0)}Z`
+/** A local value with its TZID parameter, as `DTSTART` and `DTEND` take. */
+const localValue = (date: Date) => `;TZID=${ICS_TIME_ZONE}:${dateTime(date, OFFSET_MS)}`
 
 function vevent(event: IcsEvent): string[] {
   return [
     'BEGIN:VEVENT',
     `UID:${escapeText(event.uid)}`,
     `SEQUENCE:${event.sequence}`,
-    `DTSTAMP:${utc(event.stamp)}`,
-    `DTSTART${local(event.start)}`,
+    `DTSTAMP:${utcValue(event.stamp)}`,
+    `DTSTART${localValue(event.start)}`,
     // §3.8.2.2: DTEND must be later than DTSTART; with none, §3.6.1 ends the event at DTSTART.
-    ...(event.end.getTime() > event.start.getTime() ? [`DTEND${local(event.end)}`] : []),
+    ...(event.end.getTime() > event.start.getTime() ? [`DTEND${localValue(event.end)}`] : []),
     `SUMMARY:${escapeText(event.summary)}`,
     `DESCRIPTION:${escapeText(event.description)}`,
     `URL:${event.url}`,
