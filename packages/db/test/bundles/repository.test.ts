@@ -53,6 +53,14 @@ async function analyticsOf(projectId: string) {
   })
 }
 
+const noticesOf = (projectId: string) =>
+  asLogin('postgres', async (client) => {
+    const { rows } = await client.query<{ n: number }>('SELECT count(*)::int AS n FROM notice WHERE project_id = $1', [
+      projectId
+    ])
+    return rows[0]!.n
+  })
+
 /** Resolves once a session of this test database waits on a lock, as a second run's transaction does. */
 async function untilWaitingOnALock() {
   for (let tries = 0; tries < 250; tries++) {
@@ -115,6 +123,7 @@ describe('createBundle closes what would send nothing (CAL-5, D21, D23)', () => 
     expect(row).toMatchObject({ state: 'closed', slaDueAt: null, needsReviewAt: null, draftOnly: false })
     expect((await eventsOf(scene.projectId)).map((e) => e.type)).toEqual(['bundle.drafted'])
     expect(appendLedger).not.toHaveBeenCalled()
+    expect(await noticesOf(scene.projectId)).toBe(0)
     expect(await analyticsOf(scene.projectId)).toEqual([
       { name: 'bundle_drafted', props: { pack: 'sky', calls: 2, non_normal: 0, disagreements: 0, no_call: false } }
     ])
