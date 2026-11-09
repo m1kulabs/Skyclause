@@ -10,7 +10,8 @@ export {
   type Tx
 } from './client'
 export * from './alerts'
-export { track } from './analytics'
+export { ANALYTICS_PROPS, parseAnalyticsProps, resolvePublicProject, track } from './analytics'
+export { readBundlesPastSla, readSignalHealth, readWeeklyApprovers } from './analytics/health'
 export * from './api'
 export * from './approvals'
 export * from './bundles'
