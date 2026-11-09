@@ -26,7 +26,7 @@ import {
   makeWindow
 } from '@skyclause/db/test/factories/index'
 import { asLogin } from '@skyclause/db/test/harness/index'
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import { dispatchEvent } from '../src/events'
 import { createRepliesPart, crowdReplyRecipient, handleCrowdReply } from '../src/replies'
 
@@ -52,6 +52,31 @@ beforeAll(async () => {
   await setInboundEmail(true)
 })
 afterAll(() => sql(`DELETE FROM feature_flag WHERE key = 'inbound_email' AND org_id IS NULL`))
+
+describe('crowd-replies registration', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.resetModules()
+  })
+  // The router throws on a second consumer of one name, which shows whether the part registered its own.
+  const registered = async () => {
+    vi.resetModules()
+    const { onInbound } = await import('@skyclause/delivery')
+    await import('../src/replies')
+    try {
+      onInbound(/^never$/, 'crowd-replies', async () => {})
+      return false
+    } catch {
+      return true
+    }
+  }
+
+  test('the worker registers crowd-replies on /ses/inbound’s router when INBOUND_DOMAIN is set, and not before', async () => {
+    expect(await registered()).toBe(false)
+    vi.stubEnv('INBOUND_DOMAIN', DOMAIN)
+    expect(await registered()).toBe(true)
+  })
+})
 
 describe('crowd-replies: a reply to a Crowd notice’s Reply-To', () => {
   // A surge night's window, 18:00 to 22:00 MYT on 20 November 2026.
