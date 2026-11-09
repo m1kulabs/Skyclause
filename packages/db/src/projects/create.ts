@@ -1,6 +1,6 @@
 import { canonicalHash } from '@skyclause/clauses'
-import crowdDefault from '@skyclause/clauses/defaults/crowd.json'
-import skyDefault from '@skyclause/clauses/defaults/sky.json'
+import crowdDefault from '@skyclause/clauses/defaults/crowd.json' with { type: 'json' }
+import skyDefault from '@skyclause/clauses/defaults/sky.json' with { type: 'json' }
 import { RESERVED_SLUGS, SLUG_REGEX, type Pack, type TxHandle } from '@skyclause/contracts'
 import { and, eq, ne, sql } from 'drizzle-orm'
 import { track } from '../analytics'
