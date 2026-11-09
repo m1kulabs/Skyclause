@@ -209,8 +209,13 @@ function computeWindowRainIndicator(
   let bestReadingIds: string[] = []
   let sawNullSample = false
 
+  // Clock-complete at the current edge may hold a known in-span total; past
+  // completed spans require their own terminal measurement coverage.
+  const allowLiveEdgeCarry =
+    tEvalMs < toMs || (tEvalMs === toMs && parsedSamples[parsedSamples.length - 1]!.ms >= fromMs)
+
   for (const tMs of sortedCandidates) {
-    const period = rainPeriod(parsedSamples, tMs, durationMs)
+    const period = rainPeriod(parsedSamples, tMs, durationMs, allowLiveEdgeCarry)
     if (!period || period.total === null) {
       sawNullSample = true
       break

@@ -5,6 +5,7 @@ import { describe, expect, test } from 'vitest'
 import { check, diff, evaluate, explain, snapshotAt } from '../src'
 import type { IndicatorSnapshot, NightInput, ReadingHistory, SheetInput, Window } from '../src/types'
 import { TEST_REGISTRY, completeRainSeries } from './test-helpers'
+import { terminalRainCases } from './final-review-cases'
 
 const readDefault = (pack: 'sky' | 'crowd'): SheetInput =>
   JSON.parse(readFileSync(`${import.meta.dirname}/../defaults/${pack}.json`, 'utf8')) as SheetInput
@@ -606,4 +607,8 @@ describe('review regression: warning observation interval and provenance', () =>
       evaluate(check(sheet, registry).sheet!, futureSnapshot, [window], earlier).windows[0]?.clauses[0]?.result
     ).toBe('not_fired')
   })
+})
+
+describe('Task 2 historical rainfall endpoint', () => {
+  test.each(terminalRainCases)('$name', ({ run }) => run())
 })

@@ -10,7 +10,8 @@ interface RainSample {
 export function rainPeriod<T extends RainSample>(
   samples: readonly T[],
   atMs: number,
-  durationMs: number
+  durationMs: number,
+  allowLiveEdgeCarry = true
 ): {
   samples: T[]
   total: number | null
@@ -23,6 +24,14 @@ export function rainPeriod<T extends RainSample>(
     undefined
   )
   if (!end) return null
+  const requestedEndMs = Math.floor(atMs / RAIN_STEP_MS) * RAIN_STEP_MS
+  // Only a current live edge may carry an older period. Later recorded samples
+  // prove a missing historical endpoint is a hole, not a pending next receipt.
+  if (
+    end.ms !== requestedEndMs &&
+    (!allowLiveEdgeCarry || samples.some((sample) => Number.isFinite(sample.ms) && sample.ms > requestedEndMs))
+  )
+    return null
   const contributing = available.filter((sample) => sample.ms > end.ms - durationMs)
   const stamps = new Set(contributing.map((sample) => sample.ms))
   let complete = end.ms % RAIN_STEP_MS === 0
