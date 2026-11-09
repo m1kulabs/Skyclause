@@ -294,6 +294,7 @@ export async function approveBundle(ctx: ServiceContext, input: ApproveInput): P
   }
   checkDecisions(input.calls, calls, now)
   const answered = checkMissing(input.missing ?? [], b.missing as MissingCall[])
+  if (!input.calls.length && !answered.length) throw invalid('Decide a call or a missing call.')
   const drafts = answered.filter((a) => a.decision.action === 'draft').map((a) => a.row)
 
   const [p] = await tx.select().from(project).where(eq(project.id, b.projectId))
@@ -394,7 +395,7 @@ export async function approveBundle(ctx: ServiceContext, input: ApproveInput): P
       throw new ApiError(
         422,
         'redraft-required',
-        `The engine's call for ${id} changed since the run; request a new run.`,
+        `The engine's call for ${id} changed since the run; request a new run or dismiss it.`,
         {
           reasons: [`the engine's call for ${id} changed since the run`]
         }
@@ -467,6 +468,13 @@ async function commit(
   const decided = new Set([...approved.map((a) => a.row.id), ...rejected.map((c) => c.id)])
   const sending = approved.map((a) => a.row.id)
 
+  // CAL-8: a call left undecided because its time passed expires now, so the bundle can be approved. It runs before
+  // the dismissals, while a missing call still holds the bundle in review (#499), so the bundle doesn't expire here.
+  for (const c of calls) {
+    if (c.state === 'drafted' && !decided.has(c.id) && c.expiresAt <= now) {
+      await expireCall(tx, c.id, now)
+    }
+  }
   // #499: a dismissed missing call, with its reason on the approval row and audit event; the ledger, public for a
   // public project, takes no free text.
   for (const { decision, row: m } of dismissed) {
@@ -509,12 +517,6 @@ async function commit(
         diff: { before: agentContent(row), after: planned.content } as unknown as Json,
         at: now
       })
-    }
-  }
-  // CAL-8: a call left undecided because its time passed expires now, so the bundle can be approved.
-  for (const c of calls) {
-    if (c.state === 'drafted' && !decided.has(c.id) && c.expiresAt <= now) {
-      await expireCall(tx, c.id, now)
     }
   }
   await transition(

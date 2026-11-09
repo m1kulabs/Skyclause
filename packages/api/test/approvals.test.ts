@@ -1099,6 +1099,30 @@ describe('#499: a missing call is drafted or dismissed before the bundle is appr
     expect(await bundleState(made)).toBe('needs_review')
   })
 
+  test('a dismissal approves a bundle whose only call is overdue; the call expires unsent (CAL-8)', async () => {
+    clock = myt('15:35')
+    const made = await draft({ calls: 1, missing: 1, until: '15:35' })
+    const as = await approver()
+    const decide = { calls: [], missing: [dismiss(made, 'Storm call drafted by hand')] }
+    // The 15:35 re-check shows the overdue call's input moved (CAL-9); the confirm then approves.
+    const changed = await approve(as, made, { review_hash: await currentHash(made), ...decide })
+    expect(changed.status).toBe(409)
+    const { review_hash } = (await changed.json()) as Conflict
+    const response = await approve(as, made, { review_hash, reconfirm: true, ...decide })
+    expect(response.status, await response.clone().text()).toBe(200)
+    expect((await response.json()) as { state: string }).toMatchObject({ state: 'approved' })
+    expect((await bundleRow(made)).calls.map((c) => c.state)).toEqual(['expired'])
+    expect((await ledgerOf(made.scene.projectId)).map((e) => e.kind)).toEqual(['call_expired', 'call_rejected'])
+  })
+
+  test('a request that decides no call and no missing call is refused, even when every call is overdue', async () => {
+    clock = myt('15:35')
+    const made = await draft({ calls: 1 })
+    const response = await approve(await approver(), made, { review_hash: await currentHash(made), calls: [] })
+    expect(response.status).toBe(422)
+    expect(await bundleState(made)).toBe('needs_review')
+  })
+
   test('a draft for a wave already over is refused; dismissing it is still possible', async () => {
     clock = myt('15:46')
     const made = await draft({ calls: 0, missing: 1, until: '15:45' })
