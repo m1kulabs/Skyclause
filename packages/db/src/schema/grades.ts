@@ -125,7 +125,7 @@ export const reviewItem = tenantTable(
 /**
  * An evidence request (LED-6); `span` is its time range. `c-evidence` (#159) adds who asked (`requester_kind` with
  * `account_id` or `subscriber_id`; `requester` holds that ID, or the share link's), the SES `message_id` of an emailed
- * request (at most one request per message), and the pack assembled at drafting with its `canonicalHash`.
+ * request (deduped by `handleOnce`), and the pack assembled at drafting with its `canonicalHash`.
  */
 export const evidenceRequest = tenantTable(
   'evidence_request',
@@ -138,7 +138,7 @@ export const evidenceRequest = tenantTable(
     requesterKind: evidenceRequesterKind('requester_kind').notNull(),
     accountId: uuid('account_id'),
     subscriberId: uuid('subscriber_id'),
-    messageId: text('message_id').unique(),
+    messageId: text('message_id'),
     callId: uuid('call_id'),
     via: evidenceVia('via').notNull(),
     leavesOrg: boolean('leaves_org').notNull().default(false),
