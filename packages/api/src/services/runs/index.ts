@@ -38,7 +38,7 @@ const notFound = () => new ApiError(404, 'not-found', 'No run with this ID.')
 const invalid = (pointer: string, detail: string) =>
   new ApiError(422, 'validation-failed', 'The request is invalid.', { errors: [{ in: 'body', pointer, detail }] })
 
-/** The contract's Run; its snapshot, sheet version and verdict hash read '' until the run's steps set them. */
+/** The contract's Run; its snapshot, sheet version and verdict hash are null until the run's steps set them. */
 function runView(row: RunRow): Ok<'listRuns'>['data'][number] {
   return {
     id: row.id,
@@ -46,15 +46,15 @@ function runView(row: RunRow): Ok<'listRuns'>['data'][number] {
     pack: row.pack,
     trigger: row.trigger,
     dedupe_key: row.dedupeKey,
-    sheet_version_id: row.sheetVersionId ?? '',
-    snapshot_id: row.snapshotId ?? '',
+    sheet_version_id: row.sheetVersionId,
+    snapshot_id: row.snapshotId,
     model: row.model,
     fallback_used: row.fallbackUsed,
     status: row.status,
     reason: row.reason,
     trigger_ref: row.triggerRef,
     window_ids: row.windowIds,
-    verdict_hash: row.verdictHash ?? ''
+    verdict_hash: row.verdictHash
   }
 }
 

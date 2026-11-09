@@ -73,10 +73,10 @@ describe('POST /v1/projects/{id}/runs', () => {
       dedupe_key: `request:${key}`,
       status: 'queued',
       window_ids: [a.windowId],
-      // Contract: non-null strings; empty until the run's snapshot and shadow steps set them.
-      sheet_version_id: '',
-      snapshot_id: '',
-      verdict_hash: '',
+      // Null until the run's snapshot and shadow steps set them.
+      sheet_version_id: null,
+      snapshot_id: null,
+      verdict_hash: null,
       model: null,
       fallback_used: false
     })
