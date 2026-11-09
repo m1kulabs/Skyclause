@@ -27,7 +27,8 @@ function redact(value: unknown): unknown {
   if (typeof value === 'string') {
     // NFKC folds fullwidth `＠` and the like, so a disguised address is caught; text without one stays verbatim.
     const folded = value.normalize('NFKC')
-    return folded.replace(EMAIL, REMOVED) === folded ? value : folded.replace(EMAIL, REMOVED)
+    const redacted = folded.replace(EMAIL, REMOVED)
+    return redacted === folded ? value : redacted
   }
   if (Array.isArray(value)) return value.map(redact)
   if (value && typeof value === 'object') {
