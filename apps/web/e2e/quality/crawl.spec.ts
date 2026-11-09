@@ -57,6 +57,13 @@ async function crawl(page: Page, route: CrawlRoute, session: Session, info: Test
       findings.push({ check: 'emulation', detail: `${info.project.name} didn't apply prefers-contrast: more` })
     }
     findings.push(...(await inspectPage(page, { axe: jsOn, reflow: !!variant.reflow })))
+    const paymentArtifacts = await page.locator('input[autocomplete^="cc-"], iframe[src*="js.stripe.com"]').count()
+    if (paymentArtifacts) {
+      findings.push({
+        check: 'BIL-1',
+        detail: `${paymentArtifacts} payment field(s) or Stripe frame(s) appear in a P1 build`
+      })
+    }
     found.push(...findings.map((finding) => ({ ...finding, theme: variant.theme, size: variant.size })))
   }
   if (jsOn) {

@@ -8,7 +8,6 @@ const panels = (scope: string, sections: string[]) =>
 export const expectedOwners: Record<string, string[]> = {
   'a-account-settings': panels('account', ['profile', 'security', 'appearance']),
   'a-keys-ui': [...panels('account', ['ai-keys', 'api-keys']), ...panels('organisation', ['ai-keys', 'api-keys'])],
-  'a-settings-pages': [...panels('account', ['data']), ...panels('organisation', ['billing', 'audit', 'data'])],
   'a-org-projects': panels('organisation', ['general']),
   'a-members-ui': panels('organisation', ['members', 'rota']),
   'e-webhooks-ui': panels('organisation', ['webhooks']),
@@ -34,8 +33,9 @@ test('check:unbuilt reports every settings panel and shared part under its spec 
   for (const [key, files] of Object.entries(expectedOwners)) {
     expect([...new Set(byOwner[key])].filter((file) => files.includes(file)).sort(), key).toEqual([...files].sort())
   }
+  expect(byOwner['a-settings-pages']).toBeUndefined()
   const panelFiles = Object.values(byOwner)
     .flat()
     .filter((file) => file.includes('/settings/') && file.endsWith('/panel.tsx'))
-  expect(panelFiles).toHaveLength(22)
+  expect(panelFiles).toHaveLength(18)
 })

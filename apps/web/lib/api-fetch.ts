@@ -131,7 +131,7 @@ export function createApiFetch<const Registry extends ApiRegistry>(
     const baseUrl = config.baseUrl ?? defaultBaseUrl()
     const requestUrl = addQuery(baseUrl ? new URL(path, baseUrl) : path, requestOptions.query)
     const headers = new Headers(options.headers)
-    headers.set('Accept', 'application/json')
+    if (!headers.has('Accept')) headers.set('Accept', 'application/json')
 
     if (organization) headers.set('Skyclause-Organization', organization)
     if (operation.idempotent && !headers.has('Idempotency-Key'))
@@ -155,7 +155,9 @@ export function createApiFetch<const Registry extends ApiRegistry>(
       throw new ApiProblem(response.status, problemBody(body, response.status, response.statusText))
     }
 
-    const body = response.status === 204 ? undefined : await response.json()
+    const contentType = response.headers.get('content-type')?.toLowerCase() ?? ''
+    const body =
+      response.status === 204 ? undefined : contentType.includes('json') ? await response.json() : await response.text()
     return operation.response.parse(body) as OutputOf<Registry[OperationId]['response']>
   }
 }

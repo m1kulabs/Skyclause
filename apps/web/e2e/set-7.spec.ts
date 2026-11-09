@@ -1,12 +1,43 @@
 import { removeDeviceScenario } from './alerts/support'
 import { test, expect } from './fixtures'
+import type { Principal, Role } from '@skyclause/contracts'
 import type { Page } from '@playwright/test'
 import { t } from './palette/messages'
 import { expectUnclippedText } from './harness/expect-unclipped-text'
 import { windowUndoCase, windowUnsavedCase } from './windows/set7-cases'
+import { asPage } from './harness'
+import { makeOrg, signInAs } from './harness/sign-in-as'
+import { stubApi } from './harness/stub-api'
+import { dataOperations } from '../features/data/operations'
 
 const route = '/_test/set-7'
 const name = t('set7.harness.name')
+
+function principal(role: Role): Principal {
+  return {
+    kind: 'session',
+    client: 'app',
+    clientName: null,
+    via: 'cookie',
+    accountId: 'test-account',
+    sessionId: 'test-session',
+    authenticatedAt: new Date('2026-11-10T02:00:00Z'),
+    orgId: 'test-org',
+    role,
+    isGuest: false,
+    staff: false
+  }
+}
+const dataExport = {
+  id: '018f47a3-b2c1-7c00-8000-000000000700',
+  scope: 'organisation' as const,
+  status: 'ready',
+  formats: ['json', 'csv'] as const,
+  error: null,
+  expires_at: '2026-11-18T00:00:00Z',
+  created_at: '2026-11-10T02:00:00Z',
+  download_url: null
+}
 
 // Controlled inputs can be filled before hydration; wait for the harness's existing ready signal.
 async function openHarness(page: Page) {
@@ -223,10 +254,8 @@ for (const theme of ['dark', 'light', 'high-contrast'] as const) {
   })
 }
 
-// Domain owners replace these cases with their real action flow when their panels land (spec §7).
+// Remaining domain owners replace these cases with their real action flow when their panels land (spec §7).
 for (const title of [
-  'delete organisation — #108 a-settings-pages',
-  'delete account — #108 a-settings-pages',
   'revoke API key — #105 a-keys-ui',
   'revoke AI key — #105 a-keys-ui',
   'revoke share link — #174 b-project-ui',
@@ -239,6 +268,100 @@ for (const title of [
 ]) {
   test.fixme(title, async () => {})
 }
+
+test('delete organisation stays disabled until the exact slug is typed — #108 a-settings-pages', async ({ page }) => {
+  await asPage(page, principal('owner'))
+  await stubApi(page, 'listOrganisationExports', { data: [], next_cursor: null }, { registry: dataOperations })
+  await stubApi(
+    page,
+    'getOrganisationDeletion',
+    { deletion_requested_at: null, purge_after: null },
+    {
+      registry: dataOperations
+    }
+  )
+  await stubApi(page, 'createOrganisationExport', dataExport, { registry: dataOperations })
+  await stubApi(
+    page,
+    'requestOrganisationDeletion',
+    { deletion_requested_at: '2026-11-10T02:00:00Z', purge_after: '2026-12-10T02:00:00Z' },
+    { registry: dataOperations }
+  )
+  const exportsLoaded = page.waitForResponse(
+    (response) => response.request().method() === 'GET' && response.url().includes('/api/orgs/test-org/exports')
+  )
+  const deletionLoaded = page.waitForResponse(
+    (response) => response.request().method() === 'GET' && response.url().endsWith('/api/orgs/test-org/deletion')
+  )
+  await page.goto('/test-org/settings/data')
+  const panel = page.locator('[data-settings-panel]')
+  await Promise.all([exportsLoaded, deletionLoaded])
+  const trigger = panel.getByRole('button', { name: 'Delete organisation' })
+  await expect(trigger).toBeEnabled()
+  await trigger.focus()
+  await page.keyboard.press('Enter')
+  const offer = page.getByRole('alertdialog')
+  await offer.getByRole('button', { name: 'Export first' }).focus()
+  await page.keyboard.press('Enter')
+
+  const dialog = page.getByRole('alertdialog')
+  const field = dialog.getByRole('textbox')
+  const confirm = dialog.getByRole('button', { name: /Delete organisation/ })
+  await expect(confirm).toBeDisabled()
+  await field.focus()
+  await page.keyboard.type('Test-org')
+  await expect(confirm).toBeDisabled()
+  await page.keyboard.press('Control+A')
+  await page.keyboard.type('test-org ')
+  await expect(confirm).toBeDisabled()
+  await page.keyboard.press('Control+A')
+  await page.keyboard.type('test-org')
+  await expect(confirm).toBeEnabled()
+  const deletion = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().endsWith('/api/orgs/test-org/deletion')
+  )
+  await confirm.focus()
+  await page.keyboard.press('Enter')
+  expect((await deletion).postDataJSON()).toEqual({ slug: 'test-org' })
+  await expect(panel.getByText(/Deletion scheduled/)).toBeVisible()
+})
+
+test('delete account stays disabled until the exact email is typed — #108 a-settings-pages', async ({ page }) => {
+  const org = await makeOrg()
+  const { accountId, email } = await signInAs(page, 'owner', org)
+  await stubApi(page, 'listMyExports', { data: [], next_cursor: null }, { registry: dataOperations })
+  await stubApi(page, 'listMyMemberships', { data: [], next_cursor: null }, { registry: dataOperations })
+  await page.route('**/api/me/deletion', async (route) => {
+    await route.fulfill({ status: 202, json: { deleted_at: '2026-11-10T02:00:00Z' } })
+  })
+  await page.goto('/account/data')
+  const panel = page.locator('[data-settings-panel]')
+  await expect(panel.getByText('Loading exports…', { exact: true })).toBeHidden()
+  const trigger = panel.getByRole('button', { name: 'Delete account' })
+  await trigger.focus()
+  await page.keyboard.press('Enter')
+  const dialog = page.getByRole('alertdialog')
+  const field = dialog.getByRole('textbox')
+  const confirm = dialog.getByRole('button', { name: /Delete account/ })
+  await expect(confirm).toBeDisabled()
+  await field.focus()
+  await page.keyboard.type(email.toUpperCase())
+  await expect(confirm).toBeDisabled()
+  await page.keyboard.press('Control+A')
+  await page.keyboard.type(`${email} `)
+  await expect(confirm).toBeDisabled()
+  await page.keyboard.press('Control+A')
+  await page.keyboard.type(email)
+  await expect(confirm).toBeEnabled()
+  const deletion = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().endsWith('/api/me/deletion')
+  )
+  await confirm.focus()
+  await page.keyboard.press('Enter')
+  expect((await deletion).postDataJSON()).toEqual({ email })
+  await expect(panel.getByText('Account deletion has been scheduled.')).toBeVisible()
+  expect(accountId).toBeTruthy()
+})
 
 test('notifications panel removes a registered device immediately by keyboard — #170', async ({ page }) => {
   await removeDeviceScenario(page)
