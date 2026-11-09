@@ -26,3 +26,21 @@ export const label = t('shell.loading') + new Date().toLocaleTimeString()`,
     expect.arrayContaining(['skyclause-i18n/no-concatenated-translation', 'no-restricted-properties'])
   )
 })
+
+test('only the pure clause calendar helper can use Intl for numeric calendar extraction', async () => {
+  const code = "export const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC' }).formatToParts(new Date(0))"
+  const [calendar] = await eslint.lintText(code, { filePath: `${root}/packages/clauses/src/local-calendar.ts` })
+  expect(calendar?.messages).toEqual([])
+  for (const path of ['packages/clauses/src/evaluate.ts', 'apps/web/page.tsx']) {
+    const [result] = await eslint.lintText(code, { filePath: `${root}/${path}` })
+    expect(result?.messages.map((message) => message.ruleId)).toContain('no-restricted-properties')
+  }
+  const [display] = await eslint.lintText('export const display = new Date(0).toLocaleString()', {
+    filePath: `${root}/packages/clauses/src/local-calendar.ts`
+  })
+  expect(display?.messages.map((message) => message.ruleId)).toContain('no-restricted-properties')
+  const [imports] = await eslint.lintText("export { format } from 'date-fns'", {
+    filePath: `${root}/packages/clauses/src/local-calendar.ts`
+  })
+  expect(imports?.messages.map((message) => message.ruleId)).toContain('no-restricted-imports')
+})

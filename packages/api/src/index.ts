@@ -41,6 +41,18 @@ export {
   type CallExplanation,
   type CallView
 } from './services/bundles'
+export {
+  archiveProject,
+  createProject,
+  getProject,
+  listProjects,
+  restoreProject,
+  updateProject,
+  type CreateProjectInput,
+  type ProjectSettingsView,
+  type ProjectWithSummaryView,
+  type UpdateProjectInput
+} from './services/projects'
 export { createRun, getRun, listRuns, type RunView } from './services/runs'
 export { sseResponse, type SseMessage, type SseOptions } from './sse'
 export type * from './stores'

@@ -2,11 +2,17 @@
   "name": "@skyclause/clauses",
   "version": "0.0.0",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./defaults/sky.json": "./defaults/sky.json",
+    "./defaults/crowd.json": "./defaults/crowd.json"
   },
   "private": true,
   "type": "module",
   "devDependencies": {
+    "@bufbuild/cel-spec": "0.6.2",
     "@playwright/test": "1.65.0"
+  },
+  "dependencies": {
+    "@bufbuild/cel": "0.6.2"
   }
 }
