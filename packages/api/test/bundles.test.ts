@@ -274,6 +274,23 @@ describe('GET /v1/calls/{id}', () => {
     expect(after.permalink).toBe(`https://api.skyclause.m1ku.tech/c/${second}`)
   })
 
+  test('D33: the permalink is on the marketing origin only when HOST_MODE is multi', async () => {
+    const [, second] = made.review.callIds as [string, string]
+    try {
+      vi.stubEnv('MARKETING_ORIGIN', 'https://skyclause.m1ku.tech')
+      vi.stubEnv('HOST_MODE', 'single')
+      expect((await json<CallDetail>(read(as(), `/v1/calls/${second}`))).permalink).toBe(
+        `https://api.skyclause.m1ku.tech/c/${second}`
+      )
+      vi.stubEnv('HOST_MODE', 'multi')
+      expect((await json<CallDetail>(read(as(), `/v1/calls/${second}`))).permalink).toBe(
+        `https://skyclause.m1ku.tech/c/${second}`
+      )
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
   test('window titles go to members only', async () => {
     const [first] = made.normal.callIds
     expect((await json<CallDetail>(read(as(), `/v1/calls/${first}`))).window!.title).toBe('Lecture 3A')

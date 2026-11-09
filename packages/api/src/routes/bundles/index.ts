@@ -24,8 +24,12 @@ export const BUNDLE_EVENT_TYPES: EventType[] = [
   'bundle.approved'
 ]
 
-/** D33's permalink host: the marketing origin under `HOST_MODE=multi`, else the one origin the request came to. */
-const permalinkOrigin = (url: string) => process.env.MARKETING_ORIGIN ?? new URL(url).origin
+/**
+ * D33's permalink host: under `HOST_MODE=multi` the marketing origin, which `loadEnv` requires then (§4 Hosts); else
+ * the one origin the request came to.
+ */
+const permalinkOrigin = (url: string) =>
+  (process.env.HOST_MODE === 'multi' && process.env.MARKETING_ORIGIN) || new URL(url).origin
 
 export const bundleHandlers: {
   listProjectBundles: HandlerEntry<Operations['listProjectBundles']>
