@@ -1,9 +1,10 @@
 import type { ApiApp } from '@skyclause/api'
-import { V1_ROUTES, type Operations } from '@skyclause/contracts'
+import { getPublicCall, getPublicProjectStatus, getPublicWindow } from '@skyclause/contracts/api/v1/public'
 
 // The public reads every preview draws from: #187's §4 operations, called in process so redaction lives in one place.
 type ReadId = 'getPublicProjectStatus' | 'getPublicCall' | 'getPublicWindow'
-type Schema<Id extends ReadId> = Operations[Id]['responses'][200]['content']['application/json']['schema']
+const ROUTES = { getPublicProjectStatus, getPublicCall, getPublicWindow }
+type Schema<Id extends ReadId> = (typeof ROUTES)[Id]['responses'][200]['content']['application/json']['schema']
 type Body<Id extends ReadId> = ReturnType<Schema<Id>['parse']>
 
 export type PublicStatus = Body<'getPublicProjectStatus'>
@@ -25,8 +26,7 @@ export class ReadFailed extends Error {
 }
 
 function schemaOf<Id extends ReadId>(id: Id): Schema<Id> {
-  const route = V1_ROUTES.find((candidate) => candidate.operationId === id) as Operations[Id]
-  return route.responses[200].content['application/json'].schema as Schema<Id>
+  return ROUTES[id].responses[200].content['application/json'].schema as Schema<Id>
 }
 
 /**
