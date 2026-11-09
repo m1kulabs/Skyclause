@@ -5,7 +5,7 @@ import {
 } from '@skyclause/contracts/api/first-party/me'
 import { listProjects as projects } from '@skyclause/contracts/api/v1/projects'
 
-// Adapt the OpenAPI registry to apiFetch and stubApi without duplicating paths or schemas.
+// Adapt the contract routes to apiFetch and stubApi without duplicating paths or schemas.
 export const shellOperations = {
   listMyMemberships: {
     method: memberships.method.toUpperCase(),
