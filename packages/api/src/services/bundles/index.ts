@@ -60,7 +60,7 @@ export function inScope(principal: Principal, projectId: string) {
 }
 
 /** Window titles go to members only (NFR-11): a member's session, an API key or an OAuth grant with a role. */
-function isMember(principal: Principal) {
+export function isMember(principal: Principal) {
   if (principal.kind === 'session') return !principal.isGuest && principal.role !== null
   return principal.kind === 'api_key' || (principal.kind === 'oauth' && principal.role !== null)
 }
