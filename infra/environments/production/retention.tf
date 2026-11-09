@@ -1,7 +1,7 @@
 # retention (#112, NFR-14): the nightly sweep at 03:30 MYT, on DATABASE_URL_RETENTION. It sweeps subscribers 30 days
 # past unsubscribe (through #110's erasure), camera frames past the semester end or 183 days, expired export files,
-# `idempotency_key` rows, expired `rate_limit` windows, and `domain_event` rows published more than 30 days ago with
-# their `handled_event` marks, logging one line per sweeper per organisation.
+# `idempotency_key` rows, expired `rate_limit` windows, `domain_event` rows published more than 30 days ago with their
+# `handled_event` marks, and `handled_message` marks older than one day, logging one line per sweeper per organisation.
 #
 # The schedule starts paused: the subscriber sweep calls #110's `eraseSubscriber`, which has not merged, so every run
 # would fail on it. Unpause when #110 lands. The `retention` login's grants already cover every swept table
