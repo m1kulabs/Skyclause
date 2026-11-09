@@ -9,6 +9,7 @@ import { channelHandlers } from './channels'
 import { evidenceHandlers } from './evidence'
 import { gradesHandlers } from './grades'
 import { ledgerHandlers } from './ledger'
+import { notificationHandlers } from './notifications'
 import { projectHandlers } from './projects'
 import { replyHandlers } from './replies'
 import { runHandlers } from './runs'
@@ -46,5 +47,6 @@ export const HANDLERS: Handlers = {
   ...replyHandlers, // c-recipient-replies
   ...runHandlers, // c-run-orchestrator
   ...approvalHandlers, // c-approval-api
-  ...alertHandlers // c-approver-alerts
+  ...alertHandlers, // c-approver-alerts
+  ...notificationHandlers // c-notifications
 }
