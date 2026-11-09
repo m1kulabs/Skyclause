@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test'
 import type { Principal, Role } from '@skyclause/contracts'
 import { expect, test } from '../fixtures'
 import { asPage } from '../harness'
+import { makeOrg, signInAs } from '../harness/sign-in-as'
 import { expectUnclippedText } from '../harness/expect-unclipped-text'
 
 const account = ['profile', 'security', 'appearance', 'notifications', 'ai-keys', 'api-keys', 'data']
@@ -60,23 +61,28 @@ test('SET-1 guests get appearance only', async ({ page }) => {
   await expectPage(page, '/account/does-not-exist', false)
 })
 
+// SET-3 turns on the URL organisation's membership, so these run on real sessions (#94's signInAs).
 for (const role of ['admin', 'owner'] as const) {
   test(`SET-3 all ten routes admit ${role}`, async ({ page }) => {
-    await asPage(page, principal(role))
-    for (const section of organisation) await expectPage(page, `/test-org/settings/${section}`, true)
+    const org = await makeOrg()
+    await signInAs(page, role, org)
+    for (const section of organisation) await expectPage(page, `/${org.slug}/settings/${section}`, true)
+    await expect(page.locator('[data-settings-nav] a')).toHaveCount(organisation.length)
   })
 }
 
 test('SET-3 an Approver gets only rota and its nav contains no forbidden sections', async ({ page }) => {
-  await asPage(page, principal('approver'))
-  for (const section of organisation) await expectPage(page, `/test-org/settings/${section}`, section === 'rota')
-  await page.goto('/test-org/settings/rota')
+  const org = await makeOrg()
+  await signInAs(page, 'approver', org)
+  for (const section of organisation) await expectPage(page, `/${org.slug}/settings/${section}`, section === 'rota')
+  await page.goto(`/${org.slug}/settings/rota`)
   await expect(page.locator('[data-settings-nav] a')).toHaveCount(1)
 })
 
 test('SET-3 another organisation gets not-found on every route, including rota', async ({ page }) => {
-  await asPage(page, principal('owner'))
-  for (const section of organisation) await expectPage(page, `/another-org/settings/${section}`, false)
+  const [org, another] = [await makeOrg(), await makeOrg()]
+  await signInAs(page, 'owner', org)
+  for (const section of organisation) await expectPage(page, `/${another.slug}/settings/${section}`, false)
 })
 
 test('SET-4 keyboard navigation reaches all panels and clause sheet versions', async ({ page }) => {
