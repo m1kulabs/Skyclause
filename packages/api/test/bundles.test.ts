@@ -24,7 +24,8 @@ import {
   makeOrganization,
   makeReading,
   makeRunStep,
-  makeSource
+  makeSource,
+  makeSubscriber
 } from '@skyclause/db/test/factories/index'
 import { asLogin } from '@skyclause/db/test/harness/index'
 import { eq } from 'drizzle-orm'
@@ -43,12 +44,12 @@ import {
   testOrg
 } from './harness'
 
-// The SSE hub (#175) and c-notice-templates' recipient counts (#152) aren't built: doubles stand in for both.
-vi.mock('@skyclause/db', async (original) => ({
-  ...(await original<object>()),
-  listenEvents: vi.fn(),
-  recipientsByLanguage: vi.fn(async () => ({ en: 2, ms: 1 }))
-}))
+// The SSE hub (#175) isn't built: a double stands in. c-notice-templates' recipient counts (#152) run for real, spied
+// on to see which calls the reads count.
+vi.mock('@skyclause/db', async (original) => {
+  const db = await original<typeof import('@skyclause/db')>()
+  return { ...db, listenEvents: vi.fn(), recipientsByLanguage: vi.fn(db.recipientsByLanguage) }
+})
 
 const A = 'bundles-a'
 const B = 'bundles-b'
@@ -141,6 +142,12 @@ beforeAll(async () => {
     const scene = await bundleScene(tx, { snapshot: { site } })
     const first = (await windowOf(tx, scene, at('2026-11-02T07:15:00Z'), at('2026-11-02T07:30:00Z'), 'Lecture 3A')).id
     const second = (await windowOf(tx, scene, at('2026-11-02T07:30:00Z'), at('2026-11-02T07:45:00Z'), 'Lab 2')).id
+    // LOC-4: two English and one Malay candidate for a call drafted in both languages.
+    const recipients: string[] = []
+    for (const language of ['en', 'en', 'ms']) {
+      recipients.push((await makeSubscriber(tx, { projectId: scene.projectId, language })).id)
+    }
+    const notices = (['en', 'ms'] as const).map((language) => ({ language, subject: 'Storm', body: 'Allow time.' }))
     const normal = await draftIn(
       tx,
       scene,
@@ -151,7 +158,7 @@ beforeAll(async () => {
       tx,
       scene,
       [
-        { windowId: first, ...storm, recipients: ['subscriber-1', 'subscriber-2', 'subscriber-3'] },
+        { windowId: first, ...storm, recipients, notices },
         { windowId: second, ...storm }
       ],
       at('2026-11-02T07:10:00Z')

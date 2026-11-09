@@ -1,5 +1,6 @@
 // #152 c-notice-templates: the channel and notice reads behind /v1/projects/{id}/channels and LOC-4, on the test
 // database. Rows come from factories only (NFR-15).
+import { randomUUID } from 'node:crypto'
 import { beforeAll, describe, expect, test } from 'vitest'
 import {
   channelProject,
@@ -82,6 +83,38 @@ describe('LOC-4: recipientsByLanguage', () => {
       return recipientsByLanguage(tx, call.id)
     })
     expect(counts).toEqual({ en: 3, ms: 1 })
+  })
+
+  // A drafted call has no notice rows yet, only its candidates and the wording drafted per language.
+  const notice = (language: 'en' | 'ms') => ({ language, subject: 'Rain at the gauge', body: 'Allow time to travel.' })
+
+  test("before approval, counts the call's candidate recipients by the language each picked", async () => {
+    const counts = await inOrg(async (tx) => {
+      const projectId = (await makeProject(tx)).id
+      const bundleId = (await makeBundle(tx, { runId: (await makeRun(tx, { projectId })).id })).id
+      const [en1, en2, ms] = [
+        await makeSubscriber(tx, { projectId, language: 'en' }),
+        await makeSubscriber(tx, { projectId, language: 'en' }),
+        await makeSubscriber(tx, { projectId, language: 'ms' })
+      ]
+      // An ID that names no subscriber counts nowhere.
+      const recipients = [en1!.id, en2!.id, ms!.id, randomUUID(), 'not-a-subscriber-id']
+      const call = await makeCall(tx, { bundleId, recipients, notices: [notice('en'), notice('ms')] })
+      return recipientsByLanguage(tx, call.id)
+    })
+    expect(counts).toEqual({ en: 2, ms: 1 })
+  })
+
+  test('before approval, a call drafted only in English counts every candidate as English (LOC-5)', async () => {
+    const counts = await inOrg(async (tx) => {
+      const projectId = (await makeProject(tx)).id
+      const bundleId = (await makeBundle(tx, { runId: (await makeRun(tx, { projectId })).id })).id
+      const en = await makeSubscriber(tx, { projectId, language: 'en' })
+      const ms = await makeSubscriber(tx, { projectId, language: 'ms' })
+      const call = await makeCall(tx, { bundleId, recipients: [en!.id, ms!.id], notices: [notice('en')] })
+      return recipientsByLanguage(tx, call.id)
+    })
+    expect(counts).toEqual({ en: 2, ms: 0 })
   })
 })
 

@@ -1,7 +1,7 @@
 import type { TxHandle } from '@skyclause/contracts'
 import { and, countDistinct, desc, eq, inArray, isNotNull } from 'drizzle-orm'
 import type { Tx } from '../client'
-import { bundle, call, member, night, notice, project, projectChannel, source, window } from '../schema'
+import { bundle, call, member, night, notice, project, projectChannel, source, subscriber, window } from '../schema'
 
 // #152 c-notice-templates: `project_channel` (#79 §3), the notice counts behind LOC-4, and what a preview of the
 // latest sent call needs beyond the call row.
@@ -12,17 +12,39 @@ export type ProjectChannelKind = (typeof projectChannel.$inferSelect)['channel']
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /**
- * LOC-4: a call's recipients by language, each subscriber once across channels, in the language its `call` notice
- * was queued in, which is after any LOC-5 fallback to English.
+ * LOC-4: a call's recipients by language. Once approved, each subscriber of its `call` notices counts once across
+ * channels, in the language its notice was queued in, which is after any LOC-5 fallback to English. Before that
+ * (no notice rows yet), its candidates count by the language each subscriber picked, or all as English when the call
+ * has no Malay notice, since it then goes in English (TRD, LOC-5).
  */
 export const recipientsByLanguage: RecipientsByLanguage = async (handle, callId) => {
-  const rows = await (handle as Tx)
+  const tx = handle as Tx
+  const tally = (rows: Array<{ language: string; n: number }>) => {
+    const n = (language: string) => rows.find((row) => row.language === language)?.n ?? 0
+    return { en: n('en'), ms: n('ms') }
+  }
+  const queued = await tx
     .select({ language: notice.language, n: countDistinct(notice.subscriberId) })
     .from(notice)
     .where(and(eq(notice.callId, callId), eq(notice.kind, 'call'), isNotNull(notice.subscriberId)))
     .groupBy(notice.language)
-  const n = (language: string) => rows.find((row) => row.language === language)?.n ?? 0
-  return { en: n('en'), ms: n('ms') }
+  if (queued.length) return tally(queued)
+
+  const [drafted] = await tx
+    .select({ notices: call.notices, recipients: call.recipients })
+    .from(call)
+    .where(eq(call.id, callId))
+  // `recipients` is the model's text list of subscriber IDs: one that isn't a UUID names no subscriber.
+  const ids = (drafted?.recipients ?? []).filter((id) => UUID.test(id))
+  if (!ids.length) return { en: 0, ms: 0 }
+  const candidates = await tx
+    .select({ language: subscriber.language, n: countDistinct(subscriber.id) })
+    .from(subscriber)
+    .where(inArray(subscriber.id, ids))
+    .groupBy(subscriber.language)
+  const malay = (drafted!.notices as Array<{ language: string }>).some((n) => n.language === 'ms')
+  if (malay) return tally(candidates)
+  return { en: candidates.reduce((sum, row) => sum + row.n, 0), ms: 0 }
 }
 
 /** The project's ID and name, or null when the transaction can't see it (another organisation's, or none). */
