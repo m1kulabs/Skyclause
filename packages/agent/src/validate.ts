@@ -1,4 +1,5 @@
 import type { z } from 'zod'
+import { CONFUSABLE_LETTERS } from './confusables'
 import { quotable } from './quotable'
 import { ProposedBundle, type AgentInput } from './schema'
 
@@ -19,6 +20,28 @@ const OTHER_DIGIT = /[^\P{N}0-9]+/gu
 // Invisible to a reader: a zero-width space inside a figure (12, U+200B, 0) makes a person read 120 where the checks see 12 and 0.
 // Unicode's Default_Ignorable_Code_Point plus category Cf (format characters); nothing legitimate in a notice needs them.
 const INVISIBLE = /[\p{Default_Ignorable_Code_Point}\p{Cf}]/gu
+// Other ways a figure reads whole while the checks see two pieces: a combining mark on a digit, a control character
+// (C0 and C1 draw at zero width in some renderers; tab and line breaks are ordinary text), a thin or no-break space
+// between digits (NFKC folds them to a plain space), and a right-to-left letter beside digits, which reorders them.
+const MARK_ON_DIGIT = /\p{N}(?!\p{Default_Ignorable_Code_Point})\p{M}/u
+// Vertical tab and form feed are what Word and PowerPoint paste for a soft line break.
+const CONTROL = /[^\P{Cc}\t\n\r\v\f]/gu
+// A separator or space run beside a thin space still reads as one figure: 2, 060 is 2,060.
+const ODD_SPACE_BETWEEN_DIGITS =
+  /\p{N}[\p{Zs}\p{Zl}\p{Zp}\v\f.,:]*(?! )[\p{Zs}\p{Zl}\p{Zp}\v\f][\p{Zs}\p{Zl}\p{Zp}\v\f.,:]*\p{N}/u
+// Strong right-to-left blocks: Hebrew to Mandaic (0590-085F), Arabic Presentation Forms, and the right-to-left scripts of the SMP.
+const RTL = String.raw`(?!\p{N})[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFC\u{10800}-\u{10FFF}\u{1E800}-\u{1EFFF}]`
+const RTL_BESIDE_DIGIT = new RegExp(String.raw`${RTL}[\s\p{M}]*\p{N}|\p{N}[\s\p{M}]*${RTL}`, 'u')
+// UTS #39 confusables.txt, letters only: a Cyrillic "о" in "hundrеd" is read as the English word.
+const CONFUSABLE = new Map(
+  Object.entries(CONFUSABLE_LETTERS).flatMap(([letters, chars]) => [...chars].map((char) => [char, letters] as const))
+)
+// UTS #39 skeletons fold capital I and l together and write m as rn, so the checks read each of those spellings too.
+const skeletons = (text: string): string[] => {
+  const base = [...text.normalize('NFD').replace(/\p{M}/gu, '')].map((char) => CONFUSABLE.get(char) ?? char).join('')
+  const asI = base.replaceAll('l', 'i')
+  return [base, asI, base.replaceAll('rn', 'm'), asI.replaceAll('rn', 'm')]
+}
 // Spelled-out numbers from eleven up, English and Malay; "one window" stays fine.
 const NUMBER_WORD =
   /\b(?:eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|sebelas|belas|puluh|(?:se)?ratus|(?:se)?ribu|(?:se)?juta)\b/gi
@@ -190,12 +213,33 @@ export function validate(p: ProposedBundle, input: AgentInput): Validation {
         reasons.push(`${where}: contains the invisible character U+${code}; remove it`)
       }
     }
+    const refuseSeparators = (where: string, text: string) => {
+      if (MARK_ON_DIGIT.test(text)) reasons.push(`${where}: a combining mark follows a digit; remove it`)
+      for (const char of new Set(text.match(CONTROL) ?? [])) {
+        const code = char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')
+        reasons.push(`${where}: contains the control character U+${code}; remove it`)
+      }
+      if (ODD_SPACE_BETWEEN_DIGITS.test(text))
+        reasons.push(`${where}: a thin or no-break space between digits; remove it`)
+      if (RTL_BESIDE_DIGIT.test(text))
+        reasons.push(`${where}: a right-to-left character beside a digit reorders it; remove it`)
+    }
+    const safeDecode = (text: string) => {
+      try {
+        return decodeURIComponent(text)
+      } catch {
+        return text
+      }
+    }
     const checkFigures = (where: string, written: string) => {
       refuseInvisible(where, written)
+      refuseSeparators(where, written)
       const text = written.normalize('NFKC')
       const { links, rest } = linksIn(text, names)
       figures(where, rest)
       for (const link of links) {
+        // Percent escapes decode before the check: `5%E2%80%8A60` is a thin space to a reader.
+        refuseSeparators(`${where} (link ${link})`, safeDecode(link))
         const free = allowsLink(link)
         if (free === null) reasons.push(`${where}: link ${link} is not a source URL or Skyclause origin`)
         else {
@@ -213,7 +257,8 @@ export function validate(p: ProposedBundle, input: AgentInput): Validation {
       for (const [digits] of rest.matchAll(OTHER_DIGIT)) {
         reasons.push(`${where}: ${digits} uses digits outside 0-9; quote the figure from the quotable block`)
       }
-      for (const [word] of rest.matchAll(NUMBER_WORD)) {
+      const spelled = new Set(skeletons(rest).flatMap((text) => [...text.matchAll(NUMBER_WORD)].map(([word]) => word)))
+      for (const word of spelled) {
         reasons.push(`${where}: spelled-out number ${word}; quote the figure from the quotable block`)
       }
     }
@@ -221,9 +266,10 @@ export function validate(p: ProposedBundle, input: AgentInput): Validation {
       for (const field of ['subject', 'body'] as const) {
         const where = `${at} notices[${j}].${field}`
         checkFigures(where, notice[field])
-        const text = notice[field].normalize('NFKC')
+        const texts = skeletons(notice[field].normalize('NFKC'))
         for (const line of TEMPLATE_LINES) {
-          if (line.test(text)) reasons.push(`${where}: writes a template line (${line.source}); templates add it`)
+          if (texts.some((text) => line.test(text)))
+            reasons.push(`${where}: writes a template line (${line.source}); templates add it`)
         }
       }
     })

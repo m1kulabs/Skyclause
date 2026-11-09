@@ -287,3 +287,101 @@ describe('invisible characters', () => {
     ).toEqual([])
   })
 })
+
+describe('look-alike separators in figures', () => {
+  const failing = (change: (bundle: ReturnType<typeof replayBundle>) => void) => {
+    const bundle = replayBundle()
+    change(bundle)
+    const result = validate(bundle, replayInput())
+    return result.ok ? [] : result.reasons
+  }
+  const where = {
+    body: (b: ReturnType<typeof replayBundle>, text: string) => (b.calls[0]!.notices[0]!.body = text),
+    subject: (b: ReturnType<typeof replayBundle>, text: string) => (b.calls[0]!.notices[0]!.subject = text),
+    reason: (b: ReturnType<typeof replayBundle>, text: string) => (b.calls[0]!.reason = text)
+  }
+  const refused = (text: string, expected: string) => {
+    for (const [name, set] of Object.entries(where)) {
+      expect(
+        failing((b) => set(b, text)),
+        name
+      ).toContainEqual(expect.stringContaining(expected))
+    }
+  }
+
+  test.each(['\u{307}', '\u{301}', '\u{20DD}', '\u{1AB0}'])('refuses combining mark %j after a digit', (mark) => {
+    refused(`Gauge 5${mark}60 mm.`, 'combining mark')
+  })
+
+  test.each(['\u{0}', '\u{1}', '\u{1B}', '\u{7F}', '\u{80}', '\u{85}', '\u{9F}'])(
+    'refuses control character %j',
+    (char) => {
+      refused(`Gauge 5${char}60 mm.`, 'control character')
+    }
+  )
+
+  test.each(['\u{2009}', '\u{200A}', '\u{202F}', '\u{2006}', '\u{A0}', '\u{3000}'])(
+    'refuses the space %j between digits',
+    (space) => {
+      refused(`Gauge 5${space}60 mm.`, 'space between digits')
+    }
+  )
+
+  test.each(['\u{5D0}', '\u{627}', '\u{710}', '\u{FB1D}', '\u{10800}'])(
+    'refuses the right-to-left character %j next to a digit',
+    (letter) => {
+      refused(`Gauge 5${letter}60 mm.`, 'right-to-left')
+      refused(`Gauge ${letter} 60 mm.`, 'right-to-left')
+    }
+  )
+
+  test('refuses look-alike letters in a spelled-out number', () => {
+    refused('Rain reached one hundrеd mm.', 'spelled-out number')
+    refused('Rain reached twеnty mm.', 'spelled-out number')
+    refused('Rain reached ѕіхtу mm.', 'spelled-out number')
+    refused('Rain reached ＨＵＮＤＲＥＤ mm.', 'spelled-out number')
+  })
+
+  test('refuses look-alike capital I, m written as rn, and marks inside spelled-out numbers', () => {
+    for (const text of ['FІFTY', 'MӀLLION', 'ՠillion', 'hundṛed', 'hundr\u0332ed', 'THІRTY']) {
+      refused(`Rain reached ${text} mm.`, 'spelled-out number')
+    }
+    for (const text of ['Reply UNSUBSCRІBE to stop.', 'Skyclause is nọt a safety service.']) {
+      for (const set of [where.body, where.subject]) {
+        expect(failing((b) => set(b, text))).toContainEqual(expect.stringContaining('template line'))
+      }
+    }
+  })
+
+  test('refuses right-to-left punctuation, thin spaces beside a separator and line separators between digits', () => {
+    refused('Gauge 5\u05F360 mm.', 'right-to-left')
+    refused('Gauge 5\u061F60 mm.', 'right-to-left')
+    refused('Gauge א\u05B060 mm.', 'right-to-left')
+    refused('Gauge 2,\u2009060 mm.', 'space between digits')
+    refused('Gauge 39.\u200A60 mm.', 'space between digits')
+    refused('Gauge 5\u202860 mm.', 'space between digits')
+  })
+
+  test('refuses a thin space hidden as a percent escape in an allowed link path', () => {
+    refused('See https://skyclause.m1ku.tech/n/5%E2%80%8A60 now.', 'space between digits')
+    refused('See https://skyclause.m1ku.tech/n/5%C2%A060 now.', 'space between digits')
+  })
+
+  test('accepts text pasted from a word processor: no-break space before a unit, soft line break, CRLF, smart quotes', () => {
+    const text = 'Hujan lebat\u000B“kuat”\r\n\tGauge 39.0\u00A0mm in 60\u00A0min – ‘amaran’.'
+    for (const set of Object.values(where)) expect(failing((b) => set(b, text))).toEqual([])
+  })
+
+  test('refuses a template line written with look-alike letters', () => {
+    for (const text of ['Skyclause is nоt a safety service.', 'Reply unѕubscribe to stop.']) {
+      for (const set of [where.body, where.subject]) {
+        expect(failing((b) => set(b, text))).toContainEqual(expect.stringContaining('template line'))
+      }
+    }
+  })
+
+  test('still accepts Malay and English text with spaces, new lines, accents and plain figures', () => {
+    const text = 'Hujan lebat di Cheras.\n\tGauge 39.0 mm in 60 min; café, naïve, résumé, Zürich, Çelik, Ñandú, 5 mm.'
+    for (const set of Object.values(where)) expect(failing((b) => set(b, text))).toEqual([])
+  })
+})
