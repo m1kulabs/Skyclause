@@ -2,7 +2,7 @@ import { canonicalHash } from './canonical-hash'
 import { buildTypeEnv, checkCelCondition } from './cel'
 import { validateSpan } from './span'
 import { WORDING_FIELDS } from './types'
-import type { Check, CheckedSheet, CheckIssue, IndicatorRegistry, SheetInput } from './types'
+import type { Check, CheckedSheet, CheckIssue, IndicatorDefinition, IndicatorRegistry, SheetInput } from './types'
 
 const TEACHING_LINE = "Teaching mode is the lecturer's and the university's decision"
 const VALID_WORDING_FIELDS = new Set<string>(WORDING_FIELDS)
@@ -145,10 +145,18 @@ export const check: Check = (sheet: SheetInput, registry: IndicatorRegistry) => 
     }
   }
 
-  const checkedSheet: CheckedSheet = {
+  const registryTypes: Record<string, IndicatorDefinition['celType']> = {}
+  for (const def of registry) {
+    registryTypes[def.name] = def.celType
+  }
+
+  const checkedSheet: CheckedSheet & {
+    readonly registryTypes: Readonly<Record<string, IndicatorDefinition['celType']>>
+  } = {
     ...sheet,
     contentHash: canonicalHash(stripUndefined(sheet)),
-    registryHash: canonicalHash(stripUndefined(registry))
+    registryHash: canonicalHash(stripUndefined(registry)),
+    registryTypes
   }
 
   return {

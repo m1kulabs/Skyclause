@@ -40,11 +40,11 @@ export function validateSpan(span: { from: SpanRef; to: SpanRef }): { ok: true }
   if (!to) {
     return { ok: false, message: `Invalid span.to '${span.to}'; expected (start|end)[+-]<n>(s|m|h|d)` }
   }
-  if (from.anchor === to.anchor && from.offsetMs > to.offsetMs) {
-    return { ok: false, message: `Reversed span: '${span.from}' is after '${span.to}'` }
+  if (from.anchor === to.anchor && from.offsetMs >= to.offsetMs) {
+    return { ok: false, message: `Reversed or empty span: '${span.from}' must precede '${span.to}'` }
   }
-  if (from.anchor === 'end' && to.anchor === 'start' && from.offsetMs > to.offsetMs) {
-    return { ok: false, message: `Reversed span: '${span.from}' is after '${span.to}'` }
+  if (from.anchor === 'end' && to.anchor === 'start' && from.offsetMs >= to.offsetMs) {
+    return { ok: false, message: `Reversed or empty span: '${span.from}' must precede '${span.to}'` }
   }
   return { ok: true }
 }

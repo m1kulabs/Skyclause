@@ -33,6 +33,14 @@ export interface NormalizedReading {
   revision: number
 }
 
+export interface WarningObservation {
+  sourceId: string
+  observedAt: Instant
+  receivedAt: Instant
+  validFrom: Instant
+  validTo: Instant | null
+}
+
 export interface NormalizedPoll {
   id: string
   sourceId: string
@@ -291,9 +299,24 @@ export function resolveSourceAt(
   }
 
   if (source.freshness === 'observed') {
-    const prevReading = readings.length >= 2 ? readings[readings.length - 2]! : null
-    const gapMs = prevReading !== null ? latestReading!.observedMs - prevReading.observedMs : 0
-    const receiptGapMs = prevReading !== null ? latestReading!.receivedMs - prevReading.receivedMs : 0
+    // Metrics from one observed frame are one availability event, even if their
+    // receipts differ. A delayed metric from an old frame cannot end recovery.
+    const observations = new Map<number, NormalizedReading>()
+    for (const reading of readings) {
+      const existing = observations.get(reading.observedMs)
+      if (!existing || reading.receivedMs < existing.receivedMs) {
+        observations.set(reading.observedMs, reading)
+      }
+    }
+    const latestObservation = observations.get(latestReading!.observedMs)!
+    const priorObservations = Array.from(observations.values()).filter(
+      (reading) =>
+        reading.observedMs < latestObservation.observedMs && reading.receivedMs <= latestObservation.receivedMs
+    )
+    const prevReading =
+      priorObservations.sort((a, b) => a.observedMs - b.observedMs || a.receivedMs - b.receivedMs).at(-1) ?? null
+    const gapMs = prevReading !== null ? latestObservation.observedMs - prevReading.observedMs : 0
+    const receiptGapMs = prevReading !== null ? latestObservation.receivedMs - prevReading.receivedMs : 0
     const hadStaleGapBeforeLatest = prevReading !== null && (gapMs > staleLimitMs || receiptGapMs > staleLimitMs)
     const errorPolls = polls.filter((p) => p.outcome === 'error')
     const lastErrorPoll = errorPolls.length > 0 ? errorPolls[errorPolls.length - 1]! : null
@@ -301,7 +324,7 @@ export function resolveSourceAt(
       lastErrorPoll !== null &&
       (prevReading === null ||
         prevReading.receivedMs <= lastErrorPoll.startedMs ||
-        latestReading!.receivedMs <= lastErrorPoll.startedMs)
+        latestObservation.receivedMs <= lastErrorPoll.startedMs)
 
     if (hadStaleGapBeforeLatest || hadErrorBeforeLatest) {
       return {
@@ -488,6 +511,7 @@ export const snapshotAt: SnapshotAt = (
   const inputs: InputStatus[] = []
   const site: Record<string, IndicatorValue> = {}
   const series: Record<string, Array<[Instant, number | null, string]>> = {}
+  const warningObservations: Record<string, WarningObservation> = {}
 
   for (const def of r) {
     const agg = aggregateSourcesForKind(def.sourceKind, h, resolutions, tEvalIso)
@@ -553,7 +577,14 @@ export const snapshotAt: SnapshotAt = (
       for (const wr of warnReadings) {
         const parsed = isKlMetWarningReading(wr)
         if (parsed.isKlWarning) {
-          warnSeries.push([parsed.validFromIso, parsed.validToMs ?? 1, wr.id])
+          warnSeries.push([wr.observedAt, parsed.validToMs ?? 1, wr.id])
+          warningObservations[wr.id] = {
+            sourceId: wr.sourceId,
+            observedAt: wr.observedAt,
+            receivedAt: wr.receivedAt,
+            validFrom: parsed.validFromIso,
+            validTo: parsed.validToMs === null ? null : formatInstant(parsed.validToMs)
+          }
         }
       }
       series[def.name] = warnSeries
@@ -649,13 +680,24 @@ export const snapshotAt: SnapshotAt = (
       let newestObsIso: Instant | null = null
 
       for (const sid of boundSourceIds) {
-        const morning = readings
-          .filter((rd) => {
-            if (rd.sourceId !== sid || typeof rd.value !== 'number') return false
-            if (rd.metric !== 'api') return false
-            return toLocalMinutes(rd.observedMs) === 6 * 60
-          })
-          .slice(-3)
+        const dayMs = 24 * 60 * MINUTE_MS
+        const morningOffsetMs = 6 * 60 * MINUTE_MS
+        const latestMorningMs =
+          Math.floor((tEvalMs + MYT_OFFSET_MS - morningOffsetMs) / dayMs) * dayMs + morningOffsetMs - MYT_OFFSET_MS
+        const morning: NormalizedReading[] = []
+        for (let daysAgo = 2; daysAgo >= 0; daysAgo--) {
+          const requiredMs = latestMorningMs - daysAgo * dayMs
+          const matching = readings.filter(
+            (rd) =>
+              rd.sourceId === sid &&
+              rd.metric === 'api' &&
+              rd.observedMs === requiredMs &&
+              typeof rd.value === 'number' &&
+              Number.isFinite(rd.value)
+          )
+          const latest = matching.at(-1)
+          if (latest) morning.push(latest)
+        }
 
         if (morning.length === 3) {
           const stationMin = Math.min(...morning.map((m) => Math.round(m.value as number)))
@@ -673,14 +715,18 @@ export const snapshotAt: SnapshotAt = (
       }
 
       const obsAgeS = newestObsMs !== null ? Math.max(0, Math.floor((tEvalMs - newestObsMs) / 1_000)) : res.ageS
+      const morningResolution =
+        maxAcrossStations === null && res.state === 'fresh' ? { ...res, state: 'stale' as const } : res
+      const input = inputs.find((input) => input.name === def.name)
+      if (input) input.state = morningResolution.state
       site[def.name] = makeSiteIndicator(
         def,
-        res,
+        morningResolution,
         maxAcrossStations,
         boundSourceIds,
         contributingIds,
-        newestObsIso ?? res.observedAt,
-        obsAgeS
+        newestObsIso,
+        newestObsMs === null ? null : obsAgeS
       )
       continue
     }
@@ -792,6 +838,7 @@ export const snapshotAt: SnapshotAt = (
     inputs,
     site,
     series,
+    warningObservations,
     nights: [],
     registryHash
   }

@@ -1,8 +1,8 @@
 import { canonicalHash } from './canonical-hash'
-import { buildTypeEnv, evalCelCondition, indicatorValToCel, toCelDuration, toCelTimestamp } from './cel'
+import { evalCelCondition, indicatorValToCel, toCelDuration, toCelTimestamp } from './cel'
 import { formatInstant, resolveWindowSpan } from './span'
 import { toLocalMinutes, toMytDateString } from './snapshot'
-import { INDICATOR_NAMES } from './types'
+import type { WarningObservation } from './snapshot'
 import type {
   BlockedInput,
   CheckedSheet,
@@ -12,6 +12,7 @@ import type {
   CrowdMode,
   Evaluate,
   Explain,
+  IndicatorDefinition,
   IndicatorSnapshot,
   IndicatorValue,
   InputState,
@@ -74,21 +75,29 @@ const KNOWN_INDICATOR_UNITS: Readonly<Record<string, string>> = {
   'site.night.single_source': ''
 }
 
-const DEFAULT_TYPE_ENV = buildTypeEnv(
-  INDICATOR_NAMES.map((name) => ({
-    name,
-    celType: name.endsWith('_mm')
-      ? 'double'
-      : name.includes('warning') || name.includes('thunderstorm') || name === 'site.night.single_source'
-        ? 'bool'
-        : name === 'site.night.doors' || name === 'site.night.show' || name.endsWith('_start') || name.endsWith('_end')
-          ? 'timestamp'
-          : 'int',
-    unit: KNOWN_INDICATOR_UNITS[name] ?? '',
-    scope: name.startsWith('w.') ? 'window' : 'site',
-    sourceKind: 'jps_rain'
-  }))
-)
+const VALID_INDICATOR_CEL_TYPES = new Set<IndicatorDefinition['celType']>([
+  'double',
+  'int',
+  'bool',
+  'timestamp',
+  'duration',
+  'list'
+])
+
+function resolveRegistryTypeLookup(sheet: CheckedSheet): (indicatorName: string) => IndicatorDefinition['celType'] {
+  const raw = (sheet as CheckedSheet & { registryTypes?: unknown }).registryTypes
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new Error('CheckedSheet is missing authoritative registryTypes metadata from check(sheet, registry)')
+  }
+  const map = raw as Record<string, unknown>
+  return (indicatorName: string): IndicatorDefinition['celType'] => {
+    const celType = map[indicatorName]
+    if (typeof celType !== 'string' || !VALID_INDICATOR_CEL_TYPES.has(celType as IndicatorDefinition['celType'])) {
+      throw new Error(`CheckedSheet registryTypes is missing valid celType for indicator '${indicatorName}'`)
+    }
+    return celType as IndicatorDefinition['celType']
+  }
+}
 
 function interpolateWordingText(text: string | undefined, inputs: readonly IndicatorValue[]): string | undefined {
   if (text === undefined) return undefined
@@ -251,7 +260,12 @@ function computeWindowRainIndicator(
   }
 }
 
-function computeWindowWarningIndicator(snapshot: IndicatorSnapshot, window: Window, tEvalMs: number): IndicatorValue {
+function computeWindowWarningIndicator(
+  snapshot: IndicatorSnapshot,
+  window: Window,
+  tEvalMs: number,
+  span?: { fromMs: number; toMs: number }
+): IndicatorValue {
   const indName = 'w.met_warning_in_force'
   const inputStatus =
     snapshot.inputs.find((i) => i.name === indName) ??
@@ -276,37 +290,60 @@ function computeWindowWarningIndicator(snapshot: IndicatorSnapshot, window: Wind
     }
   }
 
-  const startMs = Date.parse(window.startsAt)
-  const endMs = Date.parse(window.endsAt)
+  const startMs = span?.fromMs ?? Date.parse(window.startsAt)
+  const endMs = span?.toMs ?? Date.parse(window.endsAt)
   const warnSeries = snapshot.series[indName] ?? []
 
+  const observations = (
+    snapshot as IndicatorSnapshot & {
+      warningObservations?: Record<string, WarningObservation>
+    }
+  ).warningObservations
   const matchingIds: string[] = []
+  const matchingSourceIds = new Set<string>()
   let latestObsIso: Instant | null = null
   let latestObsMs: number | null = null
 
-  for (const [fromIso, toVal, id] of warnSeries) {
-    const validFromMs = Date.parse(fromIso)
-    if (!Number.isFinite(validFromMs)) continue
-    let overlaps = false
-    if (typeof toVal === 'number' && toVal > 1) {
-      overlaps = validFromMs <= endMs && toVal >= startMs
-    } else if (toVal === 1) {
-      overlaps = validFromMs <= endMs
-    }
-    if (overlaps) {
+  for (const [observedIso, toVal, id] of warnSeries) {
+    const observation = observations?.[id]
+    const observedAt = observation?.observedAt ?? observedIso
+    const observedMs = Date.parse(observedAt)
+    const receivedMs = observation ? Date.parse(observation.receivedAt) : observedMs
+    if (!Number.isFinite(observedMs) || observedMs > tEvalMs || receivedMs > tEvalMs) continue
+    // Warnings are active intervals: an unchanged pre-span observation can carry
+    // in, but observations after the completed/evaluated span cannot affect it.
+    if (span && observedMs > Math.min(span.toMs, tEvalMs)) continue
+    const validFromMs = observation ? Date.parse(observation.validFrom) : observedMs
+    const validToMs = observation
+      ? observation.validTo === null
+        ? Infinity
+        : Date.parse(observation.validTo)
+      : typeof toVal === 'number' && toVal > 1
+        ? toVal
+        : toVal === 1
+          ? Infinity
+          : -Infinity
+    if (validFromMs <= endMs && validToMs >= startMs) {
       matchingIds.push(id)
-      if (latestObsMs === null || validFromMs > latestObsMs) {
-        latestObsMs = validFromMs
-        latestObsIso = fromIso
+      if (observation) matchingSourceIds.add(observation.sourceId)
+      if (latestObsMs === null || observedMs > latestObsMs) {
+        latestObsMs = observedMs
+        latestObsIso = observedAt
       }
     }
   }
 
   const fallbackSite = snapshot.site['site.met_warning_in_force']
-  const inForce = matchingIds.length > 0 || (warnSeries.length === 0 && fallbackSite?.value === true)
-  const obsIso = latestObsIso ?? fallbackSite?.observedAt ?? since
+  const useSiteFallback =
+    !span &&
+    warnSeries.length === 0 &&
+    fallbackSite?.value === true &&
+    fallbackSite.observedAt !== null &&
+    Date.parse(fallbackSite.observedAt) <= tEvalMs
+  const inForce = matchingIds.length > 0 || useSiteFallback
+  const obsIso = latestObsIso ?? (useSiteFallback ? fallbackSite.observedAt : null)
   const obsMs = obsIso ? Date.parse(obsIso) : null
-  const ageS = obsMs !== null && Number.isFinite(obsMs) ? Math.max(0, Math.floor((tEvalMs - obsMs) / 1_000)) : 0
+  const ageS = obsMs !== null && Number.isFinite(obsMs) ? Math.max(0, Math.floor((tEvalMs - obsMs) / 1_000)) : null
 
   return {
     name: indName,
@@ -315,7 +352,7 @@ function computeWindowWarningIndicator(snapshot: IndicatorSnapshot, window: Wind
     state: 'fresh',
     since,
     ageS,
-    sourceIds,
+    sourceIds: matchingSourceIds.size > 0 ? Array.from(matchingSourceIds) : sourceIds,
     readingIds: matchingIds,
     observedAt: obsIso
   }
@@ -465,31 +502,39 @@ function evaluateClauseInScope(
   tEvalMs: number,
   tEvalIso: Instant,
   window: Window | undefined,
-  night: NightInput | undefined
+  night: NightInput | undefined,
+  requireIndicatorCelType: (indicatorName: string) => IndicatorDefinition['celType']
 ): ClauseExplanation {
   let spanInfo: { from: Instant; to: Instant; complete: boolean; fromMs: number; toMs: number } | undefined
-  if (window && clause.scope === 'window' && clause.span) {
-    const resolved = resolveWindowSpan(window, clause.span)
-    const complete = tEvalMs >= resolved.toMs
-    spanInfo = {
-      from: resolved.from,
-      to: resolved.to,
-      complete,
-      fromMs: resolved.fromMs,
-      toMs: resolved.toMs
-    }
-
-    if (tEvalMs < resolved.fromMs) {
-      const resultObj: ClauseExplanation = {
-        key: clause.key,
-        result: 'not_open',
-        blockedBy: [],
-        span: { from: resolved.from, to: resolved.to, complete: false },
-        inputs: [],
-        cel: clause.when,
-        wording: formatWording(clause.wording, [])
+  if (window && clause.scope === 'window') {
+    const usesRainWindowIndicator =
+      clause.requires.some((r) => r === 'w.rain_max_60m_mm' || r === 'w.rain_max_4h_mm') ||
+      (clause.optional ?? []).some((r) => r === 'w.rain_max_60m_mm' || r === 'w.rain_max_4h_mm')
+    const effectiveSpanDef =
+      clause.span ?? (usesRainWindowIndicator ? { from: 'end-30m' as const, to: 'end+60m' as const } : undefined)
+    if (effectiveSpanDef) {
+      const resolved = resolveWindowSpan(window, effectiveSpanDef)
+      const complete = tEvalMs >= resolved.toMs
+      spanInfo = {
+        from: resolved.from,
+        to: resolved.to,
+        complete,
+        fromMs: resolved.fromMs,
+        toMs: resolved.toMs
       }
-      return resultObj
+
+      if (tEvalMs < resolved.fromMs || resolved.fromMs >= resolved.toMs) {
+        const resultObj: ClauseExplanation = {
+          key: clause.key,
+          result: 'not_open',
+          blockedBy: [],
+          span: { from: resolved.from, to: resolved.to, complete: false },
+          inputs: [],
+          cel: clause.when,
+          wording: formatWording(clause.wording, [])
+        }
+        return resultObj
+      }
     }
   }
 
@@ -506,11 +551,12 @@ function evaluateClauseInScope(
       }
     }
 
+    const celType = requireIndicatorCelType(name)
+
     if (name.startsWith('site.night.')) {
       const niv = nightIndicators.get(name)
       const inpStatus = snapshot.inputs.find((i) => i.name === name)
       if (niv) {
-        const typeEntry = DEFAULT_TYPE_ENV.get(name)
         return {
           iv: niv,
           status: {
@@ -519,7 +565,7 @@ function evaluateClauseInScope(
             state: niv.state,
             since: niv.since ?? tEvalIso
           },
-          celVal: niv.state === 'fresh' ? indicatorValToCel(niv.value, typeEntry?.celType) : undefined
+          celVal: niv.state === 'fresh' ? indicatorValToCel(niv.value, celType) : undefined
         }
       }
       return {
@@ -554,12 +600,12 @@ function evaluateClauseInScope(
           state: wiv.state,
           since: wiv.since ?? tEvalIso
         },
-        celVal: wiv.state === 'fresh' && wiv.value !== null ? indicatorValToCel(wiv.value, 'double') : undefined
+        celVal: wiv.state === 'fresh' && wiv.value !== null ? indicatorValToCel(wiv.value, celType) : undefined
       }
     }
 
     if (window && name === 'w.met_warning_in_force') {
-      const wiv = computeWindowWarningIndicator(snapshot, window, tEvalMs)
+      const wiv = computeWindowWarningIndicator(snapshot, window, tEvalMs, spanInfo)
       const inpStatus =
         snapshot.inputs.find((i) => i.name === name) ??
         snapshot.inputs.find((i) => i.name === 'site.met_warning_in_force')
@@ -571,7 +617,7 @@ function evaluateClauseInScope(
           state: wiv.state,
           since: wiv.since ?? tEvalIso
         },
-        celVal: wiv.state === 'fresh' && wiv.value !== null ? indicatorValToCel(wiv.value, 'bool') : undefined
+        celVal: wiv.state === 'fresh' && wiv.value !== null ? indicatorValToCel(wiv.value, celType) : undefined
       }
     }
 
@@ -593,12 +639,11 @@ function evaluateClauseInScope(
       observedAt: null
     }
 
-    const typeEntry = DEFAULT_TYPE_ENV.get(name)
     const usable = iv.state === 'fresh' && iv.value !== null && iv.value !== undefined
     return {
       iv,
       status: { name, sourceId, state: iv.state, since: iv.since ?? tEvalIso },
-      celVal: usable ? indicatorValToCel(iv.value, typeEntry?.celType) : undefined
+      celVal: usable ? indicatorValToCel(iv.value, celType) : undefined
     }
   }
 
@@ -784,6 +829,7 @@ export const evaluate: Evaluate = (
   windows: Window[],
   tEval: Instant
 ): Verdicts => {
+  const requireIndicatorCelType = resolveRegistryTypeLookup(sheet)
   const tEvalMs = Date.parse(tEval)
   const tEvalIso = formatInstant(tEvalMs)
   const enabledClauses = sheet.clauses.filter((c) => c.enabled)
@@ -796,7 +842,15 @@ export const evaluate: Evaluate = (
   if (sheet.pack === 'sky' || siteClauses.some((c) => c.builtin !== 'silent_input')) {
     const evals = siteClauses.map((clause) => ({
       clause,
-      evaluation: evaluateClauseInScope(clause, snapshot, tEvalMs, tEvalIso, undefined, snapshot.nights[0])
+      evaluation: evaluateClauseInScope(
+        clause,
+        snapshot,
+        tEvalMs,
+        tEvalIso,
+        undefined,
+        snapshot.nights[0],
+        requireIndicatorCelType
+      )
     }))
     siteVerdicts.push(finalizeScopeVerdict({ kind: 'site', id: null }, sheet.pack, evals))
   }
@@ -806,7 +860,7 @@ export const evaluate: Evaluate = (
   for (const night of snapshot.nights) {
     const evals = nightClauses.map((clause) => ({
       clause,
-      evaluation: evaluateClauseInScope(clause, snapshot, tEvalMs, tEvalIso, undefined, night)
+      evaluation: evaluateClauseInScope(clause, snapshot, tEvalMs, tEvalIso, undefined, night, requireIndicatorCelType)
     }))
     nightVerdicts.push(finalizeScopeVerdict({ kind: 'night', id: night.id }, sheet.pack, evals))
   }
@@ -819,7 +873,15 @@ export const evaluate: Evaluate = (
     const matchingNight = snapshot.nights.find((n) => n.date === winDate) ?? snapshot.nights[0]
     const evals = windowApplicableClauses.map((clause) => ({
       clause,
-      evaluation: evaluateClauseInScope(clause, snapshot, tEvalMs, tEvalIso, win, matchingNight)
+      evaluation: evaluateClauseInScope(
+        clause,
+        snapshot,
+        tEvalMs,
+        tEvalIso,
+        win,
+        matchingNight,
+        requireIndicatorCelType
+      )
     }))
     windowVerdicts.push(finalizeScopeVerdict({ kind: 'window', id: win.id }, sheet.pack, evals))
   }

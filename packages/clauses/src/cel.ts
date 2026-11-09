@@ -2,7 +2,12 @@ import { celEnv, isCelError, parse, plan } from '@bufbuild/cel'
 import type { CheckIssue, Clause, IndicatorDefinition, IndicatorRegistry } from './types'
 
 export type CelValueType =
-  'double' | 'int' | 'uint' | 'num' | 'bool' | 'string' | 'timestamp' | 'duration' | 'list' | 'null' | 'error'
+  'double' | 'int' | 'uint' | 'bool' | 'string' | 'timestamp' | 'duration' | 'list' | 'null' | 'error'
+
+interface LocalBinding {
+  type: CelValueType
+  elements?: readonly LocalBinding[]
+}
 
 const env = celEnv()
 const tsCastPlan = plan(env, parse('timestamp(v)'))
@@ -162,7 +167,7 @@ function tokenSpanFromOffset(source: string, rawOffset: number, token: string): 
 }
 
 function isNumeric(t: CelValueType): boolean {
-  return t === 'int' || t === 'double' || t === 'uint' || t === 'num'
+  return t === 'int' || t === 'double' || t === 'uint'
 }
 
 function areComparable(left: CelValueType, right: CelValueType): boolean {
@@ -265,14 +270,14 @@ export function checkCelCondition(
 
   function resolveDottedReference(
     chain: { rootId: bigint; fullName: string },
-    localVars: ReadonlyMap<string, CelValueType>
+    localVars: ReadonlyMap<string, LocalBinding>
   ): CelValueType {
     const { rootId, fullName } = chain
     const rootOffset = posOf(rootId, sourceInfo)
     const span = dottedSpan(when, rootOffset, fullName)
 
     if (!fullName.includes('.') && localVars.has(fullName)) {
-      return localVars.get(fullName)!
+      return localVars.get(fullName)!.type
     }
 
     if (fullName === 'now') {
@@ -317,7 +322,29 @@ export function checkCelCondition(
     return entry.celType
   }
 
-  function inferExprType(expr: AstExpr, localVars: ReadonlyMap<string, CelValueType>): CelValueType {
+  function listElements(expr: AstExpr, localVars: ReadonlyMap<string, LocalBinding>): readonly LocalBinding[] {
+    if (expr.exprKind.case === 'listExpr') {
+      return expr.exprKind.value.elements.map((element) => {
+        const type = inferExprType(element, localVars)
+        return type === 'list' ? { type, elements: listElements(element, localVars) } : { type }
+      })
+    }
+    if (expr.exprKind.case === 'identExpr') {
+      const local = localVars.get(expr.exprKind.value.name)
+      if (local?.elements) return local.elements
+    }
+    if (expr.exprKind.case === 'callExpr' && expr.exprKind.value.function === '_+_') {
+      return expr.exprKind.value.args.flatMap((arg) => listElements(arg, localVars))
+    }
+    // IndicatorValue's list contract is number[]; JS numbers enter CEL as doubles.
+    return [{ type: 'double' }]
+  }
+
+  function inferExprType(
+    expr: AstExpr,
+    localVars: ReadonlyMap<string, LocalBinding>,
+    allowHeterogeneousEq = false
+  ): CelValueType {
     const kind = expr.exprKind
     const exprOffset = posOf(expr.id, sourceInfo)
 
@@ -385,7 +412,7 @@ export function checkCelCondition(
 
       case 'listExpr': {
         for (const el of kind.value.elements) {
-          inferExprType(el, localVars)
+          inferExprType(el, localVars, allowHeterogeneousEq)
         }
         return 'list'
       }
@@ -416,7 +443,8 @@ export function checkCelCondition(
         }
 
         const rangeExpr = kind.value.iterRange
-        const rangeType = rangeExpr ? inferExprType(rangeExpr, localVars) : 'error'
+        const rangeType = rangeExpr ? inferExprType(rangeExpr, localVars, allowHeterogeneousEq) : 'error'
+        const elements = rangeExpr && rangeType === 'list' ? listElements(rangeExpr, localVars) : []
         if (rangeType !== 'list' && rangeType !== 'error') {
           const rangeOffset = rangeExpr ? posOf(rangeExpr.id, sourceInfo) : exprOffset
           issues.push({
@@ -428,24 +456,60 @@ export function checkCelCondition(
           return 'error'
         }
 
-        const nextVars = new Map(localVars)
-        nextVars.set(kind.value.iterVar, 'num')
-
         const predExpr =
           macroCall?.exprKind.case === 'callExpr' && macroCall.exprKind.value.args[1]
             ? macroCall.exprKind.value.args[1]
             : kind.value.loopStep
         if (predExpr) {
-          const predType = inferExprType(predExpr, nextVars)
-          if (predType !== 'bool' && predType !== 'error') {
-            const predOffset = posOf(predExpr.id, sourceInfo)
-            issues.push({
-              clauseKey,
-              message: `${macroFunc}() predicate must return bool, got '${predType}'`,
-              offset: predOffset,
-              length: Math.max(1, when.length - predOffset)
-            })
-            return 'error'
+          const checkPredicateWithElemType = (element: LocalBinding, heteroEq: boolean): CelValueType => {
+            const nextVars = new Map(localVars)
+            nextVars.set(kind.value.iterVar, element)
+            const predType = inferExprType(predExpr, nextVars, heteroEq)
+            if (predType !== 'bool' && predType !== 'error') {
+              const predOffset = posOf(predExpr.id, sourceInfo)
+              issues.push({
+                clauseKey,
+                message: `${macroFunc}() predicate must return bool, got '${predType}'`,
+                offset: predOffset,
+                length: Math.max(1, when.length - predOffset)
+              })
+              return 'error'
+            }
+            return predType
+          }
+
+          if (elements.length === 0) {
+            // Empty literal lists are polymorphic, but still validate their predicate.
+            const candidates: CelValueType[] = [
+              'double',
+              'int',
+              'uint',
+              'string',
+              'bool',
+              'timestamp',
+              'duration',
+              'list'
+            ]
+            const savedLen = issues.length
+            let matched = false
+            for (const type of candidates) {
+              issues.length = savedLen
+              const pt = checkPredicateWithElemType({ type }, false)
+              if (pt === 'bool' && issues.length === savedLen) {
+                matched = true
+                break
+              }
+            }
+            if (!matched) {
+              issues.length = savedLen
+              checkPredicateWithElemType({ type: 'double' }, false)
+              return 'error'
+            }
+          } else {
+            const heterogeneous = new Set(elements.map((element) => element.type)).size > 1
+            for (const element of elements) {
+              if (checkPredicateWithElemType(element, heterogeneous) === 'error') return 'error'
+            }
           }
         }
         return 'bool'
@@ -491,7 +555,7 @@ export function checkCelCondition(
             })
             return 'error'
           }
-          const argType = inferExprType(allArgs[0]!, localVars)
+          const argType = inferExprType(allArgs[0]!, localVars, allowHeterogeneousEq)
           if (argType !== 'list' && argType !== 'string' && argType !== 'error') {
             const argOffset = posOf(allArgs[0]!.id, sourceInfo)
             issues.push({
@@ -517,7 +581,7 @@ export function checkCelCondition(
             return 'error'
           }
           const arg = args[0]!
-          const argType = inferExprType(arg, localVars)
+          const argType = inferExprType(arg, localVars, allowHeterogeneousEq)
           if (argType !== 'string' && argType !== 'error') {
             const span = tokenSpanFromOffset(when, posOf(arg.id, sourceInfo), 'duration')
             issues.push({
@@ -557,7 +621,7 @@ export function checkCelCondition(
             return 'error'
           }
           const arg = args[0]!
-          const argType = inferExprType(arg, localVars)
+          const argType = inferExprType(arg, localVars, allowHeterogeneousEq)
           if (argType !== 'string' && argType !== 'error') {
             const span = tokenSpanFromOffset(when, posOf(arg.id, sourceInfo), 'timestamp')
             issues.push({
@@ -596,7 +660,7 @@ export function checkCelCondition(
             })
             return 'error'
           }
-          const argType = inferExprType(args[0]!, localVars)
+          const argType = inferExprType(args[0]!, localVars, allowHeterogeneousEq)
           if (argType === 'error') return 'error'
           if (!isNumeric(argType) && argType !== 'string' && argType !== 'timestamp' && argType !== 'duration') {
             const argOffset = posOf(args[0]!.id, sourceInfo)
@@ -612,7 +676,7 @@ export function checkCelCondition(
         }
 
         if (fn === '!_') {
-          const argType = inferExprType(args[0]!, localVars)
+          const argType = inferExprType(args[0]!, localVars, allowHeterogeneousEq)
           if (argType !== 'bool' && argType !== 'error') {
             const argOffset = posOf(args[0]!.id, sourceInfo)
             issues.push({
@@ -627,12 +691,12 @@ export function checkCelCondition(
         }
 
         if (fn === '-_') {
-          const argType = inferExprType(args[0]!, localVars)
-          if (!isNumeric(argType) && argType !== 'error') {
+          const argType = inferExprType(args[0]!, localVars, allowHeterogeneousEq)
+          if (argType !== 'int' && argType !== 'double' && argType !== 'error') {
             const argOffset = posOf(args[0]!.id, sourceInfo)
             issues.push({
               clauseKey,
-              message: `Unary '-' requires numeric operand, got '${argType}'`,
+              message: `Unary '-' requires int or double operand, got '${argType}'`,
               offset: argOffset,
               length: 1
             })
@@ -642,8 +706,8 @@ export function checkCelCondition(
         }
 
         if (fn === '_&&_' || fn === '_||_') {
-          const left = inferExprType(args[0]!, localVars)
-          const right = inferExprType(args[1]!, localVars)
+          const left = inferExprType(args[0]!, localVars, allowHeterogeneousEq)
+          const right = inferExprType(args[1]!, localVars, allowHeterogeneousEq)
           const opStr = fn === '_&&_' ? '&&' : '||'
           if (left !== 'bool' && left !== 'error') {
             const off = posOf(args[0]!.id, sourceInfo)
@@ -667,10 +731,10 @@ export function checkCelCondition(
         }
 
         if (fn === '_==_' || fn === '_!=_') {
-          const left = inferExprType(args[0]!, localVars)
-          const right = inferExprType(args[1]!, localVars)
+          const left = inferExprType(args[0]!, localVars, allowHeterogeneousEq)
+          const right = inferExprType(args[1]!, localVars, allowHeterogeneousEq)
           const opStr = fn === '_==_' ? '==' : '!='
-          if (!areEquatable(left, right)) {
+          if (!allowHeterogeneousEq && !areEquatable(left, right)) {
             const rightOff = posOf(args[1]!.id, sourceInfo)
             issues.push({
               clauseKey,
@@ -684,8 +748,8 @@ export function checkCelCondition(
         }
 
         if (fn === '_<_' || fn === '_<=_' || fn === '_>_' || fn === '_>=_') {
-          const left = inferExprType(args[0]!, localVars)
-          const right = inferExprType(args[1]!, localVars)
+          const left = inferExprType(args[0]!, localVars, allowHeterogeneousEq)
+          const right = inferExprType(args[1]!, localVars, allowHeterogeneousEq)
           const opStr = fn.slice(1, -1)
           if (!areComparable(left, right)) {
             const rightOff = posOf(args[1]!.id, sourceInfo)
@@ -701,8 +765,8 @@ export function checkCelCondition(
         }
 
         if (fn === '_+_' || fn === '_-_' || fn === '_*_' || fn === '_/_' || fn === '_%_') {
-          const left = inferExprType(args[0]!, localVars)
-          const right = inferExprType(args[1]!, localVars)
+          const left = inferExprType(args[0]!, localVars, allowHeterogeneousEq)
+          const right = inferExprType(args[1]!, localVars, allowHeterogeneousEq)
           const opStr = fn.slice(1, -1)
           if (left === 'error' || right === 'error') return 'error'
 
@@ -719,13 +783,13 @@ export function checkCelCondition(
             if (left === 'duration' && right === 'duration') return 'duration'
           }
           if (fn === '_%_') {
-            if ((left === 'int' || left === 'num') && (right === 'int' || right === 'num')) {
-              return 'int'
+            if ((left === 'int' && right === 'int') || (left === 'uint' && right === 'uint')) {
+              return left
             }
             const rightOff = posOf(args[1]!.id, sourceInfo)
             issues.push({
               clauseKey,
-              message: `Operator '%' requires int operands, got '${left}' and '${right}'`,
+              message: `Operator '%' requires matching int or uint operands, got '${left}' and '${right}'`,
               offset: rightOff,
               length: Math.max(1, when.length - rightOff)
             })
@@ -733,18 +797,17 @@ export function checkCelCondition(
           }
 
           if (isNumeric(left) && isNumeric(right)) {
-            if (left === 'double' || right === 'double') {
-              if (left === right || left === 'num' || right === 'num') return 'double'
-              const rightOff = posOf(args[1]!.id, sourceInfo)
-              issues.push({
-                clauseKey,
-                message: `Operator '${opStr}' requires matching numeric types, got '${left}' and '${right}'`,
-                offset: rightOff,
-                length: Math.max(1, when.length - rightOff)
-              })
-              return 'error'
+            if (left === right) {
+              return left
             }
-            return 'int'
+            const rightOff = posOf(args[1]!.id, sourceInfo)
+            issues.push({
+              clauseKey,
+              message: `Operator '${opStr}' requires matching numeric types, got '${left}' and '${right}'`,
+              offset: rightOff,
+              length: Math.max(1, when.length - rightOff)
+            })
+            return 'error'
           }
 
           const rightOff = posOf(args[1]!.id, sourceInfo)

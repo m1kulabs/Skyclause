@@ -517,3 +517,121 @@ describe('deriveInputState and snapshotAt', () => {
     expect(snap.site['site.camera_far_low_frames']?.value).toBe(3)
   })
 })
+
+describe('review regressions: source observations and current mornings', () => {
+  function reading(sourceId: string, metric: string, ts: string, value: number, receivedAt = ts) {
+    return {
+      id: `${sourceId}-${metric}-${ts}`,
+      sourceId,
+      metric,
+      observedAt: ts,
+      receivedAt,
+      value,
+      valueText: null,
+      valueJson: null,
+      itemKey: ts,
+      revision: 1
+    }
+  }
+
+  test('near, far and flag rows in one camera frame remain recovered until another frame arrives', () => {
+    const h = baseHistory()
+    for (const ts of ['2026-11-02T04:00:00Z', '2026-11-02T07:00:00Z']) {
+      for (const metric of ['contrast_near', 'contrast_far', 'flag']) {
+        // Each metric may arrive separately; that does not create another frame.
+        h.readings.push(reading('cam-1', metric, ts, 0.3, ts.replace(':00Z', metric === 'flag' ? ':10Z' : ':05Z')))
+      }
+    }
+    expect(deriveInputState(h, 'cam-1', '2026-11-02T06:50:00Z')).toBe('stale')
+    expect(deriveInputState(h, 'cam-1', '2026-11-02T07:05:00Z')).toBe('recovered')
+    for (const metric of ['contrast_near', 'contrast_far']) {
+      h.readings.push(reading('cam-1', metric, '2026-11-02T07:10:00Z', 0.3))
+    }
+    expect(deriveInputState(h, 'cam-1', '2026-11-02T07:11:00Z')).toBe('fresh')
+  })
+
+  test('out of order receipts from an old camera frame cannot complete recovery', () => {
+    const h = baseHistory()
+    h.readings.push(
+      reading('cam-1', 'contrast_far', '2026-11-02T04:00:00Z', 0.3),
+      reading('cam-1', 'contrast_far', '2026-11-02T07:00:00Z', 0.3, '2026-11-02T07:01:00Z'),
+      reading('cam-1', 'contrast_near', '2026-11-02T04:00:00Z', 0.3, '2026-11-02T07:02:00Z')
+    )
+    expect(deriveInputState(h, 'cam-1', '2026-11-02T07:05:00Z')).toBe('recovered')
+  })
+
+  test('a delayed older observation cannot restart recovery after two fresh camera frames', () => {
+    const h = baseHistory()
+    h.readings.push(
+      reading('cam-1', 'contrast_far', '2026-11-02T04:00:00Z', 0.3),
+      reading('cam-1', 'contrast_far', '2026-11-02T07:00:00Z', 0.3),
+      reading('cam-1', 'contrast_far', '2026-11-02T03:00:00Z', 0.3, '2026-11-02T07:08:00Z'),
+      reading('cam-1', 'contrast_far', '2026-11-02T07:10:00Z', 0.3)
+    )
+    expect(deriveInputState(h, 'cam-1', '2026-11-02T07:11:00Z')).toBe('fresh')
+  })
+
+  test('ancient nonconsecutive 06:00 mornings are unusable even when current hourly API is fresh', () => {
+    const h = baseHistory()
+    for (const ts of ['2026-10-01T22:00:00Z', '2026-10-15T22:00:00Z', '2026-10-25T22:00:00Z']) {
+      h.readings.push(reading('CA16W', 'api', ts, 160))
+    }
+    for (const ts of ['2026-11-02T06:00:00Z', '2026-11-02T07:00:00Z']) {
+      h.readings.push(reading('CA16W', 'api', ts, 20))
+    }
+    const snap = snapshotAt(h, TEST_REGISTRY, 'p', 'sky', '2026-11-02T07:05:00Z')
+    expect(snap.site['site.api_max']?.value).toBe(20)
+    expect(snap.site['site.api_0600_min_last3_max']?.value).toBeNull()
+    expect(snap.site['site.api_0600_min_last3_max']?.state).toBe('stale')
+    expect(snap.site['site.api_0600_min_last3_max']?.readingIds).toEqual([])
+  })
+
+  test('the three-day minimum is computed per station before taking the maximum across stations', () => {
+    const h = baseHistory()
+    const station = h.sources.find((source) => source.id === 'CA16W')!
+    h.sources.push({ ...station, id: 'CA17W' })
+    const dates = ['2026-10-30T22:00:00Z', '2026-10-31T22:00:00Z', '2026-11-01T22:00:00Z']
+    for (const [index, ts] of dates.entries()) {
+      h.readings.push(reading('CA16W', 'api', ts, [200, 100, 200][index]!))
+      h.readings.push(reading('CA17W', 'api', ts, [100, 200, 100][index]!))
+    }
+    for (const sid of ['CA16W', 'CA17W']) {
+      for (const ts of ['2026-11-02T06:00:00Z', '2026-11-02T07:00:00Z']) {
+        h.readings.push(reading(sid, 'api', ts, 20))
+      }
+    }
+    const indicator = snapshotAt(h, TEST_REGISTRY, 'p', 'sky', '2026-11-02T07:05:00Z').site[
+      'site.api_0600_min_last3_max'
+    ]!
+    expect(indicator.value).toBe(100)
+    expect(indicator.sourceIds).toEqual(['CA16W', 'CA17W'])
+    expect(indicator.readingIds).toHaveLength(6)
+  })
+
+  test('the latest three required MYT mornings advance exactly at 06:00 without last-available fallback', () => {
+    const h = baseHistory()
+    for (const [ts, value] of [
+      ['2026-10-29T22:00:00Z', 170],
+      ['2026-10-30T22:00:00Z', 160],
+      ['2026-10-31T22:00:00Z', 165],
+      ['2026-11-01T20:00:00Z', 20],
+      ['2026-11-01T21:00:00Z', 20]
+    ] as const)
+      h.readings.push(reading('CA16W', 'api', ts, value))
+    expect(
+      snapshotAt(h, TEST_REGISTRY, 'p', 'sky', '2026-11-01T21:59:59Z').site['site.api_0600_min_last3_max']?.value
+    ).toBe(160)
+    expect(
+      snapshotAt(h, TEST_REGISTRY, 'p', 'sky', '2026-11-01T22:00:00Z').site['site.api_0600_min_last3_max']?.value
+    ).toBeNull()
+    h.readings.push(reading('CA16W', 'api', '2026-11-01T22:00:00Z', 150, '2026-11-01T22:05:00Z'))
+    const snap = snapshotAt(h, TEST_REGISTRY, 'p', 'sky', '2026-11-01T22:05:00Z')
+    expect(snap.site['site.api_0600_min_last3_max']?.value).toBe(150)
+    expect(snap.site['site.api_0600_min_last3_max']?.readingIds).toEqual([
+      'CA16W-api-2026-10-30T22:00:00Z',
+      'CA16W-api-2026-10-31T22:00:00Z',
+      'CA16W-api-2026-11-01T22:00:00Z'
+    ])
+    expect(snap.site['site.api_0600_min_last3_max']?.observedAt).toBe('2026-11-01T22:00:00Z')
+  })
+})

@@ -243,10 +243,16 @@ describe('2 November 2026 stored JPS rainfall replay (SIG-6, CLS-4)', () => {
     expect(rainInput.ageS).toBe(300)
     expect(rainInput.readingIds.length).toBe(12)
 
-    // At 15:05 MYT, the 15:45 wave's storm_confirmed span (15:15..16:45 MYT) is not_open with openFrom = 15:15 MYT
+    // At 15:05 MYT, the 15:45 wave's storm_confirmed and flash_flood_risk spans (15:15..16:45 MYT) are not_open with openFrom = 15:15 MYT
     const v1545At1505 = verdicts1505.windows.find((w) => w.scope.id === 'wave-1545')!
     const storm1545At1505 = v1545At1505.clauses.find((c) => c.key === 'storm_confirmed')!
+    const flood1545At1505 = v1545At1505.clauses.find((c) => c.key === 'flash_flood_risk')!
+    const silent1545At1505 = v1545At1505.clauses.find((c) => c.key === 'silent_input')!
     expect(storm1545At1505.result).toBe('not_open')
+    expect(flood1545At1505.result).toBe('not_open')
+    expect(silent1545At1505.result).toBe('not_fired')
+    expect(v1545At1505.noCall).toBeNull()
+    expect(v1545At1505.mode).toBe('normal')
     expect(v1545At1505.openFrom).toBe('2026-11-02T07:15:00Z')
 
     // 3. At 15:15 MYT (07:15:00Z): 15:45 wave's storm_confirmed opens and fires!

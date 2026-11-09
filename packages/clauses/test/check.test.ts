@@ -2,8 +2,8 @@
 
 import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
-import { canonicalHash, check } from '../src'
-import type { Clause, IndicatorRegistry, SheetInput } from '../src/types'
+import { canonicalHash, check, evaluate } from '../src'
+import type { Clause, IndicatorRegistry, IndicatorSnapshot, SheetInput } from '../src/types'
 import { TEST_REGISTRY } from './test-helpers'
 
 const readDefault = (pack: 'sky' | 'crowd'): SheetInput =>
@@ -36,7 +36,8 @@ describe('check(sheet, registry)', () => {
       expect(res.sheet).toEqual({
         ...sheet,
         contentHash: canonicalHash(sheet),
-        registryHash: canonicalHash(TEST_REGISTRY)
+        registryHash: canonicalHash(TEST_REGISTRY),
+        registryTypes: Object.fromEntries(TEST_REGISTRY.map((d) => [d.name, d.celType]))
       })
     }
   })
@@ -426,6 +427,18 @@ describe('check(sheet, registry)', () => {
     }
     expect(check(reversedSpanSheet, TEST_REGISTRY).ok).toBe(false)
 
+    for (const badSpan of [
+      { from: 'end' as const, to: 'end' as const },
+      { from: 'start' as const, to: 'start' as const },
+      { from: 'end' as const, to: 'start' as const }
+    ]) {
+      const equalOrCrossReversedSheet: SheetInput = {
+        pack: 'sky',
+        clauses: [makeClause({ key: 'bad_span_order', span: badSpan })]
+      }
+      expect(check(equalOrCrossReversedSheet, TEST_REGISTRY).ok).toBe(false)
+    }
+
     const malformedSpanSheet: SheetInput = {
       pack: 'sky',
       clauses: [
@@ -436,5 +449,74 @@ describe('check(sheet, registry)', () => {
       ]
     }
     expect(check(malformedSpanSheet, TEST_REGISTRY).ok).toBe(false)
+  })
+
+  test('enforces exact CEL numeric arithmetic overloads and infers list comprehension element types without synthetic num', () => {
+    for (const invalidExpr of [
+      '(1u + 1) == 2',
+      '1.0 + 1 == 2.0',
+      '[1.0].all(x, x + 1 > 0)',
+      '["x"].all(x, x + 1 > 0)',
+      '([1.0] + [2.0]).all(x, x + 1 > 0)'
+    ]) {
+      const badRes = check(
+        {
+          pack: 'sky',
+          clauses: [
+            makeClause({
+              key: 'bad_overload',
+              scope: 'site',
+              requires: [],
+              span: undefined,
+              when: invalidExpr
+            })
+          ]
+        },
+        TEST_REGISTRY
+      )
+      expect(badRes.ok, `Expected check() to reject ${invalidExpr}`).toBe(false)
+      expect(badRes.publishable).toBe(false)
+    }
+
+    const emptySnap: IndicatorSnapshot = {
+      projectId: 'p',
+      pack: 'sky',
+      tEval: '2026-11-02T07:05:00Z',
+      inputs: [],
+      site: {},
+      series: {},
+      nights: [],
+      registryHash: 'r',
+      hash: 's'
+    }
+
+    for (const validExpr of [
+      '["x"].all(x, x == "x")',
+      '[1, "x", true].exists(x, x == "x")',
+      '[true, false].exists(x, x)',
+      '[true, "x", [1]].all(x, x != null)',
+      '[[true], [false, true]].all(xs, xs.exists(x, x))',
+      '(["x"] + ["y"]).all(x, size(x) == 1)'
+    ]) {
+      const goodRes = check(
+        {
+          pack: 'sky',
+          clauses: [
+            makeClause({
+              key: 'good_comp',
+              scope: 'site',
+              requires: [],
+              span: undefined,
+              when: validExpr
+            })
+          ]
+        },
+        TEST_REGISTRY
+      )
+      expect(goodRes.ok, `Expected check() to accept ${validExpr}`).toBe(true)
+      expect(goodRes.publishable).toBe(true)
+      const verdicts = evaluate(goodRes.sheet!, emptySnap, [], '2026-11-02T07:05:00Z')
+      expect(verdicts.site[0]?.clauses[0]?.result).toBe('fired')
+    }
   })
 })

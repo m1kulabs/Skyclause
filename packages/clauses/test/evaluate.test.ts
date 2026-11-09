@@ -2,8 +2,8 @@
 
 import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
-import { check, diff, evaluate, explain } from '../src'
-import type { IndicatorSnapshot, NightInput, SheetInput, Window } from '../src/types'
+import { check, diff, evaluate, explain, snapshotAt } from '../src'
+import type { IndicatorSnapshot, NightInput, ReadingHistory, SheetInput, Window } from '../src/types'
 import { TEST_REGISTRY } from './test-helpers'
 
 const readDefault = (pack: 'sky' | 'crowd'): SheetInput =>
@@ -347,5 +347,263 @@ describe('evaluate, explain, and diff', () => {
       { key: 'flash_flood_risk', hasBefore: true, hasAfter: false },
       { key: 'new_clause', hasBefore: false, hasAfter: true }
     ])
+  })
+
+  test('implicit rain span clauses (flash_flood_risk) are not_open before end-30m and do not force false No call', () => {
+    const skyRainOnly: SheetInput = {
+      ...skySheet,
+      clauses: skySheet.clauses.filter((c) => ['storm_confirmed', 'flash_flood_risk', 'silent_input'].includes(c.key))
+    }
+    const checkedRainOnly = check(skyRainOnly, TEST_REGISTRY).sheet!
+    const tEval = '2026-11-02T07:05:00Z'
+    const wave1545: Window = {
+      id: 'wave-1545',
+      startsAt: '2026-11-02T07:45:00Z',
+      endsAt: '2026-11-02T07:45:00Z',
+      kind: 'commute_wave',
+      tz: 'Asia/Kuala_Lumpur'
+    }
+    const snap = makeSkySnapshot()
+    const winVerdict = evaluate(checkedRainOnly, snap, [wave1545], tEval).windows[0]!
+
+    expect(winVerdict.openFrom).toBe('2026-11-02T07:15:00Z')
+    expect(winVerdict.noCall).toBeNull()
+    expect(winVerdict.mode).toBe('normal')
+    expect(winVerdict.clauses.find((c) => c.key === 'storm_confirmed')?.result).toBe('not_open')
+    expect(winVerdict.clauses.find((c) => c.key === 'flash_flood_risk')?.result).toBe('not_open')
+    expect(winVerdict.clauses.find((c) => c.key === 'silent_input')?.result).toBe('not_fired')
+  })
+
+  test('custom registry-defined int, double, and list indicators survive CheckedSheet JSON round-trip and evaluate with authoritative CEL types', () => {
+    const customReg = [
+      {
+        name: 'site.custom_int',
+        celType: 'int' as const,
+        unit: '',
+        scope: 'site' as const,
+        sourceKind: 'apims' as const
+      },
+      {
+        name: 'site.custom_double',
+        celType: 'double' as const,
+        unit: '',
+        scope: 'site' as const,
+        sourceKind: 'jps_rain' as const
+      },
+      {
+        name: 'site.custom_list',
+        celType: 'list' as const,
+        unit: '',
+        scope: 'site' as const,
+        sourceKind: 'apims' as const
+      }
+    ]
+    const customSheet: SheetInput = {
+      pack: 'sky',
+      clauses: [
+        {
+          key: 'custom_typed_clause',
+          name: 'Custom typed clause',
+          enabled: true,
+          scope: 'site',
+          requires: ['site.custom_int', 'site.custom_double', 'site.custom_list'],
+          when: 'site.custom_int + 1 == 3 && site.custom_double + 0.5 == 2.0 && site.custom_list.all(x, x >= 10)',
+          proposes: { mode: 'outdoor_limited' },
+          wording: { en: 'Custom typed clause fired' }
+        }
+      ]
+    }
+    const checkRes = check(customSheet, customReg)
+    expect(checkRes.ok).toBe(true)
+    expect(checkRes.publishable).toBe(true)
+
+    const roundTrippedSheet = JSON.parse(JSON.stringify(checkRes.sheet!))
+    const tEval = '2026-11-02T07:05:00Z'
+    const customSnap: IndicatorSnapshot = {
+      projectId: 'proj-custom',
+      pack: 'sky',
+      tEval,
+      inputs: [
+        { name: 'site.custom_int', sourceId: 's1', state: 'fresh', since: tEval },
+        { name: 'site.custom_double', sourceId: 's2', state: 'fresh', since: tEval },
+        { name: 'site.custom_list', sourceId: 's3', state: 'fresh', since: tEval }
+      ],
+      site: {
+        'site.custom_int': {
+          name: 'site.custom_int',
+          value: 2,
+          unit: '',
+          state: 'fresh',
+          since: tEval,
+          ageS: 0,
+          sourceIds: ['s1'],
+          readingIds: ['r1'],
+          observedAt: tEval
+        },
+        'site.custom_double': {
+          name: 'site.custom_double',
+          value: 1.5,
+          unit: '',
+          state: 'fresh',
+          since: tEval,
+          ageS: 0,
+          sourceIds: ['s2'],
+          readingIds: ['r2'],
+          observedAt: tEval
+        },
+        'site.custom_list': {
+          name: 'site.custom_list',
+          value: [10, 20, 30],
+          unit: '',
+          state: 'fresh',
+          since: tEval,
+          ageS: 0,
+          sourceIds: ['s3'],
+          readingIds: ['r3'],
+          observedAt: tEval
+        }
+      },
+      series: {},
+      nights: [],
+      registryHash: checkRes.sheet!.registryHash,
+      hash: 'snap-custom'
+    }
+
+    const verdicts = evaluate(roundTrippedSheet, customSnap, [], tEval)
+    expect(verdicts.site[0]?.clauses[0]?.result).toBe('fired')
+
+    const { registryTypes: _omitted, ...sheetWithoutRegistryTypes } = roundTrippedSheet as typeof roundTrippedSheet & {
+      registryTypes?: unknown
+    }
+    expect(() => evaluate(sheetWithoutRegistryTypes as typeof roundTrippedSheet, customSnap, [], tEval)).toThrow(
+      /registryTypes/i
+    )
+  })
+})
+
+describe('review regression: warning observation interval and provenance', () => {
+  const ts = (time: string) => `2026-11-02T${time}:00Z`
+  const window: Window = {
+    id: 'wave',
+    startsAt: ts('07:30'),
+    endsAt: ts('07:30'),
+    kind: 'commute_wave',
+    tz: 'Asia/Kuala_Lumpur'
+  }
+  const registry = TEST_REGISTRY.filter((def) => def.name === 'w.met_warning_in_force')
+  const sheet: SheetInput = {
+    pack: 'sky',
+    clauses: [
+      {
+        key: 'warning',
+        name: 'Warning',
+        enabled: true,
+        scope: 'window',
+        requires: ['w.met_warning_in_force'],
+        span: { from: 'end-30m', to: 'end+60m' },
+        when: 'w.met_warning_in_force',
+        proposes: { mode: 'outdoor_limited' },
+        wording: { en: 'Warning' }
+      }
+    ]
+  }
+  function history(observedAt: string, receivedAt = observedAt): ReadingHistory {
+    return {
+      sources: [
+        {
+          id: 'met',
+          kind: 'met_warning',
+          cadenceS: 600,
+          staleAfterS: 1200,
+          freshness: 'polled',
+          probation: false,
+          meta: {}
+        }
+      ],
+      polls: [{ id: 'poll', sourceId: 'met', startedAt: ts('09:00'), outcome: 'ok', httpStatus: 200 }],
+      readings: [
+        {
+          id: 'warning',
+          sourceId: 'met',
+          metric: 'warning',
+          observedAt,
+          receivedAt,
+          value: true,
+          valueText: 'Kuala Lumpur',
+          valueJson: { valid_from: ts('06:00'), valid_to: ts('10:00') },
+          itemKey: 'warning',
+          revision: 1
+        }
+      ]
+    }
+  }
+
+  test.each([
+    ['06:59', 'fired'],
+    ['07:00', 'fired'],
+    ['08:30', 'fired'],
+    ['08:31', 'not_fired'],
+    ['08:45', 'not_fired']
+  ])(
+    'explicit completed span carries active warnings and uses inclusive observation upper bound: %s -> %s',
+    (observed, result) => {
+      const snap = snapshotAt(history(ts(observed)), registry, 'p', 'sky', ts('09:00'))
+      const verdict = evaluate(check(sheet, registry).sheet!, JSON.parse(JSON.stringify(snap)), [window], ts('09:00'))
+      const clause = verdict.windows[0]!.clauses[0]!
+      expect(clause.span?.complete).toBe(true)
+      expect(clause.result).toBe(result)
+      if (result === 'fired') {
+        const explanation = explain(JSON.parse(JSON.stringify(verdict)))[0]!
+        expect(explanation.inputs[0]?.observedAt).toBe(ts(observed))
+        expect(explanation.inputs[0]?.ageS).toBe((Date.parse(ts('09:00')) - Date.parse(ts(observed))) / 1000)
+      } else expect(clause.inputs[0]?.readingIds).toEqual([])
+    }
+  )
+
+  test('explicit span extension accepts a warning valid within the extension but outside the actual window', () => {
+    const h = history(ts('08:00'))
+    h.readings[0]!.valueJson = { valid_from: ts('08:00'), valid_to: ts('08:15') }
+    const snap = snapshotAt(h, registry, 'p', 'sky', ts('09:00'))
+    expect(evaluate(check(sheet, registry).sheet!, snap, [window], ts('09:00')).windows[0]?.clauses[0]?.result).toBe(
+      'fired'
+    )
+  })
+
+  test('receipt is distinct from observation and validity and remains serializable', () => {
+    const snap = snapshotAt(history(ts('08:15'), ts('08:45')), registry, 'p', 'sky', ts('09:00'))
+    expect(snap.series['w.met_warning_in_force']?.[0]?.[0]).toBe(ts('08:15'))
+    expect(JSON.parse(JSON.stringify(snap))).toMatchObject({
+      warningObservations: {
+        warning: {
+          observedAt: ts('08:15'),
+          receivedAt: ts('08:45'),
+          validFrom: ts('06:00'),
+          validTo: ts('10:00'),
+          sourceId: 'met'
+        }
+      }
+    })
+    const verdict = evaluate(check(sheet, registry).sheet!, JSON.parse(JSON.stringify(snap)), [window], ts('09:00'))
+    expect(verdict.windows[0]?.clauses[0]?.result).toBe('fired')
+    expect(verdict.windows[0]?.clauses[0]?.inputs[0]?.observedAt).toBe(ts('08:15'))
+    expect(verdict.windows[0]?.clauses[0]?.inputs[0]?.ageS).toBe(2700)
+  })
+
+  test('a span stops at tEval and unchanged warnings carry in with original observation provenance', () => {
+    const earlier = ts('07:05')
+    const h = history(ts('06:30'))
+    h.polls[0]!.startedAt = earlier
+    const snap = snapshotAt(h, registry, 'p', 'sky', earlier)
+    const noSpanSheet: SheetInput = { ...sheet, clauses: sheet.clauses.map(({ span: _span, ...clause }) => clause) }
+    expect(evaluate(check(noSpanSheet, registry).sheet!, snap, [window], earlier).windows[0]?.clauses[0]?.result).toBe(
+      'fired'
+    )
+    const explicit = evaluate(check(sheet, registry).sheet!, snap, [window], earlier).windows[0]!.clauses[0]!
+    expect(explicit.result).toBe('fired')
+    expect(explicit.inputs[0]?.observedAt).toBe(ts('06:30'))
+    const futureSnapshot = snapshotAt(history(ts('08:15')), registry, 'p', 'sky', ts('09:00'))
+    expect(
+      evaluate(check(sheet, registry).sheet!, futureSnapshot, [window], earlier).windows[0]?.clauses[0]?.result
+    ).toBe('not_fired')
   })
 })

@@ -29,7 +29,31 @@ interface RawConformanceOriginal {
   container?: string
 }
 
-function isAllowedSubsetBoolVector(item: SerializedIncrementalTest): boolean {
+const ALLOWED_SUBSET_SUITES = new Set([
+  'conformance/comparisons/eq_literal',
+  'conformance/comparisons/ne_literal',
+  'conformance/comparisons/lt_literal',
+  'conformance/comparisons/gt_literal',
+  'conformance/comparisons/lte_literal',
+  'conformance/comparisons/gte_literal',
+  'conformance/logic/AND',
+  'conformance/logic/OR',
+  'conformance/logic/NOT',
+  'conformance/macros/exists',
+  'conformance/macros/all',
+  'conformance/lists/size',
+  'conformance/string/size',
+  'conformance/timestamps/timestamp_equality',
+  'conformance/timestamps/duration_equality',
+  'conformance/timestamps/comparisons',
+  'conformance/fp_math/fp_math',
+  'conformance/integer_math/int64_math',
+  'conformance/integer_math/uint64_math'
+])
+
+function isAllowedSubsetBoolVector(suitePath: string, item: SerializedIncrementalTest): boolean {
+  const topSuite = suitePath.split('/').slice(0, 3).join('/')
+  if (!ALLOWED_SUBSET_SUITES.has(topSuite)) return false
   const orig = item.original as unknown as RawConformanceOriginal
   if (!orig || typeof orig.expr !== 'string') return false
   if (item.type !== 'bool') return false
@@ -40,34 +64,24 @@ function isAllowedSubsetBoolVector(item: SerializedIncrementalTest): boolean {
   if (orig.bindings && Object.keys(orig.bindings).length > 0) return false
   if (orig.container) return false
 
-  const checkResult = check(
-    {
-      pack: 'sky',
-      clauses: [
-        {
-          key: 'conformance_vec',
-          name: 'Conformance vector',
-          enabled: true,
-          scope: 'site',
-          requires: [],
-          when: orig.expr,
-          proposes: { mode: 'outdoor_limited' },
-          wording: { en: 'Conformance vector' }
-        }
-      ]
-    },
-    TEST_REGISTRY
-  )
+  // Exclude syntax outside TRD's allowed subset (map/message literals, ternary, bytes literals, non-subset casts)
+  const expr = orig.expr
+  if (expr.includes('{') || expr.includes('?')) return false
+  if (/\b[bB]['"]/.test(expr)) return false
+  if (/\b(?:dyn|type|uint|string|bool|bytes)\s*\(/.test(expr)) return false
 
-  return checkResult.ok
+  return true
 }
 
 describe('@bufbuild/cel-spec 0.6.2 conformance vectors for the allowed CEL subset', () => {
   const allItems = collectSuiteTests(conformanceSuite)
-  const matchingVectors = allItems.filter(({ item }) => isAllowedSubsetBoolVector(item))
+  const matchingVectors = allItems.filter(({ suitePath, item }) => isAllowedSubsetBoolVector(suitePath, item))
 
-  test('discovers a substantive set of official cel-spec boolean vectors in the allowed subset', () => {
-    expect(matchingVectors.length).toBeGreaterThanOrEqual(100)
+  test('discovers a substantive set of official cel-spec boolean vectors in the allowed subset independently of check()', () => {
+    expect(matchingVectors.length).toBeGreaterThanOrEqual(150)
+    const names = new Set(matchingVectors.map(({ item }) => (item.original as unknown as RawConformanceOriginal).name))
+    expect(names.has('list_elem_type_shortcircuit')).toBe(true)
+    expect(names.has('list_elem_type_exhaustive')).toBe(true)
   })
 
   test('every matching cel-spec conformance vector type-checks and evaluates to the spec expected boolean', () => {
