@@ -6,6 +6,7 @@ import { bundleHandlers } from './bundles'
 import { channelHandlers } from './channels'
 import { evidenceHandlers } from './evidence'
 import { ledgerHandlers } from './ledger'
+import { projectHandlers } from './projects'
 import { subscriberHandlers } from './subscribers'
 
 /**
@@ -34,5 +35,6 @@ export const HANDLERS: Handlers = {
   ...ledgerHandlers, // c-ledger-chain
   ...subscriberHandlers,
   ...bundleHandlers, // c-bundle-lifecycle
-  ...evidenceHandlers // c-evidence
+  ...evidenceHandlers, // c-evidence
+  ...projectHandlers // b-projects-api
 }
