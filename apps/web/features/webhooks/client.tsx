@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '#ui/button'
 import { Field, FieldLabel } from '#ui/field'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '#ui/resizable'
@@ -15,18 +15,29 @@ import { DeliveryLog, ZonedTime } from './deliveries'
 import { t } from './catalogue'
 import './webhooks.css'
 
-function changeQuery(values: Record<string, string | null>, replace = false) {
-  const url = new URL(window.location.href)
-  for (const [key, value] of Object.entries(values)) {
-    if (value === null) url.searchParams.delete(key)
-    else url.searchParams.set(key, value)
-  }
-  if (replace) window.history.replaceState(null, '', url)
-  else window.history.pushState(null, '', url)
+function useChangeQuery() {
+  const pathname = usePathname()
+  const router = useRouter()
+  const search = useSearchParams()
+  return useCallback(
+    (values: Record<string, string | null>, replace = false) => {
+      const next = new URLSearchParams(search.toString())
+      for (const [key, value] of Object.entries(values)) {
+        if (value === null) next.delete(key)
+        else next.set(key, value)
+      }
+      const query = next.toString()
+      const url = query ? `${pathname}?${query}` : pathname
+      if (replace) router.replace(url, { scroll: false })
+      else router.push(url, { scroll: false })
+    },
+    [pathname, router, search]
+  )
 }
 
 export function Webhooks({ org, settings = false }: { org: string; settings?: boolean }) {
   const search = useSearchParams()
+  const changeQuery = useChangeQuery()
   const selectedId = search.get('webhook')
   const cursor = search.get('webhooks_cursor')
   const [data, setData] = useState<{ endpoints: Endpoint[]; projects: WebhookProject[]; next: string | null }>()
@@ -237,10 +248,11 @@ function Inspector({
   form: React.ReactNode
 }) {
   const mobile = useIsMobile()
+  const changeQuery = useChangeQuery()
   const id = selectedId ?? endpoints[0]?.id
   useEffect(() => {
     if (!selectedId && endpoints[0]) changeQuery({ webhook: endpoints[0].id }, true)
-  }, [selectedId, endpoints])
+  }, [selectedId, endpoints, changeQuery])
   return (
     <ResizablePanelGroup orientation={mobile ? 'vertical' : 'horizontal'} className="webhook-panes">
       <ResizablePanel defaultSize="43%" minSize={mobile ? '0%' : '25%'} className="webhook-register-pane">
@@ -284,6 +296,7 @@ function Inspector({
 
 function InspectedEndpoint({ org, id }: { org: string; id: string }) {
   const search = useSearchParams()
+  const changeQuery = useChangeQuery()
   const [endpoint, setEndpoint] = useState<Endpoint>()
   const [failed, setFailed] = useState(false)
   const [reload, setReload] = useState(0)
