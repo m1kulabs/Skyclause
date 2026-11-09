@@ -1,7 +1,7 @@
 import type { AgentInput, ProposedBundle } from '@skyclause/agent'
 import { validate } from '@skyclause/agent/validate'
 import { canonicalHash, type Window } from '@skyclause/clauses'
-import type { Json } from '@skyclause/contracts'
+import { HTTP_PROBLEM_STATUS, type Json } from '@skyclause/contracts'
 import {
   appendLedger,
   approveGuard,
@@ -59,7 +59,7 @@ type CallRow = typeof call.$inferSelect
 type Role = 'owner' | 'admin' | 'approver'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const notFound = () => new ApiError(404, 'not-found', 'No bundle with this ID.')
+const notFound = () => new ApiError(HTTP_PROBLEM_STATUS['not-found'], 'not-found', 'No bundle with this ID.')
 
 /** Who approves: the route admits only a member session that holds `bundle.approve`. */
 function approverOf(ctx: ServiceContext): { accountId: string; role: Role } {
