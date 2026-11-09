@@ -1,4 +1,12 @@
-import { closeConnections, emitEvent, setEventPublisher, withSystem, withTenant, type Tx } from '@skyclause/db'
+import {
+  closeConnections,
+  emitEvent,
+  setEventPublisher,
+  setRunPublisher,
+  withSystem,
+  withTenant,
+  type Tx
+} from '@skyclause/db'
 import { makeOrganization, makeProject, makeSource } from '@skyclause/db/test/factories/index'
 import { asLogin, memberOf, testDatabase } from '@skyclause/db/test/harness/index'
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose'
@@ -348,19 +356,26 @@ describe('worker 15-minute batch connection', () => {
     })
     const published: string[] = []
     setEventPublisher(async ({ event_id }) => void published.push(event_id))
+    setRunPublisher(async () => {})
     await closeConnections()
     // Five minutes into the next hour: the event is over 30 s old for the republish, and partition maintenance runs.
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(Math.ceil(Date.now() / 3_600_000) * 3_600_000 + 5 * 60_000)
     try {
       const app = createServer({ registry, audience, invoker, jwks, heartbeat: () => {} })
-      expect(Object.keys(registry.batch)).toEqual(['domain-events-republish', 'partition-maintenance'])
+      expect(Object.keys(registry.batch)).toEqual([
+        'domain-events-republish',
+        'partition-maintenance',
+        'runs-sky-schedule',
+        'runs-republish'
+      ])
       expect((await post(app, '/ticks/batch', { bearer: await token() })).status).toBe(204)
       expect(published).toEqual([id])
       expect(await systemBackends()).toHaveLength(1)
     } finally {
       vi.useRealTimers()
       setEventPublisher(null)
+      setRunPublisher(null)
     }
   })
 
