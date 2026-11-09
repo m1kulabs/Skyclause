@@ -198,7 +198,7 @@ export default function Panel() {
       } else if (action.kind === 'session') {
         await authRequest('/revoke-session', { method: 'POST', body: { token: action.token } })
       } else {
-        await authRequest('/revoke-other-sessions', { method: 'POST' })
+        await authRequest('/revoke-other-sessions', { method: 'POST', body: {} })
       }
       await refresh()
     } catch (failure) {
@@ -293,6 +293,7 @@ export default function Panel() {
                                 <Label htmlFor={`passkey-name-${credential.id}`}>{copy('passkeyName')}</Label>
                                 <Input
                                   id={`passkey-name-${credential.id}`}
+                                  name="passkey-name"
                                   value={renameValue}
                                   onChange={(event) => setRenameValue(event.target.value)}
                                 />
@@ -354,6 +355,7 @@ export default function Panel() {
                   <Label htmlFor="new-passkey-name">{copy('newPasskeyName')}</Label>
                   <Input
                     id="new-passkey-name"
+                    name="new-passkey-name"
                     value={passkeyName}
                     onChange={(event) => setPasskeyName(event.target.value)}
                     autoComplete="off"

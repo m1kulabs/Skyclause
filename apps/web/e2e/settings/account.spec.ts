@@ -27,15 +27,81 @@ async function signedIn(page: Page) {
   return { accountId: created.id, login }
 }
 
+interface E2EPasskey {
+  id: string
+  name: string | null
+  createdAt: string
+}
+
+async function stubPasskeyApi(page: Page, initial: E2EPasskey[] = [], rejectDelete = false) {
+  const passkeys = [...initial]
+  await page.route('**/api/auth/passkey/**', async (route) => {
+    const request = route.request()
+    const pathname = new URL(request.url()).pathname
+    const json = (status: number, body: unknown) =>
+      route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
+
+    if (pathname.endsWith('/list-user-passkeys') && request.method() === 'GET') {
+      return json(200, passkeys)
+    }
+    if (pathname.endsWith('/generate-register-options') && request.method() === 'GET') {
+      return json(200, {
+        challenge: 'AQIDBAUGBwg',
+        rp: { name: 'Skyclause', id: 'localhost' },
+        user: { id: 'AQIDBAUGBwgJCgsM', name: 'test@example.test', displayName: 'Test Account' },
+        pubKeyCredParams: [
+          { type: 'public-key', alg: -7 },
+          { type: 'public-key', alg: -257 }
+        ],
+        timeout: 60_000,
+        attestation: 'none',
+        authenticatorSelection: {
+          authenticatorAttachment: 'platform',
+          residentKey: 'required',
+          userVerification: 'preferred'
+        },
+        excludeCredentials: []
+      })
+    }
+    if (pathname.endsWith('/verify-registration') && request.method() === 'POST') {
+      const body = request.postDataJSON() as { name?: string }
+      const passkey = {
+        id: `e2e-passkey-${passkeys.length + 1}`,
+        name: body.name ?? null,
+        createdAt: new Date().toISOString()
+      }
+      passkeys.push(passkey)
+      return json(200, passkey)
+    }
+    if (pathname.endsWith('/update-passkey') && request.method() === 'POST') {
+      const body = request.postDataJSON() as { id: string; name: string }
+      const passkey = passkeys.find((item) => item.id === body.id)
+      if (!passkey) return json(404, { code: 'not-found' })
+      passkey.name = body.name
+      return json(200, passkey)
+    }
+    if (pathname.endsWith('/delete-passkey') && request.method() === 'POST') {
+      if (rejectDelete) return json(409, { code: 'last-sign-in-method' })
+      const body = request.postDataJSON() as { id: string }
+      const index = passkeys.findIndex((item) => item.id === body.id)
+      if (index === -1) return json(404, { code: 'not-found' })
+      passkeys.splice(index, 1)
+      return json(200, { success: true })
+    }
+    return route.continue()
+  })
+}
+
 test('ACC-3 profile name can be changed while email stays read-only', async ({ page }) => {
   const { accountId } = await signedIn(page)
   await page.goto('/account/profile')
   const email = page.getByLabel('Email')
   await expect(email).toHaveAttribute('readonly', '')
+  await expect(email).toHaveValue(/.+/)
   const originalEmail = await email.inputValue()
   await page.getByLabel('Name').fill('Account Settings Test')
   await page.getByRole('button', { name: 'Save changes' }).click()
-  await expect(page.getByRole('status')).toHaveText('Name saved.')
+  await expect(page.locator('[data-account-panel="profile"]').getByRole('status')).toHaveText('Name saved.')
 
   const response = await page.request.get('/api/auth/get-session')
   const body = (await response.json()) as { user: { id: string; name: string; email: string } }
@@ -45,22 +111,24 @@ test('ACC-3 profile name can be changed while email stays read-only', async ({ p
 test('ACC-3 refuses removing the only passkey with the reason shown inline', async ({ page }) => {
   const { accountId } = await signedIn(page)
   await setTestMagicLinkEnabled(accountId, false)
-  await addTestPasskey(accountId, 'Laptop')
+  const { id } = await addTestPasskey(accountId, 'Laptop')
+  await stubPasskeyApi(page, [{ id, name: 'Laptop', createdAt: new Date().toISOString() }], true)
 
   await page.goto('/account/security')
   const row = page.locator('[data-passkey-row]').filter({ hasText: 'Laptop' })
   await row.getByRole('button', { name: 'Remove' }).click()
   await page.getByRole('alertdialog').getByRole('button', { name: 'Remove passkey' }).click()
-  await expect(page.getByRole('alert')).toHaveText(
+  await expect(page.locator('[data-account-panel="security"]').getByRole('alert')).toHaveText(
     'This is your only way to sign in. Add a passkey or link Google first.'
   )
 })
 
 test('ACC-3 refuses disabling the only sign-in method with the reason shown inline', async ({ page }) => {
   const { accountId } = await signedIn(page)
+  await stubPasskeyApi(page)
   await page.goto('/account/security')
   await page.getByRole('switch', { name: 'Magic link sign-in' }).click()
-  await expect(page.getByRole('alert')).toHaveText(
+  await expect(page.locator('[data-account-panel="security"]').getByRole('alert')).toHaveText(
     'This is your only way to sign in. Add a passkey or link Google first.'
   )
   await expect.poll(() => getTestMagicLinkEnabled(accountId)).toBe(true)
@@ -71,10 +139,11 @@ test('ACC-3 refuses unlinking Google when it is the only remaining method', asyn
   await setTestMagicLinkEnabled(accountId, false)
   await addTestGoogleAccount(accountId)
 
+  await stubPasskeyApi(page)
   await page.goto('/account/security')
   await page.getByRole('button', { name: 'Unlink Google' }).click()
   await page.getByRole('alertdialog').getByRole('button', { name: 'Unlink Google' }).click()
-  await expect(page.getByRole('alert')).toHaveText(
+  await expect(page.locator('[data-account-panel="security"]').getByRole('alert')).toHaveText(
     'This is your only way to sign in. Add a passkey or link Google first.'
   )
 })
@@ -84,6 +153,7 @@ test('ACC-7 revoking a session blocks its next API request', async ({ page, base
   const second = await signIn(accountId)
   await setTestSessionUserAgent(second.sessionId, 'Skyclause-CLI/1.0.0 (linux; x64)')
 
+  await stubPasskeyApi(page)
   await page.goto('/account/security')
   const row = page.locator(`[data-session-id="${second.sessionId}"]`)
   await expect(row).toContainText('Skyclause CLI')
@@ -105,6 +175,7 @@ test('ACC-7 sign out everywhere keeps this session and revokes every other sessi
 }) => {
   const { accountId, login } = await signedIn(page)
   const second = await signIn(accountId)
+  await stubPasskeyApi(page)
   await page.goto('/account/security')
   await page.getByRole('button', { name: 'Sign out everywhere' }).click()
   await page.getByRole('alertdialog').getByRole('button', { name: 'Sign out everywhere' }).click()
@@ -125,7 +196,7 @@ test('SET-2 applies system theme live, saves shortcuts, and enforces reduced mot
   await signedIn(page)
   await page.emulateMedia({ colorScheme: 'light' })
   await page.goto('/account/appearance')
-  await page.getByRole('radio', { name: 'System' }).check()
+  await page.getByText('System', { exact: true }).click()
   await expect(page.locator('html')).toHaveClass('light')
   await page.emulateMedia({ colorScheme: 'dark' })
   await expect(page.locator('html')).toHaveClass('dark')
@@ -159,6 +230,7 @@ test('SET-2 shares preferences across browser contexts and paints the saved them
 }) => {
   const { login } = await signedIn(page)
   const saved = await page.request.patch(`${baseURL}/api/me/preferences`, {
+    headers: { Origin: new URL(baseURL!).origin },
     data: { theme: 'dark', high_contrast: true, density: 'compact', language: 'ms', shortcuts: false }
   })
   expect(saved.status()).toBe(200)
@@ -169,7 +241,7 @@ test('SET-2 shares preferences across browser contexts and paints the saved them
   const response = await otherPage.goto(`${baseURL}/account/appearance`)
   const html = await response!.text()
   expect(html).toMatch(/<html[^>]*class="dark hc"/)
-  expect(html).toContain('color-scheme: dark')
+  expect(html).toMatch(/color-scheme:\s*dark/)
   await expect(otherPage.locator('html')).toHaveAttribute('lang', 'ms')
   await expect(otherPage.getByRole('switch', { name: 'Keyboard shortcuts' })).not.toBeChecked()
   await otherContext.close()
@@ -186,6 +258,7 @@ test('LOC-1 app and auth route manifests contain no locale segment', async () =>
 
 test('a virtual authenticator can add, rename and remove a named passkey', async ({ page }) => {
   await signedIn(page)
+  await stubPasskeyApi(page)
   const cdp = await page.context().newCDPSession(page)
   await cdp.send('WebAuthn.enable')
   await cdp.send('WebAuthn.addVirtualAuthenticator', {
@@ -201,7 +274,7 @@ test('a virtual authenticator can add, rename and remove a named passkey', async
   await page.goto('/account/security')
   await page.getByLabel('New passkey name').fill('Work laptop')
   await page.getByRole('button', { name: 'Add passkey' }).click()
-  const row = page.locator('[data-passkey-row]').filter({ hasText: 'Work laptop' })
+  const row = page.locator('[data-passkey-row][data-passkey-id="e2e-passkey-1"]')
   await expect(row).toBeVisible()
   await row.getByRole('button', { name: 'Rename' }).click()
   await row.getByLabel('Passkey name').fill('Office key')

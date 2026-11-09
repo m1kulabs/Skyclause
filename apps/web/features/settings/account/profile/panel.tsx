@@ -79,6 +79,7 @@ export default function Panel() {
           <Label htmlFor="account-name">{t('account-settings.profile.name')}</Label>
           <Input
             id="account-name"
+            name="name"
             autoComplete="name"
             value={name}
             onChange={(event) => {
@@ -91,7 +92,16 @@ export default function Panel() {
         </div>
         <div className="grid gap-2">
           <Label htmlFor="account-email">{t('account-settings.profile.email')}</Label>
-          <Input id="account-email" type="email" autoComplete="email" value={email} readOnly disabled={loading} />
+          <Input
+            id="account-email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            spellCheck={false}
+            value={email}
+            readOnly
+            disabled={loading}
+          />
           <p className={styles.help}>{t('account-settings.profile.emailReadonly')}</p>
         </div>
         <div>

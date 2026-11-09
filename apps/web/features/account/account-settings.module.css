@@ -129,8 +129,19 @@
 }
 
 .previewStatus {
-  color: var(--selection);
+  color: #b11226;
   font-weight: 600;
+}
+
+.preview[data-preview-theme='dark'] .previewStatus,
+.preview[data-preview-theme='system'] .previewStatus {
+  color: #f87171;
+}
+
+@media (prefers-color-scheme: light) {
+  .preview[data-preview-theme='system'] .previewStatus {
+    color: #b11226;
+  }
 }
 
 .previewRain::before {

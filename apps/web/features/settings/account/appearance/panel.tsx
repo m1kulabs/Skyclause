@@ -119,6 +119,8 @@ export default function Panel() {
           </div>
           <select
             id="account-language"
+            name="language"
+            autoComplete="off"
             className="min-h-11 rounded-lg border border-input bg-background px-3 text-[13px]"
             value={preferences.language}
             disabled={saving}
