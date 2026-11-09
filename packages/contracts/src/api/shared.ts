@@ -241,12 +241,13 @@ export const Source = z.object({
   licence_label: z.string()
 })
 export type Source = z.infer<typeof Source>
+// `poll_id` is null for a device reading without a poll and `unit` for a unitless record, as `reading` stores them.
 export const Reading = z.object({
   id: z.string(),
   source_id: z.string(),
-  poll_id: z.string(),
+  poll_id: z.string().nullable(),
   metric: z.string(),
-  unit: z.string(),
+  unit: z.string().nullable(),
   observed_at: Instant,
   received_at: Instant,
   value: z.number().nullable(),

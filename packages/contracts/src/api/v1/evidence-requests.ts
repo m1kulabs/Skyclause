@@ -8,7 +8,7 @@ import {
 } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { CallView, EvidenceRequest, Grade, Instant, LedgerEntry, Reading, Source } from '../shared'
+import { CallView, EvidenceRequest, Grade, Instant, LedgerEntry, Page, PageQuery, Reading, Source } from '../shared'
 
 // LED-5: each quoted reading, warning and retained frame keeps its stored reading ID.
 const EvidencePack = z.object({
@@ -36,9 +36,7 @@ const EvidencePack = z.object({
   ),
   grades: z.array(Grade),
   ledger: z.array(LedgerEntry.extend({ body: JsonValue })),
-  frames: z.array(z.object({ reading_id: z.string(), url: z.url(), captured_at: Instant })),
-  // #159: readings in the span that `Reading` can't carry (no unit or no poll), named so none is left out unseen.
-  omitted_reading_ids: z.array(z.string()).optional()
+  frames: z.array(z.object({ reading_id: z.string(), url: z.url(), captured_at: Instant }))
 })
 const EvidenceRequestView = EvidenceRequest.extend({ pack: EvidencePack.nullable() })
 // Requester, via, organisation and leaves_org are resolved from the principal, never supplied by a body.
@@ -86,4 +84,18 @@ export const getEvidenceRequest = createRoute({
   x: { owner: 'c-evidence', statement: 'evidence.request', idempotent: false }
 })
 
-export const routes = [createEvidenceRequest, getEvidenceRequest] as const
+// The project's requests, newest first, without their packs; guests and share links see only their own.
+export const listEvidenceRequests = createRoute({
+  method: 'get',
+  path: '/v1/projects/{id}/evidence-requests',
+  operationId: 'listEvidenceRequests',
+  tags: ['evidence-requests'],
+  request: { headers: OrganizationHeaders, params: IdParams, query: PageQuery },
+  responses: {
+    ...ProblemResponses,
+    200: { description: 'Success', content: { 'application/json': { schema: Page(EvidenceRequest) } } }
+  },
+  x: { owner: 'c-evidence', statement: 'evidence.request', idempotent: false }
+})
+
+export const routes = [listEvidenceRequests, createEvidenceRequest, getEvidenceRequest] as const

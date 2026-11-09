@@ -9780,13 +9780,19 @@
                                 "type": "string"
                               },
                               "poll_id": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "metric": {
                                 "type": "string"
                               },
                               "unit": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "observed_at": {
                                 "type": "string",
@@ -21586,6 +21592,374 @@
       }
     },
     "/v1/projects/{id}/evidence-requests": {
+      "get": {
+        "operationId": "listEvidenceRequests",
+        "tags": [
+          "evidence-requests"
+        ],
+        "x-skyclause": {
+          "owner": "c-evidence",
+          "statement": "evidence.request",
+          "idempotent": false
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Required for sessions; organisation slug or ID"
+            },
+            "required": false,
+            "description": "Required for sessions; organisation slug or ID",
+            "name": "Skyclause-Organization",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "project_id": {
+                            "type": "string"
+                          },
+                          "span": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "to": {
+                                "type": "string",
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          },
+                          "requester": {
+                            "type": "string"
+                          },
+                          "call_id": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "via": {
+                            "type": "string",
+                            "enum": [
+                              "email",
+                              "app",
+                              "api",
+                              "mcp"
+                            ]
+                          },
+                          "leaves_org": {
+                            "type": "boolean"
+                          },
+                          "reply_channel": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "enum": [
+                              "email",
+                              "in_app",
+                              null
+                            ]
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "received_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "drafted_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "approved_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "replied_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "project_id",
+                          "span",
+                          "requester",
+                          "call_id",
+                          "via",
+                          "leaves_org",
+                          "reply_channel",
+                          "status",
+                          "received_at",
+                          "drafted_at",
+                          "approved_at",
+                          "replied_at"
+                        ]
+                      }
+                    },
+                    "next_cursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "next_cursor"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "organization-required or validation-failed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "insufficient-scope: permission denied.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found, including a row in another organisation.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate-limited or budget-exhausted.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "pattern": "^\\d+$",
+                  "description": "Retry delay in seconds"
+                },
+                "required": true,
+                "description": "Retry delay in seconds"
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "operationId": "createEvidenceRequest",
         "tags": [
@@ -21783,13 +22157,19 @@
                                 "type": "string"
                               },
                               "poll_id": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "metric": {
                                 "type": "string"
                               },
                               "unit": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "observed_at": {
                                 "type": "string",
@@ -22661,12 +23041,6 @@
                               "url",
                               "captured_at"
                             ]
-                          }
-                        },
-                        "omitted_reading_ids": {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
                           }
                         }
                       },
@@ -23078,13 +23452,19 @@
                                 "type": "string"
                               },
                               "poll_id": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "metric": {
                                 "type": "string"
                               },
                               "unit": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "observed_at": {
                                 "type": "string",
@@ -23956,12 +24336,6 @@
                               "url",
                               "captured_at"
                             ]
-                          }
-                        },
-                        "omitted_reading_ids": {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
                           }
                         }
                       },
@@ -41811,13 +42185,19 @@
                           "type": "string"
                         },
                         "poll_id": {
-                          "type": "string"
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "metric": {
                           "type": "string"
                         },
                         "unit": {
-                          "type": "string"
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "observed_at": {
                           "type": "string",
@@ -42366,13 +42746,19 @@
                                 "type": "string"
                               },
                               "poll_id": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "metric": {
                                 "type": "string"
                               },
                               "unit": {
-                                "type": "string"
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "observed_at": {
                                 "type": "string",
@@ -43350,13 +43736,19 @@
                             "type": "string"
                           },
                           "poll_id": {
-                            "type": "string"
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "metric": {
                             "type": "string"
                           },
                           "unit": {
-                            "type": "string"
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "observed_at": {
                             "type": "string",

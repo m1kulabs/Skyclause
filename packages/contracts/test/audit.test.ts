@@ -34,7 +34,9 @@ test('lists each documented audit action once', () => {
     'flag.changed',
     'mcp.tool_called',
     'bundle.approve_denied',
-    'source.probation_passed'
+    'source.probation_passed',
+    'evidence_reply.approved',
+    'evidence_request.dropped'
   ])
   expect(new Set(AUDIT_ACTIONS).size).toBe(AUDIT_ACTIONS.length)
 })
