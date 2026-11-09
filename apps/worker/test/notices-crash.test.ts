@@ -37,11 +37,11 @@ test('a crash after the provider call repeats one email under the same key, once
   const id = made.subscribers[0]!.noticeId
   expect(await noticeRow(id)).toMatchObject({ status: 'queued', attempts: 1 })
 
-  clock.now = at('2026-11-02T07:15:00Z') // the lease still holds
+  clock.now = at('2026-11-02T07:20:00Z') // the lease still holds
   await sweep()
   expect(box.sent).toHaveLength(1)
 
-  clock.now = at('2026-11-02T07:21:00Z') // 10 minutes after the claim, the next batch retries it
+  clock.now = at('2026-11-02T07:26:00Z') // the lease lapsed 15 minutes after the claim: the next batch retries it
   await sweep()
   await sweep()
   expect(box.sent.map((m) => m.idempotencyKey)).toEqual([

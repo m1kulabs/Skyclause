@@ -13,8 +13,11 @@ import { bundle, call, member, night, notice, project, source, subscriber, suppr
 // outside any transaction, and the record commits its answer; a send that crashed in between is retried once its
 // lease lapses, so at most one email repeats, under the same idempotency key.
 
-/** How long a claimed send holds its notice; a crashed send is retried by the first sweep after it lapses. */
-export const NOTICE_LEASE_MS = 10 * 60_000
+/**
+ * How long a claimed send holds its notice: longer than the worker's 600 s request timeout, so a send still in flight
+ * never loses it; a crashed send is retried by the first sweep after it lapses.
+ */
+export const NOTICE_LEASE_MS = 15 * 60_000
 /** Transport errors retried after the first try before a notice is `failed`. */
 export const NOTICE_RETRIES = 5
 
