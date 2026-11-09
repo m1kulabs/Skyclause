@@ -31,7 +31,10 @@ export const AUDIT_ACTIONS = [
   'flag.changed',
   'mcp.tool_called',
   'bundle.approve_denied',
-  'source.probation_passed'
+  'source.probation_passed',
+  // #159 c-evidence: an Approver's approval of a reply leaving the organisation; an emailed request dropped unanswered.
+  'evidence_reply.approved',
+  'evidence_request.dropped'
 ] as const
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number]

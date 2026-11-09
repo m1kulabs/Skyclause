@@ -120,6 +120,7 @@
         "@skyclause/contracts": "workspace:*",
         "@skyclause/db": "workspace:*",
         "@skyclause/delivery": "workspace:*",
+        "@skyclause/i18n": "workspace:*",
         "drizzle-orm": "0.45.4",
         "hono": "4.13.16",
         "zod": "4.6.7",

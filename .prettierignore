@@ -11,3 +11,4 @@ packages/api/openapi.json
 packages/agent/test/fixtures/rainfall-graph-*.json
 packages/agent/test/fixtures/weather-warning-*.json
 packages/delivery/test/fixtures/rainfall-graph-*.json
+packages/db/test/fixtures/rainfall-graph-*.json

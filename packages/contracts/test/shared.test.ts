@@ -30,6 +30,25 @@ const input = {
 }
 
 describe('shared wire schemas', () => {
+  it('Reading carries a null unit or poll as stored: device rows without a poll, unitless records (#159)', () => {
+    const reading = {
+      id: 'r',
+      source_id: 's',
+      poll_id: null,
+      metric: 'warning',
+      unit: null,
+      observed_at: at,
+      received_at: at,
+      value: null,
+      value_text: 'text',
+      value_json: null,
+      device_time: null,
+      item_key: null,
+      revision: '0'
+    }
+    expect(shared.Reading.safeParse(reading).success).toBe(true)
+  })
+
   it('Page is a typed schema factory with an explicit nullable next_cursor', () => {
     const schema = Page(z.number())
     expectTypeOf<z.infer<typeof schema>>().toEqualTypeOf<shared.Page<number>>()

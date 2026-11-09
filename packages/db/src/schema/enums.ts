@@ -124,6 +124,7 @@ export const consentForm = pgEnum('consent_form', ['subscribe_link', 'import', '
 export const crowdReplyKind = pgEnum('crowd_reply_kind', ['keep', 'shift', 'shuttle'])
 export const evidenceVia = pgEnum('evidence_via', ['email', 'app', 'api', 'mcp'])
 export const replyChannel = pgEnum('reply_channel', ['email', 'in_app'])
+export const evidenceRequesterKind = pgEnum('evidence_requester_kind', ['member', 'guest', 'share_link', 'subscriber'])
 export const projectChannelKind = pgEnum('project_channel_kind', ['email', 'ics', 'webhook', 'in_app'])
 export const notificationKind = pgEnum('notification_kind', [
   'needs_review',

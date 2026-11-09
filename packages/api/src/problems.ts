@@ -4,8 +4,8 @@ import { HTTPException } from 'hono/http-exception'
 import type { ZodError } from 'zod'
 
 // TRD "API conventions": RFC 9457 problems. PROBLEM_SLUGS has no slug for a missing credential, an unknown route, a
-// key still being processed or a server fault, so these four are API-local.
-export type HttpSlug = 'unauthenticated' | 'not-found' | 'idempotency-in-progress' | 'internal-error'
+// key still being processed, a write the resource's state no longer allows or a server fault, so these are API-local.
+export type HttpSlug = 'unauthenticated' | 'not-found' | 'idempotency-in-progress' | 'conflict' | 'internal-error'
 export type Slug = ProblemSlug | HttpSlug
 
 export const problemType = (slug: Slug) => `https://docs.skyclause.m1ku.tech/problems/${slug}`

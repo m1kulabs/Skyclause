@@ -8,6 +8,7 @@
     "./format": "./src/format.ts",
     "./brand": "./src/brand.ts",
     "./subscriber-emails": "./src/subscriber-emails.ts",
-    "./notices": "./src/notices.ts"
+    "./notices": "./src/notices.ts",
+    "./evidence": "./src/evidence.ts"
   }
 }

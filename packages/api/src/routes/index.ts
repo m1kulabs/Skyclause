@@ -4,6 +4,7 @@ import type { Context, MiddlewareHandler } from 'hono'
 import type { ApiEnv } from '../context'
 import { bundleHandlers } from './bundles'
 import { channelHandlers } from './channels'
+import { evidenceHandlers } from './evidence'
 import { ledgerHandlers } from './ledger'
 import { subscriberHandlers } from './subscribers'
 
@@ -32,5 +33,6 @@ export const HANDLERS: Handlers = {
   ...channelHandlers, // c-notice-templates
   ...ledgerHandlers, // c-ledger-chain
   ...subscriberHandlers,
-  ...bundleHandlers // c-bundle-lifecycle
+  ...bundleHandlers, // c-bundle-lifecycle
+  ...evidenceHandlers // c-evidence
 }

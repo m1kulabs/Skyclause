@@ -8,7 +8,7 @@ import {
 } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { CallView, EvidenceRequest, Grade, Instant, LedgerEntry, Reading, Source } from '../shared'
+import { CallView, EvidenceRequest, Grade, Instant, LedgerEntry, Page, PageQuery, Reading, Source } from '../shared'
 
 // LED-5: each quoted reading, warning and retained frame keeps its stored reading ID.
 const EvidencePack = z.object({
@@ -84,4 +84,18 @@ export const getEvidenceRequest = createRoute({
   x: { owner: 'c-evidence', statement: 'evidence.request', idempotent: false }
 })
 
-export const routes = [createEvidenceRequest, getEvidenceRequest] as const
+// The project's requests, newest first, without their packs; guests and share links see only their own.
+export const listEvidenceRequests = createRoute({
+  method: 'get',
+  path: '/v1/projects/{id}/evidence-requests',
+  operationId: 'listEvidenceRequests',
+  tags: ['evidence-requests'],
+  request: { headers: OrganizationHeaders, params: IdParams, query: PageQuery },
+  responses: {
+    ...ProblemResponses,
+    200: { description: 'Success', content: { 'application/json': { schema: Page(EvidenceRequest) } } }
+  },
+  x: { owner: 'c-evidence', statement: 'evidence.request', idempotent: false }
+})
+
+export const routes = [listEvidenceRequests, createEvidenceRequest, getEvidenceRequest] as const
