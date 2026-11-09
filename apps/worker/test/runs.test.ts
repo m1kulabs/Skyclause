@@ -470,4 +470,20 @@ describe('the runs-requested handler', () => {
     await deliver(d.ports, runId)
     expect(await runRow(runId)).toMatchObject({ status: 'drafted' })
   })
+
+  test('candidates are confirmed subscribers of the window who haven’t unsubscribed (NTC-9)', async () => {
+    const m = await made()
+    const subscriber = (o: { confirmedAt?: Date; unsubscribedAt?: Date }) =>
+      inOrg((tx) => makeSubscriber(tx, { projectId: m.projectId, windowIds: [m.windowId], ...o }))
+    const confirmed = new Date('2026-10-01T00:00:00Z')
+    await subscriber({ confirmedAt: confirmed, unsubscribedAt: new Date('2026-10-20T00:00:00Z') })
+    await subscriber({}) // never confirmed
+    const { runId } = await crossingRun(m)
+    const d = doubles(m, { keyId: m.keyId, replies: [stormReply(m.windowId, [m.subscriberId])] })
+    await deliver(d.ports, runId)
+    const draft = (await stepsOf(runId)).find((s) => s.step === 'draft')!.output as {
+      input: { candidates: Record<string, Array<{ id: string }>> }
+    }
+    expect(draft.input.candidates[m.windowId]!.map((c) => c.id)).toEqual([m.subscriberId])
+  })
 })

@@ -150,7 +150,7 @@ async function yesterdayGrades(tx: Tx, r: RunRow, now: Date, timeZone: string) {
   return rows.map((row) => ({ window_id: (row.windowId ?? row.nightId)!, outcome: row.outcome }))
 }
 
-/** Confirmed subscribers of each window, as opaque IDs with role and language (CAL-3). */
+/** Confirmed subscribers of each window who haven't unsubscribed (NTC-9), as opaque IDs with role and language. */
 async function candidates(tx: Tx, r: RunRow, windows: Window[]) {
   const out: AgentInput['candidates'] = Object.fromEntries(windows.map((w) => [w.id, []]))
   if (!windows.length) return out
@@ -166,6 +166,7 @@ async function candidates(tx: Tx, r: RunRow, windows: Window[]) {
       and(
         eq(subscriber.projectId, r.projectId),
         isNotNull(subscriber.confirmedAt),
+        isNull(subscriber.unsubscribedAt),
         arrayOverlaps(
           subscriber.windowIds,
           windows.map((w) => w.id)
