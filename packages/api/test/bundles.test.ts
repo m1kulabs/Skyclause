@@ -229,11 +229,13 @@ describe('GET /v1/projects/{id}/bundles and /calls', () => {
     expect(next).toEqual({ data: [expect.objectContaining({ id: made.normal.bundleId })], next_cursor: null })
   })
 
-  test('calls come newest drafted first and filter by mode, state and local drafting date', async () => {
+  test('calls come newest drafted first and filter by window, mode, state and local drafting date', async () => {
     const path = `/v1/projects/${made.scene.projectId}/calls`
     const all = await json<Page<CallView>>(read(as(), path))
     expect(all.data).toHaveLength(4)
     expect(all.data[0]!.drafted_at).toBe('2026-11-02T07:10:00Z')
+    const byWindow = await json<Page<CallView>>(read(as(), path, { query: { window_id: made.windows[0] } }))
+    expect(byWindow.data.map((c) => c.id)).toEqual([made.review.callIds[0], made.normal.callIds[0]])
     const disrupted = await json<Page<CallView>>(read(as(), path, { query: { mode: 'commute_disruption' } }))
     expect(disrupted.data.map((c) => c.id).sort()).toEqual([...made.review.callIds].sort())
     const local = await json<Page<CallView>>(read(as(), path, { query: { from: '2026-11-02', to: '2026-11-02' } }))

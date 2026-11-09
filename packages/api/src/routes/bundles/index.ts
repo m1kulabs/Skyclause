@@ -81,8 +81,8 @@ export const bundleHandlers: {
   listProjectCalls: {
     handler: async (c) => {
       const { id } = c.req.valid('param')
-      const query = c.req.valid('query')
-      return c.json(await inTenant(c, (ctx) => listProjectCalls(ctx, { projectId: id, ...query })), 200)
+      const { window_id: windowId, ...query } = c.req.valid('query')
+      return c.json(await inTenant(c, (ctx) => listProjectCalls(ctx, { projectId: id, windowId, ...query })), 200)
     }
   },
   getCall: {
