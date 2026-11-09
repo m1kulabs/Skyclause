@@ -2,7 +2,8 @@ import { sql } from 'drizzle-orm'
 import { bigint, boolean, check, doublePrecision, integer, jsonb, text, unique, uuid } from 'drizzle-orm/pg-core'
 import { sheetVersion } from './clauses'
 import { id, instant, orgKey, sameOrg, tenantTable, timestamps } from './columns'
-import { evidenceVia, gradeOutcome, mode, replyChannel } from './enums'
+import { subscriber } from './delivery'
+import { evidenceRequesterKind, evidenceVia, gradeOutcome, mode, replyChannel } from './enums'
 import { pack, project } from './project'
 import { call } from './runs'
 import { night, window } from './windows'
@@ -53,7 +54,11 @@ export const reviewItem = tenantTable(
   (self) => [sameOrg('review_item_grade', self, self.gradeId, grade, true)]
 )
 
-/** An evidence request (LED-6); `span` is its time range. */
+/**
+ * An evidence request (LED-6); `span` is its time range. `c-evidence` (#159) adds who asked (`requester_kind` with
+ * `account_id` or `subscriber_id`; `requester` holds that ID, or the share link's), the SES `message_id` of an emailed
+ * request (at most one request per message), and the pack assembled at drafting with its `canonicalHash`.
+ */
 export const evidenceRequest = tenantTable(
   'evidence_request',
   {
@@ -62,11 +67,17 @@ export const evidenceRequest = tenantTable(
     spanFrom: instant('span_from').notNull(),
     spanTo: instant('span_to').notNull(),
     requester: text('requester').notNull(),
+    requesterKind: evidenceRequesterKind('requester_kind').notNull(),
+    accountId: uuid('account_id'),
+    subscriberId: uuid('subscriber_id'),
+    messageId: text('message_id').unique(),
     callId: uuid('call_id'),
     via: evidenceVia('via').notNull(),
     leavesOrg: boolean('leaves_org').notNull().default(false),
     replyChannel: replyChannel('reply_channel'),
     status: text('status').notNull().default('received'),
+    pack: jsonb('pack'),
+    packHash: text('pack_hash'),
     receivedAt: instant('received_at').notNull().defaultNow(),
     draftedAt: instant('drafted_at'),
     approvedAt: instant('approved_at'),
@@ -76,7 +87,18 @@ export const evidenceRequest = tenantTable(
   (self) => [
     orgKey('evidence_request', self),
     sameOrg('evidence_request_project', self, self.projectId, project, true),
-    sameOrg('evidence_request_call', self, self.callId, call)
+    sameOrg('evidence_request_call', self, self.callId, call),
+    sameOrg('evidence_request_subscriber', self, self.subscriberId, subscriber, true),
+    check(
+      'evidence_request_subscriber_kind',
+      sql`(${self.requesterKind} = 'subscriber') = (${self.subscriberId} IS NOT NULL)`
+    ),
+    // LED-6: received ≤ drafted ≤ approved ≤ replied, pairwise, so a step that hasn't happened or doesn't apply (null)
+    // is skipped; approval and reply need a draft.
+    check(
+      'evidence_request_times',
+      sql`${self.draftedAt} >= ${self.receivedAt} AND ${self.approvedAt} >= ${self.draftedAt} AND ${self.repliedAt} >= ${self.receivedAt} AND ${self.repliedAt} >= ${self.draftedAt} AND ${self.repliedAt} >= ${self.approvedAt} AND (${self.approvedAt} IS NULL OR ${self.draftedAt} IS NOT NULL) AND (${self.repliedAt} IS NULL OR ${self.draftedAt} IS NOT NULL)`
+    )
   ]
 )
 
