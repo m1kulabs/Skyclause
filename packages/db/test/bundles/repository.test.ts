@@ -5,6 +5,8 @@ import { beforeAll, describe, expect, test } from 'vitest'
 import {
   approveGuard,
   createBundle,
+  dismissMissing,
+  draftMissingCall,
   expireCall,
   markSending,
   reviewHash,
@@ -89,7 +91,7 @@ async function draft(
   tx: Tx,
   scene: Scene,
   calls: Parameters<typeof callDraft>[0][],
-  o: { draftOnly?: boolean; now?: Date } = {}
+  o: { draftOnly?: boolean; now?: Date; missing?: Array<{ windowId: string } | { nightId: string }> } = {}
 ) {
   const r = await runOf(tx, scene, at('2026-11-02T07:05:00Z'))
   return createBundle(tx, {
@@ -97,9 +99,21 @@ async function draft(
     pack: scene.pack,
     draftOnly: o.draftOnly ?? false,
     calls: calls.map(callDraft),
+    missing: o.missing?.map(missingDraft),
     triggeredAt: r.triggeredAt,
     now: o.now ?? DRAFTED
   })
+}
+
+/** #499: a window or night whose engine verdict is Storm confirmed with no call in the draft. */
+function missingDraft(scope: { windowId: string } | { nightId: string }) {
+  const { shadow } = callDraft({ ...scope, ...storm })
+  return {
+    windowId: 'windowId' in scope ? scope.windowId : null,
+    nightId: 'nightId' in scope ? scope.nightId : null,
+    shadow,
+    recipients: ['subscriber-1']
+  }
 }
 
 const storm = {
@@ -467,4 +481,134 @@ test('startOfLocalDay is the instant local midnight starts a date in the project
   expect(await inOrg((tx) => startOfLocalDay(tx, '2026-11-02', 'Asia/Kuala_Lumpur'))).toEqual(
     at('2026-11-01T16:00:00Z')
   )
+})
+
+describe('missing calls (#499)', () => {
+  test('a run with no calls but a missing one waits in Needs review with its SLA, and counts it as a disagreement', async () => {
+    const { scene, first } = await inOrg((tx) => twoWindows(tx, { slaS: 300 }))
+    const made = await inOrg((tx) => draft(tx, scene, [], { missing: [{ windowId: first }] }))
+    expect(made).toMatchObject({ state: 'needs_review', callIds: [], slaDueAt: at('2026-11-02T07:15:00Z') })
+    const row = await inOrg((tx) => rowOf(tx, made.bundleId))
+    expect(row).toMatchObject({ state: 'needs_review', needsReviewAt: DRAFTED })
+    expect(row.missing).toEqual([{ ...missingDraft({ windowId: first }), resolution: null }])
+    const events = await eventsOf(scene.projectId)
+    expect(events.map((e) => [e.type, e.data.call_ids])).toEqual([
+      ['bundle.drafted', []],
+      ['bundle.needs_review', []]
+    ])
+    expect(await analyticsOf(scene.projectId)).toEqual([
+      { name: 'bundle_drafted', props: { pack: 'sky', calls: 0, non_normal: 0, disagreements: 1, no_call: false } }
+    ])
+  })
+
+  test('an all-Normal draft with a missing call needs review; a disagreeing call and the missing one both count', async () => {
+    const { scene, first, second } = await inOrg((tx) => twoWindows(tx))
+    const made = await inOrg((tx) =>
+      draft(tx, scene, [{ windowId: first, agrees: false }], { missing: [{ windowId: second }] })
+    )
+    expect(made.state).toBe('needs_review')
+    expect((await analyticsOf(scene.projectId))[0]!.props).toMatchObject({ calls: 1, disagreements: 2 })
+  })
+
+  test('a guest window’s draft (D23) still closes, keeping its missing call for the record', async () => {
+    const { scene, first } = await inOrg((tx) => twoWindows(tx))
+    const made = await inOrg((tx) => draft(tx, scene, [], { draftOnly: true, missing: [{ windowId: first }] }))
+    expect(made.state).toBe('closed')
+    expect((await inOrg((tx) => rowOf(tx, made.bundleId))).missing).toHaveLength(1)
+    expect((await eventsOf(scene.projectId)).map((e) => e.type)).toEqual(['bundle.drafted'])
+  })
+
+  test('a missing night is stored as a night; one outside the run’s project is refused', async () => {
+    const { scene } = await inOrg((tx) => twoWindows(tx))
+    const nightId = await inOrg(
+      async (tx) => (await makeNight(tx, { projectId: scene.projectId, arrivalStart: at('2026-11-14T10:00:00Z') })).id
+    )
+    const made = await inOrg((tx) => draft(tx, scene, [], { missing: [{ nightId }] }))
+    expect((await inOrg((tx) => rowOf(tx, made.bundleId))).missing).toMatchObject([{ windowId: null, nightId }])
+    await expect(inOrg((tx) => draft(tx, scene, [], { missing: [{ windowId: randomUUID() }] }))).rejects.toThrow(
+      /no window or night/
+    )
+  })
+
+  test('a newer bundle with a call for the window supersedes a bundle holding only its missing call (CAL-7)', async () => {
+    const { scene, first } = await inOrg((tx) => twoWindows(tx))
+    const older = await inOrg((tx) => draft(tx, scene, [], { missing: [{ windowId: first }] }))
+    const newer = await inOrg((tx) =>
+      draft(tx, scene, [{ windowId: first, ...storm }], { now: at('2026-11-02T07:12:00Z') })
+    )
+    const row = await inOrg((tx) => rowOf(tx, older.bundleId))
+    expect(row).toMatchObject({ state: 'superseded', supersededBy: newer.bundleId })
+    expect(row.missing).toMatchObject([
+      { resolution: { action: 'superseded', bundleId: newer.bundleId, at: '2026-11-02T07:12:00.000Z' } }
+    ])
+    expect((await eventsOf(scene.projectId)).filter((e) => e.type === 'bundle.superseded')).toHaveLength(1)
+  })
+
+  test('dismissMissing resolves the missing call with its reason and changes the review hash; twice is refused', async () => {
+    const { scene, first } = await inOrg((tx) => twoWindows(tx))
+    const made = await inOrg((tx) => draft(tx, scene, [], { missing: [{ windowId: first }] }))
+    const before = (await inOrg((tx) => rowOf(tx, made.bundleId))).reviewHash
+    const by = randomUUID()
+    const now = at('2026-11-02T07:11:00Z')
+    const dismissed = await inOrg((tx) =>
+      dismissMissing(tx, made.bundleId, { windowId: first }, { reason: 'Gauge fault', by }, now)
+    )
+    expect(dismissed.resolution).toEqual({ action: 'dismissed', reason: 'Gauge fault', by, at: now.toISOString() })
+    const row = await inOrg((tx) => rowOf(tx, made.bundleId))
+    expect(row.missing).toEqual([dismissed])
+    expect(row.reviewHash).not.toBe(before)
+    await expect(
+      inOrg((tx) => dismissMissing(tx, made.bundleId, { windowId: first }, { reason: 'Again', by }, now))
+    ).rejects.toThrow(/no unresolved missing call/)
+  })
+
+  test('draftMissingCall adds a drafted call for the window, expiring at its end for Storm confirmed (CAL-8)', async () => {
+    const { scene, first } = await inOrg((tx) => twoWindows(tx))
+    const made = await inOrg((tx) => draft(tx, scene, [], { missing: [{ windowId: first }] }))
+    const by = randomUUID()
+    const now = at('2026-11-02T07:11:00Z')
+    const drafted = await inOrg((tx) =>
+      draftMissingCall(tx, made.bundleId, callDraft({ windowId: first, ...storm, chosen: 'shadow' }), by, now)
+    )
+    if (!drafted.ok) throw new Error('the draft expired')
+    expect(drafted.call).toMatchObject({
+      bundleId: made.bundleId,
+      windowId: first,
+      state: 'drafted',
+      mode: 'commute_disruption',
+      chosen: 'shadow',
+      expiresAt: at('2026-11-02T07:30:00Z'),
+      triggeredAt: at('2026-11-02T07:05:00Z'),
+      draftedAt: now
+    })
+    const row = await inOrg((tx) => rowOf(tx, made.bundleId))
+    expect(row.missing).toMatchObject([
+      { resolution: { action: 'drafted', callId: drafted.call.id, by, at: now.toISOString() } }
+    ])
+    expect(row.reviewHash).toBe(await inOrg((tx) => reviewHash(tx, made.bundleId)))
+    // Decided, the bundle can be approved: nothing is left undecided or unresolved.
+    await inOrg((tx) =>
+      transition(
+        tx,
+        made.bundleId,
+        { bundle: 'approved', calls: { [drafted.call.id]: 'approved' }, approvedBy: by },
+        now
+      )
+    )
+    expect((await inOrg((tx) => rowOf(tx, made.bundleId))).state).toBe('approved')
+  })
+
+  test('draftMissingCall refuses a call already due, and the bundle refuses approval while a call is missing', async () => {
+    const { scene, first } = await inOrg((tx) => twoWindows(tx))
+    const made = await inOrg((tx) => draft(tx, scene, [], { missing: [{ windowId: first }] }))
+    const late = at('2026-11-02T07:30:00Z')
+    const drafted = await inOrg((tx) =>
+      draftMissingCall(tx, made.bundleId, callDraft({ windowId: first, ...storm }), randomUUID(), late)
+    )
+    expect(drafted).toEqual({ ok: false, expiresAt: late })
+    expect(await inOrg((tx) => callsOf(tx, made.bundleId))).toEqual([])
+    await expect(inOrg((tx) => transition(tx, made.bundleId, { bundle: 'approved' }, late))).rejects.toThrow(
+      /missing call unresolved/
+    )
+  })
 })

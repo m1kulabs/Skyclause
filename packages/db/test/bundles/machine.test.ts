@@ -6,10 +6,12 @@ import {
   closes,
   expireStep,
   expiresAt,
+  resolveStep,
   sendStep,
   supersedeStep,
   transitionStep,
-  type BundleSlot
+  type BundleSlot,
+  type MissingCall
 } from '../../src/bundles/machine'
 
 const at = (iso: string) => new Date(iso)
@@ -69,6 +71,12 @@ describe('closes (CAL-5, D23)', () => {
   test('a guest-window bundle closes draft-only whatever it proposes, and a bundle with no calls closes', () => {
     expect(closes([{ mode: 'commute_disruption', noCall: null }], true)).toBe(true)
     expect(closes([], false)).toBe(true)
+  })
+
+  test('a missing call (#499) needs review even with no calls or only Normal ones; a guest draft still closes', () => {
+    expect(closes([], false, 1)).toBe(false)
+    expect(closes([{ mode: 'normal', noCall: null }], false, 1)).toBe(false)
+    expect(closes([], true, 1)).toBe(true)
   })
 })
 
@@ -246,5 +254,77 @@ describe('transitionStep', () => {
     const next = transitionStep(review, { bundle: 'approved', calls: { a: 'approved', b: 'rejected' } })
     expect(next.state).toBe('approved')
     expect(next.calls.map((c) => c.state)).toEqual(['approved', 'rejected'])
+  })
+})
+
+/** A window's or night's fired engine verdict with no call in the draft (#499), unresolved unless given. */
+const missingCall = (scope: { windowId: string } | { nightId: string }, resolution: MissingCall['resolution'] = null) =>
+  ({
+    windowId: 'windowId' in scope ? scope.windowId : null,
+    nightId: 'nightId' in scope ? scope.nightId : null,
+    shadow: { mode: 'commute_disruption' },
+    recipients: ['s1'],
+    resolution
+  }) satisfies MissingCall
+
+describe('missing calls (#499)', () => {
+  const open: BundleSlot = {
+    id: 'b',
+    state: 'needs_review',
+    supersededBy: null,
+    calls: [call('a', 'drafted', '2026-11-02T07:30:00Z', 'w1')],
+    missing: [missingCall({ windowId: 'w2' })]
+  }
+  const at0730 = at('2026-11-02T07:30:00Z')
+
+  test('an unresolved missing call holds the bundle in review when its last call expires', () => {
+    const step = expireStep(open, 'a', at0730)
+    expect(step).toMatchObject({ outcome: 'expired', bundleExpired: false })
+    expect(step.bundle.state).toBe('needs_review')
+    const dismissed = resolveStep(open, { windowId: 'w2' }, { action: 'dismissed', reason: 'r', by: 'u', at: 'x' })
+    expect(expireStep(dismissed, 'a', at0730)).toMatchObject({ bundleExpired: true, bundle: { state: 'expired' } })
+  })
+
+  test('a bundle is approved only once every missing call is drafted or dismissed', () => {
+    expect(() => transitionStep(open, { bundle: 'approved', calls: { a: 'approved' } })).toThrow(/missing call.*w2/)
+    const resolved = resolveStep(open, { windowId: 'w2' }, { action: 'drafted', callId: 'c', by: 'u', at: 'x' })
+    expect(transitionStep(resolved, { bundle: 'approved', calls: { a: 'approved' } }).state).toBe('approved')
+  })
+
+  test('resolveStep resolves one unresolved missing call and refuses any other', () => {
+    const dismissal = { action: 'dismissed', reason: 'Storm passed', by: 'u', at: 'x' } as const
+    const step = resolveStep(open, { windowId: 'w2' }, dismissal)
+    expect(step.missing).toEqual([missingCall({ windowId: 'w2' }, dismissal)])
+    expect(open.missing![0]!.resolution).toBeNull()
+    expect(() => resolveStep(step, { windowId: 'w2' }, dismissal)).toThrow(/no unresolved missing call for w2/)
+    expect(() => resolveStep(open, { windowId: 'w1' }, dismissal)).toThrow(/no unresolved missing call for w1/)
+    expect(() => resolveStep({ ...open, state: 'expired' }, { windowId: 'w2' }, dismissal)).toThrow(
+      /isn't under review/
+    )
+  })
+
+  test('a newer bundle covering the window with a call or a missing call supersedes the missing call (CAL-7)', () => {
+    const onlyMissing: BundleSlot = { ...open, calls: [] }
+    const byCall = supersedeStep(onlyMissing, { id: 'new', calls: [{ id: 'n1', windowId: 'w2', nightId: null }] })
+    expect(byCall).toMatchObject({ supersededCallIds: [], bundleSuperseded: true })
+    expect(byCall.bundle).toMatchObject({ state: 'superseded', supersededBy: 'new' })
+    expect(byCall.bundle.missing![0]!.resolution).toMatchObject({ action: 'superseded', bundleId: 'new' })
+
+    const byMissing = supersedeStep(onlyMissing, { id: 'new', calls: [], missing: [{ windowId: 'w2', nightId: null }] })
+    expect(byMissing).toMatchObject({ bundleSuperseded: true, bundle: { state: 'superseded' } })
+
+    // The call for w1 stays open, so the bundle stays in review; a resolved missing call is left as it was.
+    const partly = supersedeStep(open, { id: 'new', calls: [{ id: 'n1', windowId: 'w2', nightId: null }] })
+    expect(partly).toMatchObject({ bundleSuperseded: false, bundle: { state: 'needs_review' } })
+    const dismissed = resolveStep(
+      onlyMissing,
+      { windowId: 'w2' },
+      { action: 'dismissed', reason: 'r', by: 'u', at: 'x' }
+    )
+    const untouched = supersedeStep(dismissed, { id: 'new', calls: [{ id: 'n1', windowId: 'w2', nightId: null }] })
+    expect(untouched).toMatchObject({ bundleSuperseded: false, bundle: dismissed })
+    // A newer run whose engine no longer fires for w2 has neither for it, so the missing call waits on an approver.
+    const elsewhere = supersedeStep(onlyMissing, { id: 'new', calls: [{ id: 'n1', windowId: 'w9', nightId: null }] })
+    expect(elsewhere).toMatchObject({ bundleSuperseded: false, bundle: onlyMissing })
   })
 })

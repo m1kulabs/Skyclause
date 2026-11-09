@@ -12,6 +12,7 @@ import {
   expireStep,
   expiresAt,
   OPEN_CALL_STATES,
+  resolveStep,
   REVIEW_STATES,
   sendStep,
   supersedeStep,
@@ -19,6 +20,7 @@ import {
   type BundleSlot,
   type BundleState,
   type CallState,
+  type MissingCall,
   type Mode
 } from './machine'
 
@@ -48,11 +50,15 @@ export interface CallDraft {
   decision?: string | null
 }
 
+/** #499: a `missing` compare row of the run, as #151 hands it over; stored unresolved. */
+export type MissingDraft = Omit<MissingCall, 'resolution'>
+
 export interface CreateBundleInput {
   runId: string
   pack: Pack
   draftOnly: boolean
   calls: CallDraft[]
+  missing?: MissingDraft[]
   triggeredAt: Date
   /** The drafting instant; tests inject it. */
   now?: Date
@@ -74,6 +80,7 @@ function slotOf(row: typeof bundle.$inferSelect, calls: Array<typeof call.$infer
     id: row.id,
     state: row.state,
     supersededBy: row.supersededBy,
+    missing: row.missing as MissingCall[],
     calls: calls.map((c) => ({
       id: c.id,
       state: c.state,
@@ -106,12 +113,14 @@ async function writeSlot(
       })
       .where(eq(call.id, after.id))
   }
-  if (before.state !== next.state || before.supersededBy !== next.supersededBy || stamp.approvedBy) {
+  const missingChanged = canonicalHash(before.missing ?? []) !== canonicalHash(next.missing ?? [])
+  if (before.state !== next.state || before.supersededBy !== next.supersededBy || stamp.approvedBy || missingChanged) {
     await tx
       .update(bundle)
       .set({
         state: next.state,
         supersededBy: next.supersededBy,
+        ...(missingChanged ? { missing: next.missing } : {}),
         ...(next.state === 'approved' && stamp.approvedBy
           ? { approvedBy: stamp.approvedBy, approvedAt: stamp.now }
           : {}),
@@ -125,10 +134,11 @@ async function writeSlot(
 /**
  * `review_hash` (ticket decision): `canonicalHash({ snapshot_hash, verdict_hash, calls: [id, state, mode, notices,
  * recipients] })` over the bundle's run and its calls in ID order. #153 compares it with the hash the approver saw.
+ * A bundle with missing calls (#499) adds `missing: [window or night ID, resolution]`, so other hashes are unchanged.
  */
 export async function reviewHash(tx: Tx, bundleId: string): Promise<string> {
   const [head] = await tx
-    .select({ snapshotHash: indicatorSnapshot.hash, verdictHash: run.verdictHash })
+    .select({ snapshotHash: indicatorSnapshot.hash, verdictHash: run.verdictHash, missing: bundle.missing })
     .from(bundle)
     .innerJoin(run, eq(run.id, bundle.runId))
     .leftJoin(indicatorSnapshot, eq(indicatorSnapshot.id, run.snapshotId))
@@ -139,10 +149,12 @@ export async function reviewHash(tx: Tx, bundleId: string): Promise<string> {
     .from(call)
     .where(eq(call.bundleId, bundleId))
     .orderBy(asc(call.id))
+  const missing = head.missing as MissingCall[]
   return canonicalHash({
     snapshot_hash: head.snapshotHash ?? null,
     verdict_hash: head.verdictHash ?? null,
-    calls: calls.map((c) => [c.id, c.state, c.mode, c.notices, c.recipients])
+    calls: calls.map((c) => [c.id, c.state, c.mode, c.notices, c.recipients]),
+    ...(missing.length ? { missing: missing.map((m) => [m.windowId ?? m.nightId, m.resolution?.action ?? null]) } : {})
   })
 }
 
@@ -274,10 +286,11 @@ export async function createBundle(tx: Tx, input: CreateBundleInput) {
     .where(and(eq(projectPack.projectId, projectId), eq(projectPack.pack, pack)))
   const slaS = packRow?.slaS ?? DEFAULT_SLA_S[pack]
 
-  const targets = await scopeRows(tx, projectId, input.calls)
+  const missing = input.missing ?? []
+  const targets = await scopeRows(tx, projectId, [...input.calls, ...missing])
   const expiries = input.calls.map((draft, i) => expiresAt(targets[i]!, draft.fired, clauseExpiry))
 
-  const state: BundleState = closes(input.calls, input.draftOnly) ? 'closed' : 'needs_review'
+  const state: BundleState = closes(input.calls, input.draftOnly, missing.length) ? 'closed' : 'needs_review'
   const review = state === 'needs_review'
   const slaDueAt = review ? new Date(now.getTime() + slaS * 1000) : null
 
@@ -303,6 +316,7 @@ export async function createBundle(tx: Tx, input: CreateBundleInput) {
       slaDueAt,
       needsReviewAt: review ? now : null,
       draftOnly: input.draftOnly,
+      missing: missing.map((m): MissingCall => ({ ...m, resolution: null })),
       createdAt: now,
       updatedAt: now
     })
@@ -330,11 +344,15 @@ export async function createBundle(tx: Tx, input: CreateBundleInput) {
   await emitBundle(tx, 'bundle.drafted', b, callIds)
   if (review) await emitBundle(tx, 'bundle.needs_review', b, callIds)
 
-  const successor = { id: b.id, calls: calls.map((c) => ({ id: c.id, windowId: c.windowId, nightId: c.nightId })) }
+  const successor = {
+    id: b.id,
+    calls: calls.map((c) => ({ id: c.id, windowId: c.windowId, nightId: c.nightId })),
+    missing: missing.map((m) => ({ windowId: m.windowId, nightId: m.nightId }))
+  }
   for (const { id } of open) {
     const { row, slot } = await lockSlot(tx, id)
-    const step = supersedeStep(slot, successor)
-    if (!step.supersededCallIds.length) continue
+    const step = supersedeStep(slot, successor, now)
+    if (step.bundle === slot) continue
     await writeSlot(tx, slot, step.bundle, { now })
     if (step.bundleSuperseded) {
       await emitBundle(
@@ -354,7 +372,8 @@ export async function createBundle(tx: Tx, input: CreateBundleInput) {
       pack,
       calls: input.calls.length,
       non_normal: input.calls.filter((d) => d.mode !== null && d.mode !== 'normal').length,
-      disagreements: input.calls.filter((d) => !d.agrees).length,
+      // #499: a missing call is a disagreement too.
+      disagreements: input.calls.filter((d) => !d.agrees).length + missing.length,
       no_call: input.calls.some((d) => d.noCall !== null)
     },
     { projectId }
@@ -503,6 +522,59 @@ export async function transition(
 export async function markSending(tx: Tx, bundleId: string, callIds: string[], now: Date = new Date()) {
   const { slot } = await lockSlot(tx, bundleId)
   await writeSlot(tx, slot, sendStep(slot, callIds, now), { now })
+}
+
+/**
+ * #499: an approver dismisses a missing call of a bundle under review with a reason. Returns the resolved row; #153's
+ * approval writes its ledger entry and audit event.
+ */
+export async function dismissMissing(
+  tx: Tx,
+  bundleId: string,
+  scope: Scope,
+  o: { reason: string; by: string },
+  now: Date = new Date()
+): Promise<MissingCall> {
+  const { slot } = await lockSlot(tx, bundleId)
+  const next = resolveStep(slot, scope, { action: 'dismissed', reason: o.reason, by: o.by, at: now.toISOString() })
+  await writeSlot(tx, slot, next, { now })
+  return next.missing!.find((m, i) => m.resolution !== slot.missing![i]!.resolution)!
+}
+
+/**
+ * #499: an approver drafts a call for a missing call of a bundle under review (#153 then decides it like any other).
+ * The call expires as a drafted one would (CAL-8); one already due isn't added (`{ok: false}`).
+ */
+export async function draftMissingCall(
+  tx: Tx,
+  bundleId: string,
+  draft: CallDraft,
+  by: string,
+  now: Date = new Date()
+): Promise<{ ok: true; call: typeof call.$inferSelect } | { ok: false; expiresAt: Date }> {
+  const { row, slot } = await lockSlot(tx, bundleId)
+  const resolve = (callId: string) => resolveStep(slot, draft, { action: 'drafted', callId, by, at: now.toISOString() })
+  resolve('') // refuses a scope with no unresolved missing call before anything is written
+  const [parent] = await tx.select().from(run).where(eq(run.id, row.runId))
+  if (!parent?.sheetVersionId) throw new Error(`run ${row.runId} has no pinned sheet version`)
+  const [target] = await scopeRows(tx, row.projectId, [draft])
+  const due = expiresAt(target!, draft.fired, await clauseExpiryOf(tx, parent.sheetVersionId))
+  if (due <= now) return { ok: false, expiresAt: due }
+  const [made] = await tx
+    .insert(call)
+    .values(
+      callRow(tx, {
+        projectId: row.projectId,
+        bundleId,
+        draft,
+        expiresAt: due,
+        triggeredAt: parent.triggeredAt,
+        now
+      })
+    )
+    .returning()
+  await writeSlot(tx, slot, resolve(made!.id), { now })
+  return { ok: true, call: made! }
 }
 
 /** The instant local midnight starts `date` (`YYYY-MM-DD`) in `timeZone`, for reads filtered by local dates. */

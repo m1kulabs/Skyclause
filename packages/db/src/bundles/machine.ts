@@ -55,10 +55,11 @@ export const canMoveBundle = (from: string, to: string) =>
 
 /**
  * CAL-5 and D23: nothing would send when every call is Normal (a Watch included) without a No call, or when the bundle
- * is a guest window's draft. Such a bundle closes at once.
+ * is a guest window's draft. Such a bundle closes at once. A missing call (#499) needs an approver, so a bundle with
+ * one waits in review unless it is a guest window's draft.
  */
-export function closes(calls: Array<{ mode: Mode | null; noCall: unknown[] | null }>, draftOnly: boolean) {
-  return draftOnly || calls.every((call) => call.mode === 'normal' && !call.noCall)
+export function closes(calls: Array<{ mode: Mode | null; noCall: unknown[] | null }>, draftOnly: boolean, missing = 0) {
+  return draftOnly || (missing === 0 && calls.every((call) => call.mode === 'normal' && !call.noCall))
 }
 
 /**
@@ -86,21 +87,45 @@ export interface CallSlot {
   supersededByCallId: string | null
 }
 
+/**
+ * #499: a window or night whose engine verdict fired (a mode above Normal, or watch) with no call in the draft (#467's
+ * `missing` compare row), stored on `bundle.missing`. It stays unresolved until an approver drafts the engine's call
+ * for it or dismisses it with a reason, or a newer bundle covers its window or night (CAL-7).
+ */
+export interface MissingCall {
+  windowId: string | null
+  nightId: string | null
+  /** The clause engine's verdict the run saw, as `Verdict` on the wire. */
+  shadow: unknown
+  /** The window's candidate subscribers at the run: a drafted call's recipients. */
+  recipients: string[]
+  resolution: MissingResolution | null
+}
+export type MissingResolution =
+  | { action: 'drafted'; callId: string; by: string; at: string }
+  | { action: 'dismissed'; reason: string; by: string; at: string }
+  | { action: 'superseded'; bundleId: string; at: string }
+
 export interface BundleSlot {
   id: string
   state: BundleState
   supersededBy: string | null
   calls: CallSlot[]
+  missing?: MissingCall[]
 }
 
 const isOpen = (bundle: BundleSlot, call: CallSlot) =>
   OPEN_CALL_STATES.includes(call.state) && bundle.state !== 'closed' && bundle.state !== 'drafted'
 const hasOpenCall = (bundle: BundleSlot) => bundle.calls.some((call) => isOpen(bundle, call))
+const unresolved = (bundle: BundleSlot) => (bundle.missing ?? []).filter((m) => m.resolution === null)
+/** A bundle under review waits on an open call or an unresolved missing call. */
+const hasOpenItem = (bundle: BundleSlot) => hasOpenCall(bundle) || unresolved(bundle).length > 0
+const scopeOf = (m: { windowId: string | null; nightId: string | null }) => (m.windowId ?? m.nightId)!
 
 /**
  * The `expiry-{call_id}` task (CAL-8): an open call due by `now` expires; the last open call of a bundle under review
- * takes the bundle with it. `not_due` lets the task retry; `not_open` (already final, sending, or a closed bundle's)
- * is the replay no-op.
+ * takes the bundle with it, unless a missing call is still unresolved (#499: a dropped call is never let go unseen).
+ * `not_due` lets the task retry; `not_open` (already final, sending, or a closed bundle's) is the replay no-op.
  */
 export function expireStep(
   bundle: BundleSlot,
@@ -113,17 +138,23 @@ export function expireStep(
   if (target.expiresAt > now) return { bundle, outcome: 'not_due', bundleExpired: false }
   const calls = bundle.calls.map((call) => (call.id === callId ? { ...call, state: 'expired' as const } : call))
   const next = { ...bundle, calls }
-  const bundleExpired = REVIEW_STATES.includes(bundle.state) && !hasOpenCall(next)
+  const bundleExpired = REVIEW_STATES.includes(bundle.state) && !hasOpenItem(next)
   return { bundle: bundleExpired ? { ...next, state: 'expired' } : next, outcome: 'expired', bundleExpired }
 }
 
 /**
  * CAL-7: a newer bundle of the same project and pack supersedes each open call of a bundle under review whose window
- * or night it also has a call for; a bundle left with no open call is superseded and links to the newer one.
+ * or night it also has a call for, and each unresolved missing call whose window or night it has a call or a missing
+ * call for (#499); a bundle left with nothing open is superseded and links to the newer one.
  */
 export function supersedeStep(
   bundle: BundleSlot,
-  successor: { id: string; calls: Array<{ id: string; windowId: string | null; nightId: string | null }> }
+  successor: {
+    id: string
+    calls: Array<{ id: string; windowId: string | null; nightId: string | null }>
+    missing?: Array<{ windowId: string | null; nightId: string | null }>
+  },
+  now: Date = new Date()
 ): { bundle: BundleSlot; supersededCallIds: string[]; bundleSuperseded: boolean } {
   if (!REVIEW_STATES.includes(bundle.state)) return { bundle, supersededCallIds: [], bundleSuperseded: false }
   const successorOf = (call: CallSlot) =>
@@ -137,8 +168,16 @@ export function supersedeStep(
     supersededCallIds.push(call.id)
     return { ...call, state: 'superseded' as const, supersededByCallId: next.id }
   })
-  const next = { ...bundle, calls }
-  const bundleSuperseded = supersededCallIds.length > 0 && !hasOpenCall(next)
+  const covered = new Set([...successor.calls, ...(successor.missing ?? [])].map(scopeOf))
+  let missingSuperseded = false
+  const missing = bundle.missing?.map((m) => {
+    if (m.resolution !== null || !covered.has(scopeOf(m))) return m
+    missingSuperseded = true
+    return { ...m, resolution: { action: 'superseded' as const, bundleId: successor.id, at: now.toISOString() } }
+  })
+  if (!supersededCallIds.length && !missingSuperseded) return { bundle, supersededCallIds, bundleSuperseded: false }
+  const next = { ...bundle, calls, ...(missing ? { missing } : {}) }
+  const bundleSuperseded = (supersededCallIds.length > 0 || missingSuperseded) && !hasOpenItem(next)
   return {
     bundle: bundleSuperseded ? { ...next, state: 'superseded', supersededBy: successor.id } : next,
     supersededCallIds,
@@ -200,5 +239,25 @@ export function transitionStep(
       `bundle ${bundle.id} can't be approved with calls undecided: ${undecided.map((c) => c.id).join(', ')}`
     )
   }
+  const open = unresolved(next)
+  if (next.state === 'approved' && bundle.state !== 'approved' && open.length) {
+    throw new Error(
+      `bundle ${bundle.id} can't be approved with a missing call unresolved: ${open.map(scopeOf).join(', ')}`
+    )
+  }
   return next
+}
+
+/** #499: an approver drafts or dismisses one unresolved missing call; anything else is refused. */
+export function resolveStep(
+  bundle: BundleSlot,
+  scope: { windowId?: string | null; nightId?: string | null },
+  resolution: MissingResolution
+): BundleSlot {
+  if (!REVIEW_STATES.includes(bundle.state))
+    throw new Error(`bundle ${bundle.id} is ${bundle.state}; it isn't under review`)
+  const id = scope.windowId ?? scope.nightId
+  const index = (bundle.missing ?? []).findIndex((m) => m.resolution === null && scopeOf(m) === id)
+  if (index < 0) throw new Error(`bundle ${bundle.id} has no unresolved missing call for ${id}`)
+  return { ...bundle, missing: bundle.missing!.map((m, i) => (i === index ? { ...m, resolution } : m)) }
 }
