@@ -1,6 +1,7 @@
-// The crawl visits every route as each role (#116). A role without a sign-in runs signed out, and the crawl
-// says so in its test title and output rather than skipping it.
+// The crawl visits every route as each role (#116): signed out, and signed in as each of the others (#94).
 import type { Page } from '@playwright/test'
+import type { Role as MemberRole } from '@skyclause/contracts'
+import { makeOrg, openShareLink, signInAs } from '../harness/sign-in-as'
 
 export const ROLES = [
   'Owner',
@@ -14,29 +15,34 @@ export const ROLES = [
 ] as const
 export type Role = (typeof ROLES)[number]
 
-/** Sign-ins that exist on main. `signInAs(role, org)` lands with #94; until then this is empty. */
-const SIGN_IN: Partial<Record<Exclude<Role, 'signed out'>, (page: Page) => Promise<void>>> = {}
+/** A real session (#94) for a new account holding `role` in a new organisation. */
+const member = (role: MemberRole) => async (page: Page) => {
+  await signInAs(page, role, await makeOrg())
+}
+
+/** Each role's sign-in: a real session, or a share link's `sc_share` cookie for the reviewer. */
+const SIGN_IN: Record<Exclude<Role, 'signed out'>, (page: Page) => Promise<void>> = {
+  Owner: member('owner'),
+  Admin: member('admin'),
+  Approver: member('approver'),
+  Editor: member('editor'),
+  Viewer: member('viewer'),
+  guest: member('guest'),
+  'share-link reviewer': async (page) => {
+    await openShareLink(page, await makeOrg())
+  }
+}
 
 export interface Session {
   role: Role
-  /** Roles this session stands in for until their sign-in lands. */
-  standIns: Role[]
   signIn?: (page: Page) => Promise<void>
 }
 
-/** One session per distinct sign-in: signed-out pages aren't visited eight times over. */
 export function sessions(): Session[] {
-  const missing = ROLES.filter((role) => role !== 'signed out' && !SIGN_IN[role])
-  const signedIn = ROLES.flatMap((role) => {
-    const signIn = role === 'signed out' ? undefined : SIGN_IN[role]
-    return signIn ? [{ role, standIns: [], signIn }] : []
-  })
-  return [{ role: 'signed out', standIns: missing }, ...signedIn]
+  return ROLES.map((role) => (role === 'signed out' ? { role } : { role, signIn: SIGN_IN[role] }))
 }
 
-export const STAND_IN_REASON = 'signInAs waits on #94'
-
-/** Explicitly signed out through #95's test-only seam; never call the unfinished #94 resolver. */
+/** Explicitly signed out through #95's test-only seam: no credential reaches the resolver. */
 export async function signedOut(page: Page) {
   const url = process.env.E2E_BASE_URL ?? `http://localhost:${process.env.E2E_PORT ?? 3100}`
   await page
