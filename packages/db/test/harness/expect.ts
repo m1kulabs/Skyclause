@@ -1,5 +1,5 @@
 // #79 §7's assertions on the shared writes: exactly one matching row, read as the superuser so RLS hides nothing.
-import type { AuditAction, EventType } from '@skyclause/contracts'
+import type { AuditAction, EventType, LedgerKind } from '@skyclause/contracts'
 import { asLogin } from './index'
 
 type Row = Record<string, unknown>
@@ -35,6 +35,15 @@ export function expectOneAudit(
 export function expectEvent(type: EventType, filter: { orgId?: string; projectId?: string } = {}) {
   return exactlyOne('domain_event', `domain_event ${type}`, {
     type,
+    org_id: filter.orgId,
+    project_id: filter.projectId
+  })
+}
+
+/** The one `ledger_entry` of `kind` (and the filters), for a writer's test; fails on none or several. */
+export function expectLedgerEntry(kind: LedgerKind, filter: { orgId?: string; projectId?: string } = {}) {
+  return exactlyOne('ledger_entry', `ledger_entry ${kind}`, {
+    kind,
     org_id: filter.orgId,
     project_id: filter.projectId
   })

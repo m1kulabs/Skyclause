@@ -13,6 +13,7 @@
     "generate:auth": "bun scripts/generate-auth.ts"
   },
   "dependencies": {
+    "@skyclause/clauses": "workspace:*",
     "@skyclause/config": "workspace:*",
     "@skyclause/contracts": "workspace:*",
     "drizzle-orm": "0.45.4",

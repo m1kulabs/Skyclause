@@ -24,7 +24,13 @@ export const getPilotArchive = createRoute({
   request: { headers: OrganizationHeaders, params: IdParams },
   responses: {
     ...ProblemResponses,
-    200: { description: 'Success', content: { 'application/json': { schema: Page(PilotArchive) } } }
+    200: {
+      description: 'Success',
+      content: {
+        // #146: the link's label, "Pilot archive (Gemini Enterprise, November 2026)".
+        'application/json': { schema: Page(PilotArchive).extend({ label: z.string().optional() }) }
+      }
+    }
   },
   x: { owner: 'c-ledger-chain', statement: 'ledger.view', idempotent: false }
 })

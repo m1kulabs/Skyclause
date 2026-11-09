@@ -27807,6 +27807,30 @@
                     "verified_at": {
                       "type": "string",
                       "format": "date-time"
+                    },
+                    "first_bad": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "seq": {
+                          "type": "integer"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "seq_gap",
+                            "prev_hash",
+                            "hash"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "seq",
+                        "reason"
+                      ]
                     }
                   },
                   "required": [
@@ -30318,6 +30342,9 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "label": {
+                      "type": "string"
                     }
                   },
                   "required": [
