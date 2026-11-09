@@ -19,12 +19,16 @@ Return one JSON object that matches the schema. You have no tools.
 - items: for the crowd pack, one surge_night_entry per night the clauses mark for a calendar entry; otherwise empty.
 - reason: for the approver, why each call follows from the clauses and inputs; the number and link rules above apply to it too.`
 
-const EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g
+const EMAIL = /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+/gu
 const REMOVED = '[email removed]'
 
 /** NFR-11: no email address reaches a prompt, whatever field carries it. */
 function redact(value: unknown): unknown {
-  if (typeof value === 'string') return value.replace(EMAIL, REMOVED)
+  if (typeof value === 'string') {
+    // NFKC folds fullwidth `＠` and the like, so a disguised address is caught; text without one stays verbatim.
+    const folded = value.normalize('NFKC')
+    return folded.replace(EMAIL, REMOVED) === folded ? value : folded.replace(EMAIL, REMOVED)
+  }
   if (Array.isArray(value)) return value.map(redact)
   if (value && typeof value === 'object') {
     return Object.fromEntries(Object.entries(value).map(([key, v]) => [key.replace(EMAIL, REMOVED), redact(v)]))

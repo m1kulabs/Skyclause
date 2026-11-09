@@ -73,6 +73,7 @@ export interface AgentInput {
   }
   met_warnings: string[]
   // Third-party free text, untrusted like `met_warnings`: serialised as data blocks, never quotable.
+  // The caller must not copy their text into `quotable`, and must strip personal data (NFR-11) before setting them.
   listings?: string[]
   forwarded_emails?: string[]
   evidence_requests?: string[]
