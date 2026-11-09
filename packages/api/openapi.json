@@ -39477,6 +39477,22 @@
           {
             "schema": {
               "type": "string",
+              "enum": [
+                "miss",
+                "false_alarm",
+                "expired_above_normal",
+                "out_of_band",
+                "unlisted_surge",
+                "no_call"
+              ]
+            },
+            "required": false,
+            "name": "reason",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
               "minLength": 1,
               "description": "Required for sessions; organisation slug or ID"
             },
