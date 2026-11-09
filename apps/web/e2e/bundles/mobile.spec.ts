@@ -1,11 +1,13 @@
 import type { BrowserContext } from '@playwright/test'
 import { test, expect } from '../fixtures'
-import { ids, prepare, open, callDouble, bundleDouble, t } from './doubles'
+import { makeOrg, signInAs, type TestOrg } from '../harness/sign-in-as'
+import { ids, stubReads, open, callDouble, bundleDouble, t } from './doubles'
+import { seedReview, type SeededReview } from './seed'
 
-async function measure(context: BrowserContext) {
+async function measure(context: BrowserContext, org: TestOrg, review: SeededReview) {
   const page = await context.newPage()
   try {
-    await prepare(page, bundleDouble([callDouble(ids.first, { expires_at: '2099-11-02T07:45:00Z' })]), { clock: false })
+    await stubReads(page, review.bundle, review.calls, { org })
     await page.setViewportSize({ width: 375, height: 812 })
     const cdp = await context.newCDPSession(page)
     // #116's Lighthouse mobile profile: 4x CPU, 150ms RTT, about 1.6 Mbps.
@@ -34,7 +36,7 @@ async function measure(context: BrowserContext) {
       observer.observe({ type: 'event', buffered: true, durationThreshold: 16 })
       Object.assign(window, { bundleInteractionDurations: durations })
     })
-    await open(page)
+    await open(page, review.path)
     await page.locator('.bundle-call-list').getByRole('button', { name: /^Edit/ }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
     await page
@@ -63,10 +65,17 @@ test('NFR-9 mobile bundle meets LCP, INP and CLS budgets against the production 
   context
 }, testInfo) => {
   test.setTimeout(90_000)
+  // #372: the bundle is in the test database and the approver signed in, so the server renders the review as it would
+  // for a real approver; the client's own reads of it answer with the same rows.
+  const org = await makeOrg()
+  const review = await seedReview(org, bundleDouble([callDouble(ids.first, { expires_at: '2099-11-02T07:45:00Z' })]))
+  const setup = await context.newPage()
+  await signInAs(setup, 'approver', org)
+  await setup.close()
   // Match lighthouserc.json: three fresh navigations, median aggregation. This project runs
   // after the functional projects so parallel axe work cannot consume the throttled CPU.
   const runs: Array<Record<string, number>> = []
-  for (let index = 0; index < 3; index++) runs.push(await measure(context))
+  for (let index = 0; index < 3; index++) runs.push(await measure(context, org, review))
   const median = (key: string) => runs.map((run) => run[key]!).sort((a, b) => a - b)[1]!
   const result = { LCP: median('LCP'), INP: median('INP'), CLS: median('CLS') }
   await testInfo.attach('bundle-mobile-vitals', {
