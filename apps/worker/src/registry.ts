@@ -4,6 +4,7 @@ import { email } from './email'
 import { evidence } from './evidence'
 import { domainEvents } from './events'
 import { grades } from './grades'
+import { ics } from './ics'
 import { migrations } from './migrate'
 import { notices } from './notices'
 import { notifications } from './notifications'
@@ -28,5 +29,6 @@ export const registry = defineRegistry([
   runs, // c-run-orchestrator
   notices, // c-sender-email
   alerts, // c-approver-alerts
-  notifications // c-notifications
+  notifications, // c-notifications
+  ics // c-ics-feed
 ])
