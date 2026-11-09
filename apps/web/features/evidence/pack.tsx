@@ -211,7 +211,7 @@ function PackContents({ pack, locale }: { pack: NonNullable<Evidence['pack']>; l
                         (reading.value_json !== null
                           ? JSON.stringify(reading.value_json)
                           : t('ledger.noValue', {}, locale))),
-                  unit: reading.unit
+                  unit: reading.unit ?? ''
                 },
                 locale
               )}
