@@ -771,7 +771,7 @@ test('built gradeSky logs only bounded counts and codes and releases lock after 
   r.n.seed('windows', [{ window_id: 'PRIVATE_TITLE', date: 'invalid' }])
   r.main.gradeSky()
   const report = JSON.parse(r.logs[0]!)
-  expect(report.problems).toEqual(['window_invalid_or_conflicting'])
+  expect(report.problems).toEqual({ window_invalid_or_conflicting: 1 })
   expect(Object.keys(report).sort()).toEqual(
     [
       'alreadyGradedWindows',
@@ -788,7 +788,7 @@ test('built gradeSky logs only bounded counts and codes and releases lock after 
   expect(r.logs.join('')).not.toMatch(/PRIVATE_|windowId|filterViewId/)
   r.n.fault = 'metadata'
   r.main.gradeSky()
-  expect(JSON.parse(r.logs.at(-1)!).problems).toEqual(['view_failed'])
+  expect(JSON.parse(r.logs.at(-1)!).problems).toEqual({ view_failed: 1 })
   r.failLog()
   expect(() => r.main.gradeSky()).toThrow('log failure')
   expect(r.locks).toEqual(Array(3).fill(['acquire', 'release']).flat())
@@ -807,4 +807,56 @@ test('built gradeSky admission uses elapsed run time rather than scheduled trigg
   expect(r.n.props[SKY_GRADE_BATCH_KEY]).toBeUndefined()
   expect(r.locks).toEqual(['acquire', 'release'])
   expect(r.forbidden).toEqual([])
+})
+
+test('built gradeSky aggregates many missing-reading and poll diagnostics into bounded category counts', () => {
+  for (const windows of [1, 25]) {
+    const r = builtGrader()
+    seedNight(r.n)
+    r.at('2026-11-09T06:00:00+08:00')
+    r.n.seed(
+      'windows',
+      Array.from({ length: windows }, (_, i) => ({
+        window_id: `night-${i}`,
+        date: '2026-11-08',
+        start_myt: '22:00',
+        end_myt: '23:30',
+        status: 'active'
+      }))
+    )
+    r.n.seed('sources', [{ source_id: '0232901RF', kind: 'jps_rain' }])
+    r.n.seed('polls', [
+      {
+        poll_id: 'PRIVATE_POLL_1',
+        source_id: '0232901RF',
+        source_kind: 'jps_rain',
+        outcome: 'error',
+        started_at: '2026-11-08T23:10:00+08:00',
+        received_at: '2026-11-08T23:11:00+08:00'
+      },
+      {
+        poll_id: 'PRIVATE_POLL_2',
+        source_id: '0232901RF',
+        source_kind: 'jps_rain',
+        outcome: 'error',
+        started_at: '2026-11-08T23:20:00+08:00',
+        received_at: '2026-11-08T23:21:00+08:00'
+      },
+      { poll_id: 'PRIVATE_POLL_3', source_id: '0232901RF', source_kind: 'jps_rain', outcome: 'error' }
+    ])
+    r.main.gradeSky()
+    const report = JSON.parse(r.logs[0]!)
+    // Each window needs 66 five-minute gauge readings and four hours for each of three APIMS stations.
+    expect(report.problems).toEqual({
+      reading_missing: 78 * windows,
+      source_missing: 3 * windows,
+      poll_error: 2 * windows,
+      poll_timing_invalid: windows
+    })
+    expect(report.appendedGrades).toBe(windows)
+    expect(r.logs[0]!.length).toBeLessThan(400)
+    expect(r.logs[0]).not.toMatch(/0232901RF|CA16W|CA19B|CA17W|2026-|PRIVATE_|windowId|poll_id/)
+    expect(r.locks).toEqual(['acquire', 'release'])
+    expect(r.forbidden).toEqual([])
+  }
 })

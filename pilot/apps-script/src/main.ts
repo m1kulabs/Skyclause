@@ -178,6 +178,11 @@ export function gradeSky(): void {
     if (!sheetId?.trim()) throw new Error('SHEET_ID is not set; run setup()')
     if (!skyFolderId?.trim()) throw new Error('CROSSINGS_SKY_FOLDER_ID is not set; run setup()')
     const report = runSkyGrading(skyGradePorts(sheetId, skyFolderId))
+    const problems: Record<string, number> = Object.create(null)
+    for (const problem of report.problems) {
+      const code = problem.code.split(':', 1)[0]!
+      problems[code] = (problems[code] ?? 0) + 1
+    }
     console.log(
       JSON.stringify({
         closedWindows: report.closedWindows,
@@ -188,7 +193,7 @@ export function gradeSky(): void {
         deferredWindows: report.deferredWindows,
         pendingBatch: report.pendingBatch,
         budgetExhausted: report.budgetExhausted,
-        problems: report.problems.map((problem) => problem.code)
+        problems
       })
     )
   })
