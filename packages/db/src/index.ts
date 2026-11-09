@@ -10,6 +10,7 @@ export {
   type Tx
 } from './client'
 export * from './alerts'
+export * from './analysis'
 export { track } from './analytics'
 export * from './api'
 export * from './approvals'
