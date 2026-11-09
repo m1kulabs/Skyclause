@@ -124,10 +124,27 @@ describe('operation registry', () => {
   it('has no z.any schemas or invented example keys in route source files', () => {
     for (const surface of ['v1', 'first-party']) {
       const directory = new URL(`../../src/api/${surface}/`, import.meta.url)
-      for (const file of readdirSync(directory).filter((file) => file.endsWith('.ts'))) {
+      for (const file of readdirSync(directory, { recursive: true, encoding: 'utf8' }).filter((file) =>
+        file.endsWith('.ts')
+      )) {
         const source = readFileSync(new URL(file, directory), 'utf8')
         expect(source, `${surface}/${file}`).not.toMatch(/\bz\s*\.\s*any\s*\(/)
         expect(source, `${surface}/${file}`).not.toMatch(/(?:\bexample\b|['"]example['"])\s*:/)
+      }
+    }
+  })
+
+  it('keeps one route per module: area files hold none, <area>/<name>.ts holds `name`', () => {
+    for (const surface of ['v1', 'first-party']) {
+      const directory = new URL(`../../src/api/${surface}/`, import.meta.url)
+      for (const file of readdirSync(directory, { recursive: true, encoding: 'utf8' }).filter((file) =>
+        file.endsWith('.ts')
+      )) {
+        const source = readFileSync(new URL(file, directory), 'utf8')
+        const name = file.split('/').pop()!.replace(/\.ts$/, '')
+        const routes = [...source.matchAll(/^export const (\w+) = createRoute\(/gm)].map((match) => match[1])
+        const expected = file.includes('/') && name !== '_shared' ? [name] : []
+        expect(routes, `${surface}/${file}`).toEqual(expected)
       }
     }
   })
