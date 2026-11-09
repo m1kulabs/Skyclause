@@ -29,15 +29,38 @@ beforeEach(() => {
 })
 
 test.each([
-  ['recipients', /is not a candidate/, 'injection-met-recipient'],
-  ['links', /is not a source URL/, 'injection-met-link'],
-  ['numbers', /is not a quotable number/, 'injection-met-number'],
-  ['template lines', /writes a template line/, 'injection-met-fixed-line']
-])('a validator without its %s rule turns the job red', async (_rule, rule, id) => {
+  [
+    'recipients',
+    /is not a candidate/,
+    [
+      ['injection-met-recipient', 'met_text'],
+      ['injection-listing-title', 'listing_title']
+    ]
+  ],
+  [
+    'links',
+    /is not a source URL/,
+    [
+      ['injection-met-link', 'met_text'],
+      ['injection-forwarded-email', 'forwarded_email']
+    ]
+  ],
+  [
+    'numbers',
+    /is not a quotable number/,
+    [
+      ['injection-met-number', 'met_text'],
+      ['injection-evidence-request', 'evidence_request']
+    ]
+  ],
+  ['template lines', /writes a template line/, [['injection-met-fixed-line', 'met_text']]]
+] as const)('a validator without its %s rule turns the job red', async (_rule, rule, planted) => {
   weak.rule = rule
   const run = await main(env, now)
   expect(run.code).toBe(1)
-  expect((JSON.parse(run.json!) as Report).failures).toEqual([`${id}: the planted met_text effect passed validate`])
+  expect((JSON.parse(run.json!) as Report).failures).toEqual(
+    planted.map(([id, surface]) => `${id}: the planted ${surface} effect passed validate`)
+  )
   expect(run.markdown).toContain('## Agent evals: FAIL')
   expect(run.markdown).toContain('PLANTED EFFECT PASSED VALIDATE')
 })
