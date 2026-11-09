@@ -40433,10 +40433,16 @@
                             "type": "string"
                           },
                           "sheet_version_id": {
-                            "type": "string"
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "snapshot_id": {
-                            "type": "string"
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "model": {
                             "type": [
@@ -40476,7 +40482,10 @@
                             }
                           },
                           "verdict_hash": {
-                            "type": "string"
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -40792,10 +40801,16 @@
                       "type": "string"
                     },
                     "sheet_version_id": {
-                      "type": "string"
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "snapshot_id": {
-                      "type": "string"
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "model": {
                       "type": [
@@ -40835,7 +40850,10 @@
                       }
                     },
                     "verdict_hash": {
-                      "type": "string"
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     }
                   },
                   "required": [
@@ -41138,10 +41156,16 @@
                       "type": "string"
                     },
                     "sheet_version_id": {
-                      "type": "string"
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "snapshot_id": {
-                      "type": "string"
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "model": {
                       "type": [
@@ -41181,7 +41205,164 @@
                       }
                     },
                     "verdict_hash": {
-                      "type": "string"
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "triggered_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "bundle_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "trace": {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string"
+                        },
+                        "inputs": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "value": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "unit": {
+                                "type": "string"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "fresh",
+                                  "stale",
+                                  "error",
+                                  "recovered",
+                                  "pending",
+                                  "probation",
+                                  "off_hours"
+                                ]
+                              },
+                              "since": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "date-time"
+                              },
+                              "age_s": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ],
+                                "minimum": 0
+                              },
+                              "source_ids": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "source_url": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uri"
+                              },
+                              "reading_ids": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "observed_at": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "value",
+                              "unit",
+                              "state",
+                              "since",
+                              "age_s",
+                              "source_ids",
+                              "source_url",
+                              "reading_ids",
+                              "observed_at"
+                            ]
+                          }
+                        },
+                        "steps": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "step": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string"
+                              },
+                              "started_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "finished_at": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "step",
+                              "status",
+                              "started_at",
+                              "finished_at"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "text",
+                        "inputs",
+                        "steps"
+                      ]
                     }
                   },
                   "required": [
