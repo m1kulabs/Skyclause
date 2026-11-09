@@ -5,6 +5,7 @@ export {
   runPublisher,
   RunRefused,
   RUNS_REQUESTED,
+  runsServing,
   setRunPublisher,
   type RunPublisher
 } from './request'
@@ -21,3 +22,4 @@ export {
   type RunRow,
   type RunStepName
 } from './steps'
+export { localClock, scheduledSkyPacks, type LocalClock } from './clock'

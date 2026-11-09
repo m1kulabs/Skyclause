@@ -11,7 +11,7 @@ import { startsRun } from './start-rule'
 const instant = (date: Date) => date.toISOString().replace('.000Z', 'Z')
 
 /** requestRun, except that a project that isn't open (PRJ-8) acknowledges the event with no run. */
-export async function request(tx: Tx, r: Parameters<RequestRun>[1]) {
+export async function requestUnlessRefused(tx: Tx, r: Parameters<RequestRun>[1]) {
   try {
     await requestRun(tx, r)
   } catch (error) {
@@ -31,7 +31,7 @@ const crossings = onEvent(['crossing.detected'], 'runs-crossings', async (event,
   }
   if (!(await startsRun(tx, facts))) return
   const { kind, id } = data.scope
-  await request(tx, {
+  await requestUnlessRefused(tx, {
     projectId: event.project_id,
     pack: data.pack,
     trigger: 'crossing',
@@ -62,7 +62,7 @@ const windows = onEvent(['window.created', 'window.updated', 'window.cancelled']
       log('INFO', 'ICS change without a feed version; no run', { window_id: w.id })
       return
     }
-    await request(tx, {
+    await requestUnlessRefused(tx, {
       ...base,
       trigger: 'calendar',
       triggerRef: feed.id,
@@ -73,7 +73,7 @@ const windows = onEvent(['window.created', 'window.updated', 'window.cancelled']
   const declared = event.type === 'window.created' && (data.via === 'share' || data.via === 'mcp')
   const timesChanged = event.type === 'window.updated' && data.times_changed
   if (!declared && !timesChanged) return
-  await request(tx, {
+  await requestUnlessRefused(tx, {
     ...base,
     trigger: 'window',
     triggerRef: w.id,

@@ -2,6 +2,7 @@ import type { AgentInput } from '@skyclause/agent'
 import type { CheckedSheet, IndicatorSnapshot, Window } from '@skyclause/clauses'
 import {
   grade,
+  localClock,
   member,
   night,
   project,
@@ -21,30 +22,8 @@ import { and, arrayOverlaps, asc, eq, gte, inArray, isNotNull, isNull, lt, or } 
 // only: no window title, email or name enters a prompt (NFR-11).
 
 const instant = (date: Date) => date.toISOString().replace('.000Z', 'Z')
-const ISO_DAYS: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 }
-
-/** `at` in `timeZone`: its local date, ISO weekday (Monday 1) and minutes since local midnight. */
-export function localParts(at: Date, timeZone: string) {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      weekday: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-      hourCycle: 'h23'
-    })
-      .formatToParts(at)
-      .map((p) => [p.type, p.value])
-  )
-  return {
-    date: `${parts.year}-${parts.month}-${parts.day}`,
-    weekday: ISO_DAYS[parts.weekday!]!,
-    minutes: Number(parts.hour) * 60 + Number(parts.minute)
-  }
-}
+/** `HH:MM` or `HH:MM:SS` as minutes since midnight. */
+export const minutesOf = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5))
 
 export const addDays = (date: string, days: number) =>
   new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10)
@@ -70,7 +49,7 @@ export async function windowsAtRisk(tx: Tx, r: RunRow, now: Date): Promise<Windo
       .orderBy(asc(window.startsAt), asc(window.id))
   } else {
     const { timeZone } = await projectOf(tx, r.projectId)
-    const midnight = await startOfLocalDay(tx, addDays(localParts(now, timeZone).date, 1), timeZone)
+    const midnight = await startOfLocalDay(tx, addDays((await localClock(tx, now, timeZone)).date, 1), timeZone)
     rows = await tx
       .select()
       .from(window)
@@ -107,14 +86,13 @@ const APPROVER_ROLES = ['approver', 'admin', 'owner']
 
 /** LOC-5: an approver on duty now (an unconditional shift of the project's or the organisation's rota) reads Malay. */
 async function malayReaderOnDuty(tx: Tx, r: RunRow, now: Date, timeZone: string) {
-  const { weekday, minutes } = localParts(now, timeZone)
-  const toMinutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5))
+  const { weekday, minutes } = await localClock(tx, now, timeZone)
   const shifts = await tx
     .select()
     .from(rotaShift)
     .where(and(isNull(rotaShift.condition), or(eq(rotaShift.projectId, r.projectId), isNull(rotaShift.projectId))))
   const onDuty = shifts.filter((s) => {
-    const [start, end] = [toMinutes(s.localStart), toMinutes(s.localEnd)]
+    const [start, end] = [minutesOf(s.localStart), minutesOf(s.localEnd)]
     const inside = start <= end ? minutes >= start && minutes < end : minutes >= start || minutes < end
     return s.days.includes(weekday) && inside
   })
@@ -153,7 +131,7 @@ async function metWarnings(tx: Tx, snapshot: IndicatorSnapshot) {
 
 /** Yesterday's grades in the project's zone: Sky windows that started yesterday, Crowd nights dated yesterday. */
 async function yesterdayGrades(tx: Tx, r: RunRow, now: Date, timeZone: string) {
-  const today = localParts(now, timeZone).date
+  const today = (await localClock(tx, now, timeZone)).date
   const yesterday = addDays(today, -1)
   const [from, to] = [await startOfLocalDay(tx, yesterday, timeZone), await startOfLocalDay(tx, today, timeZone)]
   const rows = await tx

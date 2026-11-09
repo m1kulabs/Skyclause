@@ -71,6 +71,18 @@ async function merge(
 }
 
 /**
+ * The runs a dedupe key names, as their own key or coalesced into them (at most one per project and pack); with
+ * `scope`, only that project and pack's, so a key reused elsewhere never names another project's run.
+ */
+export function runsServing(tx: Tx, key: string, scope?: { projectId: string; pack: Pack }) {
+  const named = or(eq(run.dedupeKey, key), arrayContains(run.coalescedKeys, [key]))
+  return tx
+    .select()
+    .from(run)
+    .where(scope ? and(named, eq(run.projectId, scope.projectId), eq(run.pack, scope.pack)) : named)
+}
+
+/**
  * #79 §1, in the caller's `withTenant` transaction. Unless `projectGate` is `open` it throws `RunRefused`. A dedupe key
  * seen before, as a run's own or coalesced into it, returns that run. Otherwise the project and pack's one queued run
  * takes the trigger (its windows and nights unioned in, `coalescedInto` set), or a new queued run is written and
@@ -84,11 +96,7 @@ export const requestRun: RequestRun = async (handle, r) => {
   await lockRuns(tx, r.projectId, r.pack)
   const add = { windowIds: r.windowIds ?? [], nightIds: r.nightIds ?? [] }
 
-  const [seen] = await tx
-    .select()
-    .from(run)
-    .where(or(eq(run.dedupeKey, r.dedupeKey), arrayContains(run.coalescedKeys, [r.dedupeKey])))
-    .limit(1)
+  const [seen] = await runsServing(tx, r.dedupeKey)
   if (seen) {
     if (seen.status === 'queued') await merge(tx, seen, add)
     return seen.dedupeKey === r.dedupeKey ? { runId: seen.id } : { runId: seen.id, coalescedInto: seen.id }

@@ -1,6 +1,6 @@
 import type { RegisterAuditCheck } from '@skyclause/contracts'
-import { bundle, crossing, member, projectGate, run, type Tx } from '@skyclause/db'
-import { and, arrayContains, asc, eq, gte, inArray, lte, or } from 'drizzle-orm'
+import { bundle, crossing, member, projectGate, runsServing, type Tx } from '@skyclause/db'
+import { and, asc, eq, gte, inArray, lte } from 'drizzle-orm'
 import { startsRun } from './start-rule'
 
 // #151, SIG-12's 5-minute case (platform: noticed at the next batch, D45): a crossing that met the start rule with no
@@ -29,10 +29,7 @@ export const crossingWithoutBundle: Parameters<RegisterAuditCheck>[0] = {
     for (const c of crossings) {
       if ((await projectGate(tx, c.projectId)) !== 'open') continue
       const key = `crossing:${c.id}`
-      const serving = await tx
-        .select({ id: run.id })
-        .from(run)
-        .where(or(eq(run.dedupeKey, key), arrayContains(run.coalescedKeys, [key])))
+      const serving = await runsServing(tx, key)
       const met =
         serving.length > 0 ||
         (await startsRun(tx, {

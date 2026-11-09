@@ -278,6 +278,10 @@ const STEPS: { [K in RunStepName]: Step<K> } = {
   }
 }
 
+/** The recorded steps' outputs by step. */
+const outputsOf = (recorded: Awaited<ReturnType<typeof runSteps>>) =>
+  Object.fromEntries([...recorded].map(([name, row]) => [name, row.output])) as Done
+
 const errorText = (error: unknown) => (error instanceof Error ? `${error.name}: ${error.message}` : String(error))
 
 /**
@@ -308,7 +312,7 @@ export async function executeRun(
         if (r.status !== 'running') return { ran: false, ended: true }
         const recorded = await runSteps(tx, r.id)
         if (recorded.has(step)) return { ran: false, ended: false }
-        const done = Object.fromEntries([...recorded].map(([name, row]) => [name, row.output])) as Done
+        const done = outputsOf(recorded)
         const startedAt = new Date()
         const result = await (STEPS[step] as Step<RunStepName>)({ tx, run: r, done, ports })
         await recordStep(tx, r.id, step, 'done', result.output, startedAt)
@@ -321,7 +325,7 @@ export async function executeRun(
         const r = await lockRun(tx, message.runId)
         if (r.status !== 'running') return
         const recorded = await runSteps(tx, r.id)
-        const done = Object.fromEntries([...recorded].map(([name, row]) => [name, row.output])) as Done
+        const done = outputsOf(recorded)
         await recordStep(tx, r.id, step, 'failed', { error: errorText(error).slice(0, 1000) }, new Date())
         await finishRun(tx, r, { status: 'failed', reason: `${step}_failed`, shadowMode: shadowMode(done) })
       })

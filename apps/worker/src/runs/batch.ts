@@ -1,18 +1,18 @@
 import {
   project,
-  projectPack,
   run,
   runPublisher,
+  scheduledSkyPacks,
   startOfLocalDay,
   systemPrincipal,
   withSystem,
   withTenant
 } from '@skyclause/db'
-import { and, asc, eq, isNull, lt } from 'drizzle-orm'
+import { and, asc, eq, lt } from 'drizzle-orm'
 import { z } from 'zod'
 import { log } from '../server'
-import { request } from './consumers'
-import { localParts } from './inputs'
+import { requestUnlessRefused } from './consumers'
+import { minutesOf } from './inputs'
 
 // #151, D45: the run orchestrator's work in the 15-minute batch: the Sky schedule (CAL-1) and the republish of runs
 // still queued. Each lists its targets under `withSystem`, then works per organisation in `withTenant` as `system`, one
@@ -21,7 +21,8 @@ import { localParts } from './inputs'
 /** PRD CAL-1: 06:45 Monday to Friday in the project's zone, when `project_pack.schedule` is unset. */
 export const DEFAULT_SKY_SCHEDULE = '45 6 * * 1-5'
 
-const list = (field: string, max: number) => {
+/** One cron field: numbers, ranges and lists, each at most `max`; null when it reads otherwise. */
+const cronField = (field: string, max: number) => {
   const values = field.split(',').flatMap((part) => {
     const range = part.match(/^(\d+)-(\d+)$/)
     if (range) {
@@ -40,8 +41,8 @@ const list = (field: string, max: number) => {
 export function parseSchedule(text: string): { slots: string[]; weekdays: Set<number> } | null {
   const fields = text.trim().split(/\s+/)
   if (fields.length !== 5 || fields[2] !== '*' || fields[3] !== '*') return null
-  const [minutes, hours] = [list(fields[0]!, 59), list(fields[1]!, 23)]
-  const days = fields[4] === '*' ? [1, 2, 3, 4, 5, 6, 7] : list(fields[4]!, 7)
+  const [minutes, hours] = [cronField(fields[0]!, 59), cronField(fields[1]!, 23)]
+  const days = fields[4] === '*' ? [1, 2, 3, 4, 5, 6, 7] : cronField(fields[4]!, 7)
   if (!minutes || !hours || !days) return null
   const pad = (n: number) => String(n).padStart(2, '0')
   const slots = hours.flatMap((h) => minutes.map((m) => `${pad(h)}:${pad(m)}`)).sort()
@@ -57,19 +58,7 @@ const Schedule = z.string().nullable()
  */
 export async function requestScheduledRuns(now: Date) {
   const job = 'runs-sky-schedule'
-  const targets = await withSystem(job, (tx) =>
-    tx
-      .select({
-        projectId: project.id,
-        orgId: project.orgId,
-        timeZone: project.timeZone,
-        schedule: projectPack.schedule
-      })
-      .from(projectPack)
-      .innerJoin(project, eq(project.id, projectPack.projectId))
-      .where(and(eq(projectPack.pack, 'sky'), eq(projectPack.enabled, true), isNull(project.archivedAt)))
-      .orderBy(asc(project.id))
-  )
+  const targets = await withSystem(job, (tx) => scheduledSkyPacks(tx, now))
   for (const t of targets) {
     const stored = Schedule.safeParse(t.schedule)
     const schedule = stored.success ? parseSchedule(stored.data ?? DEFAULT_SKY_SCHEDULE) : null
@@ -77,19 +66,17 @@ export async function requestScheduledRuns(now: Date) {
       log('ERROR', 'unreadable Sky schedule; no schedule run', { project_id: t.projectId, schedule: t.schedule })
       continue
     }
-    const local = localParts(now, t.timeZone)
-    if (!schedule.weekdays.has(local.weekday)) continue
-    const minutes = (slot: string) => Number(slot.slice(0, 2)) * 60 + Number(slot.slice(3))
-    for (const slot of schedule.slots.filter((s) => minutes(s) <= local.minutes)) {
+    if (!schedule.weekdays.has(t.weekday)) continue
+    for (const slot of schedule.slots.filter((s) => minutesOf(s) <= t.minutes)) {
       await withTenant({ orgId: t.orgId, principal: systemPrincipal(job) }, async (tx) => {
-        const midnight = await startOfLocalDay(tx, local.date, t.timeZone)
-        await request(tx, {
+        const midnight = await startOfLocalDay(tx, t.date, t.timeZone)
+        await requestUnlessRefused(tx, {
           projectId: t.projectId,
           pack: 'sky',
           trigger: 'schedule',
           triggerRef: slot,
-          dedupeKey: `schedule:${t.projectId}:sky:${local.date}:${slot}`,
-          triggeredAt: new Date(midnight.getTime() + minutes(slot) * 60_000).toISOString()
+          dedupeKey: `schedule:${t.projectId}:sky:${t.date}:${slot}`,
+          triggeredAt: new Date(midnight.getTime() + minutesOf(slot) * 60_000).toISOString()
         })
       })
     }
