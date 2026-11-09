@@ -107,7 +107,7 @@ export function skyGradeStoragePorts(
     const saved = pending()
     if (!saved || encodeSkyGradeBatch(saved) !== encodeSkyGradeBatch(batch)) return invalid()
   }
-  function checkTarget(batch: SkyGradeBatch, current: ReturnType<typeof target>): void {
+  function checkTarget(batch: SkyGradeBatch, current: ReturnType<typeof target>, fresh: boolean): void {
     const rows = receipts(current)
     const ids = new Set(batch.rows.map((r) => r.grade_id))
     const windows = new Set(batch.rows.map((r) => r.window_id))
@@ -129,8 +129,8 @@ export function skyGradeStoragePorts(
       exact++
     }
     if (exact && exact !== batch.rows.length) return invalid()
-    // getLastRow accounts for explanations and any other occupied columns without reading them.
-    if (!exact && current.lastRow > batch.startRowIndex) return invalid()
+    // Only fresh reservations use lastRow: J edits cannot invalidate persisted owned-cell targets.
+    if (fresh && !exact && current.lastRow > batch.startRowIndex) return invalid()
   }
   function crossings(): SkyGradeCrossing[] {
     const result: SkyGradeCrossing[] = []
@@ -171,7 +171,7 @@ export function skyGradeStoragePorts(
       const current = bound(valid)
       const previous = pending()
       if (previous && encodeSkyGradeBatch(previous) !== encoded) return invalid()
-      checkTarget(valid, current)
+      checkTarget(valid, current, previous === null)
       observedIntent = encoded
       props().setProperty(SKY_GRADE_BATCH_KEY, encoded)
     },
@@ -186,7 +186,7 @@ export function skyGradeStoragePorts(
       const valid = decodeSkyGradeBatch(encodeSkyGradeBatch(batch))
       const current = bound(valid)
       same(valid)
-      checkTarget(valid, current)
+      checkTarget(valid, current, false)
       const cells = valid.rows.map((row) =>
         ownedSkyGradeCells(row).map((value) => ({
           userEnteredValue: typeof value === 'boolean' ? { boolValue: value } : { stringValue: String(value) }

@@ -50,7 +50,7 @@ function inputs(): SkyGradeInputs {
 }
 function call(patch: Row<'ledger'> = {}): Row<'ledger'> {
   return {
-    kind: 'approved',
+    kind: 'call_approved',
     pack: 'sky',
     'window_id or night_id': 'wave',
     call_id: 'call-one',
@@ -189,19 +189,25 @@ test('grades actual wave once, retaining original proposal and historical hash',
   expect(r.ids).toBe(1)
 })
 test.each([
-  ['none', undefined, 'miss', '', ''],
-  ['rejected', 'commute_disruption', 'miss', 'commute_disruption', ''],
-  ['edited', 'outdoor_limited', 'hit', 'commute_disruption', 'outdoor_limited→commute_disruption'],
-  ['edited', 'normal', 'miss', 'commute_disruption', ''],
-  ['edited', 'no_call', 'no_call', 'commute_disruption', '']
-] as const)('classifies %s sent %s independently of proposal', (decision, sent, outcome, proposal, diff) => {
+  ['', 'none', undefined, 'miss', '', ''],
+  ['call_rejected', 'rejected', 'commute_disruption', 'miss', 'commute_disruption', ''],
+  ['call_edited', 'edited', 'outdoor_limited', 'hit', 'commute_disruption', 'outdoor_limited→commute_disruption'],
+  ['call_edited', 'edited', 'normal', 'miss', 'commute_disruption', ''],
+  ['call_edited', 'edited', 'no_call', 'no_call', 'commute_disruption', '']
+] as const)('classifies %s as %s independently of proposal', (kind, decision, sent, outcome, proposal, diff) => {
   const r = rig()
-  if (decision !== 'none') r.data.ledger = [call({ kind: decision, body: JSON.stringify({ mode: sent }) })]
+  if (decision !== 'none') r.data.ledger = [call({ kind, body: JSON.stringify({ mode: sent }) })]
   const { cells } = grade(r)
   expect(cells[3]).toBe(proposal)
   expect(cells[4]).toBe(decision)
   expect(cells[6]).toBe(outcome)
   expect(cells[7]).toBe(diff)
+})
+test.each(['approved', 'edited', 'rejected', 'notice_sent'])('ignores non-call ledger kind %s', (kind) => {
+  const r = rig()
+  r.data.crossings = [crossing()]
+  r.data.ledger = [call({ kind })]
+  expect(grade(r).cells.slice(2, 9)).toEqual(['', '', 'none', 'commute_disruption', 'miss', '', true])
 })
 test('No call proposal and documented null sent mode remain separate from Normal', () => {
   for (const row of [call({ mode: 'no_call' }), call({ body: JSON.stringify({ mode: null, no_call: ['gauge'] }) })]) {
@@ -227,7 +233,7 @@ test('physical latest relevant Sky call wins with blank/backfilled timestamps', 
   const r = rig()
   r.data.ledger = [
     call({ approved_at: now }),
-    call({ kind: 'rejected', call_id: 'last', approved_at: '' }),
+    call({ kind: 'call_rejected', call_id: 'last', approved_at: '' }),
     call({ pack: 'crowd' }),
     call({ kind: 'notice' })
   ]
@@ -239,14 +245,14 @@ test.each(['{', '{}', '{"mode":null}', '{"mode":"surge_night"}'])('malformed sel
   expect(grade(r).report.deferredWindows).toBe(1)
   expect(r.sheet.size).toBe(0)
 })
-test('ANL2 flags rejection but any older approval defeats it', () => {
+test.each(['call_approved', 'call_edited'])('ANL2 flags rejection but older %s defeats it', (kind) => {
   const r = rig()
   r.data.crossings = [crossing()]
-  r.data.ledger = [call({ kind: 'rejected' })]
+  r.data.ledger = [call({ kind: 'call_rejected' })]
   expect(grade(r).cells[8]).toBe(true)
   const s = rig()
   s.data.crossings = [crossing()]
-  s.data.ledger = [call(), call({ kind: 'rejected' })]
+  s.data.ledger = [call({ kind }), call({ kind: 'call_rejected' })]
   expect(grade(s).cells[8]).toBe(false)
 })
 test.each([

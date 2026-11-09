@@ -173,6 +173,18 @@ function liveCrossings(files: readonly SkyGradeCrossing[]): Set<string> {
   }
   return windows
 }
+function callDecision(kind: string): SkyGradeRow['decision'] {
+  switch (kind) {
+    case 'call_approved':
+      return 'approved'
+    case 'call_edited':
+      return 'edited'
+    case 'call_rejected':
+      return 'rejected'
+    default:
+      return 'none'
+  }
+}
 function callFor(
   rows: readonly Row<'ledger'>[],
   windowId: string
@@ -183,19 +195,17 @@ function callFor(
   sent: SkyVerdictValue | null
   anyApproved: boolean
 } {
-  const calls = rows.filter(
-    (r) =>
-      text(r.pack).toLowerCase() === 'sky' &&
-      text(r['window_id or night_id']) === windowId &&
-      ['approved', 'edited', 'rejected'].includes(text(r.kind))
-  )
-  const anyApproved = calls.some((r) => text(r.kind) === 'approved' || text(r.kind) === 'edited')
-  const row = calls.at(-1)
-  if (!row) return { callId: '', proposal: '', decision: 'none', sent: null, anyApproved }
+  const calls = rows
+    .filter((r) => text(r.pack).toLowerCase() === 'sky' && text(r['window_id or night_id']) === windowId)
+    .map((row) => ({ row, decision: callDecision(text(row.kind)) }))
+    .filter((call) => call.decision !== 'none')
+  const anyApproved = calls.some((call) => call.decision === 'approved' || call.decision === 'edited')
+  const selected = calls.at(-1)
+  if (!selected) return { callId: '', proposal: '', decision: 'none', sent: null, anyApproved }
+  const { row, decision } = selected
   const proposal = mode(text(row.mode))
   const callId = text(row.call_id)
   if (!proposal || !callId) throw Error('call_invalid')
-  const decision = text(row.kind) as SkyGradeRow['decision']
   let sent: SkyVerdictValue | null = null
   if (decision !== 'rejected') {
     if (typeof row.body !== 'string') throw Error('call_invalid')

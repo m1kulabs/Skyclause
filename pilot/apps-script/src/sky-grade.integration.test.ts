@@ -499,18 +499,79 @@ test('camera consistency mirror and warning exclusions survive native projection
   expect(input.warnings[0]!.title_en).toBe('No advisory')
   expect(input.warnings[0]!.text_en).toBe('for malaysian waters')
 })
-for (const mutation of ['partial', 'hole', 'duplicate-id', 'duplicate-window', 'foreign-sheet'])
+for (const mutation of ['partial', 'duplicate-id', 'duplicate-window', 'foreign-sheet', 'replaced-intent'])
   test(`native apply rejects ${mutation} without writes`, () => {
     const n = native(),
       { p, batch } = save(n)
     if (mutation === 'partial') n.rows.get('grades')!.push(['', batch.rows[0]!.window_id])
-    if (mutation === 'hole') n.rows.get('grades')!.push([], ['', '', '', '', '', '', '', '', '', 'human'])
     if (mutation === 'duplicate-id') n.rows.get('grades')!.push([], [batch.rows[0]!.grade_id])
     if (mutation === 'duplicate-window') n.rows.get('grades')!.push([], ['', batch.rows[0]!.window_id])
     if (mutation === 'foreign-sheet') batch.sheetId = 99
+    if (mutation === 'replaced-intent')
+      n.props[SKY_GRADE_BATCH_KEY] = encodeSkyGradeBatch({ ...batch, rows: [{ ...grade(), mode_diff: 'changed' }] })
     expect(() => p.applyBatch(batch)).toThrow()
     expect(n.batches).toHaveLength(0)
   })
+test('saved empty target accepts J edits before its first apply and when resaving the same intent', () => {
+  const n = native(),
+    { batch } = save(n)
+  n.seed('grades', [{ explanation: 'human at reserved row' }, { explanation: 'human below reserved row' }])
+  n.grid = 3
+  const p = n.ports()
+  expect(() => p.saveBatch(batch)).not.toThrow()
+  const report = runSkyGrading(p)
+  expect(report.problems).toEqual([])
+  expect(report.appendedGrades).toBe(1)
+  expect(report.pendingBatch).toBe(false)
+  expect(n.rows.get('grades')![1]![0]).toBe(batch.rows[0]!.grade_id)
+  expect(n.rows.get('grades')![1]![9]).toBe('human at reserved row')
+  expect(n.rows.get('grades')![2]![9]).toBe('human below reserved row')
+  expect(n.props[SKY_GRADE_BATCH_KEY]).toBeUndefined()
+})
+test.each(['batch-before', 'batch-after'])('J edits before and after %s preserve frozen recovery', (fault) => {
+  const n = native(),
+    { batch } = save(n)
+  n.seed('grades', [{ explanation: 'before provider attempt' }])
+  n.fault = fault
+  const failed = runSkyGrading(n.ports())
+  expect(failed.problems).toEqual([{ code: 'batch_apply_unknown' }])
+  expect(n.batches).toHaveLength(1)
+  expect(n.rows.get('grades')![1]![9]).toBe('before provider attempt')
+  n.rows.get('grades')![1]![9] = 'after provider attempt'
+  n.fault = ''
+  const recovered = runSkyGrading(n.ports())
+  expect(recovered.problems).toEqual([])
+  expect(recovered.appendedGrades).toBe(fault === 'batch-before' ? 1 : 0)
+  expect(recovered.reconciledGrades).toBe(fault === 'batch-after' ? 1 : 0)
+  expect(recovered.pendingBatch).toBe(false)
+  expect(n.rows.get('grades')).toHaveLength(2)
+  expect(n.rows.get('grades')![1]![0]).toBe(batch.rows[0]!.grade_id)
+  expect(n.rows.get('grades')![1]![9]).toBe('after provider attempt')
+  expect(n.props[SKY_GRADE_BATCH_KEY]).toBeUndefined()
+})
+test('fresh intent cannot reserve a target occupied only in J after preparation', () => {
+  const n = native(),
+    p = n.ports(),
+    batch = p.prepareBatch([grade()])
+  n.seed('grades', [{ explanation: 'entered before intent was saved' }])
+  expect(() => p.saveBatch(batch)).toThrow()
+  expect(n.props[SKY_GRADE_BATCH_KEY]).toBeUndefined()
+  expect(n.batches).toHaveLength(0)
+})
+test.each(['changed', 'mixed'])('frozen %s owned receipts still block with J edits', (mutation) => {
+  const n = native(),
+    { p, batch } = save(n, [grade(), grade(2)])
+  p.applyBatch(batch)
+  n.batches.length = 0
+  const rows = n.rows.get('grades')!
+  rows[1]![9] = 'human'
+  if (mutation === 'changed') rows[1]![6] = 'hit'
+  else rows[2] = Array(12).fill('')
+  expect(() => p.applyBatch(batch)).toThrow()
+  expect(runSkyGrading(n.ports()).problems).toEqual([{ code: 'batch_receipt_conflict' }])
+  expect(n.batches).toHaveLength(0)
+  expect(rows[1]![9]).toBe('human')
+})
 test('exact receipt reapplication keeps J, IDs, row count and grid unchanged after lost acknowledgement', () => {
   const n = native(),
     { p, batch } = save(n)
@@ -708,7 +769,7 @@ function seedNight(n: ReturnType<typeof native>) {
       'window_id or night_id': 'night',
       call_id: 'call',
       mode: 'normal',
-      kind: 'approved',
+      kind: 'call_approved',
       body: '{"mode":"normal","private":"PRIVATE_BODY"}',
       recipient_ids: 'PRIVATE_RECIPIENT'
     }
