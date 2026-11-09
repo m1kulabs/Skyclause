@@ -42,7 +42,8 @@ const OWNERS: Record<AuditAction, string> = {
   'source.probation_passed': '#128',
   'staff.action': '#94',
   'flag.changed': '#92',
-  'review_item.explained': '#161'
+  'review_item.explained': '#161',
+  'crowd_reply.dropped': '#163'
 }
 
 const self = new URL(import.meta.url).pathname
