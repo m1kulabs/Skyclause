@@ -12,19 +12,31 @@ import {
   call,
   createBundle,
   notice,
+  projectChannel,
   reading,
   recordAudit,
+  run,
+  sheetVersion,
   systemPrincipal,
   withTenant,
   type Tx
 } from '@skyclause/db'
-import { bundleScene, callDraft, ledgerOf, runOf, windowOf, type Scene } from '@skyclause/db/test/bundles/scene'
+import {
+  bundleScene,
+  callDraft,
+  defaultSheet,
+  ledgerOf,
+  runOf,
+  windowOf,
+  type Scene
+} from '@skyclause/db/test/bundles/scene'
 import {
   makeIndicatorSnapshot,
   makeMember,
   makeOrganization,
   makeProjectChannel,
   makeReading,
+  makeSheetVersion,
   makeSource,
   makeSubscriber,
   makeUser
@@ -200,10 +212,36 @@ type Wording = { language: 'en' | 'ms'; subject: string; body: string }
  * a Storm confirmed bundle drafted at 15:05 for the 15:15, 15:30 and 15:45 release waves.
  */
 async function draft(
-  o: { org?: string; station?: string; until?: string; calls?: number; notices?: Wording[] } = {}
+  o: {
+    org?: string
+    station?: string
+    until?: string
+    calls?: number
+    notices?: Wording[]
+    /** The agent's mode where it disagrees with the engine's Commute disruption. */
+    agentMode?: 'hybrid_recommended' | 'outdoor_limited'
+    /** Storm confirmed's wording in the pinned sheet, which is then version 2. */
+    wording?: { en?: string; ms?: string }
+    draftOnly?: boolean
+  } = {}
 ): Promise<Made> {
   return inOrg(o.org ?? A, async (tx) => {
-    const scene = await bundleScene(tx, { slaS: 600 })
+    let scene = await bundleScene(tx, { slaS: 600 })
+    if (o.wording) {
+      const content = defaultSheet('sky') as { clauses: Array<{ key: string; wording: unknown }> }
+      const [v1] = await tx.select().from(sheetVersion).where(eq(sheetVersion.id, scene.sheetVersionId))
+      const v2 = await makeSheetVersion(tx, {
+        sheetId: v1!.sheetId,
+        n: 2,
+        status: 'published',
+        publishedAt: myt('09:00'),
+        content: {
+          ...content,
+          clauses: content.clauses.map((c) => (c.key === 'storm_confirmed' ? { ...c, wording: o.wording } : c))
+        }
+      })
+      scene = { ...scene, sheetVersionId: v2.id }
+    }
     const gauge = await makeSource(tx, {
       kind: 'jps_rain',
       externalId: o.station ?? randomUUID(),
@@ -242,11 +280,12 @@ async function draft(
     const created = await createBundle(tx, {
       runId: r.id,
       pack: 'sky',
-      draftOnly: false,
+      draftOnly: o.draftOnly ?? false,
       calls: windows.map((w, i) =>
         callDraft({
           windowId: w.id,
-          mode: 'commute_disruption',
+          mode: o.agentMode ?? 'commute_disruption',
+          agrees: !o.agentMode,
           fired: [{ clause: 'storm_confirmed', inputs: [GAUGE] }],
           recipients: Object.values(subscribers),
           notices: o.notices ?? [WORDING.en, WORDING.ms],
@@ -324,6 +363,11 @@ function approve(
     idempotencyKey: o.idempotencyKey,
     body: { reconfirm: false, ...body, review_hash: body.review_hash ?? o.reviewHash }
   })
+}
+
+async function bundleOf(tx: Tx, made: Made) {
+  const { bundle } = await import('@skyclause/db')
+  return (await tx.select().from(bundle).where(eq(bundle.id, made.bundleId)))[0]!
 }
 
 async function bundleState(made: Made) {
@@ -590,5 +634,287 @@ describe('#79 §4 and §7: who may approve', () => {
       params: { id: other.bundleId },
       body: { review_hash: 'shown', reconfirm: false, calls: approveAll(other) }
     }).run()
+  })
+})
+
+describe('idempotency and the outbox', () => {
+  test('a repeated Idempotency-Key returns the stored response and writes no second outbox row', async () => {
+    clock = myt('15:07')
+    const made = await draft({ calls: 1 })
+    const as = await approver()
+    const body = { review_hash: await currentHash(made), calls: approveAll(made) }
+    const key = randomUUID()
+    const first = await approve(as, made, body, { idempotencyKey: key })
+    expect(first.status).toBe(200)
+    const again = await approve(as, made, body, { idempotencyKey: key })
+    expect(again.status).toBe(200)
+    expect(await again.text()).toBe(await first.text())
+    const rows = await bundleRow(made)
+    // Three confirmed subscribers, once each; the unconfirmed one gets none (NTC-8).
+    expect(rows.notices.map((n) => n.subscriberId).sort()).toEqual(
+      [made.subscribers.en, made.subscribers.en2, made.subscribers.ms].sort()
+    )
+    expect(rows.approvals.map((a) => a.action)).toEqual(['approve'])
+    // Without the key, a repeat finds the bundle no longer under review.
+    expect((await approve(as, made, body)).status).toBe(422)
+  })
+
+  test('with the project’s email channel off, the call sends with no notice rows', async () => {
+    clock = myt('15:07')
+    const made = await draft({ calls: 1 })
+    await inOrg(A, (tx) =>
+      tx.update(projectChannel).set({ enabled: false }).where(eq(projectChannel.projectId, made.scene.projectId))
+    )
+    const as = await approver()
+    expect((await approve(as, made, { review_hash: await currentHash(made), calls: approveAll(made) })).status).toBe(
+      200
+    )
+    const rows = await bundleRow(made)
+    expect(rows.calls.map((c) => c.state)).toEqual(['sending'])
+    expect(rows.notices).toEqual([])
+  })
+})
+
+describe('CAL-15: required lines and attendance excuses', () => {
+  const editTo = (made: Made, wording: Wording) => [{ call_id: made.callIds[0]!, action: 'edit', notices: [wording] }]
+
+  test('an edit excusing attendance in English answers 422 attendance-excuse and approves nothing', async () => {
+    clock = myt('15:07')
+    const made = await draft({ calls: 1 })
+    const as = await approver({ readsMalay: true })
+    const response = await approve(as, made, {
+      review_hash: await currentHash(made),
+      calls: editTo(made, { language: 'en', subject: 'Storm', body: 'Heavy rain; attendance is optional today.' })
+    })
+    expect(response.status).toBe(422)
+    expect(await response.json()).toMatchObject({
+      type: 'https://docs.skyclause.m1ku.tech/problems/validation-failed',
+      reason: 'attendance-excuse',
+      call_id: made.callIds[0]
+    })
+    const rows = await bundleRow(made)
+    expect(rows.calls.map((c) => c.state)).toEqual(['drafted'])
+    expect(rows.approvals).toEqual([])
+  })
+
+  test('an edit excusing attendance in Malay answers 422 attendance-excuse', async () => {
+    clock = myt('15:07')
+    const made = await draft({ calls: 1 })
+    const as = await approver({ readsMalay: true })
+    const response = await approve(as, made, {
+      review_hash: await currentHash(made),
+      calls: editTo(made, {
+        language: 'ms',
+        subject: 'Ribut',
+        body: 'Hujan lebat; pelajar tidak perlu hadir hari ini.'
+      })
+    })
+    expect(response.status).toBe(422)
+    expect(await response.json()).toMatchObject({ reason: 'attendance-excuse', call_id: made.callIds[0] })
+  })
+
+  test('a Hybrid recommended edit replaces the wording only: the template keeps the teaching-mode line', async () => {
+    // #152: the teaching line is a template line, so no edit removes it; checkRequiredLines still runs on the render.
+    clock = myt('15:07')
+    const made = await draft({ calls: 1, agentMode: 'hybrid_recommended' })
+    const as = await approver({ readsMalay: true })
+    const response = await approve(as, made, {
+      review_hash: await currentHash(made),
+      calls: [
+        {
+          call_id: made.callIds[0]!,
+          action: 'edit',
+          chosen: 'agent',
+          notices: [{ language: 'en', subject: 'Storm', body: 'Heavy rain at the gauge; teach online if you can.' }]
+        }
+      ]
+    })
+    expect(response.status, await response.clone().text()).toBe(200)
+    const [stored] = (await bundleRow(made)).calls
+    expect(stored).toMatchObject({ state: 'sending', mode: 'hybrid_recommended', chosen: 'agent' })
+    expect(stored!.notices).toEqual([
+      { language: 'en', subject: 'Storm', body: 'Heavy rain at the gauge; teach online if you can.' },
+      WORDING.ms
+    ])
+  })
+})
+
+describe('LOC-5: Malay model notices need a Malay reader', () => {
+  test('a non-reader’s approval sends the call in English and records the fallback', async () => {
+    clock = myt('15:07')
+    const made = await draft({ calls: 1 })
+    const as = await approver({ readsMalay: false })
+    const response = await approve(as, made, { review_hash: await currentHash(made), calls: approveAll(made) })
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as {
+      calls: Array<{ notices: Wording[]; recipient_counts: { by_language: { en: number; ms: number } } }>
+    }
+    // The bundle shows the call as English only, with every recipient counted in English (LOC-4).
+    expect(body.calls[0]!.notices).toEqual([WORDING.en])
+    expect(body.calls[0]!.recipient_counts.by_language).toEqual({ en: 3, ms: 0 })
+    const rows = await bundleRow(made)
+    expect(rows.notices.find((n) => n.subscriberId === made.subscribers.ms)!.language).toBe('en')
+    expect(rows.approvals[0]!.diff).toMatchObject({ language_fallback: { to: 'en', reason: 'malay-reader-required' } })
+    const [entry] = await ledgerOf(made.scene.projectId)
+    expect(entry!.body).toMatchObject({ language_fallback: 'en', notices: { en: 3, ms: 0 } })
+  })
+
+  test('a non-reader’s edit to Malay text answers 422 malay-reader-required', async () => {
+    clock = myt('15:07')
+    const made = await draft({ calls: 1 })
+    const as = await approver({ readsMalay: false })
+    const response = await approve(as, made, {
+      review_hash: await currentHash(made),
+      calls: [{ call_id: made.callIds[0]!, action: 'edit', notices: [{ ...WORDING.ms, body: 'Hujan lebat.' }] }]
+    })
+    expect(response.status).toBe(422)
+    expect(await response.json()).toMatchObject({
+      type: 'https://docs.skyclause.m1ku.tech/problems/malay-reader-required',
+      call_id: made.callIds[0]
+    })
+  })
+})
+
+describe('CAL-4 and D23: a pick per disagreeing window', () => {
+  test('a disagreeing call without a pick answers 422', async () => {
+    clock = myt('15:07')
+    const made = await draft({ calls: 1, agentMode: 'outdoor_limited' })
+    const as = await approver()
+    const response = await approve(as, made, { review_hash: await currentHash(made), calls: approveAll(made) })
+    expect(response.status).toBe(422)
+    expect(await response.json()).toMatchObject({ call_id: made.callIds[0] })
+  })
+
+  test('a shadow pick sends the engine’s call worded by its clause, placeholders filled from the snapshot', async () => {
+    clock = myt('15:07')
+    const made = await draft({
+      calls: 1,
+      agentMode: 'outdoor_limited',
+      wording: {
+        en: 'Storm confirmed: {site.rain_60m_mm.value} {site.rain_60m_mm.unit} by {site.rain_60m_mm.observed_at} at gauge {site.rain_60m_mm.station}.'
+      }
+    })
+    const as = await approver({ readsMalay: true })
+    const response = await approve(as, made, {
+      review_hash: await currentHash(made),
+      calls: [{ call_id: made.callIds[0]!, action: 'approve', chosen: 'shadow' }]
+    })
+    expect(response.status, await response.clone().text()).toBe(200)
+    const rows = await bundleRow(made)
+    expect(rows.calls[0]).toMatchObject({
+      state: 'sending',
+      chosen: 'shadow',
+      mode: 'commute_disruption',
+      fired: [{ clause: 'storm_confirmed', inputs: [GAUGE] }],
+      notices: [
+        {
+          language: 'en',
+          subject: '',
+          body: `Storm confirmed: 44.5 mm by 15:05 MYT at gauge ${made.gauge.externalId}.`
+        }
+      ]
+    })
+    // The sheet has no Malay wording, so the Malay subscriber's notice is English.
+    expect(rows.notices.find((n) => n.subscriberId === made.subscribers.ms)!.language).toBe('en')
+    const pick = rows.approvals.find((a) => a.action === 'choose_verdict')!
+    expect(pick.diff).toMatchObject({
+      before: { chosen: 'agent', mode: 'outdoor_limited' },
+      after: { chosen: 'shadow' }
+    })
+    expect(rows.approvals.map((a) => a.action).sort()).toEqual(['approve', 'choose_verdict'])
+  })
+})
+
+describe('CAL-7, CAL-8 and the bundle’s state', () => {
+  test('replay: approved at 15:35, the 15:30 call expires unsent and only the later calls send', async () => {
+    clock = myt('15:35')
+    const made = await draft()
+    const [early, ...later] = made.callIds as [string, string, string]
+    const as = await approver()
+    const asked = await approve(as, made, { review_hash: await currentHash(made), calls: approveAll(made) })
+    expect(asked.status).toBe(409)
+    expect(await asked.json()).toMatchObject({
+      type: 'https://docs.skyclause.m1ku.tech/problems/call-expired',
+      call_id: early
+    })
+    // The gauge kept reporting, so the 15:35 re-check shows the change first (CAL-9), and the confirm approves.
+    await inOrg(A, (tx) => storeReadings(tx, made.gauge.id, '15:05', '15:35'))
+    const laterCalls = later.map((call_id) => ({ call_id, action: 'approve' }))
+    const changed = await approve(as, made, { review_hash: await currentHash(made), calls: laterCalls })
+    expect(changed.status).toBe(409)
+    const { review_hash } = (await changed.json()) as Conflict
+    const response = await approve(as, made, { review_hash, reconfirm: true, calls: laterCalls })
+    expect(response.status, await response.clone().text()).toBe(200)
+    const rows = await bundleRow(made)
+    expect(rows.calls.map((c) => [c.id, c.state])).toEqual([
+      [early, 'expired'],
+      [later[0], 'sending'],
+      [later[1], 'sending']
+    ])
+    expect(rows.notices.every((n) => n.callId !== early)).toBe(true)
+    expect((await ledgerOf(made.scene.projectId)).map((e) => [e.kind, e.refs.call_id])).toEqual([
+      ['call_expired', early],
+      ['call_approved', later[0]],
+      ['call_approved', later[1]]
+    ])
+  })
+
+  test('a superseded bundle answers 409 bundle-superseded with the newer call', async () => {
+    clock = myt('15:07')
+    const made = await draft({ calls: 1 })
+    const newer = await inOrg(A, async (tx) => {
+      const [old] = await tx.select().from(call).where(eq(call.id, made.callIds[0]!))
+      const [r] = await tx
+        .select()
+        .from(run)
+        .where(eq(run.id, (await bundleOf(tx, made)).runId))
+      return createBundle(tx, {
+        runId: (await runOf(tx, { ...made.scene, snapshotId: r!.snapshotId! }, myt('15:06'))).id,
+        pack: 'sky',
+        draftOnly: false,
+        calls: [callDraft({ windowId: old!.windowId!, mode: 'commute_disruption', shadow: old!.shadow as never })],
+        triggeredAt: myt('15:06'),
+        now: myt('15:06')
+      })
+    })
+    const as = await approver()
+    const response = await approve(as, made, { review_hash: await currentHash(made), calls: approveAll(made) })
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      type: 'https://docs.skyclause.m1ku.tech/problems/bundle-superseded',
+      superseded_by_call_id: newer.callIds[0]
+    })
+  })
+
+  test('D23: a guest window’s draft-only bundle is never approvable', async () => {
+    clock = myt('15:07')
+    const made = await draft({ calls: 1, draftOnly: true })
+    const as = await approver()
+    const response = await approve(as, made, { review_hash: await currentHash(made), calls: approveAll(made) })
+    expect(response.status).toBe(422)
+    expect((await bundleRow(made)).notices).toEqual([])
+  })
+
+  test('every open call needs a decision', async () => {
+    clock = myt('15:07')
+    const made = await draft({ calls: 2 })
+    const as = await approver()
+    const response = await approve(as, made, {
+      review_hash: await currentHash(made),
+      calls: [{ call_id: made.callIds[0]!, action: 'approve' }]
+    })
+    expect(response.status).toBe(422)
+    expect(await response.json()).toMatchObject({ call_id: made.callIds[1] })
+  })
+
+  test('a call of another bundle answers 422, not a server error', async () => {
+    clock = myt('15:07')
+    const made = await draft({ calls: 1 })
+    const as = await approver()
+    const response = await approve(as, made, {
+      review_hash: await currentHash(made),
+      calls: [{ call_id: randomUUID(), action: 'approve' }]
+    })
+    expect(response.status).toBe(422)
   })
 })
