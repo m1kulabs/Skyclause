@@ -41,7 +41,8 @@ const OWNERS: Record<AuditAction, string> = {
   'bundle.approve_denied': '#93',
   'source.probation_passed': '#128',
   'staff.action': '#94',
-  'flag.changed': '#92'
+  'flag.changed': '#92',
+  'review_item.explained': '#161'
 }
 
 const self = new URL(import.meta.url).pathname
