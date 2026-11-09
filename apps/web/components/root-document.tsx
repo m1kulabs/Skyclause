@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { connection } from 'next/server'
 import type { RouteGroup } from '@skyclause/contracts/analytics'
 import { t } from '@skyclause/i18n'
 import { Announcer } from '../lib/announce'
@@ -6,7 +7,7 @@ import { WebVitals } from '../features/quality/web-vitals'
 import { APPEARANCE_SCRIPT, DEFAULT_APPEARANCE, resolveAppearance, type Appearance } from '../lib/theme'
 import '../styles/globals.css'
 
-export function RootDocument({
+export async function RootDocument({
   children,
   appearance = DEFAULT_APPEARANCE,
   resolved = resolveAppearance(appearance),
@@ -17,9 +18,12 @@ export function RootDocument({
   appearance?: Appearance
   resolved?: ReturnType<typeof resolveAppearance>
   routeGroup?: RouteGroup
-  /** The per-request CSP nonce; static shells omit it and run on the appearance hash. */
+  /** The per-request CSP nonce for the inline appearance script. */
   nonce?: string
 }) {
+  // A static Cache Components shell cannot carry the nonce from this request.
+  await connection()
+
   return (
     <html
       lang="en"

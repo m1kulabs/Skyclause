@@ -34,10 +34,11 @@ Contents:
 
 ## Notes
 
-- Static shells cannot see the per-request nonce, so the one inline script they carry (the appearance script) runs on its SHA-256 hash. Dynamic shells pass the proxy's `x-nonce` through `RequestRootLayout` into the same script tag. The e2e planted page proves a nonced script runs and an unnonced one does not.
-- Next.js runtime scripts on static shells, the camera service worker under `worker-src` fallback, and the `style-src 'unsafe-inline'` the app's inline style attributes need today are recorded, not solved: the built-app check (coordinator's `next build` plus this map's e2e) decides whether a route needs a hash fallback or a cleanup ticket.
+- Nonce CSP requires request-rendered HTML because Cache Components' static shells cannot carry a per-request nonce. `RootDocument` waits for `connection()`, and each document root uses `instant = false`; the proxy forwards CSP on the request and response so Next can nonce its scripts. The built-app tests check the landing and planted routes.
+- The appearance script stays pinned by its SHA-256 hash beside the nonce. The planted-page test proves a nonced script runs and an unnonced one does not.
+- The camera service worker still uses the `worker-src` fallback, and the app's inline style attributes still need `style-src 'unsafe-inline'`.
 - `style-src` keeps `'unsafe-inline'` because inline style attributes are load-bearing (theme `colorScheme`, charts, camera, virtual rows); nonces cannot cover attributes, so the entry stays listed until those move to classes.
-- `connect-src` is `'self'` plus the configured API origin for the browser client; `img-src` is `'self' data: blob:` for bundled art and camera object URLs.
+- `connect-src` is `'self'` plus the configured API origin and, on app surfaces, the MCP origin used to read `tools.json`; `img-src` is `'self' data: blob:` for bundled art and camera object URLs.
 - Production header quoting waits on #90: each host's live response headers go on the issue, not in this file.
 
 ## See also

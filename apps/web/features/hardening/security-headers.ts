@@ -7,11 +7,9 @@ import { hostConfig, proxyResponse, routeRequest, type HostConfig, type Surface 
 
 let shared: HostConfig | undefined
 
-// lib/theme.ts's APPEARANCE_SCRIPT, hashed once. The static shells (marketing)
-// cannot see the per-request nonce, so this hash lets that one inline script
-// run; the script is a plain string literal (bundler-stable, never
-// `fn.toString()`) and test/hardening.test.ts recomputes the hash and fails
-// when the script changes.
+// lib/theme.ts's APPEARANCE_SCRIPT, hashed once as a pinned allowance alongside
+// the per-request nonce. The script is a plain string literal (bundler-stable,
+// never `fn.toString()`), and test/hardening.test.ts recomputes the hash.
 export const APPEARANCE_HASH = 'sha256-HRaBKcF3NonJpCn+ZC9rV9veu2iZQtO2AZS9TOso27M='
 
 const randomNonce = () => {
@@ -50,15 +48,16 @@ const isCameraRoute = (pathname: string) => /(^|\/)camera(\/|$)/.test(pathname)
 export function securityHeaders(request: NextRequest, config?: HostConfig): NextResponse {
   const hosts = config ?? (shared ??= hostConfig(process.env))
   const nonce = randomNonce()
-  // The app reads the nonce back through `headers()` (RequestRootLayout) for
-  // its dynamic shells; static shells run on the appearance hash instead.
-  const downstream = new Headers(request.headers)
-  downstream.set('x-nonce', nonce)
-  const response = proxyResponse(request, hosts, { request: { headers: downstream } })
   const host = request.headers.get('host') ?? request.nextUrl.host
   const route = routeRequest({ ...hosts, host, pathname: request.nextUrl.pathname })
   const surface = route ? (SURFACE_OF[route.group] ?? surfaceOfHost(hosts, host)) : null
-  applySecurityHeaders(response, { surface, camera: isCameraRoute(request.nextUrl.pathname), nonce })
+  const policy = { surface, camera: isCameraRoute(request.nextUrl.pathname), nonce }
+  const downstream = new Headers(request.headers)
+  downstream.set('x-nonce', nonce)
+  // Next reads the nonce from the incoming CSP header and applies it to its scripts.
+  downstream.set('Content-Security-Policy', contentSecurityPolicy(policy))
+  const response = proxyResponse(request, hosts, { request: { headers: downstream } })
+  applySecurityHeaders(response, policy)
   return response
 }
 
@@ -73,13 +72,29 @@ export function applySecurityHeaders(
   response: NextResponse,
   o: { surface: Surface | null; camera: boolean; nonce: string }
 ): void {
+  response.headers.set('Content-Security-Policy', contentSecurityPolicy(o))
+  response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubdomains')
+  response.headers.set('X-Content-Type-Options', 'nosniff')
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  if (o.surface !== 'embed') response.headers.set('Cross-Origin-Opener-Policy', 'same-origin')
+  response.headers.set(
+    'Permissions-Policy',
+    o.camera ? 'camera=(self), microphone=(), geolocation=()' : 'camera=(), microphone=(), geolocation=()'
+  )
+}
+
+function contentSecurityPolicy(o: { surface: Surface | null; camera: boolean; nonce: string }): string {
   const embed = o.surface === 'embed'
   const apiOrigin = process.env.NEXT_PUBLIC_API_ORIGIN ?? process.env.API_ORIGIN
-  const connect = apiOrigin && apiOrigin !== 'self' ? `connect-src 'self' ${apiOrigin}` : "connect-src 'self'"
-  // script-src: the nonce for dynamic shells and the appearance hash for
-  // static shells, `strict-dynamic` for the rest; style-src keeps
-  // 'unsafe-inline' for the app's inline style attributes (see the control map).
-  const csp = [
+  const mcpOrigin = process.env.MCP_ORIGIN ?? 'https://mcp.skyclause.m1ku.tech'
+  const connectOrigins = [apiOrigin, o.surface === 'app' ? mcpOrigin : undefined].filter(
+    (origin): origin is string => Boolean(origin) && origin !== 'self'
+  )
+  const connect = `connect-src 'self'${connectOrigins.map((origin) => ` ${origin}`).join('')}`
+  // The nonce authorizes request-rendered Next scripts; the appearance hash
+  // pins the reviewed theme bootstrap. style-src keeps 'unsafe-inline' for
+  // the app's inline style attributes (see the control map).
+  return [
     "default-src 'self'",
     `script-src 'nonce-${o.nonce}' 'strict-dynamic' '${APPEARANCE_HASH}'`,
     "object-src 'none'",
@@ -90,13 +105,4 @@ export function applySecurityHeaders(
     "img-src 'self' data: blob:",
     "style-src 'self' 'unsafe-inline'"
   ].join('; ')
-  response.headers.set('Content-Security-Policy', csp)
-  response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubdomains')
-  response.headers.set('X-Content-Type-Options', 'nosniff')
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  if (!embed) response.headers.set('Cross-Origin-Opener-Policy', 'same-origin')
-  response.headers.set(
-    'Permissions-Policy',
-    o.camera ? 'camera=(self), microphone=(), geolocation=()' : 'camera=(), microphone=(), geolocation=()'
-  )
 }

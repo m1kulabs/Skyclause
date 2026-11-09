@@ -87,6 +87,31 @@ test.describe('HOST_MODE=single', () => {
     expect(html).toContain(`nonce="${nonceOf(csp)}"`)
   })
 
+  test('Next framework scripts carry the per-request CSP nonce', async ({ page }) => {
+    const violations: string[] = []
+    page.on('console', (message) => {
+      if (message.type() === 'error' && /Content Security Policy directive.*script-src/i.test(message.text())) {
+        violations.push(message.text())
+      }
+    })
+
+    for (const path of ['/', '/quality-planted/vitals']) {
+      violations.length = 0
+      const response = await page.goto(path)
+      const nonce = nonceOf(response?.headers()['content-security-policy'] ?? '')
+      const scriptNonces = await page
+        .locator('script[src*="/_next/static/"]')
+        .evaluateAll((scripts) => scripts.map((script) => (script as HTMLScriptElement).nonce))
+
+      expect(scriptNonces.length, path).toBeGreaterThan(0)
+      expect(
+        scriptNonces.every((scriptNonce) => scriptNonce === nonce),
+        path
+      ).toBe(true)
+      expect(violations, path).toEqual([])
+    }
+  })
+
   test('an inline script without the nonce does not run, one with it does', async ({ page }) => {
     await page.goto('/quality-planted/csp')
     expect(await page.evaluate(() => (window as unknown as Record<string, unknown>).__plantedCsp)).toBeUndefined()

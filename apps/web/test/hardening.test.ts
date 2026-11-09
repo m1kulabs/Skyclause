@@ -3,7 +3,7 @@
 // e2e/hardening.spec.ts; this suite pins the header contract per route group.
 import { createHash } from 'node:crypto'
 import { NextRequest } from 'next/server'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { securityHeaders } from '../features/hardening/security-headers'
 import { hostConfig, type HostConfig } from '../lib/hosts'
 import { APPEARANCE_SCRIPT } from '../lib/theme'
@@ -76,6 +76,8 @@ const SINGLE = [
 const run = (url: string, config: HostConfig) => securityHeaders(new NextRequest(url), config)
 const csp = (url: string, config: HostConfig) => run(url, config).headers.get('Content-Security-Policy') ?? ''
 
+afterEach(() => vi.unstubAllEnvs())
+
 describe('securityHeaders', () => {
   it('sends HSTS without preload, nosniff and strict-origin-when-cross-origin on every route in both modes', () => {
     for (const [path, host] of MULTI) {
@@ -110,6 +112,15 @@ describe('securityHeaders', () => {
     ]) {
       expect(first, directive).toContain(directive)
     }
+  })
+
+  it('allows Connect to fetch tools from the MCP origin on app routes only', () => {
+    vi.stubEnv('MCP_ORIGIN', ORIGINS.MCP_ORIGIN)
+    const app = csp('https://app.skyclause.m1ku.tech/connect', multi)
+    const marketing = csp('https://skyclause.m1ku.tech/', multi)
+
+    expect(app).toContain(ORIGINS.MCP_ORIGIN)
+    expect(marketing).not.toContain(ORIGINS.MCP_ORIGIN)
   })
 
   it('allow-lists the static appearance script by hash beside the nonce', () => {
