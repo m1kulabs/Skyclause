@@ -26,6 +26,7 @@ import {
   sha256HexDigest,
   saveLastClauseEditor,
   skyReplayPorts,
+  skyGradePorts,
   triggers,
   windowFormPort,
   withLock,
@@ -37,6 +38,7 @@ import { runApimsHandler } from './apims.ts'
 import { buildHealth } from './health.ts'
 import { runEvidenceInbox } from './evidence.ts'
 import { runAuditor as executeAuditor, parseAuditRecipients } from './auditor.ts'
+import { runSkyGrading } from './sky-grades.ts'
 import { METADATA_URL, runCrowdGrading } from './crowd-grades.ts'
 import { newUuidV7, runJpsHandler } from './jps.ts'
 import { runCameraRetention } from './camera.ts'
@@ -166,6 +168,30 @@ export function pollMetForecast(): void {
 export function verifyMetWarningText(): void {
   const ports = metPorts()
   withLock(() => console.log(JSON.stringify(verifyStoredMetWarningText(ports))))
+}
+
+// Daily Sky grades use actual closed spans; setup installs the nightly and morning catch-up jobs.
+export function gradeSky(): void {
+  withLock(() => {
+    const sheetId = getProperty('SHEET_ID')
+    const skyFolderId = getProperty('CROSSINGS_SKY_FOLDER_ID')
+    if (!sheetId?.trim()) throw new Error('SHEET_ID is not set; run setup()')
+    if (!skyFolderId?.trim()) throw new Error('CROSSINGS_SKY_FOLDER_ID is not set; run setup()')
+    const report = runSkyGrading(skyGradePorts(sheetId, skyFolderId))
+    console.log(
+      JSON.stringify({
+        closedWindows: report.closedWindows,
+        plannedGrades: report.plannedGrades,
+        appendedGrades: report.appendedGrades,
+        reconciledGrades: report.reconciledGrades,
+        alreadyGradedWindows: report.alreadyGradedWindows,
+        deferredWindows: report.deferredWindows,
+        pendingBatch: report.pendingBatch,
+        budgetExhausted: report.budgetExhausted,
+        problems: report.problems.map((problem) => problem.code)
+      })
+    )
+  })
 }
 
 // The Crowd D+1 grader (#70), every 30 minutes: grades every night from 3

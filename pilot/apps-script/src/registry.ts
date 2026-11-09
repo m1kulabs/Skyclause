@@ -15,5 +15,7 @@ export const triggerRegistry: TriggerEntry[] = [
   { kind: 'time', handler: 'sweep', every: { minutes: 5 } },
   { kind: 'time', handler: 'forecastCrowd', every: { hours: 1 } },
   { kind: 'time', handler: 'gradeCrowd', every: { minutes: 30 } },
+  { kind: 'time', handler: 'gradeSky', every: { atHour: 23, nearMinute: 55 } },
+  { kind: 'time', handler: 'gradeSky', every: { atHour: 6, nearMinute: 0 } },
   { kind: 'on_edit', handler: 'on_edit_clauses', spreadsheet: 'SHEET_ID' }
 ]

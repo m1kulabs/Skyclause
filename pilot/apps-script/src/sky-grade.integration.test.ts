@@ -1,5 +1,10 @@
-import { afterEach, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeAll, expect, test } from 'bun:test'
 import { createHash } from 'node:crypto'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { createContext, runInContext } from 'node:vm'
+import { build } from '../build.ts'
 import { skyGradeStoragePorts } from './sky-grade-storage.ts'
 import { readColumns, skyGradePorts } from './gas.ts'
 import { columnsOf, toRow, type Cell, type Row, type Tab } from './schema.ts'
@@ -17,7 +22,7 @@ afterEach(() => {
   original.clear()
 })
 function install(name: string, value: unknown) {
-  original.set(name, Object.getOwnPropertyDescriptor(globalThis, name))
+  if (!original.has(name)) original.set(name, Object.getOwnPropertyDescriptor(globalThis, name))
   Object.defineProperty(globalThis, name, { configurable: true, writable: true, value })
 }
 const grade = (n = 1): SkyGradeRow => ({
@@ -193,6 +198,7 @@ function native() {
   const ports = () => skyGradeStoragePorts('workbook', 'sky-folder', helpers)
   return {
     ports,
+    services,
     rows,
     reads,
     propertyReads,
@@ -580,4 +586,225 @@ test('an existing exact-title view with ID zero is adopted', () => {
   n.views.push({ title: TITLE, filterViewId: 0 })
   expect(n.ports().ensureExplanationView()).toEqual({ status: 'updated', filterViewId: 0 })
   expect(n.batches[0]![0]!.updateFilterView!.filter!.filterViewId).toBe(0)
+})
+
+let bundleDir = ''
+let bundle = ''
+beforeAll(async () => {
+  bundleDir = mkdtempSync(join(tmpdir(), 'sky-grade-main-'))
+  await build({ outdir: bundleDir, sha: 'task-5-test', builtAt: '2026-11-09T00:00:00+08:00', pilotScriptId: '' })
+  bundle = readFileSync(join(bundleDir, 'Code.js'), 'utf8')
+})
+afterAll(() => rmSync(bundleDir, { recursive: true, force: true }))
+
+// Only native services and wall-clock time are doubled; built main, factory, controller and storage all run.
+function builtGrader() {
+  const n = native()
+  n.props.SHEET_ID = 'workbook'
+  n.props.CROSSINGS_SKY_FOLDER_ID = 'sky-folder'
+  const logs: string[] = [],
+    forbidden: string[] = [],
+    locks: string[] = []
+  let clock = Date.parse('2026-11-08T23:55:00+08:00'),
+    held = false,
+    failLog = false,
+    readDelay = 0
+  class Clock extends Date {
+    constructor(value?: string | number) {
+      super(value === undefined ? clock : value)
+    }
+    static now() {
+      return clock
+    }
+  }
+  const blocked = (name: string) =>
+    new Proxy(
+      {},
+      {
+        get() {
+          forbidden.push(name)
+          throw Error('forbidden native callback')
+        }
+      }
+    )
+  const context = createContext({
+    ...n.services,
+    Date: Clock,
+    Utilities: {
+      DigestAlgorithm: { SHA_256: 'SHA_256' },
+      Charset: { UTF_8: 'UTF_8' },
+      computeDigest: (_algorithm: string, text: string) => [...createHash('sha256').update(text).digest()]
+    },
+    LockService: {
+      getScriptLock: () => ({
+        waitLock() {
+          if (held) throw Error('nested lock')
+          held = true
+          locks.push('acquire')
+        },
+        releaseLock() {
+          held = false
+          locks.push('release')
+        }
+      })
+    },
+    console: {
+      log(line: string) {
+        if (failLog) throw Error('log failure')
+        logs.push(line)
+      }
+    },
+    Gmail: blocked('Gmail'),
+    GmailApp: blocked('GmailApp'),
+    MailApp: blocked('MailApp'),
+    CalendarApp: blocked('CalendarApp'),
+    UrlFetchApp: blocked('UrlFetchApp'),
+    ScriptApp: blocked('ScriptApp')
+  })
+  const open = n.services.SpreadsheetApp.openById
+  n.services.SpreadsheetApp.openById = (id: string) => {
+    expect(held).toBe(true)
+    const book = open(id)
+    clock += readDelay
+    return book
+  }
+  runInContext(bundle, context)
+  const main = context as unknown as { gradeSky(): void }
+  return {
+    n,
+    logs,
+    forbidden,
+    locks,
+    main,
+    at: (value: string) => {
+      clock = Date.parse(value)
+    },
+    delay: (ms: number) => {
+      readDelay = ms
+    },
+    failLog: () => {
+      failLog = true
+    }
+  }
+}
+function seedNight(n: ReturnType<typeof native>) {
+  n.seed('windows', [
+    {
+      window_id: 'night',
+      date: '2026-11-08',
+      start_myt: '22:00',
+      end_myt: '23:30',
+      title: 'PRIVATE_TITLE',
+      status: 'active'
+    }
+  ])
+  const content_json = JSON.stringify(
+    defaultSkyClauseRows().map((r) => Object.fromEntries(columnsOf('clauses').map((k) => [k, r[k] ?? ''])))
+  )
+  n.seed('clause_versions', [{ saved_at: '2026-11-01T00:00:00+08:00', content_json, content_hash: hash(content_json) }])
+  n.seed('ledger', [
+    {
+      pack: 'sky',
+      'window_id or night_id': 'night',
+      call_id: 'call',
+      mode: 'normal',
+      kind: 'approved',
+      body: '{"mode":"normal","private":"PRIVATE_BODY"}',
+      recipient_ids: 'PRIVATE_RECIPIENT'
+    }
+  ])
+  n.seed('grades', [{ window_id: 'older', explanation: 'PRIVATE_EXPLANATION' }])
+}
+
+test('built gradeSky requires actual workbook and live Sky folder under one released lock', () => {
+  for (const key of ['SHEET_ID', 'CROSSINGS_SKY_FOLDER_ID']) {
+    for (const value of [undefined, '', '   ']) {
+      const r = builtGrader()
+      if (value === undefined) delete r.n.props[key]
+      else r.n.props[key] = value
+      expect(typeof r.main.gradeSky).toBe('function')
+      expect(() => r.main.gradeSky()).toThrow(`${key} is not set`)
+      expect(r.locks).toEqual(['acquire', 'release'])
+      expect(r.n.batches).toEqual([])
+      expect(r.forbidden).toEqual([])
+    }
+  }
+  const r = builtGrader()
+  r.n.props.CROSSINGS_SKY_FOLDER_ID = 'workbook'
+  expect(() => r.main.gradeSky()).toThrow()
+  expect(r.locks).toEqual(['acquire', 'release'])
+})
+
+test('built ANL-1 uses actual 00:30 close, skips 23:55 and exact close, grades at 06:00 once', () => {
+  const r = builtGrader()
+  expect(typeof r.main.gradeSky).toBe('function')
+  seedNight(r.n)
+  const unchanged = JSON.stringify([...r.n.rows].filter(([tab]) => tab !== 'grades'))
+  for (const at of ['2026-11-08T23:55:00+08:00', '2026-11-09T00:30:00+08:00']) {
+    r.at(at)
+    r.main.gradeSky()
+    expect(r.n.rows.get('grades')).toHaveLength(2)
+    expect(JSON.parse(r.logs.at(-1)!).closedWindows).toBe(0)
+  }
+  r.at('2026-11-09T06:00:00+08:00')
+  r.main.gradeSky()
+  const rows = r.n.rows.get('grades')!
+  // No readings are invented for this night. Incomplete evidence must stay No call.
+  expect(rows[2]!.slice(1, 9)).toEqual(['night', 'call', 'normal', 'approved', 'no_call', 'no_call', '', false])
+  expect(rows[2]![10]).toBe('2026-11-08T22:00:00.000Z')
+  expect(JSON.parse(r.logs.at(-1)!).appendedGrades).toBe(1)
+  r.main.gradeSky()
+  expect(r.n.rows.get('grades')).toHaveLength(3)
+  expect(JSON.parse(r.logs.at(-1)!).alreadyGradedWindows).toBe(1)
+  expect(r.locks).toEqual(Array(4).fill(['acquire', 'release']).flat())
+  expect(r.n.folders.every((id) => id === 'sky-folder')).toBe(true)
+  expect(r.forbidden).toEqual([])
+  expect(JSON.stringify([...r.n.rows].filter(([tab]) => tab !== 'grades'))).toBe(unchanged)
+  expect(rows[1]![9]).toBe('PRIVATE_EXPLANATION')
+  expect(r.logs.join('')).not.toMatch(/PRIVATE_|recipients|body|title|explanation/)
+})
+
+test('built gradeSky logs only bounded counts and codes and releases lock after native or logging failures', () => {
+  const r = builtGrader()
+  expect(typeof r.main.gradeSky).toBe('function')
+  seedNight(r.n)
+  r.n.seed('windows', [{ window_id: 'PRIVATE_TITLE', date: 'invalid' }])
+  r.main.gradeSky()
+  const report = JSON.parse(r.logs[0]!)
+  expect(report.problems).toEqual(['window_invalid_or_conflicting'])
+  expect(Object.keys(report).sort()).toEqual(
+    [
+      'alreadyGradedWindows',
+      'appendedGrades',
+      'budgetExhausted',
+      'closedWindows',
+      'deferredWindows',
+      'pendingBatch',
+      'plannedGrades',
+      'problems',
+      'reconciledGrades'
+    ].sort()
+  )
+  expect(r.logs.join('')).not.toMatch(/PRIVATE_|windowId|filterViewId/)
+  r.n.fault = 'metadata'
+  r.main.gradeSky()
+  expect(JSON.parse(r.logs.at(-1)!).problems).toEqual(['view_failed'])
+  r.failLog()
+  expect(() => r.main.gradeSky()).toThrow('log failure')
+  expect(r.locks).toEqual(Array(3).fill(['acquire', 'release']).flat())
+  expect(r.forbidden).toEqual([])
+})
+
+test('built gradeSky admission uses elapsed run time rather than scheduled trigger time', () => {
+  const r = builtGrader()
+  expect(typeof r.main.gradeSky).toBe('function')
+  seedNight(r.n)
+  r.at('2026-11-09T06:00:00+08:00')
+  r.delay(240000)
+  r.main.gradeSky()
+  expect(JSON.parse(r.logs[0]!).budgetExhausted).toBe(true)
+  expect(r.n.rows.get('grades')).toHaveLength(2)
+  expect(r.n.props[SKY_GRADE_BATCH_KEY]).toBeUndefined()
+  expect(r.locks).toEqual(['acquire', 'release'])
+  expect(r.forbidden).toEqual([])
 })

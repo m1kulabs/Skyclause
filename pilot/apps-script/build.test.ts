@@ -43,6 +43,8 @@ describe('the Apps Script bundle in dist/', () => {
 
   test('declares the entry points as top-level functions, including every registry handler', () => {
     const declared = [...code.matchAll(/^function (\w+)\(/gm)].map((match) => match[1])
+    expect(declared).toHaveLength(23)
+    expect(new Set(declared).size).toBe(23)
     expect(declared).toEqual(
       expect.arrayContaining([
         'doGet',
@@ -52,20 +54,21 @@ describe('the Apps Script bundle in dist/', () => {
         'pollApims',
         'pollMetWarnings',
         'pollMetForecast',
-        'verifyMetWarningText'
+        'verifyMetWarningText',
+        'gradeSky'
       ])
     )
     for (const entry of triggerRegistry) expect(declared).toContain(entry.handler)
   })
 
-  test('declares parameterless MET source exports and ships no runtime fixture or Node imports', () => {
+  test('declares parameterless native exports and ships no runtime fixture or Node imports', () => {
     const source = ts.createSourceFile(
       'main.ts',
       readFileSync(join(import.meta.dir, 'src/main.ts'), 'utf8'),
       ts.ScriptTarget.Latest,
       true
     )
-    for (const name of ['pollMetWarnings', 'pollMetForecast', 'verifyMetWarningText', 'runAuditor']) {
+    for (const name of ['pollMetWarnings', 'pollMetForecast', 'verifyMetWarningText', 'runAuditor', 'gradeSky']) {
       const declaration = source.statements.find(
         (node) => ts.isFunctionDeclaration(node) && node.name?.text === name
       ) as ts.FunctionDeclaration
@@ -79,6 +82,13 @@ describe('the Apps Script bundle in dist/', () => {
   test('registers exactly one five-minute auditor under the existing pilot setup', () => {
     expect(triggerRegistry.filter((entry) => entry.handler === 'runAuditor')).toEqual([
       { kind: 'time', handler: 'runAuditor', every: { minutes: 5 } }
+    ])
+  })
+
+  test('registers only the two daily Sky grading cadences', () => {
+    expect(triggerRegistry.filter((entry) => entry.handler === 'gradeSky')).toEqual([
+      { kind: 'time', handler: 'gradeSky', every: { atHour: 23, nearMinute: 55 } },
+      { kind: 'time', handler: 'gradeSky', every: { atHour: 6, nearMinute: 0 } }
     ])
   })
 
@@ -131,7 +141,12 @@ describe('the Apps Script bundle in dist/', () => {
       timeZone: 'Asia/Kuala_Lumpur',
       runtimeVersion: 'V8',
       exceptionLogging: 'STACKDRIVER',
-      dependencies: { enabledAdvancedServices: [{ userSymbol: 'Gmail', serviceId: 'gmail', version: 'v1' }] },
+      dependencies: {
+        enabledAdvancedServices: [
+          { userSymbol: 'Gmail', serviceId: 'gmail', version: 'v1' },
+          { userSymbol: 'Sheets', serviceId: 'sheets', version: 'v4' }
+        ]
+      },
       oauthScopes: [
         'https://www.googleapis.com/auth/spreadsheets',
         'https://www.googleapis.com/auth/drive',
