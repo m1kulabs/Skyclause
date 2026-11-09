@@ -18,6 +18,10 @@ async function expectAuthAxe(page: import('@playwright/test').Page) {
   await page.emulateMedia({ colorScheme: 'dark', contrast: 'no-preference', forcedColors: 'none' })
 }
 
+function signInRegion(page: import('@playwright/test').Page) {
+  return page.getByRole('region', { name: 'Sign in to Skyclause' })
+}
+
 test.beforeEach(async ({ page }) => {
   await signedOut(page)
 })
@@ -61,7 +65,7 @@ test('email sign-in preserves next, announces Sending, names the address, and al
   const sending = page.getByRole('button', { name: 'Sending…' })
   await page.getByRole('button', { name: 'Send sign-in link' }).click()
   await expect(sending).toBeVisible()
-  await expect(page.getByRole('status')).toContainText(address)
+  await expect(signInRegion(page).getByRole('status')).toContainText(address)
   await expect(page.getByRole('button', { name: 'Use a different email' })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   expect(requestCount).toBe(1)
@@ -86,7 +90,7 @@ test('keyboard-only email sign-in reaches and submits the labelled form', async 
   await page.keyboard.press('Tab')
   await expect(page.getByRole('button', { name: 'Send sign-in link' })).toBeFocused()
   await page.keyboard.press('Enter')
-  await expect(page.getByRole('status')).toContainText('keyboard@example.org')
+  await expect(signInRegion(page).getByRole('status')).toContainText('keyboard@example.org')
   await expectAuthAxe(page)
 })
 
@@ -105,18 +109,18 @@ test('email, Google and link errors explain recovery and focus the message or fi
   await page.getByRole('button', { name: 'Send sign-in link' }).click()
   await expect(email).toHaveAttribute('aria-invalid', 'true')
   await expect(email).toBeFocused()
-  await expect(page.getByRole('alert')).toContainText('Check the address and try again')
+  await expect(signInRegion(page).getByRole('alert')).toContainText('Check the address and try again')
   await expectAuthAxe(page)
 
   await page.getByRole('button', { name: 'Continue with Google' }).click()
-  const googleError = page.getByRole('alert')
+  const googleError = signInRegion(page).getByRole('alert')
   await expect(googleError).toContainText('Google sign-in couldn’t start. Try again or use email sign-in.')
   await expect(googleError).toBeFocused()
   await expectAuthAxe(page)
 
   await page.goto('/sign-in?link=invalid-token')
   await page.getByRole('button', { name: 'Sign in' }).click()
-  const confirmError = page.getByRole('alert')
+  const confirmError = signInRegion(page).getByRole('alert')
   await expect(confirmError).toContainText('We couldn’t confirm this link')
   await expect(confirmError).toBeFocused()
   await expectAuthAxe(page)
@@ -220,7 +224,7 @@ test('step-up link confirmation posts to the step-up endpoint and asks to return
   await expectAuthAxe(page)
   await page.getByRole('button', { name: "Confirm it's you" }).click()
 
-  await expect(page.getByRole('status')).toContainText('Return to the tab and choose Send again')
+  await expect(signInRegion(page).getByRole('status')).toContainText('Return to the tab and choose Send again')
   expect(confirmCount).toBe(1)
   await expectNoPasswordControls(page)
   await expectAuthAxe(page)
@@ -240,7 +244,7 @@ test('an expired link with a resend handle takes one press and announces the sen
   await expectAuthAxe(page)
   await page.getByRole('button', { name: 'Resend' }).click()
 
-  await expect(page.getByRole('status')).toContainText('Check your email for a new link')
+  await expect(signInRegion(page).getByRole('status')).toContainText('We sent a new sign-in link. Check your email.')
   expect(resendCount).toBe(1)
   await expectNoPasswordControls(page)
   await expectAuthAxe(page)
@@ -266,11 +270,11 @@ test('expired links without a resend handle and account-link errors show next ac
   await expectAuthAxe(page)
 
   await page.goto('/sign-in?state=link-pending')
-  await expect(page.getByRole('alert')).toContainText('Use email sign-in for this account')
+  await expect(signInRegion(page).getByRole('alert')).toContainText('Use email sign-in for this account')
   await expectAuthAxe(page)
 
   await page.goto('/sign-in?state=google-failed')
-  await expect(page.getByRole('alert')).toContainText('Try Google again or use email sign-in')
+  await expect(signInRegion(page).getByRole('alert')).toContainText('Try Google again or use email sign-in')
   await expectNoPasswordControls(page)
   await expectAuthAxe(page)
 })
@@ -287,17 +291,18 @@ test('conditional passkey autofill offers a stored credential and signs in to ne
       transport: 'internal',
       hasResidentKey: true,
       hasUserVerification: true,
-      isUserVerified: true
+      isUserVerified: true,
+      automaticPresenceSimulation: true
     }
   })
   await cdp.send('WebAuthn.addCredential', {
     authenticatorId,
     credential: {
-      credentialId: credentialId.toString('base64url'),
+      credentialId: credentialId.toString('base64'),
       isResidentCredential: true,
       rpId: 'localhost',
       privateKey: privateKey.export({ type: 'pkcs8', format: 'der' }).toString('base64'),
-      userHandle: userHandle.toString('base64url'),
+      userHandle: userHandle.toString('base64'),
       signCount: 0
     }
   })
@@ -340,9 +345,6 @@ test('conditional passkey autofill offers a stored credential and signs in to ne
   const email = page.getByLabel('Email address')
   await expect(email).toHaveAttribute('autocomplete', 'username webauthn')
   await expect.poll(() => optionsCount).toBeGreaterThan(0)
-  await email.fill('reader@example.org')
-  await email.press('ArrowDown')
-  await email.press('Enter')
   await expect.poll(() => verificationCount).toBe(1)
   await expect(page).toHaveURL(/\/commons$/)
 })

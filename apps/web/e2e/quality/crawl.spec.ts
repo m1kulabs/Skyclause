@@ -50,6 +50,7 @@ async function crawl(page: Page, route: CrawlRoute, session: Session, info: Test
     })
     if (variant.viewport) await page.setViewportSize(variant.viewport)
     const findings = await visit(page, route, session.role)
+    if (new URL(page.url()).pathname === '/api/auth/continue') return found
     const reauthDialog = page.locator(AUTH_REAUTH_DIALOG_SELECTOR)
     if (isAuthRoute(route.path) || (await reauthDialog.count()) > 0) {
       const passwordControls = page.locator(

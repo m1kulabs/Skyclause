@@ -17,10 +17,13 @@ export function expectedStatus(route: CrawlRoute, role: Role) {
 
 export async function visit(page: Page, route: CrawlRoute, role: Role = 'signed out'): Promise<Finding[]> {
   const response = await page.goto(route.path)
+  if ((route.path === '/sign-in' || route.path === '/sign-up') && hasSession(role) && role !== 'guest') {
+    await expect(page).toHaveURL(/\/api\/auth\/continue(?:\?.*)?$/)
+    return []
+  }
   if (route.path === '/connect' && (!hasSession(role) || role === 'guest')) {
     await expect(page).toHaveURL(/\/sign-up$/)
     await expect(page.locator('[data-connect-page]')).toHaveCount(0)
-    // #97 owns sign-up; the gate is testable before that destination is built.
     return []
   }
   await expectZonedTimes(page)

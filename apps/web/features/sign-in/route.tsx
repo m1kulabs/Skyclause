@@ -9,7 +9,8 @@ export async function accountRoute(mode: 'sign-in' | 'sign-up', searchParams: Pr
   const next = safeNext(nextValue)
   const principal = await getPrincipal()
 
-  if (principal?.kind === 'session') redirect(continuePath(next))
+  // A guest stays: sign-up is how a guest account converts (#97 tracks `from_guest`).
+  if (principal?.kind === 'session' && !principal.isGuest) redirect(continuePath(next))
 
   const state = mode === 'sign-in' ? resolveAuthState(params) : { kind: 'form' as const }
   return <SignInPanel mode={mode} next={next} state={state} />
