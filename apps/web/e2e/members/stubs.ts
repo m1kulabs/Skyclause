@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test'
 import { membersOperations } from '../../features/members/operations'
 import { asPage, stubApi } from '../harness'
 
-export const ownerId = '00000000-0000-4000-8000-000000000001'
+export const ownerId = '00000000-0000-7000-8000-000000000001'
 export const approverId = '00000000-0000-4000-8000-000000000002'
 export const ownerMemberId = '00000000-0000-4000-8000-000000000011'
 export const approverMemberId = '00000000-0000-4000-8000-000000000012'

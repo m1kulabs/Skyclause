@@ -32,7 +32,7 @@ test('rota shifts can be added, changed and removed with keyboard input alone', 
       templates: replacement.templates,
       shifts: currentShifts.map((shift, index) => ({
         ...shift,
-        id: `00000000-0000-4000-8000-${String(index + 21).padStart(12, '0')}`,
+        id: `00000000-0000-7000-8000-${String(index + 21).padStart(12, '0')}`,
         project_id: null
       })),
       on_duty: [],
@@ -60,7 +60,8 @@ test('rota shifts can be added, changed and removed with keyboard input alone', 
   await page.keyboard.press('Enter')
   await expect.poll(() => currentShifts.length).toBe(1)
   expect(currentShifts[0]?.account_id).toBe(ownerId)
-  const edit = page.getByRole('button', { name: /Edit shift for Morgan Owner/ })
+  await expect(page.getByText('Rota saved.')).toBeVisible()
+  const edit = page.getByRole('button', { name: /^Shift for You,/ })
   await edit.focus()
   await page.keyboard.press('Enter')
 
@@ -71,25 +72,29 @@ test('rota shifts can be added, changed and removed with keyboard input alone', 
   await page.keyboard.press('Enter')
   const start = page.getByLabel('Start time (MYT)')
   await start.focus()
-  await page.keyboard.press('Control+A')
-  await page.keyboard.type('15:00')
+  await page.keyboard.press('ArrowUp')
   const end = page.getByLabel('End time (MYT)')
   await end.focus()
-  await page.keyboard.press('Control+A')
-  await page.keyboard.type('20:00')
+  await page.keyboard.press('ArrowUp')
+  await page.keyboard.press('ArrowRight')
+  for (let minute = 0; minute < 15; minute += 1) await page.keyboard.press('ArrowDown')
+  await expect(start).toHaveValue('15:00')
+  await expect(end).toHaveValue('20:00')
   await page.getByRole('button', { name: 'Add shift' }).focus()
   await page.keyboard.press('Enter')
   await page.getByRole('button', { name: 'Save rota' }).focus()
   await page.keyboard.press('Enter')
+  await expect(page.getByText('Rota saved.')).toBeVisible()
   await expect.poll(() => currentShifts[0]?.local_start).toBe('15:00')
   await expect(page.getByText('15:00–20:00')).toBeVisible()
 
-  const remove = page.getByRole('button', { name: 'Remove shift for Morgan Owner' })
+  const remove = page.getByRole('button', { name: 'Remove shift for You' })
   await remove.focus()
   await page.keyboard.press('Enter')
   await expect(page.getByText('Rota shifts (n=0)')).toBeVisible()
   await page.getByRole('button', { name: 'Save rota' }).focus()
   await page.keyboard.press('Enter')
+  await expect(page.getByText('Rota saved.')).toBeVisible()
   await expect.poll(() => currentShifts.length).toBe(0)
   await expect(page.getByText('Rota shifts (n=0)')).toBeVisible()
 })

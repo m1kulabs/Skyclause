@@ -594,9 +594,10 @@ export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
                       id={startId}
                       type="time"
                       value={editor.localStart}
-                      onChange={(event) =>
-                        setEditor((current) => current && { ...current, localStart: event.currentTarget.value })
-                      }
+                      onChange={(event) => {
+                        const localStart = event.currentTarget.value
+                        setEditor((current) => current && { ...current, localStart })
+                      }}
                       disabled={editor.template !== 'custom'}
                     />
                   </Field>
@@ -606,9 +607,10 @@ export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
                       id={endId}
                       type="time"
                       value={editor.localEnd}
-                      onChange={(event) =>
-                        setEditor((current) => current && { ...current, localEnd: event.currentTarget.value })
-                      }
+                      onChange={(event) => {
+                        const localEnd = event.currentTarget.value
+                        setEditor((current) => current && { ...current, localEnd })
+                      }}
                       disabled={editor.template !== 'custom'}
                     />
                   </Field>

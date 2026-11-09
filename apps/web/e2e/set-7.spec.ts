@@ -262,11 +262,17 @@ test('lower role — #104: confirmation names the member and new role', async ({
 test('last-owner — #104: the refusal reason appears next to the role control', async ({ page }) => {
   await prepareSettings(page, 'members')
   await page.route('**/api/orgs/test-org/members/**', async (route) => {
-    if (route.request().method() === 'PUT') {
+    if (route.request().method() === 'PATCH') {
       await route.fulfill({
         status: 409,
         contentType: 'application/problem+json',
-        json: { type: 'last-owner', title: 'An organisation must keep an Owner.', status: 409 }
+        json: {
+          type: 'https://docs.skyclause.m1ku.tech/problems/last-owner',
+          title: 'Last owner',
+          status: 409,
+          detail: 'An organisation must keep one Owner.',
+          instance: new URL(route.request().url()).pathname
+        }
       })
     } else await route.fallback()
   })
@@ -315,12 +321,12 @@ test('ORG settings tables and timeline fit the 375px viewport', async ({ page })
   await prepareSettings(page, 'members')
   await page.goto('/test-org/settings/members')
   await expect(page.getByRole('table', { name: 'Organisation members' })).toBeVisible()
-  await expect(page.getByRole('cell', { name: /Aisha Rahman/ })).toBeVisible()
+  await expect(page.getByRole('cell', { name: /^Name Aisha Rahman/ })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375)
 
   await prepareSettings(page, 'rota')
   await page.goto('/test-org/settings/rota')
-  const timeline = page.getByRole('region', { name: 'Approver rota for the next 7 days' })
+  const timeline = page.locator('[role="region"][aria-label="Approver rota for the next 7 days"]')
   await expect(timeline).toBeVisible()
   await expect(timeline).toHaveCSS('overflow-x', 'auto')
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375)
