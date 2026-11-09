@@ -20,9 +20,9 @@ export interface CalendarFeed {
 const instantOrNull = (date: Date | null) => (date ? instant(date) : null)
 
 /**
- * The call renderNotice gets, from the entry's head call in `public_call`. `notices` and `recipients` stay empty until
- * #150 adds their columns, and `public_call` carries no `recommendations` or `reason`: the ICS template (DESIGN "Email
- * notice and ICS entry") draws on none of the four.
+ * The call renderNotice gets, from the entry's head call in `public_call`. `public_call` carries no `notices`,
+ * `recipients`, `recommendations` or `reason`, so they stay empty: `recipients` are subscriber IDs, never public, and
+ * the ICS template (DESIGN "Email notice and ICS entry") reads none of the four.
  */
 function callView({ call, uid, sequence }: IcsEntry): CallView {
   return {
@@ -66,7 +66,13 @@ export async function calendarFeed(
   const entries = await loadIcsEntries(ctx.tx, input.projectId)
   const events = entries.map((entry) => {
     const permalink = `${input.origin}/c/${entry.call.id}`
-    const { subject, text } = render(callView(entry), { language: 'en', channel: 'ics', links: { permalink } })
+    const { subject, text } = render(callView(entry), {
+      language: 'en',
+      channel: 'ics',
+      links: { permalink },
+      window: { startsAt: instant(entry.start), endsAt: instant(entry.end) },
+      sources: entry.sources
+    })
     return {
       uid: entry.uid,
       sequence: entry.sequence,

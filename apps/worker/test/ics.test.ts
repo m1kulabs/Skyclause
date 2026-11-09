@@ -38,7 +38,7 @@ async function scene(clock: () => Date = () => new Date('2026-11-02T07:10:05Z'))
 
   /** A call sent at `sentAt`, and its `call.sent` event, not yet delivered. */
   const sent = async (
-    c: { mode: 'commute_disruption' | 'outdoor_limited' | 'normal' | 'surge_night'; sentAt: Date } & (
+    c: { mode: 'commute_disruption' | 'outdoor_limited' | 'normal' | 'surge_night' | null; sentAt: Date } & (
       { windowId: string } | { nightId: string }
     )
   ) => {
@@ -207,4 +207,12 @@ test('a window whose calls were all Normal has no entry, before or after it is c
   })
   await deliver(cancelled.id)
   expect((await feed()).entries).toEqual([])
+})
+
+test('call.sent with a null mode, a No call, takes an identity and makes an entry (#154, #438)', async () => {
+  const { deliver, sent, feed, window } = await scene()
+  const w = await window()
+  const { call, event } = await sent({ mode: null, windowId: w.id, sentAt: new Date('2026-11-02T07:10:00Z') })
+  await deliver(event)
+  expect((await feed()).entries).toMatchObject([{ uid: `call-${call.id}@skyclause.m1ku.tech`, sequence: 0 }])
 })

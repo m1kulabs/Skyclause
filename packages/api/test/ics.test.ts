@@ -2,7 +2,14 @@
 // renderNotice double (#152 renders the real text). Calls come from factories only (NFR-15).
 import { createHash } from 'node:crypto'
 import type { CallView } from '@skyclause/contracts'
-import { assignIcsIdentity, window as windowTable, withPublicReader, withTenant, type Tx } from '@skyclause/db'
+import {
+  assignIcsIdentity,
+  window as windowTable,
+  withPublicReader,
+  withSystem,
+  withTenant,
+  type Tx
+} from '@skyclause/db'
 import {
   makeBundle,
   makeCall,
@@ -11,6 +18,7 @@ import {
   makeOrganization,
   makeProject,
   makeRun,
+  makeSource,
   makeWindow
 } from '@skyclause/db/test/factories/index'
 import { asLogin, memberOf } from '@skyclause/db/test/harness/index'
@@ -91,6 +99,8 @@ async function scene(o: { public?: boolean } = {}) {
       sentAt?: Date
       state?: 'sent' | 'approved' | 'failed'
       draftOnly?: boolean
+      shadow?: unknown
+      recipients?: string[]
     }
   ) => {
     // Drafted: a project holds one queued run per pack.
@@ -106,6 +116,8 @@ async function scene(o: { public?: boolean } = {}) {
       windowId: c.windowId,
       nightId: c.nightId,
       mode: c.mode,
+      ...(c.shadow === undefined ? {} : { shadow: c.shadow }),
+      ...(c.recipients ? { recipients: c.recipients } : {}),
       state: c.state ?? 'sent',
       approvedAt: sentAt,
       sentAt: c.state === 'approved' ? null : sentAt
@@ -166,7 +178,13 @@ test('a public project’s feed is text/calendar, its ETag the body’s SHA-256,
     {
       id: call.id,
       uid: `call-${call.id}@skyclause.m1ku.tech`,
-      o: { language: 'en', channel: 'ics', links: { permalink: `${ORIGIN}/c/${call.id}` } }
+      o: {
+        language: 'en',
+        channel: 'ics',
+        links: { permalink: `${ORIGIN}/c/${call.id}` },
+        window: { startsAt: '2026-11-02T07:30:00Z', endsAt: '2026-11-02T07:45:00Z' },
+        sources: []
+      }
     }
   ])
 })
@@ -373,4 +391,52 @@ test('a cancelled listing or an unlisted night renders the night’s entry CANCE
     })
   })
   expect((await feed(get())).map((e) => e.status)).toEqual(['CANCELLED', 'CANCELLED'])
+})
+
+test('renderNotice gets the entry’s span as its window, so the SUMMARY can name it (#152)', async () => {
+  const { inOrg, get, window, night, send } = await scene()
+  await inOrg(async (tx) => {
+    await send(tx, { mode: 'commute_disruption', windowId: (await window(tx)).id })
+    await send(tx, { mode: 'surge_night', nightId: (await night(tx, { listingState: 'listed' })).id })
+  })
+  await get()
+  expect(rendered.map(({ o }) => o.window).sort((a, b) => (a!.startsAt < b!.startsAt ? -1 : 1))).toEqual([
+    { startsAt: '2026-11-02T07:30:00Z', endsAt: '2026-11-02T07:45:00Z' },
+    { startsAt: '2026-11-14T10:00:00Z', endsAt: '2026-11-14T16:30:00Z' }
+  ])
+})
+
+test('renderNotice gets the catalogue sources the head call cites, and no organisation’s own source', async () => {
+  const { inOrg, get, window, send } = await scene()
+  const catalogue = await withSystem('ics-feed-test', (tx) =>
+    makeSource(tx, { ownerOrgId: null, name: 'JPS KL rainfall', licenceLabel: 'CC BY 4.0' })
+  )
+  const own = await inOrg((tx) => makeSource(tx, { name: 'Private gauge', licenceLabel: 'Internal' }))
+  const inputs = (...ids: string[]) => ({ clauses: [{ inputs: [{ source_ids: ids }] }] })
+  await inOrg(async (tx) => {
+    await send(tx, {
+      mode: 'commute_disruption',
+      windowId: (await window(tx)).id,
+      shadow: inputs(catalogue.id, own.id)
+    })
+    await send(tx, { mode: 'outdoor_limited', windowId: (await window(tx)).id })
+  })
+  await get()
+  expect(rendered.map(({ o }) => o.sources).sort((a, b) => a!.length - b!.length)).toEqual([
+    [],
+    [{ name: 'JPS KL rainfall', licence: 'CC BY 4.0' }]
+  ])
+})
+
+test('the call renderNotice gets never carries subscriber IDs: notices and recipients stay empty', async () => {
+  const { inOrg, get, window, send } = await scene()
+  await inOrg(async (tx) =>
+    send(tx, {
+      mode: 'commute_disruption',
+      windowId: (await window(tx)).id,
+      recipients: ['6f1f1ad2-3c0f-4a56-9d52-0c7a1d8f2b11']
+    })
+  )
+  await get()
+  expect(rendered).toMatchObject([{ call: { notices: [], recipients: [] } }])
 })

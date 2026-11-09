@@ -1,6 +1,7 @@
 import { log } from '@skyclause/config'
 import { and, asc, eq, getViewSelectedFields, inArray, isNotNull, or, type SQL } from 'drizzle-orm'
 import type { Tx } from '../client'
+import { citedSourceIds } from '../channels'
 import {
   bundle,
   call,
@@ -10,6 +11,7 @@ import {
   publicNight,
   publicProject,
   publicWindow,
+  source,
   window
 } from '../schema'
 
@@ -154,6 +156,8 @@ export interface IcsEntry {
   /** The entry's last change: its head's send or identity write, or its window's or night's update. */
   changedAt: Date
   call: FeedCall
+  /** The catalogue sources the head call cites (`source.name`, `licence_label`), for the notice's attributions. */
+  sources: Array<{ name: string; licence: string }>
 }
 
 const latestOf = (...dates: Array<Date | null>) => new Date(Math.max(...dates.map((date) => date?.getTime() ?? 0)))
@@ -201,6 +205,17 @@ export async function loadIcsEntries(tx: Tx<null>, projectId: string): Promise<I
     groups.set(key, [...(groups.get(key) ?? []), row])
   }
 
+  // `source` reads as `public_reader` through its `read` policy: the catalogue's ownerless sources. A source an
+  // organisation owns is not shown, so its attribution is left out of the public feed.
+  const heads = [...new Set(rows.flatMap((row) => citedSourceIds(row.call.shadow)))]
+  const cited = heads.length
+    ? await tx
+        .select({ id: source.id, name: source.name, licence: source.licenceLabel })
+        .from(source)
+        .where(inArray(source.id, heads))
+        .orderBy(source.name)
+    : []
+
   const entries: IcsEntry[] = []
   for (const group of groups.values()) {
     if (!group.some((row) => hasConditions(row.call.mode))) continue
@@ -227,7 +242,10 @@ export async function loadIcsEntries(tx: Tx<null>, projectId: string): Promise<I
       start,
       end,
       changedAt: latestOf(head.sentAt, head.updatedAt, (nightRow ?? windowRow)!.updatedAt),
-      call: head
+      call: head,
+      sources: cited
+        .filter((row) => citedSourceIds(head.shadow).includes(row.id))
+        .map(({ name, licence }) => ({ name, licence }))
     })
   }
   return entries
