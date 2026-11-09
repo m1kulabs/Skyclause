@@ -119,6 +119,10 @@ describe('previewChannels (NTC-7)', () => {
         mode: 'commute_disruption',
         state: 'sent',
         fired: [{ clause: 'storm_confirmed', inputs: ['site.rain_60m_mm'] }],
+        // Sent in English only: the model's subject never goes out, its body is the reason paragraph.
+        notices: [
+          { language: 'en', subject: 'Model subject, never sent', body: 'Storm confirmed. The gauge logged 39.0 mm.' }
+        ],
         shadow: {
           scope: { kind: 'window', id: window.id },
           pack: 'sky',
@@ -146,7 +150,32 @@ describe('previewChannels (NTC-7)', () => {
     const body = (await response.json()) as PreviewResult
     expect(body).toMatchObject({ n: 1, call_id: callId })
     expect(body.replay).toBeUndefined()
-    // The feed is English (D20); email previews need the call's sent wording, which #150 stores with the call.
+    // The feed is English (D20), and the call has no Malay wording, so no Malay email went out to preview.
+    expect(body.previews.map((p) => [p.channel, p.language])).toEqual([
+      ['email', 'en'],
+      ['ics', 'en']
+    ])
+    const email = body.previews.find((p) => p.channel === 'email')!
+    expect(email).toMatchObject({
+      pack: 'sky',
+      mode: 'commute_disruption',
+      subject: 'Commute disruption: 15:30–16:30 MYT, Mon 2 Nov (Bukit Jalil)'
+    })
+    expect(email.text.replace(/https?:\/\/\S+\/c\//, '{origin}/c/')).toBe(
+      [
+        'Commute disruption for 15:30–16:30 MYT, Monday 2 November 2026.',
+        '',
+        'Storm confirmed. The gauge logged 39.0 mm.',
+        `Approved by the admin on duty at 15:08 MYT. Details and readings: {origin}/c/${callId}`,
+        '',
+        'Skyclause is not a safety or emergency service. In an emergency, call 999.',
+        'Not affiliated with APU, KPT, JPS, MET, DOE, Prasarana/Rapid KL or the stadium.',
+        'Sources: JPS gauge 0232901RF (JPS Infobanjir)',
+        'Change your notices: {preferences}',
+        'Unsubscribe: {unsubscribe}'
+      ].join('\n')
+    )
+    expect(`${email.subject}${email.text}${email.html}`).not.toContain('Model subject')
     const ics = body.previews.find((p) => p.channel === 'ics' && p.language === 'en')!
     expect(ics).toMatchObject({
       pack: 'sky',
