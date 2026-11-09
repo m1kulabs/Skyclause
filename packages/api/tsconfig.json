@@ -23,6 +23,12 @@
       "path": "../delivery"
     },
     {
+<<<<<<< HEAD
+=======
+      "path": "../agent"
+    },
+    {
+>>>>>>> 1b46148 (feat: add bundle approval endpoint with re-check)
       "path": "../i18n"
     }
   ]

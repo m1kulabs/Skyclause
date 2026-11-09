@@ -2,6 +2,7 @@ import type { RouteConfig, RouteHandler } from '@hono/zod-openapi'
 import type { OperationId, Operations } from '@skyclause/contracts'
 import type { Context, MiddlewareHandler } from 'hono'
 import type { ApiEnv } from '../context'
+import { approvalHandlers } from './approvals'
 import { bundleHandlers } from './bundles'
 import { channelHandlers } from './channels'
 import { evidenceHandlers } from './evidence'
@@ -40,5 +41,6 @@ export const HANDLERS: Handlers = {
   ...evidenceHandlers, // c-evidence
   ...gradesHandlers, // c-grades
   ...replyHandlers, // c-recipient-replies
-  ...runHandlers // c-run-orchestrator
+  ...runHandlers, // c-run-orchestrator
+  ...approvalHandlers // c-approval-api
 }

@@ -11,6 +11,7 @@ export {
 } from './client'
 export { track } from './analytics'
 export * from './api'
+export * from './approvals'
 export * from './bundles'
 export { recordAudit } from './audit'
 export * from './channels'
