@@ -234,14 +234,20 @@ const STEPS: { [K in RunStepName]: Step<K> } = {
     const windowIds = new Set(windows.map((w) => w.id))
     const nightIds = new Set(snapshot.nights.map((n) => n.id))
     const scoped = [...verdicts.windows, ...verdicts.nights]
-    const calls = validated.bundle.calls.map((c: ProposedBundle['calls'][number]): CallDraft => {
-      const id = c.window_id
+    const shadowOf = (id: string) => {
       const shadow = scoped.find((v) => v.scope.id === id)
       if (!shadow) throw new Error(`no shadow verdict for ${id}`)
+      return shadow
+    }
+    const scopeOf = (id: string) => {
       const isNight = !windowIds.has(id) && nightIds.has(id)
+      return { windowId: isNight ? null : id, nightId: isNight ? id : null }
+    }
+    const calls = validated.bundle.calls.map((c: ProposedBundle['calls'][number]): CallDraft => {
+      const id = c.window_id
+      const shadow = shadowOf(id)
       return {
-        windowId: isNight ? null : id,
-        nightId: isNight ? id : null,
+        ...scopeOf(id),
         mode: c.mode,
         watch: c.watch,
         noCall: c.no_call,
