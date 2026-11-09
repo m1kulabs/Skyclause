@@ -212,7 +212,9 @@ test('the feed reads as public_reader: a public project’s entries, and nothing
   await sendBoth(closed)
   const read = (projectId: string) =>
     withPublicReader(async (tx) =>
-      events((await calendarFeed(tx, { projectId, name: 'Bukit Jalil', origin: ORIGIN }, render)).body)
+      events(
+        (await calendarFeed({ principal: null, tx }, { projectId, name: 'Bukit Jalil', origin: ORIGIN }, render)).body
+      )
     )
   expect((await read(open.project.id)).map((e) => e.uid).sort()).toEqual(
     [`call-${callId}@skyclause.m1ku.tech`, `night-${nightId}@skyclause.m1ku.tech`].sort()

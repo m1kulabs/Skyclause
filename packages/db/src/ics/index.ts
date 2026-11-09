@@ -1,5 +1,5 @@
 import { log } from '@skyclause/config'
-import { and, asc, eq, getViewSelectedFields as fields, inArray, isNotNull, or, type SQL } from 'drizzle-orm'
+import { and, asc, eq, getViewSelectedFields, inArray, isNotNull, or, type SQL } from 'drizzle-orm'
 import type { Tx } from '../client'
 import {
   bundle,
@@ -169,10 +169,10 @@ const latestOf = (...dates: Array<Date | null>) => new Date(Math.max(...dates.ma
 export async function loadIcsEntries(tx: Tx<null>, projectId: string): Promise<IcsEntry[]> {
   const rows = await tx
     .select({
-      call: fields(publicCall),
+      call: getViewSelectedFields(publicCall),
       pack: publicBundle.pack,
-      window: fields(publicWindow),
-      night: fields(publicNight)
+      window: getViewSelectedFields(publicWindow),
+      night: getViewSelectedFields(publicNight)
     })
     .from(publicCall)
     .innerJoin(publicBundle, eq(publicBundle.id, publicCall.bundleId))

@@ -59,11 +59,11 @@ function callView({ call, uid, sequence }: IcsEntry): CallView {
  * and text for the `ics` channel in English, its URL the head call's permalink `{origin}/c/{callId}`.
  */
 export async function calendarFeed(
-  tx: Tx<null>,
+  ctx: { principal: null; tx: Tx<null> },
   input: { projectId: string; name: string; origin: string },
   render: RenderNotice = renderNotice
 ): Promise<CalendarFeed> {
-  const entries = await loadIcsEntries(tx, input.projectId)
+  const entries = await loadIcsEntries(ctx.tx, input.projectId)
   const events = entries.map((entry) => {
     const permalink = `${input.origin}/c/${entry.call.id}`
     const { subject, text } = render(callView(entry), { language: 'en', channel: 'ics', links: { permalink } })
@@ -147,7 +147,8 @@ export async function serveCalendarFeed(
   const feed = await withPublicReader(async (tx) => {
     const found = await findPublicFeedProject(tx, params.org, params.project)
     if (!found || found.suspended) return null
-    return calendarFeed(tx, { projectId: found.id, name: found.name, origin: deps.origin(request) }, deps.render)
+    const input = { projectId: found.id, name: found.name, origin: deps.origin(request) }
+    return calendarFeed({ principal: null, tx }, input, deps.render)
   })
   if (!feed) return notFound()
   const headers = new Headers({ ETag: feed.etag, 'Cache-Control': 'no-cache' })
