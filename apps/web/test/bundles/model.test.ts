@@ -3,7 +3,7 @@ import type { CallView } from '@skyclause/contracts'
 import {
   canReviewCall,
   decisionsFor,
-  teachingLineMissing,
+  teachingLineIncluded,
   orderedCalls,
   reviewCount
 } from '../../features/bundles/model'
@@ -75,19 +75,37 @@ test('expired, No call and Normal-only calls cannot be approved', () => {
   expect(canReviewCall(call('disagree', { mode: 'normal', agrees: false }), Date.now())).toBe(true)
 })
 
-test('Hybrid edits must retain the teaching line in English and Malay, including a shadow selection', () => {
+test('Hybrid edit check refuses the template teaching line in English and Malay', () => {
   for (const language of ['en', 'ms'] as const) {
-    const original = call('a', {
-      mode: 'hybrid_recommended',
-      notices: [{ language, subject: 'test', body: t('bundles.teaching', {}, language) }]
-    })
-    expect(teachingLineMissing(original, {})).toBe(false)
-    expect(teachingLineMissing(original, { notices: [{ language, subject: 'test', body: 'removed' }] })).toBe(true)
-    expect(teachingLineMissing(original, { action: 'reject', notices: [] })).toBe(false)
+    const original = call('a', { mode: 'hybrid_recommended' })
+    expect(teachingLineIncluded(original, { notices: [{ language, subject: 'test', body: 'edited wording' }] })).toBe(
+      false
+    )
+    expect(
+      teachingLineIncluded(original, {
+        notices: [{ language, subject: 'test', body: t('bundles.teaching', {}, language) }]
+      })
+    ).toBe(true)
+    expect(
+      teachingLineIncluded(original, {
+        notices: [{ language, subject: t('bundles.teaching', {}, language), body: 'edited wording' }]
+      })
+    ).toBe(true)
+    expect(
+      teachingLineIncluded(original, {
+        action: 'reject',
+        notices: [{ language, subject: 'test', body: t('bundles.teaching', {}, language) }]
+      })
+    ).toBe(false)
   }
   const original = call('a')
   original.shadow.mode = 'hybrid_recommended'
-  expect(teachingLineMissing(original, { chosen: 'shadow' })).toBe(true)
+  expect(
+    teachingLineIncluded(original, {
+      chosen: 'shadow',
+      notices: [{ language: 'en', subject: 'test', body: t('bundles.teaching') }]
+    })
+  ).toBe(true)
 })
 
 test('pseudo UI copy never changes the canonical teaching-line validation', () => {
@@ -97,7 +115,8 @@ test('pseudo UI copy never changes the canonical teaching-line validation', () =
   })
   vi.stubEnv('NEXT_PUBLIC_SKYCLAUSE_PSEUDO', '1')
   try {
-    expect(teachingLineMissing(original, {})).toBe(false)
+    expect(teachingLineIncluded(original, {})).toBe(false)
+    expect(teachingLineIncluded(original, { notices: original.notices })).toBe(true)
   } finally {
     vi.unstubAllEnvs()
   }

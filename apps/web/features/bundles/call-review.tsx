@@ -1,7 +1,7 @@
 import { memo } from 'react'
 import type { CallDetail } from './operations'
 import type { Decision } from './model'
-import { teachingLineMissing } from './model'
+import { teachingLineIncluded } from './model'
 import { t } from './i18n'
 import { formatTime } from '@skyclause/i18n/format'
 import { WindowStrip } from '../data-components/window-strip'
@@ -149,7 +149,7 @@ export const CallReview = memo(function CallReview({
           {t('bundles.successor_call')}
         </a>
       )}
-      {teachingLineMissing(call, decision) && <p className="bundle-error">{t('bundles.teaching_required')}</p>}
+      {teachingLineIncluded(call, decision) && <p className="bundle-error">{t('bundles.teaching_forbidden')}</p>}
       {error && <p className="bundle-error">{error}</p>}
     </>
   )

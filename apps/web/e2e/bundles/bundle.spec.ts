@@ -134,12 +134,12 @@ test('CAL-9 cancelling a re-check sends no second request', async ({ page }) => 
   await expect(approve(page, 1)).toBeEnabled()
 })
 
-test('CAL-15 editing wording and recipients stays local and a missing teaching line blocks approval', async ({
+test('CAL-15 editing wording and recipients stays local and a template teaching line blocks approval', async ({
   page
 }) => {
   const hybrid = callDouble(ids.first, {
     mode: 'hybrid_recommended',
-    notices: [{ language: 'en', subject: 'Test hybrid draft', body: rawT('bundles.teaching') }]
+    notices: [{ language: 'en', subject: 'Test hybrid draft', body: 'Teaching update in a test double' }]
   })
   await prepare(page, bundleDouble([hybrid]))
   let writes = 0
@@ -155,20 +155,16 @@ test('CAL-15 editing wording and recipients stays local and a missing teaching l
   await body.fill('Teaching line removed in a test double')
   await dialog.getByRole('checkbox').last().uncheck()
   await dialog.getByRole('button', { name: t('save'), exact: true }).press('Enter')
-  await expect(approve(page, 1)).toBeDisabled()
-  await expect(row).toContainText(t('teaching_required'))
+  await expect(approve(page, 1)).toBeEnabled()
+  await expect(row).not.toContainText(t('teaching_forbidden'))
   expect(writes).toBe(0)
   await row.focus()
   await page.keyboard.press('e')
   await body.fill(rawT('bundles.teaching'))
   await dialog.getByRole('button', { name: t('save'), exact: true }).press('Enter')
-  const request = page.waitForRequest((request) => request.url().endsWith('/approve'))
-  await approve(page, 1).press('Enter')
-  expect((await request).postDataJSON().calls[0]).toMatchObject({
-    action: 'edit',
-    recipients: ['english-recipient@example.test'],
-    notices: [{ body: rawT('bundles.teaching') }]
-  })
+  await expect(approve(page, 1)).toBeDisabled()
+  await expect(row).toContainText(t('teaching_forbidden'))
+  expect(writes).toBe(0)
 })
 
 test('LOC-4 and LOC-5 show recipient languages, Malay quotes and English fallback', async ({ page }) => {
