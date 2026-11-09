@@ -290,3 +290,28 @@ test('listAuditOrganisations includes empty organisations and S policies refuse 
     /permission denied for table audit_finding/
   )
 })
+
+test('a missing null-project identity recovers when the same key remains on a project', async () => {
+  const orgId = (await makeOrganization()).id
+  const project = await withTenant({ orgId, principal: memberOf(orgId) }, (tx) => makeProject(tx))
+  const now = new Date('2026-11-09T12:00:00Z')
+  const finding = { key: 'same-key', projectId: null, accountIds: [], ref: { type: 'source', id: 'one' } }
+  await withTenant({ orgId, principal: systemPrincipal('auditor') }, (tx) =>
+    reconcileAuditFindings(tx, {
+      check: 'nullable-recovery',
+      orgId,
+      now,
+      findings: [finding]
+    })
+  )
+  const result = await withTenant({ orgId, principal: systemPrincipal('auditor') }, (tx) =>
+    reconcileAuditFindings(tx, {
+      check: 'nullable-recovery',
+      orgId,
+      now,
+      findings: [{ ...finding, projectId: project.id }]
+    })
+  )
+  expect(result.opened.map((row) => row.projectId)).toEqual([project.id])
+  expect(result.recovered.map((row) => row.projectId)).toEqual([null])
+})

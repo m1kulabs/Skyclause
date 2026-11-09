@@ -1,5 +1,5 @@
 import type { RegisterAuditCheck } from '@skyclause/contracts'
-import { and, eq, isNull, lte, not, or } from 'drizzle-orm'
+import { and, eq, isNotNull, isNull, lte, not, or } from 'drizzle-orm'
 import type { Tx } from '../client'
 import { auditFinding, organization } from '../schema'
 
@@ -48,7 +48,9 @@ export async function reconcileAuditFindings(
   const present = findings.map((f) =>
     and(
       eq(auditFinding.key, f.key),
-      f.projectId === null ? isNull(auditFinding.projectId) : eq(auditFinding.projectId, f.projectId)
+      f.projectId === null
+        ? isNull(auditFinding.projectId)
+        : and(isNotNull(auditFinding.projectId), eq(auditFinding.projectId, f.projectId))
     )
   )
   const recovered = await tx
