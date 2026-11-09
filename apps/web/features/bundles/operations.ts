@@ -1,12 +1,12 @@
-import { approveBundle as approve } from '@skyclause/contracts/api/first-party/bundles'
-import {
-  getMyPreferences as preferences,
-  listMyMemberships as memberships
-} from '@skyclause/contracts/api/first-party/me'
-import { getBundle as bundle, streamBundles } from '@skyclause/contracts/api/v1/bundles'
-import { getCall as call, getCallExplanation as explanation } from '@skyclause/contracts/api/v1/calls'
-import { getRun as run } from '@skyclause/contracts/api/v1/runs'
-import { getProjectStrip as strip } from '@skyclause/contracts/api/v1/strip'
+import { approveBundle as approve } from '@skyclause/contracts/api/first-party/bundles/approveBundle'
+import { getMyPreferences as preferences } from '@skyclause/contracts/api/first-party/me/getMyPreferences'
+import { listMyMemberships as memberships } from '@skyclause/contracts/api/first-party/me/listMyMemberships'
+import { getBundle as bundle } from '@skyclause/contracts/api/v1/bundles/getBundle'
+import { streamBundles } from '@skyclause/contracts/api/v1/bundles/streamBundles'
+import { getCall as call } from '@skyclause/contracts/api/v1/calls/getCall'
+import { getCallExplanation as explanation } from '@skyclause/contracts/api/v1/calls/getCallExplanation'
+import { getRun as run } from '@skyclause/contracts/api/v1/runs/getRun'
+import { getProjectStrip as strip } from '@skyclause/contracts/api/v1/strip/getProjectStrip'
 import { createApiFetch } from '../../lib/api-fetch'
 
 export const bundleStream = streamBundles

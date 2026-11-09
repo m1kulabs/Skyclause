@@ -1,10 +1,8 @@
-import {
-  getConnectConfig as config,
-  listConnectVerifications as verifications,
-  listConnectActivity as activity
-} from '@skyclause/contracts/api/first-party/connect'
-import { listMyMemberships as memberships } from '@skyclause/contracts/api/first-party/me'
-import { createOauthClient as create } from '@skyclause/contracts/api/first-party/orgs'
+import { getConnectConfig as config } from '@skyclause/contracts/api/first-party/connect/getConnectConfig'
+import { listConnectVerifications as verifications } from '@skyclause/contracts/api/first-party/connect/listConnectVerifications'
+import { listConnectActivity as activity } from '@skyclause/contracts/api/first-party/connect/listConnectActivity'
+import { listMyMemberships as memberships } from '@skyclause/contracts/api/first-party/me/listMyMemberships'
+import { createOauthClient as create } from '@skyclause/contracts/api/first-party/orgs/createOauthClient'
 import { Instant } from '@skyclause/contracts/api/shared'
 import { createApiFetch } from '../../lib/api-fetch'
 

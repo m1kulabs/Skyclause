@@ -1,19 +1,16 @@
-import { listMyMemberships } from '@skyclause/contracts/api/first-party/me'
-import {
-  evaluateWhatIf as evaluate,
-  getProjectAnalysis,
-  getOrganisationAnalysis
-} from '@skyclause/contracts/api/v1/analysis'
-import {
-  listClauseSheets,
-  listClauseSheetVersions,
-  listClauseSheetDrafts
-} from '@skyclause/contracts/api/v1/clause-sheets'
-import { listGrades } from '@skyclause/contracts/api/v1/grades'
-import { listProjectListings } from '@skyclause/contracts/api/v1/listings'
-import { listNights } from '@skyclause/contracts/api/v1/nights'
-import { listProjects } from '@skyclause/contracts/api/v1/projects'
-import { updateReviewItem as update, listReviewItems } from '@skyclause/contracts/api/v1/review-items'
+import { listMyMemberships } from '@skyclause/contracts/api/first-party/me/listMyMemberships'
+import { evaluateWhatIf as evaluate } from '@skyclause/contracts/api/v1/analysis/evaluateWhatIf'
+import { getProjectAnalysis } from '@skyclause/contracts/api/v1/analysis/getProjectAnalysis'
+import { getOrganisationAnalysis } from '@skyclause/contracts/api/v1/analysis/getOrganisationAnalysis'
+import { listClauseSheets } from '@skyclause/contracts/api/v1/clause-sheets/listClauseSheets'
+import { listClauseSheetVersions } from '@skyclause/contracts/api/v1/clause-sheets/listClauseSheetVersions'
+import { listClauseSheetDrafts } from '@skyclause/contracts/api/v1/clause-sheets/listClauseSheetDrafts'
+import { listGrades } from '@skyclause/contracts/api/v1/grades/listGrades'
+import { listProjectListings } from '@skyclause/contracts/api/v1/listings/listProjectListings'
+import { listNights } from '@skyclause/contracts/api/v1/nights/listNights'
+import { listProjects } from '@skyclause/contracts/api/v1/projects/listProjects'
+import { updateReviewItem as update } from '@skyclause/contracts/api/v1/review-items/updateReviewItem'
+import { listReviewItems } from '@skyclause/contracts/api/v1/review-items/listReviewItems'
 import { createApiFetch } from '../../lib/api-fetch'
 
 function operation<

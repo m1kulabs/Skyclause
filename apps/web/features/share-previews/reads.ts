@@ -1,5 +1,7 @@
 import type { ApiApp } from '@skyclause/api'
-import { getPublicCall, getPublicProjectStatus, getPublicWindow } from '@skyclause/contracts/api/v1/public'
+import { getPublicCall } from '@skyclause/contracts/api/v1/public/getPublicCall'
+import { getPublicProjectStatus } from '@skyclause/contracts/api/v1/public/getPublicProjectStatus'
+import { getPublicWindow } from '@skyclause/contracts/api/v1/public/getPublicWindow'
 
 // The public reads every preview draws from: #187's §4 operations, called in process so redaction lives in one place.
 type ReadId = 'getPublicProjectStatus' | 'getPublicCall' | 'getPublicWindow'

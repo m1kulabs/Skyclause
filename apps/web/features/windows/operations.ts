@@ -1,14 +1,13 @@
-import { listProjectBundles as bundles } from '@skyclause/contracts/api/v1/bundles'
-import { listProjectDays as days } from '@skyclause/contracts/api/v1/days'
-import { listIcsFeeds as feeds, createIcsFeed as importFeed } from '@skyclause/contracts/api/v1/ics-feeds'
-import { listNights as nights } from '@skyclause/contracts/api/v1/nights'
-import { listProjects as projects } from '@skyclause/contracts/api/v1/projects'
-import {
-  listWindows as windows,
-  createWindow as create,
-  updateWindow as update,
-  cancelWindow as cancel
-} from '@skyclause/contracts/api/v1/windows'
+import { listProjectBundles as bundles } from '@skyclause/contracts/api/v1/bundles/listProjectBundles'
+import { listProjectDays as days } from '@skyclause/contracts/api/v1/days/listProjectDays'
+import { listIcsFeeds as feeds } from '@skyclause/contracts/api/v1/ics-feeds/listIcsFeeds'
+import { createIcsFeed as importFeed } from '@skyclause/contracts/api/v1/ics-feeds/createIcsFeed'
+import { listNights as nights } from '@skyclause/contracts/api/v1/nights/listNights'
+import { listProjects as projects } from '@skyclause/contracts/api/v1/projects/listProjects'
+import { listWindows as windows } from '@skyclause/contracts/api/v1/windows/listWindows'
+import { createWindow as create } from '@skyclause/contracts/api/v1/windows/createWindow'
+import { updateWindow as update } from '@skyclause/contracts/api/v1/windows/updateWindow'
+import { cancelWindow as cancel } from '@skyclause/contracts/api/v1/windows/cancelWindow'
 import { createApiFetch } from '../../lib/api-fetch'
 
 export const windowsOperations = {

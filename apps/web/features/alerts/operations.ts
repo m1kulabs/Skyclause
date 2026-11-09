@@ -1,18 +1,12 @@
-import {
-  getMyNotificationPreferences as preferences,
-  updateMyNotificationPreferences as save
-} from '@skyclause/contracts/api/first-party/me'
-import {
-  listNotifications as inbox,
-  markNotificationRead as read,
-  streamNotifications as stream
-} from '@skyclause/contracts/api/first-party/notifications'
-import { getVapidPublicKey as vapid } from '@skyclause/contracts/api/first-party/push'
-import {
-  listPushSubscriptions as devices,
-  createPushSubscription as create,
-  deletePushSubscription as remove
-} from '@skyclause/contracts/api/first-party/push-subscriptions'
+import { getMyNotificationPreferences as preferences } from '@skyclause/contracts/api/first-party/me/getMyNotificationPreferences'
+import { updateMyNotificationPreferences as save } from '@skyclause/contracts/api/first-party/me/updateMyNotificationPreferences'
+import { listNotifications as inbox } from '@skyclause/contracts/api/first-party/notifications/listNotifications'
+import { markNotificationRead as read } from '@skyclause/contracts/api/first-party/notifications/markNotificationRead'
+import { streamNotifications as stream } from '@skyclause/contracts/api/first-party/notifications/streamNotifications'
+import { getVapidPublicKey as vapid } from '@skyclause/contracts/api/first-party/push/getVapidPublicKey'
+import { listPushSubscriptions as devices } from '@skyclause/contracts/api/first-party/push-subscriptions/listPushSubscriptions'
+import { createPushSubscription as create } from '@skyclause/contracts/api/first-party/push-subscriptions/createPushSubscription'
+import { deletePushSubscription as remove } from '@skyclause/contracts/api/first-party/push-subscriptions/deletePushSubscription'
 import { createApiFetch } from '../../lib/api-fetch'
 
 export const notificationStreamPath = stream.path

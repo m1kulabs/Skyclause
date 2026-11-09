@@ -1,9 +1,7 @@
-import {
-  listMyMemberships as memberships,
-  getMyPreferences as preferences,
-  updateMyPreferences as updatePreferences
-} from '@skyclause/contracts/api/first-party/me'
-import { listProjects as projects } from '@skyclause/contracts/api/v1/projects'
+import { listMyMemberships as memberships } from '@skyclause/contracts/api/first-party/me/listMyMemberships'
+import { getMyPreferences as preferences } from '@skyclause/contracts/api/first-party/me/getMyPreferences'
+import { updateMyPreferences as updatePreferences } from '@skyclause/contracts/api/first-party/me/updateMyPreferences'
+import { listProjects as projects } from '@skyclause/contracts/api/v1/projects/listProjects'
 
 // Adapt the contract routes to apiFetch and stubApi without duplicating paths or schemas.
 export const shellOperations = {
