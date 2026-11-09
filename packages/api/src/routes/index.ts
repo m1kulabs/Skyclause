@@ -9,6 +9,7 @@ import { gradesHandlers } from './grades'
 import { ledgerHandlers } from './ledger'
 import { projectHandlers } from './projects'
 import { replyHandlers } from './replies'
+import { runHandlers } from './runs'
 import { subscriberHandlers } from './subscribers'
 
 /**
@@ -40,5 +41,6 @@ export const HANDLERS: Handlers = {
   ...evidenceHandlers, // c-evidence
   ...gradesHandlers, // c-grades
   ...projectHandlers, // b-projects-api
-  ...replyHandlers // c-recipient-replies
+  ...replyHandlers, // c-recipient-replies
+  ...runHandlers // c-run-orchestrator
 }

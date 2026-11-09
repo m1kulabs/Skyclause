@@ -319,15 +319,16 @@ export const Run = z.object({
   pack: Pack,
   trigger: RunTrigger,
   dedupe_key: z.string(),
-  sheet_version_id: z.string(),
-  snapshot_id: z.string(),
+  // #151: null until the run's snapshot and shadow steps set them, so for every queued run.
+  sheet_version_id: z.string().nullable(),
+  snapshot_id: z.string().nullable(),
   model: z.string().nullable(),
   fallback_used: z.boolean(),
   status: z.enum(['queued', 'running', 'drafted', 'no_draft', 'failed']),
   reason: z.string().nullable(),
   trigger_ref: z.string().nullable(),
   window_ids: z.array(z.string()),
-  verdict_hash: z.string()
+  verdict_hash: z.string().nullable()
 })
 export type Run = z.infer<typeof Run>
 export const Notice = z.object({ language: Language, subject: z.string().max(120), body: z.string().max(2000) })

@@ -53,6 +53,7 @@ export {
   type ProjectWithSummaryView,
   type UpdateProjectInput
 } from './services/projects'
+export { createRun, getRun, listRuns, type RunView } from './services/runs'
 export { sseResponse, type SseMessage, type SseOptions } from './sse'
 export type * from './stores'
 export { inTenant, type ServiceContext, type WithTenant } from './tenancy'
