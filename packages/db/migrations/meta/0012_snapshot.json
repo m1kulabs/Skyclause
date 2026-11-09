@@ -1,5 +1,5 @@
 {
-  "id": "7ff43fcb-c56d-4e53-8b13-2bffad2699cf",
+  "id": "1f578871-ac50-4151-8f44-854bf35ecefe",
   "prevId": "906b2505-12bb-4720-b1fc-1a769055e785",
   "version": "7",
   "dialect": "postgresql",
@@ -1252,150 +1252,6 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.audit_finding": {
-      "name": "audit_finding",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "uuidv7()"
-        },
-        "check": {
-          "name": "check",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "key": {
-          "name": "key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "org_id": {
-          "name": "org_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "project_id": {
-          "name": "project_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ref_type": {
-          "name": "ref_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "ref_id": {
-          "name": "ref_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "account_ids": {
-          "name": "account_ids",
-          "type": "uuid[]",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "opened_at": {
-          "name": "opened_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "recovered_at": {
-          "name": "recovered_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "audit_finding_open_identity": {
-          "name": "audit_finding_open_identity",
-          "columns": [
-            {
-              "expression": "check",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "org_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "project_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"audit_finding\".\"recovered_at\" IS NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "audit_finding_org_id_organization_id_fk": {
-          "name": "audit_finding_org_id_organization_id_fk",
-          "tableFrom": "audit_finding",
-          "tableTo": "organization",
-          "schemaTo": "auth",
-          "columnsFrom": [
-            "org_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "audit_finding_project_fk": {
-          "name": "audit_finding_project_fk",
-          "tableFrom": "audit_finding",
-          "tableTo": "project",
-          "columnsFrom": [
-            "org_id",
-            "project_id"
-          ],
-          "columnsTo": [
-            "org_id",
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "audit_finding_platform_project_null": {
-          "name": "audit_finding_platform_project_null",
-          "value": "\"audit_finding\".\"org_id\" IS NOT NULL OR \"audit_finding\".\"project_id\" IS NULL"
-        }
-      },
       "isRLSEnabled": false
     },
     "auth.account": {
@@ -6792,6 +6648,43 @@
           "primaryKey": false,
           "notNull": true
         },
+        "local_date": {
+          "name": "local_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actual": {
+          "name": "actual",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "forecast_id": {
+          "name": "forecast_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "band_low": {
+          "name": "band_low",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "band_high": {
+          "name": "band_high",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reading_ids": {
+          "name": "reading_ids",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -6818,6 +6711,54 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "grade_call_id_key": {
+          "name": "grade_call_id_key",
+          "columns": [
+            {
+              "expression": "call_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"grade\".\"call_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "grade_night_id_key": {
+          "name": "grade_night_id_key",
+          "columns": [
+            {
+              "expression": "night_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"grade\".\"night_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "grade_window_id_key": {
+          "name": "grade_window_id_key",
+          "columns": [
+            {
+              "expression": "window_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"grade\".\"call_id\" IS NULL AND \"grade\".\"night_id\" IS NULL",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -6915,7 +6856,7 @@
       "checkConstraints": {
         "grade_call_or_night": {
           "name": "grade_call_or_night",
-          "value": "num_nonnulls(\"grade\".\"call_id\", \"grade\".\"night_id\") = 1"
+          "value": "num_nonnulls(\"grade\".\"call_id\", \"grade\".\"night_id\") = 1 OR (\"grade\".\"call_id\" IS NULL AND \"grade\".\"night_id\" IS NULL AND \"grade\".\"window_id\" IS NOT NULL)"
         }
       },
       "isRLSEnabled": false
@@ -7095,6 +7036,25 @@
           "primaryKey": false,
           "notNull": false
         },
+        "reasons": {
+          "name": "reasons",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
+        "explained_by": {
+          "name": "explained_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "explained_at": {
+          "name": "explained_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -7161,7 +7121,12 @@
         }
       },
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "review_item_reasons": {
+          "name": "review_item_reasons",
+          "value": "\"review_item\".\"reasons\" <@ ARRAY['miss', 'false_alarm', 'expired_above_normal', 'out_of_band', 'unlisted_surge', 'no_call']::text[]"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.bundle_alert": {

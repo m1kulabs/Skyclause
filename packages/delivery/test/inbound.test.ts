@@ -139,6 +139,16 @@ describe('/ses/inbound', () => {
     expect(t.evidence).toEqual([])
   })
 
+  test('a recipient matches whatever its case, and reaches the consumer as SES received it', async () => {
+    // A reply token is case-sensitive base64url, so lower-casing the address would lose it.
+    const address = 'r+Tok_9F3a-Xy@IN.skyclause.m1ku.tech'
+    const t = setup({ 'msg-case': rawMail(address, 'Re: Surge night', 'keep') })
+
+    await t.post(received('msg-case', [address]))
+
+    expect(t.replies.map((m) => m.recipient)).toEqual([address])
+  })
+
   test('a virus FAIL is dropped and its object deleted', async () => {
     const t = setup({ 'msg-virus': rawMail('upm.haze-2026@in.skyclause.m1ku.tech', 'Invoice', 'Open the attachment.') })
 

@@ -61,15 +61,35 @@ test('a broken shared client rejects queued transactions without entering their 
   expect(await withSystem('auditor', pid)).not.toBe(brokenPid)
 })
 
-test('shared connection ownership removes its checked-out error listener on release', async () => {
+test('shared connections retain only the permanent client error listener after release', async () => {
   for (let i = 0; i < 3; i++) {
     await shareSystemConnection(() => withSystem('auditor', pid))
     const client = await connection('SYSTEM').pool.connect()
     try {
-      // pg-pool removes its own idle listener on acquisition; no previous batch listener may remain.
-      expect(client.listenerCount('error')).toBe(0)
+      // pg-pool removes its idle listener on acquisition; only the permanent logger remains, never a batch listener.
+      expect(client.listenerCount('error')).toBe(1)
     } finally {
       client.release()
     }
   }
+})
+
+test('a with* call made while a left-running one holds the shared connection as it ends fails instead of running after it', async () => {
+  let left: Promise<unknown> = Promise.resolve()
+  let late: Promise<unknown> = Promise.resolve()
+  let ran = false
+  await shareSystemConnection(async () => {
+    left = withSystem('batch', (tx) => tx.execute(sql`SELECT pg_sleep(0.2)`))
+    // Called while the share waits for `left`; its expectation is attached at once, before the share settles.
+    late = expect(
+      new Promise((resolve) => setTimeout(resolve, 50)).then(() =>
+        withSystem('batch', async () => {
+          ran = true
+        })
+      )
+    ).rejects.toThrow(/was released/)
+  })
+  await late
+  expect(ran).toBe(false)
+  await left
 })

@@ -1,0 +1,6 @@
+{
+  "feedback": {
+    "subject": "Did the weather change your plan?",
+    "body": "{window} on {date} ({project}) is over. Did the weather change your plan for it?\n\nAnswer yes or no here: {url}\n\nOnly the number of yes and no answers is kept, and your answer isn't linked to you. The link works for 30 days and needs no account.\n\nStop all notices for {project}: {unsubscribe}"
+  }
+}

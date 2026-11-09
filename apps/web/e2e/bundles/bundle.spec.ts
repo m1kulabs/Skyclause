@@ -2,7 +2,22 @@ import { test, expect } from '../fixtures'
 import { stubApi, expectZonedTimes } from '../harness'
 import { expectUnclippedText } from '../harness/expect-unclipped-text'
 import { bundleOperations } from '../../features/bundles/operations'
-import { ids, path, prepare, open, callDouble, bundleDouble, gauge, rain60, problem, t, rawT } from './doubles'
+import { makeOrg, signInAs } from '../harness/sign-in-as'
+import {
+  ids,
+  path,
+  prepare,
+  open,
+  callDouble,
+  bundleDouble,
+  gauge,
+  rain60,
+  problem,
+  t,
+  rawT,
+  stubReads
+} from './doubles'
+import { seedReview } from './seed'
 
 const approve = (page: import('@playwright/test').Page, count = 2) =>
   page.locator('.bundle-approval-bar').getByRole('button', { name: t('approve', { count }), exact: false })
@@ -438,3 +453,34 @@ for (const theme of ['dark', 'light', 'high-contrast']) {
     await expectUnclippedText(page)
   })
 }
+
+test('#372 a signed-in approver’s bundle arrives rendered by the server and hydrates without a mismatch', async ({
+  browser,
+  page
+}) => {
+  const org = await makeOrg()
+  const review = await seedReview(org, bundleDouble([callDouble(ids.first, { expires_at: '2099-11-02T07:45:00Z' })]))
+  const title = review.calls[0]!.window!.title
+  // Without JavaScript, only the server's render can show the review.
+  const scriptless = await browser.newContext({ javaScriptEnabled: false })
+  const plain = await scriptless.newPage()
+  await signInAs(plain, 'approver', org)
+  await plain.goto(review.path)
+  await expect(plain.locator('.bundle-call-list')).toContainText(title)
+  await expect(plain.locator('.bundle-approval-bar')).toBeVisible()
+  const rendered = await plain.locator('.bundle-call-list').innerText()
+  await scriptless.close()
+
+  const errors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text())
+  })
+  page.on('pageerror', (error) => errors.push(error.message))
+  await signInAs(page, 'approver', org)
+  await stubReads(page, review.bundle, review.calls, { org })
+  await open(page, review.path)
+  // The run line comes only from the client's own reads, after hydration; they paint the call list the server did.
+  await expect(page.locator('.bundle-trace')).toContainText(review.bundle.run_id)
+  expect(await page.locator('.bundle-call-list').innerText()).toBe(rendered)
+  expect(errors.filter((error) => /hydrat|Minified React error #(418|419|421|422|423|425)\b/i.test(error))).toEqual([])
+})

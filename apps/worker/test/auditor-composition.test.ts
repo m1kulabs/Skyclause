@@ -7,6 +7,9 @@ test('actual registry contains only the batch auditor and registers no checks', 
   expect(registry.batch.auditor).toBeTypeOf('function')
   expect(registry.ticks).not.toHaveProperty('auditor')
   expect(auditChecks()).toEqual([])
+  expect(registry.jobs['grade-sky']).toBeTypeOf('function')
+  expect(registry.jobs['grade-crowd']).toBeTypeOf('function')
+  expect(registry.events.some(({ consumer }) => consumer === 'plan-feedback')).toBe(true)
 })
 
 test('cold importing the registry opens no network connections and needs no credentials', () => {

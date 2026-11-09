@@ -32,9 +32,18 @@ export function connection(login: Login) {
   if (!found) {
     // D45: nothing holds an idle connection, so a sleeping Neon compute stays asleep.
     const pool = new pg.Pool({ connectionString: url, idleTimeoutMillis: 5_000, allowExitOnIdle: true })
-    // An idle client that errors (the server ended it) leaves the pool, and the next query connects again; without a
-    // listener the error would crash the process.
-    pool.on('error', (error) => log.warn('idle database connection failed', { login, error: String(error) }))
+    // A client whose connection fails (the server ended it) emits `error`, which would crash the process with no
+    // listener, and pg-pool listens only while the client is idle; so each client keeps one of its own, checked out or
+    // not. A query on it still rejects for its caller, the pool drops the client, and the next query connects again.
+    pool.on('connect', (client) =>
+      client.on('error', (error) => {
+        const shared = sharedClients.get(client)
+        if (shared) shared.failure ??= error
+        log.warn('database connection failed', { login, error: String(error) })
+      })
+    )
+    // pg-pool re-emits an idle client's error here, and throws it without a listener; the client's own logged it.
+    pool.on('error', () => {})
     found = { pool, db: drizzle(pool, { schema }) }
     connections.set(url, found)
   }
@@ -52,11 +61,13 @@ interface Shared {
   db: NodePgDatabase<Schema>
   /** The end of the queue: sibling calls on the shared connection take turns. */
   tail: Promise<unknown>
-  /** Set once `fn` has settled and the connection is back in the pool. */
-  released: boolean
-  /** A checked-out client error makes the whole batch unusable, including queued transactions. */
+  /** Set once `fn` has settled: later calls are refused, and those already queued finish before the release. */
+  ended: boolean
+  /** A client error makes the whole batch unusable, including queued transactions. */
   failure?: Error
 }
+// The permanent client error listener also poisons its current sharing scope, without adding another listener.
+const sharedClients = new WeakMap<pg.PoolClient, Shared>()
 const sharedConnection = new AsyncLocalStorage<{ shared: Shared; inside: boolean }>()
 
 /**
@@ -67,23 +78,24 @@ const sharedConnection = new AsyncLocalStorage<{ shared: Shared; inside: boolean
  */
 export async function shareSystemConnection<T>(fn: () => Promise<T>): Promise<T> {
   const client = await connection('SYSTEM').pool.connect()
-  const shared: Shared = { db: drizzle(client, { schema }), tail: Promise.resolve(), released: false }
-  // pg-pool removes its idle error listener while a client is checked out; this scope owns those errors.
-  const failed = (error: Error) => {
-    shared.failure ??= error
-  }
-  client.on('error', failed)
+  const shared: Shared = { db: drizzle(client, { schema }), tail: Promise.resolve(), ended: false }
+  sharedClients.set(client, shared)
   try {
-    const result = await sharedConnection.run({ shared, inside: false }, fn)
+    let result: T
+    try {
+      result = await sharedConnection.run({ shared, inside: false }, fn)
+    } finally {
+      // Refuse new calls immediately when fn settles, including while previously admitted work drains.
+      shared.ended = true
+    }
     await shared.tail
     if (shared.failure) throw shared.failure
     return result
   } finally {
     await shared.tail
-    shared.released = true
-    // Passing the error discards the client. Release installs the pool listener before ours is removed.
+    // Passing the error discards the client; its permanent logging listener stays owned by the pool.
     client.release(shared.failure)
-    client.off('error', failed)
+    sharedClients.delete(client)
   }
 }
 
@@ -95,8 +107,8 @@ async function run<T, P extends Principal | null>(
   const share = login === 'SYSTEM' ? sharedConnection.getStore() : undefined
   if (!share) return transaction(connection(login).db, context, fn)
   const { shared, inside } = share
-  if (shared.released) throw new Error('the shared system connection was released when its shareSystemConnection ended')
   if (inside) throw new Error('a with* call inside another on the shared system connection needs a second connection')
+  if (shared.ended) throw new Error('the shared system connection was released when its shareSystemConnection ended')
   const turn = shared.tail.then(() => {
     if (shared.failure) throw shared.failure
     return sharedConnection.run({ shared, inside: true }, () => transaction(shared.db, context, fn))

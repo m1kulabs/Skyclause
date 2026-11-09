@@ -8,6 +8,12 @@
   "include": ["src", "test", "vitest.config.ts"],
   "references": [
     {
+      "path": "../../packages/agent"
+    },
+    {
+      "path": "../../packages/clauses"
+    },
+    {
       "path": "../../packages/config"
     },
     {

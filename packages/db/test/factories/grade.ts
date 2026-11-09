@@ -17,6 +17,7 @@ export async function makeGrade(tx: Tx, overrides: Partial<typeof grade.$inferIn
       noCall: false,
       agrees: true,
       staleInputs: false,
+      localDate: '2026-11-09',
       sheetVersionId: overrides.sheetVersionId ?? (await sheetVersionIn(tx, parent.projectId)),
       ...overrides,
       callId: parent.id
