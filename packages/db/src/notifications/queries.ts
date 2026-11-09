@@ -1,5 +1,5 @@
 import type { NotificationKind } from '@skyclause/contracts'
-import { and, desc, eq, gt, isNull, lt } from 'drizzle-orm'
+import { and, count, desc, eq, gt, isNull, lt } from 'drizzle-orm'
 import type { Tx } from '../client'
 import { notification, organization, project } from '../schema'
 
@@ -73,4 +73,13 @@ export async function markNotificationRead(
     .where(and(eq(notification.id, q.id), eq(notification.accountId, q.accountId), isNull(notification.readAt)))
   const [row] = await notificationRows(tx, { accountId: q.accountId, id: q.id })
   return row ?? null
+}
+
+/** How many of `accountId`'s items are unread. */
+export async function unreadCount(tx: Tx, accountId: string): Promise<number> {
+  const [row] = await tx
+    .select({ n: count() })
+    .from(notification)
+    .where(and(eq(notification.accountId, accountId), isNull(notification.readAt)))
+  return row?.n ?? 0
 }
