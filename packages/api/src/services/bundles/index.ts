@@ -70,7 +70,8 @@ export async function visibleProject(ctx: ServiceContext, projectId: string) {
 
 const CallNotice = z.object({ language: z.enum(['en', 'ms']), subject: z.string(), body: z.string() })
 
-function callView(row: CallRow): CallView {
+/** A stored call as its wire `CallView`; the channel previews (#152) render from it too. */
+export function callView(row: CallRow): CallView {
   return {
     id: row.id,
     bundle_id: row.bundleId,

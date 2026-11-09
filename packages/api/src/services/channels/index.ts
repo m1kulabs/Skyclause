@@ -1,9 +1,10 @@
-import type { CallView, Channel, Language, Mode, Notice, Pack, Page, Verdict } from '@skyclause/contracts'
+import type { Channel, Language, Mode, Pack, Page } from '@skyclause/contracts'
 import { channelProject, latestSentCall, listProjectChannels, setProjectChannel, track, type Tx } from '@skyclause/db'
 import { REPLAY_2_NOVEMBER, renderNotice, renderReplayPreview, type NoticeContext } from '@skyclause/delivery'
 import { ApiError } from '../../problems'
 import { instant } from '../../serialize'
 import type { ServiceContext } from '../../tenancy'
+import { callView } from '../bundles'
 
 // #152 c-notice-templates: GET /v1/projects/{id}/channels, GET …/channels/preview and PATCH …/channels/{channel},
 // all `channels.manage` (#79 §4).
@@ -50,41 +51,6 @@ export async function updateChannel(
     await track(ctx.tx as Tx, 'channel_connected', { channel: input.channel }, { projectId: input.projectId })
   }
   return { channel: input.channel, enabled: after }
-}
-
-type CallRow = NonNullable<Awaited<ReturnType<typeof latestSentCall>>>['call']
-
-/** A stored call as `CallView`. #150 adds `call.notices` and `call.recipients`; a call stored before has neither. */
-function callView(row: CallRow): CallView {
-  const content = row as CallRow & { notices?: Notice[]; recipients?: string[] }
-  const at = (date: Date | null) => (date ? instant(date) : null)
-  return {
-    id: row.id,
-    bundle_id: row.bundleId,
-    window_id: row.windowId,
-    night_id: row.nightId,
-    mode: row.mode,
-    watch: row.watch,
-    no_call: row.noCall as CallView['no_call'],
-    fired: row.fired as CallView['fired'],
-    recommendations: row.recommendations as CallView['recommendations'],
-    recipients: content.recipients ?? [],
-    notices: content.notices ?? [],
-    reason: row.reason ?? '',
-    state: row.state,
-    shadow: row.shadow as Verdict,
-    chosen: row.chosen,
-    agrees: row.agrees,
-    decision: row.decision,
-    expires_at: instant(row.expiresAt),
-    triggered_at: instant(row.triggeredAt),
-    drafted_at: instant(row.draftedAt),
-    approved_at: at(row.approvedAt),
-    sent_at: at(row.sentAt),
-    superseded_by_call_id: row.supersededByCallId,
-    ics_uid: row.icsUid ?? '',
-    ics_sequence: row.icsSequence
-  }
 }
 
 /**
