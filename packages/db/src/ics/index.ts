@@ -1,3 +1,4 @@
+import { log } from '@skyclause/config'
 import { and, asc, eq, inArray, isNotNull, or, type SQL } from 'drizzle-orm'
 import type { Tx } from '../client'
 import { bundle, call, listing, night, publicProject, window } from '../schema'
@@ -146,7 +147,8 @@ const latestOf = (...dates: Array<Date | null>) => new Date(Math.max(...dates.ma
  * The project's entries (ticket decision): one per window and pack, and per night, among calls with an identity.
  * Windows span `starts_at` to `ends_at`; nights the arrival period's start to the exit period's end, or to the
  * arrival period's end while exit times are unknown (D19). A night shows only once a listing of it was listed
- * (CAL-14). Cancelled: a Normal head, a cancelled window, an unlisted night, or a night with no listing still listed.
+ * (CAL-14), and never without an arrival period. Cancelled: a Normal head, a cancelled window, an unlisted night, or a
+ * night with no listing still listed.
  */
 export async function loadIcsEntries(tx: Tx, projectId: string): Promise<IcsEntry[]> {
   const rows = await tx
@@ -180,8 +182,11 @@ export async function loadIcsEntries(tx: Tx, projectId: string): Promise<IcsEntr
       const states = listings.filter((row) => row.nightId === nightRow.id).map((row) => row.state)
       if (!states.some((state) => state === 'listed' || state === 'cancelled')) continue
       const until = nightRow.exitEnd ?? nightRow.arrivalEnd
-      if (!nightRow.arrivalStart || !until)
-        throw new Error(`night ${nightRow.id} has a sent call but no arrival period`)
+      if (!nightRow.arrivalStart || !until) {
+        // #150 dates a night call from the arrival start, so this can't be; one bad row doesn't freeze the feed.
+        log.error('conditions calendar night has no arrival period; entry left out', { night_id: nightRow.id })
+        continue
+      }
       ;[start, end] = [nightRow.arrivalStart, until]
       withdrawn = nightRow.state === 'unlisted' || !states.includes('listed')
     } else {

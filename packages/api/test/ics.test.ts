@@ -329,6 +329,19 @@ test('a surge night spans the arrival start to the exit end, or to the arrival e
   })
 })
 
+test('a night without an arrival period is left out, and the rest of the feed still answers', async () => {
+  const { project, inOrg, get, window, send } = await scene()
+  await inOrg(async (tx) => {
+    const unplaced = await makeNight(tx, { projectId: project.id, ...DECLARED })
+    await makeListing(tx, { projectId: project.id, nightId: unplaced.id, state: 'listed' })
+    await send(tx, { mode: 'surge_night', nightId: unplaced.id })
+    await send(tx, { mode: 'commute_disruption', windowId: (await window(tx)).id })
+  })
+  const response = await get()
+  expect(response.status).toBe(200)
+  expect((await feed(response)).map((e) => e.uid)).toEqual([expect.stringMatching(/^call-/)])
+})
+
 test('a cancelled listing or an unlisted night renders the night’s entry CANCELLED', async () => {
   const { inOrg, get, night, send } = await scene()
   await inOrg(async (tx) => {
