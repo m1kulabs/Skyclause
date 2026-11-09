@@ -1,0 +1,10 @@
+{
+  "confirmation": {
+    "subject": "Confirm your notices for {project}",
+    "body": "Someone, hopefully you, asked for Skyclause notices for {project} at this address.\n\nConfirm here: {url}\n\nNothing is sent until you confirm. The link works for 7 days. If you didn't ask, ignore this email and nothing more will arrive."
+  },
+  "preference_link": {
+    "subject": "Your notice preferences for {project}",
+    "body": "Change the windows, channels or language of your notices for {project}, or unsubscribe, here: {url}\n\nThe link works for 30 days and needs no account. If you didn't ask for it, ignore this email."
+  }
+}

@@ -17,6 +17,7 @@ test.describe('HOST_MODE=multi', () => {
         ...process.env,
         APP_ENV: 'test',
         IP_HASH_KEY: 'test-only-ip-hash-key-for-playwright-runs',
+        EMAIL_HASH_KEY: 'test-only-email-hash-key-for-playwright-runs',
         HOST_MODE: 'multi',
         MARKETING_ORIGIN: 'https://skyclause.m1ku.tech',
         APP_ORIGIN: 'https://app.skyclause.m1ku.tech',

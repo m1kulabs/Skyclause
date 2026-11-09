@@ -37,6 +37,7 @@ test('the web server starts with a valid environment, and its telemetry traces',
   vi.stubEnv('APP_ENV', 'production')
   vi.stubEnv('IP_HASH_KEY', 'k'.repeat(48))
   vi.stubEnv('BETTER_AUTH_SECRET', 's'.repeat(48))
+  vi.stubEnv('EMAIL_HASH_KEY', 'e'.repeat(48))
   await register()
   expect(exit).not.toHaveBeenCalled()
   const span = trace.getTracer('test').startSpan('GET /')

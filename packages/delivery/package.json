@@ -11,6 +11,7 @@
     "@aws-sdk/client-sesv2": "3.1163.0",
     "@skyclause/config": "workspace:*",
     "@skyclause/contracts": "workspace:*",
+    "@skyclause/i18n": "workspace:*",
     "postal-mime": "4.2.0"
   }
 }

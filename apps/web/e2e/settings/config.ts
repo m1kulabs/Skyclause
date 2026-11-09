@@ -26,8 +26,9 @@ export function settingsConfig(pseudo = false) {
       cwd: import.meta.dirname + '/../..',
       env: {
         APP_ENV: 'test',
-        // A test-only key: IP_HASH_KEY is required to start (#93).
+        // Test-only keys: IP_HASH_KEY (#93) and EMAIL_HASH_KEY (#157) are required to start.
         IP_HASH_KEY: 'test-only-ip-hash-key-for-playwright-runs',
+        EMAIL_HASH_KEY: 'test-only-email-hash-key-for-playwright-runs',
         PORT: String(port),
         HOSTNAME: 'localhost',
         PLANTED_ROUTES: '1',

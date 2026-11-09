@@ -8,7 +8,14 @@ export async function makeConsentRecord(tx: Tx, overrides: Partial<typeof consen
   const parent = overrides.subscriberId ? await rowOf(tx, subscriber, overrides.subscriberId) : await makeSubscriber(tx)
   const [row] = await tx
     .insert(consentRecord)
-    .values({ orgId: tx.orgId!, noticeVersion: '2026-11-01', ...overrides, subscriberId: parent.id })
+    .values({
+      orgId: tx.orgId!,
+      form: 'subscribe_link',
+      noticeVersion: '2026-11-01',
+      language: 'en',
+      ...overrides,
+      subscriberId: parent.id
+    })
     .returning()
   return row!
 }

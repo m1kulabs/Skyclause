@@ -119,6 +119,8 @@ export const subscriberTokenPurpose = pgEnum('subscriber_token_purpose', [
   'feedback'
 ])
 export const suppressionReason = pgEnum('suppression_reason', ['bounce', 'complaint', 'unsubscribe'])
+// c-subscribers: how a consent record arose (NTC-8, NTC-13, NTC-14).
+export const consentForm = pgEnum('consent_form', ['subscribe_link', 'import', 'confirm', 'preferences'])
 export const crowdReplyKind = pgEnum('crowd_reply_kind', ['keep', 'shift', 'shuttle'])
 export const evidenceVia = pgEnum('evidence_via', ['email', 'app', 'api', 'mcp'])
 export const replyChannel = pgEnum('reply_channel', ['email', 'in_app'])

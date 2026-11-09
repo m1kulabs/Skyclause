@@ -11,8 +11,9 @@ export function e2eEnv(origin: string) {
   process.env.E2E_DATABASE ??= scratchName('skyclause_e2e')
   return {
     APP_ENV: 'test',
-    // Test-only keys: both are required to start (#93, #94).
+    // Test-only keys: all are required to start (#93, #94, #157).
     IP_HASH_KEY: 'test-only-ip-hash-key-for-playwright-runs',
+    EMAIL_HASH_KEY: 'test-only-email-hash-key-for-playwright-runs',
     BETTER_AUTH_SECRET: 'test-only-better-auth-secret-for-playwright-runs',
     HOST_MODE: 'single',
     APP_ORIGIN: origin,

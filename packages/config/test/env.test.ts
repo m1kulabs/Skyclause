@@ -7,8 +7,8 @@ const worker = {
   WORKER_INVOKER_SA: 'worker-invoker@skyclause.iam.gserviceaccount.com'
 }
 
-// IP_HASH_KEY and BETTER_AUTH_SECRET are required on web; shaped like the generated secrets, not the real ones.
-const key = { IP_HASH_KEY: 'k'.repeat(48), BETTER_AUTH_SECRET: 's'.repeat(48) }
+// IP_HASH_KEY, EMAIL_HASH_KEY and BETTER_AUTH_SECRET are required on web; shaped like the generated secrets, not the real ones.
+const key = { IP_HASH_KEY: 'k'.repeat(48), EMAIL_HASH_KEY: 'e'.repeat(48), BETTER_AUTH_SECRET: 's'.repeat(48) }
 const web = { APP_ENV: 'production', ...key }
 const origins = {
   MARKETING_ORIGIN: 'https://skyclause.m1ku.tech',
@@ -147,7 +147,14 @@ describe('loadEnv', () => {
     for (const APP_ENV of ['dev', 'test', 'production']) {
       expect(() => loadEnv('web', { APP_ENV }), APP_ENV).toThrow(/IP_HASH_KEY/)
     }
-    expect(() => loadEnv('web', { APP_ENV: 'production', IP_HASH_KEY: 'short' })).toThrow(/IP_HASH_KEY/)
+    expect(() => loadEnv('web', { ...web, IP_HASH_KEY: 'short' })).toThrow(/IP_HASH_KEY/)
+  })
+
+  test('web needs EMAIL_HASH_KEY of at least 32 characters, in every environment', () => {
+    for (const APP_ENV of ['dev', 'test', 'production']) {
+      expect(() => loadEnv('web', { APP_ENV, IP_HASH_KEY: key.IP_HASH_KEY }), APP_ENV).toThrow(/EMAIL_HASH_KEY/)
+    }
+    expect(() => loadEnv('web', { ...web, EMAIL_HASH_KEY: 'short' })).toThrow(/EMAIL_HASH_KEY/)
   })
 
   test('web needs BETTER_AUTH_SECRET of at least 32 characters; SKYCLAUSE_STAFF_EMAILS is optional (#94)', () => {

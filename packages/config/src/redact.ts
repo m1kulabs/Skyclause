@@ -2,7 +2,8 @@ import type { Context } from '@opentelemetry/api'
 import type { ReadableSpan, Span, SpanProcessor } from '@opentelemetry/sdk-trace'
 
 // #114 ticket decision: Skyclause tokens, Authorization and Cookie values, provider key shapes and email
-// addresses never leave the process in a log field, span attribute or error message (TRD BYOK).
+// addresses never leave the process in a log field, span attribute or error message (TRD BYOK); #157 adds subscriber
+// link tokens.
 const REDACTED = '[redacted]'
 
 const PATTERNS: Array<[RegExp, string]> = [
@@ -18,6 +19,8 @@ const PATTERNS: Array<[RegExp, string]> = [
   [/AIza[0-9A-Za-z_-]{35}/g, REDACTED],
   [/(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{16,}/g, REDACTED],
   [/\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g, REDACTED],
+  // Subscriber link tokens (#157), which have no prefix: 32 bytes of base64url in a `/subscribe/` path.
+  [/(\/subscribe\/)[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])/g, `$1${REDACTED}`],
   [/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, REDACTED]
 ]
 
