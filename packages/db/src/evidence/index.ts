@@ -1,4 +1,4 @@
-export { inboundProject, inboundSender, type InboundSender } from './inbound'
+export { inboundProject, inboundSender, zonedSpan, type InboundSender } from './inbound'
 export {
   assembleEvidencePack,
   setEvidenceCallViews,
