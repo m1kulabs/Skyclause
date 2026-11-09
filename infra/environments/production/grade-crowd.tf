@@ -2,6 +2,9 @@
 # it, and records unlisted surges. Hourly, so a night is graded within the hour of the file
 # landing; D45 lets nothing scheduled wake the database more than every 15 minutes. It runs as
 # `jobs`, on DATABASE_URL_SYSTEM.
+#
+# The schedule starts paused: the job refuses to run until #131 (the clause engine), #127
+# (ForecastSource), the indicator registry and a composition root calling setGradeEngine land.
 
 module "grade_crowd" {
   source = "../../modules/job"
@@ -14,6 +17,7 @@ module "grade_crowd" {
   env                       = merge(local.env, { OTEL_SERVICE_NAME = "grade-crowd" })
   secrets                   = { for name in local.mounts.jobs : name => name }
   schedule                  = "0 * * * *"
+  paused                    = true
   scheduler_service_account = local.sa.invoker
 
   # Cloud Run checks a revision's secrets and its access to them when it deploys it.

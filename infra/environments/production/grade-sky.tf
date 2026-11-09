@@ -1,6 +1,9 @@
 # grade-sky (#161, D26): grades each closed Sky window's calls at 23:55 MYT, with a 06:30 MYT
 # catch-up for spans that close after midnight, so every window with a call by 23:59 has a grade
 # by 06:45 (ANL-1). It runs as `jobs`, on DATABASE_URL_SYSTEM.
+#
+# Both schedules start paused: the job refuses to run until #131 (the clause engine), #133 (the
+# reading history), the indicator registry and a composition root calling setGradeEngine land.
 
 module "grade_sky" {
   source = "../../modules/job"
@@ -13,6 +16,7 @@ module "grade_sky" {
   env                       = merge(local.env, { OTEL_SERVICE_NAME = "grade-sky" })
   secrets                   = { for name in local.mounts.jobs : name => name }
   schedule                  = "55 23 * * *"
+  paused                    = true
   scheduler_service_account = local.sa.invoker
 
   # Cloud Run checks a revision's secrets and its access to them when it deploys it.
@@ -31,6 +35,8 @@ resource "google_cloud_scheduler_job" "grade_sky_catch_up" {
   name      = "grade-sky-catch-up"
   schedule  = "30 6 * * *"
   time_zone = "Asia/Kuala_Lumpur"
+  # Paused with the 23:55 schedule, for the same blockers.
+  paused = true
 
   http_target {
     http_method = "POST"
