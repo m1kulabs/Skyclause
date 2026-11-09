@@ -173,8 +173,12 @@ describe('crowd-replies: a reply to a Crowd notice’s Reply-To', () => {
     await handleCrowdReply(unscanned)
     await handleCrowdReply(forwarded)
 
-    expect((await drops(unscanned.messageId)).map((row) => row.after)).toEqual([{ dropped: 'verdict' }])
-    expect((await drops(forwarded.messageId)).map((row) => row.after)).toEqual([{ dropped: 'sender' }])
+    expect((await drops(unscanned.messageId)).map((row) => [row.action, row.after])).toEqual([
+      ['crowd_reply.dropped', { dropped: 'verdict' }]
+    ])
+    expect((await drops(forwarded.messageId)).map((row) => [row.action, row.after])).toEqual([
+      ['crowd_reply.dropped', { dropped: 'sender' }]
+    ])
     expect(await replies()).toEqual([])
     await handleCrowdReply(mail(token, { text: 'keep' }))
     expect((await replies()).map((row) => row.kind)).toEqual(['keep'])
