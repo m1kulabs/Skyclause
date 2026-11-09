@@ -1,5 +1,6 @@
 import type { MiddlewareHandler } from 'hono'
 import type { ApiEnv } from '../context'
+import { auditApproveDenied } from './auth'
 import { ApiError } from '../problems'
 import { auditIn } from '../tenancy'
 
@@ -12,6 +13,10 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 export const apiSurfaceGate: MiddlewareHandler<ApiEnv> = async (c, next) => {
   const principal = c.get('principal')
   if (principal && principal.kind !== 'session') {
+    // GST-7: a key or token refused an approval is audited in its own organisation, as a session is.
+    if (c.get('operation')['x-skyclause'].statement === 'bundle.approve' && 'orgId' in principal) {
+      await auditApproveDenied(c, { orgId: principal.orgId, principal })
+    }
     throw new ApiError(403, 'insufficient-scope', '/api admits only signed-in sessions, never keys or tokens.')
   }
   if (principal?.kind === 'session' && principal.via === 'cookie' && !SAFE_METHODS.has(c.req.method)) {

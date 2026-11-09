@@ -23,6 +23,9 @@
       "path": "../delivery"
     },
     {
+      "path": "../agent"
+    },
+    {
       "path": "../i18n"
     }
   ]
