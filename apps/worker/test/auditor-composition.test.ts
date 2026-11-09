@@ -7,6 +7,8 @@ test('actual registry contains only the batch auditor and registers no checks', 
   expect(registry.batch.auditor).toBeTypeOf('function')
   expect(registry.ticks).not.toHaveProperty('auditor')
   expect(auditChecks()).toEqual([])
+  expect(registry.batch['shift-reminder-plan']).toBeTypeOf('function')
+  expect(registry.batch['approver-alert-resend']).toBeTypeOf('function')
   expect(registry.batch['runs-sky-schedule']).toBeTypeOf('function')
   expect(registry.batch['runs-republish']).toBeTypeOf('function')
   expect(registry.batch['notice-sweep']).toBeTypeOf('function')

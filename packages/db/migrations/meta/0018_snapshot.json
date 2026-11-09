@@ -1,5 +1,5 @@
 {
-  "id": "6b2826e9-06cb-4f97-a0b7-3ea7fba6c81c",
+  "id": "33d90565-e013-4b24-8f99-98e4cc84da06",
   "prevId": "31edca73-bbc5-47e5-bcad-3daf7d17c3a3",
   "version": "7",
   "dialect": "postgresql",
@@ -1252,150 +1252,6 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.audit_finding": {
-      "name": "audit_finding",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "uuidv7()"
-        },
-        "check": {
-          "name": "check",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "key": {
-          "name": "key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "org_id": {
-          "name": "org_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "project_id": {
-          "name": "project_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ref_type": {
-          "name": "ref_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "ref_id": {
-          "name": "ref_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "account_ids": {
-          "name": "account_ids",
-          "type": "uuid[]",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "opened_at": {
-          "name": "opened_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "recovered_at": {
-          "name": "recovered_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "audit_finding_open_identity": {
-          "name": "audit_finding_open_identity",
-          "columns": [
-            {
-              "expression": "check",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "org_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "project_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"audit_finding\".\"recovered_at\" IS NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "audit_finding_org_id_organization_id_fk": {
-          "name": "audit_finding_org_id_organization_id_fk",
-          "tableFrom": "audit_finding",
-          "tableTo": "organization",
-          "schemaTo": "auth",
-          "columnsFrom": [
-            "org_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "audit_finding_project_fk": {
-          "name": "audit_finding_project_fk",
-          "tableFrom": "audit_finding",
-          "tableTo": "project",
-          "columnsFrom": [
-            "org_id",
-            "project_id"
-          ],
-          "columnsTo": [
-            "org_id",
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "audit_finding_platform_project_null": {
-          "name": "audit_finding_platform_project_null",
-          "value": "\"audit_finding\".\"org_id\" IS NOT NULL OR \"audit_finding\".\"project_id\" IS NULL"
-        }
-      },
       "isRLSEnabled": false
     },
     "auth.account": {
@@ -5892,10 +5748,11 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "push_subscription_endpoint_unique": {
-          "name": "push_subscription_endpoint_unique",
+        "push_subscription_org_id_endpoint_key": {
+          "name": "push_subscription_org_id_endpoint_key",
           "nullsNotDistinct": false,
           "columns": [
+            "org_id",
             "endpoint"
           ]
         }
@@ -7457,7 +7314,18 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "bundle_alert_bundle_id_account_id_channel_level_key": {
+          "name": "bundle_alert_bundle_id_account_id_channel_level_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "bundle_id",
+            "account_id",
+            "channel",
+            "level"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -7742,6 +7610,19 @@
           "primaryKey": false,
           "notNull": true
         },
+        "local_date": {
+          "name": "local_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "shift_reminder_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
         "due_at": {
           "name": "due_at",
           "type": "timestamp with time zone",
@@ -7797,7 +7678,17 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "shift_reminder_rota_shift_id_local_date_kind_key": {
+          "name": "shift_reminder_rota_shift_id_local_date_kind_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "rota_shift_id",
+            "local_date",
+            "kind"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -11929,6 +11820,14 @@
       "values": [
         "draft",
         "published"
+      ]
+    },
+    "public.shift_reminder_kind": {
+      "name": "shift_reminder_kind",
+      "schema": "public",
+      "values": [
+        "before_shift",
+        "switched_on"
       ]
     },
     "public.source_kind": {

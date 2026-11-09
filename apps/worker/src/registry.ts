@@ -1,4 +1,5 @@
 import { auditor } from './auditor'
+import { alerts } from './alerts'
 import { bundles } from './bundles'
 import { email } from './email'
 import { evidence } from './evidence'
@@ -26,5 +27,6 @@ export const registry = defineRegistry([
   replies, // c-recipient-replies
   runs, // c-run-orchestrator
   notices, // c-sender-email
+  alerts, // c-approver-alerts
   auditor // b-auditor
 ])

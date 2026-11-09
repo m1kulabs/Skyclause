@@ -2,6 +2,7 @@ import { BundleNeedsReviewEventSchema } from '@skyclause/contracts'
 import { call, expireCall, systemPrincipal, withTenant } from '@skyclause/db'
 import { inArray } from 'drizzle-orm'
 import { z } from 'zod'
+import { approverSlaTimer } from '../alerts'
 import { onEvent } from '../events'
 import type { QueueHandler, WorkerPart } from '../server'
 import { cloudTasks, type ScheduleTask } from './cloud-tasks'
@@ -13,8 +14,9 @@ export const BUNDLE_TIMERS = 'bundle-timers'
 const ExpiryBody = z.object({ org_id: z.string(), project_id: z.string(), call_id: z.string() })
 
 export function createBundlesPart(schedule: ScheduleTask, now: () => Date = () => new Date()): WorkerPart {
-  // `bundle-timers` also carries c-approver-alerts' `sla-{bundle_id}-{level}` (#155), which adds its prefix here.
+  // `bundle-timers` also carries c-approver-alerts' `sla-{bundle_id}-{level}` (#155).
   const timers: Record<string, QueueHandler> = {
+    'sla-': approverSlaTimer,
     'expiry-': async ({ body }) => {
       const { org_id, call_id } = ExpiryBody.parse(body)
       const { outcome } = await withTenant({ orgId: org_id, principal: systemPrincipal(BUNDLE_TIMERS) }, (tx) =>

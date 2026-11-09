@@ -1,0 +1,32 @@
+{
+  "title": {
+    "one": "1 call needs review · {project}",
+    "other": "{n} calls need review · {project}"
+  },
+  "mode_for_window": "{mode} for {window}",
+  "needs_review": "{what} · {minutes} min of SLA left",
+  "input": "{input} {value}, {age}",
+  "escalated": "Escalated to you: {what}, {minutes} min past SLA",
+  "open_bundle": "{pack} pack. Open the bundle: {url}",
+  "never_approves": "An alert never approves: open the bundle to review it.",
+  "no_draft": {
+    "title": "No draft · {project}",
+    "body": "No draft: {reason}; clause engine says {modes}",
+    "body_unnamed": "No draft: {reason}; the clause engine’s verdict is not Normal",
+    "open": "{pack} pack. Open the project's bundles: {url}"
+  },
+  "before_shift": {
+    "title": "Your shift starts at {start}",
+    "body": "{template} shift, {span} on {date}."
+  },
+  "switched_on": {
+    "title": "{template} shift switched on",
+    "body": "Your {template} shift is on for {date}, {span}."
+  },
+  "open_rota": "Open the rota: {url}",
+  "templates": {
+    "storm_afternoon": "Storm afternoon",
+    "surge_night": "Surge night",
+    "custom": "Rota"
+  }
+}
