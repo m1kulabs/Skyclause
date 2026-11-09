@@ -143,9 +143,11 @@ export function expireStep(
 }
 
 /**
- * CAL-7: a newer bundle of the same project and pack supersedes each open call of a bundle under review whose window
- * or night it also has a call for, and each unresolved missing call whose window or night it has a call or a missing
- * call for (#499); a bundle left with nothing open is superseded and links to the newer one.
+ * CAL-7: a newer bundle of the same project and pack supersedes each open call and each unresolved missing call
+ * (#499) of a bundle under review whose window or night it has a call or a missing call for; a bundle left with nothing
+ * open is superseded and links to the newer one. A call superseded by a missing call keeps no successor link, as the
+ * newer bundle has no call for it; superseding it means an approver can't send the window or night from both bundles
+ * under review.
  */
 export function supersedeStep(
   bundle: BundleSlot,
@@ -161,14 +163,13 @@ export function supersedeStep(
     successor.calls.find(
       (next) => (call.windowId && next.windowId === call.windowId) || (call.nightId && next.nightId === call.nightId)
     )
+  const covered = new Set([...successor.calls, ...(successor.missing ?? [])].map(scopeOf))
   const supersededCallIds: string[] = []
   const calls = bundle.calls.map((call) => {
-    const next = isOpen(bundle, call) ? successorOf(call) : undefined
-    if (!next) return call
+    if (!isOpen(bundle, call) || !covered.has(scopeOf(call))) return call
     supersededCallIds.push(call.id)
-    return { ...call, state: 'superseded' as const, supersededByCallId: next.id }
+    return { ...call, state: 'superseded' as const, supersededByCallId: successorOf(call)?.id ?? null }
   })
-  const covered = new Set([...successor.calls, ...(successor.missing ?? [])].map(scopeOf))
   let missingSuperseded = false
   const missing = bundle.missing?.map((m) => {
     if (m.resolution !== null || !covered.has(scopeOf(m))) return m

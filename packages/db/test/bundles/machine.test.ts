@@ -303,6 +303,33 @@ describe('missing calls (#499)', () => {
     )
   })
 
+  test('a newer bundle whose draft dropped the window’s call supersedes the open call for it, with no call to link (CAL-7)', () => {
+    const older: BundleSlot = {
+      id: 'old',
+      state: 'needs_review',
+      supersededBy: null,
+      calls: [call('a', 'drafted', '2026-11-02T07:30:00Z', 'w1'), call('b', 'drafted', '2026-11-02T07:45:00Z', 'w2')]
+    }
+    const partly = supersedeStep(older, { id: 'new', calls: [], missing: [{ windowId: 'w1', nightId: null }] })
+    expect(partly).toMatchObject({ supersededCallIds: ['a'], bundleSuperseded: false })
+    expect(partly.bundle.calls.map((c) => [c.state, c.supersededByCallId])).toEqual([
+      ['superseded', null],
+      ['drafted', null]
+    ])
+    const whole = supersedeStep(older, {
+      id: 'new',
+      calls: [{ id: 'n2', windowId: 'w2', nightId: null }],
+      missing: [{ windowId: 'w1', nightId: null }]
+    })
+    expect(whole).toMatchObject({ supersededCallIds: ['a', 'b'], bundleSuperseded: true })
+    expect(whole.bundle).toMatchObject({ state: 'superseded', supersededBy: 'new' })
+    expect(whole.bundle.calls.map((c) => c.supersededByCallId)).toEqual([null, 'n2'])
+    // A Crowd night is covered the same way.
+    const night: BundleSlot = { ...older, calls: [{ ...older.calls[0]!, windowId: null, nightId: 'n1' }] }
+    const byNight = supersedeStep(night, { id: 'new', calls: [], missing: [{ windowId: null, nightId: 'n1' }] })
+    expect(byNight).toMatchObject({ supersededCallIds: ['a'], bundleSuperseded: true })
+  })
+
   test('a newer bundle covering the window with a call or a missing call supersedes the missing call (CAL-7)', () => {
     const onlyMissing: BundleSlot = { ...open, calls: [] }
     const byCall = supersedeStep(onlyMissing, { id: 'new', calls: [{ id: 'n1', windowId: 'w2', nightId: null }] })

@@ -1123,6 +1123,62 @@ describe('#499: a missing call is drafted or dismissed before the bundle is appr
     expect(await bundleState(made)).toBe('needs_review')
   })
 
+  /** A newer run of `made`'s project, at 15:06, whose draft dropped the call for its first wave. */
+  async function droppedAfter(made: Made): Promise<Made> {
+    return inOrg(A, async (tx) => {
+      const [old] = await tx.select().from(call).where(eq(call.id, made.callIds[0]!))
+      const [parent] = await tx
+        .select()
+        .from(run)
+        .where(eq(run.id, (await bundleOf(tx, made)).runId))
+      const r = await runOf(tx, { ...made.scene, snapshotId: parent!.snapshotId! }, myt('15:06'))
+      const created = await createBundle(tx, {
+        runId: r.id,
+        pack: 'sky',
+        draftOnly: false,
+        calls: [],
+        missing: [{ windowId: old!.windowId, nightId: null, shadow: old!.shadow, recipients: old!.recipients }],
+        triggeredAt: r.triggeredAt,
+        now: myt('15:06')
+      })
+      return { ...made, bundleId: created.bundleId, callIds: [], missing: [old!.windowId!] }
+    })
+  }
+
+  for (const order of ['older first', 'newer first'] as const) {
+    test(`a newer run that drops the call supersedes the older one: approving both, ${order}, sends the wave once`, async () => {
+      clock = myt('15:07')
+      const older = await draft({ calls: 1 })
+      const newer = await droppedAfter(older)
+      const as = await approver()
+      const attempts = {
+        older: async () => approve(as, older, { review_hash: await currentHash(older), calls: approveAll(older) }),
+        newer: async () =>
+          approve(as, newer, {
+            review_hash: await currentHash(newer),
+            calls: [],
+            missing: [{ window_id: newer.missing[0], action: 'draft' }]
+          })
+      }
+      const answers: Record<string, Response> = {}
+      for (const which of order === 'older first' ? (['older', 'newer'] as const) : (['newer', 'older'] as const)) {
+        answers[which] = await attempts[which]()
+      }
+      expect(answers.newer!.status, await answers.newer!.clone().text()).toBe(200)
+      expect(answers.older!.status).toBe(409)
+      expect(await answers.older!.json()).toMatchObject({
+        type: 'https://docs.skyclause.m1ku.tech/problems/bundle-superseded',
+        successor_bundle_id: newer.bundleId
+      })
+      const drafted = (await bundleRow(newer)).calls
+      expect(drafted).toHaveLength(1)
+      // One notice set: the drafted call's, to the three confirmed subscribers; none for the superseded call.
+      const { notices, calls } = await bundleRow(older)
+      expect(calls.map((c) => c.state)).toEqual(['superseded'])
+      expect(notices.map((n) => n.callId)).toEqual([drafted[0]!.id, drafted[0]!.id, drafted[0]!.id])
+    })
+  }
+
   test('a draft for a wave already over is refused; dismissing it is still possible', async () => {
     clock = myt('15:46')
     const made = await draft({ calls: 0, missing: 1, until: '15:45' })

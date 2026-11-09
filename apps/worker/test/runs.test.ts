@@ -213,6 +213,27 @@ describe('the runs-requested handler', () => {
     )
   })
 
+  test('a newer run that drops the storm call supersedes the older run’s open call for the window (#499, CAL-7)', async () => {
+    const m = await made()
+    const first = await crossingRun(m)
+    await deliver(
+      doubles(m, { keyId: m.keyId, replies: [stormReply(m.windowId, [m.subscriberId])] }).ports,
+      first.runId
+    )
+    const [older] = await bundlesOf(first.runId)
+    expect(older).toMatchObject({ state: 'needs_review' })
+
+    const second = await crossingRun(m)
+    const dropped = JSON.stringify({ pack: 'sky', calls: [], items: [] })
+    await deliver(doubles(m, { keyId: m.keyId, replies: [dropped] }).ports, second.runId)
+
+    const [newer] = await bundlesOf(second.runId)
+    expect(newer).toMatchObject({ state: 'needs_review', missing: [{ windowId: m.windowId, resolution: null }] })
+    const oldCalls = await inOrg((tx) => tx.select().from(call).where(eq(call.bundleId, older!.id)))
+    expect(oldCalls.map((c) => [c.windowId, c.state, c.supersededByCallId])).toEqual([[m.windowId, 'superseded', null]])
+    expect((await bundlesOf(first.runId))[0]).toMatchObject({ state: 'superseded', supersededBy: newer!.id })
+  })
+
   test('killed after each step and redelivered, it ends with one bundle and one model call', async () => {
     const m = await made()
     const { runId } = await crossingRun(m)

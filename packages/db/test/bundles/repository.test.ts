@@ -544,6 +544,74 @@ describe('missing calls (#499)', () => {
     expect((await eventsOf(scene.projectId)).filter((e) => e.type === 'bundle.superseded')).toHaveLength(1)
   })
 
+  test('a newer run that drops a window’s call supersedes the older bundle’s open call for it (CAL-7)', async () => {
+    const { scene, first } = await inOrg((tx) => twoWindows(tx))
+    const older = await inOrg((tx) => draft(tx, scene, [{ windowId: first, ...storm }]))
+    const newer = await inOrg((tx) =>
+      draft(tx, scene, [], { missing: [{ windowId: first }], now: at('2026-11-02T07:12:00Z') })
+    )
+    expect(await inOrg((tx) => rowOf(tx, older.bundleId))).toMatchObject({
+      state: 'superseded',
+      supersededBy: newer.bundleId
+    })
+    expect((await inOrg((tx) => callsOf(tx, older.bundleId))).map((c) => [c.state, c.supersededByCallId])).toEqual([
+      ['superseded', null]
+    ])
+    // The newer bundle's missing call is the one to act on.
+    expect((await inOrg((tx) => rowOf(tx, newer.bundleId))).missing).toMatchObject([{ resolution: null }])
+    expect(await inOrg((tx) => approveGuard(tx, older.bundleId, older.callIds, DRAFTED))).toEqual({
+      ok: false,
+      problem: 'bundle-superseded',
+      successor: { bundleId: newer.bundleId, callIds: [] }
+    })
+  })
+
+  test('a call superseded by a missing call in a partly superseded bundle is refused for the newest bundle covering it (CAL-7)', async () => {
+    const { scene, first, second } = await inOrg((tx) => twoWindows(tx))
+    const older = await inOrg((tx) =>
+      draft(tx, scene, [
+        { windowId: first, ...storm },
+        { windowId: second, ...storm }
+      ])
+    )
+    const dropped = await inOrg((tx) =>
+      draft(tx, scene, [], { missing: [{ windowId: first }], now: at('2026-11-02T07:11:00Z') })
+    )
+    expect((await inOrg((tx) => rowOf(tx, older.bundleId))).state).toBe('needs_review')
+    const [covered, open] = older.callIds as [string, string]
+    expect(await inOrg((tx) => approveGuard(tx, older.bundleId, [open], DRAFTED))).toEqual({ ok: true })
+    expect(await inOrg((tx) => approveGuard(tx, older.bundleId, [covered], DRAFTED))).toEqual({
+      ok: false,
+      problem: 'bundle-superseded',
+      successor: { bundleId: dropped.bundleId, callIds: [] }
+    })
+    // A third run calls the window again: it supersedes the missing call, and the old call's newest successor is its call.
+    const third = await inOrg((tx) =>
+      draft(tx, scene, [{ windowId: first, ...storm }], { now: at('2026-11-02T07:12:00Z') })
+    )
+    expect(await inOrg((tx) => approveGuard(tx, older.bundleId, [covered], DRAFTED))).toEqual({
+      ok: false,
+      problem: 'bundle-superseded',
+      successor: { bundleId: third.bundleId, callIds: third.callIds }
+    })
+  })
+
+  test('a newer bundle drafted in the same instant is still the successor of the call its missing call superseded', async () => {
+    const { scene, first, second } = await inOrg((tx) => twoWindows(tx))
+    const older = await inOrg((tx) =>
+      draft(tx, scene, [
+        { windowId: first, ...storm },
+        { windowId: second, ...storm }
+      ])
+    )
+    const dropped = await inOrg((tx) => draft(tx, scene, [], { missing: [{ windowId: first }] }))
+    expect(await inOrg((tx) => approveGuard(tx, older.bundleId, [older.callIds[0]!], DRAFTED))).toEqual({
+      ok: false,
+      problem: 'bundle-superseded',
+      successor: { bundleId: dropped.bundleId, callIds: [] }
+    })
+  })
+
   test('dismissMissing resolves the missing call with its reason and changes the review hash; twice is refused', async () => {
     const { scene, first } = await inOrg((tx) => twoWindows(tx))
     const made = await inOrg((tx) => draft(tx, scene, [], { missing: [{ windowId: first }] }))

@@ -1,6 +1,6 @@
 import { canonicalHash } from '@skyclause/clauses'
 import type { Json, Pack } from '@skyclause/contracts'
-import { and, asc, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, eq, gte, inArray, ne, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { track } from '../analytics'
 import type { Tx } from '../client'
@@ -268,8 +268,9 @@ function callRow(
  * draft (CAL-5, D23), with no ledger entry (D21) and no `bundle.needs_review`; otherwise it waits in Needs review with
  * `sla_due_at` = now + the pack's `sla_s` as read now (PRJ-7). Each call expires at its window's start, or its end when
  * a fired clause of the run's sheet version has `expiry: 'end'`, or its night's arrival start (CAL-8). The bundle
- * supersedes each open call of the project and pack's bundles under review for a window or night it also has a call
- * for (CAL-7). Emits `bundle.drafted` (and `.needs_review`, `.superseded`) and tracks `bundle_drafted`.
+ * supersedes each open call and unresolved missing call of the project and pack's bundles under review for a window
+ * or night it also has a call or a missing call for (CAL-7, #499). Emits `bundle.drafted` (and `.needs_review`,
+ * `.superseded`) and tracks `bundle_drafted`.
  */
 export async function createBundle(tx: Tx, input: CreateBundleInput) {
   const now = input.now ?? new Date()
@@ -431,8 +432,9 @@ export type ApproveGuard =
 /**
  * #153's check before approving `callIds` of a bundle (CAL-7, CAL-8), holding the bundle's row lock to commit. A
  * superseded bundle, or an asked call that is superseded, gives `bundle-superseded` with the newest bundle along the
- * chain of supersessions and its calls; an asked call that is expired, or open past `expires_at` before its timer ran,
- * gives `call-expired`.
+ * chain of supersessions and its calls (for a call a missing call superseded, the newest later bundle covering its
+ * window or night, #499); an asked call that is expired, or open past `expires_at` before its timer ran, gives
+ * `call-expired`.
  */
 export async function approveGuard(
   tx: Tx,
@@ -473,6 +475,56 @@ export async function approveGuard(
       successor: {
         bundleId: newest.bundleId,
         callIds: successors.filter((s) => s.bundleId === newest.bundleId).map((s) => s.id)
+      }
+    }
+  }
+  // CAL-7 (#499): a call a newer bundle's missing call superseded has no call to follow; it is decided in the newest
+  // later bundle of the project and pack with a call or a missing call for its window or night.
+  const unlinked = asked.filter((c) => c.state === 'superseded' && !c.supersededByCallId)
+  if (unlinked.length) {
+    const windowIds = unlinked.flatMap((c) => (c.windowId ? [c.windowId] : []))
+    const nightIds = unlinked.flatMap((c) => (c.nightId ? [c.nightId] : []))
+    const scopes = new Set([...windowIds, ...nightIds])
+    // A successor drafted in the same instant counts as later.
+    const isLater = and(
+      eq(bundle.projectId, row.projectId),
+      eq(bundle.pack, row.pack),
+      gte(bundle.createdAt, row.createdAt),
+      ne(bundle.id, row.id)
+    )
+    const laterCalls = await tx
+      .select({ id: call.id, bundleId: call.bundleId, createdAt: bundle.createdAt })
+      .from(call)
+      .innerJoin(bundle, eq(bundle.id, call.bundleId))
+      .where(
+        and(
+          isLater,
+          or(
+            windowIds.length ? inArray(call.windowId, windowIds) : sql`false`,
+            nightIds.length ? inArray(call.nightId, nightIds) : sql`false`
+          )
+        )
+      )
+    const laterMissing = await tx
+      .select({ id: bundle.id, createdAt: bundle.createdAt, missing: bundle.missing })
+      .from(bundle)
+      .where(and(isLater, ne(bundle.missing, sql`'[]'::jsonb`)))
+    const covering = [
+      ...laterCalls.map((c) => ({ bundleId: c.bundleId, createdAt: c.createdAt })),
+      ...laterMissing
+        .filter((b) => (b.missing as MissingCall[]).some((m) => scopes.has((m.windowId ?? m.nightId)!)))
+        .map((b) => ({ bundleId: b.id, createdAt: b.createdAt }))
+    ]
+    if (!covering.length) throw new Error(`no later bundle covers the calls superseded in bundle ${bundleId}`)
+    const newest = covering.reduce((a, c) =>
+      c.createdAt > a.createdAt || (+c.createdAt === +a.createdAt && c.bundleId > a.bundleId) ? c : a
+    )
+    return {
+      ok: false,
+      problem: 'bundle-superseded',
+      successor: {
+        bundleId: newest.bundleId,
+        callIds: laterCalls.filter((c) => c.bundleId === newest.bundleId).map((c) => c.id)
       }
     }
   }
