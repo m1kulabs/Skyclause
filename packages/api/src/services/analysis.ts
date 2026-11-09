@@ -27,6 +27,7 @@ import {
   sourceUrls,
   whatIfObserved,
   whatIfWindows,
+  type AnalysisPack,
   type GradeFact,
   type MetricRow,
   type Period,
@@ -48,7 +49,6 @@ type AnalysisQuery = z.infer<Operations['getProjectAnalysis']['request']['query'
 type WhatIfBody = z.infer<
   NonNullable<Operations['evaluateWhatIf']['request']['body']>['content']['application/json']['schema']
 >
-type Pack = 'sky' | 'crowd'
 type GradeRow = Awaited<ReturnType<typeof analysisGradeRows>>[number]
 
 const DEFAULT_PERIOD: Period = '30d'
@@ -73,7 +73,7 @@ async function scopeOf(tx: Tx, orgId: string, query: AnalysisQuery) {
   }
   const crowdOn = await isFlagEnabled(tx, 'pack_crowd', orgId)
   if (query.pack === 'crowd' && !crowdOn) throw feature()
-  const packs: Pack[] = query.pack ? [query.pack] : crowdOn ? ['sky', 'crowd'] : ['sky']
+  const packs: AnalysisPack[] = query.pack ? [query.pack] : crowdOn ? ['sky', 'crowd'] : ['sky']
   return { period: query.period ?? DEFAULT_PERIOD, packs }
 }
 
@@ -111,7 +111,7 @@ async function figuresOf(tx: Tx, projectIds: string[], period: Period, now: Date
   })
 }
 
-const scoped = (r: MetricRow) => ({
+const wireMetric = (r: MetricRow) => ({
   metric: r.metric,
   x: r.x,
   value: r.value,
@@ -145,7 +145,7 @@ const gradeView = (g: GradeRow) => ({
 async function assemble(
   tx: Tx,
   projects: ProjectFigures[],
-  q: { period: Period; packs: Pack[]; query: AnalysisQuery; now: Date }
+  q: { period: Period; packs: AnalysisPack[]; query: AnalysisQuery; now: Date }
 ): Promise<Analysis> {
   const merge = (rows: MetricRow[]) => (projects.length === 1 ? rows : pool(rows))
   const inPacks = (r: MetricRow) => r.pack !== null && q.packs.includes(r.pack)
@@ -161,7 +161,7 @@ async function assemble(
     byDay.set(at, [...(byDay.get(at) ?? []), day])
   }
   const series = [...byDay.keys()].sort().flatMap((at) => {
-    const metrics = merge(byDay.get(at)!).filter(inPacks).map(scoped)
+    const metrics = merge(byDay.get(at)!).filter(inPacks).map(wireMetric)
     return metrics.length ? [{ at, metrics }] : []
   })
   let before: { localDate: string; id: string } | undefined
@@ -186,7 +186,7 @@ async function assemble(
   return {
     ...range,
     updated_at: instant(asOf),
-    metrics: rows.filter(inPacks).map(scoped),
+    metrics: rows.filter(inPacks).map(wireMetric),
     series,
     grades: { data: graded.data.map(gradeView), next_cursor: graded.next_cursor },
     kill_line_exceeded: killLine(rows.filter(inPacks)),
@@ -239,7 +239,7 @@ export function setWhatIfEngine(parts: Partial<WhatIfEngine>) {
 }
 
 /** Runs `fn`, answering 501 naming the owner when it reaches another ticket's placeholder (packages/clauses' own). */
-async function built<T>(fn: () => T | Promise<T>): Promise<T> {
+async function orNotBuilt<T>(fn: () => T | Promise<T>): Promise<T> {
   try {
     return await fn()
   } catch (error) {
@@ -264,7 +264,7 @@ const above = (mode: string | null) => mode !== null && mode !== 'normal'
  * proposal standing as the call that went out (a replay has no approver). No proposal at any step, or no observation,
  * is No call.
  */
-function replayedGrade(pack: Pack, verdicts: Verdicts['windows'], observed: string | null, localDate: string) {
+function replayedGrade(pack: AnalysisPack, verdicts: Verdicts['windows'], observed: string | null, localDate: string) {
   const proposals = verdicts.filter((v) => v.noCall === null).map((v) => v.mode ?? 'normal')
   const proposed = proposals.reduce((top, mode) => (RANK[mode]! > RANK[top]! ? mode : top), 'normal')
   const outcome =
@@ -333,13 +333,13 @@ export async function evaluateWhatIf(
       { owner: 'b-evaluator' }
     )
   }
-  const checked = await built(() => engine.check(sheet, registry))
+  const checked = await orNotBuilt(() => engine.check(sheet, registry))
   if (!checked.ok || !checked.sheet) {
     throw new ApiError(422, 'validation-failed', 'The sheet doesn’t check.', {
       errors: checked.issues.map((issue) => ({ in: 'body', pointer: '/sheet', detail: issue.message }))
     })
   }
-  const readings = await built(() =>
+  const readings = await orNotBuilt(() =>
     history(ctx.tx, {
       projectId: q.projectId,
       from: instant(new Date(from.getTime() - HISTORY_BEFORE_MS)),
@@ -353,7 +353,9 @@ export async function evaluateWhatIf(
     kind: w.kind,
     tz: w.tz
   }))
-  const result = await built(() => engine.replay(checked.sheet!, readings, registry, windows, range as ReplayRange))
+  const result = await orNotBuilt(() =>
+    engine.replay(checked.sheet!, readings, registry, windows, range as ReplayRange)
+  )
   const observed = await whatIfObserved(tx, { pack: sheet.pack, windowIds: windows.map((w) => w.id) })
   const grades = observed.flatMap((o) => {
     const verdicts = result.steps.flatMap((s) => s.verdicts.windows.filter((v) => v.scope.id === o.windowId))
@@ -370,7 +372,7 @@ export async function evaluateWhatIf(
         grades.filter((g) => g.clauses.includes(clause))
       )
     )
-  ].map(scoped)
+  ].map(wireMetric)
   const urls = await sourceUrls(
     tx,
     result.steps.flatMap((s) =>

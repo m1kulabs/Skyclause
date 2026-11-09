@@ -16,12 +16,11 @@ import {
 } from 'drizzle-orm'
 import type { Tx } from '../client'
 import { analysisMetric, bundle, call, grade, project, source, window } from '../schema'
+import { localDate } from './dates'
 import type { Period } from './materialise'
 
 // #162 c-analysis-api: what GET /v1/projects/{id}/analysis, GET /v1/analysis and the what-if read, in the caller's
 // `withTenant` transaction. The figures come from `analysis_metric` alone (NFR-9); nothing here computes one.
-
-const localDate = (instant: unknown) => sql<string>`(${instant} AT TIME ZONE ${project.timeZone})::date::text`
 
 /** `now` as a date in `timeZone`. */
 export async function localDateAt(tx: Tx, now: Date, timeZone: string) {
@@ -38,8 +37,8 @@ export function analysisProjectList(tx: Tx, q: { now: Date; projectIds?: string[
       projectId: project.id,
       timeZone: project.timeZone,
       createdAt: project.createdAt,
-      createdOn: localDate(project.createdAt),
-      today: localDate(sql`${q.now.toISOString()}::timestamptz`)
+      createdOn: localDate(project.createdAt, project.timeZone),
+      today: localDate(sql`${q.now.toISOString()}::timestamptz`, project.timeZone)
     })
     .from(project)
     .where(q.projectIds ? inArray(project.id, q.projectIds) : undefined)
