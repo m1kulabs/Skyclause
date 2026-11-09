@@ -11,16 +11,31 @@ import {
   withTenant,
   type Tx
 } from '@skyclause/db'
-import { makeGrade, makeOrganization, makeProject, makeWindow } from '@skyclause/db/test/factories/index'
+import { makeCall, makeGrade, makeOrganization, makeProject, makeWindow } from '@skyclause/db/test/factories/index'
+import { callDraft } from '@skyclause/db/test/bundles/scene'
 import { asLogin, memberOf } from '@skyclause/db/test/harness/index'
 import fc from 'fast-check'
 import { beforeAll, describe, expect, test } from 'vitest'
 import { PILOT_ARCHIVE_LABEL, setArchiveUrlSigner } from '../src/services/ledger'
-import { TEST_NOW, apiRequest, asApiKey, asSession, createTestApi, crossOrgCase, testDeps, testOrg } from './harness'
+import {
+  TEST_NOW,
+  apiRequest,
+  asApiKey,
+  asSession,
+  asShareLink,
+  createTestApi,
+  crossOrgCase,
+  testCan,
+  testDeps,
+  testOrg
+} from './harness'
 
 const ORG = 'ledger-home'
 const OTHER = 'ledger-other'
-const { v1 } = createTestApi({ deps: testDeps({ withTenant, recordAudit }) })
+// The harness's stand-in `can` doesn't bind a share link to its project; #94's does.
+const can: typeof testCan = (p, s, t) =>
+  testCan(p, s, t) && (p.kind !== 'share_link' || !t?.projectId || p.projectId === t.projectId)
+const { v1 } = createTestApi({ deps: testDeps({ withTenant, recordAudit, can }) })
 const viewer = asSession({ org: ORG, role: 'viewer' })
 let orgId: string
 
@@ -228,6 +243,111 @@ describe('GET /v1/projects/{id}/ledger', () => {
     expect(data[1]!.at).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/)
     expect(data[1]).not.toHaveProperty('corrects')
     expect(data[0]).toMatchObject({ id: fix.id, corrects: entry.id, pack: null, approver_role: null, window: null })
+  })
+})
+
+describe('LedgerRow.call: the call an entry references, by who is reading', () => {
+  const SUBSCRIBERS = ['5d2a7c1e-0000-4000-8000-0000000000a1', '5d2a7c1e-0000-4000-8000-0000000000a2']
+  const NOTICES = [{ language: 'en', subject: 'Class held outdoors', body: 'Rain will clear by 3 pm.' }]
+  const scene = async (approved: boolean) => {
+    const projectId = await newProject()
+    const windowId = '7b1c0f00-0000-4000-8000-000000000001'
+    const callId = await inOrg(async (tx) => {
+      const { shadow } = callDraft({ windowId: windowId, mode: 'outdoor_limited' })
+      const row = await makeCall(tx, {
+        projectId,
+        shadow,
+        mode: 'outdoor_limited',
+        notices: NOTICES,
+        recipients: SUBSCRIBERS,
+        recommendations: ['shift_start'],
+        reason: 'Heavy rain cell over the field',
+        state: approved ? 'approved' : 'drafted',
+        approvedAt: approved ? new Date('2026-11-08T01:00:00Z') : null
+      })
+      await appendLedger(tx, {
+        projectId,
+        kind: 'call_approved',
+        refs: { call_id: row.id },
+        body: { pack: 'sky', mode: 'outdoor_limited', approver_role: 'approver' }
+      })
+      return row.id
+    })
+    return { projectId, callId }
+  }
+  const entryCall = async (projectId: string, as = viewer) => {
+    const response = await apiRequest(v1, { as, method: 'GET', path: `/v1/projects/${projectId}/ledger`, org: ORG })
+    expect(response.status).toBe(200)
+    const text = await response.text()
+    return { text, call: (JSON.parse(text) as LedgerPage).data[0]!.call as Record<string, unknown> | null }
+  }
+
+  test('a member sees the whole call, but never its recipients', async () => {
+    const { projectId, callId } = await scene(true)
+    const { text, call } = await entryCall(projectId)
+    expect(call).toMatchObject({
+      id: callId,
+      mode: 'outdoor_limited',
+      state: 'approved',
+      notices: NOTICES,
+      recommendations: ['shift_start'],
+      reason: 'Heavy rain cell over the field',
+      recipients: []
+    })
+    for (const subscriber of SUBSCRIBERS) expect(text).not.toContain(subscriber)
+  })
+
+  test('a reader without a role sees what public_call allows and nothing of the notices or recipients', async () => {
+    const { projectId, callId } = await scene(true)
+    const link = asShareLink({ org: ORG, projectId, access: 'reviewer' })
+    const { text, call } = await entryCall(projectId, link)
+    expect(call).toMatchObject({
+      id: callId,
+      mode: 'outdoor_limited',
+      state: 'approved',
+      notices: [],
+      recommendations: [],
+      reason: '',
+      recipients: []
+    })
+    expect(text).not.toContain('Rain will clear')
+    expect(text).not.toContain('Heavy rain cell')
+    expect(text).not.toContain('shift_start')
+    for (const subscriber of SUBSCRIBERS) expect(text).not.toContain(subscriber)
+  })
+
+  test('a call public_call hides (not yet approved) stays null for a reader without a role, not for a member', async () => {
+    const { projectId, callId } = await scene(false)
+    expect((await entryCall(projectId, asShareLink({ org: ORG, projectId, access: 'reviewer' }))).call).toBeNull()
+    expect((await entryCall(projectId)).call).toMatchObject({ id: callId, state: 'drafted' })
+  })
+
+  test('an API key reads as a member; a view-only share link cannot read the ledger', async () => {
+    const { projectId } = await scene(true)
+    const key = asApiKey({ org: ORG, role: 'viewer', scopes: ['read'] })
+    expect((await entryCall(projectId, key)).call).toMatchObject({ notices: NOTICES, recipients: [] })
+    const link = asShareLink({ org: ORG, projectId, access: 'view' })
+    expect(
+      (await apiRequest(v1, { as: link, method: 'GET', path: `/v1/projects/${projectId}/ledger`, org: ORG })).status
+    ).toBe(403)
+  })
+
+  test('an entry whose call is missing, in another project or not named stays null', async () => {
+    const { callId } = await scene(true)
+    const projectId = await newProject()
+    await inOrg(async (tx) => {
+      await appendLedger(tx, { projectId, kind: 'call_approved', refs: { call_id: callId }, body: {} })
+      await appendLedger(tx, { projectId, kind: 'call_sent', refs: { call_id: 'not-a-uuid' }, body: {} })
+      await appendLedger(tx, { projectId, kind: 'grade', refs: {}, body: {} })
+      await appendLedger(tx, {
+        projectId,
+        kind: 'call_sent',
+        refs: { call_id: '0b1c0f00-0000-4000-8000-0000000000ff' },
+        body: {}
+      })
+    })
+    const { data } = await ledgerPage(await get(`/v1/projects/${projectId}/ledger`))
+    expect(data.map((row) => row.call)).toEqual([null, null, null, null])
   })
 })
 

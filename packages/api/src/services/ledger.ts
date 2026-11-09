@@ -12,6 +12,7 @@ import {
   type LedgerFilters
 } from '@skyclause/db'
 import { decodeCursor, page } from '../pagination'
+import { callView, isMember } from './bundles'
 import { ApiError } from '../problems'
 import { instant, toWire } from '../serialize'
 import type { ServiceContext } from '../tenancy'
@@ -42,6 +43,16 @@ export async function ledgerProjectFor(
   return project
 }
 
+/**
+ * The entry's call as #150's `CallView`. `recipients` are subscriber IDs, so the ledger never shows them, and a reader
+ * without a member's role gets a row without `notices`, `recommendations` and `reason` (`public_call`'s columns).
+ */
+function ledgerCall(
+  row: NonNullable<Awaited<ReturnType<typeof listLedger>>['rows'][number]['call']>
+): LedgerRow['call'] {
+  return callView({ notices: [], recommendations: [], reason: null, ...row, recipients: [] })
+}
+
 const isRole = (value: unknown): value is Role => (ROLES as readonly unknown[]).includes(value)
 
 export async function listLedgerEntries(
@@ -58,7 +69,11 @@ export async function listLedgerEntries(
     }
     beforeSeq = seq
   }
-  const { rows, total } = await listLedger(ctx.tx, { ...q, beforeSeq })
+  const { rows, total } = await listLedger(ctx.tx, {
+    ...q,
+    beforeSeq,
+    audience: isMember(ctx.principal) ? 'member' : 'public'
+  })
   const { data, next_cursor } = page(rows, q.limit, (row) => ({ seq: row.seq }))
   return {
     data: data.map((row): LedgerRow => {
@@ -76,8 +91,7 @@ export async function listLedgerEntries(
         at: row.at.toISOString(),
         ...(row.corrects ? { corrects: row.corrects } : {}),
         pack: pack.success ? pack.data : null,
-        // CallView's notices, recipients and shadow verdict are c-bundle-lifecycle's (#150) to assemble.
-        call: null,
+        call: row.call ? ledgerCall(row.call) : null,
         window: row.window ? (toWire(row.window) as LedgerRow['window']) : null,
         grade: row.grade ? (toWire(row.grade) as LedgerRow['grade']) : null,
         approver_role: isRole(body?.approver_role) ? body.approver_role : null
