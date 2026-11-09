@@ -18,7 +18,15 @@ export * from './bundles'
 export { recordAudit } from './audit'
 export * from './channels'
 export * from './evidence'
-export { emitEvent, handleOnce, loadEvent, republishEvents, setEventPublisher, type EventPublisher } from './events'
+export {
+  DOMAIN_EVENTS_TOPIC,
+  emitEvent,
+  handleOnce,
+  loadEvent,
+  republishEvents,
+  setEventPublisher,
+  type EventPublisher
+} from './events'
 export { FEATURE_FLAGS, isFlagEnabled, setFlag, type FeatureFlagKey } from './flags'
 export { projectGate } from './gate'
 export * from './grades'
