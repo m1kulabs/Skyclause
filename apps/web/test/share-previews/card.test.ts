@@ -55,10 +55,10 @@ describe('card models', () => {
     expect(card).toMatchObject({
       range: '15:30 MYT – 17:00 MYT',
       window: '15:30 MYT – 17:00 MYT · Isnin 2 November 2026',
-      reading: '39 mm site.rain_60m_mm pada 15:00 MYT'
+      reading: '39 mm Hujan dalam 60 minit lalu pada 15:00 MYT'
     })
     expect(cardAlt(card, locale)).toBe(
-      'Gangguan perjalanan. 15:30 MYT – 17:00 MYT · Isnin 2 November 2026. Bacaan penentu: 39 mm site.rain_60m_mm pada 15:00 MYT.'
+      'Gangguan perjalanan. 15:30 MYT – 17:00 MYT · Isnin 2 November 2026. Bacaan penentu: 39 mm Hujan dalam 60 minit lalu pada 15:00 MYT.'
     )
   })
 
