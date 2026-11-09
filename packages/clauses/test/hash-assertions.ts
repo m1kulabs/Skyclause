@@ -2,10 +2,11 @@ import crowdJson from '../defaults/crowd.json'
 import skyJson from '../defaults/sky.json'
 import { canonicalHash, check, deriveInputState, diff, evaluate, explain, snapshotAt } from '../src/index'
 import { sha256 } from '../src/sha256'
-import type { ReadingHistory, SheetInput, Window } from '../src/types'
+import type { IndicatorSnapshot, ReadingHistory, SheetInput, Window } from '../src/types'
 import { canonicalVectors } from './canonical-vectors'
 import { sha256Vectors } from './sha256-vectors'
 import { TEST_REGISTRY } from './test-helpers'
+import { nestedMacroVectors } from './nested-macro-vectors'
 
 function equal(actual: unknown, expected: unknown, name: string): void {
   if (actual !== expected) throw new Error(`${name}: expected ${expected}, got ${actual}`)
@@ -22,6 +23,7 @@ function rejects(value: unknown, name: string): void {
 }
 
 export function runHashAssertions(): {
+  nestedMacros: number
   canonical: number
   sha256: number
   rejected: number
@@ -311,10 +313,47 @@ export function runHashAssertions(): {
     'explained storm_confirmed cel preserved after JSON round-trip'
   )
 
+  const emptySnapshot: IndicatorSnapshot = {
+    projectId: 'nested',
+    pack: 'sky',
+    tEval,
+    inputs: [],
+    site: {},
+    series: {},
+    nights: [],
+    registryHash: 'r',
+    hash: 's'
+  }
+  for (const vector of nestedMacroVectors) {
+    const nestedSheet: SheetInput = {
+      pack: 'sky',
+      clauses: [
+        {
+          key: 'nested',
+          name: vector.name,
+          enabled: true,
+          scope: 'site',
+          requires: [],
+          when: vector.when,
+          proposes: { mode: 'outdoor_limited' },
+          wording: { en: 'Nested macro' }
+        }
+      ]
+    }
+    const checked = check(nestedSheet, [])
+    equal(checked.ok, vector.result !== 'rejected', `${vector.name} check`)
+    equal(checked.publishable, vector.result !== 'rejected', `${vector.name} publishable`)
+    if (vector.result !== 'rejected') {
+      const nestedVerdicts = evaluate(JSON.parse(JSON.stringify(checked.sheet)), emptySnapshot, [], tEval)
+      equal(nestedVerdicts.site[0]?.clauses[0]?.result, vector.result, `${vector.name} evaluation`)
+    }
+  }
+
   const sheetDiff = diff(skySheet, skySheet)
   equal(sheetDiff.length, 0, 'identical sheet diff is empty')
 
   return {
+    nestedMacros: nestedMacroVectors.length,
     canonical: canonicalVectors.length + 4,
     sha256: sha256Vectors.length,
     rejected: invalid.length,

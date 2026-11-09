@@ -41,6 +41,7 @@ const ALLOWED_SUBSET_SUITES = new Set([
   'conformance/logic/NOT',
   'conformance/macros/exists',
   'conformance/macros/all',
+  'conformance/macros/nested',
   'conformance/lists/size',
   'conformance/string/size',
   'conformance/timestamps/timestamp_equality',
@@ -82,6 +83,7 @@ describe('@bufbuild/cel-spec 0.6.2 conformance vectors for the allowed CEL subse
     const names = new Set(matchingVectors.map(({ item }) => (item.original as unknown as RawConformanceOriginal).name))
     expect(names.has('list_elem_type_shortcircuit')).toBe(true)
     expect(names.has('list_elem_type_exhaustive')).toBe(true)
+    expect(names.has('all_all')).toBe(true)
   })
 
   test('every matching cel-spec conformance vector type-checks and evaluates to the spec expected boolean', () => {

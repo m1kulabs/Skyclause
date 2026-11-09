@@ -268,6 +268,35 @@ export function checkCelCondition(
   const sourceInfo = (parsed.sourceInfo ?? { positions: {}, macroCalls: {} }) as unknown as SourceInfo
   const rootExpr = parsed.expr as unknown as AstExpr
 
+  // CEL macro source records refer to nested expanded macros by expression ID.
+  // Index the real AST so those empty placeholders cannot bypass type checking.
+  const expressions = new Map<bigint, AstExpr>()
+  function indexExpressions(expr: AstExpr | undefined): void {
+    if (!expr || expr.exprKind.case === undefined) return
+    expressions.set(expr.id, expr)
+    const kind = expr.exprKind
+    switch (kind.case) {
+      case 'selectExpr':
+        indexExpressions(kind.value.operand)
+        break
+      case 'callExpr':
+        indexExpressions(kind.value.target)
+        kind.value.args.forEach(indexExpressions)
+        break
+      case 'listExpr':
+        kind.value.elements.forEach(indexExpressions)
+        break
+      case 'comprehensionExpr':
+        indexExpressions(kind.value.iterRange)
+        indexExpressions(kind.value.accuInit)
+        indexExpressions(kind.value.loopCondition)
+        indexExpressions(kind.value.loopStep)
+        indexExpressions(kind.value.result)
+        break
+    }
+  }
+  indexExpressions(rootExpr)
+
   function resolveDottedReference(
     chain: { rootId: bigint; fullName: string },
     localVars: ReadonlyMap<string, LocalBinding>
@@ -323,6 +352,7 @@ export function checkCelCondition(
   }
 
   function listElements(expr: AstExpr, localVars: ReadonlyMap<string, LocalBinding>): readonly LocalBinding[] {
+    if (expr.exprKind.case === undefined) expr = expressions.get(expr.id) ?? expr
     if (expr.exprKind.case === 'listExpr') {
       return expr.exprKind.value.elements.map((element) => {
         const type = inferExprType(element, localVars)
@@ -345,6 +375,7 @@ export function checkCelCondition(
     localVars: ReadonlyMap<string, LocalBinding>,
     allowHeterogeneousEq = false
   ): CelValueType {
+    if (expr.exprKind.case === undefined) expr = expressions.get(expr.id) ?? expr
     const kind = expr.exprKind
     const exprOffset = posOf(expr.id, sourceInfo)
 
@@ -824,6 +855,7 @@ export function checkCelCondition(
       }
 
       default:
+        issues.push({ clauseKey, message: 'Unresolved CEL expression', offset: exprOffset, length: 1 })
         return 'error'
     }
   }

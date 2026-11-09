@@ -5,6 +5,7 @@ import { describe, expect, test } from 'vitest'
 import { canonicalHash, check, evaluate } from '../src'
 import type { Clause, IndicatorRegistry, IndicatorSnapshot, SheetInput } from '../src/types'
 import { TEST_REGISTRY } from './test-helpers'
+import { nestedMacroVectors } from './nested-macro-vectors'
 
 const readDefault = (pack: 'sky' | 'crowd'): SheetInput =>
   JSON.parse(readFileSync(`${import.meta.dirname}/../defaults/${pack}.json`, 'utf8')) as SheetInput
@@ -518,5 +519,48 @@ describe('check(sheet, registry)', () => {
       const verdicts = evaluate(goodRes.sheet!, emptySnap, [], '2026-11-02T07:05:00Z')
       expect(verdicts.site[0]?.clauses[0]?.result).toBe('fired')
     }
+  })
+})
+
+describe('nested macro placeholder type checking', () => {
+  test.each(nestedMacroVectors)('$name', ({ when, result }) => {
+    const sheet: SheetInput = {
+      pack: 'sky',
+      clauses: [
+        makeClause({
+          key: 'nested',
+          scope: 'site',
+          requires: [],
+          span: undefined,
+          when
+        })
+      ]
+    }
+    const checked = check(sheet, [])
+    if (result === 'rejected') {
+      expect(checked.ok).toBe(false)
+      expect(checked.publishable).toBe(false)
+      const overloadIssue = checked.issues.find((issue) => issue.message.includes('matching numeric types'))
+      expect(overloadIssue).toBeDefined()
+      expect(overloadIssue?.offset).toBe(when.indexOf('+ 1') + 2)
+      return
+    }
+    expect(checked.ok).toBe(true)
+    expect(checked.publishable).toBe(true)
+    const tEval = '2026-11-02T07:05:00Z'
+    const snapshot: IndicatorSnapshot = {
+      projectId: 'p',
+      pack: 'sky',
+      tEval,
+      inputs: [],
+      site: {},
+      series: {},
+      nights: [],
+      registryHash: 'r',
+      hash: 's'
+    }
+    expect(evaluate(JSON.parse(JSON.stringify(checked.sheet)), snapshot, [], tEval).site[0]?.clauses[0]?.result).toBe(
+      result
+    )
   })
 })
