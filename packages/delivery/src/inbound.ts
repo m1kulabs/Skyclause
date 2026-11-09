@@ -108,8 +108,9 @@ export function createInboundRouter() {
 
     let ok = true
     const called = new Set<string>()
-    for (const recipient of receipt.recipients.map((r) => r.toLowerCase())) {
-      const match = consumers.find((c) => c.pattern.test(recipient))
+    // Matched lower-cased, handed over as received: a reply token in `r+{token}@…` is case-sensitive.
+    for (const recipient of receipt.recipients) {
+      const match = consumers.find((c) => c.pattern.test(recipient.toLowerCase()))
       if (!match || called.has(match.consumer)) continue
       called.add(match.consumer)
       if (done.has(match.consumer)) continue

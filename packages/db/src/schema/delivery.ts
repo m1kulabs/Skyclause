@@ -171,28 +171,39 @@ export const crowdReply = tenantTable(
     id: id(),
     projectId: uuid('project_id').notNull(),
     windowId: uuid('window_id').notNull(),
+    /** The call whose notice was answered (the `reply` token's). */
+    callId: uuid('call_id').notNull(),
     kind: crowdReplyKind('kind').notNull(),
     shiftTo: instant('shift_to'),
+    /** When the recipient answered: SES's receipt time for an email, the request's for a link. */
+    at: instant('at').notNull(),
     createdAt: instant('created_at').notNull().defaultNow()
   },
   (self) => [
     sameOrg('crowd_reply_project', self, self.projectId, project, true),
-    sameOrg('crowd_reply_window', self, self.windowId, window, true)
+    sameOrg('crowd_reply_window', self, self.windowId, window, true),
+    sameOrg('crowd_reply_call', self, self.callId, call, true)
   ]
 )
 
-/** One plan-feedback answer (ANL-7): append-only rows of `count` 1, summed on read. */
+/**
+ * One plan-feedback answer (ANL-7): append-only rows of `count` 1, summed per window on read. Yes or no only, with no
+ * text column, and nothing names the subscriber.
+ */
 export const planFeedback = tenantTable(
   'plan_feedback',
   {
     id: id(),
     projectId: uuid('project_id').notNull(),
-    answer: text('answer').notNull(),
+    windowId: uuid('window_id').notNull(),
+    /** "Did the weather change your plan?": true is yes. */
+    answer: boolean('answer').notNull(),
     count: integer('count').notNull().default(1),
     createdAt: instant('created_at').notNull().defaultNow()
   },
   (self) => [
     sameOrg('plan_feedback_project', self, self.projectId, project, true),
+    sameOrg('plan_feedback_window', self, self.windowId, window, true),
     check('plan_feedback_count_one', sql`${self.count} = 1`)
   ]
 )

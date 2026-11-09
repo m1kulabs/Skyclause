@@ -5,6 +5,7 @@ import { domainEvents } from './events'
 import { grades } from './grades'
 import { migrations } from './migrate'
 import { pilotArchive } from './pilot-archive'
+import { replies } from './replies'
 import { restoreDrill } from './restore-drill'
 import { defineRegistry } from './server'
 
@@ -18,5 +19,6 @@ export const registry = defineRegistry([
   pilotArchive, // c-ledger-chain
   bundles, // c-bundle-lifecycle
   evidence, // c-evidence
-  grades // c-grades
+  grades, // c-grades
+  replies // c-recipient-replies
 ])
