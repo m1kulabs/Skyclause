@@ -1,5 +1,5 @@
-// Spec §7 test harness (f-api): principals, requests, the cross-organisation case and transport doubles. Doubles and
-// in-memory stores live only here, under test/.
+// Spec §7 test harness (f-api): principals, requests and the cross-organisation case. Email transport doubles live in
+// delivery's test harness; this package re-exports the mailbox for existing API tests.
 import { randomUUID } from 'node:crypto'
 import {
   API_ROUTES,
@@ -8,7 +8,6 @@ import {
   REGISTRY,
   V1_ROUTES,
   type Can,
-  type EmailTransport,
   type GrantSubject,
   type Principal,
   type PushTransport,
@@ -16,11 +15,14 @@ import {
   type SkyclauseRoute
 } from '@skyclause/contracts'
 import type { Tx } from '@skyclause/db'
+import { createMailbox } from '@skyclause/delivery/testing'
 import { expect } from 'vitest'
 import { createApi, type ApiApp, type Registry } from '../../src/app'
 import type { ApiDeps } from '../../src/context'
 import { HANDLERS } from '../../src/routes'
 import type { IdempotencyRecord, IdempotencyStore, MembershipLookup, RateLimitStore } from '../../src/stores'
+
+export { createMailbox }
 
 export const TEST_APP_ORIGIN = 'https://app.skyclause.m1ku.tech'
 export const TEST_NOW = new Date('2026-11-08T02:00:00Z')
@@ -323,20 +325,6 @@ export function crossOrgCase(
       })
       expect(response.status, operationId).toBe(404)
       expect(Problem.safeParse(await response.json()).success, operationId).toBe(true)
-    }
-  }
-}
-
-type Email = Parameters<EmailTransport['send']>[0]
-
-/** An `EmailTransport` that keeps what it was asked to send. */
-export function createMailbox(): EmailTransport & { sent: Email[] } {
-  const sent: Email[] = []
-  return {
-    sent,
-    async send(message) {
-      sent.push(message)
-      return { providerMessageId: `mailbox-${sent.length}` }
     }
   }
 }

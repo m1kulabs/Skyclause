@@ -17,6 +17,7 @@
     "@skyclause/config": "workspace:*",
     "@skyclause/contracts": "workspace:*",
     "@skyclause/db": "workspace:*",
+    "@skyclause/delivery": "workspace:*",
     "better-auth": "1.7.17",
     "better-call": "1.4.5",
     "drizzle-orm": "0.45.4",

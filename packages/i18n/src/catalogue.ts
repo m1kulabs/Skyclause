@@ -4,6 +4,7 @@ import enFormat from '../catalogue/en/format.json'
 import msFormat from '../catalogue/ms/format.json'
 import enMarketing from '../catalogue/en/marketing.json'
 import msMarketing from '../catalogue/ms/marketing.json'
+import enAuth from '../catalogue/en/auth.json'
 
 interface Catalogue {
   [key: string]: string | Catalogue
@@ -16,7 +17,8 @@ export const catalogueFiles: Record<string, { default: unknown }> = {
   '../catalogue/en/format.json': { default: enFormat },
   '../catalogue/ms/format.json': { default: msFormat },
   '../catalogue/en/marketing.json': { default: enMarketing },
-  '../catalogue/ms/marketing.json': { default: msMarketing }
+  '../catalogue/ms/marketing.json': { default: msMarketing },
+  '../catalogue/en/auth.json': { default: enAuth }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

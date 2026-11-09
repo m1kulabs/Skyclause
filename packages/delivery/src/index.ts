@@ -8,6 +8,7 @@ export {
   type EmailTransportOptions,
   type SesClient
 } from './email'
+export { googleLinkEmail, magicLinkDisabledEmail, magicLinkEmail } from './auth-emails'
 export { isSnsUrl, SnsVerificationError, verifySnsMessage, type SnsMessage, type VerifyOptions } from './sns'
 export {
   createInboundRouter,
