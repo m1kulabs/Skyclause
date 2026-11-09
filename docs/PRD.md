@@ -532,6 +532,7 @@ Targets, not measurements; TRD's [observability and SLOs](/docs/TRD.md#observabi
 | Readings and error rows from public sources      | Life of the project                                           | Deleted with the project                                        |
 | Camera frames                                    | One semester: to the project's semester end, at most 183 days | Deleted; contrast rows kept                                     |
 | Raw bus positions                                | Until segment times are computed, at most 24 hours            | Deleted; segment times kept                                     |
+| SES message deduplication marks                  | At least 24 hours                                             | Deleted by the nightly retention sweep                          |
 | Guest windows                                    | 14 days from creation                                         | Deleted                                                         |
 | Guest accounts                                   | 30 days without activity                                      | Deleted with their data                                         |
 | Subscriber records                               | Until unsubscribe plus 30 days                                | Deleted; a hashed suppression entry stays                       |
