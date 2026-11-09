@@ -141,6 +141,7 @@ const S = [
   'export_job',
   'guest_budget',
   'handled_event',
+  'handled_message',
   'idempotency_key',
   'rate_limit'
 ]

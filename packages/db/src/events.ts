@@ -2,7 +2,7 @@ import { log } from '@skyclause/config'
 import { DOMAIN_EVENT_SCHEMAS, type EmitEvent, type EventEnvelope, type EventType } from '@skyclause/contracts'
 import { and, asc, eq, inArray, isNull, lt, sql } from 'drizzle-orm'
 import { afterCommit, withSystem, type InSameContext, type SystemPrincipal, type Tx } from './client'
-import { domainEvent, handledEvent } from './schema'
+import { domainEvent, handledEvent, handledMessage } from './schema'
 
 // #79 §5 "Write": the domain event outbox. emitEvent writes in the caller's transaction; the Pub/Sub publish happens
 // only after commit, through the injected publisher; the 15-minute batch republishes what that missed (D45).
@@ -111,20 +111,20 @@ export async function loadEvent(
 }
 
 /**
- * Runs `fn` unless `consumer` already handled `eventId`, recording it in the same transaction, so a redelivery is a
- * no-op and a failed `fn` leaves no record. Returns whether `fn` ran. Needs a system principal (handled_event is S).
+ * Runs `fn` unless `consumer` already handled the event (an event ID) or the external message (`{ messageId }`, an SES
+ * message ID), recording it in the same transaction, so a redelivery is a no-op and a failed `fn` leaves no record.
+ * Returns whether `fn` ran. Needs a system principal (handled_event and handled_message are S).
  */
 export async function handleOnce(
   tx: Tx,
   consumer: string,
-  eventId: string,
+  key: string | { messageId: string },
   fn: (tx: Tx) => Promise<void>
 ): Promise<boolean> {
-  const claimed = await tx
-    .insert(handledEvent)
-    .values({ consumer, eventId })
-    .onConflictDoNothing()
-    .returning({ eventId: handledEvent.eventId })
+  const claimed =
+    typeof key === 'string'
+      ? await tx.insert(handledEvent).values({ consumer, eventId: key }).onConflictDoNothing().returning()
+      : await tx.insert(handledMessage).values({ consumer, messageId: key.messageId }).onConflictDoNothing().returning()
   if (!claimed.length) return false
   await fn(tx)
   return true
