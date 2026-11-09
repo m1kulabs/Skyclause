@@ -13,6 +13,7 @@ import { pilotArchive } from './pilot-archive'
 import { replies } from './replies'
 import { restoreDrill } from './restore-drill'
 import { runs } from './runs'
+import { retention } from './retention'
 import { defineRegistry } from './server'
 
 // Spec §7: each owner appends one line here, naming a `WorkerPart` exported from its own folder,
@@ -32,5 +33,6 @@ export const registry = defineRegistry([
   alerts, // c-approver-alerts
   notifications, // c-notifications
   ics, // c-ics-feed
-  analysis // c-analysis-api
+  analysis, // c-analysis-api
+  retention // a-retention
 ])
