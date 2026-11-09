@@ -21,6 +21,10 @@ import {
 
 // #161 c-grades: what the graders read. Each takes the caller's `withTenant` transaction unless it says otherwise.
 
+/** `now` as a date in the project's zone (#79 conventions). */
+export const projectDateAt = (now: Date) =>
+  sql<string>`(${now.toISOString()}::timestamptz AT TIME ZONE ${project.timeZone})::date::text`
+
 /** Every project, across organisations (`withSystem` sees `project`), with its local date at `now`. */
 export function gradingProjects(tx: Tx<SystemPrincipal>, now: Date) {
   return tx
@@ -28,7 +32,7 @@ export function gradingProjects(tx: Tx<SystemPrincipal>, now: Date) {
       orgId: project.orgId,
       projectId: project.id,
       timeZone: project.timeZone,
-      today: sql<string>`(${now.toISOString()}::timestamptz AT TIME ZONE ${project.timeZone})::date::text`
+      today: projectDateAt(now)
     })
     .from(project)
     .orderBy(asc(project.id))

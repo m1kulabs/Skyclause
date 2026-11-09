@@ -1,7 +1,7 @@
 import { and, desc, eq, getTableColumns, gte, inArray, lte, sql, type SQL } from 'drizzle-orm'
 import type { Tx } from '../client'
 import { forecast, grade, project, reviewItem } from '../schema'
-import { crowdNights, liveSheet, railStation } from './candidates'
+import { crowdNights, liveSheet, projectDateAt, railStation } from './candidates'
 
 // #161 c-grades: the reads behind GET /v1/projects/{id}/{grades,review-items} and PATCH /v1/review-items/{id}, in the
 // caller's `withTenant` transaction.
@@ -11,7 +11,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 /** The project's local date at `now`. */
 export async function projectToday(tx: Tx, projectId: string, now: Date) {
   const [row] = await tx
-    .select({ today: sql<string>`(${now.toISOString()}::timestamptz AT TIME ZONE ${project.timeZone})::date::text` })
+    .select({ today: projectDateAt(now) })
     .from(project)
     .where(eq(project.id, projectId))
   return row?.today ?? null
