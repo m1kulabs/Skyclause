@@ -20538,13 +20538,17 @@
                               "format": "uuid"
                             },
                             "mode": {
-                              "type": "string",
+                              "type": [
+                                "string",
+                                "null"
+                              ],
                               "enum": [
                                 "normal",
                                 "outdoor_limited",
                                 "commute_disruption",
                                 "hybrid_recommended",
-                                "surge_night"
+                                "surge_night",
+                                null
                               ]
                             },
                             "outcome": {
@@ -53009,13 +53013,17 @@
                                         "format": "uuid"
                                       },
                                       "mode": {
-                                        "type": "string",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ],
                                         "enum": [
                                           "normal",
                                           "outdoor_limited",
                                           "commute_disruption",
                                           "hybrid_recommended",
-                                          "surge_night"
+                                          "surge_night",
+                                          null
                                         ]
                                       },
                                       "outcome": {
