@@ -16,8 +16,7 @@ const packages: Array<{ name: string; owners: Record<string, string[]> }> = [
     owners: {
       'a-org-projects': ['createOrganisation'],
       'd-guest-rules': ['budgetGate'],
-      'd-org-api': ['listenEvents'],
-      'a-subscriber-rights': ['eraseSubscriber']
+      'd-org-api': ['listenEvents']
     }
   },
   {
