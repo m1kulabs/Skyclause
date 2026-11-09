@@ -9,6 +9,7 @@ import {
   emitEvent,
   listenEvents,
   markSending,
+  recipientsByLanguage,
   run,
   systemPrincipal,
   transition,
@@ -26,7 +27,6 @@ import {
   makeSource
 } from '@skyclause/db/test/factories/index'
 import { asLogin } from '@skyclause/db/test/harness/index'
-import { recipientsByLanguage } from '@skyclause/delivery'
 import { eq } from 'drizzle-orm'
 import { beforeAll, describe, expect, test, vi } from 'vitest'
 import type { BundleDetail, BundleView, CallDetail, CallExplanation, CallView } from '../src/services/bundles'
@@ -44,9 +44,9 @@ import {
 } from './harness'
 
 // The SSE hub (#175) and c-notice-templates' recipient counts (#152) aren't built: doubles stand in for both.
-vi.mock('@skyclause/db', async (original) => ({ ...(await original<object>()), listenEvents: vi.fn() }))
-vi.mock('@skyclause/delivery', async (original) => ({
+vi.mock('@skyclause/db', async (original) => ({
   ...(await original<object>()),
+  listenEvents: vi.fn(),
   recipientsByLanguage: vi.fn(async () => ({ en: 2, ms: 1 }))
 }))
 

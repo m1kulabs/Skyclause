@@ -10,6 +10,7 @@ import {
   notice,
   project,
   reading,
+  recipientsByLanguage,
   run,
   runStep,
   sheetVersion,
@@ -18,7 +19,6 @@ import {
   window,
   type Tx
 } from '@skyclause/db'
-import { recipientsByLanguage } from '@skyclause/delivery'
 import { and, asc, desc, eq, gte, inArray, lt, or, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import { decodeCursor, page } from '../../pagination'
