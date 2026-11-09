@@ -45,8 +45,7 @@ export async function replyToCall(ctx: ServiceContext, input: { target: ReplyTar
     ...target,
     kind: reply.kind,
     shiftTo: reply.kind === 'shift' ? reply.shift_to : null,
-    at: now,
-    now
+    at: now
   })
   if (typeof recorded === 'string') throw linkExpired()
   return { id: recorded.id, window_id: target.windowId, reply, at: instant(now) }

@@ -21,11 +21,11 @@ import { log } from '../server'
 const CONSUMER = 'crowd-replies'
 const principal = systemPrincipal(`inbound:${CONSUMER}`)
 
-const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 /** The `onInbound` pattern for `r+{token}@{domain}`, matched against the lower-cased address. */
 export const crowdReplyRecipient = (domain: string) =>
-  new RegExp(`^r\\+[A-Za-z0-9_-]{43}@${escape(domain.toLowerCase())}$`)
+  new RegExp(`^r\\+[A-Za-z0-9_-]{43}@${escapeRegExp(domain.toLowerCase())}$`)
 
 const COMMAND = /^(keep|shuttle|shift\s+to\s+(\d{1,2}):([0-5]\d))$/i
 
@@ -42,6 +42,13 @@ function parseReply(text: string): { kind: CrowdReplyKind; shiftTo: string | nul
   return Number(hours) > 23 ? null : { kind: 'shift', shiftTo: `${hours.padStart(2, '0')}:${minutes}` }
 }
 
+/** Why a reply whose token verified isn't logged, or null when it can be. */
+function dropReason(m: InboundMessage, sender: string, readable: boolean): ReplyDropReason | null {
+  if (m.verdicts.spam !== 'PASS' || m.verdicts.virus !== 'PASS') return 'verdict'
+  if (normalizeEmail(m.from) !== normalizeEmail(sender)) return 'sender'
+  return readable ? null : 'unparsed'
+}
+
 /**
  * Logs the reply in the token's organisation (CAL-17), at SES's receipt time. Mail needs spam and virus `PASS`, a
  * sender equal to the token's subscriber and a readable first line; otherwise it is dropped with an audit row and the
@@ -49,11 +56,11 @@ function parseReply(text: string): { kind: CrowdReplyKind; shiftTo: string | nul
  * written. A redelivery finds the token spent, or the drop already audited.
  */
 export async function handleCrowdReply(m: InboundMessage): Promise<void> {
-  const skip = (outcome: string) => log('INFO', 'crowd reply not logged', { message_id: m.messageId, outcome })
-  if (!(await withSystem(principal.job, (tx) => isFlagEnabled(tx, 'inbound_email')))) return skip('inbound-off')
+  const notLogged = (outcome: string) => log('INFO', 'crowd reply not logged', { message_id: m.messageId, outcome })
+  if (!(await withSystem(principal.job, (tx) => isFlagEnabled(tx, 'inbound_email')))) return notLogged('inbound-off')
   const token = /^r\+([A-Za-z0-9_-]+)@/.exec(m.recipient)?.[1]
   const found = token ? await verifySubscriberToken(token, 'reply') : null
-  if (!found?.callId || !found.windowId) return skip('token')
+  if (!found?.callId || !found.windowId) return notLogged('token')
   const { callId, windowId } = found
 
   const outcome = await withTenant({ orgId: found.orgId, principal }, async (tx: Tx) => {
@@ -61,22 +68,15 @@ export async function handleCrowdReply(m: InboundMessage): Promise<void> {
     const sender = await replySender(tx, found.subscriberId)
     if (sender === null) return 'token'
     const reply = parseReply(m.text)
-    const dropped: ReplyDropReason | null =
-      m.verdicts.spam !== 'PASS' || m.verdicts.virus !== 'PASS'
-        ? 'verdict'
-        : normalizeEmail(m.from) !== normalizeEmail(sender)
-          ? 'sender'
-          : reply
-            ? null
-            : 'unparsed'
+    const dropped = dropReason(m, sender, reply !== null)
     if (dropped) {
       await recordReplyDrop(tx, { projectId: found.projectId, messageId: m.messageId, reason: dropped })
       return `dropped-${dropped}`
     }
     const at = new Date(m.receivedAt)
-    const recorded = await recordCrowdReply(tx, { ...found, callId, windowId, ...reply!, at, now: at })
+    const recorded = await recordCrowdReply(tx, { ...found, callId, windowId, ...reply!, at })
     return typeof recorded === 'string' ? recorded : 'logged'
   })
   if (outcome === 'logged') log('INFO', 'crowd reply logged', { message_id: m.messageId })
-  else skip(outcome)
+  else notLogged(outcome)
 }

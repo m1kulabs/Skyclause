@@ -15,9 +15,9 @@ export async function replySender(tx: Tx, subscriberId: string): Promise<string 
 }
 
 /**
- * Logs a Crowd recipient's reply (CAL-17) and spends its `reply` token, or refuses with nothing written once the
- * window has ended or the token is spent (one reply per token). `shiftTo` is `HH:MM`, project-local, on the window's
- * date. The ledger entry carries IDs, the kind and times only.
+ * Logs a Crowd recipient's reply (CAL-17) and spends its `reply` token, or refuses with nothing written when it was
+ * made (`at`) once the window had ended, or the token is spent (one reply per token). `shiftTo` is `HH:MM`,
+ * project-local, on the window's date. The ledger entry carries IDs, the kind and times only.
  */
 export async function recordCrowdReply(
   tx: Tx,
@@ -29,7 +29,6 @@ export async function recordCrowdReply(
     kind: CrowdReplyKind
     shiftTo: string | null
     at: Date
-    now: Date
   }
 ): Promise<{ id: string } | 'window-ended' | 'spent'> {
   const localDate = sql`(${window.startsAt} AT TIME ZONE ${project.timeZone})::date`
@@ -44,7 +43,7 @@ export async function recordCrowdReply(
     .from(window)
     .innerJoin(project, eq(project.id, window.projectId))
     .where(eq(window.id, r.windowId))
-  if (!target || target.endsAt <= r.now) return 'window-ended'
+  if (!target || target.endsAt <= r.at) return 'window-ended'
   if (!(await consumeSubscriberToken(tx, r.tokenId))) return 'spent'
 
   const [row] = await tx
