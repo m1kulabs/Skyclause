@@ -72,6 +72,10 @@ export interface AgentInput {
     hash: string
   }
   met_warnings: string[]
+  // Third-party free text, untrusted like `met_warnings`: serialised as data blocks, never quotable.
+  listings?: string[]
+  forwarded_emails?: string[]
+  evidence_requests?: string[]
   windows: Array<{ id: string; starts_at: string; ends_at: string }>
   candidates: Record<string, Array<{ id: string; role?: string; language: 'en' | 'ms' }>>
   yesterday_grades: Array<{ window_id: string; outcome: string }>
