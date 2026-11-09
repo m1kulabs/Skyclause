@@ -6,6 +6,7 @@ import { KNOWN_GAPS } from './known-gaps'
 import { sessions, signedOut, type Session } from './roles'
 import { builtRoutes, type CrawlRoute } from './routes'
 import { visit } from './visit'
+import { AUTH_REAUTH_DIALOG_SELECTOR, isAuthRoute } from '../../features/sign-in/model'
 
 const PLANTED_FAILURE = '/quality-planted/unlabelled-input'
 const PUBLIC_GROUPS = new Set(['marketing', 'public'])
@@ -49,6 +50,19 @@ async function crawl(page: Page, route: CrawlRoute, session: Session, info: Test
     })
     if (variant.viewport) await page.setViewportSize(variant.viewport)
     const findings = await visit(page, route, session.role)
+    const reauthDialog = page.locator(AUTH_REAUTH_DIALOG_SELECTOR)
+    if (isAuthRoute(route.path) || (await reauthDialog.count()) > 0) {
+      const passwordControls = page.locator(
+        'input[type="password"], input[autocomplete="current-password"], input[autocomplete="new-password"]'
+      )
+      const count = await passwordControls.count()
+      if (count) {
+        findings.push({
+          check: 'auth-password',
+          detail: `${count} password control(s) exist on an auth route or re-authentication dialog`
+        })
+      }
+    }
     if (
       variant.theme === 'high contrast' &&
       !(await page.evaluate(() => matchMedia('(prefers-contrast: more)').matches))
