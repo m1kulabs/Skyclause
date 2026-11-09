@@ -31,9 +31,12 @@ import {
   makeCall,
   makeNight,
   makeOrganization,
+  makePoll,
   makeProjectSource,
+  makeReading,
   makeRun,
   makeShadowState,
+  makeSource,
   makeSourceState,
   makeWindow
 } from './factories'
@@ -391,7 +394,12 @@ describe('getProjectSummaryRecord (D3 precedence and counts)', () => {
       await makeSourceState(tx, {
         sourceId: bound.sourceId,
         state: 'fresh',
-        since: new Date('2026-11-08T05:55:00Z')
+        since: new Date('2026-11-01T00:00:00Z')
+      })
+      await makeReading(tx, {
+        sourceId: bound.sourceId,
+        observedAt: new Date('2026-11-08T05:55:00Z'),
+        value: 12.5
       })
 
       // Conflicting Sky shadow verdict says normal, while two approved calls are in force:
@@ -400,7 +408,16 @@ describe('getProjectSummaryRecord (D3 precedence and counts)', () => {
         projectId: created.id,
         pack: 'sky',
         scopeKind: 'site',
-        verdict: { mode: 'normal', watch: false, no_call: null }
+        verdict: {
+          scope: { kind: 'site', id: null },
+          pack: 'sky',
+          mode: 'normal',
+          watch: false,
+          no_call: null,
+          recommendations: [],
+          clauses: [],
+          open_from: null
+        }
       })
       const winHigh = await makeWindow(tx, {
         projectId: created.id,
@@ -423,6 +440,16 @@ describe('getProjectSummaryRecord (D3 precedence and counts)', () => {
         mode: 'hybrid_recommended',
         watch: true,
         state: 'sent',
+        shadow: {
+          scope: { kind: 'window', id: winHigh.id },
+          pack: 'sky',
+          mode: 'hybrid_recommended',
+          watch: true,
+          no_call: null,
+          recommendations: [],
+          clauses: [],
+          open_from: null
+        },
         approvedAt: new Date('2026-11-08T05:05:00Z'),
         sentAt: new Date('2026-11-08T05:05:05Z')
       })
@@ -432,6 +459,16 @@ describe('getProjectSummaryRecord (D3 precedence and counts)', () => {
         mode: 'outdoor_limited',
         watch: false,
         state: 'sent',
+        shadow: {
+          scope: { kind: 'window', id: winLow.id },
+          pack: 'sky',
+          mode: 'outdoor_limited',
+          watch: false,
+          no_call: null,
+          recommendations: [],
+          clauses: [],
+          open_from: null
+        },
         approvedAt: new Date('2026-11-08T05:40:00Z'),
         sentAt: new Date('2026-11-08T05:40:05Z')
       })
@@ -458,6 +495,16 @@ describe('getProjectSummaryRecord (D3 precedence and counts)', () => {
         mode: 'surge_night',
         watch: false,
         state: 'sent',
+        shadow: {
+          scope: { kind: 'night', id: pastNight.id },
+          pack: 'crowd',
+          mode: 'surge_night',
+          watch: false,
+          no_call: null,
+          recommendations: ['leave_before_doors'],
+          clauses: [],
+          open_from: null
+        },
         expiresAt: new Date('2026-11-07T09:00:00Z'),
         approvedAt: new Date('2026-11-07T08:00:00Z'),
         sentAt: new Date('2026-11-07T08:00:05Z')
@@ -466,11 +513,20 @@ describe('getProjectSummaryRecord (D3 precedence and counts)', () => {
         projectId: created.id,
         pack: 'crowd',
         scopeKind: 'site',
-        verdict: { mode: 'normal', watch: false, no_call: null }
+        verdict: {
+          scope: { kind: 'site', id: null },
+          pack: 'crowd',
+          mode: 'normal',
+          watch: false,
+          no_call: null,
+          recommendations: [],
+          clauses: [],
+          open_from: null
+        }
       })
 
       const summary = await getProjectSummaryRecord(tx, created.id, now)
-      return { summary, highCallId: highCall.id, crowdBundleId: crowdBundle.id }
+      return { summary, highCallId: highCall.id, crowdBundleId: crowdBundle.id, pastNightId: pastNight.id }
     })
 
     expect(scene.summary.pack_states).toEqual([
@@ -498,8 +554,622 @@ describe('getProjectSummaryRecord (D3 precedence and counts)', () => {
       oldest_age_s: 300
     })
     expect(scene.summary.latest_bundle?.id).toBe(scene.crowdBundleId)
+    expect(scene.summary.latest_bundle?.calls[0]?.shadow).toMatchObject({
+      scope: { kind: 'night', id: scene.pastNightId },
+      pack: 'crowd',
+      mode: 'surge_night'
+    })
     expect(scene.summary.next_action).toBeNull()
     expect(refusal).toBeTypeOf('function')
     expect(getProjectRecord).toBeTypeOf('function')
+  })
+
+  test('windows_at_risk restricts to today in the project local time zone (including non-MYT) and respects approved Normal over risky shadow unless No call applies', async () => {
+    // 2026-11-08T22:30:00Z is 2026-11-08 17:30:00 in America/New_York (UTC-5), where local today ends at 2026-11-09T05:00:00Z.
+    const now = new Date('2026-11-08T22:30:00Z')
+    const result = await inOrg(async (tx) => {
+      const { project: nyProject } = await createProjectRecord(tx, {
+        name: 'NY Campus',
+        slug: 'ny-campus',
+        siteName: 'NY Site',
+        siteLat: 40.7128,
+        siteLon: -74.006,
+        timeZone: 'America/New_York',
+        packs: ['sky']
+      })
+
+      // Window 1: today in NY (18:00-20:00 EST -> 23:00Z to 01:00Z next UTC day, still before 05:00Z NY midnight), risky shadow.
+      const todayRisky = await makeWindow(tx, {
+        projectId: nyProject.id,
+        startsAt: new Date('2026-11-08T23:00:00Z'),
+        endsAt: new Date('2026-11-09T01:00:00Z')
+      })
+      await makeShadowState(tx, {
+        projectId: nyProject.id,
+        pack: 'sky',
+        scopeKind: 'window',
+        scopeId: todayRisky.id,
+        verdict: {
+          scope: { kind: 'window', id: todayRisky.id },
+          pack: 'sky',
+          mode: 'outdoor_limited',
+          watch: false,
+          no_call: null,
+          recommendations: [],
+          clauses: [],
+          open_from: null
+        }
+      })
+
+      // Window 2: tomorrow in NY (starts 2026-11-09T13:00:00Z = 08:00 EST tomorrow), risky shadow -> must NOT count today.
+      const tomorrowRisky = await makeWindow(tx, {
+        projectId: nyProject.id,
+        startsAt: new Date('2026-11-09T13:00:00Z'),
+        endsAt: new Date('2026-11-09T15:00:00Z')
+      })
+      await makeShadowState(tx, {
+        projectId: nyProject.id,
+        pack: 'sky',
+        scopeKind: 'window',
+        scopeId: tomorrowRisky.id,
+        verdict: {
+          scope: { kind: 'window', id: tomorrowRisky.id },
+          pack: 'sky',
+          mode: 'hybrid_recommended',
+          watch: true,
+          no_call: null,
+          recommendations: [],
+          clauses: [],
+          open_from: null
+        }
+      })
+
+      // Window 3: today in NY, has an approved Normal call in force AND a conflicting outdoor_limited shadow with no blockers -> approved Normal wins, NOT at risk.
+      const todayApprovedNormal = await makeWindow(tx, {
+        projectId: nyProject.id,
+        startsAt: new Date('2026-11-08T22:00:00Z'),
+        endsAt: new Date('2026-11-09T00:00:00Z')
+      })
+      const b = await makeBundle(tx, {
+        runId: (await makeRun(tx, { projectId: nyProject.id, pack: 'sky' })).id,
+        pack: 'sky',
+        state: 'sent'
+      })
+      await makeCall(tx, {
+        bundleId: b.id,
+        windowId: todayApprovedNormal.id,
+        mode: 'normal',
+        watch: false,
+        state: 'sent',
+        shadow: {
+          scope: { kind: 'window', id: todayApprovedNormal.id },
+          pack: 'sky',
+          mode: 'normal',
+          watch: false,
+          no_call: null,
+          recommendations: [],
+          clauses: [],
+          open_from: null
+        },
+        approvedAt: new Date('2026-11-08T22:05:00Z'),
+        sentAt: new Date('2026-11-08T22:05:05Z')
+      })
+      await makeShadowState(tx, {
+        projectId: nyProject.id,
+        pack: 'sky',
+        scopeKind: 'window',
+        scopeId: todayApprovedNormal.id,
+        verdict: {
+          scope: { kind: 'window', id: todayApprovedNormal.id },
+          pack: 'sky',
+          mode: 'outdoor_limited',
+          watch: true,
+          no_call: null,
+          recommendations: [],
+          clauses: [],
+          open_from: null
+        }
+      })
+
+      // A still-open window crossing into today counts; ended/cancelled windows and tomorrow's midnight do not.
+      for (const [startsAt, endsAt, cancelledAt] of [
+        ['2026-11-08T04:00:00Z', '2026-11-08T23:00:00Z', null],
+        ['2026-11-08T18:00:00Z', '2026-11-08T22:30:00Z', null],
+        ['2026-11-08T23:00:00Z', '2026-11-09T01:00:00Z', '2026-11-08T22:00:00Z'],
+        ['2026-11-09T05:00:00Z', '2026-11-09T06:00:00Z', null]
+      ]) {
+        const w = await makeWindow(tx, {
+          projectId: nyProject.id,
+          startsAt: new Date(startsAt!),
+          endsAt: new Date(endsAt!),
+          cancelledAt: cancelledAt ? new Date(cancelledAt) : null
+        })
+        await makeShadowState(tx, {
+          projectId: nyProject.id,
+          pack: 'sky',
+          scopeKind: 'window',
+          scopeId: w.id,
+          verdict: {
+            scope: { kind: 'window', id: w.id },
+            pack: 'sky',
+            mode: 'outdoor_limited',
+            watch: false,
+            no_call: null,
+            recommendations: [],
+            clauses: [],
+            open_from: null
+          }
+        })
+      }
+      return getProjectSummaryRecord(tx, nyProject.id, now)
+    })
+
+    expect(result.windows_at_risk).toBe(2)
+  })
+
+  test('signal_health oldest_age_s uses newest reading for observed sources and last ok/unchanged poll for polled sources, returning null when provenance is absent', async () => {
+    const now = new Date('2026-11-09T06:00:00Z')
+    const { withProvenance, withoutProvenance } = await inOrg(async (tx) => {
+      const { project: p1 } = await createProjectRecord(tx, {
+        name: 'Signal Provenance',
+        slug: 'signal-provenance',
+        siteName: 'APU',
+        siteLat: 3.05,
+        siteLon: 101.7,
+        packs: ['sky']
+      })
+      const obsSource = await makeSource(tx, { kind: 'jps_rain', freshness: 'observed' })
+      const polledSource = await makeSource(tx, { kind: 'met_warning', freshness: 'polled' })
+      await makeProjectSource(tx, { projectId: p1.id, sourceId: obsSource.id, role: 'rain_gauge' })
+      await makeProjectSource(tx, { projectId: p1.id, sourceId: polledSource.id, role: 'warnings' })
+
+      // Both sources have been continuously fresh since 1 November (8 days ago), so state.since is 712800s old.
+      await makeSourceState(tx, {
+        sourceId: obsSource.id,
+        state: 'fresh',
+        since: new Date('2026-11-01T00:00:00Z')
+      })
+      await makeSourceState(tx, {
+        sourceId: polledSource.id,
+        state: 'fresh',
+        since: new Date('2026-11-01T00:00:00Z')
+      })
+
+      await makeReading(tx, { sourceId: obsSource.id, observedAt: new Date('2026-11-09T05:00:00Z'), value: 0 })
+      await makePoll(tx, { sourceId: polledSource.id, startedAt: new Date('2026-11-09T05:00:00Z'), outcome: 'ok' })
+      await makeReading(tx, { sourceId: obsSource.id, observedAt: new Date('2026-11-09T07:00:00Z'), value: 0 })
+      await makePoll(tx, { sourceId: polledSource.id, startedAt: new Date('2026-11-09T07:00:00Z'), outcome: 'ok' })
+      // Observed source has a reading 180s ago; polled source has an unchanged poll 420s ago and a failed poll 60s ago.
+      await makeReading(tx, {
+        sourceId: obsSource.id,
+        observedAt: new Date('2026-11-09T05:57:00Z'),
+        value: 0
+      })
+      await makePoll(tx, {
+        sourceId: polledSource.id,
+        startedAt: new Date('2026-11-09T05:53:00Z'),
+        outcome: 'unchanged',
+        httpStatus: 304
+      })
+      await makePoll(tx, {
+        sourceId: polledSource.id,
+        startedAt: new Date('2026-11-09T05:59:00Z'),
+        outcome: 'error',
+        httpStatus: 503
+      })
+
+      const { project: p2 } = await createProjectRecord(tx, {
+        name: 'Signal Unknown Age',
+        slug: 'signal-unknown-age',
+        siteName: 'APU',
+        siteLat: 3.05,
+        siteLon: 101.7,
+        packs: ['sky']
+      })
+      const noDataObs = await makeSource(tx, { kind: 'jps_rain', freshness: 'observed' })
+      await makeProjectSource(tx, { projectId: p2.id, sourceId: noDataObs.id, role: 'rain_gauge' })
+      await makeSourceState(tx, {
+        sourceId: noDataObs.id,
+        state: 'fresh',
+        since: new Date('2026-11-01T00:00:00Z')
+      })
+
+      return {
+        withProvenance: await getProjectSummaryRecord(tx, p1.id, now),
+        withoutProvenance: await getProjectSummaryRecord(tx, p2.id, now)
+      }
+    })
+
+    expect(withProvenance.signal_health).toEqual({
+      state: 'fresh',
+      inputs_reporting: 2,
+      oldest_age_s: 420
+    })
+    expect(withoutProvenance.signal_health).toEqual({
+      state: 'fresh',
+      inputs_reporting: 1,
+      oldest_age_s: null
+    })
+  })
+
+  test('D3 pack summary retains approved call mode while overlaying current required-input no_call blockers, excluding not_open and deduplicating', async () => {
+    const now = new Date('2026-11-08T06:00:00Z')
+    const { summary, callId, gaugeId } = await inOrg(async (tx) => {
+      const { project: created } = await createProjectRecord(tx, {
+        name: 'Overlay D3',
+        slug: 'overlay-d3',
+        siteName: 'APU',
+        siteLat: 3.05,
+        siteLon: 101.7,
+        packs: ['sky']
+      })
+      const gauge = await makeSource(tx, { kind: 'jps_rain', freshness: 'observed' })
+      await makeProjectSource(tx, { projectId: created.id, sourceId: gauge.id, role: 'rain_gauge' })
+      await makeSourceState(tx, {
+        sourceId: gauge.id,
+        state: 'error',
+        since: new Date('2026-11-08T05:50:00Z')
+      })
+
+      const win = await makeWindow(tx, {
+        projectId: created.id,
+        startsAt: new Date('2026-11-08T05:00:00Z'),
+        endsAt: new Date('2026-11-08T07:00:00Z')
+      })
+      const skyBundle = await makeBundle(tx, {
+        runId: (await makeRun(tx, { projectId: created.id, pack: 'sky' })).id,
+        pack: 'sky',
+        state: 'sent'
+      })
+      const normalCall = await makeCall(tx, {
+        bundleId: skyBundle.id,
+        windowId: win.id,
+        mode: 'normal',
+        watch: false,
+        state: 'sent',
+        shadow: {
+          scope: { kind: 'window', id: win.id },
+          pack: 'sky',
+          mode: 'normal',
+          watch: false,
+          no_call: null,
+          recommendations: [],
+          clauses: [],
+          open_from: null
+        },
+        approvedAt: new Date('2026-11-08T05:10:00Z'),
+        sentAt: new Date('2026-11-08T05:10:05Z')
+      })
+
+      const rainBlocker = {
+        name: 'w.rain_max_60m_mm',
+        source_id: gauge.id,
+        state: 'stale' as const,
+        since: '2026-11-08T05:40:00Z'
+      }
+      const notOpenBlocker = {
+        name: 'w.future_only_mm',
+        source_id: gauge.id,
+        state: 'pending' as const,
+        since: '2026-11-08T05:50:00Z'
+      }
+
+      // Newer window shadow verdict has rainBlocker duplicated across two blocked clauses and a not_open clause blocker.
+      await makeShadowState(tx, {
+        projectId: created.id,
+        pack: 'sky',
+        scopeKind: 'window',
+        scopeId: win.id,
+        verdict: {
+          scope: { kind: 'window', id: win.id },
+          pack: 'sky',
+          mode: 'commute_disruption',
+          watch: false,
+          no_call: { inputs: [rainBlocker, rainBlocker, notOpenBlocker] },
+          recommendations: [],
+          clauses: [
+            {
+              key: 'storm_confirmed',
+              result: 'blocked',
+              blocked_by: [rainBlocker],
+              inputs: []
+            },
+            {
+              key: 'flash_flood_risk',
+              result: 'blocked',
+              blocked_by: [rainBlocker],
+              inputs: []
+            },
+            {
+              key: 'future_clause',
+              result: 'not_open',
+              blocked_by: [notOpenBlocker],
+              inputs: []
+            }
+          ],
+          open_from: null
+        }
+      })
+
+      return {
+        summary: await getProjectSummaryRecord(tx, created.id, now),
+        callId: normalCall.id,
+        gaugeId: gauge.id
+      }
+    })
+
+    expect(summary.pack_states[0]).toEqual({
+      pack: 'sky',
+      basis: 'approved_call',
+      call_id: callId,
+      mode: 'normal',
+      watch: false,
+      no_call: {
+        inputs: [
+          {
+            name: 'w.rain_max_60m_mm',
+            source_id: gaugeId,
+            state: 'error',
+            since: '2026-11-08T05:50:00Z'
+          }
+        ]
+      }
+    })
+    // Although the approved mode is Normal, the window has a current required-input No call failure, so it counts at risk.
+    expect(summary.windows_at_risk).toBe(1)
+  })
+
+  test('keeps a required derived-input blocker when its underlying source is fresh, and rejects invalid current verdicts', async () => {
+    await inOrg(async (tx) => {
+      const { project: created } = await createProjectRecord(tx, {
+        name: 'Derived Blocker',
+        slug: 'derived-blocker',
+        siteName: 'APU',
+        siteLat: 3.05,
+        siteLon: 101.7,
+        packs: ['sky']
+      })
+      const gauge = await makeSource(tx)
+      await makeProjectSource(tx, { projectId: created.id, sourceId: gauge.id, role: 'rain_gauge' })
+      await makeSourceState(tx, { sourceId: gauge.id, state: 'fresh', since: new Date('2026-11-08T05:50:00Z') })
+      const blocker = {
+        name: 'w.rain_max_60m_mm',
+        source_id: gauge.id,
+        state: 'pending',
+        since: '2026-11-08T05:00:00Z'
+      }
+      await makeShadowState(tx, {
+        projectId: created.id,
+        pack: 'sky',
+        scopeKind: 'site',
+        verdict: {
+          scope: { kind: 'site', id: null },
+          pack: 'sky',
+          mode: null,
+          watch: false,
+          no_call: { inputs: [blocker] },
+          recommendations: [],
+          clauses: [{ key: 'coverage', result: 'blocked', blocked_by: [blocker], inputs: [] }],
+          open_from: null
+        }
+      })
+      expect(
+        (await getProjectSummaryRecord(tx, created.id, new Date('2026-11-08T06:00:00Z'))).pack_states[0]?.no_call
+      ).toEqual({ inputs: [blocker] })
+    })
+    await expect(
+      inOrg(async (tx) => {
+        const { project: created } = await createProjectRecord(tx, {
+          name: 'Invalid Current Verdict',
+          slug: 'invalid-current-verdict',
+          siteName: 'APU',
+          siteLat: 3.05,
+          siteLon: 101.7,
+          packs: ['sky']
+        })
+        await makeShadowState(tx, {
+          projectId: created.id,
+          pack: 'sky',
+          scopeKind: 'site',
+          verdict: { mode: 'normal', watch: false }
+        })
+        return getProjectSummaryRecord(tx, created.id)
+      })
+    ).rejects.toThrow('Invalid persisted shadow verdict')
+  })
+
+  test('populates next_storm_date from a fresh bound met_forecast source with an upcoming storm forecast_day reading', async () => {
+    const now = new Date('2026-11-08T06:00:00Z')
+    const { withUpcomingStorm, withStaleForecast } = await inOrg(async (tx) => {
+      const { project: p1 } = await createProjectRecord(tx, {
+        name: 'Forecast Storm',
+        slug: 'forecast-storm',
+        siteName: 'APU',
+        siteLat: 3.05,
+        siteLon: 101.7,
+        packs: ['sky']
+      })
+      const metForecast = await makeSource(tx, { kind: 'met_forecast', freshness: 'polled' })
+      await makeProjectSource(tx, { projectId: p1.id, sourceId: metForecast.id, role: 'met_forecast' })
+      await makeSourceState(tx, {
+        sourceId: metForecast.id,
+        state: 'fresh',
+        since: new Date('2026-11-08T05:00:00Z')
+      })
+      await makePoll(tx, {
+        sourceId: metForecast.id,
+        startedAt: new Date('2026-11-08T05:50:00Z'),
+        outcome: 'ok',
+        httpStatus: 200
+      })
+
+      // Past storm date (yesterday) must be ignored.
+      await makeReading(tx, {
+        sourceId: metForecast.id,
+        metric: 'forecast_day',
+        unit: null,
+        value: null,
+        itemKey: '2026-11-07',
+        observedAt: new Date('2026-11-07T00:00:00Z'),
+        valueJson: {
+          date: '2026-11-07',
+          afternoon_forecast: 'Ribut petir di satu dua tempat',
+          gloss_en: { afternoon_forecast: 'Thunderstorms in one or two places' }
+        }
+      })
+      // Today has fair weather.
+      await makeReading(tx, {
+        sourceId: metForecast.id,
+        metric: 'forecast_day',
+        unit: null,
+        value: null,
+        itemKey: '2026-11-08',
+        observedAt: new Date('2026-11-08T05:50:00Z'),
+        valueJson: {
+          date: '2026-11-08',
+          afternoon_forecast: 'Tiada hujan',
+          gloss_en: { afternoon_forecast: 'No rain' }
+        }
+      })
+      for (const [revision, text] of [
+        [0, 'Ribut petir di beberapa tempat'],
+        [1, 'Tiada hujan']
+      ] as const) {
+        await makeReading(tx, {
+          sourceId: metForecast.id,
+          metric: 'forecast_day',
+          unit: null,
+          value: null,
+          itemKey: '2026-11-09',
+          observedAt: new Date('2026-11-08T05:50:00Z'),
+          revision,
+          valueJson: { date: '2026-11-09', afternoon_forecast: text, gloss_en: {} }
+        })
+      }
+      // 2026-11-10 has an afternoon thunderstorm forecast.
+      await makeReading(tx, {
+        sourceId: metForecast.id,
+        metric: 'forecast_day',
+        unit: null,
+        value: null,
+        itemKey: '2026-11-10',
+        observedAt: new Date('2026-11-08T05:50:00Z'),
+        valueJson: {
+          date: '2026-11-10',
+          afternoon_forecast: 'Ribut petir di beberapa tempat',
+          gloss_en: { afternoon_forecast: 'Thunderstorms in several places' }
+        }
+      })
+
+      const { project: p2 } = await createProjectRecord(tx, {
+        name: 'Forecast Stale',
+        slug: 'forecast-stale',
+        siteName: 'APU',
+        siteLat: 3.05,
+        siteLon: 101.7,
+        packs: ['sky']
+      })
+      const staleForecast = await makeSource(tx, { kind: 'met_forecast', freshness: 'polled' })
+      await makeProjectSource(tx, { projectId: p2.id, sourceId: staleForecast.id, role: 'met_forecast' })
+      await makeSourceState(tx, {
+        sourceId: staleForecast.id,
+        state: 'stale',
+        since: new Date('2026-11-08T01:00:00Z')
+      })
+      await makeReading(tx, {
+        sourceId: staleForecast.id,
+        metric: 'forecast_day',
+        unit: null,
+        value: null,
+        itemKey: '2026-11-09',
+        observedAt: new Date('2026-11-08T00:00:00Z'),
+        valueJson: {
+          date: '2026-11-09',
+          afternoon_forecast: 'Ribut petir di satu dua tempat',
+          gloss_en: { afternoon_forecast: 'Thunderstorms in one or two places' }
+        }
+      })
+
+      return {
+        withUpcomingStorm: await getProjectSummaryRecord(tx, p1.id, now),
+        withStaleForecast: await getProjectSummaryRecord(tx, p2.id, now)
+      }
+    })
+
+    expect(withUpcomingStorm.next_storm_date).toBe('2026-11-10')
+    expect(withStaleForecast.next_storm_date).toBeNull()
+  })
+
+  test('rejects corrupt call shadow or missing no_call provenance instead of fabricating stale/triggeredAt or a synthetic Sky verdict', async () => {
+    const now = new Date('2026-11-08T06:00:00Z')
+    await expect(
+      inOrg(async (tx) => {
+        const { project: created } = await createProjectRecord(tx, {
+          name: 'Corrupt Call Shadow',
+          slug: 'corrupt-call-shadow',
+          siteName: 'APU',
+          siteLat: 3.05,
+          siteLon: 101.7,
+          packs: ['crowd']
+        })
+        const crowdBundle = await makeBundle(tx, {
+          runId: (await makeRun(tx, { projectId: created.id, pack: 'crowd' })).id,
+          pack: 'crowd',
+          state: 'sent'
+        })
+        // Call has empty shadow `{}` (default from makeCall if not supplied): must not be fabricated into a Sky verdict.
+        await makeCall(tx, {
+          bundleId: crowdBundle.id,
+          mode: 'surge_night',
+          watch: false,
+          state: 'sent',
+          shadow: {}
+        })
+        return getProjectSummaryRecord(tx, created.id, now)
+      })
+    ).rejects.toThrow(/Invalid persisted call shadow/)
+
+    await expect(
+      inOrg(async (tx) => {
+        const { project: created } = await createProjectRecord(tx, {
+          name: 'Missing Blocker Provenance',
+          slug: 'missing-blocker-provenance',
+          siteName: 'APU',
+          siteLat: 3.05,
+          siteLon: 101.7,
+          packs: ['sky']
+        })
+        const win = await makeWindow(tx, {
+          projectId: created.id,
+          startsAt: new Date('2026-11-08T05:00:00Z'),
+          endsAt: new Date('2026-11-08T07:00:00Z')
+        })
+        const skyBundle = await makeBundle(tx, {
+          runId: (await makeRun(tx, { projectId: created.id, pack: 'sky' })).id,
+          pack: 'sky',
+          state: 'sent'
+        })
+        // Call lists noCall name ['site.rain_60m_mm'] with no provenance in shadow or shadow_state.
+        await makeCall(tx, {
+          bundleId: skyBundle.id,
+          windowId: win.id,
+          mode: 'normal',
+          watch: false,
+          noCall: ['site.rain_60m_mm'],
+          state: 'sent',
+          shadow: {
+            scope: { kind: 'window', id: win.id },
+            pack: 'sky',
+            mode: 'normal',
+            watch: false,
+            no_call: null,
+            recommendations: [],
+            clauses: [],
+            open_from: null
+          }
+        })
+        return getProjectSummaryRecord(tx, created.id, now)
+      })
+    ).rejects.toThrow(/Missing provenance for blocked input/)
   })
 })

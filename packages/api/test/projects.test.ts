@@ -16,6 +16,7 @@ import {
   makeOrganization,
   makeProjectSource,
   makeRun,
+  makeReading,
   makeShadowState,
   makeSourceState,
   makeWindow
@@ -23,7 +24,7 @@ import {
 import { memberOf } from '@skyclause/db/test/harness/index'
 import { and, eq } from 'drizzle-orm'
 import { beforeAll, describe, expect, test } from 'vitest'
-import { archiveProject, createProject, problemType } from '../src'
+import { archiveProject, createProject, updateProject, problemType } from '../src'
 import {
   apiRequest,
   asApiKey,
@@ -231,16 +232,117 @@ describe('POST /api/orgs/{org}/projects and service seams (#137)', () => {
           packs: ['sky']
         }
       )
-      const archived = await archiveProject({ principal: memberOf(orgId), tx }, created.id)
+      const archived = await archiveProject({ principal: memberOf(orgId), tx }, { projectId: created.id })
       return { created, archived }
     })
 
     expect(seamResult.created.slug).toBe('caller-seam')
     expect(seamResult.archived.archived_at).toEqual(expect.any(String))
+    const rollbackArchiveTarget = await inOrg((tx) =>
+      createProject(
+        { principal: memberOf(orgId), tx },
+        {
+          name: 'Existing Archive Rollback',
+          slug: 'existing-archive-rollback',
+          site_name: 'APU',
+          site_lat: 3.05,
+          site_lon: 101.7,
+          packs: ['sky']
+        }
+      )
+    )
+    await expect(
+      inOrg(async (tx) => {
+        await archiveProject({ principal: memberOf(orgId), tx }, { projectId: rollbackArchiveTarget.id })
+        throw new Error('existing project archive rollback')
+      })
+    ).rejects.toThrow('existing project archive rollback')
+    expect(await inOrg((tx) => projectGate(tx, rollbackArchiveTarget.id))).toBe('open')
+
+    await expect(
+      inOrg(async (tx) => {
+        const target = await createProject(
+          { principal: memberOf(orgId), tx },
+          {
+            name: 'Archive Rollback',
+            slug: 'archive-rollback',
+            site_name: 'APU',
+            site_lat: 3.05,
+            site_lon: 101.7,
+            packs: ['sky']
+          }
+        )
+        await archiveProject({ principal: memberOf(orgId), tx }, { projectId: target.id })
+        throw new Error('caller archive rollback')
+      })
+    ).rejects.toThrow('caller archive rollback')
+    expect(await inOrg((tx) => tx.select().from(project).where(eq(project.slug, 'archive-rollback')))).toEqual([])
   })
 })
 
 describe('PATCH /api/projects/{id}, archive, restore and ledger read while archived (#137)', () => {
+  test('refuses unsupported packs/rota writes before any owned mutation, including empty arrays', async () => {
+    const created = await inOrg((tx) =>
+      createProject(
+        { principal: memberOf(orgId), tx },
+        {
+          name: 'Unsupported Settings',
+          slug: 'unsupported-settings',
+          site_name: 'APU',
+          site_lat: 3.05,
+          site_lon: 101.7,
+          packs: ['sky']
+        }
+      )
+    )
+    const readRow = () => inOrg(async (tx) => (await tx.select().from(project).where(eq(project.id, created.id)))[0]!)
+    const before = await readRow()
+    for (const patch of [
+      { packs: [] },
+      { packs: [{ pack: 'sky' as const, enabled: false, schedule: null, sla_s: 900 }] },
+      { rota_override: [] },
+      { rota_override: null }
+    ]) {
+      const field = 'packs' in patch ? 'packs' : 'rota_override'
+      const response = await apiRequest(api, {
+        as: admin,
+        org: ORG,
+        method: 'PATCH',
+        path: `/api/projects/${created.id}`,
+        body: { name: 'Must not change', ...patch }
+      })
+      expect(response.status).toBe(422)
+      expect(await response.json()).toMatchObject({
+        type: problemType('validation-failed'),
+        field,
+        errors: [expect.objectContaining({ pointer: `/${field}` })]
+      })
+      expect(await readRow()).toEqual(before)
+      await expect(
+        inOrg((tx) =>
+          updateProject({ principal: memberOf(orgId), tx }, created.id, { name: 'Must not change', ...patch })
+        )
+      ).rejects.toMatchObject({ status: 422 })
+      expect(await readRow()).toEqual(before)
+    }
+    const denied = await apiRequest(api, {
+      as: editor,
+      org: ORG,
+      method: 'PATCH',
+      path: `/api/projects/${created.id}`,
+      body: { packs: [] }
+    })
+    expect(denied.status).toBe(403)
+    const missing = await apiRequest(api, {
+      as: admin,
+      org: ORG,
+      method: 'PATCH',
+      path: `/api/projects/${randomUUID()}`,
+      body: { packs: [] }
+    })
+    expect(missing.status).toBe(404)
+  })
+
   test('updates owned fields, enforces public_pages.edit on public toggle, and archives/restores idempotently', async () => {
     const createRes = await apiRequest(api, {
       as: cliAdmin,
@@ -312,6 +414,14 @@ describe('PATCH /api/projects/{id}, archive, restore and ledger read while archi
       body: { public: false }
     })
     expect(deniedPublic.status).toBe(403)
+    const deniedMixedPublic = await apiRequest(noPublicEditApi.api, {
+      as: admin,
+      org: ORG,
+      method: 'PATCH',
+      path: `/api/projects/${created.id}`,
+      body: { public: false, packs: [] }
+    })
+    expect(deniedMixedPublic.status).toBe(403)
 
     // Append a ledger entry before archiving, then archive twice and verify ledger stays readable.
     await inOrg((tx) => appendLedger(tx, { projectId: created.id, kind: 'call_sent', refs: {}, body: { ok: true } }))
@@ -390,11 +500,21 @@ describe('GET /v1/projects and GET /v1/projects/{id} with D3 summary and narrowe
         state: 'fresh',
         since: new Date(deps.now().getTime() - 120_000)
       })
+      await makeReading(tx, { sourceId: bound.sourceId, observedAt: new Date(deps.now().getTime() - 120_000) })
       await makeShadowState(tx, {
         projectId: created.id,
         pack: 'sky',
         scopeKind: 'site',
-        verdict: { mode: 'normal', watch: false, no_call: null }
+        verdict: {
+          scope: { kind: 'site', id: null },
+          pack: 'sky',
+          mode: 'normal',
+          watch: false,
+          no_call: null,
+          recommendations: [],
+          clauses: [],
+          open_from: null
+        }
       })
       const win = await makeWindow(tx, {
         projectId: created.id,
@@ -409,6 +529,16 @@ describe('GET /v1/projects and GET /v1/projects/{id} with D3 summary and narrowe
       const highCall = await makeCall(tx, {
         bundleId: skyBundle.id,
         windowId: win.id,
+        shadow: {
+          scope: { kind: 'window', id: win.id },
+          pack: 'sky',
+          mode: 'hybrid_recommended',
+          watch: true,
+          no_call: null,
+          recommendations: [],
+          clauses: [],
+          open_from: null
+        },
         mode: 'hybrid_recommended',
         watch: true,
         state: 'sent',
@@ -433,6 +563,16 @@ describe('GET /v1/projects and GET /v1/projects/{id} with D3 summary and narrowe
       await makeCall(tx, {
         bundleId: crowdBundle.id,
         nightId: pastNight.id,
+        shadow: {
+          scope: { kind: 'night', id: pastNight.id },
+          pack: 'crowd',
+          mode: 'surge_night',
+          watch: false,
+          no_call: null,
+          recommendations: [],
+          clauses: [],
+          open_from: null
+        },
         mode: 'surge_night',
         watch: false,
         state: 'sent',
@@ -444,7 +584,16 @@ describe('GET /v1/projects and GET /v1/projects/{id} with D3 summary and narrowe
         projectId: created.id,
         pack: 'crowd',
         scopeKind: 'site',
-        verdict: { mode: 'normal', watch: false, no_call: null }
+        verdict: {
+          scope: { kind: 'site', id: null },
+          pack: 'crowd',
+          mode: 'normal',
+          watch: false,
+          no_call: null,
+          recommendations: [],
+          clauses: [],
+          open_from: null
+        }
       })
       return { projectId: created.id, highCallId: highCall.id, crowdBundleId: crowdBundle.id }
     })

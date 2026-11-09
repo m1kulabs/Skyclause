@@ -138,5 +138,10 @@ describe('project core contracts (#137)', () => {
     ).toBe(true)
     expect(updateBodySchema.safeParse({ slug: 'new' }).success).toBe(true)
     expect(updateBodySchema.safeParse({ slug: 'BAD SLUG' }).success).toBe(false)
+    // Schema parses packs and rota_override (including empty arrays) so requests reach the service after visibility
+    // and permission checks, where #137 explicitly refuses #138/#156 mutations with a 422 problem.
+    expect(updateBodySchema.safeParse({ packs: [] }).success).toBe(true)
+    expect(updateBodySchema.safeParse({ rota_override: [] }).success).toBe(true)
+    expect(updateProject.responses[422]).toBeDefined()
   })
 })

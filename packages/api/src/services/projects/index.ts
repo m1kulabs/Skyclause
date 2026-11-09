@@ -219,9 +219,18 @@ export async function updateProject(
   patch: UpdateProjectInput,
   o: { can?: Can; now?: Date } = {}
 ): Promise<ProjectSettingsView> {
-  if (!inScope(ctx.principal, id)) throw notFound()
+  if (!inScope(ctx.principal, id) || !(await getProjectRecord(ctx.tx, id))) throw notFound()
   if (patch.public !== undefined && o.can && !o.can(ctx.principal, 'public_pages.edit', { projectId: id })) {
     throw new ApiError(403, 'insufficient-scope', 'This operation requires public_pages.edit.')
+  }
+  for (const field of ['packs', 'rota_override'] as const) {
+    if (Object.hasOwn(patch, field)) {
+      const detail = `${field} updates are not available through project settings yet.`
+      throw new ApiError(422, 'validation-failed', detail, {
+        field,
+        errors: [{ in: 'body', pointer: `/${field}`, detail }]
+      })
+    }
   }
   try {
     const updated = await updateProjectRecord(
@@ -257,7 +266,7 @@ export async function updateProject(
  */
 export async function archiveProject(
   ctx: ServiceContext,
-  id: string,
+  { projectId: id }: { projectId: string },
   o: { now?: Date } = {}
 ): Promise<ProjectSettingsView> {
   if (!inScope(ctx.principal, id)) throw notFound()

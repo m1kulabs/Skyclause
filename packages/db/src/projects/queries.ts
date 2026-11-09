@@ -1,3 +1,5 @@
+import { Verdict } from '@skyclause/contracts'
+import { z } from 'zod'
 import type {
   BlockedInput,
   Bundle as WireBundle,
@@ -9,8 +11,9 @@ import type {
   PackState,
   TxHandle
 } from '@skyclause/contracts'
-import { and, asc, desc, eq, inArray, isNull, lt, or, type SQL } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, lt, lte, max, or, sql, type SQL } from 'drizzle-orm'
 import type { Tx } from '../client'
+import { reading, poll } from '../schema/partitioned'
 import {
   bundle,
   call,
@@ -18,6 +21,7 @@ import {
   project,
   projectPack,
   projectSource,
+  source,
   rotaShift,
   shadowState,
   sourceState,
@@ -179,52 +183,44 @@ function extractShadowSpanEnd(shadow: unknown): Date | null {
   return maxEnd
 }
 
-function extractVerdictNoCall(verdict: unknown): { inputs: BlockedInput[] } | null {
-  if (!verdict || typeof verdict !== 'object') return null
-  const noCall = (verdict as { no_call?: unknown }).no_call
-  if (!noCall || typeof noCall !== 'object') return null
-  const inputs = (noCall as { inputs?: unknown }).inputs
-  if (!Array.isArray(inputs)) return null
-  return { inputs: inputs as BlockedInput[] }
-}
-
-function extractCallNoCall(callRow: typeof call.$inferSelect): { inputs: BlockedInput[] } | null {
-  const fromShadow = extractVerdictNoCall(callRow.shadow)
-  if (fromShadow) return fromShadow
-  if (Array.isArray(callRow.noCall) && callRow.noCall.length > 0) {
-    return {
-      inputs: callRow.noCall.map((name) => ({
-        name: String(name),
-        source_id: null,
-        state: 'stale' as const,
-        since: toIso(callRow.triggeredAt)
-      }))
-    }
+function persistedVerdict(value: unknown, pack: Pack, kind: string, scopeId: string | null, label: string): Verdict {
+  const parsed = Verdict.safeParse(value)
+  if (
+    !parsed.success ||
+    parsed.data.pack !== pack ||
+    parsed.data.scope.kind !== kind ||
+    parsed.data.scope.id !== scopeId
+  ) {
+    throw new Error(`Invalid persisted ${label}`)
   }
-  return null
+  return parsed.data
 }
 
-function serializeCall(row: typeof call.$inferSelect): WireCallView {
+function requiredBlockers(verdict: Verdict): BlockedInput[] {
+  // A not_open clause never blocks. Only actual required-input failures are overlaid.
+  return verdict.clauses.length > 0
+    ? verdict.clauses.filter((c) => c.result === 'blocked').flatMap((c) => c.blocked_by)
+    : (verdict.no_call?.inputs ?? [])
+}
+
+function noCall(inputs: BlockedInput[]): { inputs: BlockedInput[] } | null {
+  const unique = new Map(
+    inputs.map((input) => [JSON.stringify([input.name, input.source_id, input.state, input.since]), input])
+  )
+  return unique.size ? { inputs: [...unique.values()] } : null
+}
+
+// Read projection of #122's forecast_day value_json contract. db cannot depend on sources (§1).
+const ForecastDay = z.object({
+  date: z.iso.date(),
+  afternoon_forecast: z.string(),
+  gloss_en: z.record(z.string(), z.string())
+})
+
+function serializeCall(row: typeof call.$inferSelect, shadow: Verdict): WireCallView {
   const notices = Array.isArray(row.notices)
     ? (row.notices as Array<{ language: 'en' | 'ms'; subject: string; body: string }>)
     : []
-  const shadow =
-    row.shadow && typeof row.shadow === 'object' && 'scope' in (row.shadow as Record<string, unknown>)
-      ? (row.shadow as WireCallView['shadow'])
-      : {
-          scope: row.windowId
-            ? { kind: 'window' as const, id: row.windowId }
-            : row.nightId
-              ? { kind: 'night' as const, id: row.nightId }
-              : { kind: 'site' as const, id: null },
-          pack: 'sky' as const,
-          mode: row.mode,
-          watch: row.watch,
-          no_call: extractVerdictNoCall(row.shadow),
-          recommendations: (row.recommendations ?? []) as WireCallView['recommendations'],
-          clauses: [],
-          open_from: null
-        }
 
   return {
     id: row.id,
@@ -257,6 +253,18 @@ function serializeCall(row: typeof call.$inferSelect): WireCallView {
 
 export async function getProjectSummaryRecord(handle: TxHandle, projectId: string, now: Date = new Date()) {
   const tx = handle as Tx
+  const [calendar] = await tx
+    .select({
+      today: sql<string>`to_char(${now.toISOString()}::timestamptz AT TIME ZONE ${project.timeZone}, 'YYYY-MM-DD')`,
+      dayEnd:
+        sql<string>`(date_trunc('day', ${now.toISOString()}::timestamptz AT TIME ZONE ${project.timeZone}) + interval '1 day') AT TIME ZONE ${project.timeZone}`.mapWith(
+          (value) => new Date(value)
+        )
+    })
+    .from(project)
+    .where(eq(project.id, projectId))
+  if (!calendar) throw new Error('Project summary unavailable: project not found')
+  const { today, dayEnd } = calendar
 
   const windows = await tx.select().from(windowTable).where(eq(windowTable.projectId, projectId))
   const windowById = new Map(windows.map((w) => [w.id, w]))
@@ -290,6 +298,29 @@ export async function getProjectSummaryRecord(handle: TxHandle, projectId: strin
       : []
 
   const shadows = await tx.select().from(shadowState).where(eq(shadowState.projectId, projectId))
+
+  const callVerdicts = new Map(
+    calls.map((c) => {
+      const pack = bundleById.get(c.bundleId)!.pack
+      const kind = c.windowId ? 'window' : c.nightId ? 'night' : 'site'
+      return [c.id, persistedVerdict(c.shadow, pack, kind, c.windowId ?? c.nightId, 'call shadow')]
+    })
+  )
+  const shadowVerdicts = new Map(
+    shadows.map((s) => [s.id, persistedVerdict(s.verdict, s.pack, s.scopeKind, s.scopeId, 'shadow verdict')])
+  )
+
+  const activeShadows = shadows.filter((s) => {
+    if (s.scopeKind === 'window') {
+      const win = s.scopeId ? windowById.get(s.scopeId) : null
+      return win !== undefined && win !== null && win.cancelledAt === null && win.endsAt > now
+    }
+    if (s.scopeKind === 'night') {
+      const n = s.scopeId ? nightById.get(s.scopeId) : null
+      return n !== undefined && n !== null && n.state !== 'unlisted' && (n.exitEnd ?? n.arrivalEnd ?? now) > now
+    }
+    return true
+  })
 
   function isCallInForce(c: typeof call.$inferSelect): boolean {
     if (!(IN_FORCE_CALL_STATES as readonly string[]).includes(c.state)) return false
@@ -326,6 +357,85 @@ export async function getProjectSummaryRecord(handle: TxHandle, projectId: strin
 
   const inForceCalls = calls.filter(isCallInForce)
 
+  const boundSources = await tx.select().from(projectSource).where(eq(projectSource.projectId, projectId))
+  const sourceStates =
+    boundSources.length > 0
+      ? await tx
+          .select()
+          .from(sourceState)
+          .where(
+            inArray(
+              sourceState.sourceId,
+              boundSources.map((b) => b.sourceId)
+            )
+          )
+      : []
+  const stateBySourceId = new Map(sourceStates.map((s) => [s.sourceId, s]))
+
+  const sourceIds = [...new Set(boundSources.map((b) => b.sourceId))]
+  const sources = sourceIds.length ? await tx.select().from(source).where(inArray(source.id, sourceIds)) : []
+  const latestReadings = sourceIds.length
+    ? await tx
+        .select({ sourceId: reading.sourceId, at: max(reading.observedAt) })
+        .from(reading)
+        .where(and(inArray(reading.sourceId, sourceIds), lte(reading.observedAt, now)))
+        .groupBy(reading.sourceId)
+    : []
+  const latestPolls = sourceIds.length
+    ? await tx
+        .select({ sourceId: poll.sourceId, at: max(poll.startedAt) })
+        .from(poll)
+        .where(
+          and(inArray(poll.sourceId, sourceIds), lte(poll.startedAt, now), inArray(poll.outcome, ['ok', 'unchanged']))
+        )
+        .groupBy(poll.sourceId)
+    : []
+  const sourceById = new Map(sources.map((s) => [s.id, s]))
+  const observedAtBySource = new Map(latestReadings.map((r) => [r.sourceId, r.at]))
+  const polledAtBySource = new Map(latestPolls.map((p) => [p.sourceId, p.at]))
+
+  for (const c of calls) {
+    const v = callVerdicts.get(c.id)!
+    const current = activeShadows.filter(
+      (s) => s.pack === v.pack && s.scopeKind === v.scope.kind && s.scopeId === v.scope.id
+    )
+    const provenance = [
+      ...(v.no_call?.inputs ?? []),
+      ...requiredBlockers(v),
+      ...current.flatMap((s) => requiredBlockers(shadowVerdicts.get(s.id)!))
+    ]
+    for (const name of z.array(z.string()).nullable().parse(c.noCall) ?? []) {
+      if (!provenance.some((input) => input.name === name))
+        throw new Error(`Missing provenance for blocked input ${name}`)
+    }
+  }
+
+  function currentNoCall(pack: Pack, windowId?: string): { inputs: BlockedInput[] } | null {
+    const current = activeShadows.filter(
+      (s) =>
+        s.pack === pack &&
+        (windowId === undefined || (s.scopeKind === 'window' && s.scopeId === windowId) || s.scopeKind === 'site')
+    )
+    const inputs = current.flatMap((s) => requiredBlockers(shadowVerdicts.get(s.id)!))
+    // Without a current verdict for a call's scope, its persisted blockers are the only known provenance.
+    for (const c of inForceCalls.filter(
+      (c) => bundleById.get(c.bundleId)?.pack === pack && (windowId === undefined || c.windowId === windowId)
+    )) {
+      const v = callVerdicts.get(c.id)!
+      const sameScope = current.some((s) => s.scopeKind === v.scope.kind && s.scopeId === v.scope.id)
+      if (!sameScope) inputs.push(...requiredBlockers(v))
+    }
+    return noCall(
+      inputs.flatMap((input) => {
+        const state = input.source_id ? stateBySourceId.get(input.source_id) : undefined
+        if (!state) return [input]
+        // Fresh source data does not prove a derived interval has complete required coverage.
+        if (state.state === 'fresh' || state.state === 'off_hours') return [input]
+        return [{ ...input, state: state.state, since: toIso(state.since) }]
+      })
+    )
+  }
+
   const packStates: PackState[] = ALL_PACKS.map((pack) => {
     const packInForce = inForceCalls.filter((c) => bundleById.get(c.bundleId)?.pack === pack)
     if (packInForce.length > 0) {
@@ -342,30 +452,16 @@ export async function getProjectSummaryRecord(handle: TxHandle, projectId: strin
         call_id: winner.id,
         mode: winner.mode,
         watch: winner.watch,
-        no_call: extractCallNoCall(winner)
+        no_call: currentNoCall(pack)
       }
     }
 
-    const activeShadows = shadows.filter((s) => {
-      if (s.pack !== pack) return false
-      if (s.scopeKind === 'window' && s.scopeId) {
-        const win = windowById.get(s.scopeId)
-        if (!win || win.cancelledAt !== null || win.endsAt <= now) return false
-      }
-      if (s.scopeKind === 'night' && s.scopeId) {
-        const n = nightById.get(s.scopeId)
-        if (!n || n.state === 'unlisted') return false
-        const end = n.exitEnd ?? n.arrivalEnd
-        if (end && end <= now) return false
-      }
-      return true
-    })
+    const packShadows = activeShadows.filter((s) => s.pack === pack)
 
-    if (activeShadows.length > 0) {
-      const parsed = activeShadows.map((s) => {
-        const v = (s.verdict ?? {}) as { mode?: Mode | null; watch?: boolean }
-        const mode = v.mode && v.mode in MODE_RANK ? v.mode : null
-        return { row: s, mode, watch: Boolean(v.watch), noCall: extractVerdictNoCall(s.verdict) }
+    if (packShadows.length > 0) {
+      const parsed = packShadows.map((s) => {
+        const v = shadowVerdicts.get(s.id)!
+        return { row: s, mode: v.mode, watch: v.watch }
       })
       parsed.sort((a, b) =>
         compareModes(
@@ -380,7 +476,7 @@ export async function getProjectSummaryRecord(handle: TxHandle, projectId: strin
         call_id: null,
         mode: winner.mode,
         watch: winner.watch,
-        no_call: winner.noCall
+        no_call: currentNoCall(pack)
       }
     }
 
@@ -394,38 +490,23 @@ export async function getProjectSummaryRecord(handle: TxHandle, projectId: strin
     }
   })
 
-  const activeWindows = windows.filter((w) => w.cancelledAt === null && w.endsAt > now)
+  // Overlap today's local calendar day and remain nonended; a previous-day start may cross midnight.
+  const activeWindows = windows.filter((w) => w.cancelledAt === null && w.endsAt > now && w.startsAt < dayEnd)
   const atRiskWindowIds = new Set<string>()
   for (const w of activeWindows) {
-    const winCalls = inForceCalls.filter((c) => c.windowId === w.id)
-    if (winCalls.some((c) => (c.mode !== null && c.mode !== 'normal') || c.watch)) {
-      atRiskWindowIds.add(w.id)
-      continue
-    }
-    const winShadows = shadows.filter((s) => s.scopeKind === 'window' && s.scopeId === w.id)
-    for (const s of winShadows) {
-      const v = (s.verdict ?? {}) as { mode?: Mode | null; watch?: boolean }
-      if ((v.mode && v.mode !== 'normal') || Boolean(v.watch) || extractVerdictNoCall(s.verdict) !== null) {
-        atRiskWindowIds.add(w.id)
-        break
-      }
+    for (const pack of ALL_PACKS) {
+      const winCalls = inForceCalls.filter((c) => c.windowId === w.id && bundleById.get(c.bundleId)?.pack === pack)
+      const winShadows = activeShadows.filter((s) => s.pack === pack && s.scopeKind === 'window' && s.scopeId === w.id)
+      const modeRisk =
+        winCalls.length > 0
+          ? winCalls.some((c) => (c.mode !== null && c.mode !== 'normal') || c.watch)
+          : winShadows.some((s) => {
+              const v = shadowVerdicts.get(s.id)!
+              return (v.mode !== null && v.mode !== 'normal') || v.watch
+            })
+      if (modeRisk || currentNoCall(pack, w.id) !== null) atRiskWindowIds.add(w.id)
     }
   }
-
-  const boundSources = await tx.select().from(projectSource).where(eq(projectSource.projectId, projectId))
-  const sourceStates =
-    boundSources.length > 0
-      ? await tx
-          .select()
-          .from(sourceState)
-          .where(
-            inArray(
-              sourceState.sourceId,
-              boundSources.map((b) => b.sourceId)
-            )
-          )
-      : []
-  const stateBySourceId = new Map(sourceStates.map((s) => [s.sourceId, s]))
 
   let signalState: InputState = 'pending'
   let inputsReporting = 0
@@ -439,11 +520,12 @@ export async function getProjectSummaryRecord(handle: TxHandle, projectId: strin
       if (currentState === 'fresh' || currentState === 'recovered') {
         inputsReporting += 1
       }
-      if (st) {
-        const ageS = Math.max(0, Math.floor((now.getTime() - st.since.getTime()) / 1000))
-        if (oldestAgeS === null || ageS > oldestAgeS) {
-          oldestAgeS = ageS
-        }
+      const src = sourceById.get(bound.sourceId)
+      const at =
+        src?.freshness === 'observed' ? observedAtBySource.get(bound.sourceId) : polledAtBySource.get(bound.sourceId)
+      if (at) {
+        const ageS = Math.floor((now.getTime() - new Date(at).getTime()) / 1000)
+        if (oldestAgeS === null || ageS > oldestAgeS) oldestAgeS = ageS
       }
       const prio = SIGNAL_HEALTH_PRIORITY[currentState]
       if (prio > bestPriority) {
@@ -468,7 +550,9 @@ export async function getProjectSummaryRecord(handle: TxHandle, projectId: strin
         approved_by: latestBundleRow.approvedBy,
         escalation_level: latestBundleRow.escalationLevel,
         draft_only: latestBundleRow.draftOnly,
-        calls: calls.filter((c) => c.bundleId === latestBundleRow.id).map(serializeCall)
+        calls: calls
+          .filter((c) => c.bundleId === latestBundleRow.id)
+          .map((c) => serializeCall(c, callVerdicts.get(c.id)!))
       }
     : null
 
@@ -496,6 +580,55 @@ export async function getProjectSummaryRecord(handle: TxHandle, projectId: strin
       }
     : null
 
+  const forecastSourceIds = new Set(
+    boundSources
+      .filter(
+        (b) =>
+          b.role === 'met_forecast' &&
+          sourceById.get(b.sourceId)?.kind === 'met_forecast' &&
+          stateBySourceId.get(b.sourceId)?.state === 'fresh'
+      )
+      .map((b) => b.sourceId)
+  )
+  const readings = forecastSourceIds.size
+    ? await tx
+        .select()
+        .from(reading)
+        .where(
+          and(
+            inArray(reading.sourceId, [...forecastSourceIds]),
+            eq(reading.metric, 'forecast_day'),
+            lte(reading.observedAt, now)
+          )
+        )
+    : []
+  // Use the latest observed revision per source/date: a later fair-weather revision supersedes a storm.
+  const forecastDays = new Map<string, { at: number; revision: number; date: string; text: string }>()
+  for (const r of readings) {
+    if (!forecastSourceIds.has(r.sourceId) || r.metric !== 'forecast_day') continue
+    const parsed = ForecastDay.safeParse(r.valueJson)
+    if (!parsed.success) throw new Error('Invalid persisted forecast_day reading')
+    const key = `${r.sourceId}:${parsed.data.date}`
+    const previous = forecastDays.get(key)
+    if (
+      !previous ||
+      r.observedAt.getTime() > previous.at ||
+      (r.observedAt.getTime() === previous.at && r.revision > previous.revision)
+    ) {
+      forecastDays.set(key, {
+        at: r.observedAt.getTime(),
+        revision: r.revision,
+        date: parsed.data.date,
+        text: parsed.data.afternoon_forecast
+      })
+    }
+  }
+  const nextStormDate =
+    [...forecastDays.values()]
+      .filter((d) => d.date >= today && /^ribut petir\b/i.test(d.text))
+      .map((d) => d.date)
+      .sort()[0] ?? null
+
   const nonCancelledWindows = await tx
     .select({ id: windowTable.id })
     .from(windowTable)
@@ -515,7 +648,7 @@ export async function getProjectSummaryRecord(handle: TxHandle, projectId: strin
     },
     latest_bundle: latestBundle,
     next_night: nextNight,
-    next_storm_date: null,
+    next_storm_date: nextStormDate,
     next_action: nextAction
   }
 }

@@ -20,8 +20,12 @@ const ProjectUpdate = Project.pick({
 })
   .extend({
     slug: z.string().regex(SLUG_REGEX),
-    packs: z.array(ProjectPack.pick({ pack: true, enabled: true, schedule: true, sla_s: true })),
-    rota_override: RotaOverride
+    packs: z
+      .array(ProjectPack.pick({ pack: true, enabled: true, schedule: true, sla_s: true }))
+      .describe('Currently refused with 422 validation-failed; pack settings are managed by the source-binding owner.'),
+    rota_override: RotaOverride.describe(
+      'Currently refused with 422 validation-failed; rota writes are not available here.'
+    )
   })
   .partial()
 
@@ -35,6 +39,10 @@ export const updateProject = createRoute({
   responses: {
     ...CommonProblems,
     200: { description: 'Success', content: { 'application/json': { schema: ProjectSettings } } },
+    422: {
+      ...ProblemResponse,
+      description: 'validation-failed, including unsupported packs or rota_override writes; slug-reserved or slug-taken'
+    },
     409: { ...ProblemResponse, description: 'slug-reserved, slug-taken or pack-prerequisites' }
   },
   x: { owner: 'b-projects-api', statement: 'project.manage', idempotent: false }

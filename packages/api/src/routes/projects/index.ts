@@ -52,7 +52,7 @@ export const projectHandlers: Handlers = {
     handler: async (c) => {
       const { id } = c.req.valid('param')
       const { now } = c.get('deps')
-      const archived = await inTenant(c, (ctx) => archiveProject(ctx, id, { now: now() }))
+      const archived = await inTenant(c, (ctx) => archiveProject(ctx, { projectId: id }, { now: now() }))
       return c.json(settingsBody(archived), 200)
     }
   },
