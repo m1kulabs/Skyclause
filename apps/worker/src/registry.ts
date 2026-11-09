@@ -4,6 +4,7 @@ import { evidence } from './evidence'
 import { domainEvents } from './events'
 import { grades } from './grades'
 import { migrations } from './migrate'
+import { notices } from './notices'
 import { pilotArchive } from './pilot-archive'
 import { replies } from './replies'
 import { restoreDrill } from './restore-drill'
@@ -22,5 +23,6 @@ export const registry = defineRegistry([
   evidence, // c-evidence
   grades, // c-grades
   replies, // c-recipient-replies
-  runs // c-run-orchestrator
+  runs, // c-run-orchestrator
+  notices // c-sender-email
 ])
