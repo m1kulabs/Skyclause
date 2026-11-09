@@ -15,8 +15,14 @@ export function expectedStatus(route: CrawlRoute, role: Role) {
   return route.status
 }
 
-export async function visit(page: Page, route: CrawlRoute, role: Role = 'signed out'): Promise<Finding[]> {
+export async function visit(
+  page: Page,
+  route: CrawlRoute,
+  role: Role = 'signed out',
+  readySelector?: string
+): Promise<Finding[]> {
   const response = await page.goto(route.path)
+  if (readySelector) await page.locator(readySelector).waitFor({ state: 'attached' })
   if (route.path === '/connect' && (!hasSession(role) || role === 'guest')) {
     await expect(page).toHaveURL(/\/sign-up$/)
     await expect(page.locator('[data-connect-page]')).toHaveCount(0)

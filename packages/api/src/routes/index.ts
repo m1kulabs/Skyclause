@@ -7,6 +7,7 @@ import { alertHandlers } from './alerts'
 import { analysisHandlers } from './analysis'
 import { bundleHandlers } from './bundles'
 import { channelHandlers } from './channels'
+import { callHandlers } from './calls'
 import { evidenceHandlers } from './evidence'
 import { gradesHandlers } from './grades'
 import { ledgerHandlers } from './ledger'
@@ -39,6 +40,7 @@ export type Handlers = { [Id in OperationId]?: HandlerEntry<Operations[Id]> }
  */
 export const HANDLERS: Handlers = {
   ...channelHandlers, // c-notice-templates
+  ...callHandlers, // c-call-page-ui
   ...ledgerHandlers, // c-ledger-chain
   ...subscriberHandlers,
   ...bundleHandlers, // c-bundle-lifecycle

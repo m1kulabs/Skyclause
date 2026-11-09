@@ -9,6 +9,7 @@ const sent: CallDetail = {
   call_id: 'sent',
   bundle_id: 'bundle',
   project_id: 'project',
+  trace_id: 'run',
   window_id: null,
   window: null,
   night_id: null,

@@ -6,6 +6,7 @@ import { KNOWN_GAPS } from './known-gaps'
 import { sessions, signedOut, type Session } from './roles'
 import { builtRoutes, type CrawlRoute } from './routes'
 import { visit } from './visit'
+import { stubCalls } from '../calls/doubles'
 
 const PLANTED_FAILURE = '/quality-planted/unlabelled-input'
 const PUBLIC_GROUPS = new Set(['marketing', 'public'])
@@ -36,7 +37,13 @@ function note(info: TestInfo, type: string, description: string) {
   console.log(`${type}: ${description}`)
 }
 
-async function crawl(page: Page, route: CrawlRoute, session: Session, info: TestInfo): Promise<Located[]> {
+async function crawl(
+  page: Page,
+  route: CrawlRoute,
+  session: Session,
+  info: TestInfo,
+  readySelector?: string
+): Promise<Located[]> {
   const jsOn = info.project.use.javaScriptEnabled !== false
   const found: Located[] = []
   if (session.signIn) await session.signIn(page)
@@ -48,7 +55,7 @@ async function crawl(page: Page, route: CrawlRoute, session: Session, info: Test
       reducedMotion: 'no-preference'
     })
     if (variant.viewport) await page.setViewportSize(variant.viewport)
-    const findings = await visit(page, route, session.role)
+    const findings = await visit(page, route, session.role, readySelector)
     if (
       variant.theme === 'high contrast' &&
       !(await page.evaluate(() => matchMedia('(prefers-contrast: more)').matches))
@@ -61,7 +68,7 @@ async function crawl(page: Page, route: CrawlRoute, session: Session, info: Test
   }
   if (jsOn) {
     await page.emulateMedia({ colorScheme: 'dark', contrast: 'no-preference', reducedMotion: 'reduce' })
-    const findings = [...(await visit(page, route, session.role)), ...(await motionFindings(page))]
+    const findings = [...(await visit(page, route, session.role, readySelector)), ...(await motionFindings(page))]
     found.push(...findings.map((finding) => ({ ...finding, theme: 'dark, reduced motion', size: 'project size' })))
   } else {
     note(info, 'JavaScript off', 'axe and reduced motion need page scripts; they run in the JavaScript projects')
@@ -76,14 +83,27 @@ function report(route: CrawlRoute, session: Session, findings: Located[]) {
   return `${findings.length} quality finding(s):\n${lines.join('\n')}`
 }
 
-for (const route of builtRoutes()) {
+function routeFixture(route: CrawlRoute): { route: CrawlRoute; calls: boolean } {
+  if (route.path === '/[org]/[project]/calls')
+    return { route: { ...route, path: '/test-org/test-project/calls', dynamic: false }, calls: true }
+  if (route.path === '/[org]/[project]/calls/[id]')
+    return {
+      route: { ...route, path: '/test-org/test-project/calls/019a45b0-0000-7000-8000-000000000004', dynamic: false },
+      calls: true
+    }
+  return { route, calls: false }
+}
+
+for (const discovered of builtRoutes()) {
+  const { route, calls } = routeFixture(discovered)
   for (const session of sessions()) {
     test(`${route.path} as ${session.role}`, async ({ page }, info) => {
       const jsOn = info.project.use.javaScriptEnabled !== false
       test.slow(jsOn, 'One case runs five complete axe audits plus the reduced-motion check')
       test.skip(!jsOn && !(route.group && PUBLIC_GROUPS.has(route.group)), 'JavaScript off covers public pages only')
       test.fixme(route.dynamic, `${route.path} needs param fixtures with stubApi bodies (#95)`)
-      const findings = await crawl(page, route, session, info)
+      if (calls) await stubCalls(page)
+      const findings = await crawl(page, route, session, info, calls && jsOn ? '[data-calls-ready="true"]' : undefined)
 
       if (route.path === PLANTED_FAILURE) {
         // The planted unlabelled input must fail the crawl, by route, role, theme and rule.
