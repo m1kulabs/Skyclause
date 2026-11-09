@@ -35,7 +35,8 @@ export const AUDIT_ACTIONS = [
   // #159 c-evidence: an Approver's approval of a reply leaving the organisation; an emailed request dropped unanswered.
   'evidence_reply.approved',
   'evidence_request.dropped',
-  'review_item.explained'
+  'review_item.explained',
+  'crowd_reply.dropped'
 ] as const
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number]
