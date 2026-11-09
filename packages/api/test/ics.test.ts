@@ -2,7 +2,7 @@
 // renderNotice double (#152 renders the real text). Calls come from factories only (NFR-15).
 import { createHash } from 'node:crypto'
 import type { CallView } from '@skyclause/contracts'
-import { assignIcsIdentity, window as windowTable, withTenant, type Tx } from '@skyclause/db'
+import { assignIcsIdentity, window as windowTable, withPublicReader, withTenant, type Tx } from '@skyclause/db'
 import {
   makeBundle,
   makeCall,
@@ -17,7 +17,7 @@ import { asLogin, memberOf } from '@skyclause/db/test/harness/index'
 import type { RenderNotice } from '@skyclause/delivery'
 import ICAL from 'ical.js'
 import { beforeEach, expect, test } from 'vitest'
-import { serveCalendarFeed, type CalendarFeedDeps } from '../src/services/ics'
+import { calendarFeed, serveCalendarFeed, type CalendarFeedDeps } from '../src/services/ics'
 
 const ORIGIN = 'https://skyclause.m1ku.tech'
 const SENT = new Date('2026-11-02T07:10:00Z')
@@ -199,6 +199,25 @@ test('HEAD answers the GET’s headers without a body', async () => {
   expect(head.headers.get('ETag')).toBe(full.headers.get('ETag'))
   expect(head.headers.get('Content-Type')).toBe('text/calendar; charset=utf-8')
   expect(await head.text()).toBe('')
+})
+
+test('the feed reads as public_reader: a public project’s entries, and nothing of a private one', async () => {
+  const sendBoth = async ({ inOrg, window, night, send }: Awaited<ReturnType<typeof scene>>) =>
+    inOrg(async (tx) => [
+      (await send(tx, { mode: 'commute_disruption', windowId: (await window(tx)).id })).id,
+      (await send(tx, { mode: 'surge_night', nightId: (await night(tx, { listingState: 'listed' })).id })).nightId!
+    ])
+  const [open, closed] = [await scene(), await scene({ public: false })]
+  const [callId, nightId] = await sendBoth(open)
+  await sendBoth(closed)
+  const read = (projectId: string) =>
+    withPublicReader(async (tx) =>
+      events((await calendarFeed(tx, { projectId, name: 'Bukit Jalil', origin: ORIGIN }, render)).body)
+    )
+  expect((await read(open.project.id)).map((e) => e.uid).sort()).toEqual(
+    [`call-${callId}@skyclause.m1ku.tech`, `night-${nightId}@skyclause.m1ku.tech`].sort()
+  )
+  expect(await read(closed.project.id)).toEqual([])
 })
 
 test('private, unknown and suspended projects answer 404 (PRD IA, D20)', async () => {

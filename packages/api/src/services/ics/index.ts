@@ -1,20 +1,10 @@
 import { createHash } from 'node:crypto'
 import { loadEnv } from '@skyclause/config'
 import type { CallView } from '@skyclause/contracts'
-import {
-  findPublicFeedProject,
-  loadIcsEntries,
-  projectGate,
-  systemPrincipal,
-  withPublicReader,
-  withTenant,
-  type IcsEntry,
-  type Tx
-} from '@skyclause/db'
+import { findPublicFeedProject, loadIcsEntries, withPublicReader, type IcsEntry, type Tx } from '@skyclause/db'
 import { renderNotice, writeCalendar, type RenderNotice } from '@skyclause/delivery'
 import { problemType } from '../../problems'
 import { instant } from '../../serialize'
-import type { ServiceContext } from '../../tenancy'
 
 // #154 c-ics-feed: the conditions calendar at `/p/{org}/{project}/calendar.ics` (#79 §4 "Other", public), which
 // `apps/web` serves on the marketing host. English only, one entry per call (D20).
@@ -30,8 +20,9 @@ export interface CalendarFeed {
 const instantOrNull = (date: Date | null) => (date ? instant(date) : null)
 
 /**
- * The call renderNotice gets, from the entry's head call. `notices` and `recipients` stay empty until #150 adds their
- * columns; the ICS template (DESIGN "Email notice and ICS entry") draws on neither.
+ * The call renderNotice gets, from the entry's head call in `public_call`. `notices` and `recipients` stay empty until
+ * #150 adds their columns, and `public_call` carries no `recommendations` or `reason`: the ICS template (DESIGN "Email
+ * notice and ICS entry") draws on none of the four.
  */
 function callView({ call, uid, sequence }: IcsEntry): CallView {
   return {
@@ -43,10 +34,10 @@ function callView({ call, uid, sequence }: IcsEntry): CallView {
     watch: call.watch,
     no_call: call.noCall as CallView['no_call'],
     fired: call.fired as CallView['fired'],
-    recommendations: call.recommendations as CallView['recommendations'],
+    recommendations: [],
     recipients: [],
     notices: [],
-    reason: call.reason ?? '',
+    reason: '',
     state: call.state,
     shadow: call.shadow as CallView['shadow'],
     chosen: call.chosen,
@@ -64,15 +55,15 @@ function callView({ call, uid, sequence }: IcsEntry): CallView {
 }
 
 /**
- * A project's conditions calendar: each entry's SUMMARY and DESCRIPTION are `render`'s subject and text for the `ics`
- * channel in English, its URL the head call's permalink `{origin}/c/{callId}`.
+ * A project's conditions calendar, read as `public_reader`: each entry's SUMMARY and DESCRIPTION are `render`'s subject
+ * and text for the `ics` channel in English, its URL the head call's permalink `{origin}/c/{callId}`.
  */
 export async function calendarFeed(
-  ctx: ServiceContext,
+  tx: Tx<null>,
   input: { projectId: string; name: string; origin: string },
   render: RenderNotice = renderNotice
 ): Promise<CalendarFeed> {
-  const entries = await loadIcsEntries(ctx.tx as Tx, input.projectId)
+  const entries = await loadIcsEntries(tx, input.projectId)
   const events = entries.map((entry) => {
     const permalink = `${input.origin}/c/${entry.call.id}`
     const { subject, text } = render(callView(entry), { language: 'en', channel: 'ics', links: { permalink } })
@@ -144,29 +135,20 @@ function notModified(request: Request, feed: CalendarFeed) {
 }
 
 /**
- * `GET` and `HEAD` `/p/{org}/{project}/calendar.ics`. `public_project` decides visibility, so a private or unknown
- * project is 404; the feed's rows (calls, windows, nights, listings) have no public view, so they're read as system job
- * `ics-feed` in the project's organisation, where a `suspended` project is 404 too (D20). Polls revalidate every time
- * (`no-cache`) and get 304 while nothing changed.
+ * `GET` and `HEAD` `/p/{org}/{project}/calendar.ics`, in one `public_reader` transaction: `public_project` decides
+ * visibility, so a private, unknown or `suspended` project is 404 (D20), and the public views give the rest. Polls
+ * revalidate every time (`no-cache`) and get 304 while nothing changed.
  */
 export async function serveCalendarFeed(
   request: Request,
   params: { org: string; project: string },
   deps: CalendarFeedDeps = productionDeps
 ): Promise<Response> {
-  const found = await withPublicReader((tx) => findPublicFeedProject(tx, params.org, params.project))
-  const principal = systemPrincipal('ics-feed')
-  const feed =
-    found &&
-    (await withTenant({ orgId: found.orgId, principal }, async (tx) =>
-      (await projectGate(tx, found.id)) === 'suspended'
-        ? null
-        : calendarFeed(
-            { principal, tx },
-            { projectId: found.id, name: found.name, origin: deps.origin(request) },
-            deps.render
-          )
-    ))
+  const feed = await withPublicReader(async (tx) => {
+    const found = await findPublicFeedProject(tx, params.org, params.project)
+    if (!found || found.suspended) return null
+    return calendarFeed(tx, { projectId: found.id, name: found.name, origin: deps.origin(request) }, deps.render)
+  })
   if (!feed) return notFound()
   const headers = new Headers({ ETag: feed.etag, 'Cache-Control': 'no-cache' })
   // RFC 9110 §15.4.5: a 304 carries the validators and caching fields, not the representation's metadata.

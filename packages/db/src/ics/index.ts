@@ -1,11 +1,21 @@
 import { log } from '@skyclause/config'
-import { and, asc, eq, inArray, isNotNull, or, type SQL } from 'drizzle-orm'
+import { and, asc, eq, getViewSelectedFields as fields, inArray, isNotNull, or, type SQL } from 'drizzle-orm'
 import type { Tx } from '../client'
-import { bundle, call, listing, night, publicProject, window } from '../schema'
+import {
+  bundle,
+  call,
+  publicBundle,
+  publicCall,
+  publicListing,
+  publicNight,
+  publicProject,
+  publicWindow,
+  window
+} from '../schema'
 
 // #154 c-ics-feed: the conditions calendar's reads and its `ics` consumer's writes of `call.ics_uid` and
 // `call.ics_sequence` (#79 §3, §5). An entry is one window and pack, or one night: its calls share a UID (D20), and
-// it renders its latest sent call, the head.
+// it renders its latest sent call, the head. The feed reads as `public_reader`, through migration 0008's views.
 
 const UID_DOMAIN = 'skyclause.m1ku.tech'
 
@@ -20,7 +30,7 @@ type Group = { windowId: string; pack: 'sky' | 'crowd' } | { nightId: string }
 
 /**
  * Calls the feed may show (CAL-14, GST-5): sent, outside a `draft_only` bundle and a guest window. Every call is a
- * window's or a night's here, which the joins require.
+ * window's or a night's here, which the joins require. `loadIcsEntries` applies the same rule to the public views.
  */
 const eligible = and(
   eq(call.state, 'sent'),
@@ -115,18 +125,23 @@ export async function bumpNightEntry(tx: Tx, nightId: string, now: Date): Promis
   await bumpEntry(tx, { nightId }, now)
 }
 
-/** A public project by its organisation and project slugs, through `public_project`; null when private or unknown. */
+/**
+ * A public project by its organisation and project slugs, through `public_project`; null when private or unknown.
+ * `suspended` is projectGate's (D20).
+ */
 export async function findPublicFeedProject(
   tx: Tx<null>,
   org: string,
   project: string
-): Promise<{ id: string; orgId: string; name: string } | null> {
+): Promise<{ id: string; name: string; suspended: boolean } | null> {
   const [row] = await tx
-    .select({ id: publicProject.id, orgId: publicProject.orgId, name: publicProject.name })
+    .select({ id: publicProject.id, name: publicProject.name, suspended: publicProject.suspended })
     .from(publicProject)
     .where(and(eq(publicProject.orgSlug, org), eq(publicProject.slug, project)))
   return row ?? null
 }
+
+type FeedCall = typeof publicCall.$inferSelect
 
 /** One conditions calendar entry and the call it renders. */
 export interface IcsEntry {
@@ -138,7 +153,7 @@ export interface IcsEntry {
   end: Date
   /** The entry's last change: its head's send or identity write, or its window's or night's update. */
   changedAt: Date
-  call: CallRow
+  call: FeedCall
 }
 
 const latestOf = (...dates: Array<Date | null>) => new Date(Math.max(...dates.map((date) => date?.getTime() ?? 0)))
@@ -148,23 +163,36 @@ const latestOf = (...dates: Array<Date | null>) => new Date(Math.max(...dates.ma
  * Windows span `starts_at` to `ends_at`; nights the arrival period's start to the exit period's end, or to the
  * arrival period's end while exit times are unknown (D19). A night shows only once a listing of it was listed
  * (CAL-14), and never without an arrival period. Cancelled: a Normal head, a cancelled window, an unlisted night, or a
- * night with no listing still listed.
+ * night with no listing still listed. Read as `public_reader`, so a private project has none.
  */
-export async function loadIcsEntries(tx: Tx, projectId: string): Promise<IcsEntry[]> {
+export async function loadIcsEntries(tx: Tx<null>, projectId: string): Promise<IcsEntry[]> {
   const rows = await tx
-    .select({ call, pack: bundle.pack, window, night })
-    .from(call)
-    .innerJoin(bundle, eq(bundle.id, call.bundleId))
-    .leftJoin(window, eq(window.id, call.windowId))
-    .leftJoin(night, eq(night.id, call.nightId))
-    .where(and(eq(call.projectId, projectId), isNotNull(call.icsUid), eligible))
-    .orderBy(asc(call.sentAt), asc(call.id))
+    .select({
+      call: fields(publicCall),
+      pack: publicBundle.pack,
+      window: fields(publicWindow),
+      night: fields(publicNight)
+    })
+    .from(publicCall)
+    .innerJoin(publicBundle, eq(publicBundle.id, publicCall.bundleId))
+    .leftJoin(publicWindow, eq(publicWindow.id, publicCall.windowId))
+    .leftJoin(publicNight, eq(publicNight.id, publicCall.nightId))
+    .where(
+      and(
+        eq(publicCall.projectId, projectId),
+        isNotNull(publicCall.icsUid),
+        eq(publicCall.state, 'sent'),
+        eq(publicBundle.draftOnly, false),
+        or(isNotNull(publicCall.nightId), eq(publicWindow.guest, false))
+      )
+    )
+    .orderBy(asc(publicCall.sentAt), asc(publicCall.id))
   const nightIds = [...new Set(rows.flatMap((row) => (row.night ? [row.night.id] : [])))]
   const listings = nightIds.length
     ? await tx
-        .select({ nightId: listing.nightId, state: listing.state })
-        .from(listing)
-        .where(inArray(listing.nightId, nightIds))
+        .select({ nightId: publicListing.nightId, state: publicListing.state })
+        .from(publicListing)
+        .where(inArray(publicListing.nightId, nightIds))
     : []
 
   const groups = new Map<string, typeof rows>()
