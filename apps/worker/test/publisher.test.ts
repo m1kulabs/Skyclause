@@ -1,9 +1,19 @@
 // #79 §5: emitEvent publishes {event_id} to Pub/Sub `domain-events` after commit, through the composition roots'
 // publisher, against a fetch double: no request reaches Google.
 import { pubsubPublisher } from '@skyclause/config'
-import { DOMAIN_EVENTS_TOPIC, emitEvent, republishEvents, setEventPublisher, withTenant } from '@skyclause/db'
-import { makeOrganization, makeProject, makeSource } from '@skyclause/db/test/factories/index'
+import {
+  DOMAIN_EVENTS_TOPIC,
+  emitEvent,
+  republishEvents,
+  RUNS_REQUESTED,
+  setEventPublisher,
+  setRunPublisher,
+  shareSystemConnection,
+  withTenant
+} from '@skyclause/db'
+import { makeOrganization, makeProject, makeRun, makeSource } from '@skyclause/db/test/factories/index'
 import { asLogin, memberOf } from '@skyclause/db/test/harness/index'
+import { registry } from '../src/registry'
 import { afterAll, afterEach, beforeAll, expect, test } from 'vitest'
 
 let orgId: string
@@ -30,7 +40,10 @@ afterEach(() => {
   published.length = 0
   status = 200
 })
-afterAll(() => setEventPublisher(null))
+afterAll(() => {
+  setEventPublisher(null)
+  setRunPublisher(null)
+})
 
 const emit = () =>
   withTenant({ orgId, principal: memberOf(orgId) }, async (tx) => {
@@ -66,4 +79,16 @@ test('a refused publish leaves the event unpublished, and the batch’s republis
     data: [{ event_id: id }]
   })
   expect((await publishedAt(id)).published_at).toBeInstanceOf(Date)
+})
+
+test('runs-republish publishes a queued run to runs-requested as {run_id, org_id}', async () => {
+  setRunPublisher(pubsubPublisher('skyclause', RUNS_REQUESTED, { fetch, headers }))
+  const { id } = await withTenant({ orgId, principal: memberOf(orgId) }, async (tx) =>
+    makeRun(tx, { projectId: (await makeProject(tx)).id, createdAt: new Date(Date.now() - 120_000) })
+  )
+  await shareSystemConnection(() => registry.batch['runs-republish']!(new Date()))
+  expect(published).toContainEqual({
+    url: 'https://pubsub.googleapis.com/v1/projects/skyclause/topics/runs-requested:publish',
+    data: [{ run_id: id, org_id: orgId }]
+  })
 })
