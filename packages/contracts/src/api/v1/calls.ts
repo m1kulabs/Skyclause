@@ -64,6 +64,8 @@ const CallDetail = CallView.extend(CallExplanation.shape).extend({
   recipient_counts: RecipientCounts.optional()
 })
 const CallQuery = PageQuery.extend({
+  // #150 (optional): a window's calls, for #166.
+  window_id: z.string().optional(),
   pack: Pack.optional(),
   state: CallState.optional(),
   mode: Mode.optional(),

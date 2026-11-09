@@ -136,6 +136,27 @@ describe('data components', () => {
     await expectAxeClean()
   })
 
+  test('a closed bundle has no SLA, so its card shows none', async () => {
+    const bundle: Bundle = {
+      id: 'b2',
+      project_id: 'p1',
+      run_id: 'r2',
+      pack: 'sky',
+      state: 'closed',
+      superseded_by: null,
+      review_hash: 'h',
+      sla_due_at: null,
+      needs_review_at: null,
+      approved_by: null,
+      escalation_level: 0,
+      draft_only: false,
+      calls: []
+    }
+    render(<BundleCard bundle={{ ...bundle }} triggeredAt="2026-11-02T06:45:00Z" />)
+    expect(document.body.textContent).toContain('14:45')
+    expect(document.body.textContent).not.toMatch(/SLA/)
+  })
+
   test('GradeCard prints n=0 with no bar and takes its interval from the API', async () => {
     const grade: Grade = {
       id: 'g0',

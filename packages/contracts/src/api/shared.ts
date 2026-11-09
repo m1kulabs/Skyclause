@@ -368,7 +368,8 @@ export const CallView = z.object({
   approved_at: Instant.nullable(),
   sent_at: Instant.nullable(),
   superseded_by_call_id: z.string().nullable(),
-  ics_uid: z.string(),
+  // D20: set when the call is first sent; null until then.
+  ics_uid: z.string().nullable(),
   ics_sequence: z.number().int()
 })
 export type CallView = z.infer<typeof CallView>
@@ -402,7 +403,8 @@ export const Bundle = z.object({
   state: BundleState,
   superseded_by: z.string().nullable(),
   review_hash: z.string(),
-  sla_due_at: Instant,
+  // PRJ-7: only a bundle that needs review has an SLA; null for one that closed at drafting.
+  sla_due_at: Instant.nullable(),
   needs_review_at: Instant.nullable(),
   approved_by: z.string().nullable(),
   escalation_level: z.number().int(),

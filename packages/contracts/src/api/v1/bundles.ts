@@ -30,7 +30,8 @@ import {
 const BundleView = Bundle.extend({
   trigger: RunTrigger,
   triggered_at: Instant,
-  sheet_version_id: z.string(),
+  // The run's pinned sheet version; null for a run that has none.
+  sheet_version_id: z.string().nullable(),
   alerts: z.array(z.object({ account_id: z.string(), notified_at: Instant, level: z.string() }))
 })
 // #150 (optional, getBundle only): CAL-5's trace line for a bundle with every call Normal ("Normal; N inputs fresh",
