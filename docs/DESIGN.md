@@ -718,7 +718,7 @@ One outlined round button "Subscribe to the conditions calendar" opening a menu:
 
 ### Email notice and ICS entry
 
-Templates with named fields, filled from a real approved call; previews before the first call fill only the measured parts from the 2 November replay and say n=0 for the rest ([NTC-7](/docs/PRD.md#notices-and-channels-ntc)). In the P0 pilot, notices link the public calendar event URL in place of `/c/{callId}`, which is P1 ([PUB-3](/docs/PRD.md#public-pages-pub)), and end with `Reply "unsubscribe" to stop these notices.` in place of the one-click link, also P1 ([NTC-9](/docs/PRD.md#notices-and-channels-ntc)).
+Templates with named fields, filled from a real approved call; previews before the first call fill only the measured parts from the 2 November replay and say n=0 for the rest ([NTC-7](/docs/PRD.md#notices-and-channels-ntc)). The approved wording (the model's, an approver's edit, or the clause wording on a shadow pick) fills the Why and What-it-means lines; every other line is template, with the teaching-mode line after the approval line on Hybrid recommended. The ICS entry is public, so it names the window by its MYT time span, never its title, and gives input ages, never values (D32 in [#79](https://github.com/m1kulabs/Skyclause/issues/79)). In the P0 pilot, notices link the public calendar event URL in place of `/c/{callId}`, which is P1 ([PUB-3](/docs/PRD.md#public-pages-pub)), and end with `Reply "unsubscribe" to stop these notices.` in place of the one-click link, also P1 ([NTC-9](/docs/PRD.md#notices-and-channels-ntc)).
 
 ```text
 Subject: {Mode}: {window}, {Ddd D Mmm} ({project})
@@ -731,6 +731,8 @@ Approved by the {role} on duty at {HH:MM} MYT. Details and readings: https://sky
 
 Skyclause is not a safety or emergency service. In an emergency, call 999.
 Not affiliated with APU, KPT, JPS, MET, DOE, Prasarana/Rapid KL or the stadium.
+Sources: {source} ({licence}); …
+Change your notices: {preference link}
 Unsubscribe: {one-click link}
 ```
 
@@ -740,8 +742,8 @@ UID:call-{first sent call id}@skyclause.m1ku.tech
 SEQUENCE:{sequence}
 DTSTART;TZID=Asia/Kuala_Lumpur:{window start}
 DTEND;TZID=Asia/Kuala_Lumpur:{window end}
-SUMMARY:{Mode} · {window}
-DESCRIPTION:{clause}: {input} {value} ({class}).\nApproved {HH:MM} MYT.\nNot a safety or emergency service.
+SUMMARY:{Mode} · {window span}
+DESCRIPTION:{clause} ({input} {age}).\nApproved {HH:MM} MYT.\nSkyclause is not a safety or emergency service. In an emergency, call 999.\nNot affiliated with APU, KPT, JPS, MET, DOE, Prasarana/Rapid KL or the stadium.\nSources: {source} ({licence}); ….\nDetails: https://skyclause.m1ku.tech/c/{callId}
 URL:https://skyclause.m1ku.tech/c/{callId}
 END:VEVENT
 ```
