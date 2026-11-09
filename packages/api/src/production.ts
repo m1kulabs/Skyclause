@@ -12,7 +12,12 @@ let config: ApiConfig | undefined
 /** Read on the first request, never at import, so a build or a test can load the package without the web env. */
 function loadConfig(): ApiConfig {
   const env = loadEnv('web')
-  return { appEnv: env.APP_ENV, appOrigin: env.APP_ORIGIN, ipHashKey: env.IP_HASH_KEY }
+  return {
+    appEnv: env.APP_ENV,
+    appOrigin: env.APP_ORIGIN,
+    ipHashKey: env.IP_HASH_KEY,
+    marketingOrigin: env.MARKETING_ORIGIN
+  }
 }
 
 let ses: EmailTransport | undefined

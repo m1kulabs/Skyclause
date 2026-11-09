@@ -10,6 +10,7 @@ import {
   notice,
   project,
   reading,
+  recipientsByLanguage,
   run,
   runStep,
   sheetVersion,
@@ -18,7 +19,6 @@ import {
   window,
   type Tx
 } from '@skyclause/db'
-import { recipientsByLanguage } from '@skyclause/delivery'
 import { and, asc, desc, eq, gte, inArray, lt, or, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import { decodeCursor, page } from '../../pagination'
@@ -70,7 +70,8 @@ export async function visibleProject(ctx: ServiceContext, projectId: string) {
 
 const CallNotice = z.object({ language: z.enum(['en', 'ms']), subject: z.string(), body: z.string() })
 
-function callView(row: CallRow): CallView {
+/** A stored call as its wire `CallView`; the channel previews (#152) render from it too. */
+export function callView(row: CallRow): CallView {
   return {
     id: row.id,
     bundle_id: row.bundleId,

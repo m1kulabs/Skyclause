@@ -3,6 +3,7 @@ import type { OperationId, Operations } from '@skyclause/contracts'
 import type { Context, MiddlewareHandler } from 'hono'
 import type { ApiEnv } from '../context'
 import { bundleHandlers } from './bundles'
+import { channelHandlers } from './channels'
 import { ledgerHandlers } from './ledger'
 import { subscriberHandlers } from './subscribers'
 
@@ -28,6 +29,7 @@ export type Handlers = { [Id in OperationId]?: HandlerEntry<Operations[Id]> }
  * line; an operation without an entry answers 501 `not-built` naming its owner.
  */
 export const HANDLERS: Handlers = {
+  ...channelHandlers, // c-notice-templates
   ...ledgerHandlers, // c-ledger-chain
   ...subscriberHandlers,
   ...bundleHandlers // c-bundle-lifecycle

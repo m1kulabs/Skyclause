@@ -216,6 +216,10 @@
         "@skyclause/i18n": "workspace:*",
         "postal-mime": "4.2.0",
       },
+      "devDependencies": {
+        "axe-core": "4.10.2",
+        "jsdom": "26.1.0",
+      },
     },
     "packages/elements": {
       "name": "@skyclause/elements",
