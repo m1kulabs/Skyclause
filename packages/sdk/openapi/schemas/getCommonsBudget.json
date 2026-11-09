@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "getCommonsBudget request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "device": {
+                  "type": "object",
+                  "properties": {
+                    "resets_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "runs": {
+                      "type": "object",
+                      "properties": {
+                        "used": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "remaining": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": ["used", "limit", "remaining"]
+                    },
+                    "evidence_requests": {
+                      "type": "object",
+                      "properties": {
+                        "used": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "remaining": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": ["used", "limit", "remaining"]
+                    },
+                    "active_windows": {
+                      "type": "object",
+                      "properties": {
+                        "used": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "remaining": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": ["used", "limit", "remaining"]
+                    }
+                  },
+                  "required": ["resets_at", "runs", "evidence_requests", "active_windows"]
+                },
+                "ip": {
+                  "type": "object",
+                  "properties": {
+                    "resets_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "runs": {
+                      "type": "object",
+                      "properties": {
+                        "used": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "remaining": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": ["used", "limit", "remaining"]
+                    },
+                    "evidence_requests": {
+                      "type": "object",
+                      "properties": {
+                        "used": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "remaining": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": ["used", "limit", "remaining"]
+                    }
+                  },
+                  "required": ["resets_at", "runs", "evidence_requests"]
+                },
+                "commons": {
+                  "type": "object",
+                  "properties": {
+                    "resets_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "model_tokens": {
+                      "type": "object",
+                      "properties": {
+                        "used": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "remaining": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": ["used", "limit", "remaining"]
+                    }
+                  },
+                  "required": ["resets_at", "model_tokens"]
+                }
+              },
+              "required": ["device", "ip", "commons"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "getCommonsBudget",
+  "x-method": "GET",
+  "x-path": "/v1/commons/budget"
+}

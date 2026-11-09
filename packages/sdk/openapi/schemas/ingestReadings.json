@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ingestReadings request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "sourceId": {
+              "type": "string"
+            }
+          },
+          "required": ["sourceId"],
+          "additionalProperties": false
+        },
+        "body": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "readings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "metric": {
+                        "type": "string"
+                      },
+                      "unit": {
+                        "type": "string"
+                      },
+                      "observed_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "value": {
+                        "type": ["number", "null"]
+                      },
+                      "value_text": {
+                        "type": ["string", "null"]
+                      },
+                      "value_json": {
+                        "type": ["string", "number", "boolean", "object", "array", "null"]
+                      },
+                      "device_time": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      },
+                      "item_key": {
+                        "type": ["string", "null"]
+                      }
+                    },
+                    "required": ["metric", "unit", "observed_at"]
+                  },
+                  "minItems": 1
+                },
+                "posted_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "feed_age_s": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "fetch_latency_ms": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "required": ["readings"]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": ["camera_frame"]
+                },
+                "capture_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "device_time": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "ratio_near": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "ratio_far": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "flag": {
+                  "type": "string",
+                  "enum": ["visible", "obscured"]
+                },
+                "distance_km": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "buffered": {
+                  "type": "boolean"
+                },
+                "jpeg_b64": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "kind",
+                "capture_id",
+                "device_time",
+                "ratio_near",
+                "ratio_far",
+                "flag",
+                "distance_km",
+                "buffered",
+                "jpeg_b64"
+              ]
+            }
+          ]
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "source_id": {
+                      "type": "string"
+                    },
+                    "accepted": {
+                      "type": "integer"
+                    },
+                    "received_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "camera_day_start": {
+                      "type": "string"
+                    },
+                    "camera_day_end": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["source_id", "accepted", "received_at", "camera_day_start", "camera_day_end"]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "duplicate": {
+                      "type": "boolean",
+                      "enum": [true]
+                    }
+                  },
+                  "required": ["ok", "duplicate"]
+                }
+              ]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "ingestReadings",
+  "x-method": "POST",
+  "x-path": "/v1/ingest/{sourceId}"
+}

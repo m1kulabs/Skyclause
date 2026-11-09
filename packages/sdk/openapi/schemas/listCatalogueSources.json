@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "listCatalogueSources request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "jps_rain",
+                          "met_warning",
+                          "met_forecast",
+                          "apims",
+                          "rapidrail_od",
+                          "gtfs_static",
+                          "gtfs_rt",
+                          "golive",
+                          "wikipedia",
+                          "camera",
+                          "pi"
+                        ]
+                      },
+                      "external_id": {
+                        "type": "string"
+                      },
+                      "owner_org_id": {
+                        "type": ["string", "null"]
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "lat": {
+                        "type": ["number", "null"]
+                      },
+                      "lon": {
+                        "type": ["number", "null"]
+                      },
+                      "url": {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      "cadence_s": {
+                        "type": "integer"
+                      },
+                      "stale_after_s": {
+                        "type": "integer"
+                      },
+                      "licence_id": {
+                        "type": "string"
+                      },
+                      "licence_label": {
+                        "type": "string"
+                      },
+                      "latest_reading": {
+                        "type": ["object", "null"],
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "source_id": {
+                            "type": "string"
+                          },
+                          "poll_id": {
+                            "type": ["string", "null"]
+                          },
+                          "metric": {
+                            "type": "string"
+                          },
+                          "unit": {
+                            "type": ["string", "null"]
+                          },
+                          "observed_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "received_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "value": {
+                            "type": ["number", "null"]
+                          },
+                          "value_text": {
+                            "type": ["string", "null"]
+                          },
+                          "value_json": {
+                            "type": ["string", "number", "boolean", "object", "array", "null"]
+                          },
+                          "device_time": {
+                            "type": ["string", "null"],
+                            "format": "date-time"
+                          },
+                          "item_key": {
+                            "type": ["string", "null"]
+                          },
+                          "revision": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "source_id",
+                          "poll_id",
+                          "metric",
+                          "unit",
+                          "observed_at",
+                          "received_at",
+                          "value",
+                          "value_text",
+                          "value_json",
+                          "device_time",
+                          "item_key",
+                          "revision"
+                        ]
+                      },
+                      "age_s": {
+                        "type": ["integer", "null"],
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "kind",
+                      "external_id",
+                      "owner_org_id",
+                      "name",
+                      "lat",
+                      "lon",
+                      "url",
+                      "cadence_s",
+                      "stale_after_s",
+                      "licence_id",
+                      "licence_label",
+                      "latest_reading",
+                      "age_s"
+                    ]
+                  }
+                },
+                "next_cursor": {
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["data", "next_cursor"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "listCatalogueSources",
+  "x-method": "GET",
+  "x-path": "/v1/catalogue/sources"
+}

@@ -1,0 +1,631 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "listProjectBundles request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "cursor": {
+              "type": "string"
+            },
+            "pack": {
+              "type": "string",
+              "enum": ["sky", "crowd"]
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "drafted",
+                "closed",
+                "needs_review",
+                "superseded",
+                "expired",
+                "reconfirm",
+                "approved",
+                "sending",
+                "sent",
+                "graded"
+              ]
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "project_id": {
+                        "type": "string"
+                      },
+                      "run_id": {
+                        "type": "string"
+                      },
+                      "pack": {
+                        "type": "string",
+                        "enum": ["sky", "crowd"]
+                      },
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "drafted",
+                          "closed",
+                          "needs_review",
+                          "superseded",
+                          "expired",
+                          "reconfirm",
+                          "approved",
+                          "sending",
+                          "sent",
+                          "graded"
+                        ]
+                      },
+                      "superseded_by": {
+                        "type": ["string", "null"]
+                      },
+                      "review_hash": {
+                        "type": "string"
+                      },
+                      "sla_due_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      },
+                      "needs_review_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      },
+                      "approved_by": {
+                        "type": ["string", "null"]
+                      },
+                      "escalation_level": {
+                        "type": "integer"
+                      },
+                      "draft_only": {
+                        "type": "boolean"
+                      },
+                      "calls": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "bundle_id": {
+                              "type": "string"
+                            },
+                            "window_id": {
+                              "type": ["string", "null"]
+                            },
+                            "night_id": {
+                              "type": ["string", "null"]
+                            },
+                            "mode": {
+                              "type": ["string", "null"],
+                              "enum": [
+                                "normal",
+                                "outdoor_limited",
+                                "commute_disruption",
+                                "hybrid_recommended",
+                                "surge_night",
+                                null
+                              ]
+                            },
+                            "watch": {
+                              "type": "boolean"
+                            },
+                            "no_call": {
+                              "type": ["array", "null"],
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "fired": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "clause": {
+                                    "type": "string"
+                                  },
+                                  "inputs": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": ["clause", "inputs"]
+                              }
+                            },
+                            "recommendations": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "keep_with_advisory",
+                                  "shift_start",
+                                  "shift_end",
+                                  "ask_shuttle",
+                                  "leave_before_doors"
+                                ]
+                              }
+                            },
+                            "recipients": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "notices": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "language": {
+                                    "type": "string",
+                                    "enum": ["en", "ms"]
+                                  },
+                                  "subject": {
+                                    "type": "string",
+                                    "maxLength": 120
+                                  },
+                                  "body": {
+                                    "type": "string",
+                                    "maxLength": 2000
+                                  }
+                                },
+                                "required": ["language", "subject", "body"]
+                              }
+                            },
+                            "reason": {
+                              "type": "string",
+                              "maxLength": 1500
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "drafted",
+                                "approved",
+                                "edited",
+                                "rejected",
+                                "expired",
+                                "superseded",
+                                "sending",
+                                "sent",
+                                "failed"
+                              ]
+                            },
+                            "shadow": {
+                              "type": "object",
+                              "properties": {
+                                "scope": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": ["site", "window", "night"]
+                                    },
+                                    "id": {
+                                      "type": ["string", "null"]
+                                    }
+                                  },
+                                  "required": ["kind", "id"]
+                                },
+                                "pack": {
+                                  "type": "string",
+                                  "enum": ["sky", "crowd"]
+                                },
+                                "mode": {
+                                  "type": ["string", "null"],
+                                  "enum": [
+                                    "normal",
+                                    "outdoor_limited",
+                                    "commute_disruption",
+                                    "hybrid_recommended",
+                                    "surge_night",
+                                    null
+                                  ]
+                                },
+                                "watch": {
+                                  "type": "boolean"
+                                },
+                                "no_call": {
+                                  "type": ["object", "null"],
+                                  "properties": {
+                                    "inputs": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "name": {
+                                            "type": "string"
+                                          },
+                                          "source_id": {
+                                            "type": ["string", "null"]
+                                          },
+                                          "state": {
+                                            "type": "string",
+                                            "enum": [
+                                              "fresh",
+                                              "stale",
+                                              "error",
+                                              "recovered",
+                                              "pending",
+                                              "probation",
+                                              "off_hours"
+                                            ]
+                                          },
+                                          "since": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                          }
+                                        },
+                                        "required": ["name", "source_id", "state", "since"]
+                                      }
+                                    }
+                                  },
+                                  "required": ["inputs"]
+                                },
+                                "recommendations": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "keep_with_advisory",
+                                      "shift_start",
+                                      "shift_end",
+                                      "ask_shuttle",
+                                      "leave_before_doors"
+                                    ]
+                                  }
+                                },
+                                "clauses": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "key": {
+                                        "type": "string"
+                                      },
+                                      "result": {
+                                        "type": "string",
+                                        "enum": ["fired", "not_fired", "blocked", "not_open"]
+                                      },
+                                      "blocked_by": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "name": {
+                                              "type": "string"
+                                            },
+                                            "source_id": {
+                                              "type": ["string", "null"]
+                                            },
+                                            "state": {
+                                              "type": "string",
+                                              "enum": [
+                                                "fresh",
+                                                "stale",
+                                                "error",
+                                                "recovered",
+                                                "pending",
+                                                "probation",
+                                                "off_hours"
+                                              ]
+                                            },
+                                            "since": {
+                                              "type": "string",
+                                              "format": "date-time"
+                                            }
+                                          },
+                                          "required": ["name", "source_id", "state", "since"]
+                                        }
+                                      },
+                                      "span": {
+                                        "type": "object",
+                                        "properties": {
+                                          "from": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                          },
+                                          "to": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                          },
+                                          "complete": {
+                                            "type": "boolean"
+                                          }
+                                        },
+                                        "required": ["from", "to", "complete"]
+                                      },
+                                      "inputs": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "name": {
+                                              "type": "string"
+                                            },
+                                            "value": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "number"
+                                                },
+                                                {
+                                                  "type": "boolean"
+                                                },
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "array",
+                                                  "items": {
+                                                    "type": "number"
+                                                  }
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ]
+                                            },
+                                            "unit": {
+                                              "type": "string"
+                                            },
+                                            "state": {
+                                              "type": "string",
+                                              "enum": [
+                                                "fresh",
+                                                "stale",
+                                                "error",
+                                                "recovered",
+                                                "pending",
+                                                "probation",
+                                                "off_hours"
+                                              ]
+                                            },
+                                            "since": {
+                                              "type": ["string", "null"],
+                                              "format": "date-time"
+                                            },
+                                            "age_s": {
+                                              "type": ["integer", "null"],
+                                              "minimum": 0
+                                            },
+                                            "source_ids": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            "source_url": {
+                                              "type": ["string", "null"],
+                                              "format": "uri"
+                                            },
+                                            "reading_ids": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            "observed_at": {
+                                              "type": ["string", "null"],
+                                              "format": "date-time"
+                                            }
+                                          },
+                                          "required": [
+                                            "name",
+                                            "value",
+                                            "unit",
+                                            "state",
+                                            "since",
+                                            "age_s",
+                                            "source_ids",
+                                            "source_url",
+                                            "reading_ids",
+                                            "observed_at"
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    "required": ["key", "result", "blocked_by", "inputs"]
+                                  }
+                                },
+                                "open_from": {
+                                  "type": ["string", "null"],
+                                  "format": "date-time"
+                                }
+                              },
+                              "required": [
+                                "scope",
+                                "pack",
+                                "mode",
+                                "watch",
+                                "no_call",
+                                "recommendations",
+                                "clauses",
+                                "open_from"
+                              ]
+                            },
+                            "chosen": {
+                              "type": "string"
+                            },
+                            "agrees": {
+                              "type": "boolean"
+                            },
+                            "decision": {
+                              "type": ["string", "null"]
+                            },
+                            "expires_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "triggered_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "drafted_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "approved_at": {
+                              "type": ["string", "null"],
+                              "format": "date-time"
+                            },
+                            "sent_at": {
+                              "type": ["string", "null"],
+                              "format": "date-time"
+                            },
+                            "superseded_by_call_id": {
+                              "type": ["string", "null"]
+                            },
+                            "ics_uid": {
+                              "type": ["string", "null"]
+                            },
+                            "ics_sequence": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "bundle_id",
+                            "window_id",
+                            "night_id",
+                            "mode",
+                            "watch",
+                            "no_call",
+                            "fired",
+                            "recommendations",
+                            "recipients",
+                            "notices",
+                            "reason",
+                            "state",
+                            "shadow",
+                            "chosen",
+                            "agrees",
+                            "decision",
+                            "expires_at",
+                            "triggered_at",
+                            "drafted_at",
+                            "approved_at",
+                            "sent_at",
+                            "superseded_by_call_id",
+                            "ics_uid",
+                            "ics_sequence"
+                          ]
+                        }
+                      },
+                      "trigger": {
+                        "type": "string",
+                        "enum": ["schedule", "crossing", "window", "listing", "calendar", "request"]
+                      },
+                      "triggered_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "sheet_version_id": {
+                        "type": ["string", "null"]
+                      },
+                      "alerts": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "account_id": {
+                              "type": "string"
+                            },
+                            "notified_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "level": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["account_id", "notified_at", "level"]
+                        }
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "project_id",
+                      "run_id",
+                      "pack",
+                      "state",
+                      "superseded_by",
+                      "review_hash",
+                      "sla_due_at",
+                      "needs_review_at",
+                      "approved_by",
+                      "escalation_level",
+                      "draft_only",
+                      "calls",
+                      "trigger",
+                      "triggered_at",
+                      "sheet_version_id",
+                      "alerts"
+                    ]
+                  }
+                },
+                "next_cursor": {
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["data", "next_cursor"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "listProjectBundles",
+  "x-method": "GET",
+  "x-path": "/v1/projects/{id}/bundles"
+}

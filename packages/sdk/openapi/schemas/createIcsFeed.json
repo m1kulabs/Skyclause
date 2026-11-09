@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "createIcsFeed request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        },
+        "body": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              },
+              "required": ["url"],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "file": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 255
+                    },
+                    "content": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 5242880
+                    }
+                  },
+                  "required": ["name", "content"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["file"],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 201
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "project_id": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": ["string", "null"],
+                  "format": "uri"
+                },
+                "filename": {
+                  "type": "string"
+                }
+              },
+              "required": ["id", "project_id", "url"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "createIcsFeed",
+  "x-method": "POST",
+  "x-path": "/v1/projects/{id}/ics-feeds"
+}

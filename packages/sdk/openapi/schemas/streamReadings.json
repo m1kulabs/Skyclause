@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "streamReadings request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": ["source.error"]
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "org_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "project_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "source_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": ["error"]
+                        },
+                        "since": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "http_status": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": ["source_id", "state", "since", "http_status"]
+                    }
+                  },
+                  "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": ["source.stale"]
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "org_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "project_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "source_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": ["stale"]
+                        },
+                        "since": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "http_status": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": ["source_id", "state", "since", "http_status"]
+                    }
+                  },
+                  "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": ["source.recovered"]
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "org_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "project_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "source_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": ["recovered"]
+                        },
+                        "since": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "http_status": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": ["source_id", "state", "since", "http_status"]
+                    }
+                  },
+                  "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": ["poll.recorded"]
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "org_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "project_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "source_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "poll_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "outcome": {
+                          "type": "string"
+                        },
+                        "http_status": {
+                          "type": "integer"
+                        },
+                        "new_rows": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": ["source_id", "poll_id", "outcome", "http_status", "new_rows"]
+                    }
+                  },
+                  "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                }
+              ]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "streamReadings",
+  "x-method": "GET",
+  "x-path": "/v1/projects/{id}/readings/stream"
+}

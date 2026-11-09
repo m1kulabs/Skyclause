@@ -14,7 +14,7 @@
     "lint": "prettier --check . && eslint . && bun scripts/check-boundaries.ts",
     "lint:fix": "prettier --write .",
     "typecheck": "tsc --noEmit -p pilot && tsc -b",
-    "test": "vitest run",
+    "test": "bun run --filter @skyclause/sdk build && vitest run",
     "test:e2e": "bun run --cwd apps/web test:e2e",
     "build": "bun pilot/apps-script/build.ts && bun run --filter './apps/*' build",
     "openapi:generate": "bun packages/api/scripts/openapi.ts --write",

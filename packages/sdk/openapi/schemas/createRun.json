@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "createRun request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "pack": {
+              "type": "string",
+              "enum": ["sky", "crowd"]
+            },
+            "window_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          "required": ["pack"]
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 202
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "project_id": {
+                  "type": "string"
+                },
+                "pack": {
+                  "type": "string",
+                  "enum": ["sky", "crowd"]
+                },
+                "trigger": {
+                  "type": "string",
+                  "enum": ["schedule", "crossing", "window", "listing", "calendar", "request"]
+                },
+                "dedupe_key": {
+                  "type": "string"
+                },
+                "sheet_version_id": {
+                  "type": ["string", "null"]
+                },
+                "snapshot_id": {
+                  "type": ["string", "null"]
+                },
+                "model": {
+                  "type": ["string", "null"]
+                },
+                "fallback_used": {
+                  "type": "boolean"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["queued", "running", "drafted", "no_draft", "failed"]
+                },
+                "reason": {
+                  "type": ["string", "null"]
+                },
+                "trigger_ref": {
+                  "type": ["string", "null"]
+                },
+                "window_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "verdict_hash": {
+                  "type": ["string", "null"]
+                }
+              },
+              "required": [
+                "id",
+                "project_id",
+                "pack",
+                "trigger",
+                "dedupe_key",
+                "sheet_version_id",
+                "snapshot_id",
+                "model",
+                "fallback_used",
+                "status",
+                "reason",
+                "trigger_ref",
+                "window_ids",
+                "verdict_hash"
+              ]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "createRun",
+  "x-method": "POST",
+  "x-path": "/v1/projects/{id}/runs"
+}

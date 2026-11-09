@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "updateChannel request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "channel": {
+              "type": "string",
+              "enum": ["email", "ics", "webhook", "in_app"]
+            }
+          },
+          "required": ["id", "channel"],
+          "additionalProperties": false
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": ["enabled"]
+        }
+      },
+      "required": ["params", "body"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "channel": {
+                  "type": "string",
+                  "enum": ["email", "ics", "webhook", "in_app"]
+                },
+                "enabled": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["channel", "enabled"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "updateChannel",
+  "x-method": "PATCH",
+  "x-path": "/v1/projects/{id}/channels/{channel}"
+}

@@ -1,0 +1,406 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "streamBundles request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": ["bundle.drafted"]
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "org_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "project_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "bundle_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "pack": {
+                          "type": "string",
+                          "enum": ["sky", "crowd"]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": ["drafted", "needs_review", "superseded", "expired", "escalated", "approved"]
+                        },
+                        "call_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
+                        "sla_due_at": {
+                          "type": ["string", "null"],
+                          "format": "date-time"
+                        }
+                      },
+                      "required": ["bundle_id", "pack", "state", "call_ids", "sla_due_at"]
+                    }
+                  },
+                  "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": ["bundle.needs_review"]
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "org_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "project_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "bundle_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "pack": {
+                          "type": "string",
+                          "enum": ["sky", "crowd"]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": ["drafted", "needs_review", "superseded", "expired", "escalated", "approved"]
+                        },
+                        "call_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
+                        "sla_due_at": {
+                          "type": ["string", "null"],
+                          "format": "date-time"
+                        }
+                      },
+                      "required": ["bundle_id", "pack", "state", "call_ids", "sla_due_at"]
+                    }
+                  },
+                  "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": ["bundle.superseded"]
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "org_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "project_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "bundle_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "pack": {
+                          "type": "string",
+                          "enum": ["sky", "crowd"]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": ["drafted", "needs_review", "superseded", "expired", "escalated", "approved"]
+                        },
+                        "call_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
+                        "sla_due_at": {
+                          "type": ["string", "null"],
+                          "format": "date-time"
+                        }
+                      },
+                      "required": ["bundle_id", "pack", "state", "call_ids", "sla_due_at"]
+                    }
+                  },
+                  "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": ["bundle.expired"]
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "org_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "project_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "bundle_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "pack": {
+                          "type": "string",
+                          "enum": ["sky", "crowd"]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": ["drafted", "needs_review", "superseded", "expired", "escalated", "approved"]
+                        },
+                        "call_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
+                        "sla_due_at": {
+                          "type": ["string", "null"],
+                          "format": "date-time"
+                        }
+                      },
+                      "required": ["bundle_id", "pack", "state", "call_ids", "sla_due_at"]
+                    }
+                  },
+                  "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": ["bundle.escalated"]
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "org_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "project_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "bundle_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "pack": {
+                          "type": "string",
+                          "enum": ["sky", "crowd"]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": ["drafted", "needs_review", "superseded", "expired", "escalated", "approved"]
+                        },
+                        "call_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
+                        "sla_due_at": {
+                          "type": ["string", "null"],
+                          "format": "date-time"
+                        },
+                        "level": {
+                          "type": "string",
+                          "enum": ["next_approver", "admins"]
+                        }
+                      },
+                      "required": ["bundle_id", "pack", "state", "call_ids", "sla_due_at", "level"]
+                    }
+                  },
+                  "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": ["bundle.approved"]
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "org_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "project_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "bundle_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "pack": {
+                          "type": "string",
+                          "enum": ["sky", "crowd"]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": ["drafted", "needs_review", "superseded", "expired", "escalated", "approved"]
+                        },
+                        "call_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
+                        "sla_due_at": {
+                          "type": ["string", "null"],
+                          "format": "date-time"
+                        },
+                        "sending_call_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
+                        "rejected_call_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        }
+                      },
+                      "required": [
+                        "bundle_id",
+                        "pack",
+                        "state",
+                        "call_ids",
+                        "sla_due_at",
+                        "sending_call_ids",
+                        "rejected_call_ids"
+                      ]
+                    }
+                  },
+                  "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                }
+              ]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "streamBundles",
+  "x-method": "GET",
+  "x-path": "/v1/projects/{id}/bundles/stream"
+}

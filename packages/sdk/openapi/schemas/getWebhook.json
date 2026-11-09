@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "getWebhook request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "events": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "source.error",
+                      "source.stale",
+                      "source.recovered",
+                      "crossing.detected",
+                      "run.completed",
+                      "run.failed",
+                      "bundle.drafted",
+                      "bundle.needs_review",
+                      "bundle.escalated",
+                      "bundle.approved",
+                      "bundle.superseded",
+                      "bundle.expired",
+                      "call.sent",
+                      "call.graded",
+                      "listing.proposed",
+                      "listing.listed",
+                      "listing.changed",
+                      "night.graded",
+                      "review_item.opened",
+                      "evidence_request.answered"
+                    ]
+                  },
+                  "minItems": 1
+                },
+                "project_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "disabled_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                },
+                "verified_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                },
+                "status": {
+                  "type": "string"
+                }
+              },
+              "required": ["id", "url", "events", "project_ids", "disabled_at", "verified_at", "status"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "getWebhook",
+  "x-method": "GET",
+  "x-path": "/v1/webhooks/{id}"
+}

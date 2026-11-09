@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "deleteIcsFeed request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "project_id": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": ["string", "null"],
+                  "format": "uri"
+                },
+                "filename": {
+                  "type": "string"
+                }
+              },
+              "required": ["id", "project_id", "url"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "deleteIcsFeed",
+  "x-method": "DELETE",
+  "x-path": "/v1/ics-feeds/{id}"
+}
