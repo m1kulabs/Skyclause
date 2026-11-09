@@ -17,6 +17,6 @@ export const registry = defineRegistry([
   domainEvents, // f-db-schema
   pilotArchive, // c-ledger-chain
   bundles, // c-bundle-lifecycle
-  evidence // c-evidence,
+  evidence, // c-evidence
   grades // c-grades
 ])
