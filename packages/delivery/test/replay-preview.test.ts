@@ -21,8 +21,8 @@ describe('REPLAY_2_NOVEMBER, from the capture', () => {
       station_id: capture.stationId,
       url: 'https://infobanjirjpskl.water.gov.my/Rainfall/GetRainfallGraph/75',
       captured_at: '2026-11-05T13:12:00Z',
-      observed_at: new Date('2026-11-02T15:00:00+08:00').toISOString(),
-      polled_at: new Date('2026-11-02T15:05:00+08:00').toISOString(),
+      observed_at: '2026-11-02T07:00:00Z', // 15:00 MYT
+      polled_at: '2026-11-02T07:05:00Z', // 15:05 MYT
       rain_60m_mm: total
     })
     expect(total).toBe(39)

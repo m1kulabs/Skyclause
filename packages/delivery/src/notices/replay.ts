@@ -10,8 +10,8 @@ export const REPLAY_2_NOVEMBER = {
   station_id: '0232901RF',
   url: 'https://infobanjirjpskl.water.gov.my/Rainfall/GetRainfallGraph/75',
   captured_at: '2026-11-05T13:12:00Z',
-  observed_at: '2026-11-02T07:00:00.000Z',
-  polled_at: '2026-11-02T07:05:00.000Z',
+  observed_at: '2026-11-02T07:00:00Z',
+  polled_at: '2026-11-02T07:05:00Z',
   rain_60m_mm: 39
 } as const
 

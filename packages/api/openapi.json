@@ -10506,6 +10506,110 @@
                             ]
                           },
                           "maxItems": 0
+                        },
+                        "replay": {
+                          "type": "object",
+                          "properties": {
+                            "label": {
+                              "type": "string",
+                              "enum": [
+                                "replay"
+                              ]
+                            },
+                            "source": {
+                              "type": "object",
+                              "properties": {
+                                "station_id": {
+                                  "type": "string"
+                                },
+                                "url": {
+                                  "type": "string",
+                                  "format": "uri"
+                                },
+                                "captured_at": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                },
+                                "observed_at": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                }
+                              },
+                              "required": [
+                                "station_id",
+                                "url",
+                                "captured_at",
+                                "observed_at"
+                              ]
+                            },
+                            "previews": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "channel": {
+                                    "type": "string",
+                                    "enum": [
+                                      "email",
+                                      "ics",
+                                      "webhook",
+                                      "in_app"
+                                    ]
+                                  },
+                                  "pack": {
+                                    "type": "string",
+                                    "enum": [
+                                      "sky",
+                                      "crowd"
+                                    ]
+                                  },
+                                  "mode": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "enum": [
+                                      "normal",
+                                      "outdoor_limited",
+                                      "commute_disruption",
+                                      "hybrid_recommended",
+                                      "surge_night",
+                                      null
+                                    ]
+                                  },
+                                  "language": {
+                                    "type": "string",
+                                    "enum": [
+                                      "en",
+                                      "ms"
+                                    ]
+                                  },
+                                  "subject": {
+                                    "type": "string"
+                                  },
+                                  "text": {
+                                    "type": "string"
+                                  },
+                                  "html": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "channel",
+                                  "pack",
+                                  "mode",
+                                  "language",
+                                  "subject",
+                                  "text"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "label",
+                            "source",
+                            "previews"
+                          ]
                         }
                       },
                       "required": [
