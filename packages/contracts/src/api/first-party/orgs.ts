@@ -155,7 +155,12 @@ export const createOrganisation = createRoute({
     headers: IdempotencyHeaders,
     body: {
       required: true,
-      content: { 'application/json': { schema: z.object({ name: z.string().min(1), slug: slugSchema }).strict() } }
+      // Format only: a reserved slug reaches the service so it answers 409 slug-reserved (ORG-1).
+      content: {
+        'application/json': {
+          schema: z.object({ name: z.string().min(1), slug: z.string().regex(SLUG_REGEX) }).strict()
+        }
+      }
     }
   },
   responses: {
@@ -176,13 +181,10 @@ export const updateOrganisation = createRoute({
   tags: ['organisations'],
   request: {
     params: OrgParams,
+    // Ticket decision (#102): PATCH renames only; public URLs and ICS feeds carry the slug, so it never changes.
     body: {
       required: true,
-      content: {
-        'application/json': {
-          schema: z.object({ name: z.string().min(1).optional(), slug: slugSchema.optional() }).strict()
-        }
-      }
+      content: { 'application/json': { schema: z.object({ name: z.string().min(1) }).strict() } }
     }
   },
   responses: {
@@ -190,8 +192,7 @@ export const updateOrganisation = createRoute({
     401: Unauthorized,
     403: Forbidden,
     404: NotFound,
-    400: ValidationFailed,
-    409: { description: 'slug-reserved or slug-taken: the organisation slug is unavailable.', content: JsonProblem }
+    400: ValidationFailed
   },
   x: { owner: 'a-org-projects', statement: 'org.manage', idempotent: false }
 })

@@ -42,6 +42,9 @@ async function expectPage(page: Page, path: string, allowed: boolean) {
     expect(response?.status(), path).toBe(200)
     await expect(page.locator('[data-settings-frame]')).toBeVisible()
     if (path === '/account/notifications') await expect(page.locator('[data-alerts-panel]')).toBeVisible()
+    // #102 built the organisation general panel; every other settings panel is still a placeholder.
+    else if (/^\/[^/]+\/settings\/general$/.test(path))
+      await expect(page.locator('[data-settings-panel] [data-unbuilt]')).toHaveCount(0)
     else await expect(page.locator('[data-settings-panel] [data-unbuilt]')).toHaveCount(1)
   } else {
     // Next may stream a 200 shell before a page-level notFound; the rendered 404 is the gate.
