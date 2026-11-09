@@ -330,7 +330,7 @@ wording: { en: Storm confirmed at the JPS gauge (Lebat class) }
 
 ### Agent inputs and output schema
 
-The orchestrator assembles every input before the call, as JSON data blocks: the pinned clause sheet (keys, conditions, wording), the indicator snapshot with values, units, states and ages, MET warning text verbatim, the windows at risk as IDs with start and end times, candidate recipients as opaque IDs with role and language, and yesterday's grades. Window titles, emails and names never enter a prompt; they are filled in after drafting ([NFR-11](/docs/PRD.md#non-functional-requirements)). The agent doesn't see the shadow verdict, so their agreement measures something.
+The orchestrator assembles every input before the call, as JSON data blocks: the pinned clause sheet (keys, conditions, wording), the indicator snapshot with values, units, states and ages, MET warning text verbatim, optional untrusted text (`listings`, `forwarded_emails` and `evidence_requests`, each its own data block, present only when the caller has some, never quotable, emails redacted), the windows at risk as IDs with start and end times, candidate recipients as opaque IDs with role and language, and yesterday's grades. Window titles, emails and names never enter a prompt; they are filled in after drafting ([NFR-11](/docs/PRD.md#non-functional-requirements)). Free-tier rule: for non-paid tiers the `forwarded_emails` and `evidence_requests` blocks are dropped, since they can name people; only paid keys and the platform model get them, and `listings` go to every tier. The agent doesn't see the shadow verdict, so their agreement measures something.
 
 ```ts
 // packages/agent/schema.ts: the proposed bundle, passed to AI SDK structured output
