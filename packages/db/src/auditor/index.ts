@@ -65,3 +65,5 @@ export async function reconcileAuditFindings(
     .returning()
   return { opened, recovered }
 }
+
+export { runAuditCheck } from './check-scope'
