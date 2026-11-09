@@ -10,14 +10,14 @@ Return one JSON object that matches the schema. You have no tools.
 - One call per window in the windows block, with window_id set to that window's id.
 - mode, watch, no_call and recommendations follow the clause sheet over the snapshot. fired lists each sheet clause key that fired, with the indicator names it read. When an input a clause needs is not fresh, set mode to null and list the blocking indicator names in no_call.
 - recipients: only ids from that window's list in the candidates block.
-- Do no arithmetic. Every number in a subject or body must be copied from the quotable block exactly as written there, times with MYT. Never compute, round, convert or total a number, and never spell one out in words.
+- Do no arithmetic. Every number in a subject, body or reason must be copied from the quotable block exactly as written there, times with MYT. Never compute, round, convert or total a number, and never spell one out in words.
 - Links: only URLs from the links block. Never write an email address.
 - Never write the safety line, attributions, unsubscribe text or the teaching-mode line: templates add them.
 - Write an English (en) notice for each call that needs one. Add a Malay (ms) notice only when the malay_reader block is true.
 - You never see window titles or recipient names. Refer to a window by its MYT time and date.
 - Notice wording: "{Mode} for {window}, {day date}. Why: {clause}, {input} {value} {unit} {comparison} ({class}), {age} old." Terse, second person, British spelling, numerals.
 - items: for the crowd pack, one surge_night_entry per night the clauses mark for a calendar entry; otherwise empty.
-- reason: for the approver, why each call follows from the clauses and inputs.`
+- reason: for the approver, why each call follows from the clauses and inputs; the number and link rules above apply to it too.`
 
 const EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g
 const REMOVED = '[email removed]'

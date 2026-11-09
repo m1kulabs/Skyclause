@@ -161,28 +161,33 @@ export function validate(p: ProposedBundle, input: AgentInput): Validation {
     for (const id of call.recipients) {
       if (!candidates.has(id)) reasons.push(`${at}: recipient ${id} is not a candidate for this window`)
     }
+    // Links and numbers: the same rules for everything an approver or recipient reads, the reason included.
+    const checkFigures = (where: string, text: string) => {
+      const { links, rest } = linksIn(text, names)
+      for (const found of numbersIn(rest, names)) {
+        if (!allowed.has(found.key)) reasons.push(`${where}: ${found.text} is not a quotable number`)
+      }
+      for (const [digits] of rest.matchAll(OTHER_DIGIT)) {
+        reasons.push(`${where}: ${digits} uses digits outside 0-9; quote the figure from the quotable block`)
+      }
+      for (const [word] of rest.matchAll(NUMBER_WORD)) {
+        reasons.push(`${where}: spelled-out number ${word}; quote the figure from the quotable block`)
+      }
+      for (const link of links) {
+        if (!allowsLink(link)) reasons.push(`${where}: link ${link} is not a source URL or Skyclause origin`)
+      }
+    }
     call.notices.forEach((notice, j) => {
       for (const field of ['subject', 'body'] as const) {
         const where = `${at} notices[${j}].${field}`
         const text = notice[field].normalize('NFKC')
-        const { links, rest } = linksIn(text, names)
-        for (const found of numbersIn(rest, names)) {
-          if (!allowed.has(found.key)) reasons.push(`${where}: ${found.text} is not a quotable number`)
-        }
-        for (const [digits] of rest.matchAll(OTHER_DIGIT)) {
-          reasons.push(`${where}: ${digits} uses digits outside 0-9; quote the figure from the quotable block`)
-        }
-        for (const [word] of rest.matchAll(NUMBER_WORD)) {
-          reasons.push(`${where}: spelled-out number ${word}; quote the figure from the quotable block`)
-        }
-        for (const link of links) {
-          if (!allowsLink(link)) reasons.push(`${where}: link ${link} is not a source URL or Skyclause origin`)
-        }
+        checkFigures(where, text)
         for (const line of TEMPLATE_LINES) {
           if (line.test(text)) reasons.push(`${where}: writes a template line (${line.source}); templates add it`)
         }
       }
     })
+    checkFigures(`${at}.reason`, call.reason.normalize('NFKC'))
   })
   bundle.items.forEach((item, i) => {
     if (!nights.has(item.night_id)) reasons.push(`items[${i}]: night ${item.night_id} is not in the snapshot`)

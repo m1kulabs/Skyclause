@@ -102,6 +102,23 @@ describe('validate after the schema', () => {
     ])
   })
 
+  test('checks links and numbers in the reason approvers read', () => {
+    const reason = (text: string) => (b: ReturnType<typeof replayBundle>) => (b.calls[0]!.reason = text)
+    expect(failing(reason(`Storm confirmed, 39.0 mm per ${sourceUrl}.`))).toEqual([])
+    expect(failing(reason('Storm confirmed; see https://evil.example/x or help@evil.example.'))).toEqual([
+      expect.stringContaining('.reason: link https://evil.example/x'),
+      expect.stringContaining('.reason: link help@evil.example')
+    ])
+    expect(failing(reason('Storm confirmed, gauge 41.5 mm, ~120 mm soon.'))).toEqual([
+      expect.stringContaining('.reason: 41.5 is not a quotable number'),
+      expect.stringContaining('.reason: 120 is not a quotable number')
+    ])
+    expect(failing(reason('Rain reached one hundred mm, ١٢٠ mm.'))).toEqual([
+      expect.stringContaining('.reason: ١٢٠'),
+      expect.stringContaining('.reason: spelled-out number hundred')
+    ])
+  })
+
   test('refuses template lines the model must not write', () => {
     for (const line of [
       'Skyclause is not a safety or emergency service.',
