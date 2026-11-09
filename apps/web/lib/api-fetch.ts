@@ -103,7 +103,11 @@ function problemBody(value: unknown, status: number, statusText: string): ApiPro
   return { type: 'about:blank', title: statusText || `HTTP ${status}`, status }
 }
 
-function defaultBaseUrl(): string | undefined {
+function defaultBaseUrl(path: string): string | undefined {
+  if (path.startsWith('/api/')) {
+    if (typeof window !== 'undefined') return window.location.origin
+    if (process.env.HOST_MODE === 'multi') return process.env.APP_ORIGIN
+  }
   if (typeof window !== 'undefined') return process.env.NEXT_PUBLIC_API_ORIGIN
   return process.env.API_ORIGIN ?? 'https://api.skyclause.m1ku.tech'
 }
@@ -128,7 +132,7 @@ export function createApiFetch<const Registry extends ApiRegistry>(
       body?: unknown
     }
     const path = fillPath(operation.path, requestOptions.params, organization)
-    const baseUrl = config.baseUrl ?? defaultBaseUrl()
+    const baseUrl = config.baseUrl ?? defaultBaseUrl(path)
     const requestUrl = addQuery(baseUrl ? new URL(path, baseUrl) : path, requestOptions.query)
     const headers = new Headers(options.headers)
     headers.set('Accept', 'application/json')
