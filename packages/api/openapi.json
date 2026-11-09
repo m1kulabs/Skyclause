@@ -24829,6 +24829,17 @@
                           "graded_at": {
                             "type": "string",
                             "format": "date-time"
+                          },
+                          "local_date": {
+                            "type": "string",
+                            "format": "date"
+                          },
+                          "pending_until": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
                           }
                         },
                         "required": [
@@ -39593,6 +39604,37 @@
                               "agrees",
                               "stale_inputs"
                             ]
+                          },
+                          "reasons": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "miss",
+                                "false_alarm",
+                                "expired_above_normal",
+                                "out_of_band",
+                                "unlisted_surge",
+                                "no_call"
+                              ]
+                            }
+                          },
+                          "explained_by": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "explained_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "opened_at": {
+                            "type": "string",
+                            "format": "date-time"
                           }
                         },
                         "required": [
@@ -39972,6 +40014,37 @@
                         "agrees",
                         "stale_inputs"
                       ]
+                    },
+                    "reasons": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "miss",
+                          "false_alarm",
+                          "expired_above_normal",
+                          "out_of_band",
+                          "unlisted_surge",
+                          "no_call"
+                        ]
+                      }
+                    },
+                    "explained_by": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "explained_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "opened_at": {
+                      "type": "string",
+                      "format": "date-time"
                     }
                   },
                   "required": [
