@@ -174,3 +174,31 @@ test('withSystem reads every organisation’s events, and app can’t read handl
   expect(seen).toHaveLength(1)
   expect(await refusal(asMember((tx) => tx.execute(sql`SELECT * FROM handled_event`)))).toMatch(/permission denied/)
 })
+
+test('handleOnce dedupes on an SES message ID: the same message delivered twice runs fn once', async () => {
+  const messageId = `0100019a${crypto.randomUUID().replaceAll('-', '')}-000000`
+  const runs: string[] = []
+  const deliver = (consumer: string, id = messageId) =>
+    withTenant({ orgId, principal: system }, (tx) =>
+      handleOnce(tx, consumer, { messageId: id }, async () => void runs.push(consumer))
+    )
+  expect([
+    await deliver('evidence-inbound'),
+    await deliver('evidence-inbound'),
+    await deliver('crowd-replies'),
+    await deliver('evidence-inbound', `${messageId}-other`)
+  ]).toEqual([true, false, true, true])
+  expect(runs).toEqual(['evidence-inbound', 'crowd-replies', 'evidence-inbound'])
+})
+
+test('handleOnce records no SES message when fn throws, so the redelivery runs it', async () => {
+  const messageId = `0100019a${crypto.randomUUID().replaceAll('-', '')}-000001`
+  const deliver = (fn: () => Promise<void>) =>
+    withTenant({ orgId, principal: system }, (tx) => handleOnce(tx, 'evidence-inbound', { messageId }, fn))
+  await expect(deliver(async () => Promise.reject(new Error('reply failed')))).rejects.toThrow('reply failed')
+  expect(await deliver(async () => {})).toBe(true)
+})
+
+test('app can’t read handled_message', async () => {
+  expect(await refusal(asMember((tx) => tx.execute(sql`SELECT * FROM handled_message`)))).toMatch(/permission denied/)
+})
