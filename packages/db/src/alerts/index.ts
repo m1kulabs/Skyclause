@@ -1,7 +1,8 @@
-import { and, asc, eq, gt, inArray, isNotNull, isNull, lt, lte, sql, type SQL } from 'drizzle-orm'
+import { ROLES, type Role } from '@skyclause/contracts'
+import { and, asc, eq, inArray, isNotNull, isNull, lt, lte, sql, type SQL } from 'drizzle-orm'
 import { track } from '../analytics'
 import { recordAudit } from '../audit'
-import type { Tx } from '../client'
+import type { SystemPrincipal, Tx } from '../client'
 import { emitEvent } from '../events'
 import {
   approval,
@@ -373,43 +374,69 @@ export async function insertShiftReminder(
   return row?.id ?? null
 }
 
-/** The caller's push subscriptions in this organisation, by ID after `after`, up to `limit + 1` rows. */
-export async function listPushSubscriptions(tx: Tx, o: { accountId: string; limit: number; after?: string }) {
+/** The caller's push subscriptions in this organisation, by ID. */
+export async function listPushSubscriptions(tx: Tx, accountId: string) {
   return tx
     .select()
     .from(pushSubscription)
-    .where(and(eq(pushSubscription.accountId, o.accountId), o.after ? gt(pushSubscription.id, o.after) : undefined))
+    .where(eq(pushSubscription.accountId, accountId))
     .orderBy(asc(pushSubscription.id))
-    .limit(o.limit + 1)
 }
 
 /**
- * Registers a browser for the caller, taking over the endpoint if another account of this organisation held it (the
- * browser has changed hands). Null when another organisation holds the endpoint, which is unique across them.
+ * Registers a browser for the caller in this organisation, taking the endpoint over if another account here held it
+ * (the browser has changed hands). One row per browser and organisation.
  */
 export async function registerPushSubscription(
   tx: Tx,
   s: { accountId: string; endpoint: string; p256dh: string; auth: string; userAgent: string }
 ) {
-  const [inserted] = await tx
+  const [row] = await tx
     .insert(pushSubscription)
     .values({ orgId: tx.orgId!, ...s })
-    .onConflictDoNothing({ target: pushSubscription.endpoint })
+    .onConflictDoUpdate({
+      target: [pushSubscription.orgId, pushSubscription.endpoint],
+      set: { accountId: s.accountId, p256dh: s.p256dh, auth: s.auth, userAgent: s.userAgent, updatedAt: new Date() }
+    })
     .returning()
-  if (inserted) return inserted
-  const [updated] = await tx
-    .update(pushSubscription)
-    .set({ accountId: s.accountId, p256dh: s.p256dh, auth: s.auth, userAgent: s.userAgent, updatedAt: new Date() })
-    .where(eq(pushSubscription.endpoint, s.endpoint))
-    .returning()
-  return updated ?? null
+  return row!
 }
 
-/** Deletes the caller's own subscription; false for an unknown ID or another account's. */
-export async function removePushSubscription(tx: Tx, o: { accountId: string; id: string }): Promise<boolean> {
+/** The endpoint of the caller's own subscription `id` here; null for an unknown ID or another account's. */
+export async function ownPushEndpoint(tx: Tx, o: { accountId: string; id: string }): Promise<string | null> {
+  const [row] = await tx
+    .select({ endpoint: pushSubscription.endpoint })
+    .from(pushSubscription)
+    .where(and(eq(pushSubscription.id, o.id), eq(pushSubscription.accountId, o.accountId)))
+  return row?.endpoint ?? null
+}
+
+/** Deletes the caller's own subscriptions here matching `id` or `endpoint`; false when none matched. */
+export async function removePushSubscription(
+  tx: Tx,
+  o: { accountId: string } & ({ id: string } | { endpoint: string })
+): Promise<boolean> {
+  const which = 'id' in o ? eq(pushSubscription.id, o.id) : eq(pushSubscription.endpoint, o.endpoint)
   const removed = await tx
     .delete(pushSubscription)
-    .where(and(eq(pushSubscription.id, o.id), eq(pushSubscription.accountId, o.accountId)))
+    .where(and(which, eq(pushSubscription.accountId, o.accountId)))
     .returning({ id: pushSubscription.id })
   return removed.length > 0
+}
+
+const isRole = (role: string): role is Role => (ROLES as readonly string[]).includes(role)
+
+/** The organisations an account is a member of, with its role in each, read across organisations as `system`. */
+export async function accountOrganisations(
+  tx: Tx<SystemPrincipal>,
+  accountId: string
+): Promise<Array<{ orgId: string; role: Role }>> {
+  const rows = await tx
+    .select({ orgId: member.organizationId, role: member.role })
+    .from(member)
+    .where(eq(member.userId, accountId))
+    .orderBy(asc(member.organizationId))
+  const orgs = new Map<string, Role>()
+  for (const row of rows) if (isRole(row.role) && !orgs.has(row.orgId)) orgs.set(row.orgId, row.role)
+  return [...orgs].map(([orgId, role]) => ({ orgId, role }))
 }

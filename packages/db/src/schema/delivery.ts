@@ -253,18 +253,21 @@ export const notificationPreference = tenantTable(
   ]
 )
 
-/** An approver's web push endpoint (D28); a 404 or 410 deletes it. */
+/** An approver's web push endpoint (D28), one per browser and organisation (#155); a 404 or 410 deletes it. */
 export const pushSubscription = tenantTable(
   'push_subscription',
   {
     id: id(),
     accountId: uuid('account_id').notNull(),
-    endpoint: text('endpoint').notNull().unique(),
+    endpoint: text('endpoint').notNull(),
     p256dh: text('p256dh').notNull(),
     auth: text('auth').notNull(),
     userAgent: text('user_agent'),
     lastOkAt: instant('last_ok_at'),
     ...timestamps()
   },
-  (self) => [foreignKey({ columns: [self.orgId], foreignColumns: [organization.id] }).onDelete('cascade')]
+  (self) => [
+    foreignKey({ columns: [self.orgId], foreignColumns: [organization.id] }).onDelete('cascade'),
+    unique('push_subscription_org_id_endpoint_key').on(self.orgId, self.endpoint)
+  ]
 )

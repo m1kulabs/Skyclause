@@ -1,18 +1,17 @@
-import type { Page, PushSubscription } from '@skyclause/contracts'
+import type { PushSubscription } from '@skyclause/contracts'
 import {
-  listPushSubscriptions as listRows,
+  listPushSubscriptions,
+  ownPushEndpoint,
   registerPushSubscription,
   removePushSubscription,
   type pushSubscription,
   type Tx
 } from '@skyclause/db'
-import { decodeCursor, page } from '../../pagination'
-import { ApiError } from '../../problems'
 import { instant } from '../../serialize'
 import type { ServiceContext } from '../../tenancy'
 
-// #155 (c-approver-alerts): an approver's web push devices (D28), one per browser, in the organisation the request
-// names (`push_subscription` is T). Only the caller's own rows are visible to these services.
+// #155 (c-approver-alerts): an approver's web push devices (D28), one row per browser and organisation
+// (`push_subscription` is T). Each service acts in its context's organisation, on the caller's own rows only.
 
 function accountOf(ctx: ServiceContext): string {
   if (ctx.principal.kind !== 'session') throw new Error('push subscriptions belong to a session’s account')
@@ -29,20 +28,11 @@ const view = (row: typeof pushSubscription.$inferSelect): PushSubscription => ({
   last_ok_at: row.lastOkAt && instant(row.lastOkAt)
 })
 
-export async function listMyPushSubscriptions(
-  ctx: ServiceContext,
-  input: { limit: number; cursor?: string }
-): Promise<Page<PushSubscription>> {
-  const after = input.cursor ? decodeCursor(input.cursor).id : undefined
-  const rows = await listRows(ctx.tx as Tx, {
-    accountId: accountOf(ctx),
-    limit: input.limit,
-    after: typeof after === 'string' ? after : undefined
-  })
-  return page(rows.map(view), input.limit, (row) => ({ id: row.id }))
+export async function myPushSubscriptions(ctx: ServiceContext): Promise<PushSubscription[]> {
+  return (await listPushSubscriptions(ctx.tx as Tx, accountOf(ctx))).map(view)
 }
 
-export async function createMyPushSubscription(
+export async function registerMyPushSubscription(
   ctx: ServiceContext,
   input: { endpoint: string; p256dh: string; auth: string; user_agent: string }
 ): Promise<PushSubscription> {
@@ -53,16 +43,18 @@ export async function createMyPushSubscription(
     auth: input.auth,
     userAgent: input.user_agent
   })
-  if (!row) {
-    throw new ApiError(422, 'validation-failed', 'This browser already gets alerts for another organisation.', {
-      errors: [{ in: 'body', pointer: '/endpoint', detail: 'Remove this device in the other organisation first.' }]
-    })
-  }
   return view(row)
 }
 
-export async function deleteMyPushSubscription(ctx: ServiceContext, id: string): Promise<void> {
-  if (!(await removePushSubscription(ctx.tx as Tx, { accountId: accountOf(ctx), id }))) {
-    throw new ApiError(404, 'not-found', 'No such device of yours.')
-  }
+/** The endpoint of the caller's subscription `id` in this organisation, or null. */
+export function myPushEndpoint(ctx: ServiceContext, id: string): Promise<string | null> {
+  return ownPushEndpoint(ctx.tx as Tx, { accountId: accountOf(ctx), id })
+}
+
+/** Deletes the caller's subscription `id`, or every one of theirs for `endpoint`, in this organisation. */
+export function removeMyPushSubscription(
+  ctx: ServiceContext,
+  which: { id: string } | { endpoint: string }
+): Promise<boolean> {
+  return removePushSubscription(ctx.tx as Tx, { accountId: accountOf(ctx), ...which })
 }
