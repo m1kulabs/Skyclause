@@ -5,6 +5,7 @@ import { emailTransportForAws } from '@skyclause/delivery'
 import type { ApiConfig, ApiDeps } from './context'
 import { registeredPermission, registeredPrincipal } from './middleware/auth'
 import { postgresIdempotency, postgresMembership, postgresRateLimits } from './postgres-stores'
+import { createDataRightsTransports } from './services/data-rights/transports'
 
 let config: ApiConfig | undefined
 
@@ -47,6 +48,7 @@ export const productionDeps: ApiDeps = {
   withTenant,
   recordAudit,
   email: { send: (message) => (ses ??= loadEmail()).send(message) },
+  dataRights: createDataRightsTransports(),
   config: () => (config ??= loadConfig()),
   now: () => new Date()
 }

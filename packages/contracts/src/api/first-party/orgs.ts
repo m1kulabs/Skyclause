@@ -714,7 +714,8 @@ export const createOrganisationExport = createRoute({
     404: NotFound,
     400: ValidationFailed,
     422: IdempotencyMismatch,
-    409: { description: 'export-pending: an export is already being prepared.', content: JsonProblem }
+    409: { description: 'export-pending: an export is already being prepared.', content: JsonProblem },
+    503: { description: 'The export could not be queued right now.', content: JsonProblem }
   },
   x: { owner: 'a-data-rights', statement: 'org.export', idempotent: true }
 })

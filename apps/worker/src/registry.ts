@@ -3,6 +3,7 @@ import { bundles } from './bundles'
 import { email } from './email'
 import { evidence } from './evidence'
 import { domainEvents } from './events'
+import { dataRights } from './data-rights'
 import { grades } from './grades'
 import { migrations } from './migrate'
 import { notices } from './notices'
@@ -28,5 +29,6 @@ export const registry = defineRegistry([
   runs, // c-run-orchestrator
   notices, // c-sender-email
   alerts, // c-approver-alerts
-  notifications // c-notifications
+  notifications, // c-notifications
+  dataRights // a-data-rights
 ])

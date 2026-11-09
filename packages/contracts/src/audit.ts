@@ -17,6 +17,8 @@ export const AUDIT_ACTIONS = [
   'source.unbound',
   'sla.changed',
   'export.requested',
+  'organisation.deletion_requested',
+  'organisation.deletion_cancelled',
   'organisation.deleted',
   'account.deleted',
   'mcp.consent_granted',

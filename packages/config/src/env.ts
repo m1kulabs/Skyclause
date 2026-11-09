@@ -85,7 +85,16 @@ const emailHashKey = { EMAIL_HASH_KEY: z.string().min(32) }
 
 const schemas = {
   web: base
-    .extend({ ...optional(sending), ...vapidPublic, ...hosts, ...auth, ...emailHashKey })
+    .extend({
+      ...optional(sending),
+      ...vapidPublic,
+      ...hosts,
+      ...auth,
+      ...emailHashKey,
+      WORKER_URL: z.url().optional(),
+      WORKER_INVOKER_SA: z.email().optional(),
+      EXPORTS_BUCKET: z.string().min(1).optional()
+    })
     .superRefine(together(Object.keys(sending)))
     .superRefine(multiNeedsOrigins),
   worker: base
@@ -99,6 +108,11 @@ const schemas = {
       APP_ORIGIN: z.url().optional(),
       MARKETING_ORIGIN: z.url().optional(),
       ...emailHashKey,
+      EXPORTS_BUCKET: z.string().min(1).optional(),
+      FRAMES_BUCKET: z.string().min(1).optional(),
+      ARCHIVE_BUCKET: z.string().min(1).optional(),
+      SCRATCH_BUCKET: z.string().min(1).optional(),
+      SOURCES_BUCKET: z.string().min(1).optional(),
       ...optional(sending),
       ...optional(receiving),
       ...vapidPublic,
