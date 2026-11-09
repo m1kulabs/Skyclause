@@ -296,7 +296,12 @@ test('completion heartbeat excludes fatal ticks, includes isolated check failure
   await makeOrganization()
   const exporter = new InMemoryMetricExporter(AggregationTemporality.CUMULATIVE)
   const telemetry = startTelemetry('worker', {
-    env: { APP_ENV: 'test', WORKER_URL: 'https://worker.example.org', WORKER_INVOKER_SA: 'worker@example.org' },
+    env: {
+      APP_ENV: 'test',
+      EMAIL_HASH_KEY: 'e'.repeat(48),
+      WORKER_URL: 'https://worker.example.org',
+      WORKER_INVOKER_SA: 'worker@example.org'
+    },
     metricExporter: exporter,
     traceExporter: new InMemorySpanExporter(),
     write: () => {}

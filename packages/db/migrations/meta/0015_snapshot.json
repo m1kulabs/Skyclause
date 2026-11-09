@@ -1,5 +1,5 @@
 {
-  "id": "7b20447d-b358-4b15-883f-6c44c64aa0fc",
+  "id": "7f2e079b-cecd-45bf-bd0d-96bd8aa81e20",
   "prevId": "2381698a-ded4-41d3-b7ce-92ebe6fd883a",
   "version": "7",
   "dialect": "postgresql",
@@ -1252,150 +1252,6 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.audit_finding": {
-      "name": "audit_finding",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "uuidv7()"
-        },
-        "check": {
-          "name": "check",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "key": {
-          "name": "key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "org_id": {
-          "name": "org_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "project_id": {
-          "name": "project_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ref_type": {
-          "name": "ref_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "ref_id": {
-          "name": "ref_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "account_ids": {
-          "name": "account_ids",
-          "type": "uuid[]",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "opened_at": {
-          "name": "opened_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "recovered_at": {
-          "name": "recovered_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "audit_finding_open_identity": {
-          "name": "audit_finding_open_identity",
-          "columns": [
-            {
-              "expression": "check",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "org_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "project_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"audit_finding\".\"recovered_at\" IS NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "audit_finding_org_id_organization_id_fk": {
-          "name": "audit_finding_org_id_organization_id_fk",
-          "tableFrom": "audit_finding",
-          "tableTo": "organization",
-          "schemaTo": "auth",
-          "columnsFrom": [
-            "org_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "audit_finding_project_fk": {
-          "name": "audit_finding_project_fk",
-          "tableFrom": "audit_finding",
-          "tableTo": "project",
-          "columnsFrom": [
-            "org_id",
-            "project_id"
-          ],
-          "columnsTo": [
-            "org_id",
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "audit_finding_platform_project_null": {
-          "name": "audit_finding_platform_project_null",
-          "value": "\"audit_finding\".\"org_id\" IS NOT NULL OR \"audit_finding\".\"project_id\" IS NULL"
-        }
-      },
       "isRLSEnabled": false
     },
     "auth.account": {
@@ -9370,6 +9226,26 @@
           "notNull": true,
           "default": "'{}'"
         },
+        "night_ids": {
+          "name": "night_ids",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
+        "coalesced_keys": {
+          "name": "coalesced_keys",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
+        "requested_by": {
+          "name": "requested_by",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "status": {
           "name": "status",
           "type": "run_status",
@@ -9392,6 +9268,12 @@
         },
         "model": {
           "name": "model",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "provider": {
+          "name": "provider",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -9497,6 +9379,28 @@
           ],
           "isUnique": true,
           "where": "\"run\".\"status\" = 'queued'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "run_one_running_key": {
+          "name": "run_one_running_key",
+          "columns": [
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "pack",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"run\".\"status\" = 'running'",
           "concurrently": false,
           "method": "btree",
           "with": {}

@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { boolean, check, foreignKey, integer, text, unique, uuid } from 'drizzle-orm/pg-core'
+import { boolean, check, foreignKey, index, integer, text, unique, uuid } from 'drizzle-orm/pg-core'
 import { organization } from './auth'
 import { id, instant, orgKey, sameOrg, tenantTable, timestamps } from './columns'
 import {
@@ -155,12 +155,21 @@ export const notice = tenantTable(
     providerMessageId: text('provider_message_id'),
     acceptedAt: instant('accepted_at'),
     traceId: text('trace_id'),
+    /** c-sender-email: sends started for a `call` notice; it fails once the retries after the first are spent. */
+    attempts: integer('attempts').notNull().default(0),
+    /** c-sender-email: the sender's lease while a send is in flight; a crashed send is retried once it lapses. */
+    claimedUntil: instant('claimed_until'),
     ...timestamps()
   },
   (self) => [
     sameOrg('notice_project', self, self.projectId, project, true),
     sameOrg('notice_call', self, self.callId, call, true),
-    sameOrg('notice_subscriber', self, self.subscriberId, subscriber, true)
+    sameOrg('notice_subscriber', self, self.subscriberId, subscriber, true),
+    // `/ses/events` maps SES's message ID back to its notice; the sweep finds queued rows.
+    index('notice_provider_message_id_idx').on(self.providerMessageId),
+    index('notice_queued_idx')
+      .on(self.orgId)
+      .where(sql`${self.status} = 'queued'`)
   ]
 )
 

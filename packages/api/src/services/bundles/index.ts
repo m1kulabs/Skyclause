@@ -50,7 +50,7 @@ const notFound = (what: string) => new ApiError(404, 'not-found', `No ${what} wi
 const at = (date: Date | null) => (date ? instant(date) : null)
 
 /** #79 §1: `can` checks the project against a share link's project and an OAuth grant's `projectIds`. */
-function inScope(principal: Principal, projectId: string) {
+export function inScope(principal: Principal, projectId: string) {
   if (principal.kind === 'share_link') return principal.projectId === projectId
   if (principal.kind === 'oauth') return principal.projectIds === 'all' || principal.projectIds.includes(projectId)
   return true
@@ -239,7 +239,7 @@ const StoredValue = z.object({
 })
 
 /** CAL-5: "Normal; N inputs fresh" with each fresh input of the run's snapshot and its age at evaluation. */
-async function normalSummary(ctx: ServiceContext, parent: RunRow) {
+export async function normalSummary(ctx: ServiceContext, parent: RunRow) {
   if (!parent.snapshotId) return undefined
   const [snapshot] = await tx(ctx)
     .select({ site: indicatorSnapshot.site })
