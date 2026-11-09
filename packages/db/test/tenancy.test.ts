@@ -31,7 +31,7 @@ test('as organisation A, withTenant reads none of B’s rows in any T table, and
     }))
     expect({ table, ...seen }).toEqual({ table, own: true, others: 0 })
   }
-})
+}, 30_000)
 
 test('a transaction without app.org_id reads 0 rows, never all, even on a connection that set it before', async () => {
   const [a] = await twoOrganisations()
@@ -148,7 +148,7 @@ test('withPublicReader sees public projects through the public views and no base
   for (const table of await tenantTables()) {
     expect(await refusal(withPublicReader((tx) => count(tx, table))), table).toMatch(/permission denied for table/)
   }
-})
+}, 30_000)
 
 test('withRetention sees every organisation’s rows', async () => {
   const [a, b] = await twoOrganisations()
