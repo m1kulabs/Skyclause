@@ -7,6 +7,8 @@ import type { EvidenceInboxPorts } from './evidence.ts'
 import { evidenceGmailPorts } from './evidence-gmail.ts'
 import { evidenceStoragePorts } from './evidence-storage.ts'
 import { auditorStoragePorts } from './auditor-storage.ts'
+import { skyGradeStoragePorts } from './sky-grade-storage.ts'
+import type { SkyGraderPorts } from './sky-grades.ts'
 import type { AuditorPorts } from './auditor.ts'
 import type { CrowdTickStore } from './crowd-tick.ts'
 import type { HistoryBuildRow } from './crowd-history.ts'
@@ -1219,4 +1221,13 @@ export function metPollPorts(sheetId: string, rawFolderId: string, evaluate: () 
     },
     evaluate
   )
+}
+
+// Construct lazily; gradeSky supplies the single outer lock.
+export function skyGradePorts(spreadsheetId: string, skyFolderId: string): SkyGraderPorts {
+  return skyGradeStoragePorts(spreadsheetId, skyFolderId, {
+    read: readColumns,
+    newGradeId: () => newUuidV7(),
+    hashId: sha256HexDigest
+  })
 }
