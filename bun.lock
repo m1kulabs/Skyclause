@@ -146,7 +146,11 @@
     "packages/clauses": {
       "name": "@skyclause/clauses",
       "version": "0.0.0",
+      "dependencies": {
+        "@bufbuild/cel": "0.6.2",
+      },
       "devDependencies": {
+        "@bufbuild/cel-spec": "0.6.2",
         "@playwright/test": "1.65.0",
       },
     },
@@ -435,6 +439,14 @@
     "@better-auth/utils": ["@better-auth/utils@0.5.1", "", { "dependencies": { "@noble/hashes": "^2.0.1" } }, "sha512-WETqw5vQ52uQ/xwWR4E8rTgT6fDEr/wnS+otDNkBCa/69281FCF32OKDdQUcahMCnjsvqXBNiEvAQHFB0EVRRg=="],
 
     "@better-fetch/fetch": ["@better-fetch/fetch@1.3.3", "", {}, "sha512-U6SlDt/GUWtK2JAxS/NhdoYTEim+EL1G5byz2TUj83KjLZBUpYzb5SmX0aXaCnbGkAjFKnV/o/0+cyXMbEcqqg=="],
+
+    "@bufbuild/cel": ["@bufbuild/cel@0.6.2", "", { "dependencies": { "@bufbuild/cel-spec": "0.6.2", "@bufbuild/re2": "0.6.2" }, "peerDependencies": { "@bufbuild/protobuf": "^2.6.2" } }, "sha512-AcZd2OnTqtiViJw2U+UQdUxjKQn3MqK1i1QyJtG5+wUKRPS5LzdkXLV3bWbKysuuUlZGJECm6wl3uLp1Cy+eQA=="],
+
+    "@bufbuild/cel-spec": ["@bufbuild/cel-spec@0.6.2", "", { "peerDependencies": { "@bufbuild/protobuf": "^2.6.2" } }, "sha512-Zgs67gtVTIzva36INEeTWbk/UgMRWKwNk4kISaV3BuEH+Qv+HDBmfgGXRwSH99XC1WKx4CGfrjXnPdH92nM4Ow=="],
+
+    "@bufbuild/protobuf": ["@bufbuild/protobuf@2.17.0", "", {}, "sha512-hcPkSz6D7MiTU/5VBBhK+kxaYDoOdQ6yJRFJ3kS8Nydp+VZXfg1vrpABKPNod8bXMufsVCmiUJVIKFzCzta4uw=="],
+
+    "@bufbuild/re2": ["@bufbuild/re2@0.6.2", "", {}, "sha512-/J0aKLB8jZSRe8P5h988GGA15pX/QTBcYvmUzvSdqSJlandchxDxbvykJf1RUpR4bgAEM3eobH8rarINw74bCQ=="],
 
     "@chevrotain/cst-dts-gen": ["@chevrotain/cst-dts-gen@12.0.0", "", { "dependencies": { "@chevrotain/gast": "12.0.0", "@chevrotain/types": "12.0.0" } }, "sha512-fSL4KXjTl7cDgf0B5Rip9Q05BOrYvkJV/RrBTE/bKDN096E4hN/ySpcBK5B24T76dlQ2i32Zc3PAE27jFnFrKg=="],
 
