@@ -174,6 +174,7 @@ export const listMyAiKeys = createRoute({
       description: 'The signed-in account’s AI keys, without saved secrets.',
       content: { 'application/json': { schema: Page(aiKeyWithTestResult) } }
     },
+    400: problemResponse('An organisation must be selected in Skyclause-Organization.'),
     ...sessionErrors,
     403: problemResponse('Personal AI keys are not enabled for this account or organisation.')
   },
@@ -209,6 +210,8 @@ export const createMyAiKey = createRoute({
     ...validationErrors,
     401: problemResponse('Recent authentication is required to create an AI key.'),
     403: problemResponse('Personal AI keys are not enabled for this account or organisation.'),
+    404: problemResponse('The organisation was not found.'),
+    409: problemResponse('This key is already saved.'),
     422: problemResponse('The idempotency key was already used with a different request.')
   },
   x: { owner: 'e-byok-api', statement: 'session', idempotent: true }
@@ -222,6 +225,7 @@ export const deleteMyAiKey = createRoute({
   request: { params: z.object({ id: z.string().min(1) }) },
   responses: {
     204: { description: 'The personal AI key was deleted.' },
+    400: problemResponse('An organisation must be selected in Skyclause-Organization.'),
     ...sessionErrors,
     403: problemResponse('Personal AI keys are not enabled for this account or organisation.'),
     404: problemResponse('The AI key does not exist for this account.')
@@ -242,6 +246,7 @@ export const testMyAiKey = createRoute({
         'application/json': { schema: z.object({ key_id: z.string(), model: z.string(), tested_at: Instant }) }
       }
     },
+    400: problemResponse('An organisation must be selected in Skyclause-Organization.'),
     ...sessionErrors,
     403: problemResponse('Personal AI keys are not enabled for this account or organisation.'),
     404: problemResponse('The AI key does not exist for this account.'),
@@ -260,7 +265,9 @@ export const getMyAiKeyUsage = createRoute({
       description: 'Monthly personal AI key usage totals.',
       content: { 'application/json': { schema: aiKeyUsageSummary } }
     },
+    400: problemResponse('An organisation must be selected in Skyclause-Organization.'),
     ...sessionErrors,
+    404: problemResponse('The organisation was not found.'),
     403: problemResponse('Personal AI keys are not enabled for this account or organisation.')
   },
   x: { owner: 'e-byok-api', statement: 'session', idempotent: false }

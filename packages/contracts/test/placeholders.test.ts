@@ -22,7 +22,7 @@ const packages: Array<{ name: string; owners: Record<string, string[]> }> = [
   },
   {
     name: 'config',
-    owners: { 'e-byok-api': ['sealSecret', 'openSecret'], 'a-hardening': ['assertPublicUrl', 'safeFetch'] }
+    owners: { 'a-hardening': ['assertPublicUrl', 'safeFetch'] }
   },
   {
     name: 'forecast',

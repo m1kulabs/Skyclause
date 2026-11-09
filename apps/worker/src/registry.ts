@@ -1,4 +1,5 @@
 import { alerts } from './alerts'
+import { aiKeys } from './ai-keys'
 import { bundles } from './bundles'
 import { email } from './email'
 import { evidence } from './evidence'
@@ -22,6 +23,7 @@ export const registry = defineRegistry([
   migrations, // f-db
   domainEvents, // f-db-schema
   pilotArchive, // c-ledger-chain
+  aiKeys, // e-byok-api
   bundles, // c-bundle-lifecycle
   evidence, // c-evidence
   grades, // c-grades

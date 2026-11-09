@@ -3,6 +3,7 @@ import type { OperationId, Operations } from '@skyclause/contracts'
 import type { Context, MiddlewareHandler } from 'hono'
 import type { ApiEnv } from '../context'
 import { approvalHandlers } from './approvals'
+import { aiKeyHandlers } from './ai-keys'
 import { alertHandlers } from './alerts'
 import { bundleHandlers } from './bundles'
 import { channelHandlers } from './channels'
@@ -37,6 +38,7 @@ export type Handlers = { [Id in OperationId]?: HandlerEntry<Operations[Id]> }
  * line; an operation without an entry answers 501 `not-built` naming its owner.
  */
 export const HANDLERS: Handlers = {
+  ...aiKeyHandlers, // e-byok-api
   ...channelHandlers, // c-notice-templates
   ...ledgerHandlers, // c-ledger-chain
   ...subscriberHandlers,

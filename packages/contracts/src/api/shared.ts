@@ -635,7 +635,7 @@ export type Invitation = z.infer<typeof Invitation>
 export const OwnershipTransfer = z.object({ id: z.string(), to_member_id: z.string(), status: z.string() })
 export type OwnershipTransfer = z.infer<typeof OwnershipTransfer>
 export const AiUsage = z.object({
-  run_id: z.string(),
+  run_id: z.string().nullable(),
   ai_key_id: z.string().nullable(),
   model: z.string(),
   tokens_in: z.number().int(),

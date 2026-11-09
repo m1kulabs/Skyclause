@@ -589,9 +589,37 @@ export const createOrganisationAiKey = createRoute({
     422: {
       description: 'validation-failed, idempotency-mismatch or key-test-failed: a failing key cannot be enabled.',
       content: JsonProblem
-    }
+    },
+    409: { description: 'conflict: this key is already saved for this organisation.', content: JsonProblem }
   },
   x: { owner: 'e-byok-api', statement: 'ai_keys.manage', idempotent: true }
+})
+
+export const updateOrganisationAiKey = createRoute({
+  method: 'patch',
+  path: '/api/orgs/{org}/ai-keys/{id}',
+  operationId: 'updateOrganisationAiKey',
+  tags: ['ai-keys'],
+  request: {
+    params: OrgItemParams,
+    body: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: AiKey.pick({ enabled: true, priority: true, declared_tier: true }).partial()
+        }
+      }
+    }
+  },
+  responses: {
+    200: { description: 'Success.', content: { 'application/json': { schema: OrganisationAiKey } } },
+    401: Unauthorized,
+    403: Forbidden,
+    404: NotFound,
+    400: ValidationFailed,
+    422: { description: 'key-test-failed: a key whose last test failed cannot be enabled.', content: JsonProblem }
+  },
+  x: { owner: 'e-byok-api', statement: 'ai_keys.manage', idempotent: false }
 })
 
 export const deleteOrganisationAiKey = createRoute({
@@ -620,7 +648,8 @@ export const testOrganisationAiKey = createRoute({
     401: Unauthorized,
     403: Forbidden,
     404: NotFound,
-    422: { description: 'key-test-failed: the minimal provider call failed.', content: JsonProblem }
+    422: { description: 'key-test-failed: the minimal provider call failed.', content: JsonProblem },
+    429: { description: 'rate-limited: the key was tested too many times in the last hour.', content: JsonProblem }
   },
   x: { owner: 'e-byok-api', statement: 'ai_keys.manage', idempotent: false }
 })
@@ -968,6 +997,7 @@ export const routes = [
   revokeOrganisationApiKey,
   listOrganisationAiKeys,
   createOrganisationAiKey,
+  updateOrganisationAiKey,
   deleteOrganisationAiKey,
   testOrganisationAiKey,
   getOrganisationAiKeyUsage,

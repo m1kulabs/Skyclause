@@ -162,6 +162,27 @@
       "when": 1794243463237,
       "tag": "0022_f-handled-message-grants",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794245352376,
+      "tag": "0023_e-byok-api-test-columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794245353006,
+      "tag": "0024_e-byok-api-system-read",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794245353676,
+      "tag": "0025_e-byok-api-org-flags",
+      "breakpoints": true
     }
   ]
 }
