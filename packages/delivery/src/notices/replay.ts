@@ -1,6 +1,6 @@
-import type { Mode } from '@skyclause/contracts'
+import type { Language, Mode } from '@skyclause/contracts'
 import { formatDate, formatTime } from '@skyclause/i18n/format'
-import { age, label, layout, modeWord, say, type NoticeLanguage, type Rendered } from './render'
+import { age, label, layout, modeWord, say, type Rendered } from './render'
 
 // #152 NTC-7 and DESIGN "Known gaps": with no sent call yet, a Sky preview fills only the measured parts of the
 // labelled 2 November 2026 replay (D9, D12) and leaves every other field as its named placeholder.
@@ -15,11 +15,7 @@ export const REPLAY_2_NOVEMBER = {
   rain_60m_mm: 39
 } as const
 
-export function renderReplayPreview(o: {
-  mode: Mode | null
-  language: NoticeLanguage
-  channel: 'email' | 'ics'
-}): Rendered {
+export function renderReplayPreview(o: { mode: Mode | null; language: Language; channel: 'email' | 'ics' }): Rendered {
   const { language } = o
   const r = REPLAY_2_NOVEMBER
   const gauge = label('inputs', 'rain', language)

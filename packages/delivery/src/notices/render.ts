@@ -1,11 +1,10 @@
-import type { CallView } from '@skyclause/contracts'
+import type { CallView, Language } from '@skyclause/contracts'
 import { formatDateLong, formatTime } from '@skyclause/i18n/format'
 import { formatClock as clock, formatDateShort, hasNotice, t } from '@skyclause/i18n/notices'
 
 // #152 c-notice-templates: every `call` notice's wording (DESIGN "Email notice and ICS entry"). Only the approved
 // wording is free text; every other line is a template line, in the notice's language.
 
-export type NoticeLanguage = 'en' | 'ms'
 export type NoticeChannel = 'email' | 'push' | 'ics'
 
 export interface Rendered {
@@ -57,10 +56,10 @@ export interface Fields {
   links: NoticeLinks
 }
 
-export const say = (key: string, vars: Record<string, string>, language: NoticeLanguage) =>
+export const say = (key: string, vars: Record<string, string>, language: Language) =>
   t(`notices.${key}`, vars, language)
 
-export function modeWord(call: Pick<CallView, 'mode' | 'watch'>, language: NoticeLanguage) {
+export function modeWord(call: Pick<CallView, 'mode' | 'watch'>, language: Language) {
   const state = call.mode === 'normal' && call.watch ? 'storm_watch' : (call.mode ?? 'no_call')
   return t(`brand.states.${state}`, {}, language)
 }
@@ -76,11 +75,11 @@ const INPUT_NOUNS: Array<[RegExp, string]> = [
 ]
 const WINDOW_FIELD = /^w\.(start|end|start_local_min|end_local_min|kind|duration)$/
 
-export const label = (group: 'clauses' | 'inputs', key: string, language: NoticeLanguage) =>
+export const label = (group: 'clauses' | 'inputs', key: string, language: Language) =>
   hasNotice(`${group}.${key}`) ? say(`${group}.${key}`, {}, language) : key
 
 /** DESIGN "Input ages": minutes, then hours over 90 minutes. */
-export function age(seconds: number, language: NoticeLanguage) {
+export function age(seconds: number, language: Language) {
   const minutes = Math.round(seconds / 60)
   return minutes > 90
     ? t('format.ageHour', { value: Math.round(minutes / 60) }, language)
@@ -88,7 +87,7 @@ export function age(seconds: number, language: NoticeLanguage) {
 }
 
 /** The fired clauses with their inputs' ages from the shadow verdict: no values, which D32 keeps off public feeds. */
-function clauseLines(call: CallView, language: NoticeLanguage) {
+function clauseLines(call: CallView, language: Language) {
   const values = call.shadow.clauses.flatMap((c) => c.inputs)
   return call.fired.map(({ clause, inputs }) => {
     const named = inputs
@@ -106,7 +105,7 @@ function clauseLines(call: CallView, language: NoticeLanguage) {
 }
 
 function fromCall(call: CallView, o: Parameters<RenderNotice>[1]): Fields {
-  const language = o.language as NoticeLanguage
+  const language = o.language as Language
   const at = o.approver?.at ?? call.approved_at
   if (!at) throw new Error(`Call ${call.id} has no approval time to render`)
   const reason = o.wording ?? call.notices.find((n) => n.language === language)?.body
@@ -143,7 +142,7 @@ const linkify = (escaped: string) =>
   escaped.replace(/https?:\/\/[^\s<]+/g, (url) => `<a href="${url}" style="color:#0b57d0;">${url}</a>`)
 
 /** NFR-4 and NFR-13: one presentation table with inline styles only, which Outlook and Gmail both keep. */
-function html(subject: string, blocks: string[][], language: NoticeLanguage) {
+function html(subject: string, blocks: string[][], language: Language) {
   const paragraphs = blocks
     .map((block) => `<p style="margin:0 0 16px 0;">${block.map((line) => linkify(escape(line))).join('<br>')}</p>`)
     .join('')
@@ -157,7 +156,7 @@ function html(subject: string, blocks: string[][], language: NoticeLanguage) {
   )
 }
 
-export function layout(f: Fields, language: NoticeLanguage, channel: NoticeChannel): Rendered {
+export function layout(f: Fields, language: Language, channel: NoticeChannel): Rendered {
   const s = (key: string, vars: Record<string, string> = {}) => say(key, vars, language)
   const { mode, window, links } = f
   const teaching = f.teaching ? [s('teaching')] : []
@@ -200,5 +199,4 @@ export function layout(f: Fields, language: NoticeLanguage, channel: NoticeChann
   return channel === 'email' ? { subject, text, html: html(subject, blocks, language) } : { subject, text }
 }
 
-export const renderNotice: RenderNotice = (call, o) =>
-  layout(fromCall(call, o), o.language as NoticeLanguage, o.channel)
+export const renderNotice: RenderNotice = (call, o) => layout(fromCall(call, o), o.language as Language, o.channel)

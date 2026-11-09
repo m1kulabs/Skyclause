@@ -9,8 +9,9 @@ import type { ServiceContext } from '../../tenancy'
 // all `channels.manage` (#79 §4).
 
 type ChannelKind = Channel['channel']
-type NoticeChannel = 'email' | 'ics'
-type Preview = { channel: NoticeChannel; pack: Pack; mode: Mode | null; language: Language } & ReturnType<
+/** The channels with a notice template that the preview shows (push has no P1 sender). */
+type PreviewChannel = 'email' | 'ics'
+type Preview = { channel: PreviewChannel; pack: Pack; mode: Mode | null; language: Language } & ReturnType<
   typeof renderNotice
 >
 
@@ -33,8 +34,8 @@ export async function channelProjectFor(ctx: ServiceContext, projectId: string, 
   return project
 }
 
-export async function listChannels(ctx: ServiceContext, projectId: string): Promise<Page<Channel>> {
-  const rows = await listProjectChannels(ctx.tx, projectId)
+export async function listChannels(ctx: ServiceContext, input: { projectId: string }): Promise<Page<Channel>> {
+  const rows = await listProjectChannels(ctx.tx, input.projectId)
   const enabled = (channel: ChannelKind) => rows.find((row) => row.channel === channel)?.enabled ?? false
   return { data: CHANNELS.map((channel) => ({ channel, enabled: enabled(channel) })), next_cursor: null }
 }
@@ -112,8 +113,8 @@ export async function previewChannels(
     throw invalid(`${q.mode} is not a ${q.pack} mode.`, '/mode')
   }
   const languages: Language[] = q.language ? [q.language] : ['en', 'ms']
-  const channels: NoticeChannel[] = q.channel ? [q.channel] : ['email', 'ics']
-  const shown = (language: Language, channel: NoticeChannel, has: (language: Language) => boolean) =>
+  const channels: PreviewChannel[] = q.channel ? [q.channel] : ['email', 'ics']
+  const shown = (language: Language, channel: PreviewChannel, has: (language: Language) => boolean) =>
     channel === 'ics' ? language === 'en' : has(language)
   const pairs = (has: (language: Language) => boolean) =>
     languages.flatMap((language) =>

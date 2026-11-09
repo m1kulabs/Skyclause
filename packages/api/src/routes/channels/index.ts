@@ -19,7 +19,7 @@ export const channelHandlers: Handlers = {
       const { id } = c.req.valid('param')
       const body = await inTenant(c, async (ctx) => {
         await projectIn(c, ctx, id)
-        return listChannels(ctx, id)
+        return listChannels(ctx, { projectId: id })
       })
       return c.json(body, 200)
     }
