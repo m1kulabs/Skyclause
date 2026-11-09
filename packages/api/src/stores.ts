@@ -21,16 +21,20 @@ export interface StoredResponse {
 export interface IdempotencyRecord extends IdempotencyKey {
   requestHash: string
   expiresAt: Date
-  /** Null while the first request is still running. */
+  /** Null while the first request is still running, whose reservation expires sooner (the pending lease). */
   response: StoredResponse | null
 }
+
+/** A key as the request that reserved it holds it; another request that took over an expired key has another hash. */
+export type IdempotencyClaim = IdempotencyKey & { requestHash: string }
 
 export interface IdempotencyStore {
   /** Inserts a pending record unless an unexpired one holds the key, which it returns instead. */
   reserve(record: IdempotencyRecord, now: Date): Promise<IdempotencyRecord | null>
-  complete(key: IdempotencyKey, response: StoredResponse): Promise<void>
-  /** Frees a reserved key whose request didn't succeed, so a retry runs again. */
-  release(key: IdempotencyKey): Promise<void>
+  /** Stores the response on the pending key this request reserved, kept until `expiresAt`. */
+  complete(claim: IdempotencyClaim, response: StoredResponse, expiresAt: Date): Promise<void>
+  /** Frees the pending key this request reserved, so a retry runs again; a completed key stays. */
+  release(claim: IdempotencyClaim): Promise<void>
 }
 
 export interface RateLimitStore {
@@ -40,7 +44,9 @@ export interface RateLimitStore {
 
 /** `requireOrg` reads `auth.organization` and `auth.member` through this (#93 ticket decision). */
 export interface MembershipLookup {
-  /** By slug or ID. */
-  organisation(ref: string): Promise<{ id: string; slug: string } | null>
-  role(accountId: string, orgId: string): Promise<Role | null>
+  /**
+   * The organisation named by slug or ID, with `accountId`'s role in it: null when the account isn't a member or no
+   * account is given. Null for an unknown organisation.
+   */
+  lookup(ref: string, accountId: string | null): Promise<{ id: string; slug: string; role: Role | null } | null>
 }

@@ -1,6 +1,7 @@
 // drizzle-kit reads this file: every table here is generated. `partitioned.ts` (poll, reading) is left out on purpose;
 // `src/index.ts` exports it.
 export * from './access'
+export * from './api'
 export * from './audit'
 export * from './auth'
 export * from './clauses'

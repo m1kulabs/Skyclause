@@ -13,9 +13,9 @@ import {
   type Principal,
   type PushTransport,
   type Role,
-  type SkyclauseRoute,
-  type TxHandle
+  type SkyclauseRoute
 } from '@skyclause/contracts'
+import type { Tx } from '@skyclause/db'
 import { expect } from 'vitest'
 import { createApi, type ApiApp, type Registry } from '../../src/app'
 import type { ApiDeps } from '../../src/context'
@@ -39,11 +39,9 @@ export function testOrg(slug: string): { id: string; slug: string } {
 }
 
 export const testMembership: MembershipLookup = {
-  async organisation(ref) {
-    return [...orgs.values()].find((org) => org.slug === ref || org.id === ref) ?? null
-  },
-  async role(accountId, orgId) {
-    return roles.get(`${accountId} ${orgId}`) ?? null
+  async lookup(ref, accountId) {
+    const org = [...orgs.values()].find((org) => org.slug === ref || org.id === ref)
+    return org ? { ...org, role: (accountId && roles.get(`${accountId} ${org.id}`)) || null } : null
   }
 }
 
@@ -184,12 +182,15 @@ export function memoryIdempotencyStore(): IdempotencyStore {
       records.set(id(record), record)
       return null
     },
-    async complete(key, response) {
-      const held = records.get(id(key))
-      if (held) records.set(id(key), { ...held, response })
+    async complete(claim, response, expiresAt) {
+      const held = records.get(id(claim))
+      if (held?.requestHash === claim.requestHash && !held.response) {
+        records.set(id(claim), { ...held, response, expiresAt })
+      }
     },
-    async release(key) {
-      records.delete(id(key))
+    async release(claim) {
+      const held = records.get(id(claim))
+      if (held?.requestHash === claim.requestHash && !held.response) records.delete(id(claim))
     }
   }
 }
@@ -231,7 +232,7 @@ export function testDeps(overrides: Partial<ApiDeps> = {}): TestDeps {
     membership: testMembership,
     idempotency: memoryIdempotencyStore(),
     rateLimits: memoryRateLimitStore(),
-    withTenant: async (ctx, fn) => fn({ orgId: ctx.orgId, principal: ctx.principal } as unknown as TxHandle),
+    withTenant: async (ctx, fn) => fn({ orgId: ctx.orgId, principal: ctx.principal } as unknown as Tx),
     recordAudit: async (tx, e) => {
       const { orgId, principal } = tx as unknown as FakeTx
       audits.push({ orgId, actor: principal, action: e.action, target: e.target, after: e.after })

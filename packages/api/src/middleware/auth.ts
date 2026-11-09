@@ -98,7 +98,7 @@ export function requireRecentAuth(hours = 12): Middleware {
 export const requireStaff: Middleware = async (c, next) => {
   const principal = principalOf(c)
   if (principal.kind !== 'session' || !principal.staff) throw insufficient('This operation is for staff.')
-  const commons = await c.get('deps').membership.organisation('commons')
+  const commons = await c.get('deps').membership.lookup('commons', null)
   if (!commons) throw new Error('requireStaff audits in the commons organisation, which does not exist')
   const job: Principal = {
     kind: 'system',
