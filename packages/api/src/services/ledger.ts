@@ -1,3 +1,4 @@
+import { HTTP_PROBLEM_STATUS } from '@skyclause/contracts'
 import type { z } from '@hono/zod-openapi'
 import { canonicalJson } from '@skyclause/clauses'
 import { Pack, ROLES, type LedgerKind, type Operations, type Role } from '@skyclause/contracts'
@@ -27,7 +28,8 @@ type Ok<Id extends 'listLedgerEntries' | 'verifyLedger' | 'getPilotArchive'> = z
 >
 type LedgerRow = Ok<'listLedgerEntries'>['data'][number]
 
-const notFound = () => new ApiError(404, 'not-found', 'No such project, or you can’t see its ledger.')
+const notFound = () =>
+  new ApiError(HTTP_PROBLEM_STATUS['not-found'], 'not-found', 'No such project, or you can’t see its ledger.')
 
 /** The project, if this principal may read its ledger; else 404, as for another organisation's project. */
 export async function ledgerProjectFor(

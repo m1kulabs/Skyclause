@@ -1,4 +1,4 @@
-import type { Principal } from '@skyclause/contracts'
+import { HTTP_PROBLEM_STATUS, type Principal } from '@skyclause/contracts'
 import { accountOrganisations, withSystem } from '@skyclause/db'
 import type { Context } from 'hono'
 import type { ApiEnv } from '../../context'
@@ -19,7 +19,7 @@ import type { Handlers } from '../index'
 // (#170's Account › Notifications page sends its `account` segment), it acts in each of the account's current
 // memberships, as #156's notification routes do. The VAPID key is global.
 
-const notFound = (detail: string) => new ApiError(404, 'not-found', detail)
+const notFound = (detail: string) => new ApiError(HTTP_PROBLEM_STATUS['not-found'], 'not-found', detail)
 
 /** An organisation a request acts in, with the session filled as `requireOrg` fills it. */
 type OrgScope = { orgId: string; principal: Principal }

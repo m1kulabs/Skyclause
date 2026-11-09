@@ -1,5 +1,6 @@
 import { log } from '@skyclause/config'
 import {
+  HTTP_PROBLEM_STATUS,
   NOTIFICATION_KINDS,
   type EventType,
   type Notification,
@@ -168,7 +169,7 @@ export const notificationHandlers: {
       const read = UUID.test(id)
         ? (await inEachOrg(c, (ctx) => markNotificationRead(ctx, { id, now }))).find(Boolean)
         : null
-      if (!read) throw new ApiError(404, 'not-found', 'No such notification.')
+      if (!read) throw new ApiError(HTTP_PROBLEM_STATUS['not-found'], 'not-found', 'No such notification.')
       return c.json(read, 200)
     }
   },

@@ -1,9 +1,11 @@
+import { HTTP_PROBLEM_STATUS } from '@skyclause/contracts'
 import type { MiddlewareHandler } from 'hono'
 import type { ApiEnv } from '../context'
 import { ApiError } from '../problems'
 import { principalOf } from './auth'
 
-const notFound = () => new ApiError(404, 'not-found', 'No such organisation, or you are not a member of it.')
+const notFound = () =>
+  new ApiError(HTTP_PROBLEM_STATUS['not-found'], 'not-found', 'No such organisation, or you are not a member of it.')
 
 /**
  * D2: the organisation is the path's `{org}`, else `Skyclause-Organization` (slug or ID), else the principal's own.
