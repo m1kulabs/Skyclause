@@ -1,0 +1,16 @@
+# `bun run db:up`: the local Postgres 18 for dev and tests (TRD environments). SKYCLAUSE_DB_PORT moves the host port;
+# the harness and scripts read the same variable (scripts/local.ts).
+name: skyclause
+services:
+  postgres:
+    build: ./docker
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - 127.0.0.1:${SKYCLAUSE_DB_PORT:-5432}:5432
+    # Over TCP, so it passes only after init.sql, while the entrypoint's temporary server listens on the socket alone.
+    healthcheck:
+      test: ['CMD', 'pg_isready', '--host=127.0.0.1', '--username=migrator', '--dbname=skyclause']
+      interval: 1s
+      timeout: 3s
+      retries: 60

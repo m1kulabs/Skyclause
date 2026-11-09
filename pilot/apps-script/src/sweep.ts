@@ -124,7 +124,7 @@ function crossingInput(value: unknown): CrossingInput | null {
   return input
 }
 
-// Null when the file is not a Sky crossing at all (wrong pack, bad JSON, no ID): the sweep skips it.
+// Null when the file is not a live Sky or Crowd crossing (wrong pack, bad JSON, no ID): the sweep skips it.
 export function parseCrossingFile(raw: RawFile): CrossingFile | null {
   let json: unknown
   try {
@@ -132,7 +132,7 @@ export function parseCrossingFile(raw: RawFile): CrossingFile | null {
   } catch {
     return null
   }
-  if (!isRecord(json) || json.pack !== 'sky') return null
+  if (!isRecord(json) || (json.pack !== 'sky' && json.pack !== 'crowd')) return null
   if (typeof json.crossing_id !== 'string' || !json.crossing_id) return null
   if (typeof json.t_eval !== 'string' || Number.isNaN(Date.parse(json.t_eval))) return null
   const changes: CrossingChange[] = []
@@ -166,7 +166,7 @@ export function parseCrossingFile(raw: RawFile): CrossingFile | null {
     crossing_id: json.crossing_id,
     t_eval: json.t_eval,
     snapshot_id: typeof json.snapshot_id === 'string' && json.snapshot_id ? json.snapshot_id : json.t_eval,
-    pack: 'sky',
+    pack: json.pack,
     replay: json.replay === true,
     ...(Object.prototype.hasOwnProperty.call(json, 'clause_version')
       ? {
@@ -586,7 +586,7 @@ export function runSweep(ports: SweepPorts): SweepResult {
   const skyFiles = ports.skyFiles().map((raw) => ({ raw, file: parseCrossingFile(raw) }))
   const liveById = new Map<string, CrossingFile>()
   for (const { file } of skyFiles) {
-    if (file && !file.replay) liveById.set(file.crossing_id, file)
+    if (file?.pack === 'sky' && !file.replay) liveById.set(file.crossing_id, file)
   }
   const rawFiles = [...skyFiles, ...ports.crowdFiles().map((raw) => ({ raw, file: parseCrossingFile(raw) }))]
   for (const { raw, file } of rawFiles) {
@@ -679,7 +679,8 @@ export function runSweep(ports: SweepPorts): SweepResult {
   const ledgerWindows = ports.windows()
   const replayByName = new Map<string, CrossingFile | null>()
   for (const raw of ports.replayFiles()) {
-    replayByName.set(raw.name, parseCrossingFile(raw))
+    const file = parseCrossingFile(raw)
+    replayByName.set(raw.name, file?.pack === 'sky' ? file : null)
   }
   const sent = ports.sent()
 

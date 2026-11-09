@@ -12,11 +12,13 @@ WORKDIR /repo
 COPY . .
 RUN bun install --frozen-lockfile
 RUN bun run --filter './apps/*' build
-# /out is the runtime tree: the web standalone server, the worker bundle (its package.json makes main.js ESM),
-# web's public files, and apps/docs's static export under /docs/ (#79 §4 Hosts), once apps/docs builds one (#210).
-RUN mkdir -p /out/apps/worker /out/apps/web/public \
+# /out is the runtime tree: the web standalone server, the worker bundle (its package.json makes main.js ESM) and the
+# SQL migrations its `migrate` job reads (#91), web's public files, and apps/docs's static export under /docs/
+# (#79 §4 Hosts), once apps/docs builds one (#210).
+RUN mkdir -p /out/apps/worker /out/apps/web/public /out/packages/db \
   && cp -R apps/web/.next/standalone/. /out/ \
   && cp -R apps/worker/dist apps/worker/package.json /out/apps/worker/ \
+  && cp -R packages/db/migrations /out/packages/db/ \
   && if [ -d apps/web/public ]; then cp -R apps/web/public/. /out/apps/web/public/; fi \
   && if node -e "process.exit(require('./apps/docs/package.json').scripts?.build ? 0 : 1)"; then \
        cp -R apps/docs/out /out/apps/web/public/docs; \

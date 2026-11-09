@@ -1,7 +1,7 @@
 import { notBuilt } from '../not-built'
 import type { Check, DeriveInputState, Diff, Evaluate, Explain, SnapshotAt } from '../types'
 
-export { canonicalHash } from '../canonical-hash'
+export { canonicalHash, canonicalJson } from '../canonical-hash'
 
 export const snapshotAt: SnapshotAt = notBuilt('b-clauses')
 export const check: Check = notBuilt('b-clauses')

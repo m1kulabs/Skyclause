@@ -2,10 +2,17 @@
   "extends": "../config/tsconfig.base.json",
   "compilerOptions": {
     "rootDir": ".",
-    "outDir": "dist/types"
+    "outDir": "dist/types",
+    "types": ["node"]
   },
-  "include": ["src", "test"],
+  "include": ["src", "test", "scripts", "drizzle.config.ts", "vitest.config.ts"],
   "references": [
+    {
+      "path": "../clauses"
+    },
+    {
+      "path": "../config"
+    },
     {
       "path": "../contracts"
     }

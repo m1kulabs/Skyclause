@@ -12,15 +12,12 @@ const packages: Array<{ name: string; owners: Record<string, string[]> }> = [
   {
     name: 'api',
     owners: {
-      'f-api': ['setPrincipalResolver', 'setPermissionCheck'],
       'b-auditor': ['registerAuditCheck']
     }
   },
   {
     name: 'db',
     owners: {
-      'f-db-schema': ['recordAudit', 'emitEvent', 'track', 'projectGate'],
-      'c-ledger-chain': ['appendLedger'],
       'c-run-orchestrator': ['requestRun'],
       'a-org-projects': ['createOrganisation'],
       'c-notifications': ['notify'],
@@ -52,10 +49,6 @@ const packages: Array<{ name: string; owners: Record<string, string[]> }> = [
   {
     name: 'sources',
     owners: { 'b-adapter-listings': ['parseListingPage'] }
-  },
-  {
-    name: 'agent',
-    owners: { 'c-agent-core': ['draftBundle'] }
   }
 ]
 

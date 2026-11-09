@@ -37,7 +37,8 @@ serves() {
   docker stop "$container" >/dev/null || true
 }
 
-serves web -e APP_ENV=production
+# A throwaway IP_HASH_KEY: web needs one to start (#93); production mounts the real one.
+serves web -e APP_ENV=production -e IP_HASH_KEY=check-image-only-ip-hash-key-0000000000
 serves worker -e APP_ENV=production -e WORKER_URL=https://worker.example.test \
   -e WORKER_INVOKER_SA=skyclause-invoker@skyclause.iam.gserviceaccount.com
 

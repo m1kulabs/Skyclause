@@ -232,7 +232,12 @@ jobs:
             # After a rollback traffic is pinned to a revision, so move it to the new one explicitly.
             gcloud run services update-traffic "$service" --to-latest --region="$REGION" --project="$PROJECT" --quiet
           done
-          url="$(gcloud run services describe web --region="$REGION" --project="$PROJECT" --format='value(status.url)')"
+          web="$(gcloud run services describe web --region="$REGION" --project="$PROJECT" --format=json)"
+          env_of() { jq -r --arg name "$1" '.spec.template.spec.containers[0].env[]? | select(.name == $name) | .value' <<< "$web"; }
+          # Under HOST_MODE=multi, proxy.ts (#93) serves pages only on the six origins and /health on every host, so
+          # the @smoke run goes to the marketing origin; the Smoke /health step below keeps the run.app URL.
+          if [ "$(env_of HOST_MODE)" = multi ]; then url="$(env_of MARKETING_ORIGIN)"; else url="$(jq -r '.status.url' <<< "$web")"; fi
+          [ -n "$url" ] || { echo '::error::web has no URL to run the @smoke tests against'; exit 1; }
           echo "web_url=$url" >> "$GITHUB_OUTPUT"
       - name: Deploy every other job
         run: |

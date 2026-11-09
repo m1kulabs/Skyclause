@@ -1,5 +1,9 @@
+import { closeConnections, emitEvent, setEventPublisher, withSystem, withTenant, type Tx } from '@skyclause/db'
+import { makeOrganization, makeProject, makeSource } from '@skyclause/db/test/factories/index'
+import { asLogin, memberOf, testDatabase } from '@skyclause/db/test/harness/index'
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose'
-import { beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test, vi } from 'vitest'
+import { registry } from '../src/registry'
 import { createServer, defineRegistry, runJob, type WorkerPart } from '../src/server'
 
 const audience = 'https://worker-413187272599.asia-southeast1.run.app'
@@ -45,6 +49,19 @@ async function post(app: ReturnType<typeof server>, path: string, init: { bearer
   if (init.bearer) headers.authorization = `Bearer ${init.bearer}`
   return app.request(path, { method: 'POST', headers, body: init.body ?? '{}' })
 }
+
+const backendPid = async (tx: Pick<Tx, 'execute'>) =>
+  Number((await tx.execute<{ pid: number }>('SELECT pg_backend_pid() AS pid')).rows[0]!.pid)
+
+/** The `system` login's connections to this file's database, read as the superuser. */
+const systemBackends = () =>
+  asLogin('postgres', async (client) => {
+    const { rows } = await client.query(
+      "SELECT state, query FROM pg_stat_activity WHERE usename = 'system' AND datname = $1",
+      [testDatabase()]
+    )
+    return rows
+  })
 
 describe('worker OIDC', () => {
   test('a call without a token is 401', async () => {
@@ -164,6 +181,209 @@ describe('worker minute tick', () => {
   })
 })
 
+describe('worker 15-minute batch', () => {
+  test('runs every batch handler at the same instant', async () => {
+    const ran: Array<[string, Date]> = []
+    const app = server(
+      { owner: 'a-observability', batch: { sli: async (now) => void ran.push(['sli', now]) } },
+      { owner: 'b-auditor', batch: { auditor: async (now) => void ran.push(['auditor', now]) } }
+    )
+    const res = await post(app, '/ticks/batch', { bearer: await token() })
+    expect(res.status).toBe(204)
+    expect(ran.map(([name]) => name).sort()).toEqual(['auditor', 'sli'])
+    expect(ran[0]?.[1]).toBe(ran[1]?.[1])
+  })
+
+  test('the batch needs a valid token from the invoker, and runs nothing without one', async () => {
+    const ran: string[] = []
+    const app = server({ owner: 'a-observability', batch: { sli: async () => void ran.push('sli') } })
+    expect((await post(app, '/ticks/batch')).status).toBe(401)
+    expect(
+      (await post(app, '/ticks/batch', { bearer: await token({ aud: 'https://elsewhere.example' }) })).status
+    ).toBe(401)
+    const stranger = await token({ email: 'someone-else@skyclause.iam.gserviceaccount.com' })
+    expect((await post(app, '/ticks/batch', { bearer: stranger })).status).toBe(403)
+    expect(ran).toEqual([])
+  })
+
+  test('one failing batch handler does not stop the others, and the batch names it', async () => {
+    const ran: string[] = []
+    const app = server(
+      { owner: 'a-observability', batch: { sli: () => Promise.reject(new Error('database asleep')) } },
+      { owner: 'b-auditor', batch: { auditor: async () => void ran.push('auditor') } }
+    )
+    const res = await post(app, '/ticks/batch', { bearer: await token() })
+    expect(ran).toEqual(['auditor'])
+    expect(res.status).toBe(500)
+    expect(await res.json()).toEqual({ failed: ['sli'] })
+  })
+
+  test('a handler that throws before returning a promise stops none of the others', async () => {
+    const ran: string[] = []
+    const app = server(
+      {
+        owner: 'a-observability',
+        batch: {
+          sli: () => {
+            throw new Error('not configured')
+          }
+        }
+      },
+      { owner: 'b-auditor', batch: { auditor: async () => void ran.push('auditor') } }
+    )
+    const res = await post(app, '/ticks/batch', { bearer: await token() })
+    expect(ran).toEqual(['auditor'])
+    expect(res.status).toBe(500)
+    expect(await res.json()).toEqual({ failed: ['sli'] })
+  })
+
+  test('a batch with no handlers is 204', async () => {
+    expect((await post(server(), '/ticks/batch', { bearer: await token() })).status).toBe(204)
+  })
+
+  test('the minute tick runs no batch handler, and the batch no tick handler', async () => {
+    const ran: string[] = []
+    const app = server({
+      owner: 'test',
+      ticks: { evaluator: async () => void ran.push('tick') },
+      batch: { sli: async () => void ran.push('batch') }
+    })
+    const bearer = await token()
+    await post(app, '/ticks/minute', { bearer })
+    expect(ran).toEqual(['tick'])
+    await post(app, '/ticks/batch', { bearer })
+    expect(ran).toEqual(['tick', 'batch'])
+  })
+})
+
+describe('worker 15-minute batch connection', () => {
+  test('the batch handlers share one system connection for the run, taking turns on it', async () => {
+    const orgId = (await makeOrganization()).id
+    const pids: number[] = []
+    const app = server(
+      {
+        owner: 'c-run-orchestrator',
+        batch: {
+          sky: async () => {
+            const principal = await withSystem('sky', async (tx) => (pids.push(await backendPid(tx)), tx.principal))
+            pids.push(await withTenant({ orgId, principal }, backendPid))
+          }
+        }
+      },
+      {
+        owner: 'b-auditor',
+        batch: {
+          // Its transaction stays open 50 ms, across sky's, so from the pool the two would need two connections.
+          auditor: () =>
+            withSystem('auditor', async (tx) => {
+              await tx.execute('SELECT pg_sleep(0.05)')
+              pids.push(await backendPid(tx))
+            })
+        }
+      }
+    )
+    expect((await post(app, '/ticks/batch', { bearer: await token() })).status).toBe(204)
+    expect(pids).toHaveLength(3)
+    expect(new Set(pids).size).toBe(1)
+  })
+
+  test('a handler failing on the shared connection stops none of the others, and the run gives the connection back', async () => {
+    await closeConnections()
+    const orgId = (await makeOrganization()).id
+    let skyPid = 0
+    const app = server(
+      {
+        owner: 'b-auditor',
+        batch: {
+          broken: async () => {
+            await withSystem('broken', (tx) => tx.execute('SELECT * FROM no_such_table'))
+          }
+        }
+      },
+      {
+        owner: 'c-approver-alerts',
+        // withTenant inside withSystem's callback would need a second connection, so it fails instead of waiting.
+        batch: {
+          nested: () => withSystem('nested', (tx) => withTenant({ orgId, principal: tx.principal }, async () => {}))
+        }
+      },
+      {
+        owner: 'c-run-orchestrator',
+        batch: { sky: () => withSystem('sky', async (tx) => void (skyPid = await backendPid(tx))) }
+      }
+    )
+    const res = await post(app, '/ticks/batch', { bearer: await token() })
+    expect(res.status).toBe(500)
+    expect(await res.json()).toEqual({ failed: ['broken', 'nested'] })
+    expect(skyPid).toBeGreaterThan(0)
+    // The run's connection is the pool's only one and idle: the next call outside a batch gets it.
+    expect(await withSystem('after', backendPid)).toBe(skyPid)
+  })
+
+  test('the route runs no statement of its own on the run’s connection, before or after the handlers', async () => {
+    await closeConnections()
+    const seen: unknown[] = []
+    const app = server({
+      owner: 'd-public-api',
+      batch: {
+        probe: async () => {
+          seen.push(await systemBackends())
+          await withSystem('probe', (tx) => tx.execute('SELECT 1'))
+        }
+      }
+    })
+    expect((await post(app, '/ticks/batch', { bearer: await token() })).status).toBe(204)
+    seen.push(await systemBackends())
+    expect(seen).toEqual([
+      [{ state: 'idle', query: '' }],
+      [{ state: 'idle', query: expect.stringMatching(/^commit$/i) }]
+    ])
+  })
+
+  test('the registered batch handlers pass on the one connection', async () => {
+    const orgId = (await makeOrganization()).id
+    const { id } = await withTenant({ orgId, principal: memberOf(orgId) }, async (tx) => {
+      const [projectId, sourceId] = [(await makeProject(tx)).id, (await makeSource(tx)).id]
+      return emitEvent(tx, { projectId, type: 'source.bound', data: { source_id: sourceId, role: 'rain_gauge' } })
+    })
+    const published: string[] = []
+    setEventPublisher(async ({ event_id }) => void published.push(event_id))
+    await closeConnections()
+    // Five minutes into the next hour: the event is over 30 s old for the republish, and partition maintenance runs.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(Math.ceil(Date.now() / 3_600_000) * 3_600_000 + 5 * 60_000)
+    try {
+      const app = createServer({ registry, audience, invoker, jwks, heartbeat: () => {} })
+      expect(Object.keys(registry.batch)).toEqual(['domain-events-republish', 'partition-maintenance'])
+      expect((await post(app, '/ticks/batch', { bearer: await token() })).status).toBe(204)
+      expect(published).toEqual([id])
+      expect(await systemBackends()).toHaveLength(1)
+    } finally {
+      vi.useRealTimers()
+      setEventPublisher(null)
+    }
+  })
+
+  test('when the connection cannot be opened, no handler runs and the batch names them all', async () => {
+    const url = process.env.DATABASE_URL_SYSTEM
+    process.env.DATABASE_URL_SYSTEM = 'postgres://system:system@127.0.0.1:1/skyclause'
+    try {
+      const ran: string[] = []
+      const app = server(
+        { owner: 'c-run-orchestrator', batch: { sky: async () => void ran.push('sky') } },
+        { owner: 'b-auditor', batch: { auditor: async () => void ran.push('auditor') } }
+      )
+      const res = await post(app, '/ticks/batch', { bearer: await token() })
+      expect(ran).toEqual([])
+      expect(res.status).toBe(500)
+      expect(await res.json()).toEqual({ failed: ['sky', 'auditor'] })
+    } finally {
+      process.env.DATABASE_URL_SYSTEM = url
+      await closeConnections()
+    }
+  })
+})
+
 describe('worker routes', () => {
   test('GET /health is 200 without a token', async () => {
     expect((await server().request('/health')).status).toBe(200)
@@ -193,6 +413,15 @@ describe('worker registry', () => {
         { owner: 'b', topics: { 'readings-updated': async () => {} } }
       ])
     ).toThrow(/readings-updated.*a.*b/)
+  })
+
+  test('a batch handler registered by two owners is refused, naming both', () => {
+    expect(() =>
+      defineRegistry([
+        { owner: 'a-observability', batch: { sli: async () => {} } },
+        { owner: 'b-auditor', batch: { sli: async () => {} } }
+      ])
+    ).toThrow('batch sli is registered by a-observability and b-auditor')
   })
 
   test('collects onEvent consumers for the domain-events dispatch', () => {

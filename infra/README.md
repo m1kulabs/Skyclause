@@ -78,6 +78,16 @@ Set these in a pull request, in `environments/production/terraform.tfvars`, whic
 
 - `oncall_contacts_ready`: set to `true` once `infra/wizards/oncall-contacts.sh` has stored `ONCALL_CONTACTS`.
 
+## Pilot archive
+
+After 17 November a pilot team member with Sheets, Jira and Gemini Enterprise access exports the Sheets ledger, the Jira register and the run traces, uploads each to `incoming/` in the archive bucket with its `kind` (`sheets_ledger`, `jira_register` or `run_traces`) and its capture time, then runs the `pilot-archive` job once (about 1 hour, #79 §9 item 11). The job refuses the run if any object lacks a valid `kind` or `captured-at`. It copies each file to `orgs/{org_id}/pilot/{kind}/{sha256}-{name}`, records it for `PILOT_PROJECT` and writes no ledger entry (LED-8); a second run changes nothing:
+
+```shell
+gcloud storage cp ledger.csv gs://skyclause-production-archive/incoming/ \
+  --custom-metadata=kind=sheets_ledger,captured-at=2026-11-17T18:00:00+08:00
+gcloud run jobs execute pilot-archive --region=asia-southeast1 --project=skyclause --wait
+```
+
 ## Monitoring
 
 `environments/production/monitoring.tf` holds #114's uptime checks, SLOs and alert policies. Every policy notifies the platform on-call's email and SMS channels.

@@ -32,7 +32,8 @@
     "web-vitals": "6.2.3",
     "class-variance-authority": "0.7.1",
     "lucide-react": "1.70.0",
-    "@skyclause/auth": "workspace:*"
+    "@skyclause/auth": "workspace:*",
+    "@skyclause/api": "workspace:*"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
