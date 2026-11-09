@@ -18,6 +18,7 @@ import {
   Pack,
   Page,
   PageQuery,
+  RecipientCounts,
   Window
 } from '../shared'
 
@@ -58,9 +59,13 @@ const CallDetail = CallView.extend(CallExplanation.shape).extend({
       status: z.enum(['queued', 'sent', 'delivered', 'bounced', 'complained', 'suppressed', 'failed', 'expired']),
       accepted_at: Instant.nullable()
     })
-  )
+  ),
+  // #150 (optional): the call's recipients by language, channel and suppression.
+  recipient_counts: RecipientCounts.optional()
 })
 const CallQuery = PageQuery.extend({
+  // #150 (optional): a window's calls, for #166.
+  window_id: z.string().optional(),
   pack: Pack.optional(),
   state: CallState.optional(),
   mode: Mode.optional(),

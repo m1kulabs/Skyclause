@@ -2,6 +2,7 @@ import type { RouteConfig, RouteHandler } from '@hono/zod-openapi'
 import type { OperationId, Operations } from '@skyclause/contracts'
 import type { Context, MiddlewareHandler } from 'hono'
 import type { ApiEnv } from '../context'
+import { bundleHandlers } from './bundles'
 import { ledgerHandlers } from './ledger'
 import { subscriberHandlers } from './subscribers'
 
@@ -28,5 +29,6 @@ export type Handlers = { [Id in OperationId]?: HandlerEntry<Operations[Id]> }
  */
 export const HANDLERS: Handlers = {
   ...ledgerHandlers, // c-ledger-chain
-  ...subscriberHandlers
+  ...subscriberHandlers,
+  ...bundleHandlers // c-bundle-lifecycle
 }

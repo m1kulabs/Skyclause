@@ -146,7 +146,7 @@ export function BundleDetail({ bundleId, actionsRef }: BundleDetailProps) {
           </AlertDescription>
         </Alert>
       )}
-      <p>{t('bundles.sla', { time: formatTime(bundle.sla_due_at, 'en') })}</p>
+      {bundle.sla_due_at && <p>{t('bundles.sla', { time: formatTime(bundle.sla_due_at, 'en') })}</p>}
       {bundle.alerts.map((alert, index) => (
         <p key={index}>
           {t('bundles.alerts', {

@@ -28,11 +28,11 @@ export function ApprovalBar({
   disabled: boolean
   pending: boolean
   shortcuts: boolean
-  sla: string
+  sla: string | null
   onApprove: () => void
 }) {
   const label = pending ? t('bundles.pending') : count ? t('bundles.approve', { count }) : t('bundles.save_decisions')
-  const deadline = t('bundles.sla', { time: formatTime(sla, 'en') })
+  const deadline = sla ? t('bundles.sla', { time: formatTime(sla, 'en') }) : null
   return (
     <>
       <footer className="bundle-approval-bar">

@@ -1,3 +1,4 @@
+import { bundles } from './bundles'
 import { email } from './email'
 import { domainEvents } from './events'
 import { migrations } from './migrate'
@@ -12,5 +13,6 @@ export const registry = defineRegistry([
   email, // a-email-transport
   migrations, // f-db
   domainEvents, // f-db-schema
-  pilotArchive // c-ledger-chain
+  pilotArchive, // c-ledger-chain
+  bundles // c-bundle-lifecycle
 ])

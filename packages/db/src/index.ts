@@ -10,6 +10,7 @@ export {
   type Tx
 } from './client'
 export { track } from './analytics'
+export * from './bundles'
 export { recordAudit } from './audit'
 export { emitEvent, handleOnce, loadEvent, republishEvents, setEventPublisher, type EventPublisher } from './events'
 export { FEATURE_FLAGS, isFlagEnabled, setFlag, type FeatureFlagKey } from './flags'

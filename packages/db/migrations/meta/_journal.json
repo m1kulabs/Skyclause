@@ -57,6 +57,13 @@
       "when": 1794169410000,
       "tag": "0007_c-subscribers-lookup",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794209040069,
+      "tag": "0008_c-bundle-lifecycle-call-content",
+      "breakpoints": true
     }
   ]
 }

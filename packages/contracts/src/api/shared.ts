@@ -368,10 +368,19 @@ export const CallView = z.object({
   approved_at: Instant.nullable(),
   sent_at: Instant.nullable(),
   superseded_by_call_id: z.string().nullable(),
-  ics_uid: z.string(),
+  // D20: set when the call is first sent; null until then.
+  ics_uid: z.string().nullable(),
   ics_sequence: z.number().int()
 })
 export type CallView = z.infer<typeof CallView>
+// #150: a call's recipients, counted by language (c-notice-templates' `recipientsByLanguage`), by channel and
+// suppressed (from its `notice` rows), on the getBundle and getCall reads.
+export const RecipientCounts = z.object({
+  by_language: z.object({ en: z.number().int().nonnegative(), ms: z.number().int().nonnegative() }),
+  by_channel: z.object({ email: z.number().int().nonnegative(), push: z.number().int().nonnegative() }),
+  suppressed: z.number().int().nonnegative()
+})
+export type RecipientCounts = z.infer<typeof RecipientCounts>
 // TRD "Bundle state machine": edited/rejected are per-call states (PRD CAL-7).
 export const BundleState = z.enum([
   'drafted',
@@ -394,7 +403,8 @@ export const Bundle = z.object({
   state: BundleState,
   superseded_by: z.string().nullable(),
   review_hash: z.string(),
-  sla_due_at: Instant,
+  // PRJ-7: only a bundle that needs review has an SLA; null for one that closed at drafting.
+  sla_due_at: Instant.nullable(),
   needs_review_at: Instant.nullable(),
   approved_by: z.string().nullable(),
   escalation_level: z.number().int(),

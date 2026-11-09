@@ -27,11 +27,12 @@ export function BundleCard({
   locale = 'en'
 }: BundleCardProps) {
   const nowMs = now ? new Date(now).getTime() : Date.now()
-  const slaMs = new Date(bundle.sla_due_at).getTime() - nowMs
+  const slaMs = bundle.sla_due_at ? new Date(bundle.sla_due_at).getTime() - nowMs : 0
   const slaLeft = Math.max(0, Math.round(slaMs / 60_000))
   const disagreements = bundle.calls.filter((call) => !call.agrees).length
   const modes = [...new Set(bundle.calls.map((call) => call.mode ?? 'no_call'))]
-  const timeText = triggeredAt ? formatTime(triggeredAt, locale) : formatTime(bundle.sla_due_at, locale)
+  const time = triggeredAt ?? bundle.sla_due_at
+  const timeText = time ? formatTime(time, locale) : ''
   const triggerText = trigger ? t('data.bundle.trigger', { trigger, time: timeText }, locale) : timeText
   const title = projectName ? t('data.bundle.title', { triggerText, project: projectName }, locale) : triggerText
 
@@ -47,9 +48,11 @@ export function BundleCard({
             <ModeBadge key={mode} mode={mode} pack={bundle.pack} locale={locale} />
           ))}
         </div>
-        <p className="mt-2 text-sm tabular-nums">
-          {slaMs >= 0 ? t('data.bundle.sla', { count: slaLeft }, locale) : t('data.bundle.sla_over', {}, locale)}
-        </p>
+        {bundle.sla_due_at ? (
+          <p className="mt-2 text-sm tabular-nums">
+            {slaMs >= 0 ? t('data.bundle.sla', { count: slaLeft }, locale) : t('data.bundle.sla_over', {}, locale)}
+          </p>
+        ) : null}
         <p className="mt-1 text-sm">
           {disagreements === 0
             ? t('data.bundle.agrees', {}, locale)
