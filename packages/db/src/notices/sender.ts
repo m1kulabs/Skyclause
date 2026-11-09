@@ -1,6 +1,6 @@
 import { log } from '@skyclause/config'
 import type { CallView, Pack } from '@skyclause/contracts'
-import { and, asc, eq, gt, gte, inArray, isNull, lte, or, sql } from 'drizzle-orm'
+import { and, asc, eq, gt, gte, inArray, isNull, lte, or, sql, type SQL } from 'drizzle-orm'
 import { track } from '../analytics'
 import { transition } from '../bundles'
 import type { SystemPrincipal, Tx } from '../client'
@@ -195,18 +195,21 @@ export type CallNoticeOutcome =
  */
 export async function recordCallNotice(
   tx: Tx,
-  n: { id: string; projectId: string; language: string; pack: Pack },
+  claimed: Pick<ClaimedNotice, 'notice' | 'pack'>,
   outcome: CallNoticeOutcome,
   now: Date
 ): Promise<string | null> {
-  const values =
-    outcome.status === 'sent'
-      ? { status: 'sent' as const, providerMessageId: outcome.providerMessageId, acceptedAt: now }
-      : outcome.status === 'retry'
-        ? {
-            status: sql`CASE WHEN ${notice.attempts} > ${NOTICE_RETRIES} THEN 'failed' ELSE 'queued' END::notice_status`
-          }
-        : { status: outcome.status }
+  const { notice: n, pack } = claimed
+  let values: Partial<typeof notice.$inferInsert> | { status: SQL }
+  if (outcome.status === 'sent') {
+    values = { status: 'sent', providerMessageId: outcome.providerMessageId, acceptedAt: now }
+  } else if (outcome.status === 'retry') {
+    values = {
+      status: sql`CASE WHEN ${notice.attempts} > ${NOTICE_RETRIES} THEN 'failed' ELSE 'queued' END::notice_status`
+    }
+  } else {
+    values = { status: outcome.status }
+  }
   const [row] = await tx
     .update(notice)
     .set({ ...values, claimedUntil: null, updatedAt: now })
@@ -215,7 +218,7 @@ export async function recordCallNotice(
   if (!row) return null
   if (row.status === 'sent') {
     const language = n.language === 'ms' ? 'ms' : 'en'
-    await track(tx, 'notice_sent', { channel: 'email', language, pack: n.pack }, { projectId: n.projectId })
+    await track(tx, 'notice_sent', { channel: 'email', language, pack }, { projectId: n.projectId })
   }
   return row.status
 }

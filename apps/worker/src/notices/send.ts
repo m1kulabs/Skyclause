@@ -132,7 +132,7 @@ export async function sendCallNotices(
       const verdict = await check(tx, c, now)
       if (verdict === 'held') return { c, ready: null }
       if (verdict !== 'send') {
-        await recordCallNotice(tx, { ...c.notice, pack: c.pack }, { status: verdict }, now)
+        await recordCallNotice(tx, c, { status: verdict }, now)
         return { c, ready: null }
       }
       const ready = readiness(deps, c)
@@ -145,9 +145,7 @@ export async function sendCallNotices(
     touched.add(c.call.id)
     if (!ready) continue
     const outcome = await deliver(c, ready)
-    await withTenant({ orgId, principal }, (tx) =>
-      recordCallNotice(tx, { ...c.notice, pack: c.pack }, outcome, deps.now())
-    )
+    await withTenant({ orgId, principal }, (tx) => recordCallNotice(tx, c, outcome, deps.now()))
   }
 }
 
