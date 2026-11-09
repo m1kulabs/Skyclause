@@ -1,3 +1,4 @@
+import { HTTP_PROBLEM_STATUS } from '@skyclause/contracts'
 import type { InputValue, Operations, Principal } from '@skyclause/contracts'
 import {
   approval,
@@ -46,7 +47,8 @@ type CallRow = typeof call.$inferSelect
 type RunRow = typeof run.$inferSelect
 
 const tx = (ctx: ServiceContext) => ctx.tx as Tx
-const notFound = (what: string) => new ApiError(404, 'not-found', `No ${what} with this ID.`)
+const notFound = (what: string) =>
+  new ApiError(HTTP_PROBLEM_STATUS['not-found'], 'not-found', `No ${what} with this ID.`)
 const at = (date: Date | null) => (date ? instant(date) : null)
 
 /** #79 §1: `can` checks the project against a share link's project and an OAuth grant's `projectIds`. */

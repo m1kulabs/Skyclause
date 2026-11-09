@@ -1,4 +1,4 @@
-import { NotBuiltError, type ProblemSlug } from '@skyclause/contracts'
+import { HTTP_PROBLEM_STATUS, NotBuiltError, type ProblemSlug } from '@skyclause/contracts'
 import type { Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import type { ZodError } from 'zod'
@@ -30,7 +30,11 @@ export function toApiError(error: unknown): ApiError {
       errors: [{ in: 'body', pointer: '', detail: error.message }]
     })
   }
-  return new ApiError(500, 'internal-error', 'The server failed to answer this request.')
+  return new ApiError(
+    HTTP_PROBLEM_STATUS['internal-error'],
+    'internal-error',
+    'The server failed to answer this request.'
+  )
 }
 
 /** Built through the context, so headers set earlier in the request (CORS) stay on the problem. */
