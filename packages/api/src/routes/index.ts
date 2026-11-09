@@ -5,7 +5,10 @@ import type { ApiEnv } from '../context'
 import { bundleHandlers } from './bundles'
 import { channelHandlers } from './channels'
 import { evidenceHandlers } from './evidence'
+import { gradesHandlers } from './grades'
 import { ledgerHandlers } from './ledger'
+import { projectHandlers } from './projects'
+import { replyHandlers } from './replies'
 import { subscriberHandlers } from './subscribers'
 
 /**
@@ -34,5 +37,8 @@ export const HANDLERS: Handlers = {
   ...ledgerHandlers, // c-ledger-chain
   ...subscriberHandlers,
   ...bundleHandlers, // c-bundle-lifecycle
-  ...evidenceHandlers // c-evidence
+  ...evidenceHandlers, // c-evidence
+  ...gradesHandlers, // c-grades
+  ...projectHandlers, // b-projects-api
+  ...replyHandlers // c-recipient-replies
 }

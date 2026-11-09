@@ -24829,6 +24829,17 @@
                           "graded_at": {
                             "type": "string",
                             "format": "date-time"
+                          },
+                          "local_date": {
+                            "type": "string",
+                            "format": "date"
+                          },
+                          "pending_until": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
                           }
                         },
                         "required": [
@@ -30793,13 +30804,26 @@
                       "type": "boolean"
                     },
                     "sheet_id": {
-                      "type": "string"
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "schedule": {
-                      "type": "string"
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "object",
+                        "array",
+                        "null"
+                      ]
                     },
                     "sla_s": {
-                      "type": "integer"
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
                     }
                   },
                   "required": [
@@ -31364,9 +31388,11 @@
           {
             "schema": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "description": "Required for sessions; organisation slug or ID"
             },
-            "required": true,
+            "required": false,
+            "description": "Required for sessions; organisation slug or ID",
             "name": "Skyclause-Organization",
             "in": "header"
           }
@@ -31403,17 +31429,29 @@
                             "type": "boolean"
                           },
                           "semester_ends_on": {
-                            "type": "string",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
                             "format": "date"
                           },
                           "site_name": {
-                            "type": "string"
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "site_lat": {
-                            "type": "number"
+                            "type": [
+                              "number",
+                              "null"
+                            ]
                           },
                           "site_lon": {
-                            "type": "number"
+                            "type": [
+                              "number",
+                              "null"
+                            ]
                           },
                           "archived_at": {
                             "type": [
@@ -31423,10 +31461,16 @@
                             "format": "date-time"
                           },
                           "camera_day_start": {
-                            "type": "string"
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "camera_day_end": {
-                            "type": "string"
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "warning_area_terms": {
                             "type": "array",
@@ -31450,13 +31494,26 @@
                                   "type": "boolean"
                                 },
                                 "sheet_id": {
-                                  "type": "string"
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
                                 },
                                 "schedule": {
-                                  "type": "string"
+                                  "type": [
+                                    "string",
+                                    "number",
+                                    "boolean",
+                                    "object",
+                                    "array",
+                                    "null"
+                                  ]
                                 },
                                 "sla_s": {
-                                  "type": "integer"
+                                  "type": [
+                                    "integer",
+                                    "null"
+                                  ]
                                 }
                               },
                               "required": [
@@ -32608,9 +32665,11 @@
           {
             "schema": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "description": "Required for sessions; organisation slug or ID"
             },
-            "required": true,
+            "required": false,
+            "description": "Required for sessions; organisation slug or ID",
             "name": "Skyclause-Organization",
             "in": "header"
           }
@@ -32642,17 +32701,29 @@
                       "type": "boolean"
                     },
                     "semester_ends_on": {
-                      "type": "string",
+                      "type": [
+                        "string",
+                        "null"
+                      ],
                       "format": "date"
                     },
                     "site_name": {
-                      "type": "string"
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "site_lat": {
-                      "type": "number"
+                      "type": [
+                        "number",
+                        "null"
+                      ]
                     },
                     "site_lon": {
-                      "type": "number"
+                      "type": [
+                        "number",
+                        "null"
+                      ]
                     },
                     "archived_at": {
                       "type": [
@@ -32662,10 +32733,16 @@
                       "format": "date-time"
                     },
                     "camera_day_start": {
-                      "type": "string"
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "camera_day_end": {
-                      "type": "string"
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "warning_area_terms": {
                       "type": "array",
@@ -32689,13 +32766,26 @@
                             "type": "boolean"
                           },
                           "sheet_id": {
-                            "type": "string"
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "schedule": {
-                            "type": "string"
+                            "type": [
+                              "string",
+                              "number",
+                              "boolean",
+                              "object",
+                              "array",
+                              "null"
+                            ]
                           },
                           "sla_s": {
-                            "type": "integer"
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -39466,6 +39556,22 @@
           {
             "schema": {
               "type": "string",
+              "enum": [
+                "miss",
+                "false_alarm",
+                "expired_above_normal",
+                "out_of_band",
+                "unlisted_surge",
+                "no_call"
+              ]
+            },
+            "required": false,
+            "name": "reason",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
               "minLength": 1,
               "description": "Required for sessions; organisation slug or ID"
             },
@@ -39593,6 +39699,37 @@
                               "agrees",
                               "stale_inputs"
                             ]
+                          },
+                          "reasons": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "miss",
+                                "false_alarm",
+                                "expired_above_normal",
+                                "out_of_band",
+                                "unlisted_surge",
+                                "no_call"
+                              ]
+                            }
+                          },
+                          "explained_by": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "explained_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "opened_at": {
+                            "type": "string",
+                            "format": "date-time"
                           }
                         },
                         "required": [
@@ -39972,6 +40109,37 @@
                         "agrees",
                         "stale_inputs"
                       ]
+                    },
+                    "reasons": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "miss",
+                          "false_alarm",
+                          "expired_above_normal",
+                          "out_of_band",
+                          "unlisted_surge",
+                          "no_call"
+                        ]
+                      }
+                    },
+                    "explained_by": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "explained_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "opened_at": {
+                      "type": "string",
+                      "format": "date-time"
                     }
                   },
                   "required": [

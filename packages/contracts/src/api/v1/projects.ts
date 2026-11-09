@@ -1,4 +1,4 @@
-import { OrganizationHeaders, IdParams as ProjectParams, problemResponse } from '../common'
+import { ScopedOrganizationHeaders as OrganizationHeaders, IdParams as ProjectParams, problemResponse } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
 import { Bundle, InputState, LocalDate, Night, PackState, Page, PageQuery, Project } from '../shared'

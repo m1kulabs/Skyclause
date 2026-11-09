@@ -93,6 +93,8 @@ const schemas = {
       WORKER_URL: z.url(),
       WORKER_INVOKER_SA: z.email(),
       PORT: z.coerce.number().int().positive().default(8080),
+      // c-recipient-replies (#163): the feedback email's links; Terraform sets it on every service.
+      APP_ORIGIN: z.url().optional(),
       ...optional(sending),
       ...optional(receiving),
       ...vapidPublic,

@@ -2,7 +2,9 @@
   "name": "@skyclause/clauses",
   "version": "0.0.0",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./defaults/sky.json": "./defaults/sky.json",
+    "./defaults/crowd.json": "./defaults/crowd.json"
   },
   "private": true,
   "type": "module",

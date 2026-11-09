@@ -143,9 +143,9 @@ export type NotificationPreference = z.infer<typeof NotificationPreference>
 export const ProjectPack = z.object({
   pack: Pack,
   enabled: z.boolean(),
-  sheet_id: z.string(),
-  schedule: z.string(),
-  sla_s: z.number().int()
+  sheet_id: z.string().nullable(),
+  schedule: JsonValue.nullable(),
+  sla_s: z.number().int().nullable()
 })
 export type ProjectPack = z.infer<typeof ProjectPack>
 export const Project = z.object({
@@ -155,13 +155,13 @@ export const Project = z.object({
   slug: z.string(),
   time_zone: z.string(),
   public: z.boolean(),
-  semester_ends_on: LocalDate,
-  site_name: z.string(),
-  site_lat: z.number(),
-  site_lon: z.number(),
+  semester_ends_on: LocalDate.nullable(),
+  site_name: z.string().nullable(),
+  site_lat: z.number().nullable(),
+  site_lon: z.number().nullable(),
   archived_at: Instant.nullable(),
-  camera_day_start: z.string(),
-  camera_day_end: z.string(),
+  camera_day_start: z.string().nullable(),
+  camera_day_end: z.string().nullable(),
   warning_area_terms: z.array(z.string()),
   packs: z.array(ProjectPack)
 })

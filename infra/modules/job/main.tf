@@ -68,6 +68,12 @@ variable "time_zone" {
   default     = "Asia/Kuala_Lumpur"
 }
 
+variable "paused" {
+  description = "Create the schedule paused, for a job that can't run yet."
+  type        = bool
+  default     = false
+}
+
 variable "scheduler_service_account" {
   description = "Email of the account Scheduler starts the job as; required with a schedule."
   type        = string
@@ -151,6 +157,7 @@ resource "google_cloud_scheduler_job" "this" {
   name      = var.name
   schedule  = var.schedule
   time_zone = var.time_zone
+  paused    = var.paused
 
   http_target {
     http_method = "POST"

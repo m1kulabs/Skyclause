@@ -173,15 +173,15 @@ describe('organisation (D2)', () => {
     }
 
     const own = await apiRequest(v1, { as: member, method: 'GET', path: '/v1/projects', org: 'mine' })
-    expect(own.status).toBe(501)
+    expect(own.status).toBe(200)
   })
 
   it("takes a key's own organisation and answers 404 when the header names another", async () => {
     const { v1 } = createTestApi()
     testOrg('elsewhere')
     const key = asApiKey({ org: 'keyed', role: 'admin', scopes: ['read'] })
-    expect((await apiRequest(v1, { as: key, method: 'GET', path: '/v1/projects' })).status).toBe(501)
-    expect((await apiRequest(v1, { as: key, method: 'GET', path: '/v1/projects', org: 'keyed' })).status).toBe(501)
+    expect((await apiRequest(v1, { as: key, method: 'GET', path: '/v1/projects' })).status).toBe(200)
+    expect((await apiRequest(v1, { as: key, method: 'GET', path: '/v1/projects', org: 'keyed' })).status).toBe(200)
     expect((await apiRequest(v1, { as: key, method: 'GET', path: '/v1/projects', org: 'elsewhere' })).status).toBe(404)
   })
 
