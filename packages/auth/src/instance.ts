@@ -117,6 +117,7 @@ export function createAuth(
     // The database's uuidv7() default makes every ID (#79 conventions).
     advanced: { database: { generateId: 'uuid' } },
     emailAndPassword: { enabled: false },
+    account: { accountLinking: { allowUnlinkingAll: true } },
     user: {
       additionalFields: {
         preferences: { type: 'json', required: false, ...fixed },
@@ -125,7 +126,10 @@ export function createAuth(
         lastActiveAt: { type: 'date', required: false, ...fixed }
       }
     },
-    session: { additionalFields: { reauthenticatedAt: { type: 'date', required: false, ...fixed } } },
+    session: {
+      freshAge: 0,
+      additionalFields: { reauthenticatedAt: { type: 'date', required: false, ...fixed } }
+    },
     socialProviders: extra.socialProviders,
     plugins,
     disabledPaths: unbuiltPaths(base, plugins)
@@ -147,6 +151,24 @@ export function getAuth() {
     instance = { auth: createAuth(settings), settings }
   }
   return instance
+}
+
+export interface RequestAuthSession {
+  session: { id: string; createdAt: Date; reauthenticatedAt?: Date | null }
+  user: {
+    id: string
+    name: string
+    email: string
+    preferences?: unknown
+    magicLinkEnabled?: boolean
+  }
+}
+
+/** The session fields server-rendered app roots need, without exposing Better Auth's inferred instance type. */
+export async function getSessionForRequest(headers: Headers): Promise<RequestAuthSession | null> {
+  const result: unknown = await getAuth().auth.api.getSession({ headers, query: { disableRefresh: true } })
+  if (typeof result !== 'object' || result === null || !('session' in result) || !('user' in result)) return null
+  return result as RequestAuthSession
 }
 
 /** Better Auth's own endpoints, `/api/auth/*` (#79 §4), for the web app's Route Handler. */

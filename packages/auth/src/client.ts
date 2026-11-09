@@ -6,15 +6,19 @@ import { createAuthClient } from 'better-auth/client'
 import { anonymousClient, deviceAuthorizationClient, organizationClient } from 'better-auth/client/plugins'
 import { ac, roles } from './access'
 
-const options = {
-  plugins: [
-    organizationClient({ ac, roles }),
-    anonymousClient(),
-    apiKeyClient(),
-    passkeyClient(),
-    deviceAuthorizationClient()
-  ]
-}
+const plugins = [
+  organizationClient({ ac, roles }),
+  anonymousClient(),
+  apiKeyClient(),
+  passkeyClient(),
+  deviceAuthorizationClient()
+] satisfies [
+  ReturnType<typeof organizationClient>,
+  ReturnType<typeof anonymousClient>,
+  ReturnType<typeof apiKeyClient>,
+  ReturnType<typeof passkeyClient>,
+  ReturnType<typeof deviceAuthorizationClient>
+]
+const options = { plugins }
 
-// Annotated through the options' type: the inferred one names a better-call type no entry point exports.
-export const authClient: ReturnType<typeof createAuthClient<typeof options>> = createAuthClient(options)
+export const authClient = createAuthClient(options)

@@ -4,7 +4,7 @@ import { saveSidebarPreference } from '../../features/shell/preferences'
 afterEach(() => vi.unstubAllGlobals())
 
 test('persists the rail choice through the registry PATCH operation', async () => {
-  const fetcher = vi.fn(async (_url: URL, _options: RequestInit) =>
+  const fetcher = vi.fn(async (_url: string | URL, _options: RequestInit) =>
     Response.json({
       theme: 'dark',
       high_contrast: false,
@@ -18,7 +18,7 @@ test('persists the rail choice through the registry PATCH operation', async () =
   vi.stubGlobal('fetch', fetcher)
   await saveSidebarPreference(true)
   const [url, options] = fetcher.mock.calls[0]!
-  expect(url.pathname).toBe('/api/me/preferences')
+  expect(String(url)).toBe('/api/me/preferences')
   expect(options.method).toBe('PATCH')
   expect(JSON.parse(options.body as string)).toEqual({ sidebar_collapsed: true })
 })

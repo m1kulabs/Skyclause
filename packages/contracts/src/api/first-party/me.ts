@@ -94,6 +94,7 @@ export const updateMySecurity = createRoute({
     },
     ...validationErrors,
     401: problemResponse('Recent authentication is required to change account security settings.'),
+    403: problemResponse('Guests cannot change account security settings.'),
     409: problemResponse('The change would remove the last sign-in method.')
   },
   x: { owner: 'a-account-settings', statement: 'session', idempotent: false }

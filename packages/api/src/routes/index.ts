@@ -5,6 +5,7 @@ import type { ApiEnv } from '../context'
 import { approvalHandlers } from './approvals'
 import { alertHandlers } from './alerts'
 import { analysisHandlers } from './analysis'
+import { accountHandlers } from './account'
 import { bundleHandlers } from './bundles'
 import { channelHandlers } from './channels'
 import { evidenceHandlers } from './evidence'
@@ -38,6 +39,7 @@ export type Handlers = { [Id in OperationId]?: HandlerEntry<Operations[Id]> }
  * line; an operation without an entry answers 501 `not-built` naming its owner.
  */
 export const HANDLERS: Handlers = {
+  ...accountHandlers, // a-account-settings
   ...channelHandlers, // c-notice-templates
   ...ledgerHandlers, // c-ledger-chain
   ...subscriberHandlers,

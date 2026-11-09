@@ -42,7 +42,9 @@ async function expectPage(page: Page, path: string, allowed: boolean) {
     expect(response?.status(), path).toBe(200)
     await expect(page.locator('[data-settings-frame]')).toBeVisible()
     if (path === '/account/notifications') await expect(page.locator('[data-alerts-panel]')).toBeVisible()
-    else await expect(page.locator('[data-settings-panel] [data-unbuilt]')).toHaveCount(1)
+    else if (['/account/profile', '/account/security', '/account/appearance'].includes(path)) {
+      await expect(page.locator(`[data-account-panel="${path.slice('/account/'.length)}"]`)).toBeVisible()
+    } else await expect(page.locator('[data-settings-panel] [data-unbuilt]')).toHaveCount(1)
   } else {
     // Next may stream a 200 shell before a page-level notFound; the rendered 404 is the gate.
     await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible()
@@ -117,14 +119,25 @@ for (const mode of [
   { theme: 'light', contrast: 'standard' },
   { theme: 'dark', contrast: 'more' }
 ] as const) {
-  test(`settings axe: ${mode.theme}, ${mode.contrast}`, async ({ page, baseURL, expectAxeClean }, testInfo) => {
-    await asPage(page, principal())
-    await page.context().addCookies([{ url: baseURL!, name: 'skyclause-test-appearance', value: JSON.stringify(mode) }])
-    await page.goto('/account/profile')
-    await expect(page.locator('html')).toHaveClass(mode.contrast === 'more' ? 'dark hc' : mode.theme)
-    await expectAxeClean(page)
-    await page.screenshot({ path: testInfo.outputPath('settings-theme.png'), fullPage: true })
-  })
+  for (const section of ['profile', 'security', 'appearance'] as const) {
+    test(`account settings axe: ${section}, ${mode.theme}, ${mode.contrast}`, async ({
+      page,
+      baseURL,
+      expectAxeClean
+    }, testInfo) => {
+      await asPage(page, principal())
+      await page
+        .context()
+        .addCookies([{ url: baseURL!, name: 'skyclause-test-appearance', value: JSON.stringify(mode) }])
+      await page.goto(`/account/${section}`)
+      await expect(page.locator('html')).toHaveClass(mode.contrast === 'more' ? 'dark hc' : mode.theme)
+      await expectAxeClean(page)
+      await page.screenshot({
+        path: testInfo.outputPath(`settings-${section}-${mode.theme}-${mode.contrast}.png`),
+        fullPage: true
+      })
+    })
+  }
 }
 
 test('settings frame uses 428/24/700 columns and stacks below 640px', async ({ page }, testInfo) => {

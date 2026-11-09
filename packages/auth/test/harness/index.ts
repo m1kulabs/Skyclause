@@ -2,8 +2,8 @@
 // and Playwright's signInAs. Accounts, organisations and sessions made here exist only in tests (NFR-15). Callers set
 // the web env first (Vitest's setupFiles, or playwright.config.ts) and point DATABASE_URL_* at a test database.
 import { randomUUID } from 'node:crypto'
-import type { Role, Scope } from '@skyclause/contracts'
-import { tokenHash, withTenant, type Tx } from '@skyclause/db'
+import { DEFAULT_PREFERENCES, type Preferences, type Role, type Scope } from '@skyclause/contracts'
+import { account, passkey, session, tokenHash, user, withTenant, type Tx } from '@skyclause/db'
 import {
   makeGuestToken,
   makeMember,
@@ -13,8 +13,10 @@ import {
   makeShareLink,
   makeUser
 } from '@skyclause/db/test/factories/index'
+import { authDatabase } from '@skyclause/db/auth'
 import { memberOf } from '@skyclause/db/test/harness/index'
 import { signJWT, testUtils, type TestCookie, type TestHelpers } from 'better-auth/plugins'
+import { eq } from 'drizzle-orm'
 import { authSettings, createAuth, resources } from '../../src/instance'
 
 export { TEST_AUTH_ENV } from './env'
@@ -67,6 +69,56 @@ export interface TestSession {
 export async function signIn(accountId: string): Promise<TestSession> {
   const { session, headers, cookies, token } = await (await helpers()).login({ userId: accountId })
   return { sessionId: session.id, token, cookie: headers.get('cookie')!, cookies }
+}
+
+/** Adds a credential-shaped passkey row for account settings tests; never used as application data. */
+export async function addTestPasskey(accountId: string, name = 'Test passkey'): Promise<{ id: string }> {
+  const [row] = await authDatabase()
+    .insert(passkey)
+    .values({
+      userId: accountId,
+      name,
+      publicKey: 'test-public-key',
+      credentialID: `credential-${accountId}-${randomUUID()}`,
+      counter: 0,
+      deviceType: 'platform',
+      backedUp: false
+    })
+    .returning({ id: passkey.id })
+  return row!
+}
+
+/** Adds a linked Google row for account settings tests; never used as application data. */
+export async function addTestGoogleAccount(accountId: string): Promise<{ id: string }> {
+  const [row] = await authDatabase()
+    .insert(account)
+    .values({ userId: accountId, accountId: `google-${accountId}-${randomUUID()}`, providerId: 'google' })
+    .returning({ id: account.id })
+  return row!
+}
+
+export async function setTestMagicLinkEnabled(accountId: string, enabled: boolean): Promise<void> {
+  await authDatabase().update(user).set({ magicLinkEnabled: enabled }).where(eq(user.id, accountId))
+}
+
+export async function getTestMagicLinkEnabled(accountId: string): Promise<boolean | undefined> {
+  const [row] = await authDatabase().select({ enabled: user.magicLinkEnabled }).from(user).where(eq(user.id, accountId))
+  return row?.enabled
+}
+
+export async function setTestPreferences(accountId: string, update: Partial<Preferences>): Promise<void> {
+  await authDatabase()
+    .update(user)
+    .set({ preferences: { ...DEFAULT_PREFERENCES, ...update } })
+    .where(eq(user.id, accountId))
+}
+
+export async function setTestSessionUserAgent(sessionId: string, userAgent: string): Promise<void> {
+  await authDatabase().update(session).set({ userAgent }).where(eq(session.id, sessionId))
+}
+
+export async function deleteTestAccount(accountId: string): Promise<void> {
+  await authDatabase().delete(user).where(eq(user.id, accountId))
 }
 
 /** Revokes a session as signing out does: its row is deleted. */
