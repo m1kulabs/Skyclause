@@ -22067,7 +22067,7 @@
       "file_type": "code",
       "norm_label": "buildcrowdhistory()",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L265"
+      "source_location": "L270"
     },
     {
       "id": "pilot_apps_script_src_main_createwindowform",
@@ -22079,7 +22079,7 @@
       "file_type": "code",
       "norm_label": "createwindowform()",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L249"
+      "source_location": "L254"
     },
     {
       "id": "pilot_apps_script_src_main_doget",
@@ -22115,7 +22115,7 @@
       "file_type": "code",
       "norm_label": "forecastcrowd()",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L256"
+      "source_location": "L261"
     },
     {
       "id": "pilot_apps_script_src_main_gradecrowd",
@@ -22127,7 +22127,7 @@
       "file_type": "code",
       "norm_label": "gradecrowd()",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L199"
+      "source_location": "L204"
     },
     {
       "id": "pilot_apps_script_src_main_gradesky",
@@ -22187,7 +22187,7 @@
       "file_type": "code",
       "norm_label": "on_edit_clauses()",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L295"
+      "source_location": "L300"
     },
     {
       "id": "pilot_apps_script_src_main_onwindowformsubmit",
@@ -22199,7 +22199,7 @@
       "file_type": "code",
       "norm_label": "onwindowformsubmit()",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L233"
+      "source_location": "L238"
     },
     {
       "id": "pilot_apps_script_src_main_pollapims",
@@ -22223,7 +22223,7 @@
       "file_type": "code",
       "norm_label": "pollevidenceinbox()",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L398"
+      "source_location": "L403"
     },
     {
       "id": "pilot_apps_script_src_main_polljps",
@@ -22283,7 +22283,7 @@
       "file_type": "code",
       "norm_label": "recordweekndforecastsonce()",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L287"
+      "source_location": "L292"
     },
     {
       "id": "pilot_apps_script_src_main_retaincameraframes",
@@ -22295,7 +22295,7 @@
       "file_type": "code",
       "norm_label": "retaincameraframes()",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L220"
+      "source_location": "L225"
     },
     {
       "id": "pilot_apps_script_src_main_runauditor",
@@ -22307,7 +22307,7 @@
       "file_type": "code",
       "norm_label": "runauditor()",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L411"
+      "source_location": "L416"
     },
     {
       "id": "pilot_apps_script_src_main_runskyreplay",
@@ -22319,7 +22319,7 @@
       "file_type": "code",
       "norm_label": "runskyreplay()",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L334"
+      "source_location": "L339"
     },
     {
       "id": "pilot_apps_script_src_main_setup",
@@ -22331,7 +22331,7 @@
       "file_type": "code",
       "norm_label": "setup()",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L379"
+      "source_location": "L384"
     },
     {
       "id": "pilot_apps_script_src_main_sweep",
@@ -144096,7 +144096,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L266",
+      "source_location": "L271",
       "weight": 1.0
     },
     {
@@ -144108,7 +144108,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L268",
+      "source_location": "L273",
       "weight": 1.0
     },
     {
@@ -144120,7 +144120,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L269",
+      "source_location": "L274",
       "weight": 1.0
     },
     {
@@ -144132,7 +144132,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L270",
+      "source_location": "L275",
       "weight": 1.0
     },
     {
@@ -144144,7 +144144,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L273",
+      "source_location": "L278",
       "weight": 1.0
     },
     {
@@ -144156,7 +144156,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L275",
+      "source_location": "L280",
       "weight": 1.0
     },
     {
@@ -144168,7 +144168,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L250",
+      "source_location": "L255",
       "weight": 1.0
     },
     {
@@ -144180,7 +144180,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L251",
+      "source_location": "L256",
       "weight": 1.0
     },
     {
@@ -144192,7 +144192,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L251",
+      "source_location": "L256",
       "weight": 1.0
     },
     {
@@ -144252,7 +144252,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L257",
+      "source_location": "L262",
       "weight": 1.0
     },
     {
@@ -144264,7 +144264,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L259",
+      "source_location": "L264",
       "weight": 1.0
     },
     {
@@ -144276,7 +144276,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L260",
+      "source_location": "L265",
       "weight": 1.0
     },
     {
@@ -144288,7 +144288,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L260",
+      "source_location": "L265",
       "weight": 1.0
     },
     {
@@ -144300,7 +144300,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L200",
+      "source_location": "L205",
       "weight": 1.0
     },
     {
@@ -144312,7 +144312,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L202",
+      "source_location": "L207",
       "weight": 1.0
     },
     {
@@ -144324,7 +144324,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L203",
+      "source_location": "L208",
       "weight": 1.0
     },
     {
@@ -144336,7 +144336,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L204",
+      "source_location": "L209",
       "weight": 1.0
     },
     {
@@ -144348,7 +144348,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L207",
+      "source_location": "L212",
       "weight": 1.0
     },
     {
@@ -144360,7 +144360,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L211",
+      "source_location": "L216",
       "weight": 1.0
     },
     {
@@ -144480,7 +144480,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L297",
+      "source_location": "L302",
       "weight": 1.0
     },
     {
@@ -144492,7 +144492,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L320",
+      "source_location": "L325",
       "weight": 1.0
     },
     {
@@ -144504,7 +144504,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L234",
+      "source_location": "L239",
       "weight": 1.0
     },
     {
@@ -144516,7 +144516,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L238",
+      "source_location": "L243",
       "weight": 1.0
     },
     {
@@ -144528,7 +144528,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L239",
+      "source_location": "L244",
       "weight": 1.0
     },
     {
@@ -144540,7 +144540,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L240",
+      "source_location": "L245",
       "weight": 1.0
     },
     {
@@ -144552,7 +144552,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L242",
+      "source_location": "L247",
       "weight": 1.0
     },
     {
@@ -144600,7 +144600,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L399",
+      "source_location": "L404",
       "weight": 1.0
     },
     {
@@ -144612,7 +144612,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L403",
+      "source_location": "L408",
       "weight": 1.0
     },
     {
@@ -144624,7 +144624,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L404",
+      "source_location": "L409",
       "weight": 1.0
     },
     {
@@ -144636,7 +144636,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L407",
+      "source_location": "L412",
       "weight": 1.0
     },
     {
@@ -144768,7 +144768,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L288",
+      "source_location": "L293",
       "weight": 1.0
     },
     {
@@ -144780,7 +144780,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L290",
+      "source_location": "L295",
       "weight": 1.0
     },
     {
@@ -144792,7 +144792,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L291",
+      "source_location": "L296",
       "weight": 1.0
     },
     {
@@ -144804,7 +144804,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L291",
+      "source_location": "L296",
       "weight": 1.0
     },
     {
@@ -144816,7 +144816,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L221",
+      "source_location": "L226",
       "weight": 1.0
     },
     {
@@ -144828,7 +144828,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L223",
+      "source_location": "L228",
       "weight": 1.0
     },
     {
@@ -144840,7 +144840,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L223",
+      "source_location": "L228",
       "weight": 1.0
     },
     {
@@ -144852,7 +144852,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L412",
+      "source_location": "L417",
       "weight": 1.0
     },
     {
@@ -144864,7 +144864,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L413",
+      "source_location": "L418",
       "weight": 1.0
     },
     {
@@ -144876,7 +144876,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L416",
+      "source_location": "L421",
       "weight": 1.0
     },
     {
@@ -144888,7 +144888,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L417",
+      "source_location": "L422",
       "weight": 1.0
     },
     {
@@ -144900,7 +144900,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L417",
+      "source_location": "L422",
       "weight": 1.0
     },
     {
@@ -144912,7 +144912,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L335",
+      "source_location": "L340",
       "weight": 1.0
     },
     {
@@ -144924,7 +144924,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L336",
+      "source_location": "L341",
       "weight": 1.0
     },
     {
@@ -144936,7 +144936,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L358",
+      "source_location": "L363",
       "weight": 1.0
     },
     {
@@ -144948,7 +144948,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L359",
+      "source_location": "L364",
       "weight": 1.0
     },
     {
@@ -144960,7 +144960,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L361",
+      "source_location": "L366",
       "weight": 1.0
     },
     {
@@ -144972,7 +144972,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L362",
+      "source_location": "L367",
       "weight": 1.0
     },
     {
@@ -144984,7 +144984,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L364",
+      "source_location": "L369",
       "weight": 1.0
     },
     {
@@ -144996,7 +144996,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L368",
+      "source_location": "L373",
       "weight": 1.0
     },
     {
@@ -145008,7 +145008,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L372",
+      "source_location": "L377",
       "weight": 1.0
     },
     {
@@ -145020,7 +145020,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L380",
+      "source_location": "L385",
       "weight": 1.0
     },
     {
@@ -145032,7 +145032,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L386",
+      "source_location": "L391",
       "weight": 1.0
     },
     {
@@ -145044,7 +145044,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L386",
+      "source_location": "L391",
       "weight": 1.0
     },
     {
@@ -335645,7 +335645,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L199",
+      "source_location": "L204",
       "weight": 1.0
     },
     {
@@ -335656,7 +335656,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L220",
+      "source_location": "L225",
       "weight": 1.0
     },
     {
@@ -335667,7 +335667,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L233",
+      "source_location": "L238",
       "weight": 1.0
     },
     {
@@ -335678,7 +335678,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L249",
+      "source_location": "L254",
       "weight": 1.0
     },
     {
@@ -335689,7 +335689,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L256",
+      "source_location": "L261",
       "weight": 1.0
     },
     {
@@ -335700,7 +335700,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L265",
+      "source_location": "L270",
       "weight": 1.0
     },
     {
@@ -335711,7 +335711,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L287",
+      "source_location": "L292",
       "weight": 1.0
     },
     {
@@ -335722,7 +335722,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L295",
+      "source_location": "L300",
       "weight": 1.0
     },
     {
@@ -335733,7 +335733,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L334",
+      "source_location": "L339",
       "weight": 1.0
     },
     {
@@ -335744,7 +335744,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L379",
+      "source_location": "L384",
       "weight": 1.0
     },
     {
@@ -335755,7 +335755,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L398",
+      "source_location": "L403",
       "weight": 1.0
     },
     {
@@ -335766,7 +335766,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L411",
+      "source_location": "L416",
       "weight": 1.0
     },
     {
@@ -353119,7 +353119,7 @@
       "confidence_score": 0.85,
       "context": "collection",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L328",
+      "source_location": "L333",
       "weight": 1.0
     },
     {
@@ -353131,7 +353131,7 @@
       "confidence_score": 0.85,
       "context": "collection",
       "source_file": "pilot/apps-script/src/main.ts",
-      "source_location": "L329",
+      "source_location": "L334",
       "weight": 1.0
     },
     {
@@ -353388,5 +353388,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "2c24f3e3f04957f31d02547a223bca166374165b"
+  "built_at_commit": "86e1254afb348c53968b0707e81b0808bae815d1"
 }
