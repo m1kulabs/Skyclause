@@ -166,7 +166,7 @@ export async function claimCallNotice(
   }
 }
 
-/** True when the organisation suppresses `hash` (`emailHash` of the address) for any reason: unsubscribe, bounce or complaint. */
+/** True when the organisation suppresses `hash` (`emailHash` of an address) for unsubscribe, bounce or complaint. */
 export async function isSuppressed(tx: Tx, hash: string): Promise<boolean> {
   const [row] = await tx.select({ id: suppression.id }).from(suppression).where(eq(suppression.emailHash, hash))
   return row !== undefined
@@ -250,8 +250,8 @@ export type SettleOutcome = 'sent' | 'failed'
  * Settles a `sending` call once none of its `call` notices is queued: `failed` when it has notices and none reached
  * the provider (every one `failed` or `expired`), else `sent`, through #150's `transition` under the bundle's lock; the
  * bundle goes to `sent` with its last sending call. Appends `call_sent` with the notices counted by status and
- * language (never an address) and emits `call.sent` (`mode` null for a No call). Null, writing nothing, when the call isn't `sending` or still has
- * a queued notice.
+ * language (never an address) and emits `call.sent` (`mode` null for a No call). Null, writing nothing, when the call
+ * isn't `sending` or still has a queued notice.
  */
 export async function settleCall(tx: Tx, callId: string, now: Date): Promise<SettleOutcome | null> {
   const [found] = await tx.select({ bundleId: call.bundleId }).from(call).where(eq(call.id, callId))

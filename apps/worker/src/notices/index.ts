@@ -6,13 +6,14 @@ import {
   noticeOrgsToSweep,
   recordDeliveryEvent,
   sendingCallIds,
+  settleBundle,
   systemPrincipal,
   withSystem,
   withTenant
 } from '@skyclause/db'
 import { emailTransportForAws, sesEventsHandler, type SesEvent } from '@skyclause/delivery'
 import { log, type WorkerPart } from '../server'
-import { sendCallNotices, settleApprovedBundle, settleCalls, type SenderConfig, type SenderDeps } from './send'
+import { sendCallNotices, settleCalls, type SenderConfig, type SenderDeps } from './send'
 
 // #158 c-sender-email's part: consumer `sender` on `bundle.approved`, the `notice-sweep` in the 15-minute batch (D45:
 // the minute tick never touches Postgres) that retries failed sends and settles calls, and `POST /ses/events`.
@@ -34,6 +35,7 @@ const SETTLE_LOOKBACK_MS = 24 * 60 * 60_000
 
 export function createNoticesPart(deps: NoticesDeps): WorkerPart {
   const sesEvents = systemPrincipal('ses-events')
+  const sender = systemPrincipal('sender')
 
   async function apply(event: SesEvent): Promise<boolean> {
     const found = await withSystem('ses-events', (tx) => noticeForProviderMessage(tx, event.providerMessageId))
@@ -59,8 +61,12 @@ export function createNoticesPart(deps: NoticesDeps): WorkerPart {
           const { bundle_id, sending_call_ids } = BundleApprovedEventSchema.shape.data.parse(event.data)
           await sendCallNotices(deps, event.org_id, { callIds: sending_call_ids })
           await settleCalls(deps, event.org_id, sending_call_ids)
-          // A bundle with no sending call (every call rejected) has nothing to wait for.
-          if (!sending_call_ids.length) await settleApprovedBundle(deps, event.org_id, bundle_id)
+          // #153 leaves a bundle whose every call it rejected `approved`, with nothing to wait for.
+          if (!sending_call_ids.length) {
+            await withTenant({ orgId: event.org_id, principal: sender }, (tx) =>
+              settleBundle(tx, bundle_id, deps.now())
+            )
+          }
         }
       }
     ],
@@ -72,7 +78,7 @@ export function createNoticesPart(deps: NoticesDeps): WorkerPart {
         for (const orgId of orgIds) {
           try {
             await sendCallNotices(deps, orgId)
-            const calls = await withTenant({ orgId, principal: systemPrincipal('sender') }, sendingCallIds)
+            const calls = await withTenant({ orgId, principal: sender }, sendingCallIds)
             await settleCalls(deps, orgId, calls)
           } catch (error) {
             failed.push(`${orgId}: ${String(error)}`)
