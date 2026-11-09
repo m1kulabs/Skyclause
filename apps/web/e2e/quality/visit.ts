@@ -1,8 +1,10 @@
 import { expect, type Page } from '@playwright/test'
+import { t } from '@skyclause/i18n'
 import type { CrawlRoute } from './routes'
 import type { Role } from './roles'
 import type { Finding } from './checks'
 import { expectZonedTimes } from '../harness/expect-zoned-times'
+import '../../features/public-chrome/catalogue'
 
 /** A share link is a credential but no session (#94). */
 const hasSession = (role: Role) => role !== 'signed out' && role !== 'share-link reviewer'
@@ -24,12 +26,18 @@ export async function visit(page: Page, route: CrawlRoute, role: Role = 'signed 
     return []
   }
   await expectZonedTimes(page)
+  const locale = route.path.startsWith('/ms/') ? 'ms' : 'en'
+  if (route.group === 'public' || route.path === '/') {
+    await expect(page.locator('html')).toHaveAttribute('lang', locale)
+    await expect(page.getByText(t('brand.non_affiliation', {}, locale), { exact: true })).toBeVisible()
+    await expect(page.getByText(t('brand.not_safety_service', {}, locale), { exact: true })).toBeVisible()
+  }
   const expected = expectedStatus(route, role)
   // Firefox revalidates a static page it has cached; 304 is its 200.
   const status = response?.status() === 304 ? 200 : response?.status()
   if (expected === 404) {
     // A streamed notFound may have already sent HTTP 200. Require the real gate in either case.
-    await expect(page.getByRole('heading', { level: 1, name: /^Page not found~*$/ })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: t('legal.notFound.label', {}, locale) })).toBeVisible()
     await expect(page.locator('[data-settings-frame]')).toHaveCount(0)
     if (status === 200 || status === 404) return []
   }

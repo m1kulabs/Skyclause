@@ -1,0 +1,83 @@
+{
+  "frame": {
+    "navigation": "Pautan awam",
+    "home": "Laman utama Skyclause",
+    "docs": "Dokumen",
+    "status": "Status",
+    "terms": "Terma",
+    "privacy": "Privasi",
+    "malay": "Bahasa Melayu"
+  },
+  "attribution": {
+    "view": "Lihat atribusi sumber untuk {source}, stesen {station}",
+    "heading": "Atribusi sumber",
+    "dialogTitle": "Atribusi sumber: ",
+    "station": "ID stesen",
+    "licence": "Lesen",
+    "sourceUrl": "URL sumber",
+    "derived": "Terbitan",
+    "shareAlike": "Senarai terbitan tertakluk pada syarat perkongsian serupa.",
+    "close": "Tutup atribusi"
+  },
+  "notFound": {
+    "label": "404 · TIDAK DITEMUI",
+    "sentence": "Halaman ini mungkin tiada atau bersifat peribadi.",
+    "home": "Laman utama",
+    "status": "Status",
+    "privacy": "Privasi"
+  },
+  "error": {
+    "label": "RALAT PERKHIDMATAN",
+    "sentence": "Halaman ini tidak dapat dimuatkan.",
+    "home": "Laman utama",
+    "status": "Status",
+    "privacy": "Privasi"
+  },
+  "privacy": {
+    "label": "UNDANG-UNDANG · PRIVASI",
+    "metadataTitle": "Notis privasi · Skyclause",
+    "title": "Notis privasi",
+    "intro": "Notis ini menerangkan data peribadi yang disimpan Skyclause, tempat data diproses dan tempoh penyimpanannya.",
+    "version": "Versi notis:",
+    "collectionHeading": "Data yang kami kumpulkan",
+    "subscriberData": "Borang langganan menyimpan alamat e-mel, peranan, tetingkap pilihan dan bahasa notis anda. Kami merekodkan masa persetujuan, versi notis dan bahasa.",
+    "guestData": "Semakan bot untuk tetamu menyimpan token bajet peranti dan alamat IP yang telah dicincang. Tetamu tidak diminta memberikan alamat e-mel atau nama.",
+    "processorsHeading": "Pihak yang memproses data",
+    "processors": "E-mel dihantar melalui Amazon SES di Sydney, Australia (AWS ap-southeast-2). Neon mengehos pangkalan data di AWS Singapore. Stripe memproses pembayaran. Penyedia model memproses arahan yang tidak mengandungi data peribadi. Cloudflare Turnstile menyemak bot.",
+    "purpose": "Kami menggunakan maklumat ini untuk mengurus langganan dan tetingkap pilihan, mengehadkan penyalahgunaan tetamu, memproses pembayaran, menjalankan perkhidmatan dan melindunginya daripada bot. Kami tidak memasukkan data peribadi dalam arahan model.",
+    "regionHeading": "Tempat data disimpan dan dipindahkan",
+    "region": "Rekod perkhidmatan disimpan di Singapura: pengiraan, fail, kunci dan baris gilir dijalankan di GCP asia-southeast1, manakala pangkalan data dihoskan oleh Neon di AWS Singapore (ap-southeast-1).",
+    "emailTransfer": "E-mel melalui Sydney, Australia. AWS boleh menyimpan mel masuk di sana sehingga satu hari sebelum pekerja membacanya dan memadamkannya.",
+    "crossBorder": "Data merentasi sempadan apabila perkhidmatan dan pemprosesnya bertukar data. Kami tidak menjanjikan data kekal di satu negara atau rantau.",
+    "rightsHeading": "Pilihan dan hak anda",
+    "rights": "Anda boleh meminta untuk melihat, membetulkan, mengeksport atau memadam data peribadi anda. Pelanggan menggunakan pautan ajaib dalam e-mel untuk melihat atau mengubah butiran, mengeksport data atau memadam langganan; akaun tidak diperlukan.",
+    "retentionHeading": "Tempoh penyimpanan data",
+    "retentionIntro": "Kami memadam atau menyahkenal pasti data apabila tempoh di bawah tamat.",
+    "retention": {
+      "readingsLabel": "Bacaan sumber awam dan rekod ralat",
+      "readingsPeriod": "Sepanjang hayat projek; dipadam apabila projek dipadam.",
+      "cameraLabel": "Bingkai kamera",
+      "cameraPeriod": "Satu semester, paling lama 183 hari; kemudian dipadam. Rekod kontras dikekalkan.",
+      "busLabel": "Kedudukan bas mentah",
+      "busPeriod": "Sehingga masa segmen dikira, paling lama 24 jam; kemudian dipadam. Masa segmen dikekalkan.",
+      "guestWindowsLabel": "Tetingkap tetamu",
+      "guestWindowsPeriod": "14 hari selepas dicipta; kemudian dipadam.",
+      "guestAccountsLabel": "Akaun tetamu",
+      "guestAccountsPeriod": "Selepas 30 hari tanpa aktiviti; akaun dan datanya dipadam.",
+      "subscribersLabel": "Rekod pelanggan",
+      "subscribersPeriod": "Sehingga 30 hari selepas berhenti melanggan; kemudian dipadam. Rekod sekatan bercincang dikekalkan.",
+      "ledgerLabel": "Lejar dan log audit",
+      "ledgerPeriod": "Sepanjang hayat organisasi; medan peribadi dinyahkenal pasti apabila akaun atau pelanggan dipadam.",
+      "organisationsLabel": "Organisasi yang dipadam",
+      "organisationsPeriod": "Tempoh ihsan 30 hari, kemudian dilupuskan. Rekod pangkalan data yang dipadam keluar daripada tempoh pemulihan enam jam.",
+      "exportsLabel": "Fail eksport",
+      "exportsPeriod": "Tujuh hari; kemudian dipadam.",
+      "timetableLabel": "Medan peribadi jadual waktu APU",
+      "timetablePeriod": "NAME, SAMACCOUNTNAME dan LECTID digugurkan semasa ingest dan tidak pernah disimpan.",
+      "backupsLabel": "Salinan pemulihan pangkalan data",
+      "backupsPeriod": "Tiada sandaran. Pangkalan data mempunyai tempoh pemulihan enam jam."
+    },
+    "breachHeading": "Pelanggaran data peribadi",
+    "breach": "Kami memaklumkan Pesuruhjaya Perlindungan Data Peribadi secepat yang praktik dan selewat-lewatnya 72 jam selepas pelanggaran berlaku. Jika pelanggaran menyebabkan atau berkemungkinan menyebabkan kemudaratan besar, kami memaklumkan orang yang terjejas tanpa kelewatan yang tidak perlu dan selewat-lewatnya 7 hari selepas laporan awal kepada Pesuruhjaya."
+  }
+}

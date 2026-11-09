@@ -6,22 +6,28 @@ import { WebVitals } from '../features/quality/web-vitals'
 import { APPEARANCE_SCRIPT, DEFAULT_APPEARANCE, resolveAppearance, type Appearance } from '../lib/theme'
 import '../styles/globals.css'
 
+type Locale = 'en' | 'ms'
+
 export function RootDocument({
   children,
   appearance = DEFAULT_APPEARANCE,
   resolved = resolveAppearance(appearance),
-  routeGroup
+  routeGroup,
+  locale = 'en',
+  skipTarget = 'main-content'
 }: {
   children: ReactNode
   appearance?: Appearance
   resolved?: ReturnType<typeof resolveAppearance>
   routeGroup?: RouteGroup
+  locale?: Locale
+  skipTarget?: string
 }) {
   return (
     <html
-      lang="en"
+      lang={locale}
       className={resolved.className}
-      style={{ colorScheme: resolved.mode }}
+      style={{ colorScheme: appearance.theme === 'system' ? 'light dark' : resolved.mode }}
       data-theme={appearance.theme}
       data-contrast={appearance.contrast}
       data-motion-preference={appearance.motion}
@@ -35,8 +41,8 @@ export function RootDocument({
         <script dangerouslySetInnerHTML={{ __html: APPEARANCE_SCRIPT }} />
       </head>
       <body>
-        <a className="skip-link" href="#main-content">
-          {t('shell.skip_to_content')}
+        <a className="skip-link" href={`#${skipTarget}`}>
+          {t('shell.skip_to_content', {}, locale)}
         </a>
         <div id="main-content" tabIndex={-1}>
           {children}

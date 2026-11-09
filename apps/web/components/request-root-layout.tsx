@@ -7,12 +7,14 @@ import { RootDocument } from './root-document'
 interface Props {
   children: ReactNode
   routeGroup?: RouteGroup
+  locale?: 'en' | 'ms'
 }
 
-export async function RequestRootLayout({ children, routeGroup }: Props) {
+export async function RequestRootLayout({ children, routeGroup, locale: requestedLocale }: Props) {
   // These roots set instant=false so request hints resolve before their document starts streaming.
   const requestHeaders = await headers()
-  let appearance = DEFAULT_APPEARANCE
+  const locale = requestedLocale ?? (requestHeaders.get('x-skyclause-locale') === 'ms' ? 'ms' : 'en')
+  let appearance = routeGroup === 'public' ? { ...DEFAULT_APPEARANCE, theme: 'system' as const } : DEFAULT_APPEARANCE
   // No account storage before #99. The test-only cookie exercises SSR preferences without granting production controls.
   if (process.env.APP_ENV === 'test') {
     const value = (await cookies()).get('skyclause-test-appearance')?.value
@@ -38,7 +40,13 @@ export async function RequestRootLayout({ children, routeGroup }: Props) {
     motion: hint('sec-ch-prefers-reduced-motion')
   })
   return (
-    <RootDocument appearance={appearance} resolved={resolved} routeGroup={routeGroup}>
+    <RootDocument
+      appearance={appearance}
+      resolved={resolved}
+      routeGroup={routeGroup}
+      locale={locale}
+      skipTarget={routeGroup === 'public' ? 'public-main' : 'main-content'}
+    >
       {children}
     </RootDocument>
   )

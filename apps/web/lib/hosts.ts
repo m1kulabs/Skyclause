@@ -72,8 +72,12 @@ const ROUTES: Array<{ group: string; surface: Surface | null; match: (path: stri
   { group: 'docs', surface: 'docs', match: under('/docs') },
   // Test builds only (PLANTED_ROUTES=1); on the marketing host, where deploy's @smoke run checks production has none.
   { group: 'planted', surface: 'marketing', match: under('/_test', '/quality-planted') },
-  { group: '(marketing)', surface: 'marketing', match: (path) => path === '/' || under('/ms', '/legal')(path) },
-  { group: '(public)', surface: 'marketing', match: under('/status', '/p', '/c') },
+  {
+    group: '(marketing)',
+    surface: 'marketing',
+    match: (path) => path === '/' || (under('/ms')(path) && !under('/ms/legal')(path))
+  },
+  { group: '(public)', surface: 'marketing', match: under('/status', '/p', '/c', '/legal', '/ms/legal') },
   {
     group: '(auth)',
     surface: 'app',
@@ -114,5 +118,10 @@ export function proxyResponse(request: NextRequest, config: HostConfig): NextRes
   const target = routeRequest({ ...config, host: request.headers.get('host') ?? request.nextUrl.host, pathname })
   if (!target) return NextResponse.rewrite(new URL('/_not-found', request.url))
   if (target.pathname !== pathname) return NextResponse.rewrite(new URL(`${target.pathname}${search}`, request.url))
+  if (target.group === '(public)') {
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set('x-skyclause-locale', pathname.startsWith('/ms/legal') ? 'ms' : 'en')
+    return NextResponse.next({ request: { headers: requestHeaders } })
+  }
   return NextResponse.next()
 }

@@ -1,5 +1,6 @@
-// Spec §2: set to YYYY-MM-DD when the published privacy notice is ready.
-export const PRIVACY_NOTICE_VERSION: string | null = null
+// Spec §2: the published privacy notice is versioned by its publication date.
+export const PRIVACY_NOTICE_VERSION: string | null = '2026-11-10'
+export const TERMS_VERSION = '2026-11-10'
 
 export type ConsentWriteProblem = {
   slug: 'privacy-notice-unpublished'
