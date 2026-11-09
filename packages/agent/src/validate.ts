@@ -23,7 +23,7 @@ const INVISIBLE = /[\p{Default_Ignorable_Code_Point}\p{Cf}]/gu
 // Other ways a figure reads whole while the checks see two pieces: a combining mark on a digit, a control character
 // (C0 and C1 draw at zero width in some renderers; tab and line breaks are ordinary text), a thin or no-break space
 // between digits (NFKC folds them to a plain space), and a right-to-left letter beside digits, which reorders them.
-const MARK_ON_DIGIT = /\p{N}(?!\p{Default_Ignorable_Code_Point})\p{M}/u
+const MARK_ON_DIGIT = /\p{N}[.,:]?(?!\p{Default_Ignorable_Code_Point})\p{M}/u
 // Vertical tab and form feed are what Word and PowerPoint paste for a soft line break.
 const CONTROL = /[^\P{Cc}\t\n\r\v\f]/gu
 // A separator or space run beside a thin space still reads as one figure: 2, 060 is 2,060.
@@ -42,9 +42,70 @@ const skeletons = (text: string): string[] => {
   const asI = base.replaceAll('l', 'i')
   return [base, asI, base.replaceAll('rn', 'm'), asI.replaceAll('rn', 'm')]
 }
+// Small capitals that UTS #39 leaves out of confusables.txt (Latin phonetic letters that draw as A-Z).
+const SMALL_CAPITALS: Record<string, string> = {
+  a: '\u1D00',
+  b: '\u0299',
+  c: '\u1D04',
+  d: '\u1D05',
+  e: '\u1D07',
+  f: '\uA730',
+  g: '\u0262',
+  h: '\u029C',
+  i: '\u026A',
+  j: '\u1D0A',
+  k: '\u1D0B',
+  l: '\u029F',
+  m: '\u1D0D',
+  n: '\u0274',
+  o: '\u1D0F',
+  p: '\u1D18',
+  q: '\uA7AF',
+  r: '\u0280',
+  s: '\uA731',
+  t: '\u1D1B',
+  u: '\u1D1C',
+  v: '\u1D20',
+  w: '\u1D21',
+  y: '\u028F',
+  z: '\u1D22'
+}
+// Letters UTS #39 maps onto those small capitals (so confusables.txt has no ASCII skeleton for them).
+const ONTO_SMALL_CAPITALS: Record<string, string> = {
+  t: 'тτꭲ',
+  h: 'н',
+  b: 'в',
+  p: 'ᴩꮲ',
+  r: 'ꭱ',
+  d: 'ꭰ'
+}
+for (const [letter, chars] of Object.entries(ONTO_SMALL_CAPITALS)) {
+  for (const char of chars) if (!CONFUSABLE.has(char)) CONFUSABLE.set(char, letter)
+}
+for (const [letter, char] of Object.entries(SMALL_CAPITALS)) {
+  // m is written rn in the table, so the existing rn fold reads it too.
+  if (!CONFUSABLE.has(char)) CONFUSABLE.set(char, letter === 'm' ? 'rn' : letter)
+}
 // Spelled-out numbers from eleven up, English and Malay; "one window" stays fine.
 const NUMBER_WORD =
   /\b(?:eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|sebelas|belas|puluh|(?:se)?ratus|(?:se)?ribu|(?:se)?juta)\b/gi
+
+// Punctuation a reader takes for a separator inside a figure: any non-ASCII punctuation or symbol (a comma look-alike,
+// U+2800, a Tibetan tsheg, an ideographic comma) directly between digits. The en and em dash stay: they write ranges.
+const PUNCTUATION_BETWEEN_DIGITS = /\p{N}([\p{P}\p{S}\p{Lm}\uA4F8-\uA4FD\uA78F\u1427]+)(?=\p{N})/gu
+// A comma between digits reads as a decimal mark (5,60) unless it is a thousands group (2,060).
+const THOUSANDS = /(?<!\d|\d,)\d{1,3}(?:,\d{3})+(?!\d|,\d)/g
+// A token of 0-9 and the letters O, o, l, I (plus up to three unit letters) with a letter beside a digit: 5OO, 5l, l5.
+const LETTER_DIGITS = /^([0-9OolI]+)[a-zA-Z]{0,8}$/
+const LETTER_BESIDE_DIGIT = /\d[OolI]|[OolI]\d/
+const LETTER_ACROSS_SEPARATOR = /\d[.,:][OolI]+(?!\p{L})|(?<!\p{L})[OolI]+[.,:]\d/u
+const asciiLetters = (text: string): string =>
+  [...text.normalize('NFD').replace(/\p{M}/gu, '')]
+    .map((char) => {
+      const mapped = /\p{L}/u.test(char) ? CONFUSABLE.get(char) : undefined
+      return mapped && /^\p{ASCII}+$/u.test(mapped) ? mapped : char
+    })
+    .join('')
 
 interface Found {
   key: string
@@ -221,6 +282,14 @@ export function validate(p: ProposedBundle, input: AgentInput): Validation {
       }
       if (ODD_SPACE_BETWEEN_DIGITS.test(text))
         reasons.push(`${where}: a thin or no-break space between digits; remove it`)
+      for (const [, run] of text.matchAll(PUNCTUATION_BETWEEN_DIGITS)) {
+        for (const char of new Set(
+          [...run!].filter((c) => (c > '\x7F' || c === "'" || c === '`') && c !== '\u2013' && c !== '\u2014')
+        )) {
+          const code = char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')
+          reasons.push(`${where}: look-alike punctuation U+${code} between digits; remove it`)
+        }
+      }
       if (RTL_BESIDE_DIGIT.test(text))
         reasons.push(`${where}: a right-to-left character beside a digit reorders it; remove it`)
     }
@@ -253,6 +322,17 @@ export function validate(p: ProposedBundle, input: AgentInput): Validation {
     const figures = (where: string, rest: string) => {
       for (const found of numbersIn(rest, names)) {
         if (!allowed.has(found.key)) reasons.push(`${where}: ${found.text} is not a quotable number`)
+      }
+      if (/\d,\d/.test(rest.replace(THOUSANDS, ' ')))
+        reasons.push(`${where}: a comma between digits reads as a decimal mark; write the figure as quoted`)
+      const folded = asciiLetters(rest)
+      if (LETTER_ACROSS_SEPARATOR.test(folded))
+        reasons.push(`${where}: letters read as digits across a separator; quote the figure from the quotable block`)
+      for (const token of folded.match(/[\p{L}\p{N}_]+/gu) ?? []) {
+        if (names.has(token)) continue
+        const run = LETTER_DIGITS.exec(token)?.[1]
+        if (run && LETTER_BESIDE_DIGIT.test(run))
+          reasons.push(`${where}: ${token} has letters read as digits; quote the figure from the quotable block`)
       }
       for (const [digits] of rest.matchAll(OTHER_DIGIT)) {
         reasons.push(`${where}: ${digits} uses digits outside 0-9; quote the figure from the quotable block`)
