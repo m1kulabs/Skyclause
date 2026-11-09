@@ -19,6 +19,9 @@ export interface SettingsFrameProps {
 
 export function SettingsFrame({ scope, section, principal, org, project, children }: SettingsFrameProps) {
   const labelId = `settings-${scope}-${section}`
+  // The gate admitted this page, so a session's orgId is the URL organisation's: its ID for a real session (#94,
+  // filled by the page helper), the URL's name for a test principal. `org` names it in links.
+  const orgId = principal?.kind === 'session' ? (principal.orgId ?? undefined) : org
   return (
     <div className={styles.frame} data-settings-frame>
       <h1 className={styles.title} tabIndex={-1}>
@@ -26,7 +29,7 @@ export function SettingsFrame({ scope, section, principal, org, project, childre
       </h1>
       <nav className={styles.nav} aria-label={t(`settings.scopes.${scope}`)} data-settings-nav>
         {settingsSections[scope]
-          .filter((item) => maySeeSettings(principal, { scope, section: item, orgId: org }))
+          .filter((item) => maySeeSettings(principal, { scope, section: item, orgId }))
           .map((item) => (
             <Link
               className={styles.link}
