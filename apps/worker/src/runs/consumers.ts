@@ -11,7 +11,7 @@ import { startsRun } from './start-rule'
 const instant = (date: Date) => date.toISOString().replace('.000Z', 'Z')
 
 /** requestRun, except that a project that isn't open (PRJ-8) acknowledges the event with no run. */
-async function request(tx: Tx, r: Parameters<RequestRun>[1]) {
+export async function request(tx: Tx, r: Parameters<RequestRun>[1]) {
   try {
     await requestRun(tx, r)
   } catch (error) {

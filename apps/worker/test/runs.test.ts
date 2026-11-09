@@ -16,9 +16,30 @@ import {
   type RunStepName,
   type Tx
 } from '@skyclause/db'
-import { makeAiKey, makeOrganization, makeSubscriber } from '@skyclause/db/test/factories/index'
+import {
+  makeAiKey,
+  makeGrade,
+  makeMember,
+  makeOrganization,
+  makeProjectSource,
+  makeReading,
+  makeRotaShift,
+  makeSource,
+  makeSubscriber,
+  makeWindow
+} from '@skyclause/db/test/factories/index'
 import { asLogin } from '@skyclause/db/test/harness/index'
-import { runScene, T_EVAL, WAVE_TITLE, type RunScene } from '@skyclause/db/test/runs/scene'
+import {
+  normalSiteVerdicts,
+  runScene,
+  T_EVAL,
+  thunderstormWarning,
+  WARNING_ISSUED,
+  WARNING_T_EVAL,
+  warningSnapshot,
+  WAVE_TITLE,
+  type RunScene
+} from '@skyclause/db/test/runs/scene'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeAll, describe, expect, test } from 'vitest'
 import { createRunsPart, type RunPorts } from '../src/runs'
@@ -289,5 +310,140 @@ describe('the runs-requested handler', () => {
       type: 'run.failed',
       data: { reason: 'shadow_failed', shadow_mode: false }
     })
+  })
+
+  test('CAL-1: every trigger kind gives one run whose record names its trigger, project and pack', async () => {
+    const kinds = ['schedule', 'crossing', 'window', 'listing', 'calendar', 'request'] as const
+    for (const trigger of kinds) {
+      const m = await made()
+      const { runId } = await inOrg((tx) =>
+        requestRun(tx, {
+          projectId: m.projectId,
+          pack: 'sky',
+          trigger,
+          windowIds: [m.windowId],
+          dedupeKey: `${trigger}:${randomUUID()}`,
+          triggeredAt: T_EVAL
+        })
+      )
+      const d = doubles(m, { keyId: m.keyId, replies: [stormReply(m.windowId, [m.subscriberId])] })
+      await deliver(d.ports, runId)
+      expect(await runRow(runId)).toMatchObject({ trigger, projectId: m.projectId, pack: 'sky', status: 'drafted' })
+      // PRD's analytics and webhook enums have no `window`: it reads as `calendar`.
+      const reported = trigger === 'window' ? 'calendar' : trigger
+      const started = await asLogin('postgres', async (client) => {
+        const { rows } = await client.query<{ props: unknown }>(
+          "SELECT props FROM analytics_event WHERE project_id = $1 AND name = 'run_started'",
+          [m.projectId]
+        )
+        return rows.map((r) => r.props)
+      })
+      expect(started).toEqual([{ pack: 'sky', trigger: reported }])
+      expect((await eventsOf(m.projectId))[0]!.data).toMatchObject({ run_id: runId, trigger: reported })
+    }
+  })
+
+  test('a guest window’s run drafts a bundle that never sends (GST-5, D23)', async () => {
+    const m = await made()
+    const guest = await inOrg((tx) =>
+      makeWindow(tx, {
+        projectId: m.projectId,
+        via: 'guest',
+        guest: true,
+        startsAt: new Date('2026-11-02T07:30:00Z'),
+        endsAt: new Date('2026-11-02T07:30:00Z')
+      })
+    )
+    const { runId } = await inOrg((tx) =>
+      requestRun(tx, {
+        projectId: m.projectId,
+        pack: 'sky',
+        trigger: 'request',
+        windowIds: [guest.id],
+        dedupeKey: `request:${randomUUID()}`,
+        triggeredAt: T_EVAL
+      })
+    )
+    const d = doubles(m, { keyId: m.keyId, replies: [stormReply(guest.id, [])] })
+    await deliver(d.ports, runId)
+    expect(await bundlesOf(runId)).toMatchObject([{ draftOnly: true, state: 'closed' }])
+  })
+
+  test('inputs: MET text verbatim, yesterday’s grades, a Malay reader on duty and the bound sources', async () => {
+    const { m, sourceUrl, gradedWindow, readingId } = await inOrg(async (tx) => {
+      const scene = await runScene(tx)
+      const met = await makeSource(tx, { kind: 'met_warning', url: 'https://api.data.gov.my/weather/warning/' })
+      await makeProjectSource(tx, { projectId: scene.projectId, sourceId: met.id, role: 'warnings' })
+      const warning = await makeReading(tx, {
+        sourceId: met.id,
+        metric: 'warning',
+        unit: null,
+        value: null,
+        valueText: thunderstormWarning(),
+        observedAt: new Date(WARNING_ISSUED)
+      })
+      // Yesterday in MYT is Wednesday 4 November: a graded window that started then, and one from the day before.
+      const yesterday = await makeWindow(tx, {
+        projectId: scene.projectId,
+        startsAt: new Date('2026-11-04T06:00:00Z'),
+        endsAt: new Date('2026-11-04T08:00:00Z')
+      })
+      const older = await makeWindow(tx, {
+        projectId: scene.projectId,
+        startsAt: new Date('2026-11-03T06:00:00Z'),
+        endsAt: new Date('2026-11-03T08:00:00Z')
+      })
+      await makeGrade(tx, { projectId: scene.projectId, windowId: yesterday.id, outcome: 'hit' })
+      await makeGrade(tx, { projectId: scene.projectId, windowId: older.id, outcome: 'miss' })
+      const key = await makeAiKey(tx)
+      return {
+        m: { ...scene, keyId: key.id, subscriberId: '', subscriberEmail: '' },
+        sourceUrl: met.url,
+        gradedWindow: yesterday.id,
+        readingId: warning.id
+      }
+    })
+    // Thursday 5 November, 21:13 MYT: an approver who reads Malay is on the evening shift.
+    const reader = await makeMember({ organizationId: orgId, role: 'approver', readsMalay: true })
+    await inOrg((tx) =>
+      makeRotaShift(tx, {
+        accountId: reader.userId,
+        projectId: m.projectId,
+        days: [4],
+        localStart: '21:00',
+        localEnd: '22:00'
+      })
+    )
+    const { runId } = await inOrg((tx) =>
+      requestRun(tx, {
+        projectId: m.projectId,
+        pack: 'sky',
+        trigger: 'schedule',
+        dedupeKey: `schedule:${m.projectId}:sky:2026-11-05:21:00`,
+        triggeredAt: WARNING_T_EVAL
+      })
+    )
+    const d = doubles(m, {
+      keyId: m.keyId,
+      replies: [JSON.stringify({ pack: 'sky', calls: [], items: [] })],
+      snapshot: (projectId) => warningSnapshot(projectId, '', readingId),
+      verdicts: () => normalSiteVerdicts(),
+      now: () => new Date(WARNING_T_EVAL)
+    })
+    await deliver(d.ports, runId)
+
+    const draft = (await stepsOf(runId)).find((s) => s.step === 'draft')!.output as { input: Record<string, unknown> }
+    expect(draft.input).toMatchObject({
+      met_warnings: [thunderstormWarning()],
+      yesterday_grades: [{ window_id: gradedWindow, outcome: 'hit' }],
+      malay_reader: true,
+      source_urls: [sourceUrl],
+      windows: [],
+      origins: d.ports.origins
+    })
+    expect(promptOf(d.model)).toContain(
+      'Thunderstorms, heavy rain and strong winds are expected over the states of Kedah'
+    )
+    expect(await runRow(runId)).toMatchObject({ status: 'drafted' })
   })
 })

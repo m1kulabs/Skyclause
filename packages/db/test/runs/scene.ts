@@ -117,3 +117,59 @@ export function stormVerdicts(
 /** DESIGN "Voice and content": the 2 November replay's call wording, every number quotable from the snapshot. */
 export const DESIGN_BODY =
   'Commute disruption for the 15:30 release wave, Monday 2 November 2026. Why: Storm confirmed, gauge 39.0 mm in 60 min to 15:00 (Lebat), 5 min old at the 15:05 poll.'
+
+/** 21:13 MYT on 5 November 2026, when the warning capture was taken; the warning was issued at 21:05. */
+export const WARNING_T_EVAL = utc('2026-11-05T21:13:00')
+export const WARNING_ISSUED = utc('2026-11-05T21:05:00')
+
+/** The site snapshot at the warning capture: `site.met_warning_in_force` true, read from the MET reading `readingId`. */
+export function warningSnapshot(projectId: string, sourceId: string, readingId: string): IndicatorSnapshot {
+  return {
+    projectId,
+    pack: 'sky',
+    tEval: WARNING_T_EVAL,
+    inputs: [{ name: 'site.met_warning_in_force', sourceId, state: 'fresh', since: WARNING_ISSUED }],
+    site: {
+      'site.met_warning_in_force': {
+        name: 'site.met_warning_in_force',
+        value: true,
+        unit: '',
+        state: 'fresh',
+        since: WARNING_ISSUED,
+        ageS: 480,
+        sourceIds: [sourceId],
+        readingIds: [readingId],
+        observedAt: WARNING_ISSUED
+      }
+    },
+    series: {},
+    nights: [],
+    registryHash: 'registry',
+    hash: `snapshot-${WARNING_T_EVAL}`
+  }
+}
+
+/** The site verdict at the warning capture: Normal, since no window is open (`storm_watch` is window-scope). */
+export function normalSiteVerdicts(): Verdicts {
+  return {
+    tEval: WARNING_T_EVAL,
+    pack: 'sky',
+    contentHash: 'content',
+    snapshotHash: `snapshot-${WARNING_T_EVAL}`,
+    site: [
+      {
+        scope: { kind: 'site', id: null },
+        pack: 'sky',
+        mode: 'normal',
+        watch: false,
+        noCall: null,
+        recommendations: [],
+        clauses: [],
+        openFrom: null
+      }
+    ],
+    windows: [],
+    nights: [],
+    hash: `verdicts-site-${WARNING_T_EVAL}`
+  }
+}
