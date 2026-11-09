@@ -1,11 +1,12 @@
-import { Instant, REGISTRY } from '@skyclause/contracts'
+import {
+  getConnectConfig as config,
+  listConnectVerifications as verifications,
+  listConnectActivity as activity
+} from '@skyclause/contracts/api/first-party/connect'
+import { listMyMemberships as memberships } from '@skyclause/contracts/api/first-party/me'
+import { createOauthClient as create } from '@skyclause/contracts/api/first-party/orgs'
+import { Instant } from '@skyclause/contracts/api/shared'
 import { createApiFetch } from '../../lib/api-fetch'
-
-const config = REGISTRY.find((route) => route.operationId === 'getConnectConfig')!
-const verifications = REGISTRY.find((route) => route.operationId === 'listConnectVerifications')!
-const activity = REGISTRY.find((route) => route.operationId === 'listConnectActivity')!
-const create = REGISTRY.find((route) => route.operationId === 'createOauthClient')!
-const memberships = REGISTRY.find((route) => route.operationId === 'listMyMemberships')!
 
 export const connectOperations = {
   listMyMemberships: {
