@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiProblem } from '../../lib/api-fetch'
 import { readSse } from '../../lib/read-sse'
 import {
@@ -16,6 +16,8 @@ import {
 } from './operations'
 import { approves, canReviewCall, decisionsFor, teachingLineMissing, type Decisions } from './model'
 import { t } from './i18n'
+import { useReauth } from '../reauth'
+import { cancelStepUp, ReauthCancelledError } from '../step-up/flow'
 
 export interface ReviewData {
   bundle: BundleView
@@ -43,6 +45,11 @@ export function useBundleReview(bundleId: string, org: string, initial?: Initial
   const [error, setError] = useState<{ message: string; callIds: string[] }>()
   const [reauth, setReauth] = useState<ApprovalBody>()
   const [now, setNow] = useState(() => initial?.now ?? Date.now())
+  const { withReauth } = useReauth()
+  const clearReauth = useCallback(() => {
+    setReauth(undefined)
+    cancelStepUp()
+  }, [])
   const locked = useRef(false)
   const terminal = useRef(false)
   const generation = useRef(0)
@@ -63,7 +70,7 @@ export function useBundleReview(bundleId: string, org: string, initial?: Initial
     setDecisions({})
     setConflict(undefined)
     setError(undefined)
-    setReauth(undefined)
+    clearReauth()
     setPending(false)
     const signal = controller.signal
     async function load() {
@@ -124,7 +131,7 @@ export function useBundleReview(bundleId: string, org: string, initial?: Initial
     }
     void load()
     return () => controller.abort()
-  }, [bundleId, org, revision])
+  }, [bundleId, org, revision, clearReauth])
 
   const projectId = data?.bundle.project_id
   useEffect(() => {
@@ -148,7 +155,7 @@ export function useBundleReview(bundleId: string, org: string, initial?: Initial
         if (!['bundle.superseded', 'bundle.expired', 'bundle.approved'].includes(bundleEvent.type)) return
         terminal.current = true
         setConflict(undefined)
-        setReauth(undefined)
+        clearReauth()
         setData((current) => {
           if (!current) return current
           const state =
@@ -175,7 +182,7 @@ export function useBundleReview(bundleId: string, org: string, initial?: Initial
       }
     })
     return () => controller.abort()
-  }, [projectId, bundleId, org, revision])
+  }, [projectId, bundleId, org, revision, clearReauth])
 
   const visible = data?.bundle.id === bundleId ? data : undefined
   const editable =
@@ -191,14 +198,17 @@ export function useBundleReview(bundleId: string, org: string, initial?: Initial
   const missingTeaching = reviewable.some((call) => teachingLineMissing(call, decisions[call.id] ?? {}))
   const blocked = !editable || !reviewable.length || !!visible?.errors.length || missingChoice || missingTeaching
 
-  async function send(body: ApprovalBody, afterReauth = false) {
+  async function send(body: ApprovalBody) {
     if (locked.current || terminal.current || blocked) return
     locked.current = true
     const currentGeneration = generation.current
     setPending(true)
     setError(undefined)
     try {
-      const result = await apiFetch('approveBundle', { params: { id: bundleId }, body })
+      const result = await withReauth(
+        (idempotencyKey) => apiFetch('approveBundle', { params: { id: bundleId }, body, idempotencyKey }),
+        () => setReauth(body)
+      )
       if (currentGeneration !== generation.current || terminal.current) return
       terminal.current = true
       setData((current) =>
@@ -211,9 +221,13 @@ export function useBundleReview(bundleId: string, org: string, initial?: Initial
           : current
       )
       setConflict(undefined)
-      setReauth(undefined)
+      clearReauth()
     } catch (failure) {
       if (currentGeneration !== generation.current || terminal.current) return
+      if (failure instanceof ReauthCancelledError) {
+        clearReauth()
+        return
+      }
       const problem = failure instanceof ApiProblem ? failure : undefined
       const code = problem?.body.type?.split('/').pop()
       if (problem?.status === 409 && code === 'inputs-changed') {
@@ -239,10 +253,6 @@ export function useBundleReview(bundleId: string, org: string, initial?: Initial
             : current
         )
         setConflict(undefined)
-        return
-      }
-      if (problem?.status === 401 && code === 'reauth-required' && !afterReauth) {
-        setReauth(body)
         return
       }
       const recognized = ['validation-failed', 'malay-reader-required', 'redraft-required', 'call-expired'].includes(
@@ -287,18 +297,13 @@ export function useBundleReview(bundleId: string, org: string, initial?: Initial
     setConflict,
     error,
     reauth,
-    setReauth,
+    setReauth: clearReauth,
     now,
     editable,
     blocked,
     missingChoice,
     missingTeaching,
     approve,
-    retry: () => setRevision((value) => value + 1),
-    retryAfterReauth: async () => {
-      const body = reauth
-      setReauth(undefined)
-      if (body) await send(body, true)
-    }
+    retry: () => setRevision((value) => value + 1)
   }
 }

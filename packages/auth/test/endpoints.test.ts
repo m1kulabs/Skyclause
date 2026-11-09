@@ -21,7 +21,6 @@ const UNBUILT = [
   ['POST', '/organization/create'],
   ['POST', '/organization/update-member-role'],
   ['POST', '/api-key/create'],
-  ['GET', '/passkey/generate-register-options'],
   ['POST', '/device/code'],
   ['GET', '/jwks'],
   ['POST', '/oauth2/register'],

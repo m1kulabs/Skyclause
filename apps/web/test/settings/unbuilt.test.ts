@@ -17,7 +17,6 @@ export const expectedOwners: Record<string, string[]> = {
   'b-create-project-ui': panels('project', ['packs']),
   'c-channels-ui': panels('project', ['channels']),
   'd-public-project-page': panels('project', ['public']),
-  'a-step-up': ['apps/web/features/reauth/use-reauth.ts', 'apps/web/features/reauth/reauth-dialog.tsx'],
   'd-org-live': ['apps/web/features/org-live/index.tsx']
 }
 
