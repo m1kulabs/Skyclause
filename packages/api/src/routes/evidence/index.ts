@@ -3,12 +3,13 @@ import {
   approveEvidenceRequest,
   createEvidenceRequest,
   getEvidenceRequest,
+  listEvidenceRequests,
   sendEvidenceReply,
   type EvidenceRequestView
 } from '../../services/evidence'
 import { inTenant } from '../../tenancy'
 
-// #159 c-evidence: `POST /v1/projects/{id}/evidence-requests`, `GET /v1/evidence-requests/{id}`
+// #159 c-evidence: `GET` and `POST /v1/projects/{id}/evidence-requests`, `GET /v1/evidence-requests/{id}`
 // (`evidence.request`) and `POST /api/evidence-requests/{id}/approve` (`bundle.approve`, a session; no recent-auth
 // step, which #79 §4 keeps for bundles).
 
@@ -17,6 +18,17 @@ import { inTenant } from '../../tenancy'
 const packBody = (view: EvidenceRequestView) => view as never
 
 export const evidenceHandlers: Handlers = {
+  listEvidenceRequests: {
+    handler: async (c) => {
+      const { id } = c.req.valid('param')
+      const { limit, cursor } = c.req.valid('query')
+      const { can } = c.get('deps')
+      return c.json(
+        await inTenant(c, (ctx) => listEvidenceRequests(ctx, { can }, { projectId: id, limit, cursor })),
+        200
+      )
+    }
+  },
   createEvidenceRequest: {
     handler: async (c) => {
       const { id } = c.req.valid('param')

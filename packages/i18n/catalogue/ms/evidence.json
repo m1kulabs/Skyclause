@@ -7,7 +7,6 @@
     "readings": "Bacaan ({count})",
     "reading": "{time} · stesen {station} · {metric} {value} · bacaan {id}",
     "no_readings": "Tiada bacaan tersimpan bagi tempoh ini.",
-    "omitted": "Turut disimpan bagi tempoh ini, tidak disenaraikan di sini ({count}): {ids}",
     "warnings": "Amaran yang berkuat kuasa ({count})",
     "warning": "Sah {from} hingga {to} · bacaan {id}",
     "warning_english": "Teks Inggeris MET: {text}",

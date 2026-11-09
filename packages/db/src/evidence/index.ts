@@ -15,8 +15,10 @@ export {
   evidenceProject,
   evidenceWindow,
   findEvidenceRequest,
+  listEvidenceRequestRows,
   type DraftEvidenceInput,
   type EvidenceReplyNotice,
+  type EvidenceRequestOwner,
   type EvidenceRequesterKind,
   type EvidenceRequestRow
 } from './requests'

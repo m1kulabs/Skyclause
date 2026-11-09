@@ -102,49 +102,39 @@ export async function assembleEvidencePack(
   const ids = (kind?: string) => [...bound.values()].filter((s) => !kind || s.kind === kind).map((s) => s.id)
   const inSpan = and(gt(reading.observedAt, q.from), lte(reading.observedAt, q.to))
 
-  const inSpanReadings = ids().length
-    ? (
-        await latestReadings(tx, and(inArray(reading.sourceId, ids()), inSpan, ne(reading.metric, WARNING_METRIC)))
-      ).filter((row) => row.metric !== FRAME_METRIC)
+  const readings = ids().length
+    ? (await latestReadings(tx, and(inArray(reading.sourceId, ids()), inSpan, ne(reading.metric, WARNING_METRIC))))
+        .filter((row) => row.metric !== FRAME_METRIC)
+        .map((row) => {
+          const from = bound.get(row.sourceId)!
+          return {
+            id: row.id,
+            source_id: row.sourceId,
+            poll_id: row.pollId,
+            metric: row.metric,
+            unit: row.unit,
+            observed_at: iso(row.observedAt),
+            received_at: iso(row.receivedAt),
+            value: row.value,
+            value_text: row.valueText,
+            value_json: (row.valueJson ?? null) as EvidencePack['readings'][number]['value_json'],
+            device_time: row.deviceTime ? iso(row.deviceTime) : null,
+            item_key: row.itemKey,
+            revision: String(row.revision),
+            station_id: from.externalId,
+            source_url: from.url
+          }
+        })
+        .sort(
+          byKey(
+            (r) => r.observed_at,
+            (r) => r.station_id,
+            (r) => r.metric,
+            (r) => r.item_key ?? '',
+            (r) => r.id
+          )
+        )
     : []
-  // Contract `Reading` has a non-null unit and poll, so a unitless record or a reading without a poll can't be listed;
-  // the pack names those by ID instead of dropping them unseen.
-  const carried = (row: (typeof inSpanReadings)[number]) => row.unit !== null && row.pollId !== null
-  const readings = inSpanReadings
-    .filter(carried)
-    .map((row) => {
-      const from = bound.get(row.sourceId)!
-      return {
-        id: row.id,
-        source_id: row.sourceId,
-        poll_id: row.pollId!,
-        metric: row.metric,
-        unit: row.unit!,
-        observed_at: iso(row.observedAt),
-        received_at: iso(row.receivedAt),
-        value: row.value,
-        value_text: row.valueText,
-        value_json: (row.valueJson ?? null) as EvidencePack['readings'][number]['value_json'],
-        device_time: row.deviceTime ? iso(row.deviceTime) : null,
-        item_key: row.itemKey,
-        revision: String(row.revision),
-        station_id: from.externalId,
-        source_url: from.url
-      }
-    })
-    .sort(
-      byKey(
-        (r) => r.observed_at,
-        (r) => r.station_id,
-        (r) => r.metric,
-        (r) => r.item_key ?? '',
-        (r) => r.id
-      )
-    )
-  const omitted = inSpanReadings
-    .filter((row) => !carried(row))
-    .map((row) => row.id)
-    .sort()
 
   const warningSources = ids('met_warning')
   const warnings = warningSources.length
@@ -284,7 +274,6 @@ export async function assembleEvidencePack(
     approvals,
     grades,
     ledger,
-    frames,
-    ...(omitted.length ? { omitted_reading_ids: omitted } : {})
+    frames
   }
 }

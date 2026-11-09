@@ -95,8 +95,7 @@ describe('LED-5: each value in a pack resolves to a reading ID', () => {
           const named = [
             ...result.readings.map((r) => r.id),
             ...result.warnings.map((w) => w.reading_id),
-            ...result.frames.map((f) => f.reading_id),
-            ...(result.omitted_reading_ids ?? [])
+            ...result.frames.map((f) => f.reading_id)
           ]
           for (const id of named) expect(stored.has(id), id).toBe(true)
           const inSpan = [...stored].filter(([, at]) => at > from && at <= to).map(([id]) => id)
@@ -107,14 +106,23 @@ describe('LED-5: each value in a pack resolves to a reading ID', () => {
     )
   }, 120_000)
 
-  test('a reading the contract’s Reading can’t carry is named in omitted_reading_ids, not listed or dropped', async () => {
+  test('a reading without a poll or a unit is listed as stored, with its reading ID', async () => {
     const projectId = await asMember(async (tx) => (await makeProject(tx)).id)
     const gauge = await boundSource(projectId)
-    const listed = await rain(gauge.id, gauge.pollId, minutes(5), 1.5)
+    const polled = await rain(gauge.id, gauge.pollId, minutes(5), 1.5)
     const noPoll = await rain(gauge.id, null, minutes(10), 2)
+    const unitless = await rain(gauge.id, gauge.pollId, minutes(15), 0, {
+      metric: 'note',
+      unit: null,
+      value: null,
+      valueText: 'gauge serviced'
+    })
     const result = await pack(projectId)
-    expect(result.readings.map((r) => r.id)).toEqual([listed.id])
-    expect(result.omitted_reading_ids).toEqual([noPoll.id])
+    expect(result.readings.map((r) => [r.id, r.poll_id, r.unit, r.value_text])).toEqual([
+      [polled.id, gauge.pollId, 'mm', null],
+      [noPoll.id, null, 'mm', null],
+      [unitless.id, gauge.pollId, null, 'gauge serviced']
+    ])
   })
 })
 

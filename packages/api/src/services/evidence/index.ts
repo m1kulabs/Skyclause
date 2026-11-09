@@ -7,12 +7,15 @@ import {
   evidenceProject,
   evidenceWindow,
   findEvidenceRequest,
+  listEvidenceRequestRows,
   type DraftEvidenceInput,
   type EvidenceReplyNotice,
+  type EvidenceRequestOwner,
   type EvidenceRequestRow,
   type StoredEvidencePack
 } from '@skyclause/db'
 import { budgetGate } from '../../placeholders/d-guest-rules'
+import { decodeCursor, page } from '../../pagination'
 import { ApiError } from '../../problems'
 import { instant } from '../../serialize'
 import type { ServiceContext, WithTenant } from '../../tenancy'
@@ -105,15 +108,22 @@ function requesterOf(p: Principal): Requester {
   }
 }
 
-/** Members see every request in the projects they can see; guests and share links only their own. */
-function canSee(p: Principal, row: EvidenceRequestRow) {
-  if (p.kind === 'guest_token' || (p.kind === 'session' && p.isGuest)) return row.accountId === p.accountId
-  if (p.kind === 'share_link') return row.requesterKind === 'share_link' && row.requester === p.linkId
-  if (p.kind === 'oauth' && p.shareLinkId) return row.requesterKind === 'share_link' && row.requester === p.shareLinkId
-  return true
+/** Whose requests a principal sees: every request in the projects it can see (null), or a guest's or link's own. */
+function ownerOf(p: Principal): EvidenceRequestOwner {
+  if (p.kind === 'guest_token' || (p.kind === 'session' && p.isGuest)) return { accountId: p.accountId }
+  if (p.kind === 'share_link') return { shareLinkId: p.linkId }
+  if (p.kind === 'oauth' && p.shareLinkId) return { shareLinkId: p.shareLinkId }
+  return null
 }
 
-function summary(row: EvidenceRequestRow): EvidenceRequestSummary {
+function canSee(p: Principal, row: EvidenceRequestRow) {
+  const owner = ownerOf(p)
+  if (!owner) return true
+  if ('accountId' in owner) return row.accountId === owner.accountId
+  return row.requesterKind === 'share_link' && row.requester === owner.shareLinkId
+}
+
+function summary(row: Omit<EvidenceRequestRow, 'pack'>): EvidenceRequestSummary {
   const at = (date: Date | null) => (date ? instant(date) : null)
   return {
     id: row.id,
@@ -202,6 +212,33 @@ export async function createEvidenceRequest(
     deps.now
   )
   return view(row!, deps.now)
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** `GET /v1/projects/{id}/evidence-requests`: newest first, without packs. */
+export async function listEvidenceRequests(
+  ctx: ServiceContext,
+  deps: Pick<Deps, 'can'>,
+  q: { projectId: string; limit: number; cursor?: string }
+) {
+  const project = await evidenceProject(ctx.tx, q.projectId)
+  if (!project || !deps.can(ctx.principal, 'evidence.request', { projectId: project.id })) {
+    throw new ApiError(404, 'not-found', 'No such project, or you can’t see its evidence requests.')
+  }
+  const beforeId = q.cursor === undefined ? undefined : decodeCursor(q.cursor).id
+  if (beforeId !== undefined && (typeof beforeId !== 'string' || !UUID.test(beforeId))) {
+    throw new ApiError(422, 'validation-failed', 'The cursor is not one this API issued.', {
+      errors: [{ in: 'query', pointer: '/cursor', detail: 'Invalid cursor' }]
+    })
+  }
+  const rows = await listEvidenceRequestRows(ctx.tx, {
+    projectId: project.id,
+    limit: q.limit,
+    beforeId,
+    owner: ownerOf(ctx.principal)
+  })
+  return page(rows.map(summary), q.limit, (row) => ({ id: row.id }))
 }
 
 async function visibleRequest(

@@ -488,7 +488,7 @@ Outcomes are PRD's [Grades and analysis (ANL)](/docs/PRD.md#grades-and-analysis-
 | Runs                 | `GET /projects/{id}/runs`, `GET /runs/{id}`, `POST /projects/{id}/runs` (ask for a call)                                              | `read`, `draft`        |
 | Bundles and calls    | `GET /projects/{id}/bundles`, `GET /bundles/{id}`, `GET /calls/{id}`, bundles stream                                                  | `read`                 |
 | Ledger and grades    | `GET /projects/{id}/ledger`, `GET /projects/{id}/grades`, `GET /projects/{id}/analysis`, `GET /projects/{id}/ledger/verify`           | `read`                 |
-| Evidence             | `POST /projects/{id}/evidence-requests`, `GET /evidence-requests/{id}`                                                                | `draft`                |
+| Evidence             | `GET`, `POST /projects/{id}/evidence-requests`, `GET /evidence-requests/{id}`                                                         | `draft`                |
 | Listings and nights  | `GET`, `POST /projects/{id}/listings` (propose from an allow-listed URL), `GET /projects/{id}/nights`, `GET /nights/{id}`             | `read`, `draft`        |
 | Subscribers          | `GET`, `POST /projects/{id}/subscribers`, `DELETE /subscribers/{id}`                                                                  | `admin`                |
 | Webhooks             | `GET`, `POST /webhooks`, `GET /webhooks/{id}/deliveries`, `POST /webhooks/{id}/redeliver`                                             | `admin`                |

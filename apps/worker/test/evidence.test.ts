@@ -139,11 +139,11 @@ describe('with inbound_email on', () => {
     const audits = await drops(message.messageId)
     expect(audits).toHaveLength(1)
     expect(audits[0]).toMatchObject({
-      action: 'staff.action',
+      action: 'evidence_request.dropped',
       actorType: 'system',
       actorId: 'evidence-inbound',
       projectId: project.id,
-      after: { consumer: 'evidence', dropped: reason }
+      after: { reason }
     })
   })
 
@@ -158,7 +158,7 @@ describe('with inbound_email on', () => {
     for (const from of other) {
       const message = mail({ from })
       await handleEvidenceMail(message, options)
-      expect((await drops(message.messageId))[0]).toMatchObject({ after: { dropped: 'unknown_sender' } })
+      expect((await drops(message.messageId))[0]).toMatchObject({ after: { reason: 'unknown_sender' } })
     }
   })
 

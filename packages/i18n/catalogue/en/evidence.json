@@ -7,7 +7,6 @@
     "readings": "Readings ({count})",
     "reading": "{time} · station {station} · {metric} {value} · reading {id}",
     "no_readings": "No stored readings for this span.",
-    "omitted": "Also stored for this span, not listed here ({count}): {ids}",
     "warnings": "Warnings in force ({count})",
     "warning": "Valid {from} to {to} · reading {id}",
     "warning_english": "MET's English: {text}",

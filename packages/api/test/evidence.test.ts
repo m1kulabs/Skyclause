@@ -160,7 +160,7 @@ describe('LED-4: a reply leaving the organisation waits for an Approver', () => 
       tx.query.approval.findMany({ where: (a, { eq }) => eq(a.evidenceRequestId, request.id) })
     )
     expect(given?.action).toBe('approve_reply')
-    await expectOneAudit('bundle.approved', { orgId, targetId: request.id })
+    await expectOneAudit('evidence_reply.approved', { orgId, targetId: request.id })
     const entry = await expectLedgerEntry('evidence_replied', { orgId, projectId })
     expect(entry.refs).toEqual({ evidence_request_id: request.id, approval_id: given!.id })
     expect(Object.keys(entry.body as object).sort()).toEqual([
@@ -363,6 +363,37 @@ test('LED-6: every request has received ≤ drafted ≤ approved ≤ replied, nu
   }
 })
 
+describe('listEvidenceRequests', () => {
+  const list = (as: Principal, project: string, query?: Record<string, string>) =>
+    apiRequest(v1, { as, method: 'GET', path: `/v1/projects/${project}/evidence-requests`, org: ORG, query })
+  type Listed = { data: Array<Record<string, unknown> & { id: string }>; next_cursor: string | null }
+
+  test('members page the project’s requests newest first, without packs; guests and links see their own', async () => {
+    const own = await inOrg(async (tx) => (await makeProject(tx)).id)
+    const link = asShareLink({ org: ORG, projectId: own, access: 'reviewer' })
+    const guest = asSession({ org: ORG, role: 'viewer', guest: true })
+    const ids: string[] = []
+    for (const as of [member(), link, member(), guest]) ids.push((await json(await post(as, { span }, own))).id)
+
+    const first = (await (await list(member(), own, { limit: '3' })).json()) as Listed
+    expect(first.data.map((r) => r.id)).toEqual([...ids].reverse().slice(0, 3))
+    expect(first.data[0]).not.toHaveProperty('pack')
+    expect(first.data[0]).toMatchObject({ project_id: own, status: 'not_reviewed', span })
+    const rest = (await (await list(member(), own, { limit: '3', cursor: first.next_cursor! })).json()) as Listed
+    expect(rest).toEqual({ data: [expect.objectContaining({ id: ids[0] })], next_cursor: null })
+
+    const linkOwn = (await (await list(link, own)).json()) as Listed
+    expect(linkOwn.data.map((r) => r.id)).toEqual([ids[1]])
+    const guestOwn = (await (await list(guest, own)).json()) as Listed
+    expect(guestOwn.data.map((r) => r.id)).toEqual([ids[3]])
+  })
+
+  test('a cursor this API didn’t issue is 422; an unknown project is 404', async () => {
+    expect((await list(member(), projectId, { cursor: 'not-a-cursor' })).status).toBe(422)
+    expect((await list(member(), crypto.randomUUID())).status).toBe(404)
+  })
+})
+
 describe('requests', () => {
   test('a window names its span and the pack’s window; an unknown window or call is 404', async () => {
     const window = await inOrg((tx) =>
@@ -397,10 +428,16 @@ describe('requests', () => {
 })
 
 describe('denials', () => {
-  test('a read-only API key is refused with 403 insufficient-scope on both /v1 operations', async () => {
+  test('a read-only API key is refused with 403 insufficient-scope on every /v1 operation', async () => {
     const key = asApiKey({ org: ORG, role: 'owner', scopes: ['read'] })
     const request = await json(await post(member()))
-    for (const response of [await post(key), await read(key, request.id)]) {
+    const listing = await apiRequest(v1, {
+      as: key,
+      method: 'GET',
+      path: `/v1/projects/${projectId}/evidence-requests`,
+      org: ORG
+    })
+    for (const response of [await post(key), await read(key, request.id), listing]) {
       expect(response.status).toBe(403)
       expect(await response.json()).toMatchObject({
         type: 'https://docs.skyclause.m1ku.tech/problems/insufficient-scope'
@@ -435,6 +472,7 @@ describe('denials', () => {
   })
 
   test.each([
+    ['listEvidenceRequests', 'v1'],
     ['createEvidenceRequest', 'v1'],
     ['getEvidenceRequest', 'v1'],
     ['approveEvidenceRequest', 'api']
@@ -461,7 +499,8 @@ describe('denials', () => {
       )
       return { projectId: project.id, requestId: row!.id }
     })
-    const params = { id: operationId === 'createEvidenceRequest' ? theirs.projectId : theirs.requestId }
+    const onProject = operationId === 'createEvidenceRequest' || operationId === 'listEvidenceRequests'
+    const params = { id: onProject ? theirs.projectId : theirs.requestId }
     const as = operationId === 'approveEvidenceRequest' ? approver() : member()
     await crossOrgCase(operationId, {
       app: surface === 'v1' ? v1 : api,
@@ -471,6 +510,41 @@ describe('denials', () => {
       body: operationId === 'createEvidenceRequest' ? { span } : undefined
     }).run()
   })
+})
+
+test('a reading without a poll or a unit is served in the pack as stored (Reading’s nullable fields)', async () => {
+  const own = await inOrg(async (tx) => {
+    const project = await makeProject(tx)
+    const camera = await makeProjectSource(tx, { projectId: project.id })
+    const at = new Date('2026-11-02T07:00:00Z')
+    const contrast = await makeReading(tx, {
+      sourceId: camera.sourceId,
+      metric: 'contrast_far',
+      unit: 'ratio',
+      value: 0.4,
+      observedAt: at
+    })
+    const note = await makeReading(tx, {
+      sourceId: camera.sourceId,
+      pollId: (await makePoll(tx, { sourceId: camera.sourceId })).id,
+      metric: 'note',
+      unit: null,
+      value: null,
+      valueText: 'lens cleaned',
+      observedAt: at
+    })
+    return { projectId: project.id, contrast: contrast.id, note: note.id }
+  })
+  // The mount checks every response against its schema outside production, so a 202 means the pack validated.
+  const created = await post(member(), { span }, own.projectId)
+  expect(created.status).toBe(202)
+  const { pack } = (await created.json()) as { pack: { readings: Array<Record<string, unknown>> } }
+  expect(pack.readings.map((r) => [r.id, r.poll_id === null, r.unit])).toEqual(
+    expect.arrayContaining([
+      [own.contrast, true, 'ratio'],
+      [own.note, false, null]
+    ])
+  )
 })
 
 test('held frames get a signed URL on each read, kept out of the stored pack', async () => {

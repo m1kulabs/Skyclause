@@ -39,15 +39,15 @@ export function renderEvidenceReply(r: {
           time: when(reading.observed_at),
           station: reading.station_id,
           metric: reading.metric,
-          value: reading.value === null ? (reading.value_text ?? say('no_value')) : `${reading.value} ${reading.unit}`,
+          value:
+            reading.value === null
+              ? (reading.value_text ?? say('no_value'))
+              : [reading.value, reading.unit].filter((part) => part !== null).join(' '),
           id: reading.id
         })}`
       ],
       'no_readings'
     ),
-    ...(pack.omitted_reading_ids?.length
-      ? ['', say('omitted', { count: pack.omitted_reading_ids.length, ids: pack.omitted_reading_ids.join(', ') })]
-      : []),
     ...section(
       'warnings',
       pack.warnings,

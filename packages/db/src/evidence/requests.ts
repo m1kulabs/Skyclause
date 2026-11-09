@@ -1,6 +1,6 @@
 import { canonicalHash } from '@skyclause/clauses'
 import type { TxHandle } from '@skyclause/contracts'
-import { and, eq } from 'drizzle-orm'
+import { and, desc, eq, getTableColumns, lt } from 'drizzle-orm'
 import { track } from '../analytics'
 import { recordAudit } from '../audit'
 import type { Tx } from '../client'
@@ -158,6 +158,33 @@ export async function findEvidenceRequest(handle: TxHandle, id: string, o: { for
   return row ?? null
 }
 
+/** Whose requests a list shows: the project's, or only a guest's (by account) or a share link's. */
+export type EvidenceRequestOwner = { accountId: string } | { shareLinkId: string } | null
+
+/** Up to `limit + 1` of the project's requests, newest first (UUIDv7 order), before `beforeId`, without packs. */
+export async function listEvidenceRequestRows(
+  handle: TxHandle,
+  q: { projectId: string; limit: number; beforeId?: string; owner: EvidenceRequestOwner }
+) {
+  const tx = handle as Tx
+  const { pack: _pack, ...columns } = getTableColumns(evidenceRequest)
+  return tx
+    .select(columns)
+    .from(evidenceRequest)
+    .where(
+      and(
+        eq(evidenceRequest.projectId, q.projectId),
+        q.beforeId ? lt(evidenceRequest.id, q.beforeId) : undefined,
+        q.owner && 'accountId' in q.owner ? eq(evidenceRequest.accountId, q.owner.accountId) : undefined,
+        q.owner && 'shareLinkId' in q.owner
+          ? and(eq(evidenceRequest.requesterKind, 'share_link'), eq(evidenceRequest.requester, q.owner.shareLinkId))
+          : undefined
+      )
+    )
+    .orderBy(desc(evidenceRequest.id))
+    .limit(q.limit + 1)
+}
+
 /** An approved email reply's outbox row, rendered and sent after commit. */
 export interface EvidenceReplyNotice {
   noticeId: string
@@ -209,7 +236,7 @@ export async function approveEvidenceReply(
     }
   })
   await recordAudit(tx, {
-    action: 'bundle.approved',
+    action: 'evidence_reply.approved',
     target: { type: 'evidence_request', id: row!.id },
     projectId: row!.projectId,
     after: { status: 'replied', approval_id: approvalId }

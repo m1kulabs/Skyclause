@@ -53,10 +53,10 @@ export async function handleEvidenceMail(m: InboundMessage, o: EvidenceInboundOp
   await withTenant({ orgId: target.orgId, principal: systemPrincipal(JOB) }, async (tx) => {
     const drop = async (reason: Drop) => {
       await recordAudit(tx, {
-        action: 'staff.action',
+        action: 'evidence_request.dropped',
         target: { type: 'inbound_email', id: m.messageId },
         projectId: target.projectId,
-        after: { consumer: CONSUMER, dropped: reason }
+        after: { reason }
       })
       log('INFO', 'inbound evidence mail dropped', { messageId: m.messageId, reason })
     }
