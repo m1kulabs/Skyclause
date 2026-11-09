@@ -9,6 +9,7 @@ export {
   type SystemPrincipal,
   type Tx
 } from './client'
+export * from './alerts'
 export { track } from './analytics'
 export * from './api'
 export * from './approvals'

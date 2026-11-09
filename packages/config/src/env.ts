@@ -101,7 +101,9 @@ const schemas = {
       ...optional(sending),
       ...optional(receiving),
       ...vapidPublic,
-      VAPID_PRIVATE_KEY: base64urlBytes(32).optional()
+      VAPID_PRIVATE_KEY: base64urlBytes(32).optional(),
+      // c-approver-alerts (#155): approver alerts link to the app; Terraform sets it on every service.
+      APP_ORIGIN: z.url().optional()
     })
     .superRefine(together([...Object.keys(sending), ...Object.keys(receiving)])),
   // GCP_PROJECT is f-infra's; the vapid-keys job reads it.
