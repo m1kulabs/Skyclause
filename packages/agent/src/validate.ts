@@ -42,6 +42,7 @@ function numbersIn(text: string, identifiers: Set<string>): Found[] {
 function identifiers(input: AgentInput): Set<string> {
   const { snapshot } = input
   const texts = [
+    snapshot.projectId,
     ...Object.keys(snapshot.site),
     ...Object.values(snapshot.site).flatMap((v) => [v.name, ...v.sourceIds, ...v.readingIds]),
     ...snapshot.inputs.flatMap((i) => [i.name, i.sourceId ?? '']),
@@ -93,15 +94,33 @@ function linksIn(text: string, identifiers: Set<string>): { links: string[]; res
   return { links, rest }
 }
 
-/** Links may go only to the input's source URLs and the Skyclause origins it lists; never to an email address. */
-function linkPolicy(input: AgentInput): (link: string) => boolean {
-  const sources = new Set(input.source_urls.filter((u) => URL.canParse(u)).map((u) => new URL(u).href))
+/**
+ * Links may go only to the input's source URLs and the Skyclause origins it lists; never to an email address. Returns
+ * the part of an allowed link that is free text (everything after the host, as written; none for a listed source
+ * URL), or null when the link isn't allowed.
+ */
+function linkPolicy(input: AgentInput): (link: string) => string | null {
+  const sources = new Set(input.source_urls.flatMap((u) => (URL.canParse(u) ? [u, new URL(u).href] : [])))
   const origins = new Set(input.origins.filter((o) => URL.canParse(o)).map((o) => new URL(o).origin))
   return (link) => {
     const href = SCHEME.test(link) ? link : `https://${link}`
-    if (link.includes('@') || !URL.canParse(href)) return false
+    if (link.includes('@') || !URL.canParse(href)) return null
     const url = new URL(href)
-    return (url.protocol === 'https:' || url.protocol === 'http:') && (sources.has(url.href) || origins.has(url.origin))
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null
+    // A listed source URL must be written exactly, so nothing the parser tidies away (`/../`, a default port) hides.
+    if (sources.has(link) || sources.has(href)) return ''
+    if (!origins.has(url.origin)) return null
+    // The text as written, not as the URL parser cleans it: `/x-120/../c` and `:443` are still read by a person.
+    const rest = link.replace(SCHEME, '')
+    const host = rest.match(/^[^/?#\\:]*/)![0]
+    try {
+      return decodeURIComponent(rest.slice(host.length))
+        .normalize('NFKC')
+        .replaceAll('_', ' ')
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+    } catch {
+      return null
+    }
   }
 }
 
@@ -164,6 +183,15 @@ export function validate(p: ProposedBundle, input: AgentInput): Validation {
     // Links and numbers: the same rules for everything an approver or recipient reads, the reason included.
     const checkFigures = (where: string, text: string) => {
       const { links, rest } = linksIn(text, names)
+      figures(where, rest)
+      for (const link of links) {
+        const free = allowsLink(link)
+        if (free === null) reasons.push(`${where}: link ${link} is not a source URL or Skyclause origin`)
+        else figures(`${where} (link ${link})`, free)
+      }
+    }
+    // Numbers in text with the links already taken out. An allowed link's path counts too: it is free text.
+    const figures = (where: string, rest: string) => {
       for (const found of numbersIn(rest, names)) {
         if (!allowed.has(found.key)) reasons.push(`${where}: ${found.text} is not a quotable number`)
       }
@@ -172,9 +200,6 @@ export function validate(p: ProposedBundle, input: AgentInput): Validation {
       }
       for (const [word] of rest.matchAll(NUMBER_WORD)) {
         reasons.push(`${where}: spelled-out number ${word}; quote the figure from the quotable block`)
-      }
-      for (const link of links) {
-        if (!allowsLink(link)) reasons.push(`${where}: link ${link} is not a source URL or Skyclause origin`)
       }
     }
     call.notices.forEach((notice, j) => {

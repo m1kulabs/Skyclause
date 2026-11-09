@@ -90,7 +90,7 @@ describe('validate after the schema', () => {
 
   test('allows links only to source URLs and Skyclause origins', () => {
     const body = (text: string) => (b: ReturnType<typeof replayBundle>) => (b.calls[0]!.notices[0]!.body = text)
-    expect(failing(body(`See ${sourceUrl} and https://skyclause.m1ku.tech/c/1.`))).toEqual([])
+    expect(failing(body(`See ${sourceUrl} and https://skyclause.m1ku.tech/c/${ids.window}.`))).toEqual([])
     expect(failing(body('See https://evil.example/x, www.evil.example and evil.example/claim.'))).toEqual([
       expect.stringContaining('link https://evil.example/x'),
       expect.stringContaining('link www.evil.example'),
@@ -100,6 +100,46 @@ describe('validate after the schema', () => {
     expect(failing(body('Mirror: https://skyclause.m1ku.tech.evil.example/c'))).toEqual([
       expect.stringContaining('link https://skyclause.m1ku.tech.evil.example/c')
     ])
+  })
+
+  test('checks numbers inside the path of an allowed Skyclause link', () => {
+    const body = (text: string) => (b: ReturnType<typeof replayBundle>) => (b.calls[0]!.notices[0]!.body = text)
+    const reason = (text: string) => (b: ReturnType<typeof replayBundle>) => (b.calls[0]!.reason = text)
+    const projectId = replayInput().snapshot.projectId
+    expect(failing(body('See https://skyclause.m1ku.tech/rain-reached-120-mm today.'))).toEqual([
+      expect.stringContaining(
+        'notices[0].body (link https://skyclause.m1ku.tech/rain-reached-120-mm): 120 is not a quotable number'
+      )
+    ])
+    expect(failing(body('Doors: https://skyclause.m1ku.tech/doors/19:45'))).toEqual([
+      expect.stringContaining('19:45 is not a quotable number')
+    ])
+    expect(failing(body('See https://skyclause.m1ku.tech/a?n=%31%32%30'))).toEqual([
+      expect.stringContaining('120 is not a quotable number')
+    ])
+    expect(failing(reason('See https://skyclause.m1ku.tech/rain-reached-120-mm'))).toEqual([
+      expect.stringContaining(
+        '.reason (link https://skyclause.m1ku.tech/rain-reached-120-mm): 120 is not a quotable number'
+      )
+    ])
+    for (const link of [
+      'https://skyclause.m1ku.tech/rain-120-mm/../c',
+      'https://skyclause.m1ku.tech/rain-120-mm/%2e%2e/c',
+      'https://skyclause.m1ku.tech:443/c',
+      'https://skyclause.m1ku.tech/rain_one_hundred_mm',
+      'https://skyclause.m1ku.tech/rain-%',
+      `${sourceUrl.replace('/75', '/rain-120-mm/../75')}`
+    ]) {
+      expect(failing(body(`See ${link}`)), link).not.toEqual([])
+    }
+    // Real input identifiers, quotable figures and listed source URLs stay fine.
+    expect(
+      failing(
+        body(`See https://skyclause.m1ku.tech/calls/${ids.window} and https://app.skyclause.m1ku.tech/p/${projectId}`)
+      )
+    ).toEqual([])
+    expect(failing(reason(`See https://skyclause.m1ku.tech/c/${ids.window}?gauge=39.0`))).toEqual([])
+    expect(failing(body(`See ${sourceUrl}`))).toEqual([])
   })
 
   test('checks links and numbers in the reason approvers read', () => {
