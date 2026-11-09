@@ -30,7 +30,7 @@ import { asc, eq, inArray } from 'drizzle-orm'
 import { ApiError } from '../../problems'
 import type { ServiceContext } from '../../tenancy'
 import { callView, getBundle, type BundleDetail } from '../bundles'
-import { checkNotices, plan, shadowContent, type Decision, type Planned } from './content'
+import { checkNotices, invalid, plan, shadowContent, type Decision, type Planned } from './content'
 import { confirmedToken, recheck, recheckToken, type Recheck } from './recheck'
 
 export { setRecheckPorts, type RecheckPorts } from './recheck'
@@ -60,8 +60,6 @@ type Role = 'owner' | 'admin' | 'approver'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const notFound = () => new ApiError(404, 'not-found', 'No bundle with this ID.')
-const invalid = (detail: string, callId?: string) =>
-  new ApiError(422, 'validation-failed', detail, callId ? { call_id: callId } : {})
 
 /** Who approves: the route admits only a member session that holds `bundle.approve`. */
 function approverOf(ctx: ServiceContext): { accountId: string; role: Role } {
@@ -76,8 +74,9 @@ function approverOf(ctx: ServiceContext): { accountId: string; role: Role } {
 function checkNamed(decisions: Decision[], calls: CallRow[]) {
   const seen = new Set<string>()
   for (const d of decisions) {
-    if (!calls.some((c) => c.id === d.call_id)) throw invalid(`Call ${d.call_id} is not in this bundle.`, d.call_id)
-    if (seen.has(d.call_id)) throw invalid(`Call ${d.call_id} is decided twice.`, d.call_id)
+    if (!calls.some((c) => c.id === d.call_id))
+      throw invalid(`Call ${d.call_id} is not in this bundle.`, { callId: d.call_id })
+    if (seen.has(d.call_id)) throw invalid(`Call ${d.call_id} is decided twice.`, { callId: d.call_id })
     seen.add(d.call_id)
   }
 }
@@ -89,26 +88,27 @@ function checkNamed(decisions: Decision[], calls: CallRow[]) {
 function checkDecisions(decisions: Decision[], calls: CallRow[], now: Date) {
   for (const d of decisions) {
     const c = calls.find((row) => row.id === d.call_id)!
-    if (c.state !== 'drafted') throw invalid(`Call ${c.id} is ${c.state}; only a drafted call is decided.`, c.id)
+    if (c.state !== 'drafted')
+      throw invalid(`Call ${c.id} is ${c.state}; only a drafted call is decided.`, { callId: c.id })
     if (d.action !== 'edit' && (d.notices || d.recipients)) {
-      throw invalid(`Only an edit changes the wording or recipients of call ${c.id}.`, c.id)
+      throw invalid(`Only an edit changes the wording or recipients of call ${c.id}.`, { callId: c.id })
     }
     if (d.action === 'edit' && !d.notices?.length && !d.recipients) {
-      throw invalid(`The edit of call ${c.id} changes nothing.`, c.id)
+      throw invalid(`The edit of call ${c.id} changes nothing.`, { callId: c.id })
     }
     const removable = new Set(c.recipients)
     if (d.recipients?.some((id) => !removable.has(id))) {
-      throw invalid(`An edit only removes recipients of call ${c.id}.`, c.id)
+      throw invalid(`An edit only removes recipients of call ${c.id}.`, { callId: c.id })
     }
     if (d.action !== 'reject' && !c.agrees && !d.chosen) {
-      throw invalid(`Call ${c.id}'s agent and engine disagree: pick one.`, c.id)
+      throw invalid(`Call ${c.id}'s agent and engine disagree: pick one.`, { callId: c.id })
     }
   }
   const undecided = calls.filter(
     (c) => c.state === 'drafted' && c.expiresAt > now && !decisions.some((d) => d.call_id === c.id)
   )
   if (undecided.length) {
-    throw invalid(`Decide every call: ${undecided.map((c) => c.id).join(', ')}.`, undecided[0]!.id)
+    throw invalid(`Decide every call: ${undecided.map((c) => c.id).join(', ')}.`, { callId: undecided[0]!.id })
   }
 }
 

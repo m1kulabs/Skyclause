@@ -22,8 +22,12 @@ export interface Decision {
 const LANGUAGES: NoticeLanguage[] = ['en', 'ms']
 const PLACEHOLDER = /\{([A-Za-z0-9_.]+)\.(value|unit|age|station|observed_at)\}/g
 
-const invalid = (callId: string, detail: string, reason?: string) =>
-  new ApiError(422, 'validation-failed', detail, { call_id: callId, ...(reason ? { reason } : {}) })
+/** 422 `validation-failed` naming the call it's about and, for a notice check, the line's slug as `reason`. */
+export const invalid = (detail: string, o: { callId?: string; reason?: string } = {}) =>
+  new ApiError(422, 'validation-failed', detail, {
+    ...(o.callId ? { call_id: o.callId } : {}),
+    ...(o.reason ? { reason: o.reason } : {})
+  })
 
 /** DESIGN "Input ages": minutes, then hours over 90 minutes, in the notice's language. */
 function ageText(seconds: number, language: NoticeLanguage) {
@@ -61,7 +65,7 @@ function fill(callId: string, text: string, o: FillContext) {
   return text.replace(PLACEHOLDER, (match, name: string, part: string) => {
     const input = o.inputs.find((i) => i.name === name) ?? o.snapshot.site[name]
     const value = input ? field(input, part, o) : null
-    if (value === null) throw invalid(callId, `The clause wording needs ${match}, which the snapshot doesn't hold.`)
+    if (value === null) throw invalid(`The clause wording needs ${match}, which the snapshot doesn't hold.`, { callId })
     return value
   })
 }
@@ -179,11 +183,14 @@ export function checkNotices(
       ...(o.sources.length ? { sources: o.sources } : {})
     })
     const [missing] = checkRequiredLines(rendered, view)
-    if (missing) throw invalid(view.id, missing.detail, missing.instance.split('#')[1])
+    if (missing) throw invalid(missing.detail, { callId: view.id, reason: missing.instance.split('#')[1] })
     for (const text of [rendered.subject, rendered.text]) {
       const phrase = findAttendanceExcuse(text, language)
       if (phrase) {
-        throw invalid(view.id, `The ${language} notice excuses attendance: "${phrase}".`, 'attendance-excuse')
+        throw invalid(`The ${language} notice excuses attendance: "${phrase}".`, {
+          callId: view.id,
+          reason: 'attendance-excuse'
+        })
       }
     }
   }
