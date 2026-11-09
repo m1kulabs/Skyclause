@@ -19,6 +19,6 @@ export const registry = defineRegistry([
   pilotArchive, // c-ledger-chain
   bundles, // c-bundle-lifecycle
   evidence, // c-evidence
-  grades // c-grades,
+  grades, // c-grades
   replies // c-recipient-replies
 ])

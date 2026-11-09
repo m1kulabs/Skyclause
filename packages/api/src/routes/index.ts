@@ -37,6 +37,6 @@ export const HANDLERS: Handlers = {
   ...subscriberHandlers,
   ...bundleHandlers, // c-bundle-lifecycle
   ...evidenceHandlers, // c-evidence
-  ...gradesHandlers // c-grades,
+  ...gradesHandlers, // c-grades
   ...replyHandlers // c-recipient-replies
 }
