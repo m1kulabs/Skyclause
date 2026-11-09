@@ -8,6 +8,7 @@ import { evidenceHandlers } from './evidence'
 import { gradesHandlers } from './grades'
 import { ledgerHandlers } from './ledger'
 import { replyHandlers } from './replies'
+import { runHandlers } from './runs'
 import { subscriberHandlers } from './subscribers'
 
 /**
@@ -38,5 +39,6 @@ export const HANDLERS: Handlers = {
   ...bundleHandlers, // c-bundle-lifecycle
   ...evidenceHandlers, // c-evidence
   ...gradesHandlers, // c-grades
-  ...replyHandlers // c-recipient-replies
+  ...replyHandlers, // c-recipient-replies
+  ...runHandlers // c-run-orchestrator
 }
