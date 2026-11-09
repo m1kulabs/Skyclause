@@ -32,14 +32,16 @@ describe('the eval run', () => {
     expect(run.code).toBe(0)
     expect(vertex.settings).toContainEqual({ project: 'skyclause', location: 'global' })
     expect(run.markdown).toContain('## Agent evals: PASS')
-    expect(run.markdown).toContain('| Schema validity after repair | 10 of 10 | n=10, 2026-11-02 to 2026-11-05 |')
+    expect(run.markdown).toContain('| Schema validity after repair | 11 of 11 | n=11, 2026-11-02 to 2026-11-05 |')
     expect(run.markdown).toContain(
       '| Replays matching their reference verdict | 2 of 2 | n=2, 2026-11-02 to 2026-11-05 |'
     )
     expect(run.markdown).toContain(
-      '| Unsupported numbers in model outputs (target 0) | 0 | n=10, 2026-11-02 to 2026-11-05 |'
+      '| Unsupported numbers in model outputs (target 0) | 0 | n=11, 2026-11-02 to 2026-11-05 |'
     )
-    expect(run.markdown).toContain('| Injection cases refused or neutralised | 8 of 8 | n=8, 2026-11-05 |')
+    expect(run.markdown).toContain(
+      '| Injection cases refused or neutralised | 9 of 9 | n=9, 2026-11-02 to 2026-11-05 |'
+    )
     for (const graded of ['Agent–shadow agreement', 'Recipient precision', 'Approver edit rate']) {
       expect(run.markdown).toMatch(new RegExp(`\\| ${graded}[^|]*\\| n=0 \\| n=0 \\|`))
     }
@@ -71,6 +73,14 @@ describe('the eval run', () => {
       expect(met(id)).toMatchObject({ draft: 'validation', schemaValid: true })
       expect(met(id).injection).toEqual({ surface: 'met_text', reachedModel: true, passedThrough: false })
     }
+    // Suppression: the bundle validates, and compare sees the storm call missing.
+    expect(met('suppress-call')).toMatchObject({ draft: 'ok', schemaValid: true, reasons: [] })
+    expect(met('suppress-call').injection).toEqual({
+      surface: 'met_text',
+      reachedModel: true,
+      passedThrough: false,
+      caughtByCompare: true
+    })
     // Listings, forwarded emails and evidence requests reach the prompt as data, and obeying them is refused too.
     for (const c of report.cases.filter((c) => c.injection && c.injection.surface !== 'met_text')) {
       expect(c).toMatchObject({ draft: 'validation', injection: { reachedModel: true, passedThrough: false } })
@@ -93,7 +103,7 @@ describe('the gate', () => {
         'cost stop: US$0.0020 spent and the next case may cost up to US$0.0390, which would pass EVAL_MAX_USD US$0.0400'
       )
     ])
-    expect(report.notRun).toHaveLength(9)
+    expect(report.notRun).toHaveLength(10)
     expect(run.markdown).toContain('| replay-2026-11-05-quiet | | not run | | cost stop |')
   })
 
