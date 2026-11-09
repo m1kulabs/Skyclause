@@ -1,5 +1,6 @@
-// `bun run --cwd packages/db generate:auth [--check]` writes (or, with --check, compares) src/schema/auth.ts from the
-// Better Auth CLI's Drizzle output for auth.config.ts. It moves every table into the `auth` schema, defaults IDs to
+// `bun run --cwd packages/db generate:auth [--check] [--config <path>]` writes (or, with --check, compares)
+// src/schema/auth.ts from the Better Auth CLI's Drizzle output for auth.config.ts, or for another config such as #94's
+// runtime one. It moves every table into the `auth` schema, defaults IDs to
 // uuidv7() (#79 conventions) and stores instants as timestamptz (UTC), then formats with Prettier. After a change, run
 // `bun run --cwd packages/db generate -- --name <plan key>-<what>` for the migration.
 import { spawnSync } from 'node:child_process'
@@ -12,6 +13,8 @@ import { format, resolveConfig } from 'prettier'
 const pkg = fileURLToPath(new URL('..', import.meta.url))
 const target = join(pkg, 'src/schema/auth.ts')
 const scratch = mkdtempSync(join(tmpdir(), 'skyclause-auth-'))
+const at = process.argv.indexOf('--config')
+const config = at > 0 ? process.argv[at + 1]! : 'scripts/auth.config.ts'
 
 function rewrite(source: string): string {
   const body = source
@@ -25,7 +28,7 @@ function rewrite(source: string): string {
 
 try {
   const generated = join(scratch, 'auth.ts')
-  const args = ['x', 'auth', 'generate', '--config', 'scripts/auth.config.ts', '--output', generated, '--yes']
+  const args = ['x', 'auth', 'generate', '--config', config, '--output', generated, '--yes']
   const cli = spawnSync('bun', [...args, '--adapter', 'drizzle', '--dialect', 'postgresql'], {
     cwd: pkg,
     encoding: 'utf8'

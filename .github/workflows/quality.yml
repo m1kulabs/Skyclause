@@ -64,6 +64,9 @@ jobs:
       - if: steps.seen.outputs.skip != 'true'
         run: bunx playwright install --with-deps --only-shell chromium firefox webkit
         working-directory: apps/web
+      # signInAs (#94) mints sessions in Playwright's own database on the local container.
+      - if: steps.seen.outputs.skip != 'true'
+        run: bun run db:up
       - if: steps.seen.outputs.skip != 'true'
         run: bun run test:e2e
         env:

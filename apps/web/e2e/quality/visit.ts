@@ -4,17 +4,20 @@ import type { Role } from './roles'
 import type { Finding } from './checks'
 import { expectZonedTimes } from '../harness/expect-zoned-times'
 
-/** The account gate denies signed-out visitors, and guests outside Appearance (#96). */
+/** A share link is a credential but no session (#94). */
+const hasSession = (role: Role) => role !== 'signed out' && role !== 'share-link reviewer'
+
+/** The account gate denies everyone without a session, and guests outside Appearance (#96). */
 export function expectedStatus(route: CrawlRoute, role: Role) {
   if (route.group === 'app' && route.path.startsWith('/account/')) {
-    if (role === 'signed out' || (role === 'guest' && route.path !== '/account/appearance')) return 404
+    if (!hasSession(role) || (role === 'guest' && route.path !== '/account/appearance')) return 404
   }
   return route.status
 }
 
 export async function visit(page: Page, route: CrawlRoute, role: Role = 'signed out'): Promise<Finding[]> {
   const response = await page.goto(route.path)
-  if (route.path === '/connect' && (role === 'signed out' || role === 'guest')) {
+  if (route.path === '/connect' && (!hasSession(role) || role === 'guest')) {
     await expect(page).toHaveURL(/\/sign-up$/)
     await expect(page.locator('[data-connect-page]')).toHaveCount(0)
     // #97 owns sign-up; the gate is testable before that destination is built.

@@ -36,6 +36,7 @@ test('the web server exits at start on APP_ENV=test under Cloud Run', async () =
 test('the web server starts with a valid environment, and its telemetry traces', async () => {
   vi.stubEnv('APP_ENV', 'production')
   vi.stubEnv('IP_HASH_KEY', 'k'.repeat(48))
+  vi.stubEnv('BETTER_AUTH_SECRET', 's'.repeat(48))
   await register()
   expect(exit).not.toHaveBeenCalled()
   const span = trace.getTracer('test').startSpan('GET /')

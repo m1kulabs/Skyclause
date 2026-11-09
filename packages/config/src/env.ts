@@ -73,9 +73,16 @@ function multiNeedsOrigins(env: Record<string, unknown>, ctx: z.RefinementCtx) {
   }
 }
 
+// f-auth (#94): Better Auth's signing secret (generated in Secret Manager) and D30's staff addresses, comma-separated;
+// the staff secret starts empty until #118 fills it.
+const auth = {
+  BETTER_AUTH_SECRET: z.string().min(32),
+  SKYCLAUSE_STAFF_EMAILS: z.string().optional()
+}
+
 const schemas = {
   web: base
-    .extend({ ...optional(sending), ...vapidPublic, ...hosts })
+    .extend({ ...optional(sending), ...vapidPublic, ...hosts, ...auth })
     .superRefine(together(Object.keys(sending)))
     .superRefine(multiNeedsOrigins),
   worker: base

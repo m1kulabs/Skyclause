@@ -7,8 +7,8 @@ const worker = {
   WORKER_INVOKER_SA: 'worker-invoker@skyclause.iam.gserviceaccount.com'
 }
 
-// IP_HASH_KEY is required on web; shaped like the generated secret, not the real one.
-const key = { IP_HASH_KEY: 'k'.repeat(48) }
+// IP_HASH_KEY and BETTER_AUTH_SECRET are required on web; shaped like the generated secrets, not the real ones.
+const key = { IP_HASH_KEY: 'k'.repeat(48), BETTER_AUTH_SECRET: 's'.repeat(48) }
 const web = { APP_ENV: 'production', ...key }
 const origins = {
   MARKETING_ORIGIN: 'https://skyclause.m1ku.tech',
@@ -148,5 +148,14 @@ describe('loadEnv', () => {
       expect(() => loadEnv('web', { APP_ENV }), APP_ENV).toThrow(/IP_HASH_KEY/)
     }
     expect(() => loadEnv('web', { APP_ENV: 'production', IP_HASH_KEY: 'short' })).toThrow(/IP_HASH_KEY/)
+  })
+
+  test('web needs BETTER_AUTH_SECRET of at least 32 characters; SKYCLAUSE_STAFF_EMAILS is optional (#94)', () => {
+    const { BETTER_AUTH_SECRET: _, ...missing } = web
+    expect(() => loadEnv('web', missing)).toThrow(/BETTER_AUTH_SECRET/)
+    expect(() => loadEnv('web', { ...web, BETTER_AUTH_SECRET: 'short' })).toThrow(/BETTER_AUTH_SECRET/)
+    expect(loadEnv('web', web).SKYCLAUSE_STAFF_EMAILS).toBeUndefined()
+    const staff = 'a@example.org,b@example.org'
+    expect(loadEnv('web', { ...web, SKYCLAUSE_STAFF_EMAILS: staff }).SKYCLAUSE_STAFF_EMAILS).toBe(staff)
   })
 })
