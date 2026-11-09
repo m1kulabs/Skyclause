@@ -306,7 +306,9 @@ test('401 reauth-required opens step-up and retries client creation with the sam
         }
       })
     return route.fulfill({
+      status: 201,
       json: {
+        id: orgId,
         client_id: 'oauth_step_up_client',
         client_secret: 'step_up_secret',
         created_at: '2026-11-06T00:00:00Z',
