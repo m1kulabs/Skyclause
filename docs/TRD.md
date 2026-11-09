@@ -405,6 +405,8 @@ stateDiagram-v2
   NeedsReview --> Reconfirm: Approve, inputs changed since drafting
   Reconfirm --> Approved: approver confirms; validate passes
   Reconfirm --> NeedsReview: approver backs out
+  Reconfirm --> Superseded: newer run covers the same windows
+  Reconfirm --> Expired: last call expires
   NeedsReview --> Approved: Approve, inputs unchanged
   Approved --> Sending: per call approved, edited or rejected
   Sending --> Sent: every approved call delivered or failed terminally
