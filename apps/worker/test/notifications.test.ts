@@ -1,8 +1,11 @@
 // #156 (c-notifications): the worker's `notifications` consumer turns §5's needs-review, escalation, source-error and
-// review-item events into in-app items, through `onEvent` and `handleOnce`. None of their emitters is merged yet
-// (#150, #155, b-evaluator, #161), so each test emits its event with `emitEvent`; #103's `nextApprovers` is a double.
+// review-item events into in-app items, through `onEvent` and `handleOnce`. #150's `createBundle` emits Needs review;
+// the other emitters aren't merged (#155, b-evaluator, #161), so those tests emit with `emitEvent`. #103's
+// `nextApprovers` is a double.
 import type { EventType, Role } from '@skyclause/contracts'
 import {
+  createBundle,
+  domainEvent,
   emitEvent,
   notificationRows,
   setNotificationPreferences,
@@ -19,6 +22,8 @@ import {
   makeSource,
   makeUser
 } from '@skyclause/db/test/factories/index'
+import { bundleScene, callDraft, runOf, windowOf } from '@skyclause/db/test/bundles/scene'
+import { and, eq } from 'drizzle-orm'
 import { beforeAll, describe, expect, test, vi } from 'vitest'
 import { dispatchEvent } from '../src/events'
 import { notificationsPart } from '../src/notifications'
@@ -132,5 +137,40 @@ describe('the notifications consumer', () => {
     for (const role of ['approver', 'owner', 'admin'] as const) expect(await escalated(role), role).toHaveLength(1)
     for (const role of ['editor', 'viewer', 'guest'] as const) expect(await escalated(role), role).toEqual([])
     expect(nextApprovers).toHaveBeenCalledTimes(1)
+  })
+
+  test("#150's createBundle, drafting a non-Normal call into Needs review, notifies the approvers", async () => {
+    const { bundleId, eventId } = await inOrg(async (tx) => {
+      const scene = await bundleScene(tx)
+      const window = await windowOf(tx, scene, new Date('2026-11-02T08:30:00Z'), new Date('2026-11-02T10:00:00Z'))
+      const run = await runOf(tx, scene, new Date('2026-11-02T07:05:00Z'))
+      const made = await createBundle(tx, {
+        runId: run.id,
+        pack: scene.pack,
+        draftOnly: false,
+        calls: [
+          callDraft({
+            windowId: window.id,
+            mode: 'commute_disruption',
+            fired: [{ clause: 'storm_confirmed', inputs: ['site.rain_60m_mm'] }]
+          })
+        ],
+        triggeredAt: run.triggeredAt,
+        now: new Date('2026-11-02T07:05:00Z')
+      })
+      const [event] = await tx
+        .select({ id: domainEvent.id })
+        .from(domainEvent)
+        .where(and(eq(domainEvent.projectId, scene.projectId), eq(domainEvent.type, 'bundle.needs_review')))
+      return { bundleId: made.bundleId, eventId: event!.id }
+    })
+    await dispatchEvent([consumer!], eventId)
+    for (const role of ['owner', 'admin', 'approver'] as const) {
+      expect(
+        (await itemsOf(people[role])).filter((n) => n.ref.id === bundleId),
+        role
+      ).toHaveLength(1)
+    }
+    expect((await itemsOf(people.viewer)).filter((n) => n.ref.id === bundleId)).toEqual([])
   })
 })
