@@ -1,3 +1,4 @@
+import { skyClauseEvidenceRequirements } from './clauses.ts'
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -1159,4 +1160,29 @@ describe('Task 3 #55 stage 1: defaultSkyClauseRows and pure evaluateSkyClauses',
       { numRuns: 100 }
     )
   })
+})
+
+test('historical requirements come from the same validated enabled clause parser', () => {
+  expect(skyClauseEvidenceRequirements(defaultSkyClauseRows())).toEqual({
+    apims: true,
+    morningDays: 3,
+    camera: true,
+    problems: []
+  })
+  const disabled = defaultSkyClauseRows().map((row) => ({ ...row, enabled: false, threshold: 'invalid' }))
+  expect(skyClauseEvidenceRequirements(disabled)).toEqual({ apims: false, morningDays: 0, camera: false, problems: [] })
+  for (const days of [1, 2, 3]) {
+    const rows = defaultSkyClauseRows().map((row) =>
+      row.key === 'haze_severe' ? { ...row, threshold: JSON.stringify({ api_max: 180, api_0600: 150, days }) } : row
+    )
+    expect(skyClauseEvidenceRequirements(rows).morningDays).toBe(3)
+  }
+  for (const change of [
+    { key: 'unknown' },
+    { requires: '[]' },
+    { threshold: JSON.stringify({ api_max: 180, api_0600: 150, days: 4 }) }
+  ]) {
+    const row = { ...defaultSkyClauseRows().find((row) => row.key === 'haze_severe')!, ...change }
+    expect(skyClauseEvidenceRequirements([row]).problems.length).toBeGreaterThan(0)
+  }
 })

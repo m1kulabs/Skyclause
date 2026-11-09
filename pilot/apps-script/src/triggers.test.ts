@@ -135,3 +135,18 @@ describe('syncTriggers anywhere else', () => {
 test(`the trigger registry fits Apps Script’s ${MAX_TRIGGERS} triggers`, () => {
   expect(triggerRegistry.length).toBeLessThanOrEqual(MAX_TRIGGERS)
 })
+
+test('the actual pilot registry installs two Sky grades once and leaves personal dev untouched', () => {
+  const { port, installed, changes } = fakeTriggers([])
+  const pilot = { scriptId: PILOT, pilotScriptId: PILOT, getProperty }
+  syncTriggers(triggerRegistry, port, pilot)
+  expect(installed.filter((trigger) => trigger.handler === 'gradeSky').map((trigger) => trigger.every)).toEqual([
+    { atHour: 23, nearMinute: 55 },
+    { atHour: 6, nearMinute: 0 }
+  ])
+  changes.length = 0
+  syncTriggers(triggerRegistry, port, pilot)
+  expect(changes).toEqual([])
+  syncTriggers(triggerRegistry, port, { ...pilot, scriptId: 'personal-dev' })
+  expect(changes).toEqual([])
+})

@@ -7,6 +7,8 @@ import type { EvidenceInboxPorts } from './evidence.ts'
 import { evidenceGmailPorts } from './evidence-gmail.ts'
 import { evidenceStoragePorts } from './evidence-storage.ts'
 import { auditorStoragePorts } from './auditor-storage.ts'
+import { skyGradeStoragePorts } from './sky-grade-storage.ts'
+import type { SkyGraderPorts } from './sky-grades.ts'
 import type { AuditorPorts } from './auditor.ts'
 import type { CrowdTickStore } from './crowd-tick.ts'
 import type { HistoryBuildRow } from './crowd-history.ts'
@@ -28,6 +30,12 @@ import type { LabelSlot, ProbationLabel, ProbationRow } from '../../shared/proba
 import { newUuidV7, type JpsHttpResponse } from './jps.ts'
 import { decodeApimsBackfillState, type ApimsPollPorts } from './apims.ts'
 import type { LabelStore } from './label.ts'
+import {
+  CAMERA_PROBATION_HISTORY_KEY,
+  decodeCameraProbationHistory,
+  encodeCameraProbationHistory,
+  recordCameraProbationDecision
+} from './camera-probation-history.ts'
 import type { PiRowsStore } from './pi-rows.ts'
 import type { RawFile, SentMessage, SweepPorts } from './sweep.ts'
 import type { GetProperty } from './properties.ts'
@@ -911,6 +919,27 @@ export function labelStore(spreadsheetId: string): LabelStore {
     recordVerdict: (note: string, passed: boolean, n: number, agreement: number | null): void => {
       const rowNumber = cameraNumber()
       if (rowNumber === null) return
+      let sourceId: unknown
+      let raw: string | null
+      let scriptProperties: GoogleAppsScript.Properties.Properties
+      try {
+        const sourceColumn = columnsOf('sources').indexOf('source_id') + 1
+        sourceId = sheet(spreadsheetId, 'sources').getRange(rowNumber, sourceColumn).getValue()
+        scriptProperties = PropertiesService.getScriptProperties()
+        raw = scriptProperties.getProperty(CAMERA_PROBATION_HISTORY_KEY)
+      } catch {
+        throw new Error('camera_probation_history_read_failed')
+      }
+      if (typeof sourceId !== 'string') throw new Error('camera_probation_history_invalid')
+      const previous = raw === null ? null : decodeCameraProbationHistory(raw, spreadsheetId)
+      const next = recordCameraProbationDecision(previous, spreadsheetId, sourceId, passed, new Date())
+      const encoded = encodeCameraProbationHistory(next)
+      // Persist the actual decision before its existing summary mirror; retries retain the original boundary.
+      try {
+        scriptProperties.setProperty(CAMERA_PROBATION_HISTORY_KEY, encoded)
+      } catch {
+        throw new Error('camera_probation_history_write_failed')
+      }
       setCell(spreadsheetId, 'sources', rowNumber, 'probation', !passed)
       setCell(spreadsheetId, 'sources', rowNumber, 'probation_n', n)
       setCell(spreadsheetId, 'sources', rowNumber, 'probation_agreement', agreement ?? '')
@@ -1192,4 +1221,13 @@ export function metPollPorts(sheetId: string, rawFolderId: string, evaluate: () 
     },
     evaluate
   )
+}
+
+// Construct lazily; gradeSky supplies the single outer lock.
+export function skyGradePorts(spreadsheetId: string, skyFolderId: string): SkyGraderPorts {
+  return skyGradeStoragePorts(spreadsheetId, skyFolderId, {
+    read: readColumns,
+    newGradeId: () => newUuidV7(),
+    hashId: sha256HexDigest
+  })
 }
