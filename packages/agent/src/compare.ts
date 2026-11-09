@@ -14,7 +14,7 @@ export interface Comparison {
 
 /**
  * CAL-4: each call against the shadow verdict; disagreements first, then agreements, each in window order. A window or
- * night whose shadow verdict fired (a mode above Normal, or watch) but that has no call is a disagreement marked
+ * night whose shadow verdict fired (a mode above Normal, or watch) but that has no call or night item is a disagreement marked
  * `missing`: a dropped call must not read as agreement.
  */
 export function compare(p: ProposedBundle, verdicts: Verdicts): Comparison[] {
@@ -49,7 +49,8 @@ export function compare(p: ProposedBundle, verdicts: Verdicts): Comparison[] {
       rank: order.get(call.window_id) ?? scoped.length + index
     }
   })
-  const called = new Set(p.calls.map((call) => call.window_id))
+  // A Crowd night is also answered by its `surge_night_entry` item.
+  const called = new Set([...p.calls.map((call) => call.window_id), ...p.items.map((item) => item.night_id)])
   scoped.forEach((v, rank) => {
     const fired = v.watch || (v.mode !== null && v.mode !== 'normal')
     if (fired && v.scope.id !== null && !called.has(v.scope.id)) {

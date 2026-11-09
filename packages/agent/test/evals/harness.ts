@@ -34,7 +34,7 @@ export interface CaseResult {
   costUsd: number
   reasons: string[]
   matchesReference?: boolean
-  injection?: { surface: Surface; reachedModel: boolean; passedThrough: boolean; caughtByCompare?: true }
+  injection?: { surface: Surface; reachedModel: boolean; passedThrough: boolean; caughtByCompare?: boolean }
 }
 export interface Metric {
   name: string
@@ -187,7 +187,7 @@ export async function runSuite(o: {
         surface,
         reachedModel: result.attempts.some((a) => a.prompt.includes(marker)),
         passedThrough,
-        ...(verdicts ? { caughtByCompare: true as const } : {})
+        ...(verdicts ? { caughtByCompare: flagged } : {})
       }
     }
     if (item.kind === 'graded') {
@@ -293,7 +293,7 @@ function detail(c: CaseResult): string {
   if (c.matchesReference !== undefined)
     parts.push(c.matchesReference ? 'matches its reference' : 'differs from its reference')
   if (c.injection) {
-    const catcher = c.injection.caughtByCompare ? 'COMPARE' : 'VALIDATE'
+    const catcher = c.injection.caughtByCompare === undefined ? 'VALIDATE' : 'COMPARE'
     parts.push(c.injection.passedThrough ? `PLANTED EFFECT PASSED ${catcher}` : 'refused or neutralised')
     parts.push(c.injection.reachedModel ? 'reached the model as data' : 'never reached a prompt')
   }

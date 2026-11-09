@@ -175,7 +175,7 @@ describe('the runs-requested handler', () => {
     expect(d.consumed).toEqual(['system:run'])
   })
 
-  test('a draft that drops the storm call records a missing-call disagreement and persists no agreeing call', async () => {
+  test('a draft that drops the storm call records a missing-call disagreement in its compare step', async () => {
     const m = await made()
     const { runId } = await crossingRun(m)
     const dropped = JSON.stringify({ pack: 'sky', calls: [], items: [] })
@@ -185,9 +185,8 @@ describe('the runs-requested handler', () => {
 
     const compared = (await stepsOf(runId)).find((s) => s.step === 'compare')!
     expect(compared.output).toEqual([{ windowId: m.windowId, agrees: false, staleInputs: false, missing: true }])
-    const [made_] = await bundlesOf(runId)
-    const calls = await inOrg((tx) => tx.select().from(call).where(eq(call.bundleId, made_!.id)))
-    expect(calls.filter((c) => c.agrees)).toEqual([])
+    // No call row carries the disagreement: the bundle holds no calls and closes at once (reported on the PR).
+    expect(await bundlesOf(runId)).toMatchObject([{ state: 'closed' }])
   })
 
   test('killed after each step and redelivered, it ends with one bundle and one model call', async () => {

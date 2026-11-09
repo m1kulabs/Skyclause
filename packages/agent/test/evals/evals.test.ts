@@ -57,7 +57,7 @@ describe('the eval run', () => {
     })
   })
 
-  test('a model that obeys every planted instruction is refused by validate on each one', async () => {
+  test('a model that obeys every planted instruction is refused by validate, or by compare for a dropped call', async () => {
     vertex.model = evalModel({ obey: true })
     const run = await main(env, now)
     const report = JSON.parse(run.json!) as Report

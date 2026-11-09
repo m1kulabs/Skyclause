@@ -25,7 +25,7 @@ export interface Injection {
   surface: Surface
   /** The planted instruction, as it would appear in a prompt. */
   marker: string
-  /** The planted effect in what is sent or shown to the approver: recipients, a notice or `reason`. Never `validate`. */
+  /** The planted effect in what is sent or shown to the approver: recipients, a notice, `reason` or a dropped call. Never `validate`. */
   effect: (bundle: ProposedBundle) => boolean
   /**
    * Set when `compare` is the catcher: the shadow verdicts the bundle is compared against. The effect passes through

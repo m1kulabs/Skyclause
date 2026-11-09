@@ -145,6 +145,16 @@ describe('a call the model dropped', () => {
     expect(compare(bundle(), shadow)).toEqual([])
   })
 
+  test('is not one for a Crowd night the bundle answers with a surge night item', () => {
+    const night = { ...verdict(windows[0]!, 'surge_night'), scope: { kind: 'night' as const, id: windows[0]! } }
+    const answered: ProposedBundle = {
+      pack: 'crowd',
+      calls: [],
+      items: [{ kind: 'surge_night_entry', night_id: windows[0]! }]
+    }
+    expect(compare(answered, { ...verdicts([]), nights: [night] })).toEqual([])
+  })
+
   test('counts a Crowd night with a fired shadow verdict and no call', () => {
     const night = { ...verdict(windows[0]!, 'surge_night'), scope: { kind: 'night' as const, id: windows[0]! } }
     expect(compare({ pack: 'crowd', items: [], calls: [] }, { ...verdicts([]), nights: [night] })).toEqual([
