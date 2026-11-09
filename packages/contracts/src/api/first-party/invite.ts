@@ -18,9 +18,11 @@ export const acceptInvitation = createRoute({
     },
     ...sessionErrors,
     404: problemResponse('The invitation token does not exist.'),
-    410: problemResponse('The invitation expired or was withdrawn.')
+    409: problemResponse('The invitation was already used.'),
+    410: problemResponse('The invitation expired or was withdrawn.'),
+    429: problemResponse('The request is rate limited.')
   },
-  x: { owner: 'a-members-api', statement: 'session', idempotent: false }
+  x: { owner: 'a-members-api', statement: 'token', idempotent: false }
 })
 
 export const routes = [acceptInvitation] as const

@@ -55,6 +55,8 @@ export {
 } from './services/projects'
 export { createRun, getRun, listRuns, type RunView } from './services/runs'
 export { sseResponse, type SseMessage, type SseOptions } from './sse'
+export { inspectMemberToken } from './services/members'
+export { createRotaService, nextApprovers, onDuty, ROTA_TEMPLATES, ROTA_TIME_ZONE } from './services/rota'
 export type * from './stores'
 export { calendarFeed, serveCalendarFeed, type CalendarFeed, type CalendarFeedDeps } from './services/ics'
 export { inTenant, type ServiceContext, type WithTenant } from './tenancy'

@@ -4,7 +4,8 @@ import type {
   Principal,
   RecordAudit,
   ResolvePrincipal,
-  SkyclauseRoute
+  SkyclauseRoute,
+  ShiftConditions
 } from '@skyclause/contracts'
 import type { IdempotencyStore, MembershipLookup, RateLimitStore } from './stores'
 import type { WithTenant } from './tenancy'
@@ -31,6 +32,8 @@ export interface ApiDeps {
   recordAudit: RecordAudit
   /** Spec §1 `EmailTransport` for the emails a route sends itself (c-subscribers' confirmations). */
   email: EmailTransport
+  /** #134 supplies the live condition reader; before it is wired, conditional shifts are `unknown`. */
+  shiftConditions?: ShiftConditions
   config: () => ApiConfig
   now: () => Date
 }

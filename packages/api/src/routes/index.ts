@@ -14,6 +14,8 @@ import { notificationHandlers } from './notifications'
 import { projectHandlers } from './projects'
 import { replyHandlers } from './replies'
 import { runHandlers } from './runs'
+import { memberHandlers } from './members'
+import { rotaHandlers } from './rota'
 import { subscriberHandlers } from './subscribers'
 
 /**
@@ -50,5 +52,7 @@ export const HANDLERS: Handlers = {
   ...approvalHandlers, // c-approval-api
   ...alertHandlers, // c-approver-alerts
   ...notificationHandlers, // c-notifications
-  ...analysisHandlers // c-analysis-api
+  ...analysisHandlers, // c-analysis-api
+  ...memberHandlers, // a-members-api
+  ...rotaHandlers // a-members-api
 }
