@@ -1,5 +1,6 @@
 import { IdParams, ProblemResponse, CommonProblems } from '../common'
 import { z } from '@hono/zod-openapi'
+import { SLUG_REGEX } from '../../slugs'
 import { createRoute } from '../create-route'
 import { Project, ProjectPack, RotaShift } from '../shared'
 
@@ -7,7 +8,6 @@ const RotaOverride = z.array(RotaShift.omit({ id: true, project_id: true })).nul
 const ProjectSettings = Project.extend({ rota_override: RotaOverride })
 const ProjectUpdate = Project.pick({
   name: true,
-  slug: true,
   time_zone: true,
   public: true,
   semester_ends_on: true,
@@ -19,6 +19,7 @@ const ProjectUpdate = Project.pick({
   warning_area_terms: true
 })
   .extend({
+    slug: z.string().regex(SLUG_REGEX),
     packs: z.array(ProjectPack.pick({ pack: true, enabled: true, schedule: true, sla_s: true })),
     rota_override: RotaOverride
   })
