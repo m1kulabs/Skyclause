@@ -23,7 +23,7 @@ export function encryptPushPayload(
   plaintext: Uint8Array,
   subscription: { p256dh: string; auth: string },
   o: { salt?: Uint8Array; senderPrivateKey?: Uint8Array } = {}
-): Uint8Array {
+): Uint8Array<ArrayBuffer> {
   const sender = createECDH('prime256v1')
   if (o.senderPrivateKey) sender.setPrivateKey(o.senderPrivateKey)
   else sender.generateKeys()
