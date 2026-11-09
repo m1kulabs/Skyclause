@@ -105,7 +105,12 @@ export function planFeedbackConsumer(deps: FeedbackDeps): EventConsumer {
         const { call_id: callId, outcome } = event.data as { call_id: string; outcome: string }
         if (outcome !== 'pending') queued.push(...(await queueFeedback(tx, callId, deps)))
       }).handler(raw)
-      for (const email of queued) await deliver(deps, email)
+      // The event is claimed by now, so a rethrow would only skip the rest: each failure is logged and the next sent.
+      for (const email of queued) {
+        await deliver(deps, email).catch((error: unknown) =>
+          log('ERROR', 'feedback notice not recorded', { notice_id: email.noticeId, error: String(error) })
+        )
+      }
     }
   }
 }
