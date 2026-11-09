@@ -28,6 +28,19 @@ export { decodeCursor, encodeCursor, page } from './pagination'
 export { ApiError, problemType, type HttpSlug, type Slug } from './problems'
 export type { AnyHandlerEntry, HandlerEntry, Handlers } from './routes'
 export { instant, toWire } from './serialize'
+// c-bundle-lifecycle (#150): the reads `/v1` serves, for server components (#79 conventions).
+export {
+  getBundle,
+  getCall,
+  getCallExplanation,
+  listProjectBundles,
+  listProjectCalls,
+  type BundleDetail,
+  type BundleView,
+  type CallDetail,
+  type CallExplanation,
+  type CallView
+} from './services/bundles'
 export { sseResponse, type SseMessage, type SseOptions } from './sse'
 export type * from './stores'
 export { inTenant, type ServiceContext, type WithTenant } from './tenancy'
