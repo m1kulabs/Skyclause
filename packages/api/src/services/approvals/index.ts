@@ -284,14 +284,7 @@ export async function approveBundle(ctx: ServiceContext, input: ApproveInput): P
   const readsMalay = await memberReadsMalay(tx, accountId)
   const stations = new Map([...sources].map(([id, s]) => [id, s.externalId]))
   const approved: Array<{ row: CallRow; decision: Decision; planned: Planned }> = []
-  for (const decision of input.calls) {
-    if (decision.action === 'reject') continue
-    const row = calls.find((c) => c.id === decision.call_id)!
-    const shadow =
-      decision.chosen === 'shadow'
-        ? shadowContent(row.id, checked.verdicts.get(row.id)!, { ...checked, stations })
-        : undefined
-    const planned = plan(callView(row), decision, { shadow, readsMalay })
+  const checkCall = (row: CallRow, planned: Planned) => {
     const window = spanOf(row)
     const cited = [...new Set(planned.view.shadow.clauses.flatMap((c) => c.inputs.flatMap((i) => i.source_ids)))]
     checkNotices(planned.view, {
@@ -304,6 +297,16 @@ export async function approveBundle(ctx: ServiceContext, input: ApproveInput): P
         return s ? [{ name: s.name, licence: s.licenceLabel }] : []
       })
     })
+  }
+  for (const decision of input.calls) {
+    if (decision.action === 'reject') continue
+    const row = calls.find((c) => c.id === decision.call_id)!
+    const shadow =
+      decision.chosen === 'shadow'
+        ? shadowContent(row.id, checked.verdicts.get(row.id)!, { ...checked, stations })
+        : undefined
+    const planned = plan(callView(row), decision, { shadow, readsMalay })
+    checkCall(row, planned)
     approved.push({ row, decision, planned })
   }
 
