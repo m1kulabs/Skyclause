@@ -3,7 +3,7 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { inspectPage, motionFindings, type Finding } from './checks'
 import { KNOWN_GAPS } from './known-gaps'
-import { STAND_IN_REASON, sessions, signedOut, type Session } from './roles'
+import { sessions, signedOut, type Session } from './roles'
 import { builtRoutes, type CrawlRoute } from './routes'
 import { visit } from './visit'
 
@@ -78,21 +78,17 @@ function report(route: CrawlRoute, session: Session, findings: Located[]) {
 
 for (const route of builtRoutes()) {
   for (const session of sessions()) {
-    const standIns = session.standIns.length ? ` (standing in for ${session.standIns.join(', ')})` : ''
-    test(`${route.path} as ${session.role}${standIns}`, async ({ page }, info) => {
+    test(`${route.path} as ${session.role}`, async ({ page }, info) => {
       const jsOn = info.project.use.javaScriptEnabled !== false
       test.slow(jsOn, 'One case runs five complete axe audits plus the reduced-motion check')
       test.skip(!jsOn && !(route.group && PUBLIC_GROUPS.has(route.group)), 'JavaScript off covers public pages only')
       test.fixme(route.dynamic, `${route.path} needs param fixtures with stubApi bodies (#95)`)
-      if (session.standIns.length) {
-        note(info, 'signed out stand-in', `${session.standIns.join(', ')} run signed out: ${STAND_IN_REASON}`)
-      }
       const findings = await crawl(page, route, session, info)
 
       if (route.path === PLANTED_FAILURE) {
         // The planted unlabelled input must fail the crawl, by route, role, theme and rule.
         expect(report(route, session, findings)).toMatch(
-          new RegExp(`${PLANTED_FAILURE} · signed out · dark · project size · form-fields: input has no label`)
+          new RegExp(`${PLANTED_FAILURE} · ${session.role} · dark · project size · form-fields: input has no label`)
         )
         if (jsOn) expect(report(route, session, findings)).toMatch(/ · axe: label \(critical\)/)
         return

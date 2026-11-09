@@ -4,9 +4,22 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts",
+    "./testing": "./test/harness/index.ts",
+    "./test/*": "./test/*.ts"
   },
   "dependencies": {
-    "@skyclause/contracts": "workspace:*"
+    "@better-auth/api-key": "1.7.17",
+    "@better-auth/cimd": "1.7.17",
+    "@better-auth/mcp": "1.7.17",
+    "@better-auth/passkey": "1.7.17",
+    "@skyclause/config": "workspace:*",
+    "@skyclause/contracts": "workspace:*",
+    "@skyclause/db": "workspace:*",
+    "better-auth": "1.7.17",
+    "better-call": "1.4.5",
+    "drizzle-orm": "0.45.4",
+    "jose": "6.2.15"
   }
 }

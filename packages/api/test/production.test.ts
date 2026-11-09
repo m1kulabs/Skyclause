@@ -9,6 +9,7 @@ const me = () => v1.fetch(new Request('https://api.skyclause.m1ku.tech/v1/me'))
 it('answers 501 not-built by f-auth until a resolver is registered, then resolves through it', async () => {
   vi.stubEnv('APP_ENV', 'test')
   vi.stubEnv('IP_HASH_KEY', 'k'.repeat(48))
+  vi.stubEnv('BETTER_AUTH_SECRET', 's'.repeat(48))
   const before = await me()
   expect(before.status).toBe(501)
   expect(await before.json()).toMatchObject({ owner: 'f-auth' })
