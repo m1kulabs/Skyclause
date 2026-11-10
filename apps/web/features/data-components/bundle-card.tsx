@@ -64,6 +64,7 @@ export function BundleCard({
           </p>
         ) : null}
         <div
+          role="group"
           className="mt-3 flex min-h-[34px] flex-wrap items-center gap-2 [@media(pointer:coarse)]:min-h-[44px]"
           aria-label={t('data.bundle.actions', {}, locale)}
         >

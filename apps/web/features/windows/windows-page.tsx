@@ -11,6 +11,7 @@ import { useWindows } from './use-windows'
 import { Timeline } from './timeline'
 import { MonthCalendar } from './month-calendar'
 import { WindowDate } from './window-entry'
+import { DeclareWindowDialog } from './declare-window-dialog'
 import { t } from './catalogue'
 import styles from './windows.module.css'
 
@@ -136,6 +137,7 @@ export function WindowsPage({ org, project }: { org: string; project: string }) 
           )}
         </>
       )}
+      <DeclareWindowDialog org={org} project={project} />
     </section>
   )
 }

@@ -3,9 +3,10 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { inspectPage, motionFindings, type Finding } from './checks'
 import { KNOWN_GAPS } from './known-gaps'
-import { sessions, signedOut, type Session } from './roles'
+import { sessions, signedOut, type Role, type Session } from './roles'
 import { builtRoutes, type CrawlRoute } from './routes'
 import { visit } from './visit'
+import { stubDashboard } from '../dashboard/doubles'
 
 const PLANTED_FAILURE = '/quality-planted/unlabelled-input'
 const PUBLIC_GROUPS = new Set(['marketing', 'public'])
@@ -36,11 +37,18 @@ function note(info: TestInfo, type: string, description: string) {
   console.log(`${type}: ${description}`)
 }
 
-async function crawl(page: Page, route: CrawlRoute, session: Session, info: TestInfo): Promise<Located[]> {
+async function crawl(
+  page: Page,
+  route: CrawlRoute,
+  session: Session,
+  info: TestInfo,
+  beforeVisit?: () => Promise<void>
+): Promise<Located[]> {
   const jsOn = info.project.use.javaScriptEnabled !== false
   const found: Located[] = []
   if (session.signIn) await session.signIn(page)
   else await signedOut(page)
+  await beforeVisit?.()
   for (const variant of jsOn ? VARIANTS : VARIANTS.slice(0, 1)) {
     await page.emulateMedia({
       colorScheme: variant.theme === 'light' ? 'light' : 'dark',
@@ -82,8 +90,25 @@ for (const route of builtRoutes()) {
       const jsOn = info.project.use.javaScriptEnabled !== false
       test.slow(jsOn, 'One case runs five complete axe audits plus the reduced-motion check')
       test.skip(!jsOn && !(route.group && PUBLIC_GROUPS.has(route.group)), 'JavaScript off covers public pages only')
-      test.fixme(route.dynamic, `${route.path} needs param fixtures with stubApi bodies (#95)`)
-      const findings = await crawl(page, route, session, info)
+      test.fixme(
+        route.dynamic && route.path !== '/[org]',
+        `${route.path} needs param fixtures with stubApi bodies (#95)`
+      )
+      const dashboard = route.path === '/[org]'
+      const visitRoute = dashboard ? { ...route, path: '/test-org', dynamic: false } : route
+      const dashboardRoles: Record<Role, 'owner' | 'admin' | 'approver' | 'editor' | 'viewer' | 'guest' | null> = {
+        Owner: 'owner',
+        Admin: 'admin',
+        Approver: 'approver',
+        Editor: 'editor',
+        Viewer: 'viewer',
+        guest: 'guest',
+        'share-link reviewer': null,
+        'signed out': null
+      }
+      const findings = await crawl(page, visitRoute, session, info, async () => {
+        if (dashboard) await stubDashboard(page, { role: dashboardRoles[session.role], noProjects: true })
+      })
 
       if (route.path === PLANTED_FAILURE) {
         // The planted unlabelled input must fail the crawl, by route, role, theme and rule.

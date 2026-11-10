@@ -35,6 +35,8 @@
     "minute": "{value} min",
     "value": "{value} {unit}",
     "latest_empty": "No readings yet (n=0).",
+    "error_since": "{source} error since {time} · HTTP {status}",
+    "unknown_status": "unknown",
     "ticks_label": "Last {count} polls",
     "tick_received": "received",
     "tick_missed": "missed",
@@ -45,6 +47,8 @@
   },
   "call": {
     "window": "Window {id}",
+    "dashboard_window": "{project} · {title}",
+    "unknown_mode": "Unknown",
     "night": "Night {id}",
     "expires": "Expires {time}",
     "fired_item": "{clause}: {inputs}",
@@ -80,7 +84,8 @@
     "period": "{from} to {to}",
     "replay": "Replay",
     "empty": "No graded windows yet (n=0).",
-    "interval_label": "Wilson 95% interval {low} to {high}"
+    "interval_label": "Wilson 95% interval {low} to {high}",
+    "wilson_95": "Wilson 95%: {low}–{high}"
   },
   "pack": {
     "clause_engine": "Clause engine verdict: not reviewed, not sent",

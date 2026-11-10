@@ -12,7 +12,7 @@ for (const shortcut of ['Meta+k', 'Control+k']) {
     const dialog = page.getByRole('dialog', { name: t('palette.title'), exact: true })
     await expect(dialog).toBeVisible()
     await expect(page.getByRole('combobox', { name: t('palette.search') })).toBeFocused()
-    await expect(dialog).toContainText(t('palette.empty'))
+    await expect(dialog.getByRole('option', { name: t('palette.light'), exact: true })).toBeVisible()
     await page.keyboard.press(shortcut)
     await page.keyboard.press('Escape')
     await expect(dialog).toBeHidden()
