@@ -536,7 +536,8 @@ export const ShareLink = z.object({
   project_id: z.string(),
   access: z.enum(['view', 'reviewer']),
   expires_at: Instant.nullable(),
-  revoked_at: Instant.nullable()
+  revoked_at: Instant.nullable(),
+  last_used_at: Instant.nullable().optional()
 })
 export type ShareLink = z.infer<typeof ShareLink>
 export const RotaShift = z.object({

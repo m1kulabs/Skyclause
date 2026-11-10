@@ -26,6 +26,18 @@ test('a clean page has no findings', async ({ page }) => {
   expect(await findingsOn(page, html)).toEqual([])
 })
 
+test('Next.js development tools are outside the app keyboard audit', async ({ page }) => {
+  await page.setContent(planted('<h1>App page</h1><button type="button">Save</button>'))
+  await page.evaluate(() => {
+    const portal = document.createElement('nextjs-portal')
+    const shadow = portal.attachShadow({ mode: 'open' })
+    shadow.innerHTML = '<button type="button">Open Next.js Dev Tools</button>'
+    document.body.append(portal)
+  })
+
+  expect(await inspectPage(page, { axe: false, reflow: false })).toEqual([])
+})
+
 test('a page whose first Tab stop is not a skip link fails skip-link', async ({ page }) => {
   await page.setContent(
     '<!doctype html><html lang="en"><head><title>P</title></head><body><main><h1>T</h1><a href="/x">Home</a></main></body></html>'
@@ -48,6 +60,16 @@ test('a focus ring removed without a replacement fails focus-visible', async ({ 
   expect(findings).toContainEqual(
     expect.objectContaining({ check: 'focus-visible', detail: expect.stringMatching(/Bare/) })
   )
+})
+
+test('a native date control can use its field wrapper focus ring', async ({ page }) => {
+  const head =
+    '<style>input:focus-visible { outline: none } [data-focus-ring]:focus-within { outline: 2px solid rgb(0 0 0); outline-offset: 2px }</style>'
+  const html = planted(
+    '<h1>T</h1><div data-focus-ring><label>Semester ends <input type="date" name="ends" autocomplete="off"></label></div>',
+    head
+  )
+  expect(await findingsOn(page, html)).toEqual([])
 })
 
 test('a ring drawn with box-shadow replaces the outline', async ({ page }) => {

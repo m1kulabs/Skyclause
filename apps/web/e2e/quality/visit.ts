@@ -18,11 +18,14 @@ export function expectedStatus(route: CrawlRoute, role: Role) {
       return isOwnerOrAdmin ? route.status : 404
     }
   }
+  if (route.path.startsWith('/[org]/[project]/settings') && role !== 'Owner' && role !== 'Admin') return 404
   return route.status
 }
 
 export async function visit(page: Page, route: CrawlRoute, role: Role = 'signed out'): Promise<Finding[]> {
-  const response = await page.goto(route.path)
+  // #174's project UI routes keep their pattern path; their fixtures serve test-org/test-project.
+  const path = route.path.replace('[org]', 'test-org').replace('[project]', 'test-project')
+  const response = await page.goto(path)
   if ((route.path === '/sign-in' || route.path === '/sign-up') && hasSession(role) && role !== 'guest') {
     await expect(page).toHaveURL(/\/api\/auth\/continue(?:\?.*)?$/)
     return []

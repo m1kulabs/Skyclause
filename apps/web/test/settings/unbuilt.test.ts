@@ -10,7 +10,6 @@ export const expectedOwners: Record<string, string[]> = {
   'a-keys-ui': [...panels('account', ['ai-keys', 'api-keys']), ...panels('organisation', ['ai-keys', 'api-keys'])],
   'a-members-ui': panels('organisation', ['members', 'rota']),
   'e-webhooks-ui': panels('organisation', ['webhooks']),
-  'b-project-ui': panels('project', ['general', 'rota', 'share']),
   'd-public-project-page': panels('project', ['public']),
   'a-step-up': ['apps/web/features/reauth/use-reauth.ts', 'apps/web/features/reauth/reauth-dialog.tsx'],
   'd-org-live': ['apps/web/features/org-live/index.tsx']
@@ -33,5 +32,5 @@ test('check:unbuilt reports every settings panel and shared part under its spec 
   const panelFiles = Object.values(byOwner)
     .flat()
     .filter((file) => file.includes('/settings/') && file.endsWith('/panel.tsx'))
-  expect(panelFiles).toHaveLength(14)
+  expect(panelFiles).toHaveLength(11)
 })

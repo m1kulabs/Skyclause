@@ -10,9 +10,16 @@ import { onboardingOperations } from '../../features/onboarding/operations'
 import { AUTH_REAUTH_DIALOG_SELECTOR, isAuthRoute } from '../../features/sign-in/model'
 import { sourceOperations } from '../../features/sources/operations'
 import { stubApi } from '../harness'
+import { prepareCrawl } from '../project-ui/fixtures'
 
 const PLANTED_FAILURE = '/quality-planted/unlabelled-input'
 const PUBLIC_GROUPS = new Set(['marketing', 'public'])
+const PROJECT_UI_ROUTES = new Set([
+  '/[org]/[project]',
+  '/[org]/[project]/settings',
+  '/[org]/[project]/settings/rota',
+  '/[org]/[project]/settings/share'
+])
 
 interface Variant {
   theme: 'dark' | 'light' | 'high contrast'
@@ -110,15 +117,22 @@ async function crawl(page: Page, route: CrawlRoute, session: Session, info: Test
   await page.route('**/v1/projects/*/bundles/stream**', (request) =>
     request.fulfill({ status: 200, contentType: 'text/event-stream', body: ': crawl fixture\n\n' })
   )
-  const org = session.signIn ? await session.signIn(page) : null
-  if (!session.signIn) await signedOut(page)
-  const concreteRoute = {
-    ...route,
-    path: route.path
-      .replace('[org]', encodeURIComponent(org?.slug ?? 'crawl-org'))
-      .replace('[project]', 'crawl-project')
-  }
-  await stubDynamicPage(page, concreteRoute)
+  // #174's project UI routes sign in through their fixtures' test principal and keep the pattern path, which visit()
+  // fills with the fixtures' test-org/test-project; the other routes use a real session and its organisation.
+  const projectUiRoute = PROJECT_UI_ROUTES.has(route.path)
+  let org: { slug: string } | null = null
+  if (projectUiRoute) await prepareCrawl(page, session.role)
+  else if (session.signIn) org = await session.signIn(page)
+  else await signedOut(page)
+  const concreteRoute = projectUiRoute
+    ? route
+    : {
+        ...route,
+        path: route.path
+          .replace('[org]', encodeURIComponent(org?.slug ?? 'crawl-org'))
+          .replace('[project]', 'crawl-project')
+      }
+  if (!projectUiRoute) await stubDynamicPage(page, concreteRoute)
   for (const variant of jsOn ? VARIANTS : VARIANTS.slice(0, 1)) {
     await page.emulateMedia({
       colorScheme: variant.theme === 'light' ? 'light' : 'dark',
@@ -181,7 +195,10 @@ for (const route of builtRoutes()) {
       const jsOn = info.project.use.javaScriptEnabled !== false
       test.slow(jsOn, 'One case runs five complete axe audits plus the reduced-motion check')
       test.skip(!jsOn && !(route.group && PUBLIC_GROUPS.has(route.group)), 'JavaScript off covers public pages only')
-      test.fixme(route.dynamic && !route.params, `${route.path} needs param fixtures with stubApi bodies (#95)`)
+      test.fixme(
+        route.dynamic && !route.params && !PROJECT_UI_ROUTES.has(route.path),
+        `${route.path} needs param fixtures with stubApi bodies (#95)`
+      )
       const findings = await crawl(page, route, session, info)
 
       if (route.path === PLANTED_FAILURE) {
