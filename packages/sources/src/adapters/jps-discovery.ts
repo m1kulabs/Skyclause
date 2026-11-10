@@ -26,34 +26,65 @@ function text(markup: string): string {
     .trim()
 }
 
-// Bound every extraction to the selected table/body/row; never evaluate map JavaScript.
-function sections(markup: string, tag: string): string[] {
-  const pattern = new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)<\\/${tag}\\s*>`, 'gi')
+interface Element {
+  tag: string
+  attributes: string
+  content: string
+}
+
+// Consume complete quoted values so attribute-looking text inside a value cannot match.
+function attribute(attributes: string, name: string): string | undefined {
+  let remaining = attributes
+  let value: string | undefined
+  while (remaining.trim()) {
+    const match = /^\s+([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/.exec(remaining)
+    if (!match) throw new SchemaError('Malformed JPS attributes')
+    if (match[1]!.toLowerCase() === name) {
+      if (value !== undefined) throw new SchemaError(`Duplicate JPS ${name} attribute`)
+      value = match[2] ?? match[3] ?? match[4] ?? ''
+    }
+    remaining = remaining.slice(match[0].length)
+  }
+  return value
+}
+
+// Account for the entire selected table/body/row, not only recognized fragments.
+function sections(markup: string, tags: string[], entire = true): Element[] {
+  const pattern = new RegExp(
+    `<(${tags.join('|')})(?=\\s|>)((?:"[^"]*"|'[^']*'|[^'">])*)>([\\s\\S]*?)<\\/\\1\\s*>`,
+    'gi'
+  )
   const found = [...markup.matchAll(pattern)]
-  const residue = markup.replace(pattern, '')
-  if (new RegExp(`<\\/?${tag}\\b`, 'i').test(residue)) throw new SchemaError(`Malformed JPS ${tag}`)
-  return found.map((match) => match[1]!)
+  if (entire && markup.replace(pattern, '').trim()) throw new SchemaError(`Unexpected JPS ${tags.join('/')} markup`)
+  return found.map((match) => ({ tag: match[1]!.toLowerCase(), attributes: match[2]!, content: match[3]! }))
 }
 
 export function parseJpsStationList(html: string): DiscoveredSource[] {
-  const tables = [...html.matchAll(/<table\b([^>]*)>([\s\S]*?)<\/table\s*>/gi)].filter((match) =>
-    /\bid\s*=\s*["']Online-rainfalldata["']/i.test(match[1]!)
+  const tables = sections(html, ['table'], false).filter(
+    (table) => attribute(table.attributes, 'id') === 'Online-rainfalldata'
   )
   if (tables.length !== 1) throw new SchemaError('Expected one JPS Online-rainfalldata table')
-  const bodies = sections(tables[0]![2]!, 'tbody')
-  if (bodies.length !== 1) throw new SchemaError('Expected one JPS station tbody')
-  const rows = sections(bodies[0]!, 'tr')
+  const parts = sections(tables[0]!.content, ['thead', 'tbody'])
+  const heads = parts.filter((part) => part.tag === 'thead')
+  const bodies = parts.filter((part) => part.tag === 'tbody')
+  if (bodies.length !== 1 || heads.length > 1) throw new SchemaError('Expected one JPS station tbody')
+  // A station row moved into the header must not disappear from discovery either.
+  for (const head of heads) {
+    for (const row of sections(head.content, ['tr'])) sections(row.content, ['th'])
+  }
+  const rows = sections(bodies[0]!.content, ['tr'])
   if (!rows.length) throw new SchemaError('Empty JPS station table')
   const externalIds = new Set<string>()
   const internalIds = new Set<number>()
   return rows.map((row) => {
-    const cells = sections(row, 'td')
+    const cells = sections(row.content, ['td'])
     if (cells.length !== 14) throw new SchemaError('Unexpected JPS station cells')
-    const externalId = text(cells[1]!)
-    const name = text(cells[3]!)
-    const district = text(cells[4]!)
-    const links = [...row.matchAll(/\bhref\s*=\s*["'](\/Rainfall\/Station\/[^"']*)["']/gi)]
-    const idMatch = links.length === 1 ? /^\/Rainfall\/Station\/([1-9]\d*)\?districtId=0$/.exec(links[0]![1]!) : null
+    const externalId = text(cells[1]!.content)
+    const name = text(cells[3]!.content)
+    const district = text(cells[4]!.content)
+    const links = sections(cells[12]!.content, ['a'])
+    const href = links.length === 1 ? attribute(links[0]!.attributes, 'href') : undefined
+    const idMatch = href ? /^\/Rainfall\/Station\/([1-9]\d*)\?districtId=0$/.exec(href) : null
     const id = idMatch ? Number(idMatch[1]) : NaN
     if (!/^\d+RF$/.test(externalId) || !name || !district || !Number.isSafeInteger(id) || id <= 0) {
       throw new SchemaError('Invalid JPS station ID, name, district or link')

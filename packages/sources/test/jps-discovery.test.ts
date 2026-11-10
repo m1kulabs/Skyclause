@@ -60,6 +60,68 @@ test.each([
   expect(() => parseJpsStationList(mutate(html))).toThrow(SchemaError)
 })
 
+// Review regressions mutate only the selected table in the real capture.
+const stationTable = html.match(/<table id="Online-rainfalldata"[^>]*>[\s\S]*?<\/table>/)![0]
+const firstStationRow = stationTable.match(/<tbody>\s*(<tr>[\s\S]*?<\/tr>)/)![1]!
+const mutateTable = (change: (table: string) => string) => html.replace(stationTable, change(stationTable))
+
+test.each([
+  [
+    'renamed row wrapper',
+    () =>
+      mutateTable((table) =>
+        table.replace(firstStationRow, firstStationRow.replace('<tr>', '<section>').replace('</tr>', '</section>'))
+      )
+  ],
+  [
+    'orphaned station cells',
+    () =>
+      mutateTable((table) => table.replace(firstStationRow, firstStationRow.replace('<tr>', '').replace('</tr>', '')))
+  ],
+  [
+    'station row before tbody',
+    () => mutateTable((table) => table.replace(firstStationRow, '').replace('<tbody>', firstStationRow + '<tbody>'))
+  ],
+  [
+    'station row after tbody',
+    () => mutateTable((table) => table.replace(firstStationRow, '').replace('</tbody>', '</tbody>' + firstStationRow))
+  ],
+  [
+    'station row inside thead',
+    () => mutateTable((table) => table.replace(firstStationRow, '').replace('</thead>', firstStationRow + '</thead>'))
+  ],
+  [
+    'data-id instead of table id',
+    () => mutateTable((table) => table.replace('id="Online-rainfalldata"', 'data-id="Online-rainfalldata"'))
+  ],
+  [
+    'data-href instead of station href',
+    () =>
+      mutateTable((table) =>
+        table.replace('href="/Rainfall/Station/73?districtId=0"', 'data-href="/Rainfall/Station/73?districtId=0"')
+      )
+  ],
+  [
+    'station href on a non-anchor element',
+    () =>
+      mutateTable((table) =>
+        table.replace(
+          '<a href="/Rainfall/Station/73?districtId=0" target="_blank">1.5</a>',
+          '<span href="/Rainfall/Station/73?districtId=0" target="_blank">1.5</span>'
+        )
+      )
+  ]
+])('rejects unaccounted station markup: %s', (_, mutate) => {
+  expect(() => parseJpsStationList(mutate())).toThrow(SchemaError)
+})
+
+test('accepts a genuinely smaller valid catalogue without an expected row count', () => {
+  const reduced = parseJpsStationList(mutateTable((table) => table.replace(firstStationRow, '')))
+  expect(reduced).toHaveLength(48)
+  expect(reduced.some((station) => station.externalId === '0232131RF')).toBe(false)
+  expect(reduced[0]!.externalId).toBe('0232051RF')
+})
+
 test('does not embed a static catalogue or coordinate pairs in adapter code', () => {
   const code = ['jps.ts', 'jps-parser.ts', 'jps-discovery.ts']
     .map((name) => readFileSync(new URL('../src/adapters/' + name, import.meta.url), 'utf8'))
