@@ -33,8 +33,7 @@ export function buildProvider(
     case 'google_ai_studio':
       return createGoogle({ apiKey: o.apiKey })(o.model)
     case 'vertex_ai':
-      if (!o.vertex) throw new TypeError('buildProvider: a vertex_ai key needs the Vertex project and location')
-      return createGoogleVertex({ project: o.vertex.project, location: o.vertex.location })(o.model)
+      return createGoogleVertex({ apiKey: o.apiKey })(o.model)
     case 'anthropic':
       return createAnthropic({ apiKey: o.apiKey })(o.model)
     case 'openai':
@@ -63,20 +62,42 @@ export async function testKey(
   let model: LanguageModel
   try {
     model = buildProvider(o.provider, o)
-  } catch (error) {
-    return { ok: false, detail: error instanceof Error ? error.message : String(error) }
+  } catch {
+    return { ok: false, detail: 'The provider could not be configured for this key.' }
   }
-  const timeout = new Promise<{ ok: false; detail: string }>((resolve) =>
-    setTimeout(() => resolve({ ok: false, detail: 'the provider did not answer within 10 s' }), TEST_TIMEOUT_MS)
+  const controller = new AbortController()
+  const timeoutDetail = 'The provider did not answer within 10 s.'
+  let timer: ReturnType<typeof setTimeout>
+  const timeout = new Promise<{ ok: false; detail: string }>(
+    (resolve) =>
+      (timer = setTimeout(() => {
+        controller.abort()
+        resolve({ ok: false, detail: timeoutDetail })
+      }, TEST_TIMEOUT_MS))
   )
   const call = (async (): Promise<{ ok: true } | { ok: false; detail: string }> => {
     try {
-      await generate({ model, prompt: 'ok', maxOutputTokens: TEST_MAX_TOKENS })
+      await generate({
+        model,
+        prompt: 'ok',
+        maxOutputTokens: TEST_MAX_TOKENS,
+        maxRetries: 0,
+        abortSignal: controller.signal
+      })
       return { ok: true }
-    } catch (error) {
-      const detail = (error instanceof Error ? `${error.name}: ${error.message}` : String(error)).slice(0, 500)
-      return { ok: false, detail }
+    } catch {
+      // Provider errors can echo credentials, including partial or encoded keys. Keep them out of responses and rows.
+      return {
+        ok: false,
+        detail: controller.signal.aborted
+          ? timeoutDetail
+          : 'The provider rejected the key or could not complete the test.'
+      }
     }
   })()
-  return Promise.race([call, timeout])
+  try {
+    return await Promise.race([call, timeout])
+  } finally {
+    clearTimeout(timer!)
+  }
 }
