@@ -64,3 +64,14 @@ test("the platform's own Vertex model keeps recipient roles whatever tier the en
   })
   expect(promptText(vertex.model as ReturnType<typeof scripted>)).toContain('"role":"student"')
 })
+
+test('the platform model gets forwarded emails and evidence requests, even with a free declared tier', async () => {
+  const input = { ...replayInput(), forwarded_emails: ['Forwarded note'], evidence_requests: ['Send the record'] }
+  const result = await draftBundle(input, {
+    chain: [entry({ provider: 'vertex', keyId: null, declaredTier: 'free' })],
+    modelFor: vi.fn(),
+    vertex: { project: 'skyclause', location: 'global' }
+  })
+  expect(result.prompt).toContain('<data name="forwarded_emails">["Forwarded note"]')
+  expect(result.prompt).toContain('<data name="evidence_requests">["Send the record"]')
+})

@@ -1,11 +1,14 @@
 import { alerts } from './alerts'
+import { analysis } from './analysis'
 import { bundles } from './bundles'
 import { email } from './email'
 import { evidence } from './evidence'
 import { domainEvents } from './events'
 import { grades } from './grades'
+import { ics } from './ics'
 import { migrations } from './migrate'
 import { notices } from './notices'
+import { notifications } from './notifications'
 import { pilotArchive } from './pilot-archive'
 import { replies } from './replies'
 import { restoreDrill } from './restore-drill'
@@ -26,5 +29,8 @@ export const registry = defineRegistry([
   replies, // c-recipient-replies
   runs, // c-run-orchestrator
   notices, // c-sender-email
-  alerts // c-approver-alerts
+  alerts, // c-approver-alerts
+  notifications, // c-notifications
+  ics, // c-ics-feed
+  analysis // c-analysis-api
 ])

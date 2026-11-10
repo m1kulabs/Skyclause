@@ -1,3 +1,4 @@
+import { HTTP_PROBLEM_STATUS } from '@skyclause/contracts'
 import type { InputValue, Operations, Principal } from '@skyclause/contracts'
 import {
   approval,
@@ -17,6 +18,7 @@ import {
   source,
   startOfLocalDay,
   window,
+  type MissingCall,
   type Tx
 } from '@skyclause/db'
 import { and, asc, desc, eq, gte, inArray, lt, or, type SQL } from 'drizzle-orm'
@@ -46,7 +48,8 @@ type CallRow = typeof call.$inferSelect
 type RunRow = typeof run.$inferSelect
 
 const tx = (ctx: ServiceContext) => ctx.tx as Tx
-const notFound = (what: string) => new ApiError(404, 'not-found', `No ${what} with this ID.`)
+const notFound = (what: string) =>
+  new ApiError(HTTP_PROBLEM_STATUS['not-found'], 'not-found', `No ${what} with this ID.`)
 const at = (date: Date | null) => (date ? instant(date) : null)
 
 /** #79 §1: `can` checks the project against a share link's project and an OAuth grant's `projectIds`. */
@@ -56,10 +59,25 @@ export function inScope(principal: Principal, projectId: string) {
   return true
 }
 
-/** Window titles go to members only (NFR-11): a member's session, an API key or an OAuth grant with a role. */
-function isMember(principal: Principal) {
-  if (principal.kind === 'session') return !principal.isGuest && principal.role !== null
-  return principal.kind === 'api_key' || (principal.kind === 'oauth' && principal.role !== null)
+/**
+ * Whether the principal reads as a member: `can`'s column for it is Owner, Admin, Approver, Editor or Viewer (PRD roles
+ * table). That is a signed-in session, an API key or an OAuth grant whose role is one of those. A guest (anonymous, or
+ * the `guest` role on any of them), a guest token, a share link and a link-bound grant take the Guest or Share-link
+ * reviewer column, so they don't.
+ */
+export function isMember(principal: Principal) {
+  if (principal.kind === 'session' && principal.isGuest) return false
+  const role =
+    principal.kind === 'session' || principal.kind === 'api_key' || principal.kind === 'oauth' ? principal.role : null
+  return role !== null && role !== 'guest'
+}
+
+/**
+ * A window as the principal may read it: a non-member gets no title (NFR-11) and no `declared_by`, which can name a
+ * subscriber who declared by form.
+ */
+export function windowFor<W extends { title: string; declared_by: string }>(principal: Principal, w: W): W {
+  return isMember(principal) ? w : { ...w, title: '', declared_by: '' }
 }
 
 export async function visibleProject(ctx: ServiceContext, projectId: string) {
@@ -102,6 +120,38 @@ export function callView(row: CallRow): CallView {
   }
 }
 
+/** A call as the principal may read it: a non-member gets no recipients (subscriber IDs), notices or reason. */
+function callFor(principal: Principal, view: CallView): CallView {
+  return isMember(principal) ? view : { ...view, recipients: [], notices: [], reason: '' }
+}
+
+/** A bundle as the principal may read it: calls by `callFor`, missing calls (#499) without recipients or reason. */
+function bundleFor(principal: Principal, view: BundleView): BundleView {
+  if (isMember(principal)) return view
+  return {
+    ...view,
+    calls: view.calls.map((c) => callFor(principal, c)),
+    ...(view.missing ? { missing: view.missing.map((m) => ({ ...m, recipients: [], reason: null })) } : {})
+  }
+}
+
+/** #499: a stored missing call as its wire `MissingCall`. */
+function missingView(m: MissingCall): NonNullable<BundleView['missing']>[number] {
+  const r = m.resolution
+  return {
+    window_id: m.windowId,
+    night_id: m.nightId,
+    shadow: m.shadow as CallView['shadow'],
+    recipients: m.recipients,
+    resolution: r?.action ?? null,
+    call_id: r?.action === 'drafted' ? r.callId : null,
+    reason: r?.action === 'dismissed' ? r.reason : null,
+    resolved_by: r && r.action !== 'superseded' ? r.by : null,
+    resolved_at: r ? instant(new Date(r.at)) : null,
+    superseded_by: r?.action === 'superseded' ? r.bundleId : null
+  }
+}
+
 /** The bundles' calls, runs and alerts in three queries, so a page of bundles costs no more than one. */
 async function bundleViews(ctx: ServiceContext, rows: BundleRow[]): Promise<BundleView[]> {
   if (!rows.length) return []
@@ -123,6 +173,7 @@ async function bundleViews(ctx: ServiceContext, rows: BundleRow[]): Promise<Bund
     .orderBy(asc(bundleAlert.acceptedAt))
   return rows.map((row) => {
     const parent = runs.find((r) => r.id === row.runId)!
+    const missing = row.missing as MissingCall[]
     return {
       id: row.id,
       project_id: row.projectId,
@@ -138,6 +189,7 @@ async function bundleViews(ctx: ServiceContext, rows: BundleRow[]): Promise<Bund
       escalation_level: row.escalationLevel,
       draft_only: row.draftOnly,
       calls: calls.filter((c) => c.bundleId === row.id).map(callView),
+      ...(missing.length ? { missing: missing.map(missingView) } : {}),
       trigger: parent.trigger,
       triggered_at: instant(parent.triggeredAt),
       sheet_version_id: parent.sheetVersionId,
@@ -178,7 +230,7 @@ export async function listProjectBundles(
     .where(and(...filters))
     .orderBy(desc(bundle.createdAt), desc(bundle.id))
     .limit(input.limit + 1)
-  const views = await bundleViews(ctx, rows)
+  const views = (await bundleViews(ctx, rows)).map((view) => bundleFor(ctx.principal, view))
   return page(views, input.limit, (view) => ({
     at: instant(rows.find((r) => r.id === view.id)!.createdAt),
     id: view.id
@@ -279,8 +331,8 @@ async function sourceUrls(ctx: ServiceContext, ids: string[]) {
 }
 
 /**
- * `GET /v1/bundles/{id}`: the bundle with its calls and their recipient counts, alerts, escalations and, when every
- * call is Normal (a Watch included) with no No call, CAL-5's trace line.
+ * `GET /v1/bundles/{id}`: the bundle with its calls and their recipient counts, alerts, escalations, missing calls
+ * and, when every call is Normal (a Watch included) with no No call and none is missing, CAL-5's trace line.
  */
 export async function getBundle(ctx: ServiceContext, input: { id: string }): Promise<BundleDetail> {
   const row = await visibleBundle(ctx, input.id)
@@ -291,11 +343,14 @@ export async function getBundle(ctx: ServiceContext, input: { id: string }): Pro
     .from(approval)
     .where(and(eq(approval.bundleId, row.id), eq(approval.action, 'escalate')))
     .orderBy(asc(approval.createdAt))
+  // Counted from the stored recipients, so a non-member's counts match a member's.
   const counts = await recipientCounts(ctx, view!.calls)
-  const calls = view!.calls.map((c, i) => ({ ...c, recipient_counts: counts[i]! }))
-  const normal = calls.every((c) => c.mode === 'normal' && !c.no_call)
+  const shown = bundleFor(ctx.principal, view!)
+  const calls = shown.calls.map((c, i) => ({ ...c, recipient_counts: counts[i]! }))
+  // A missing call (#499) fired, so the bundle isn't all Normal.
+  const normal = !shown.missing && calls.every((c) => c.mode === 'normal' && !c.no_call)
   return {
-    ...view!,
+    ...shown,
     calls,
     summary: normal ? await normalSummary(ctx, parent!) : undefined,
     escalations: escalations.map((e) => ({ actor_id: e.actorId, at: instant(e.at) }))
@@ -339,7 +394,7 @@ export async function listProjectCalls(
     .orderBy(desc(call.draftedAt), desc(call.id))
     .limit(input.limit + 1)
   return page(
-    rows.map((r) => callView(r.call)),
+    rows.map((r) => callFor(ctx.principal, callView(r.call))),
     input.limit,
     (view) => ({ at: view.drafted_at, id: view.id })
   )
@@ -463,16 +518,16 @@ export async function getCall(ctx: ServiceContext, input: { id: string; origin: 
     .where(and(eq(notice.callId, row.id), eq(notice.kind, 'call')))
     .orderBy(asc(notice.createdAt))
   return {
-    ...callView(row),
+    ...callFor(ctx.principal, callView(row)),
     ...(await explanation(ctx, row)),
     project_id: row.projectId,
     window: w
-      ? {
+      ? windowFor(ctx.principal, {
           id: w.id,
           project_id: w.projectId,
           starts_at: instant(w.startsAt),
           ends_at: instant(w.endsAt),
-          title: isMember(ctx.principal) ? w.title : '',
+          title: w.title,
           kind: w.kind,
           tz: w.tz,
           declared_by: w.declaredBy,
@@ -484,7 +539,7 @@ export async function getCall(ctx: ServiceContext, input: { id: string; origin: 
           cancelled_at: at(w.cancelledAt),
           share_link_id: w.shareLinkId,
           moderation: w.moderation
-        }
+        })
       : null,
     night: n
       ? {
@@ -519,7 +574,8 @@ export async function getCall(ctx: ServiceContext, input: { id: string; origin: 
         }
       : null,
     permalink: new URL(`/c/${row.id}`, input.origin).toString(),
-    deliveries: deliveries.map((d) => ({
+    // Each delivery names its recipient, a subscriber, so only members get them.
+    deliveries: (isMember(ctx.principal) ? deliveries : []).map((d) => ({
       recipient_id: d.subscriberId ?? d.accountId ?? d.id,
       language: CallNotice.shape.language.parse(d.language),
       status: d.status,

@@ -1,6 +1,6 @@
 'use client'
 
-import { notBuilt } from '@skyclause/contracts'
+import { notBuilt } from '@skyclause/contracts/not-built'
 
 export interface Reauth {
   requireReauth: () => Promise<void>

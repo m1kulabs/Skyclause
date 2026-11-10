@@ -41,3 +41,4 @@ export { renderSubscriberEmail, type SubscriberEmailKind } from './subscriber-em
 export { ensureVapidKeys, type VapidKeysOptions } from './vapid'
 export { renderApproverAlert, type ApproverAlert, type RenderedAlert } from './approver-alerts'
 export { createPushTransport, encryptPushPayload, type PushTransportOptions } from './push'
+export { writeCalendar, type IcsCalendar, type IcsEvent } from './ics'

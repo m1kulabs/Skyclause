@@ -1,4 +1,5 @@
 import type { z } from 'zod'
+import { CONFUSABLE_LETTERS } from './confusables'
 import { quotable } from './quotable'
 import { ProposedBundle, type AgentInput } from './schema'
 
@@ -16,9 +17,95 @@ const LETTER = /[\p{L}_]/u
 const NUMBER = /(\d{4}-\d{2}-\d{2})|(\d{1,2}:\d{2})(?![\d:])|(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)/g
 // After NFKC (which folds fullwidth and superscript digits to 0-9), any other digit is refused outright.
 const OTHER_DIGIT = /[^\P{N}0-9]+/gu
+// Invisible to a reader: a zero-width space inside a figure (12, U+200B, 0) makes a person read 120 where the checks see 12 and 0.
+// Unicode's Default_Ignorable_Code_Point plus category Cf (format characters); nothing legitimate in a notice needs them.
+const INVISIBLE = /[\p{Default_Ignorable_Code_Point}\p{Cf}]/gu
+// Other ways a figure reads whole while the checks see two pieces: a combining mark on a digit, a control character
+// (C0 and C1 draw at zero width in some renderers; tab and line breaks are ordinary text), a thin or no-break space
+// between digits (NFKC folds them to a plain space), and a right-to-left letter beside digits, which reorders them.
+const MARK_ON_DIGIT = /\p{N}[.,:]?(?!\p{Default_Ignorable_Code_Point})\p{M}/u
+// Vertical tab and form feed are what Word and PowerPoint paste for a soft line break.
+const CONTROL = /[^\P{Cc}\t\n\r\v\f]/gu
+// A separator or space run beside a thin space still reads as one figure: 2, 060 is 2,060.
+const ODD_SPACE_BETWEEN_DIGITS =
+  /\p{N}[\p{Zs}\p{Zl}\p{Zp}\v\f.,:]*(?! )[\p{Zs}\p{Zl}\p{Zp}\v\f][\p{Zs}\p{Zl}\p{Zp}\v\f.,:]*\p{N}/u
+// Strong right-to-left blocks: Hebrew to Mandaic (0590-085F), Arabic Presentation Forms, and the right-to-left scripts of the SMP.
+const RTL = String.raw`(?!\p{N})[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFC\u{10800}-\u{10FFF}\u{1E800}-\u{1EFFF}]`
+const RTL_BESIDE_DIGIT = new RegExp(String.raw`${RTL}[\s\p{M}]*\p{N}|\p{N}[\s\p{M}]*${RTL}`, 'u')
+// UTS #39 confusables.txt, letters only: a Cyrillic "о" in "hundrеd" is read as the English word.
+const CONFUSABLE = new Map(
+  Object.entries(CONFUSABLE_LETTERS).flatMap(([letters, chars]) => [...chars].map((char) => [char, letters] as const))
+)
+// UTS #39 skeletons fold capital I and l together and write m as rn, so the checks read each of those spellings too.
+const skeletons = (text: string): string[] => {
+  const base = [...text.normalize('NFD').replace(/\p{M}/gu, '')].map((char) => CONFUSABLE.get(char) ?? char).join('')
+  const asI = base.replaceAll('l', 'i')
+  return [base, asI, base.replaceAll('rn', 'm'), asI.replaceAll('rn', 'm')]
+}
+// Small capitals that UTS #39 leaves out of confusables.txt (Latin phonetic letters that draw as A-Z).
+const SMALL_CAPITALS: Record<string, string> = {
+  a: '\u1D00',
+  b: '\u0299',
+  c: '\u1D04',
+  d: '\u1D05',
+  e: '\u1D07',
+  f: '\uA730',
+  g: '\u0262',
+  h: '\u029C',
+  i: '\u026A',
+  j: '\u1D0A',
+  k: '\u1D0B',
+  l: '\u029F',
+  m: '\u1D0D',
+  n: '\u0274',
+  o: '\u1D0F',
+  p: '\u1D18',
+  q: '\uA7AF',
+  r: '\u0280',
+  s: '\uA731',
+  t: '\u1D1B',
+  u: '\u1D1C',
+  v: '\u1D20',
+  w: '\u1D21',
+  y: '\u028F',
+  z: '\u1D22'
+}
+// Letters UTS #39 maps onto those small capitals (so confusables.txt has no ASCII skeleton for them).
+const ONTO_SMALL_CAPITALS: Record<string, string> = {
+  t: 'тτꭲ',
+  h: 'н',
+  b: 'в',
+  p: 'ᴩꮲ',
+  r: 'ꭱ',
+  d: 'ꭰ'
+}
+for (const [letter, chars] of Object.entries(ONTO_SMALL_CAPITALS)) {
+  for (const char of chars) if (!CONFUSABLE.has(char)) CONFUSABLE.set(char, letter)
+}
+for (const [letter, char] of Object.entries(SMALL_CAPITALS)) {
+  // m is written rn in the table, so the existing rn fold reads it too.
+  if (!CONFUSABLE.has(char)) CONFUSABLE.set(char, letter === 'm' ? 'rn' : letter)
+}
 // Spelled-out numbers from eleven up, English and Malay; "one window" stays fine.
 const NUMBER_WORD =
   /\b(?:eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|sebelas|belas|puluh|(?:se)?ratus|(?:se)?ribu|(?:se)?juta)\b/gi
+
+// Punctuation a reader takes for a separator inside a figure: any non-ASCII punctuation or symbol (a comma look-alike,
+// U+2800, a Tibetan tsheg, an ideographic comma) directly between digits. The en and em dash stay: they write ranges.
+const PUNCTUATION_BETWEEN_DIGITS = /\p{N}([\p{P}\p{S}\p{Lm}\uA4F8-\uA4FD\uA78F\u1427]+)(?=\p{N})/gu
+// A comma between digits reads as a decimal mark (5,60) unless it is a thousands group (2,060).
+const THOUSANDS = /(?<!\d|\d,)\d{1,3}(?:,\d{3})+(?!\d|,\d)/g
+// A token of 0-9 and the letters O, o, l, I (plus up to three unit letters) with a letter beside a digit: 5OO, 5l, l5.
+const LETTER_DIGITS = /^([0-9OolI]+)[a-zA-Z]{0,8}$/
+const LETTER_BESIDE_DIGIT = /\d[OolI]|[OolI]\d/
+const LETTER_ACROSS_SEPARATOR = /\d[.,:][OolI]+(?!\p{L})|(?<!\p{L})[OolI]+[.,:]\d/u
+const asciiLetters = (text: string): string =>
+  [...text.normalize('NFD').replace(/\p{M}/gu, '')]
+    .map((char) => {
+      const mapped = /\p{L}/u.test(char) ? CONFUSABLE.get(char) : undefined
+      return mapped && /^\p{ASCII}+$/u.test(mapped) ? mapped : char
+    })
+    .join('')
 
 interface Found {
   key: string
@@ -42,6 +129,7 @@ function numbersIn(text: string, identifiers: Set<string>): Found[] {
 function identifiers(input: AgentInput): Set<string> {
   const { snapshot } = input
   const texts = [
+    snapshot.projectId,
     ...Object.keys(snapshot.site),
     ...Object.values(snapshot.site).flatMap((v) => [v.name, ...v.sourceIds, ...v.readingIds]),
     ...snapshot.inputs.flatMap((i) => [i.name, i.sourceId ?? '']),
@@ -93,15 +181,33 @@ function linksIn(text: string, identifiers: Set<string>): { links: string[]; res
   return { links, rest }
 }
 
-/** Links may go only to the input's source URLs and the Skyclause origins it lists; never to an email address. */
-function linkPolicy(input: AgentInput): (link: string) => boolean {
-  const sources = new Set(input.source_urls.filter((u) => URL.canParse(u)).map((u) => new URL(u).href))
+/**
+ * Links may go only to the input's source URLs and the Skyclause origins it lists; never to an email address. Returns
+ * the part of an allowed link that is free text (everything after the host, as written; none for a listed source
+ * URL), or null when the link isn't allowed.
+ */
+function linkPolicy(input: AgentInput): (link: string) => string | null {
+  const sources = new Set(input.source_urls.flatMap((u) => (URL.canParse(u) ? [u, new URL(u).href] : [])))
   const origins = new Set(input.origins.filter((o) => URL.canParse(o)).map((o) => new URL(o).origin))
   return (link) => {
     const href = SCHEME.test(link) ? link : `https://${link}`
-    if (link.includes('@') || !URL.canParse(href)) return false
+    if (link.includes('@') || !URL.canParse(href)) return null
     const url = new URL(href)
-    return (url.protocol === 'https:' || url.protocol === 'http:') && (sources.has(url.href) || origins.has(url.origin))
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null
+    // A listed source URL must be written exactly, so nothing the parser tidies away (`/../`, a default port) hides.
+    if (sources.has(link) || sources.has(href)) return ''
+    if (!origins.has(url.origin)) return null
+    // The text as written, not as the URL parser cleans it: `/x-120/../c` and `:443` are still read by a person.
+    const rest = link.replace(SCHEME, '')
+    const host = rest.match(/^[^/?#\\:]*/)![0]
+    try {
+      return decodeURIComponent(rest.slice(host.length))
+        .normalize('NFKC')
+        .replaceAll('_', ' ')
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+    } catch {
+      return null
+    }
   }
 }
 
@@ -161,28 +267,93 @@ export function validate(p: ProposedBundle, input: AgentInput): Validation {
     for (const id of call.recipients) {
       if (!candidates.has(id)) reasons.push(`${at}: recipient ${id} is not a candidate for this window`)
     }
+    // Links and numbers: the same rules for everything an approver or recipient reads, the reason included.
+    const refuseInvisible = (where: string, text: string) => {
+      for (const char of new Set(text.match(INVISIBLE) ?? [])) {
+        const code = char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')
+        reasons.push(`${where}: contains the invisible character U+${code}; remove it`)
+      }
+    }
+    const refuseSeparators = (where: string, text: string) => {
+      if (MARK_ON_DIGIT.test(text)) reasons.push(`${where}: a combining mark follows a digit; remove it`)
+      for (const char of new Set(text.match(CONTROL) ?? [])) {
+        const code = char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')
+        reasons.push(`${where}: contains the control character U+${code}; remove it`)
+      }
+      if (ODD_SPACE_BETWEEN_DIGITS.test(text))
+        reasons.push(`${where}: a thin or no-break space between digits; remove it`)
+      for (const [, run] of text.matchAll(PUNCTUATION_BETWEEN_DIGITS)) {
+        for (const char of new Set(
+          [...run!].filter((c) => (c > '\x7F' || c === "'" || c === '`') && c !== '\u2013' && c !== '\u2014')
+        )) {
+          const code = char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')
+          reasons.push(`${where}: look-alike punctuation U+${code} between digits; remove it`)
+        }
+      }
+      if (RTL_BESIDE_DIGIT.test(text))
+        reasons.push(`${where}: a right-to-left character beside a digit reorders it; remove it`)
+    }
+    const safeDecode = (text: string) => {
+      try {
+        return decodeURIComponent(text)
+      } catch {
+        return text
+      }
+    }
+    const checkFigures = (where: string, written: string) => {
+      refuseInvisible(where, written)
+      refuseSeparators(where, written)
+      const text = written.normalize('NFKC')
+      const { links, rest } = linksIn(text, names)
+      figures(where, rest)
+      for (const link of links) {
+        // Percent escapes decode before the check: `5%E2%80%8A60` is a thin space to a reader.
+        refuseSeparators(`${where} (link ${link})`, safeDecode(link))
+        const free = allowsLink(link)
+        if (free === null) reasons.push(`${where}: link ${link} is not a source URL or Skyclause origin`)
+        else {
+          // A percent-encoded character decodes in the free text, where a person reads it as written.
+          refuseInvisible(`${where} (link ${link})`, free)
+          figures(`${where} (link ${link})`, free)
+        }
+      }
+    }
+    // Numbers in text with the links already taken out. An allowed link's path counts too: it is free text.
+    const figures = (where: string, rest: string) => {
+      for (const found of numbersIn(rest, names)) {
+        if (!allowed.has(found.key)) reasons.push(`${where}: ${found.text} is not a quotable number`)
+      }
+      if (/\d,\d/.test(rest.replace(THOUSANDS, ' ')))
+        reasons.push(`${where}: a comma between digits reads as a decimal mark; write the figure as quoted`)
+      const folded = asciiLetters(rest)
+      if (LETTER_ACROSS_SEPARATOR.test(folded))
+        reasons.push(`${where}: letters read as digits across a separator; quote the figure from the quotable block`)
+      for (const token of folded.match(/[\p{L}\p{N}_]+/gu) ?? []) {
+        if (names.has(token)) continue
+        const run = LETTER_DIGITS.exec(token)?.[1]
+        if (run && LETTER_BESIDE_DIGIT.test(run))
+          reasons.push(`${where}: ${token} has letters read as digits; quote the figure from the quotable block`)
+      }
+      for (const [digits] of rest.matchAll(OTHER_DIGIT)) {
+        reasons.push(`${where}: ${digits} uses digits outside 0-9; quote the figure from the quotable block`)
+      }
+      const spelled = new Set(skeletons(rest).flatMap((text) => [...text.matchAll(NUMBER_WORD)].map(([word]) => word)))
+      for (const word of spelled) {
+        reasons.push(`${where}: spelled-out number ${word}; quote the figure from the quotable block`)
+      }
+    }
     call.notices.forEach((notice, j) => {
       for (const field of ['subject', 'body'] as const) {
         const where = `${at} notices[${j}].${field}`
-        const text = notice[field].normalize('NFKC')
-        const { links, rest } = linksIn(text, names)
-        for (const found of numbersIn(rest, names)) {
-          if (!allowed.has(found.key)) reasons.push(`${where}: ${found.text} is not a quotable number`)
-        }
-        for (const [digits] of rest.matchAll(OTHER_DIGIT)) {
-          reasons.push(`${where}: ${digits} uses digits outside 0-9; quote the figure from the quotable block`)
-        }
-        for (const [word] of rest.matchAll(NUMBER_WORD)) {
-          reasons.push(`${where}: spelled-out number ${word}; quote the figure from the quotable block`)
-        }
-        for (const link of links) {
-          if (!allowsLink(link)) reasons.push(`${where}: link ${link} is not a source URL or Skyclause origin`)
-        }
+        checkFigures(where, notice[field])
+        const texts = skeletons(notice[field].normalize('NFKC'))
         for (const line of TEMPLATE_LINES) {
-          if (line.test(text)) reasons.push(`${where}: writes a template line (${line.source}); templates add it`)
+          if (texts.some((text) => line.test(text)))
+            reasons.push(`${where}: writes a template line (${line.source}); templates add it`)
         }
       }
     })
+    checkFigures(`${at}.reason`, call.reason)
   })
   bundle.items.forEach((item, i) => {
     if (!nights.has(item.night_id)) reasons.push(`items[${i}]: night ${item.night_id} is not in the snapshot`)

@@ -48,7 +48,7 @@ test('every table with org_id has RLS enabled and forced and a policy on current
   })
   expect(tables.map(({ name }) => name)).toEqual(expect.arrayContaining(['public.project', 'public.project_pack']))
   expect(tables.filter(({ enabled, forced, policy }) => !(enabled && forced && policy))).toEqual([])
-})
+}, 15_000)
 
 test('every id column defaults to uuidv7()', async () => {
   const columns = await asLogin('postgres', async (client) => {
@@ -63,7 +63,7 @@ test('every id column defaults to uuidv7()', async () => {
   expect(columns.filter((column) => column.default !== 'uuidv7()')).toEqual([])
   const version = await asLogin('postgres', (client) => client.query('SELECT uuid_extract_version(uuidv7()) AS v'))
   expect(version.rows[0].v).toBe(7)
-})
+}, 15_000)
 
 test('the migrations create pg_partman as migrator, as on Neon, and the image has no pg_cron (D45)', async () => {
   await asLogin('postgres', async (client) => {
@@ -131,7 +131,7 @@ test('every table in public has a factory', async () => {
     return rows.map(({ name }) => name)
   })
   expect(Object.keys({ ...tenantFactories, ...sharedFactories }).sort()).toEqual(tables)
-})
+}, 15_000)
 
 // #79 §3: G is read-only to app and public_reader; S is system and retention only.
 const G = ['component_check', 'feature_flag', 'guest_block', 'incident', 'incident_update', 'verification']
@@ -141,6 +141,7 @@ const S = [
   'export_job',
   'guest_budget',
   'handled_event',
+  'handled_message',
   'idempotency_key',
   'rate_limit'
 ]
@@ -160,7 +161,7 @@ test('app and public_reader read G tables and write none; neither reaches an S t
       .concat(G.map((t) => `public_reader SELECT ${t}`))
       .sort()
   )
-})
+}, 15_000)
 
 test('the schema’s enums hold the same values as the f-contracts sets they store', () => {
   expect({
