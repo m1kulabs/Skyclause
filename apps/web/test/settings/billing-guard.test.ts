@@ -1,20 +1,23 @@
-import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join, relative, resolve } from 'node:path'
 import { expect, test } from 'vitest'
 
 const root = resolve(import.meta.dirname, '../../../..')
 const paymentPackage = /^(?:stripe|@stripe\/[^/]+)$/i
 const lockPackage = /(?:^|[\s"'{,])(?:stripe|@stripe\/[A-Za-z0-9_.-]+)(?=[@\s"':,}\]])/i
+// Installed, built and other checkouts' files; a plain walk keeps the guard free of tools CI images may lack.
+const skipped = new Set(['node_modules', '.next', '.git', '.worktrees'])
+
+function manifests(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) return skipped.has(entry.name) ? [] : manifests(path)
+    return entry.name === 'package.json' || entry.name === 'bun.lock' ? [relative(root, path)] : []
+  })
+}
 
 test('BIL-1 keeps Stripe dependencies and package names out of the P1 workspace', () => {
-  const files = execFileSync(
-    'rg',
-    ['--files', '--hidden', '-g', 'package.json', '-g', 'bun.lock', '-g', '!**/node_modules/**', '-g', '!**/.next/**'],
-    { cwd: root, encoding: 'utf8' }
-  )
-    .split('\n')
-    .filter(Boolean)
+  const files = manifests(root)
   const violations: string[] = []
 
   for (const file of files) {
