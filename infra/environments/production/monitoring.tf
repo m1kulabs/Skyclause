@@ -27,49 +27,49 @@ locals {
       title   = "An adapter missed three slots in a row"
       query   = "max by (adapter) (max_over_time({\"skyclause.polls_on_schedule\", stat=\"breach\"}[20m])) > 0"
       target  = "NFR-1: at least 99% of scheduled polls start within 60 seconds."
-      waits   = "the `sli` handler in the 15-minute batch, #120's poll rows and #92's schema."
+      waits   = "a Scheduler slot stored with each poll, which the source runner only logs (b-sources-core), and the adapters' schedules (#121 to #128): the `sli` handler has no read for it yet."
       enabled = false
     }
     reading_to_verdict = {
       title   = "Reading to shadow verdict p95 over an hour above 16 minutes"
       query   = "max(max_over_time({\"skyclause.reading_to_verdict\", stat=\"breach\"}[20m])) > 0"
       target  = "NFR-2 (relaxed in #220): reading fetched to shadow verdict within 16 minutes."
-      waits   = "the `sli` handler in the 15-minute batch, the evaluator's snapshots and #92's schema."
+      waits   = "snapshots that name the readings they used (the evaluator, #133): the `sli` handler has no read for it yet."
       enabled = false
     }
     crossing_to_needs_review = {
       title   = "Crossing to needs review p95 over an hour above 3 minutes"
       query   = "max(max_over_time({\"skyclause.crossing_to_needs_review\", stat=\"breach\"}[20m])) > 0"
       target  = "NFR-2: crossing to needs review within 3 minutes (p95)."
-      waits   = "the `sli` handler in the 15-minute batch, the run orchestrator's bundles and #92's schema."
+      waits   = "the evaluator's crossings (#133), #90 deploying the `sli` batch handler, then a day of data."
       enabled = false
     }
     approver_alerted = {
       title   = "Approver alerts failed for two bundles in a row"
       query   = "max(max_over_time({\"skyclause.approver_alerted\", stat=\"breach\"}[20m])) > 0"
       target  = "NFR-2, CAL-18: approver alerts delivered within 60 seconds of needs review."
-      waits   = "the `sli` handler in the 15-minute batch and `bundle_alert.accepted_at` (#92, #155)."
+      waits   = "#90 deploying the `sli` batch handler, then a day of data."
       enabled = false
     }
     approval_to_provider = {
       title   = "Approval to provider: under 99.9% of notices within 60 seconds over an hour"
       query   = "max(max_over_time({\"skyclause.approval_to_provider\", stat=\"breach\"}[20m])) > 0"
       target  = "NFR-3: 99.9% of approved notices handed to the provider within 60 seconds. Below 1,000 notices an hour, one slow notice breaches."
-      waits   = "the `sli` handler in the 15-minute batch and `notice.accepted_at` (#92, #158)."
+      waits   = "#90 deploying the `sli` batch handler, then a day of data."
       enabled = false
     }
     approval_sla = {
       title   = "An approval SLA was breached with no escalation"
       query   = "max(max_over_time({\"skyclause.approval_sla\", stat=\"breach\"}[20m])) > 0"
       target  = "TRD: escalation is the alert; an unescalated breach pages."
-      waits   = "the `sli` handler in the 15-minute batch and the approval and escalation rows (#92)."
+      waits   = "#90 deploying the `sli` batch handler, then a day of data."
       enabled = false
     }
     auditor_heartbeat = {
       title   = "The auditor heartbeat is absent for 20 minutes"
       query   = "absent_over_time({\"skyclause.heartbeat\", name=\"auditor\"}[20m])"
       target  = "TRD: the auditor runs in the 15-minute batch; no beat also means the database didn't wake."
-      waits   = "#132's auditor."
+      waits   = "#90 deploying the worker and the ticks-batch Scheduler job that runs the auditor, then a day of beats."
       enabled = false
     }
     minute_tick_heartbeat = {
