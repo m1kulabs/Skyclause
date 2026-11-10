@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { expect, test, vi } from 'vitest'
 import { jpsRain } from '../../../packages/sources/src/adapters/jps'
 import { createSourceJobs } from '../src/sources/jobs'
+import { parseSourceResult } from '../src/sources/ingest'
 import { readSourcePlan } from '../src/sources/plan'
 import {
   publishSourceResult,
@@ -19,7 +20,7 @@ const sid = 'abcdef00-0000-7000-8000-000000000001'
 const graph = readFileSync(
   new URL('../../../packages/sources/test/fixtures/rainfall-graph-75-20261105T1312Z.json', import.meta.url)
 )
-async function fixture(age = 600000) {
+async function fixture(age = 600000, jpsIds = [75]) {
   const store = new MemoryStore(),
     clock = new TestClock()
   const http = vi.fn(async () => {
@@ -61,30 +62,102 @@ async function fixture(age = 600000) {
     encodeObject({
       version: 1,
       generatedAt: clock.now().toISOString(),
-      sources: [
-        {
-          source: { ...source(sid), externalId: '0232901RF', meta: { jps_id: 75 } },
-          bindings: [{ orgId: sid, projectId: sid }],
-          previousPollDigest: null,
-          previousBackfillDigest: null
-        }
-      ],
+      sources: jpsIds.map((jpsId, index) => ({
+        source: {
+          ...source(index ? 'abcdef00-0000-7000-8000-000000000002' : sid),
+          externalId: '0232901RF',
+          meta: { jps_id: jpsId }
+        },
+        bindings: [{ orgId: sid, projectId: sid }],
+        previousPollDigest: null,
+        previousBackfillDigest: null
+      })),
       periods: []
     }),
     '0'
   )
   const plan = await readSourcePlan(store),
     jobs = createSourceJobs(ports)
-  await jobs.backfill(plan.sources[0]!, plan, null)
-  expect(decodeObject<{ state: string }>((await store.read(`control/backfills/${sid}.json`))!.body).state).toBe(
-    'complete'
-  )
+  for (const entry of plan.sources) {
+    await jobs.backfill(entry, plan, null)
+    expect(
+      decodeObject<{ state: string }>((await store.read(`control/backfills/${entry.source.id}.json`))!.body).state
+    ).toBe('complete')
+  }
   await clock.advance(age - clock.elapsed)
   http.mockClear()
   results.length = 0
   refs.length = 0
   return { store, clock, http, results, refs, ports, jobs, plan }
 }
+
+test.each(['omitted', 'null'] as const)(
+  '%s pre-HTTP schema result permits the next healthy gauge and replays immutable bytes',
+  async (transport) => {
+    const t = await fixture(600000, [0, 75]),
+      write = t.store.write.bind(t.store)
+    // Exercise the explicit-null producer variant on its first immutable save;
+    // the omitted case uses executeAdapter's actual synthetic request unchanged.
+    if (transport === 'null')
+      t.store.write = async (path, body, generation) => {
+        if (path.startsWith('control/deliveries/')) {
+          const result = decodeObject<SourceExecutionResult>(body)
+          if (result.purpose === 'poll' && result.requests[0]!.url === null) {
+            result.requests[0]!.transportStartedAt = null
+            body = encodeObject(parseSourceResult(result))
+          }
+        }
+        return write(path, body, generation)
+      }
+    await t.jobs.runAdapter('jps_rain', null)
+    expect(t.http).toHaveBeenCalledTimes(1)
+    const polls = t.results.filter((result) => result.purpose === 'poll')
+    expect(polls).toHaveLength(2)
+    expect(polls[0]).toMatchObject({
+      purpose: 'poll',
+      requests: [
+        {
+          sourceIds: [sid],
+          url: null,
+          httpStatus: null,
+          body: null,
+          bodySha256: null,
+          error: { type: 'schema', message: 'Expected positive safe-integer JPS jps_id' }
+        }
+      ],
+      polls: [{ sourceId: sid, outcome: 'error', readings: [] }]
+    })
+    const request = polls[0]!.requests[0]!
+    expect(request.transportStartedAt).toBe(transport === 'null' ? null : undefined)
+    expect(Object.hasOwn(request, 'transportStartedAt')).toBe(transport === 'null')
+    expect(polls[1]).toMatchObject({
+      requests: [{ httpStatus: 200, error: null }],
+      polls: [{ outcome: 'ok' }]
+    })
+    expect(polls[1]!.requests[0]!.body).toEqual(graph)
+    expect(polls[1]!.polls[0]!.readings).toHaveLength(2269)
+    expect(t.ports.log).toHaveBeenLastCalledWith(
+      'source.adapter.complete',
+      expect.objectContaining({ sources: 2, requests: 1 })
+    )
+    const originals = [...polls],
+      refs = t.refs.filter((ref) => polls.some((result) => result.operationId === ref.operation_id)),
+      saved = [...t.store.objects].filter(([path]) => path.startsWith('control/deliveries/'))
+    await createSourceJobs(t.ports).runAdapter('jps_rain', '2026-11-10T00:11:00.000Z')
+    expect(t.http).toHaveBeenCalledTimes(1)
+    expect(t.results.filter((result) => result.purpose === 'poll').slice(2)).toEqual(originals)
+    expect(t.refs.filter((ref) => polls.some((result) => result.operationId === ref.operation_id)).slice(2)).toEqual(
+      refs
+    )
+    for (const [path, object] of saved) expect(await t.store.read(path)).toEqual(object)
+    expect(t.ports.log).toHaveBeenLastCalledWith(
+      'source.adapter.complete',
+      expect.objectContaining({ sources: 2, requests: 0 })
+    )
+    await expect(t.jobs.adapterContracts()).rejects.toThrow('Source contracts failed')
+    expect(t.http).toHaveBeenCalledTimes(1)
+  }
+)
 
 test.each([
   ['sequential', null],
@@ -388,7 +461,7 @@ test('a future capture after clock rollback is neither reused nor fetched again 
   await expect(t.jobs.adapterContracts()).rejects.toThrow('Source contracts failed')
 })
 
-test.each(['body-hash', 'operation', 'source'] as const)(
+test.each(['body-hash', 'operation', 'source', 'missing-start', 'null-start', 'out-of-slot', 'receipt-hash'] as const)(
   'same-slot replay rejects corrupt %s without refetch',
   async (corruption) => {
     const t = await fixture()
@@ -399,9 +472,21 @@ test.each(['body-hash', 'operation', 'source'] as const)(
     )!
     const result = decodeObject<{
       operationId: string
-      requests: Array<{ body: string; sourceIds: string[] }>
+      requests: Array<{ body: string; sourceIds: string[]; startedAt: string; transportStartedAt?: string | null }>
       polls: Array<{ sourceId: string; readings: Array<{ sourceId: string }> }>
     }>(saved[1].body)
+    if (corruption === 'missing-start') delete result.requests[0]!.transportStartedAt
+    if (corruption === 'null-start') result.requests[0]!.transportStartedAt = null
+    if (corruption === 'out-of-slot') {
+      result.requests[0]!.startedAt = '2026-11-10T00:15:00.000Z'
+      result.requests[0]!.transportStartedAt = result.requests[0]!.startedAt
+    }
+    if (corruption === 'receipt-hash')
+      await t.store.write(
+        `control/receipts/${result.operationId}.json`,
+        encodeObject({ ...t.refs.find((ref) => ref.operation_id === result.operationId), sha256: '0'.repeat(64) }),
+        '0'
+      )
     if (corruption === 'body-hash') result.requests[0]!.body = 'YQ=='
     if (corruption === 'operation') result.operationId = randomUUID()
     if (corruption === 'source') {

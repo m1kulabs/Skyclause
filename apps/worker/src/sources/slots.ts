@@ -46,8 +46,16 @@ async function savedResult(
   )
     throw new Error('Invalid source slot result identity')
   const request = result.requests[0]!
+  // The existing synthetic pre-HTTP error may omit the optional transport timestamp.
+  const noTransport =
+    request.transportStartedAt == null &&
+    request.httpStatus === null &&
+    request.body === null &&
+    request.bodySha256 === null &&
+    request.error !== null &&
+    (request.transportStartedAt === null || request.url === null)
   if (
-    request.transportStartedAt !== null &&
+    !noTransport &&
     (!request.transportStartedAt ||
       Date.parse(request.transportStartedAt) < slot.start ||
       Date.parse(request.transportStartedAt) >= slot.end)
@@ -124,7 +132,7 @@ export async function runSourceSlot(
     )
       throw new Error('Invalid source slot receipt')
   } else await ports.publish(saved.result)
-  return won ? saved.result.requests.filter((r) => r.transportStartedAt !== null).length : 0
+  return won ? saved.result.requests.filter((r) => r.transportStartedAt != null).length : 0
 }
 
 /** Read-only probe input: no admission, publication, fallback to an old slot or provider request. */
