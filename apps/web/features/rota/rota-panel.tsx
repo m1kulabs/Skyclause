@@ -285,6 +285,8 @@ export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
     if (!rota || !dirty) return
     setSaving(true)
     setMessage('')
+    // An Approver's replacement covers only their own shifts; the API keeps colleagues' and refuses theirs.
+    const editable = viewer.role === 'approver' ? draft.filter((shift) => shift.account_id === viewer.accountId) : draft
     try {
       const updated = await apiFetch('replaceRotaShifts', {
         org,
@@ -292,7 +294,7 @@ export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
         body: {
           project_id: null,
           templates: rota.templates,
-          shifts: draft.map(({ clientKey: _clientKey, id: _id, project_id: _projectId, ...shift }) => shift)
+          shifts: editable.map(({ clientKey: _clientKey, id: _id, project_id: _projectId, ...shift }) => shift)
         }
       })
       const result = updated as RotaData
