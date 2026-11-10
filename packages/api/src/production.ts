@@ -1,10 +1,11 @@
 import { loadEnv } from '@skyclause/config'
 import type { EmailTransport } from '@skyclause/contracts'
-import { recordAudit, withTenant } from '@skyclause/db'
+import { recordAudit, withPublicReader, withSystem, withTenant } from '@skyclause/db'
 import { emailTransportForAws } from '@skyclause/delivery'
 import type { ApiConfig, ApiDeps } from './context'
 import { registeredPermission, registeredPrincipal } from './middleware/auth'
 import { postgresIdempotency, postgresMembership, postgresRateLimits } from './postgres-stores'
+import { createDataRightsTransports } from './services/data-rights/transports'
 
 let config: ApiConfig | undefined
 
@@ -45,8 +46,11 @@ export const productionDeps: ApiDeps = {
   idempotency: postgresIdempotency,
   rateLimits: postgresRateLimits,
   withTenant,
+  withSystem,
+  withPublicReader,
   recordAudit,
   email: { send: (message) => (ses ??= loadEmail()).send(message) },
+  dataRights: createDataRightsTransports(),
   config: () => (config ??= loadConfig()),
   now: () => new Date()
 }

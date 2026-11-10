@@ -6,6 +6,7 @@ import { bundles } from './bundles'
 import { email } from './email'
 import { evidence } from './evidence'
 import { domainEvents } from './events'
+import { dataRights } from './data-rights'
 import { grades } from './grades'
 import { ics } from './ics'
 import { migrations } from './migrate'
@@ -36,5 +37,6 @@ export const registry = defineRegistry([
   notifications, // c-notifications
   ics, // c-ics-feed
   analysis, // c-analysis-api
-  auditor // b-auditor
+  auditor, // b-auditor
+  dataRights // a-data-rights
 ])

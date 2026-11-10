@@ -20,9 +20,11 @@ import {
   type AnalyticsProps,
   type Track
 } from '@skyclause/contracts'
-import { sql } from 'drizzle-orm'
+import type { Principal } from '@skyclause/contracts'
+import { and, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
-import type { Tx } from './client'
+import type { Tx } from '../client'
+import { publicProject } from '../schema/project'
 
 // #79 §1 track: PRD "Analytics events" as strict schemas, so a property outside the catalogue (personal data
 // included) is refused before anything is written. f-contracts holds the catalogue as types and constants only.
@@ -32,7 +34,7 @@ const amount = z.number().nonnegative()
 const pack = z.enum(ANALYTICS_PACKS)
 const channel = z.enum(ANALYTICS_CHANNELS)
 
-const PROPS = {
+export const ANALYTICS_PROPS = {
   landing_window_set: z.strictObject({
     modes: z.array(z.enum(ANALYTICS_MODES)),
     inputs_fresh: count,
@@ -80,9 +82,17 @@ const PROPS = {
 } satisfies { [N in AnalyticsName]: z.ZodType<AnalyticsProps<N>> }
 
 // `satisfies` proves each schema's output fits the catalogue; this proves the reverse, so neither drifts.
-type Covers = { [N in AnalyticsName]: AnalyticsProps<N> extends z.infer<(typeof PROPS)[N]> ? true : false }
+type Covers = { [N in AnalyticsName]: AnalyticsProps<N> extends z.infer<(typeof ANALYTICS_PROPS)[N]> ? true : false }
 const covers: false extends Covers[AnalyticsName] ? never : true = true
 void covers
+
+/**
+ * Parses `props` against the event's catalogue entry (`POST /e` (#111) shares it, so the browser and the server
+ * refuse the same personal data). Throws the zod error for `track` and `/e` to answer `validation-failed`.
+ */
+export function parseAnalyticsProps<N extends AnalyticsName>(name: N, props: unknown): AnalyticsProps<N> {
+  return (ANALYTICS_PROPS[name] as z.ZodType).parse(props) as AnalyticsProps<N>
+}
 
 /**
  * Validates `props` against the event's catalogue entry, then writes `analytics_event` through `track_event()`
@@ -90,7 +100,22 @@ void covers
  */
 export const track: Track = async (handle, name, props, ids) => {
   const tx = handle as Tx
-  const schema = PROPS[name] as z.ZodType
-  const parsed = schema.parse(props)
+  const parsed = parseAnalyticsProps(name, props)
   await tx.execute(sql`SELECT track_event(${name}, ${JSON.stringify(parsed)}::jsonb, ${ids?.projectId ?? null})`)
+}
+
+/**
+ * Resolves an `/e` `project` of `{orgSlug}/{projectSlug}` to IDs for a public project, else null (`#111`: a private
+ * or unknown project is dropped, never an error). Read in `withPublicReader`, which sees `public_project`.
+ */
+export async function resolvePublicProject(
+  tx: Tx<Principal | null>,
+  ref: { orgSlug: string; slug: string }
+): Promise<{ orgId: string; id: string } | null> {
+  const [row] = await tx
+    .select({ orgId: publicProject.orgId, id: publicProject.id })
+    .from(publicProject)
+    .where(and(eq(publicProject.orgSlug, ref.orgSlug), eq(publicProject.slug, ref.slug)))
+    .limit(1)
+  return row ?? null
 }

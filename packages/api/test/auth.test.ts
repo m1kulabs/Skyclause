@@ -186,10 +186,32 @@ describe('organisation (D2)', () => {
   })
 
   it('reads the organisation from an /api/orgs/{org} path', async () => {
-    const { api } = createTestApi()
+    const listQuery = {
+      from() {
+        return this
+      },
+      innerJoin() {
+        return this
+      },
+      where() {
+        return this
+      },
+      orderBy() {
+        return this
+      },
+      async limit() {
+        return []
+      }
+    }
+    const { api } = createTestApi({
+      deps: testDeps({
+        withTenant: async (ctx, fn) =>
+          fn({ orgId: ctx.orgId, principal: ctx.principal, select: () => listQuery } as never)
+      })
+    })
     testOrg('path-other')
     const admin = asSession({ org: 'path-org', role: 'admin' })
-    expect((await apiRequest(api, { as: admin, method: 'GET', path: '/api/orgs/path-org/members' })).status).toBe(501)
+    expect((await apiRequest(api, { as: admin, method: 'GET', path: '/api/orgs/path-org/members' })).status).toBe(200)
     expect((await apiRequest(api, { as: admin, method: 'GET', path: '/api/orgs/path-other/members' })).status).toBe(404)
   })
 })

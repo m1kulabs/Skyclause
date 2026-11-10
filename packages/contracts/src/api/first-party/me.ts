@@ -302,6 +302,8 @@ export const createMyExport = createRoute({
     202: { description: 'The account export was queued.', content: { 'application/json': { schema: exportSummary } } },
     ...validationErrors,
     403: problemResponse('The session cannot export account data.'),
+    409: problemResponse('An export is already queued or running for this account.'),
+    503: problemResponse('The export could not be queued right now.'),
     422: problemResponse('The idempotency key was already used with a different request.')
   },
   x: { owner: 'a-data-rights', statement: 'session', idempotent: true }
@@ -313,7 +315,7 @@ export const deleteMyAccount = createRoute({
   operationId: 'deleteMyAccount',
   tags: ['Data Rights'],
   request: {
-    body: { content: { 'application/json': { schema: z.object({ typed_name: z.literal('delete account') }) } } }
+    body: { content: { 'application/json': { schema: z.object({ email: z.email() }).strict() } } }
   },
   responses: {
     202: {
@@ -321,7 +323,8 @@ export const deleteMyAccount = createRoute({
       content: { 'application/json': { schema: z.object({ deleted_at: Instant }) } }
     },
     ...validationErrors,
-    409: problemResponse('The account must keep a sign-in method until deletion is confirmed.')
+    409: problemResponse('The account is the only Owner of one or more organisations and cannot be deleted.'),
+    503: problemResponse('Account data could not be removed right now.')
   },
   x: { owner: 'a-data-rights', statement: 'session', idempotent: false }
 })

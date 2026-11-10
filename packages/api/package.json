@@ -5,6 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./members": "./src/services/members/index.ts",
+    "./rota": "./src/services/rota/index.ts",
     "./testing": "./test/harness/index.ts"
   },
   "dependencies": {
@@ -24,6 +26,7 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@opentelemetry/sdk-metrics": "3.1.0",
     "ical.js": "2.2.1"
   }
 }
