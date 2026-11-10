@@ -4,7 +4,8 @@ import type {
   Principal,
   RecordAudit,
   ResolvePrincipal,
-  SkyclauseRoute
+  SkyclauseRoute,
+  ShiftConditions
 } from '@skyclause/contracts'
 import type { withPublicReader, withSystem } from '@skyclause/db'
 import type { IdempotencyStore, MembershipLookup, RateLimitStore } from './stores'
@@ -44,6 +45,8 @@ export interface ApiDeps {
     signDownload(objectPath: string, expiresAt: Date): Promise<string>
     deleteAccountExports(accountId: string): Promise<number>
   }
+  /** #134 supplies the live condition reader; before it is wired, conditional shifts are `unknown`. */
+  shiftConditions?: ShiftConditions
   config: () => ApiConfig
   now: () => Date
 }

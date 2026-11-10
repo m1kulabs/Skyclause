@@ -543,7 +543,8 @@ export const RotaShift = z.object({
   id: z.string(),
   account_id: z.string(),
   project_id: z.string().nullable(),
-  days: z.array(z.string()),
+  // TRD rota days use ISO weekdays (Monday=1 through Sunday=7), matching `rota_shift.days`' integer array.
+  days: z.array(z.number().int().min(1).max(7)),
   local_start: z.string(),
   local_end: z.string(),
   condition: z.string().nullable(),

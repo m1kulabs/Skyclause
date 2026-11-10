@@ -15,6 +15,8 @@ import { notificationHandlers } from './notifications'
 import { projectHandlers } from './projects'
 import { replyHandlers } from './replies'
 import { runHandlers } from './runs'
+import { memberHandlers } from './members'
+import { rotaHandlers } from './rota'
 import { subscriberHandlers } from './subscribers'
 import { subscriberRightsHandlers } from './subscriber-rights'
 import { dataRightsHandlers } from './data-rights'
@@ -56,5 +58,7 @@ export const HANDLERS: Handlers = {
   ...alertHandlers, // c-approver-alerts
   ...notificationHandlers, // c-notifications
   ...analysisHandlers, // c-analysis-api
-  ...dataRightsHandlers // a-data-rights
+  ...dataRightsHandlers, // a-data-rights
+  ...memberHandlers, // a-members-api
+  ...rotaHandlers // a-members-api
 }
