@@ -15,6 +15,7 @@ import { replies } from './replies'
 import { restoreDrill } from './restore-drill'
 import { runs } from './runs'
 import { defineRegistry } from './server'
+import { sources } from './sources'
 
 // Spec §7: each owner appends one line here, naming a `WorkerPart` exported from its own folder,
 // for example `evaluator, // b-evaluator`.
@@ -34,5 +35,6 @@ export const registry = defineRegistry([
   notifications, // c-notifications
   ics, // c-ics-feed
   analysis, // c-analysis-api
-  auditor // b-auditor
+  auditor, // b-auditor
+  sources // b-sources-core
 ])

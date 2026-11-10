@@ -4,28 +4,30 @@
 locals {
   # TF rows of #79 §6; app_config never overrides them.
   env = merge(var.app_config, {
-    APP_ENV           = var.app_env
-    HOST_MODE         = var.host_mode
-    MARKETING_ORIGIN  = local.origins.marketing
-    APP_ORIGIN        = local.origins.app
-    API_ORIGIN        = local.origins.api
-    MCP_ORIGIN        = local.origins.mcp
-    EMBED_ORIGIN      = local.origins.embed
-    DOCS_ORIGIN       = local.origins.docs
-    VAPID_SUBJECT     = local.origins.app
-    GCP_PROJECT       = local.project_id
-    GCP_REGION        = local.region
-    WORKER_URL        = local.worker_url
-    WORKER_INVOKER_SA = local.sa.invoker
-    EXPORTS_BUCKET    = google_storage_bucket.this["exports"].name
-    FRAMES_BUCKET     = google_storage_bucket.this["frames"].name
-    ARCHIVE_BUCKET    = google_storage_bucket.this["archive"].name
-    SCRATCH_BUCKET    = google_storage_bucket.this["scratch"].name
-    SOURCES_BUCKET    = google_storage_bucket.this["sources"].name
-    KMS_AI_KEYS_KEY   = google_kms_crypto_key.this["ai-keys"].id
-    KMS_WEBHOOK_KEY   = google_kms_crypto_key.this["webhook"].id
-    VERTEX_LOCATION   = "global"
-    LOG_LEVEL         = var.log_level
+    APP_ENV                     = var.app_env
+    HOST_MODE                   = var.host_mode
+    MARKETING_ORIGIN            = local.origins.marketing
+    APP_ORIGIN                  = local.origins.app
+    API_ORIGIN                  = local.origins.api
+    MCP_ORIGIN                  = local.origins.mcp
+    EMBED_ORIGIN                = local.origins.embed
+    DOCS_ORIGIN                 = local.origins.docs
+    VAPID_SUBJECT               = local.origins.app
+    GCP_PROJECT                 = local.project_id
+    GCP_REGION                  = local.region
+    WORKER_URL                  = local.worker_url
+    WORKER_INVOKER_SA           = local.sa.invoker
+    EXPORTS_BUCKET              = google_storage_bucket.this["exports"].name
+    FRAMES_BUCKET               = google_storage_bucket.this["frames"].name
+    ARCHIVE_BUCKET              = google_storage_bucket.this["archive"].name
+    SCRATCH_BUCKET              = google_storage_bucket.this["scratch"].name
+    SOURCE_RESULTS_SUBSCRIPTION = google_pubsub_subscription.poll_results.name
+    SOURCE_USER_AGENT           = "Skyclause/1.0 (+https://skyclause.m1ku.tech)"
+    SOURCES_BUCKET              = google_storage_bucket.this["sources"].name
+    KMS_AI_KEYS_KEY             = google_kms_crypto_key.this["ai-keys"].id
+    KMS_WEBHOOK_KEY             = google_kms_crypto_key.this["webhook"].id
+    VERTEX_LOCATION             = "global"
+    LOG_LEVEL                   = var.log_level
   })
 }
 

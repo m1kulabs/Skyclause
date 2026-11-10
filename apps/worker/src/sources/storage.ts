@@ -11,6 +11,11 @@ interface GcsFile {
 export interface GcsClient {
   bucket(name: string): { file(path: string, options?: { generation: string }): GcsFile }
 }
+function objectGeneration(value: unknown): string {
+  if ((typeof value === 'number' && !Number.isSafeInteger(value)) || !/^[1-9][0-9]*$/.test(String(value)))
+    throw new Error('Invalid GCS object generation')
+  return String(value)
+}
 export function gcsObjectStore(
   bucket: string,
   client: () => Promise<GcsClient> = async () => {
@@ -31,7 +36,7 @@ export function gcsObjectStore(
         if (hasCode(error, 404)) return null
         throw error
       }
-      const generation = String(metadata.generation)
+      const generation = objectGeneration(metadata.generation)
       // Pin bytes to the metadata generation; a concurrent delete is an error, not absence.
       const [body] = await bucketRef.file(path, { generation }).download()
       return { body, generation }
@@ -43,8 +48,7 @@ export function gcsObjectStore(
         resumable: false,
         preconditionOpts: { ifGenerationMatch: expectedGeneration }
       })
-      if (file.metadata.generation === undefined) throw new Error('GCS upload returned no generation')
-      return String(file.metadata.generation)
+      return objectGeneration(file.metadata.generation)
     }
   }
 }

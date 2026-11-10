@@ -85,3 +85,24 @@ export async function openCrowdPeriods(tx: Tx, now: Date): Promise<CrowdPeriodDt
     exitEnd: row.exitEnd?.toISOString() ?? null
   }))
 }
+
+/** Plan complete upcoming intervals, including starts between consecutive refreshes. */
+export async function plannedCrowdPeriods(tx: Tx): Promise<CrowdPeriodDto[]> {
+  const rows = await tx
+    .select({ night })
+    .from(night)
+    .innerJoin(project, eq(project.id, night.projectId))
+    .where(
+      and(isNull(project.archivedAt), inArray(night.state, ['upcoming', 'in_progress']), isNotNull(night.arrivalStart))
+    )
+    .orderBy(asc(night.id))
+  return rows.map(({ night: row }) => ({
+    id: row.id,
+    projectId: row.projectId,
+    state: row.state as CrowdPeriodDto['state'],
+    arrivalStart: row.arrivalStart!.toISOString(),
+    arrivalEnd: row.arrivalEnd?.toISOString() ?? null,
+    exitStart: row.exitStart?.toISOString() ?? null,
+    exitEnd: row.exitEnd?.toISOString() ?? null
+  }))
+}

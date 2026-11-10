@@ -21,6 +21,7 @@
     "@skyclause/sources": "workspace:*",
     "drizzle-orm": "0.45.4",
     "hono": "4.13.16",
+    "google-auth-library": "11.3.3",
     "jose": "6.2.15",
     "zod": "4.6.7"
   },

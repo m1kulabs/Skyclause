@@ -3,6 +3,7 @@ import {
   boundSources,
   listSourceOrganisations,
   openCrowdPeriods,
+  plannedCrowdPeriods,
   systemPrincipal,
   withSystem,
   withTenant
@@ -110,4 +111,24 @@ test('crowd periods enforce tenant, active project, state and half-open arrival/
     exitEnd: null
   })
   expect(await withTenant({ orgId: other, principal: memberOf(other) }, (tx) => openCrowdPeriods(tx, now))).toEqual([])
+})
+
+test('planned crowd periods retain intervals that start after refresh and preserve tenant isolation', async () => {
+  const orgId = (await makeOrganization()).id,
+    other = (await makeOrganization()).id
+  const row = await withTenant({ orgId, principal: system }, async (tx) => {
+    const p = await makeProject(tx)
+    return makeNight(tx, {
+      projectId: p.id,
+      arrivalStart: new Date('2026-11-10T00:05:00Z'),
+      arrivalEnd: new Date('2026-11-10T00:10:00Z')
+    })
+  })
+  expect(
+    await withTenant({ orgId, principal: system }, (tx) => openCrowdPeriods(tx, new Date('2026-11-10T00:00:00Z')))
+  ).toEqual([])
+  expect(await withTenant({ orgId, principal: system }, plannedCrowdPeriods)).toMatchObject([
+    { id: row.id, arrivalStart: '2026-11-10T00:05:00.000Z' }
+  ])
+  expect(await withTenant({ orgId: other, principal: system }, plannedCrowdPeriods)).toEqual([])
 })

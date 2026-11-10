@@ -73,3 +73,25 @@ test('pinned download errors propagate even when a concurrent deletion returns 4
   }))
   await expect(store.read('object')).rejects.toMatchObject({ code: 404 })
 })
+
+test.each([undefined, '', 'undefined', '0', '-1'])(
+  'GCS refuses invalid metadata generation %s before download',
+  async (generation) => {
+    let downloaded = false
+    const store = gcsObjectStore('bucket', async () => ({
+      bucket: () => ({
+        file: () => ({
+          metadata: {},
+          getMetadata: async () => [{ generation }],
+          download: async () => {
+            downloaded = true
+            return [Buffer.from('{}')]
+          },
+          save: async () => {}
+        })
+      })
+    }))
+    await expect(store.read('control/plan.json')).rejects.toThrow('generation')
+    expect(downloaded).toBe(false)
+  }
+)

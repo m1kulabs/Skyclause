@@ -21,6 +21,7 @@ export interface BackfillPorts {
   /** Poll-plan/ingest receipt check. Without a receipt, redelivery safely republishes stable IDs. */
   acknowledged?(operationId: string): Promise<boolean>
   scheduledAt?: string | null
+  previousDigest?(sourceId: string, purpose: 'poll' | 'backfill'): string | null
 }
 async function publishCompleted(claim: BackfillClaim, ports: BackfillPorts): Promise<'complete'> {
   if (await ports.acknowledged?.(claim.operationId)) return 'complete'
@@ -102,7 +103,8 @@ export async function runBackfillOnce<Raw>(
       purpose: 'backfill',
       scheduledAt: claim.scheduledAt,
       clock,
-      requestId: ports.id
+      requestId: ports.id,
+      previousDigest: ports.previousDigest
     })
     if (renewalError) throw renewalError
     if (lost || claim.leaseExpiresAt <= clock.now().getTime()) return 'running'
