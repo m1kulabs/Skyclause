@@ -114,8 +114,14 @@ test('no catalogue prop is a free string: every leaf is an enum, a count or amou
 
 /** Events with a `track()` call site or an `/e` sender: `track()` writes a row each. */
 const EMITTED: Name[] = [
+  'project_created',
+  'run_started',
   'bundle_drafted',
+  'bundle_approved',
+  'bundle_escalated',
+  'approver_alerted',
   'bundle_closed',
+  'notice_sent',
   'call_graded',
   'channel_connected',
   'evidence_replied',
