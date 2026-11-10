@@ -55,3 +55,37 @@ it('requires a CHANGELOG entry and at least six months before every deprecated o
     expect(new Date(`${entry!.sunsetAt}T00:00:00Z`).getTime()).toBeGreaterThanOrEqual(earliestSunset.getTime())
   }
 })
+
+it('preserves null-only, typed nullable, union and unconstrained component schemas', async () => {
+  const document = JSON.parse(await readFile(openapiPath, 'utf8')) as Record<string, unknown>
+  const files = await generateSdkFiles(
+    JSON.stringify({
+      ...document,
+      components: {
+        schemas: {
+          NullOnly: { type: 'null' },
+          NullArray: { type: ['null'] },
+          NullableNumber: { type: ['number', 'null'] },
+          LegacyNullableString: { type: 'string', nullable: true },
+          NullableUnion: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+          Unconstrained: {},
+          NullableUnconstrained: { nullable: true }
+        }
+      }
+    })
+  )
+
+  const generated = files['src/generated.ts']!.split('\n').map((line) => line.trim())
+  for (const declaration of [
+    'NullOnly: null',
+    'NullArray: null',
+    'NullableNumber: number | null',
+    'LegacyNullableString: string | null',
+    'NullableUnion: string | null',
+    'Unconstrained: unknown',
+    'NullableUnconstrained: unknown | null'
+  ]) {
+    const name = declaration.split(':')[0]
+    expect(generated.find((line) => line.startsWith(`${name}:`))).toBe(declaration)
+  }
+})

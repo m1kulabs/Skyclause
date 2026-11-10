@@ -1485,7 +1485,7 @@ export type OperationResponses = {
             }
             inputs: Array<{
               name: string
-              value: number | boolean | string | Array<number> | unknown | null
+              value: number | boolean | string | Array<number> | null
               unit: string
               state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
               since: string | null
@@ -1533,7 +1533,7 @@ export type OperationResponses = {
             }
             inputs: Array<{
               name: string
-              value: number | boolean | string | Array<number> | unknown | null
+              value: number | boolean | string | Array<number> | null
               unit: string
               state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
               since: string | null
@@ -1581,7 +1581,7 @@ export type OperationResponses = {
             }
             inputs: Array<{
               name: string
-              value: number | boolean | string | Array<number> | unknown | null
+              value: number | boolean | string | Array<number> | null
               unit: string
               state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
               since: string | null
@@ -1691,7 +1691,7 @@ export type OperationResponses = {
             }
             inputs: Array<{
               name: string
-              value: number | boolean | string | Array<number> | unknown | null
+              value: number | boolean | string | Array<number> | null
               unit: string
               state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
               since: string | null
@@ -1754,7 +1754,7 @@ export type OperationResponses = {
             }
             inputs: Array<{
               name: string
-              value: number | boolean | string | Array<number> | unknown | null
+              value: number | boolean | string | Array<number> | null
               unit: string
               state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
               since: string | null
@@ -1866,7 +1866,7 @@ export type OperationResponses = {
           }
           inputs: Array<{
             name: string
-            value: number | boolean | string | Array<number> | unknown | null
+            value: number | boolean | string | Array<number> | null
             unit: string
             state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
             since: string | null
@@ -1940,7 +1940,7 @@ export type OperationResponses = {
           }
           inputs: Array<{
             name: string
-            value: number | boolean | string | Array<number> | unknown | null
+            value: number | boolean | string | Array<number> | null
             unit: string
             state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
             since: string | null
@@ -1973,7 +1973,7 @@ export type OperationResponses = {
       text: string
       inputs: Array<{
         name: string
-        value: number | boolean | string | Array<number> | unknown | null
+        value: number | boolean | string | Array<number> | null
         unit: string
         state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
         since: string | null
@@ -2071,7 +2071,7 @@ export type OperationResponses = {
             }
             inputs: Array<{
               name: string
-              value: number | boolean | string | Array<number> | unknown | null
+              value: number | boolean | string | Array<number> | null
               unit: string
               state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
               since: string | null
@@ -2134,7 +2134,7 @@ export type OperationResponses = {
             }
             inputs: Array<{
               name: string
-              value: number | boolean | string | Array<number> | unknown | null
+              value: number | boolean | string | Array<number> | null
               unit: string
               state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
               since: string | null
@@ -2223,7 +2223,7 @@ export type OperationResponses = {
           }
           inputs: Array<{
             name: string
-            value: number | boolean | string | Array<number> | unknown | null
+            value: number | boolean | string | Array<number> | null
             unit: string
             state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
             since: string | null
@@ -2304,7 +2304,7 @@ export type OperationResponses = {
         }
         inputs: Array<{
           name: string
-          value: number | boolean | string | Array<number> | unknown | null
+          value: number | boolean | string | Array<number> | null
           unit: string
           state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
           since: string | null
@@ -2346,7 +2346,7 @@ export type OperationResponses = {
       }
       inputs: Array<{
         name: string
-        value: number | boolean | string | Array<number> | unknown | null
+        value: number | boolean | string | Array<number> | null
         unit: string
         state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
         since: string | null
@@ -2364,7 +2364,7 @@ export type OperationResponses = {
     }>
     inputs: Array<{
       name: string
-      value: number | boolean | string | Array<number> | unknown | null
+      value: number | boolean | string | Array<number> | null
       unit: string
       state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
       since: string | null
@@ -2386,7 +2386,7 @@ export type OperationResponses = {
       duration_ms: number
       inputs: Array<{
         name: string
-        value: number | boolean | string | Array<number> | unknown | null
+        value: number | boolean | string | Array<number> | null
         unit: string
         state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
         since: string | null
@@ -2484,7 +2484,7 @@ export type OperationResponses = {
       }
       inputs: Array<{
         name: string
-        value: number | boolean | string | Array<number> | unknown | null
+        value: number | boolean | string | Array<number> | null
         unit: string
         state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
         since: string | null
@@ -2502,7 +2502,7 @@ export type OperationResponses = {
     }>
     inputs: Array<{
       name: string
-      value: number | boolean | string | Array<number> | unknown | null
+      value: number | boolean | string | Array<number> | null
       unit: string
       state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
       since: string | null
@@ -2524,7 +2524,7 @@ export type OperationResponses = {
       duration_ms: number
       inputs: Array<{
         name: string
-        value: number | boolean | string | Array<number> | unknown | null
+        value: number | boolean | string | Array<number> | null
         unit: string
         state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
         since: string | null
@@ -2597,7 +2597,7 @@ export type OperationResponses = {
   previewChannels:
     | {
         n: 0
-        call_id: unknown | null
+        call_id: null
         previews: Array<{
           channel: 'email' | 'ics' | 'webhook' | 'in_app'
           pack: 'sky' | 'crowd'
@@ -2865,7 +2865,7 @@ export type OperationResponses = {
           }
           inputs: Array<{
             name: string
-            value: number | boolean | string | Array<number> | unknown | null
+            value: number | boolean | string | Array<number> | null
             unit: string
             state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
             since: string | null
@@ -2913,7 +2913,7 @@ export type OperationResponses = {
           }
           inputs: Array<{
             name: string
-            value: number | boolean | string | Array<number> | unknown | null
+            value: number | boolean | string | Array<number> | null
             unit: string
             state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
             since: string | null
@@ -2961,7 +2961,7 @@ export type OperationResponses = {
           }
           inputs: Array<{
             name: string
-            value: number | boolean | string | Array<number> | unknown | null
+            value: number | boolean | string | Array<number> | null
             unit: string
             state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
             since: string | null
@@ -2993,7 +2993,7 @@ export type OperationResponses = {
       }
       inputs: Array<{
         name: string
-        value: number | boolean | string | Array<number> | unknown | null
+        value: number | boolean | string | Array<number> | null
         unit: string
         state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
         since: string | null
@@ -3060,7 +3060,7 @@ export type OperationResponses = {
       publishable: boolean
       validation_status: 'checked' | 'unavailable'
       status: 'draft'
-      n: unknown | null
+      n: null
     }>
     next_cursor: string | null
   }
@@ -3113,7 +3113,7 @@ export type OperationResponses = {
     publishable: boolean
     validation_status: 'checked' | 'unavailable'
     status: 'draft'
-    n: unknown | null
+    n: null
   }
   getClauseSheetDraft: {
     id: string
@@ -3164,7 +3164,7 @@ export type OperationResponses = {
     publishable: boolean
     validation_status: 'checked' | 'unavailable'
     status: 'draft'
-    n: unknown | null
+    n: null
   }
   deleteClauseSheetDraft: {
     id: string
@@ -3214,7 +3214,7 @@ export type OperationResponses = {
             }
             inputs: Array<{
               name: string
-              value: number | boolean | string | Array<number> | unknown | null
+              value: number | boolean | string | Array<number> | null
               unit: string
               state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
               since: string | null
@@ -3262,7 +3262,7 @@ export type OperationResponses = {
             }
             inputs: Array<{
               name: string
-              value: number | boolean | string | Array<number> | unknown | null
+              value: number | boolean | string | Array<number> | null
               unit: string
               state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
               since: string | null
@@ -3310,7 +3310,7 @@ export type OperationResponses = {
             }
             inputs: Array<{
               name: string
-              value: number | boolean | string | Array<number> | unknown | null
+              value: number | boolean | string | Array<number> | null
               unit: string
               state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
               since: string | null
@@ -3445,7 +3445,7 @@ export type OperationResponses = {
             }
             inputs: Array<{
               name: string
-              value: number | boolean | string | Array<number> | unknown | null
+              value: number | boolean | string | Array<number> | null
               unit: string
               state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
               since: string | null
@@ -3708,7 +3708,7 @@ export type OperationResponses = {
             }
             inputs: Array<{
               name: string
-              value: number | boolean | string | Array<number> | unknown | null
+              value: number | boolean | string | Array<number> | null
               unit: string
               state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
               since: string | null
@@ -3890,7 +3890,7 @@ export type OperationResponses = {
             }
             inputs: Array<{
               name: string
-              value: number | boolean | string | Array<number> | unknown | null
+              value: number | boolean | string | Array<number> | null
               unit: string
               state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
               since: string | null
@@ -4051,7 +4051,7 @@ export type OperationResponses = {
       string,
       {
         name: string
-        value: number | boolean | string | Array<number> | unknown | null
+        value: number | boolean | string | Array<number> | null
         unit: string
         state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
         since: string | null
@@ -4191,7 +4191,7 @@ export type OperationResponses = {
             }
             inputs: Array<{
               name: string
-              value: number | boolean | string | Array<number> | unknown | null
+              value: number | boolean | string | Array<number> | null
               unit: string
               state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
               since: string | null
@@ -4524,7 +4524,7 @@ export type OperationResponses = {
                 }
                 inputs: Array<{
                   name: string
-                  value: number | boolean | string | Array<number> | unknown | null
+                  value: number | boolean | string | Array<number> | null
                   unit: string
                   state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
                   since: string | null
@@ -4587,7 +4587,7 @@ export type OperationResponses = {
                 }
                 inputs: Array<{
                   name: string
-                  value: number | boolean | string | Array<number> | unknown | null
+                  value: number | boolean | string | Array<number> | null
                   unit: string
                   state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
                   since: string | null
@@ -4712,7 +4712,7 @@ export type OperationResponses = {
           }
           inputs: Array<{
             name: string
-            value: number | boolean | string | Array<number> | unknown | null
+            value: number | boolean | string | Array<number> | null
             unit: string
             state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
             since: string | null
@@ -4760,7 +4760,7 @@ export type OperationResponses = {
           }
           inputs: Array<{
             name: string
-            value: number | boolean | string | Array<number> | unknown | null
+            value: number | boolean | string | Array<number> | null
             unit: string
             state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
             since: string | null
@@ -4808,7 +4808,7 @@ export type OperationResponses = {
           }
           inputs: Array<{
             name: string
-            value: number | boolean | string | Array<number> | unknown | null
+            value: number | boolean | string | Array<number> | null
             unit: string
             state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
             since: string | null
@@ -4825,7 +4825,7 @@ export type OperationResponses = {
     }>
     strip: Array<{
       name: string
-      value: number | boolean | string | Array<number> | unknown | null
+      value: number | boolean | string | Array<number> | null
       unit: string
       state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
       since: string | null
@@ -4851,7 +4851,7 @@ export type OperationResponses = {
         clause: string
         inputs: Array<{
           name: string
-          value: number | boolean | string | Array<number> | unknown | null
+          value: number | boolean | string | Array<number> | null
           unit: string
           state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
           since: string | null
@@ -4913,7 +4913,7 @@ export type OperationResponses = {
       corrects?: string
       derived_values: Array<{
         name: string
-        value: number | boolean | string | Array<number> | unknown | null
+        value: number | boolean | string | Array<number> | null
         unit: string
         state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
         since: string | null
@@ -4966,7 +4966,7 @@ export type OperationResponses = {
       clause: string
       inputs: Array<{
         name: string
-        value: number | boolean | string | Array<number> | unknown | null
+        value: number | boolean | string | Array<number> | null
         unit: string
         state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
         since: string | null
@@ -5072,7 +5072,7 @@ export type OperationResponses = {
           }
           inputs: Array<{
             name: string
-            value: number | boolean | string | Array<number> | unknown | null
+            value: number | boolean | string | Array<number> | null
             unit: string
             state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
             since: string | null
@@ -5120,7 +5120,7 @@ export type OperationResponses = {
           }
           inputs: Array<{
             name: string
-            value: number | boolean | string | Array<number> | unknown | null
+            value: number | boolean | string | Array<number> | null
             unit: string
             state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
             since: string | null
@@ -5168,7 +5168,7 @@ export type OperationResponses = {
           }
           inputs: Array<{
             name: string
-            value: number | boolean | string | Array<number> | unknown | null
+            value: number | boolean | string | Array<number> | null
             unit: string
             state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
             since: string | null
@@ -5185,7 +5185,7 @@ export type OperationResponses = {
     }>
     strip: Array<{
       name: string
-      value: number | boolean | string | Array<number> | unknown | null
+      value: number | boolean | string | Array<number> | null
       unit: string
       state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
       since: string | null
@@ -5242,7 +5242,7 @@ export type OperationResponses = {
             }
             inputs: Array<{
               name: string
-              value: number | boolean | string | Array<number> | unknown | null
+              value: number | boolean | string | Array<number> | null
               unit: string
               state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
               since: string | null
@@ -5290,7 +5290,7 @@ export type OperationResponses = {
             }
             inputs: Array<{
               name: string
-              value: number | boolean | string | Array<number> | unknown | null
+              value: number | boolean | string | Array<number> | null
               unit: string
               state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
               since: string | null
@@ -5338,7 +5338,7 @@ export type OperationResponses = {
             }
             inputs: Array<{
               name: string
-              value: number | boolean | string | Array<number> | unknown | null
+              value: number | boolean | string | Array<number> | null
               unit: string
               state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
               since: string | null
@@ -5465,7 +5465,7 @@ export type OperationResponses = {
       text: string
       inputs: Array<{
         name: string
-        value: number | boolean | string | Array<number> | unknown | null
+        value: number | boolean | string | Array<number> | null
         unit: string
         state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
         since: string | null
@@ -5493,7 +5493,7 @@ export type OperationResponses = {
     }>
     inputs: Array<{
       name: string
-      value: number | boolean | string | Array<number> | unknown | null
+      value: number | boolean | string | Array<number> | null
       unit: string
       state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
       since: string | null
@@ -5720,7 +5720,7 @@ export type OperationResponses = {
     series: Record<string, Array<[string, number | null, string]>>
     inputs: Array<{
       name: string
-      value: number | boolean | string | Array<number> | unknown | null
+      value: number | boolean | string | Array<number> | null
       unit: string
       state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
       since: string | null
@@ -5785,7 +5785,7 @@ export type OperationResponses = {
           }
           inputs: Array<{
             name: string
-            value: number | boolean | string | Array<number> | unknown | null
+            value: number | boolean | string | Array<number> | null
             unit: string
             state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
             since: string | null
@@ -5833,7 +5833,7 @@ export type OperationResponses = {
           }
           inputs: Array<{
             name: string
-            value: number | boolean | string | Array<number> | unknown | null
+            value: number | boolean | string | Array<number> | null
             unit: string
             state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
             since: string | null
@@ -5881,7 +5881,7 @@ export type OperationResponses = {
           }
           inputs: Array<{
             name: string
-            value: number | boolean | string | Array<number> | unknown | null
+            value: number | boolean | string | Array<number> | null
             unit: string
             state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
             since: string | null
@@ -6038,7 +6038,7 @@ export type OperationResponses = {
           }
           inputs: Array<{
             name: string
-            value: number | boolean | string | Array<number> | unknown | null
+            value: number | boolean | string | Array<number> | null
             unit: string
             state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
             since: string | null
@@ -6087,7 +6087,7 @@ export type OperationResponses = {
           }
           inputs: Array<{
             name: string
-            value: number | boolean | string | Array<number> | unknown | null
+            value: number | boolean | string | Array<number> | null
             unit: string
             state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
             since: string | null
@@ -6136,7 +6136,7 @@ export type OperationResponses = {
           }
           inputs: Array<{
             name: string
-            value: number | boolean | string | Array<number> | unknown | null
+            value: number | boolean | string | Array<number> | null
             unit: string
             state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
             since: string | null
