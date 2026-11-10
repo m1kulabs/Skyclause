@@ -190,6 +190,13 @@
       "when": 1794282192959,
       "tag": "0026_a-audit-log-indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1794286813724,
+      "tag": "0027_a-analytics-health",
+      "breakpoints": true
     }
   ]
 }
