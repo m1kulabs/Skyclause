@@ -185,3 +185,10 @@ describe('loadEnv', () => {
     )
   })
 })
+
+test('worker preserves optional staff addresses without requiring the auth secret', () => {
+  expect(loadEnv('worker', worker)).not.toHaveProperty('SKYCLAUSE_STAFF_EMAILS')
+  expect(loadEnv('worker', { ...worker, SKYCLAUSE_STAFF_EMAILS: 'a@example.org, b@example.org' })).toMatchObject({
+    SKYCLAUSE_STAFF_EMAILS: 'a@example.org, b@example.org'
+  })
+})

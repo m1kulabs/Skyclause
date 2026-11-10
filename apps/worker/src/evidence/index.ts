@@ -1,6 +1,7 @@
 import { loadEnv } from '@skyclause/config'
 import {
   draftEvidenceRequest,
+  handleOnce,
   inboundProject,
   inboundSender,
   isFlagEnabled,
@@ -50,52 +51,52 @@ export async function handleEvidenceMail(m: InboundMessage, o: EvidenceInboundOp
     return
   }
 
-  await withTenant({ orgId: target.orgId, principal: systemPrincipal(JOB) }, async (tx) => {
-    const drop = async (reason: Drop) => {
-      await recordAudit(tx, {
-        action: 'evidence_request.dropped',
-        target: { type: 'inbound_email', id: m.messageId },
-        projectId: target.projectId,
-        after: { reason }
-      })
-      log('INFO', 'inbound evidence mail dropped', { messageId: m.messageId, reason })
-    }
-    const pass = (verdict: string) => verdict === 'PASS'
-    const { spf, dkim, spam, virus } = m.verdicts
-    if (!(pass(spf) || pass(dkim)) || !pass(spam) || !pass(virus)) return drop('verdicts')
-    const sender = await inboundSender(tx, { orgId: target.orgId, projectId: target.projectId, address: m.from })
-    if (!sender) return drop('unknown_sender')
-    const line = m.text.split(/\r?\n/).find((text) => text.trim() !== '') ?? m.subject
-    const receivedAt = new Date(m.receivedAt)
-    const span = await evidenceSpanOf(tx, line, { receivedAt, timeZone: target.timeZone })
-    if (!span) return drop('no_span')
+  const ran = await withTenant({ orgId: target.orgId, principal: systemPrincipal(JOB) }, (tx) =>
+    handleOnce(tx, CONSUMER, { messageId: m.messageId }, async () => {
+      const drop = async (reason: Drop) => {
+        await recordAudit(tx, {
+          action: 'evidence_request.dropped',
+          target: { type: 'inbound_email', id: m.messageId },
+          projectId: target.projectId,
+          after: { reason }
+        })
+        log('INFO', 'inbound evidence mail dropped', { messageId: m.messageId, reason })
+      }
+      const pass = (verdict: string) => verdict === 'PASS'
+      const { spf, dkim, spam, virus } = m.verdicts
+      if (!(pass(spf) || pass(dkim)) || !pass(spam) || !pass(virus)) return drop('verdicts')
+      const sender = await inboundSender(tx, { orgId: target.orgId, projectId: target.projectId, address: m.from })
+      if (!sender) return drop('unknown_sender')
+      const line = m.text.split(/\r?\n/).find((text) => text.trim() !== '') ?? m.subject
+      const receivedAt = new Date(m.receivedAt)
+      const span = await evidenceSpanOf(tx, line, { receivedAt, timeZone: target.timeZone })
+      if (!span) return drop('no_span')
 
-    const subscriber = sender.kind === 'subscriber'
-    const id = subscriber ? sender.subscriberId : sender.accountId
-    const row = await draftEvidenceRequest(
-      tx,
-      {
-        projectId: target.projectId,
-        from: span.from,
-        to: span.to,
-        windowId: null,
-        callId: null,
-        requester: subscriber
-          ? { kind: 'subscriber', id, accountId: null, subscriberId: id }
-          : { kind: 'member', id, accountId: id, subscriberId: null },
-        via: 'email',
-        leavesOrg: subscriber,
-        replyChannel: subscriber ? 'email' : 'in_app',
-        receivedAt,
-        messageId: m.messageId
-      },
-      now()
-    )
-    log('INFO', row ? 'inbound evidence request drafted' : 'inbound evidence request already made', {
-      messageId: m.messageId,
-      evidenceRequestId: row?.id ?? null
+      const subscriber = sender.kind === 'subscriber'
+      const id = subscriber ? sender.subscriberId : sender.accountId
+      const row = await draftEvidenceRequest(
+        tx,
+        {
+          projectId: target.projectId,
+          from: span.from,
+          to: span.to,
+          windowId: null,
+          callId: null,
+          requester: subscriber
+            ? { kind: 'subscriber', id, accountId: null, subscriberId: id }
+            : { kind: 'member', id, accountId: id, subscriberId: null },
+          via: 'email',
+          leavesOrg: subscriber,
+          replyChannel: subscriber ? 'email' : 'in_app',
+          receivedAt,
+          messageId: m.messageId
+        },
+        now()
+      )
+      log('INFO', 'inbound evidence request drafted', { messageId: m.messageId, evidenceRequestId: row.id })
     })
-  })
+  )
+  if (!ran) log('INFO', 'inbound evidence mail already handled', { messageId: m.messageId })
 }
 
 /** c-evidence's part: registers the `evidence` inbound consumer on `register` (the delivery router's `onInbound`). */

@@ -20,5 +20,8 @@
     "drizzle-orm": "0.45.4",
     "hono": "4.13.16",
     "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "ical.js": "2.2.1"
   }
 }

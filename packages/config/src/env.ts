@@ -97,6 +97,7 @@ const schemas = {
     .superRefine(multiNeedsOrigins),
   worker: base
     .extend({
+      SKYCLAUSE_STAFF_EMAILS: z.string().optional(),
       WORKER_URL: z.url(),
       WORKER_INVOKER_SA: z.email(),
       PORT: z.coerce.number().int().positive().default(8080),

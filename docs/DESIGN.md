@@ -748,7 +748,7 @@ URL:https://skyclause.m1ku.tech/c/{callId}
 END:VEVENT
 ```
 
-Call entries keep the first sent call ID in their `UID` and raise `SEQUENCE` on supersession; surge-night entries use `night-{id}@skyclause.m1ku.tech`.
+Call entries keep the first sent call ID in their `UID` and raise `SEQUENCE` on each change; surge-night entries use `night-{id}@skyclause.m1ku.tech`. A zero-length commute wave has no `DTEND`, since RFC 5545 requires `DTEND` to be later than `DTSTART`.
 
 ## Voice and content
 
