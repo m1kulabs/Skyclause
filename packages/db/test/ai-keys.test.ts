@@ -46,6 +46,7 @@ async function key(over: Record<string, unknown> = {}) {
       declaredTier: 'paid',
       priority: 1,
       enabled: true,
+      lastTestOk: true,
       ...over
     } as never)
   )
@@ -92,5 +93,16 @@ describe('loadAiKeyRows', () => {
     const row = await key()
     await inOrg((tx) => updateAiKey(tx, row.id, { enabled: false }))
     expect(await inOrg((tx) => loadAiKeyRows(tx, { orgId, accountId: null }))).toMatchObject({ orgKeys: [] })
+  })
+
+  test('enabled keys with failed or missing tests cannot enter either chain', async () => {
+    await key({ lastTestOk: false })
+    await key({ lastTestOk: null })
+    await key({ ownerType: 'account', accountId, lastTestOk: false })
+    await key({ ownerType: 'account', accountId, lastTestOk: null })
+    expect(await inOrg((tx) => loadAiKeyRows(tx, { orgId, accountId }))).toMatchObject({
+      orgKeys: [],
+      accountKeys: []
+    })
   })
 })

@@ -14,7 +14,7 @@ function entryOf(row: AiKeyRow): ChainRows['orgKeys'][number] {
   return { provider: row.provider, model: row.model, keyId: row.id, declaredTier: row.declaredTier }
 }
 
-/** The flags and enabled, live keys behind `ModelResolver.chain` (org keys by priority, then the account's). */
+/** The flags and enabled, passing, live keys behind `ModelResolver.chain`. */
 export async function loadAiKeyRows(tx: Tx, o: { orgId: string; accountId: string | null }): Promise<ChainRows> {
   const [org] = await tx
     .select({ allowMemberAiKeys: organization.allowMemberAiKeys, aiFallbackEnabled: organization.aiFallbackEnabled })
@@ -24,7 +24,15 @@ export async function loadAiKeyRows(tx: Tx, o: { orgId: string; accountId: strin
   const orgRows = await tx
     .select()
     .from(aiKey)
-    .where(and(eq(aiKey.orgId, o.orgId), eq(aiKey.ownerType, 'organisation'), eq(aiKey.enabled, true), live(aiKey)))
+    .where(
+      and(
+        eq(aiKey.orgId, o.orgId),
+        eq(aiKey.ownerType, 'organisation'),
+        eq(aiKey.enabled, true),
+        eq(aiKey.lastTestOk, true),
+        live(aiKey)
+      )
+    )
     .orderBy(asc(aiKey.priority), asc(aiKey.createdAt))
   const accountRows =
     o.accountId === null
@@ -38,6 +46,7 @@ export async function loadAiKeyRows(tx: Tx, o: { orgId: string; accountId: strin
               eq(aiKey.ownerType, 'account'),
               eq(aiKey.accountId, o.accountId),
               eq(aiKey.enabled, true),
+              eq(aiKey.lastTestOk, true),
               live(aiKey)
             )
           )
