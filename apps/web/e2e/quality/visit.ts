@@ -12,11 +12,13 @@ export function expectedStatus(route: CrawlRoute, role: Role) {
   if (route.group === 'app' && route.path.startsWith('/account/')) {
     if (!hasSession(role) || (role === 'guest' && route.path !== '/account/appearance')) return 404
   }
+  if (route.path.startsWith('/[org]/[project]/settings') && role !== 'Owner' && role !== 'Admin') return 404
   return route.status
 }
 
 export async function visit(page: Page, route: CrawlRoute, role: Role = 'signed out'): Promise<Finding[]> {
-  const response = await page.goto(route.path)
+  const path = route.path.replace('[org]', 'test-org').replace('[project]', 'test-project')
+  const response = await page.goto(path)
   if (route.path === '/connect' && (!hasSession(role) || role === 'guest')) {
     await expect(page).toHaveURL(/\/sign-up$/)
     await expect(page.locator('[data-connect-page]')).toHaveCount(0)

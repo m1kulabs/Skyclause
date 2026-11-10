@@ -6,9 +6,16 @@ import { KNOWN_GAPS } from './known-gaps'
 import { sessions, signedOut, type Session } from './roles'
 import { builtRoutes, type CrawlRoute } from './routes'
 import { visit } from './visit'
+import { prepareCrawl } from '../project-ui/fixtures'
 
 const PLANTED_FAILURE = '/quality-planted/unlabelled-input'
 const PUBLIC_GROUPS = new Set(['marketing', 'public'])
+const PROJECT_UI_ROUTES = new Set([
+  '/[org]/[project]',
+  '/[org]/[project]/settings',
+  '/[org]/[project]/settings/rota',
+  '/[org]/[project]/settings/share'
+])
 
 interface Variant {
   theme: 'dark' | 'light' | 'high contrast'
@@ -39,7 +46,9 @@ function note(info: TestInfo, type: string, description: string) {
 async function crawl(page: Page, route: CrawlRoute, session: Session, info: TestInfo): Promise<Located[]> {
   const jsOn = info.project.use.javaScriptEnabled !== false
   const found: Located[] = []
-  if (session.signIn) await session.signIn(page)
+  const projectUiRoute = PROJECT_UI_ROUTES.has(route.path)
+  if (projectUiRoute) await prepareCrawl(page, session.role)
+  else if (session.signIn) await session.signIn(page)
   else await signedOut(page)
   for (const variant of jsOn ? VARIANTS : VARIANTS.slice(0, 1)) {
     await page.emulateMedia({
@@ -82,7 +91,10 @@ for (const route of builtRoutes()) {
       const jsOn = info.project.use.javaScriptEnabled !== false
       test.slow(jsOn, 'One case runs five complete axe audits plus the reduced-motion check')
       test.skip(!jsOn && !(route.group && PUBLIC_GROUPS.has(route.group)), 'JavaScript off covers public pages only')
-      test.fixme(route.dynamic, `${route.path} needs param fixtures with stubApi bodies (#95)`)
+      test.fixme(
+        route.dynamic && !PROJECT_UI_ROUTES.has(route.path),
+        `${route.path} needs param fixtures with stubApi bodies (#95)`
+      )
       const findings = await crawl(page, route, session, info)
 
       if (route.path === PLANTED_FAILURE) {

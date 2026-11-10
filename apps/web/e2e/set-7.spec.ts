@@ -4,6 +4,7 @@ import type { Page } from '@playwright/test'
 import { t } from './palette/messages'
 import { expectUnclippedText } from './harness/expect-unclipped-text'
 import { windowUndoCase, windowUnsavedCase } from './windows/set7-cases'
+import { prepareSettings, projectFixtureData, projectPath } from './project-ui/fixtures'
 
 const route = '/_test/set-7'
 const name = t('set7.harness.name')
@@ -229,11 +230,8 @@ for (const title of [
   'delete account — #108 a-settings-pages',
   'revoke API key — #105 a-keys-ui',
   'revoke AI key — #105 a-keys-ui',
-  'revoke share link — #174 b-project-ui',
-  'archive project — #174 b-project-ui',
   'remove member — #104 a-members-ui',
   'lower role — #104 a-members-ui',
-  'unsaved rota — #104 a-members-ui',
   'remove subscriber — #169 c-channels-ui',
   'delete clause sheet draft — #144'
 ]) {
@@ -245,3 +243,56 @@ test('notifications panel removes a registered device immediately by keyboard �
 })
 test('cancel window — #143 b-windows-ui', async ({ page }) => windowUndoCase(page))
 test('unsaved window warns before leaving — #143 b-windows-ui', async ({ page }) => windowUnsavedCase(page))
+
+test('archive project can be undone within 10 seconds — #174 b-project-ui', async ({ page }) => {
+  await page.clock.install({ time: new Date(projectFixtureData.capturedAt) })
+  await prepareSettings(page, 'admin')
+  let archiveRequests = 0
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && /\/api\/projects\/[^/]+\/archive$/.test(request.url())) archiveRequests++
+  })
+  await page.goto(`${projectPath}/settings`)
+  await page.clock.pauseAt(new Date('2026-11-05T13:12:30.000Z'))
+  const panel = page.locator('[data-project-settings-general]')
+  await panel.getByRole('button', { name: 'Archive project' }).click()
+  await expect(panel.getByRole('status').filter({ hasText: 'Project will be archived' })).toBeVisible()
+  await page.clock.runFor(9_000)
+  await panel.getByRole('button', { name: 'Undo' }).click()
+  await page.clock.runFor(10_001)
+  expect(archiveRequests).toBe(0)
+
+  await panel.getByRole('button', { name: 'Archive project' }).click()
+  await page.clock.runFor(10_001)
+  await expect(panel.getByRole('button', { name: 'Restore project' })).toBeVisible()
+  expect(archiveRequests).toBe(1)
+  await panel.getByRole('button', { name: 'Restore project' }).click()
+  await expect(panel.getByRole('button', { name: 'Archive project' })).toBeVisible()
+})
+
+test('revoking a share link asks for confirmation and names the link — #174 b-project-ui', async ({ page }) => {
+  await prepareSettings(page, 'admin')
+  await page.goto(`${projectPath}/settings/share`)
+  const share = page.locator('[data-project-settings-share]')
+  await share.getByRole('button', { name: 'Revoke' }).click()
+  const dialog = page.getByRole('alertdialog')
+  await expect(dialog.getByRole('heading')).toContainText('share-link-one')
+  await expect(dialog.getByRole('button', { name: 'Revoke link' })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Revoke link' }).click()
+  await expect(share).toContainText('Revoked')
+})
+
+test('closing the tab with an unsaved rota prompts — #174 b-project-ui', async ({ page }) => {
+  await prepareSettings(page, 'admin')
+  await page.goto(`${projectPath}/settings/rota`)
+  const rota = page.locator('[data-project-settings-rota]')
+  await rota.getByRole('button', { name: 'Add a shift' }).click()
+  await rota.locator('[data-rota-editor] #rota-start').fill('14:00')
+  const prompt = page.waitForEvent('dialog')
+  const reload = page.evaluate(() => window.location.reload())
+  const dialog = await prompt
+  expect(dialog.type()).toBe('beforeunload')
+  await dialog.dismiss()
+  await reload
+  await expect(page).toHaveURL(`${projectPath}/settings/rota`)
+  await expect(page.locator('[data-project-settings-rota]')).toBeVisible()
+})

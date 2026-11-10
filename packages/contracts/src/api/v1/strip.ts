@@ -11,7 +11,8 @@ const ProjectStrip = z.object({
   inputs: z.array(InputValue),
   packs: z.array(PackState),
   verdicts: z.array(Verdicts),
-  nights: z.array(Night)
+  nights: z.array(Night),
+  replay: z.object({ source: z.string(), captured_at: Instant }).optional()
 })
 
 export const getProjectStrip = createRoute({

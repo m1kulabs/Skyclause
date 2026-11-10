@@ -32067,11 +32067,15 @@
                 "properties": {
                   "enabled": {
                     "type": "boolean"
+                  },
+                  "sla_s": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "exclusiveMinimum": 0
                   }
-                },
-                "required": [
-                  "enabled"
-                ]
+                }
               }
             }
           }
@@ -47887,6 +47891,22 @@
                           "exit_end"
                         ]
                       }
+                    },
+                    "replay": {
+                      "type": "object",
+                      "properties": {
+                        "source": {
+                          "type": "string"
+                        },
+                        "captured_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "source",
+                        "captured_at"
+                      ]
                     }
                   },
                   "required": [
@@ -56126,6 +56146,9 @@
                               "removed"
                             ]
                           },
+                          "at_risk": {
+                            "type": "boolean"
+                          },
                           "recurrence": {
                             "type": [
                               "object",
@@ -56722,6 +56745,9 @@
                         "hidden_pending_review",
                         "removed"
                       ]
+                    },
+                    "at_risk": {
+                      "type": "boolean"
                     },
                     "recurrence": {
                       "type": [
@@ -57341,6 +57367,9 @@
                         "removed"
                       ]
                     },
+                    "at_risk": {
+                      "type": "boolean"
+                    },
                     "recurrence": {
                       "type": [
                         "object",
@@ -57873,6 +57902,9 @@
                         "hidden_pending_review",
                         "removed"
                       ]
+                    },
+                    "at_risk": {
+                      "type": "boolean"
                     },
                     "recurrence": {
                       "type": [
