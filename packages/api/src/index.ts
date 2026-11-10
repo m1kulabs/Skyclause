@@ -60,6 +60,14 @@ export {
   type UpdateProjectInput
 } from './services/projects'
 export { createRun, getRun, listRuns, type RunView } from './services/runs'
+export {
+  createOrganisationTx,
+  listMembershipsTx,
+  renameOrganisationTx,
+  type CreateOrganisationInput,
+  type MembershipSummaryView,
+  type OrganisationView
+} from './services/organisations'
 export { sseResponse, type SseMessage, type SseOptions } from './sse'
 export { inspectMemberToken } from './services/members'
 export { createRotaService, nextApprovers, onDuty, ROTA_TEMPLATES, ROTA_TIME_ZONE } from './services/rota'

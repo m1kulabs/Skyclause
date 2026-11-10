@@ -43,6 +43,12 @@ export async function visit(page: Page, route: CrawlRoute, role: Role = 'signed 
     await expect(page.locator('main[aria-labelledby="oauth-consent-title"]')).toHaveCount(0)
     return []
   }
+  if (route.path === '/new' && (!hasSession(role) || role === 'guest')) {
+    await expect(page).toHaveURL(/\/sign-up$/)
+    await expect(page.locator('form')).toHaveCount(0)
+    // #98 owns sign-up; the gate is testable before that destination is built.
+    return []
+  }
   await expectZonedTimes(page)
   const expected = expectedStatus(route, role)
   // Firefox revalidates a static page it has cached; 304 is its 200.

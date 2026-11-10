@@ -16,6 +16,7 @@ import { ledgerHandlers } from './ledger'
 import { notificationHandlers } from './notifications'
 import { oauthHandlers } from './oauth'
 import { onboardingHandlers } from './onboarding'
+import { organisationHandlers } from './organisations'
 import { projectHandlers } from './projects'
 import { replyHandlers } from './replies'
 import { runHandlers } from './runs'
@@ -68,5 +69,6 @@ export const HANDLERS: Handlers = {
   ...dataRightsHandlers, // a-data-rights
   ...memberHandlers, // a-members-api
   ...rotaHandlers, // a-members-api
-  ...oauthHandlers // e-mcp-auth
+  ...oauthHandlers, // e-mcp-auth
+  ...organisationHandlers // a-org-projects
 }

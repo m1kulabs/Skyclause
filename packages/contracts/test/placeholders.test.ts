@@ -8,7 +8,6 @@ const packages: Array<{ name: string; owners: Record<string, string[]> }> = [
   {
     name: 'db',
     owners: {
-      'a-org-projects': ['createOrganisation'],
       'd-guest-rules': ['budgetGate'],
       'd-org-api': ['listenEvents']
     }
