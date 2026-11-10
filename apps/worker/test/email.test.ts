@@ -7,6 +7,7 @@ const base = {
   APP_ENV: 'production' as const,
   WORKER_URL: 'https://worker-413187272599.asia-southeast1.run.app',
   WORKER_INVOKER_SA: 'skyclause-invoker@skyclause.iam.gserviceaccount.com',
+  EMAIL_HASH_KEY: 'e'.repeat(48),
   PORT: 8080
 }
 

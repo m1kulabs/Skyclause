@@ -4,7 +4,9 @@ import { loadEnv } from '@skyclause/config'
 const worker = {
   APP_ENV: 'production',
   WORKER_URL: 'https://worker-413187272599.asia-southeast1.run.app',
-  WORKER_INVOKER_SA: 'worker-invoker@skyclause.iam.gserviceaccount.com'
+  WORKER_INVOKER_SA: 'worker-invoker@skyclause.iam.gserviceaccount.com',
+  // Shaped like the generated secret, not the real one; the sender hashes addresses with it (#158).
+  EMAIL_HASH_KEY: 'e'.repeat(48)
 }
 
 // IP_HASH_KEY, EMAIL_HASH_KEY and BETTER_AUTH_SECRET are required on web; shaped like the generated secrets, not the real ones.
@@ -60,6 +62,13 @@ describe('loadEnv', () => {
     INBOUND_BUCKET: 'skyclause-production-inbound-776566309118',
     INBOUND_SNS_TOPIC_ARN: 'arn:aws:sns:ap-southeast-2:776566309118:skyclause-production-inbound'
   }
+
+  test('the worker needs EMAIL_HASH_KEY and reads the notice origins', () => {
+    const { EMAIL_HASH_KEY: _, ...missing } = worker
+    expect(() => loadEnv('worker', missing)).toThrow(/EMAIL_HASH_KEY/)
+    const links = { APP_ORIGIN: origins.APP_ORIGIN, MARKETING_ORIGIN: origins.MARKETING_ORIGIN }
+    expect(loadEnv('worker', { ...worker, ...links })).toMatchObject(links)
+  })
 
   test('the email variables are optional until gate 4B, then read together', () => {
     expect(loadEnv('worker', worker)).not.toHaveProperty('SES_REGION')
@@ -164,5 +173,12 @@ describe('loadEnv', () => {
     expect(loadEnv('web', web).SKYCLAUSE_STAFF_EMAILS).toBeUndefined()
     const staff = 'a@example.org,b@example.org'
     expect(loadEnv('web', { ...web, SKYCLAUSE_STAFF_EMAILS: staff }).SKYCLAUSE_STAFF_EMAILS).toBe(staff)
+  })
+})
+
+test('worker preserves optional staff addresses without requiring the auth secret', () => {
+  expect(loadEnv('worker', worker)).not.toHaveProperty('SKYCLAUSE_STAFF_EMAILS')
+  expect(loadEnv('worker', { ...worker, SKYCLAUSE_STAFF_EMAILS: 'a@example.org, b@example.org' })).toMatchObject({
+    SKYCLAUSE_STAFF_EMAILS: 'a@example.org, b@example.org'
   })
 })

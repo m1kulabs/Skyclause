@@ -19,6 +19,7 @@ const config: NextConfig = {
     '@skyclause/config',
     '@skyclause/contracts',
     '@skyclause/db',
+    '@skyclause/delivery',
     '@skyclause/i18n',
     '@skyclause/auth'
   ],

@@ -5,6 +5,11 @@ import { teachingLine } from './i18n'
 export type Decision = Partial<Omit<ApprovalBody['calls'][number], 'call_id'>>
 export type Decisions = Record<string, Decision>
 
+/** Whether a membership role may approve bundles (PRD roles: Approver, Admin and Owner). */
+export function approves(role: string | null): boolean {
+  return role !== null && ['approver', 'admin', 'owner'].includes(role)
+}
+
 export function orderedCalls<T extends CallView>(calls: readonly T[]): T[] {
   return [...calls].sort((a, b) => Number(a.agrees) - Number(b.agrees))
 }

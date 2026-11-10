@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "notification_unread_key" ON "notification" USING btree ("org_id","account_id","kind","ref_type","ref_id","recovered") WHERE "notification"."read_at" IS NULL;

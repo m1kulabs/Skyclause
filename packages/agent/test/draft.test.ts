@@ -53,6 +53,16 @@ describe('draftBundle', () => {
     expect(result.usage).toMatchObject({ inputTokens: 2400, outputTokens: 600 })
   })
 
+  test('refuses a link or an unquotable number in the reason, then repairs', async () => {
+    const bad = replayBundle()
+    bad.calls[0]!.reason = 'Storm confirmed, 41.5 mm; details at https://evil.example/x.'
+    const model = scripted([JSON.stringify(bad), valid])
+    const result = await draftBundle(replayInput(), { chain: [entry()], modelFor: async () => model })
+    expect(result).toMatchObject({ ok: true, bundle: replayBundle() })
+    expect(promptText(model, 1)).toContain('.reason: 41.5 is not a quotable number')
+    expect(promptText(model, 1)).toContain('.reason: link https://evil.example/x')
+  })
+
   test('accepts a repaired draft', async () => {
     const result = await draftBundle(replayInput(), {
       chain: [entry()],

@@ -227,6 +227,27 @@ export async function prepare(
   }
   await asPage(page, principal)
   if (options.clock !== false) await page.clock.setFixedTime(now)
+  await stubReads(
+    page,
+    bundle,
+    bundle.calls.map((call) => callDouble(call.id, call)),
+    options
+  )
+  return bundle
+}
+
+/**
+ * The bundle page's client reads, answered with `bundle` and its `calls` (each call's detail answers its explanation
+ * too) for a `role` member of `org`, plus the run, strip, preferences, an idle stream and an approval.
+ */
+export async function stubReads(
+  page: Page,
+  bundle: BundleView,
+  calls: CallDetail[],
+  options: { role?: Role; guest?: boolean; shortcuts?: boolean; org?: { id: string; slug: string } } = {}
+) {
+  const role = options.role ?? 'approver'
+  const org = options.org ?? { id: 'test-org-id', slug: 'test-org' }
   await stubApi(page, 'getBundle', bundle, { registry: bundleOperations })
   await stubApi(
     page,
@@ -243,12 +264,12 @@ export async function prepare(
         : [
             {
               id: 'test-membership',
-              org_id: 'test-org-id',
+              org_id: org.id,
               account_id: 'test-account',
               role,
               reads_malay: true,
               org_name: 'Test organisation',
-              org_slug: 'test-org'
+              org_slug: org.slug
             }
           ],
       next_cursor: null
@@ -259,8 +280,8 @@ export async function prepare(
     page,
     'getRun',
     {
-      id: ids.run,
-      project_id: ids.project,
+      id: bundle.run_id,
+      project_id: bundle.project_id,
       pack: 'sky',
       trigger: 'crossing',
       dedupe_key: 'test-run',
@@ -280,7 +301,7 @@ export async function prepare(
     page,
     'getProjectStrip',
     {
-      project_id: ids.project,
+      project_id: bundle.project_id,
       range: { from: '2026-11-02T06:00:00Z', to: '2026-11-02T08:00:00Z' },
       window: null,
       series: stripSeries,
@@ -291,15 +312,14 @@ export async function prepare(
     },
     { registry: bundleOperations }
   )
-  for (const call of bundle.calls) {
-    const detail = callDouble(call.id, call)
+  for (const detail of calls) {
     await stubApi(page, 'getCall', detail, {
-      registry: { ...bundleOperations, getCall: { ...bundleOperations.getCall, path: `/v1/calls/${call.id}` } }
+      registry: { ...bundleOperations, getCall: { ...bundleOperations.getCall, path: `/v1/calls/${detail.id}` } }
     })
     await stubApi(page, 'getCallExplanation', detail, {
       registry: {
         ...bundleOperations,
-        getCallExplanation: { ...bundleOperations.getCallExplanation, path: `/v1/calls/${call.id}/explanation` }
+        getCallExplanation: { ...bundleOperations.getCallExplanation, path: `/v1/calls/${detail.id}/explanation` }
       }
     })
   }
@@ -309,11 +329,10 @@ export async function prepare(
   await stubApi(page, 'approveBundle', { ...bundle, state: 'approved', approved_by: 'test-account' } satisfies Bundle, {
     registry: bundleOperations
   })
-  return bundle
 }
 
-export async function open(page: Page) {
-  await page.goto(path)
+export async function open(page: Page, url = path) {
+  await page.goto(url)
   await page.locator('.bundle-call-list, .bundle-trace').first().waitFor()
 }
 

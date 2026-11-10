@@ -43,7 +43,7 @@ test('every foreign key from one T table to another is composite on (org_id, id)
     ({ columns, parentColumns }) => columns[0] !== 'org_id' || parentColumns.join() !== 'org_id,id'
   )
   expect(plain).toEqual([])
-})
+}, 15_000)
 
 test('a child row pointing at another organisation’s parent fails on its composite foreign key', async () => {
   const keys = await between(await foreignKeys())

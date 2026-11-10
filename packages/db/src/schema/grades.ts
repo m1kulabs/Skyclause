@@ -1,15 +1,32 @@
 import { sql } from 'drizzle-orm'
-import { bigint, boolean, check, doublePrecision, integer, jsonb, text, unique, uuid } from 'drizzle-orm/pg-core'
+import {
+  bigint,
+  boolean,
+  check,
+  date,
+  doublePrecision,
+  integer,
+  jsonb,
+  text,
+  unique,
+  uniqueIndex,
+  uuid
+} from 'drizzle-orm/pg-core'
 import { sheetVersion } from './clauses'
 import { id, instant, orgKey, sameOrg, tenantTable, timestamps } from './columns'
-import { evidenceVia, gradeOutcome, mode, replyChannel } from './enums'
+import { subscriber } from './delivery'
+import { evidenceRequesterKind, evidenceVia, gradeOutcome, mode, replyChannel } from './enums'
 import { pack, project } from './project'
 import { call } from './runs'
 import { night, window } from './windows'
 
 // TRD entities and #79 §3 rows for `c-grades`, `c-evidence`, `c-analysis-api` and `c-ledger-chain`. All T.
 
-/** A live call's or night's grade (`c-grades`); append-only. P through `public_grade`. */
+/**
+ * A live call's, window's or night's grade (`c-grades`); append-only. P through `public_grade`. A Sky grade names its
+ * call, or only its window when the shadow verdict fired and no call was drafted (ANL-2); a Crowd grade names its
+ * night. One grade per call, per callless window and per night: the partial unique indexes make re-runs no-ops.
+ */
 export const grade = tenantTable(
   'grade',
   {
@@ -27,6 +44,20 @@ export const grade = tenantTable(
     noCall: boolean('no_call').notNull(),
     agrees: boolean('agrees').notNull(),
     staleInputs: boolean('stale_inputs').notNull(),
+    // The window's start or the night's date, in the project's time zone.
+    localDate: date('local_date').notNull(),
+    // Crowd: the night's actual exits and the forecast graded against, as it stood before the night. `forecast` has
+    // no `(org_id, id)` key to point a composite foreign key at; RLS keeps the read in the organisation.
+    actual: doublePrecision('actual'),
+    forecastId: uuid('forecast_id'),
+    bandLow: doublePrecision('band_low'),
+    bandHigh: doublePrecision('band_high'),
+    // What the grade read: the observation's readings, or the exits and baseline readings. Partitioned `reading`
+    // can't be a foreign key target by `id` alone.
+    readingIds: uuid('reading_ids')
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
     createdAt: instant('created_at').notNull().defaultNow()
   },
   (self) => [
@@ -36,11 +67,37 @@ export const grade = tenantTable(
     sameOrg('grade_night', self, self.nightId, night, true),
     sameOrg('grade_window', self, self.windowId, window, true),
     sameOrg('grade_sheet_version', self, self.sheetVersionId, sheetVersion),
-    check('grade_call_or_night', sql`num_nonnulls(${self.callId}, ${self.nightId}) = 1`)
+    check(
+      'grade_call_or_night',
+      sql`num_nonnulls(${self.callId}, ${self.nightId}) = 1 OR (${self.callId} IS NULL AND ${self.nightId} IS NULL AND ${self.windowId} IS NOT NULL)`
+    ),
+    uniqueIndex('grade_call_id_key')
+      .on(self.callId)
+      .where(sql`${self.callId} IS NOT NULL`),
+    uniqueIndex('grade_night_id_key')
+      .on(self.nightId)
+      .where(sql`${self.nightId} IS NOT NULL`),
+    uniqueIndex('grade_window_id_key')
+      .on(self.windowId)
+      .where(sql`${self.callId} IS NULL AND ${self.nightId} IS NULL`)
   ]
 )
 
-/** A grade that needs a person's explanation (D26); unlike its grade, the explanation stays editable. */
+/** Why a grade needs a person (ANL-2, ANL-4, TRD grading). */
+export const REVIEW_REASONS = [
+  'miss',
+  'false_alarm',
+  'expired_above_normal',
+  'out_of_band',
+  'unlisted_surge',
+  'no_call'
+] as const
+export type ReviewReason = (typeof REVIEW_REASONS)[number]
+
+/**
+ * A grade that needs a person's explanation (D26), one per grade. Unlike its grade, the explanation stays editable,
+ * and only it: migration `c-grades-review-guard` grants `app` and `system` UPDATE on the explanation columns alone.
+ */
 export const reviewItem = tenantTable(
   'review_item',
   {
@@ -48,12 +105,28 @@ export const reviewItem = tenantTable(
     gradeId: uuid('grade_id').notNull().unique(),
     state: text('state').notNull().default('open'),
     explanation: text('explanation'),
+    reasons: text('reasons')
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    explainedBy: uuid('explained_by'),
+    explainedAt: instant('explained_at'),
     ...timestamps()
   },
-  (self) => [sameOrg('review_item_grade', self, self.gradeId, grade, true)]
+  (self) => [
+    sameOrg('review_item_grade', self, self.gradeId, grade, true),
+    check(
+      'review_item_reasons',
+      sql`${self.reasons} <@ ARRAY[${sql.raw(REVIEW_REASONS.map((r) => `'${r}'`).join(', '))}]::text[]`
+    )
+  ]
 )
 
-/** An evidence request (LED-6); `span` is its time range. */
+/**
+ * An evidence request (LED-6); `span` is its time range. `c-evidence` (#159) adds who asked (`requester_kind` with
+ * `account_id` or `subscriber_id`; `requester` holds that ID, or the share link's), the SES `message_id` of an emailed
+ * request (at most one request per message), and the pack assembled at drafting with its `canonicalHash`.
+ */
 export const evidenceRequest = tenantTable(
   'evidence_request',
   {
@@ -62,11 +135,17 @@ export const evidenceRequest = tenantTable(
     spanFrom: instant('span_from').notNull(),
     spanTo: instant('span_to').notNull(),
     requester: text('requester').notNull(),
+    requesterKind: evidenceRequesterKind('requester_kind').notNull(),
+    accountId: uuid('account_id'),
+    subscriberId: uuid('subscriber_id'),
+    messageId: text('message_id').unique(),
     callId: uuid('call_id'),
     via: evidenceVia('via').notNull(),
     leavesOrg: boolean('leaves_org').notNull().default(false),
     replyChannel: replyChannel('reply_channel'),
     status: text('status').notNull().default('received'),
+    pack: jsonb('pack'),
+    packHash: text('pack_hash'),
     receivedAt: instant('received_at').notNull().defaultNow(),
     draftedAt: instant('drafted_at'),
     approvedAt: instant('approved_at'),
@@ -76,24 +155,53 @@ export const evidenceRequest = tenantTable(
   (self) => [
     orgKey('evidence_request', self),
     sameOrg('evidence_request_project', self, self.projectId, project, true),
-    sameOrg('evidence_request_call', self, self.callId, call)
+    sameOrg('evidence_request_call', self, self.callId, call),
+    sameOrg('evidence_request_subscriber', self, self.subscriberId, subscriber, true),
+    check(
+      'evidence_request_subscriber_kind',
+      sql`(${self.requesterKind} = 'subscriber') = (${self.subscriberId} IS NOT NULL)`
+    ),
+    // LED-6: received ≤ drafted ≤ approved ≤ replied, pairwise, so a step that hasn't happened or doesn't apply (null)
+    // is skipped; approval and reply need a draft.
+    check(
+      'evidence_request_times',
+      sql`${self.draftedAt} >= ${self.receivedAt} AND ${self.approvedAt} >= ${self.draftedAt} AND ${self.repliedAt} >= ${self.receivedAt} AND ${self.repliedAt} >= ${self.draftedAt} AND ${self.repliedAt} >= ${self.approvedAt} AND (${self.approvedAt} IS NULL OR ${self.draftedAt} IS NOT NULL) AND (${self.repliedAt} IS NULL OR ${self.draftedAt} IS NOT NULL)`
+    )
   ]
 )
 
-/** A computed analysis figure with its Wilson interval (`c-analysis-api`). */
+/**
+ * A figure the `analysis-materialise` job computed from `grade` and the call and evidence times (`c-analysis-api`,
+ * #162): per project, pack (null: evidence minutes, which no pack owns), clause (null: the whole pack) and period
+ * (`7d`, `30d`, `90d`, `all`, or `day` for one date of the series), over the project-local dates `range_from` to
+ * `range_to`. A rate keeps `x` of `n` and its Wilson interval; a quantile keeps `value` and the `samples` it was taken
+ * over, so the roll-up can pool projects. n = 0 leaves value, low and high null.
+ */
 export const analysisMetric = tenantTable(
   'analysis_metric',
   {
     id: id(),
     projectId: uuid('project_id').notNull(),
+    pack: pack('pack'),
+    clause: text('clause'),
+    period: text('period').notNull(),
     metric: text('metric').notNull(),
-    x: integer('x').notNull(),
+    x: integer('x'),
     n: integer('n').notNull(),
-    low: doublePrecision('low').notNull(),
-    high: doublePrecision('high').notNull(),
+    value: doublePrecision('value'),
+    low: doublePrecision('low'),
+    high: doublePrecision('high'),
+    samples: doublePrecision('samples').array(),
+    rangeFrom: date('range_from').notNull(),
+    rangeTo: date('range_to').notNull(),
     computedAt: instant('computed_at').notNull().defaultNow()
   },
-  (self) => [sameOrg('analysis_metric_project', self, self.projectId, project, true)]
+  (self) => [
+    sameOrg('analysis_metric_project', self, self.projectId, project, true),
+    unique('analysis_metric_figure_key')
+      .on(self.projectId, self.period, self.pack, self.clause, self.metric, self.rangeFrom)
+      .nullsNotDistinct()
+  ]
 )
 
 /** The per-project hash chain (TRD, D11); append-only, `seq` gapless per project. P through `public_ledger_entry`. */

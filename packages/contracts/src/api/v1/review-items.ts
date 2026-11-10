@@ -3,11 +3,20 @@ import {
   NonEmptyIdParams as IdParams,
   ProblemResponses
 } from '../common'
-
+import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Grade, Page, PageQuery, ReviewItem } from '../shared'
+import { Grade, Instant, Page, PageQuery, ReviewItem } from '../shared'
 
-const ReviewItemView = ReviewItem.extend({ grade: Grade })
+// #161: why a grade needs a person (ANL-2, ANL-4; TRD grading).
+const ReviewReason = z.enum(['miss', 'false_alarm', 'expired_above_normal', 'out_of_band', 'unlisted_surge', 'no_call'])
+// #161: the item's reasons, who explained it and when, and when it opened.
+const ReviewItemView = ReviewItem.extend({
+  grade: Grade,
+  reasons: z.array(ReviewReason).optional(),
+  explained_by: z.string().nullable().optional(),
+  explained_at: Instant.nullable().optional(),
+  opened_at: Instant.optional()
+})
 // ANL-2: explanations are editable; the shared record leaves state values to the owning ticket.
 const ReviewItemPatch = ReviewItem.pick({ state: true, explanation: true })
   .partial()
@@ -23,7 +32,8 @@ export const listReviewItems = createRoute({
   request: {
     headers: OrganizationHeaders,
     params: IdParams,
-    query: PageQuery.extend({ state: ReviewItem.shape.state.optional() })
+    // #161 ANL-2: `reason=no_call` lists the windows whose shadow verdict fired with no approved call.
+    query: PageQuery.extend({ state: ReviewItem.shape.state.optional(), reason: ReviewReason.optional() })
   },
   responses: {
     ...ProblemResponses,

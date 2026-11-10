@@ -1,0 +1,9 @@
+[
+  {
+    "file": "rapidrail-sp17-extract-20261106T1456Z.json",
+    "url": "https://storage.data.gov.my/transportation/rail/rapidrail_2026_daily.parquet",
+    "captured_at": "2026-11-06T14:56:00Z",
+    "station_id": "SP17",
+    "sha256": "0e282abd604aba699d8dfb3b3d9aca8456960ad25a2805fd9035a7faddd288bd"
+  }
+]

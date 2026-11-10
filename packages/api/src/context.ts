@@ -14,6 +14,10 @@ export interface ApiConfig {
   appEnv: 'dev' | 'production' | 'test'
   appOrigin: string | undefined
   ipHashKey: string | undefined
+  /** Where permalinks `/c/{callId}` live under HOST_MODE=multi; unset on a single host (#152). */
+  marketingOrigin?: string
+  /** `VAPID_PUBLIC_KEY` (c-approver-alerts); unset until the `vapid-keys` job has run. */
+  vapidPublicKey?: string
 }
 
 /** Everything the API reaches outside itself; production wires `@skyclause/db` and the registered auth seams. */

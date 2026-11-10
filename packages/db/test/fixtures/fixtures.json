@@ -5,5 +5,12 @@
     "captured_at": "2026-11-05T13:12:00Z",
     "station_id": "0232901RF",
     "sha256": "25cae3be496cff29b9925595d23fc63b7ddf9c1a4fb29e22b806b00d4ed3bd95"
+  },
+  {
+    "file": "weather-warning-20261105T1313Z.json",
+    "url": "https://api.data.gov.my/weather/warning/",
+    "captured_at": "2026-11-05T13:13:00Z",
+    "station_id": "none (MET Malaysia national warning feed)",
+    "sha256": "4217dfb611b09e1ad421fbe5c00277a4b170aa78089d6e3452d39193a2903415"
   }
 ]

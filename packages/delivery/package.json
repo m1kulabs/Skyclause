@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./test/*": "./test/*.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1163.0",
@@ -13,5 +14,10 @@
     "@skyclause/contracts": "workspace:*",
     "@skyclause/i18n": "workspace:*",
     "postal-mime": "4.2.0"
+  },
+  "devDependencies": {
+    "axe-core": "4.10.2",
+    "ical.js": "2.2.1",
+    "jsdom": "26.1.0"
   }
 }

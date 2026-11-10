@@ -5,6 +5,7 @@ import { makeAnalysisMetric } from './analysis_metric'
 import { makeAnalyticsEvent } from './analytics_event'
 import { makeApproval } from './approval'
 import { makeAuditEvent } from './audit_event'
+import { makeAuditFinding } from './audit_finding'
 import { makeBundle } from './bundle'
 import { makeBundleAlert } from './bundle_alert'
 import { makeCall } from './call'
@@ -25,6 +26,8 @@ import { makeGuestBlock } from './guest_block'
 import { makeGuestBudget } from './guest_budget'
 import { makeGuestToken } from './guest_token'
 import { makeHandledEvent } from './handled_event'
+import { makeHandledMessage } from './handled_message'
+import { makeIdempotencyKey } from './idempotency_key'
 import { makeIcsFeed } from './ics_feed'
 import { makeIncident } from './incident'
 import { makeIncidentUpdate } from './incident_update'
@@ -48,6 +51,7 @@ import { makeProjectChannel } from './project_channel'
 import { makeProjectPack } from './project_pack'
 import { makeProjectSource } from './project_source'
 import { makePushSubscription } from './push_subscription'
+import { makeRateLimit } from './rate_limit'
 import { makeReading } from './reading'
 import { makeReplayResult } from './replay_result'
 import { makeReviewItem } from './review_item'
@@ -78,6 +82,7 @@ export { makeAnalysisMetric } from './analysis_metric'
 export { makeAnalyticsEvent } from './analytics_event'
 export { makeApproval } from './approval'
 export { makeAuditEvent } from './audit_event'
+export { makeAuditFinding } from './audit_finding'
 export { makeBundle } from './bundle'
 export { makeBundleAlert } from './bundle_alert'
 export { makeCall } from './call'
@@ -98,6 +103,7 @@ export { makeGuestBlock } from './guest_block'
 export { makeGuestBudget } from './guest_budget'
 export { makeGuestToken } from './guest_token'
 export { makeHandledEvent } from './handled_event'
+export { makeHandledMessage } from './handled_message'
 export { makeIcsFeed } from './ics_feed'
 export { makeIncident } from './incident'
 export { makeIncidentUpdate } from './incident_update'
@@ -220,6 +226,7 @@ export const tenantFactories: Record<string, (tx: Tx) => Promise<unknown>> = {
  */
 export const sharedFactories: Record<string, (tx: Tx) => Promise<unknown>> = {
   analytics_event: makeAnalyticsEvent,
+  audit_finding: makeAuditFinding,
   component_check: makeComponentCheck,
   event_counter: makeEventCounter,
   export_job: makeExportJob,
@@ -227,9 +234,12 @@ export const sharedFactories: Record<string, (tx: Tx) => Promise<unknown>> = {
   guest_block: makeGuestBlock,
   guest_budget: makeGuestBudget,
   handled_event: makeHandledEvent,
+  handled_message: makeHandledMessage,
+  idempotency_key: makeIdempotencyKey,
   incident: makeIncident,
   incident_update: makeIncidentUpdate,
   poll: makePoll,
+  rate_limit: makeRateLimit,
   reading: makeReading,
   source: makeSource,
   source_state: makeSourceState,

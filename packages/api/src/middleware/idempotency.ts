@@ -1,3 +1,4 @@
+import { HTTP_PROBLEM_STATUS } from '@skyclause/contracts'
 import { createHash } from 'node:crypto'
 import type { MiddlewareHandler } from 'hono'
 import { routePath } from 'hono/route'
@@ -7,12 +8,17 @@ import type { IdempotencyKey } from '../stores'
 import { credentialOf, ipHash } from './rate-limit'
 
 export const IDEMPOTENCY_TTL_MS = 24 * 3_600_000
+/**
+ * How long a reservation stays pending: the web service's Cloud Run request timeout (600 s), so a request that died
+ * before storing its response frees its key instead of answering 409 for a day.
+ */
+export const IDEMPOTENCY_PENDING_MS = 600_000
 
 /**
  * TRD "API conventions": `Idempotency-Key` on creating POSTs, kept 24 hours with the organisation, route and request
  * hash. A repeat replays the stored response; the same key with another request is 422 `idempotency-mismatch`;
  * a repeat while the first still runs is 409. Only 2xx and 3xx responses are kept, so a refused or failed request
- * can be retried with the same key.
+ * can be retried with the same key; a reservation whose request never finished frees after the pending lease.
  */
 export const requireIdempotency: MiddlewareHandler<ApiEnv> = async (c, next) => {
   const key = c.req.header('Idempotency-Key')
@@ -35,7 +41,7 @@ export const requireIdempotency: MiddlewareHandler<ApiEnv> = async (c, next) => 
 
   const at = now()
   const held = await idempotency.reserve(
-    { ...id, requestHash, expiresAt: new Date(at.getTime() + IDEMPOTENCY_TTL_MS), response: null },
+    { ...id, requestHash, expiresAt: new Date(at.getTime() + IDEMPOTENCY_PENDING_MS), response: null },
     at
   )
   if (held) {
@@ -43,7 +49,11 @@ export const requireIdempotency: MiddlewareHandler<ApiEnv> = async (c, next) => 
       throw new ApiError(422, 'idempotency-mismatch', 'This Idempotency-Key was used with a different request.')
     }
     if (!held.response) {
-      throw new ApiError(409, 'idempotency-in-progress', 'A request with this Idempotency-Key is still running.')
+      throw new ApiError(
+        HTTP_PROBLEM_STATUS['idempotency-in-progress'],
+        'idempotency-in-progress',
+        'A request with this Idempotency-Key is still running.'
+      )
     }
     const { status, contentType, location, body } = held.response
     return c.newResponse(body, status as 200, {
@@ -54,14 +64,19 @@ export const requireIdempotency: MiddlewareHandler<ApiEnv> = async (c, next) => 
 
   // Hono turns an error thrown downstream into `c.res` before `next()` resolves.
   await next()
+  const claim = { ...id, requestHash }
   if (c.res.status >= 200 && c.res.status < 400) {
-    await idempotency.complete(id, {
-      status: c.res.status,
-      contentType: c.res.headers.get('Content-Type'),
-      location: c.res.headers.get('Location'),
-      body: await c.res.clone().text()
-    })
+    await idempotency.complete(
+      claim,
+      {
+        status: c.res.status,
+        contentType: c.res.headers.get('Content-Type'),
+        location: c.res.headers.get('Location'),
+        body: await c.res.clone().text()
+      },
+      new Date(at.getTime() + IDEMPOTENCY_TTL_MS)
+    )
   } else {
-    await idempotency.release(id)
+    await idempotency.release(claim)
   }
 }

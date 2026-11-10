@@ -1,20 +1,17 @@
-import { NotBuiltError, type ProblemSlug } from '@skyclause/contracts'
+import { HTTP_PROBLEM_STATUS, NotBuiltError, type ProblemSlug } from '@skyclause/contracts'
 import type { Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import type { ZodError } from 'zod'
 
-// TRD "API conventions": RFC 9457 problems. PROBLEM_SLUGS has no slug for a missing credential, an unknown route, a
-// key still being processed or a server fault, so these four are API-local.
-export type HttpSlug = 'unauthenticated' | 'not-found' | 'idempotency-in-progress' | 'internal-error'
-export type Slug = ProblemSlug | HttpSlug
+// TRD "API conventions": RFC 9457 problems; the slugs live in @skyclause/contracts.
 
-export const problemType = (slug: Slug) => `https://docs.skyclause.m1ku.tech/problems/${slug}`
+export const problemType = (slug: ProblemSlug) => `https://docs.skyclause.m1ku.tech/problems/${slug}`
 
 /** Thrown anywhere in a request to answer with a problem; extension members and headers ride along. */
 export class ApiError extends Error {
   constructor(
     readonly status: number,
-    readonly slug: Slug,
+    readonly slug: ProblemSlug,
     detail: string,
     readonly extra: Record<string, unknown> = {},
     readonly headers: Record<string, string> = {}
@@ -33,7 +30,11 @@ export function toApiError(error: unknown): ApiError {
       errors: [{ in: 'body', pointer: '', detail: error.message }]
     })
   }
-  return new ApiError(500, 'internal-error', 'The server failed to answer this request.')
+  return new ApiError(
+    HTTP_PROBLEM_STATUS['internal-error'],
+    'internal-error',
+    'The server failed to answer this request.'
+  )
 }
 
 /** Built through the context, so headers set earlier in the request (CORS) stay on the problem. */

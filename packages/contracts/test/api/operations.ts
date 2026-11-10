@@ -643,6 +643,16 @@ export const OPERATIONS: readonly ExpandedOperation[] = [
   },
   // Evidence requests
   {
+    method: 'get',
+    path: '/v1/projects/{id}/evidence-requests',
+    surface: 'v1',
+    operationId: 'listEvidenceRequests',
+    owner: 'c-evidence',
+    statement: 'evidence.request',
+    idempotent: false,
+    crossOrg: true
+  },
+  {
     method: 'post',
     path: '/v1/projects/{id}/evidence-requests',
     surface: 'v1',

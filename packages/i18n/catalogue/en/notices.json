@@ -1,0 +1,52 @@
+{
+  "subject": "{mode}: {window}, {date}",
+  "subject_project": "{subject} ({project})",
+  "headline": "{mode} for {window}, {date}.",
+  "date_short": "{weekday} {day} {month}",
+  "window_span": "{start}–{end} MYT",
+  "window_instant": "{start} MYT",
+  "approved": "Approved by the {role} on duty at {time}. Details and readings: {permalink}",
+  "teaching": "Teaching mode is the lecturer's and the university's decision. Skyclause never excuses attendance.",
+  "sources": "Sources: {sources}",
+  "source": "{name} ({licence})",
+  "reply": "Your plan? Reply \"keep\", \"shift to HH:MM\" or \"shuttle\" to this email, or answer here: {url}",
+  "preferences": "Change your notices: {url}",
+  "unsubscribe": "Unsubscribe: {url}",
+  "roles": {
+    "owner": "owner",
+    "admin": "admin",
+    "approver": "approver"
+  },
+  "ics": {
+    "summary": "{mode} · {window}",
+    "clause": "{clause} ({inputs})",
+    "approved": "Approved {time}.",
+    "details": "Details: {permalink}"
+  },
+  "input_age": "{input} {age}",
+  "clauses": {
+    "haze_watch": "Haze watch",
+    "haze_severe": "Haze severe",
+    "storm_watch": "Storm watch",
+    "storm_confirmed": "Storm confirmed",
+    "flash_flood_risk": "Flash-flood risk",
+    "silent_input": "Silent input",
+    "surge_night": "Surge night",
+    "arrival_clash": "Arrival clash",
+    "exit_clash": "Exit clash",
+    "after_last_shuttle": "After the last shuttle",
+    "single_source_listing": "Single-source listing"
+  },
+  "inputs": {
+    "rain": "gauge",
+    "api": "API",
+    "met_warning": "MET warning",
+    "met_forecast": "MET forecast",
+    "camera": "camera",
+    "night": "night forecast"
+  },
+  "replay": {
+    "label": "Replay of JPS gauge {station}, {date}. n=0: this project has no sent call yet, so only the replay's measured values are filled in.",
+    "why": "Why: {clause}. The {input} at {station} logged {value} {unit} in {minutes} min to {time}, {class}. The {input} was {age} when drafted."
+  }
+}

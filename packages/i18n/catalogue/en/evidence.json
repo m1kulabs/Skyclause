@@ -1,0 +1,27 @@
+{
+  "email": {
+    "subject": "Evidence for {project}: {from} to {to}",
+    "intro": "The evidence pack for {project}, {from} to {to}, from Skyclause's stored records. An Approver approved this reply.",
+    "times": "Received {received}. Drafted {drafted}. Approved {approved}. Replied {replied}.",
+    "hash": "Pack hash (SHA-256): {hash}",
+    "readings": "Readings ({count})",
+    "reading": "{time} · station {station} · {metric} {value} · reading {id}",
+    "no_readings": "No stored readings for this span.",
+    "warnings": "Warnings in force ({count})",
+    "warning": "Valid {from} to {to} · reading {id}",
+    "warning_english": "MET's English: {text}",
+    "no_warnings": "No warning record for this window.",
+    "calls": "Calls ({count})",
+    "call": "Call {id} · {mode} · {state}",
+    "no_mode": "no call",
+    "approvals": "Approvals ({count})",
+    "approval": "{time} · call {call} · approval {id}",
+    "grades": "Grades ({count})",
+    "grade": "Call {call} · {outcome} · grade {id}",
+    "ledger": "Ledger entries ({count})",
+    "ledger_entry": "No. {seq} · {kind} · hash {hash}",
+    "frames": "Camera frames ({count})",
+    "frame": "{time} · reading {id}",
+    "no_value": "no value"
+  }
+}

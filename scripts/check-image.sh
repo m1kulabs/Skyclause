@@ -37,11 +37,13 @@ serves() {
   docker stop "$container" >/dev/null || true
 }
 
-# Throwaway hash keys: web needs both to start (IP_HASH_KEY #93, EMAIL_HASH_KEY #157); production mounts the real ones.
+# Throwaway hash keys: web needs both to start (IP_HASH_KEY #93, EMAIL_HASH_KEY #157), the worker EMAIL_HASH_KEY (#158);
+# production mounts the real ones.
 serves web -e APP_ENV=production -e IP_HASH_KEY=check-image-only-ip-hash-key-0000000000 \
   -e EMAIL_HASH_KEY=check-image-only-email-hash-key-0000000
 serves worker -e APP_ENV=production -e WORKER_URL=https://worker.example.test \
-  -e WORKER_INVOKER_SA=skyclause-invoker@skyclause.iam.gserviceaccount.com
+  -e WORKER_INVOKER_SA=skyclause-invoker@skyclause.iam.gserviceaccount.com \
+  -e EMAIL_HASH_KEY=check-image-only-email-hash-key-0000000
 
 # exits <expected stderr> <docker run arguments...>: the container exits non-zero and says why.
 exits() {

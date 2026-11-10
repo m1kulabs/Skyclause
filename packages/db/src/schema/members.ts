@@ -1,8 +1,8 @@
 import { sql } from 'drizzle-orm'
-import { foreignKey, integer, text, time, uuid } from 'drizzle-orm/pg-core'
+import { date, foreignKey, integer, text, time, unique, uuid } from 'drizzle-orm/pg-core'
 import { organization } from './auth'
 import { id, instant, orgKey, sameOrg, tenantTable, timestamps } from './columns'
-import { alertChannel, alertLevel, rotaTemplate } from './enums'
+import { alertChannel, alertLevel, rotaTemplate, shiftReminderKind } from './enums'
 import { project } from './project'
 import { bundle } from './runs'
 
@@ -50,17 +50,25 @@ export const rotaShift = tenantTable(
   ]
 )
 
-/** A reminder sent before a shift or on its conditional switch-on (D22); append-only. */
+/**
+ * A reminder sent before a shift or on its conditional switch-on (D22); append-only, one per shift, local date and
+ * kind (#155). `due_at` is when it was due: the shift's start less 30 minutes, or when the switch-on was seen.
+ */
 export const shiftReminder = tenantTable(
   'shift_reminder',
   {
     id: id(),
     rotaShiftId: uuid('rota_shift_id').notNull(),
     accountId: uuid('account_id').notNull(),
+    localDate: date('local_date').notNull(),
+    kind: shiftReminderKind('kind').notNull(),
     dueAt: instant('due_at').notNull(),
     createdAt: instant('created_at').notNull().defaultNow()
   },
-  (self) => [sameOrg('shift_reminder_rota_shift', self, self.rotaShiftId, rotaShift, true)]
+  (self) => [
+    sameOrg('shift_reminder_rota_shift', self, self.rotaShiftId, rotaShift, true),
+    unique('shift_reminder_rota_shift_id_local_date_kind_key').on(self.rotaShiftId, self.localDate, self.kind)
+  ]
 )
 
 /** An approver alert, inserted on the provider's answer (`accepted_at`); append-only. */
@@ -75,5 +83,14 @@ export const bundleAlert = tenantTable(
     acceptedAt: instant('accepted_at').notNull(),
     createdAt: instant('created_at').notNull().defaultNow()
   },
-  (self) => [sameOrg('bundle_alert_bundle', self, self.bundleId, bundle, true)]
+  (self) => [
+    sameOrg('bundle_alert_bundle', self, self.bundleId, bundle, true),
+    // CAL-10: one row per account, channel and level, however often the provider answers.
+    unique('bundle_alert_bundle_id_account_id_channel_level_key').on(
+      self.bundleId,
+      self.accountId,
+      self.channel,
+      self.level
+    )
+  ]
 )

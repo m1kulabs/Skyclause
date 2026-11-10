@@ -25,10 +25,22 @@ export const run = tenantTable(
       .array()
       .notNull()
       .default(sql`'{}'`),
+    // c-run-orchestrator: a Crowd run's nights, the dedupe keys coalesced into this run, and who asked by POST
+    // (`{kind, account_id}`, IDs only).
+    nightIds: uuid('night_ids')
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    coalescedKeys: text('coalesced_keys')
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    requestedBy: jsonb('requested_by'),
     status: runStatus('status').notNull().default('queued'),
     reason: text('reason'),
     verdictHash: text('verdict_hash'),
     model: text('model'),
+    provider: text('provider'),
     fallbackUsed: boolean('fallback_used').notNull().default(false),
     tokensIn: integer('tokens_in'),
     tokensOut: integer('tokens_out'),
@@ -45,7 +57,11 @@ export const run = tenantTable(
     // One queued run per project and pack: a later trigger coalesces into it.
     uniqueIndex('run_one_queued_key')
       .on(self.projectId, self.pack)
-      .where(sql`${self.status} = 'queued'`)
+      .where(sql`${self.status} = 'queued'`),
+    // c-run-orchestrator: one run per project and pack walks its steps at a time.
+    uniqueIndex('run_one_running_key')
+      .on(self.projectId, self.pack)
+      .where(sql`${self.status} = 'running'`)
   ]
 )
 
@@ -84,6 +100,11 @@ export const bundle = tenantTable(
     approvedAt: instant('approved_at'),
     escalationLevel: integer('escalation_level').notNull().default(0),
     draftOnly: boolean('draft_only').notNull().default(false),
+    // #499: the windows and nights whose engine verdict fired with no call in the draft (#467's `missing` rows), each
+    // with its approver's resolution (`MissingCall` in bundles/machine.ts).
+    missing: jsonb('missing')
+      .notNull()
+      .default(sql`'[]'`),
     traceId: text('trace_id'),
     ...timestamps()
   },

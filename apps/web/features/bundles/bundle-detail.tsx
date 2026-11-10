@@ -8,7 +8,7 @@ import { Kbd } from '#ui/kbd'
 import { formatTime } from '@skyclause/i18n/format'
 import type { StripInput } from '@skyclause/elements'
 import { t } from './i18n'
-import { useBundleReview } from './use-bundle-review'
+import { useBundleReview, type InitialReview } from './use-bundle-review'
 import { orderedCalls, canReviewCall, reviewCount } from './model'
 import { CallReview, callName, modeName } from './call-review'
 import type { StripDetail } from './operations'
@@ -47,11 +47,13 @@ export interface BundleDetailActions {
 export interface BundleDetailProps {
   bundleId: string
   actionsRef?: Ref<BundleDetailActions>
+  /** The server's read for the first render (#372); the client still reads the bundle again on load. */
+  initial?: InitialReview
 }
 
-export function BundleDetail({ bundleId, actionsRef }: BundleDetailProps) {
+export function BundleDetail({ bundleId, actionsRef, initial }: BundleDetailProps) {
   const params = useParams<{ org?: string; project?: string }>()
-  const review = useBundleReview(bundleId, params.org ?? '')
+  const review = useBundleReview(bundleId, params.org ?? '', initial)
   const { data, now, decisions, editable, pending } = review
   const [focused, setFocused] = useState<string>()
   const [editing, setEditing] = useState<string>()

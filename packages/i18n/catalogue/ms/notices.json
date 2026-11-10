@@ -1,0 +1,52 @@
+{
+  "subject": "{mode}: {window}, {date}",
+  "subject_project": "{subject} ({project})",
+  "headline": "{mode} untuk {window}, {date}.",
+  "date_short": "{weekday} {day} {month}",
+  "window_span": "{start}–{end} MYT",
+  "window_instant": "{start} MYT",
+  "approved": "Diluluskan oleh {role} yang bertugas pada {time}. Butiran dan bacaan: {permalink}",
+  "teaching": "Mod pengajaran ialah keputusan pensyarah dan universiti. Skyclause tidak sekali-kali memberi pengecualian kehadiran.",
+  "sources": "Sumber: {sources}",
+  "source": "{name} ({licence})",
+  "reply": "Apakah rancangan anda? Balas e-mel ini dengan \"keep\", \"shift to HH:MM\" atau \"shuttle\", atau jawab di sini: {url}",
+  "preferences": "Tukar notis anda: {url}",
+  "unsubscribe": "Berhenti melanggan: {url}",
+  "roles": {
+    "owner": "pemilik",
+    "admin": "pentadbir",
+    "approver": "pelulus"
+  },
+  "ics": {
+    "summary": "{mode} · {window}",
+    "clause": "{clause} ({inputs})",
+    "approved": "Diluluskan {time}.",
+    "details": "Butiran: {permalink}"
+  },
+  "input_age": "{input}: data {age}",
+  "clauses": {
+    "haze_watch": "Pemantauan jerebu",
+    "haze_severe": "Jerebu teruk",
+    "storm_watch": "Pemantauan ribut",
+    "storm_confirmed": "Ribut disahkan",
+    "flash_flood_risk": "Risiko banjir kilat",
+    "silent_input": "Input senyap",
+    "surge_night": "Malam lonjakan penumpang",
+    "arrival_clash": "Pertembungan waktu ketibaan",
+    "exit_clash": "Pertembungan waktu keluar",
+    "after_last_shuttle": "Selepas bas ulang-alik terakhir",
+    "single_source_listing": "Penyenaraian satu sumber"
+  },
+  "inputs": {
+    "rain": "tolok hujan",
+    "api": "IPU",
+    "met_warning": "amaran MET",
+    "met_forecast": "ramalan MET",
+    "camera": "kamera",
+    "night": "ramalan malam"
+  },
+  "replay": {
+    "label": "Ulangan tolok JPS {station}, {date}. n=0: projek ini belum menghantar sebarang keputusan, jadi hanya nilai yang diukur dalam ulangan diisi.",
+    "why": "Sebab: {clause}. {input} {station} mencatat {value} {unit} dalam {minutes} minit hingga {time}, {class}. Data {input} {age} semasa didraf."
+  }
+}

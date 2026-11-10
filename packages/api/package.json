@@ -10,13 +10,18 @@
   "dependencies": {
     "@google-cloud/storage": "8.4.0",
     "@hono/zod-openapi": "1.6.3",
+    "@skyclause/agent": "workspace:*",
     "@skyclause/clauses": "workspace:*",
     "@skyclause/config": "workspace:*",
     "@skyclause/contracts": "workspace:*",
     "@skyclause/db": "workspace:*",
     "@skyclause/delivery": "workspace:*",
+    "@skyclause/i18n": "workspace:*",
     "drizzle-orm": "0.45.4",
     "hono": "4.13.16",
     "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "ical.js": "2.2.1"
   }
 }
