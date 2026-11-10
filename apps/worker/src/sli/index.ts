@@ -67,10 +67,13 @@ export interface SliReads {
   evaluations?(window: TimeWindow): Promise<Evaluation[]>
   /** Bundles reaching needs review (`needsReviewAt`), with their run's `crossing.at`. */
   reviews(window: TimeWindow): Promise<Review[]>
-  /** By `needsReviewAt`. */
-  approverAlerts(window: TimeWindow): Promise<ApproverAlert[]>
-  /** The latest `count` bundles to reach needs review before `before`. */
-  latestApproverAlerts(before: Date, count: number): Promise<ApproverAlert[]>
+  /**
+   * By `needsReviewAt`, leaving out a bundle that left Needs review within `dueS` with no on-duty alert: none was due
+   * yet.
+   */
+  approverAlerts(window: TimeWindow, dueS: number): Promise<ApproverAlert[]>
+  /** The latest `count` bundles to reach needs review before `before`, leaving out the same bundles. */
+  latestApproverAlerts(before: Date, count: number, dueS: number): Promise<ApproverAlert[]>
   /** Call notices of approved bundles, by `approvedAt`. */
   handovers(window: TimeWindow): Promise<Handover[]>
   /** By `dueAt` (`bundle.sla_due_at`). */
@@ -151,8 +154,8 @@ export function sli(reads: SliReads, meter: Meter = metrics.getMeter('skyclause'
       reads.storedReadings(window),
       reads.evaluations?.(hour) ?? [],
       reads.reviews(hour),
-      reads.approverAlerts(window),
-      reads.latestApproverAlerts(to, TARGET.failedInARow),
+      reads.approverAlerts(window, TARGET.approverAlertS),
+      reads.latestApproverAlerts(to, TARGET.failedInARow, TARGET.approverAlertS),
       reads.handovers(hour),
       reads.slaDue(window)
     ] as const

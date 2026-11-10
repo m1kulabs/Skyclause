@@ -105,6 +105,8 @@ test('each SLI from the stored timestamps of every organisation', async () => {
     await makeBundleAlert(tx, { bundleId: requested.id, acceptedAt: at('09:30', 30) })
     const unalerted = await reviewed(tx, projectId, '09:42', [])
     await makeBundleAlert(tx, { bundleId: unalerted.id, acceptedAt: at('09:42', 20), level: 'next_approver' })
+    // Approved in the app 40 s after Needs review, before its alert was due: not a failed alert.
+    await reviewed(tx, projectId, '09:35', [], { state: 'approved', approvedAt: at('09:35', 40) })
     // Approval to provider: two notices accepted after 10 and 40 s; a suppressed recipient is never handed over.
     const call = await approved(tx, first.id, '09:05')
     await handedOver(tx, projectId, call.id, at('09:05', 10))
@@ -133,6 +135,8 @@ test('each SLI from the stored timestamps of every organisation', async () => {
     const bundle = await reviewed(tx, projectId, '09:22', ['09:20'])
     const alerted = await reviewed(tx, projectId, '09:38', [])
     await makeBundleAlert(tx, { bundleId: alerted.id, acceptedAt: at('09:39', 30) })
+    // Approved 90 s after Needs review with no alert: its alert was due, so it failed.
+    await reviewed(tx, projectId, '09:40', [], { state: 'approved', approvedAt: at('09:41', 30) })
     const call = await approved(tx, bundle.id, '09:25')
     await handedOver(tx, projectId, call.id, at('09:26', 15))
     await handedOver(tx, projectId, call.id, null)
@@ -152,7 +156,7 @@ test('each SLI from the stored timestamps of every organisation', async () => {
     'skyclause.crossing_to_needs_review bundles': 3,
     'skyclause.crossing_to_needs_review p95_s': 240,
     'skyclause.crossing_to_needs_review breach': 1,
-    'skyclause.approver_alerted bundles': 3,
+    'skyclause.approver_alerted bundles': 4,
     'skyclause.approver_alerted within_60s': 1,
     'skyclause.approver_alerted p95_s': 90,
     'skyclause.approver_alerted failed_in_a_row': 2,

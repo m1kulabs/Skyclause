@@ -48,8 +48,10 @@ export function databaseReads(): SliReads {
     return rows
   }
 
-  // Each bundle with its first accepted on-duty alert; an escalation's alert is a later step, not this one.
-  const alerts = (tx: Tx, where: SQL | undefined) =>
+  // Each bundle with its first accepted on-duty alert; an escalation's alert is a later step, not this one. A bundle
+  // leaves Needs review when approved (`approved_at`) or for a final state (superseded, expired, closed), whose
+  // transition is its last `updated_at`.
+  const alerts = (tx: Tx, where: SQL | undefined, dueS: number) =>
     tx
       .select({
         needsReviewAt: sql<Date>`${bundle.needsReviewAt}`.mapWith(bundle.needsReviewAt),
@@ -59,6 +61,10 @@ export function databaseReads(): SliReads {
       .leftJoin(bundleAlert, and(eq(bundleAlert.bundleId, bundle.id), eq(bundleAlert.level, 'on_duty')))
       .where(where)
       .groupBy(bundle.id)
+      .having(
+        sql`${min(bundleAlert.acceptedAt)} IS NOT NULL OR ${bundle.state} IN ('needs_review', 'reconfirm')
+          OR coalesce(${bundle.approvedAt}, ${bundle.updatedAt}) >= ${bundle.needsReviewAt} + make_interval(secs => ${dueS})`
+      )
 
   return {
     storedReadings: (window) =>
@@ -89,12 +95,12 @@ export function databaseReads(): SliReads {
           .groupBy(bundle.id)
       ),
 
-    approverAlerts: (window) => eachOrganisation((tx) => alerts(tx, within(bundle.needsReviewAt, window))),
+    approverAlerts: (window, dueS) => eachOrganisation((tx) => alerts(tx, within(bundle.needsReviewAt, window), dueS)),
 
-    latestApproverAlerts: async (before, count) =>
+    latestApproverAlerts: async (before, count, dueS) =>
       (
         await eachOrganisation((tx) =>
-          alerts(tx, and(isNotNull(bundle.needsReviewAt), lt(bundle.needsReviewAt, before)))
+          alerts(tx, and(isNotNull(bundle.needsReviewAt), lt(bundle.needsReviewAt, before)), dueS)
             .orderBy(desc(bundle.needsReviewAt))
             .limit(count)
         )
