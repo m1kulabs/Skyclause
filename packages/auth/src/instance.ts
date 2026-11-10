@@ -3,6 +3,7 @@ import { fetchClientMetadataResource } from '@better-auth/cimd/node'
 import { mcp } from '@better-auth/mcp'
 import { passkey } from '@better-auth/passkey'
 import { loadEnv } from '@skyclause/config'
+import type { EmailTransport } from '@skyclause/contracts'
 import { authDatabase } from '@skyclause/db/auth'
 import { betterAuth, type BetterAuthOptions, type BetterAuthPlugin } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
@@ -20,6 +21,8 @@ export interface AuthSettings {
   apiOrigin: string
   mcpOrigin: string
   google?: { clientId: string; clientSecret: string }
+  /** HMAC key for the IP side of auth rate limits (#100). */
+  ipHashKey: string
 }
 
 /** Under HOST_MODE=single every surface shares APP_ORIGIN, so an unset API or MCP origin is APP_ORIGIN. */
@@ -30,7 +33,8 @@ export function authSettings(env: Record<string, string | undefined> = process.e
     API_ORIGIN,
     MCP_ORIGIN,
     GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET
+    GOOGLE_CLIENT_SECRET,
+    IP_HASH_KEY: ipHashKey
   } = loadEnv('web', env)
   if (!APP_ORIGIN) throw new Error('APP_ORIGIN is not set: Better Auth needs it as its issuer and cookie host')
   const origin = (value: string | undefined) => new URL(value ?? APP_ORIGIN).origin
@@ -41,7 +45,8 @@ export function authSettings(env: Record<string, string | undefined> = process.e
     mcpOrigin: origin(MCP_ORIGIN),
     ...(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET
       ? { google: { clientId: GOOGLE_CLIENT_ID, clientSecret: GOOGLE_CLIENT_SECRET } }
-      : {})
+      : {}),
+    ipHashKey
   }
 }
 
@@ -132,10 +137,15 @@ function apiKeyHttpPaths(plugins: readonly BetterAuthPlugin[]): string[] {
  */
 export function createAuth(
   s: AuthSettings,
-  extra: { plugins?: BetterAuthPlugin[]; socialProviders?: BetterAuthOptions['socialProviders'] } = {}
+  extra: {
+    plugins?: BetterAuthPlugin[]
+    socialProviders?: BetterAuthOptions['socialProviders']
+    sendStepUpEmail?: EmailTransport['send']
+  } = {}
 ) {
   const base = basePlugins(s)
-  const plugins = withOwners(base, [...PLUGINS(s), ...(extra.plugins ?? [])])
+  const owners = PLUGINS(s, { sendStepUpEmail: extra.sendStepUpEmail })
+  const plugins = withOwners(base, [...owners, ...(extra.plugins ?? [])])
   return betterAuth({
     secret: s.secret,
     baseURL: s.appOrigin,
@@ -156,6 +166,13 @@ export function createAuth(
       }
     },
     session: { additionalFields: { reauthenticatedAt: { type: 'date', required: false, ...fixed } } },
+    databaseHooks: {
+      session: {
+        create: {
+          before: async (session) => ({ data: { ...session, reauthenticatedAt: session.createdAt } })
+        }
+      }
+    },
     socialProviders: extra.socialProviders ?? (s.google ? { google: s.google } : undefined),
     plugins,
     // The email's GET-safe page POSTs to our wrapper. The plugin's GET verification endpoint stays off over HTTP.

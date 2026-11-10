@@ -6,11 +6,12 @@ import { formatDate } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
 import { CodeBlock, CodeBlockContent } from '#ui/code-block'
 import { apiFetch } from './operations'
-import { createWithStepUp } from './model'
 import { CopyButton } from './copy-button'
 import { StepUp } from './step-up'
 import { t } from './i18n'
 import { useResource } from './resource'
+import { ReauthCancelledError } from '../step-up/flow'
+import { useReauth } from '../reauth'
 
 const ENTERPRISE_REDIRECT = 'https://vertexaisearch.cloud.google.com/oauth-redirect'
 
@@ -78,8 +79,7 @@ function EnterpriseClient({ orgId, mayCreate }: { orgId: string | null; mayCreat
   const [created, setCreated] = useState(false)
   const [client, setClient] = useState<{ client_id: string; client_secret: string }>()
   const [stepping, setStepping] = useState(false)
-  const creationKey = useRef<string | undefined>(undefined)
-  const pending = useRef<{ resolve: () => void; reject: () => void } | undefined>(undefined)
+  const { withReauth } = useReauth()
   const mounted = useRef(true)
   useEffect(() => {
     mounted.current = true
@@ -87,51 +87,41 @@ function EnterpriseClient({ orgId, mayCreate }: { orgId: string | null; mayCreat
     window.addEventListener('pagehide', forget)
     return () => {
       mounted.current = false
-      pending.current?.reject()
       window.removeEventListener('pagehide', forget)
     }
   }, [])
   const resolve = useCallback(() => {
     setStepping(false)
-    pending.current?.resolve()
-    pending.current = undefined
   }, [])
   const cancel = useCallback(() => {
     setStepping(false)
-    pending.current?.reject()
-    pending.current = undefined
   }, [])
 
   async function create() {
     if (!orgId || !mayCreate || busy || created) return
     setBusy(true)
     setError(false)
-    creationKey.current ??= crypto.randomUUID()
     try {
-      const result = await createWithStepUp(
-        () =>
+      const result = await withReauth(
+        (idempotencyKey) =>
           apiFetch('createOauthClient', {
             params: { org: orgId },
             org: orgId,
-            idempotencyKey: creationKey.current,
+            idempotencyKey,
             body: {
               client_name: t('connect.targets.gemini_enterprise'),
               redirect_uris: [ENTERPRISE_REDIRECT],
               scopes: ['read', 'draft']
             }
           }),
-        () =>
-          new Promise<void>((accept, reject) => {
-            pending.current = { resolve: accept, reject: () => reject(new Error('Step-up cancelled')) }
-            setStepping(true)
-          })
+        () => setStepping(true)
       )
       if (mounted.current) {
         setClient({ client_id: result.client_id, client_secret: result.client_secret })
         setCreated(true)
       }
-    } catch {
-      if (mounted.current) setError(true)
+    } catch (failure) {
+      if (mounted.current && !(failure instanceof ReauthCancelledError)) setError(true)
     } finally {
       if (mounted.current) setBusy(false)
     }

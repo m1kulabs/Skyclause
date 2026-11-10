@@ -9,7 +9,6 @@ export const expectedOwners: Record<string, string[]> = {
   'a-account-settings': panels('account', ['profile', 'security', 'appearance']),
   'a-keys-ui': [...panels('account', ['ai-keys', 'api-keys']), ...panels('organisation', ['ai-keys', 'api-keys'])],
   'd-public-project-page': panels('project', ['public']),
-  'a-step-up': ['apps/web/features/reauth/use-reauth.ts', 'apps/web/features/reauth/reauth-dialog.tsx'],
   'd-org-live': ['apps/web/features/org-live/index.tsx']
 }
 

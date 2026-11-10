@@ -2,7 +2,7 @@
 // and Playwright's signInAs. Accounts, organisations and sessions made here exist only in tests (NFR-15). Callers set
 // the web env first (Vitest's setupFiles, or playwright.config.ts) and point DATABASE_URL_* at a test database.
 import { randomUUID } from 'node:crypto'
-import type { Role, Scope } from '@skyclause/contracts'
+import type { EmailTransport, Role, Scope } from '@skyclause/contracts'
 import { tokenHash, withTenant, type Tx } from '@skyclause/db'
 import {
   makeGuestToken,
@@ -24,6 +24,13 @@ let instance: ReturnType<typeof createAuth> | undefined
 /** The app's configuration plus Better Auth's test-utils plugin, on the same database and secret. */
 const harness = () => (instance ??= createAuth(authSettings(), { plugins: [testUtils()] }))
 const helpers = async () => ((await harness().$context) as unknown as { test: TestHelpers }).test
+
+/** A real auth instance with a mailbox double for integration tests. */
+export function createAuthWithStepUpEmail(sendStepUpEmail: EmailTransport['send']): {
+  handler: (request: Request) => Promise<Response>
+} {
+  return createAuth(authSettings(), { sendStepUpEmail })
+}
 
 export interface TestAccount {
   id: string
