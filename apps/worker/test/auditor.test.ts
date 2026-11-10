@@ -6,6 +6,7 @@ import type { EmailTransport, Notify, RegisterAuditCheck } from '@skyclause/cont
 import {
   auditEvent,
   auditFinding,
+  notification,
   project,
   run,
   shareSystemConnection,
@@ -383,14 +384,24 @@ test('notification rejection rolls back the opening and the next tick retries', 
   expect(notify).toHaveBeenCalledTimes(2)
 })
 
-test('default notification dependency remains the real unbuilt seam until its owner lands', async () => {
-  await makeOrganization()
-  await tickOf({ checks: () => [{ name: 'real-notify', run: async () => [finding()] }] })(now)
-  expect(await stored()).toEqual([])
-  expect(log.error).toHaveBeenCalledWith(
-    'auditor check failed',
-    expect.objectContaining({ error: expect.stringContaining('c-notifications') })
+test('default notification dependency persists the finding and the real in-app notification', async () => {
+  const orgId = (await makeOrganization()).id
+  const value = finding()
+  await tickOf({ checks: () => [{ name: 'real-notify', run: async () => [value] }] })(now)
+  expect(await stored()).toHaveLength(1)
+  const notifications = await withTenant({ orgId, principal: systemPrincipal('auditor') }, (tx) =>
+    tx.select().from(notification)
   )
+  expect(notifications).toEqual([
+    expect.objectContaining({
+      accountId: value.accountIds[0],
+      kind: 'auditor',
+      refType: value.ref.type,
+      refId: value.ref.id,
+      recovered: false
+    })
+  ])
+  expect(log.error).not.toHaveBeenCalled()
 })
 
 test('staff addresses are read lazily from the worker environment', async () => {
