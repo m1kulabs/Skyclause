@@ -29,9 +29,12 @@
           "properties": {
             "enabled": {
               "type": "boolean"
+            },
+            "sla_s": {
+              "type": ["integer", "null"],
+              "exclusiveMinimum": 0
             }
-          },
-          "required": ["enabled"]
+          }
         }
       },
       "required": ["params"],

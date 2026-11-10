@@ -98,6 +98,10 @@
                       },
                       "status": {
                         "type": "string"
+                      },
+                      "last_delivery_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
                       }
                     },
                     "required": ["id", "url", "events", "project_ids", "disabled_at", "verified_at", "status"]

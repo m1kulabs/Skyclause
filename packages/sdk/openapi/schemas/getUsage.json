@@ -77,7 +77,7 @@
                     "type": "object",
                     "properties": {
                       "run_id": {
-                        "type": "string"
+                        "type": ["string", "null"]
                       },
                       "ai_key_id": {
                         "type": ["string", "null"]

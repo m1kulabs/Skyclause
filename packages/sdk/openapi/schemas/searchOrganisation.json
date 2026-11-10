@@ -53,7 +53,7 @@
                     "properties": {
                       "kind": {
                         "type": "string",
-                        "enum": ["project", "source", "window", "call"]
+                        "enum": ["project", "source", "window", "bundle", "call", "ledger"]
                       },
                       "id": {
                         "type": "string"

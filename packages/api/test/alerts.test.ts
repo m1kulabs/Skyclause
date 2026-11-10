@@ -138,8 +138,16 @@ describe('push subscriptions in one organisation', () => {
 
   test('an organisation the session isn’t a member of answers 404', async () => {
     const approver = await account([home, 'approver'])
-    expect((await list(approver, other.slug)).status).toBe(404)
-    expect((await register(approver, device(), other.slug)).status).toBe(404)
+    const browser = device()
+    await crossOrgCase('listPushSubscriptions', { app: api, as: approver, org: other.slug, params: {} }).run()
+    await crossOrgCase('createPushSubscription', {
+      app: api,
+      as: approver,
+      org: other.slug,
+      params: {},
+      body: browser
+    }).run()
+    expect(await rowsOf(approver.accountId, browser.endpoint)).toEqual([])
   })
 
   test('API keys get 403 on /api', async () => {

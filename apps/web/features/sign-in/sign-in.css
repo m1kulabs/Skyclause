@@ -1,0 +1,165 @@
+.sign-in-page {
+  display: flex;
+  width: min(100%, 520px);
+  flex-direction: column;
+  gap: 24px;
+  margin-inline: auto;
+}
+
+.sign-in-primary {
+  display: grid;
+  gap: 24px;
+}
+
+.sign-in-header {
+  display: grid;
+  gap: 28px;
+}
+
+.sign-in-brand {
+  display: inline-flex;
+  min-height: 32px;
+  width: fit-content;
+  align-items: center;
+  gap: 10px;
+  color: var(--landing-foreground);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.sign-in-brand img {
+  flex: 0 0 auto;
+}
+
+.sign-in-header h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.sign-in-actions,
+.sign-in-email-form,
+.sign-in-field,
+.sign-in-sent {
+  display: grid;
+  gap: 12px;
+}
+
+.sign-in-field {
+  gap: 8px;
+}
+
+.sign-in-field input {
+  min-height: 44px;
+  border-color: color-mix(in srgb, var(--landing-foreground) 42%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--landing-foreground);
+}
+
+.sign-in-action {
+  min-height: 44px;
+  width: 100%;
+  white-space: normal;
+  text-align: center;
+}
+
+.sign-in-alert,
+.sign-in-field-error {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--landing-foreground);
+}
+
+.sign-in-alert {
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--landing-foreground) 52%, transparent);
+  border-radius: 6px;
+}
+
+.sign-in-field-error {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.sign-in-status {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--landing-foreground);
+}
+
+.sign-in-switch {
+  margin: 0;
+  text-align: center;
+}
+
+.sign-in-switch a,
+.sign-in-guest a,
+.sign-in-footer a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.sign-in-guest {
+  display: grid;
+  gap: 8px;
+  padding: 20px;
+  background: var(--landing-surface, #151515);
+  color: var(--landing-foreground);
+}
+
+.sign-in-guest h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.sign-in-guest p {
+  margin: 0;
+  color: var(--landing-foreground);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.sign-in-guest a {
+  width: fit-content;
+}
+
+.sign-in-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sign-in-footer a {
+  min-height: 32px;
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .sign-in-header h1 {
+    font-size: 24px;
+  }
+
+  .sign-in-guest {
+    padding: 18px;
+  }
+}
+
+@media (forced-colors: active) {
+  .sign-in-alert {
+    border-color: CanvasText;
+  }
+
+  .sign-in-field input {
+    border-color: ButtonBorder;
+  }
+}

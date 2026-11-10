@@ -1,0 +1,313 @@
+.firstRunPage {
+  width: min(100%, 920px);
+  margin-inline: auto;
+  display: grid;
+  gap: 28px;
+}
+
+.pageHeading {
+  display: grid;
+  gap: 6px;
+}
+
+.pageHeading h1 {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.pageHeading p,
+.progressHeader p,
+.status,
+.helper {
+  color: var(--muted-foreground);
+  line-height: 1.55;
+}
+
+.projectForm,
+.progressCard,
+.packsPanel,
+.deviceSection {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  background: var(--card);
+}
+
+.fieldsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.wideField {
+  grid-column: 1 / -1;
+}
+
+.packChoices,
+.packRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.checkLabel {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.checkLabel input {
+  margin-top: 2px;
+  accent-color: var(--primary);
+}
+
+.formActions,
+.progressHeader,
+.stepActions,
+.panelHeader,
+.deviceHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.error {
+  color: var(--destructive);
+  font-size: 13px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+}
+
+.progressHeader h2,
+.panelHeader h1,
+.deviceHeader h2 {
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.stepList {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.step[data-complete='true'] h3::before {
+  content: '✓';
+  display: inline-block;
+  margin-right: 8px;
+  color: var(--primary);
+}
+
+.step h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.stepResult {
+  margin-top: 4px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.stepActions {
+  justify-content: flex-end;
+}
+
+.stepLink {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.stepLink:hover {
+  background: var(--muted);
+}
+
+.packsPanel {
+  gap: 22px;
+}
+
+.packList,
+.boundSources,
+.sourceGroups {
+  display: grid;
+  gap: 12px;
+}
+
+.packRow {
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.packRow label {
+  font-weight: 600;
+}
+
+.packRowDetails {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.packMissing {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.boundSource {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.boundSource p {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.sourceError {
+  display: block;
+  color: var(--destructive);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.pickerDialog {
+  width: min(1120px, calc(100vw - 24px));
+  max-width: 1120px;
+  max-height: min(88vh, 850px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.sourceGroups {
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.sourceGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.sourceGroup h3 {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.tableScroll {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.sourceTable {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 12px;
+}
+
+.sourceTable th,
+.sourceTable td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.sourceTable th {
+  position: sticky;
+  top: 0;
+  background: var(--muted);
+  font-weight: 600;
+}
+
+.sourceTable tr:last-child td {
+  border-bottom: 0;
+}
+
+.deviceDialog {
+  width: min(480px, calc(100vw - 24px));
+  display: grid;
+  gap: 16px;
+}
+
+.tokenBlock {
+  display: block;
+  overflow-wrap: anywhere;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--muted);
+  font-family: var(--font-mono, monospace);
+  user-select: all;
+}
+
+@media (max-width: 620px) {
+  .fieldsGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wideField {
+    grid-column: auto;
+  }
+
+  .projectForm,
+  .progressCard,
+  .packsPanel,
+  .deviceSection {
+    padding: 16px;
+  }
+
+  .step {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stepActions {
+    justify-content: flex-start;
+  }
+}

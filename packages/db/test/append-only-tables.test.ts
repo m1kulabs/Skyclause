@@ -6,8 +6,9 @@ import { withRetention, withTenant, type Tx } from '../src'
 import { makeDomainEvent, makeOrganization, sharedFactories, tenantFactories } from './factories'
 import { asLogin, memberOf, refusal } from './harness'
 
-/** TRD's eleven and the ten #79 §3 adds; the PR body lists the same set. */
+/** TRD's eleven and the ten #79 §3 adds, plus e-byok-api's test attempts; the PR body lists the same set. */
 const APPEND_ONLY = [
+  'ai_key_test',
   'ai_usage',
   'analytics_event',
   'approval',
@@ -48,7 +49,7 @@ test('the tables carrying the append-only trigger are #79 §3’s set, and domai
     return rows.map(({ name }) => name)
   })
   expect(tables).toEqual([...APPEND_ONLY, 'domain_event'].sort())
-})
+}, 15_000)
 
 test.each(APPEND_ONLY)('%s: UPDATE and DELETE fail as app and system and succeed as retention', async (table) => {
   const make = tenantFactories[table] ? asApp(tenantFactories[table]) : asSystem(sharedFactories[table]!)

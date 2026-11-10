@@ -124,6 +124,7 @@ export async function claimCallNotice(
     .limit(1)
     .for('update', { of: notice, skipLocked: true })
   if (!row) return null
+  if (row.notice.projectId === null) throw new Error(`call notice ${row.notice.id} is missing project_id`)
 
   const [approver] = row.approvedBy
     ? await tx
@@ -241,7 +242,10 @@ export async function noticeOrgsToSweep(tx: Tx<SystemPrincipal>, since: Date): P
     .from(notice)
     .where(and(eq(notice.kind, 'call'), or(eq(notice.status, 'queued'), gte(notice.updatedAt, since))))
     .orderBy(asc(notice.orgId))
-  return rows.map((r) => r.orgId)
+  return rows.map((r) => {
+    if (r.orgId === null) throw new Error('call notice is missing org_id')
+    return r.orgId
+  })
 }
 
 export type SettleOutcome = 'sent' | 'failed'

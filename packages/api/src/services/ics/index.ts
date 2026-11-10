@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { loadEnv } from '@skyclause/config'
-import type { CallView } from '@skyclause/contracts'
+import { HTTP_PROBLEM_STATUS, type CallView } from '@skyclause/contracts'
 import { findPublicFeedProject, loadIcsEntries, withPublicReader, type IcsEntry, type Tx } from '@skyclause/db'
 import { renderNotice, writeCalendar, type RenderNotice } from '@skyclause/delivery'
 import { problemType } from '../../problems'
@@ -118,10 +118,13 @@ function notFound() {
     {
       type: problemType('not-found'),
       title: 'Not found',
-      status: 404,
+      status: HTTP_PROBLEM_STATUS['not-found'],
       detail: 'No public conditions calendar answers here.'
     },
-    { status: 404, headers: { 'Content-Type': 'application/problem+json', 'Cache-Control': 'no-store' } }
+    {
+      status: HTTP_PROBLEM_STATUS['not-found'],
+      headers: { 'Content-Type': 'application/problem+json', 'Cache-Control': 'no-store' }
+    }
   )
 }
 

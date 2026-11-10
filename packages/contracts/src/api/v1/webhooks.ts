@@ -14,14 +14,21 @@ import { DomainEventSchema, WEBHOOK_EVENT_TYPES } from '../../events'
 const WebhookInput = Webhook.pick({ url: true, project_ids: true }).extend({
   events: z.array(z.enum(WEBHOOK_EVENT_TYPES)).min(1)
 })
-const WebhookView = Webhook.extend({ events: WebhookInput.shape.events })
+const WebhookView = Webhook.extend({
+  events: WebhookInput.shape.events,
+  last_delivery_at: Instant.nullable().optional()
+})
 const WebhookDeliveryView = WebhookDelivery.extend({
   state: z.string(),
   attempted_at: Instant,
   request_headers: z.record(z.string(), z.string()),
   request_body: DomainEventSchema,
   response_headers: z.record(z.string(), z.string()),
-  response_body: z.string().nullable()
+  response_body: z.string().nullable(),
+  // Inspector evidence is supplied by the delivery service, never inferred from retry offsets in the browser.
+  raw_request_body: z.string().optional(),
+  error: z.string().nullable().optional(),
+  next_retry_at: Instant.nullable().optional()
 })
 const WebhookDispatch = z.object({ dispatch_id: z.string(), event_id: z.string(), state: z.string() })
 

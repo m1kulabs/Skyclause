@@ -1142,6 +1142,19 @@
                       "exit_end"
                     ]
                   }
+                },
+                "replay": {
+                  "type": "object",
+                  "properties": {
+                    "source": {
+                      "type": "string"
+                    },
+                    "captured_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": ["source", "captured_at"]
                 }
               },
               "required": ["project_id", "range", "window", "series", "inputs", "packs", "verdicts", "nights"]

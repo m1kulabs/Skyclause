@@ -1,6 +1,16 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { t } from '@skyclause/i18n'
-import { formatAge, formatDate, formatDateLong, formatDateTime, formatNumber, formatTime } from '@skyclause/i18n/format'
+import {
+  formatAge,
+  formatDate,
+  formatDateKeyAt,
+  formatDateLong,
+  formatDateTime,
+  formatList,
+  formatNumber,
+  formatTime,
+  formatTimeZoneName
+} from '@skyclause/i18n/format'
 import { catalogueFiles } from '../src/catalogue'
 import { pseudo } from '../src/pseudo'
 
@@ -17,6 +27,13 @@ describe('MYT formatters', () => {
     expect(formatDate(instant, 'ms')).toBe('2 November 2026')
     expect(formatDateLong(instant, 'ms')).toBe('Isnin 2 November 2026')
     expect(formatDateTime(instant, 'ms')).toBe('2 November 2026, 15:00 MYT')
+  })
+
+  test('formats project-local date keys, lists and time-zone labels', () => {
+    expect(formatDateKeyAt(new Date('2026-11-05T16:30:00Z'), 'Asia/Kuala_Lumpur')).toBe('2026-11-06')
+    expect(formatDateKeyAt(new Date('2026-11-05T16:30:00Z'), 'America/Los_Angeles')).toBe('2026-11-05')
+    expect(formatList(['Monday', 'Tuesday'], 'en')).toBe('Monday and Tuesday')
+    expect(formatTimeZoneName('Asia/Kuala_Lumpur', 'en')).toBe('MYT')
   })
 
   test('formats numbers by locale', () => {
@@ -49,6 +66,16 @@ describe('MYT formatters', () => {
 describe('catalogue translations', () => {
   test('interpolates named values', () => {
     expect(t('format.ageMinute', { value: 12 }, 'en')).toBe('12 min old')
+  })
+
+  test('renders auth email copy from English and carries an MYT expiry time', () => {
+    expect(
+      t('auth.magic_link.body', {
+        url: 'https://app.skyclause.m1ku.tech/sign-in?link=token',
+        expiresAt: formatDateTime(new Date('2026-11-09T00:15:00Z'), 'en')
+      })
+    ).toContain('9 November 2026, 08:15 MYT')
+    expect(t('auth.magic_link_disabled.body')).toContain('Magic-link sign-in is off')
   })
 
   test('falls back to English when a Malay value is missing', () => {

@@ -18,14 +18,20 @@ export {
   setPermissionCheck,
   setPrincipalResolver
 } from './middleware/auth'
+export { setOAuthManagement } from './middleware/oauth'
+export { createOAuthConsentHandler } from './routes/oauth/consent'
 export { requireIdempotency } from './middleware/idempotency'
 export { requireOrg } from './middleware/org'
 export { rateLimit } from './middleware/rate-limit'
 export { deprecate } from './deprecation'
+export { setApiKeyManager } from './api-key-manager'
 export { health } from './health'
+// #111's `POST /e`, served by `apps/web/app/e/route.ts` on the marketing host (spec §4 Hosts).
+export { handleAnalyticsIngest } from './analytics'
+export { productionDeps } from './production'
 export { checkOpenApi, openApiDocument, openApiResponse, serializeOpenApi, type OpenApiDocument } from './openapi'
 export { decodeCursor, encodeCursor, page } from './pagination'
-export { ApiError, problemType, type HttpSlug, type Slug } from './problems'
+export { ApiError, problemType } from './problems'
 export type { AnyHandlerEntry, HandlerEntry, Handlers } from './routes'
 export { instant, toWire } from './serialize'
 // c-bundle-lifecycle (#150): the reads `/v1` serves, for server components (#79 conventions).
@@ -54,9 +60,19 @@ export {
   type UpdateProjectInput
 } from './services/projects'
 export { createRun, getRun, listRuns, type RunView } from './services/runs'
+export {
+  createOrganisationTx,
+  listMembershipsTx,
+  renameOrganisationTx,
+  type CreateOrganisationInput,
+  type MembershipSummaryView,
+  type OrganisationView
+} from './services/organisations'
 export { sseResponse, type SseMessage, type SseOptions } from './sse'
+export { inspectMemberToken } from './services/members'
+export { createRotaService, nextApprovers, onDuty, ROTA_TEMPLATES, ROTA_TIME_ZONE } from './services/rota'
 export type * from './stores'
 export { calendarFeed, serveCalendarFeed, type CalendarFeed, type CalendarFeedDeps } from './services/ics'
+export { getAccountPreferences } from './services/account'
 export { inTenant, type ServiceContext, type WithTenant } from './tenancy'
 export { unbuiltOperations } from './unbuilt'
-export * from './placeholders/b-auditor'

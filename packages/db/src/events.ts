@@ -7,36 +7,59 @@ import { domainEvent, handledEvent, handledMessage } from './schema'
 // #79 §5 "Write": the domain event outbox. emitEvent writes in the caller's transaction; the Pub/Sub publish happens
 // only after commit, through the injected publisher; the 15-minute batch republishes what that missed (D45).
 
-/** Publishes one `{event_id}` message to Pub/Sub `domain-events`; the composition root injects the real one. */
+/** The Pub/Sub topic emitEvent publishes to (#79 §5; infra/environments/production/messaging.tf). */
+export const DOMAIN_EVENTS_TOPIC = 'domain-events'
+
+/** Publishes one `{event_id}` message to `DOMAIN_EVENTS_TOPIC`; the composition roots inject the real one. */
 export type EventPublisher = (message: { event_id: string }) => Promise<void>
 
-let publisher: EventPublisher | null = null
+// On globalThis, not in a module variable: Next.js may instantiate this module once for instrumentation.ts, where
+// the composition root sets the publisher, and again for the route handlers that emit.
+const slot = Symbol.for('skyclause.db.eventPublisher')
+const store = globalThis as { [slot]?: EventPublisher | null }
+const currentPublisher = () => store[slot] ?? null
 
-/** Sets the publisher emitEvent and the republish use; `null` unsets it (tests). */
+/** Sets the publisher emitEvent and the republish use, process-wide; `null` unsets it (tests). */
 export function setEventPublisher(next: EventPublisher | null) {
-  publisher = next
+  store[slot] = next
 }
 
 const pending = new WeakMap<object, string[]>()
 
-/** After commit: publish each event, then mark the published ones in a new transaction in the same context. */
-async function publishCommitted(ids: string[], inSameContext: InSameContext) {
-  if (!publisher) return
-  const published: string[] = []
+/** Publishes `ids` in order, stopping at the first failure: the rest wait for the batch's republish. */
+async function publishInOrder(publish: EventPublisher, ids: string[]) {
+  const sent: string[] = []
   for (const id of ids) {
     try {
-      await publisher({ event_id: id })
-      published.push(id)
-    } catch (error) {
-      log.warn('domain event publish failed; the batch republishes it', { event_id: id, error: String(error) })
+      await publish({ event_id: id })
+      sent.push(id)
+    } catch (failure) {
+      return { sent, failure }
     }
   }
-  if (published.length) {
+  return { sent, failure: undefined }
+}
+
+/**
+ * After commit: publish the transaction's events, then mark the published ones in a new transaction in the same
+ * context. A failed publish stops the rest, so a Pub/Sub outage delays the request by one publish, not one each.
+ */
+async function publishCommitted(ids: string[], inSameContext: InSameContext) {
+  const publisher = currentPublisher()
+  if (!publisher) return
+  const { sent, failure } = await publishInOrder(publisher, ids)
+  if (failure) {
+    log.warn('domain event publish failed; the batch republishes it', {
+      event_ids: ids.filter((id) => !sent.includes(id)),
+      error: String(failure)
+    })
+  }
+  if (sent.length) {
     await inSameContext((tx) =>
       tx
         .update(domainEvent)
         .set({ publishedAt: sql`now()` })
-        .where(inArray(domainEvent.id, published))
+        .where(inArray(domainEvent.id, sent))
     )
   }
 }
@@ -72,24 +95,33 @@ export const emitEvent: EmitEvent = async (handle, { projectId, type, data }) =>
 
 /**
  * The batch's republish (#79 §5, D45): publishes every event still unpublished 30 s before `now`, oldest first, and
- * marks them. Throws without a publisher, so a missing one fails the batch instead of passing silently (D9).
+ * marks those that went out. It publishes between two short transactions, so no Postgres transaction waits on
+ * Pub/Sub; a failed publish stops the run after marking what was sent, then throws. Two overlapping runs may both
+ * send an event, which `handleOnce` makes harmless. Throws without a publisher, so a missing one fails the batch
+ * instead of passing silently (D9).
  */
 export async function republishEvents(now: Date): Promise<number> {
-  const publish = publisher
+  const publish = currentPublisher()
   if (!publish) throw new Error('no event publisher: the composition root must call setEventPublisher')
-  return withSystem('domain-events-republish', async (tx) => {
-    const due = await tx
+  const due = await withSystem('domain-events-republish', (tx) =>
+    tx
       .select({ id: domainEvent.id })
       .from(domainEvent)
       .where(and(isNull(domainEvent.publishedAt), lt(domainEvent.createdAt, new Date(now.getTime() - 30_000))))
       .orderBy(asc(domainEvent.createdAt))
       .limit(500)
-      .for('update', { skipLocked: true })
-    for (const { id } of due) await publish({ event_id: id })
-    const ids = due.map(({ id }) => id)
-    if (ids.length) await tx.update(domainEvent).set({ publishedAt: now }).where(inArray(domainEvent.id, ids))
-    return ids.length
-  })
+  )
+  const { sent, failure } = await publishInOrder(
+    publish,
+    due.map(({ id }) => id)
+  )
+  if (sent.length) {
+    await withSystem('domain-events-republish', (tx) =>
+      tx.update(domainEvent).set({ publishedAt: now }).where(inArray(domainEvent.id, sent))
+    )
+  }
+  if (failure) throw failure
+  return sent.length
 }
 
 /** The envelope (TRD webhook event catalogue) of one event, read across organisations; null if it's gone. */

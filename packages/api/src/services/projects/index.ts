@@ -1,4 +1,12 @@
-import type { Can, Operations, Pack, Principal, Project, ProjectPack } from '@skyclause/contracts'
+import {
+  HTTP_PROBLEM_STATUS,
+  type Can,
+  type Operations,
+  type Pack,
+  type Principal,
+  type Project,
+  type ProjectPack
+} from '@skyclause/contracts'
 import {
   archiveProjectRecord,
   createProjectRecord,
@@ -62,7 +70,7 @@ export interface UpdateProjectInput {
   rota_override?: ProjectSettingsView['rota_override']
 }
 
-const notFound = () => new ApiError(404, 'not-found', 'No project with this ID.')
+const notFound = () => new ApiError(HTTP_PROBLEM_STATUS['not-found'], 'not-found', 'No project with this ID.')
 
 function inScope(principal: Principal, projectId: string): boolean {
   if (principal.kind === 'share_link') return principal.projectId === projectId

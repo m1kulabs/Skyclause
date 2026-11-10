@@ -1,4 +1,4 @@
-export const OPENAPI_SHA256 = '25fe37657a9a1773d914ae02b2cac8042799f4dddb3ed266f47626efe9401490' as const // gitleaks:allow -- a SHA-256 of openapi.json, not a secret.
+export const OPENAPI_SHA256 = '9f1df7f416b9054593a586a549df798137c1b3043fa41ce7be7af033b8af1fea' as const // gitleaks:allow -- a SHA-256 of openapi.json, not a secret.
 
 export const OPERATION_IDS = [
   'getProjectAnalysis',
@@ -759,7 +759,8 @@ export type OperationRequests = {
       pack: 'sky' | 'crowd'
     }
     body?: {
-      enabled: boolean
+      enabled?: boolean
+      sla_s?: number | null
     }
     idempotencyKey?: string
     signal?: AbortSignal
@@ -1700,6 +1701,65 @@ export type OperationResponses = {
         ics_uid: string | null
         ics_sequence: number
       }>
+      missing?: Array<{
+        window_id: string | null
+        night_id: string | null
+        shadow: {
+          scope: {
+            kind: 'site' | 'window' | 'night'
+            id: string | null
+          }
+          pack: 'sky' | 'crowd'
+          mode: 'normal' | 'outdoor_limited' | 'commute_disruption' | 'hybrid_recommended' | 'surge_night' | null
+          watch: boolean
+          no_call: {
+            inputs: Array<{
+              name: string
+              source_id: string | null
+              state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
+              since: string
+            }>
+          } | null
+          recommendations: Array<
+            'keep_with_advisory' | 'shift_start' | 'shift_end' | 'ask_shuttle' | 'leave_before_doors'
+          >
+          clauses: Array<{
+            key: string
+            result: 'fired' | 'not_fired' | 'blocked' | 'not_open'
+            blocked_by: Array<{
+              name: string
+              source_id: string | null
+              state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
+              since: string
+            }>
+            span?: {
+              from: string
+              to: string
+              complete: boolean
+            }
+            inputs: Array<{
+              name: string
+              value: number | boolean | string | Array<number> | unknown | null
+              unit: string
+              state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
+              since: string | null
+              age_s: number | null
+              source_ids: Array<string>
+              source_url: string | null
+              reading_ids: Array<string>
+              observed_at: string | null
+            }>
+          }>
+          open_from: string | null
+        }
+        recipients: Array<string>
+        resolution: 'drafted' | 'dismissed' | 'superseded' | null
+        call_id: string | null
+        reason: string | null
+        resolved_by: string | null
+        resolved_at: string | null
+        superseded_by: string | null
+      }>
       trigger: 'schedule' | 'crossing' | 'window' | 'listing' | 'calendar' | 'request'
       triggered_at: string
       sheet_version_id: string | null
@@ -1826,6 +1886,65 @@ export type OperationResponses = {
         }
         suppressed: number
       }
+    }>
+    missing?: Array<{
+      window_id: string | null
+      night_id: string | null
+      shadow: {
+        scope: {
+          kind: 'site' | 'window' | 'night'
+          id: string | null
+        }
+        pack: 'sky' | 'crowd'
+        mode: 'normal' | 'outdoor_limited' | 'commute_disruption' | 'hybrid_recommended' | 'surge_night' | null
+        watch: boolean
+        no_call: {
+          inputs: Array<{
+            name: string
+            source_id: string | null
+            state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
+            since: string
+          }>
+        } | null
+        recommendations: Array<
+          'keep_with_advisory' | 'shift_start' | 'shift_end' | 'ask_shuttle' | 'leave_before_doors'
+        >
+        clauses: Array<{
+          key: string
+          result: 'fired' | 'not_fired' | 'blocked' | 'not_open'
+          blocked_by: Array<{
+            name: string
+            source_id: string | null
+            state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
+            since: string
+          }>
+          span?: {
+            from: string
+            to: string
+            complete: boolean
+          }
+          inputs: Array<{
+            name: string
+            value: number | boolean | string | Array<number> | unknown | null
+            unit: string
+            state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
+            since: string | null
+            age_s: number | null
+            source_ids: Array<string>
+            source_url: string | null
+            reading_ids: Array<string>
+            observed_at: string | null
+          }>
+        }>
+        open_from: string | null
+      }
+      recipients: Array<string>
+      resolution: 'drafted' | 'dismissed' | 'superseded' | null
+      call_id: string | null
+      reason: string | null
+      resolved_by: string | null
+      resolved_at: string | null
+      superseded_by: string | null
     }>
     trigger: 'schedule' | 'crossing' | 'window' | 'listing' | 'calendar' | 'request'
     triggered_at: string
@@ -1961,6 +2080,65 @@ export type OperationResponses = {
         superseded_by_call_id: string | null
         ics_uid: string | null
         ics_sequence: number
+      }>
+      missing?: Array<{
+        window_id: string | null
+        night_id: string | null
+        shadow: {
+          scope: {
+            kind: 'site' | 'window' | 'night'
+            id: string | null
+          }
+          pack: 'sky' | 'crowd'
+          mode: 'normal' | 'outdoor_limited' | 'commute_disruption' | 'hybrid_recommended' | 'surge_night' | null
+          watch: boolean
+          no_call: {
+            inputs: Array<{
+              name: string
+              source_id: string | null
+              state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
+              since: string
+            }>
+          } | null
+          recommendations: Array<
+            'keep_with_advisory' | 'shift_start' | 'shift_end' | 'ask_shuttle' | 'leave_before_doors'
+          >
+          clauses: Array<{
+            key: string
+            result: 'fired' | 'not_fired' | 'blocked' | 'not_open'
+            blocked_by: Array<{
+              name: string
+              source_id: string | null
+              state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
+              since: string
+            }>
+            span?: {
+              from: string
+              to: string
+              complete: boolean
+            }
+            inputs: Array<{
+              name: string
+              value: number | boolean | string | Array<number> | unknown | null
+              unit: string
+              state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
+              since: string | null
+              age_s: number | null
+              source_ids: Array<string>
+              source_url: string | null
+              reading_ids: Array<string>
+              observed_at: string | null
+            }>
+          }>
+          open_from: string | null
+        }
+        recipients: Array<string>
+        resolution: 'drafted' | 'dismissed' | 'superseded' | null
+        call_id: string | null
+        reason: string | null
+        resolved_by: string | null
+        resolved_at: string | null
+        superseded_by: string | null
       }>
       trigger: 'schedule' | 'crossing' | 'window' | 'listing' | 'calendar' | 'request'
       triggered_at: string
@@ -2206,6 +2384,7 @@ export type OperationResponses = {
       detail: string
     }>
     project_id: string
+    trace_id: string
     window: {
       id: string
       project_id: string
@@ -2384,6 +2563,12 @@ export type OperationResponses = {
         revision: string
       } | null
       age_s: number | null
+      source_state: {
+        state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
+        since: string
+        http_status: number | null
+        pending_until: string | null
+      } | null
     }>
     next_cursor: string | null
   }
@@ -3213,6 +3398,13 @@ export type OperationResponses = {
         date: string
         starts_at: string
         mode: 'normal' | 'outdoor_limited' | 'commute_disruption' | 'hybrid_recommended' | 'surge_night' | null
+        show_name?: string | null
+        warning?: {
+          text: string
+          gloss: string | null
+          valid_from: string
+          valid_to: string
+        } | null
       }>
       n: number
       next_action: string | null
@@ -3240,6 +3432,14 @@ export type OperationResponses = {
           no_call: boolean
           agrees: boolean
           stale_inputs: boolean
+        }
+        metric: {
+          metric: string
+          x: number | null
+          value?: number | null
+          n: number
+          low: number | null
+          high: number | null
         }
       }>
       n: number
@@ -4231,6 +4431,65 @@ export type OperationResponses = {
             ics_uid: string | null
             ics_sequence: number
           }>
+          missing?: Array<{
+            window_id: string | null
+            night_id: string | null
+            shadow: {
+              scope: {
+                kind: 'site' | 'window' | 'night'
+                id: string | null
+              }
+              pack: 'sky' | 'crowd'
+              mode: 'normal' | 'outdoor_limited' | 'commute_disruption' | 'hybrid_recommended' | 'surge_night' | null
+              watch: boolean
+              no_call: {
+                inputs: Array<{
+                  name: string
+                  source_id: string | null
+                  state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
+                  since: string
+                }>
+              } | null
+              recommendations: Array<
+                'keep_with_advisory' | 'shift_start' | 'shift_end' | 'ask_shuttle' | 'leave_before_doors'
+              >
+              clauses: Array<{
+                key: string
+                result: 'fired' | 'not_fired' | 'blocked' | 'not_open'
+                blocked_by: Array<{
+                  name: string
+                  source_id: string | null
+                  state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
+                  since: string
+                }>
+                span?: {
+                  from: string
+                  to: string
+                  complete: boolean
+                }
+                inputs: Array<{
+                  name: string
+                  value: number | boolean | string | Array<number> | unknown | null
+                  unit: string
+                  state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
+                  since: string | null
+                  age_s: number | null
+                  source_ids: Array<string>
+                  source_url: string | null
+                  reading_ids: Array<string>
+                  observed_at: string | null
+                }>
+              }>
+              open_from: string | null
+            }
+            recipients: Array<string>
+            resolution: 'drafted' | 'dismissed' | 'superseded' | null
+            call_id: string | null
+            reason: string | null
+            resolved_by: string | null
+            resolved_at: string | null
+            superseded_by: string | null
+          }>
         } | null
         next_night: {
           id: string
@@ -5129,7 +5388,7 @@ export type OperationResponses = {
   }
   searchOrganisation: {
     data: Array<{
-      kind: 'project' | 'source' | 'window' | 'call'
+      kind: 'project' | 'source' | 'window' | 'bundle' | 'call' | 'ledger'
       id: string
       label: string
       href: string
@@ -5531,6 +5790,10 @@ export type OperationResponses = {
       exit_start: string | null
       exit_end: string | null
     }>
+    replay?: {
+      source: string
+      captured_at: string
+    }
   }
   createSubscribeLink: {
     id: string
@@ -5606,7 +5869,7 @@ export type OperationResponses = {
       estimated_cost_myr: number | null
     }
     data: Array<{
-      run_id: string
+      run_id: string | null
       ai_key_id: string | null
       model: string
       tokens_in: number
@@ -5802,6 +6065,7 @@ export type OperationResponses = {
       disabled_at: string | null
       verified_at: string | null
       status: string
+      last_delivery_at?: string | null
     }>
     next_cursor: string | null
   }
@@ -5834,6 +6098,7 @@ export type OperationResponses = {
     disabled_at: string | null
     verified_at: string | null
     status: string
+    last_delivery_at?: string | null
     secret: string
   }
   getWebhook: {
@@ -5865,6 +6130,7 @@ export type OperationResponses = {
     disabled_at: string | null
     verified_at: string | null
     status: string
+    last_delivery_at?: string | null
   }
   updateWebhook: {
     id: string
@@ -5895,6 +6161,7 @@ export type OperationResponses = {
     disabled_at: string | null
     verified_at: string | null
     status: string
+    last_delivery_at?: string | null
   }
   deleteWebhook: undefined
   verifyWebhook: {
@@ -5926,6 +6193,7 @@ export type OperationResponses = {
     disabled_at: string | null
     verified_at: string | null
     status: string
+    last_delivery_at?: string | null
   }
   redeliverWebhook: {
     dispatch_id: string
@@ -6286,7 +6554,7 @@ export type OperationResponses = {
               source_id: string
               poll_id: string
               outcome: string
-              http_status: number
+              http_status: number | null
               new_rows: number
             }
           }
@@ -6326,6 +6594,9 @@ export type OperationResponses = {
           }
       response_headers: Record<string, string>
       response_body: string | null
+      raw_request_body?: string
+      error?: string | null
+      next_retry_at?: string | null
     }>
     next_cursor: string | null
   }
@@ -6347,6 +6618,7 @@ export type OperationResponses = {
       cancelled_at: string | null
       share_link_id: string | null
       moderation: 'visible' | 'hidden_pending_review' | 'removed'
+      at_risk?: boolean
       recurrence?: {
         frequency: 'weekly'
         days_of_week: Array<'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'>
@@ -6390,6 +6662,7 @@ export type OperationResponses = {
     cancelled_at: string | null
     share_link_id: string | null
     moderation: 'visible' | 'hidden_pending_review' | 'removed'
+    at_risk?: boolean
     recurrence?: {
       frequency: 'weekly'
       days_of_week: Array<'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'>
@@ -6429,6 +6702,7 @@ export type OperationResponses = {
     cancelled_at: string | null
     share_link_id: string | null
     moderation: 'visible' | 'hidden_pending_review' | 'removed'
+    at_risk?: boolean
     recurrence?: {
       frequency: 'weekly'
       days_of_week: Array<'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'>
@@ -6468,6 +6742,7 @@ export type OperationResponses = {
     cancelled_at: string | null
     share_link_id: string | null
     moderation: 'visible' | 'hidden_pending_review' | 'removed'
+    at_risk?: boolean
     recurrence?: {
       frequency: 'weekly'
       days_of_week: Array<'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'>

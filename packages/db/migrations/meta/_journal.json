@@ -169,6 +169,125 @@
       "when": 1794244875352,
       "tag": "0023_c-analysis-api-columns",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794247592936,
+      "tag": "0024_c-bundle-lifecycle-missing-calls",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794278826723,
+      "tag": "0025_b-auditor-findings",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794282192959,
+      "tag": "0026_a-audit-log-indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1794286813724,
+      "tag": "0027_a-analytics-health",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1794287174465,
+      "tag": "0028_a-data-rights-export-job",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1794287183849,
+      "tag": "0029_a-data-rights-grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1794287601989,
+      "tag": "0030_a-members-api",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1794287602395,
+      "tag": "0031_a-members-token-lookup",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1794287602840,
+      "tag": "0032_a-members-write-boundary",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1794287610860,
+      "tag": "0033_a-members-api-indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794287877497,
+      "tag": "0034_a-members-retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1794288354885,
+      "tag": "0035_e-byok-api-test-columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1794288362756,
+      "tag": "0036_e-byok-api-system-read",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1794288363134,
+      "tag": "0037_e-byok-api-org-flags",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1794288551711,
+      "tag": "0038_e-mcp-auth",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1794289006964,
+      "tag": "0039_b-create-project-ui-onboarding-skips",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1794289012146,
+      "tag": "0040_b-create-project-ui-activation",
+      "breakpoints": true
     }
   ]
 }

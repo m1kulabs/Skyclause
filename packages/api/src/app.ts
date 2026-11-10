@@ -1,3 +1,4 @@
+import { HTTP_PROBLEM_STATUS } from '@skyclause/contracts'
 import { OpenAPIHono } from '@hono/zod-openapi'
 import { log } from '@skyclause/config'
 import { API_ROUTES, NotBuiltError, V1_ROUTES, type RouteMetadata, type SkyclauseRoute } from '@skyclause/contracts'
@@ -21,6 +22,7 @@ import { rateLimit } from './middleware/rate-limit'
 import { apiSurfaceGate, auditToolCall } from './middleware/surface'
 import { ApiError, problemResponse, toApiError, validationFailed } from './problems'
 import { HANDLERS, type AnyHandlerEntry } from './routes'
+import { mountAuditWriteGuards } from './routes/audit'
 
 type Middleware = MiddlewareHandler<ApiEnv>
 
@@ -74,8 +76,14 @@ function surfaceApp(
     }
     return problemResponse(c, problem)
   })
-  app.notFound((c) => problemResponse(c, new ApiError(404, 'not-found', 'No operation answers this method and path.')))
+  app.notFound((c) =>
+    problemResponse(
+      c,
+      new ApiError(HTTP_PROBLEM_STATUS['not-found'], 'not-found', 'No operation answers this method and path.')
+    )
+  )
   for (const route of routes) mount(app, surface, route, handlers[route.operationId])
+  if (surface === 'api') mountAuditWriteGuards(app)
   return app
 }
 
@@ -96,6 +104,21 @@ function gate(statement: RouteMetadata['statement']): Middleware[] {
       return [requireStaff]
     case 'device':
       return [requireDevice]
+    case 'rota.manage':
+      return [
+        requireOrg,
+        async (c, next) => {
+          const principal = c.get('principal')
+          const accountId =
+            principal?.kind === 'session' || principal?.kind === 'api_key' || principal?.kind === 'oauth'
+              ? principal.accountId
+              : undefined
+          if (!principal || !accountId || !c.get('deps').can(principal, 'rota.manage', { accountId })) {
+            throw new ApiError(403, 'insufficient-scope', 'This operation needs rota.manage for this account.')
+          }
+          await next()
+        }
+      ]
     default:
       return [requireOrg, requirePermission(statement)]
   }

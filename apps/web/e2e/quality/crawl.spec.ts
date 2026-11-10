@@ -3,12 +3,25 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { inspectPage, motionFindings, type Finding } from './checks'
 import { KNOWN_GAPS } from './known-gaps'
-import { sessions, signedOut, type Session } from './roles'
+import { sessions, signedOut, type Role, type Session } from './roles'
 import { builtRoutes, type CrawlRoute } from './routes'
-import { visit } from './visit'
+import { redirectsToAccount, visit } from './visit'
+import { onboardingOperations } from '../../features/onboarding/operations'
+import { AUTH_REAUTH_DIALOG_SELECTOR, isAuthRoute } from '../../features/sign-in/model'
+import { sourceOperations } from '../../features/sources/operations'
+import { stubCalls } from '../calls/doubles'
+import { stubDashboard } from '../dashboard/doubles'
+import { stubApi } from '../harness'
+import { prepareCrawl } from '../project-ui/fixtures'
 
 const PLANTED_FAILURE = '/quality-planted/unlabelled-input'
 const PUBLIC_GROUPS = new Set(['marketing', 'public'])
+const PROJECT_UI_ROUTES = new Set([
+  '/[org]/[project]',
+  '/[org]/[project]/settings',
+  '/[org]/[project]/settings/rota',
+  '/[org]/[project]/settings/share'
+])
 
 interface Variant {
   theme: 'dark' | 'light' | 'high contrast'
@@ -26,6 +39,65 @@ const VARIANTS: Variant[] = [
   { theme: 'dark', size: '320 px (200% zoom)', viewport: { width: 320, height: 640 }, reflow: true }
 ]
 
+const CRAWL_NOW = '2026-11-05T13:13:00.000Z'
+const CRAWL_PROJECT = {
+  id: '019b7f4a-1e00-7000-8000-000000000201',
+  org_id: '019b7f4a-1e00-7000-8000-000000000001',
+  name: 'Quality crawl project',
+  slug: 'crawl-project',
+  time_zone: 'Asia/Kuala_Lumpur',
+  public: false,
+  semester_ends_on: null,
+  site_name: 'APU',
+  site_lat: 3.0559,
+  site_lon: 101.6997,
+  archived_at: null,
+  camera_day_start: null,
+  camera_day_end: null,
+  warning_area_terms: [],
+  packs: [
+    { pack: 'sky', enabled: true, sheet_id: '019b7f4a-1e00-7000-8000-000000000401', schedule: null, sla_s: 600 },
+    { pack: 'crowd', enabled: false, sheet_id: '019b7f4a-1e00-7000-8000-000000000402', schedule: null, sla_s: 7200 }
+  ]
+}
+
+function onboardingFor(org: string, projectDone: boolean) {
+  const project = `/${org}/crawl-project`
+  return {
+    steps: [
+      {
+        step: 'organisation',
+        completed_at: CRAWL_NOW,
+        skipped: false,
+        result: 'Crawl organisation active',
+        href: '/new'
+      },
+      {
+        step: 'project',
+        completed_at: projectDone ? CRAWL_NOW : null,
+        skipped: false,
+        result: projectDone ? 'Quality crawl project created' : null,
+        href: `/${org}/new`
+      },
+      { step: 'sources', completed_at: null, skipped: false, result: null, href: `${project}/settings/packs` },
+      { step: 'window', completed_at: null, skipped: false, result: null, href: `${project}/windows?declare=window` },
+      { step: 'rota', completed_at: null, skipped: false, result: null, href: `/${org}/settings/rota` },
+      { step: 'channel', completed_at: null, skipped: false, result: null, href: `${project}/settings/channels` }
+    ]
+  }
+}
+
+async function stubDynamicPage(page: Page, route: CrawlRoute) {
+  if (!route.params?.includes('org')) return
+  const org = route.path.split('/')[1]!
+  const projectPage = route.params.includes('project')
+  await stubApi(page, 'getOnboarding', onboardingFor(org, projectPage), { registry: onboardingOperations })
+  if (!projectPage) return
+
+  await stubApi(page, 'listProjects', { data: [CRAWL_PROJECT], next_cursor: null }, { registry: onboardingOperations })
+  await stubApi(page, 'listProjectSources', { data: [], next_cursor: null }, { registry: sourceOperations })
+}
+
 interface Located extends Finding {
   theme: string
   size: string
@@ -36,11 +108,41 @@ function note(info: TestInfo, type: string, description: string) {
   console.log(`${type}: ${description}`)
 }
 
-async function crawl(page: Page, route: CrawlRoute, session: Session, info: TestInfo): Promise<Located[]> {
+async function crawl(
+  page: Page,
+  route: CrawlRoute,
+  session: Session,
+  info: TestInfo,
+  beforeVisit?: () => Promise<void>,
+  readySelector?: string
+): Promise<Located[]> {
   const jsOn = info.project.use.javaScriptEnabled !== false
   const found: Located[] = []
-  if (session.signIn) await session.signIn(page)
+  // The live event hub is still owned by d-org-api. Keep the UI's reconnecting
+  // streams local to this crawl instead of invoking its notBuilt placeholder.
+  await page.route('**/api/notifications/stream**', (request) =>
+    request.fulfill({ status: 200, contentType: 'text/event-stream', body: ': crawl fixture\n\n' })
+  )
+  await page.route('**/v1/projects/*/bundles/stream**', (request) =>
+    request.fulfill({ status: 200, contentType: 'text/event-stream', body: ': crawl fixture\n\n' })
+  )
+  // #174 and #166 routes sign in through the fixtures' test principal and keep the pattern path, which visit()
+  // fills with the fixtures' test-org/test-project; the other routes use a real session and its organisation.
+  const projectUiRoute = PROJECT_UI_ROUTES.has(route.path) || route.path.startsWith('/[org]/[project]/calls')
+  let org: { slug: string } | null = null
+  if (projectUiRoute) await prepareCrawl(page, session.role)
+  else if (session.signIn) org = await session.signIn(page)
   else await signedOut(page)
+  const concreteRoute = projectUiRoute
+    ? route
+    : {
+        ...route,
+        path: route.path
+          .replace('[org]', encodeURIComponent(org?.slug ?? 'crawl-org'))
+          .replace('[project]', 'crawl-project')
+      }
+  if (!projectUiRoute) await stubDynamicPage(page, concreteRoute)
+  await beforeVisit?.()
   for (const variant of jsOn ? VARIANTS : VARIANTS.slice(0, 1)) {
     await page.emulateMedia({
       colorScheme: variant.theme === 'light' ? 'light' : 'dark',
@@ -48,7 +150,21 @@ async function crawl(page: Page, route: CrawlRoute, session: Session, info: Test
       reducedMotion: 'no-preference'
     })
     if (variant.viewport) await page.setViewportSize(variant.viewport)
-    const findings = await visit(page, route, session.role)
+    const findings = await visit(page, concreteRoute, session.role, readySelector, org?.slug)
+    if (redirectsToAccount(route, session.role)) return found
+    const reauthDialog = page.locator(AUTH_REAUTH_DIALOG_SELECTOR)
+    if (isAuthRoute(route.path) || (await reauthDialog.count()) > 0) {
+      const passwordControls = page.locator(
+        'input[type="password"], input[autocomplete="current-password"], input[autocomplete="new-password"]'
+      )
+      const count = await passwordControls.count()
+      if (count) {
+        findings.push({
+          check: 'auth-password',
+          detail: `${count} password control(s) exist on an auth route or re-authentication dialog`
+        })
+      }
+    }
     if (
       variant.theme === 'high contrast' &&
       !(await page.evaluate(() => matchMedia('(prefers-contrast: more)').matches))
@@ -57,11 +173,21 @@ async function crawl(page: Page, route: CrawlRoute, session: Session, info: Test
       findings.push({ check: 'emulation', detail: `${info.project.name} didn't apply prefers-contrast: more` })
     }
     findings.push(...(await inspectPage(page, { axe: jsOn, reflow: !!variant.reflow })))
+    const paymentArtifacts = await page.locator('input[autocomplete^="cc-"], iframe[src*="js.stripe.com"]').count()
+    if (paymentArtifacts) {
+      findings.push({
+        check: 'BIL-1',
+        detail: `${paymentArtifacts} payment field(s) or Stripe frame(s) appear in a P1 build`
+      })
+    }
     found.push(...findings.map((finding) => ({ ...finding, theme: variant.theme, size: variant.size })))
   }
   if (jsOn) {
     await page.emulateMedia({ colorScheme: 'dark', contrast: 'no-preference', reducedMotion: 'reduce' })
-    const findings = [...(await visit(page, route, session.role)), ...(await motionFindings(page))]
+    const findings = [
+      ...(await visit(page, concreteRoute, session.role, readySelector, org?.slug)),
+      ...(await motionFindings(page))
+    ]
     found.push(...findings.map((finding) => ({ ...finding, theme: 'dark, reduced motion', size: 'project size' })))
   } else {
     note(info, 'JavaScript off', 'axe and reduced motion need page scripts; they run in the JavaScript projects')
@@ -76,14 +202,54 @@ function report(route: CrawlRoute, session: Session, findings: Located[]) {
   return `${findings.length} quality finding(s):\n${lines.join('\n')}`
 }
 
-for (const route of builtRoutes()) {
+function routeFixture(route: CrawlRoute): { route: CrawlRoute; calls: boolean } {
+  if (route.path === '/[org]/[project]/calls') return { route: { ...route, dynamic: false }, calls: true }
+  if (route.path === '/[org]/[project]/calls/[id]')
+    return {
+      route: { ...route, path: '/[org]/[project]/calls/019a45b0-0000-7000-8000-000000000004', dynamic: false },
+      calls: true
+    }
+  return { route, calls: false }
+}
+
+for (const discovered of builtRoutes()) {
+  const { route, calls } = routeFixture(discovered)
   for (const session of sessions()) {
     test(`${route.path} as ${session.role}`, async ({ page }, info) => {
       const jsOn = info.project.use.javaScriptEnabled !== false
       test.slow(jsOn, 'One case runs five complete axe audits plus the reduced-motion check')
       test.skip(!jsOn && !(route.group && PUBLIC_GROUPS.has(route.group)), 'JavaScript off covers public pages only')
-      test.fixme(route.dynamic, `${route.path} needs param fixtures with stubApi bodies (#95)`)
-      const findings = await crawl(page, route, session, info)
+      test.fixme(
+        route.dynamic && !route.params && !PROJECT_UI_ROUTES.has(route.path) && route.path !== '/[org]',
+        `${route.path} needs param fixtures with stubApi bodies (#95)`
+      )
+      const dashboard = route.path === '/[org]'
+      const visitRoute = dashboard ? { ...route, path: '/test-org', dynamic: false } : route
+      const dashboardRoles: Record<Role, 'owner' | 'admin' | 'approver' | 'editor' | 'viewer' | 'guest' | null> = {
+        Owner: 'owner',
+        Admin: 'admin',
+        Approver: 'approver',
+        Editor: 'editor',
+        Viewer: 'viewer',
+        guest: 'guest',
+        'share-link reviewer': null,
+        'signed out': null
+      }
+      const findings = await crawl(
+        page,
+        visitRoute,
+        session,
+        info,
+        async () => {
+          if (calls) await stubCalls(page)
+          if (dashboard) await stubDashboard(page, { role: dashboardRoles[session.role], noProjects: true })
+        },
+        calls && jsOn
+          ? route.path.endsWith('/calls')
+            ? '[data-calls-ready="true"] [data-call]'
+            : '[data-calls-ready="true"] h1'
+          : undefined
+      )
 
       if (route.path === PLANTED_FAILURE) {
         // The planted unlabelled input must fail the crawl, by route, role, theme and rule.

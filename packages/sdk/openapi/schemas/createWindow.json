@@ -151,6 +151,9 @@
                   "type": "string",
                   "enum": ["visible", "hidden_pending_review", "removed"]
                 },
+                "at_risk": {
+                  "type": "boolean"
+                },
                 "recurrence": {
                   "type": ["object", "null"],
                   "properties": {

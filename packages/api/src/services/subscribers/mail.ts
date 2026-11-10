@@ -35,16 +35,22 @@ export async function queueSubscriberEmail(
     subscriber: { id: string; projectId: string; email: string; language: string }
     projectName: string
     appOrigin: string
+    /** New-address corrections are sent there while the existing row keeps its original address. */
+    recipient?: string
+    addressHash?: string
+    /** A subscriber already proved control of the manage link; each correction needs its own confirmation. */
+    skipRecent?: boolean
   }
 ): Promise<QueuedEmail | null> {
   const { subscriber } = o
-  if (await recentSubscriberEmail(tx, subscriber.id, kind)) return null
+  if (!o.skipRecent && (await recentSubscriberEmail(tx, subscriber.id, kind))) return null
   const token = await issueSubscriberToken(tx, { subscriberId: subscriber.id, purpose: PURPOSE[kind] })
   const language = subscriber.language === 'ms' ? 'ms' : 'en'
+  const query = kind === 'confirmation' && o.addressHash ? `?address_hash=${o.addressHash}` : ''
   const { subject, text } = renderSubscriberEmail(kind, {
     language,
     projectName: o.projectName,
-    url: `${o.appOrigin}${PAGE[kind](token)}`
+    url: `${o.appOrigin}${PAGE[kind](token)}${query}`
   })
   const idempotencyKey = createHash('sha256').update(`${kind}\n${subscriber.id}\n${token}`).digest('hex')
   const [row] = await tx
@@ -62,7 +68,7 @@ export async function queueSubscriberEmail(
   return {
     orgId: tx.orgId!,
     noticeId: row!.id,
-    message: { to: subscriber.email, from: 'notices', subject, text, category: kind, idempotencyKey }
+    message: { to: o.recipient ?? subscriber.email, from: 'notices', subject, text, category: kind, idempotencyKey }
   }
 }
 

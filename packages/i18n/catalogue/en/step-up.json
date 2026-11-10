@@ -1,0 +1,16 @@
+{
+  "title": "Confirm it’s you",
+  "description": "Verify your identity to continue this sensitive action.",
+  "passkey": "Use passkey",
+  "email": "Use an email link instead",
+  "send_email": "Send me a sign-in link",
+  "check_email": "Check your email, then press Continue",
+  "continue": "Continue",
+  "cancel": "Cancel",
+  "loading": "Checking your sign-in…",
+  "sending": "Sending the email link…",
+  "verifying": "Verifying your passkey…",
+  "not_fresh": "This session has not been confirmed yet. Open the link in your email, then continue here.",
+  "error": "We couldn’t confirm your identity. Try again or use an email link.",
+  "passkey_error": "The passkey could not be verified. Try again or use an email link."
+}

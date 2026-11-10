@@ -134,12 +134,12 @@ test('CAL-9 cancelling a re-check sends no second request', async ({ page }) => 
   await expect(approve(page, 1)).toBeEnabled()
 })
 
-test('CAL-15 editing wording and recipients stays local and a missing teaching line blocks approval', async ({
+test('CAL-15 editing wording and recipients stays local and a template teaching line blocks approval', async ({
   page
 }) => {
   const hybrid = callDouble(ids.first, {
     mode: 'hybrid_recommended',
-    notices: [{ language: 'en', subject: 'Test hybrid draft', body: rawT('bundles.teaching') }]
+    notices: [{ language: 'en', subject: 'Test hybrid draft', body: 'Teaching update in a test double' }]
   })
   await prepare(page, bundleDouble([hybrid]))
   let writes = 0
@@ -155,20 +155,16 @@ test('CAL-15 editing wording and recipients stays local and a missing teaching l
   await body.fill('Teaching line removed in a test double')
   await dialog.getByRole('checkbox').last().uncheck()
   await dialog.getByRole('button', { name: t('save'), exact: true }).press('Enter')
-  await expect(approve(page, 1)).toBeDisabled()
-  await expect(row).toContainText(t('teaching_required'))
+  await expect(approve(page, 1)).toBeEnabled()
+  await expect(row).not.toContainText(t('teaching_forbidden'))
   expect(writes).toBe(0)
   await row.focus()
   await page.keyboard.press('e')
   await body.fill(rawT('bundles.teaching'))
   await dialog.getByRole('button', { name: t('save'), exact: true }).press('Enter')
-  const request = page.waitForRequest((request) => request.url().endsWith('/approve'))
-  await approve(page, 1).press('Enter')
-  expect((await request).postDataJSON().calls[0]).toMatchObject({
-    action: 'edit',
-    recipients: ['english-recipient@example.test'],
-    notices: [{ body: rawT('bundles.teaching') }]
-  })
+  await expect(approve(page, 1)).toBeDisabled()
+  await expect(row).toContainText(t('teaching_forbidden'))
+  expect(writes).toBe(0)
 })
 
 test('LOC-4 and LOC-5 show recipient languages, Malay quotes and English fallback', async ({ page }) => {
@@ -254,8 +250,7 @@ for (const code of [
   'malay-reader-required',
   'redraft-required',
   'call-expired',
-  'bundle-superseded',
-  'reauth-required'
+  'bundle-superseded'
 ]) {
   test(`approval handles ${code} without an automatic second write`, async ({ page }) => {
     await prepare(page, bundleDouble([callDouble()]))
@@ -270,8 +265,7 @@ for (const code of [
     })
     await open(page)
     await approve(page, 1).press('Enter')
-    const expected =
-      code === 'reauth-required' ? 'reauth_unavailable' : code === 'bundle-superseded' ? 'superseded' : code
+    const expected = code === 'bundle-superseded' ? 'superseded' : code
     await expect(page.locator('.bundle-detail')).toContainText(t(expected))
     expect(writes).toBe(1)
     if (code === 'bundle-superseded')
@@ -281,6 +275,56 @@ for (const code of [
       )
   })
 }
+
+test('ACC-8 opens step-up before approval and retries with the same idempotency key', async ({ page }) => {
+  const bundle = await prepare(page, bundleDouble([callDouble()]))
+  let writes = 0
+  let confirmed = false
+  const keys: string[] = []
+  await page.route('**/api/bundles/*/approve', async (route) => {
+    writes += 1
+    keys.push(route.request().headers()['idempotency-key'] ?? '')
+    if (writes === 1) {
+      await route.fulfill({ status: 401, json: problem('reauth-required', 401) })
+    } else {
+      await route.fulfill({ json: { ...bundle, state: 'approved' } })
+    }
+  })
+  await page.route('**/api/auth/step-up', (route) =>
+    route.fulfill({
+      json: {
+        fresh_until: confirmed ? '2099-01-01T00:00:00.000Z' : '2000-01-01T00:00:00.000Z',
+        passkey: false
+      }
+    })
+  )
+  await page.route('**/api/auth/step-up/magic-link', (route) => route.fulfill({ json: { sent: true } }))
+  await page.route('**/api/auth/step-up/magic-link/confirm', (route) => {
+    confirmed = true
+    return route.fulfill({ json: { confirmed: true } })
+  })
+  await open(page)
+  await approve(page, 1).press('Enter')
+
+  const dialog = page.getByRole('dialog', { name: 'Confirm it’s you' })
+  await expect(dialog).toBeVisible()
+  expect(writes).toBe(1)
+  await dialog.getByRole('button', { name: 'Send me a sign-in link' }).press('Enter')
+  await expect(dialog.getByText('Check your email, then press Continue')).toBeVisible()
+  await page.evaluate(async () => {
+    await fetch('/api/auth/step-up/magic-link/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: 'test-link-token' })
+    })
+  })
+  await dialog.getByRole('button', { name: 'Continue' }).press('Enter')
+
+  await expect(dialog).toBeHidden()
+  expect(writes).toBe(2)
+  expect(keys[0]).toBeTruthy()
+  expect(keys[1]).toBe(keys[0])
+})
 
 test('shortcuts stay inside the focused call and honour the preference', async ({ page }) => {
   await prepare(page, bundleDouble([callDouble()]), { shortcuts: false })
@@ -478,9 +522,27 @@ test('#372 a signed-in approver’s bundle arrives rendered by the server and hy
   page.on('pageerror', (error) => errors.push(error.message))
   await signInAs(page, 'approver', org)
   await stubReads(page, review.bundle, review.calls, { org })
-  await open(page, review.path)
-  // The run line comes only from the client's own reads, after hydration; they paint the call list the server did.
+  // Pause the client refresh so the full call list can be compared at hydration, before #404 adds the readings.
+  let releaseStrip!: () => void
+  const stripPaused = new Promise<void>((resolve) => {
+    releaseStrip = resolve
+  })
+  await page.route('**/v1/projects/*/strip', async (route) => {
+    await stripPaused
+    await route.fallback()
+  })
+  const stripRequested = page.waitForRequest('**/v1/projects/*/strip')
+  try {
+    await open(page, review.path)
+    // This read starts in an effect, so hydration has committed while the refresh is still paused.
+    await stripRequested
+    expect(await page.locator('.bundle-call-list').innerText()).toBe(rendered)
+  } finally {
+    releaseStrip()
+  }
+  // The run and strip arrive in the client refresh; new readings must replace the server's empty strip.
   await expect(page.locator('.bundle-trace')).toContainText(review.bundle.run_id)
-  expect(await page.locator('.bundle-call-list').innerText()).toBe(rendered)
+  await expect(page.locator('.bundle-call-list figure svg')).toBeVisible()
+  await expect(page.locator('.bundle-call-list figure figcaption')).toContainText('50')
   expect(errors.filter((error) => /hydrat|Minified React error #(418|419|421|422|423|425)\b/i.test(error))).toEqual([])
 })

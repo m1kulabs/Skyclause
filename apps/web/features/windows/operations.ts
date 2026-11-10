@@ -1,16 +1,15 @@
-import { REGISTRY } from '@skyclause/contracts'
+import { listProjectBundles as bundles } from '@skyclause/contracts/api/v1/bundles'
+import { listProjectDays as days } from '@skyclause/contracts/api/v1/days'
+import { listIcsFeeds as feeds, createIcsFeed as importFeed } from '@skyclause/contracts/api/v1/ics-feeds'
+import { listNights as nights } from '@skyclause/contracts/api/v1/nights'
+import { listProjects as projects } from '@skyclause/contracts/api/v1/projects'
+import {
+  listWindows as windows,
+  createWindow as create,
+  updateWindow as update,
+  cancelWindow as cancel
+} from '@skyclause/contracts/api/v1/windows'
 import { createApiFetch } from '../../lib/api-fetch'
-
-const projects = REGISTRY.find((route) => route.operationId === 'listProjects')!
-const windows = REGISTRY.find((route) => route.operationId === 'listWindows')!
-const feeds = REGISTRY.find((route) => route.operationId === 'listIcsFeeds')!
-const days = REGISTRY.find((route) => route.operationId === 'listProjectDays')!
-const nights = REGISTRY.find((route) => route.operationId === 'listNights')!
-const bundles = REGISTRY.find((route) => route.operationId === 'listProjectBundles')!
-const create = REGISTRY.find((route) => route.operationId === 'createWindow')!
-const update = REGISTRY.find((route) => route.operationId === 'updateWindow')!
-const cancel = REGISTRY.find((route) => route.operationId === 'cancelWindow')!
-const importFeed = REGISTRY.find((route) => route.operationId === 'createIcsFeed')!
 
 export const windowsOperations = {
   listProjects: {

@@ -1,5 +1,5 @@
 import type { z } from '@hono/zod-openapi'
-import type { Operations, RecordAudit } from '@skyclause/contracts'
+import { HTTP_PROBLEM_STATUS, type Operations, type RecordAudit } from '@skyclause/contracts'
 import {
   explainReviewItem,
   isFlagEnabled,
@@ -27,7 +27,8 @@ type Rows<F extends (...args: never[]) => unknown> = Awaited<ReturnType<F>>
 type GradeRow = Rows<typeof listGradeRows>[number]
 type ItemRow = Rows<typeof listReviewItemRows>[number]
 
-const notFound = () => new ApiError(404, 'not-found', 'No such review item, or you can’t explain it.')
+const notFound = () =>
+  new ApiError(HTTP_PROBLEM_STATUS['not-found'], 'not-found', 'No such review item, or you can’t explain it.')
 const badCursor = () =>
   new ApiError(422, 'validation-failed', 'The cursor is not one this API issued.', {
     errors: [{ in: 'query', pointer: '/cursor', detail: 'Invalid cursor' }]

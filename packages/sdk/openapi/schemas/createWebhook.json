@@ -123,6 +123,10 @@
                 "status": {
                   "type": "string"
                 },
+                "last_delivery_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                },
                 "secret": {
                   "type": "string",
                   "pattern": "^skw_.+"

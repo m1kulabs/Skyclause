@@ -1377,7 +1377,7 @@
                                     "type": "string"
                                   },
                                   "http_status": {
-                                    "type": "integer"
+                                    "type": ["integer", "null"]
                                   },
                                   "new_rows": {
                                     "type": "integer"
@@ -1519,6 +1519,16 @@
                       },
                       "response_body": {
                         "type": ["string", "null"]
+                      },
+                      "raw_request_body": {
+                        "type": "string"
+                      },
+                      "error": {
+                        "type": ["string", "null"]
+                      },
+                      "next_retry_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
                       }
                     },
                     "required": [

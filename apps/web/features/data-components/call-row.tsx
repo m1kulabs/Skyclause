@@ -1,18 +1,46 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { CallView } from '@skyclause/contracts'
+import type { CallView, Verdict, Window } from '@skyclause/contracts'
 import { formatTime } from '@skyclause/i18n/format'
 import { ModeBadge } from '../brand/mode-badge'
 import { t } from './catalogue'
 
 export interface CallRowProps {
-  call: CallView
+  call?: CallView
+  dashboard?: { projectName: string; window: Window; verdict: Verdict }
   actions?: ReactNode
   locale?: 'en' | 'ms'
 }
 
-export function CallRow({ call, actions = null, locale = 'en' }: CallRowProps) {
+export function CallRow({ call, dashboard, actions = null, locale = 'en' }: CallRowProps) {
+  if (dashboard) {
+    return (
+      <tr data-dashboard-call-row={dashboard.window.id} className="block border-b md:table-row">
+        <td colSpan={4} className="block p-2 md:table-cell">
+          <span className="flex min-h-[34px] flex-wrap items-center gap-2 [@media(pointer:coarse)]:min-h-[44px]">
+            {dashboard.verdict.mode ? (
+              <ModeBadge mode={dashboard.verdict.mode} locale={locale} />
+            ) : (
+              <span>{t('data.call.unknown_mode', {}, locale)}</span>
+            )}
+            <span>
+              {t(
+                'data.call.dashboard_window',
+                { project: dashboard.projectName, title: dashboard.window.title },
+                locale
+              )}
+            </span>
+            <time dateTime={dashboard.window.starts_at} className="text-muted-foreground tabular-nums">
+              {formatTime(dashboard.window.starts_at, locale)}
+            </time>
+          </span>
+        </td>
+      </tr>
+    )
+  }
+  if (!call) return null
+
   const scope = call.window_id
     ? t('data.call.window', { id: call.window_id }, locale)
     : call.night_id

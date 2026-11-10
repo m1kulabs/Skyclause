@@ -1,4 +1,4 @@
-import english from '../catalogue/en/approver-alerts.json'
+import english from '../catalogue/en/approver-alerts.json' with { type: 'json' }
 import './brand'
 import { catalogueFiles } from './catalogue'
 
