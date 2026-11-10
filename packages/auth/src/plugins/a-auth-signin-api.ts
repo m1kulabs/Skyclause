@@ -602,6 +602,14 @@ function googleCallbackRedirect(response: Response, appOrigin: string) {
   return responseRedirect(`${target.pathname}${target.search}${target.hash}`, response)
 }
 
+/** Better Auth's form CSRF check stops cross-site sign-in posts; these wrappers bypass its router, so they check here. */
+function crossSite(request: Request, appOrigin: string) {
+  const origin = request.headers.get('Origin')
+  if (origin) return origin !== new URL(appOrigin).origin
+  const site = request.headers.get('Sec-Fetch-Site')
+  return site !== null && site !== 'same-origin' && site !== 'none'
+}
+
 export async function authSignInHandler(
   authValue: unknown,
   request: Request,
@@ -615,6 +623,13 @@ export async function authSignInHandler(
   const now = deps?.now ?? (() => new Date())
   if (request.method === 'POST' && ['/sign-in/email', '/sign-up/email'].includes(pathname)) {
     return Response.json({ message: 'Not Found' }, { status: 404 })
+  }
+  if (
+    request.method === 'POST' &&
+    ['/magic-link/confirm', '/magic-link/resend'].includes(pathname) &&
+    crossSite(request, settings.appOrigin)
+  ) {
+    return Response.json({ code: 'INVALID_ORIGIN', message: 'Invalid origin' }, { status: 403 })
   }
   if (pathname === '/magic-link/confirm' && request.method === 'POST') {
     return confirmMagicLink(auth, request, settings.appOrigin, now)

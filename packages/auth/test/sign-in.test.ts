@@ -87,6 +87,34 @@ test('a magic link confirms once, redirects to continue, and the spent link can 
   expect(mailbox.sent).toHaveLength(2)
 })
 
+test('a cross-site confirm or resend is refused and leaves the link usable', async () => {
+  const { auth, mailbox, request } = setup()
+  await request('POST', '/sign-in/magic-link', { email: 'csrf@example.test' })
+  const url = linkFrom(mailbox.sent[0]!.text)
+  const body = JSON.stringify({ link: url.searchParams.get('link'), resend: url.searchParams.get('resend') })
+  const crossSite = (path: string, headers: Record<string, string>) =>
+    authSignInHandler(
+      auth,
+      new Request(`${APP}/api/auth${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain', ...headers },
+        body
+      }),
+      authSettings(TEST_AUTH_ENV)
+    )
+
+  const foreign = await crossSite('/magic-link/confirm', { Origin: 'https://evil.example' })
+  expect(foreign.status).toBe(403)
+  expect(foreign.headers.getSetCookie()).toEqual([])
+  const metadataOnly = await crossSite('/magic-link/confirm', { 'Sec-Fetch-Site': 'cross-site' })
+  expect(metadataOnly.status).toBe(403)
+  expect((await crossSite('/magic-link/resend', { Origin: 'https://evil.example' })).status).toBe(403)
+  expect(mailbox.sent).toHaveLength(1)
+
+  const confirmed = await request('POST', '/magic-link/confirm', JSON.parse(body))
+  expect(new URL(confirmed.headers.get('Location')!, APP).pathname).toBe('/api/auth/continue')
+})
+
 test('a magic link expires after 15 minutes and leaves its resend handle live', async () => {
   let clock = new Date()
   const { mailbox, request } = setup(() => clock)
