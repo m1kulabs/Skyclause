@@ -105,7 +105,7 @@ export const organization = authSchema.table('organization', {
     .notNull(),
   deletionRequestedAt: timestamp('deletion_requested_at', { withTimezone: true }),
   purgeAfter: timestamp('purge_after', { withTimezone: true }),
-  onboardingSkipped: boolean('onboarding_skipped').default(false).notNull(),
+  onboardingSkipped: jsonb('onboarding_skipped').default([]).notNull(),
   aiFallbackEnabled: boolean('ai_fallback_enabled').default(false).notNull(),
   allowMemberAiKeys: boolean('allow_member_ai_keys').default(false).notNull()
 })
@@ -126,7 +126,11 @@ export const member = authSchema.table(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
     readsMalay: boolean('reads_malay').default(false).notNull()
   },
-  (table) => [index('member_organizationId_idx').on(table.organizationId), index('member_userId_idx').on(table.userId)]
+  (table) => [
+    index('member_organizationId_idx').on(table.organizationId),
+    index('member_userId_idx').on(table.userId),
+    uniqueIndex('member_organization_user_uidx').on(table.organizationId, table.userId)
+  ]
 )
 
 export const invitation = authSchema.table(
@@ -150,7 +154,10 @@ export const invitation = authSchema.table(
   },
   (table) => [
     index('invitation_organizationId_idx').on(table.organizationId),
-    index('invitation_email_idx').on(table.email)
+    index('invitation_email_idx').on(table.email),
+    uniqueIndex('invitation_token_hash_uidx')
+      .on(table.tokenHash)
+      .where(sql`${table.tokenHash} IS NOT NULL`)
   ]
 )
 

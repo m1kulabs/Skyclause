@@ -2,12 +2,15 @@ import type { Page } from '@playwright/test'
 import type { Principal } from '@skyclause/contracts'
 import { expect } from '../fixtures'
 import { asPage } from '../harness/as-page'
+import { E2E_FRAMES_BUCKET } from '../harness/env'
 import { stubApi } from '../harness/stub-api'
 import { probationOperations } from '../../features/probation/operations'
 
 export const orgId = 'test-org'
 export const projectId = 'bukit-jalil'
 export const sourceId = 'camera-1'
+/** Where frame URLs point: the frames bucket the app's CSP allows (e2e/harness/env.ts). */
+export const framesBase = `https://storage.googleapis.com/${E2E_FRAMES_BUCKET}/`
 
 export const member: Extract<Principal, { kind: 'session' }> = {
   kind: 'session',
@@ -77,7 +80,7 @@ export function frameFixture(id: string, observedAt = '2026-11-06T01:15:00Z'): F
   return {
     frame_reading_id: id,
     observed_at: observedAt,
-    frame_url: `https://frames.test/${id}.svg`,
+    frame_url: `${framesBase}${id}.svg`,
     // Adversarial: the phone flag is served but must never reach the DOM.
     phone_obscured: true
   }
@@ -109,7 +112,7 @@ const frameImage = (id: string) =>
 
 /** Stub the frame bytes behind every frame_url the test serves. */
 export async function stubFrameImages(page: Page): Promise<void> {
-  await page.route('https://frames.test/*.svg', (route) => {
+  await page.route(`${framesBase}*.svg`, (route) => {
     const id = new URL(route.request().url()).pathname.split('/').pop()?.replace('.svg', '') ?? 'frame'
     return route.fulfill({ contentType: 'image/svg+xml', body: frameImage(id) })
   })

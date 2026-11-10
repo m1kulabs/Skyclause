@@ -29,6 +29,7 @@ import { METRICS, type HeartbeatName } from '@skyclause/contracts'
 import { GoogleAuth } from 'google-auth-library'
 import { loadEnv, type Service } from './env'
 import { HttpServerDurationProcessor, startHttpServerDuration, stopHttpServerDuration } from './http-metrics'
+import { startWebVitals, stopWebVitals } from './web-vitals'
 import { redact, redactText, RedactingSpanProcessor } from './redact'
 
 /** Google's OTLP endpoint (the Telemetry API), which writes to Cloud Trace and Cloud Monitoring. */
@@ -192,6 +193,7 @@ export function startTelemetry(service: Service, options: TelemetryOptions = {})
 
   const heartbeats: Gauge = meterProvider.getMeter('skyclause').createGauge(METRICS.heartbeat)
   startHttpServerDuration(meterProvider.getMeter('skyclause'))
+  startWebVitals()
 
   const flush = async () => {
     try {
@@ -208,6 +210,7 @@ export function startTelemetry(service: Service, options: TelemetryOptions = {})
       await flush()
       await Promise.all([tracerProvider.shutdown(), meterProvider.shutdown()])
       stopHttpServerDuration()
+      stopWebVitals()
       trace.disable()
       metrics.disable()
       propagation.disable()

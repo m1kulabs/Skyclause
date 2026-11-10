@@ -1,0 +1,85 @@
+# Manual Pi 5 binary deploy. The host's service unit and environment file are installed once during setup.
+name: deploy-pi
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-pi
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      INGEST_URL: ${{ vars.INGEST_URL }}
+      PI_HOST: ${{ vars.PI_HOST }}
+      TS_OIDC_CLIENT_ID: ${{ vars.TS_OIDC_CLIENT_ID }}
+      TS_OIDC_AUDIENCE: ${{ vars.TS_OIDC_AUDIENCE }}
+    steps:
+      - name: Check deploy variables
+        run: |
+          missing=()
+          for name in INGEST_URL PI_HOST TS_OIDC_CLIENT_ID TS_OIDC_AUDIENCE; do
+            [ -n "${!name}" ] || missing+=("$name")
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Set repository variables ${missing[*]} before dispatching deploy-pi"
+            exit 1
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - name: Build the Pi 5 binary
+        run: bun build --compile --target=bun-linux-arm64 pilot/pi/agent.ts --outfile "$RUNNER_TEMP/skyclause-agent"
+
+      - uses: tailscale/github-action@064b10558093f38325e838ddea35486bdc6b1d5c # v4.4.0
+        with:
+          oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
+          audience: ${{ vars.TS_OIDC_AUDIENCE }}
+          tags: tag:ci
+          ping: ${{ vars.PI_HOST }}
+
+      - name: Copy the binary to the Pi
+        run: scp -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$RUNNER_TEMP/skyclause-agent" "deploy@${PI_HOST}:/opt/skyclause/agent-${GITHUB_SHA}"
+      - name: Activate and restart the service
+        run: >-
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new "deploy@${PI_HOST}"
+          "chmod 0755 /opt/skyclause/agent-${GITHUB_SHA} &&
+          ln -sfn /opt/skyclause/agent-${GITHUB_SHA} /opt/skyclause/agent.next &&
+          mv -Tf /opt/skyclause/agent.next /opt/skyclause/agent &&
+          sudo -n systemctl restart skyclause-pi.service"
+      - name: Wait for a fresh Pi heartbeat
+        run: |
+          deadline=$((SECONDS + 300))
+          while (( SECONDS < deadline )); do
+            remaining=$((deadline - SECONDS))
+            health="$(curl --max-time "$remaining" -fsS "${INGEST_URL}?health=1" 2>/dev/null || true)"
+            age="$(jq -r '.sources[]? | select(.source_id == "pi-01") | .age_min // "null"' <<< "$health" | head -n 1)"
+            if [[ "$age" =~ ^[0-9]+$ ]] && [ "$age" -lt 2 ]; then
+              echo "Pi heartbeat age: ${age} minute(s)"
+              echo "Pi heartbeat age: ${age} minute(s)" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            remaining=$((deadline - SECONDS))
+            if (( remaining > 5 )); then
+              sleep 5
+            elif (( remaining > 0 )); then
+              sleep "$remaining"
+            fi
+          done
+          echo "::error::Pi health did not report a heartbeat younger than 2 minutes within 5 minutes"
+          exit 1

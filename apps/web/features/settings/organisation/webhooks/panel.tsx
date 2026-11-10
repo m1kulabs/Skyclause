@@ -1,3 +1,5 @@
+import { WebhookFeature } from '../../../webhooks'
+
 export default function Panel() {
-  return <div data-unbuilt="e-webhooks-ui" />
+  return <WebhookFeature settings />
 }

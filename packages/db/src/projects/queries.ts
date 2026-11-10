@@ -94,7 +94,7 @@ export async function getProjectSettingsRecord(handle: TxHandle, projectId: stri
       ? null
       : shifts.map((s) => ({
           account_id: s.accountId,
-          days: s.days.map(String),
+          days: s.days,
           local_start: normalizeTime(s.localStart) ?? s.localStart,
           local_end: normalizeTime(s.localEnd) ?? s.localEnd,
           condition: s.condition,

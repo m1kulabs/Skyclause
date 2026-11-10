@@ -22,13 +22,12 @@ export const shellOperations = {
   getMyPreferences: {
     method: preferences.method.toUpperCase(),
     path: preferences.path,
-    response: preferences.responses[200].content['application/json'].schema.passthrough()
+    response: preferences.responses[200].content['application/json'].schema
   },
   updateMyPreferences: {
     method: updatePreferences.method.toUpperCase(),
     path: updatePreferences.path,
-    // #99's contract needs sidebar_collapsed. Preserve that field at this local seam until it lands.
-    request: { body: updatePreferences.request.body.content['application/json'].schema.passthrough() },
-    response: updatePreferences.responses[200].content['application/json'].schema.passthrough()
+    request: { body: updatePreferences.request.body.content['application/json'].schema },
+    response: updatePreferences.responses[200].content['application/json'].schema
   }
 }

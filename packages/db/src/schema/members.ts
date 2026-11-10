@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { date, foreignKey, integer, text, time, unique, uuid } from 'drizzle-orm/pg-core'
+import { date, foreignKey, integer, text, time, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { organization } from './auth'
 import { id, instant, orgKey, sameOrg, tenantTable, timestamps } from './columns'
 import { alertChannel, alertLevel, rotaTemplate, shiftReminderKind } from './enums'
@@ -22,7 +22,12 @@ export const ownershipTransfer = tenantTable(
     expiresAt: instant('expires_at').notNull(),
     ...timestamps()
   },
-  (self) => [foreignKey({ columns: [self.orgId], foreignColumns: [organization.id] }).onDelete('cascade')]
+  (self) => [
+    foreignKey({ columns: [self.orgId], foreignColumns: [organization.id] }).onDelete('cascade'),
+    uniqueIndex('ownership_transfer_one_pending_org_uidx')
+      .on(self.orgId)
+      .where(sql`${self.status} = 'pending'`)
+  ]
 )
 
 /** An approver shift (TRD); `project_id` null is the organisation rota, `order` ranks next approvers (D22). */

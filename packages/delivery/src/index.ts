@@ -8,6 +8,7 @@ export {
   type EmailTransportOptions,
   type SesClient
 } from './email'
+export { googleLinkEmail, magicLinkDisabledEmail, magicLinkEmail } from './auth-emails'
 export { isSnsUrl, SnsVerificationError, verifySnsMessage, type SnsMessage, type VerifyOptions } from './sns'
 export {
   createInboundRouter,
@@ -37,6 +38,7 @@ export {
 export { renderFeedbackEmail } from './feedback-email'
 export { callNoticeEmail, type CallNoticeOptions } from './call-notice'
 export { parseSesEvent, sesEventsHandler, type SesEvent, type SesEventsOptions } from './ses-events'
+export { renderExportReadyEmail } from './export-ready-email'
 export { renderSubscriberEmail, type SubscriberEmailKind } from './subscriber-emails'
 export { ensureVapidKeys, type VapidKeysOptions } from './vapid'
 export { renderApproverAlert, type ApproverAlert, type RenderedAlert } from './approver-alerts'

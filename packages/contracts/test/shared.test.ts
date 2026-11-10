@@ -107,9 +107,14 @@ describe('shared wire schemas', () => {
       reduced_motion: true,
       language: 'ms'
     }
-    expect(Preferences.parse(preferences)).toEqual({ ...preferences, shortcuts: true })
+    expect(Preferences.parse(preferences)).toEqual({ ...preferences, shortcuts: true, sidebar_collapsed: false })
     expect(Preferences.parse({ ...preferences, shortcuts: false }).shortcuts).toBe(false)
+    expect(Preferences.parse({ ...preferences, density: 'compact', sidebar_collapsed: true })).toMatchObject({
+      density: 'compact',
+      sidebar_collapsed: true
+    })
     expect(Preferences.safeParse({ ...preferences, theme: 'auto' }).success).toBe(false)
+    expect(Preferences.safeParse({ ...preferences, density: 'spacious' }).success).toBe(false)
     expect(Preferences.safeParse({ ...preferences, language: 'fr' }).success).toBe(false)
   })
 

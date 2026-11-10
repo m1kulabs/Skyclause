@@ -7,6 +7,9 @@ import { databaseUrls, scratchName } from '@skyclause/db/test/harness/scratch'
 /** The scratch database's name, unset when E2E_BASE_URL points the suite at a deployed server. */
 export const e2eDatabase = (): string | undefined => process.env.E2E_DATABASE
 
+/** The frames bucket the CSP allows; the probation suite stubs its frames under it, as `signFrameUrl` would sign them. */
+export const E2E_FRAMES_BUCKET = 'skyclause-e2e-frames'
+
 export function e2eEnv(origin: string) {
   process.env.E2E_DATABASE ??= scratchName('skyclause_e2e')
   return {
@@ -17,6 +20,7 @@ export function e2eEnv(origin: string) {
     BETTER_AUTH_SECRET: 'test-only-better-auth-secret-for-playwright-runs',
     HOST_MODE: 'single',
     APP_ORIGIN: origin,
+    FRAMES_BUCKET: E2E_FRAMES_BUCKET,
     E2E_DATABASE: process.env.E2E_DATABASE,
     ...databaseUrls(process.env.E2E_DATABASE)
   }

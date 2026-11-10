@@ -1,3 +1,1 @@
-export default function Panel() {
-  return <div data-unbuilt="a-members-ui" />
-}
+export { RotaPanel as default } from '../../../rota/rota-panel'

@@ -41,9 +41,15 @@ export function createNoticesPart(deps: NoticesDeps): WorkerPart {
     const found = await withSystem('ses-events', (tx) => noticeForProviderMessage(tx, event.providerMessageId))
     // Mail with no outbox row (sign-in links) is acknowledged; a notice's event can beat its send's record.
     if (!found) return !(event.category && NOTICE_KINDS.includes(event.category))
-    const moved = await withTenant({ orgId: found.orgId, principal: sesEvents }, (tx) =>
-      recordDeliveryEvent(tx, found.id, event, deps.now())
-    )
+    if (found.orgId === null && found.kind !== 'export_ready') {
+      throw new Error(`notice ${found.id} is missing org_id`)
+    }
+    const moved =
+      found.orgId === null
+        ? await withSystem('ses-events', (tx) => recordDeliveryEvent(tx, found.id, event, deps.now()))
+        : await withTenant({ orgId: found.orgId, principal: sesEvents }, (tx) =>
+            recordDeliveryEvent(tx, found.id, event, deps.now())
+          )
     log('INFO', 'ses event recorded', { notice_id: found.id, type: event.type, moved })
     return true
   }

@@ -20,6 +20,7 @@
     "openapi:generate": "bun packages/api/scripts/openapi.ts --write",
     "openapi:check": "bun packages/api/scripts/openapi.ts",
     "db:seed-check": "bun packages/db/scripts/seed-check.ts",
+    "verification:record": "bun packages/db/scripts/verification-record.ts",
     "db:up": "docker compose -f packages/db/compose.yaml up -d --build --wait",
     "db:migrate": "bun packages/db/scripts/migrate.ts",
     "flag:set": "bun packages/db/scripts/flag-set.ts",
