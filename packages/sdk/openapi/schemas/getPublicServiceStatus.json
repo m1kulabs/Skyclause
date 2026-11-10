@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "getPublicServiceStatus request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "components": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "scope": {
+                        "type": "string",
+                        "enum": ["ours", "source"]
+                      },
+                      "component": {
+                        "type": "string"
+                      },
+                      "source_id": {
+                        "type": ["string", "null"]
+                      },
+                      "ok": {
+                        "type": "boolean"
+                      },
+                      "checked_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    },
+                    "required": ["scope", "component", "source_id", "ok", "checked_at"]
+                  }
+                },
+                "incidents": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "scope": {
+                        "type": "string",
+                        "enum": ["ours", "source"]
+                      },
+                      "component": {
+                        "type": "string"
+                      },
+                      "source_id": {
+                        "type": ["string", "null"]
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "body": {
+                        "type": "string"
+                      },
+                      "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "resolved_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      }
+                    },
+                    "required": ["id", "scope", "component", "source_id", "status", "body", "created_at", "resolved_at"]
+                  }
+                }
+              },
+              "required": ["components", "incidents"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "getPublicServiceStatus",
+  "x-method": "GET",
+  "x-path": "/v1/public/status"
+}

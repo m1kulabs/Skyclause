@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "listEvidenceRequests request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "project_id": {
+                        "type": "string"
+                      },
+                      "span": {
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "to": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": ["from", "to"]
+                      },
+                      "requester": {
+                        "type": "string"
+                      },
+                      "call_id": {
+                        "type": ["string", "null"]
+                      },
+                      "via": {
+                        "type": "string",
+                        "enum": ["email", "app", "api", "mcp"]
+                      },
+                      "leaves_org": {
+                        "type": "boolean"
+                      },
+                      "reply_channel": {
+                        "type": ["string", "null"],
+                        "enum": ["email", "in_app", null]
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "received_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "drafted_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      },
+                      "approved_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      },
+                      "replied_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "project_id",
+                      "span",
+                      "requester",
+                      "call_id",
+                      "via",
+                      "leaves_org",
+                      "reply_channel",
+                      "status",
+                      "received_at",
+                      "drafted_at",
+                      "approved_at",
+                      "replied_at"
+                    ]
+                  }
+                },
+                "next_cursor": {
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["data", "next_cursor"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "listEvidenceRequests",
+  "x-method": "GET",
+  "x-path": "/v1/projects/{id}/evidence-requests"
+}

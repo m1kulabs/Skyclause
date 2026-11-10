@@ -1,0 +1,254 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "previewChannels request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "pack": {
+              "type": "string",
+              "enum": ["sky", "crowd"]
+            },
+            "mode": {
+              "type": "string",
+              "enum": ["normal", "outdoor_limited", "commute_disruption", "hybrid_recommended", "surge_night"]
+            },
+            "language": {
+              "type": "string",
+              "enum": ["en", "ms"]
+            },
+            "channel": {
+              "type": "string",
+              "enum": ["email", "ics", "webhook", "in_app"]
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "number",
+                      "enum": [0]
+                    },
+                    "call_id": {
+                      "type": "null"
+                    },
+                    "previews": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "channel": {
+                            "type": "string",
+                            "enum": ["email", "ics", "webhook", "in_app"]
+                          },
+                          "pack": {
+                            "type": "string",
+                            "enum": ["sky", "crowd"]
+                          },
+                          "mode": {
+                            "type": ["string", "null"],
+                            "enum": [
+                              "normal",
+                              "outdoor_limited",
+                              "commute_disruption",
+                              "hybrid_recommended",
+                              "surge_night",
+                              null
+                            ]
+                          },
+                          "language": {
+                            "type": "string",
+                            "enum": ["en", "ms"]
+                          },
+                          "subject": {
+                            "type": "string"
+                          },
+                          "text": {
+                            "type": "string"
+                          },
+                          "html": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["channel", "pack", "mode", "language", "subject", "text"]
+                      },
+                      "maxItems": 0
+                    },
+                    "replay": {
+                      "type": "object",
+                      "properties": {
+                        "label": {
+                          "type": "string",
+                          "enum": ["replay"]
+                        },
+                        "source": {
+                          "type": "object",
+                          "properties": {
+                            "station_id": {
+                              "type": "string"
+                            },
+                            "url": {
+                              "type": "string",
+                              "format": "uri"
+                            },
+                            "captured_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "observed_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          },
+                          "required": ["station_id", "url", "captured_at", "observed_at"]
+                        },
+                        "previews": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "channel": {
+                                "type": "string",
+                                "enum": ["email", "ics", "webhook", "in_app"]
+                              },
+                              "pack": {
+                                "type": "string",
+                                "enum": ["sky", "crowd"]
+                              },
+                              "mode": {
+                                "type": ["string", "null"],
+                                "enum": [
+                                  "normal",
+                                  "outdoor_limited",
+                                  "commute_disruption",
+                                  "hybrid_recommended",
+                                  "surge_night",
+                                  null
+                                ]
+                              },
+                              "language": {
+                                "type": "string",
+                                "enum": ["en", "ms"]
+                              },
+                              "subject": {
+                                "type": "string"
+                              },
+                              "text": {
+                                "type": "string"
+                              },
+                              "html": {
+                                "type": "string"
+                              }
+                            },
+                            "required": ["channel", "pack", "mode", "language", "subject", "text"]
+                          }
+                        }
+                      },
+                      "required": ["label", "source", "previews"]
+                    }
+                  },
+                  "required": ["n", "call_id", "previews"]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "n": {
+                      "type": "number",
+                      "enum": [1]
+                    },
+                    "call_id": {
+                      "type": "string"
+                    },
+                    "previews": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "channel": {
+                            "type": "string",
+                            "enum": ["email", "ics", "webhook", "in_app"]
+                          },
+                          "pack": {
+                            "type": "string",
+                            "enum": ["sky", "crowd"]
+                          },
+                          "mode": {
+                            "type": ["string", "null"],
+                            "enum": [
+                              "normal",
+                              "outdoor_limited",
+                              "commute_disruption",
+                              "hybrid_recommended",
+                              "surge_night",
+                              null
+                            ]
+                          },
+                          "language": {
+                            "type": "string",
+                            "enum": ["en", "ms"]
+                          },
+                          "subject": {
+                            "type": "string"
+                          },
+                          "text": {
+                            "type": "string"
+                          },
+                          "html": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["channel", "pack", "mode", "language", "subject", "text"]
+                      }
+                    }
+                  },
+                  "required": ["n", "call_id", "previews"]
+                }
+              ]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "previewChannels",
+  "x-method": "GET",
+  "x-path": "/v1/projects/{id}/channels/preview"
+}

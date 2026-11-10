@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "listOrganisationListings request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "cursor": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string",
+              "enum": ["proposed"]
+            }
+          },
+          "required": ["state"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["query"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "project_id": {
+                        "type": "string"
+                      },
+                      "listing_key": {
+                        "type": "string"
+                      },
+                      "source_url": {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      "source_revision": {
+                        "type": "string"
+                      },
+                      "state": {
+                        "type": "string",
+                        "enum": ["proposed", "listed", "rejected", "cancelled"]
+                      },
+                      "class": {
+                        "type": "string"
+                      },
+                      "class_hint": {
+                        "type": ["string", "null"]
+                      },
+                      "single_source": {
+                        "type": "boolean"
+                      },
+                      "historical": {
+                        "type": "boolean"
+                      },
+                      "night_id": {
+                        "type": ["string", "null"]
+                      },
+                      "pending_change": {
+                        "type": ["string", "number", "boolean", "object", "array", "null"]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "project_id",
+                      "listing_key",
+                      "source_url",
+                      "source_revision",
+                      "state",
+                      "class",
+                      "class_hint",
+                      "single_source",
+                      "historical",
+                      "night_id",
+                      "pending_change"
+                    ]
+                  }
+                },
+                "next_cursor": {
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["data", "next_cursor"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "listOrganisationListings",
+  "x-method": "GET",
+  "x-path": "/v1/listings"
+}

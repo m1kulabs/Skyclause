@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "listSubscribers request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "cursor": {
+              "type": "string"
+            },
+            "window_id": {
+              "type": "string"
+            },
+            "channel": {
+              "type": "string",
+              "enum": ["email", "ics", "webhook", "in_app"]
+            },
+            "status": {
+              "type": "string",
+              "enum": ["confirmed", "unconfirmed", "bounced", "complained", "suppressed", "unsubscribed"]
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "project_id": {
+                        "type": "string"
+                      },
+                      "email": {
+                        "type": "string",
+                        "format": "email"
+                      },
+                      "role": {
+                        "type": "string"
+                      },
+                      "window_ids": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "channels": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": ["email", "ics", "webhook", "in_app"]
+                        }
+                      },
+                      "language": {
+                        "type": "string",
+                        "enum": ["en", "ms"]
+                      },
+                      "confirmed_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": ["confirmed", "unconfirmed", "bounced", "complained", "suppressed", "unsubscribed"]
+                      },
+                      "suppressed": {
+                        "type": "boolean"
+                      },
+                      "last_notice_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      },
+                      "consent": {
+                        "type": ["object", "null"],
+                        "properties": {
+                          "at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "form": {
+                            "type": "string"
+                          },
+                          "notice_version": {
+                            "type": "string",
+                            "format": "date"
+                          },
+                          "language": {
+                            "type": "string",
+                            "enum": ["en", "ms"]
+                          }
+                        },
+                        "required": ["at", "form", "notice_version", "language"]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "project_id",
+                      "email",
+                      "role",
+                      "window_ids",
+                      "channels",
+                      "language",
+                      "confirmed_at",
+                      "status",
+                      "suppressed",
+                      "last_notice_at",
+                      "consent"
+                    ]
+                  }
+                },
+                "next_cursor": {
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["data", "next_cursor"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "listSubscribers",
+  "x-method": "GET",
+  "x-path": "/v1/projects/{id}/subscribers"
+}

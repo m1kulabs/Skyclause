@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "updateProjectPack request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "pack": {
+              "type": "string",
+              "enum": ["sky", "crowd"]
+            }
+          },
+          "required": ["id", "pack"],
+          "additionalProperties": false
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "sla_s": {
+              "type": ["integer", "null"],
+              "exclusiveMinimum": 0
+            }
+          }
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "pack": {
+                  "type": "string",
+                  "enum": ["sky", "crowd"]
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "sheet_id": {
+                  "type": ["string", "null"]
+                },
+                "schedule": {
+                  "type": ["string", "number", "boolean", "object", "array", "null"]
+                },
+                "sla_s": {
+                  "type": ["integer", "null"]
+                }
+              },
+              "required": ["pack", "enabled", "sheet_id", "schedule", "sla_s"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "updateProjectPack",
+  "x-method": "PATCH",
+  "x-path": "/v1/projects/{id}/packs/{pack}"
+}

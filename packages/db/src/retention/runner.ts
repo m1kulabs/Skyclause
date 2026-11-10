@@ -19,8 +19,8 @@ export interface RetentionDeps {
 }
 
 /**
- * #110's erasure needs a tenant transaction: it writes the suppression and audit rows, which `retention` may not. So it
- * commits in the subscriber's own organisation as this job, and the sweeper then sees the row it left.
+ * #110's erasure needs a tenant transaction: it scopes itself by `tx.orgId` and inserts the suppression row, which
+ * `retention` may not. So it commits in the subscriber's own organisation as this job; the sweeper then sees the row.
  */
 const eraseInOrganisation: EraseSubscriber = async (handle, subscriberId) => {
   const [row] = await (handle as Tx)
