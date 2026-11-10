@@ -2,7 +2,7 @@
 // at 320 px (200% zoom) and under reduced motion. One failure lists route, role, theme, size and rule.
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { inspectPage, motionFindings, type Finding } from './checks'
-import { KNOWN_GAPS } from './known-gaps'
+import { sortFindings } from './known-gaps'
 import { sessions, signedOut, type Role, type Session } from './roles'
 import { builtRoutes, type CrawlRoute } from './routes'
 import { redirectsToAccount, visit } from './visit'
@@ -16,6 +16,11 @@ import { prepareCrawl } from '../project-ui/fixtures'
 
 const PLANTED_FAILURE = '/quality-planted/unlabelled-input'
 const PUBLIC_GROUPS = new Set(['marketing', 'public'])
+/** Pages that read in an effect: inspected once a read has landed (content, empty state or error), never loading. */
+const READY: Record<string, string> = {
+  '/[org]/projects': ':is(h1, [data-slot="empty"], [data-slot="alert"])',
+  '/[org]/analysis': ':is(.analysis-muted, .analysis-error)'
+}
 const PROJECT_UI_ROUTES = new Set([
   '/[org]/[project]',
   '/[org]/[project]/settings',
@@ -223,7 +228,8 @@ for (const discovered of builtRoutes()) {
         route.dynamic && !route.params && !PROJECT_UI_ROUTES.has(route.path) && route.path !== '/[org]',
         `${route.path} needs param fixtures with stubApi bodies (#95)`
       )
-      test.fixme(
+      // Expected to fail until the page 404s for non-members; then it passes, which fails, so this line goes.
+      test.fail(
         route.path === '/[org]/analysis' && (session.role === 'share-link reviewer' || session.role === 'signed out'),
         'the organisation roll-up renders for non-members instead of 404 (#596)'
       )
@@ -252,7 +258,9 @@ for (const discovered of builtRoutes()) {
           ? route.path.endsWith('/calls')
             ? '[data-calls-ready="true"] [data-call]'
             : '[data-calls-ready="true"] h1'
-          : undefined
+          : jsOn
+            ? READY[route.path]
+            : undefined
       )
 
       if (route.path === PLANTED_FAILURE) {
@@ -264,26 +272,22 @@ for (const discovered of builtRoutes()) {
         return
       }
 
-      const gaps = KNOWN_GAPS.filter(
-        (gap) =>
-          gap.route === route.path &&
-          (!gap.roles || gap.roles.includes(session.role)) &&
-          (!gap.projects || gap.projects.includes(info.project.name))
-      )
-      const open = findings.filter((finding) => !gaps.some((gap) => gap.check === finding.check))
-      for (const gap of gaps) {
-        if (findings.some((finding) => finding.check === gap.check)) {
-          note(info, 'known gap', `${gap.check} on ${gap.route}: ${gap.why} (#${gap.issue})`)
-        } else if (info.project.name === 'chromium') {
-          // Gaps are recorded from the Chromium crawl pull requests run. Another engine may draw a ring Chromium
-          // doesn't, or inspect a page before a slow read lands, so only Chromium asks for a stale entry's removal.
-          open.push({
+      const { open, seen, stale } = sortFindings(findings, {
+        route: route.path,
+        role: session.role,
+        project: info.project.name
+      })
+      for (const gap of seen) note(info, 'known gap', `${gap.check} on ${gap.route}: ${gap.why} (#${gap.issue})`)
+      // Without JavaScript there is no axe, so only the JavaScript projects can call an entry stale.
+      if (jsOn) {
+        open.push(
+          ...stale.map((gap) => ({
             check: 'known-gaps',
-            detail: `${gap.check} no longer fails here; remove its entry`,
+            detail: `${gap.check} ${gap.detail} no longer fails here; remove its entry`,
             theme: '-',
             size: '-'
-          })
-        }
+          }))
+        )
       }
       if (open.length) throw new Error(report(route, session, open))
     })

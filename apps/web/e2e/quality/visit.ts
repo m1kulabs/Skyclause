@@ -50,7 +50,7 @@ export async function visit(
       )
     : undefined
   const response = await page.goto(path)
-  if (readySelector) await page.locator(readySelector).waitFor({ state: 'attached' })
+  if (readySelector) await page.locator(readySelector).first().waitFor({ state: 'attached' })
   if (continuation) {
     expect(orgSlug).toBeTruthy()
     expect((await continuation).headers().location).toBe(`/${orgSlug}`)
@@ -81,11 +81,16 @@ export async function visit(
   const expected = expectedStatus(route, role)
   // Firefox revalidates a static page it has cached; 304 is its 200.
   const status = response?.status() === 304 ? 200 : response?.status()
+  const notFound = page.getByRole('heading', { level: 1, name: /^Page not found~*$/ })
   if (expected === 404) {
     // A streamed notFound may have already sent HTTP 200. Require the real gate in either case.
-    await expect(page.getByRole('heading', { level: 1, name: /^Page not found~*$/ })).toBeVisible()
+    await expect(notFound).toBeVisible()
     await expect(page.locator('[data-settings-frame]')).toHaveCount(0)
     if (status === 200 || status === 404) return []
+  }
+  // The same streaming lets a wrongly denied role reach a "Page not found" that answered 200.
+  if (expected === 200 && (await notFound.count()) > 0) {
+    return [{ check: 'status', detail: `answered ${status} with "Page not found", expected the page` }]
   }
   return status === expected ? [] : [{ check: 'status', detail: `answered ${status}, expected ${expected}` }]
 }
