@@ -25,6 +25,7 @@ import {
 import { createPushTransport, emailTransportForAws } from '@skyclause/delivery'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { registerAuditCheck } from '../auditor/registry'
 import { cloudTasks } from '../bundles/cloud-tasks'
 import { onEvent } from '../events'
 import type { EventConsumer, QueueHandler, WorkerPart } from '../server'
@@ -196,7 +197,7 @@ async function resendAlerts(deps: AlertsDeps, now: Date) {
 type AuditCheck = Parameters<RegisterAuditCheck>[0]
 
 /**
- * The auditor's check (#132 registers it): a bundle in Needs review within 2 minutes of its SLA, or past it, with
+ * The auditor's check: a bundle in Needs review within 2 minutes of its SLA, or past it, with
  * nobody on duty, is a finding for the organisation's Admins and Owners until someone is on duty or it leaves review.
  */
 export function noApproverCheck(deps: Pick<AlertsDeps, 'onDuty'>): AuditCheck {
@@ -286,5 +287,6 @@ const deps = productionDeps()
 export const alerts = createAlertsPart(deps)
 /** Dispatched by #150's `bundle-timers` part for task names starting `sla-`. */
 export const approverSlaTimer = slaTimer(deps)
-/** For #132: `registerAuditCheck(noApproverAuditCheck)`. */
+/** Registered with the auditor (#132) here, as the other owners' checks are. */
 export const noApproverAuditCheck = noApproverCheck(deps)
+registerAuditCheck(noApproverAuditCheck)

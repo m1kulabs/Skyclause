@@ -1,5 +1,6 @@
 import { MODELS } from '@skyclause/agent'
 import type { RegisterAuditCheck } from '@skyclause/contracts'
+import { registerAuditCheck } from '../auditor/registry'
 
 const WARN_DAYS = 30
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -26,3 +27,5 @@ export const modelRetirement: Parameters<RegisterAuditCheck>[0] = {
     }))
   }
 }
+
+registerAuditCheck(modelRetirement)
