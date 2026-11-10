@@ -109,7 +109,7 @@ export function createAuth(
   extra: { plugins?: BetterAuthPlugin[]; socialProviders?: BetterAuthOptions['socialProviders'] } = {}
 ) {
   const base = basePlugins(s)
-  const plugins = withOwners(base, [...PLUGINS, ...(extra.plugins ?? [])])
+  const plugins = withOwners(base, [...PLUGINS(s), ...(extra.plugins ?? [])])
   return betterAuth({
     secret: s.secret,
     baseURL: s.appOrigin,

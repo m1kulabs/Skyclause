@@ -14,6 +14,7 @@
     "@skyclause/agent": "workspace:*",
     "@skyclause/auth": "workspace:*",
     "@skyclause/clauses": "workspace:*",
+    "@skyclause/api": "workspace:*",
     "@skyclause/config": "workspace:*",
     "@skyclause/contracts": "workspace:*",
     "@skyclause/db": "workspace:*",

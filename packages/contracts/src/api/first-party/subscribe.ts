@@ -6,20 +6,62 @@ import { Instant, Language, LocalDate, ProjectRef, Subscriber, Window } from '..
 const TokenParams = z.object({ token: z.string() })
 
 const SubscriberFields = Subscriber.pick({ email: true, role: true, window_ids: true, channels: true, language: true })
-const SubscriberPatch = SubscriberFields.partial()
+const SubscriberPatch = Subscriber.pick({
+  email: true,
+  role: true,
+  window_ids: true,
+  channels: true,
+  language: true
+}).partial()
+const SubscriberRightsPatch = Subscriber.pick({ email: true, role: true }).partial().strict()
 const ConsentRecord = z.object({ at: Instant, form: z.string(), notice_version: LocalDate, language: Language })
 const DeliveryRecord = z.object({
   id: z.string(),
+  kind: z.string(),
   call_id: z.string().nullable(),
+  call_permalink: z.string().nullable(),
+  channel: z.enum(['email', 'push']),
   language: Language,
   status: z.enum(['queued', 'sent', 'delivered', 'bounced', 'complained', 'suppressed', 'failed', 'expired']),
+  at: Instant,
   accepted_at: Instant.nullable()
 })
 const SubscriberData = z.object({
-  subscriber: Subscriber,
+  project_name: z.string(),
+  subscriber: Subscriber.extend({ role: z.string().nullable() }),
+  subscriber_status: z.enum(['confirmed', 'unconfirmed', 'bounced', 'complained', 'unsubscribed']),
+  windows: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      starts_at: Instant,
+      ends_at: Instant,
+      kind: z.string(),
+      tz: z.string()
+    })
+  ),
   consent_records: z.array(ConsentRecord),
-  delivery_history: z.array(DeliveryRecord)
+  delivery_history: z.array(DeliveryRecord),
+  crowd_replies: z.array(
+    z.object({
+      id: z.string(),
+      window_id: z.string(),
+      call_id: z.string(),
+      kind: z.enum(['keep', 'shift', 'shuttle']),
+      shift_to: Instant.nullable(),
+      at: Instant
+    })
+  ),
+  suppression: z
+    .object({
+      email_hash: z.string().regex(/^[0-9a-f]{64}$/),
+      reason: z.enum(['unsubscribe', 'bounce', 'complaint']),
+      at: Instant
+    })
+    .nullable(),
+  address_confirmation_sent: z.boolean().optional()
 })
+export type SubscriberData = z.infer<typeof SubscriberData>
 const CrowdReply = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('keep') }),
   z.object({ kind: z.literal('shift'), shift_to: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/) }),
@@ -96,7 +138,16 @@ export const confirmSubscription = createRoute({
   path: '/api/subscribe/{token}/confirm',
   operationId: 'confirmSubscription',
   tags: ['subscribe'],
-  request: { params: TokenParams },
+  request: {
+    params: TokenParams,
+    query: z.object({
+      address_hash: z
+        .string()
+        .regex(/^[0-9a-f]{64}$/)
+        .optional()
+    }),
+    body: { required: false, content: { 'application/json': { schema: z.object({ email: z.email() }) } } }
+  },
   responses: {
     ...CommonProblems,
     200: { description: 'Success', content: { 'application/json': { schema: Subscriber } } }
@@ -182,7 +233,7 @@ export const updateSubscriberData = createRoute({
   tags: ['subscribe'],
   request: {
     params: TokenParams,
-    body: { required: true, content: { 'application/json': { schema: SubscriberPatch } } }
+    body: { required: true, content: { 'application/json': { schema: SubscriberRightsPatch } } }
   },
   responses: {
     ...CommonProblems,

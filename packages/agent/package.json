@@ -8,8 +8,12 @@
     "./validate": "./src/validate.ts"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "4.0.97",
+    "@ai-sdk/google": "4.0.112",
     "@ai-sdk/google-vertex": "5.0.132",
+    "@ai-sdk/openai": "4.0.109",
     "@ai-sdk/otel": "1.0.163",
+    "@openrouter/ai-sdk-provider": "3.1.0",
     "@skyclause/contracts": "workspace:*",
     "ai": "7.0.163",
     "zod": "4.6.7"

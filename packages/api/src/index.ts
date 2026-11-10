@@ -18,11 +18,16 @@ export {
   setPermissionCheck,
   setPrincipalResolver
 } from './middleware/auth'
+export { setOAuthManagement } from './middleware/oauth'
+export { createOAuthConsentHandler } from './routes/oauth/consent'
 export { requireIdempotency } from './middleware/idempotency'
 export { requireOrg } from './middleware/org'
 export { rateLimit } from './middleware/rate-limit'
 export { deprecate } from './deprecation'
 export { health } from './health'
+// #111's `POST /e`, served by `apps/web/app/e/route.ts` on the marketing host (spec §4 Hosts).
+export { handleAnalyticsIngest } from './analytics'
+export { productionDeps } from './production'
 export { checkOpenApi, openApiDocument, openApiResponse, serializeOpenApi, type OpenApiDocument } from './openapi'
 export { decodeCursor, encodeCursor, page } from './pagination'
 export { ApiError, problemType } from './problems'
@@ -55,6 +60,8 @@ export {
 } from './services/projects'
 export { createRun, getRun, listRuns, type RunView } from './services/runs'
 export { sseResponse, type SseMessage, type SseOptions } from './sse'
+export { inspectMemberToken } from './services/members'
+export { createRotaService, nextApprovers, onDuty, ROTA_TEMPLATES, ROTA_TIME_ZONE } from './services/rota'
 export type * from './stores'
 export { calendarFeed, serveCalendarFeed, type CalendarFeed, type CalendarFeedDeps } from './services/ics'
 export { inTenant, type ServiceContext, type WithTenant } from './tenancy'
