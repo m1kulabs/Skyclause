@@ -1,3 +1,4 @@
+import { HTTP_PROBLEM_STATUS } from '@skyclause/contracts'
 import { consentWriteProblem, PRIVACY_NOTICE_VERSION, type Subscriber } from '@skyclause/contracts'
 import { pickableWindowIds, project, subscriber, type Tx } from '@skyclause/db'
 import { eq } from 'drizzle-orm'
@@ -32,7 +33,7 @@ export const isUuid = (value: string) => UUID.test(value)
 /** The project in this organisation, or 404 (another organisation's project included). */
 export async function projectOr404(tx: Tx, projectId: string) {
   const [row] = isUuid(projectId) ? await tx.select().from(project).where(eq(project.id, projectId)) : []
-  if (!row) throw new ApiError(404, 'not-found', 'No such project.')
+  if (!row) throw new ApiError(HTTP_PROBLEM_STATUS['not-found'], 'not-found', 'No such project.')
   return row
 }
 

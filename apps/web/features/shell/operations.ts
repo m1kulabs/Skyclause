@@ -1,11 +1,11 @@
-import { REGISTRY } from '@skyclause/contracts'
+import {
+  listMyMemberships as memberships,
+  getMyPreferences as preferences,
+  updateMyPreferences as updatePreferences
+} from '@skyclause/contracts/api/first-party/me'
+import { listProjects as projects } from '@skyclause/contracts/api/v1/projects'
 
-const memberships = REGISTRY.find((route) => route.operationId === 'listMyMemberships')!
-const projects = REGISTRY.find((route) => route.operationId === 'listProjects')!
-const preferences = REGISTRY.find((route) => route.operationId === 'getMyPreferences')!
-const updatePreferences = REGISTRY.find((route) => route.operationId === 'updateMyPreferences')!
-
-// Adapt the OpenAPI registry to apiFetch and stubApi without duplicating paths or schemas.
+// Adapt the contract routes to apiFetch and stubApi without duplicating paths or schemas.
 export const shellOperations = {
   listMyMemberships: {
     method: memberships.method.toUpperCase(),

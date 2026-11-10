@@ -6,12 +6,6 @@ import { NotBuiltError } from '../src/not-built'
 // Load workspace entrypoints at runtime: this integration check must not add reverse project references to contracts.
 const packages: Array<{ name: string; owners: Record<string, string[]> }> = [
   {
-    name: 'api',
-    owners: {
-      'b-auditor': ['registerAuditCheck']
-    }
-  },
-  {
     name: 'db',
     owners: {
       'd-guest-rules': ['budgetGate'],

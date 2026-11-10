@@ -1,0 +1,17 @@
+{
+  "title": "{brand} · {project}",
+  "noApprovedCall": "No approved call yet",
+  "range": "{from} – {to}",
+  "window": "{range} · {date}",
+  "approved": "Approved {time}",
+  "noCall": "No call: {inputs} failing since {time}",
+  "captured": "Data captured",
+  "reading": "{value} {unit} {name} at {time}",
+  "alt": {
+    "state": "{state}.",
+    "window": "{state}. {window}.",
+    "reading": "{state}. Deciding reading: {reading}.",
+    "full": "{state}. {window}. Deciding reading: {reading}.",
+    "noCall": "{alt} {noCall}."
+  }
+}
