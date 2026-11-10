@@ -225,7 +225,8 @@ export function sli(reads: SliReads, meter: Meter = metrics.getMeter('skyclause'
         ...(accepted.length && { p95_s: p95(accepted) })
       })
     }
-    if (latestAlerts.length) {
+    // A streak is recorded once, by the batch its newest bundle reaches, not again by every batch after it.
+    if (latestAlerts.some((r) => r.needsReviewAt >= window.from)) {
       const failed = inARow(latestAlerts, (r) => r.needsReviewAt, alertFailed)
       record('approverAlerted', { failed_in_a_row: failed, breach: Number(failed >= TARGET.failedInARow) })
     }

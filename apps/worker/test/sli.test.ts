@@ -216,6 +216,19 @@ test('a batch late in its slot reads the same windows', async () => {
   expect((await measure(tables, at('10:00')))['skyclause.crossing_to_needs_review bundles']).toBe(2)
 })
 
+test('a failed-alert streak is recorded once, by the batch its newest bundle reaches', async () => {
+  const tables = { alerts: [alerted('09:10', null), alerted('09:20', null)] }
+  // The batch at 09:45 reads [09:15, 09:30), which holds the newer bundle.
+  expect(await measure(tables, at('09:45'))).toEqual({
+    'skyclause.approver_alerted bundles': 1,
+    'skyclause.approver_alerted within_60s': 0,
+    'skyclause.approver_alerted failed_in_a_row': 2,
+    'skyclause.approver_alerted breach': 1
+  })
+  // Later batches see no new bundle, so they record nothing rather than the same streak again.
+  expect(await measure(tables, batch)).toEqual({})
+})
+
 test('an SLI whose read is absent records nothing', async () => {
   const tables = { slots: [slot('jps_rain', '09:30', 5)], evaluations: [evaluation('09:20', 900)] }
   const { pollSlots: _slots, latestPollSlots: _latest, evaluations: _evaluations, ...reads } = readsOver(tables)
