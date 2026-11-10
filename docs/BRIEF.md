@@ -21,7 +21,7 @@ Contents:
 - **When:** 26 October – 17 November 2026 ([home page]).
 - **Format:** the build phase is online. Final pitching for the top five teams is currently planned for 17 November at the APU Auditorium during NexConnect '26 ([#faq-and-guidelines], [#key-dates-and-briefing]).
 - **Organisers:** APU School of Technology, with GDGoC APU supporting coordination and execution ([event details]). The site lists NexConnect 2026, NTT DATA (sponsor), and Google Cloud as partners ([community]).
-- **Tools:** the organisers encourage Google tools such as Gemini Enterprise where they fit, and welcome others; the NTT DATA presenters at the briefing said Gemini Enterprise is mandatory (see [Tools](#tools)).
+- **Tools:** the organisers encourage Google tools such as Gemini Enterprise where they fit, and welcome others; the NTT DATA presenters at the briefing said Gemini Enterprise is mandatory (see [Tools](#tools)). The 8 November ruling says Gemini Enterprise is not required for the 13 November prototype, but is required for a Top 5 finalist's product at the 17 November pitching ([#announcements]).
 - **Prizes:** RM4,000 in cash across five places ([home page]).
 - **Cost:** free ([#faq-and-guidelines]).
 
