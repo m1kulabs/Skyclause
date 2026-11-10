@@ -4,7 +4,7 @@
 // through `SweepDeps`, so tests run on doubles; `eraseSubscriber` is #110's (tests use a double until it merges).
 
 import type { EraseSubscriber } from '@skyclause/contracts'
-import { and, asc, eq, inArray, isNotNull, isNull, lt, or } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from 'drizzle-orm'
 import { withSystem, type SystemPrincipal, type Tx } from '../client'
 import {
   domainEvent,
@@ -60,13 +60,19 @@ export async function sweepSubscribers(
     const due = await tx
       .select({ id: subscriber.id })
       .from(subscriber)
-      .where(and(eq(subscriber.orgId, q.orgId!), lt(subscriber.unsubscribedAt, cutoff)))
+      .where(
+        and(
+          eq(subscriber.orgId, q.orgId!),
+          lt(subscriber.unsubscribedAt, cutoff),
+          // #110's completed tombstone stays erased even after another grace period passes.
+          or(isNotNull(subscriber.emailHash), ne(subscriber.email, sql`${subscriber.id} || '@deleted.invalid'`))
+        )
+      )
       .orderBy(asc(subscriber.id))
       .limit(BATCH)
     if (!due.length) return counts
     for (const { id } of due) {
-      // #110's erasure leaves the row outside this filter (deleted, or kept under a pseudonymous ID it no longer
-      // matches); it must be idempotent, since a kept row is selected again on the next run.
+      // #110's erasure deletes the row or leaves a tombstone excluded from every later batch and run.
       await deps.eraseSubscriber(tx, id)
       const [left] = await tx.select({ id: subscriber.id }).from(subscriber).where(eq(subscriber.id, id))
       if (left) counts.pseudonymised += 1
