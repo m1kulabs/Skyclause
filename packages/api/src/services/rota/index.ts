@@ -486,6 +486,7 @@ export function createRotaService(conditions: ShiftConditions = unknownCondition
     can?: Can
   ) {
     await lockMemberWrites(ctx.tx)
+    canEdit(ctx.principal, ctx.principal.kind === 'session' ? ctx.principal.accountId : '', can)
     await ensureProject(ctx, input.projectId)
     if (!shiftSetMatchesTemplates(input.templates))
       throw new ApiError(400, 'validation-failed', 'Rota templates are code-defined and cannot be changed.')
@@ -505,7 +506,11 @@ export function createRotaService(conditions: ShiftConditions = unknownCondition
         throw new ApiError(400, 'validation-failed', 'A shift must have a non-empty time range.')
     }
     const scope = input.projectId === null ? isNull(rotaShift.projectId) : eq(rotaShift.projectId, input.projectId)
-    await ctx.tx.delete(rotaShift).where(and(eq(rotaShift.orgId, ctx.tx.orgId!), scope))
+    const ownShifts =
+      ctx.principal.kind === 'session' && ctx.principal.role === 'approver'
+        ? eq(rotaShift.accountId, ctx.principal.accountId)
+        : undefined
+    await ctx.tx.delete(rotaShift).where(and(eq(rotaShift.orgId, ctx.tx.orgId!), scope, ownShifts))
     const inserted = input.shifts.length
       ? await ctx.tx
           .insert(rotaShift)

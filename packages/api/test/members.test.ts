@@ -379,6 +379,70 @@ describe('rota', () => {
     expect(trackRows).toHaveLength(1)
   })
 
+  test('Approvers preserve colleagues when replacing or clearing their own shifts', async () => {
+    const approver = await actor('approver')
+    const colleague = await actor('approver')
+    const { ROTA_TEMPLATES } = await import('../src/services/rota')
+    const project = await withTenant({ orgId, principal: approver.session }, (tx) =>
+      makeProject(tx, { name: 'Approver replacement' })
+    )
+    const shift = {
+      days: [1],
+      local_start: '14:00',
+      local_end: '19:15',
+      condition: null,
+      order: 1,
+      template: 'storm_afternoon'
+    }
+    const [original] = await withTenant({ orgId, principal: approver.session }, (tx) =>
+      tx
+        .insert(rotaShift)
+        .values({
+          orgId,
+          projectId: project.id,
+          accountId: colleague.session.accountId,
+          days: shift.days,
+          localStart: shift.local_start,
+          localEnd: shift.local_end,
+          condition: shift.condition,
+          order: shift.order,
+          template: 'storm_afternoon'
+        })
+        .returning()
+    )
+    for (const shifts of [[{ ...shift, account_id: approver.session.accountId }], []]) {
+      const response = await request(approver.session, 'PUT', `/api/orgs/${ORG}/rota/shifts`, {
+        body: { project_id: project.id, templates: ROTA_TEMPLATES, shifts },
+        idempotencyKey: randomUUID()
+      })
+      expect(response.status, await response.clone().text()).toBe(200)
+      const body = (await response.json()) as { shifts: Array<{ id: string; account_id: string }> }
+      expect(body.shifts).toHaveLength(shifts.length + 1)
+      expect(body.shifts).toContainEqual(
+        expect.objectContaining({ id: original!.id, account_id: colleague.session.accountId })
+      )
+    }
+  })
+
+  test('reports inactive condition days in unstaffed slots', async () => {
+    const admin = await actor('admin')
+    const project = await withTenant({ orgId, principal: admin.session }, (tx) =>
+      makeProject(tx, { name: 'Inactive rota conditions' })
+    )
+    const { createRotaService } = await import('../src/services/rota')
+    const service = createRotaService({
+      async isActive() {
+        return false
+      }
+    })
+    const rota = await withTenant({ orgId, principal: admin.session }, (tx) =>
+      service.getRota({ tx, principal: admin.session }, { projectId: project.id, at: TEST_NOW })
+    )
+    expect(rota.unstaffed_slots).toHaveLength(14)
+    expect(new Set(rota.unstaffed_slots.map((slot) => slot.date)).size).toBe(7)
+    expect(rota.unstaffed_slots.every((slot) => slot.condition_state === 'inactive')).toBe(true)
+  })
+
   test('onDuty and nextApprovers honour conditions, overrides, current roles and the half-open 19:15 MYT edge', async () => {
     const admin = await actor('admin')
     const a = await actor('approver')
