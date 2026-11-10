@@ -114,7 +114,7 @@ The organisers' 8 November update says: "Your prototype does not need to incorpo
 ### Reviewer access
 
 - **Each reviewer needs** a licence seat, the Gemini Enterprise User role on the team's project, and the agent shared with them; Frontline seats can only run agents shared with them. Sharing is documented only "within your organization", and organisations created since 3 May 2024 limit IAM grants to their own domain by default, so `@nttdata.com` reviewers may need an exception ([Gemini Enterprise](/docs/research/gemini-enterprise.md#reviewer-access)).
-- **The app URL isn't public:** it comes from the app's **Integration** page, like `https://vertexaisearch.cloud.google.com/home/cid/<id>`, and refuses anyone without a seat and role. The presenter described reviewers being invited for "the top use cases" ([briefing]). **Inference:** the submission's demo link should open the README's "How to review" section: the app URL, how to request access, and the video.
+- **The app URL isn't public:** it comes from the app's **Integration** page, like `https://vertexaisearch.cloud.google.com/home/cid/<id>`, and refuses anyone without a seat and role. The presenter described reviewers being invited for "the top use cases" ([briefing]). **Inference:** the submission's demo link should open the README's "How to review" section with the live prototype, access instructions, and the video; if the prototype uses Gemini Enterprise, also give the app URL and how to request access.
 - **Shared users see their own runs, not the owner's:** capture the owner's Runs tab over several days in the README and video, and give reviewers a trigger they can fire themselves, such as emailing a test inbox or dropping a file into a shared folder.
 
 ### Antigravity
@@ -125,7 +125,7 @@ The organisers' 8 November update says: "Your prototype does not need to incorpo
 
 ## Covering the theme
 
-The theme is "When Cloud, IoT, and Network Converge" ([brief](/docs/BRIEF.md#at-a-glance)). **Inference:** with asynchronous judging, each of the three parts only scores if the repo, video, and Gemini Enterprise app make it visible.
+The theme is "When Cloud, IoT, and Network Converge" ([brief](/docs/BRIEF.md#at-a-glance)). **Inference:** with asynchronous judging, each of the three parts only scores if the repo, video, and live prototype make it visible.
 
 ### Cloud
 
@@ -220,8 +220,8 @@ The quality layer ([research and impact], [judging and pitching]):
 | 8 Nov     | README, deck, and diagram drafts; confirm every member has registered before registration closes that night                     |
 | 9–12 Nov  | Feature freeze; record the video from the live system; test prototype access with a non-team account; compress the deck         |
 | 10 Nov    | Licence expected, not guaranteed; set up GE and test reviewer access for 17 November ([brief](/docs/BRIEF.md#key-dates))        |
-| 11–14 Nov | Assessment: keep the workflow, feeds, and any board running; watch quotas; leave the repo's default branch untouched            |
 | 13 Nov    | Leader submits early, before 12:00 PM (noon, Malaysia time) on 13 November 2026 ([brief](/docs/BRIEF.md#key-dates))             |
+| 11–14 Nov | Assessment: after submitting, keep the workflow, feeds, and any board running; watch quotas; leave the default branch untouched |
 | 15 Nov    | Top 5 announced; if selected, cut the pitch to the announced format                                                             |
 | 16 Nov    | Rehearse with one speaker; test the auditorium network and a phone hotspot                                                      |
 | 17 Nov    | If Top 5, pitch the final product incorporating Gemini Enterprise tools ([brief](/docs/BRIEF.md#key-dates))                     |
