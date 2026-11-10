@@ -452,6 +452,20 @@ describe('connect routes on the test database', () => {
     })
     expect(body.data).toEqual([body.first])
   })
+
+  it('answers 404 when a member names an organisation they are not in', async () => {
+    const api = createConnectApi()
+    const a = await connectOrganisation()
+    const b = await connectOrganisation()
+    const cases: Array<[string, Record<string, string>]> = [
+      ['getConnectConfig', { target: 'claude_ai', transport: 'remote' }],
+      ['listConnectVerifications', {}],
+      ['listConnectActivity', { since: '2026-11-10T00:00:00.000Z' }]
+    ]
+    for (const [operationId, query] of cases) {
+      await crossOrgCase(operationId, { app: api, as: a.as, org: b.org.slug, params: {}, query }).run()
+    }
+  })
 })
 
 function createConnectApi(now = new Date('2026-11-10T00:00:00.000Z')) {
