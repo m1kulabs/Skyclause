@@ -75,3 +75,5 @@ export type * from './stores'
 export { calendarFeed, serveCalendarFeed, type CalendarFeed, type CalendarFeedDeps } from './services/ics'
 export { inTenant, type ServiceContext, type WithTenant } from './tenancy'
 export { unbuiltOperations } from './unbuilt'
+
+export { setClauseSheetPorts, type ClauseSheetPorts, type RuntimeIndicatorRegistry } from './services/clause-sheets'
