@@ -5,7 +5,7 @@ import { auditEvent, recordAudit, user, withTenant, type Tx } from '@skyclause/d
 import { authDatabase } from '@skyclause/db/auth'
 import { makeMember, makeOrganization, makeProject, makeUser } from '@skyclause/db/test/factories/index'
 import { memberOf } from '@skyclause/db/test/harness/index'
-import { count, eq } from 'drizzle-orm'
+import { count, eq, sql } from 'drizzle-orm'
 import { beforeAll, describe, expect, test } from 'vitest'
 import {
   apiRequest,
@@ -298,4 +298,51 @@ describe('export', () => {
     const response = await get('/api/orgs/audit-home/audit/export')
     expect(response.headers.get('Content-Type')).toContain('text/csv')
   })
+})
+
+test('malformed cursor positions return a query validation problem', async () => {
+  for (const position of [
+    { at: 'invalid-date', id: orgId },
+    { at: '2026-11-01T00:00:00.123456Z', id: 'invalid-id' },
+    { at: '2026-02-30T00:00:00Z', id: orgId }
+  ]) {
+    const cursor = Buffer.from(JSON.stringify(position)).toString('base64url')
+    const response = await get('/api/orgs/audit-home/audit', { cursor })
+    expect(response.status).toBe(422)
+    expect(await response.json()).toMatchObject({ errors: [{ in: 'query', pointer: '/cursor' }] })
+  }
+})
+
+test('list cursors preserve historical microseconds across tied timestamps', async () => {
+  const target = 'legacy-list'
+  await inOrg((tx) =>
+    tx.insert(auditEvent).values(
+      Array.from({ length: 250 }, () => ({
+        orgId,
+        actorType: 'system' as const,
+        actorId: 'legacy-writer',
+        client: 'worker' as const,
+        action: 'source.bound',
+        targetType: target,
+        targetId: target,
+        at: sql`'2026-11-01T00:00:00.123456Z'::timestamptz`
+      }))
+    )
+  )
+  const seen: string[] = []
+  let cursor: string | undefined
+  for (let pages = 0; pages < 10; pages++) {
+    const response = await get('/api/orgs/audit-home/audit', {
+      target_type: target,
+      limit: '50',
+      ...(cursor ? { cursor } : {})
+    })
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as { data: Array<{ id: string }>; next_cursor: string | null }
+    seen.push(...body.data.map((row) => row.id))
+    if (!body.next_cursor) break
+    cursor = body.next_cursor
+  }
+  expect(seen).toHaveLength(250)
+  expect(new Set(seen).size).toBe(250)
 })

@@ -1,5 +1,5 @@
 import { ROLES, type AuditAction, type Role, type TxHandle } from '@skyclause/contracts'
-import { and, asc, desc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm'
+import { and, asc, desc, eq, getTableColumns, inArray, isNull, sql, type SQL } from 'drizzle-orm'
 import { authDatabase } from '../auth'
 import type { Tx } from '../client'
 import { auditEvent } from '../schema'
@@ -18,11 +18,11 @@ export interface AuditFilters {
   to?: Date
 }
 
-export type AuditRow = typeof auditEvent.$inferSelect
+export type AuditRow = typeof auditEvent.$inferSelect & { cursorAt: string }
 
 /** The keyset position: the list reads `at` newest first with `id` breaking ties. */
 export interface AuditCursor {
-  at: Date
+  at: Date | string
   id: string
 }
 
@@ -38,6 +38,8 @@ function matching(f: AuditFilters): SQL | undefined {
   )
 }
 
+// Historical rows retain PostgreSQL microseconds; Date and wire timestamps only retain milliseconds.
+const cursorAt = sql<string>`to_char(${auditEvent.at} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`
 const position = sql`(${auditEvent.at}, ${auditEvent.id})`
 
 /** Newest first, up to `limit + 1` rows strictly below `cursor`, for `page()` and its `next_cursor`. */
@@ -47,7 +49,7 @@ export async function listAudit(
 ): Promise<AuditRow[]> {
   const tx = handle as Tx
   return tx
-    .select()
+    .select({ ...getTableColumns(auditEvent), cursorAt })
     .from(auditEvent)
     .where(and(matching(q.filters), q.cursor ? sql`${position} < (${q.cursor.at}, ${q.cursor.id})` : undefined))
     .orderBy(desc(auditEvent.at), desc(auditEvent.id))
@@ -61,7 +63,7 @@ export async function auditExportPage(
 ): Promise<AuditRow[]> {
   const tx = handle as Tx
   return tx
-    .select()
+    .select({ ...getTableColumns(auditEvent), cursorAt })
     .from(auditEvent)
     .where(
       and(
@@ -78,7 +80,7 @@ export async function auditExportPage(
 export async function auditHead(handle: TxHandle): Promise<AuditCursor | null> {
   const tx = handle as Tx
   const [row] = await tx
-    .select({ at: auditEvent.at, id: auditEvent.id })
+    .select({ at: cursorAt, id: auditEvent.id })
     .from(auditEvent)
     .orderBy(desc(auditEvent.at), desc(auditEvent.id))
     .limit(1)

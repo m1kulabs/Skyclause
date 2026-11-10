@@ -22,8 +22,7 @@ export const auditEvent = tenantTable(
     targetId: text('target_id').notNull(),
     before: jsonb('before'),
     after: jsonb('after'),
-    // Millisecond precision: cursors and `created_at` round-trip through RFC 3339 (milliseconds), so a microsecond
-    // default would make an inclusive keyset bound miss its own row.
+    // New writes use the wire timestamp precision; cursors preserve historical microseconds separately.
     at: instant('at')
       .notNull()
       .default(sql`date_trunc('milliseconds', now())`)

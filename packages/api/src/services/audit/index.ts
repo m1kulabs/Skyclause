@@ -1,6 +1,6 @@
-import type { z } from '@hono/zod-openapi'
+import { z } from '@hono/zod-openapi'
 import { canonicalJson } from '@skyclause/clauses'
-import type { Operations } from '@skyclause/contracts'
+import { Instant, type Operations } from '@skyclause/contracts'
 import {
   auditExportPage,
   auditHead,
@@ -91,13 +91,13 @@ export async function listAuditEntries(
   let cursor: AuditCursor | undefined
   if (q.cursor !== undefined) {
     const raw = decodeCursor(q.cursor)
-    if (typeof raw.at !== 'string' || typeof raw.id !== 'string') throw invalidCursor()
-    cursor = { at: new Date(raw.at), id: raw.id }
+    if (!Instant.safeParse(raw.at).success || !z.uuid().safeParse(raw.id).success) throw invalidCursor()
+    cursor = { at: raw.at as string, id: raw.id as string }
   }
   const rows = await listAudit(ctx.tx, { filters: toDbFilters(q.filters), limit: q.limit, cursor })
-  const entries = (await withDisplay(ctx.tx.orgId!, rows)).map(({ row, display }) => toEntry(row, display))
-  const { data, next_cursor } = page(entries, q.limit, (entry) => ({ at: entry.created_at, id: entry.id }))
-  return { data, next_cursor }
+  const { data, next_cursor } = page(rows, q.limit, (row) => ({ at: row.cursorAt, id: row.id }))
+  const entries = (await withDisplay(ctx.tx.orgId!, data)).map(({ row, display }) => toEntry(row, display))
+  return { data: entries, next_cursor }
 }
 
 const CSV_PAGE = 500
@@ -147,7 +147,7 @@ export async function exportAuditJson(
     entries.push(...(await withDisplay(ctx.tx.orgId!, rows)).map(({ row, display }) => toEntry(row, display)))
     if (rows.length <= CSV_PAGE) return entries
     const last = rows.at(-1)!
-    cursor = { at: last.at, id: last.id }
+    cursor = { at: last.cursorAt, id: last.id }
   }
 }
 
@@ -180,7 +180,7 @@ export async function exportAuditCsv(
       const text = (await withDisplay(orgId, rows)).map(({ row, display }) => entryCsv(toEntry(row, display))).join('')
       if (text.length) controller.enqueue(encoder.encode(text))
       const last = rows.at(-1)
-      after = last ? { at: last.at, id: last.id } : after
+      after = last ? { at: last.cursorAt, id: last.id } : after
       if (rows.length < CSV_PAGE) controller.close()
     }
   })
