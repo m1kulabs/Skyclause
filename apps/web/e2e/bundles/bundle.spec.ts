@@ -2,7 +2,22 @@ import { test, expect } from '../fixtures'
 import { stubApi, expectZonedTimes } from '../harness'
 import { expectUnclippedText } from '../harness/expect-unclipped-text'
 import { bundleOperations } from '../../features/bundles/operations'
-import { ids, path, prepare, open, callDouble, bundleDouble, gauge, rain60, problem, t, rawT } from './doubles'
+import { makeOrg, signInAs } from '../harness/sign-in-as'
+import {
+  ids,
+  path,
+  prepare,
+  open,
+  callDouble,
+  bundleDouble,
+  gauge,
+  rain60,
+  problem,
+  t,
+  rawT,
+  stubReads
+} from './doubles'
+import { seedReview } from './seed'
 
 const approve = (page: import('@playwright/test').Page, count = 2) =>
   page.locator('.bundle-approval-bar').getByRole('button', { name: t('approve', { count }), exact: false })
@@ -119,12 +134,12 @@ test('CAL-9 cancelling a re-check sends no second request', async ({ page }) => 
   await expect(approve(page, 1)).toBeEnabled()
 })
 
-test('CAL-15 editing wording and recipients stays local and a missing teaching line blocks approval', async ({
+test('CAL-15 editing wording and recipients stays local and a template teaching line blocks approval', async ({
   page
 }) => {
   const hybrid = callDouble(ids.first, {
     mode: 'hybrid_recommended',
-    notices: [{ language: 'en', subject: 'Test hybrid draft', body: rawT('bundles.teaching') }]
+    notices: [{ language: 'en', subject: 'Test hybrid draft', body: 'Teaching update in a test double' }]
   })
   await prepare(page, bundleDouble([hybrid]))
   let writes = 0
@@ -140,20 +155,16 @@ test('CAL-15 editing wording and recipients stays local and a missing teaching l
   await body.fill('Teaching line removed in a test double')
   await dialog.getByRole('checkbox').last().uncheck()
   await dialog.getByRole('button', { name: t('save'), exact: true }).press('Enter')
-  await expect(approve(page, 1)).toBeDisabled()
-  await expect(row).toContainText(t('teaching_required'))
+  await expect(approve(page, 1)).toBeEnabled()
+  await expect(row).not.toContainText(t('teaching_forbidden'))
   expect(writes).toBe(0)
   await row.focus()
   await page.keyboard.press('e')
   await body.fill(rawT('bundles.teaching'))
   await dialog.getByRole('button', { name: t('save'), exact: true }).press('Enter')
-  const request = page.waitForRequest((request) => request.url().endsWith('/approve'))
-  await approve(page, 1).press('Enter')
-  expect((await request).postDataJSON().calls[0]).toMatchObject({
-    action: 'edit',
-    recipients: ['english-recipient@example.test'],
-    notices: [{ body: rawT('bundles.teaching') }]
-  })
+  await expect(approve(page, 1)).toBeDisabled()
+  await expect(row).toContainText(t('teaching_forbidden'))
+  expect(writes).toBe(0)
 })
 
 test('LOC-4 and LOC-5 show recipient languages, Malay quotes and English fallback', async ({ page }) => {
@@ -438,3 +449,52 @@ for (const theme of ['dark', 'light', 'high-contrast']) {
     await expectUnclippedText(page)
   })
 }
+
+test('#372 a signed-in approver’s bundle arrives rendered by the server and hydrates without a mismatch', async ({
+  browser,
+  page
+}) => {
+  const org = await makeOrg()
+  const review = await seedReview(org, bundleDouble([callDouble(ids.first, { expires_at: '2099-11-02T07:45:00Z' })]))
+  const title = review.calls[0]!.window!.title
+  // Without JavaScript, only the server's render can show the review.
+  const scriptless = await browser.newContext({ javaScriptEnabled: false })
+  const plain = await scriptless.newPage()
+  await signInAs(plain, 'approver', org)
+  await plain.goto(review.path)
+  await expect(plain.locator('.bundle-call-list')).toContainText(title)
+  await expect(plain.locator('.bundle-approval-bar')).toBeVisible()
+  const rendered = await plain.locator('.bundle-call-list').innerText()
+  await scriptless.close()
+
+  const errors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text())
+  })
+  page.on('pageerror', (error) => errors.push(error.message))
+  await signInAs(page, 'approver', org)
+  await stubReads(page, review.bundle, review.calls, { org })
+  // Pause the client refresh so the full call list can be compared at hydration, before #404 adds the readings.
+  let releaseStrip!: () => void
+  const stripPaused = new Promise<void>((resolve) => {
+    releaseStrip = resolve
+  })
+  await page.route('**/v1/projects/*/strip', async (route) => {
+    await stripPaused
+    await route.fallback()
+  })
+  const stripRequested = page.waitForRequest('**/v1/projects/*/strip')
+  try {
+    await open(page, review.path)
+    // This read starts in an effect, so hydration has committed while the refresh is still paused.
+    await stripRequested
+    expect(await page.locator('.bundle-call-list').innerText()).toBe(rendered)
+  } finally {
+    releaseStrip()
+  }
+  // The run and strip arrive in the client refresh; new readings must replace the server's empty strip.
+  await expect(page.locator('.bundle-trace')).toContainText(review.bundle.run_id)
+  await expect(page.locator('.bundle-call-list figure svg')).toBeVisible()
+  await expect(page.locator('.bundle-call-list figure figcaption')).toContainText('50')
+  expect(errors.filter((error) => /hydrat|Minified React error #(418|419|421|422|423|425)\b/i.test(error))).toEqual([])
+})

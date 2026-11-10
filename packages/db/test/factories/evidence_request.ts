@@ -14,6 +14,7 @@ export async function makeEvidenceRequest(tx: Tx, overrides: Partial<typeof evid
       spanFrom: new Date('2026-11-02T06:00:00Z'),
       spanTo: new Date('2026-11-02T08:00:00Z'),
       requester: randomUUID(),
+      requesterKind: 'member',
       via: 'app',
       ...overrides,
       projectId: parent.id

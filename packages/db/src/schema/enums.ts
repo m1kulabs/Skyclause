@@ -124,6 +124,7 @@ export const consentForm = pgEnum('consent_form', ['subscribe_link', 'import', '
 export const crowdReplyKind = pgEnum('crowd_reply_kind', ['keep', 'shift', 'shuttle'])
 export const evidenceVia = pgEnum('evidence_via', ['email', 'app', 'api', 'mcp'])
 export const replyChannel = pgEnum('reply_channel', ['email', 'in_app'])
+export const evidenceRequesterKind = pgEnum('evidence_requester_kind', ['member', 'guest', 'share_link', 'subscriber'])
 export const projectChannelKind = pgEnum('project_channel_kind', ['email', 'ics', 'webhook', 'in_app'])
 export const notificationKind = pgEnum('notification_kind', [
   'needs_review',
@@ -135,6 +136,8 @@ export const notificationKind = pgEnum('notification_kind', [
 export const rotaTemplate = pgEnum('rota_template', ['storm_afternoon', 'surge_night', 'custom'])
 export const alertChannel = pgEnum('alert_channel', ['web_push', 'email'])
 export const alertLevel = pgEnum('alert_level', ['on_duty', 'next_approver', 'admins'])
+/** c-approver-alerts (#155): 30 minutes before a shift, or when a conditional shift switches on (CAL-19). */
+export const shiftReminderKind = pgEnum('shift_reminder_kind', ['before_shift', 'switched_on'])
 export const gradeOutcome = pgEnum('grade_outcome', [
   'hit',
   'miss',

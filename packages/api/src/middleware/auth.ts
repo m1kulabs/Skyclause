@@ -1,3 +1,4 @@
+import { HTTP_PROBLEM_STATUS } from '@skyclause/contracts'
 import {
   NotBuiltError,
   SCOPE_STATEMENTS,
@@ -41,7 +42,12 @@ const insufficient = (detail: string) => new ApiError(403, 'insufficient-scope',
 
 export function principalOf(c: Context<ApiEnv>): Principal {
   const principal = c.get('principal')
-  if (!principal) throw new ApiError(401, 'unauthenticated', 'Sign in, or send an API key or token.')
+  if (!principal)
+    throw new ApiError(
+      HTTP_PROBLEM_STATUS['unauthenticated'],
+      'unauthenticated',
+      'Sign in, or send an API key or token.'
+    )
   return principal
 }
 
@@ -98,7 +104,7 @@ export function requireRecentAuth(hours = 12): Middleware {
 export const requireStaff: Middleware = async (c, next) => {
   const principal = principalOf(c)
   if (principal.kind !== 'session' || !principal.staff) throw insufficient('This operation is for staff.')
-  const commons = await c.get('deps').membership.organisation('commons')
+  const commons = await c.get('deps').membership.lookup('commons', null)
   if (!commons) throw new Error('requireStaff audits in the commons organisation, which does not exist')
   const job: Principal = {
     kind: 'system',
@@ -147,6 +153,14 @@ export function requireScope(scope: Scope): Middleware {
 const targetType = (path: string) =>
   /\/([a-z-]+)\/\{id\}/.exec(path)?.[1]?.replace(/s$/, '').replaceAll('-', '_') ?? 'operation'
 
+/** GST-7: one `bundle.approve_denied` row for a refused approval, in the organisation the request settled on. */
+export function auditApproveDenied(c: Context<ApiEnv>, ctx: { orgId: string; principal: Principal }) {
+  return auditIn(c, ctx, {
+    action: 'bundle.approve_denied',
+    target: { type: targetType(c.get('operation').path), id: c.req.param('id') ?? '' }
+  })
+}
+
 /**
  * Caps a key or token at the statements its scopes map to (spec §1), then asks the registered `can`. A denied
  * `bundle.approve` is audited as `bundle.approve_denied` (GST-7) before the 403.
@@ -159,16 +173,7 @@ export function requirePermission(statement: Statement): Middleware {
     const scoped = !scopes || scopes.some((scope) => SCOPE_STATEMENTS[scope].includes(statement))
     if (!scoped || !can(principal, statement)) {
       const orgId = c.get('orgId')
-      if (statement === 'bundle.approve' && orgId) {
-        await auditIn(
-          c,
-          { orgId, principal },
-          {
-            action: 'bundle.approve_denied',
-            target: { type: targetType(c.get('operation').path), id: c.req.param('id') ?? '' }
-          }
-        )
-      }
+      if (statement === 'bundle.approve' && orgId) await auditApproveDenied(c, { orgId, principal })
       throw insufficient(`This operation needs ${statement}.`)
     }
     await next()

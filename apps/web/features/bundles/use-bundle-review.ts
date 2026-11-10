@@ -14,7 +14,7 @@ import {
   type RunDetail,
   type StripDetail
 } from './operations'
-import { canReviewCall, decisionsFor, teachingLineMissing, type Decisions } from './model'
+import { approves, canReviewCall, decisionsFor, teachingLineIncluded, type Decisions } from './model'
 import { t } from './i18n'
 
 export interface ReviewData {
@@ -27,8 +27,14 @@ export interface ReviewData {
   errors: string[]
 }
 
-export function useBundleReview(bundleId: string, org: string) {
-  const [data, setData] = useState<ReviewData>()
+/** The page's server read of the review (#372) and the instant it rendered, so hydration renders the same markup. */
+export interface InitialReview {
+  data: ReviewData
+  now: number
+}
+
+export function useBundleReview(bundleId: string, org: string, initial?: InitialReview) {
+  const [data, setData] = useState(initial?.data)
   const [loadError, setLoadError] = useState(false)
   const [revision, setRevision] = useState(0)
   const [decisions, setDecisions] = useState<Decisions>({})
@@ -36,10 +42,11 @@ export function useBundleReview(bundleId: string, org: string) {
   const [conflict, setConflict] = useState<Conflict>()
   const [error, setError] = useState<{ message: string; callIds: string[] }>()
   const [reauth, setReauth] = useState<ApprovalBody>()
-  const [now, setNow] = useState(Date.now)
+  const [now, setNow] = useState(() => initial?.now ?? Date.now())
   const locked = useRef(false)
   const terminal = useRef(false)
   const generation = useRef(0)
+  const reauthKey = useRef<string | undefined>(undefined)
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000)
@@ -51,12 +58,14 @@ export function useBundleReview(bundleId: string, org: string) {
     generation.current += 1
     terminal.current = false
     locked.current = false
-    setData(undefined)
+    // The server's read of this bundle stays on screen while the client reads it again (#372); a retry starts blank.
+    setData((current) => (revision === 0 && current?.bundle.id === bundleId ? current : undefined))
     setLoadError(false)
     setDecisions({})
     setConflict(undefined)
     setError(undefined)
     setReauth(undefined)
+    reauthKey.current = undefined
     setPending(false)
     const signal = controller.signal
     async function load() {
@@ -76,7 +85,7 @@ export function useBundleReview(bundleId: string, org: string) {
           do {
             const page = await apiFetch('listMyMemberships', { query: { cursor }, signal })
             const membership = page.data.find((item) => item.org_slug === org)
-            if (membership) return ['approver', 'admin', 'owner'].includes(membership.role)
+            if (membership) return approves(membership.role)
             cursor = page.next_cursor ?? undefined
             if (cursor && seen.has(cursor)) throw new Error('Repeated membership cursor')
             if (cursor) seen.add(cursor)
@@ -109,7 +118,10 @@ export function useBundleReview(bundleId: string, org: string) {
             errors
           })
       } catch {
-        if (!signal.aborted) setLoadError(true)
+        if (!signal.aborted) {
+          setData(undefined)
+          setLoadError(true)
+        }
       }
     }
     void load()
@@ -178,17 +190,21 @@ export function useBundleReview(bundleId: string, org: string) {
   const missingChoice = reviewable.some(
     (call) => !call.agrees && decisions[call.id]?.action !== 'reject' && !decisions[call.id]?.chosen
   )
-  const missingTeaching = reviewable.some((call) => teachingLineMissing(call, decisions[call.id] ?? {}))
-  const blocked = !editable || !reviewable.length || !!visible?.errors.length || missingChoice || missingTeaching
+  const includesTeachingLine = reviewable.some((call) => teachingLineIncluded(call, decisions[call.id] ?? {}))
+  const blocked = !editable || !reviewable.length || !!visible?.errors.length || missingChoice || includesTeachingLine
 
-  async function send(body: ApprovalBody, afterReauth = false) {
+  async function send(body: ApprovalBody, idempotencyKey: string, afterReauth = false) {
     if (locked.current || terminal.current || blocked) return
     locked.current = true
     const currentGeneration = generation.current
     setPending(true)
     setError(undefined)
     try {
-      const result = await apiFetch('approveBundle', { params: { id: bundleId }, body })
+      const result = await apiFetch('approveBundle', {
+        params: { id: bundleId },
+        body,
+        headers: { 'Idempotency-Key': idempotencyKey }
+      })
       if (currentGeneration !== generation.current || terminal.current) return
       terminal.current = true
       setData((current) =>
@@ -232,6 +248,7 @@ export function useBundleReview(bundleId: string, org: string) {
         return
       }
       if (problem?.status === 401 && code === 'reauth-required' && !afterReauth) {
+        reauthKey.current = idempotencyKey
         setReauth(body)
         return
       }
@@ -260,11 +277,14 @@ export function useBundleReview(bundleId: string, org: string) {
     if (!visible || blocked || pending || (conflict && !reconfirm)) return
     const calls = decisionsFor(visible.calls, decisions, Date.now())
     if (!calls.length) return
-    await send({
-      review_hash: reconfirm && conflict?.review_hash ? conflict.review_hash : visible.bundle.review_hash,
-      reconfirm,
-      calls
-    })
+    await send(
+      {
+        review_hash: reconfirm && conflict?.review_hash ? conflict.review_hash : visible.bundle.review_hash,
+        reconfirm,
+        calls
+      },
+      globalThis.crypto.randomUUID()
+    )
   }
 
   return {
@@ -282,13 +302,15 @@ export function useBundleReview(bundleId: string, org: string) {
     editable,
     blocked,
     missingChoice,
-    missingTeaching,
+    includesTeachingLine,
     approve,
     retry: () => setRevision((value) => value + 1),
     retryAfterReauth: async () => {
       const body = reauth
+      const idempotencyKey = reauthKey.current
+      reauthKey.current = undefined
       setReauth(undefined)
-      if (body) await send(body, true)
+      if (body) await send(body, idempotencyKey ?? globalThis.crypto.randomUUID(), true)
     }
   }
 }

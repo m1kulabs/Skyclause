@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { boolean, check, foreignKey, integer, text, unique, uuid } from 'drizzle-orm/pg-core'
+import { boolean, check, foreignKey, index, integer, text, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { organization } from './auth'
 import { id, instant, orgKey, sameOrg, tenantTable, timestamps } from './columns'
 import {
@@ -155,12 +155,21 @@ export const notice = tenantTable(
     providerMessageId: text('provider_message_id'),
     acceptedAt: instant('accepted_at'),
     traceId: text('trace_id'),
+    /** c-sender-email: sends started for a `call` notice; it fails once the retries after the first are spent. */
+    attempts: integer('attempts').notNull().default(0),
+    /** c-sender-email: the sender's lease while a send is in flight; a crashed send is retried once it lapses. */
+    claimedUntil: instant('claimed_until'),
     ...timestamps()
   },
   (self) => [
     sameOrg('notice_project', self, self.projectId, project, true),
     sameOrg('notice_call', self, self.callId, call, true),
-    sameOrg('notice_subscriber', self, self.subscriberId, subscriber, true)
+    sameOrg('notice_subscriber', self, self.subscriberId, subscriber, true),
+    // `/ses/events` maps SES's message ID back to its notice; the sweep finds queued rows.
+    index('notice_provider_message_id_idx').on(self.providerMessageId),
+    index('notice_queued_idx')
+      .on(self.orgId)
+      .where(sql`${self.status} = 'queued'`)
   ]
 )
 
@@ -171,28 +180,39 @@ export const crowdReply = tenantTable(
     id: id(),
     projectId: uuid('project_id').notNull(),
     windowId: uuid('window_id').notNull(),
+    /** The call whose notice was answered (the `reply` token's). */
+    callId: uuid('call_id').notNull(),
     kind: crowdReplyKind('kind').notNull(),
     shiftTo: instant('shift_to'),
+    /** When the recipient answered: SES's receipt time for an email, the request's for a link. */
+    at: instant('at').notNull(),
     createdAt: instant('created_at').notNull().defaultNow()
   },
   (self) => [
     sameOrg('crowd_reply_project', self, self.projectId, project, true),
-    sameOrg('crowd_reply_window', self, self.windowId, window, true)
+    sameOrg('crowd_reply_window', self, self.windowId, window, true),
+    sameOrg('crowd_reply_call', self, self.callId, call, true)
   ]
 )
 
-/** One plan-feedback answer (ANL-7): append-only rows of `count` 1, summed on read. */
+/**
+ * One plan-feedback answer (ANL-7): append-only rows of `count` 1, summed per window on read. Yes or no only, with no
+ * text column, and nothing names the subscriber.
+ */
 export const planFeedback = tenantTable(
   'plan_feedback',
   {
     id: id(),
     projectId: uuid('project_id').notNull(),
-    answer: text('answer').notNull(),
+    windowId: uuid('window_id').notNull(),
+    /** "Did the weather change your plan?": true is yes. */
+    answer: boolean('answer').notNull(),
     count: integer('count').notNull().default(1),
     createdAt: instant('created_at').notNull().defaultNow()
   },
   (self) => [
     sameOrg('plan_feedback_project', self, self.projectId, project, true),
+    sameOrg('plan_feedback_window', self, self.windowId, window, true),
     check('plan_feedback_count_one', sql`${self.count} = 1`)
   ]
 )
@@ -213,7 +233,11 @@ export const notification = tenantTable(
   },
   (self) => [
     foreignKey({ columns: [self.orgId], foreignColumns: [organization.id] }).onDelete('cascade'),
-    sameOrg('notification_project', self, self.projectId, project, true)
+    sameOrg('notification_project', self, self.projectId, project, true),
+    // #156: `notify` dedupes an unread item; once read, the same condition notifies again.
+    uniqueIndex('notification_unread_key')
+      .on(self.orgId, self.accountId, self.kind, self.refType, self.refId, self.recovered)
+      .where(sql`${self.readAt} IS NULL`)
   ]
 )
 
@@ -233,18 +257,21 @@ export const notificationPreference = tenantTable(
   ]
 )
 
-/** An approver's web push endpoint (D28); a 404 or 410 deletes it. */
+/** An approver's web push endpoint (D28), one per browser and organisation (#155); a 404 or 410 deletes it. */
 export const pushSubscription = tenantTable(
   'push_subscription',
   {
     id: id(),
     accountId: uuid('account_id').notNull(),
-    endpoint: text('endpoint').notNull().unique(),
+    endpoint: text('endpoint').notNull(),
     p256dh: text('p256dh').notNull(),
     auth: text('auth').notNull(),
     userAgent: text('user_agent'),
     lastOkAt: instant('last_ok_at'),
     ...timestamps()
   },
-  (self) => [foreignKey({ columns: [self.orgId], foreignColumns: [organization.id] }).onDelete('cascade')]
+  (self) => [
+    foreignKey({ columns: [self.orgId], foreignColumns: [organization.id] }).onDelete('cascade'),
+    unique('push_subscription_org_id_endpoint_key').on(self.orgId, self.endpoint)
+  ]
 )

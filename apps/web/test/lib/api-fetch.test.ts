@@ -21,6 +21,31 @@ function jsonResponse(body: unknown, status = 200) {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.unstubAllEnvs()
+})
+
+test('routes /api to the app origin and /v1 to API_ORIGIN in multi-host mode', async () => {
+  vi.stubEnv('HOST_MODE', 'multi')
+  vi.stubEnv('NEXT_PUBLIC_API_ORIGIN', 'https://api.example.test')
+  vi.stubGlobal('window', { location: { origin: 'https://app.example.test', pathname: '/' } })
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse(validProblem))
+  vi.stubGlobal('fetch', fetchMock)
+  const fetcher = createApiFetch({
+    ...testRegistry,
+    getMyPreferences: {
+      method: 'GET',
+      path: '/api/me/preferences',
+      response: { parse: (value: unknown) => value }
+    }
+  })
+
+  await fetcher('getMyPreferences', {})
+  await fetcher('getProjects', { params: { instance: 'acme' } })
+
+  expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
+    'https://app.example.test/api/me/preferences',
+    'https://api.example.test/v1/orgs/acme/projects'
+  ])
 })
 
 test('uses the organisation slug in the current URL for Skyclause-Organization', async () => {
@@ -116,4 +141,26 @@ test('explicit organisation wins over the global connect route for client creati
   vi.stubGlobal('fetch', fetchMock)
   await apiFetch('getProjects', { params: { instance: 'chosen-org' }, org: 'chosen-org' })
   expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Skyclause-Organization')).toBe('chosen-org')
+})
+
+test('parses a CSV export as text through the operation response schema', async () => {
+  const csv = 'id,kind\r\nentry-1,call_approved\r\n'
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response(csv, { headers: { 'Content-Type': 'text/csv; charset=utf-8' } }))
+  )
+  const fetcher = createApiFetch({
+    exportLedger: {
+      method: 'GET',
+      path: '/v1/projects/{id}/ledger/export',
+      request: { params: {} as { id: string } },
+      response: {
+        parse: (value: unknown) => {
+          if (typeof value !== 'string') throw new Error('Expected CSV')
+          return value
+        }
+      }
+    }
+  })
+  expect(await fetcher('exportLedger', { params: { id: 'p' } })).toBe(csv)
 })

@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm'
+import { desc, sql } from 'drizzle-orm'
 import { bigint, foreignKey, index, jsonb, pgTable, primaryKey, text, unique, uuid } from 'drizzle-orm/pg-core'
 import { organization } from './auth'
 import { id, instant, orgKey, sameOrg, tenantTable } from './columns'
@@ -22,12 +22,21 @@ export const auditEvent = tenantTable(
     targetId: text('target_id').notNull(),
     before: jsonb('before'),
     after: jsonb('after'),
-    at: instant('at').notNull().defaultNow()
+    // New writes use the wire timestamp precision; cursors preserve historical microseconds separately.
+    at: instant('at')
+      .notNull()
+      .default(sql`date_trunc('milliseconds', now())`)
   },
   (self) => [
     foreignKey({ columns: [self.orgId], foreignColumns: [organization.id] }).onDelete('cascade'),
     sameOrg('audit_event_project', self, self.projectId, project, true),
-    index('audit_event_org_id_at_idx').on(self.orgId, self.at)
+    // NFR-9: the list reads newest first, so the leading index is (org_id, at DESC); one composite index per
+    // filter column keeps the filtered list on an index scan.
+    index('audit_event_org_id_at_idx').on(self.orgId, desc(self.at)),
+    index('audit_event_org_action_at_idx').on(self.orgId, self.action, desc(self.at)),
+    index('audit_event_org_actor_at_idx').on(self.orgId, self.actorId, desc(self.at)),
+    index('audit_event_org_target_at_idx').on(self.orgId, self.targetType, self.targetId, desc(self.at)),
+    index('audit_event_org_project_at_idx').on(self.orgId, self.projectId, desc(self.at))
   ]
 )
 
@@ -100,4 +109,15 @@ export const handledEvent = pgTable(
     handledAt: instant('handled_at').notNull().defaultNow()
   },
   (self) => [primaryKey({ columns: [self.consumer, self.eventId] })]
+)
+
+/** Which consumer has handled which external message (an SES message ID; `handleOnce`), so a redelivery runs nothing. S. */
+export const handledMessage = pgTable(
+  'handled_message',
+  {
+    consumer: text('consumer').notNull(),
+    messageId: text('message_id').notNull(),
+    handledAt: instant('handled_at').notNull().defaultNow()
+  },
+  (self) => [primaryKey({ columns: [self.consumer, self.messageId] })]
 )

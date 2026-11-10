@@ -2,7 +2,7 @@ import { IdempotencyHeaders, ProblemContent as JsonProblem, JsonValue as AuditJs
 import { z } from '@hono/zod-openapi'
 import { AUDIT_ACTIONS } from '../../audit'
 import { ROLES } from '../../auth'
-import { slugSchema } from '../../slugs'
+import { SLUG_REGEX, slugSchema } from '../../slugs'
 import { createRoute } from '../create-route'
 import {
   AiKey,
@@ -100,10 +100,13 @@ const AuditEntry = z.object({
 const AuditFilters = z.object({
   action: AuditAction.optional(),
   actor_id: z.string().optional(),
+  target_type: z.string().optional(),
+  target_id: z.string().optional(),
   project_id: Id.optional(),
   from: Instant.optional(),
   to: Instant.optional()
 })
+const AuditExportQuery = AuditFilters.extend({ format: z.enum(['csv', 'json']).default('csv') })
 
 // SET-5 and TRD BYOK: saved secrets stay write-only; model names are provider-defined.
 const KeyTestResult = z.object({ ok: z.boolean(), tested_at: Instant, detail: z.string().nullable() })
@@ -462,9 +465,15 @@ export const exportAuditLog = createRoute({
   path: '/api/orgs/{org}/audit/export',
   operationId: 'exportAuditLog',
   tags: ['audit'],
-  request: { params: OrgParams, query: AuditFilters },
+  request: { params: OrgParams, query: AuditExportQuery },
   responses: {
-    200: { description: 'Success.', content: { 'text/csv': { schema: z.string() } } },
+    200: {
+      description: 'Success.',
+      content: {
+        'text/csv': { schema: z.string() },
+        'application/json': { schema: z.array(AuditEntry) }
+      }
+    },
     401: Unauthorized,
     403: Forbidden,
     404: NotFound,
@@ -820,9 +829,13 @@ export const createProject = createRoute({
       required: true,
       content: {
         'application/json': {
-          schema: Project.pick({ name: true, site_name: true, site_lat: true, site_lon: true })
-            .extend({
-              slug: slugSchema,
+          schema: z
+            .object({
+              name: z.string().min(1),
+              slug: z.string().regex(SLUG_REGEX),
+              site_name: z.string().min(1),
+              site_lat: z.number(),
+              site_lon: z.number(),
               time_zone: Project.shape.time_zone.default('Asia/Kuala_Lumpur'),
               packs: z.array(Pack).min(1),
               semester_ends_on: Project.shape.semester_ends_on.optional(),
@@ -843,7 +856,7 @@ export const createProject = createRoute({
     400: ValidationFailed,
     422: {
       description:
-        'validation-failed, idempotency-mismatch or pack-prerequisites: Crowd needs a venue and rail station.',
+        'validation-failed, idempotency-mismatch, slug-reserved, slug-taken or pack-prerequisites: Crowd needs a venue and rail station.',
       content: JsonProblem
     },
     409: { description: 'slug-reserved or slug-taken: the project slug is unavailable.', content: JsonProblem }

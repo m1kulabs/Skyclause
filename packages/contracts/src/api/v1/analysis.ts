@@ -23,7 +23,9 @@ const Analysis = z.object({
   metrics: z.array(ScopedMetric),
   series: z.array(z.object({ at: Instant, metrics: z.array(ScopedMetric) })),
   grades: Page(Grade),
-  kill_line_exceeded: z.boolean()
+  kill_line_exceeded: z.boolean(),
+  // #162: LED-6's evidence-assembly minutes at p50 and p95; an evidence request belongs to no pack.
+  evidence_minutes: z.array(AnalysisMetric).optional()
 })
 const ReplayRange = z.object({
   from: Instant,

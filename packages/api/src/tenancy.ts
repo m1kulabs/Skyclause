@@ -1,17 +1,15 @@
-import type { Principal, RecordAudit, TxHandle } from '@skyclause/contracts'
+import type { Principal, RecordAudit } from '@skyclause/contracts'
+import type { Tx, withTenant } from '@skyclause/db'
 import type { Context } from 'hono'
 import type { ApiEnv } from './context'
 
-// Spec §1 and TRD "Tenancy enforcement": `withTenant({orgId, principal}, fn)` from `@skyclause/db` (f-db, #91).
-export type WithTenant = <T>(
-  ctx: { orgId: string; principal: Principal },
-  fn: (tx: TxHandle) => Promise<T>
-) => Promise<T>
+/** Spec §1 and TRD "Tenancy enforcement": `@skyclause/db`'s `withTenant({orgId, principal}, fn)` (f-db, #91). */
+export type WithTenant = typeof withTenant
 
 /** What every `packages/api/src/services/<area>.ts` function takes first (spec conventions). */
 export interface ServiceContext {
   principal: Principal
-  tx: TxHandle
+  tx: Tx
 }
 
 /**

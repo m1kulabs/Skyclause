@@ -1,18 +1,23 @@
 import { loadEnv } from '@skyclause/config'
 import type { EmailTransport } from '@skyclause/contracts'
-import { recordAudit } from '@skyclause/db'
+import { recordAudit, withTenant } from '@skyclause/db'
 import { emailTransportForAws } from '@skyclause/delivery'
 import type { ApiConfig, ApiDeps } from './context'
 import { registeredPermission, registeredPrincipal } from './middleware/auth'
-import { idempotencyStore, membership, rateLimitStore } from './placeholders/f-api'
-import { withTenant } from './placeholders/f-db'
+import { postgresIdempotency, postgresMembership, postgresRateLimits } from './postgres-stores'
 
 let config: ApiConfig | undefined
 
 /** Read on the first request, never at import, so a build or a test can load the package without the web env. */
 function loadConfig(): ApiConfig {
   const env = loadEnv('web')
-  return { appEnv: env.APP_ENV, appOrigin: env.APP_ORIGIN, ipHashKey: env.IP_HASH_KEY }
+  return {
+    appEnv: env.APP_ENV,
+    appOrigin: env.APP_ORIGIN,
+    ipHashKey: env.IP_HASH_KEY,
+    marketingOrigin: env.MARKETING_ORIGIN,
+    vapidPublicKey: env.VAPID_PUBLIC_KEY
+  }
 }
 
 let ses: EmailTransport | undefined
@@ -36,9 +41,9 @@ function loadEmail(): EmailTransport {
 export const productionDeps: ApiDeps = {
   resolvePrincipal: registeredPrincipal,
   can: registeredPermission,
-  membership,
-  idempotency: idempotencyStore,
-  rateLimits: rateLimitStore,
+  membership: postgresMembership,
+  idempotency: postgresIdempotency,
+  rateLimits: postgresRateLimits,
   withTenant,
   recordAudit,
   email: { send: (message) => (ses ??= loadEmail()).send(message) },

@@ -7,6 +7,10 @@
     ".": "./src/index.ts",
     "./format": "./src/format.ts",
     "./brand": "./src/brand.ts",
-    "./subscriber-emails": "./src/subscriber-emails.ts"
+    "./subscriber-emails": "./src/subscriber-emails.ts",
+    "./notices": "./src/notices.ts",
+    "./evidence": "./src/evidence.ts",
+    "./replies": "./src/replies.ts",
+    "./approver-alerts": "./src/approver-alerts.ts"
   }
 }

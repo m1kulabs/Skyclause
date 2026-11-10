@@ -1,0 +1,6 @@
+{
+  "feedback": {
+    "subject": "Adakah cuaca mengubah rancangan anda?",
+    "body": "{window} pada {date} ({project}) telah tamat. Adakah cuaca mengubah rancangan anda untuknya?\n\nJawab ya atau tidak di sini: {url}\n\nHanya bilangan jawapan ya dan tidak disimpan, dan jawapan anda tidak dikaitkan dengan anda. Pautan ini sah selama 30 hari dan tidak memerlukan akaun.\n\nHentikan semua notis untuk {project}: {unsubscribe}"
+  }
+}
