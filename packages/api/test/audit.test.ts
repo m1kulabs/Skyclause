@@ -220,20 +220,41 @@ describe('list', () => {
   })
 })
 
-describe('unbuilt writes', () => {
+describe('forbidden writes', () => {
   test('the operation registry has no write operation on audit', () => {
     expect(
       REGISTRY.filter((route) => route.path.startsWith('/api/orgs/{org}/audit')).map((route) => route.method)
     ).toEqual(['get', 'get'])
   })
 
-  test.each(['POST', 'PUT', 'PATCH', 'DELETE'])('%s answers 404 with a problem', async (method) => {
-    for (const path of ['/api/orgs/audit-home/audit', '/api/orgs/audit-home/audit/export']) {
-      const response = await apiRequest(api, { as: owner(), method, path, org: ORG })
-      expect(response.status, `${method} ${path}`).toBe(404)
-      expect(Problem.safeParse(await response.json()).success, `${method} ${path}`).toBe(true)
+  test.each(['POST', 'PUT', 'PATCH', 'DELETE'])(
+    '%s is forbidden in the organisation and hidden outside it',
+    async (method) => {
+      const principals = [
+        ...(['owner', 'admin', 'approver', 'editor', 'viewer', 'guest'] as const).map((role) =>
+          asSession({ org: ORG, role })
+        ),
+        asApiKey({ org: ORG, role: 'owner', scopes: ['read', 'draft', 'admin'] }),
+        asOAuth({ org: ORG, role: 'owner' }),
+        asShareLink({ org: ORG }),
+        asDevice({ org: ORG }),
+        asGuestToken({ org: ORG })
+      ]
+      for (const as of principals) {
+        for (const suffix of ['audit', 'audit/export']) {
+          for (const [org, status] of [
+            [ORG, 403],
+            [OTHER, 404]
+          ] as const) {
+            const path = `/api/orgs/${org}/${suffix}`
+            const response = await apiRequest(api, { as, method, path, org: ORG })
+            expect(response.status, `${as.kind} ${method} ${path}`).toBe(status)
+            expect(Problem.safeParse(await response.json()).success, `${method} ${path}`).toBe(true)
+          }
+        }
+      }
     }
-  })
+  )
 })
 
 describe('export', () => {
