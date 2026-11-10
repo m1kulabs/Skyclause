@@ -1,8 +1,9 @@
 // #150: c-bundle-lifecycle's `/v1` reads on the #79 §7 test database, through the mounted app with f-api's harness:
 // CAL-5's trace line, CAL-12's four instants, filters and paging, the stream's resume, a cross-organisation 404 and a
 // denial below `project.view` on each operation.
+import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import type { EventEnvelope, Page, Principal } from '@skyclause/contracts'
+import type { EventEnvelope, Page, Principal, Role } from '@skyclause/contracts'
 import {
   bundle,
   createBundle,
@@ -31,14 +32,24 @@ import {
 import { asLogin } from '@skyclause/db/test/harness/index'
 import { eq } from 'drizzle-orm'
 import { beforeAll, describe, expect, test, vi } from 'vitest'
-import type { BundleDetail, BundleView, CallDetail, CallExplanation, CallView } from '../src/services/bundles'
+import {
+  isMember,
+  type BundleDetail,
+  type BundleView,
+  type CallDetail,
+  type CallExplanation,
+  type CallView
+} from '../src/services/bundles'
 import type { WithTenant } from '../src/tenancy'
 import {
   apiRequest,
   asApiKey,
+  asDevice,
   asGuestToken,
   asOAuth,
   asSession,
+  asShareLink,
+  asSystem,
   createTestApi,
   crossOrgCase,
   testDeps,
@@ -539,6 +550,148 @@ describe('GET /v1/projects/{id}/bundles/stream', () => {
     const ids = [...text.matchAll(/^id: (\d+)$/gm)].map((m) => Number(m[1]))
     expect(ids).toEqual([...stored.map((e) => e.seq).filter((s) => s > 1), next.seq])
     expect(text).toContain(`event: ${stored[1]!.type}\n`)
+  })
+})
+
+describe('#521: recipients, notices and reasons go to members only', () => {
+  const NOTICES = [{ language: 'en' as const, subject: 'Storm over Lecture 3A', body: 'Allow time to reach the hall.' }]
+  const REASON = 'Storm confirmed at the gauge'
+  const DISMISSED = 'Lab moved indoors'
+  let scene: { projectId: string; bundleId: string; callId: string; subscriberId: string; declaredBy: string }
+  beforeAll(async () => {
+    scene = await inOrg(A, async (tx) => {
+      const s = await bundleScene(tx)
+      const w = await windowOf(tx, s, at('2026-11-02T07:15:00Z'), at('2026-11-02T07:30:00Z'), 'Lecture 3A')
+      const missed = await windowOf(tx, s, at('2026-11-02T07:30:00Z'), at('2026-11-02T07:45:00Z'), 'Lab 2')
+      const subscriber = await makeSubscriber(tx, { projectId: s.projectId, language: 'en' })
+      const r = await runOf(tx, s, at('2026-11-02T07:05:00Z'))
+      const b = await createBundle(tx, {
+        runId: r.id,
+        pack: 'sky',
+        draftOnly: false,
+        calls: [callDraft({ windowId: w.id, ...storm, recipients: [subscriber.id], notices: NOTICES, reason: REASON })],
+        missing: [
+          {
+            windowId: missed.id,
+            nightId: null,
+            shadow: callDraft({ windowId: missed.id, ...storm }).shadow,
+            recipients: [subscriber.id]
+          }
+        ],
+        triggeredAt: r.triggeredAt,
+        now: at('2026-11-02T07:10:00Z')
+      })
+      const callId = b.callIds[0]!
+      await makeNotice(tx, { projectId: s.projectId, callId, subscriberId: subscriber.id })
+      const by = '0190f5a0-0000-7000-8000-000000000002'
+      await dismissMissing(
+        tx,
+        b.bundleId,
+        { windowId: missed.id },
+        { reason: DISMISSED, by },
+        at('2026-11-02T07:12:00Z')
+      )
+      return {
+        projectId: s.projectId,
+        bundleId: b.bundleId,
+        callId,
+        subscriberId: subscriber.id,
+        declaredBy: w.declaredBy
+      }
+    })
+  })
+  const paths = () => ({
+    getBundle: `/v1/bundles/${scene.bundleId}`,
+    listProjectBundles: `/v1/projects/${scene.projectId}/bundles`,
+    listProjectCalls: `/v1/projects/${scene.projectId}/calls`,
+    getCall: `/v1/calls/${scene.callId}`
+  })
+  const readAll = async (principal: Principal) => {
+    const out: Record<string, { text: string; body: Record<string, unknown> }> = {}
+    for (const [operationId, path] of Object.entries(paths())) {
+      const response = await read(principal, path)
+      expect(response.status, operationId).toBe(200)
+      const text = await response.text()
+      out[operationId] = { text, body: JSON.parse(text) as Record<string, unknown> }
+    }
+    return out as Record<keyof ReturnType<typeof paths>, { text: string; body: Record<string, unknown> }>
+  }
+  const blank = { recipients: [], notices: [], reason: '' }
+
+  test('a member reads them all', async () => {
+    const seen = await readAll(as())
+    const whole = { recipients: [scene.subscriberId], notices: NOTICES, reason: REASON }
+    expect(seen.getBundle.body).toMatchObject({
+      calls: [whole],
+      missing: [{ recipients: [scene.subscriberId], reason: DISMISSED }]
+    })
+    expect(seen.listProjectBundles.body).toMatchObject({ data: [{ calls: [whole], missing: [{ reason: DISMISSED }] }] })
+    expect(seen.listProjectCalls.body).toMatchObject({ data: [whole] })
+    expect(seen.getCall.body).toMatchObject({
+      ...whole,
+      deliveries: [{ recipient_id: scene.subscriberId }],
+      window: { title: 'Lecture 3A', declared_by: scene.declaredBy }
+    })
+  })
+
+  test.each([
+    {
+      reader: 'a reviewer share link',
+      as: () => asShareLink({ org: A, projectId: scene.projectId, access: 'reviewer' })
+    },
+    { reader: 'a guest token', as: () => asGuestToken({ org: A }) },
+    {
+      reader: 'a link-bound OAuth grant',
+      as: () =>
+        asOAuth({ org: A, role: null, resource: 'api', projectIds: [scene.projectId], shareLinkId: randomUUID() })
+    },
+    { reader: 'a session with the guest role', as: () => asSession({ org: A, role: 'guest' }) },
+    { reader: 'a guest’s API key', as: () => asApiKey({ org: A, role: 'guest', scopes: ['read'] }) }
+  ])('$reader reads the bundle and its calls without them', async ({ as: reader }) => {
+    const seen = await readAll(reader())
+    const missing = [{ window_id: expect.any(String), resolution: 'dismissed', recipients: [], reason: null }]
+    expect(seen.getBundle.body).toMatchObject({ id: scene.bundleId, calls: [blank], missing })
+    expect(seen.listProjectBundles.body).toMatchObject({ data: [{ id: scene.bundleId, calls: [blank], missing }] })
+    expect(seen.listProjectCalls.body).toMatchObject({ data: [{ id: scene.callId, ...blank }] })
+    expect(seen.getCall.body).toMatchObject({
+      id: scene.callId,
+      ...blank,
+      deliveries: [],
+      window: { title: '', declared_by: '' }
+    })
+    for (const { text } of Object.values(seen)) {
+      for (const value of [scene.subscriberId, scene.declaredBy, 'Lecture 3A', NOTICES[0]!.body, REASON, DISMISSED]) {
+        expect(text).not.toContain(value)
+      }
+    }
+  })
+})
+
+describe('#521 isMember: the PRD columns Owner to Viewer, never Guest, a share link or a link-bound grant', () => {
+  const session = (role: Role | null, isGuest = false) =>
+    ({ ...asSession({ org: A, role: 'viewer' }), orgId: testOrg(A).id, role, isGuest }) as Principal
+  test.each([
+    ...(['owner', 'admin', 'approver', 'editor', 'viewer'] as const).flatMap((role) => [
+      { who: `a ${role}’s session`, principal: session(role), member: true },
+      { who: `a ${role}’s API key`, principal: asApiKey({ org: A, role, scopes: ['read'] }), member: true },
+      { who: `a ${role}’s OAuth grant`, principal: asOAuth({ org: A, role }), member: true }
+    ]),
+    { who: 'a session with the guest role', principal: session('guest'), member: false },
+    { who: 'an anonymous guest’s session', principal: session('guest', true), member: false },
+    { who: 'a session with no role here', principal: session(null), member: false },
+    { who: 'a guest’s API key', principal: asApiKey({ org: A, role: 'guest', scopes: ['read'] }), member: false },
+    { who: 'a guest’s OAuth grant', principal: asOAuth({ org: A, role: 'guest' }), member: false },
+    {
+      who: 'a link-bound OAuth grant',
+      principal: asOAuth({ org: A, role: null, shareLinkId: randomUUID() }),
+      member: false
+    },
+    { who: 'a guest token', principal: asGuestToken({ org: A }), member: false },
+    { who: 'a reviewer share link', principal: asShareLink({ org: A, access: 'reviewer' }), member: false },
+    { who: 'a device', principal: asDevice({ org: A }), member: false },
+    { who: 'a system job', principal: asSystem('test'), member: false }
+  ])('$who: $member', ({ principal, member }) => {
+    expect(isMember(principal)).toBe(member)
   })
 })
 

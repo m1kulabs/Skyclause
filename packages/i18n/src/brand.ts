@@ -1,5 +1,5 @@
-import english from '../catalogue/en/brand.json'
-import malay from '../catalogue/ms/brand.json'
+import english from '../catalogue/en/brand.json' with { type: 'json' }
+import malay from '../catalogue/ms/brand.json' with { type: 'json' }
 import { catalogueFiles } from './catalogue'
 
 // Opt in at the feature boundary, keeping brand copy out of the landing's client bundle.

@@ -180,15 +180,29 @@
     {
       "idx": 25,
       "version": "7",
-      "when": 1794272064530,
-      "tag": "0025_b-create-project-ui-onboarding-skips",
+      "when": 1794278826723,
+      "tag": "0025_b-auditor-findings",
       "breakpoints": true
     },
     {
       "idx": 26,
       "version": "7",
-      "when": 1794272076492,
-      "tag": "0026_b-create-project-ui-activation",
+      "when": 1794282192959,
+      "tag": "0026_a-audit-log-indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1794285601835,
+      "tag": "0027_b-create-project-ui-onboarding-skips",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1794285607707,
+      "tag": "0028_b-create-project-ui-activation",
       "breakpoints": true
     }
   ]

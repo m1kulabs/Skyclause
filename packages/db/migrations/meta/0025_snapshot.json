@@ -1,5 +1,5 @@
 {
-  "id": "a3f5ce42-c654-4378-8ca3-819c6dbc4e68",
+  "id": "ad02d449-b079-42a6-ba06-a282dc429686",
   "prevId": "ebf24e0a-0e78-4b00-9a68-11045d016b93",
   "version": "7",
   "dialect": "postgresql",
@@ -1292,6 +1292,150 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.audit_finding": {
+      "name": "audit_finding",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "uuidv7()"
+        },
+        "check": {
+          "name": "check",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "org_id": {
+          "name": "org_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ref_type": {
+          "name": "ref_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ref_id": {
+          "name": "ref_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_ids": {
+          "name": "account_ids",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "opened_at": {
+          "name": "opened_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recovered_at": {
+          "name": "recovered_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "audit_finding_open_identity": {
+          "name": "audit_finding_open_identity",
+          "columns": [
+            {
+              "expression": "check",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "org_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"audit_finding\".\"recovered_at\" IS NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "audit_finding_org_id_organization_id_fk": {
+          "name": "audit_finding_org_id_organization_id_fk",
+          "tableFrom": "audit_finding",
+          "tableTo": "organization",
+          "schemaTo": "auth",
+          "columnsFrom": [
+            "org_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "audit_finding_project_fk": {
+          "name": "audit_finding_project_fk",
+          "tableFrom": "audit_finding",
+          "tableTo": "project",
+          "columnsFrom": [
+            "org_id",
+            "project_id"
+          ],
+          "columnsTo": [
+            "org_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "audit_finding_platform_project_null": {
+          "name": "audit_finding_platform_project_null",
+          "value": "\"audit_finding\".\"org_id\" IS NOT NULL OR \"audit_finding\".\"project_id\" IS NULL"
+        }
+      },
       "isRLSEnabled": false
     },
     "auth.account": {
@@ -3226,10 +3370,10 @@
         },
         "onboarding_skipped": {
           "name": "onboarding_skipped",
-          "type": "jsonb",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "default": "'[]'::jsonb"
+          "default": false
         },
         "ai_fallback_enabled": {
           "name": "ai_fallback_enabled",
@@ -12085,74 +12229,6 @@
   "roles": {},
   "policies": {},
   "views": {
-    "public.onboarding_activation": {
-      "columns": {
-        "org_id": {
-          "name": "org_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "first_project_id": {
-          "name": "first_project_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "org_created_at": {
-          "name": "org_created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "project_created_at": {
-          "name": "project_created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "source_bound_at": {
-          "name": "source_bound_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "window_declared_at": {
-          "name": "window_declared_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "rota_set_at": {
-          "name": "rota_set_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "channel_connected_at": {
-          "name": "channel_connected_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "call_graded_at": {
-          "name": "call_graded_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "activated": {
-          "name": "activated",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "name": "onboarding_activation",
-      "schema": "public",
-      "isExisting": true,
-      "materialized": false
-    },
     "public.public_project": {
       "columns": {
         "id": {

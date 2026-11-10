@@ -164,7 +164,8 @@ export function layoutStrip(input: StripInput): StripLayout {
   let yCursor = HEADER
 
   const rain5Top = niceTop(rain5Max, [5, 10, 20, 40])
-  const rain5Y = (v: number): number => yCursor + RAIN5_H - (v / rain5Top) * RAIN5_H
+  const rain5Offset = yCursor
+  const rain5Y = (v: number): number => rain5Offset + RAIN5_H - (v / rain5Top) * RAIN5_H
   const rain5Lane: StripLane = {
     key: 'rain5',
     yMax: rain5Top,
@@ -177,7 +178,8 @@ export function layoutStrip(input: StripInput): StripLayout {
   }
 
   const rain60Top = niceTop(Math.max(rain60Max, LEBAT_MM), [20, 40, 60, 80, 100])
-  const rain60Y = (v: number): number => yCursor + RAIN60_H - (v / rain60Top) * RAIN60_H
+  const rain60Offset = yCursor
+  const rain60Y = (v: number): number => rain60Offset + RAIN60_H - (v / rain60Top) * RAIN60_H
   const rain60Lane: StripLane = {
     key: 'rain60',
     yMax: rain60Top,

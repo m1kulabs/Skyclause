@@ -1,5 +1,5 @@
-import english from '../catalogue/en/notices.json'
-import malay from '../catalogue/ms/notices.json'
+import english from '../catalogue/en/notices.json' with { type: 'json' }
+import malay from '../catalogue/ms/notices.json' with { type: 'json' }
 import './brand'
 import { catalogueFiles, catalogueFor, messageAt } from './catalogue'
 import { t } from './index'
