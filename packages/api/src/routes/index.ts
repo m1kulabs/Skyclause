@@ -13,6 +13,7 @@ import { evidenceHandlers } from './evidence'
 import { gradesHandlers } from './grades'
 import { ledgerHandlers } from './ledger'
 import { notificationHandlers } from './notifications'
+import { oauthHandlers } from './oauth'
 import { projectHandlers } from './projects'
 import { replyHandlers } from './replies'
 import { runHandlers } from './runs'
@@ -62,5 +63,6 @@ export const HANDLERS: Handlers = {
   ...analysisHandlers, // c-analysis-api
   ...dataRightsHandlers, // a-data-rights
   ...memberHandlers, // a-members-api
-  ...rotaHandlers // a-members-api
+  ...rotaHandlers, // a-members-api
+  ...oauthHandlers // e-mcp-auth
 }

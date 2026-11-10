@@ -18,6 +18,8 @@ export {
   setPermissionCheck,
   setPrincipalResolver
 } from './middleware/auth'
+export { setOAuthManagement } from './middleware/oauth'
+export { createOAuthConsentHandler } from './routes/oauth/consent'
 export { requireIdempotency } from './middleware/idempotency'
 export { requireOrg } from './middleware/org'
 export { rateLimit } from './middleware/rate-limit'

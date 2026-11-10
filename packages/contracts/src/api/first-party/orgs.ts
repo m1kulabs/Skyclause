@@ -162,10 +162,15 @@ const OAuthClientInput = z.object({
   scopes: OAuthScopes
 })
 const OAuthClient = OAuthClientInput.extend({ id: Id, client_id: z.string(), created_at: Instant })
+const CreatedOAuthClient = OAuthClient.extend({
+  client_secret: z.string().describe('Shown only in the creation response.'),
+  redirect_uri: z.url(),
+  authorization_url: z.url(),
+  token_url: z.url()
+})
 const OrganisationOAuthGrant = OAuthGrant.extend({
   account_id: Id,
   client_name: z.string(),
-  resource: z.enum(['api', 'mcp']),
   created_at: Instant
 })
 
@@ -1011,7 +1016,7 @@ export const createOauthClient = createRoute({
       description: 'Created.',
       content: {
         'application/json': {
-          schema: OAuthClient.extend({ client_secret: z.string().describe('Shown only in the creation response.') })
+          schema: CreatedOAuthClient
         }
       }
     },

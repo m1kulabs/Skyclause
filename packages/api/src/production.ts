@@ -4,6 +4,7 @@ import { recordAudit, withPublicReader, withSystem, withTenant } from '@skyclaus
 import { emailTransportForAws } from '@skyclause/delivery'
 import type { ApiConfig, ApiDeps } from './context'
 import { registeredPermission, registeredPrincipal } from './middleware/auth'
+import { registeredOAuthManagement } from './middleware/oauth'
 import { postgresIdempotency, postgresMembership, postgresRateLimits } from './postgres-stores'
 import { createDataRightsTransports } from './services/data-rights/transports'
 
@@ -49,6 +50,7 @@ export const productionDeps: ApiDeps = {
   withSystem,
   withPublicReader,
   recordAudit,
+  oauth: registeredOAuthManagement,
   email: { send: (message) => (ses ??= loadEmail()).send(message) },
   dataRights: createDataRightsTransports(),
   config: () => (config ??= loadConfig()),

@@ -22,9 +22,7 @@ const UNBUILT = [
   ['POST', '/organization/update-member-role'],
   ['POST', '/api-key/create'],
   ['GET', '/passkey/generate-register-options'],
-  ['GET', '/jwks'],
-  ['POST', '/oauth2/register'],
-  ['POST', '/oauth2/token']
+  ['GET', '/jwks']
 ] as const
 
 test('every base plugin endpoint answers 404 over HTTP; Better Auth’s own session endpoints answer', async () => {

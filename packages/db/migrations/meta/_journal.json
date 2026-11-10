@@ -267,6 +267,13 @@
       "when": 1794288363134,
       "tag": "0037_e-byok-api-org-flags",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1794288551711,
+      "tag": "0038_e-mcp-auth",
+      "breakpoints": true
     }
   ]
 }
