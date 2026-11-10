@@ -585,6 +585,8 @@ export const ExportJob = z.object({
   id: z.string(),
   scope: z.enum(['account', 'organisation']),
   status: z.string(),
+  formats: z.array(z.enum(['json', 'csv'])),
+  error: z.string().nullable(),
   expires_at: Instant.nullable()
 })
 export type ExportJob = z.infer<typeof ExportJob>

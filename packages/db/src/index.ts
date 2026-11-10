@@ -11,12 +11,25 @@ export {
 } from './client'
 export * from './alerts'
 export * from './analysis'
-export { track } from './analytics'
+export { ANALYTICS_PROPS, parseAnalyticsProps, resolvePublicProject, track } from './analytics'
+export { readBundlesPastSla, readSignalHealth, readWeeklyApprovers } from './analytics/health'
 export * from './api'
 export * from './approvals'
 export * from './bundles'
-export { recordAudit } from './audit'
+export {
+  auditExportPage,
+  auditHead,
+  DELETED_ACCOUNT_NAME,
+  listAudit,
+  recordAudit,
+  resolveActorDisplay,
+  type ActorDisplay,
+  type AuditCursor,
+  type AuditFilters,
+  type AuditRow
+} from './audit'
 export * from './channels'
+export * from './data-rights'
 export * from './evidence'
 export {
   DOMAIN_EVENTS_TOPIC,
@@ -40,7 +53,7 @@ export { maintainPartitions } from './partitions'
 export * from './projects'
 export { tokenHash } from './tokens'
 export * from './placeholders/a-org-projects'
-export * from './placeholders/a-subscriber-rights'
+export * from './subscriber-rights'
 export * from './placeholders/d-guest-rules'
 export * from './runs'
 export * from './placeholders/d-org-api'

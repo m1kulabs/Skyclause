@@ -1,0 +1,10 @@
+ALTER TABLE "export_job" DROP CONSTRAINT "export_job_object_path_under_org";--> statement-breakpoint
+ALTER TABLE "notice" ALTER COLUMN "project_id" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "notice" ALTER COLUMN "org_id" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "export_job" ADD COLUMN "formats" text[] DEFAULT ARRAY['json', 'csv']::text[] NOT NULL;--> statement-breakpoint
+ALTER TABLE "export_job" ADD COLUMN "error" text;--> statement-breakpoint
+CREATE UNIQUE INDEX "export_job_active_account_key" ON "export_job" USING btree ("account_id") WHERE "export_job"."scope" = 'account' AND "export_job"."account_id" IS NOT NULL AND "export_job"."status" IN ('queued', 'running');--> statement-breakpoint
+CREATE UNIQUE INDEX "export_job_active_organisation_key" ON "export_job" USING btree ("org_id") WHERE "export_job"."scope" = 'organisation' AND "export_job"."org_id" IS NOT NULL AND "export_job"."status" IN ('queued', 'running');--> statement-breakpoint
+ALTER TABLE "notice" ADD CONSTRAINT "notice_scope_check" CHECK (("notice"."kind" = 'export_ready' AND "notice"."project_id" IS NULL AND "notice"."call_id" IS NULL AND "notice"."subscriber_id" IS NULL AND "notice"."account_id" IS NOT NULL) OR ("notice"."kind" <> 'export_ready' AND "notice"."org_id" IS NOT NULL AND "notice"."project_id" IS NOT NULL));--> statement-breakpoint
+ALTER TABLE "export_job" ADD CONSTRAINT "export_job_object_path_under_scope" CHECK ("export_job"."object_path" IS NULL OR ("export_job"."scope" = 'organisation' AND "export_job"."org_id" IS NOT NULL AND "export_job"."object_path" LIKE 'orgs/' || "export_job"."org_id" || '/exports/%') OR ("export_job"."scope" = 'account' AND "export_job"."account_id" IS NOT NULL AND "export_job"."object_path" LIKE 'accounts/' || "export_job"."account_id" || '/exports/%'));--> statement-breakpoint
+ALTER TABLE "export_job" ADD CONSTRAINT "export_job_formats_check" CHECK ("export_job"."formats" <@ ARRAY['json', 'csv']::text[] AND cardinality("export_job"."formats") > 0);

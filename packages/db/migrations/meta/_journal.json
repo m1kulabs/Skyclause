@@ -187,29 +187,64 @@
     {
       "idx": 26,
       "version": "7",
-      "when": 1794282273816,
-      "tag": "0026_a-members-api",
+      "when": 1794282192959,
+      "tag": "0026_a-audit-log-indexes",
       "breakpoints": true
     },
     {
       "idx": 27,
       "version": "7",
-      "when": 1794282274349,
-      "tag": "0027_a-members-token-lookup",
+      "when": 1794286813724,
+      "tag": "0027_a-analytics-health",
       "breakpoints": true
     },
     {
       "idx": 28,
       "version": "7",
-      "when": 1794282274897,
-      "tag": "0028_a-members-write-boundary",
+      "when": 1794287174465,
+      "tag": "0028_a-data-rights-export-job",
       "breakpoints": true
     },
     {
       "idx": 29,
       "version": "7",
-      "when": 1794282275709,
-      "tag": "0029_a-members-api-indexes",
+      "when": 1794287183849,
+      "tag": "0029_a-data-rights-grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1794287601989,
+      "tag": "0030_a-members-api",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1794287602395,
+      "tag": "0031_a-members-token-lookup",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1794287602840,
+      "tag": "0032_a-members-write-boundary",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1794287610860,
+      "tag": "0033_a-members-api-indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794287877497,
+      "tag": "0034_a-members-retention",
       "breakpoints": true
     }
   ]

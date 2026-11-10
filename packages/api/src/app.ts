@@ -22,6 +22,7 @@ import { rateLimit } from './middleware/rate-limit'
 import { apiSurfaceGate, auditToolCall } from './middleware/surface'
 import { ApiError, problemResponse, toApiError, validationFailed } from './problems'
 import { HANDLERS, type AnyHandlerEntry } from './routes'
+import { mountAuditWriteGuards } from './routes/audit'
 
 type Middleware = MiddlewareHandler<ApiEnv>
 
@@ -82,6 +83,7 @@ function surfaceApp(
     )
   )
   for (const route of routes) mount(app, surface, route, handlers[route.operationId])
+  if (surface === 'api') mountAuditWriteGuards(app)
   return app
 }
 
