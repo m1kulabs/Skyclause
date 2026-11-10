@@ -136,7 +136,7 @@ describe('data components', () => {
     await expectAxeClean()
   })
 
-  test('a closed bundle has no SLA, so its card shows none', async () => {
+  test('a closed bundle has no SLA or labelled actions element, so its card shows none', async () => {
     const bundle: Bundle = {
       id: 'b2',
       project_id: 'p1',
@@ -155,6 +155,8 @@ describe('data components', () => {
     render(<BundleCard bundle={{ ...bundle }} triggeredAt="2026-11-02T06:45:00Z" />)
     expect(document.body.textContent).toContain('14:45')
     expect(document.body.textContent).not.toMatch(/SLA/)
+    await expectAxeClean()
+    expect(screen.queryByLabelText(t('data.bundle.actions', {}, 'en'))).toBeNull()
   })
 
   test('GradeCard prints n=0 with no bar and takes its interval from the API', async () => {

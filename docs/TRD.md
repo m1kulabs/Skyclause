@@ -224,16 +224,21 @@ export interface SourceAdapter<Raw> {
   apiFamily?: 'datagovmy-weather' | 'datagovmy-gtfs-rt' | 'datagovmy-gtfs-static'
   cadence: Duration // expected interval between new data
   freshness: 'observed' | 'polled' // age from source time, or from the last good poll
-  fetch(sources: Source[], ctx: PollContext): Promise<Raw> // one request for all bound sources; throws HttpError with status
+  licence: { id: string | null; label: string } // null when no licence ID is recorded
+  batch: 'all_bound' | 'per_source'
+  fetch(sources: Source[], ctx: PollContext): Promise<Raw> // typed HTTP, timeout, network or budget failure
   parse(raw: Raw, sources: Source[]): ReadingInput[] // pure; throws SchemaError when the shape changes
   backfill?(source: Source, ctx: PollContext): Promise<Raw> // first poll after binding only
   indicators: IndicatorDefinition[] // registered with packages/clauses
 }
 ```
 
-- Every request writes one `poll` row per bound source, sharing `request_id`, with HTTP status, latency and outcome. A non-2xx, a 20-second timeout or a `SchemaError` writes `outcome = error` with the message; nothing copies or carries forward the last value ([SIG-2](/docs/PRD.md#signals-sig)).
+- Ingestion writes one `poll` row per bound source for each request, sharing `request_id`, with HTTP status, latency and outcome. `poll.recorded.data.http_status` preserves the actual integer response code, including `301` and `500`, or is null when no response exists (timeout, network failure or exhausted budget). A non-2xx, a 20-second timeout or a `SchemaError` writes `outcome = error` with the message; nothing copies or carries forward the last value ([SIG-2](/docs/PRD.md#signals-sig)). Typed `HttpError(status, url)`, `TimeoutError(url)`, `NetworkError(url, cause)`, `SchemaError` and `RateLimitedError(family)` distinguish failures without matching message strings.
 - Readings dedupe on (`source_id`, `metric`, `observed_at`); a re-fetched value that differs appends `revision + 1`. Indicators use the latest revision; calls keep the reading IDs they saw.
-- Adapters on one data.gov.my API take a slot from a per-API budget of 4 requests a minute (a Postgres advisory lock and counter) ([data.gov.my notes][dgm]); a `429` is an error poll and the next scheduled poll is the retry. Paths always end with `/`, since a missing slash returns `301` with HTML.
+- Adapters on one data.gov.my API reserve through GCS generation-CAS for at most four physical request starts per API family in the trailing 60 seconds ([data.gov.my notes][dgm]). Budget waits stop after 20 seconds; HTTP requests time out at 20 seconds and never follow redirects. A `429` is an error poll and the next scheduled poll is the retry. Paths always end with `/`, since a missing slash returns `301` with HTML. Contract-only probes use the same budget and write coordination metadata, but never polls or readings.
+- **D45 contract alignment:** scheduled fetch reads a GCS poll plan, reserves budget in GCS and publishes immutable results without touching Postgres; the 15-minute batch ingests them. This replaces the PostgreSQL request-budget lock and counter, as settled in the [source runner design](/docs/superpowers/specs/2026-11-10-source-runner-design.md#approach-and-contract-alignment). Source licence IDs may be null, matching the existing adapter licence contract; persistence alignment follows in the source writer phase.
+- Backfill has one committed attempt per source, including an error result. Concurrent job/event deliveries share a source claim and reuse its durable result. A crash between upstream HTTP and result persistence may repeat the GET; exactly-once applies to the committed backfill, not external HTTP across crashes.
+- The production adapter registry contains only real implementations and rejects unregistered or unknown kinds; it stays empty until those adapters land.
 - Only adapters call upstream. The app, API, playground, embeds and MCP read stored rows, so tenants and guests add no upstream requests.
 - Times are stored in UTC and shown in MYT.
 - Catalogue rows come from adapters' `discover()` methods via daily `catalogue-sync`; nobody types coordinates.
