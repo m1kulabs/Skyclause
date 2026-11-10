@@ -1,3 +1,4 @@
+import './agent-evals/retirement' // registers `model_retirement` with the auditor; it has no part of its own
 import { auditor } from './auditor'
 import { alerts } from './alerts'
 import { aiKeys } from './ai-keys'
