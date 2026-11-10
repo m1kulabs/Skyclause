@@ -1,5 +1,5 @@
 {
-  "id": "149cafec-b5ce-43ab-a7f5-ae2d992d2cf6",
+  "id": "02f9107b-c9f8-4aef-b144-b2ccf745b65e",
   "prevId": "ad02d449-b079-42a6-ba06-a282dc429686",
   "version": "7",
   "dialect": "postgresql",
@@ -949,7 +949,7 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
-          "default": "now()"
+          "default": "date_trunc('milliseconds', now())"
         },
         "org_id": {
           "name": "org_id",
@@ -984,9 +984,123 @@
               "nulls": "last"
             },
             {
-              "expression": "at",
+              "expression": "\"at\" desc",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "audit_event_org_action_at_idx": {
+          "name": "audit_event_org_action_at_idx",
+          "columns": [
+            {
+              "expression": "org_id",
               "isExpression": false,
               "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "action",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "\"at\" desc",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "audit_event_org_actor_at_idx": {
+          "name": "audit_event_org_actor_at_idx",
+          "columns": [
+            {
+              "expression": "org_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "actor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "\"at\" desc",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "audit_event_org_target_at_idx": {
+          "name": "audit_event_org_target_at_idx",
+          "columns": [
+            {
+              "expression": "org_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "target_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "target_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "\"at\" desc",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "audit_event_org_project_at_idx": {
+          "name": "audit_event_org_project_at_idx",
+          "columns": [
+            {
+              "expression": "org_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "\"at\" desc",
+              "asc": true,
+              "isExpression": true,
               "nulls": "last"
             }
           ],
@@ -5180,7 +5294,7 @@
           "name": "project_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "kind": {
           "name": "kind",
@@ -5283,7 +5397,7 @@
           "name": "org_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         }
       },
       "indexes": {
@@ -5392,12 +5506,7 @@
         }
       },
       "policies": {},
-      "checkConstraints": {
-        "notice_scope_check": {
-          "name": "notice_scope_check",
-          "value": "(\"notice\".\"kind\" = 'export_ready' AND \"notice\".\"project_id\" IS NULL AND \"notice\".\"call_id\" IS NULL AND \"notice\".\"subscriber_id\" IS NULL AND \"notice\".\"account_id\" IS NOT NULL) OR (\"notice\".\"kind\" <> 'export_ready' AND \"notice\".\"org_id\" IS NOT NULL AND \"notice\".\"project_id\" IS NOT NULL)"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.notification": {
@@ -8117,13 +8226,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "formats": {
-          "name": "formats",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "ARRAY['json', 'csv']::text[]"
-        },
         "status": {
           "name": "status",
           "type": "text",
@@ -8143,12 +8245,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "error": {
-          "name": "error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -8164,40 +8260,7 @@
           "default": "now()"
         }
       },
-      "indexes": {
-        "export_job_active_account_key": {
-          "name": "export_job_active_account_key",
-          "columns": [
-            {
-              "expression": "account_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"export_job\".\"scope\" = 'account' AND \"export_job\".\"account_id\" IS NOT NULL AND \"export_job\".\"status\" IN ('queued', 'running')",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "export_job_active_organisation_key": {
-          "name": "export_job_active_organisation_key",
-          "columns": [
-            {
-              "expression": "org_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"export_job\".\"scope\" = 'organisation' AND \"export_job\".\"org_id\" IS NOT NULL AND \"export_job\".\"status\" IN ('queued', 'running')",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "export_job_org_id_organization_id_fk": {
           "name": "export_job_org_id_organization_id_fk",
@@ -8218,13 +8281,9 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "export_job_object_path_under_scope": {
-          "name": "export_job_object_path_under_scope",
-          "value": "\"export_job\".\"object_path\" IS NULL OR (\"export_job\".\"scope\" = 'organisation' AND \"export_job\".\"org_id\" IS NOT NULL AND \"export_job\".\"object_path\" LIKE 'orgs/' || \"export_job\".\"org_id\" || '/exports/%') OR (\"export_job\".\"scope\" = 'account' AND \"export_job\".\"account_id\" IS NOT NULL AND \"export_job\".\"object_path\" LIKE 'accounts/' || \"export_job\".\"account_id\" || '/exports/%')"
-        },
-        "export_job_formats_check": {
-          "name": "export_job_formats_check",
-          "value": "\"export_job\".\"formats\" <@ ARRAY['json', 'csv']::text[] AND cardinality(\"export_job\".\"formats\") > 0"
+        "export_job_object_path_under_org": {
+          "name": "export_job_object_path_under_org",
+          "value": "\"export_job\".\"object_path\" IS NULL OR \"export_job\".\"org_id\" IS NULL OR \"export_job\".\"object_path\" LIKE 'orgs/' || \"export_job\".\"org_id\" || '/%'"
         }
       },
       "isRLSEnabled": false

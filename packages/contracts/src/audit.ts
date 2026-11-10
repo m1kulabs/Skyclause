@@ -21,6 +21,7 @@ export const AUDIT_ACTIONS = [
   'organisation.deletion_cancelled',
   'organisation.deleted',
   'account.deleted',
+  'subscriber.deleted',
   'mcp.consent_granted',
   'bundle.escalated',
   'listing.proposed',

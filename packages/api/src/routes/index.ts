@@ -4,6 +4,7 @@ import type { Context, MiddlewareHandler } from 'hono'
 import type { ApiEnv } from '../context'
 import { approvalHandlers } from './approvals'
 import { alertHandlers } from './alerts'
+import { auditHandlers } from './audit'
 import { analysisHandlers } from './analysis'
 import { bundleHandlers } from './bundles'
 import { channelHandlers } from './channels'
@@ -15,6 +16,7 @@ import { projectHandlers } from './projects'
 import { replyHandlers } from './replies'
 import { runHandlers } from './runs'
 import { subscriberHandlers } from './subscribers'
+import { subscriberRightsHandlers } from './subscriber-rights'
 import { dataRightsHandlers } from './data-rights'
 
 /**
@@ -39,9 +41,11 @@ export type Handlers = { [Id in OperationId]?: HandlerEntry<Operations[Id]> }
  * line; an operation without an entry answers 501 `not-built` naming its owner.
  */
 export const HANDLERS: Handlers = {
+  ...auditHandlers, // a-audit-log
   ...channelHandlers, // c-notice-templates
   ...ledgerHandlers, // c-ledger-chain
   ...subscriberHandlers,
+  ...subscriberRightsHandlers,
   ...bundleHandlers, // c-bundle-lifecycle
   ...evidenceHandlers, // c-evidence
   ...gradesHandlers, // c-grades

@@ -24,6 +24,7 @@ test('lists each documented audit action once', () => {
     'organisation.deletion_cancelled',
     'organisation.deleted',
     'account.deleted',
+    'subscriber.deleted',
     'mcp.consent_granted',
     'bundle.escalated',
     'listing.proposed',

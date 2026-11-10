@@ -6,8 +6,12 @@ import type {
   ResolvePrincipal,
   SkyclauseRoute
 } from '@skyclause/contracts'
+import type { withPublicReader, withSystem } from '@skyclause/db'
 import type { IdempotencyStore, MembershipLookup, RateLimitStore } from './stores'
 import type { WithTenant } from './tenancy'
+
+export type WithSystem = typeof withSystem
+export type WithPublicReader = typeof withPublicReader
 
 /** The settings the API reads per request (spec §6, f-api's rows plus APP_ENV). */
 export interface ApiConfig {
@@ -28,6 +32,9 @@ export interface ApiDeps {
   idempotency: IdempotencyStore
   rateLimits: RateLimitStore
   withTenant: WithTenant
+  /** #111's `/e` writes analytics rows as `system` with no organisation, and resolves public projects as `public_reader`. */
+  withSystem: WithSystem
+  withPublicReader: WithPublicReader
   recordAudit: RecordAudit
   /** Spec §1 `EmailTransport` for the emails a route sends itself (c-subscribers' confirmations). */
   email: EmailTransport
