@@ -2,9 +2,19 @@
 
 Issue [#121](https://github.com/m1kulabs/Skyclause/issues/121), binding [#79](https://github.com/m1kulabs/Skyclause/issues/79) §1 and D9/D10/D12/D15/D16/D32/D45, inspected 10 November 2026. Read-only code baseline: Source120 runtime commit `a100fec` (graph refresh `6289fcf`); rebase implementation onto its merged successor before editing. This design is an external planning artifact, not an implementation or deployment.
 
+Contents:
+
+1. [Outcome and boundary](#outcome-and-boundary)
+1. [Polling and parsing](#polling-and-parsing)
+1. [Discovery proven by portal requests](#discovery-proven-by-portal-requests)
+1. [Browser-safe indicators](#browser-safe-indicators)
+1. [Registration and production evidence](#registration-and-production-evidence)
+1. [Normal slot budget and contract probes](#normal-slot-budget-and-contract-probes)
+1. [Execution rulings](#execution-rulings)
+
 ## Outcome and boundary
 
-Deliver the first real Sky feed: JPS rain observations and its three indicator definitions. Keep Source120's runner, GCS poll plan, durable results, PostgreSQL ingestion/deduplication and catalogue sync. Scheduled polling never opens PostgreSQL. #131 owns reducers; #133 owns input states, evaluator and staleness; #138 owns picker distances. No P0 imports or edits, UI work, Public Infobanjir fallback, raw public-value publication, or new source-contract signatures.
+Deliver the first real Sky feed: JPS rain observations and its three indicator definitions. Keep Source120's runner, GCS poll plan, durable results, PostgreSQL ingestion/deduplication and catalogue sync. Scheduled polling never opens PostgreSQL. #131 owns reducers; #133 owns input states, evaluator and staleness; #138 owns picker distances. No P0 imports or edits, UI work, Public Infobanjir fallback, raw public-value publication, or changes to named adapter method signatures or PollContext. The final budget ruling below adds optional slot metadata.
 
 ## Polling and parsing
 
@@ -40,6 +50,20 @@ Known inherited telemetry gap: the existing Scheduler → Cloud Run Admin `:run`
 
 After implementation and authorized production apply/deploy, capture two manual executions and their persisted polls, waiting for the 15-minute ingest batch: first roughly 2,000 rows, second 0–2 according to actual upstream changes. Then measure a complete 24-hour schedule (288 slots per bound gauge), actual poll count, errors and median `received_at − observed_at` for newest readings per successful poll; do not include all seven-day backfill observations in this freshness median. Report actual data and any missing/duplicate slots. These observations cannot be manufactured or replaced by local fixtures; the 24-hour criterion remains open until elapsed real production evidence exists. Honour the existing deployment freeze and do not use P0 resources.
 
+## Normal slot budget and contract probes
+
+The final controller ruling treats the normal-poll budget strictly, including duplicate manual calls and concurrent jobs after initial backfill. `SourceAdapter.latestSlot?: {seconds: number; decode(body: Uint8Array): Raw; discover?(body: Uint8Array): DiscoveredSource[]}` is an opt-in contract addition. JPS declares 300 seconds and a pure graph JSON decoder. Its separate HTML `discover()` endpoint remains unchanged. This implementation supports per-source slot admission; all-bound and discovery-only use of this metadata belongs to #123.
+
+For an opted-in per-source adapter, the runner creates `control/slots/{kind}/{normalizedSourceUuid}/{actualClockBucketStartMs}.json` with generation zero. The immutable claim contains the original operation ID and genuinely supplied scheduledAt, including null. The actual UTC clock bucket controls admission; it never becomes Scheduler metadata. Only the claim creator may reserve outbox capacity and execute the adapter. At the physical HTTP boundary the private context checks that the clock remains in the claimed half-open interval and that this context has not already started transport. Delayed GCS writes, outbox reservation, adapter work or family admission cannot carry permission into a later bucket. A denied start retains null HTTP status, null transport start and a visible typed failure.
+
+Normal bytes are saved at the existing immutable delivery path before publication. Redelivery and publication repair retain their original operation/request IDs, source association, purpose, scheduledAt, body and hash. A consumed claim without durable bytes never refetches within its bucket; a duplicate reports running (or lost after the boundary). A separate next-bucket invocation may claim a new attempt. Missing outbox results remain visible under the existing reservation expiry and hard-cap rules; neither capacity nor claims are silently reset. Costs include GCS coordination and retained claims, possible lost slots after an ambiguous crash, and the existing operational intervention required for unresolved reservations. Backfill lease/recovery rules remain unchanged, including their documented crash-before-save limitation and freshness semantics.
+
+Opted-in contract probes only read and decode/parse a successful current-slot capture, including a completed first-bind backfill captured in that same bucket. They make no graph request, publish no result and write no domain or coordination state. An absent, running, failed, previous-slot or future capture reports explicit unavailability; it does not use stale success. Legacy adapters retain their existing probe path. Saved backfill reuse preserves its original purpose and cannot establish live polling freshness. Clock rollback cannot justify reusing a future normal capture.
+
+Operators should inspect `source.slot.unavailable`, source-request transport/status fields and the existing pending-results repair errors. Wait for an independently admitted next slot when bytes were lost; do not delete claims or replay HTTP to fill the gap. The acceptance count must report missing slots, not manufacture 288 successful polls. Parent-owned contract-labelled PR and #79/#121 alignment are required before landing this public metadata addition.
+
 ## Execution rulings
 
 Pure adapter/parser/discovery/indicator Task1 may proceed independently on main d50cd8b because its public contract was already merged by544. Registration/runner/infra Task2 waits for Source120 integration. The inspected shared first-bind duplicate GET must be fixed by a narrow internal runner handoff in Task2, rather than a process cache or skipping genuine backfill. Keep coordinates null for this change and preserve actual-list evidence. The recon file timestamp identifies manifest creation; exact individual HTTP capture time was not separately recorded, so the note must say that rather than inventing subsecond precision.
+
+Final-wave scope supersedes the earlier first-bind-only restriction solely for the generic opt-in normal-slot admission, read-only current-capture probes and the existing outbox repair seam described above. No grouped backfill or APIMS implementation is included.

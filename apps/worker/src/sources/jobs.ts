@@ -1,4 +1,5 @@
 import { type SourceAdapter, type SourceKind, type PollContext } from '@skyclause/sources'
+import { currentSlotBody, runSourceSlot } from './slots'
 import { executeAdapter } from './execute'
 import { runBackfillOnce } from './backfill'
 import { createPollContext } from './http'
@@ -33,9 +34,15 @@ export function createSourceJobs(ports: SourceJobPorts) {
     return adapter
   }
   const contextFactory =
-    (adapter: SourceAdapter<unknown>, plan: Pick<SourcePlan, 'periods'>) => (sources: PlannedSource['source'][]) =>
+    (
+      adapter: SourceAdapter<unknown>,
+      plan: Pick<SourcePlan, 'periods'>,
+      transportWindow?: { start: number; end: number }
+    ) =>
+    (sources: PlannedSource['source'][]) =>
       createPollContext({
         kind: adapter.kind,
+        transportWindow,
         family: adapter.apiFamily,
         sources,
         storage: adapterStorage(adapter.kind, ports.store, ports.scratch),
@@ -120,6 +127,23 @@ export function createSourceJobs(ports: SourceJobPorts) {
         })
         return
       }
+      if (adapter.latestSlot) {
+        let requests = 0
+        for (const entry of ready)
+          requests += await runSourceSlot(adapter, entry.source, {
+            ...ports,
+            scheduledAt,
+            contextFactory: (window) => contextFactory(adapter, plan, window)
+          })
+        ports.log('source.adapter.complete', {
+          adapter: kind,
+          sources: ready.length,
+          deferred_sources: entries.length - ready.length,
+          requests,
+          scheduled_at: scheduledAt
+        })
+        return
+      }
       const operationId = ports.id()
       await reserveSourceResult(ports.store, operationId, adapter.kind, ports.clock.now())
       const result = await executeAdapter(
@@ -176,6 +200,13 @@ export function createSourceJobs(ports: SourceJobPorts) {
             adapter.batch === 'per_source'
               ? [...entries].sort((a, b) => a.source.id.localeCompare(b.source.id)).slice(0, 1)
               : entries
+          if (adapter.latestSlot) {
+            const source = probe[0]!.source
+            const body = await currentSlotBody(adapter, source, ports.store, ports.clock)
+            adapter.parse(adapter.latestSlot.decode(body), [source])
+            ports.log('source.contract.passed', { adapter: adapter.kind })
+            continue
+          }
           const result = await executeAdapter(
             adapter,
             probe.map((s) => s.source),
