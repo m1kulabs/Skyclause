@@ -3,7 +3,7 @@ import { createRoute, V1_ROUTES, type SkyclauseRoute } from '@skyclause/contract
 import { expect, test } from 'vitest'
 import type { Registry } from '../src/app'
 import { HANDLERS } from '../src/routes'
-import { apiRequest, asApiKey, asOAuth, asSession, createTestApi } from './harness'
+import { apiRequest, asApiKey, asOAuth, asSession, createTestApi, crossOrgCase } from './harness'
 
 const ORG = 'api-keys-home'
 const OTHER = 'api-keys-other'
@@ -252,7 +252,7 @@ test('API keys and OAuth tokens are refused by every API key management operatio
   }
 })
 
-test('create needs a recent session; organisation routes hide other organisations with 404', async () => {
+test('create needs a recent session', async () => {
   const { api } = createTestApi()
   const old = asSession({ org: ORG, role: 'owner', authenticatedAt: new Date('2026-11-07T13:00:00Z') })
   const recent = await apiRequest(api, {
@@ -264,16 +264,32 @@ test('create needs a recent session; organisation routes hide other organisation
   })
   expect(recent.status).toBe(401)
   expect(await recent.json()).toMatchObject({ type: expect.stringContaining('reauth-required') })
+})
 
+test('organisation routes answer 404 for another organisation and its keys', async () => {
+  const { api } = createTestApi()
   const owner = asSession({ org: ORG, role: 'owner' })
-  const otherKey = randomUUID()
-  for (const operation of [
-    { method: 'GET', path: `/api/orgs/${OTHER}/api-keys` },
-    { method: 'POST', path: `/api/orgs/${OTHER}/api-keys`, body, idempotencyKey: 'cross-org-create' },
-    { method: 'DELETE', path: `/api/orgs/${OTHER}/api-keys/${otherKey}` }
-  ] as const) {
-    expect((await apiRequest(api, { as: owner, ...operation })).status).toBe(404)
+  const otherOwner = asSession({ org: OTHER, role: 'owner' })
+  const created = await apiRequest(api, {
+    as: otherOwner,
+    method: 'POST',
+    path: `/api/orgs/${OTHER}/api-keys`,
+    body,
+    idempotencyKey: 'other-org-key'
+  })
+  const elsewhere = (await created.json()) as KeyResponse
+
+  for (const { run } of [
+    crossOrgCase('listOrganisationApiKeys', { app: api, as: owner, params: { org: OTHER } }),
+    crossOrgCase('createOrganisationApiKey', { app: api, as: owner, params: { org: OTHER }, body }),
+    crossOrgCase('revokeOrganisationApiKey', { app: api, as: owner, params: { org: OTHER, id: elsewhere.id } }),
+    crossOrgCase('revokeOrganisationApiKey', { app: api, as: owner, params: { org: ORG, id: elsewhere.id } })
+  ]) {
+    await run()
   }
+
+  const listed = await apiRequest(api, { as: otherOwner, method: 'GET', path: `/api/orgs/${OTHER}/api-keys` })
+  expect(((await listed.json()) as { data: KeyResponse[] }).data.map((key) => key.id)).toEqual([elsewhere.id])
 })
 
 test('a key is limited to 600 requests a minute and the 601st response has Retry-After', async () => {
