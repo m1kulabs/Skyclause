@@ -4,7 +4,7 @@ import { mcp } from '@better-auth/mcp'
 import { passkey } from '@better-auth/passkey'
 import { loadEnv } from '@skyclause/config'
 import type { EmailTransport } from '@skyclause/contracts'
-import { authDatabase } from '@skyclause/db/auth'
+import { authDatabase, withAccountSecurityLock } from '@skyclause/db/auth'
 import { betterAuth, type BetterAuthOptions, type BetterAuthPlugin } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { anonymous, bearer, deviceAuthorization, jwt, organization } from 'better-auth/plugins'
@@ -146,7 +146,7 @@ export function createAuth(
   const base = basePlugins(s)
   const owners = PLUGINS(s, { sendStepUpEmail: extra.sendStepUpEmail })
   const plugins = withOwners(base, [...owners, ...(extra.plugins ?? [])])
-  return betterAuth({
+  const auth = betterAuth({
     secret: s.secret,
     baseURL: s.appOrigin,
     database: drizzleAdapter(authDatabase(), { provider: 'pg' }),
@@ -156,7 +156,7 @@ export function createAuth(
     // #97 has an atomic email + rightmost Cloud Run IP window in auth.verification; do not apply Better Auth's
     // per-path IP bucket here, which otherwise falls back to one shared bucket for Cloud Run's X-Forwarded-For chain.
     rateLimit: { customRules: { '/sign-in/magic-link': false } },
-    account: { accountLinking: { disableImplicitLinking: true } },
+    account: { accountLinking: { disableImplicitLinking: true, allowUnlinkingAll: true } },
     user: {
       additionalFields: {
         preferences: { type: 'json', required: false, ...fixed },
@@ -165,7 +165,10 @@ export function createAuth(
         lastActiveAt: { type: 'date', required: false, ...fixed }
       }
     },
-    session: { additionalFields: { reauthenticatedAt: { type: 'date', required: false, ...fixed } } },
+    session: {
+      freshAge: 0,
+      additionalFields: { reauthenticatedAt: { type: 'date', required: false, ...fixed } }
+    },
     databaseHooks: {
       session: {
         create: {
@@ -178,6 +181,18 @@ export function createAuth(
     // The email's GET-safe page POSTs to our wrapper. The plugin's GET verification endpoint stays off over HTTP.
     disabledPaths: [...unbuiltPaths(base, plugins), ...apiKeyHttpPaths(plugins), '/magic-link/verify']
   })
+  // A before hook alone cannot hold the last-method check through Better Auth's subsequent deletion.
+  const handle = auth.handler
+  auth.handler = async (request) => {
+    const path = new URL(request.url).pathname.replace(/\/+$/, '')
+    if (request.method !== 'POST' || !['/api/auth/unlink-account', '/api/auth/passkey/delete-passkey'].includes(path)) {
+      return handle(request)
+    }
+    const current = await auth.api.getSession({ headers: request.headers, query: { disableRefresh: true } })
+    if (!current) return handle(request)
+    return withAccountSecurityLock(current.user.id, () => handle(request))
+  }
+  return auth
 }
 
 /** @internal */
@@ -195,6 +210,24 @@ export function getAuth() {
     instance = { auth: createAuth(settings), settings }
   }
   return instance
+}
+
+export interface RequestAuthSession {
+  session: { id: string; createdAt: Date; reauthenticatedAt?: Date | null }
+  user: {
+    id: string
+    name: string
+    email: string
+    preferences?: unknown
+    magicLinkEnabled?: boolean
+  }
+}
+
+/** The session fields server-rendered app roots need, without exposing Better Auth's inferred instance type. */
+export async function getSessionForRequest(headers: Headers): Promise<RequestAuthSession | null> {
+  const result: unknown = await getAuth().auth.api.getSession({ headers, query: { disableRefresh: true } })
+  if (typeof result !== 'object' || result === null || !('session' in result) || !('user' in result)) return null
+  return result as RequestAuthSession
 }
 
 /** Better Auth's own endpoints, `/api/auth/*` (#79 §4), for the web app's Route Handler. */

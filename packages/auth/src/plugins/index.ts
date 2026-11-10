@@ -1,6 +1,7 @@
 import type { EmailTransport } from '@skyclause/contracts'
 import type { BetterAuthPlugin } from 'better-auth'
 import type { AuthSettings } from '../instance'
+import { aAccountSettings } from './a-account-settings'
 import { apiKeyPlugin } from './a-api-keys'
 import { aAuthSignInApi } from './a-auth-signin-api'
 import { aDeviceCode } from './a-device-code'
@@ -18,5 +19,6 @@ export const PLUGINS = (settings: AuthSettings, overrides: PluginOverrides = {})
   apiKeyPlugin,
   eMcpAuth(settings),
   aAuthSignInApi(),
-  aStepUp({ appOrigin: settings.appOrigin, ipHashKey: settings.ipHashKey, sendEmail: overrides.sendStepUpEmail })
+  aStepUp({ appOrigin: settings.appOrigin, ipHashKey: settings.ipHashKey, sendEmail: overrides.sendStepUpEmail }),
+  aAccountSettings
 ]
