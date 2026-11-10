@@ -10,14 +10,32 @@ import { HANDLERS } from '../src/routes'
 
 const built = new Set(Object.keys(HANDLERS))
 
+/**
+ * Session routes outside `/me/` that name no organisation and no row, so no request can point them at another
+ * organisation's (#79 §4 lists them with `/me/notification-preferences`). The notification list and stream read the
+ * signed-in account's own items in each of its current memberships, as `/me/*` does; `notifications.test.ts` proves
+ * a left organisation's items drop out. The VAPID key is one public key, the same for every caller; it takes a
+ * session only because `/api` admits nothing else (§4).
+ */
+const UNSCOPED: Record<string, 'public' | '/me/*'> = {
+  listNotifications: '/me/*',
+  streamNotifications: '/me/*',
+  getVapidPublicKey: 'public'
+}
+
 /** The ticket's four exemptions, each with its reason. */
-function exemptionOf(route: { method: string; path: string; 'x-skyclause': { statement: string } }): string | null {
+function exemptionOf(route: {
+  method: string
+  path: string
+  operationId: string
+  'x-skyclause': { statement: string }
+}): string | null {
   const statement = route['x-skyclause'].statement
   if (statement === 'public') return 'public'
   if (statement === 'token') return 'token-authenticated'
   if (/^\/(v1|api)\/me(\/|$)/.test(route.path)) return '/me/*'
   if (route.method.toLowerCase() === 'post' && route.path === '/api/orgs') return 'POST /orgs'
-  return null
+  return UNSCOPED[route.operationId] ?? null
 }
 
 const corpus = readdirSync(import.meta.dirname)
