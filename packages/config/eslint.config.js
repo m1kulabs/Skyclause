@@ -6,6 +6,12 @@ import jsxA11y from 'eslint-plugin-jsx-a11y'
 import tseslint from 'typescript-eslint'
 import i18n from './eslint-plugin/i18n.js'
 
+const displayDateRestrictions = [
+  { property: 'toLocaleString', message: 'Use the MYT formatters from @skyclause/i18n/format.' },
+  { property: 'toLocaleDateString', message: 'Use the MYT formatters from @skyclause/i18n/format.' },
+  { property: 'toLocaleTimeString', message: 'Use the MYT formatters from @skyclause/i18n/format.' }
+]
+
 export default defineConfig(
   {
     // P0's `pilot/` keeps its own checks (D10); generated and vendored trees aren't linted.
@@ -42,9 +48,7 @@ export default defineConfig(
     rules: {
       'no-restricted-properties': [
         'error',
-        { property: 'toLocaleString', message: 'Use the MYT formatters from @skyclause/i18n/format.' },
-        { property: 'toLocaleDateString', message: 'Use the MYT formatters from @skyclause/i18n/format.' },
-        { property: 'toLocaleTimeString', message: 'Use the MYT formatters from @skyclause/i18n/format.' },
+        ...displayDateRestrictions,
         { object: 'Intl', property: 'DateTimeFormat', message: 'Use the MYT formatters from @skyclause/i18n/format.' }
       ],
       'no-restricted-imports': [
@@ -59,6 +63,12 @@ export default defineConfig(
         }
       ]
     }
+  },
+  {
+    // Pure clause calendar arithmetic needs numeric IANA/DST fields; no display output.
+    // Clauses cannot depend on i18n (§1); this one helper retains display/import guards.
+    files: ['packages/clauses/src/local-calendar.ts'],
+    rules: { 'no-restricted-properties': ['error', ...displayDateRestrictions] }
   },
   {
     files: ['apps/web/**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}'],

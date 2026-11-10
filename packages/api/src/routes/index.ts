@@ -3,18 +3,30 @@ import type { OperationId, Operations } from '@skyclause/contracts'
 import type { Context, MiddlewareHandler } from 'hono'
 import type { ApiEnv } from '../context'
 import { approvalHandlers } from './approvals'
+import { aiKeyHandlers } from './ai-keys'
 import { alertHandlers } from './alerts'
+import { auditHandlers } from './audit'
 import { analysisHandlers } from './analysis'
 import { bundleHandlers } from './bundles'
 import { channelHandlers } from './channels'
+import { callHandlers } from './calls'
+import { connectHandlers } from './connect'
 import { evidenceHandlers } from './evidence'
 import { gradesHandlers } from './grades'
+import { apiKeyHandlers } from './api-keys'
 import { ledgerHandlers } from './ledger'
 import { notificationHandlers } from './notifications'
+import { oauthHandlers } from './oauth'
+import { onboardingHandlers } from './onboarding'
+import { organisationHandlers } from './organisations'
 import { projectHandlers } from './projects'
 import { replyHandlers } from './replies'
 import { runHandlers } from './runs'
+import { memberHandlers } from './members'
+import { rotaHandlers } from './rota'
 import { subscriberHandlers } from './subscribers'
+import { subscriberRightsHandlers } from './subscriber-rights'
+import { dataRightsHandlers } from './data-rights'
 
 /**
  * One operation's handler, typed by its registry route, plus middleware the route's metadata can't express, such as
@@ -38,9 +50,14 @@ export type Handlers = { [Id in OperationId]?: HandlerEntry<Operations[Id]> }
  * line; an operation without an entry answers 501 `not-built` naming its owner.
  */
 export const HANDLERS: Handlers = {
+  ...apiKeyHandlers, // a-api-keys
+  ...auditHandlers, // a-audit-log
+  ...aiKeyHandlers, // e-byok-api
   ...channelHandlers, // c-notice-templates
+  ...callHandlers, // c-call-page-ui
   ...ledgerHandlers, // c-ledger-chain
   ...subscriberHandlers,
+  ...subscriberRightsHandlers,
   ...bundleHandlers, // c-bundle-lifecycle
   ...evidenceHandlers, // c-evidence
   ...gradesHandlers, // c-grades
@@ -50,5 +67,12 @@ export const HANDLERS: Handlers = {
   ...approvalHandlers, // c-approval-api
   ...alertHandlers, // c-approver-alerts
   ...notificationHandlers, // c-notifications
-  ...analysisHandlers // c-analysis-api
+  ...onboardingHandlers, // b-create-project-ui
+  ...analysisHandlers, // c-analysis-api
+  ...dataRightsHandlers, // a-data-rights
+  ...memberHandlers, // a-members-api
+  ...rotaHandlers, // a-members-api
+  ...oauthHandlers, // e-mcp-auth
+  ...organisationHandlers, // a-org-projects
+  ...connectHandlers // e-connect-api
 }

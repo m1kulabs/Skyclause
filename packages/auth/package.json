@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./can": "./src/can.ts",
     "./client": "./src/client.ts",
     "./testing": "./test/harness/index.ts",
     "./test/*": "./test/*.ts"

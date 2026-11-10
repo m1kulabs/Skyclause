@@ -15,6 +15,8 @@ export const oauthGrant = tenantTable(
     id: id(),
     clientId: text('client_id').notNull(),
     accountId: uuid('account_id').notNull(),
+    // #198 D37: persisting the selected resource keeps each consent grant distinct and listable.
+    resource: text('resource').$type<'api' | 'mcp'>().notNull().default('mcp'),
     projectIds: uuid('project_ids').array(),
     scopes: text('scopes')
       .array()
@@ -78,12 +80,34 @@ export const aiKey = tenantTable(
     declaredTier: text('declared_tier').notNull(),
     priority: integer('priority').notNull().default(0),
     enabled: boolean('enabled').notNull().default(true),
+    lastTestOk: boolean('last_test_ok'),
+    lastTestAt: instant('last_test_at'),
+    lastTestDetail: text('last_test_detail'),
+    /** A deleted key keeps its row for `ai_usage` history, with its secrets wiped (ticket decision). */
+    deletedAt: instant('deleted_at'),
     ...timestamps()
   },
   (self) => [
     orgKey('ai_key', self),
     foreignKey({ columns: [self.orgId], foreignColumns: [organization.id] }).onDelete('cascade'),
     unique('ai_key_org_id_fingerprint_key').on(self.orgId, self.fingerprint)
+  ]
+)
+
+/** One key test (D39): the create-time or on-demand minimal call, for the 10-an-hour limit. Append-only. */
+export const aiKeyTest = tenantTable(
+  'ai_key_test',
+  {
+    id: id(),
+    aiKeyId: uuid('ai_key_id'),
+    fingerprint: text('fingerprint').notNull(),
+    ok: boolean('ok').notNull(),
+    testedAt: instant('tested_at').notNull().defaultNow()
+  },
+  (self) => [
+    orgKey('ai_key_test', self),
+    foreignKey({ columns: [self.orgId], foreignColumns: [organization.id] }).onDelete('cascade'),
+    sameOrg('ai_key_test_ai_key', self, self.aiKeyId, aiKey, true)
   ]
 )
 

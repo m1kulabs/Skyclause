@@ -1,7 +1,8 @@
 import { memo } from 'react'
+import type { StripInput } from '@skyclause/elements'
 import type { CallDetail } from './operations'
 import type { Decision } from './model'
-import { teachingLineMissing } from './model'
+import { teachingLineIncluded } from './model'
 import { t } from './i18n'
 import { formatTime } from '@skyclause/i18n/format'
 import { WindowStrip } from '../data-components/window-strip'
@@ -20,12 +21,14 @@ export function modeName(call: Pick<CallDetail, 'mode' | 'watch' | 'no_call'>): 
 
 export const CallReview = memo(function CallReview({
   call,
+  strip,
   decision,
   expired,
   basePath,
   error
 }: {
   call: CallDetail
+  strip?: StripInput
   decision: Decision
   expired: boolean
   basePath: string
@@ -39,7 +42,10 @@ export const CallReview = memo(function CallReview({
       <h3>{callName(call)}</h3>
       {call.window && (
         <>
-          <WindowStrip windows={[call.window]} />
+          <WindowStrip
+            windows={[call.window]}
+            strip={strip ? { ...strip, window: { from: call.window.starts_at, to: call.window.ends_at } } : undefined}
+          />
           <p>
             {t('bundles.window', {
               start: formatTime(call.window.starts_at, 'en'),
@@ -149,7 +155,7 @@ export const CallReview = memo(function CallReview({
           {t('bundles.successor_call')}
         </a>
       )}
-      {teachingLineMissing(call, decision) && <p className="bundle-error">{t('bundles.teaching_required')}</p>}
+      {teachingLineIncluded(call, decision) && <p className="bundle-error">{t('bundles.teaching_forbidden')}</p>}
       {error && <p className="bundle-error">{error}</p>}
     </>
   )

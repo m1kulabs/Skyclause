@@ -6,10 +6,12 @@ import { Alert, AlertTitle, AlertDescription } from '#ui/alert'
 import { Button } from '#ui/button'
 import { Kbd } from '#ui/kbd'
 import { formatTime } from '@skyclause/i18n/format'
+import type { StripInput } from '@skyclause/elements'
 import { t } from './i18n'
 import { useBundleReview, type InitialReview } from './use-bundle-review'
 import { orderedCalls, canReviewCall, reviewCount } from './model'
 import { CallReview, callName, modeName } from './call-review'
+import type { StripDetail } from './operations'
 import { EditCallDialog } from './edit-call-dialog'
 import { ApprovalBar } from './approval-bar'
 import { ReviewTrace } from './review-trace'
@@ -18,6 +20,23 @@ import { ReauthStep } from './reauth-step'
 import './bundles.css'
 
 const noDecision = {}
+
+function toStripInput(strip?: StripDetail): StripInput | undefined {
+  if (!strip) return undefined
+  return {
+    from: strip.range.from,
+    to: strip.range.to,
+    now: strip.range.to,
+    window: strip.window ? { from: strip.window.starts_at, to: strip.window.ends_at } : null,
+    rain5: (strip.series['site.rain_5m_mm'] ?? []).map(([at, value]) => ({
+      at,
+      value,
+      state: value === null ? 'missed' : 'received'
+    })),
+    rain60: (strip.series['site.rain_60m_mm'] ?? []).map(([at, value]) => ({ at, value })),
+    ages: strip.inputs.map((input) => ({ name: input.name, observedAt: input.observed_at }))
+  }
+}
 
 export interface BundleDetailActions {
   approve: () => Promise<void>
@@ -94,6 +113,7 @@ export function BundleDetail({ bundleId, actionsRef, initial }: BundleDetailProp
     )
 
   const { bundle } = data
+  const strip = toStripInput(data.strip)
   const normal =
     data.calls.length > 0 &&
     data.calls.every(
@@ -206,6 +226,7 @@ export function BundleDetail({ bundleId, actionsRef, initial }: BundleDetailProp
               <li key={call.id} tabIndex={0} data-call-id={call.id} onFocus={() => setFocused(call.id)}>
                 <CallReview
                   call={call}
+                  strip={strip}
                   decision={decisions[call.id] ?? noDecision}
                   expired={Date.parse(call.expires_at) <= now}
                   basePath={basePath}

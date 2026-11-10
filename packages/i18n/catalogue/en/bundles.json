@@ -112,7 +112,7 @@
   "save": "Save edits",
   "cancel": "Cancel",
   "teaching": "Teaching mode is the lecturer's and the university's decision. Skyclause never excuses attendance.",
-  "teaching_required": "Restore the teaching-mode line in every language before approving.",
+  "teaching_forbidden": "Remove the teaching-mode line from every language before approving.",
   "changed": "Changed since drafting",
   "changed_help": "Review the old and new inputs, ages and verdicts. Confirm to re-check this snapshot before sending.",
   "before": "Before: {value}",

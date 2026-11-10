@@ -14,7 +14,7 @@ import {
   type RunDetail,
   type StripDetail
 } from './operations'
-import { approves, canReviewCall, decisionsFor, teachingLineMissing, type Decisions } from './model'
+import { approves, canReviewCall, decisionsFor, teachingLineIncluded, type Decisions } from './model'
 import { t } from './i18n'
 import { useReauth } from '../reauth'
 import { cancelStepUp, ReauthCancelledError } from '../step-up/flow'
@@ -195,8 +195,8 @@ export function useBundleReview(bundleId: string, org: string, initial?: Initial
   const missingChoice = reviewable.some(
     (call) => !call.agrees && decisions[call.id]?.action !== 'reject' && !decisions[call.id]?.chosen
   )
-  const missingTeaching = reviewable.some((call) => teachingLineMissing(call, decisions[call.id] ?? {}))
-  const blocked = !editable || !reviewable.length || !!visible?.errors.length || missingChoice || missingTeaching
+  const includesTeachingLine = reviewable.some((call) => teachingLineIncluded(call, decisions[call.id] ?? {}))
+  const blocked = !editable || !reviewable.length || !!visible?.errors.length || missingChoice || includesTeachingLine
 
   async function send(body: ApprovalBody) {
     if (locked.current || terminal.current || blocked) return
@@ -307,7 +307,7 @@ export function useBundleReview(bundleId: string, org: string, initial?: Initial
     editable,
     blocked,
     missingChoice,
-    missingTeaching,
+    includesTeachingLine,
     approve,
     retry: () => setRevision((value) => value + 1)
   }

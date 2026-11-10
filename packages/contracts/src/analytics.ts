@@ -155,7 +155,7 @@ export type AnalyticsRouteScope = (typeof ANALYTICS_ROUTE_SCOPES)[number]
 export const ANALYTICS_EMBED_COMPONENTS = ['skyclause-status', 'skyclause-window'] as const
 export type AnalyticsEmbedComponent = (typeof ANALYTICS_EMBED_COMPONENTS)[number]
 
-export const ANALYTICS_OPERATING_SYSTEMS = ['macos', 'linux', 'windows'] as const
+export const ANALYTICS_OPERATING_SYSTEMS = ['macos', 'linux', 'windows', 'unknown'] as const
 export type AnalyticsOperatingSystem = (typeof ANALYTICS_OPERATING_SYSTEMS)[number]
 
 export type AnalyticsEvent =

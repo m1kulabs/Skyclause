@@ -22,6 +22,7 @@ import { rateLimit } from './middleware/rate-limit'
 import { apiSurfaceGate, auditToolCall } from './middleware/surface'
 import { ApiError, problemResponse, toApiError, validationFailed } from './problems'
 import { HANDLERS, type AnyHandlerEntry } from './routes'
+import { mountAuditWriteGuards } from './routes/audit'
 
 type Middleware = MiddlewareHandler<ApiEnv>
 
@@ -82,6 +83,7 @@ function surfaceApp(
     )
   )
   for (const route of routes) mount(app, surface, route, handlers[route.operationId])
+  if (surface === 'api') mountAuditWriteGuards(app)
   return app
 }
 
@@ -102,6 +104,21 @@ function gate(statement: RouteMetadata['statement']): Middleware[] {
       return [requireStaff]
     case 'device':
       return [requireDevice]
+    case 'rota.manage':
+      return [
+        requireOrg,
+        async (c, next) => {
+          const principal = c.get('principal')
+          const accountId =
+            principal?.kind === 'session' || principal?.kind === 'api_key' || principal?.kind === 'oauth'
+              ? principal.accountId
+              : undefined
+          if (!principal || !accountId || !c.get('deps').can(principal, 'rota.manage', { accountId })) {
+            throw new ApiError(403, 'insufficient-scope', 'This operation needs rota.manage for this account.')
+          }
+          await next()
+        }
+      ]
     default:
       return [requireOrg, requirePermission(statement)]
   }

@@ -1,4 +1,3 @@
-import { apiKey } from '@better-auth/api-key'
 import { cimd } from '@better-auth/cimd'
 import { fetchClientMetadataResource } from '@better-auth/cimd/node'
 import { mcp } from '@better-auth/mcp'
@@ -10,6 +9,8 @@ import { betterAuth, type BetterAuthOptions, type BetterAuthPlugin } from 'bette
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { anonymous, bearer, deviceAuthorization, jwt, organization } from 'better-auth/plugins'
 import { ac, roles } from './access'
+import { apiKeyPlugin } from './plugins/a-api-keys'
+import { authSignInHandler } from './plugins/a-auth-signin-api'
 import { PLUGINS } from './plugins'
 
 /** What the instance needs from the web env (#79 §6). */
@@ -19,13 +20,22 @@ export interface AuthSettings {
   appOrigin: string
   apiOrigin: string
   mcpOrigin: string
+  google?: { clientId: string; clientSecret: string }
   /** HMAC key for the IP side of auth rate limits (#100). */
   ipHashKey: string
 }
 
 /** Under HOST_MODE=single every surface shares APP_ORIGIN, so an unset API or MCP origin is APP_ORIGIN. */
 export function authSettings(env: Record<string, string | undefined> = process.env): AuthSettings {
-  const { BETTER_AUTH_SECRET: secret, APP_ORIGIN, API_ORIGIN, MCP_ORIGIN, IP_HASH_KEY: ipHashKey } = loadEnv('web', env)
+  const {
+    BETTER_AUTH_SECRET: secret,
+    APP_ORIGIN,
+    API_ORIGIN,
+    MCP_ORIGIN,
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET,
+    IP_HASH_KEY: ipHashKey
+  } = loadEnv('web', env)
   if (!APP_ORIGIN) throw new Error('APP_ORIGIN is not set: Better Auth needs it as its issuer and cookie host')
   const origin = (value: string | undefined) => new URL(value ?? APP_ORIGIN).origin
   return {
@@ -33,6 +43,9 @@ export function authSettings(env: Record<string, string | undefined> = process.e
     appOrigin: origin(APP_ORIGIN),
     apiOrigin: origin(API_ORIGIN),
     mcpOrigin: origin(MCP_ORIGIN),
+    ...(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET
+      ? { google: { clientId: GOOGLE_CLIENT_ID, clientSecret: GOOGLE_CLIENT_SECRET } }
+      : {}),
     ipHashKey
   }
 }
@@ -62,7 +75,7 @@ function basePlugins(s: AuthSettings) {
             },
             deletionRequestedAt: { type: 'date', required: false, ...fixed },
             purgeAfter: { type: 'date', required: false, ...fixed },
-            onboardingSkipped: { type: 'boolean', required: true, defaultValue: false, ...fixed },
+            onboardingSkipped: { type: 'json', required: true, defaultValue: [], ...fixed },
             aiFallbackEnabled: { type: 'boolean', required: true, defaultValue: false, ...fixed },
             allowMemberAiKeys: { type: 'boolean', required: true, defaultValue: false, ...fixed }
           }
@@ -74,9 +87,8 @@ function basePlugins(s: AuthSettings) {
       }
     }),
     anonymous(),
-    // #106 and #128 store scopes in `permissions.scopes`, the creator in `metadata.account_id` and a device key's
-    // source in `metadata.source_id`. #93's `rateLimit` limits each credential, so the plugin's 10 a day is off.
-    apiKey({ references: 'organization', defaultPrefix: 'skc_', enableMetadata: true, rateLimit: { enabled: false } }),
+    // #106 replaces the plugin #94 registered here, keeping Better Auth's auth-table generation order stable.
+    apiKeyPlugin,
     passkey(),
     deviceAuthorization(),
     bearer(),
@@ -90,8 +102,9 @@ function basePlugins(s: AuthSettings) {
 
 /** #79 §7: an owner's plugin replaces the base plugin with its `id` in place, or is appended. */
 function withOwners<T extends BetterAuthPlugin[]>(base: T, owners: readonly BetterAuthPlugin[]): T {
-  const byId = new Map(owners.map((plugin) => [plugin.id, plugin]))
-  const added = owners.filter((plugin) => !base.some(({ id }) => id === plugin.id))
+  const byId = new Map<string, BetterAuthPlugin>()
+  for (const plugin of owners) byId.set(plugin.id, plugin)
+  const added = [...byId.values()].filter((plugin) => !base.some(({ id }) => id === plugin.id))
   return [...base.map((plugin) => byId.get(plugin.id) ?? plugin), ...added] as T
 }
 
@@ -104,6 +117,15 @@ function withOwners<T extends BetterAuthPlugin[]>(base: T, owners: readonly Bett
 function unbuiltPaths(base: readonly BetterAuthPlugin[], plugins: readonly BetterAuthPlugin[]): string[] {
   return plugins
     .filter((plugin) => base.includes(plugin))
+    .flatMap((plugin) => Object.values(plugin.endpoints ?? {}))
+    .filter((endpoint) => endpoint.path && !endpoint.options?.metadata?.SERVER_ONLY)
+    .map((endpoint) => endpoint.path)
+}
+
+/** The API-key plugin is available to `auth.api`, but its less restrictive HTTP manager stays off. */
+function apiKeyHttpPaths(plugins: readonly BetterAuthPlugin[]): string[] {
+  return plugins
+    .filter(({ id }) => id === 'api-key')
     .flatMap((plugin) => Object.values(plugin.endpoints ?? {}))
     .filter((endpoint) => endpoint.path && !endpoint.options?.metadata?.SERVER_ONLY)
     .map((endpoint) => endpoint.path)
@@ -122,9 +144,7 @@ export function createAuth(
   } = {}
 ) {
   const base = basePlugins(s)
-  const owners = PLUGINS.map((owner) =>
-    owner({ appOrigin: s.appOrigin, ipHashKey: s.ipHashKey, sendEmail: extra.sendStepUpEmail })
-  )
+  const owners = PLUGINS(s, { sendStepUpEmail: extra.sendStepUpEmail })
   const plugins = withOwners(base, [...owners, ...(extra.plugins ?? [])])
   return betterAuth({
     secret: s.secret,
@@ -133,6 +153,10 @@ export function createAuth(
     // The database's uuidv7() default makes every ID (#79 conventions).
     advanced: { database: { generateId: 'uuid' } },
     emailAndPassword: { enabled: false },
+    // #97 has an atomic email + rightmost Cloud Run IP window in auth.verification; do not apply Better Auth's
+    // per-path IP bucket here, which otherwise falls back to one shared bucket for Cloud Run's X-Forwarded-For chain.
+    rateLimit: { customRules: { '/sign-in/magic-link': false } },
+    account: { accountLinking: { disableImplicitLinking: true } },
     user: {
       additionalFields: {
         preferences: { type: 'json', required: false, ...fixed },
@@ -149,9 +173,10 @@ export function createAuth(
         }
       }
     },
-    socialProviders: extra.socialProviders,
+    socialProviders: extra.socialProviders ?? (s.google ? { google: s.google } : undefined),
     plugins,
-    disabledPaths: unbuiltPaths(base, plugins)
+    // The email's GET-safe page POSTs to our wrapper. The plugin's GET verification endpoint stays off over HTTP.
+    disabledPaths: [...unbuiltPaths(base, plugins), ...apiKeyHttpPaths(plugins), '/magic-link/verify']
   })
 }
 
@@ -173,4 +198,7 @@ export function getAuth() {
 }
 
 /** Better Auth's own endpoints, `/api/auth/*` (#79 §4), for the web app's Route Handler. */
-export const authHandler = (request: Request): Promise<Response> => getAuth().auth.handler(request)
+export const authHandler = (request: Request): Promise<Response> => {
+  const { auth, settings } = getAuth()
+  return authSignInHandler(auth, request, settings)
+}

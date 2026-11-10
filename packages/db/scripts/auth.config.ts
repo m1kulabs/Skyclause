@@ -30,7 +30,7 @@ export const auth: { options: BetterAuthOptions } = betterAuth({
             plan: { type: ['community', 'team', 'campus', 'commons'], required: true, defaultValue: 'community' },
             deletionRequestedAt: { type: 'date', required: false },
             purgeAfter: { type: 'date', required: false },
-            onboardingSkipped: { type: 'boolean', required: true, defaultValue: false },
+            onboardingSkipped: { type: 'json', required: true, defaultValue: [] },
             aiFallbackEnabled: { type: 'boolean', required: true, defaultValue: false },
             allowMemberAiKeys: { type: 'boolean', required: true, defaultValue: false }
           }
@@ -40,7 +40,13 @@ export const auth: { options: BetterAuthOptions } = betterAuth({
       }
     }),
     anonymous(),
-    apiKey({ references: 'organization' }),
+    apiKey({
+      references: 'organization',
+      defaultPrefix: 'skc_',
+      enableMetadata: true,
+      requireName: true,
+      rateLimit: { enabled: false }
+    }),
     passkey(),
     deviceAuthorization(),
     bearer(),

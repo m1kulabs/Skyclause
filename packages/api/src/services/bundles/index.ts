@@ -511,7 +511,10 @@ export async function getCall(ctx: ServiceContext, input: { id: string; origin: 
   const [w] = row.windowId ? await tx(ctx).select().from(window).where(eq(window.id, row.windowId)) : []
   const [n] = row.nightId ? await tx(ctx).select().from(night).where(eq(night.id, row.nightId)) : []
   const [g] = await tx(ctx).select().from(grade).where(eq(grade.callId, row.id)).orderBy(desc(grade.createdAt)).limit(1)
-  const [b] = await tx(ctx).select({ approvedBy: bundle.approvedBy }).from(bundle).where(eq(bundle.id, row.bundleId))
+  const [b] = await tx(ctx)
+    .select({ approvedBy: bundle.approvedBy, runId: bundle.runId })
+    .from(bundle)
+    .where(eq(bundle.id, row.bundleId))
   const deliveries = await tx(ctx)
     .select()
     .from(notice)
@@ -521,6 +524,7 @@ export async function getCall(ctx: ServiceContext, input: { id: string; origin: 
     ...callFor(ctx.principal, callView(row)),
     ...(await explanation(ctx, row)),
     project_id: row.projectId,
+    trace_id: b!.runId,
     window: w
       ? windowFor(ctx.principal, {
           id: w.id,

@@ -21,10 +21,9 @@ const UNBUILT = [
   ['POST', '/organization/create'],
   ['POST', '/organization/update-member-role'],
   ['POST', '/api-key/create'],
-  ['POST', '/device/code'],
-  ['GET', '/jwks'],
-  ['POST', '/oauth2/register'],
-  ['POST', '/oauth2/token']
+  ['POST', '/api-key/update'],
+  ['POST', '/api-key/delete'],
+  ['GET', '/jwks']
 ] as const
 
 test('every base plugin endpoint answers 404 over HTTP; Better Auth’s own session endpoints answer', async () => {
@@ -33,6 +32,24 @@ test('every base plugin endpoint answers 404 over HTTP; Better Auth’s own sess
   const session = await request(auth, 'GET', '/get-session')
   expect(session.status).toBe(200)
   expect(await session.json()).toBeNull()
+})
+
+test('all Better Auth API-key HTTP manager endpoints stay disabled for #106', async () => {
+  const { auth } = getAuth()
+  const plugins = auth.options.plugins as Array<{
+    id: string
+    endpoints?: Record<string, { path?: string; options?: { method?: string; metadata?: { SERVER_ONLY?: boolean } } }>
+  }>
+  const plugin = plugins.find(({ id }) => id === 'api-key')
+  expect(plugin).toBeDefined()
+  const endpoints = Object.values(plugin!.endpoints ?? {}).filter(
+    (endpoint) => endpoint.path && !endpoint.options?.metadata?.SERVER_ONLY
+  )
+  expect(endpoints.length).toBeGreaterThan(0)
+  for (const endpoint of endpoints) {
+    const method = typeof endpoint.options?.method === 'string' ? endpoint.options.method : 'POST'
+    expect((await request(auth, method, endpoint.path!)).status, endpoint.path).toBe(404)
+  }
 })
 
 test('the server still calls a base plugin’s endpoints through auth.api', async () => {
