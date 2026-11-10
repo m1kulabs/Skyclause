@@ -45,6 +45,9 @@ const ResultSchema = z.strictObject({
       sourceIds: z.array(z.uuid()).min(1),
       url: z.url().nullable(),
       startedAt: z.iso.datetime(),
+      admissionStartedAt: z.iso.datetime().optional(),
+      admissionMs: z.number().int().nonnegative().optional(),
+      transportStartedAt: z.iso.datetime().nullable().optional(),
       httpStatus: z.number().int().min(100).max(599).nullable(),
       latencyMs: z.number().int().nonnegative(),
       body: z.string().nullable(),
@@ -70,6 +73,17 @@ export function parseSourceResult(value: unknown): SourceExecutionResult {
   if (requests.size !== parsed.requests.length) throw new Error('Duplicate source request')
   const metrics: Record<string, { unit: string | null; value_json: z.ZodType }> = SOURCE_METRICS[parsed.kind]
   for (const request of parsed.requests) {
+    if (request.transportStartedAt !== undefined) {
+      if (
+        request.transportStartedAt !== null &&
+        (request.startedAt !== request.transportStartedAt ||
+          (request.admissionStartedAt !== undefined &&
+            Date.parse(request.admissionStartedAt) > Date.parse(request.transportStartedAt)))
+      )
+        throw new Error('Invalid source transport timing')
+      if (request.httpStatus !== null && request.transportStartedAt === null)
+        throw new Error('HTTP status without transport start')
+    }
     if (new Set(request.sourceIds).size !== request.sourceIds.length) throw new Error('Duplicate request source')
     if (request.body !== null) {
       const bytes = Buffer.from(request.body, 'base64')
@@ -139,7 +153,8 @@ export async function ingestSourceResult(message: unknown, ports: IngestPorts): 
   const stored = await ports.persist(result)
   await ports.fanout(stored)
   for (const poll of stored)
-    await ports.publish({ source_id: poll.sourceId, kind: poll.kind, poll_id: poll.id, new_rows: poll.newRows })
+    if (poll.newRows > 0)
+      await ports.publish({ source_id: poll.sourceId, kind: poll.kind, poll_id: poll.id, new_rows: poll.newRows })
   const body = encodeObject(ref)
   try {
     await ports.store.write(receiptPath(result.operationId), body, '0')

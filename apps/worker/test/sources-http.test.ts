@@ -186,7 +186,7 @@ test('nineteen-second preflight admission is consumed without another GCS read o
   expect(reads).toBe(1)
   expect(sentAt).toEqual([19000])
   await request
-  expect(c.requests[0]).toMatchObject({ latencyMs: 19000, httpStatus: 200 })
+  expect(c.requests[0]).toMatchObject({ latencyMs: 0, admissionMs: 19000, httpStatus: 200 })
 })
 
 test('an unused preflight credit expires at its original twenty-second deadline without HTTP or another read', async () => {
@@ -213,4 +213,75 @@ test('an unused preflight credit expires at its original twenty-second deadline 
   expect(reads).toBe(1)
   expect(sent).toBe(0)
   expect(c.requests[0]).toMatchObject({ httpStatus: null, latencyMs: 20000, error: { type: 'rate_limited' } })
+})
+
+test('delayed preflight credits protect every physical start for a full trailing minute', async () => {
+  const clock = new TestClock(),
+    store = new MemoryStore(),
+    starts: number[] = []
+  let sequence = 0
+  const make = () =>
+    context({
+      clock,
+      budget: store,
+      requestId: () => `physical-${++sequence}`,
+      http: async () => {
+        starts.push(clock.monotonic())
+        return new Response('{}')
+      }
+    })
+  const contexts = Array.from({ length: 4 }, make)
+  for (const c of contexts) await c.ctx.budget.take('datagovmy-weather')
+  await clock.advance(19000)
+  for (const c of contexts) await c.ctx.http('https://example.test/delayed')
+  expect(contexts[0]!.requests[0]).toMatchObject({
+    startedAt: clock.now().toISOString(),
+    admissionMs: 19000,
+    transportStartedAt: clock.now().toISOString()
+  })
+  await clock.advance(41000)
+  const waiting = Promise.allSettled(Array.from({ length: 4 }, () => make().ctx.http('https://example.test/new')))
+  await flush()
+  expect(starts).toEqual([19000, 19000, 19000, 19000])
+  await clock.advance(20000)
+  expect(
+    (await waiting).every((result) => result.status === 'rejected' && result.reason instanceof RateLimitedError)
+  ).toBe(true)
+  for (let i = 0; i < 4; i++) await make().ctx.http('https://example.test/retry')
+  expect(starts).toEqual([19000, 19000, 19000, 19000, 80000, 80000, 80000, 80000])
+  for (const at of starts)
+    expect(starts.filter((start) => start > at - 60000 && start <= at).length).toBeLessThanOrEqual(4)
+})
+test('slow CAS admission cannot expire protection before the resulting physical starts', async () => {
+  const clock = new TestClock(),
+    store = new MemoryStore(),
+    write = store.write.bind(store),
+    starts: number[] = []
+  let writes = 0
+  store.write = async (path, body, generation) => {
+    if (++writes <= 4) await clock.sleep(19000)
+    return write(path, body, generation)
+  }
+  const c = context({
+    clock,
+    budget: store,
+    http: async () => {
+      starts.push(clock.monotonic())
+      return new Response('{}')
+    }
+  })
+  for (let i = 0; i < 4; i++) {
+    const call = c.ctx.http('https://example.test/cas')
+    await flush()
+    await clock.advance(19000)
+    await call
+  }
+  await clock.advance(4000)
+  const calls = Promise.all([c.ctx.http('https://example.test/next'), c.ctx.http('https://example.test/next')])
+  await flush()
+  await clock.advance(19000)
+  await calls
+  for (const at of starts)
+    expect(starts.filter((start) => start > at - 60000 && start <= at).length).toBeLessThanOrEqual(4)
+  expect(starts).toEqual([19000, 38000, 57000, 76000, 80000, 99000])
 })

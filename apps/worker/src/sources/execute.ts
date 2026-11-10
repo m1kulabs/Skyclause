@@ -133,6 +133,9 @@ export async function executeAdapter<Raw>(
         purpose: options.purpose,
         scheduled_at: options.scheduledAt,
         started_at: request.startedAt,
+        admission_started_at: request.admissionStartedAt ?? null,
+        admission_ms: request.admissionMs ?? null,
+        transport_started_at: request.transportStartedAt ?? null,
         lag_ms:
           options.scheduledAt === null
             ? null

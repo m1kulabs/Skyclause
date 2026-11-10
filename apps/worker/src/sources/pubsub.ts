@@ -93,8 +93,13 @@ export function sourceSubscription(
 }
 
 const pendingPath = 'control/pending-results.json'
-const ResultReservation = ResultReference.omit({ sha256: true }).extend({ reserved_until: z.iso.datetime() })
-const Pending = z.array(z.union([ResultReference, ResultReservation]))
+const Recovery = { backfill_source_id: z.uuid().optional() }
+const PendingDelivery = ResultReference.extend(Recovery)
+const ResultReservation = ResultReference.omit({ sha256: true }).extend({
+  reserved_until: z.iso.datetime(),
+  ...Recovery
+})
+const Pending = z.array(z.union([PendingDelivery, ResultReservation]))
 type PendingEntry = z.infer<typeof Pending>[number]
 export const MAX_PENDING_RESULTS = 1000
 // Longer than the current 600-second Cloud Run source execution limit. Expiry reports a stalled
@@ -109,7 +114,10 @@ async function updatePending(store: SourceObjectStore, entry: PendingEntry, remo
       previous &&
       (previous.kind !== entry.kind ||
         previous.object_path !== entry.object_path ||
-        ('sha256' in previous && 'sha256' in entry && previous.sha256 !== entry.sha256))
+        ('sha256' in previous && 'sha256' in entry && previous.sha256 !== entry.sha256) ||
+        (previous.backfill_source_id !== undefined &&
+          entry.backfill_source_id !== undefined &&
+          previous.backfill_source_id !== entry.backfill_source_id))
     )
       throw new Error('Conflicting pending source result')
     // A retry of an operation's reservation cannot replace its finalized hash or renew the reporting clock.
@@ -117,7 +125,11 @@ async function updatePending(store: SourceObjectStore, entry: PendingEntry, remo
     if (!remove && !previous && pending.length >= MAX_PENDING_RESULTS)
       throw new Error('Source result outbox is full; ingestion must drain before admission')
     const next = pending.filter((r) => r.operation_id !== entry.operation_id)
-    if (!remove) next.push(entry)
+    if (!remove)
+      next.push({
+        ...entry,
+        ...(previous?.backfill_source_id ? { backfill_source_id: previous.backfill_source_id } : {})
+      })
     try {
       await store.write(pendingPath, encodeObject(next), saved?.generation ?? '0')
       return
@@ -131,7 +143,8 @@ export function reserveSourceResult(
   store: SourceObjectStore,
   operationId: string,
   kind: SourceExecutionResult['kind'],
-  now: Date
+  now: Date,
+  backfillSourceId?: string
 ): Promise<void> {
   return updatePending(
     store,
@@ -139,7 +152,8 @@ export function reserveSourceResult(
       operation_id: operationId,
       kind,
       object_path: resultPath(kind, operationId),
-      reserved_until: new Date(now.getTime() + SOURCE_RESERVATION_MS).toISOString()
+      reserved_until: new Date(now.getTime() + SOURCE_RESERVATION_MS).toISOString(),
+      ...(backfillSourceId ? { backfill_source_id: backfillSourceId } : {})
     }),
     false
   )
@@ -152,15 +166,38 @@ export async function repairSourceResults(ports: {
   store: SourceObjectStore
   publish: (data: ResultReference) => Promise<void>
   now?: () => Date
+  recoverBackfill?(
+    sourceId: string,
+    operationId: string,
+    kind: SourceExecutionResult['kind'],
+    now: Date
+  ): Promise<SourceExecutionResult | null>
 }): Promise<void> {
   const saved = await ports.store.read(pendingPath),
     failures: unknown[] = []
-  for (const ref of saved ? Pending.parse(decodeObject(saved.body)) : []) {
+  for (const entry of saved ? Pending.parse(decodeObject(saved.body)) : []) {
     try {
-      if ('reserved_until' in ref) {
-        if (Date.parse(ref.reserved_until) > (ports.now?.() ?? new Date()).getTime()) continue
-        throw new Error(`Source reservation expired before durable result: ${ref.operation_id}`)
+      const recover = async () => {
+        if (!entry.backfill_source_id) return false
+        if (!ports.recoverBackfill) throw new Error('Backfill recovery is not configured')
+        const result = await ports.recoverBackfill(
+          entry.backfill_source_id,
+          entry.operation_id,
+          entry.kind,
+          ports.now?.() ?? new Date()
+        )
+        if (!result) return false
+        await publishSourceResult(result, ports)
+        return true
       }
+      if ('reserved_until' in entry) {
+        if (await recover()) continue
+        if (Date.parse(entry.reserved_until) > (ports.now?.() ?? new Date()).getTime()) continue
+        throw new Error(`Source reservation expired before durable result: ${entry.operation_id}`)
+      }
+      // Recovery metadata stays private; Pub/Sub still receives exactly its four-field reference.
+      const { backfill_source_id: _, ...reference } = entry
+      const ref = ResultReference.parse(reference)
       const receipt = await ports.store.read(`control/receipts/${ref.operation_id}.json`)
       if (receipt) {
         const stored = ResultReference.parse(decodeObject(receipt.body))
@@ -169,6 +206,7 @@ export async function repairSourceResults(ports: {
       } else {
         if (ref.object_path !== resultPath(ref.kind, ref.operation_id)) throw new Error('Invalid pending result path')
         const result = await ports.store.read(ref.object_path)
+        if (!result && (await recover())) continue
         if (!result || sha256(result.body) !== ref.sha256)
           throw new Error(`Pending source result missing or corrupt: ${ref.operation_id}`)
         await ports.publish(ref)

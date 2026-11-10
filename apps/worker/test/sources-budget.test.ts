@@ -22,11 +22,11 @@ test('CAS admits four concurrent distinct starts, retains reservations across ca
   expect(clock.monotonic()).toBe(20000)
   await takeSourceBudget(store, 'datagovmy-gtfs-rt', 'e', clock)
 })
-test('trailing window excludes starts exactly sixty seconds old and waits to the actual expiry', async () => {
+test('conservative protection includes the admission allowance and waits to its actual expiry', async () => {
   const store = new MemoryStore(),
     clock = new TestClock()
   await Promise.all(['a', 'b', 'c', 'd'].map((id) => takeSourceBudget(store, family, id, clock)))
-  await clock.advance(50000)
+  await clock.advance(70000)
   let done = false
   const next = takeSourceBudget(store, family, 'e', clock).then(() => {
     done = true

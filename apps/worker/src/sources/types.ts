@@ -20,7 +20,12 @@ export interface RequestCapture {
   requestId: string
   sourceIds: string[]
   url: string | null
+  /** Physical start when transport begins; admission attempt time for a request that never starts. */
   startedAt: string
+  /** Optional only for older durable results. New captures retain both admission and transport clocks. */
+  admissionStartedAt?: string
+  admissionMs?: number
+  transportStartedAt?: string | null
   httpStatus: number | null
   latencyMs: number
   body: Uint8Array | null

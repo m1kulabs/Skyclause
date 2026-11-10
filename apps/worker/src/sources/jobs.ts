@@ -56,7 +56,8 @@ export function createSourceJobs(ports: SourceJobPorts) {
       contextFactory: contextFactory(adapter, plan),
       publish: ports.publish,
       scheduledAt,
-      admit: (operationId) => reserveSourceResult(ports.store, operationId, adapter.kind, ports.clock.now()),
+      admit: (operationId) =>
+        reserveSourceResult(ports.store, operationId, adapter.kind, ports.clock.now(), entry.source.id),
       acknowledged: async (operationId) => {
         const receipt = await ports.store.read(receiptPath(operationId))
         if (!receipt) return false
@@ -141,9 +142,13 @@ export function createSourceJobs(ports: SourceJobPorts) {
           continue
         }
         try {
+          const probe =
+            adapter.batch === 'per_source'
+              ? [...entries].sort((a, b) => a.source.id.localeCompare(b.source.id)).slice(0, 1)
+              : entries
           const result = await executeAdapter(
             adapter,
-            entries.map((s) => s.source),
+            probe.map((s) => s.source),
             contextFactory(adapter, plan),
             { operationId: ports.id(), purpose: 'poll', scheduledAt: null, clock: ports.clock, requestId: ports.id }
           )

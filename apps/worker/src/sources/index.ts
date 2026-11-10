@@ -12,8 +12,9 @@ import { z } from 'zod'
 import { onEvent } from '../events'
 import { log, type EventConsumer, type WorkerPart } from '../server'
 import { createSourceJobs } from './jobs'
-import { drainSourceResults, ingestSourceResult, sourceIngestionDatabase } from './ingest'
+import { drainSourceResults, ingestSourceResult, sourceIngestionDatabase, parseSourceResult } from './ingest'
 import { sourceClock } from './http'
+import { recoverSavedBackfill } from './backfill'
 import { sourceSnapshot, SourceSchema, type PlannedSource, type SourcePlan } from './plan'
 import { publishSourceResult, sourceSubscription, repairSourceResults } from './pubsub'
 import { encodeObject, gcsObjectStore, hasCode } from './storage'
@@ -27,7 +28,7 @@ export function sourceConfig(env: Record<string, string | undefined> = process.e
     bucket: required('SOURCES_BUCKET'),
     scratch: required('SCRATCH_BUCKET'),
     project: required('GCP_PROJECT'),
-    userAgent: required('SOURCE_USER_AGENT'),
+    userAgent: required('ADAPTER_USER_AGENT'),
     subscription: required('SOURCE_RESULTS_SUBSCRIPTION')
   }
 }
@@ -45,7 +46,13 @@ function live() {
     store = gcsObjectStore(config.bucket),
     scratch = gcsObjectStore(config.scratch)
   const resultPublisher = pubsubPublisher(config.project, 'poll-results')
-  const repair = () => repairSourceResults({ store, publish: resultPublisher })
+  const repair = () =>
+    repairSourceResults({
+      store,
+      publish: resultPublisher,
+      recoverBackfill: (sourceId, operationId, kind, now) =>
+        recoverSavedBackfill({ store, sourceId, operationId, kind, now, validate: parseSourceResult })
+    })
   const jobs = createSourceJobs({
     repair,
     store,

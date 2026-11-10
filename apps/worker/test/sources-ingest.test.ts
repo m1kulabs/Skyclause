@@ -269,3 +269,54 @@ test('a reserved operation finalizes and repairs the same bytes after other prod
     MAX_PENDING_RESULTS
   )
 })
+
+test.each(['unchanged', 'error'] as const)(
+  'zero-row %s results retain fanout and ack without readings-updated',
+  async (outcome) => {
+    const store = new MemoryStore(),
+      r = result()
+    let ref: unknown
+    if (outcome === 'error') {
+      r.polls[0]!.outcome = 'error'
+      r.polls[0]!.error = { type: 'schema', message: 'bad schema' }
+      r.requests[0]!.error = r.polls[0]!.error
+    }
+    await publishSourceResult(r, {
+      store,
+      publish: async (value) => {
+        ref = value
+      }
+    })
+    const fanout = vi.fn(async () => {}),
+      publish = vi.fn(async () => {
+        throw new Error('unnecessary publication')
+      }),
+      ack = vi.fn(async () => {})
+    await drainSourceResults({
+      pull: async () => [{ ackId: 'zero', data: ref }],
+      ack,
+      ingest: (data) =>
+        ingestSourceResult(data, {
+          store,
+          persist: async () => [
+            {
+              id: id(800),
+              sourceId: id(3),
+              kind: r.kind,
+              outcome,
+              httpStatus: 200,
+              newRows: 0,
+              purpose: 'poll',
+              startedAt: new Date(r.requests[0]!.startedAt)
+            }
+          ],
+          fanout,
+          publish
+        })
+    })
+    expect(fanout).toHaveBeenCalledTimes(1)
+    expect(publish).not.toHaveBeenCalled()
+    expect(ack).toHaveBeenCalledWith(['zero'])
+    expect(await store.read(`control/receipts/${r.operationId}.json`)).not.toBeNull()
+  }
+)

@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import type { Source, SourceAdapter } from '@skyclause/sources'
 import { executeAdapter, type SourceContextFactory } from './execute'
 import { decodeObject, encodeObject, hasCode, loadSourceResult, saveSourceResult } from './storage'
@@ -130,5 +131,58 @@ export async function runBackfillOnce<Raw>(
   } finally {
     stop.abort()
     await heartbeat
+  }
+}
+
+/** Recover only already-saved bytes, fencing running-claim completion without admitting HTTP. */
+export async function recoverSavedBackfill(options: {
+  store: SourceObjectStore
+  sourceId: string
+  operationId: string
+  kind: SourceExecutionResult['kind']
+  now: Date
+  validate(value: unknown): unknown
+}): Promise<SourceExecutionResult | null> {
+  const path = `control/backfills/${options.sourceId}.json`
+  for (;;) {
+    const saved = await options.store.read(path)
+    if (!saved) return null
+    const claim = z
+      .strictObject({
+        state: z.enum(['running', 'complete']),
+        operationId: z.uuid(),
+        owner: z.uuid(),
+        leaseExpiresAt: z.number().finite(),
+        resultPath: z.string(),
+        scheduledAt: z.iso.datetime().nullable()
+      })
+      .parse(decodeObject(saved.body))
+    if (
+      claim.operationId !== options.operationId ||
+      claim.resultPath !== `control/results/backfills/${options.sourceId}/${claim.operationId}/${claim.owner}.json`
+    )
+      throw new Error('Invalid backfill recovery identity')
+    if (claim.state === 'running' && claim.leaseExpiresAt > options.now.getTime()) return null
+    const result = await loadSourceResult(options.store, claim.resultPath, options.validate)
+    if (!result) return null
+    if (
+      result.operationId !== claim.operationId ||
+      result.kind !== options.kind ||
+      result.purpose !== 'backfill' ||
+      result.scheduledAt !== claim.scheduledAt ||
+      !result.polls.length ||
+      result.polls.some((p) => p.sourceId !== options.sourceId) ||
+      result.requests.some((r) => r.sourceIds.length !== 1 || r.sourceIds[0] !== options.sourceId)
+    )
+      throw new Error('Invalid saved backfill result')
+    if (claim.state === 'running') {
+      try {
+        await options.store.write(path, encodeObject({ ...claim, state: 'complete' }), saved.generation)
+      } catch (error) {
+        if (hasCode(error, 412)) continue
+        throw error
+      }
+    }
+    return result
   }
 }

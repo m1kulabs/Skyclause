@@ -11,7 +11,7 @@ import {
   type Source,
   type SourceKind
 } from '@skyclause/sources'
-import { takeSourceBudget } from './budget'
+import { takeSourceBudget, SOURCE_ADMISSION_MS } from './budget'
 import type { CapturedPollContext, RequestCapture, SourceClock, SourceError, SourceObjectStore } from './types'
 
 export const sourceClock: SourceClock = {
@@ -77,6 +77,9 @@ export function createPollContext(options: PollContextOptions): CapturedPollCont
     sourceIds: options.sources.map((source) => source.id),
     url: null,
     startedAt: clock.now().toISOString(),
+    admissionStartedAt: clock.now().toISOString(),
+    admissionMs: 0,
+    transportStartedAt: null,
     httpStatus: null,
     latencyMs: 0,
     body: null,
@@ -109,6 +112,7 @@ export function createPollContext(options: PollContextOptions): CapturedPollCont
             if (index >= 0) credits.splice(index, 1)
             request.error = sourceError(error)
             request.latencyMs = elapsed(started)
+            request.admissionMs = request.latencyMs
             if (!requests.includes(request)) requests.push(request)
             throw error
           }
@@ -124,11 +128,13 @@ export function createPollContext(options: PollContextOptions): CapturedPollCont
         const timer = new AbortController(),
           transport = new AbortController()
         let response: Response | undefined
+        let transportStarted: number | undefined
         try {
           if (credit) await credit.reserved
           else if (options.family) await takeSourceBudget(options.budget, options.family, request.requestId, clock)
           // Preflight credit retains its original deadline; consuming it never restarts admission.
-          if (options.family && clock.monotonic() >= started + 20000) throw new RateLimitedError(options.family)
+          if (options.family && clock.monotonic() >= started + SOURCE_ADMISSION_MS)
+            throw new RateLimitedError(options.family)
           const headers = new Headers(init?.headers)
           headers.set('User-Agent', options.userAgent)
           const timeout = clock.sleep(20000, timer.signal).then(() => {
@@ -140,13 +146,19 @@ export function createPollContext(options: PollContextOptions): CapturedPollCont
           })
           const data = (async () => {
             try {
+              if (options.family && clock.monotonic() >= started + SOURCE_ADMISSION_MS)
+                throw new RateLimitedError(options.family)
+              transportStarted = clock.monotonic()
+              request.admissionMs = elapsed(started)
+              request.startedAt = clock.now().toISOString()
+              request.transportStartedAt = request.startedAt
               response = await options.http(url, { headers, redirect: 'manual', signal: transport.signal })
               if (transport.signal.aborted) throw new TimeoutError(url)
               request.httpStatus = response.status
               if (!response.ok) throw new HttpError(response.status, url)
               return new Uint8Array(await response.arrayBuffer())
             } catch (error) {
-              if (error instanceof HttpError) throw error
+              if (error instanceof HttpError || error instanceof RateLimitedError) throw error
               if (transport.signal.aborted) throw new TimeoutError(url)
               throw new NetworkError(url, error)
             }
@@ -175,7 +187,8 @@ export function createPollContext(options: PollContextOptions): CapturedPollCont
           throw error
         } finally {
           timer.abort()
-          request.latencyMs = elapsed(started)
+          request.latencyMs = elapsed(transportStarted ?? started)
+          if (transportStarted === undefined) request.admissionMs = elapsed(started)
         }
       })
   }

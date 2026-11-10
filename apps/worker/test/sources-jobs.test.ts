@@ -356,3 +356,327 @@ test('backfill consuming the final slot stops subsequent polling before HTTP', a
     'complete'
   )
 })
+
+test.each(['per_source', 'all_bound'] as const)(
+  'daily %s contract probe fetches and parses exactly once without domain writes',
+  async (batch) => {
+    const store = new MemoryStore(),
+      clock = new TestClock(),
+      ids = [sid.replace(/1$/, '3'), sid, sid.replace(/1$/, '2')]
+    const groups: string[][] = []
+    let parses = 0,
+      requests = 0
+    const a = adapter({
+      batch,
+      fetch: async (sources, ctx) => {
+        groups.push(sources.map((source) => source.id))
+        return (await ctx.http(sources[0]!.url)).json()
+      },
+      parse: () => {
+        parses++
+        return []
+      }
+    })
+    await store.write(
+      'control/plan.json',
+      encodeObject({
+        version: 1,
+        generatedAt: clock.now().toISOString(),
+        sources: ids.map((id) => ({
+          source: source(id),
+          bindings: [{ orgId: sid, projectId: sid }],
+          previousPollDigest: null,
+          previousBackfillDigest: null
+        })),
+        periods: []
+      }),
+      '0'
+    )
+    const publish = vi.fn(async () => {}),
+      snapshot = vi.fn(async () => {
+        throw new Error('no database')
+      })
+    const jobs = createSourceJobs({
+      store,
+      scratch: store,
+      clock,
+      id: randomUUID,
+      adapters: [a],
+      http: async () => {
+        requests++
+        return new Response('{}')
+      },
+      userAgent: 'test',
+      publish,
+      database: {
+        snapshot,
+        catalogue: async () => {
+          throw new Error('no database')
+        }
+      },
+      log: () => {}
+    })
+    await jobs.adapterContracts()
+    expect(groups).toEqual([batch === 'per_source' ? [sid] : ids])
+    expect(parses).toBe(1)
+    expect(requests).toBe(1)
+    expect(
+      JSON.parse(Buffer.from((await store.read('control/budgets/datagovmy-weather.json'))!.body).toString()).requests
+    ).toHaveLength(1)
+    expect(publish).not.toHaveBeenCalled()
+    expect(snapshot).not.toHaveBeenCalled()
+  }
+)
+import { sourceConfig } from '../src/sources/index'
+test('documented ADAPTER_USER_AGENT reaches HTTP and cannot be replaced by legacy configuration', async () => {
+  const env = {
+    SOURCES_BUCKET: 'sources',
+    SCRATCH_BUCKET: 'scratch',
+    GCP_PROJECT: 'project',
+    SOURCE_RESULTS_SUBSCRIPTION: 'results',
+    ADAPTER_USER_AGENT: 'ConfiguredAdapter/2.0',
+    SOURCE_USER_AGENT: 'legacy must not win'
+  }
+  const config = sourceConfig(env)
+  expect(config.userAgent).toBe(env.ADAPTER_USER_AGENT)
+  const t = setup()
+  await plan(t)
+  const jobs = createSourceJobs({
+    store: t.store,
+    scratch: t.store,
+    clock: t.clock,
+    id: randomUUID,
+    adapters: [adapter({ parse: () => [] })],
+    http: async (_, init) => {
+      expect(new Headers(init?.headers).get('user-agent')).toBe(env.ADAPTER_USER_AGENT)
+      return new Response('{}')
+    },
+    userAgent: config.userAgent,
+    publish: async () => {},
+    database: t.database,
+    log: () => {}
+  })
+  await jobs.runAdapter('jps_rain', null)
+  const { ADAPTER_USER_AGENT: _, ...missing } = env
+  expect(() => sourceConfig(missing)).toThrow('ADAPTER_USER_AGENT')
+})
+
+import {
+  repairSourceResults,
+  SOURCE_RESERVATION_MS,
+  reserveSourceResult,
+  type ResultReference
+} from '../src/sources/pubsub'
+import { ingestSourceResult, parseSourceResult } from '../src/sources/ingest'
+import { recoverSavedBackfill } from '../src/sources/backfill'
+async function interruptedBackfill(crash: 'saved-before-complete' | 'complete-before-publish' | 'delivery-save') {
+  const store = new MemoryStore(),
+    clock = new TestClock(),
+    write = store.write.bind(store),
+    refs: ResultReference[] = []
+  let armed = true,
+    backfillGets = 0,
+    pollGets = 0
+  if (crash === 'saved-before-complete')
+    store.write = async (path, body, generation) => {
+      if (
+        path.startsWith('control/backfills/') &&
+        JSON.parse(Buffer.from(body).toString()).state === 'complete' &&
+        armed
+      ) {
+        armed = false
+        throw new Error('interrupted after save')
+      }
+      return write(path, body, generation)
+    }
+  if (crash === 'delivery-save')
+    store.write = async (path, body, generation) => {
+      if (path.startsWith('control/deliveries/') && armed) {
+        armed = false
+        throw new Error('interrupted before delivery save')
+      }
+      return write(path, body, generation)
+    }
+  await store.write(
+    'control/plan.json',
+    encodeObject({
+      version: 1,
+      generatedAt: clock.now().toISOString(),
+      sources: [
+        {
+          source: source(sid),
+          bindings: [{ orgId: sid, projectId: sid }],
+          previousPollDigest: null,
+          previousBackfillDigest: null
+        }
+      ],
+      periods: []
+    }),
+    '0'
+  )
+  const savedPlan = await readSourcePlan(store),
+    entry = savedPlan.sources[0]!,
+    a = adapter({
+      apiFamily: undefined,
+      backfill: async (s, ctx) => (await ctx.http(s.url + '/backfill')).json(),
+      parse: () => []
+    })
+  const publishRef = async (ref: ResultReference) => {
+    refs.push(ref)
+  }
+  const repair = () =>
+    repairSourceResults({
+      store,
+      publish: publishRef,
+      now: clock.now,
+      recoverBackfill: (sourceId, operationId, kind, now) =>
+        recoverSavedBackfill({ store, sourceId, operationId, kind, now, validate: parseSourceResult })
+    })
+  const jobs = createSourceJobs({
+    store,
+    scratch: store,
+    clock,
+    id: randomUUID,
+    adapters: [a],
+    repair,
+    http: async (url) => {
+      if (String(url).endsWith('/backfill')) backfillGets++
+      else pollGets++
+      return new Response('{}')
+    },
+    userAgent: 'test',
+    publish: async (result) => {
+      if (crash === 'complete-before-publish' && armed) {
+        armed = false
+        throw new Error('interrupted before publish')
+      }
+      await publishSourceResult(result, { store, publish: publishRef })
+    },
+    database: { snapshot: async () => savedPlan, catalogue: async () => {} },
+    log: () => {}
+  })
+  await expect(jobs.backfill(entry, savedPlan, null)).rejects.toThrow('interrupted')
+  const claim = JSON.parse(Buffer.from((await store.read(`control/backfills/${sid}.json`))!.body).toString())
+  const original = (await store.read(claim.resultPath))!
+  expect(backfillGets).toBe(1)
+  expect(refs).toHaveLength(0)
+  await clock.advance(SOURCE_RESERVATION_MS + 1)
+  return {
+    store,
+    clock,
+    jobs,
+    repair,
+    refs,
+    claim,
+    original,
+    write,
+    backfillGets: () => backfillGets,
+    pollGets: () => pollGets
+  }
+}
+test.each([
+  ['saved-before-complete', 'adapter'],
+  ['complete-before-publish', 'adapter'],
+  ['saved-before-complete', 'batch'],
+  ['complete-before-publish', 'batch'],
+  ['delivery-save', 'batch']
+] as const)('saved backfill %s recovers through %s after the reservation reporting deadline', async (crash, via) => {
+  const t = await interruptedBackfill(crash),
+    acks: string[][] = []
+  if (via === 'adapter') await t.jobs.runAdapter('jps_rain', null)
+  else {
+    const part = sourcePart(() => ({
+      jobs: t.jobs,
+      store: t.store,
+      repair: t.repair,
+      subscription: {
+        pullSourceResults: async () => t.refs.map((data, index) => ({ ackId: String(index), data })),
+        ackSourceResults: async (ids) => {
+          acks.push(ids)
+        }
+      },
+      ingest: (data) =>
+        ingestSourceResult(data, {
+          store: t.store,
+          persist: async () => [],
+          fanout: async () => {},
+          publish: async () => {
+            throw new Error('no domain reading write')
+          }
+        })
+    }))
+    await part.batch!['sources-ingest']!(t.clock.now())
+    expect(acks.length).toBeGreaterThan(0)
+  }
+  expect(t.backfillGets()).toBe(1)
+  expect(t.pollGets()).toBe(via === 'adapter' ? 1 : 0)
+  expect(t.refs.some((ref) => ref.operation_id === t.claim.operationId)).toBe(true)
+  expect(await t.store.read(t.claim.resultPath)).toEqual(t.original)
+  expect(JSON.parse(Buffer.from((await t.store.read(`control/backfills/${sid}.json`))!.body).toString()).state).toBe(
+    'complete'
+  )
+  // A genuinely missing intent still blocks all fresh provider HTTP after saved-result repair.
+  await reserveSourceResult(
+    t.store,
+    randomUUID(),
+    'jps_rain',
+    new Date(t.clock.now().getTime() - SOURCE_RESERVATION_MS - 1)
+  )
+  await expect(t.jobs.runAdapter('jps_rain', null)).rejects.toThrow('reservation expired')
+  expect(t.backfillGets()).toBe(1)
+  expect(t.pollGets()).toBe(via === 'adapter' ? 1 : 0)
+})
+test('saved backfill recovery respects a replacement claim generation and publishes no stale bytes', async () => {
+  const t = await interruptedBackfill('saved-before-complete')
+  let replaced = false
+  t.store.write = async (path, body, generation) => {
+    if (
+      path === `control/backfills/${sid}.json` &&
+      JSON.parse(Buffer.from(body).toString()).state === 'complete' &&
+      !replaced
+    ) {
+      replaced = true
+      const owner = randomUUID()
+      await t.write(
+        path,
+        encodeObject({
+          ...t.claim,
+          owner,
+          state: 'running',
+          leaseExpiresAt: t.clock.now().getTime() + 60000,
+          resultPath: `control/results/backfills/${sid}/${t.claim.operationId}/${owner}.json`
+        }),
+        generation
+      )
+    }
+    return t.write(path, body, generation)
+  }
+  await expect(t.jobs.runAdapter('jps_rain', null)).rejects.toThrow('reservation expired')
+  expect(replaced).toBe(true)
+  expect(t.refs).toEqual([])
+  expect(t.backfillGets()).toBe(1)
+  expect(t.pollGets()).toBe(0)
+})
+
+test.each(['body-hash', 'operation', 'source'] as const)(
+  'recovery refuses corrupt saved backfill %s before claim completion or publication',
+  async (corruption) => {
+    const t = await interruptedBackfill('saved-before-complete')
+    const result = JSON.parse(Buffer.from(t.original.body).toString())
+    if (corruption === 'body-hash') result.requests[0].body = 'YQ=='
+    if (corruption === 'operation') result.operationId = randomUUID()
+    if (corruption === 'source') {
+      const id = randomUUID()
+      result.requests[0].sourceIds = [id]
+      result.polls[0].sourceId = id
+    }
+    await t.write(t.claim.resultPath, encodeObject(result), t.original.generation)
+    await expect(t.jobs.runAdapter('jps_rain', null)).rejects.toThrow()
+    expect(t.refs).toEqual([])
+    expect(t.backfillGets()).toBe(1)
+    expect(t.pollGets()).toBe(0)
+    expect(JSON.parse(Buffer.from((await t.store.read(`control/backfills/${sid}.json`))!.body).toString()).state).toBe(
+      'running'
+    )
+  }
+)

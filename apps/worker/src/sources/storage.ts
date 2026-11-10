@@ -116,7 +116,11 @@ export async function saveSourceResult(
       throw new Error('Conflicting immutable source result')
   }
 }
-export async function loadSourceResult(store: SourceObjectStore, path: string): Promise<SourceExecutionResult | null> {
+export async function loadSourceResult(
+  store: SourceObjectStore,
+  path: string,
+  validate?: (value: unknown) => unknown
+): Promise<SourceExecutionResult | null> {
   const saved = await store.read(path)
   if (!saved) return null
   const result = decodeObject<
@@ -124,6 +128,7 @@ export async function loadSourceResult(store: SourceObjectStore, path: string): 
       requests: Array<Omit<SourceExecutionResult['requests'][number], 'body'> & { body: string | null }>
     }
   >(saved.body)
+  validate?.(result)
   return {
     ...result,
     requests: result.requests.map((request) => ({

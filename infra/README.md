@@ -173,7 +173,7 @@ gcloud run jobs execute adapter-contracts --region=asia-southeast1 --project=sky
 gcloud scheduler jobs run ticks-batch --location=asia-southeast1 --project=skyclause
 ```
 
-Source execution validates `SOURCES_BUCKET`, `SCRATCH_BUCKET`, `GCP_PROJECT`, `SOURCE_USER_AGENT` and `SOURCE_RESULTS_SUBSCRIPTION` when called. Unrelated worker routes and jobs can import the registry without source configuration or credentials.
+Set `app_config.ADAPTER_USER_AGENT` to the required upstream identification string; the runtime uses that configured value without a hardcoded override. Source execution validates `SOURCES_BUCKET`, `SCRATCH_BUCKET`, `GCP_PROJECT`, `ADAPTER_USER_AGENT` and `SOURCE_RESULTS_SUBSCRIPTION` when called. Unrelated worker routes and jobs can import the registry without source configuration or credentials.
 
 The generic entrypoint is `node main.js job adapter <registered-kind> [--scheduled-at <ISO-instant>]`. Manual invocations retain a null scheduled slot. The current Scheduler-to-Cloud-Run job module cannot forward its dynamic scheduled time; #125's minute handler can pass the original slot to exported `runAdapter(kind, scheduledAt)`. Production dispatch-lag evidence remains unverified until that route supplies the real scheduled slot. Never use the execution clock as a replacement.
 
