@@ -56,6 +56,29 @@ async function problemCode(response: Response) {
 }
 
 describe('/api/me/preferences', () => {
+  it('preserves omitted preferences when another appearance setting changes', async () => {
+    const { principal } = await makePrincipal()
+    const app = api()
+    const saved = await apiRequest(app, {
+      as: principal,
+      method: 'PATCH',
+      path: '/api/me/preferences',
+      body: { shortcuts: false, sidebar_collapsed: true }
+    })
+    expect(saved.status).toBe(200)
+
+    const changed = await apiRequest(app, {
+      as: principal,
+      method: 'PATCH',
+      path: '/api/me/preferences',
+      body: { theme: 'light' }
+    })
+    expect(changed.status).toBe(200)
+    expect(await changed.json()).toMatchObject({ theme: 'light', shortcuts: false, sidebar_collapsed: true })
+    const reloaded = await apiRequest(app, { as: principal, method: 'GET', path: '/api/me/preferences' })
+    expect(await reloaded.json()).toMatchObject({ theme: 'light', shortcuts: false, sidebar_collapsed: true })
+  })
+
   it('returns the account defaults and persists a partial update for a guest session', async () => {
     const { principal } = await makePrincipal({ guest: true })
     const app = api()

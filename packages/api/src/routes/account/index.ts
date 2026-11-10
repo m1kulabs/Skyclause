@@ -43,7 +43,12 @@ export const accountHandlers: {
   },
   updateMyPreferences: {
     handler: async (c) => {
-      const preferences = await updateAccountPreferences(sessionOf(c).accountId, c.req.valid('json'))
+      // Partial schemas still apply field defaults; a PATCH must only persist fields the caller sent.
+      const submitted = await c.req.json<Record<string, unknown>>()
+      const update = Object.fromEntries(
+        Object.entries(c.req.valid('json')).filter(([key]) => Object.hasOwn(submitted, key))
+      )
+      const preferences = await updateAccountPreferences(sessionOf(c).accountId, update)
       if (!preferences) throw new ApiError(404, 'not-found', 'The account does not exist.')
       return c.json(preferences, 200)
     }
