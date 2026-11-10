@@ -603,7 +603,7 @@ export const Verification = z.object({
   tested_at: Instant,
   result: z.string(),
   tested_by: z.string(),
-  notes: z.string()
+  notes: z.string().nullable()
 })
 export type Verification = z.infer<typeof Verification>
 export const PublicProjectState = z.object({

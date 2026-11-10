@@ -14,6 +14,7 @@ function loadConfig(): ApiConfig {
   return {
     appEnv: env.APP_ENV,
     appOrigin: env.APP_ORIGIN,
+    mcpOrigin: env.MCP_ORIGIN,
     ipHashKey: env.IP_HASH_KEY,
     marketingOrigin: env.MARKETING_ORIGIN,
     vapidPublicKey: env.VAPID_PUBLIC_KEY

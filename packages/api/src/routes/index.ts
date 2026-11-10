@@ -7,6 +7,7 @@ import { alertHandlers } from './alerts'
 import { analysisHandlers } from './analysis'
 import { bundleHandlers } from './bundles'
 import { channelHandlers } from './channels'
+import { connectHandlers } from './connect'
 import { evidenceHandlers } from './evidence'
 import { gradesHandlers } from './grades'
 import { ledgerHandlers } from './ledger'
@@ -50,5 +51,6 @@ export const HANDLERS: Handlers = {
   ...approvalHandlers, // c-approval-api
   ...alertHandlers, // c-approver-alerts
   ...notificationHandlers, // c-notifications
-  ...analysisHandlers // c-analysis-api
+  ...analysisHandlers, // c-analysis-api
+  ...connectHandlers // e-connect-api
 }

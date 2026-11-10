@@ -17,6 +17,7 @@ export * from './approvals'
 export * from './bundles'
 export { recordAudit } from './audit'
 export * from './channels'
+export * from './connect'
 export * from './evidence'
 export {
   DOMAIN_EVENTS_TOPIC,
