@@ -16,6 +16,7 @@ import {
   reading,
   recordAudit,
   run,
+  saveEvaluatorSnapshot,
   sheetVersion,
   systemPrincipal,
   withTenant,
@@ -31,7 +32,6 @@ import {
   type Scene
 } from '@skyclause/db/test/bundles/scene'
 import {
-  makeIndicatorSnapshot,
   makeMember,
   makeOrganization,
   makeProjectChannel,
@@ -64,6 +64,9 @@ const capture: { stationId: string; data: Array<{ timestamp: string; rf: number 
 )
 const myt = (local: string) => new Date(`2026-11-02T${local}:00+08:00`)
 const GAUGE = 'site.rain_60m_mm'
+const gaugeRegistry = [
+  { name: GAUGE, celType: 'double' as const, unit: 'mm', scope: 'site' as const, sourceKind: 'jps_rain' as const }
+]
 
 const A = 'approvals-a'
 const B = 'approvals-b'
@@ -107,8 +110,7 @@ const snapshots: SnapshotSource = {
         observedAt: latest.toISOString()
       }
     }
-    const hash = canonicalHash({ site: { [GAUGE]: { ...site[GAUGE], ageS: null } } })
-    const snapshot: IndicatorSnapshot = {
+    const body = {
       projectId: q.projectId,
       pack: q.pack,
       tEval: q.tEval,
@@ -116,12 +118,11 @@ const snapshots: SnapshotSource = {
       site,
       series: {},
       nights: [],
-      registryHash: 'registry-double',
-      hash
+      registryHash: canonicalHash(gaugeRegistry)
     }
+    const snapshot: IndicatorSnapshot = { ...body, hash: canonicalHash(body) }
     if (!q.persist) return { snapshotId: null, snapshot }
-    const row = await makeIndicatorSnapshot(tx, { projectId: q.projectId, pack: q.pack, tEval: t, site, hash })
-    return { snapshotId: row.id, snapshot }
+    return saveEvaluatorSnapshot(tx, { snapshot, registry: gaugeRegistry, windows: q.windows })
   }
 }
 

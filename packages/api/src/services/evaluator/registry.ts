@@ -1,6 +1,7 @@
 import { canonicalHash, type IndicatorDefinition, type ReadingHistory, type SourceKind } from '@skyclause/clauses'
 import { NotBuiltError } from '@skyclause/contracts'
 import { SOURCE_METRICS, type SourceAdapter } from '@skyclause/sources'
+import { loadEvaluatorRegistry } from '@skyclause/db'
 import type { RuntimeIndicatorRegistry } from '../clause-sheets/ports'
 
 /** Real installed adapter declarations are the only current registry authority. */
@@ -16,9 +17,9 @@ export function createRuntimeRegistry(adapters: readonly SourceAdapter<unknown>[
           byName.set(definition.name, { ...definition })
         }
       const definitions = [...byName.values()].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
-      if (!definitions.length) throw new NotBuiltError('b-evaluator:indicator-registry')
       if (q.registryHash !== undefined && q.registryHash !== canonicalHash(definitions))
-        throw new NotBuiltError('b-evaluator:historical-registry')
+        return loadEvaluatorRegistry(_tx, { projectId: q.projectId, pack: q.pack, registryHash: q.registryHash })
+      if (!definitions.length) throw new NotBuiltError('b-evaluator:indicator-registry')
       return definitions
     }
   }

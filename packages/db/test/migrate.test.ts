@@ -151,3 +151,81 @@ test('poll receipt migration preserves legacy append-only rows with unknown avai
     rmSync(folder, { recursive: true, force: true })
   }
 }, 120_000)
+
+test.each([false, true])(
+  'snapshot migration preserves legacy evidence; duplicate=%s stops with diagnosis',
+  async (duplicate) => {
+    const database = await emptyDatabase()
+    const url = localUrl('migrator', database)
+    const folder = mkdtempSync(join(tmpdir(), 'skyclause-snapshot-archive-'))
+    try {
+      cpSync(migrationsFolder, folder, { recursive: true })
+      const journalPath = join(folder, 'meta/_journal.json')
+      const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as { entries: Array<{ tag: string }> }
+      const index = journal.entries.findIndex((entry) => entry.tag.endsWith('_b-evaluator-snapshots'))
+      expect(index).toBeGreaterThan(0)
+      journal.entries = journal.entries.slice(0, index)
+      writeFileSync(journalPath, JSON.stringify(journal))
+      await migrate(url, folder)
+      const before = await asLogin(
+        'postgres',
+        async (client) => {
+          const org = await client.query(
+            "INSERT INTO auth.organization (name, slug, created_at) VALUES ('Snapshot migration', 'snapshot-migration', now()) RETURNING id"
+          )
+          const p = await client.query(
+            "INSERT INTO project (org_id, slug, name, time_zone) VALUES ($1, 'snapshot-migration', 'Snapshot migration', 'Asia/Kuala_Lumpur') RETURNING id",
+            [org.rows[0].id]
+          )
+          for (let count = 0; count < (duplicate ? 2 : 1); count++)
+            await client.query(
+              "INSERT INTO indicator_snapshot (org_id, project_id, pack, t_eval, inputs, site, series, nights, hash) VALUES ($1, $2, 'sky', '2026-11-10T04:00:00Z', '[]', '{}', '{}', '[]', 'legacy')",
+              [org.rows[0].id, p.rows[0].id]
+            )
+          return (await client.query('SELECT * FROM indicator_snapshot ORDER BY id')).rows
+        },
+        database
+      )
+      if (duplicate) {
+        await expect(migrate(url, migrationsFolder)).rejects.toThrow(
+          /evaluator snapshot duplicate key.*immutable rows require diagnosis/
+        )
+        const after = await asLogin(
+          'postgres',
+          (client) => client.query('SELECT * FROM indicator_snapshot ORDER BY id'),
+          database
+        )
+        expect(after.rows).toEqual(before)
+      } else {
+        expect(await migrate(url, migrationsFolder)).toEqual(tags.slice(index))
+        const after = await asLogin(
+          'postgres',
+          (client) => client.query('SELECT * FROM indicator_snapshot ORDER BY id'),
+          database
+        )
+        expect(after.rows).toEqual(
+          before.map((row) => ({
+            ...row,
+            snapshot_body: null,
+            registry_definitions: null,
+            frozen_windows: null,
+            archive_hash: null
+          }))
+        )
+        const columns = await asLogin(
+          'postgres',
+          (client) =>
+            client.query(
+              "SELECT column_name, column_default, is_nullable FROM information_schema.columns WHERE table_name = 'indicator_snapshot' AND column_name IN ('snapshot_body', 'registry_definitions', 'frozen_windows', 'archive_hash') ORDER BY column_name"
+            ),
+          database
+        )
+        expect(columns.rows).toHaveLength(4)
+        expect(columns.rows.every((row) => row.column_default === null && row.is_nullable === 'YES')).toBe(true)
+      }
+    } finally {
+      rmSync(folder, { recursive: true, force: true })
+    }
+  },
+  120_000
+)

@@ -330,6 +330,13 @@
       "when": 1794319868206,
       "tag": "0046_b-evaluator-poll-receipt",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1794322420256,
+      "tag": "0047_b-evaluator-snapshots",
+      "breakpoints": true
     }
   ]
 }

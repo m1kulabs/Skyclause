@@ -97,3 +97,4 @@ export {
 
 export { createRuntimeRegistry } from './services/evaluator/registry'
 export { loadEvaluatorHistory } from './services/evaluator/history'
+export { createEvaluatorProviders, type EvaluatorProviders } from './services/evaluator'
