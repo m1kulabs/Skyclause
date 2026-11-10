@@ -1,0 +1,11 @@
+# P1 auditor core design
+
+Implement #132’s worker-owned audit registry and15-minute batch tick, backed by an S-table of open/recovered findings. Run orgchecks in tenant transactions as system job auditor and platformchecks once without an organisation. The database uniqueindex arbitrates concurrent transitions. No actual source/check is registered by this feature; its owners register later.
+
+The user authorized autonomous core-code delivery with isolated simulations, reviewed merges and important live checks retained separately. Independent worktrees permit this auditor component alongside engine/project work, one writer per issue; shared CI and main integration stay serialized. Keep existing RegisterAuditCheck/Notify/EmailTransport shapes. Existing API placeholder is misplaced and must move to its owning worker boundary, never a package importing an app.
+
+A check failure or20-second deadline must preserve its prior findings and allow otherorgs/checks to progress. Use a separate guarded Drizzle session facade with an absolute deadline, serial query submission, server statementtimeouts, revocation and draining before outer rollback/connectionreuse. Never patch the real sharedclient or leave late callbacks able to issue SQL. No synchronous-JavaScript interruption guarantee is possible under unchangedcallbacks; make that intrinsiclimitexplicit.
+
+Notify orgtransitions in the winning transaction via the real notificationseam. Platformmessages use current EmailTransport and configured stafflist only, lazycredentials; tests inject transports. Existing SES transporttags idempotency keys rather than providerdeduplication. Do not claim crash/partial-recipient exactly-once delivery from a fake. Record this material limitation for rootreview and an importantfollowup; no live sends or inventedrecipients. If a coreguarantee cannot be implemented safely, report concerns instead of a false DONE.
+
+Tests use real isolated Postgres for uniqueness/RLS/concurrency/timeout draining and fakeclocks/transports for timing/mail/metrics. The implementation registers only batchwork and heartbeat, never runcreation or audit_event writes. No realmail, sharedpilot deployment, credentialschanges or seededruntimebusinessdata are authorized.

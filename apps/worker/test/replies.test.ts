@@ -143,6 +143,33 @@ describe('crowd-replies: a reply to a Crowd notice’s Reply-To', () => {
     expect(await drops(message.messageId)).toEqual([])
   })
 
+  test('a redelivered SES message writes no second reply, ledger entry or drop, even with an unspent token', async () => {
+    const message = mail(await replyToken())
+    await handleCrowdReply(message)
+    // Same message ID, a fresh token: only the handled-message record stops it.
+    const again = { ...message, recipient: `r+${await replyToken()}@${DOMAIN}` }
+    await handleCrowdReply(again)
+    expect(await replies()).toHaveLength(1)
+    expect(await sql(`SELECT 1 FROM ledger_entry WHERE project_id = $1`, [projectId])).toHaveLength(1)
+
+    const unreadable = mail(await replyToken(), { text: 'Keep please' })
+    await handleCrowdReply(unreadable)
+    await handleCrowdReply({ ...unreadable, recipient: `r+${await replyToken()}@${DOMAIN}` })
+    expect(await drops(unreadable.messageId)).toHaveLength(1)
+    expect(
+      await sql(`SELECT 1 FROM handled_message WHERE consumer = 'crowd-replies' AND message_id = $1`, [
+        unreadable.messageId
+      ])
+    ).toHaveLength(1)
+  })
+
+  test('a spent token still refuses a different message', async () => {
+    const token = await replyToken()
+    await handleCrowdReply(mail(token, { text: 'keep' }))
+    await handleCrowdReply(mail(token, { text: 'shuttle' }))
+    expect((await replies()).map((row) => row.kind)).toEqual(['keep'])
+  })
+
   test('the first unquoted line decides, in any case; anything else is dropped with one audit row and no reply', async () => {
     const cases: Array<[string, string | null]> = [
       ['KEEP\n', 'keep'],

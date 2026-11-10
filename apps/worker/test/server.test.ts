@@ -371,6 +371,7 @@ describe('worker 15-minute batch connection', () => {
         'notice-sweep',
         'shift-reminder-plan',
         'approver-alert-resend',
+        'auditor',
         'exports:timeout'
       ])
       expect((await post(app, '/ticks/batch', { bearer: await token() })).status).toBe(204)

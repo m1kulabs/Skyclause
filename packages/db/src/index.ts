@@ -10,6 +10,7 @@ export {
   type Tx
 } from './client'
 export * from './alerts'
+export * from './analysis'
 export { track } from './analytics'
 export * from './api'
 export * from './approvals'
@@ -18,10 +19,19 @@ export { recordAudit } from './audit'
 export * from './channels'
 export * from './data-rights'
 export * from './evidence'
-export { emitEvent, handleOnce, loadEvent, republishEvents, setEventPublisher, type EventPublisher } from './events'
+export {
+  DOMAIN_EVENTS_TOPIC,
+  emitEvent,
+  handleOnce,
+  loadEvent,
+  republishEvents,
+  setEventPublisher,
+  type EventPublisher
+} from './events'
 export { FEATURE_FLAGS, isFlagEnabled, setFlag, type FeatureFlagKey } from './flags'
 export { projectGate } from './gate'
 export * from './grades'
+export * from './ics'
 export * from './ledger'
 export { migrate } from './migrate'
 export * from './notices'
@@ -38,3 +48,5 @@ export * from './replies'
 export * from './schema'
 export * from './schema/partitioned'
 export * from './subscribers'
+
+export * from './auditor'

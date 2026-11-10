@@ -1,4 +1,4 @@
-import type { Operations, Pack, Principal } from '@skyclause/contracts'
+import { HTTP_PROBLEM_STATUS, type Operations, type Pack, type Principal } from '@skyclause/contracts'
 import {
   budgetGate,
   bundle,
@@ -34,7 +34,7 @@ export type RunView = Ok<'getRun'>
 type RunRow = typeof run.$inferSelect
 
 const tx = (ctx: ServiceContext) => ctx.tx as Tx
-const notFound = () => new ApiError(404, 'not-found', 'No run with this ID.')
+const notFound = () => new ApiError(HTTP_PROBLEM_STATUS['not-found'], 'not-found', 'No run with this ID.')
 const invalid = (pointer: string, detail: string) =>
   new ApiError(422, 'validation-failed', 'The request is invalid.', { errors: [{ in: 'body', pointer, detail }] })
 
