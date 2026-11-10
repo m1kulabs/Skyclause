@@ -12,6 +12,12 @@ export function expectedStatus(route: CrawlRoute, role: Role) {
   if (route.group === 'app' && route.path.startsWith('/account/')) {
     if (!hasSession(role) || (role === 'guest' && route.path !== '/account/appearance')) return 404
   }
+  if (route.group === 'app' && route.params?.includes('org')) {
+    const isOwnerOrAdmin = role === 'Owner' || role === 'Admin'
+    if (route.path.endsWith('/new') || route.path.endsWith('/settings/packs')) {
+      return isOwnerOrAdmin ? route.status : 404
+    }
+  }
   return route.status
 }
 

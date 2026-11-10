@@ -150,9 +150,17 @@ const OrganisationExport = ExportJob.extend({
 const Deletion = Organisation.pick({ deletion_requested_at: true, purge_after: true })
 
 // ORG-6 names the six onboarding actions; grading is the activation outcome.
-const OnboardingStep = z.enum(['organisation', 'project', 'sources', 'window', 'rota', 'channel'])
-const Onboarding = z.object({
-  steps: z.array(z.object({ step: OnboardingStep, completed_at: Instant.nullable(), skipped: z.boolean() }))
+export const OnboardingStep = z.enum(['organisation', 'project', 'sources', 'window', 'rota', 'channel'])
+export const Onboarding = z.object({
+  steps: z.array(
+    z.object({
+      step: OnboardingStep,
+      completed_at: Instant.nullable(),
+      skipped: z.boolean(),
+      result: z.string().nullable(),
+      href: z.string()
+    })
+  )
 })
 
 // D37 and TRD MCP authorisation: client credentials are shown once on creation.
@@ -938,6 +946,21 @@ export const skipOnboardingStep = createRoute({
   x: { owner: 'b-create-project-ui', statement: 'session', idempotent: false }
 })
 
+export const resumeOnboardingStep = createRoute({
+  method: 'delete',
+  path: '/api/orgs/{org}/onboarding/{step}/skip',
+  operationId: 'resumeOnboardingStep',
+  tags: ['onboarding'],
+  request: { params: OrgParams.extend({ step: OnboardingStep }) },
+  responses: {
+    200: { description: 'Success.', content: { 'application/json': { schema: Onboarding } } },
+    401: Unauthorized,
+    403: Forbidden,
+    404: NotFound
+  },
+  x: { owner: 'b-create-project-ui', statement: 'session', idempotent: false }
+})
+
 export const createProject = createRoute({
   method: 'post',
   path: '/api/orgs/{org}/projects',
@@ -1114,6 +1137,7 @@ export const routes = [
   cancelOrganisationDeletion,
   getOnboarding,
   skipOnboardingStep,
+  resumeOnboardingStep,
   createProject,
   listOauthClients,
   createOauthClient,

@@ -274,6 +274,20 @@
       "when": 1794288551711,
       "tag": "0038_e-mcp-auth",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1794289006964,
+      "tag": "0039_b-create-project-ui-onboarding-skips",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1794289012146,
+      "tag": "0040_b-create-project-ui-activation",
+      "breakpoints": true
     }
   ]
 }

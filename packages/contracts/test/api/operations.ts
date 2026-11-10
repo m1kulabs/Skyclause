@@ -1638,7 +1638,7 @@ export const OPERATIONS: readonly ExpandedOperation[] = [
     statement: 'session',
     idempotent: false,
     crossOrg: false,
-    note: 'GET reads onboarding progress; POST skips a named step (ORG-6).'
+    note: 'GET reads onboarding progress and tracks first-seen completed steps (ORG-6).'
   },
   {
     method: 'post',
@@ -1649,7 +1649,18 @@ export const OPERATIONS: readonly ExpandedOperation[] = [
     statement: 'session',
     idempotent: false,
     crossOrg: false,
-    note: 'GET reads onboarding progress; POST skips a named step (ORG-6).'
+    note: 'POST skips a named step (ORG-6).'
+  },
+  {
+    method: 'delete',
+    path: '/api/orgs/{org}/onboarding/{step}/skip',
+    surface: 'api',
+    operationId: 'resumeOnboardingStep',
+    owner: 'b-create-project-ui',
+    statement: 'session',
+    idempotent: false,
+    crossOrg: false,
+    note: 'DELETE resumes a skipped step (ORG-6).'
   },
   // Project administration
   {
