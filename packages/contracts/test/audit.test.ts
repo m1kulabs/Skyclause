@@ -20,6 +20,8 @@ test('lists each documented audit action once', () => {
     'source.unbound',
     'sla.changed',
     'export.requested',
+    'organisation.deletion_requested',
+    'organisation.deletion_cancelled',
     'organisation.deleted',
     'account.deleted',
     'subscriber.deleted',

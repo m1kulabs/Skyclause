@@ -17,6 +17,7 @@ import { replyHandlers } from './replies'
 import { runHandlers } from './runs'
 import { subscriberHandlers } from './subscribers'
 import { subscriberRightsHandlers } from './subscriber-rights'
+import { dataRightsHandlers } from './data-rights'
 
 /**
  * One operation's handler, typed by its registry route, plus middleware the route's metadata can't express, such as
@@ -54,5 +55,6 @@ export const HANDLERS: Handlers = {
   ...approvalHandlers, // c-approval-api
   ...alertHandlers, // c-approver-alerts
   ...notificationHandlers, // c-notifications
-  ...analysisHandlers // c-analysis-api
+  ...analysisHandlers, // c-analysis-api
+  ...dataRightsHandlers // a-data-rights
 }

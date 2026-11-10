@@ -34,6 +34,8 @@ const OWNERS: Record<AuditAction, string> = {
   'source.unbound': '#138',
   'sla.changed': '#138',
   'export.requested': '#109',
+  'organisation.deletion_requested': '#109',
+  'organisation.deletion_cancelled': '#109',
   'organisation.deleted': '#109',
   'account.deleted': '#109',
   'subscriber.deleted': '#110',

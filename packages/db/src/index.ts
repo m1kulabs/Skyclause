@@ -29,6 +29,7 @@ export {
   type AuditRow
 } from './audit'
 export * from './channels'
+export * from './data-rights'
 export * from './evidence'
 export {
   DOMAIN_EVENTS_TOPIC,

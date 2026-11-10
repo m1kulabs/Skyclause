@@ -38,6 +38,12 @@ export interface ApiDeps {
   recordAudit: RecordAudit
   /** Spec §1 `EmailTransport` for the emails a route sends itself (c-subscribers' confirmations). */
   email: EmailTransport
+  /** Cloud Tasks and GCS seams for a-data-rights; tests inject deterministic doubles. */
+  dataRights?: {
+    enqueueExport(exportId: string): Promise<void>
+    signDownload(objectPath: string, expiresAt: Date): Promise<string>
+    deleteAccountExports(accountId: string): Promise<number>
+  }
   config: () => ApiConfig
   now: () => Date
 }
