@@ -1,5 +1,5 @@
 import { ROLES, type AuditAction, type Role, type TxHandle } from '@skyclause/contracts'
-import { and, asc, desc, eq, getTableColumns, inArray, isNull, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, getTableColumns, inArray, isNull, sql, type SQL } from 'drizzle-orm'
 import { authDatabase } from '../auth'
 import type { Tx } from '../client'
 import { auditEvent } from '../schema'
@@ -56,10 +56,10 @@ export async function listAudit(
     .limit(q.limit + 1)
 }
 
-/** Oldest first, up to `limit` rows above `after` and at or below `upto`, one export page. */
+/** Newest first, up to `limit` rows below `before` and at or below `upto`, one export page. */
 export async function auditExportPage(
   handle: TxHandle,
-  q: { filters: AuditFilters; after?: AuditCursor; upto?: AuditCursor; limit: number }
+  q: { filters: AuditFilters; before?: AuditCursor; upto?: AuditCursor; limit: number }
 ): Promise<AuditRow[]> {
   const tx = handle as Tx
   return tx
@@ -68,11 +68,11 @@ export async function auditExportPage(
     .where(
       and(
         matching(q.filters),
-        q.after ? sql`${position} > (${q.after.at}, ${q.after.id})` : undefined,
+        q.before ? sql`${position} < (${q.before.at}, ${q.before.id})` : undefined,
         q.upto ? sql`${position} <= (${q.upto.at}, ${q.upto.id})` : undefined
       )
     )
-    .orderBy(asc(auditEvent.at), asc(auditEvent.id))
+    .orderBy(desc(auditEvent.at), desc(auditEvent.id))
     .limit(q.limit)
 }
 

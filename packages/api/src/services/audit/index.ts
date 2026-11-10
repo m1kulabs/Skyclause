@@ -129,35 +129,11 @@ const cell = (entry: AuditExportEntry, column: string): string | null => {
 
 const entryCsv = (entry: AuditExportEntry) => csvLine(CSV_COLUMNS.map((column) => cell(entry, column)))
 
-/** The whole filtered set newest first, for the JSON export; row for row the list's entries. */
-export async function exportAuditJson(
-  ctx: ServiceContext,
-  q: { filters: AuditListFilters }
-): Promise<AuditExportEntry[]> {
-  await recordAudit(ctx.tx, {
-    action: 'export.requested',
-    target: { type: 'audit_log', id: ctx.tx.orgId! }
-  })
-  const filters = toDbFilters(q.filters)
-  const entries: AuditExportEntry[] = []
-  let cursor: AuditCursor | undefined
-  for (;;) {
-    const rows = await listAudit(ctx.tx, { filters, limit: CSV_PAGE, cursor })
-    if (!rows.length) return entries
-    entries.push(...(await withDisplay(ctx.tx.orgId!, rows)).map(({ row, display }) => toEntry(row, display)))
-    if (rows.length <= CSV_PAGE) return entries
-    const last = rows.at(-1)!
-    cursor = { at: last.cursorAt, id: last.id }
-  }
-}
-
-/**
- * The CSV header and the filtered set oldest first up to the head read now, one `withTenant` per page. The export
- * writes exactly one `export.requested` entry, read back like any other row.
- */
-export async function exportAuditCsv(
+/** Both formats stream the same newest-first rows, bounded by the head captured for this export. */
+async function exportAudit(
   ctx: ServiceContext,
   q: { filters: AuditListFilters },
+  format: 'csv' | 'json',
   inTransaction: <T>(fn: (ctx: ServiceContext) => Promise<T>) => Promise<T>
 ): Promise<ReadableStream<Uint8Array>> {
   await recordAudit(ctx.tx, {
@@ -168,20 +144,44 @@ export async function exportAuditCsv(
   const orgId = ctx.tx.orgId!
   const upto = await auditHead(ctx.tx)
   const encoder = new TextEncoder()
-  let after: AuditCursor | undefined
-  return new ReadableStream({
-    start(controller) {
-      controller.enqueue(encoder.encode(csvLine(CSV_COLUMNS)))
+  let before: AuditCursor | undefined
+  let first = true
+  return new ReadableStream(
+    {
+      start(controller) {
+        controller.enqueue(encoder.encode(format === 'csv' ? csvLine(CSV_COLUMNS) : '['))
+      },
+      async pull(controller) {
+        const rows = await inTransaction((next) =>
+          auditExportPage(next.tx, { filters, before, upto: upto ?? undefined, limit: CSV_PAGE })
+        )
+        const entries = (await withDisplay(orgId, rows)).map(({ row, display }) => toEntry(row, display))
+        const text =
+          format === 'csv'
+            ? entries.map(entryCsv).join('')
+            : `${!first && entries.length ? ',' : ''}${entries.map((entry) => JSON.stringify(entry)).join(',')}`
+        if (text.length) controller.enqueue(encoder.encode(text))
+        if (entries.length) first = false
+        const last = rows.at(-1)
+        if (last) before = { at: last.cursorAt, id: last.id }
+        if (rows.length < CSV_PAGE) {
+          if (format === 'json') controller.enqueue(encoder.encode(']'))
+          controller.close()
+        }
+      }
     },
-    async pull(controller) {
-      const rows = await inTransaction((next) =>
-        auditExportPage(next.tx, { filters, after, upto: upto ?? undefined, limit: CSV_PAGE })
-      )
-      const text = (await withDisplay(orgId, rows)).map(({ row, display }) => entryCsv(toEntry(row, display))).join('')
-      if (text.length) controller.enqueue(encoder.encode(text))
-      const last = rows.at(-1)
-      after = last ? { at: last.cursorAt, id: last.id } : after
-      if (rows.length < CSV_PAGE) controller.close()
-    }
-  })
+    { highWaterMark: 0 }
+  )
 }
+
+export const exportAuditJson = (
+  ctx: ServiceContext,
+  q: { filters: AuditListFilters },
+  inTransaction: <T>(fn: (ctx: ServiceContext) => Promise<T>) => Promise<T>
+) => exportAudit(ctx, q, 'json', inTransaction)
+
+export const exportAuditCsv = (
+  ctx: ServiceContext,
+  q: { filters: AuditListFilters },
+  inTransaction: <T>(fn: (ctx: ServiceContext) => Promise<T>) => Promise<T>
+) => exportAudit(ctx, q, 'csv', inTransaction)

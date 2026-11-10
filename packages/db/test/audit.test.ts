@@ -283,7 +283,7 @@ test('the filtered list uses the new indexes', async () => {
   expect(indexes.some((name) => name.startsWith('audit_event_org_'))).toBe(true)
 })
 
-test('exports page oldest first up to the head', async () => {
+test('exports page newest first up to the head', async () => {
   const target = randomUUID()
   for (let i = 0; i < 3; i++) {
     await asMember((tx) => recordAudit(tx, { action: 'source.bound', target: { type: 'walk', id: target }, projectId }))
@@ -297,11 +297,11 @@ test('exports page oldest first up to the head', async () => {
   const rest = await asMember((tx) =>
     auditExportPage(tx, {
       filters: { targetId: target },
-      after: { at: first.at(-1)!.at, id: first.at(-1)!.id },
+      before: { at: first.at(-1)!.cursorAt, id: first.at(-1)!.id },
       upto: head ?? undefined,
       limit: 2
     })
   )
   expect(rest).toHaveLength(1)
-  expect(first[0]!.at.getTime()).toBeLessThanOrEqual(first[1]!.at.getTime())
+  expect(first[0]!.at.getTime()).toBeGreaterThanOrEqual(first[1]!.at.getTime())
 })

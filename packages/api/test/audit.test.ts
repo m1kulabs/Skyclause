@@ -1,5 +1,6 @@
 // #107 a-audit-log: the `/api/orgs/{org}/audit[/export]` reads on the #79 §7 test database, through
 // createTestApi with the real withTenant and recordAudit (only the auth seams are doubles).
+import { exportAuditJson } from '../src/services/audit'
 import { Problem, REGISTRY } from '@skyclause/contracts'
 import { auditEvent, recordAudit, user, withTenant, type Tx } from '@skyclause/db'
 import { authDatabase } from '@skyclause/db/auth'
@@ -287,9 +288,9 @@ describe('export', () => {
         })
       )
     )
-    // The CSV holds the filtered set oldest first; the JSON holds it newest first, starting with its own entry.
+    // Both formats hold the filtered set newest first; JSON also includes its own export entry.
     expect(fromCsv).toHaveLength(json.length - 1)
-    expect([...fromCsv].reverse()).toEqual(json.slice(1))
+    expect(fromCsv).toEqual(json.slice(1))
     // RFC 4180: the JSON's quotes are doubled inside the quoted CSV field (`\"` becomes `\"\"`).
     expect(csvText).toContain('a, \\""quoted\\"" value')
   })
@@ -345,4 +346,50 @@ test('list cursors preserve historical microseconds across tied timestamps', asy
   }
   expect(seen).toHaveLength(250)
   expect(new Set(seen).size).toBe(250)
+})
+
+test('exports stream multiple pages with historical timestamp precision and matching order', async () => {
+  const target = 'legacy-export'
+  await inOrg((tx) =>
+    tx.insert(auditEvent).values(
+      Array.from({ length: 1001 }, () => ({
+        orgId,
+        actorType: 'system' as const,
+        actorId: 'legacy-writer',
+        client: 'worker' as const,
+        action: 'source.bound',
+        targetType: target,
+        targetId: target,
+        at: sql`'2099-11-01T00:00:00.123456Z'::timestamptz`
+      }))
+    )
+  )
+  const csv = parseCsv(await (await get('/api/orgs/audit-home/audit/export', { target_type: target })).text())
+  const json = (await (
+    await get('/api/orgs/audit-home/audit/export', { target_type: target, format: 'json' })
+  ).json()) as Array<{ id: string }>
+  expect(csv).toHaveLength(1002)
+  expect(json).toHaveLength(1001)
+  expect(new Set(json.map((row) => row.id)).size).toBe(1001)
+  expect(csv.slice(1).map((row) => row[0])).toEqual(json.map((row) => row.id))
+
+  let pageReads = 0
+  const stream = await inOrg((tx) =>
+    exportAuditJson({ tx, principal: tx.principal }, { filters: { target_type: target } }, (fn) => {
+      pageReads++
+      return inOrg((next) => fn({ tx: next, principal: next.principal }))
+    })
+  )
+  const reader = stream.getReader()
+  expect(new TextDecoder().decode((await reader.read()).value)).toBe('[')
+  expect(pageReads).toBe(0)
+  const chunks: Uint8Array[] = []
+  for (;;) {
+    const { value, done } = await reader.read()
+    if (done) break
+    chunks.push(value!)
+  }
+  expect(pageReads).toBe(3)
+  const exported = JSON.parse('[' + Buffer.concat(chunks).toString()) as Array<{ id: string }>
+  expect(exported.map((row) => row.id)).toEqual(json.map((row) => row.id))
 })
