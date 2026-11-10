@@ -1,1 +1,5 @@
 * text=auto eol=lf
+
+# Preserve the original JPS HTTP response bytes, including CRLF.
+/docs/sources/infobanjirjpskl.water.gov.my/rainfall-latest-data-all-20261110T1215Z.html -text
+/packages/sources/test/fixtures/rainfall-latest-data-all-20261110T1215Z.html -text
