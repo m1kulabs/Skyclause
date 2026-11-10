@@ -1,4 +1,5 @@
-import { and, count, eq, isNull, sql } from 'drizzle-orm'
+import { createHash } from 'node:crypto'
+import { and, count, eq, isNull, lt, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { DEFAULT_PREFERENCES, Preferences, type Preferences as PreferenceValues } from '@skyclause/contracts'
 import { connection } from './client'
@@ -10,6 +11,41 @@ import * as auth from './schema/auth'
  */
 export function authDatabase() {
   return drizzle(connection('AUTH').pool, { schema: auth })
+}
+
+function rateLimitId(key: string) {
+  const bytes = createHash('sha256').update(`step-up-rate-limit:${key}`).digest()
+  bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x50
+  bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80
+  const hex = bytes.toString('hex')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`
+}
+
+/** An atomic fixed-window counter for #100's hashed step-up buckets. */
+export async function hitStepUpLimit(key: string, o: { limit: number; windowS: number; now: Date }) {
+  const db = authDatabase()
+  const id = rateLimitId(key)
+  const identifier = `step-up-rate-limit:${key}`
+  const expiresAt = new Date(o.now.getTime() + o.windowS * 1000)
+  await db
+    .delete(auth.verification)
+    .where(
+      and(sql`${auth.verification.identifier} LIKE 'step-up-rate-limit:%'`, lt(auth.verification.expiresAt, o.now))
+    )
+  const [row] = await db
+    .insert(auth.verification)
+    .values({ id, identifier, value: '1', expiresAt, createdAt: o.now, updatedAt: o.now })
+    .onConflictDoUpdate({
+      target: auth.verification.id,
+      set: {
+        value: sql`CASE WHEN ${auth.verification.expiresAt} <= ${o.now} THEN '1' ELSE (${auth.verification.value}::integer + 1)::text END`,
+        expiresAt: sql`CASE WHEN ${auth.verification.expiresAt} <= ${o.now} THEN ${expiresAt} ELSE ${auth.verification.expiresAt} END`,
+        updatedAt: o.now
+      }
+    })
+    .returning({ value: auth.verification.value, expiresAt: auth.verification.expiresAt })
+  if (!row) throw new Error('Step-up rate limit counter was not returned')
+  return { allowed: Number(row.value) <= o.limit, resetAt: row.expiresAt }
 }
 
 /** Serializes the complete last-method check and mutation across API and Better Auth requests, on every instance. */

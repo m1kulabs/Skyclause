@@ -140,13 +140,19 @@ test('unlinking the only Google account while magic link is off returns last-sig
 test('unlinking Google requires recent authentication; passkey removal does not', async () => {
   const googleAccount = await addAccount({ google: true })
   const old = new Date(Date.now() - 13 * 60 * 60 * 1000)
-  await authDatabase().update(session).set({ createdAt: old }).where(eq(session.id, googleAccount.login.sessionId))
+  await authDatabase()
+    .update(session)
+    .set({ createdAt: old, reauthenticatedAt: old })
+    .where(eq(session.id, googleAccount.login.sessionId))
   const unlink = await post('/unlink-account', { accountId: googleAccount.googleId }, googleAccount.login.cookie)
   expect(unlink.status).toBe(401)
   expect(await bodyCode(unlink)).toMatchObject({ code: 'reauth-required' })
 
   const passkeyAccount = await addAccount({ passkey: true })
-  await authDatabase().update(session).set({ createdAt: old }).where(eq(session.id, passkeyAccount.login.sessionId))
+  await authDatabase()
+    .update(session)
+    .set({ createdAt: old, reauthenticatedAt: old })
+    .where(eq(session.id, passkeyAccount.login.sessionId))
   const remove = await post('/passkey/delete-passkey', { id: passkeyAccount.passkeyId }, passkeyAccount.login.cookie)
   expect(remove.status).toBe(200)
 })
@@ -154,7 +160,10 @@ test('unlinking Google requires recent authentication; passkey removal does not'
 test('registering a passkey requires recent authentication', async () => {
   const current = await addAccount()
   const old = new Date(Date.now() - 13 * 60 * 60 * 1000)
-  await authDatabase().update(session).set({ createdAt: old }).where(eq(session.id, current.login.sessionId))
+  await authDatabase()
+    .update(session)
+    .set({ createdAt: old, reauthenticatedAt: old })
+    .where(eq(session.id, current.login.sessionId))
 
   const response = await post('/passkey/verify-registration', {}, current.login.cookie)
   expect(response.status).toBe(401)

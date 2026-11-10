@@ -2,17 +2,25 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
 
-test('the landing page has a prerendered shell instead of a fully dynamic response', () => {
+test('the landing page renders its full shell per request for the CSP nonce', async ({ request }) => {
   const manifest = JSON.parse(
     readFileSync(path.join(import.meta.dirname, '../../.next/prerender-manifest.json'), 'utf8')
-  ) as { routes: Record<string, { initialRevalidateSeconds: number | false; renderingMode?: string }> }
+  ) as {
+    routes: Record<
+      string,
+      { initialRevalidateSeconds: number | false; renderingMode?: string; response?: string; compute?: string }
+    >
+  }
 
-  expect(manifest.routes, '/ must remain in the production prerender manifest').toHaveProperty('/')
-  expect(manifest.routes['/']!.initialRevalidateSeconds).not.toBe(0)
-  expect(['STATIC', 'PARTIALLY_STATIC']).toContain(manifest.routes['/']!.renderingMode)
+  expect(manifest.routes, '/ must keep a route entry').toHaveProperty('/')
+  expect(manifest.routes['/']!.response, 'the cached route entry must not contain HTML without a request nonce').toBe(
+    'empty'
+  )
+  expect(manifest.routes['/']!.compute).toBe('blocking')
 
-  // A boundary around the entire document would prerender an empty shell. Keep the landing and shared UI static.
-  const html = readFileSync(path.join(import.meta.dirname, '../../.next/server/app/index.html'), 'utf8')
+  const response = await request.get('/')
+  expect(response.status()).toBe(200)
+  const html = await response.text()
   expect(html).toMatch(/<h1\b[^>]*>Skyclause<\/h1>/)
   expect(html).toContain('class="skip-link"')
   expect(html).toContain('id="main-content"')

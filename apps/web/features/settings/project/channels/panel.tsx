@@ -1,3 +1,5 @@
+import { Channels } from '../../../channels'
+
 export default function Panel() {
-  return <div data-unbuilt="c-channels-ui" />
+  return <Channels />
 }

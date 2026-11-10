@@ -1,5 +1,7 @@
 export { ac, roles } from './access'
+export { apiKeyManager } from './api-keys'
 export { can } from './can'
 export { authHandler, getSessionForRequest, type AuthSettings, type RequestAuthSession } from './instance'
-export { pagePrincipal } from './pages'
+export { deviceAuthorizationPageData, pageAccountEmail, pagePrincipal, type DeviceAuthorizationPageData } from './pages'
 export { resolvePrincipal } from './principal'
+export { completeOAuthConsent, getOAuthConsentDetails, oauthManagement } from './oauth'

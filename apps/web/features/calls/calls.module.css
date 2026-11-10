@@ -1,0 +1,336 @@
+.page,
+.detailPage {
+  display: grid;
+  min-width: 0;
+  gap: 24px;
+}
+
+.titleRow,
+.detailIdentity,
+.sectionTitle,
+.gradeResult,
+.linkValue,
+.copyGroup,
+.pagination {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.titleRow,
+.sectionTitle {
+  justify-content: space-between;
+}
+
+.titleRow h1,
+.detailHeader h1 {
+  margin: 0;
+}
+
+.projectName,
+.detailHeader > p {
+  margin: 8px 0 0;
+  color: var(--muted-foreground);
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  align-items: end;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+}
+
+.field {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  color: var(--foreground);
+  font-size: 0.875rem;
+}
+
+.field select,
+.field input {
+  width: 100%;
+  min-height: 40px;
+  min-width: 0;
+  padding: 0 10px;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-md);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.field :focus-visible,
+.actionLink:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  box-shadow:
+    0 0 0 2px var(--background),
+    0 0 0 4px var(--ring);
+}
+
+.filterButton {
+  min-height: 40px;
+}
+
+.count {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.empty {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+}
+
+.empty p {
+  margin: 0;
+}
+
+.actionLink {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  padding: 6px 10px;
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.tableWrap {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.callsTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.callsTable caption {
+  padding: 8px;
+  text-align: left;
+  color: var(--muted-foreground);
+}
+
+.callsTable th {
+  border-bottom: 1px solid var(--border);
+  padding: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.callsTable :global([data-call]) {
+  border-color: var(--border);
+}
+
+.pagination {
+  justify-content: space-between;
+}
+
+.detailPage {
+  gap: 32px;
+  width: 100%;
+}
+
+.detailPage > * {
+  min-width: 0;
+}
+
+.detailHeader,
+.section {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+}
+
+.detailHeader > p {
+  max-width: 68ch;
+  line-height: 1.6;
+}
+
+.callState {
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+}
+
+.stripSection {
+  min-width: 0;
+  padding-bottom: 8px;
+}
+
+.stripSection :global(svg) {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.section {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+
+.section h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.section h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.section p,
+.section ul,
+.section ol {
+  margin: 0;
+}
+
+.clauseList,
+.stepList {
+  display: grid;
+  gap: 16px;
+  padding-left: 20px;
+}
+
+.clauseInputs {
+  margin-top: 8px !important;
+  color: var(--muted-foreground);
+}
+
+.stepList p {
+  margin-top: 6px;
+}
+
+.delayLine {
+  max-width: 100%;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+}
+
+.expired {
+  border-left: 3px solid var(--destructive);
+  padding: 8px 12px;
+  color: var(--destructive);
+}
+
+.linkValue {
+  min-width: 0;
+}
+
+.linkValue > a,
+.linkValue > code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.linkValue > a {
+  display: inline-flex;
+  min-height: 40px;
+  max-width: 100%;
+  flex: 1 1 20rem;
+  align-items: center;
+}
+
+.traceSection :global([data-slot='trace-collapsible-trigger']) {
+  min-height: 24px;
+}
+
+.traceSection :global([data-slot='trace-description']) {
+  min-width: 0;
+  flex-shrink: 1;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.copyGroup {
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .filterButton {
+    grid-column: 1 / -1;
+  }
+
+  .callsTable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .callsTable tbody :global([data-call]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0 8px;
+    padding: 4px 0;
+  }
+
+  .callsTable tbody :global([data-call]) > td {
+    display: block;
+    min-width: 0;
+    border: 0;
+    padding: 2px 8px;
+  }
+
+  .callsTable tbody :global([data-call]) > td:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .callsTable tbody :global([data-call]) > td:first-child > span:nth-child(2),
+  .callsTable tbody :global([data-call]) > td:nth-child(2) {
+    display: none;
+  }
+
+  .callsTable tbody :global([data-call]) > td:nth-child(3) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .callsTable tbody :global([data-call]) > td:last-child {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
+  }
+
+  .callsTable tbody :global([data-call]) > td:first-child > span:first-child {
+    min-width: 0;
+  }
+
+  .callsTable tbody :global([data-call]) > td:first-child > span:first-child > span:nth-child(2) {
+    max-width: 6rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .delayLine {
+    font-size: 0.875rem;
+  }
+}

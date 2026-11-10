@@ -1,9 +1,12 @@
+import { auditor } from './auditor'
 import { alerts } from './alerts'
+import { aiKeys } from './ai-keys'
 import { analysis } from './analysis'
 import { bundles } from './bundles'
 import { email } from './email'
 import { evidence } from './evidence'
 import { domainEvents } from './events'
+import { dataRights } from './data-rights'
 import { grades } from './grades'
 import { ics } from './ics'
 import { migrations } from './migrate'
@@ -23,6 +26,7 @@ export const registry = defineRegistry([
   migrations, // f-db
   domainEvents, // f-db-schema
   pilotArchive, // c-ledger-chain
+  aiKeys, // e-byok-api
   bundles, // c-bundle-lifecycle
   evidence, // c-evidence
   grades, // c-grades
@@ -32,5 +36,7 @@ export const registry = defineRegistry([
   alerts, // c-approver-alerts
   notifications, // c-notifications
   ics, // c-ics-feed
-  analysis // c-analysis-api
+  analysis, // c-analysis-api
+  auditor, // b-auditor
+  dataRights // a-data-rights
 ])

@@ -1,6 +1,7 @@
 // Spec §7 test harness (f-api): principals, requests, the cross-organisation case and transport doubles. Doubles and
-// in-memory stores live only here, under test/.
-import { randomUUID } from 'node:crypto'
+// in-memory stores live only here, under test/; email transport doubles live in delivery's test harness, re-exported
+// here for existing API tests.
+import { randomBytes, randomUUID } from 'node:crypto'
 import {
   API_ROUTES,
   GRANTS,
@@ -8,19 +9,24 @@ import {
   REGISTRY,
   V1_ROUTES,
   type Can,
-  type EmailTransport,
   type GrantSubject,
+  type ApiKeyManager,
+  type ManagedApiKey,
   type Principal,
   type PushTransport,
   type Role,
   type SkyclauseRoute
 } from '@skyclause/contracts'
 import type { Tx } from '@skyclause/db'
+import { withPublicReader, withSystem } from '@skyclause/db'
+import { createMailbox } from '@skyclause/delivery/testing'
 import { expect } from 'vitest'
 import { createApi, type ApiApp, type Registry } from '../../src/app'
-import type { ApiDeps } from '../../src/context'
+import type { ApiDeps, OAuthManagement } from '../../src/context'
 import { HANDLERS } from '../../src/routes'
 import type { IdempotencyRecord, IdempotencyStore, MembershipLookup, RateLimitStore } from '../../src/stores'
+
+export { createMailbox }
 
 export const TEST_APP_ORIGIN = 'https://app.skyclause.m1ku.tech'
 export const TEST_NOW = new Date('2026-11-08T02:00:00Z')
@@ -28,6 +34,19 @@ export const TEST_NOW = new Date('2026-11-08T02:00:00Z')
 // Organisations and memberships the principal factories register, read by the membership double.
 const orgs = new Map<string, { id: string; slug: string }>()
 const roles = new Map<string, Role>()
+
+function uuidV7(at: number): string {
+  const bytes = randomBytes(16)
+  let timestamp = BigInt(at)
+  for (let i = 5; i >= 0; i--) {
+    bytes[i] = Number(timestamp & 0xffn)
+    timestamp >>= 8n
+  }
+  bytes[6] = (bytes[6]! & 0x0f) | 0x70
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80
+  const hex = bytes.toString('hex')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
 
 export function testOrg(slug: string): { id: string; slug: string } {
   let org = orgs.get(slug)
@@ -53,8 +72,9 @@ export function asSession(o: {
   authenticatedAt?: Date
   staff?: boolean
   via?: 'cookie' | 'bearer'
-}): Principal {
-  const accountId = randomUUID()
+  accountId?: string
+}): Extract<Principal, { kind: 'session' }> {
+  const accountId = o.accountId ?? randomUUID()
   roles.set(`${accountId} ${testOrg(o.org).id}`, o.guest ? 'guest' : o.role)
   const via = o.via ?? 'cookie'
   return {
@@ -172,10 +192,13 @@ export const testCan: Can = (principal, statement) => {
   return role === null || GRANTS[statement][role].allowed
 }
 
-export function memoryIdempotencyStore(): IdempotencyStore {
+export type MemoryIdempotencyStore = IdempotencyStore & { records: Map<string, IdempotencyRecord> }
+
+export function memoryIdempotencyStore(): MemoryIdempotencyStore {
   const records = new Map<string, IdempotencyRecord>()
   const id = (k: { scope: string; route: string; key: string }) => `${k.scope}\n${k.route}\n${k.key}`
   return {
+    records,
     async reserve(record, now) {
       const held = records.get(id(record))
       if (held && held.expiresAt > now) return held
@@ -218,30 +241,117 @@ export interface AuditRow {
 
 export interface TestDeps extends ApiDeps {
   audits: AuditRow[]
+  tracked: Array<{ name: string; props: unknown }>
+  idempotency: MemoryIdempotencyStore
   clock: { advance(ms: number): void }
 }
 
+const oauthDouble: OAuthManagement = {
+  async listClients() {
+    return { data: [], next_cursor: null }
+  },
+  async createClient(input) {
+    return {
+      id: randomUUID(),
+      client_id: 'test-oauth-client',
+      client_name: input.clientName,
+      redirect_uris: input.redirectUris,
+      scopes: input.scopes,
+      created_at: TEST_NOW.toISOString(),
+      client_secret: 'test-only-secret',
+      redirect_uri: 'https://vertexaisearch.cloud.google.com/oauth-redirect',
+      authorization_url: `${TEST_APP_ORIGIN}/api/auth/oauth2/authorize`,
+      token_url: `${TEST_APP_ORIGIN}/api/auth/oauth2/token`
+    }
+  },
+  async deleteClient() {
+    return true
+  },
+  async listGrants() {
+    return { data: [], next_cursor: null }
+  },
+  async revokeGrant() {
+    return true
+  }
+}
+
 /** In-memory stores, the membership and `can` doubles, a `withTenant` double and a clock starting at TEST_NOW. */
-export function testDeps(overrides: Partial<ApiDeps> = {}): TestDeps {
+export function testDeps(overrides: Omit<Partial<ApiDeps>, 'idempotency'> = {}): TestDeps {
   let now = TEST_NOW.getTime()
   const audits: AuditRow[] = []
+  const tracked: TestDeps['tracked'] = []
+  const keys = new Map<string, ManagedApiKey & { key: string }>()
+  const idempotency = memoryIdempotencyStore()
   type FakeTx = { orgId: string; principal: Principal }
+  const apiKeys: ApiKeyManager = {
+    async create(input) {
+      const createdAt = new Date(now)
+      const record: ManagedApiKey = {
+        id: uuidV7(now),
+        organizationId: input.organizationId,
+        creatorId: input.creatorId,
+        name: input.name,
+        prefix: 'skc_',
+        scopes: [...input.scopes],
+        createdAt,
+        expiresAt: new Date(now + input.expiresInDays * 86_400_000),
+        lastUsedAt: null,
+        enabled: true
+      }
+      const key = `skc_${randomUUID().replaceAll('-', '')}`
+      keys.set(record.id, { ...record, key })
+      return { record, key }
+    },
+    async list(query) {
+      return [...keys.values()]
+        .filter(
+          (record) =>
+            record.enabled &&
+            (!query.organizationId || record.organizationId === query.organizationId) &&
+            (!query.creatorId || record.creatorId === query.creatorId)
+        )
+        .map(({ key: _key, ...record }) => ({ ...record }))
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id))
+    },
+    async find(query) {
+      const record = keys.get(query.id)
+      if (!record || (query.organizationId && record.organizationId !== query.organizationId)) return null
+      const { key: _key, ...metadata } = record
+      return { ...metadata }
+    },
+    async revoke(query) {
+      const record = keys.get(query.id)
+      if (!record || (query.organizationId && record.organizationId !== query.organizationId) || !record.enabled)
+        return false
+      keys.set(query.id, { ...record, enabled: false })
+      return true
+    }
+  }
   return {
     resolvePrincipal: async () => null,
     can: testCan,
     membership: testMembership,
-    idempotency: memoryIdempotencyStore(),
+    idempotency,
     rateLimits: memoryRateLimitStore(),
     withTenant: async (ctx, fn) => fn({ orgId: ctx.orgId, principal: ctx.principal } as unknown as Tx),
+    // #111's `/e` seams; the real ones, so a handler test writes rows on the #79 §7 test database.
+    withSystem,
+    withPublicReader,
+    apiKeys,
     recordAudit: async (tx, e) => {
       const { orgId, principal } = tx as unknown as FakeTx
       audits.push({ orgId, actor: principal, action: e.action, target: e.target, after: e.after })
+    },
+    oauth: oauthDouble,
+    track: async (_tx, name, props) => {
+      tracked.push({ name, props })
     },
     email: createMailbox(),
     config: () => ({ appEnv: 'test', appOrigin: TEST_APP_ORIGIN, ipHashKey: 'test-only-ip-hash-key-for-the-harness' }),
     now: () => new Date(now),
     ...overrides,
     audits,
+    tracked,
     clock: {
       advance(ms) {
         now += ms
@@ -323,20 +433,6 @@ export function crossOrgCase(
       })
       expect(response.status, operationId).toBe(404)
       expect(Problem.safeParse(await response.json()).success, operationId).toBe(true)
-    }
-  }
-}
-
-type Email = Parameters<EmailTransport['send']>[0]
-
-/** An `EmailTransport` that keeps what it was asked to send. */
-export function createMailbox(): EmailTransport & { sent: Email[] } {
-  const sent: Email[] = []
-  return {
-    sent,
-    async send(message) {
-      sent.push(message)
-      return { providerMessageId: `mailbox-${sent.length}` }
     }
   }
 }

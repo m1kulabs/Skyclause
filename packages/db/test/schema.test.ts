@@ -137,6 +137,7 @@ test('every table in public has a factory', async () => {
 const G = ['component_check', 'feature_flag', 'guest_block', 'incident', 'incident_update', 'verification']
 const S = [
   'analytics_event',
+  'audit_finding',
   'event_counter',
   'export_job',
   'guest_budget',

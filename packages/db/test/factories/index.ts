@@ -1,10 +1,12 @@
 import type { Tx } from '../../src/client'
 import { makeAiKey } from './ai_key'
+import { makeAiKeyTest } from './ai_key_test'
 import { makeAiUsage } from './ai_usage'
 import { makeAnalysisMetric } from './analysis_metric'
 import { makeAnalyticsEvent } from './analytics_event'
 import { makeApproval } from './approval'
 import { makeAuditEvent } from './audit_event'
+import { makeAuditFinding } from './audit_finding'
 import { makeBundle } from './bundle'
 import { makeBundleAlert } from './bundle_alert'
 import { makeCall } from './call'
@@ -76,11 +78,13 @@ import { makeWindowReport } from './window_report'
 import { makeWindowSeries } from './window_series'
 
 export { makeAiKey } from './ai_key'
+export { makeAiKeyTest } from './ai_key_test'
 export { makeAiUsage } from './ai_usage'
 export { makeAnalysisMetric } from './analysis_metric'
 export { makeAnalyticsEvent } from './analytics_event'
 export { makeApproval } from './approval'
 export { makeAuditEvent } from './audit_event'
+export { makeAuditFinding } from './audit_finding'
 export { makeBundle } from './bundle'
 export { makeBundleAlert } from './bundle_alert'
 export { makeCall } from './call'
@@ -159,6 +163,7 @@ export { nextSeq, rowOf, sheetVersionIn } from './rows'
  */
 export const tenantFactories: Record<string, (tx: Tx) => Promise<unknown>> = {
   ai_key: makeAiKey,
+  ai_key_test: makeAiKeyTest,
   ai_usage: makeAiUsage,
   analysis_metric: makeAnalysisMetric,
   approval: makeApproval,
@@ -224,6 +229,7 @@ export const tenantFactories: Record<string, (tx: Tx) => Promise<unknown>> = {
  */
 export const sharedFactories: Record<string, (tx: Tx) => Promise<unknown>> = {
   analytics_event: makeAnalyticsEvent,
+  audit_finding: makeAuditFinding,
   component_check: makeComponentCheck,
   event_counter: makeEventCounter,
   export_job: makeExportJob,

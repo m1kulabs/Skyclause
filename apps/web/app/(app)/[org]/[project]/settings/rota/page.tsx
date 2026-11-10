@@ -1,13 +1,16 @@
+import { headers } from 'next/headers'
 import Panel from '../../../../../../features/settings/project/rota/panel'
 import { SettingsFrame } from '../../../../../../features/settings/frame'
 import { requireSettings } from '../../../../../../features/settings/gate'
+import { prefersMalay } from '../../../../../../lib/preferred-language'
 
 export default async function Page({ params }: { params: Promise<{ org: string; project: string }> }) {
   const { org, project } = await params
   const principal = await requireSettings({ scope: 'project', section: 'rota', orgId: org })
+  const locale = prefersMalay((await headers()).get('accept-language')) ? 'ms' : 'en'
   return (
     <SettingsFrame scope="project" section="rota" principal={principal} org={org} project={project}>
-      <Panel />
+      <Panel locale={locale} />
     </SettingsFrame>
   )
 }

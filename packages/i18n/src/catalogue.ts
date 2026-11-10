@@ -1,9 +1,10 @@
-import enShell from '../catalogue/en/shell.json'
-import msShell from '../catalogue/ms/shell.json'
-import enFormat from '../catalogue/en/format.json'
-import msFormat from '../catalogue/ms/format.json'
-import enMarketing from '../catalogue/en/marketing.json'
-import msMarketing from '../catalogue/ms/marketing.json'
+import enShell from '../catalogue/en/shell.json' with { type: 'json' }
+import msShell from '../catalogue/ms/shell.json' with { type: 'json' }
+import enFormat from '../catalogue/en/format.json' with { type: 'json' }
+import msFormat from '../catalogue/ms/format.json' with { type: 'json' }
+import enMarketing from '../catalogue/en/marketing.json' with { type: 'json' }
+import msMarketing from '../catalogue/ms/marketing.json' with { type: 'json' }
+import enAuth from '../catalogue/en/auth.json' with { type: 'json' }
 
 interface Catalogue {
   [key: string]: string | Catalogue
@@ -16,7 +17,8 @@ export const catalogueFiles: Record<string, { default: unknown }> = {
   '../catalogue/en/format.json': { default: enFormat },
   '../catalogue/ms/format.json': { default: msFormat },
   '../catalogue/en/marketing.json': { default: enMarketing },
-  '../catalogue/ms/marketing.json': { default: msMarketing }
+  '../catalogue/ms/marketing.json': { default: msMarketing },
+  '../catalogue/en/auth.json': { default: enAuth }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

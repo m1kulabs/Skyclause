@@ -158,7 +158,12 @@ test('ACC-7 revoking a session blocks its next API request', async ({ page, base
   const row = page.locator(`[data-session-id="${second.sessionId}"]`)
   await expect(row).toContainText('Skyclause CLI')
   await row.getByRole('button', { name: 'Revoke' }).click()
+  const revocation = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === '/api/auth/revoke-session' && response.request().method() === 'POST'
+  )
   await page.getByRole('alertdialog').getByRole('button', { name: 'Revoke session' }).click()
+  expect((await revocation).status()).toBe(200)
 
   const otherContext = await browser.newContext()
   await otherContext.addCookies(second.cookies)
@@ -207,6 +212,8 @@ test('SET-2 applies system theme live, saves shortcuts, and enforces reduced mot
   const shortcuts = page.getByRole('switch', { name: 'Keyboard shortcuts' })
   await shortcuts.click()
   await expect(shortcuts).not.toBeChecked()
+  // The toggle is optimistic; wait for its save to finish before reloading.
+  await expect(shortcuts).toBeEnabled()
   await page.reload()
   await expect(page.getByRole('switch', { name: 'Keyboard shortcuts' })).not.toBeChecked()
 

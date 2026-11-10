@@ -2,7 +2,7 @@
 // and Playwright's signInAs. Accounts, organisations and sessions made here exist only in tests (NFR-15). Callers set
 // the web env first (Vitest's setupFiles, or playwright.config.ts) and point DATABASE_URL_* at a test database.
 import { randomUUID } from 'node:crypto'
-import { DEFAULT_PREFERENCES, type Preferences, type Role, type Scope } from '@skyclause/contracts'
+import { DEFAULT_PREFERENCES, type EmailTransport, type Preferences, type Role, type Scope } from '@skyclause/contracts'
 import { account, passkey, session, tokenHash, user, withTenant, type Tx } from '@skyclause/db'
 import {
   makeGuestToken,
@@ -26,6 +26,13 @@ let instance: ReturnType<typeof createAuth> | undefined
 /** The app's configuration plus Better Auth's test-utils plugin, on the same database and secret. */
 const harness = () => (instance ??= createAuth(authSettings(), { plugins: [testUtils()] }))
 const helpers = async () => ((await harness().$context) as unknown as { test: TestHelpers }).test
+
+/** A real auth instance with a mailbox double for integration tests. */
+export function createAuthWithStepUpEmail(sendStepUpEmail: EmailTransport['send']): {
+  handler: (request: Request) => Promise<Response>
+} {
+  return createAuth(authSettings(), { sendStepUpEmail })
+}
 
 export interface TestAccount {
   id: string
@@ -137,6 +144,7 @@ export async function makeApiKey(o: {
     body: {
       organizationId: o.orgId,
       userId: o.accountId,
+      name: 'Test API key',
       permissions: { scopes: o.scopes },
       metadata: { account_id: o.accountId, ...(o.sourceId ? { source_id: o.sourceId } : {}) }
     }
@@ -189,6 +197,7 @@ export async function makeGrant(o: {
   orgId: string
   accountId: string
   clientId?: string
+  resource?: 'api' | 'mcp'
   scopes: Array<'read' | 'draft'>
   projectIds?: string[]
   shareLinkId?: string
@@ -199,6 +208,7 @@ export async function makeGrant(o: {
     makeOauthGrant(tx, {
       accountId: o.accountId,
       clientId,
+      resource: o.resource ?? 'mcp',
       scopes: o.scopes,
       projectIds: o.projectIds ?? null,
       shareLinkId: o.shareLinkId ?? null,
@@ -228,7 +238,11 @@ export async function mintAccessToken(o: {
 }): Promise<string> {
   const auth = harness()
   const settings = authSettings()
-  const jwtOptions = auth.options.plugins.find((plugin) => plugin.id === 'jwt')!.options
+  const jwtPlugin = (
+    auth.options.plugins as Array<{ id: string; options: Parameters<typeof signJWT>[1]['options'] }>
+  ).find((plugin) => plugin.id === 'jwt')
+  if (!jwtPlugin) throw new Error('The JWT plugin is not registered in the auth test harness')
+  const jwtOptions = jwtPlugin.options
   const iat = Math.floor(Date.now() / 1000)
   return signJWT({ context: await auth.$context } as never, {
     options: jwtOptions,

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { authClient } from '@skyclause/auth/client'
 import { t } from '@skyclause/i18n'
 import { useReauth, ReauthDialog } from '../../../reauth'
+import { ReauthCancelledError } from '../../../step-up/flow'
 import { Button } from '#ui/button'
 import { Input } from '#ui/input'
 import { Label } from '#ui/label'
@@ -91,16 +92,13 @@ export default function Panel() {
     const waiter = reauthWaiter.current
     reauthWaiter.current = null
     setReauthOpen(false)
-    waiter?.reject(failure)
+    waiter?.reject(failure instanceof ReauthCancelledError ? new Error(copy('reauthCancelled')) : failure)
   }, [])
 
+  // The dialog settles the step-up before it closes (resolved on success, rejected on cancel); ReauthFlow passes that
+  // outcome to the waiter, so closing alone must not reject it.
   const changeReauthOpen = useCallback((open: boolean) => {
-    setReauthOpen(open)
-    if (!open && reauthWaiter.current) {
-      const waiter = reauthWaiter.current
-      reauthWaiter.current = null
-      waiter.reject(new Error(copy('reauthCancelled')))
-    }
+    if (open) setReauthOpen(true)
   }, [])
 
   useEffect(() => {

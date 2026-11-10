@@ -52,7 +52,13 @@ export async function RequestRootLayout({ children, routeGroup }: Props) {
     motion: hint('sec-ch-prefers-reduced-motion')
   })
   return (
-    <RootDocument appearance={appearance} preferences={preferences} resolved={resolved} routeGroup={routeGroup}>
+    <RootDocument
+      appearance={appearance}
+      preferences={preferences}
+      resolved={resolved}
+      routeGroup={routeGroup}
+      nonce={requestHeaders.get('x-nonce') ?? undefined}
+    >
       {children}
     </RootDocument>
   )
