@@ -16,6 +16,7 @@ import { pilotArchive } from './pilot-archive'
 import { replies } from './replies'
 import { restoreDrill } from './restore-drill'
 import { runs } from './runs'
+import { retention } from './retention'
 import { defineRegistry } from './server'
 
 // Spec §7: each owner appends one line here, naming a `WorkerPart` exported from its own folder,
@@ -38,5 +39,6 @@ export const registry = defineRegistry([
   ics, // c-ics-feed
   analysis, // c-analysis-api
   auditor, // b-auditor
-  dataRights // a-data-rights
+  dataRights, // a-data-rights
+  retention // a-retention
 ])
