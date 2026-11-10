@@ -87,7 +87,12 @@ function contentSecurityPolicy(o: { surface: Surface | null; camera: boolean; no
   const embed = o.surface === 'embed'
   const apiOrigin = process.env.NEXT_PUBLIC_API_ORIGIN ?? process.env.API_ORIGIN
   const mcpOrigin = process.env.MCP_ORIGIN ?? 'https://mcp.skyclause.m1ku.tech'
-  const connectOrigins = [apiOrigin, o.surface === 'app' ? mcpOrigin : undefined].filter(
+  // Probation fetches each frame's signed URL (`signFrameUrl`'s path-style V4 read) and shows it as a blob: only
+  // that bucket's path, never the whole storage host.
+  const framesBucket = process.env.FRAMES_BUCKET
+  const frames = framesBucket ? `https://storage.googleapis.com/${framesBucket}/` : undefined
+  const app = o.surface === 'app'
+  const connectOrigins = [apiOrigin, app ? mcpOrigin : undefined, app ? frames : undefined].filter(
     (origin): origin is string => Boolean(origin) && origin !== 'self'
   )
   const connect = `connect-src 'self'${connectOrigins.map((origin) => ` ${origin}`).join('')}`

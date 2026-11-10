@@ -38,7 +38,7 @@ Contents:
 - The appearance script stays pinned by its SHA-256 hash beside the nonce. The planted-page test proves a nonced script runs and an unnonced one does not.
 - The camera service worker still uses the `worker-src` fallback, and the app's inline style attributes still need `style-src 'unsafe-inline'`.
 - `style-src` keeps `'unsafe-inline'` because inline style attributes are load-bearing (theme `colorScheme`, charts, camera, virtual rows); nonces cannot cover attributes, so the entry stays listed until those move to classes.
-- `connect-src` is `'self'` plus the configured API origin and, on app surfaces, the MCP origin used to read `tools.json`; `img-src` is `'self' data: blob:` for bundled art and camera object URLs.
+- `connect-src` is `'self'` plus the configured API origin and, on app surfaces, the MCP origin used to read `tools.json` and the `FRAMES_BUCKET` path on `storage.googleapis.com` that probation fetches its signed frames from; `img-src` is `'self' data: blob:` for bundled art and camera object URLs.
 - Production header quoting waits on #90: each host's live response headers go on the issue, not in this file.
 
 ## See also

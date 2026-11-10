@@ -123,6 +123,16 @@ describe('securityHeaders', () => {
     expect(marketing).not.toContain(ORIGINS.MCP_ORIGIN)
   })
 
+  it('lets probation fetch its signed frames from the frames bucket alone, on app routes only', () => {
+    vi.stubEnv('FRAMES_BUCKET', 'skyclause-production-frames')
+    const app = csp('https://app.skyclause.m1ku.tech/apu/bukit-jalil/signals/probation/camera-1', multi)
+    const marketing = csp('https://skyclause.m1ku.tech/', multi)
+
+    expect(app).toMatch(/connect-src [^;]* https:\/\/storage\.googleapis\.com\/skyclause-production-frames\/(;|$)/)
+    expect(app).not.toMatch(/https:\/\/storage\.googleapis\.com(;| )/)
+    expect(marketing).not.toContain('storage.googleapis.com')
+  })
+
   it('allow-lists the static appearance script by hash beside the nonce', () => {
     const hash = `'sha256-${createHash('sha256').update(APPEARANCE_SCRIPT).digest('base64')}'`
     for (const [url, config] of [
