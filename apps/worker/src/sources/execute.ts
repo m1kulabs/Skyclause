@@ -64,6 +64,7 @@ export async function executeAdapter<Raw>(
       startedAt = options.clock.now().toISOString()
     let error: SourceError | null = null
     let rows: ReadingInput[] = []
+    const parseErrors = new Map<string, SourceError>()
     let unchanged = new Set<string>()
     let fetched: { raw: Raw } | undefined
     try {
@@ -95,10 +96,27 @@ export async function executeAdapter<Raw>(
               .filter((source) => options.previousDigest?.(source.id, options.purpose) === requests[0]!.bodySha256)
               .map((source) => source.id)
           )
-        if (unchanged.size !== group.length)
-          rows = validateReadings(adapter.kind, group, adapter.parse(fetched.raw, group)).filter(
-            (row) => !unchanged.has(row.sourceId)
-          )
+        if (unchanged.size !== group.length) {
+          if (adapter.parseMode === 'per_source') {
+            for (const source of group) {
+              if (unchanged.has(source.id)) continue
+              try {
+                rows.push(...validateReadings(adapter.kind, [source], adapter.parse(fetched.raw, [source])))
+              } catch (cause) {
+                const localError = sourceError(cause)
+                if (localError.type === 'internal') throw cause
+                parseErrors.set(source.id, {
+                  ...localError,
+                  message: `${source.externalId} (${source.id}): ${localError.message}`
+                })
+              }
+            }
+          } else {
+            rows = validateReadings(adapter.kind, group, adapter.parse(fetched.raw, group)).filter(
+              (row) => !unchanged.has(row.sourceId)
+            )
+          }
+        }
       } catch (cause) {
         error = sourceError(cause)
         if (error.type === 'internal') throw cause
@@ -122,9 +140,10 @@ export async function executeAdapter<Raw>(
     const last = requests.at(-1)!
     for (const request of requests) {
       for (const source of group) {
-        const readings = request === last ? rows.filter((row) => row.sourceId === source.id) : []
-        const outcome = error ? 'error' : readings.length ? 'ok' : 'unchanged'
-        result.polls.push({ sourceId: source.id, requestId: request.requestId, outcome, error, readings })
+        const pollError = error ?? parseErrors.get(source.id) ?? null
+        const readings = !pollError && request === last ? rows.filter((row) => row.sourceId === source.id) : []
+        const outcome = pollError ? 'error' : readings.length ? 'ok' : 'unchanged'
+        result.polls.push({ sourceId: source.id, requestId: request.requestId, outcome, error: pollError, readings })
       }
       ctx.log('source.request', {
         adapter: adapter.kind,
@@ -140,7 +159,7 @@ export async function executeAdapter<Raw>(
           options.scheduledAt === null
             ? null
             : Math.max(0, Date.parse(request.startedAt) - Date.parse(options.scheduledAt)),
-        outcome: error ? 'error' : request === last && rows.length ? 'ok' : 'unchanged',
+        outcome: error || parseErrors.size ? 'error' : request === last && rows.length ? 'ok' : 'unchanged',
         http_status: request.httpStatus,
         duration_ms: request.latencyMs
       })

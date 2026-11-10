@@ -23,3 +23,7 @@ packages/agent/test/fixtures/mapcaqm-*.json
 packages/sources/test/fixtures/rainfall-graph-*.json
 packages/sources/test/fixtures/rainfall-latest-data-*.html
 docs/sources/infobanjirjpskl.water.gov.my/rainfall-latest-data-*.html
+
+# Preserve APIMS response captures byte-for-byte.
+packages/sources/test/fixtures/mapcaqm-*.json
+packages/sources/test/fixtures/apitablehourly-*.json
