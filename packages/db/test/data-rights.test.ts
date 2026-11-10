@@ -28,6 +28,7 @@ import {
   apikey,
   auditEvent,
   account as authAccount,
+  clauseSheet,
   invitation,
   ledgerEntry,
   member,
@@ -43,6 +44,7 @@ import {
 } from '../src/schema'
 import {
   makeAiKey,
+  makeClauseSheet,
   makeAuditEvent,
   makeLedgerEntry,
   makeMember,
@@ -56,6 +58,7 @@ import {
   makePoll,
   makeReading,
   makeSource,
+  makeSheetVersion,
   sharedFactories,
   tenantFactories
 } from './factories'
@@ -368,6 +371,9 @@ describe('a-data-rights database operations', () => {
       for (const make of Object.values(tenantFactories)) await make(tx)
       for (const make of Object.values(sharedFactories)) await make(tx)
       const project = await makeProject(tx)
+      const sheet = await makeClauseSheet(tx, { projectId: project.id })
+      const published = await makeSheetVersion(tx, { sheetId: sheet.id, status: 'published', publishedAt: new Date() })
+      await tx.update(clauseSheet).set({ liveVersionId: published.id }).where(eq(clauseSheet.id, sheet.id))
       const source = await makeSource(tx)
       const poll = await makePoll(tx, { sourceId: source.id })
       await makeReading(tx, { sourceId: source.id, pollId: poll.id })

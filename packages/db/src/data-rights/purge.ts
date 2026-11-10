@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNotNull, lte, sql } from 'drizzle-orm'
 import { withRetention, type Tx } from '../client'
-import { organization, source, sourceState } from '../schema'
+import { clauseSheet, organization, source, sourceState } from '../schema'
 import { poll, reading } from '../schema/partitioned'
 import { OrganisationDeletionExpiredError, OrganisationNotFoundError } from './errors'
 
@@ -122,6 +122,8 @@ export async function purgeOrganization(orgId: string, now = new Date()) {
       counts.source_state = stateRows.length
     }
 
+    // Published sheets point back to their versions, which already belong to the sheet.
+    await tx.update(clauseSheet).set({ liveVersionId: null }).where(eq(clauseSheet.orgId, orgId))
     const tables = await childFirstOrder(tx, await organisationColumnTables(tx))
     for (const table of tables) {
       const predicate = sql.join(
