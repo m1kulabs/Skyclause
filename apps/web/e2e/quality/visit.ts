@@ -12,6 +12,8 @@ export function expectedStatus(route: CrawlRoute, role: Role) {
   if (route.group === 'app' && route.path.startsWith('/account/')) {
     if (!hasSession(role) || (role === 'guest' && route.path !== '/account/appearance')) return 404
   }
+  // PRD routes: the dashboard is for members. A share link reaches only its own project, so the organisation 404s.
+  if ((route.path === '/[org]' || route.path === '/test-org') && role === 'share-link reviewer') return 404
   return route.status
 }
 
