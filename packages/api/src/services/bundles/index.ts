@@ -59,10 +59,17 @@ export function inScope(principal: Principal, projectId: string) {
   return true
 }
 
-/** Window titles go to members only (NFR-11): a member's session, an API key or an OAuth grant with a role. */
+/**
+ * Whether the principal reads as a member: `can`'s column for it is Owner, Admin, Approver, Editor or Viewer (PRD roles
+ * table). That is a signed-in session, an API key or an OAuth grant whose role is one of those. A guest (anonymous, or
+ * the `guest` role on any of them), a guest token, a share link and a link-bound grant take the Guest or Share-link
+ * reviewer column, so they don't.
+ */
 export function isMember(principal: Principal) {
-  if (principal.kind === 'session') return !principal.isGuest && principal.role !== null
-  return principal.kind === 'api_key' || (principal.kind === 'oauth' && principal.role !== null)
+  if (principal.kind === 'session' && principal.isGuest) return false
+  const role =
+    principal.kind === 'session' || principal.kind === 'api_key' || principal.kind === 'oauth' ? principal.role : null
+  return role !== null && role !== 'guest'
 }
 
 export async function visibleProject(ctx: ServiceContext, projectId: string) {

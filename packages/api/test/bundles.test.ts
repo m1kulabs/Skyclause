@@ -1,8 +1,9 @@
 // #150: c-bundle-lifecycle's `/v1` reads on the #79 §7 test database, through the mounted app with f-api's harness:
 // CAL-5's trace line, CAL-12's four instants, filters and paging, the stream's resume, a cross-organisation 404 and a
 // denial below `project.view` on each operation.
+import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import type { EventEnvelope, Page, Principal } from '@skyclause/contracts'
+import type { EventEnvelope, Page, Principal, Role } from '@skyclause/contracts'
 import {
   bundle,
   createBundle,
@@ -31,14 +32,24 @@ import {
 import { asLogin } from '@skyclause/db/test/harness/index'
 import { eq } from 'drizzle-orm'
 import { beforeAll, describe, expect, test, vi } from 'vitest'
-import type { BundleDetail, BundleView, CallDetail, CallExplanation, CallView } from '../src/services/bundles'
+import {
+  isMember,
+  type BundleDetail,
+  type BundleView,
+  type CallDetail,
+  type CallExplanation,
+  type CallView
+} from '../src/services/bundles'
 import type { WithTenant } from '../src/tenancy'
 import {
   apiRequest,
   asApiKey,
+  asDevice,
   asGuestToken,
   asOAuth,
   asSession,
+  asShareLink,
+  asSystem,
   createTestApi,
   crossOrgCase,
   testDeps,
@@ -539,6 +550,34 @@ describe('GET /v1/projects/{id}/bundles/stream', () => {
     const ids = [...text.matchAll(/^id: (\d+)$/gm)].map((m) => Number(m[1]))
     expect(ids).toEqual([...stored.map((e) => e.seq).filter((s) => s > 1), next.seq])
     expect(text).toContain(`event: ${stored[1]!.type}\n`)
+  })
+})
+
+describe('#521 isMember: the PRD columns Owner to Viewer, never Guest, a share link or a link-bound grant', () => {
+  const session = (role: Role | null, isGuest = false) =>
+    ({ ...asSession({ org: A, role: 'viewer' }), orgId: testOrg(A).id, role, isGuest }) as Principal
+  test.each([
+    ...(['owner', 'admin', 'approver', 'editor', 'viewer'] as const).flatMap((role) => [
+      { who: `a ${role}’s session`, principal: session(role), member: true },
+      { who: `a ${role}’s API key`, principal: asApiKey({ org: A, role, scopes: ['read'] }), member: true },
+      { who: `a ${role}’s OAuth grant`, principal: asOAuth({ org: A, role }), member: true }
+    ]),
+    { who: 'a session with the guest role', principal: session('guest'), member: false },
+    { who: 'an anonymous guest’s session', principal: session('guest', true), member: false },
+    { who: 'a session with no role here', principal: session(null), member: false },
+    { who: 'a guest’s API key', principal: asApiKey({ org: A, role: 'guest', scopes: ['read'] }), member: false },
+    { who: 'a guest’s OAuth grant', principal: asOAuth({ org: A, role: 'guest' }), member: false },
+    {
+      who: 'a link-bound OAuth grant',
+      principal: asOAuth({ org: A, role: null, shareLinkId: randomUUID() }),
+      member: false
+    },
+    { who: 'a guest token', principal: asGuestToken({ org: A }), member: false },
+    { who: 'a reviewer share link', principal: asShareLink({ org: A, access: 'reviewer' }), member: false },
+    { who: 'a device', principal: asDevice({ org: A }), member: false },
+    { who: 'a system job', principal: asSystem('test'), member: false }
+  ])('$who: $member', ({ principal, member }) => {
+    expect(isMember(principal)).toBe(member)
   })
 })
 
