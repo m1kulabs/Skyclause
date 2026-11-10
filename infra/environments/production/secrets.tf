@@ -76,3 +76,11 @@ resource "google_secret_manager_secret_iam_member" "access" {
   role      = "roles/secretmanager.secretAccessor"
   member    = local.member[each.value.account]
 }
+
+# retention (#551) is the only job that mounts EMAIL_HASH_KEY. It stays out of wanted_secrets.jobs, which would
+# mount it on all eight jobs through local.mounts.jobs; the jobs account's grant is made here instead.
+resource "google_secret_manager_secret_iam_member" "retention_hash_key" {
+  secret_id = google_secret_manager_secret.this["EMAIL_HASH_KEY"].secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = local.member.jobs
+}
