@@ -278,7 +278,7 @@ describe('LedgerRow.call: the call an entry references, by who is reading', () =
     })
     return { projectId, callId }
   }
-  const entryCall = async (projectId: string, as = viewer) => {
+  const entryCall = async (projectId: string, as: Principal = viewer) => {
     const response = await apiRequest(v1, { as, method: 'GET', path: `/v1/projects/${projectId}/ledger`, org: ORG })
     expect(response.status).toBe(200)
     const text = await response.text()

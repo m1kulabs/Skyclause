@@ -58,6 +58,7 @@ test('#372 with the server’s read, the first render is the review at the serve
     call_id: 'test-call',
     bundle_id: 'test-bundle',
     project_id: 'test-project',
+    trace_id: 'test-run',
     window_id: 'test-window',
     window: {
       id: 'test-window',

@@ -4,6 +4,14 @@ import { testRegistry, validProblem } from './registry'
 
 const apiFetch = createApiFetch(testRegistry)
 
+test('explicit organisation scopes developer pages instead of the developers path segment', async () => {
+  vi.stubGlobal('window', { location: { pathname: '/developers/webhooks' } })
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse(validProblem))
+  vi.stubGlobal('fetch', fetchMock)
+  await apiFetch('getProjects', { org: 'real-org', params: { instance: 'real-org' } })
+  expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Skyclause-Organization')).toBe('real-org')
+})
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -133,6 +141,31 @@ test('explicit organisation wins over the global connect route for client creati
   vi.stubGlobal('fetch', fetchMock)
   await apiFetch('getProjects', { params: { instance: 'chosen-org' }, org: 'chosen-org' })
   expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Skyclause-Organization')).toBe('chosen-org')
+})
+
+test('reads a text/csv API response as text for filtered audit exports', async () => {
+  const csvFetch = createApiFetch({
+    exportCsv: {
+      method: 'GET',
+      path: '/api/orgs/acme/audit/export',
+      response: {
+        parse(value: unknown) {
+          if (typeof value !== 'string') throw new TypeError('Expected a CSV string')
+          return value
+        }
+      }
+    }
+  })
+  const fetchMock = vi.fn(
+    async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      new Response('id,action\nentry-1,member.role_changed\n', { headers: { 'Content-Type': 'text/csv' } })
+  )
+  vi.stubGlobal('fetch', fetchMock)
+
+  await expect(csvFetch('exportCsv', { headers: { Accept: 'text/csv' } })).resolves.toBe(
+    'id,action\nentry-1,member.role_changed\n'
+  )
+  expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Accept')).toBe('text/csv')
 })
 
 test('parses a CSV export as text through the operation response schema', async () => {

@@ -17,11 +17,13 @@ export type Role = (typeof ROLES)[number]
 
 /** A real session (#94) for a new account holding `role` in a new organisation. */
 const member = (role: MemberRole) => async (page: Page) => {
-  await signInAs(page, role, await makeOrg())
+  const org = await makeOrg()
+  await signInAs(page, role, org)
+  return org
 }
 
 /** Each role's sign-in: a real session, or a share link's `sc_share` cookie for the reviewer. */
-const SIGN_IN: Record<Exclude<Role, 'signed out'>, (page: Page) => Promise<void>> = {
+const SIGN_IN: Record<Exclude<Role, 'signed out'>, (page: Page) => Promise<{ slug: string }>> = {
   Owner: member('owner'),
   Admin: member('admin'),
   Approver: member('approver'),
@@ -29,13 +31,15 @@ const SIGN_IN: Record<Exclude<Role, 'signed out'>, (page: Page) => Promise<void>
   Viewer: member('viewer'),
   guest: member('guest'),
   'share-link reviewer': async (page) => {
-    await openShareLink(page, await makeOrg())
+    const org = await makeOrg()
+    await openShareLink(page, org)
+    return org
   }
 }
 
 export interface Session {
   role: Role
-  signIn?: (page: Page) => Promise<void>
+  signIn?: (page: Page) => Promise<{ slug: string }>
 }
 
 export function sessions(): Session[] {

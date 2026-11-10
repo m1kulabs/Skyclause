@@ -341,13 +341,18 @@ describe('GET /v1/projects/{id}/bundles and /calls', () => {
 describe('GET /v1/calls/{id}', () => {
   test('CAL-12: the trigger, drafted, approved and sent instants, null until reached', async () => {
     const [first, second] = made.review.callIds as [string, string]
+    const expectedTraceId = await inOrg(A, async (tx) => {
+      const [row] = await tx.select({ runId: bundle.runId }).from(bundle).where(eq(bundle.id, made.review.bundleId))
+      return row!.runId
+    })
     const before = await json<CallDetail>(read(as(), `/v1/calls/${second}`))
     expect(before).toMatchObject({
       triggered_at: '2026-11-02T07:05:00Z',
       drafted_at: '2026-11-02T07:10:00Z',
       approved_at: null,
       sent_at: null,
-      ics_uid: null
+      ics_uid: null,
+      trace_id: expectedTraceId
     })
     await inOrg(A, async (tx) => {
       await transition(

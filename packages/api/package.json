@@ -5,6 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./members": "./src/services/members/index.ts",
+    "./rota": "./src/services/rota/index.ts",
     "./testing": "./test/harness/index.ts"
   },
   "dependencies": {
@@ -17,11 +19,14 @@
     "@skyclause/db": "workspace:*",
     "@skyclause/delivery": "workspace:*",
     "@skyclause/i18n": "workspace:*",
+    "ai": "7.0.163",
     "drizzle-orm": "0.45.4",
+    "google-auth-library": "11.3.3",
     "hono": "4.13.16",
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@opentelemetry/sdk-metrics": "3.1.0",
     "ical.js": "2.2.1"
   }
 }

@@ -1,10 +1,12 @@
 import { auditor } from './auditor'
 import { alerts } from './alerts'
+import { aiKeys } from './ai-keys'
 import { analysis } from './analysis'
 import { bundles } from './bundles'
 import { email } from './email'
 import { evidence } from './evidence'
 import { domainEvents } from './events'
+import { dataRights } from './data-rights'
 import { grades } from './grades'
 import { ics } from './ics'
 import { migrations } from './migrate'
@@ -14,6 +16,7 @@ import { pilotArchive } from './pilot-archive'
 import { replies } from './replies'
 import { restoreDrill } from './restore-drill'
 import { runs } from './runs'
+import { retention } from './retention'
 import { defineRegistry } from './server'
 
 // Spec §7: each owner appends one line here, naming a `WorkerPart` exported from its own folder,
@@ -24,6 +27,7 @@ export const registry = defineRegistry([
   migrations, // f-db
   domainEvents, // f-db-schema
   pilotArchive, // c-ledger-chain
+  aiKeys, // e-byok-api
   bundles, // c-bundle-lifecycle
   evidence, // c-evidence
   grades, // c-grades
@@ -34,5 +38,7 @@ export const registry = defineRegistry([
   notifications, // c-notifications
   ics, // c-ics-feed
   analysis, // c-analysis-api
-  auditor // b-auditor
+  auditor, // b-auditor
+  dataRights, // a-data-rights
+  retention // a-retention
 ])

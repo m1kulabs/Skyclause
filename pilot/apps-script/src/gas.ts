@@ -567,7 +567,16 @@ export function piRowsStore(spreadsheetId: string): PiRowsStore {
     sourceRow: (sourceId) =>
       readColumns(spreadsheetId, 'sources', columnsOf('sources')).find((row) => row.source_id === sourceId) ?? null,
     appendSource: (row) => appendTabRow(spreadsheetId, 'sources', row),
+    storedPollIds: () => readColumns(spreadsheetId, 'polls', ['poll_id']).map((row) => String(row.poll_id)),
     storedReadings: () => readColumns(spreadsheetId, 'readings', ['reading_id', 'observed_at', 'value', 'revision']),
+    deviceRow: (deviceId) =>
+      readColumns(spreadsheetId, 'devices', columnsOf('devices')).find((row) => row.device_id === deviceId) ?? null,
+    appendDevice: (row) => appendTabRow(spreadsheetId, 'devices', row),
+    touchDevice: (deviceId, deviceTime) => {
+      setSheetCell(spreadsheetId, 'devices', 'device_id', deviceId, 'kind', 'pi')
+      setSheetCell(spreadsheetId, 'devices', 'device_id', deviceId, 'last_heartbeat_at', deviceTime)
+      setSheetCell(spreadsheetId, 'devices', 'device_id', deviceId, 'last_row_at', deviceTime)
+    },
     appendPoll: (row) => appendTabRow(spreadsheetId, 'polls', row),
     appendReadings: (rows) => appendTabRows(spreadsheetId, 'readings', rows)
   }

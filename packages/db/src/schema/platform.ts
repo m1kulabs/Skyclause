@@ -1,5 +1,16 @@
 import { sql } from 'drizzle-orm'
-import { boolean, check, date, foreignKey, integer, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
+import {
+  boolean,
+  check,
+  date,
+  foreignKey,
+  integer,
+  pgTable,
+  text,
+  unique,
+  uniqueIndex,
+  uuid
+} from 'drizzle-orm/pg-core'
 import { organization } from './auth'
 import { id, instant, sameOrg, tenantTable, timestamps } from './columns'
 import { exportScope, guestSubjectKind, incidentScope, pilotArchiveKind, verificationTarget } from './enums'
@@ -18,17 +29,36 @@ export const exportJob = pgTable(
     scope: exportScope('scope').notNull(),
     orgId: uuid('org_id'),
     accountId: uuid('account_id'),
+    formats: text('formats')
+      .array()
+      .notNull()
+      .default(sql`ARRAY['json', 'csv']::text[]`),
     status: text('status').notNull().default('queued'),
     objectPath: text('object_path'),
     expiresAt: instant('expires_at'),
+    error: text('error'),
     ...timestamps()
   },
   (self) => [
     foreignKey({ columns: [self.orgId], foreignColumns: [organization.id] }).onDelete('cascade'),
     check(
-      'export_job_object_path_under_org',
-      sql`${self.objectPath} IS NULL OR ${self.orgId} IS NULL OR ${self.objectPath} LIKE 'orgs/' || ${self.orgId} || '/%'`
-    )
+      'export_job_object_path_under_scope',
+      sql`${self.objectPath} IS NULL OR (${self.scope} = 'organisation' AND ${self.orgId} IS NOT NULL AND ${self.objectPath} LIKE 'orgs/' || ${self.orgId} || '/exports/%') OR (${self.scope} = 'account' AND ${self.accountId} IS NOT NULL AND ${self.objectPath} LIKE 'accounts/' || ${self.accountId} || '/exports/%')`
+    ),
+    check(
+      'export_job_formats_check',
+      sql`${self.formats} <@ ARRAY['json', 'csv']::text[] AND cardinality(${self.formats}) > 0`
+    ),
+    uniqueIndex('export_job_active_account_key')
+      .on(self.accountId)
+      .where(
+        sql`${self.scope} = 'account' AND ${self.accountId} IS NOT NULL AND ${self.status} IN ('queued', 'running')`
+      ),
+    uniqueIndex('export_job_active_organisation_key')
+      .on(self.orgId)
+      .where(
+        sql`${self.scope} = 'organisation' AND ${self.orgId} IS NOT NULL AND ${self.status} IN ('queued', 'running')`
+      )
   ]
 )
 

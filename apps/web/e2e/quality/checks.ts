@@ -196,6 +196,7 @@ async function keyboardFindings(page: Page): Promise<Finding[]> {
           el.tabIndex >= 0 &&
           !el.matches(':disabled') &&
           !el.closest('[inert]') &&
+          !el.closest('nextjs-portal') &&
           el.checkVisibility({ visibilityProperty: true }) &&
           el.getClientRects().length > 0
       )
@@ -218,7 +219,7 @@ async function keyboardFindings(page: Page): Promise<Finding[]> {
     await page.keyboard.press(tab)
     const stop = await page.evaluate((): Stop | null => {
       const el = document.activeElement as HTMLElement | null
-      if (!el || el === document.body || el === document.documentElement) return null
+      if (!el || el === document.body || el === document.documentElement || el.closest('nextjs-portal')) return null
       const style = getComputedStyle(el)
       const outline =
         style.outlineStyle !== 'none' &&
@@ -228,6 +229,13 @@ async function keyboardFindings(page: Page): Promise<Finding[]> {
       const rect = el.getBoundingClientRect()
       const href = el.getAttribute('href') ?? ''
       const text = (el.getAttribute('aria-label') ?? el.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 40)
+      const ringOwner = el.closest<HTMLElement>('[data-focus-ring]')
+      const ownerStyle = ringOwner ? getComputedStyle(ringOwner) : null
+      const ownerOutline =
+        ownerStyle !== null &&
+        ownerStyle.outlineStyle !== 'none' &&
+        parseFloat(ownerStyle.outlineWidth) > 0 &&
+        !/rgba\(.*, 0\)$/.test(ownerStyle.outlineColor)
       return {
         id: el.dataset.qualityStop ?? null,
         label: `${el.tagName.toLowerCase()}${text ? ` "${text}"` : ''}`,
@@ -237,7 +245,9 @@ async function keyboardFindings(page: Page): Promise<Finding[]> {
           href.startsWith('#') &&
           !!document.getElementById(href.slice(1)),
         visible: rect.width >= 1 && rect.height >= 1 && rect.bottom > 0 && rect.right > 0,
-        ring: el.matches(':focus-visible') && (outline || shadow)
+        ring:
+          (el.matches(':focus-visible') && (outline || shadow)) ||
+          (!!ringOwner?.matches(':focus-within') && ownerOutline)
       }
     })
     if (!stop) {

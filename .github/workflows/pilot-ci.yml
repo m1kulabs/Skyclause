@@ -70,6 +70,8 @@ jobs:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
       - run: bun pilot/apps-script/build.ts
+      - name: Build the Pi 5 Linux ARM64 agent
+        run: bun build --compile --target=bun-linux-arm64 pilot/pi/agent.ts --outfile "$RUNNER_TEMP/skyclause-agent"
 
   # The pinned gitleaks CLI over the full history; gitleaks-action needs a licence for org repos.
   secrets:

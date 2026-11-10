@@ -1,0 +1,22 @@
+[Unit]
+Description=Skyclause Pi device agent
+Wants=network-online.target
+After=network-online.target time-sync.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+# Set INGEST_URL, PI_TOKEN and DEVICE_ID=pi-01 outside the repo; own it by deploy with mode 0600.
+EnvironmentFile=/etc/skyclause/pi.env
+Environment=PI_BUFFER_PATH=/var/lib/skyclause-pi/rows.jsonl
+Environment=RIDERSHIP_STATE_PATH=/var/lib/skyclause-pi/ridership-state.json
+StateDirectory=skyclause-pi
+StateDirectoryMode=0700
+ExecStart=/opt/skyclause/agent
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

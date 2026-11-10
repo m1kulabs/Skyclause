@@ -27,7 +27,8 @@ const OrgParams = z.object({ org: z.union([Id, slugSchema]) })
 const OrgItemParams = OrgParams.extend(UuidIdParams.shape)
 
 const Role = z.enum(ROLES)
-const AssignableRole = Role.exclude(['owner', 'guest'])
+// `owner` is syntactically a role so the service can return the contract's role-not-grantable problem (403).
+const AssignableRole = Role.exclude(['guest'])
 const ApiKeyScopes = ApiKey.shape.scopes.min(1)
 const OAuthScopes = OAuthGrant.shape.scopes.min(1)
 
@@ -74,9 +75,28 @@ const RotaSettings = z.object({ time_zone: z.string(), templates: z.array(ShiftT
 const Rota = RotaSettings.extend({
   shifts: z.array(Shift),
   on_duty: z.array(z.object({ account_id: Id, shift_id: Id, until: Instant })),
-  next_shift: Shift.nullable(),
-  unstaffed_slots: z.array(z.object({ starts_at: Instant, ends_at: Instant, template: RotaShift.shape.template }))
+  next_shift: z.object({ shift: Shift, starts_at: Instant, ends_at: Instant }).nullable(),
+  unstaffed_slots: z.array(
+    z.object({
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      starts_at: Instant,
+      ends_at: Instant,
+      template: RotaShift.shape.template,
+      condition_state: z.enum(['active', 'inactive', 'unknown'])
+    })
+  )
 })
+const RotaQuery = z.object({
+  days: z.coerce.number().int().min(1).max(31).default(7),
+  project_id: Id.optional()
+})
+const RotaReplacement = z
+  .object({
+    project_id: Id.nullable(),
+    templates: z.array(ShiftTemplate),
+    shifts: z.array(ShiftInput.omit({ project_id: true }))
+  })
+  .strict()
 
 // AUD-1/2: actor, client, target and before/after remain explicit on the wire.
 const AuditAction = z.enum(AUDIT_ACTIONS)
@@ -130,9 +150,17 @@ const OrganisationExport = ExportJob.extend({
 const Deletion = Organisation.pick({ deletion_requested_at: true, purge_after: true })
 
 // ORG-6 names the six onboarding actions; grading is the activation outcome.
-const OnboardingStep = z.enum(['organisation', 'project', 'sources', 'window', 'rota', 'channel'])
-const Onboarding = z.object({
-  steps: z.array(z.object({ step: OnboardingStep, completed_at: Instant.nullable(), skipped: z.boolean() }))
+export const OnboardingStep = z.enum(['organisation', 'project', 'sources', 'window', 'rota', 'channel'])
+export const Onboarding = z.object({
+  steps: z.array(
+    z.object({
+      step: OnboardingStep,
+      completed_at: Instant.nullable(),
+      skipped: z.boolean(),
+      result: z.string().nullable(),
+      href: z.string()
+    })
+  )
 })
 
 // D37 and TRD MCP authorisation: client credentials are shown once on creation.
@@ -142,10 +170,15 @@ const OAuthClientInput = z.object({
   scopes: OAuthScopes
 })
 const OAuthClient = OAuthClientInput.extend({ id: Id, client_id: z.string(), created_at: Instant })
+const CreatedOAuthClient = OAuthClient.extend({
+  client_secret: z.string().describe('Shown only in the creation response.'),
+  redirect_uri: z.url(),
+  authorization_url: z.url(),
+  token_url: z.url()
+})
 const OrganisationOAuthGrant = OAuthGrant.extend({
   account_id: Id,
   client_name: z.string(),
-  resource: z.enum(['api', 'mcp']),
   created_at: Instant
 })
 
@@ -158,7 +191,12 @@ export const createOrganisation = createRoute({
     headers: IdempotencyHeaders,
     body: {
       required: true,
-      content: { 'application/json': { schema: z.object({ name: z.string().min(1), slug: slugSchema }).strict() } }
+      // Format only: a reserved slug reaches the service so it answers 409 slug-reserved (ORG-1).
+      content: {
+        'application/json': {
+          schema: z.object({ name: z.string().min(1), slug: z.string().regex(SLUG_REGEX) }).strict()
+        }
+      }
     }
   },
   responses: {
@@ -179,13 +217,10 @@ export const updateOrganisation = createRoute({
   tags: ['organisations'],
   request: {
     params: OrgParams,
+    // Ticket decision (#102): PATCH renames only; public URLs and ICS feeds carry the slug, so it never changes.
     body: {
       required: true,
-      content: {
-        'application/json': {
-          schema: z.object({ name: z.string().min(1).optional(), slug: slugSchema.optional() }).strict()
-        }
-      }
+      content: { 'application/json': { schema: z.object({ name: z.string().min(1) }).strict() } }
     }
   },
   responses: {
@@ -193,8 +228,7 @@ export const updateOrganisation = createRoute({
     401: Unauthorized,
     403: Forbidden,
     404: NotFound,
-    400: ValidationFailed,
-    409: { description: 'slug-reserved or slug-taken: the organisation slug is unavailable.', content: JsonProblem }
+    400: ValidationFailed
   },
   x: { owner: 'a-org-projects', statement: 'org.manage', idempotent: false }
 })
@@ -355,12 +389,57 @@ export const createOwnershipTransfer = createRoute({
   x: { owner: 'a-members-api', statement: 'members.manage', idempotent: true }
 })
 
+export const cancelOwnershipTransfer = createRoute({
+  method: 'delete',
+  path: '/api/orgs/{org}/ownership-transfers/{id}',
+  operationId: 'cancelOwnershipTransfer',
+  tags: ['members'],
+  request: { params: OrgItemParams },
+  responses: {
+    204: NoContent,
+    401: Unauthorized,
+    403: Forbidden,
+    404: NotFound,
+    409: { description: 'The transfer is no longer pending.', content: JsonProblem }
+  },
+  x: { owner: 'a-members-api', statement: 'members.manage', idempotent: false }
+})
+
+const TokenParam = z.object({
+  token: z
+    .string()
+    .min(1)
+    .max(128)
+    .regex(/^[A-Za-z0-9_-]+$/)
+})
+const TokenState = z.object({
+  kind: z.enum(['invitation', 'ownership_transfer']),
+  state: z.enum(['valid', 'expired', 'withdrawn', 'used'])
+})
+
+export const inspectMemberToken = createRoute({
+  method: 'get',
+  path: '/api/invite/{token}',
+  operationId: 'inspectMemberToken',
+  tags: ['invitations'],
+  request: { params: TokenParam },
+  responses: {
+    200: {
+      description: 'Token kind and state; no personal data.',
+      content: { 'application/json': { schema: TokenState } }
+    },
+    404: NotFound,
+    429: { description: 'Too many token lookups.', content: JsonProblem }
+  },
+  x: { owner: 'a-members-api', statement: 'token', idempotent: false }
+})
+
 export const getRota = createRoute({
   method: 'get',
   path: '/api/orgs/{org}/rota',
   operationId: 'getRota',
   tags: ['rota'],
-  request: { params: OrgParams },
+  request: { params: OrgParams, query: RotaQuery },
   responses: {
     200: { description: 'Success.', content: { 'application/json': { schema: Rota } } },
     401: Unauthorized,
@@ -387,6 +466,27 @@ export const updateRota = createRoute({
     400: ValidationFailed
   },
   x: { owner: 'a-members-api', statement: 'rota.manage', idempotent: false }
+})
+
+export const replaceRotaShifts = createRoute({
+  method: 'put',
+  path: '/api/orgs/{org}/rota/shifts',
+  operationId: 'replaceRotaShifts',
+  tags: ['rota'],
+  request: {
+    params: OrgParams,
+    headers: IdempotencyHeaders,
+    body: { required: true, content: { 'application/json': { schema: RotaReplacement } } }
+  },
+  responses: {
+    200: { description: 'The shifts for this scope were replaced.', content: { 'application/json': { schema: Rota } } },
+    401: Unauthorized,
+    403: Forbidden,
+    404: NotFound,
+    400: ValidationFailed,
+    422: IdempotencyMismatch
+  },
+  x: { owner: 'a-members-api', statement: 'rota.manage', idempotent: true }
 })
 
 export const createRotaShift = createRoute({
@@ -510,9 +610,13 @@ export const createOrganisationApiKey = createRoute({
       required: true,
       content: {
         'application/json': {
-          schema: ApiKey.pick({ name: true, expires_at: true })
-            .extend({ scopes: ApiKeyScopes })
-            .describe('Expiry must be no more than 365 days after creation.')
+          schema: z
+            .object({
+              name: z.string().min(1),
+              scopes: ApiKeyScopes,
+              expires_in_days: z.number().int().min(1).max(365)
+            })
+            .describe('Expiry must be from 1 to 365 days after creation.')
         }
       }
     }
@@ -598,9 +702,37 @@ export const createOrganisationAiKey = createRoute({
     422: {
       description: 'validation-failed, idempotency-mismatch or key-test-failed: a failing key cannot be enabled.',
       content: JsonProblem
-    }
+    },
+    409: { description: 'conflict: this key is already saved for this organisation.', content: JsonProblem }
   },
   x: { owner: 'e-byok-api', statement: 'ai_keys.manage', idempotent: true }
+})
+
+export const updateOrganisationAiKey = createRoute({
+  method: 'patch',
+  path: '/api/orgs/{org}/ai-keys/{id}',
+  operationId: 'updateOrganisationAiKey',
+  tags: ['ai-keys'],
+  request: {
+    params: OrgItemParams,
+    body: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: AiKey.pick({ enabled: true, priority: true, declared_tier: true }).partial()
+        }
+      }
+    }
+  },
+  responses: {
+    200: { description: 'Success.', content: { 'application/json': { schema: OrganisationAiKey } } },
+    401: Unauthorized,
+    403: Forbidden,
+    404: NotFound,
+    400: ValidationFailed,
+    422: { description: 'key-test-failed: a key whose last test failed cannot be enabled.', content: JsonProblem }
+  },
+  x: { owner: 'e-byok-api', statement: 'ai_keys.manage', idempotent: false }
 })
 
 export const deleteOrganisationAiKey = createRoute({
@@ -629,7 +761,8 @@ export const testOrganisationAiKey = createRoute({
     401: Unauthorized,
     403: Forbidden,
     404: NotFound,
-    422: { description: 'key-test-failed: the minimal provider call failed.', content: JsonProblem }
+    422: { description: 'key-test-failed: the minimal provider call failed.', content: JsonProblem },
+    429: { description: 'rate-limited: the key was tested too many times in the last hour.', content: JsonProblem }
   },
   x: { owner: 'e-byok-api', statement: 'ai_keys.manage', idempotent: false }
 })
@@ -723,7 +856,8 @@ export const createOrganisationExport = createRoute({
     404: NotFound,
     400: ValidationFailed,
     422: IdempotencyMismatch,
-    409: { description: 'export-pending: an export is already being prepared.', content: JsonProblem }
+    409: { description: 'export-pending: an export is already being prepared.', content: JsonProblem },
+    503: { description: 'The export could not be queued right now.', content: JsonProblem }
   },
   x: { owner: 'a-data-rights', statement: 'org.export', idempotent: true }
 })
@@ -817,6 +951,21 @@ export const skipOnboardingStep = createRoute({
   x: { owner: 'b-create-project-ui', statement: 'session', idempotent: false }
 })
 
+export const resumeOnboardingStep = createRoute({
+  method: 'delete',
+  path: '/api/orgs/{org}/onboarding/{step}/skip',
+  operationId: 'resumeOnboardingStep',
+  tags: ['onboarding'],
+  request: { params: OrgParams.extend({ step: OnboardingStep }) },
+  responses: {
+    200: { description: 'Success.', content: { 'application/json': { schema: Onboarding } } },
+    401: Unauthorized,
+    403: Forbidden,
+    404: NotFound
+  },
+  x: { owner: 'b-create-project-ui', statement: 'session', idempotent: false }
+})
+
 export const createProject = createRoute({
   method: 'post',
   path: '/api/orgs/{org}/projects',
@@ -895,7 +1044,7 @@ export const createOauthClient = createRoute({
       description: 'Created.',
       content: {
         'application/json': {
-          schema: OAuthClient.extend({ client_secret: z.string().describe('Shown only in the creation response.') })
+          schema: CreatedOAuthClient
         }
       }
     },
@@ -965,8 +1114,11 @@ export const routes = [
   revokeInvitation,
   resendInvitation,
   createOwnershipTransfer,
+  cancelOwnershipTransfer,
+  inspectMemberToken,
   getRota,
   updateRota,
+  replaceRotaShifts,
   createRotaShift,
   updateRotaShift,
   deleteRotaShift,
@@ -977,6 +1129,7 @@ export const routes = [
   revokeOrganisationApiKey,
   listOrganisationAiKeys,
   createOrganisationAiKey,
+  updateOrganisationAiKey,
   deleteOrganisationAiKey,
   testOrganisationAiKey,
   getOrganisationAiKeyUsage,
@@ -989,6 +1142,7 @@ export const routes = [
   cancelOrganisationDeletion,
   getOnboarding,
   skipOnboardingStep,
+  resumeOnboardingStep,
   createProject,
   listOauthClients,
   createOauthClient,

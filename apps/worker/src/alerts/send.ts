@@ -144,6 +144,7 @@ export async function prepare(tx: Tx, deps: AlertsDeps, noticeIds: string[]): Pr
     const subject = parseAlertKey(n.key)
     const base = { noticeId: n.id, projectId: n.projectId, subject, channel: n.channel, accountId: n.accountId! }
     const expired = () => out.push({ ...base, needsReviewAt: null, settle: 'expired' })
+    if (n.projectId === null) throw new Error(`approver alert notice ${n.id} is missing project_id`)
     if (subject?.kind === 'alert') {
       const found = await bundleForAlert(tx, subject.bundleId)
       if (!found || found.bundle.state !== 'needs_review' || !found.bundle.slaDueAt) {

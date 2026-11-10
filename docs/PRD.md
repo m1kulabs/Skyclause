@@ -499,7 +499,7 @@ What a project chooses to show the world, with attribution and no personal data.
 
 Every consequential change is logged; people can see, take and delete their data.
 
-- **AUD-1** (P1) The audit log records every approval, edit and rejection, key created or revoked (API and AI), role change, invite, clause publish, share link, source binding, SLA change, export, deletion and MCP consent, with who, when, client and before and after. Acceptance: each listed action creates exactly one entry.
+- **AUD-1** (P1) The audit log records every approval, edit and rejection, key created or revoked (API and AI), role change, invite, clause publish, share link, source binding, SLA change, export, deletion and MCP consent, including consent granted or denied, consent revoked, and organisation OAuth client created or revoked, with who, when, client and before and after. Acceptance: each listed action creates exactly one entry.
 - **AUD-2** (P1) The audit log is append-only, filterable at `/{org}/settings/audit` and exportable, and kept for the life of the organisation. Acceptance: no role can delete an entry.
 - **AUD-3** (P1) Accounts export their data and Owners or Admins export the organisation's (projects, windows, clause versions, calls, bundles, ledger, grades, subscribers, audit) as JSON and CSV within 24 hours; download links expire after 7 days. Acceptance: an export of a project re-counts to the same number of calls as the app.
 - **AUD-4** (P1) Deletion: an account deletes itself unless it is the sole Owner of an organisation (ledger and audit keep a pseudonymous ID); an Owner deletes an organisation by typing its slug, with a 30-day grace during which the organisation is suspended and export offered first, then a purge. Acceptance: a sole Owner cannot delete their account; the organisation is suspended during the grace period; after the purge no row with the organisation's ID remains outside the database's restore window, which ages it out per NFR-14.
@@ -532,6 +532,7 @@ Targets, not measurements; TRD's [observability and SLOs](/docs/TRD.md#observabi
 | Readings and error rows from public sources      | Life of the project                                           | Deleted with the project                                        |
 | Camera frames                                    | One semester: to the project's semester end, at most 183 days | Deleted; contrast rows kept                                     |
 | Raw bus positions                                | Until segment times are computed, at most 24 hours            | Deleted; segment times kept                                     |
+| SES message deduplication marks                  | At least 24 hours                                             | Deleted by the nightly retention sweep                          |
 | Guest windows                                    | 14 days from creation                                         | Deleted                                                         |
 | Guest accounts                                   | 30 days without activity                                      | Deleted with their data                                         |
 | Subscriber records                               | Until unsubscribe plus 30 days                                | Deleted; a hashed suppression entry stays                       |
@@ -577,7 +578,7 @@ Events carry random IDs for organisation and project, counts and enums only: no 
 | `mcp_connected`      | An MCP client completes consent          | `client` (claude, chatgpt, gemini_cli, gemini_enterprise, cursor, vscode, other) |
 | `mcp_tool_called`    | An MCP tool returns                      | `tool`, `scope`, `ok`                                                            |
 | `api_key_created`    | An API key is created                    | `scopes`, `expiry_days`                                                          |
-| `cli_login`          | A device-code login completes            | `os`                                                                             |
+| `cli_login`          | A device-code login completes            | `os` (macos, linux, windows, unknown)                                            |
 | `embed_loaded`       | An embed renders                         | `component`, `mode`                                                              |
 | `export_requested`   | An export is requested                   | `scope` (account, organisation)                                                  |
 
