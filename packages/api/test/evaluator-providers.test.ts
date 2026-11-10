@@ -101,6 +101,62 @@ test('real System v1 is checked and evaluated without modifying its publication'
     )
   ).rejects.toThrow(/check/)
 })
+test('checked publication helper uses the exact verified archive registry when explicitly pinned', async () => {
+  const { run, created, providers } = await projectScene()
+  const q = { projectId: created.project.id, pack: 'sky' as const }
+  const saved = await run((tx) => providers.snapshots.take(tx, { ...q, tEval, windows: [], persist: true }))
+  const original = created.versions.find((version) => (version.content as { pack: string }).pack === q.pack)!
+  const [publication] = await run((tx) =>
+    tx
+      .insert(sheetVersion)
+      .values({
+        orgId: original.orgId,
+        sheetId: original.sheetId,
+        n: 2,
+        status: 'published',
+        content: original.content,
+        contentHash: original.contentHash,
+        validationRegistryHash: 'unknown-publication-time-registry'
+      })
+      .returning()
+  )
+  expect(
+    (await run((tx) => providers.loadCheckedPublishedVersion(tx, { ...q, versionId: publication!.id }))).sheet
+      .registryHash
+  ).toBe(saved.snapshot.registryHash)
+  const noCurrentDefinitions = createEvaluatorProviders({ adapters, forecast: null })
+  await expect(run((tx) => noCurrentDefinitions.loadCheckedPublishedVersion(tx, q))).rejects.toMatchObject({
+    owner: 'b-evaluator:indicator-registry'
+  })
+  const pin = {
+    ...q,
+    versionId: created.sheets.find((sheet) => sheet.pack === q.pack)!.liveVersionId!,
+    registryHash: saved.snapshot.registryHash
+  }
+  const checked = await run((tx) => noCurrentDefinitions.loadCheckedPublishedVersion(tx, pin))
+  expect(checked.sheet.registryHash).toBe(saved.snapshot.registryHash)
+  expect(checked.sheet.registryTypes?.['site.api_max']).toBe('int')
+  expect(
+    noCurrentDefinitions.shadow.evaluate(checked.sheet, saved.snapshot, [], tEval).verdicts.site[0]?.noCall?.inputs
+      .length
+  ).toBeGreaterThan(0)
+  await expect(
+    run((tx) => noCurrentDefinitions.loadCheckedPublishedVersion(tx, { ...pin, registryHash: 'unknown' }))
+  ).rejects.toMatchObject({ owner: 'b-evaluator:historical-registry' })
+  const incomplete = createEvaluatorProviders({ adapters: [adapter([definition])], forecast: null })
+  const otherArchive = await run((tx) =>
+    incomplete.snapshots.take(tx, { ...q, tEval: '2026-11-10T04:01:00Z', windows: [], persist: true })
+  )
+  await expect(
+    run((tx) =>
+      noCurrentDefinitions.loadCheckedPublishedVersion(tx, { ...pin, registryHash: otherArchive.snapshot.registryHash })
+    )
+  ).rejects.toMatchObject({ owner: 'b-evaluator:published-sheet-check' })
+  await asLogin('retention', (client) =>
+    client.query("UPDATE indicator_snapshot SET registry_definitions = '[]' WHERE id = $1", [saved.snapshotId])
+  )
+  await expect(run((tx) => noCurrentDefinitions.loadCheckedPublishedVersion(tx, pin))).rejects.toThrow(/hash/)
+})
 test('publication selection rejects wrong pack/project, draft pins, corrupt content and foreign live pointers', async () => {
   const { run, created, providers } = await projectScene()
   const sky = created.sheets.find((row) => row.pack === 'sky')!
