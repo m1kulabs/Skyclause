@@ -1,0 +1,283 @@
+.panel {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.panel section + section {
+  margin-top: 32px;
+  border-top: 1px solid var(--border);
+  padding-top: 32px;
+}
+
+.panel p {
+  margin-block: 8px;
+}
+
+.sectionTitle {
+  margin: 0 0 12px;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.tableFrame {
+  min-width: 0;
+}
+
+.tableFrame :global([data-slot='table-container']) {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.memberTable,
+.inviteTable {
+  min-width: 760px;
+}
+
+.memberTable th,
+.inviteTable th {
+  white-space: normal;
+}
+
+.memberTable td,
+.inviteTable td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.identityCell strong,
+.identityCell span {
+  display: block;
+}
+
+.identityCell span,
+.activityCell,
+.methodsCell {
+  color: var(--muted-foreground);
+}
+
+.roleField {
+  min-width: 132px;
+  gap: 4px;
+}
+
+.roleField :global([data-slot='select-trigger']) {
+  min-width: 132px;
+  width: 100%;
+  min-height: 40px;
+}
+
+.roleStatic {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
+
+.roleStatic > span {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.roleStatic p,
+.problem,
+.inviteActions p {
+  color: var(--destructive);
+}
+
+.actionHeading {
+  width: 1%;
+}
+
+.actionCell,
+.inviteActions {
+  min-width: 136px;
+}
+
+.inviteActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.transferForm :global([data-slot='select-value'][data-placeholder]) {
+  color: var(--secondary-foreground);
+}
+
+.switchRow {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.switchRow :global([data-slot='switch']) {
+  min-width: 32px;
+  min-height: 24px;
+}
+
+.inlineButton {
+  min-height: 32px;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.retryRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.inviteForm,
+.transferForm {
+  display: flex;
+  align-items: end;
+  gap: 16px;
+}
+
+.inviteFields {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(140px, 0.8fr);
+  gap: 16px;
+}
+
+.inviteFields :global([data-slot='input']),
+.inviteFields :global([data-slot='select-trigger']) {
+  width: 100%;
+  min-height: 40px;
+}
+
+.transferForm > :first-child {
+  min-width: 0;
+  flex: 1;
+}
+
+.transferForm :global([data-slot='select-trigger']) {
+  width: 100%;
+  min-height: 40px;
+}
+
+.transferRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.transferRow p {
+  min-width: 0;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .tableFrame :global([data-slot='table-container']) {
+    overflow: visible;
+    border: 0;
+  }
+
+  .memberTable,
+  .inviteTable {
+    display: block;
+    min-width: 0;
+  }
+
+  .memberTable thead,
+  .inviteTable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .memberTable tbody,
+  .inviteTable tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  .memberRow,
+  .inviteRow {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    height: auto;
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card);
+    padding: 8px;
+  }
+
+  .memberRow td,
+  .inviteRow td {
+    display: flex;
+    min-width: 0;
+    min-height: 56px;
+    flex-direction: column;
+    align-items: start;
+    justify-content: center;
+    gap: 3px;
+    border: 0;
+    padding: 8px;
+    font-size: 13px;
+  }
+
+  .memberRow td::before,
+  .inviteRow td::before {
+    content: attr(data-label);
+    color: var(--muted-foreground);
+    font-size: 11px;
+    line-height: 1.3;
+  }
+
+  .memberRow .identityCell,
+  .memberRow .actionCell,
+  .inviteRow .inviteActions {
+    grid-column: 1 / -1;
+  }
+
+  .memberRow .identityCell {
+    min-height: 64px;
+  }
+
+  .memberRow .actionCell {
+    border-top: 1px solid var(--border);
+    align-items: stretch;
+  }
+
+  .memberRow .actionCell > button,
+  .inviteActions > button {
+    min-height: 40px;
+  }
+
+  .inviteActions {
+    flex-direction: row;
+  }
+
+  .inviteActions p {
+    flex-basis: 100%;
+  }
+
+  .inviteForm,
+  .transferForm {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .inviteFields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -42,7 +42,7 @@
       },
       "members": {
         "title": "Ahli dan peranan",
-        "description": "Urus keahlian, jemputan dan peranan."
+        "description": "Urus keahlian dan jemputan. Peranan bersifat kumulatif; sekurang-kurangnya seorang Pemilik mesti kekal."
       },
       "rota": {
         "title": "Jadual pelulus",
