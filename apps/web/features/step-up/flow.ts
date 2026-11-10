@@ -25,7 +25,7 @@ function captureFocus() {
 
 function restoreFocus() {
   const target = returnFocus
-  returnFocus = null
+  returnFocus = undefined
   if (target) setTimeout(() => target.isConnected && target.focus(), 0)
 }
 
@@ -76,5 +76,7 @@ export async function withStepUp<T>(
     onRequired()
     await confirmation
     return request(idempotencyKey)
+  } finally {
+    if (!pending) returnFocus = undefined
   }
 }
