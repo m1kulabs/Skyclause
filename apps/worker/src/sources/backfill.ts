@@ -23,15 +23,19 @@ export interface BackfillPorts {
   admit?(operationId: string): Promise<void>
   /** Poll-plan/ingest receipt check. Without a receipt, redelivery safely republishes stable IDs. */
   acknowledged?(operationId: string): Promise<boolean>
+  /** Private runner handoff of the actual durable capture, including acknowledged results. */
+  completed?(result: SourceExecutionResult): void
   scheduledAt?: string | null
   previousDigest?(sourceId: string, purpose: 'poll' | 'backfill'): string | null
 }
 async function publishCompleted(claim: BackfillClaim, ports: BackfillPorts): Promise<'complete'> {
-  if (await ports.acknowledged?.(claim.operationId)) return 'complete'
+  const acknowledged = await ports.acknowledged?.(claim.operationId)
+  if (acknowledged && !ports.completed) return 'complete'
   const result = await loadSourceResult(ports.store, claim.resultPath)
   if (!result || result.operationId !== claim.operationId)
     throw new Error('Backfill claim has no matching durable result')
-  await ports.publish(result)
+  if (!acknowledged) await ports.publish(result)
+  ports.completed?.(result)
   return 'complete'
 }
 /** One committed backfill, not exactly-once external GET: death before saving bytes can repeat the GET. */

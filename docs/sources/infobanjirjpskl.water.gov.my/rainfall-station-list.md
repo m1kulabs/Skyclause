@@ -6,6 +6,7 @@ Contents:
 
 1. [Collection provenance](#collection-provenance)
 1. [Catalogue interpretation](#catalogue-interpretation)
+1. [Local ingestion evidence](#local-ingestion-evidence)
 
 ## Collection provenance
 
@@ -27,3 +28,11 @@ The exact `table#Online-rainfalldata` contains 49 stations. Its external ID `023
 All discovered latitude and longitude values stay null for #121. The original graph capture has null coordinates. This newer HTML includes map coordinates, but the accepted adapter scope preserves nulls rather than transcribing or inferring coordinates. The table publishes no state text, so discovery omits `meta.state`. The graph separately publishes `KL`.
 
 The [original graph capture](rainfall-graph-75.md) remains 127,043 bytes with SHA-256 `25cae3be496cff29b9925595d23fc63b7ddf9c1a4fb29e22b806b00d4ed3bd95`. Copies of both bodies in `packages/sources/test/fixtures/` are registered in `fixtures.json` with matching hashes. The station-list manifest explicitly labels its timestamp as approximate.
+
+## Local ingestion evidence
+
+The real graph capture passed the registered adapter, durable capture/result pipeline and PostgreSQL ingestion in local integration tests. One ownerless gauge bound to two tenant projects produced 2,269 revision-1 readings, one poll and two project events from one HTTP request. A later normal poll of identical bytes appended no readings and persisted `unchanged`; changing one `rf` in a test-only copy appended exactly one revision-2 reading while retaining all original rows. Renamed `data`, text `rf` and mismatched `stationId` each persisted a `schema` error poll with zero new readings against populated history. Transport doubles returned HTTP 200 and advanced the test clock by 37 ms; those status/latency values reached PostgreSQL. They are local measurements, not live provider latency. A separate wall-clock measurement of explicit PostgreSQL ingestion took 4,804 ms initially, 5,864 ms unchanged and 5,812 ms for the correction. The existing writer visits each observation to maintain its capture head and compare prior values; unchanged bodies therefore still incur database work. Only the full-capture test cases receive a 60-second timeout; small cases and existing/global timeouts remain unchanged.
+
+Job-first, event-first and concurrent first-bind executions reuse the actual durable backfill capture within the gauge's 300-second cadence, including immediate reuse after ingestion acknowledgement. The result retains purpose `backfill`; it does not establish normal live-poll freshness. At the next cadence the job issues a normal poll. Neither tenant count nor a new runtime instance multiplies the first request.
+
+The graph's `data[].timestamp`, `data[].rf` and top-level `stationId` paths are verified by the archived body and parser tests. Production scheduling is configured for five-minute MYT execution with zero retries. The existing Scheduler-to-Cloud Run call does not carry the actual scheduled instant, so `scheduled_at` and scheduler lag remain null. No deployment, live execution, scheduler-lag measurement or 288-slot/24-hour evidence is claimed by these tests.

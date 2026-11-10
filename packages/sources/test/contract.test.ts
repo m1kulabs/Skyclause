@@ -110,9 +110,8 @@ test('adapter types take all bound sources and expose the Spec §1 additions', (
   expectTypeOf<SourceAdapter<unknown>['discover']>().toBeNullable()
 })
 
-test('adapter lookup rejects unregistered and unknown kinds without a runtime fallback', () => {
-  expect(sources.adapters).toEqual([])
-  expect(() => sources.getAdapter('jps_rain')).toThrow(/unregistered source adapter/)
+test('adapter lookup exposes registered JPS and rejects unknown kinds without a runtime fallback', () => {
+  expect(sources.getAdapter('jps_rain').kind).toBe('jps_rain')
   expect(() => sources.getAdapter('invented')).toThrow(/unregistered source adapter/)
 })
 

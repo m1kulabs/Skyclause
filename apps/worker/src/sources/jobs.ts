@@ -47,7 +47,12 @@ export function createSourceJobs(ports: SourceJobPorts) {
         clock: ports.clock,
         requestId: ports.id
       })
-  const backfill = async (entry: PlannedSource, plan: Pick<SourcePlan, 'periods'>, scheduledAt: string | null) => {
+  const backfillWithCapture = async (
+    entry: PlannedSource,
+    plan: Pick<SourcePlan, 'periods'>,
+    scheduledAt: string | null,
+    completed?: (result: SourceExecutionResult) => void
+  ) => {
     const adapter = adapterFor(entry.source.kind)
     return runBackfillOnce(adapter, entry.source, {
       store: ports.store,
@@ -56,6 +61,7 @@ export function createSourceJobs(ports: SourceJobPorts) {
       contextFactory: contextFactory(adapter, plan),
       publish: ports.publish,
       scheduledAt,
+      completed,
       admit: (operationId) =>
         reserveSourceResult(ports.store, operationId, adapter.kind, ports.clock.now(), entry.source.id),
       acknowledged: async (operationId) => {
@@ -80,7 +86,30 @@ export function createSourceJobs(ports: SourceJobPorts) {
       const plan = await readSourcePlan(ports.store),
         entries = plan.sources.filter((s) => s.source.kind === kind)
       const ready: PlannedSource[] = []
-      for (const entry of entries) if ((await backfill(entry, plan, scheduledAt)) !== 'running') ready.push(entry)
+      for (const entry of entries) {
+        let freshCapture = false
+        const state = await backfillWithCapture(
+          entry,
+          plan,
+          scheduledAt,
+          adapter.batch === 'per_source'
+            ? (result) => {
+                // Reuse only a genuine, single-source transport capture within this source's cadence.
+                // Its purpose remains backfill; it cannot establish live polling freshness.
+                const request = result.requests.length === 1 ? result.requests[0] : undefined
+                const capturedAt = request?.transportStartedAt
+                const age = capturedAt ? ports.clock.now().getTime() - Date.parse(capturedAt) : NaN
+                freshCapture =
+                  result.purpose === 'backfill' &&
+                  request?.sourceIds.length === 1 &&
+                  request.sourceIds[0] === entry.source.id &&
+                  age >= 0 &&
+                  age < adapter.cadence * 1000
+              }
+            : undefined
+        )
+        if (state !== 'running' && !freshCapture) ready.push(entry)
+      }
       if (!ready.length) {
         ports.log('source.adapter.complete', {
           adapter: kind,
@@ -115,7 +144,8 @@ export function createSourceJobs(ports: SourceJobPorts) {
         scheduled_at: scheduledAt
       })
     },
-    backfill,
+    backfill: (entry: PlannedSource, plan: Pick<SourcePlan, 'periods'>, scheduledAt: string | null) =>
+      backfillWithCapture(entry, plan, scheduledAt),
     refreshSourcePlan: (now: Date) => refreshSourcePlan(now, ports.store, ports.database.snapshot),
     async catalogueSync(): Promise<void> {
       let count = 0
