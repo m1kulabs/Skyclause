@@ -42,7 +42,7 @@
       },
       "members": {
         "title": "Ahli dan peranan",
-        "description": "Urus keahlian, jemputan dan peranan."
+        "description": "Urus keahlian dan jemputan. Peranan bersifat kumulatif; sekurang-kurangnya seorang Pemilik mesti kekal."
       },
       "rota": {
         "title": "Jadual pelulus",
@@ -107,5 +107,147 @@
         "description": "Semak versi lembaran klausa."
       }
     }
+  },
+  "billing": {
+    "title": "Pengebilan",
+    "currentPlan": "Pelan semasa",
+    "unknownPlan": "Maklumat pelan tidak tersedia.",
+    "betaNotice": "Beta ini tidak mengutip bayaran.",
+    "tableLabel": "Pakej dan harga",
+    "planColumn": "Pelan",
+    "priceColumn": "Harga",
+    "availabilityColumn": "Ketersediaan",
+    "commons": "Commons",
+    "community": "Komuniti",
+    "team": "Pasukan",
+    "campus": "Kampus",
+    "commonsPrice": "Percuma · proposal, untested",
+    "communityPrice": "Percuma · proposal, untested",
+    "teamPrice": "RM 49 sebulan bagi setiap organisasi mulai P2 · proposal, untested",
+    "campusPrice": "RM 900 sebulan bagi setiap kampus, dibil setiap tahun selepas GA · proposal, untested",
+    "now": "Tersedia sekarang",
+    "fromP2": "Mulai P2",
+    "afterGa": "Selepas GA"
+  },
+  "audit": {
+    "title": "Log audit",
+    "actor": "ID pelaku",
+    "action": "Tindakan",
+    "targetType": "Jenis sasaran",
+    "targetId": "ID sasaran",
+    "projectId": "ID projek",
+    "filters": "Penapis audit",
+    "from": "Dari",
+    "to": "Hingga",
+    "allActions": "Semua tindakan",
+    "empty": "Belum ada entri audit (n=0)",
+    "loading": "Memuatkan entri audit…",
+    "loadMore": "Muat lagi",
+    "export": "Eksport CSV",
+    "exporting": "Mengeksport…",
+    "error": "Entri audit tidak dapat dimuatkan. Cuba lagi.",
+    "exportError": "Log audit tidak dapat dieksport. Cuba lagi.",
+    "actorUnknown": "Pelaku tidak diketahui",
+    "objectUnknown": "Objek tidak diketahui",
+    "actorRole": "{actor} · {role}",
+    "object": "Objek",
+    "time": "Masa",
+    "entriesRegion": "Entri audit"
+  },
+  "data": {
+    "exportsTitle": "Eksport data",
+    "exportJobs": "Kerja eksport",
+    "exportsDescription": "Minta salinan data organisasi. Eksport disediakan dalam masa 24 jam dan pautan tamat selepas 7 hari.",
+    "requestExport": "Minta eksport",
+    "requestAccountExport": "Minta eksport akaun",
+    "readyWithin": "Sedia dalam masa 24 jam",
+    "loadingExports": "Memuatkan eksport…",
+    "linkExpires": "Pautan tamat pada {date}",
+    "download": "Muat turun",
+    "downloadAccount": "Muat turun akaun",
+    "downloadFor": "Muat turun eksport {id}",
+    "downloadAccountFor": "Muat turun eksport akaun {id}",
+    "expiredLink": "Pautan muat turun ini telah tamat tempoh. Minta eksport baharu.",
+    "status": {
+      "queued": "Dalam giliran",
+      "running": "Sedang berjalan",
+      "ready": "Sedia",
+      "failed": "Gagal",
+      "expired": "Tamat tempoh"
+    },
+    "exportPending": "Eksport sedang disediakan.",
+    "exportFailed": "Eksport tidak dapat diminta. Cuba lagi.",
+    "refreshExports": "Muat semula eksport",
+    "loadMoreExports": "Muat lagi eksport",
+    "noExports": "Belum ada eksport.",
+    "retentionTitle": "Penyimpanan data",
+    "retentionDescription": "Tempoh penyimpanan mengikut dasar data produk ini.",
+    "retentionItem": "Data",
+    "retentionPeriod": "Tempoh penyimpanan",
+    "retentionAfter": "Selepas tempoh penyimpanan",
+    "retention": {
+      "readings": {
+        "item": "Bacaan dan baris ralat",
+        "period": "Sepanjang hayat projek",
+        "after": "Dipadam bersama projek"
+      },
+      "camera": {
+        "item": "Bingkai kamera",
+        "period": "Sehingga akhir semester, maksimum 183 hari",
+        "after": "Dipadam; baris kontras dikekalkan"
+      },
+      "bus": {
+        "item": "Lokasi bas mentah",
+        "period": "Sehingga masa segmen dikira, maksimum 24 jam",
+        "after": "Dipadam; masa segmen dikekalkan"
+      },
+      "guestWindows": { "item": "Tetingkap tetamu", "period": "14 hari", "after": "Dipadam" },
+      "guestAccounts": { "item": "Akaun tetamu", "period": "30 hari tidak aktif", "after": "Dipadam bersama data" },
+      "subscribers": {
+        "item": "Rekod pelanggan",
+        "period": "Sehingga berhenti langgan, kemudian 30 hari",
+        "after": "Dipadam; penindasan cincangan dikekalkan"
+      },
+      "ledger": {
+        "item": "Lejar dan audit",
+        "period": "Sepanjang hayat organisasi",
+        "after": "Medan peribadi dipseudonimkan apabila akaun atau pelanggan dipadam"
+      },
+      "deletedOrg": {
+        "item": "Organisasi dipadam",
+        "period": "Tempoh ihsan 30 hari",
+        "after": "Dihapuskan sepenuhnya"
+      },
+      "exports": { "item": "Fail eksport", "period": "7 hari", "after": "Dipadam" },
+      "apu": {
+        "item": "NAME, SAMACCOUNTNAME dan LECTID jadual APU",
+        "period": "Tidak pernah disimpan",
+        "after": "Digugurkan semasa ingest"
+      }
+    },
+    "deleteOrgTitle": "Padam organisasi",
+    "deleteOrgDescription": "Pemadaman memulakan tempoh ihsan 30 hari. Anda boleh membatalkannya dalam tempoh ini.",
+    "exportFirst": "Eksport dahulu",
+    "continueWithoutExport": "Teruskan tanpa eksport",
+    "deleteOrgDialog": "Taip slug organisasi untuk menjadualkan pemadaman.",
+    "deletionScheduled": "Pemadaman dijadualkan. Organisasi akan dihapuskan pada {date}.",
+    "graceTitle": "Organisasi dipadam",
+    "purgeDate": "Organisasi akan dihapuskan pada {date}.",
+    "cancelDeletion": "Batalkan pemadaman",
+    "deletionCancelled": "Pemadaman tidak dijadualkan.",
+    "deleteFailed": "Pemadaman tidak dapat dijadualkan. Cuba lagi.",
+    "accountTitle": "Data akaun",
+    "accountDescription": "Eksport atau padam data yang dikaitkan dengan akaun anda.",
+    "deleteAccount": "Padam akaun",
+    "deleteAccountDescription": "Taip e-mel log masuk untuk menjadualkan pemadaman akaun.",
+    "accountDeletionScheduled": "Pemadaman akaun telah dijadualkan.",
+    "accountDeleteUnavailable": "E-mel akaun anda tidak tersedia, jadi pemadaman akaun tidak boleh disahkan.",
+    "accountDeleteFailed": "Pemadaman akaun tidak dapat dijadualkan. Cuba lagi.",
+    "soleOwner": "Pindahkan pemilikan sebelum memadam akaun ini.",
+    "transferOwnership": "Pindahkan pemilikan di {name}",
+    "membershipsUnavailable": "Pemilikan organisasi tidak dapat dimuatkan.",
+    "noOwnedOrganisations": "Tiada pemilikan organisasi yang perlu dipindahkan.",
+    "cancel": "Batal",
+    "ownerOnly": "Hanya Pemilik boleh memadam organisasi ini."
   }
 }

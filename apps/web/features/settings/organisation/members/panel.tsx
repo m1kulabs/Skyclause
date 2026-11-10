@@ -1,3 +1,1 @@
-export default function Panel() {
-  return <div data-unbuilt="a-members-ui" />
-}
+export { MembersPanel as default } from '../../../members/members-panel'

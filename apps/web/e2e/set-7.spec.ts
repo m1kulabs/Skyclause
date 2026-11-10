@@ -1,13 +1,46 @@
 import { removeDeviceScenario } from './alerts/support'
 import { test, expect } from './fixtures'
+import type { Principal, Role } from '@skyclause/contracts'
 import type { Page } from '@playwright/test'
 import { t } from './palette/messages'
 import { expectUnclippedText } from './harness/expect-unclipped-text'
 import { windowUndoCase, windowUnsavedCase } from './windows/set7-cases'
+import { asPage } from './harness'
+import { makeOrg, signInAs } from './harness/sign-in-as'
+import { stubApi } from './harness/stub-api'
+import { dataOperations } from '../features/data/operations'
+import { prepareSettings as prepareMemberSettings } from './members/stubs'
+import { prepareSettings, projectFixtureData, projectPath } from './project-ui/fixtures'
 import { subscriberRemoval } from './subscribers/removal'
 
 const route = '/_test/set-7'
 const name = t('set7.harness.name')
+
+function principal(role: Role): Principal {
+  return {
+    kind: 'session',
+    client: 'app',
+    clientName: null,
+    via: 'cookie',
+    accountId: 'test-account',
+    sessionId: 'test-session',
+    authenticatedAt: new Date('2026-11-10T02:00:00Z'),
+    orgId: 'test-org',
+    role,
+    isGuest: false,
+    staff: false
+  }
+}
+const dataExport = {
+  id: '018f47a3-b2c1-7c00-8000-000000000700',
+  scope: 'organisation' as const,
+  status: 'ready',
+  formats: ['json', 'csv'] as const,
+  error: null,
+  expires_at: '2026-11-18T00:00:00Z',
+  created_at: '2026-11-10T02:00:00Z',
+  download_url: null
+}
 
 // Controlled inputs can be filled before hydration; wait for the harness's existing ready signal.
 async function openHarness(page: Page) {
@@ -224,20 +257,218 @@ for (const theme of ['dark', 'light', 'high-contrast'] as const) {
   })
 }
 
-// Domain owners replace these cases with their real action flow when their panels land (spec §7).
+// Remaining domain owners replace these cases with their real action flow when their panels land (spec §7).
 for (const title of [
-  'delete organisation — #108 a-settings-pages',
-  'delete account — #108 a-settings-pages',
   'revoke API key — #105 a-keys-ui',
   'revoke AI key — #105 a-keys-ui',
-  'revoke share link — #174 b-project-ui',
-  'archive project — #174 b-project-ui',
-  'remove member — #104 a-members-ui',
-  'lower role — #104 a-members-ui',
-  'unsaved rota — #104 a-members-ui',
   'delete clause sheet draft — #144'
 ]) {
   test.fixme(title, async () => {})
+}
+
+test('delete organisation stays disabled until the exact slug is typed — #108 a-settings-pages', async ({ page }) => {
+  await asPage(page, principal('owner'))
+  await stubApi(page, 'listOrganisationExports', { data: [], next_cursor: null }, { registry: dataOperations })
+  await stubApi(
+    page,
+    'getOrganisationDeletion',
+    { deletion_requested_at: null, purge_after: null },
+    {
+      registry: dataOperations
+    }
+  )
+  await stubApi(page, 'createOrganisationExport', dataExport, { registry: dataOperations })
+  await stubApi(
+    page,
+    'requestOrganisationDeletion',
+    { deletion_requested_at: '2026-11-10T02:00:00Z', purge_after: '2026-12-10T02:00:00Z' },
+    { registry: dataOperations }
+  )
+  const exportsLoaded = page.waitForResponse(
+    (response) => response.request().method() === 'GET' && response.url().includes('/api/orgs/test-org/exports')
+  )
+  const deletionLoaded = page.waitForResponse(
+    (response) => response.request().method() === 'GET' && response.url().endsWith('/api/orgs/test-org/deletion')
+  )
+  await page.goto('/test-org/settings/data')
+  const panel = page.locator('[data-settings-panel]')
+  await Promise.all([exportsLoaded, deletionLoaded])
+  const trigger = panel.getByRole('button', { name: 'Delete organisation' })
+  await expect(trigger).toBeEnabled()
+  await trigger.focus()
+  await page.keyboard.press('Enter')
+  const offer = page.getByRole('alertdialog')
+  await offer.getByRole('button', { name: 'Export first' }).focus()
+  await page.keyboard.press('Enter')
+
+  const dialog = page.getByRole('alertdialog')
+  const field = dialog.getByRole('textbox')
+  const confirm = dialog.getByRole('button', { name: /Delete organisation/ })
+  await expect(confirm).toBeDisabled()
+  await field.focus()
+  await page.keyboard.type('Test-org')
+  await expect(confirm).toBeDisabled()
+  await page.keyboard.press('ControlOrMeta+A')
+  await page.keyboard.type('test-org ')
+  await expect(confirm).toBeDisabled()
+  await page.keyboard.press('ControlOrMeta+A')
+  await page.keyboard.type('test-org')
+  await expect(confirm).toBeEnabled()
+  const deletion = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().endsWith('/api/orgs/test-org/deletion')
+  )
+  await confirm.focus()
+  await page.keyboard.press('Enter')
+  expect((await deletion).postDataJSON()).toEqual({ slug: 'test-org' })
+  await expect(panel.getByText(/Deletion scheduled/)).toBeVisible()
+})
+
+test('delete account stays disabled until the exact email is typed — #108 a-settings-pages', async ({ page }) => {
+  const org = await makeOrg()
+  const { accountId, email } = await signInAs(page, 'owner', org)
+  await stubApi(page, 'listMyExports', { data: [], next_cursor: null }, { registry: dataOperations })
+  await stubApi(page, 'listMyMemberships', { data: [], next_cursor: null }, { registry: dataOperations })
+  await page.route('**/api/me/deletion', async (route) => {
+    await route.fulfill({ status: 202, json: { deleted_at: '2026-11-10T02:00:00Z' } })
+  })
+  await page.goto('/account/data')
+  const panel = page.locator('[data-settings-panel]')
+  await expect(panel.getByText('Loading exports…', { exact: true })).toBeHidden()
+  const trigger = panel.getByRole('button', { name: 'Delete account' })
+  await trigger.focus()
+  await page.keyboard.press('Enter')
+  const dialog = page.getByRole('alertdialog')
+  const field = dialog.getByRole('textbox')
+  const confirm = dialog.getByRole('button', { name: /Delete account/ })
+  await expect(confirm).toBeDisabled()
+  await field.focus()
+  await page.keyboard.type(email.toUpperCase())
+  await expect(confirm).toBeDisabled()
+  await page.keyboard.press('ControlOrMeta+A')
+  await page.keyboard.type(`${email} `)
+  await expect(confirm).toBeDisabled()
+  await page.keyboard.press('ControlOrMeta+A')
+  await page.keyboard.type(email)
+  await expect(confirm).toBeEnabled()
+  const deletion = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().endsWith('/api/me/deletion')
+  )
+  await confirm.focus()
+  await page.keyboard.press('Enter')
+  expect((await deletion).postDataJSON()).toEqual({ email })
+  await expect(panel.getByText('Account deletion has been scheduled.')).toBeVisible()
+  expect(accountId).toBeTruthy()
+})
+
+test('remove member — #104: confirmation names the member', async ({ page }) => {
+  await prepareMemberSettings(page, 'members')
+  await page.goto('/test-org/settings/members')
+
+  await page.getByRole('button', { name: 'Remove member: Aisha Rahman' }).click()
+  const dialog = page.getByRole('alertdialog')
+  await expect(dialog.getByRole('heading', { name: 'Remove “Aisha Rahman”?' })).toBeVisible()
+  await expect(dialog).toContainText('Aisha Rahman')
+})
+
+test('lower role — #104: confirmation names the member and new role', async ({ page }) => {
+  await prepareMemberSettings(page, 'members', 'admin')
+  await page.goto('/test-org/settings/members')
+
+  await page.getByRole('combobox', { name: 'Role for Aisha Rahman' }).click()
+  await page.getByRole('option', { name: 'Editor' }).click()
+  const dialog = page.getByRole('alertdialog')
+  await expect(dialog.getByRole('heading', { name: 'Change “Aisha Rahman” to Editor?' })).toBeVisible()
+  await expect(dialog).toContainText('Editor')
+})
+
+test('last-owner — #104: the refusal reason appears next to the role control', async ({ page }) => {
+  await prepareMemberSettings(page, 'members')
+  await page.route('**/api/orgs/test-org/members/**', async (route) => {
+    if (route.request().method() === 'PATCH') {
+      await route.fulfill({
+        status: 409,
+        contentType: 'application/problem+json',
+        json: {
+          type: 'https://docs.skyclause.m1ku.tech/problems/last-owner',
+          title: 'Last owner',
+          status: 409,
+          detail: 'An organisation must keep one Owner.',
+          instance: new URL(route.request().url()).pathname
+        }
+      })
+    } else await route.fallback()
+  })
+  await page.goto('/test-org/settings/members')
+
+  const role = page.getByRole('combobox', { name: 'Role for Morgan Owner' })
+  await role.click()
+  await page.getByRole('option', { name: 'Admin' }).click()
+  const dialog = page.getByRole('alertdialog')
+  await expect(dialog.getByRole('heading', { name: 'Change “Morgan Owner” to Admin?' })).toBeVisible()
+  await dialog.getByRole('button', { name: /Change role to Admin/ }).click()
+  const ownerRow = page.getByRole('row', { name: /Morgan Owner/ })
+  await expect(ownerRow.getByRole('alert')).toHaveText('The organisation must retain at least one Owner.')
+})
+
+test('unsaved rota — #104: closing the tab prompts before the shift is saved', async ({ page }) => {
+  await prepareMemberSettings(page, 'rota')
+  await page.goto('/test-org/settings/rota')
+  await page.getByRole('button', { name: 'Add an approver' }).click()
+  await page.getByRole('checkbox', { name: 'Monday' }).click()
+  await page.getByRole('button', { name: 'Add shift' }).click()
+  await expect(page.getByText('Rota shifts (n=1)')).toBeVisible()
+
+  const prompt = page.waitForEvent('dialog')
+  const reload = page.evaluate(() => window.location.reload())
+  const dialog = await prompt
+  expect(dialog.type()).toBe('beforeunload')
+  await dialog.dismiss()
+  await reload
+  await expect(page).toHaveURL(/\/test-org\/settings\/rota$/)
+})
+
+test('ORG-4: a new organisation shows both empty rota templates and Add an approver', async ({ page }) => {
+  await prepareMemberSettings(page, 'rota')
+  await page.goto('/test-org/settings/rota')
+  const templates = page.locator('section[aria-labelledby="rota-templates-heading"]')
+  await expect(templates.getByText('Storm afternoons')).toBeVisible()
+  await expect(templates.getByText('Surge nights')).toBeVisible()
+  await expect(templates.getByText('No one assigned')).toHaveCount(2)
+  await expect(page.getByRole('button', { name: 'Add an approver' })).toBeVisible()
+  await expect(page.getByText('Rota shifts (n=0)')).toBeVisible()
+})
+
+test('ORG settings tables and timeline fit the 375px viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 })
+  await prepareMemberSettings(page, 'members')
+  await page.goto('/test-org/settings/members')
+  await expect(page.getByRole('table', { name: 'Organisation members' })).toBeVisible()
+  await expect(page.getByRole('cell', { name: /^Name Aisha Rahman/ })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375)
+
+  await prepareMemberSettings(page, 'rota')
+  await page.goto('/test-org/settings/rota')
+  const timeline = page.locator('[role="region"][aria-label="Approver rota for the next 7 days"]')
+  await expect(timeline).toBeVisible()
+  await expect(timeline).toHaveCSS('overflow-x', 'auto')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375)
+})
+
+for (const mode of [
+  { name: 'dark', theme: 'dark', contrast: 'standard' },
+  { name: 'light', theme: 'light', contrast: 'standard' },
+  { name: 'high contrast', theme: 'dark', contrast: 'more' }
+] as const) {
+  test(`#104 members and rota axe: ${mode.name}`, async ({ page, baseURL, expectAxeClean }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.context().addCookies([{ name: 'skyclause-test-appearance', value: JSON.stringify(mode), url: baseURL! }])
+    await prepareMemberSettings(page, 'members')
+    await page.goto('/test-org/settings/members')
+    await expectAxeClean(page)
+    await prepareMemberSettings(page, 'rota')
+    await page.goto('/test-org/settings/rota')
+    await expectAxeClean(page)
+  })
 }
 
 test('notifications panel removes a registered device immediately by keyboard — #170', async ({ page }) => {
@@ -246,3 +477,56 @@ test('notifications panel removes a registered device immediately by keyboard �
 test('cancel window — #143 b-windows-ui', async ({ page }) => windowUndoCase(page))
 test('unsaved window warns before leaving — #143 b-windows-ui', async ({ page }) => windowUnsavedCase(page))
 test('remove subscriber — #169 c-channels-ui', async ({ page }) => subscriberRemoval(page))
+
+test('archive project can be undone within 10 seconds — #174 b-project-ui', async ({ page }) => {
+  await page.clock.install({ time: new Date(projectFixtureData.capturedAt) })
+  await prepareSettings(page, 'admin')
+  let archiveRequests = 0
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && /\/api\/projects\/[^/]+\/archive$/.test(request.url())) archiveRequests++
+  })
+  await page.goto(`${projectPath}/settings`)
+  await page.clock.pauseAt(new Date('2026-11-05T13:12:30.000Z'))
+  const panel = page.locator('[data-project-settings-general]')
+  await panel.getByRole('button', { name: 'Archive project' }).click()
+  await expect(panel.getByRole('status').filter({ hasText: 'Project will be archived' })).toBeVisible()
+  await page.clock.runFor(9_000)
+  await panel.getByRole('button', { name: 'Undo' }).click()
+  await page.clock.runFor(10_001)
+  expect(archiveRequests).toBe(0)
+
+  await panel.getByRole('button', { name: 'Archive project' }).click()
+  await page.clock.runFor(10_001)
+  await expect(panel.getByRole('button', { name: 'Restore project' })).toBeVisible()
+  expect(archiveRequests).toBe(1)
+  await panel.getByRole('button', { name: 'Restore project' }).click()
+  await expect(panel.getByRole('button', { name: 'Archive project' })).toBeVisible()
+})
+
+test('revoking a share link asks for confirmation and names the link — #174 b-project-ui', async ({ page }) => {
+  await prepareSettings(page, 'admin')
+  await page.goto(`${projectPath}/settings/share`)
+  const share = page.locator('[data-project-settings-share]')
+  await share.getByRole('button', { name: 'Revoke' }).click()
+  const dialog = page.getByRole('alertdialog')
+  await expect(dialog.getByRole('heading')).toContainText('share-link-one')
+  await expect(dialog.getByRole('button', { name: 'Revoke link' })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Revoke link' }).click()
+  await expect(share).toContainText('Revoked')
+})
+
+test('closing the tab with an unsaved rota prompts — #174 b-project-ui', async ({ page }) => {
+  await prepareSettings(page, 'admin')
+  await page.goto(`${projectPath}/settings/rota`)
+  const rota = page.locator('[data-project-settings-rota]')
+  await rota.getByRole('button', { name: 'Add a shift' }).click()
+  await rota.locator('[data-rota-editor] #rota-start').fill('14:00')
+  const prompt = page.waitForEvent('dialog')
+  const reload = page.evaluate(() => window.location.reload())
+  const dialog = await prompt
+  expect(dialog.type()).toBe('beforeunload')
+  await dialog.dismiss()
+  await reload
+  await expect(page).toHaveURL(`${projectPath}/settings/rota`)
+  await expect(page.locator('[data-project-settings-rota]')).toBeVisible()
+})

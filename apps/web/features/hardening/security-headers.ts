@@ -1,5 +1,5 @@
-// a-hardening (#115): NFR-10's response headers. `proxy.ts` calls
-// `securityHeaders(request)` in one line; the nonce is per request and the
+// a-hardening (#115): NFR-10's response headers. `proxy.ts` answers every
+// request with `securityHeaders(request)`; the nonce is per request and the
 // headers are chosen by host. The built app proves the behaviour in
 // e2e/hardening.spec.ts; test/hardening.test.ts pins the header contract.
 import { NextResponse, type NextRequest } from 'next/server'
@@ -45,7 +45,11 @@ const SURFACE_OF: Record<string, Surface | null> = {
 
 const isCameraRoute = (pathname: string) => /(^|\/)camera(\/|$)/.test(pathname)
 
-export function securityHeaders(request: NextRequest, config?: HostConfig): NextResponse {
+export function securityHeaders(
+  request: NextRequest,
+  config?: HostConfig,
+  o: { notFound?: boolean } = {}
+): NextResponse {
   const hosts = config ?? (shared ??= hostConfig(process.env))
   const nonce = randomNonce()
   const host = request.headers.get('host') ?? request.nextUrl.host
@@ -56,7 +60,11 @@ export function securityHeaders(request: NextRequest, config?: HostConfig): Next
   downstream.set('x-nonce', nonce)
   // Next reads the nonce from the incoming CSP header and applies it to its scripts.
   downstream.set('Content-Security-Policy', contentSecurityPolicy(policy))
-  const response = proxyResponse(request, hosts, { request: { headers: downstream } })
+  const init = { request: { headers: downstream } }
+  // #176's proxy answers an unknown `/{org}` with the not-found page.
+  const response = o.notFound
+    ? NextResponse.rewrite(new URL('/_not-found', request.url), init)
+    : proxyResponse(request, hosts, init)
   applySecurityHeaders(response, policy)
   return response
 }
