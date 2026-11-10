@@ -1,5 +1,6 @@
 import type { InboundMessage } from '@skyclause/delivery'
 import {
+  handleOnce,
   isFlagEnabled,
   normalizeEmail,
   recordCrowdReply,
@@ -52,8 +53,9 @@ function dropReason(m: InboundMessage, sender: string, readable: boolean): Reply
 /**
  * Logs the reply in the token's organisation (CAL-17), at SES's receipt time. Mail needs spam and virus `PASS`, a
  * sender equal to the token's subscriber and a readable first line; otherwise it is dropped with an audit row and the
- * token keeps its one reply. With `inbound_email` or `pack_crowd` off, or a token that doesn't verify, nothing is
- * written. A redelivery finds the token spent, or the drop already audited.
+ * token keeps its one reply. A redelivery of the SES message (`handleOnce`) does nothing; once a reply is logged, its
+ * spent token also refuses a redelivery, and a second mail on a spent token. With `inbound_email` or `pack_crowd` off,
+ * or a token that doesn't verify, nothing is written.
  */
 export async function handleCrowdReply(m: InboundMessage): Promise<void> {
   const notLogged = (outcome: string) => log('INFO', 'crowd reply not logged', { message_id: m.messageId, outcome })
@@ -67,15 +69,21 @@ export async function handleCrowdReply(m: InboundMessage): Promise<void> {
     if (!(await isFlagEnabled(tx, 'pack_crowd', found.orgId))) return 'crowd-off'
     const sender = await replySender(tx, found.subscriberId)
     if (sender === null) return 'token'
-    const reply = parseReply(m.text)
-    const dropped = dropReason(m, sender, reply !== null)
-    if (dropped) {
-      await recordReplyDrop(tx, { projectId: found.projectId, messageId: m.messageId, reason: dropped })
-      return `dropped-${dropped}`
-    }
-    const at = new Date(m.receivedAt)
-    const recorded = await recordCrowdReply(tx, { ...found, callId, windowId, ...reply!, at })
-    return typeof recorded === 'string' ? recorded : 'logged'
+    let outcome = 'already-handled'
+    // One SES message is handled once per consumer; the token's single use still limits a token to one reply.
+    await handleOnce(tx, CONSUMER, { messageId: m.messageId }, async () => {
+      const reply = parseReply(m.text)
+      const dropped = dropReason(m, sender, reply !== null)
+      if (dropped) {
+        await recordReplyDrop(tx, { projectId: found.projectId, messageId: m.messageId, reason: dropped })
+        outcome = `dropped-${dropped}`
+        return
+      }
+      const at = new Date(m.receivedAt)
+      const recorded = await recordCrowdReply(tx, { ...found, callId, windowId, ...reply!, at })
+      outcome = typeof recorded === 'string' ? recorded : 'logged'
+    })
+    return outcome
   })
   if (outcome === 'logged') log('INFO', 'crowd reply logged', { message_id: m.messageId })
   else notLogged(outcome)

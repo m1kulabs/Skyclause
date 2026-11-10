@@ -25,6 +25,7 @@ import { makeGuestBlock } from './guest_block'
 import { makeGuestBudget } from './guest_budget'
 import { makeGuestToken } from './guest_token'
 import { makeHandledEvent } from './handled_event'
+import { makeHandledMessage } from './handled_message'
 import { makeIdempotencyKey } from './idempotency_key'
 import { makeIcsFeed } from './ics_feed'
 import { makeIncident } from './incident'
@@ -100,6 +101,7 @@ export { makeGuestBlock } from './guest_block'
 export { makeGuestBudget } from './guest_budget'
 export { makeGuestToken } from './guest_token'
 export { makeHandledEvent } from './handled_event'
+export { makeHandledMessage } from './handled_message'
 export { makeIcsFeed } from './ics_feed'
 export { makeIncident } from './incident'
 export { makeIncidentUpdate } from './incident_update'
@@ -229,6 +231,7 @@ export const sharedFactories: Record<string, (tx: Tx) => Promise<unknown>> = {
   guest_block: makeGuestBlock,
   guest_budget: makeGuestBudget,
   handled_event: makeHandledEvent,
+  handled_message: makeHandledMessage,
   idempotency_key: makeIdempotencyKey,
   incident: makeIncident,
   incident_update: makeIncidentUpdate,

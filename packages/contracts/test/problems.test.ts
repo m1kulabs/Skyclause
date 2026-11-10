@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { PROBLEM_SLUGS } from '../src/problems'
+import { HTTP_PROBLEM_STATUS, PROBLEM_SLUGS } from '../src/problems'
 
 test('lists the TRD problem slugs and Spec §4 additions', () => {
   expect(PROBLEM_SLUGS).toEqual([
@@ -34,6 +34,21 @@ test('lists the TRD problem slugs and Spec §4 additions', () => {
     'no-event-yet',
     'webhook-unverified',
     'feature-off',
-    'privacy-notice-unpublished'
+    'privacy-notice-unpublished',
+    'unauthenticated',
+    'not-found',
+    'idempotency-in-progress',
+    'conflict',
+    'internal-error'
   ])
+})
+
+test('fixes the status of the credential, lookup, key, state and server slugs', () => {
+  expect(HTTP_PROBLEM_STATUS).toEqual({
+    unauthenticated: 401,
+    'not-found': 404,
+    'idempotency-in-progress': 409,
+    conflict: 409,
+    'internal-error': 500
+  })
 })

@@ -100,6 +100,11 @@ export const bundle = tenantTable(
     approvedAt: instant('approved_at'),
     escalationLevel: integer('escalation_level').notNull().default(0),
     draftOnly: boolean('draft_only').notNull().default(false),
+    // #499: the windows and nights whose engine verdict fired with no call in the draft (#467's `missing` rows), each
+    // with its approver's resolution (`MissingCall` in bundles/machine.ts).
+    missing: jsonb('missing')
+      .notNull()
+      .default(sql`'[]'`),
     traceId: text('trace_id'),
     ...timestamps()
   },

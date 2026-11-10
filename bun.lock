@@ -38,6 +38,7 @@
         "@base-ui/react": "1.9.0",
         "@fontsource-variable/jetbrains-mono": "5.3.0",
         "@fontsource-variable/work-sans": "5.3.0",
+        "@fontsource/work-sans": "5.3.0",
         "@skyclause/api": "workspace:*",
         "@skyclause/auth": "workspace:*",
         "@skyclause/config": "workspace:*",
@@ -95,8 +96,10 @@
       "devDependencies": {
         "@opentelemetry/sdk-metrics": "3.1.0",
         "@opentelemetry/sdk-trace": "3.1.0",
+        "@skyclause/api": "workspace:*",
         "ai": "7.0.163",
         "drizzle-orm": "0.45.4",
+        "ical.js": "2.2.1",
       },
     },
     "packages/agent": {
@@ -130,6 +133,9 @@
         "drizzle-orm": "0.45.4",
         "hono": "4.13.16",
         "zod": "4.6.7",
+      },
+      "devDependencies": {
+        "ical.js": "2.2.1",
       },
     },
     "packages/auth": {
@@ -225,6 +231,7 @@
       },
       "devDependencies": {
         "axe-core": "4.10.2",
+        "ical.js": "2.2.1",
         "jsdom": "26.1.0",
       },
     },
@@ -595,6 +602,8 @@
     "@fontsource-variable/jetbrains-mono": ["@fontsource-variable/jetbrains-mono@5.3.0", "", {}, "sha512-F32xpS2NsGYoQi2ADSkKTgpJj7ozajsGgDJ8woTnqjmIB+dxDIqImjl4pXZVEExu8UFZ2ndhmX18EBS/hdz3Lw=="],
 
     "@fontsource-variable/work-sans": ["@fontsource-variable/work-sans@5.3.0", "", {}, "sha512-le8h/OIIuhm5Z7TdvuMw0yKg2gaCZUiMec8zaumsVVjzeJRBPEF0bQI/MkaZDHCVzZDvZoP/O2LiGOSfDLSbaw=="],
+
+    "@fontsource/work-sans": ["@fontsource/work-sans@5.3.0", "", {}, "sha512-3cKV28+bEiLGdyOl0VgEGCFWE1XdZJu/K+nH4Jt76XC3T//XrRtm2EF7jA61GSMIy8sYp6ZFTE01nD3lLaBV9A=="],
 
     "@google-cloud/paginator": ["@google-cloud/paginator@7.2.0", "", { "dependencies": { "extend": "^3.0.2" } }, "sha512-l+x6YObHGTuqBCMvC0SXo3Cnyqg4FkWWKYRptf46PACHJ5GAUuhsd2b3wphgGrg1ybs/LAb+q5MnUTuG/3+v7w=="],
 
@@ -1469,6 +1478,8 @@
     "husky": ["husky@9.1.7", "", { "bin": { "husky": "bin.js" } }, "sha512-5gs5ytaNjBrh5Ow3zrvdUUY+0VxIuWVL4i9irt6friV+BqdCfmV11CQTWMiBYWHbXhco+J1kHfTOUkePhCDvMA=="],
 
     "hyparquet": ["hyparquet@1.7.0", "", {}, "sha512-rRp1eRO6vRGo4q4qE7lhypjkXtmYUY6kDI2VmJb6xAniOGLaNYa8ueS19dnylkqniOfeSJTn95XHP2V2SMeeuQ=="],
+
+    "ical.js": ["ical.js@2.2.1", "", {}, "sha512-yK/UlPbEs316igb/tjRgbFA8ZV75rCsBJp/hWOatpyaPNlgw0dGDmU+FoicOcwX4xXkeXOkYiOmCqNPFpNPkQg=="],
 
     "iconv-lite": ["iconv-lite@0.6.3", "", { "dependencies": { "safer-buffer": ">= 2.1.2 < 3.0.0" } }, "sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw=="],
 
