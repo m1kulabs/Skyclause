@@ -3,6 +3,7 @@
 export * from './access'
 export * from './api'
 export * from './audit'
+export * from './auditor'
 export * from './auth'
 export * from './clauses'
 export * from './delivery'

@@ -173,8 +173,22 @@
     {
       "idx": 24,
       "version": "7",
-      "when": 1794257926352,
-      "tag": "0024_e-mcp-auth",
+      "when": 1794247592936,
+      "tag": "0024_c-bundle-lifecycle-missing-calls",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794278826723,
+      "tag": "0025_b-auditor-findings",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794283111936,
+      "tag": "0026_e-mcp-auth",
       "breakpoints": true
     }
   ]

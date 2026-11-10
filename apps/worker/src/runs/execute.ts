@@ -27,6 +27,7 @@ import {
   withTenant,
   type CallDraft,
   type ClaimOutcome,
+  type MissingDraft,
   type RunOutcome,
   type RunRow,
   type RunStepName,
@@ -230,18 +231,25 @@ const STEPS: { [K in RunStepName]: Step<K> } = {
     const validated = need(done, 'validate')
     if (!validated.ok) throw new Error('persist needs a valid bundle')
     const comparisons = need(done, 'compare')
+    const { input } = need(done, 'draft')
     const urls = await boundSourceUrls(tx, r.projectId)
     const windowIds = new Set(windows.map((w) => w.id))
     const nightIds = new Set(snapshot.nights.map((n) => n.id))
     const scoped = [...verdicts.windows, ...verdicts.nights]
-    const calls = validated.bundle.calls.map((c: ProposedBundle['calls'][number]): CallDraft => {
-      const id = c.window_id
+    const shadowOf = (id: string) => {
       const shadow = scoped.find((v) => v.scope.id === id)
       if (!shadow) throw new Error(`no shadow verdict for ${id}`)
+      return shadow
+    }
+    const scopeOf = (id: string) => {
       const isNight = !windowIds.has(id) && nightIds.has(id)
+      return { windowId: isNight ? null : id, nightId: isNight ? id : null }
+    }
+    const calls = validated.bundle.calls.map((c: ProposedBundle['calls'][number]): CallDraft => {
+      const id = c.window_id
+      const shadow = shadowOf(id)
       return {
-        windowId: isNight ? null : id,
-        nightId: isNight ? id : null,
+        ...scopeOf(id),
         mode: c.mode,
         watch: c.watch,
         noCall: c.no_call,
@@ -255,6 +263,15 @@ const STEPS: { [K in RunStepName]: Step<K> } = {
         agrees: comparisons.find((x) => x.windowId === id)?.agrees ?? false
       }
     })
+    // #499: a fired window or night the draft has no call for waits on an approver, with the engine's verdict and the
+    // window's candidates as a drafted call's recipients.
+    const missing = comparisons
+      .filter((x) => x.missing)
+      .map((x): MissingDraft => ({
+        ...scopeOf(x.windowId),
+        shadow: wireVerdict(shadowOf(x.windowId), urls),
+        recipients: (input.candidates[x.windowId] ?? []).map((candidate) => candidate.id)
+      }))
     // GST-5, D23: a run over a guest window drafts a bundle that never sends.
     const guest = windowIds.size
       ? await tx
@@ -268,6 +285,7 @@ const STEPS: { [K in RunStepName]: Step<K> } = {
       pack: r.pack,
       draftOnly: guest.length > 0,
       calls,
+      missing,
       triggeredAt: r.triggeredAt,
       now: ports.now()
     })

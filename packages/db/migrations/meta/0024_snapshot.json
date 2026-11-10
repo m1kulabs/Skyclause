@@ -1,5 +1,5 @@
 {
-  "id": "92bafb60-ccff-4ec4-9369-e23e41b7a557",
+  "id": "ebf24e0a-0e78-4b00-9a68-11045d016b93",
   "prevId": "f2c35a26-dcb3-40ca-818a-6a817dec803a",
   "version": "7",
   "dialect": "postgresql",
@@ -422,13 +422,6 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
-        },
-        "resource": {
-          "name": "resource",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'mcp'"
         },
         "project_ids": {
           "name": "project_ids",
@@ -8952,6 +8945,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
+        },
+        "missing": {
+          "name": "missing",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'"
         },
         "trace_id": {
           "name": "trace_id",

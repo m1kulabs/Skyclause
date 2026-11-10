@@ -23,6 +23,7 @@ import {
   makeSubscriber,
   makeWindow
 } from '@skyclause/db/test/factories/index'
+import { callDraft } from '@skyclause/db/test/bundles/scene'
 import { eq } from 'drizzle-orm'
 import { beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import { apiRequest, asSession, createTestApi, TEST_NOW, testDeps, testOrg } from './harness'
@@ -51,7 +52,8 @@ beforeEach(async () => {
     const window = await makeWindow(tx, { projectId: project.id, startsAt: STARTS, endsAt: ENDS })
     const run = await makeRun(tx, { projectId: project.id, pack: 'crowd' })
     const bundle = await makeBundle(tx, { runId: run.id })
-    const call = await makeCall(tx, { bundleId: bundle.id, windowId: window.id })
+    const { shadow } = callDraft({ windowId: window.id })
+    const call = await makeCall(tx, { bundleId: bundle.id, windowId: window.id, shadow })
     const subscriber = await makeSubscriber(tx, { projectId: project.id, confirmedAt: new Date() })
     return { projectId: project.id, windowId: window.id, callId: call.id, subscriberId: subscriber.id }
   }))
