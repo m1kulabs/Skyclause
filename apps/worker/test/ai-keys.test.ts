@@ -127,16 +127,35 @@ describe('runKeyTest', () => {
   })
 
   test('a rejected key records the failure and answers not-ok', async () => {
-    const { row } = await sealedKey()
+    const { row, plaintext } = await sealedKey()
     const failing = (async () => {
-      throw new Error('401 invalid API key (test)')
+      throw new Error(`401 invalid API key ${plaintext}`)
     }) as never
     const result = await runKeyTest({ generate: failing, now: () => new Date() }, { orgId, keyId: row.id })
     expect(result.status).toBe(200)
     expect(result.body.ok).toBe(false)
-    expect(result.body.detail).toContain('401')
+    expect(result.body.detail).toBe('The provider rejected the key or could not complete the test.')
+    expect(JSON.stringify(result.body)).not.toContain(plaintext)
     const reread = await inOrg((tx) => getAiKey(tx, row.id))
     expect(reread!.lastTestOk).toBe(false)
+    expect(reread!.lastTestDetail).not.toContain(plaintext)
+  })
+
+  test('concurrent retests share one ten-call budget', async () => {
+    const { row } = await sealedKey()
+    let calls = 0
+    const counted = (async () => {
+      calls++
+      return { text: 'ok', totalUsage: { inputTokens: 1, outputTokens: 1 } }
+    }) as never
+    const results = await Promise.all(
+      Array.from({ length: 12 }, () =>
+        runKeyTest({ generate: counted, now: () => new Date() }, { orgId, keyId: row.id })
+      )
+    )
+    expect(results.filter((r) => r.status === 200)).toHaveLength(10)
+    expect(results.filter((r) => r.status === 429)).toHaveLength(2)
+    expect(calls).toBe(10)
   })
 
   test('an unknown key answers 404 and the eleventh test in an hour answers 429', async () => {

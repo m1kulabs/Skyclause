@@ -1,4 +1,6 @@
 import type { Operations } from '@skyclause/contracts'
+import type { Context } from 'hono'
+import type { ApiEnv } from '../../context'
 import { requireRecentAuth } from '../../middleware/auth'
 import { requireOrg } from '../../middleware/org'
 import {
@@ -17,7 +19,8 @@ import {
   updateOrganisationAiKey as updateOrganisationAiKeyService,
   updateOrganisationAiSettings as updateOrganisationAiSettingsService
 } from '../../services/ai-keys'
-import { inTenant } from '../../tenancy'
+import { ApiError } from '../../problems'
+import { inTenant, type ServiceContext } from '../../tenancy'
 import type { HandlerEntry } from '../index'
 
 // e-byok-api (#79 §4): organisation and personal AI keys, model settings and usage. Mount-all has checked the
@@ -25,6 +28,20 @@ import type { HandlerEntry } from '../index'
 // routes settle their organisation from the header so the member-keys flag can be checked.
 
 type Entry<Id extends keyof Operations> = HandlerEntry<Operations[Id]>
+
+/** A failed pre-seal test commits only its attempt history before the route returns the 422. */
+async function createWithTestHistory<T>(c: Context<ApiEnv>, create: (ctx: ServiceContext) => Promise<T>): Promise<T> {
+  const result = await inTenant(c, async (ctx) => {
+    try {
+      return { value: await create(ctx) }
+    } catch (error) {
+      if (error instanceof ApiError && error.slug === 'key-test-failed') return { error }
+      throw error
+    }
+  })
+  if (result.error) throw result.error
+  return result.value!
+}
 
 export const listOrganisationAiKeys: Entry<'listOrganisationAiKeys'> = {
   handler: async (c) => {
@@ -37,7 +54,7 @@ export const createOrganisationAiKey: Entry<'createOrganisationAiKey'> = {
   middleware: [requireRecentAuth()],
   handler: async (c) => {
     const body = c.req.valid('json')
-    return c.json(await inTenant(c, (ctx) => createOrganisationAiKeyService(ctx, body)), 201)
+    return c.json(await createWithTestHistory(c, (ctx) => createOrganisationAiKeyService(ctx, body)), 201)
   }
 }
 
@@ -101,7 +118,7 @@ export const createMyAiKey: Entry<'createMyAiKey'> = {
   middleware: [requireOrg, requireRecentAuth()],
   handler: async (c) => {
     const body = c.req.valid('json')
-    return c.json(await inTenant(c, (ctx) => createMyAiKeyService(ctx, body)), 201)
+    return c.json(await createWithTestHistory(c, (ctx) => createMyAiKeyService(ctx, body)), 201)
   }
 }
 

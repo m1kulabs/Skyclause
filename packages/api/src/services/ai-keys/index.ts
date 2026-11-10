@@ -8,6 +8,7 @@ import {
   getAiKey,
   insertAiKey,
   listAiKeys,
+  lockAiKeyTests,
   orgAiFlags,
   recordAudit,
   recordAiKeyTest,
@@ -210,6 +211,10 @@ async function testBeforeSeal(
   o: { provider: string; model: string; key: string; keyId: string | null; ownerId: string; now: Date }
 ): Promise<{ fingerprint: string; last4: string }> {
   const fingerprint = fingerprintKey(o.key)
+  await lockAiKeyTests(ctx.tx, fingerprint)
+  if (await findAiKeyByFingerprint(ctx.tx, fingerprint)) {
+    throw new ApiError(409, 'conflict', 'This key is already saved for this organisation.')
+  }
   await checkTestBudget(ctx, fingerprint, o.now)
   const { generate } = aiKeyPorts()
   const vertex =
@@ -266,9 +271,6 @@ export async function createOrganisationAiKey(
     ownerId: ctx.tx.orgId!,
     now
   })
-  if (await findAiKeyByFingerprint(ctx.tx, fingerprint)) {
-    throw new ApiError(409, 'conflict', 'This key is already saved for this organisation.')
-  }
   // The AAD names the key ID, so the ID is minted before sealing and the row is written once, sealed.
   const id = uuidv7(now)
   const sealed = await sealFor({ ownerId: ctx.tx.orgId!, provider: body.provider, keyId: id, plaintext: body.key })
@@ -422,9 +424,6 @@ export async function createMyAiKey(
     ownerId: me.accountId,
     now
   })
-  if (await findAiKeyByFingerprint(ctx.tx, fingerprint)) {
-    throw new ApiError(409, 'conflict', 'This key is already saved.')
-  }
   const id = uuidv7(now)
   const sealed = await sealFor({ ownerId: me.accountId, provider: body.provider, keyId: id, plaintext: body.key })
   const row = await insertAiKey(ctx.tx, {

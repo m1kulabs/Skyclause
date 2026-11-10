@@ -168,6 +168,43 @@ describe('organisation keys', () => {
     expect(await audits('ai_key.created')).toHaveLength(0)
   })
 
+  test('failed creates retain their test budget across rolled-back responses', async () => {
+    const { api } = setup()
+    provider.pass = false
+    const plaintext = `sk-canary-budget-${randomUUID()}`
+    for (let i = 0; i < 10; i++) {
+      expect((await create(api, owner(), createBody(plaintext))).status).toBe(422)
+    }
+    expect((await create(api, owner(), createBody(plaintext))).status).toBe(429)
+    expect(await keyRows()).toHaveLength(0)
+    expect(await audits('ai_key.created')).toHaveLength(0)
+    await asLogin('postgres', async (client) => {
+      const { rows } = await client.query('SELECT count(*)::int AS n FROM ai_key_test')
+      expect(rows[0].n).toBe(10)
+    })
+  })
+
+  test('concurrent failed creates cannot exceed ten provider attempts', async () => {
+    const { api } = setup()
+    let calls = 0
+    setAiKeyPorts({
+      generate: (async () => {
+        calls++
+        throw new Error('Invalid canary key')
+      }) as never
+    })
+    try {
+      const plaintext = `sk-canary-concurrent-${randomUUID()}`
+      const responses = await Promise.all(Array.from({ length: 12 }, () => create(api, owner(), createBody(plaintext))))
+      expect(responses.filter((r) => r.status === 422)).toHaveLength(10)
+      expect(responses.filter((r) => r.status === 429)).toHaveLength(2)
+      expect(calls).toBe(10)
+      expect(await keyRows()).toHaveLength(0)
+    } finally {
+      setAiKeyPorts({ generate })
+    }
+  })
+
   test('an unknown provider or tier is a 422, storing nothing', async () => {
     const { api } = setup()
     for (const body of [

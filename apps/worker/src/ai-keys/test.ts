@@ -1,6 +1,14 @@
 import { testKey, type GenerateText, type VertexSettings } from '@skyclause/agent'
 import { openSecret, sealAad } from '@skyclause/config/crypto'
-import { countAiKeyTestsSince, getAiKey, recordAiKeyTest, systemPrincipal, withTenant, type Tx } from '@skyclause/db'
+import {
+  countAiKeyTestsSince,
+  getAiKey,
+  lockAiKeyTests,
+  recordAiKeyTest,
+  systemPrincipal,
+  withTenant,
+  type Tx
+} from '@skyclause/db'
 import { z } from 'zod'
 
 // e-byok-api: the worker side of the on-demand key test (D39). The web request carries the plaintext before sealing;
@@ -32,31 +40,43 @@ export async function runKeyTest(deps: KeyTestDeps, o: { orgId: string; keyId: s
   if (!row || row.deletedAt !== null) {
     return { status: 404, body: { ok: false, detail: 'No such AI key.', tested_at: at.toISOString() } }
   }
-  const recent = await withTenant({ orgId: o.orgId, principal: systemPrincipal('ai-key-test') }, (tx: Tx) =>
-    countAiKeyTestsSince(tx, { fingerprint: row.fingerprint, since: new Date(at.getTime() - TEST_WINDOW_MS) })
-  )
-  if (recent >= TEST_LIMIT) {
-    return {
-      status: 429,
-      body: { ok: false, detail: 'This key was tested too many times in the last hour.', tested_at: at.toISOString() }
+  return withTenant(
+    { orgId: o.orgId, principal: systemPrincipal('ai-key-test') },
+    async (tx: Tx): Promise<KeyTestResult> => {
+      await lockAiKeyTests(tx, row.fingerprint)
+      const recent = await countAiKeyTestsSince(tx, {
+        fingerprint: row.fingerprint,
+        since: new Date(at.getTime() - TEST_WINDOW_MS)
+      })
+      if (recent >= TEST_LIMIT) {
+        return {
+          status: 429,
+          body: {
+            ok: false,
+            detail: 'This key was tested too many times in the last hour.',
+            tested_at: at.toISOString()
+          }
+        }
+      }
+      const ownerId = row.ownerType === 'account' ? (row.accountId ?? o.orgId) : o.orgId
+      const apiKey = await openSecret('ai_key', { ...row }, sealAad(ownerId, row.provider, row.id))
+      const result = await testKey(
+        { provider: row.provider, model: row.model, apiKey, vertex: deps.vertex },
+        deps.generate
+      )
+      await recordAiKeyTest(tx, {
+        aiKeyId: row.id,
+        fingerprint: row.fingerprint,
+        ok: result.ok,
+        detail: result.ok ? null : result.detail,
+        at
+      })
+      return {
+        status: 200,
+        body: { ok: result.ok, detail: result.ok ? null : result.detail, tested_at: at.toISOString() }
+      }
     }
-  }
-  const ownerId = row.ownerType === 'account' ? (row.accountId ?? o.orgId) : o.orgId
-  const apiKey = await openSecret('ai_key', { ...row }, sealAad(ownerId, row.provider, row.id))
-  const result = await testKey({ provider: row.provider, model: row.model, apiKey, vertex: deps.vertex }, deps.generate)
-  await withTenant({ orgId: o.orgId, principal: systemPrincipal('ai-key-test') }, (tx: Tx) =>
-    recordAiKeyTest(tx, {
-      aiKeyId: row.id,
-      fingerprint: row.fingerprint,
-      ok: result.ok,
-      detail: result.ok ? null : result.detail,
-      at
-    })
   )
-  return {
-    status: 200,
-    body: { ok: result.ok, detail: result.ok ? null : result.detail, tested_at: at.toISOString() }
-  }
 }
 
 export function keyTestBody(raw: unknown): { orgId: string } {

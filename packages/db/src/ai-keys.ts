@@ -136,6 +136,13 @@ export async function recordAiKeyTest(
   }
 }
 
+/** Serializes create-time and worker tests for one tenant and fingerprint until their transaction commits. */
+export async function lockAiKeyTests(tx: Tx, fingerprint: string): Promise<void> {
+  await tx.execute(
+    sql`SELECT pg_advisory_xact_lock(hashtext('ai-key-test'), hashtext(${`${tx.orgId}\n${fingerprint}`}))`
+  )
+}
+
 /** Attempts against one fingerprint since `since`, for the 10-an-hour test limit (ticket decision). */
 export async function countAiKeyTestsSince(tx: Tx, o: { fingerprint: string; since: Date }): Promise<number> {
   const [row] = await tx
