@@ -1,0 +1,13 @@
+{
+  "title": "Channels",
+  "enabled": "On",
+  "disabled": "Off",
+  "toggle": "Enable {channel}",
+  "saved": "{channel} saved.",
+  "empty": "0 channels (n=0). Reload after channels have been configured.",
+  "preview": "Preview the latest notice",
+  "no_preview": "0 calls (n=0). Approve a real call to preview a notice.",
+  "source": "Latest real call: {id}",
+  "preview_label": "{channel} · {language}",
+  "no_renderings": "0 previews (n=0). Configure a channel template, then try again."
+}
