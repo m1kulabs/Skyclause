@@ -469,7 +469,10 @@ export const exportAuditLog = createRoute({
   responses: {
     200: {
       description: 'Success.',
-      content: { 'text/csv': { schema: z.string() }, 'application/json': { schema: z.array(AuditEntry) } }
+      content: {
+        'text/csv': { schema: z.string() },
+        'application/json': { schema: z.array(AuditEntry) }
+      }
     },
     401: Unauthorized,
     403: Forbidden,

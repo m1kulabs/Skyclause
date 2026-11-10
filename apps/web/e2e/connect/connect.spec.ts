@@ -313,9 +313,13 @@ for (const guest of [false, true]) {
   test(`${guest ? 'guest' : 'signed-out visitor'} goes to sign-up`, async ({ page }) => {
     if (guest) await asPage(page, { ...member, isGuest: true })
     else
-      await page
-        .context()
-        .addCookies([{ name: 'skyclause_test_principal', value: 'null', url: 'http://localhost:3100' }])
+      await page.context().addCookies([
+        {
+          name: 'skyclause_test_principal',
+          value: 'null',
+          url: process.env.E2E_BASE_URL ?? `http://localhost:${process.env.E2E_PORT ?? 3100}`
+        }
+      ])
     await page.goto('/connect')
     await expect(page).toHaveURL(/\/sign-up$/)
     await expect(page.locator('[data-connect-page]')).toHaveCount(0)

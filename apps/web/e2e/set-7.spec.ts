@@ -9,6 +9,7 @@ import { asPage } from './harness'
 import { makeOrg, signInAs } from './harness/sign-in-as'
 import { stubApi } from './harness/stub-api'
 import { dataOperations } from '../features/data/operations'
+import { subscriberRemoval } from './subscribers/removal'
 
 const route = '/_test/set-7'
 const name = t('set7.harness.name')
@@ -263,7 +264,6 @@ for (const title of [
   'remove member — #104 a-members-ui',
   'lower role — #104 a-members-ui',
   'unsaved rota — #104 a-members-ui',
-  'remove subscriber — #169 c-channels-ui',
   'delete clause sheet draft — #144'
 ]) {
   test.fixme(title, async () => {})
@@ -368,3 +368,4 @@ test('notifications panel removes a registered device immediately by keyboard �
 })
 test('cancel window — #143 b-windows-ui', async ({ page }) => windowUndoCase(page))
 test('unsaved window warns before leaving — #143 b-windows-ui', async ({ page }) => windowUnsavedCase(page))
+test('remove subscriber — #169 c-channels-ui', async ({ page }) => subscriberRemoval(page))
