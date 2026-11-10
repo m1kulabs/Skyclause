@@ -330,7 +330,6 @@ export function createRotaService(conditions: ShiftConditions = unknownCondition
       const weekday = isoWeekday(date)
       for (const template of ROTA_TEMPLATES) {
         const state = await conditionState(ctx.tx, conditions, template.condition, date, q.projectId, orgProjectIds)
-        if (state === 'inactive') continue
         const start = timeParts(template.local_start)
         const end = timeParts(template.local_end)
         const covered = eligibleRows
