@@ -13,6 +13,32 @@ function asDate(value: DateValue): Date {
   return value instanceof Date ? value : new Date(value)
 }
 
+/** Locale-independent wall-clock parts for schedules that use a project time zone. */
+export function zonedDateTimeParts(value: DateValue, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    weekday: 'short',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(asDate(value))
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)!.value
+
+  return {
+    year: part('year'),
+    month: part('month'),
+    day: part('day'),
+    weekday: part('weekday'),
+    hour: Number(part('hour')),
+    minute: Number(part('minute')),
+    second: Number(part('second'))
+  }
+}
+
 function dateParts(value: DateValue, locale: Locale, withWeekday = false) {
   const parts = new Intl.DateTimeFormat(intlLocale(locale), {
     timeZone: TIME_ZONE,
@@ -66,4 +92,32 @@ export function formatAge(value: DateValue, locale: Locale): string {
 
 export function formatNumber(value: number, locale: Locale): string {
   return new Intl.NumberFormat(intlLocale(locale)).format(value)
+}
+
+export function formatDateKeyAt(value: DateValue, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(asDate(value))
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? ''
+  return `${part('year')}-${part('month')}-${part('day')}`
+}
+
+export function formatList(values: string[], locale: Locale): string {
+  return new Intl.ListFormat(intlLocale(locale), { style: 'long', type: 'conjunction' }).format(values)
+}
+
+export function formatTimeZoneName(timeZone: string, locale: Locale): string {
+  if (timeZone === 'Asia/Kuala_Lumpur') return 'MYT'
+  try {
+    const parts = new Intl.DateTimeFormat(intlLocale(locale), {
+      timeZone,
+      timeZoneName: 'short'
+    }).formatToParts(new Date())
+    return parts.find((part) => part.type === 'timeZoneName')?.value ?? timeZone
+  } catch {
+    return timeZone
+  }
 }

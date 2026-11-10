@@ -536,14 +536,16 @@ export const ShareLink = z.object({
   project_id: z.string(),
   access: z.enum(['view', 'reviewer']),
   expires_at: Instant.nullable(),
-  revoked_at: Instant.nullable()
+  revoked_at: Instant.nullable(),
+  last_used_at: Instant.nullable().optional()
 })
 export type ShareLink = z.infer<typeof ShareLink>
 export const RotaShift = z.object({
   id: z.string(),
   account_id: z.string(),
   project_id: z.string().nullable(),
-  days: z.array(z.string()),
+  // TRD rota days use ISO weekdays (Monday=1 through Sunday=7), matching `rota_shift.days`' integer array.
+  days: z.array(z.number().int().min(1).max(7)),
   local_start: z.string(),
   local_end: z.string(),
   condition: z.string().nullable(),
@@ -564,8 +566,10 @@ export const ApiKey = z.object({
   name: z.string(),
   prefix: z.string(),
   scopes: z.array(z.enum(['read', 'draft', 'admin'])),
+  created_at: Instant,
   expires_at: Instant,
-  last_used_at: Instant.nullable()
+  last_used_at: Instant.nullable(),
+  created_by: z.string()
 })
 export type ApiKey = z.infer<typeof ApiKey>
 export const AiKey = z.object({
@@ -584,6 +588,8 @@ export const ExportJob = z.object({
   id: z.string(),
   scope: z.enum(['account', 'organisation']),
   status: z.string(),
+  formats: z.array(z.enum(['json', 'csv'])),
+  error: z.string().nullable(),
   expires_at: Instant.nullable()
 })
 export type ExportJob = z.infer<typeof ExportJob>
@@ -655,7 +661,7 @@ export type Invitation = z.infer<typeof Invitation>
 export const OwnershipTransfer = z.object({ id: z.string(), to_member_id: z.string(), status: z.string() })
 export type OwnershipTransfer = z.infer<typeof OwnershipTransfer>
 export const AiUsage = z.object({
-  run_id: z.string(),
+  run_id: z.string().nullable(),
   ai_key_id: z.string().nullable(),
   model: z.string(),
   tokens_in: z.number().int(),
@@ -666,6 +672,7 @@ export const OAuthGrant = z.object({
   id: z.string(),
   client_id: z.string(),
   org_id: z.string(),
+  resource: z.enum(['api', 'mcp']),
   project_ids: z.union([z.array(z.string()), z.literal('all')]),
   scopes: z.array(z.enum(['read', 'draft'])),
   share_link_id: z.string().nullable(),

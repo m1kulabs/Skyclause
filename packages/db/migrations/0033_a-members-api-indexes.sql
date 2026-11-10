@@ -1,0 +1,3 @@
+CREATE UNIQUE INDEX "invitation_token_hash_uidx" ON "auth"."invitation" USING btree ("token_hash") WHERE "auth"."invitation"."token_hash" IS NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "member_organization_user_uidx" ON "auth"."member" USING btree ("organization_id","user_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "ownership_transfer_one_pending_org_uidx" ON "ownership_transfer" USING btree ("org_id") WHERE "ownership_transfer"."status" = 'pending';

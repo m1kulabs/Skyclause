@@ -57,7 +57,10 @@ export function WindowStrip({ windows, strip, locale = 'en' }: WindowStripProps)
   if (count === 0) {
     return (
       <figure className="w-full">
-        <figcaption className="text-sm text-muted-foreground">{t('data.strip.empty', {}, locale)}</figcaption>
+        {input.replay ? <Badge variant="outline">{t('data.strip.replay_badge', {}, locale)}</Badge> : null}
+        <figcaption className="text-sm text-muted-foreground">
+          {input.replay ? summary : t('data.strip.empty', {}, locale)}
+        </figcaption>
       </figure>
     )
   }

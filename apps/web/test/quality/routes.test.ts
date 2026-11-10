@@ -23,3 +23,15 @@ test('every built page is crawled with its route group, and route handlers are n
     { path: '/quality-planted/vitals', group: 'marketing', dynamic: false, status: 200 }
   ])
 })
+
+test('onboarding routes declare fixtures so the role crawl can visit them', () => {
+  const routes = crawlRoutes({
+    '/(app)/[org]/new/page': '/[org]/new',
+    '/(app)/[org]/[project]/settings/packs/page': '/[org]/[project]/settings/packs'
+  })
+
+  expect(routes).toEqual([
+    { path: '/[org]/[project]/settings/packs', group: 'app', dynamic: true, params: ['org', 'project'], status: 200 },
+    { path: '/[org]/new', group: 'app', dynamic: true, params: ['org'], status: 200 }
+  ])
+})
