@@ -21,7 +21,7 @@ import { makeOrganization, makeProject, makeProjectSource, makeSource } from '..
 import { and, eq, inArray } from 'drizzle-orm'
 import { sourceSnapshot, refreshSourcePlan, readSourcePlan } from '../src/sources/plan'
 import { sourceIngestionDatabase, ingestSourceResult, drainSourceResults } from '../src/sources/ingest'
-import { publishSourceResult, type ResultReference } from '../src/sources/pubsub'
+import { publishSourceResult, sha256, type ResultReference } from '../src/sources/pubsub'
 import { MemoryStore, adapter, TestClock } from './support/source-adapter'
 import type { SourceExecutionResult } from '../src/sources/types'
 const principal = systemPrincipal('sources-integration')
@@ -197,6 +197,31 @@ test('multi-response captures do not suppress final parsed rows using a single r
   })
   await ingestSourceResult(ref, t.deps)
   expect((await t.counts()).readings).toHaveLength(3)
+  const oldIds = t.result.requests.map((request) => request.requestId)
+  const changed = structuredClone(t.result)
+  changed.operationId = randomUUID()
+  changed.requests.forEach((request) => {
+    request.requestId = randomUUID()
+  })
+  changed.requests[0]!.body = Buffer.from('changed earlier response')
+  changed.requests[0]!.bodySha256 = sha256(changed.requests[0]!.body!)
+  changed.polls = changed.polls.map((poll) => ({
+    ...poll,
+    requestId: changed.requests[oldIds.indexOf(poll.requestId)]!.requestId,
+    readings: poll.readings.map((row) => ({ ...row, value: 9 }))
+  }))
+  // Only the earlier response changed; the final response still has exactly the previous hash.
+  expect(changed.requests[1]!.bodySha256).toBe(t.result.requests[1]!.bodySha256)
+  await publishSourceResult(changed, {
+    store: t.store,
+    publish: async (value) => {
+      ref = value
+    }
+  })
+  await ingestSourceResult(ref, t.deps)
+  const readings = (await t.counts()).readings
+  expect(readings).toHaveLength(6)
+  expect(readings.filter((row) => row.revision === 2).map((row) => row.value)).toEqual([9, 9, 9])
 })
 test('a generation conflict refreshes from current bytes and never overwrites a newer plan', async () => {
   const store = new MemoryStore(),
@@ -291,4 +316,18 @@ test('source.bound stores intent in its tenant transaction, then executes outsid
   expect(calls).toBe(2)
   const claim = JSON.parse(Buffer.from((await store.read(`control/backfills/${s.id}.json`))!.body).toString())
   expect(claim.state).toBe('complete')
+  const fresh = await withSystem('test', (tx) => makeSource(tx))
+  const nextEvent = await withTenant({ orgId: org.id, principal }, async (tx) => {
+    await makeProjectSource(tx, { projectId: envelope.projectId, sourceId: fresh.id, role: 'rain_gauge' })
+    return emitEvent(tx, {
+      projectId: envelope.projectId,
+      type: 'source.bound',
+      data: { source_id: fresh.id, role: 'rain_gauge' }
+    })
+  })
+  await shareSystemConnection(() =>
+    consumer.handler({ ...raw, id: nextEvent.id, data: { source_id: fresh.id, role: 'rain_gauge' } })
+  )
+  // A successful event-triggered fetch also runs after its tenant transaction has fully returned.
+  expect(calls).toBe(3)
 })
