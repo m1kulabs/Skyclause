@@ -5,5 +5,19 @@
   "placeholder": "Cari arahan…",
   "results": "Arahan yang tersedia",
   "empty": "n=0 arahan. Tekan Escape untuk kembali ke aplikasi.",
-  "no_matches": "n=0 padanan. Cuba carian lain."
+  "no_matches": "n=0 padanan. Cuba carian lain.",
+  "searching": "Sedang mencari…",
+  "loading": "Memuatkan arahan…",
+  "choose_project": "Pilih projek",
+  "choose_project_empty": "Tiada projek tersedia untuk tindakan ini.",
+  "open_organisation": "Buka organisasi {name}",
+  "open_project": "Buka projek {name}",
+  "declare_window": "Isytiharkan tetingkap",
+  "declare_window_for": "Isytiharkan tetingkap · {name}",
+  "search_ledger": "Cari lejar",
+  "light": "Cerah",
+  "dark": "Gelap",
+  "system": "Sistem",
+  "theme_saved": "Keutamaan tema disimpan.",
+  "theme_failed": "Tema tidak dapat disimpan. Cuba lagi."
 }

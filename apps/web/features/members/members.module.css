@@ -103,6 +103,10 @@
   gap: 8px;
 }
 
+.transferForm :global([data-slot='select-value'][data-placeholder]) {
+  color: var(--secondary-foreground);
+}
+
 .switchRow {
   display: inline-flex;
   min-height: 32px;
@@ -209,6 +213,7 @@
   .inviteRow {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    height: auto;
     min-width: 0;
     border: 1px solid var(--border);
     border-radius: 6px;

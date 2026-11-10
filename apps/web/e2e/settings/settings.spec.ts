@@ -42,9 +42,19 @@ async function expectPage(page: Page, path: string, allowed: boolean) {
     expect(response?.status(), path).toBe(200)
     await expect(page.locator('[data-settings-frame]')).toBeVisible()
     if (path === '/account/notifications') await expect(page.locator('[data-alerts-panel]')).toBeVisible()
-    else if (/\/settings\/(members|rota)$/.test(path))
-      await expect(page.locator('[data-settings-panel] [data-unbuilt]')).toHaveCount(0)
-    else await expect(page.locator('[data-settings-panel] [data-unbuilt]')).toHaveCount(1)
+    else if (path.endsWith('/settings/integrations')) {
+      await expect(page.getByRole('heading', { name: 'OAuth clients', exact: true })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Connected grants', exact: true })).toBeVisible()
+    } else {
+      // #102 built the organisation general panel, #108 billing, audit and data, and #104 members and rota; the rest
+      // are placeholders.
+      const builtBy102 = /^\/[^/]+\/settings\/general$/.test(path)
+      const builtBy108 = path === '/account/data' || /\/settings\/(?:billing|audit|data)$/.test(path)
+      const builtBy104 = /\/settings\/(members|rota)$/.test(path)
+      await expect(page.locator('[data-settings-panel] [data-unbuilt]')).toHaveCount(
+        builtBy102 || builtBy108 || builtBy104 ? 0 : 1
+      )
+    }
   } else {
     // Next may stream a 200 shell before a page-level notFound; the rendered 404 is the gate.
     await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible()

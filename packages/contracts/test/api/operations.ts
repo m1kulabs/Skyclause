@@ -1357,7 +1357,7 @@ export const OPERATIONS: readonly ExpandedOperation[] = [
     surface: 'api',
     operationId: 'listMyApiKeys',
     owner: 'a-api-keys',
-    statement: 'api_key.create',
+    statement: 'session',
     idempotent: false,
     crossOrg: false,
     note: 'API keys use collection GET/POST and item DELETE for listing, creation and immediate revocation (SET-6).'
@@ -1379,7 +1379,7 @@ export const OPERATIONS: readonly ExpandedOperation[] = [
     surface: 'api',
     operationId: 'revokeMyApiKey',
     owner: 'a-api-keys',
-    statement: 'api_key.create',
+    statement: 'session',
     idempotent: false,
     crossOrg: false,
     note: 'API keys use collection GET/POST and item DELETE for listing, creation and immediate revocation (SET-6).'
@@ -1406,6 +1406,17 @@ export const OPERATIONS: readonly ExpandedOperation[] = [
     idempotent: true,
     crossOrg: false,
     note: 'AI keys use collection GET/POST, item DELETE, POST test and GET usage; saved secrets remain write-only (SET-5).'
+  },
+  {
+    method: 'patch',
+    path: '/api/orgs/{org}/ai-keys/{id}',
+    surface: 'api',
+    operationId: 'updateOrganisationAiKey',
+    owner: 'e-byok-api',
+    statement: 'ai_keys.manage',
+    idempotent: false,
+    crossOrg: false,
+    note: 'AI keys use collection GET/POST, item PATCH/DELETE, POST test and GET usage; saved secrets remain write-only (SET-5).'
   },
   {
     method: 'delete',
@@ -1627,7 +1638,7 @@ export const OPERATIONS: readonly ExpandedOperation[] = [
     statement: 'session',
     idempotent: false,
     crossOrg: false,
-    note: 'GET reads onboarding progress; POST skips a named step (ORG-6).'
+    note: 'GET reads onboarding progress and tracks first-seen completed steps (ORG-6).'
   },
   {
     method: 'post',
@@ -1638,7 +1649,18 @@ export const OPERATIONS: readonly ExpandedOperation[] = [
     statement: 'session',
     idempotent: false,
     crossOrg: false,
-    note: 'GET reads onboarding progress; POST skips a named step (ORG-6).'
+    note: 'POST skips a named step (ORG-6).'
+  },
+  {
+    method: 'delete',
+    path: '/api/orgs/{org}/onboarding/{step}/skip',
+    surface: 'api',
+    operationId: 'resumeOnboardingStep',
+    owner: 'b-create-project-ui',
+    statement: 'session',
+    idempotent: false,
+    crossOrg: false,
+    note: 'DELETE resumes a skipped step (ORG-6).'
   },
   // Project administration
   {

@@ -36,7 +36,12 @@ export function credentialOf(principal: Principal): string {
 export function ipHash(c: Context<ApiEnv>): string {
   const key = c.get('deps').config().ipHashKey
   if (!key) throw new Error('IP_HASH_KEY is not set')
-  const ip = c.req.header('X-Forwarded-For')?.split(',').at(-1)?.trim() || 'unknown'
+  return hashIp(c.req.header('X-Forwarded-For'), key)
+}
+
+/** The same hash from a plain request (for `/e`, which runs outside the middleware stack and takes no principal). */
+export function hashIp(forwardedFor: string | null | undefined, key: string): string {
+  const ip = forwardedFor?.split(',').at(-1)?.trim() || 'unknown'
   return createHmac('sha256', key).update(ip).digest('hex')
 }
 

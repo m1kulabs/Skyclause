@@ -1,11 +1,12 @@
 import { OrganizationHeaders, problemResponse } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Page, PageQuery, Reading, Source } from '../shared'
+import { Page, PageQuery, Reading, Source, SourceState } from '../shared'
 
 const CatalogueSource = Source.extend({
   latest_reading: Reading.nullable(),
-  age_s: z.number().int().nonnegative().nullable()
+  age_s: z.number().int().nonnegative().nullable(),
+  source_state: SourceState.nullable()
 })
 
 export const listCatalogueSources = createRoute({

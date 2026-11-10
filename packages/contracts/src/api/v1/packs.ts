@@ -4,7 +4,14 @@ import { createRoute } from '../create-route'
 import { Pack, ProjectPack } from '../shared'
 
 const PackParams = IdParams.extend({ pack: Pack })
-const PackUpdate = z.object({ enabled: z.boolean() })
+const PackUpdate = z
+  .object({
+    enabled: z.boolean().optional(),
+    sla_s: z.number().int().positive().nullable().optional()
+  })
+  .refine((input) => input.enabled !== undefined || input.sla_s !== undefined, {
+    message: 'At least one pack setting must be supplied.'
+  })
 
 export const updateProjectPack = createRoute({
   method: 'patch',
