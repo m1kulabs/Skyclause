@@ -51631,6 +51631,13 @@
                           },
                           "status": {
                             "type": "string"
+                          },
+                          "last_delivery_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
                           }
                         },
                         "required": [
@@ -52002,6 +52009,13 @@
                     "status": {
                       "type": "string"
                     },
+                    "last_delivery_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
                     "secret": {
                       "type": "string",
                       "pattern": "^skw_.+"
@@ -52344,6 +52358,13 @@
                     },
                     "status": {
                       "type": "string"
+                    },
+                    "last_delivery_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
                     }
                   },
                   "required": [
@@ -52699,6 +52720,13 @@
                     },
                     "status": {
                       "type": "string"
+                    },
+                    "last_delivery_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
                     }
                   },
                   "required": [
@@ -53261,6 +53289,13 @@
                     },
                     "status": {
                       "type": "string"
+                    },
+                    "last_delivery_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
                     }
                   },
                   "required": [
@@ -55862,6 +55897,22 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "raw_request_body": {
+                            "type": "string"
+                          },
+                          "error": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "next_retry_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
                           }
                         },
                         "required": [

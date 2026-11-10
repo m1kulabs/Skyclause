@@ -4,6 +4,14 @@ import { testRegistry, validProblem } from './registry'
 
 const apiFetch = createApiFetch(testRegistry)
 
+test('explicit organisation scopes developer pages instead of the developers path segment', async () => {
+  vi.stubGlobal('window', { location: { pathname: '/developers/webhooks' } })
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse(validProblem))
+  vi.stubGlobal('fetch', fetchMock)
+  await apiFetch('getProjects', { org: 'real-org', params: { instance: 'real-org' } })
+  expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Skyclause-Organization')).toBe('real-org')
+})
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
