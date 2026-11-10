@@ -696,7 +696,7 @@ Each screen answers one question first, states its one finding under the title, 
 
 ### Open Graph card
 
-1200×630, dark ground ([WEB-4](/docs/PRD.md#web-components-web)). Top-left the mark and "Skyclause · `{project}`"; the one large element is the approved call's mode word with its glyph at 96px, or "No approved call yet"; under it the window and date at 40px; the bottom 220px hold the window strip at true proportions; the bottom-right corner carries the data's capture time. A call card (`/c/{callId}/og.png`) adds "Approved `{HH:MM}` MYT" and exists only for real calls. The 2 November replay is an internal design example only and never reaches a public card: "Commute disruption · 15:30 release wave, Monday 2 November 2026 · gauge `0232901RF` 39.0 mm in 60 min to 15:00". Alt text states the approved mode or "No approved call yet", the window and deciding reading when present.
+1200×630, dark ground ([WEB-4](/docs/PRD.md#web-components-web)). Top-left the mark and "Skyclause · `{project}`"; the one large element is the approved call's mode word with its glyph at 96px, or "No approved call yet"; under it the window and date at 40px; the bottom 220px hold the window strip at true proportions; the bottom-right corner carries the data's capture time. A call card (`/c/{callId}/og.png`) adds "Approved `{HH:MM}` MYT" and exists only for real calls. The 2 November replay is an internal design example only and never reaches a public card: "Commute disruption · 15:30 release wave, Monday 2 November 2026 · gauge `0232901RF` 39.0 mm in 60 min to 15:00". Alt text states the approved mode or "No approved call yet", the window and deciding reading when present; indicator readings and No call copy use their display names, not registry keys.
 
 ### oEmbed card
 

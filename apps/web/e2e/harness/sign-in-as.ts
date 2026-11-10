@@ -23,13 +23,13 @@ function requireDatabase() {
  * Signs `page` in as a new account holding `role` in `org` (a guest is an anonymous account) and returns the account.
  * The session cookie is host-only on APP_ORIGIN, the web server's own origin.
  */
-export async function signInAs(page: Page, role: Role, org: TestOrg): Promise<{ accountId: string }> {
+export async function signInAs(page: Page, role: Role, org: TestOrg): Promise<{ accountId: string; email: string }> {
   requireDatabase()
   const account = await makeAccount({ anonymous: role === 'guest' })
   await addMember(org.id, account.id, role)
   const { cookies } = await signIn(account.id)
   await page.context().addCookies(cookies)
-  return { accountId: account.id }
+  return { accountId: account.id, email: account.email }
 }
 
 /** Opens a share link to a new project in `org` on `page`: its `sc_share` cookie carries the link's token (#140). */

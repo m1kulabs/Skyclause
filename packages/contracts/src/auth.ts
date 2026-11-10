@@ -3,6 +3,7 @@ export const ROLES = ['owner', 'admin', 'approver', 'editor', 'viewer', 'guest']
 export type Role = (typeof ROLES)[number]
 export const SCOPES = ['read', 'draft', 'admin', 'ingest'] as const
 export type Scope = (typeof SCOPES)[number]
+export type ApiKeyScope = Extract<Scope, 'read' | 'draft' | 'admin'>
 export const PRINCIPAL_KINDS = ['session', 'api_key', 'oauth', 'guest_token', 'share_link', 'device', 'system'] as const
 export type PrincipalKind = (typeof PRINCIPAL_KINDS)[number]
 
