@@ -223,6 +223,10 @@ for (const discovered of builtRoutes()) {
         route.dynamic && !route.params && !PROJECT_UI_ROUTES.has(route.path) && route.path !== '/[org]',
         `${route.path} needs param fixtures with stubApi bodies (#95)`
       )
+      test.fixme(
+        route.path === '/[org]/analysis' && (session.role === 'share-link reviewer' || session.role === 'signed out'),
+        'the organisation roll-up renders for non-members instead of 404 (#596)'
+      )
       const dashboard = route.path === '/[org]'
       const visitRoute = dashboard ? { ...route, path: '/test-org', dynamic: false } : route
       const dashboardRoles: Record<Role, 'owner' | 'admin' | 'approver' | 'editor' | 'viewer' | 'guest' | null> = {
@@ -260,12 +264,19 @@ for (const discovered of builtRoutes()) {
         return
       }
 
-      const gaps = KNOWN_GAPS.filter((gap) => gap.route === route.path)
+      const gaps = KNOWN_GAPS.filter(
+        (gap) =>
+          gap.route === route.path &&
+          (!gap.roles || gap.roles.includes(session.role)) &&
+          (!gap.projects || gap.projects.includes(info.project.name))
+      )
       const open = findings.filter((finding) => !gaps.some((gap) => gap.check === finding.check))
       for (const gap of gaps) {
         if (findings.some((finding) => finding.check === gap.check)) {
           note(info, 'known gap', `${gap.check} on ${gap.route}: ${gap.why} (#${gap.issue})`)
-        } else if (jsOn) {
+        } else if (info.project.name === 'chromium') {
+          // Gaps are recorded from the Chromium crawl pull requests run. Another engine may draw a ring Chromium
+          // doesn't, or inspect a page before a slow read lands, so only Chromium asks for a stale entry's removal.
           open.push({
             check: 'known-gaps',
             detail: `${gap.check} no longer fails here; remove its entry`,

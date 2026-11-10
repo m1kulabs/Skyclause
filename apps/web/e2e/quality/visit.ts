@@ -17,6 +17,12 @@ export function expectedStatus(route: CrawlRoute, role: Role) {
     if (route.path.endsWith('/new') || route.path.endsWith('/settings/packs')) {
       return isOwnerOrAdmin ? route.status : 404
     }
+    // features/settings/access.ts: Owners and Admins see every organisation section, Approvers only rota.
+    if (route.path.startsWith('/[org]/settings/')) {
+      return isOwnerOrAdmin || (role === 'Approver' && route.path.endsWith('/rota')) ? route.status : 404
+    }
+    // The organisation layout 404s without a membership in the URL's organisation.
+    if (!hasSession(role)) return 404
   }
   if (route.path.startsWith('/[org]/[project]/settings') && role !== 'Owner' && role !== 'Admin') return 404
   // PRD routes: the dashboard is for members. A share link reaches only its own project, so the organisation 404s.
