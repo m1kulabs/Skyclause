@@ -159,7 +159,12 @@ export function createApiFetch<const Registry extends ApiRegistry>(
       throw new ApiProblem(response.status, problemBody(body, response.status, response.statusText))
     }
 
-    const body = response.status === 204 ? undefined : await response.json()
+    const body =
+      response.status === 204
+        ? undefined
+        : response.headers.get('Content-Type')?.includes('text/csv')
+          ? await response.text()
+          : await response.json()
     return operation.response.parse(body) as OutputOf<Registry[OperationId]['response']>
   }
 }
