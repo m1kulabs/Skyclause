@@ -137,6 +137,7 @@ export const shadowState = tenantTable(
     verdictHash: text('verdict_hash').notNull(),
     sheetVersionId: uuid('sheet_version_id').notNull(),
     since: instant('since').notNull(),
+    evaluatedAt: instant('evaluated_at'),
     ...timestamps()
   },
   (self) => [

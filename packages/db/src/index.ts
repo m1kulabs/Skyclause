@@ -1,5 +1,7 @@
 export {
   closeConnections,
+  afterCommit,
+  withSavepoint,
   shareSystemConnection,
   systemPrincipal,
   withPublicReader,

@@ -337,6 +337,13 @@
       "when": 1794322420256,
       "tag": "0047_b-evaluator-snapshots",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1794326277725,
+      "tag": "0048_b-evaluator-transitions",
+      "breakpoints": true
     }
   ]
 }

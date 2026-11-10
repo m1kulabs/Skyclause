@@ -29,3 +29,5 @@ export function createEvaluatorProviders(q: {
     recordedAt: null
   }
 }
+
+export { semanticVerdictKey } from './scope'

@@ -6,10 +6,26 @@ import {
   type Window
 } from '@skyclause/clauses'
 import { NotBuiltError, SheetInput, type Pack, type TxHandle } from '@skyclause/contracts'
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, inArray, isNull, isNotNull, gt, or, sql, desc } from 'drizzle-orm'
 import type { Tx } from '../client'
 import { FrozenWindows, StoredSnapshot } from '../clause-sheets/stored'
-import { clauseSheet, indicatorSnapshot, project, sheetVersion } from '../schema'
+import {
+  clauseSheet,
+  indicatorSnapshot,
+  project,
+  projectPack,
+  sheetVersion,
+  window,
+  night,
+  listing,
+  shadowState,
+  crossing,
+  evaluatorReevaluation
+} from '../schema'
+import { projectGate } from '../gate'
+import { isFlagEnabled } from '../flags'
+import { emitEvent } from '../events'
+import type { Verdict } from '@skyclause/clauses'
 import { z } from 'zod'
 import type { EvaluatorQuery } from './types'
 
@@ -169,4 +185,189 @@ export async function loadPublishedEvaluatorVersion(
     contentHash: row.version.contentHash,
     registryHash: row.version.validationRegistryHash
   }
+}
+
+/** Every evaluator tenant write takes project, then pack locks. Source-global locks live in separate transactions. */
+export async function lockEvaluatorProject(handle: TxHandle, projectId: string): Promise<void> {
+  const tx = tenant(handle)
+  await tx.execute(
+    sql`SELECT pg_advisory_xact_lock(hashtextextended(${'evaluator:project:' + projectId.toLowerCase()}, 0))`
+  )
+}
+export async function loadEvaluatorScope(handle: TxHandle, q: { projectId: string; tEval: string }) {
+  const tx = tenant(handle)
+  const [found] = await tx.select({ id: project.id }).from(project).where(eq(project.id, q.projectId))
+  if (!found || (await projectGate(tx, q.projectId)) !== 'open') return null
+  const packs = (
+    await tx
+      .select({ pack: projectPack.pack })
+      .from(projectPack)
+      .where(and(eq(projectPack.projectId, q.projectId), eq(projectPack.enabled, true)))
+  )
+    .map((row) => row.pack)
+    .filter((pack) => pack === 'sky' || pack === 'crowd')
+  const enabled: Pack[] = packs.filter((pack) => pack !== 'crowd')
+  if (packs.includes('crowd') && (await isFlagEnabled(tx, 'pack_crowd', tx.orgId!))) enabled.push('crowd')
+  const windows = await tx
+    .select()
+    .from(window)
+    .where(
+      and(
+        eq(window.projectId, q.projectId),
+        isNull(window.cancelledAt),
+        eq(window.moderation, 'visible'),
+        gt(window.endsAt, new Date(q.tEval)),
+        or(isNull(window.expiresAt), gt(window.expiresAt, new Date(q.tEval)))
+      )
+    )
+  const nights = await tx
+    .select({ id: night.id })
+    .from(night)
+    .innerJoin(
+      listing,
+      and(eq(listing.nightId, night.id), eq(listing.projectId, q.projectId), eq(listing.state, 'listed'))
+    )
+    .where(
+      and(
+        eq(night.projectId, q.projectId),
+        inArray(night.state, ['upcoming', 'in_progress']),
+        or(isNull(night.exitEnd), gt(night.exitEnd, new Date(q.tEval)))
+      )
+    )
+  return {
+    packs: enabled,
+    windows: windows.map((w) => ({
+      id: w.id,
+      startsAt: w.startsAt.toISOString(),
+      endsAt: w.endsAt.toISOString(),
+      kind: w.kind,
+      tz: w.tz
+    })),
+    nightIds: new Set(nights.map((n) => n.id))
+  }
+}
+export async function beginEvaluatorPack(handle: TxHandle, q: EvaluatorQuery): Promise<boolean> {
+  const tx = tenant(handle)
+  await tx.execute(
+    sql`SELECT pg_advisory_xact_lock(hashtextextended(${'evaluator:pack:' + q.projectId.toLowerCase() + ':' + q.pack},0))`
+  )
+  const [latest] = await tx
+    .select({ at: shadowState.evaluatedAt })
+    .from(shadowState)
+    .where(
+      and(eq(shadowState.projectId, q.projectId), eq(shadowState.pack, q.pack), isNotNull(shadowState.evaluatedAt))
+    )
+    .orderBy(desc(shadowState.evaluatedAt))
+    .limit(1)
+  return !latest?.at || latest.at.getTime() <= Date.parse(q.tEval)
+}
+export async function requestEvaluatorReevaluation(
+  handle: TxHandle,
+  q: { projectId: string; pack: Pack; tEval: string; reason: string }
+): Promise<void> {
+  const tx = tenant(handle)
+  await tx
+    .insert(evaluatorReevaluation)
+    .values({
+      orgId: tx.orgId!,
+      projectId: q.projectId,
+      pack: q.pack,
+      requestedAt: new Date(q.tEval),
+      reason: q.reason
+    })
+    .onConflictDoUpdate({
+      target: [evaluatorReevaluation.projectId, evaluatorReevaluation.pack],
+      set: { requestedAt: new Date(q.tEval), reason: q.reason, completedAt: null },
+      setWhere: sql`${evaluatorReevaluation.requestedAt} <= ${new Date(q.tEval)}`
+    })
+}
+export async function completeEvaluatorReevaluation(handle: TxHandle, q: EvaluatorQuery): Promise<void> {
+  const tx = tenant(handle)
+  await tx
+    .update(evaluatorReevaluation)
+    .set({ completedAt: new Date() })
+    .where(
+      and(
+        eq(evaluatorReevaluation.projectId, q.projectId),
+        eq(evaluatorReevaluation.pack, q.pack),
+        sql`${evaluatorReevaluation.requestedAt} <= ${new Date(q.tEval)}`
+      )
+    )
+}
+/** Caller computes the semantic key; SQL and actual typed shared writes stay in this package. */
+export async function commitEvaluatorVerdict(
+  handle: TxHandle,
+  q: EvaluatorQuery & {
+    snapshotId: string
+    sheetVersionId: string
+    verdict: Verdict
+    semanticKey: string
+    previousKey: (v: Verdict) => string
+    verdictHash: string
+  }
+): Promise<{ crossingId: string | null; applied: boolean }> {
+  const tx = tenant(handle),
+    v = q.verdict
+  const where = and(
+    eq(shadowState.projectId, q.projectId),
+    eq(shadowState.pack, q.pack),
+    eq(shadowState.scopeKind, v.scope.kind),
+    v.scope.id === null ? isNull(shadowState.scopeId) : eq(shadowState.scopeId, v.scope.id)
+  )
+  const [previous] = await tx.select().from(shadowState).where(where)
+  if (previous?.evaluatedAt && previous.evaluatedAt.getTime() >= Date.parse(q.tEval))
+    return { crossingId: null, applied: false }
+  const changed = previous
+    ? q.previousKey(previous.verdict as Verdict) !== q.semanticKey
+    : v.mode !== 'normal' || v.watch || v.noCall !== null || v.recommendations.length > 0
+  const values = {
+    verdict: v,
+    verdictHash: q.verdictHash,
+    sheetVersionId: q.sheetVersionId,
+    evaluatedAt: new Date(q.tEval),
+    since: changed || !previous ? new Date(q.tEval) : previous.since,
+    updatedAt: new Date()
+  }
+  if (previous) await tx.update(shadowState).set(values).where(eq(shadowState.id, previous.id))
+  else
+    await tx.insert(shadowState).values({
+      ...values,
+      orgId: tx.orgId!,
+      projectId: q.projectId,
+      pack: q.pack,
+      scopeKind: v.scope.kind,
+      scopeId: v.scope.id
+    })
+  if (!changed) return { crossingId: null, applied: true }
+  const from = previous ? (previous.verdict as Verdict).mode : null
+  const [row] = await tx
+    .insert(crossing)
+    .values({
+      orgId: tx.orgId!,
+      projectId: q.projectId,
+      pack: q.pack,
+      scopeKind: v.scope.kind,
+      scopeId: v.scope.id,
+      from,
+      to: v.mode,
+      at: new Date(q.tEval),
+      snapshotId: q.snapshotId,
+      verdictHash: q.verdictHash
+    })
+    .returning({ id: crossing.id })
+  await emitEvent(tx, {
+    projectId: q.projectId,
+    type: 'crossing.detected',
+    data: {
+      crossing_id: row!.id,
+      pack: q.pack,
+      scope: v.scope,
+      from,
+      to: v.mode,
+      at: q.tEval,
+      snapshot_id: q.snapshotId,
+      verdict_hash: q.verdictHash
+    }
+  })
+  return { crossingId: row!.id, applied: true }
 }
