@@ -9,6 +9,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest'
 import {
   domainEvent,
+  eraseSubscriber,
   exportJob,
   handledEvent,
   handledMessage,
@@ -90,7 +91,10 @@ const deletingErase: EraseSubscriber = async (handle, id) => {
 
 /** #110's erasure as a double that keeps the row under a pseudonymous ID: outside the sweep's filter, like the real one. */
 const pseudonymisingErase: EraseSubscriber = async (handle, id) => {
-  await (handle as unknown as Tx).update(subscriber).set({ unsubscribedAt: null }).where(eq(subscriber.id, id))
+  await (handle as unknown as Tx)
+    .update(subscriber)
+    .set({ email: `${id}@deleted.invalid`, emailHash: null, unsubscribedAt: NOW })
+    .where(eq(subscriber.id, id))
 }
 
 const deps = (eraseSubscriber: EraseSubscriber, buckets: RetentionBuckets = emptyBuckets()): SweepDeps => ({
@@ -101,6 +105,57 @@ const deps = (eraseSubscriber: EraseSubscriber, buckets: RetentionBuckets = empt
 const findSubscriber = (tx: Tx, id: string) => tx.query.subscriber.findFirst({ where: eq(subscriber.id, id) })
 
 describe('sweepSubscribers', () => {
+  afterEach(() => vi.unstubAllEnvs())
+
+  test.each([1, 1_000])('skips %i pseudonymised subscribers after another 30 days', async (size) => {
+    vi.stubEnv('EMAIL_HASH_KEY', 'test-only-email-hash-key-0123456789abcdef')
+    const ownOrgId = (await makeOrganization()).id
+    const inOwnOrg = <T>(fn: (tx: Tx) => Promise<T>) =>
+      withTenant({ orgId: ownOrgId, principal: systemPrincipal('test') }, fn)
+    const erased = await inOwnOrg(async (tx) => {
+      const row = await makeSubscriber(tx, { unsubscribedAt: ago(31) })
+      await eraseSubscriber(tx, row.id)
+      return (await findSubscriber(tx, row.id))!
+    })
+    if (size > 1) {
+      await inOwnOrg((tx) =>
+        tx.insert(subscriber).values(
+          Array.from({ length: size - 1 }, () => {
+            const id = randomUUID()
+            return {
+              id,
+              orgId: ownOrgId,
+              projectId: erased.projectId,
+              email: `${id}@deleted.invalid`,
+              emailHash: null,
+              unsubscribedAt: erased.unsubscribedAt
+            }
+          })
+        )
+      )
+    }
+    const later = new Date(erased.unsubscribedAt!.getTime() + 31 * DAY_MS)
+    // Fail immediately if a tombstone is selected, so the full-batch regression cannot loop forever.
+    const rejectResweep: EraseSubscriber = async () => {
+      throw new Error('already pseudonymised subscriber selected again')
+    }
+    expect(await retain((tx) => sweepSubscribers(tx, { orgId: ownOrgId, now: later }, deps(rejectResweep)))).toEqual({
+      deleted: 0,
+      pseudonymised: 0
+    })
+    const due = await inOwnOrg((tx) =>
+      makeSubscriber(tx, { projectId: erased.projectId, unsubscribedAt: erased.unsubscribedAt })
+    )
+    const eraseDue: EraseSubscriber = async (_handle, id) => {
+      if (id !== due.id) throw new Error('already pseudonymised subscriber selected again')
+      await inOwnOrg((tx) => eraseSubscriber(tx, id))
+    }
+    expect(await retain((tx) => sweepSubscribers(tx, { orgId: ownOrgId, now: later }, deps(eraseDue)))).toEqual({
+      deleted: 0,
+      pseudonymised: 1
+    })
+  })
+
   test('erases rows unsubscribed more than 30 days ago, keeps the rest, and a rerun deletes 0', async () => {
     const project = await inOrg((tx) => makeProject(tx))
     const past = await inOrg((tx) => makeSubscriber(tx, { projectId: project.id, unsubscribedAt: ago(31) }))
