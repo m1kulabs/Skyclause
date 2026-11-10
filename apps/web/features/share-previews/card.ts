@@ -26,6 +26,8 @@ export interface Card {
 }
 
 const RAIN_60 = 'site.rain_60m_mm'
+// Registry keys are the catalogue paths for the card's display names.
+const indicatorDisplayName = (name: string) => t(`share-previews.indicators.${name}`)
 const at = (instant: string) => Date.parse(instant)
 
 const rangeOf = (window: Range | null) =>
@@ -52,7 +54,7 @@ function readingOf(call: PublicCall | null): string | null {
   return t('share-previews.reading', {
     value: typeof input.value === 'number' ? formatNumber(input.value, 'en') : String(input.value),
     unit: input.unit,
-    name: input.name,
+    name: indicatorDisplayName(input.name),
     time: formatTime(input.observed_at!, 'en')
   })
 }
@@ -91,7 +93,7 @@ function noCallOf(status: PublicStatus): string | null {
   if (!failing.length) return null
   const since = failing.reduce((a, b) => (at(b.since) < at(a.since) ? b : a)).since
   return t('share-previews.noCall', {
-    inputs: [...new Set(failing.map((input) => input.name))].join(', '),
+    inputs: [...new Set(failing.map((input) => indicatorDisplayName(input.name)))].join(', '),
     time: formatTime(since, 'en')
   })
 }

@@ -46,12 +46,10 @@ export function OrganisationSwitcher({ data, membership }: { data: ShellData; me
       <DropdownMenuContent className="shell-menu">
         <DropdownMenuGroup>
           <OrgChoices data={data} />
-          {!data.memberships.length && (
-            // eslint-disable-next-line @next/next/no-html-link-for-pages -- Next's greedy dynamic-route regexp mistakes the camera path for this unbuilt route.
-            <DropdownMenuItem render={<a href="/new" aria-label={t('app-shell.createOrganisation')} />}>
-              {t('app-shell.createOrganisation')}
-            </DropdownMenuItem>
-          )}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Next's greedy dynamic-route regexp mistakes the camera path for this unbuilt route. */}
+          <DropdownMenuItem render={<a href="/new" aria-label={t('app-shell.createOrganisation')} />}>
+            {t('app-shell.createOrganisation')}
+          </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -142,13 +140,9 @@ export function ScopeSheet({
           <SheetDescription>{t('app-shell.scopeDescription')}</SheetDescription>
         </SheetHeader>
         <nav aria-label={t('app-shell.organisations')} className="shell-scope-list">
-          {!data.memberships.length && (
-            <>
-              <p>{t('app-shell.noOrganisations')}</p>
-              {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Next's greedy dynamic-route regexp mistakes the camera path for this unbuilt route. */}
-              <a href="/new">{t('app-shell.createOrganisation')}</a>
-            </>
-          )}
+          {!data.memberships.length && <p>{t('app-shell.noOrganisations')}</p>}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Next's greedy dynamic-route regexp mistakes the camera path for this unbuilt route. */}
+          <a href="/new">{t('app-shell.createOrganisation')}</a>
           {data.memberships.map((item) => {
             const projects = data.projects.filter((candidate) => candidate.org_id === item.org_id)
             return (

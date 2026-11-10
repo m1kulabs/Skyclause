@@ -1,6 +1,5 @@
-import { notBuilt } from '@skyclause/contracts'
+import { nextApprovers as rotaNextApprovers } from '@skyclause/api/rota'
 import type { NextApprovers } from '../notifications'
 
-// #79 §1 names `nextApprovers` (a-members-api, #103) without a type; the notifications consumer takes it in this shape.
-// #103 replaces this export with its own, keeping the type.
-export const nextApprovers: NextApprovers = notBuilt('a-members-api')
+// #103 owns D22's next rota level; the notifications consumer (#155) takes it in this shape.
+export const nextApprovers: NextApprovers = rotaNextApprovers

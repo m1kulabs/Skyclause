@@ -37,8 +37,10 @@ export async function subscriberRemoval(page: Page) {
   await page.clock.runFor(20_000)
   expect(writes).toBe(0)
   await queue()
-  await page.clock.runFor(9_999)
+  // The installed clock also moves with real time, so leave a second of it before the 10 s deadline (as set-7's
+  // undo test does): a 1 ms margin failed whenever queue() took longer than that.
+  await page.clock.runFor(9_000)
   expect(writes).toBe(0)
-  await page.clock.runFor(1)
+  await page.clock.runFor(1_000)
   await expect.poll(() => writes).toBe(1)
 }

@@ -26,7 +26,9 @@ export const timestamps = () => ({
 })
 
 const orgId = () => uuid('org_id').notNull()
-type WithOrg<T> = T & { orgId: ReturnType<typeof orgId> }
+type WithOrg<T, Nullable extends boolean> = T & {
+  orgId: Nullable extends true ? ReturnType<typeof uuid> : ReturnType<typeof orgId>
+}
 
 /**
  * A tenant (T) table: `pgTable` plus `org_id uuid NOT NULL` and its index `<name>_org_id_idx`.
@@ -36,12 +38,18 @@ type WithOrg<T> = T & { orgId: ReturnType<typeof orgId> }
  * `org_id = current_org_id()` and grants `app`, `system` and `retention`. The RLS meta-test fails on any table with `org_id`
  * that skipped it, and the cross-organisation test on any T table without a factory.
  */
-export function tenantTable<TName extends string, TColumns extends Record<string, PgColumnBuilderBase>>(
+export function tenantTable<
+  TName extends string,
+  TColumns extends Record<string, PgColumnBuilderBase>,
+  Nullable extends boolean = false
+>(
   name: TName,
   columns: TColumns,
-  extra?: (self: BuildExtraConfigColumns<TName, WithOrg<TColumns>, 'pg'>) => PgTableExtraConfigValue[]
+  extra?: (self: BuildExtraConfigColumns<TName, WithOrg<TColumns, Nullable>, 'pg'>) => PgTableExtraConfigValue[],
+  options: { nullableOrg?: Nullable } = {}
 ) {
-  return pgTable(name, { ...columns, orgId: orgId() } as WithOrg<TColumns>, (self) => [
+  const tenantOrgId = (options.nullableOrg ? uuid('org_id') : orgId()) as WithOrg<TColumns, Nullable>['orgId']
+  return pgTable(name, { ...columns, orgId: tenantOrgId } as WithOrg<TColumns, Nullable>, (self) => [
     index(`${name}_org_id_idx`).on(self.orgId),
     ...(extra?.(self) ?? [])
   ])

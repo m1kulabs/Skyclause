@@ -1,4 +1,9 @@
-import { problemResponse, SessionErrors as sessionErrors, IdempotencyHeaders as idempotencyHeaders } from '../common'
+import {
+  problemResponse,
+  SessionErrors as sessionErrors,
+  IdempotencyHeaders as idempotencyHeaders,
+  UuidIdParams
+} from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
 import {
@@ -113,7 +118,7 @@ export const listMyApiKeys = createRoute({
     ...sessionErrors,
     403: problemResponse('The session cannot manage API keys.')
   },
-  x: { owner: 'a-api-keys', statement: 'api_key.create', idempotent: false }
+  x: { owner: 'a-api-keys', statement: 'session', idempotent: false }
 })
 
 export const createMyApiKey = createRoute({
@@ -137,8 +142,8 @@ export const createMyApiKey = createRoute({
   },
   responses: {
     201: {
-      description: 'The created API key. The secret is returned only once.',
-      content: { 'application/json': { schema: ApiKey.extend({ secret: z.string() }) } }
+      description: 'The created API key. The key is returned only once.',
+      content: { 'application/json': { schema: ApiKey.extend({ key: z.string() }) } }
     },
     ...validationErrors,
     401: problemResponse('Recent authentication is required to create an API key.'),
@@ -153,14 +158,14 @@ export const revokeMyApiKey = createRoute({
   path: '/api/me/api-keys/{id}',
   operationId: 'revokeMyApiKey',
   tags: ['API Keys'],
-  request: { params: z.object({ id: z.string().min(1) }) },
+  request: { params: UuidIdParams },
   responses: {
     204: { description: 'The API key was revoked immediately.' },
     ...sessionErrors,
     403: problemResponse('The session cannot revoke API keys.'),
     404: problemResponse('The API key does not exist for this account.')
   },
-  x: { owner: 'a-api-keys', statement: 'api_key.create', idempotent: false }
+  x: { owner: 'a-api-keys', statement: 'session', idempotent: false }
 })
 
 export const listMyAiKeys = createRoute({
@@ -174,6 +179,7 @@ export const listMyAiKeys = createRoute({
       description: 'The signed-in account’s AI keys, without saved secrets.',
       content: { 'application/json': { schema: Page(aiKeyWithTestResult) } }
     },
+    400: problemResponse('An organisation must be selected in Skyclause-Organization.'),
     ...sessionErrors,
     403: problemResponse('Personal AI keys are not enabled for this account or organisation.')
   },
@@ -209,6 +215,8 @@ export const createMyAiKey = createRoute({
     ...validationErrors,
     401: problemResponse('Recent authentication is required to create an AI key.'),
     403: problemResponse('Personal AI keys are not enabled for this account or organisation.'),
+    404: problemResponse('The organisation was not found.'),
+    409: problemResponse('This key is already saved.'),
     422: problemResponse('The idempotency key was already used with a different request.')
   },
   x: { owner: 'e-byok-api', statement: 'session', idempotent: true }
@@ -222,6 +230,7 @@ export const deleteMyAiKey = createRoute({
   request: { params: z.object({ id: z.string().min(1) }) },
   responses: {
     204: { description: 'The personal AI key was deleted.' },
+    400: problemResponse('An organisation must be selected in Skyclause-Organization.'),
     ...sessionErrors,
     403: problemResponse('Personal AI keys are not enabled for this account or organisation.'),
     404: problemResponse('The AI key does not exist for this account.')
@@ -242,6 +251,7 @@ export const testMyAiKey = createRoute({
         'application/json': { schema: z.object({ key_id: z.string(), model: z.string(), tested_at: Instant }) }
       }
     },
+    400: problemResponse('An organisation must be selected in Skyclause-Organization.'),
     ...sessionErrors,
     403: problemResponse('Personal AI keys are not enabled for this account or organisation.'),
     404: problemResponse('The AI key does not exist for this account.'),
@@ -260,7 +270,9 @@ export const getMyAiKeyUsage = createRoute({
       description: 'Monthly personal AI key usage totals.',
       content: { 'application/json': { schema: aiKeyUsageSummary } }
     },
+    400: problemResponse('An organisation must be selected in Skyclause-Organization.'),
     ...sessionErrors,
+    404: problemResponse('The organisation was not found.'),
     403: problemResponse('Personal AI keys are not enabled for this account or organisation.')
   },
   x: { owner: 'e-byok-api', statement: 'session', idempotent: false }
@@ -296,6 +308,7 @@ export const createMyExport = createRoute({
     ...validationErrors,
     403: problemResponse('The session cannot export account data.'),
     409: problemResponse('export-pending: an account export is already being prepared.'),
+    503: problemResponse('The export could not be queued right now.'),
     422: problemResponse('The idempotency key was already used with a different request.')
   },
   x: { owner: 'a-data-rights', statement: 'session', idempotent: true }
