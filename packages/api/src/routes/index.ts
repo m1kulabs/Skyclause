@@ -9,6 +9,7 @@ import { auditHandlers } from './audit'
 import { analysisHandlers } from './analysis'
 import { bundleHandlers } from './bundles'
 import { channelHandlers } from './channels'
+import { callHandlers } from './calls'
 import { evidenceHandlers } from './evidence'
 import { gradesHandlers } from './grades'
 import { apiKeyHandlers } from './api-keys'
@@ -52,6 +53,7 @@ export const HANDLERS: Handlers = {
   ...auditHandlers, // a-audit-log
   ...aiKeyHandlers, // e-byok-api
   ...channelHandlers, // c-notice-templates
+  ...callHandlers, // c-call-page-ui
   ...ledgerHandlers, // c-ledger-chain
   ...subscriberHandlers,
   ...subscriberRightsHandlers,

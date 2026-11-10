@@ -47,6 +47,8 @@ const CallExplanation = z.object({
 })
 const CallDetail = CallView.extend(CallExplanation.shape).extend({
   project_id: z.string(),
+  // The persisted bundle's run ID; #166 uses it for GET /v1/runs/{id} and exposes it as copyable trace text.
+  trace_id: z.string(),
   window: Window.nullable(),
   night: Night.nullable(),
   approved_by: z.string().nullable(),

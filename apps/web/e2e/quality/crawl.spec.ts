@@ -9,6 +9,7 @@ import { visit } from './visit'
 import { onboardingOperations } from '../../features/onboarding/operations'
 import { AUTH_REAUTH_DIALOG_SELECTOR, isAuthRoute } from '../../features/sign-in/model'
 import { sourceOperations } from '../../features/sources/operations'
+import { stubCalls } from '../calls/doubles'
 import { stubDashboard } from '../dashboard/doubles'
 import { stubApi } from '../harness'
 import { prepareCrawl } from '../project-ui/fixtures'
@@ -112,7 +113,8 @@ async function crawl(
   route: CrawlRoute,
   session: Session,
   info: TestInfo,
-  beforeVisit?: () => Promise<void>
+  beforeVisit?: () => Promise<void>,
+  readySelector?: string
 ): Promise<Located[]> {
   const jsOn = info.project.use.javaScriptEnabled !== false
   const found: Located[] = []
@@ -124,9 +126,9 @@ async function crawl(
   await page.route('**/v1/projects/*/bundles/stream**', (request) =>
     request.fulfill({ status: 200, contentType: 'text/event-stream', body: ': crawl fixture\n\n' })
   )
-  // #174's project UI routes sign in through their fixtures' test principal and keep the pattern path, which visit()
+  // #174 and #166 routes sign in through the fixtures' test principal and keep the pattern path, which visit()
   // fills with the fixtures' test-org/test-project; the other routes use a real session and its organisation.
-  const projectUiRoute = PROJECT_UI_ROUTES.has(route.path)
+  const projectUiRoute = PROJECT_UI_ROUTES.has(route.path) || route.path.startsWith('/[org]/[project]/calls')
   let org: { slug: string } | null = null
   if (projectUiRoute) await prepareCrawl(page, session.role)
   else if (session.signIn) org = await session.signIn(page)
@@ -148,7 +150,7 @@ async function crawl(
       reducedMotion: 'no-preference'
     })
     if (variant.viewport) await page.setViewportSize(variant.viewport)
-    const findings = await visit(page, concreteRoute, session.role)
+    const findings = await visit(page, concreteRoute, session.role, readySelector)
     if (new URL(page.url()).pathname === '/api/auth/continue') return found
     const reauthDialog = page.locator(AUTH_REAUTH_DIALOG_SELECTOR)
     if (isAuthRoute(route.path) || (await reauthDialog.count()) > 0) {
@@ -182,7 +184,10 @@ async function crawl(
   }
   if (jsOn) {
     await page.emulateMedia({ colorScheme: 'dark', contrast: 'no-preference', reducedMotion: 'reduce' })
-    const findings = [...(await visit(page, concreteRoute, session.role)), ...(await motionFindings(page))]
+    const findings = [
+      ...(await visit(page, concreteRoute, session.role, readySelector)),
+      ...(await motionFindings(page))
+    ]
     found.push(...findings.map((finding) => ({ ...finding, theme: 'dark, reduced motion', size: 'project size' })))
   } else {
     note(info, 'JavaScript off', 'axe and reduced motion need page scripts; they run in the JavaScript projects')
@@ -197,7 +202,18 @@ function report(route: CrawlRoute, session: Session, findings: Located[]) {
   return `${findings.length} quality finding(s):\n${lines.join('\n')}`
 }
 
-for (const route of builtRoutes()) {
+function routeFixture(route: CrawlRoute): { route: CrawlRoute; calls: boolean } {
+  if (route.path === '/[org]/[project]/calls') return { route: { ...route, dynamic: false }, calls: true }
+  if (route.path === '/[org]/[project]/calls/[id]')
+    return {
+      route: { ...route, path: '/[org]/[project]/calls/019a45b0-0000-7000-8000-000000000004', dynamic: false },
+      calls: true
+    }
+  return { route, calls: false }
+}
+
+for (const discovered of builtRoutes()) {
+  const { route, calls } = routeFixture(discovered)
   for (const session of sessions()) {
     test(`${route.path} as ${session.role}`, async ({ page }, info) => {
       const jsOn = info.project.use.javaScriptEnabled !== false
@@ -219,9 +235,21 @@ for (const route of builtRoutes()) {
         'share-link reviewer': null,
         'signed out': null
       }
-      const findings = await crawl(page, visitRoute, session, info, async () => {
-        if (dashboard) await stubDashboard(page, { role: dashboardRoles[session.role], noProjects: true })
-      })
+      const findings = await crawl(
+        page,
+        visitRoute,
+        session,
+        info,
+        async () => {
+          if (calls) await stubCalls(page)
+          if (dashboard) await stubDashboard(page, { role: dashboardRoles[session.role], noProjects: true })
+        },
+        calls && jsOn
+          ? route.path.endsWith('/calls')
+            ? '[data-calls-ready="true"] [data-call]'
+            : '[data-calls-ready="true"] h1'
+          : undefined
+      )
 
       if (route.path === PLANTED_FAILURE) {
         // The planted unlabelled input must fail the crawl, by route, role, theme and rule.

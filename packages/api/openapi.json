@@ -9615,6 +9615,9 @@
                     "project_id": {
                       "type": "string"
                     },
+                    "trace_id": {
+                      "type": "string"
+                    },
                     "window": {
                       "type": [
                         "object",
@@ -10031,6 +10034,7 @@
                     "warnings",
                     "trace",
                     "project_id",
+                    "trace_id",
                     "window",
                     "night",
                     "approved_by",

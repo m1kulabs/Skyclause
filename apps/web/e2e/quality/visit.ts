@@ -24,10 +24,16 @@ export function expectedStatus(route: CrawlRoute, role: Role) {
   return route.status
 }
 
-export async function visit(page: Page, route: CrawlRoute, role: Role = 'signed out'): Promise<Finding[]> {
+export async function visit(
+  page: Page,
+  route: CrawlRoute,
+  role: Role = 'signed out',
+  readySelector?: string
+): Promise<Finding[]> {
   // #174's project UI routes keep their pattern path; their fixtures serve test-org/test-project.
   const path = route.path.replace('[org]', 'test-org').replace('[project]', 'test-project')
   const response = await page.goto(path)
+  if (readySelector) await page.locator(readySelector).waitFor({ state: 'attached' })
   if ((route.path === '/sign-in' || route.path === '/sign-up') && hasSession(role) && role !== 'guest') {
     await expect(page).toHaveURL(/\/api\/auth\/continue(?:\?.*)?$/)
     return []
@@ -50,9 +56,7 @@ export async function visit(page: Page, route: CrawlRoute, role: Role = 'signed 
   }
   if (route.path === '/new' && (!hasSession(role) || role === 'guest')) {
     await expect(page).toHaveURL(/\/sign-up$/)
-    await expect(page.locator('form')).toHaveCount(0)
-    // #98 owns sign-up; the gate is testable before that destination is built.
-    return []
+    await expect(page.locator('form:has(#org-name)')).toHaveCount(0)
   }
   await expectZonedTimes(page)
   const expected = expectedStatus(route, role)
