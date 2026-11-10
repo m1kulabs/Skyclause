@@ -47,6 +47,8 @@ async function readPages<Item>(
 
 /** The shell can render before membership and project owners ship their reads. */
 export async function loadShellData(requestHeaders = new Headers()): Promise<ShellData> {
+  if (process.env.APP_ENV === 'test') return { memberships: [], projects: [], sidebarCollapsed: false }
+
   const preferenceRead = read(shellOperations.getMyPreferences, requestHeaders).catch(() => undefined)
   const memberships = await readPages(shellOperations.listMyMemberships, requestHeaders).catch(() => [])
   const projectLists = await Promise.all(

@@ -50,6 +50,8 @@ export interface ApiFetchOptions<Operation> {
   /** Device operations supply their bearer and stable capture idempotency key. */
   headers?: HeadersInit
   credentials?: RequestCredentials
+  /** Bypass framework and browser caches for request-time reads. */
+  cache?: RequestCache
   /** Required when calling from a server context without an organisation in the URL. */
   org?: string
   /** Reuse across a recent-auth retry of the same logical write. */
@@ -146,6 +148,7 @@ export function createApiFetch<const Registry extends ApiRegistry>(
       headers,
       signal: options.signal,
       ...(options.credentials ? { credentials: options.credentials } : {}),
+      ...(options.cache ? { cache: options.cache } : {}),
       ...(options.keepalive ? { keepalive: true } : {})
     }
     if (requestOptions.body !== undefined) {
