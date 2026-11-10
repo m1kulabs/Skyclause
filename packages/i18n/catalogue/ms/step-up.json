@@ -1,0 +1,16 @@
+{
+  "title": "Sahkan identiti anda",
+  "description": "Sahkan identiti anda untuk meneruskan tindakan sensitif ini.",
+  "passkey": "Gunakan kunci laluan",
+  "email": "Gunakan pautan e-mel",
+  "send_email": "Hantar pautan log masuk kepada saya",
+  "check_email": "Semak e-mel anda, kemudian tekan Teruskan",
+  "continue": "Teruskan",
+  "cancel": "Batal",
+  "loading": "Menyemak log masuk anda…",
+  "sending": "Menghantar pautan e-mel…",
+  "verifying": "Mengesahkan kunci laluan anda…",
+  "not_fresh": "Sesi ini belum disahkan. Buka pautan dalam e-mel anda, kemudian teruskan di sini.",
+  "error": "Identiti anda tidak dapat disahkan. Cuba lagi atau gunakan pautan e-mel.",
+  "passkey_error": "Kunci laluan tidak dapat disahkan. Cuba lagi atau gunakan pautan e-mel."
+}

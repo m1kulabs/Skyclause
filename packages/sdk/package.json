@@ -1,9 +1,38 @@
 {
   "name": "@skyclause/sdk",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./dist/index.js"
+    },
+    "./openapi": {
+      "types": "./openapi/index.ts",
+      "import": "./dist/openapi/index.js"
+    },
+    "./openapi.json": "./openapi/openapi.json",
+    "./openapi/schemas/*": "./openapi/schemas/*.json",
+    "./snippets": {
+      "types": "./src/snippets.ts",
+      "import": "./dist/snippets.js"
+    }
+  },
+  "scripts": {
+    "generate": "bun scripts/generate.ts",
+    "build": "bun scripts/build.ts",
+    "test:runtimes": "bun test/runtime/run.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0",
+    "@types/bun": "1.4.4",
+    "@types/node": "22.20.5",
+    "bun": "1.4.4",
+    "deno": "2.9.6",
+    "node": "22.15.0",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "workerd": "1.20261109.1"
   }
 }

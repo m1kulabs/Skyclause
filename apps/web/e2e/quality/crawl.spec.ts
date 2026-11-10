@@ -5,7 +5,7 @@ import { inspectPage, motionFindings, type Finding } from './checks'
 import { KNOWN_GAPS } from './known-gaps'
 import { sessions, signedOut, type Role, type Session } from './roles'
 import { builtRoutes, type CrawlRoute } from './routes'
-import { visit } from './visit'
+import { redirectsToAccount, visit } from './visit'
 import { onboardingOperations } from '../../features/onboarding/operations'
 import { AUTH_REAUTH_DIALOG_SELECTOR, isAuthRoute } from '../../features/sign-in/model'
 import { sourceOperations } from '../../features/sources/operations'
@@ -150,8 +150,8 @@ async function crawl(
       reducedMotion: 'no-preference'
     })
     if (variant.viewport) await page.setViewportSize(variant.viewport)
-    const findings = await visit(page, concreteRoute, session.role, readySelector)
-    if (new URL(page.url()).pathname === '/api/auth/continue') return found
+    const findings = await visit(page, concreteRoute, session.role, readySelector, org?.slug)
+    if (redirectsToAccount(route, session.role)) return found
     const reauthDialog = page.locator(AUTH_REAUTH_DIALOG_SELECTOR)
     if (isAuthRoute(route.path) || (await reauthDialog.count()) > 0) {
       const passwordControls = page.locator(
@@ -185,7 +185,7 @@ async function crawl(
   if (jsOn) {
     await page.emulateMedia({ colorScheme: 'dark', contrast: 'no-preference', reducedMotion: 'reduce' })
     const findings = [
-      ...(await visit(page, concreteRoute, session.role, readySelector)),
+      ...(await visit(page, concreteRoute, session.role, readySelector, org?.slug)),
       ...(await motionFindings(page))
     ]
     found.push(...findings.map((finding) => ({ ...finding, theme: 'dark, reduced motion', size: 'project size' })))

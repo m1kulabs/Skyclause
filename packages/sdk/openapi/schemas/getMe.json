@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "getMe request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "account_id": {
+                  "type": ["string", "null"]
+                },
+                "client": {
+                  "type": "string",
+                  "enum": ["app", "api", "cli", "mcp", "playground", "worker"]
+                },
+                "client_name": {
+                  "type": ["string", "null"]
+                },
+                "principal_kind": {
+                  "type": "string",
+                  "enum": ["session", "api_key", "oauth", "guest_token", "share_link", "device", "system"]
+                },
+                "organization_id": {
+                  "type": ["string", "null"]
+                },
+                "role": {
+                  "type": ["string", "null"],
+                  "enum": ["owner", "admin", "approver", "editor", "viewer", "guest", null]
+                },
+                "scopes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": ["read", "draft", "admin", "ingest"]
+                  }
+                }
+              },
+              "required": ["account_id", "client", "client_name", "principal_kind", "organization_id", "role", "scopes"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "getMe",
+  "x-method": "GET",
+  "x-path": "/v1/me"
+}

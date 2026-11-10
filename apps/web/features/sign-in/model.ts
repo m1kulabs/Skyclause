@@ -49,7 +49,7 @@ export function isAuthRoute(path: string): boolean {
 }
 
 export type AuthState =
-  | { kind: 'confirm'; link: string; stepUp: boolean }
+  | { kind: 'confirm'; link: string; resend?: string; stepUp: boolean }
   | { kind: 'expired'; resend?: string; stepUp?: boolean }
   | { kind: 'link-pending' }
   | { kind: 'google-failed' }
@@ -58,7 +58,10 @@ export type AuthState =
 export function resolveAuthState(params: AuthSearchParams): AuthState {
   const link = first(params.link)
   const stepUp = first(params.for) === 'step-up'
-  if (link !== undefined) return { kind: 'confirm', link, stepUp }
+  if (link !== undefined) {
+    const resend = first(params.resend)
+    return { kind: 'confirm', link, ...(resend ? { resend } : {}), stepUp }
+  }
 
   const state = first(params.state)
   if (state === 'link-expired') {

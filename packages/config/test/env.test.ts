@@ -174,6 +174,16 @@ describe('loadEnv', () => {
     const staff = 'a@example.org,b@example.org'
     expect(loadEnv('web', { ...web, SKYCLAUSE_STAFF_EMAILS: staff }).SKYCLAUSE_STAFF_EMAILS).toBe(staff)
   })
+
+  test('Google OAuth client ID and secret are optional until configured, then required as a pair (#97)', () => {
+    expect(loadEnv('web', web)).not.toHaveProperty('GOOGLE_CLIENT_ID')
+    const google = { GOOGLE_CLIENT_ID: 'client.apps.googleusercontent.com', GOOGLE_CLIENT_SECRET: 'secret' }
+    expect(loadEnv('web', { ...web, ...google })).toMatchObject(google)
+    expect(() => loadEnv('web', { ...web, GOOGLE_CLIENT_ID: google.GOOGLE_CLIENT_ID })).toThrow(/GOOGLE_CLIENT_SECRET/)
+    expect(() => loadEnv('web', { ...web, GOOGLE_CLIENT_SECRET: google.GOOGLE_CLIENT_SECRET })).toThrow(
+      /GOOGLE_CLIENT_ID/
+    )
+  })
 })
 
 test('worker preserves optional staff addresses without requiring the auth secret', () => {

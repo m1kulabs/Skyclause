@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useParams, usePathname } from 'next/navigation'
 import { t } from './i18n'
 import { MenuIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from 'lucide-react'
@@ -50,6 +50,15 @@ export function AppShell({ data, children, approvalsCount, freshnessStamp, palet
   const activeTab = scope?.tab ?? pathname.split('/')[3] ?? 'overview'
   const navigationPath = scope?.org && !scope.project ? `/${encodeURIComponent(scope.org)}` : pathname
   const activeNav = project ? undefined : navigation.find((item) => item.href === navigationPath)?.key
+
+  useEffect(() => {
+    const syncPreference = (event: Event) => {
+      const preference = (event as CustomEvent<{ sidebarCollapsed?: boolean }>).detail
+      if (typeof preference.sidebarCollapsed === 'boolean') setCollapsed(preference.sidebarCollapsed)
+    }
+    window.addEventListener('skyclause:account-preferences', syncPreference)
+    return () => window.removeEventListener('skyclause:account-preferences', syncPreference)
+  }, [])
 
   async function changeCollapsed(next: boolean) {
     if (saving) return

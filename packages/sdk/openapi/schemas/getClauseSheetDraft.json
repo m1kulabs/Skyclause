@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "getClauseSheetDraft request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "draftId": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": ["id", "draftId"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["draft", "published"]
+                },
+                "n": {
+                  "type": "integer"
+                },
+                "content": {
+                  "type": "object",
+                  "properties": {
+                    "pack": {
+                      "type": "string",
+                      "enum": ["sky", "crowd"]
+                    },
+                    "clauses": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "builtin": {
+                            "type": "string",
+                            "enum": ["silent_input"]
+                          },
+                          "scope": {
+                            "type": "string",
+                            "enum": ["site", "window", "night"]
+                          },
+                          "requires": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "optional": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "span": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "string",
+                                "pattern": "^(start|end)([+-]\\d+m)?$"
+                              },
+                              "to": {
+                                "type": "string",
+                                "pattern": "^(start|end)([+-]\\d+m)?$"
+                              }
+                            },
+                            "required": ["from", "to"]
+                          },
+                          "when": {
+                            "type": "string"
+                          },
+                          "expiry": {
+                            "type": "string",
+                            "enum": ["start", "end"]
+                          },
+                          "proposes": {
+                            "type": "object",
+                            "properties": {
+                              "mode": {
+                                "type": "string",
+                                "enum": [
+                                  "normal",
+                                  "outdoor_limited",
+                                  "commute_disruption",
+                                  "hybrid_recommended",
+                                  "surge_night"
+                                ]
+                              },
+                              "watch": {
+                                "type": "boolean",
+                                "enum": [true]
+                              },
+                              "recommendations": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "keep_with_advisory",
+                                    "shift_start",
+                                    "shift_end",
+                                    "ask_shuttle",
+                                    "leave_before_doors"
+                                  ]
+                                }
+                              },
+                              "note": {
+                                "type": "string",
+                                "enum": ["flood_note", "single_source_flag", "calendar_entry"]
+                              }
+                            }
+                          },
+                          "wording": {
+                            "type": "object",
+                            "properties": {
+                              "en": {
+                                "type": "string"
+                              },
+                              "ms": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "required": ["key", "name", "enabled", "scope", "requires", "when", "proposes", "wording"]
+                      }
+                    }
+                  },
+                  "required": ["pack", "clauses"]
+                },
+                "content_hash": {
+                  "type": "string"
+                },
+                "published_by": {
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["id", "status", "n", "content", "content_hash", "published_by"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "getClauseSheetDraft",
+  "x-method": "GET",
+  "x-path": "/v1/clause-sheets/{id}/drafts/{draftId}"
+}

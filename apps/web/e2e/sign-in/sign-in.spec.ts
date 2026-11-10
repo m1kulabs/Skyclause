@@ -1,4 +1,5 @@
 import { generateKeyPairSync, randomBytes } from 'node:crypto'
+import { makeAccount, signIn } from '@skyclause/auth/testing'
 import { expect, expectAxeClean, test } from '../fixtures'
 import { signedOut } from '../quality/roles'
 
@@ -191,15 +192,20 @@ test('link confirmation posts once and follows the continue redirect', async ({ 
   let confirmCount = 0
   await page.route('**/api/auth/magic-link/confirm', async (route) => {
     confirmCount += 1
-    expect(route.request().postDataJSON()).toEqual({ link: 'one-time-token' })
+    expect(route.request().postDataJSON()).toEqual({ link: 'one-time-token', resend: 'resend-handle' })
+    // Confirmation creates a session; redirected fetches reach the real continue handler.
+    const account = await makeAccount()
+    await page.context().addCookies((await signIn(account.id)).cookies)
     await route.fulfill({ status: 303, headers: { location: '/api/auth/continue?next=%2Fcommons' } })
   })
-  await page.route('**/api/auth/continue*', (route) =>
-    route.fulfill({ status: 303, headers: { location: '/commons' } })
+  await page.route('**/commons', (route) =>
+    route.fulfill({
+      contentType: 'text/html',
+      body: '<!doctype html><html lang="en"><head><title>Commons</title></head><body><main><h1>Commons</h1></main></body></html>'
+    })
   )
-  await page.route('**/commons', (route) => route.fulfill({ contentType: 'text/html', body: '<h1>Commons</h1>' }))
 
-  await page.goto('/sign-in?link=one-time-token&next=%2Fcommons')
+  await page.goto('/sign-in?link=one-time-token&resend=resend-handle&next=%2Fcommons')
   await expect(page.getByRole('button', { name: 'Sign in' })).toHaveCount(1)
   await expectAuthAxe(page)
   await page.getByRole('button', { name: 'Sign in' }).click()

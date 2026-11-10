@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '#ui/button'
 import {
   Combobox,
@@ -55,6 +55,7 @@ export function LabellerPicker({ org, sourceId, status, editable, locale = 'en',
   const [saveError, setSaveError] = useState(false)
   const [announcement, setAnnouncement] = useState('')
   const anchor = useComboboxAnchor()
+  const actions = useRef<{ unmount(): void; close(): void } | null>(null)
   const [filter, setFilter] = useState('')
 
   const reload = useCallback(
@@ -142,6 +143,11 @@ export function LabellerPicker({ org, sourceId, status, editable, locale = 'en',
           <>
             <Combobox
               multiple
+              actionsRef={actions}
+              onOpenChange={(open) => {
+                // Finish closing before another search can reopen with keyboard navigation disabled.
+                if (!open) actions.current?.unmount()
+              }}
               value={selected}
               onValueChange={(next) => {
                 if (next.length > 2) {

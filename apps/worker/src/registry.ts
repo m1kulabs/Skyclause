@@ -16,6 +16,7 @@ import { pilotArchive } from './pilot-archive'
 import { replies } from './replies'
 import { restoreDrill } from './restore-drill'
 import { runs } from './runs'
+import { retention } from './retention'
 import { defineRegistry } from './server'
 import { sources } from './sources'
 
@@ -40,5 +41,6 @@ export const registry = defineRegistry([
   analysis, // c-analysis-api
   auditor, // b-auditor
   sources, // b-sources-core
-  dataRights // a-data-rights
+  dataRights, // a-data-rights
+  retention // a-retention
 ])

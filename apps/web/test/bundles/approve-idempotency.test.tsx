@@ -5,6 +5,7 @@ import { afterEach, expect, test, vi } from 'vitest'
 import { createApiFetch } from '../../lib/api-fetch'
 import { apiFetch, bundleOperations } from '../../features/bundles/operations'
 import { useBundleReview } from '../../features/bundles/use-bundle-review'
+import { completeStepUp } from '../../features/step-up/flow'
 
 vi.mock('../../lib/read-sse', () => ({ readSse: vi.fn() }))
 vi.mock('../../features/bundles/operations', async (importOriginal) => {
@@ -120,10 +121,16 @@ test('approval sends a fresh idempotency key and reuses it after re-auth', async
   const { result, unmount } = renderHook(() => useBundleReview('bundle', 'org'))
   await waitFor(() => expect(result.current.data?.bundle.id).toBe('bundle'))
 
-  await act(async () => result.current.approve())
-  expect(result.current.reauth).toBeDefined()
+  let approval: Promise<void> | undefined
+  await act(async () => {
+    approval = result.current.approve()
+  })
+  await waitFor(() => expect(result.current.reauth).toBeDefined())
 
-  await act(async () => result.current.retryAfterReauth())
+  await act(async () => {
+    completeStepUp()
+    await approval
+  })
   expect(result.current.conflict?.review_hash).toBe('updated-review')
 
   await act(async () => result.current.approve(true))
