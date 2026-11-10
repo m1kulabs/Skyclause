@@ -180,6 +180,8 @@ export async function deleteAccount(input: { accountId: string; email: string; a
       .from(member)
       .innerJoin(organization, eq(member.organizationId, organization.id))
       .where(eq(member.userId, input.accountId))
+      .orderBy(organization.id)
+      .for('update')
     const soleOwners = await soleOwnerOrganisations(tx, input.accountId)
     if (soleOwners.length) throw new SoleOwnerError(soleOwners)
 

@@ -116,6 +116,44 @@ describe('a-data-rights database operations', () => {
     expect(stillActive).toBeDefined()
   })
 
+  test('concurrent account deletions preserve an organisation’s last Owner', async () => {
+    const org = await makeOrganization()
+    const owners = await Promise.all([makeUser(), makeUser()])
+    for (const owner of owners) await makeMember({ organizationId: org.id, userId: owner.id, role: 'owner' })
+
+    const results = await asLogin('postgres', async (client) => {
+      await client.query('BEGIN')
+      await client.query('SELECT id FROM auth.organization WHERE id = $1 FOR UPDATE', [org.id])
+      const deleting = Promise.allSettled(
+        owners.map((owner) =>
+          deleteAccount({ accountId: owner.id, email: owner.email, actor: principal(owner.id), now: new Date() })
+        )
+      )
+      try {
+        // Both deletions reach the same organisation before either may commit.
+        await expect
+          .poll(async () => {
+            await client.query('SELECT pg_stat_clear_snapshot()')
+            const { rows } = await client.query<{ n: number }>(
+              `SELECT count(*)::int AS n FROM pg_stat_activity
+             WHERE datname = current_database() AND usename = 'retention' AND wait_event_type = 'Lock'`
+            )
+            return rows[0]!.n
+          })
+          .toBe(2)
+      } finally {
+        await client.query('COMMIT')
+        await deleting
+      }
+      return deleting
+    })
+
+    expect(results.filter(({ status }) => status === 'fulfilled')).toHaveLength(1)
+    const refused = results.find((result) => result.status === 'rejected')
+    expect(refused).toMatchObject({ status: 'rejected', reason: { code: 'sole-owner' } })
+    expect(await authDatabase().select().from(member).where(eq(member.organizationId, org.id))).toHaveLength(1)
+  })
+
   test('deletion pseudonymises the user, removes account rows, and preserves ledger and audit actor IDs', async () => {
     const org = await makeOrganization()
     const account = await makeUser({ name: 'Account name', email: 'account@example.test' })
