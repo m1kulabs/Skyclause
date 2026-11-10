@@ -1,0 +1,254 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "evaluateSandbox request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "body": {
+          "type": "object",
+          "properties": {
+            "pack": {
+              "type": "string",
+              "enum": ["sky", "crowd"]
+            },
+            "clause": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "builtin": {
+                  "type": "string",
+                  "enum": ["silent_input"]
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": ["site", "window", "night"]
+                },
+                "requires": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "optional": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "span": {
+                  "type": "object",
+                  "properties": {
+                    "from": {
+                      "type": "string",
+                      "pattern": "^(start|end)([+-]\\d+m)?$"
+                    },
+                    "to": {
+                      "type": "string",
+                      "pattern": "^(start|end)([+-]\\d+m)?$"
+                    }
+                  },
+                  "required": ["from", "to"]
+                },
+                "when": {
+                  "type": "string"
+                },
+                "expiry": {
+                  "type": "string",
+                  "enum": ["start", "end"]
+                },
+                "proposes": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string",
+                      "enum": ["normal", "outdoor_limited", "commute_disruption", "hybrid_recommended", "surge_night"]
+                    },
+                    "watch": {
+                      "type": "boolean",
+                      "enum": [true]
+                    },
+                    "recommendations": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["keep_with_advisory", "shift_start", "shift_end", "ask_shuttle", "leave_before_doors"]
+                      }
+                    },
+                    "note": {
+                      "type": "string",
+                      "enum": ["flood_note", "single_source_flag", "calendar_entry"]
+                    }
+                  }
+                },
+                "wording": {
+                  "type": "object",
+                  "properties": {
+                    "en": {
+                      "type": "string"
+                    },
+                    "ms": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": ["key", "name", "enabled", "scope", "requires", "when", "proposes", "wording"]
+            },
+            "replay_id": {
+              "type": "string"
+            }
+          },
+          "required": ["pack", "clause"]
+        }
+      },
+      "required": ["body"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "evaluated_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "source": {
+                  "type": "string",
+                  "enum": ["live", "replay"]
+                },
+                "result": {
+                  "type": ["boolean", "null"]
+                },
+                "type_errors": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "message": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["path", "message"]
+                  }
+                },
+                "inputs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "anyOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "number"
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "unit": {
+                        "type": "string"
+                      },
+                      "state": {
+                        "type": "string",
+                        "enum": ["fresh", "stale", "error", "recovered", "pending", "probation", "off_hours"]
+                      },
+                      "since": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      },
+                      "age_s": {
+                        "type": ["integer", "null"],
+                        "minimum": 0
+                      },
+                      "source_ids": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "source_url": {
+                        "type": ["string", "null"],
+                        "format": "uri"
+                      },
+                      "reading_ids": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "observed_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value",
+                      "unit",
+                      "state",
+                      "since",
+                      "age_s",
+                      "source_ids",
+                      "source_url",
+                      "reading_ids",
+                      "observed_at"
+                    ]
+                  }
+                }
+              },
+              "required": ["evaluated_at", "source", "result", "type_errors", "inputs"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "evaluateSandbox",
+  "x-method": "POST",
+  "x-path": "/v1/sandbox/evaluate"
+}

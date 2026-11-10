@@ -1,4 +1,4 @@
-import { ApiError, getBundle, getCall, getCallExplanation } from '@skyclause/api'
+import { ApiError, getAccountPreferences, getBundle, getCall, getCallExplanation } from '@skyclause/api'
 import { can } from '@skyclause/auth'
 import { log } from '@skyclause/config'
 import { withTenant } from '@skyclause/db'
@@ -31,7 +31,14 @@ export async function serverReview(org: string, bundleId: string): Promise<Initi
         const call = await getCall(ctx, { id, origin: permalinkOrigin() })
         calls.push({ ...call, ...(await getCallExplanation(ctx, { id })) })
       }
-      const data = { bundle, calls, shortcuts: true, canApprove: approves(principal.role), errors: [] }
+      const preferences = await getAccountPreferences(principal.accountId)
+      const data = {
+        bundle,
+        calls,
+        shortcuts: preferences?.shortcuts ?? true,
+        canApprove: approves(principal.role),
+        errors: []
+      }
       return { data, now: Date.now() }
     })
   } catch (error) {

@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "listProjectDays request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "date": {
+                        "type": "string",
+                        "format": "date"
+                      },
+                      "reading_count": {
+                        "type": "integer"
+                      },
+                      "error_count": {
+                        "type": "integer"
+                      },
+                      "window_count": {
+                        "type": "integer"
+                      },
+                      "storm_afternoon": {
+                        "type": ["object", "null"],
+                        "properties": {
+                          "wording": {
+                            "type": "string"
+                          },
+                          "source_url": {
+                            "type": "string",
+                            "format": "uri"
+                          }
+                        },
+                        "required": ["wording", "source_url"]
+                      }
+                    },
+                    "required": ["date", "reading_count", "error_count", "window_count"]
+                  }
+                },
+                "next_cursor": {
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["data", "next_cursor"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "listProjectDays",
+  "x-method": "GET",
+  "x-path": "/v1/projects/{id}/days"
+}

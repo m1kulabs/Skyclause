@@ -1,5 +1,5 @@
 {
-  "id": "564c1fd4-7a3a-4bbf-a129-882d4e409017",
+  "id": "157ecec3-9d9e-4919-9e6a-9d6053292911",
   "prevId": "efc63ee8-de79-4d59-9ed0-8fa7801478ce",
   "version": "7",
   "dialect": "postgresql",
@@ -5100,37 +5100,7 @@
           "name": "n",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false
-        },
-        "base_n": {
-          "name": "base_n",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "check_result": {
-          "name": "check_result",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "checked_content": {
-          "name": "checked_content",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "validation_registry_hash": {
-          "name": "validation_registry_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "publish_preview": {
-          "name": "publish_preview",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "status": {
           "name": "status",
@@ -5239,12 +5209,7 @@
         }
       },
       "policies": {},
-      "checkConstraints": {
-        "sheet_version_status_n_check": {
-          "name": "sheet_version_status_n_check",
-          "value": "(\"sheet_version\".\"status\" = 'draft' AND \"sheet_version\".\"n\" IS NULL) OR (\"sheet_version\".\"status\" = 'published' AND \"sheet_version\".\"n\" IS NOT NULL AND \"sheet_version\".\"n\" > 0)"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.consent_record": {
@@ -10541,7 +10506,7 @@
           "name": "licence_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "licence_label": {
           "name": "licence_label",

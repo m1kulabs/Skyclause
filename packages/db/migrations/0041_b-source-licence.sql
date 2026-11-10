@@ -1,0 +1,1 @@
+ALTER TABLE "source" ALTER COLUMN "licence_id" DROP NOT NULL;

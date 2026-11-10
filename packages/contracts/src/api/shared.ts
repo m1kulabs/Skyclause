@@ -113,12 +113,22 @@ export type PackState = z.infer<typeof PackState>
 export const Preferences = z.object({
   theme: z.enum(['light', 'dark', 'system']),
   high_contrast: z.boolean(),
-  density: z.string(),
+  density: z.enum(['compact', 'comfortable']),
   reduced_motion: z.boolean(),
   language: Language,
-  shortcuts: z.boolean().default(true)
+  shortcuts: z.boolean().default(true),
+  sidebar_collapsed: z.boolean().default(false)
 })
 export type Preferences = z.infer<typeof Preferences>
+export const DEFAULT_PREFERENCES: Preferences = {
+  theme: 'dark',
+  high_contrast: false,
+  density: 'comfortable',
+  reduced_motion: false,
+  language: 'en',
+  shortcuts: true,
+  sidebar_collapsed: false
+}
 
 // Spec §1: the /api/notifications item is also the notification stream payload.
 export const NOTIFICATION_KINDS = ['needs_review', 'escalated', 'source_error', 'review_item', 'auditor'] as const

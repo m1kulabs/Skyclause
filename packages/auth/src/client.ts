@@ -11,13 +11,21 @@ import {
 } from 'better-auth/client/plugins'
 import { ac, roles } from './access'
 
-export const authClient = createAuthClient({
-  plugins: [
-    organizationClient({ ac, roles }),
-    anonymousClient(),
-    apiKeyClient(),
-    magicLinkClient(),
-    passkeyClient(),
-    deviceAuthorizationClient()
-  ]
-})
+const plugins = [
+  organizationClient({ ac, roles }),
+  anonymousClient(),
+  apiKeyClient(),
+  magicLinkClient(),
+  passkeyClient(),
+  deviceAuthorizationClient()
+] satisfies [
+  ReturnType<typeof organizationClient>,
+  ReturnType<typeof anonymousClient>,
+  ReturnType<typeof apiKeyClient>,
+  ReturnType<typeof magicLinkClient>,
+  ReturnType<typeof passkeyClient>,
+  ReturnType<typeof deviceAuthorizationClient>
+]
+const options = { plugins }
+
+export const authClient = createAuthClient(options)

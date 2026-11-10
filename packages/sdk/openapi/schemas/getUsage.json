@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "getUsage request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "period_start": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "period_end": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "totals": {
+                  "type": "object",
+                  "properties": {
+                    "runs": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "tokens_in": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "tokens_out": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "estimated_cost_myr": {
+                      "type": ["number", "null"],
+                      "minimum": 0
+                    }
+                  },
+                  "required": ["runs", "tokens_in", "tokens_out", "estimated_cost_myr"]
+                },
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "run_id": {
+                        "type": ["string", "null"]
+                      },
+                      "ai_key_id": {
+                        "type": ["string", "null"]
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "tokens_in": {
+                        "type": "integer"
+                      },
+                      "tokens_out": {
+                        "type": "integer"
+                      },
+                      "estimated_cost_myr": {
+                        "type": ["number", "null"],
+                        "minimum": 0
+                      }
+                    },
+                    "required": ["run_id", "ai_key_id", "model", "tokens_in", "tokens_out", "estimated_cost_myr"]
+                  }
+                },
+                "next_cursor": {
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["period_start", "period_end", "totals", "data", "next_cursor"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "getUsage",
+  "x-method": "GET",
+  "x-path": "/v1/usage"
+}

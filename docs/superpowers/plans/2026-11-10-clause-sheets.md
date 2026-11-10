@@ -21,6 +21,8 @@ Contents:
 
 **Execution base:** a0bb3adcf7e1fee15cb3719039c18dc32c3035d5. Task1 caller supplies contentHash, API computes canonicalHash; no DB runtime engine dependency for hashing. Only #135 unpublished migration may be renumbered after #120 integration.
 
+**Integration execution note (2026-11-10):** The reviewed sheets head `c6a3a974513b956cf5c00069ef2a8bc3010c6ea7` is normally merged with Source120 release candidate `67ea0308d36f879373c7a0ab8834e1f6123f1dd0`, which includes current main `d50cd8b`. Source owns migrations 0041–0043; only the unpublished sheets migrations are regenerated as 0044 (schema and draft normalization) and 0045 (immutability trigger), preserving the Source journal prefix. The approved semantics and explicit null evaluation providers remain unchanged.
+
 ## Global constraints
 
 - One #135 feature PR labelled `contract`; contract alignment is its first phase, not a new child issue or separate merge gate. Record new representation choices (nullable draft n and nullable validation readiness) through #79's contract process.

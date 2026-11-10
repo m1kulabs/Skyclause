@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "getSubscriberCounts request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "total": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "confirmed": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "unconfirmed": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "suppressed": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "bounced": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "complained": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "unsubscribed": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "by_window": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "window_id": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": ["window_id", "count"]
+                  }
+                },
+                "by_channel": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "channel": {
+                        "type": "string",
+                        "enum": ["email", "ics", "webhook", "in_app"]
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": ["channel", "count"]
+                  }
+                }
+              },
+              "required": [
+                "total",
+                "confirmed",
+                "unconfirmed",
+                "suppressed",
+                "bounced",
+                "complained",
+                "unsubscribed",
+                "by_window",
+                "by_channel"
+              ]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "getSubscriberCounts",
+  "x-method": "GET",
+  "x-path": "/v1/projects/{id}/subscriber-counts"
+}

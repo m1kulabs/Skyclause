@@ -315,18 +315,7 @@ export function BundleDetail({ bundleId, actionsRef, initial }: BundleDetailProp
           onConfirm={() => void review.approve(true)}
         />
       )}
-      {review.reauth && (
-        <Alert>
-          <AlertTitle>{t('bundles.reauth')}</AlertTitle>
-          <AlertDescription>
-            <p>{t('bundles.reauth_help')}</p>
-            <ReauthStep onSuccess={review.retryAfterReauth} onCancel={() => review.setReauth(undefined)} />
-            <Button variant="outline" onClick={() => review.setReauth(undefined)}>
-              {t('bundles.cancel')}
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
+      {review.reauth && <ReauthStep onCancel={review.setReauth} />}
     </section>
   )
 }

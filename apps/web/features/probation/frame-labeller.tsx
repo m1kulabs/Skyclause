@@ -211,6 +211,7 @@ export function FrameLabeller({ sourceId, mode, locale = 'en', onStatus, onDisag
               <Button
                 key={label}
                 variant="outline"
+                className="transition-transform"
                 disabled={view.url === null || view.saving !== null}
                 onClick={() => vote(view.frame, label)}
               >

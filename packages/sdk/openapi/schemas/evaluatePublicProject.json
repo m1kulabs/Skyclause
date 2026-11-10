@@ -1,0 +1,953 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "evaluatePublicProject request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "org": {
+              "type": "string",
+              "minLength": 1
+            },
+            "project": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["org", "project"],
+          "additionalProperties": false
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "type": "string",
+              "format": "date"
+            },
+            "start_time": {
+              "type": "string",
+              "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
+            },
+            "end_time": {
+              "type": "string",
+              "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
+            }
+          },
+          "required": ["date", "start_time", "end_time"]
+        }
+      },
+      "required": ["params", "body"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "enum": ["Clause engine verdict: not reviewed, not sent"]
+                },
+                "evaluated_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "verdicts": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "t_eval": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "pack": {
+                        "type": "string",
+                        "enum": ["sky", "crowd"]
+                      },
+                      "content_hash": {
+                        "type": "string"
+                      },
+                      "snapshot_hash": {
+                        "type": "string"
+                      },
+                      "site": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "scope": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": ["site", "window", "night"]
+                                },
+                                "id": {
+                                  "type": ["string", "null"]
+                                }
+                              },
+                              "required": ["kind", "id"]
+                            },
+                            "pack": {
+                              "type": "string",
+                              "enum": ["sky", "crowd"]
+                            },
+                            "mode": {
+                              "type": ["string", "null"],
+                              "enum": [
+                                "normal",
+                                "outdoor_limited",
+                                "commute_disruption",
+                                "hybrid_recommended",
+                                "surge_night",
+                                null
+                              ]
+                            },
+                            "watch": {
+                              "type": "boolean"
+                            },
+                            "no_call": {
+                              "type": ["object", "null"],
+                              "properties": {
+                                "inputs": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "source_id": {
+                                        "type": ["string", "null"]
+                                      },
+                                      "state": {
+                                        "type": "string",
+                                        "enum": [
+                                          "fresh",
+                                          "stale",
+                                          "error",
+                                          "recovered",
+                                          "pending",
+                                          "probation",
+                                          "off_hours"
+                                        ]
+                                      },
+                                      "since": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                      }
+                                    },
+                                    "required": ["name", "source_id", "state", "since"]
+                                  }
+                                }
+                              },
+                              "required": ["inputs"]
+                            },
+                            "recommendations": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "keep_with_advisory",
+                                  "shift_start",
+                                  "shift_end",
+                                  "ask_shuttle",
+                                  "leave_before_doors"
+                                ]
+                              }
+                            },
+                            "clauses": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string"
+                                  },
+                                  "result": {
+                                    "type": "string",
+                                    "enum": ["fired", "not_fired", "blocked", "not_open"]
+                                  },
+                                  "blocked_by": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "source_id": {
+                                          "type": ["string", "null"]
+                                        },
+                                        "state": {
+                                          "type": "string",
+                                          "enum": [
+                                            "fresh",
+                                            "stale",
+                                            "error",
+                                            "recovered",
+                                            "pending",
+                                            "probation",
+                                            "off_hours"
+                                          ]
+                                        },
+                                        "since": {
+                                          "type": "string",
+                                          "format": "date-time"
+                                        }
+                                      },
+                                      "required": ["name", "source_id", "state", "since"]
+                                    }
+                                  },
+                                  "span": {
+                                    "type": "object",
+                                    "properties": {
+                                      "from": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                      },
+                                      "to": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                      },
+                                      "complete": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": ["from", "to", "complete"]
+                                  },
+                                  "inputs": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "value": {
+                                          "anyOf": [
+                                            {
+                                              "type": "number"
+                                            },
+                                            {
+                                              "type": "boolean"
+                                            },
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "number"
+                                              }
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "unit": {
+                                          "type": "string"
+                                        },
+                                        "state": {
+                                          "type": "string",
+                                          "enum": [
+                                            "fresh",
+                                            "stale",
+                                            "error",
+                                            "recovered",
+                                            "pending",
+                                            "probation",
+                                            "off_hours"
+                                          ]
+                                        },
+                                        "since": {
+                                          "type": ["string", "null"],
+                                          "format": "date-time"
+                                        },
+                                        "age_s": {
+                                          "type": ["integer", "null"],
+                                          "minimum": 0
+                                        },
+                                        "source_ids": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "source_url": {
+                                          "type": ["string", "null"],
+                                          "format": "uri"
+                                        },
+                                        "reading_ids": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "observed_at": {
+                                          "type": ["string", "null"],
+                                          "format": "date-time"
+                                        }
+                                      },
+                                      "required": [
+                                        "name",
+                                        "value",
+                                        "unit",
+                                        "state",
+                                        "since",
+                                        "age_s",
+                                        "source_ids",
+                                        "source_url",
+                                        "reading_ids",
+                                        "observed_at"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": ["key", "result", "blocked_by", "inputs"]
+                              }
+                            },
+                            "open_from": {
+                              "type": ["string", "null"],
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "scope",
+                            "pack",
+                            "mode",
+                            "watch",
+                            "no_call",
+                            "recommendations",
+                            "clauses",
+                            "open_from"
+                          ]
+                        }
+                      },
+                      "windows": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "scope": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": ["site", "window", "night"]
+                                },
+                                "id": {
+                                  "type": ["string", "null"]
+                                }
+                              },
+                              "required": ["kind", "id"]
+                            },
+                            "pack": {
+                              "type": "string",
+                              "enum": ["sky", "crowd"]
+                            },
+                            "mode": {
+                              "type": ["string", "null"],
+                              "enum": [
+                                "normal",
+                                "outdoor_limited",
+                                "commute_disruption",
+                                "hybrid_recommended",
+                                "surge_night",
+                                null
+                              ]
+                            },
+                            "watch": {
+                              "type": "boolean"
+                            },
+                            "no_call": {
+                              "type": ["object", "null"],
+                              "properties": {
+                                "inputs": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "source_id": {
+                                        "type": ["string", "null"]
+                                      },
+                                      "state": {
+                                        "type": "string",
+                                        "enum": [
+                                          "fresh",
+                                          "stale",
+                                          "error",
+                                          "recovered",
+                                          "pending",
+                                          "probation",
+                                          "off_hours"
+                                        ]
+                                      },
+                                      "since": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                      }
+                                    },
+                                    "required": ["name", "source_id", "state", "since"]
+                                  }
+                                }
+                              },
+                              "required": ["inputs"]
+                            },
+                            "recommendations": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "keep_with_advisory",
+                                  "shift_start",
+                                  "shift_end",
+                                  "ask_shuttle",
+                                  "leave_before_doors"
+                                ]
+                              }
+                            },
+                            "clauses": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string"
+                                  },
+                                  "result": {
+                                    "type": "string",
+                                    "enum": ["fired", "not_fired", "blocked", "not_open"]
+                                  },
+                                  "blocked_by": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "source_id": {
+                                          "type": ["string", "null"]
+                                        },
+                                        "state": {
+                                          "type": "string",
+                                          "enum": [
+                                            "fresh",
+                                            "stale",
+                                            "error",
+                                            "recovered",
+                                            "pending",
+                                            "probation",
+                                            "off_hours"
+                                          ]
+                                        },
+                                        "since": {
+                                          "type": "string",
+                                          "format": "date-time"
+                                        }
+                                      },
+                                      "required": ["name", "source_id", "state", "since"]
+                                    }
+                                  },
+                                  "span": {
+                                    "type": "object",
+                                    "properties": {
+                                      "from": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                      },
+                                      "to": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                      },
+                                      "complete": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": ["from", "to", "complete"]
+                                  },
+                                  "inputs": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "value": {
+                                          "anyOf": [
+                                            {
+                                              "type": "number"
+                                            },
+                                            {
+                                              "type": "boolean"
+                                            },
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "number"
+                                              }
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "unit": {
+                                          "type": "string"
+                                        },
+                                        "state": {
+                                          "type": "string",
+                                          "enum": [
+                                            "fresh",
+                                            "stale",
+                                            "error",
+                                            "recovered",
+                                            "pending",
+                                            "probation",
+                                            "off_hours"
+                                          ]
+                                        },
+                                        "since": {
+                                          "type": ["string", "null"],
+                                          "format": "date-time"
+                                        },
+                                        "age_s": {
+                                          "type": ["integer", "null"],
+                                          "minimum": 0
+                                        },
+                                        "source_ids": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "source_url": {
+                                          "type": ["string", "null"],
+                                          "format": "uri"
+                                        },
+                                        "reading_ids": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "observed_at": {
+                                          "type": ["string", "null"],
+                                          "format": "date-time"
+                                        }
+                                      },
+                                      "required": [
+                                        "name",
+                                        "value",
+                                        "unit",
+                                        "state",
+                                        "since",
+                                        "age_s",
+                                        "source_ids",
+                                        "source_url",
+                                        "reading_ids",
+                                        "observed_at"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": ["key", "result", "blocked_by", "inputs"]
+                              }
+                            },
+                            "open_from": {
+                              "type": ["string", "null"],
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "scope",
+                            "pack",
+                            "mode",
+                            "watch",
+                            "no_call",
+                            "recommendations",
+                            "clauses",
+                            "open_from"
+                          ]
+                        }
+                      },
+                      "nights": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "scope": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": ["site", "window", "night"]
+                                },
+                                "id": {
+                                  "type": ["string", "null"]
+                                }
+                              },
+                              "required": ["kind", "id"]
+                            },
+                            "pack": {
+                              "type": "string",
+                              "enum": ["sky", "crowd"]
+                            },
+                            "mode": {
+                              "type": ["string", "null"],
+                              "enum": [
+                                "normal",
+                                "outdoor_limited",
+                                "commute_disruption",
+                                "hybrid_recommended",
+                                "surge_night",
+                                null
+                              ]
+                            },
+                            "watch": {
+                              "type": "boolean"
+                            },
+                            "no_call": {
+                              "type": ["object", "null"],
+                              "properties": {
+                                "inputs": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "source_id": {
+                                        "type": ["string", "null"]
+                                      },
+                                      "state": {
+                                        "type": "string",
+                                        "enum": [
+                                          "fresh",
+                                          "stale",
+                                          "error",
+                                          "recovered",
+                                          "pending",
+                                          "probation",
+                                          "off_hours"
+                                        ]
+                                      },
+                                      "since": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                      }
+                                    },
+                                    "required": ["name", "source_id", "state", "since"]
+                                  }
+                                }
+                              },
+                              "required": ["inputs"]
+                            },
+                            "recommendations": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "keep_with_advisory",
+                                  "shift_start",
+                                  "shift_end",
+                                  "ask_shuttle",
+                                  "leave_before_doors"
+                                ]
+                              }
+                            },
+                            "clauses": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string"
+                                  },
+                                  "result": {
+                                    "type": "string",
+                                    "enum": ["fired", "not_fired", "blocked", "not_open"]
+                                  },
+                                  "blocked_by": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "source_id": {
+                                          "type": ["string", "null"]
+                                        },
+                                        "state": {
+                                          "type": "string",
+                                          "enum": [
+                                            "fresh",
+                                            "stale",
+                                            "error",
+                                            "recovered",
+                                            "pending",
+                                            "probation",
+                                            "off_hours"
+                                          ]
+                                        },
+                                        "since": {
+                                          "type": "string",
+                                          "format": "date-time"
+                                        }
+                                      },
+                                      "required": ["name", "source_id", "state", "since"]
+                                    }
+                                  },
+                                  "span": {
+                                    "type": "object",
+                                    "properties": {
+                                      "from": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                      },
+                                      "to": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                      },
+                                      "complete": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": ["from", "to", "complete"]
+                                  },
+                                  "inputs": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "value": {
+                                          "anyOf": [
+                                            {
+                                              "type": "number"
+                                            },
+                                            {
+                                              "type": "boolean"
+                                            },
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "number"
+                                              }
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "unit": {
+                                          "type": "string"
+                                        },
+                                        "state": {
+                                          "type": "string",
+                                          "enum": [
+                                            "fresh",
+                                            "stale",
+                                            "error",
+                                            "recovered",
+                                            "pending",
+                                            "probation",
+                                            "off_hours"
+                                          ]
+                                        },
+                                        "since": {
+                                          "type": ["string", "null"],
+                                          "format": "date-time"
+                                        },
+                                        "age_s": {
+                                          "type": ["integer", "null"],
+                                          "minimum": 0
+                                        },
+                                        "source_ids": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "source_url": {
+                                          "type": ["string", "null"],
+                                          "format": "uri"
+                                        },
+                                        "reading_ids": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "observed_at": {
+                                          "type": ["string", "null"],
+                                          "format": "date-time"
+                                        }
+                                      },
+                                      "required": [
+                                        "name",
+                                        "value",
+                                        "unit",
+                                        "state",
+                                        "since",
+                                        "age_s",
+                                        "source_ids",
+                                        "source_url",
+                                        "reading_ids",
+                                        "observed_at"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": ["key", "result", "blocked_by", "inputs"]
+                              }
+                            },
+                            "open_from": {
+                              "type": ["string", "null"],
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "scope",
+                            "pack",
+                            "mode",
+                            "watch",
+                            "no_call",
+                            "recommendations",
+                            "clauses",
+                            "open_from"
+                          ]
+                        }
+                      },
+                      "hash": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["t_eval", "pack", "content_hash", "snapshot_hash", "site", "windows", "nights", "hash"]
+                  }
+                },
+                "strip": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "anyOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "number"
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "unit": {
+                        "type": "string"
+                      },
+                      "state": {
+                        "type": "string",
+                        "enum": ["fresh", "stale", "error", "recovered", "pending", "probation", "off_hours"]
+                      },
+                      "since": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      },
+                      "age_s": {
+                        "type": ["integer", "null"],
+                        "minimum": 0
+                      },
+                      "source_ids": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "source_url": {
+                        "type": ["string", "null"],
+                        "format": "uri"
+                      },
+                      "reading_ids": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "observed_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value",
+                      "unit",
+                      "state",
+                      "since",
+                      "age_s",
+                      "source_ids",
+                      "source_url",
+                      "reading_ids",
+                      "observed_at"
+                    ]
+                  }
+                }
+              },
+              "required": ["label", "evaluated_at", "verdicts", "strip"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "evaluatePublicProject",
+  "x-method": "POST",
+  "x-path": "/v1/public/{org}/{project}/evaluate"
+}

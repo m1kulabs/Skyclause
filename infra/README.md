@@ -158,3 +158,23 @@ A person with AWS access to account `776566309118` applies `aws/` after the prod
 1.  Turn on `inbound_email` with the audited `flag:set` script (#92).
 
 DMARC aggregate reports for `notices.` go to `rua=mailto:dmarc@in.skyclause.m1ku.tech`. Both names share the Organizational Domain `m1ku.tech`, so RFC 7489 §7.1 needs no `_report._dmarc` record. The receipt rule `dmarc-reports` runs before `inbound`, stores each report in `skyclause-production-dmarc-776566309118` for 30 days and stops, so the worker never sees them. Read them with `aws s3 ls s3://skyclause-production-dmarc-776566309118/ --region ap-southeast-2`.
+
+## Source jobs and buffered ingestion
+
+`catalogue-sync` runs daily at 01:10 Asia/Kuala_Lumpur; `adapter-contracts` runs at 01:40. Both use the existing jobs identity and shared source configuration. An empty adapter registry reports zero adapters. Each real adapter ticket adds its own schedule and deployed image; this core does not substitute test data.
+
+The worker's existing authenticated `/ticks/batch` route pulls `poll-results-worker`, verifies each immutable GCS result, persists requests and readings, emits tenant events, and publishes `readings-updated` before acknowledging. It then refreshes `control/plan.json` in `SOURCES_BUCKET`. Failed results remain unacknowledged; inspect worker error logs and repair their cause before redelivery. The subscription has no push endpoint. Polling uses the GCS plan, public HTTP and Pub/Sub without opening Postgres.
+
+After deploying the worker image and applying infrastructure, operators can run the daily jobs manually:
+
+```shell
+gcloud run jobs execute catalogue-sync --region=asia-southeast1 --project=skyclause --wait
+gcloud run jobs execute adapter-contracts --region=asia-southeast1 --project=skyclause --wait
+gcloud scheduler jobs run ticks-batch --location=asia-southeast1 --project=skyclause
+```
+
+Set `app_config.ADAPTER_USER_AGENT` to the required upstream identification string; the runtime uses that configured value without a hardcoded override. Source execution validates `SOURCES_BUCKET`, `SCRATCH_BUCKET`, `GCP_PROJECT`, `ADAPTER_USER_AGENT` and `SOURCE_RESULTS_SUBSCRIPTION` when called. Unrelated worker routes and jobs can import the registry without source configuration or credentials.
+
+The generic entrypoint is `node main.js job adapter <registered-kind> [--scheduled-at <ISO-instant>]`. Manual invocations retain a null scheduled slot. The current Scheduler-to-Cloud-Run job module cannot forward its dynamic scheduled time; #125's minute handler can pass the original slot to exported `runAdapter(kind, scheduledAt)`. Production dispatch-lag evidence remains unverified until that route supplies the real scheduled slot. Never use the execution clock as a replacement.
+
+Before release, run `terraform fmt -check -recursive infra` and `terraform -chdir=infra/environments/production validate` against initialized providers. Live GCS generation checks, Pub/Sub replay, deployed IAM, real adapter contract results and the Skyflow beta journey require a separate deployment verification; offline doubles do not establish those results.

@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "listWebhooks request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "url": {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      "events": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "source.error",
+                            "source.stale",
+                            "source.recovered",
+                            "crossing.detected",
+                            "run.completed",
+                            "run.failed",
+                            "bundle.drafted",
+                            "bundle.needs_review",
+                            "bundle.escalated",
+                            "bundle.approved",
+                            "bundle.superseded",
+                            "bundle.expired",
+                            "call.sent",
+                            "call.graded",
+                            "listing.proposed",
+                            "listing.listed",
+                            "listing.changed",
+                            "night.graded",
+                            "review_item.opened",
+                            "evidence_request.answered"
+                          ]
+                        },
+                        "minItems": 1
+                      },
+                      "project_ids": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "disabled_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      },
+                      "verified_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "last_delivery_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      }
+                    },
+                    "required": ["id", "url", "events", "project_ids", "disabled_at", "verified_at", "status"]
+                  }
+                },
+                "next_cursor": {
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["data", "next_cursor"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "listWebhooks",
+  "x-method": "GET",
+  "x-path": "/v1/webhooks"
+}

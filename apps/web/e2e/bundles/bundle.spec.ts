@@ -250,8 +250,7 @@ for (const code of [
   'malay-reader-required',
   'redraft-required',
   'call-expired',
-  'bundle-superseded',
-  'reauth-required'
+  'bundle-superseded'
 ]) {
   test(`approval handles ${code} without an automatic second write`, async ({ page }) => {
     await prepare(page, bundleDouble([callDouble()]))
@@ -266,8 +265,7 @@ for (const code of [
     })
     await open(page)
     await approve(page, 1).press('Enter')
-    const expected =
-      code === 'reauth-required' ? 'reauth_unavailable' : code === 'bundle-superseded' ? 'superseded' : code
+    const expected = code === 'bundle-superseded' ? 'superseded' : code
     await expect(page.locator('.bundle-detail')).toContainText(t(expected))
     expect(writes).toBe(1)
     if (code === 'bundle-superseded')
@@ -277,6 +275,56 @@ for (const code of [
       )
   })
 }
+
+test('ACC-8 opens step-up before approval and retries with the same idempotency key', async ({ page }) => {
+  const bundle = await prepare(page, bundleDouble([callDouble()]))
+  let writes = 0
+  let confirmed = false
+  const keys: string[] = []
+  await page.route('**/api/bundles/*/approve', async (route) => {
+    writes += 1
+    keys.push(route.request().headers()['idempotency-key'] ?? '')
+    if (writes === 1) {
+      await route.fulfill({ status: 401, json: problem('reauth-required', 401) })
+    } else {
+      await route.fulfill({ json: { ...bundle, state: 'approved' } })
+    }
+  })
+  await page.route('**/api/auth/step-up', (route) =>
+    route.fulfill({
+      json: {
+        fresh_until: confirmed ? '2099-01-01T00:00:00.000Z' : '2000-01-01T00:00:00.000Z',
+        passkey: false
+      }
+    })
+  )
+  await page.route('**/api/auth/step-up/magic-link', (route) => route.fulfill({ json: { sent: true } }))
+  await page.route('**/api/auth/step-up/magic-link/confirm', (route) => {
+    confirmed = true
+    return route.fulfill({ json: { confirmed: true } })
+  })
+  await open(page)
+  await approve(page, 1).press('Enter')
+
+  const dialog = page.getByRole('dialog', { name: 'Confirm it’s you' })
+  await expect(dialog).toBeVisible()
+  expect(writes).toBe(1)
+  await dialog.getByRole('button', { name: 'Send me a sign-in link' }).press('Enter')
+  await expect(dialog.getByText('Check your email, then press Continue')).toBeVisible()
+  await page.evaluate(async () => {
+    await fetch('/api/auth/step-up/magic-link/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: 'test-link-token' })
+    })
+  })
+  await dialog.getByRole('button', { name: 'Continue' }).press('Enter')
+
+  await expect(dialog).toBeHidden()
+  expect(writes).toBe(2)
+  expect(keys[0]).toBeTruthy()
+  expect(keys[1]).toBe(keys[0])
+})
 
 test('shortcuts stay inside the focused call and honour the preference', async ({ page }) => {
   await prepare(page, bundleDouble([callDouble()]), { shortcuts: false })
