@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto'
-import { afterEach, expect, test } from 'vitest'
+import { afterEach, expect, test, vi } from 'vitest'
 import {
   fingerprintKey,
+  liveKms,
   openSecret,
   resetKmsPort,
   sealAad,
@@ -9,6 +10,13 @@ import {
   setKmsPort,
   type KmsPort
 } from '../src/placeholders/e-byok-api'
+
+const kmsClient = vi.hoisted(() => ({ encrypt: vi.fn() }))
+vi.mock('@google-cloud/kms', () => ({
+  KeyManagementServiceClient: class {
+    encrypt = kmsClient.encrypt
+  }
+}))
 
 // The KMS double (NFR-15): XOR under a fixed pad, versioned, so tests never reach Cloud KMS.
 const double = (version = '3'): KmsPort & { versions: string[] } => {
@@ -91,4 +99,16 @@ test('fingerprint is the first 12 hex digits of the SHA-256', () => {
   const key = 'sk-test-key-material'
   expect(fingerprintKey(key)).toBe(createHash('sha256').update(key, 'utf8').digest('hex').slice(0, 12))
   expect(fingerprintKey(key)).toMatch(/^[0-9a-f]{12}$/)
+})
+
+test('live sealing uses the version that encrypted without reading the primary key', async () => {
+  kmsClient.encrypt.mockResolvedValueOnce([{ ciphertext: Buffer.from('wrapped'), name: 'keys/ai/cryptoKeyVersions/7' }])
+  const dek = Buffer.alloc(32, 1)
+  await expect(liveKms.wrapDek(KEY, dek)).resolves.toEqual({ wrapped: Buffer.from('wrapped'), version: '7' })
+  expect(kmsClient.encrypt).toHaveBeenCalledWith({ name: KEY, plaintext: dek })
+})
+
+test('an encryption response without a version is refused', async () => {
+  kmsClient.encrypt.mockResolvedValueOnce([{ ciphertext: Buffer.from('wrapped') }])
+  await expect(liveKms.wrapDek(KEY, Buffer.alloc(32))).rejects.toThrow('KMS encrypt returned no key version')
 })

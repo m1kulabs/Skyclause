@@ -41,8 +41,8 @@ export const liveKms: KmsPort = {
   async wrapDek(keyId, dek) {
     const [response] = await liveClient().encrypt({ name: keyId, plaintext: dek })
     if (!response.ciphertext) throw new Error('KMS encrypt returned no ciphertext')
-    const [key] = await liveClient().getCryptoKey({ name: keyId })
-    const version = /cryptoKeyVersions\/(\d+)$/.exec(key.primary?.name ?? '')?.[1] ?? 'primary'
+    const version = /cryptoKeyVersions\/(\d+)$/.exec(response.name ?? '')?.[1]
+    if (!version) throw new Error('KMS encrypt returned no key version')
     return { wrapped: Buffer.from(response.ciphertext as Uint8Array), version }
   },
   async unwrapDek(keyId, wrapped) {
