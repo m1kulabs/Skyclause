@@ -1,10 +1,12 @@
 import { bigint, boolean, integer, jsonb, pgView, text, uuid } from 'drizzle-orm/pg-core'
 import { instant } from './columns'
-import { callState, gradeOutcome, mode } from './enums'
+import { callState, gradeOutcome, listingState, mode, nightState } from './enums'
 import { pack } from './project'
 
 // What `public_reader` sees of P tables (#79 §3): rows of `public = true` projects, through `security_barrier` views
-// migration 0004 creates. `published_grade` (`d-public-api`) narrows grades further.
+// migration 0004 creates. `published_grade` (`d-public-api`) narrows grades further. 0008 adds what the conditions
+// calendar (`c-ics-feed`) may show: bundles, windows and nights of sent calls, without draft-only bundles, guest windows
+// or never-listed nights, and those nights' listed or cancelled listings.
 
 export const publicCall = pgView('public_call', {
   id: uuid('id').notNull(),
@@ -29,7 +31,8 @@ export const publicCall = pgView('public_call', {
   triggeredAt: instant('triggered_at').notNull(),
   draftedAt: instant('drafted_at').notNull(),
   approvedAt: instant('approved_at'),
-  sentAt: instant('sent_at')
+  sentAt: instant('sent_at'),
+  updatedAt: instant('updated_at').notNull()
 }).existing()
 
 export const publicGrade = pgView('public_grade', {
@@ -63,4 +66,31 @@ export const publicLedgerEntry = pgView('public_ledger_entry', {
   hash: text('hash').notNull(),
   at: instant('at').notNull(),
   corrects: uuid('corrects')
+}).existing()
+
+export const publicBundle = pgView('public_bundle', {
+  id: uuid('id').notNull(),
+  pack: pack('pack').notNull()
+}).existing()
+
+export const publicWindow = pgView('public_window', {
+  id: uuid('id').notNull(),
+  startsAt: instant('starts_at').notNull(),
+  endsAt: instant('ends_at').notNull(),
+  cancelledAt: instant('cancelled_at'),
+  updatedAt: instant('updated_at').notNull()
+}).existing()
+
+export const publicNight = pgView('public_night', {
+  id: uuid('id').notNull(),
+  state: nightState('state').notNull(),
+  arrivalStart: instant('arrival_start'),
+  arrivalEnd: instant('arrival_end'),
+  exitEnd: instant('exit_end'),
+  updatedAt: instant('updated_at').notNull()
+}).existing()
+
+export const publicListing = pgView('public_listing', {
+  nightId: uuid('night_id'),
+  state: listingState('state').notNull()
 }).existing()

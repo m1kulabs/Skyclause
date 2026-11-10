@@ -15,6 +15,9 @@ test('actual registry contains only the batch auditor and registers no checks', 
   expect(registry.events.some(({ consumer }) => consumer === 'sender')).toBe(true)
   expect(registry.jobs['grade-sky']).toBeTypeOf('function')
   expect(registry.jobs['grade-crowd']).toBeTypeOf('function')
+  expect(registry.jobs['analysis-materialise']).toBeTypeOf('function')
+  expect(registry.events.some(({ consumer }) => consumer === 'notifications')).toBe(true)
+  expect(registry.events.some(({ consumer }) => consumer === 'ics')).toBe(true)
   expect(registry.events.some(({ consumer }) => consumer === 'plan-feedback')).toBe(true)
 })
 

@@ -12,6 +12,7 @@
     "@hono/node-server": "2.1.6",
     "@opentelemetry/api": "1.10.0",
     "@skyclause/agent": "workspace:*",
+    "@skyclause/auth": "workspace:*",
     "@skyclause/clauses": "workspace:*",
     "@skyclause/config": "workspace:*",
     "@skyclause/contracts": "workspace:*",
@@ -25,7 +26,9 @@
   "devDependencies": {
     "@opentelemetry/sdk-metrics": "3.1.0",
     "@opentelemetry/sdk-trace": "3.1.0",
+    "@skyclause/api": "workspace:*",
     "ai": "7.0.163",
-    "drizzle-orm": "0.45.4"
+    "drizzle-orm": "0.45.4",
+    "ical.js": "2.2.1"
   }
 }

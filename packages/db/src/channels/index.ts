@@ -88,7 +88,7 @@ export async function setProjectChannel(
 type CallRow = typeof call.$inferSelect
 
 /** The source IDs a call's shadow verdict cites, from its clauses' inputs. */
-function citedSourceIds(shadow: unknown): string[] {
+export function citedSourceIds(shadow: unknown): string[] {
   const clauses = (shadow as { clauses?: Array<{ inputs?: Array<{ source_ids?: string[] }> }> } | null)?.clauses ?? []
   return [...new Set(clauses.flatMap((c) => c.inputs ?? []).flatMap((i) => i.source_ids ?? []))].filter((id) =>
     UUID.test(id)

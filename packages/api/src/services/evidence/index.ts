@@ -1,3 +1,4 @@
+import { HTTP_PROBLEM_STATUS } from '@skyclause/contracts'
 import type { z } from '@hono/zod-openapi'
 import type { BudgetGate, Can, EmailTransport, Operations, Principal } from '@skyclause/contracts'
 import {
@@ -70,7 +71,8 @@ const FRAME_URL_MS = 60 * 60_000
 // Ticket decision: a request covers at most 31 days, which bounds the stored pack.
 const MAX_SPAN_MS = 31 * 86_400_000
 
-const notFound = () => new ApiError(404, 'not-found', 'No such evidence request, or you can’t see it.')
+const notFound = () =>
+  new ApiError(HTTP_PROBLEM_STATUS['not-found'], 'not-found', 'No such evidence request, or you can’t see it.')
 const invalid = (pointer: string, detail: string) =>
   new ApiError(422, 'validation-failed', 'The request is invalid.', { errors: [{ in: 'body', pointer, detail }] })
 
@@ -183,12 +185,18 @@ export async function createEvidenceRequest(
   const p = ctx.principal
   const project = await evidenceProject(ctx.tx, input.projectId)
   if (!project || !deps.can(p, 'evidence.request', { projectId: project.id })) {
-    throw new ApiError(404, 'not-found', 'No such project, or you can’t request evidence for it.')
+    throw new ApiError(
+      HTTP_PROBLEM_STATUS['not-found'],
+      'not-found',
+      'No such project, or you can’t request evidence for it.'
+    )
   }
   const window = input.window_id ? await evidenceWindow(ctx.tx, project.id, input.window_id) : null
-  if (input.window_id && !window) throw new ApiError(404, 'not-found', 'No such window in this project.')
+  if (input.window_id && !window)
+    throw new ApiError(HTTP_PROBLEM_STATUS['not-found'], 'not-found', 'No such window in this project.')
   const call = input.call_id ? await evidenceCall(ctx.tx, project.id, input.call_id) : null
-  if (input.call_id && !call) throw new ApiError(404, 'not-found', 'No such call in this project.')
+  if (input.call_id && !call)
+    throw new ApiError(HTTP_PROBLEM_STATUS['not-found'], 'not-found', 'No such call in this project.')
   const span = input.span ? { from: new Date(input.span.from), to: new Date(input.span.to) } : (window ?? call)!
   if (span.from >= span.to) throw invalid('/span', 'The span must end after it starts.')
   if (span.to.getTime() - span.from.getTime() > MAX_SPAN_MS) throw invalid('/span', 'A span covers at most 31 days.')
@@ -236,7 +244,11 @@ export async function listEvidenceRequests(
 ) {
   const project = await evidenceProject(ctx.tx, q.projectId)
   if (!project || !deps.can(ctx.principal, 'evidence.request', { projectId: project.id })) {
-    throw new ApiError(404, 'not-found', 'No such project, or you can’t see its evidence requests.')
+    throw new ApiError(
+      HTTP_PROBLEM_STATUS['not-found'],
+      'not-found',
+      'No such project, or you can’t see its evidence requests.'
+    )
   }
   const beforeId = q.cursor === undefined ? undefined : decodeCursor(q.cursor).id
   if (beforeId !== undefined && (typeof beforeId !== 'string' || !UUID.test(beforeId))) {
@@ -291,7 +303,8 @@ export async function approveEvidenceRequest(
   if (p.kind !== 'session') throw new ApiError(403, 'insufficient-scope', 'Approving a reply needs a signed-in member.')
   const held = await visibleRequest(ctx, deps.can, id, 'bundle.approve')
   const approved = await approveEvidenceReply(ctx.tx, { id: held.id, actorId: p.accountId }, deps.now)
-  if (!approved) throw new ApiError(409, 'conflict', 'This reply isn’t waiting for approval.')
+  if (!approved)
+    throw new ApiError(HTTP_PROBLEM_STATUS['conflict'], 'conflict', 'This reply isn’t waiting for approval.')
   const project = (await evidenceProject(ctx.tx, held.projectId))!
   return {
     request: summary(approved.row),
