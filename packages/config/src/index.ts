@@ -1,6 +1,7 @@
 export { loadEnv, type Env, type Service } from './env'
 export { recordHttpServerDuration, type HttpServerRequest } from './http-metrics'
 export { recordWebVital, startWebVitals, stopWebVitals } from './web-vitals'
+export { pubsubPublisher, type PubSubOptions } from './pubsub'
 export { redact, redactText } from './redact'
 export {
   log,

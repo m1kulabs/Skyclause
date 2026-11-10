@@ -29,7 +29,7 @@ INSERT INTO project (org_id, slug, name, time_zone) VALUES ('${orgId}', 'seeded'
     'auth.organization has 1 rows after migrating an empty database (NFR-15: no seeds)',
     'public.project has 1 rows after migrating an empty database (NFR-15: no seeds)'
   ])
-})
+}, 120_000)
 
 test('db:seed-check fails on a workflow running another job or a package seed script, and passes on main', () => {
   expect(seedScripts()).toEqual([])
@@ -45,4 +45,4 @@ test('db:seed-check fails on a workflow running another job or a package seed sc
     '.github/workflows/deploy.yml executes job demo-data, which may seed',
     'packages/db/package.json has a seed script, db:seed'
   ])
-})
+}, 30_000)

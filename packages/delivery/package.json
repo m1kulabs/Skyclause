@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "axe-core": "4.10.2",
+    "ical.js": "2.2.1",
     "jsdom": "26.1.0"
   }
 }

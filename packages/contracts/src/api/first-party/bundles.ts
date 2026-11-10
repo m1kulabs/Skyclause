@@ -10,6 +10,14 @@ const CallDecision = z.object({
   recipients: z.array(z.string()).optional(),
   notices: z.array(Notice).optional()
 })
+// #499: an approver's answer to a missing call (`Bundle.missing`), named by its window or night: `draft` adds the
+// engine's call for it (D23's shadow pick: the fired clauses' wording, no model), `dismiss` needs a reason.
+const MissingDecision = z.object({
+  window_id: z.string().optional(),
+  night_id: z.string().optional(),
+  action: z.enum(['draft', 'dismiss']),
+  reason: z.string().trim().min(1).max(500).optional()
+})
 const ApprovalConflict = Problem.extend({
   review_hash: z.string().optional(),
   changed_inputs: z.array(z.object({ call_id: z.string(), before: InputValue, after: InputValue })).optional(),
@@ -31,7 +39,9 @@ export const approveBundle = createRoute({
           schema: z.object({
             review_hash: z.string(),
             reconfirm: z.boolean().default(false),
-            calls: z.array(CallDecision).min(1)
+            // Empty only for a bundle whose open items are all missing calls (#499).
+            calls: z.array(CallDecision),
+            missing: z.array(MissingDecision).optional()
           })
         }
       }

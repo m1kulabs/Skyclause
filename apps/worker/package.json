@@ -26,7 +26,9 @@
   "devDependencies": {
     "@opentelemetry/sdk-metrics": "3.1.0",
     "@opentelemetry/sdk-trace": "3.1.0",
+    "@skyclause/api": "workspace:*",
     "ai": "7.0.163",
-    "drizzle-orm": "0.45.4"
+    "drizzle-orm": "0.45.4",
+    "ical.js": "2.2.1"
   }
 }
