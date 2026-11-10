@@ -76,8 +76,8 @@ locals {
       title   = "The minute tick heartbeat is absent for 3 minutes"
       query   = "absent_over_time({\"skyclause.heartbeat\", name=\"minute_tick\"}[3m])"
       target  = "Cloud Scheduler's ticks-minute call reaches the worker every minute."
-      waits   = "#90 deploying this worker, then a day of beats."
-      enabled = false
+      waits   = "nothing: 1,440 beats in the day to 10 November 2026, 22:04Z, and at least 3 in every 3 minutes of it."
+      enabled = true
     }
   }
 
@@ -221,7 +221,7 @@ resource "google_monitoring_alert_policy" "pipeline" {
 
   documentation {
     mime_type = "text/markdown"
-    content   = "${each.value.target} Starts disabled; waits on ${each.value.waits}"
+    content   = each.value.enabled ? each.value.target : "${each.value.target} Starts disabled; waits on ${each.value.waits}"
   }
 }
 
