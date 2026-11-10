@@ -38,6 +38,12 @@ test('tenant binding queries dedupe roles, omit archived projects and scope owne
       bodySha256: 'c'.repeat(64),
       startedAt: new Date('2026-11-10T03:00:00Z')
     })
+    await makePoll(tx, {
+      sourceId: catalogue.id,
+      purpose: 'backfill',
+      bodySha256: 'd'.repeat(64),
+      startedAt: new Date('2026-11-10T04:00:00Z')
+    })
   })
   const active = await withTenant({ orgId: a, principal: memberOf(a) }, async (tx) => {
     const project = await makeProject(tx)

@@ -30,6 +30,7 @@ export interface BoundSource extends DiscoveredSourceDto {
   licenceLabel: string
   probation: boolean
   bindings: Array<{ orgId: string; projectId: string }>
+  /** Latest successful normal poll digest; backfill captures never replace this baseline. */
   previousBodySha256: string | null
 }
 

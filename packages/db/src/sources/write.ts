@@ -131,7 +131,7 @@ export async function recordSourceRequest(
       if (!exists) throw new Error(`source ${entry.sourceId} does not exist`)
     }
     for (const entry of entries) {
-      const previousDigest = await previousSourceDigest(tx, entry.sourceId)
+      const previousDigest = await previousSourceDigest(tx, entry.sourceId, request.purpose)
       const {
         rows: [identity]
       } = await tx.execute<{ id: string }>(sql`SELECT uuidv7() AS id`)

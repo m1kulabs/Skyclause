@@ -212,6 +212,23 @@ test('a repeated successful body digest suppresses readings after taking the sou
   expect(await rows(id)).toHaveLength(1)
 })
 
+test.each(['poll', 'backfill'] as const)(
+  'equal hashes from %s do not suppress unseen rows of another purpose',
+  async (purpose) => {
+    const id = await sourceId()
+    const first = request(id)
+    first.purpose = purpose
+    first.sources[0]!.bodySha256 = 'd'.repeat(64)
+    await store(first)
+    const other = request(id)
+    other.purpose = purpose === 'poll' ? 'backfill' : 'poll'
+    other.sources[0]!.bodySha256 = 'd'.repeat(64)
+    other.sources[0]!.readings[0]!.itemKey = 'unseen'
+    expect(await store(other)).toMatchObject([{ outcome: 'ok', newRows: 1, purpose: other.purpose }])
+    expect((await rows(id)).map(({ itemKey }) => itemKey).sort()).toEqual(['', 'unseen'])
+  }
+)
+
 test('older captures cannot supersede newer corrections but can add unseen observation keys and replay stably', async () => {
   const id = await sourceId()
   const newer = request(id, 8)

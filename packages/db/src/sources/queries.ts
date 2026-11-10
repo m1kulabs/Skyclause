@@ -3,7 +3,7 @@ import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lte, or } from 'dri
 import type { SystemPrincipal, Tx } from '../client'
 import { night, project, projectSource, source } from '../schema'
 import { poll } from '../schema/partitioned'
-import type { BoundSource, CrowdPeriodDto } from './types'
+import type { BoundSource, CrowdPeriodDto, SourceRequestWrite } from './types'
 
 /** Enumerate tenant scopes first; the caller opens each tenant after this system transaction returns. */
 export async function listSourceOrganisations(tx: Tx<SystemPrincipal>): Promise<string[]> {
@@ -15,11 +15,15 @@ export async function listSourceOrganisations(tx: Tx<SystemPrincipal>): Promise<
   return rows.map(({ orgId }) => orgId)
 }
 
-export async function previousSourceDigest(tx: Tx, sourceId: string): Promise<string | null> {
+export async function previousSourceDigest(
+  tx: Tx,
+  sourceId: string,
+  purpose: SourceRequestWrite['purpose']
+): Promise<string | null> {
   const [latest] = await tx
     .select({ digest: poll.bodySha256 })
     .from(poll)
-    .where(and(eq(poll.sourceId, sourceId), inArray(poll.outcome, ['ok', 'unchanged'])))
+    .where(and(eq(poll.sourceId, sourceId), eq(poll.purpose, purpose), inArray(poll.outcome, ['ok', 'unchanged'])))
     .orderBy(desc(poll.startedAt), desc(poll.id))
     .limit(1)
   return latest?.digest ?? null
@@ -42,7 +46,7 @@ export async function boundSources(tx: Tx, kind: SourceKind): Promise<BoundSourc
         ...row.source,
         meta: row.source.meta as BoundSource['meta'],
         bindings: [],
-        previousBodySha256: await previousSourceDigest(tx, row.source.id)
+        previousBodySha256: await previousSourceDigest(tx, row.source.id, 'poll')
       }
       found.set(entry.id, entry)
     }
