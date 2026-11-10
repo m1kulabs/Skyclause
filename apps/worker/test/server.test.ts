@@ -348,7 +348,7 @@ describe('worker 15-minute batch connection', () => {
     ])
   })
 
-  test('the registered batch handlers pass on the one connection', async () => {
+  test('registered database batches share one connection and missing source config fails visibly', async () => {
     const orgId = (await makeOrganization()).id
     const { id } = await withTenant({ orgId, principal: memberOf(orgId) }, async (tx) => {
       const [projectId, sourceId] = [(await makeProject(tx)).id, (await makeSource(tx)).id]
@@ -372,9 +372,12 @@ describe('worker 15-minute batch connection', () => {
         'shift-reminder-plan',
         'approver-alert-resend',
         'auditor',
+        'sources-ingest',
         'exports:timeout'
       ])
-      expect((await post(app, '/ticks/batch', { bearer: await token() })).status).toBe(204)
+      const response = await post(app, '/ticks/batch', { bearer: await token() })
+      expect(response.status).toBe(500)
+      expect(await response.json()).toEqual({ failed: ['sources-ingest'] })
       expect(published).toEqual([id])
       expect(await systemBackends()).toHaveLength(1)
     } finally {

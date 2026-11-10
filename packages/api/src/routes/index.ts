@@ -12,6 +12,7 @@ import { bundleHandlers } from './bundles'
 import { channelHandlers } from './channels'
 import { callHandlers } from './calls'
 import { connectHandlers } from './connect'
+import { clauseSheetHandlers } from './clause-sheets'
 import { evidenceHandlers } from './evidence'
 import { gradesHandlers } from './grades'
 import { apiKeyHandlers } from './api-keys'
@@ -64,6 +65,7 @@ export const HANDLERS: Handlers = {
   ...evidenceHandlers, // c-evidence
   ...gradesHandlers, // c-grades
   ...projectHandlers, // b-projects-api
+  ...clauseSheetHandlers, // b-clause-sheets-api
   ...replyHandlers, // c-recipient-replies
   ...runHandlers, // c-run-orchestrator
   ...approvalHandlers, // c-approval-api

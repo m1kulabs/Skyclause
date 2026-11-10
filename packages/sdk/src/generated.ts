@@ -1,4 +1,4 @@
-export const OPENAPI_SHA256 = '9f1df7f416b9054593a586a549df798137c1b3043fa41ce7be7af033b8af1fea' as const // gitleaks:allow -- a SHA-256 of openapi.json, not a secret.
+export const OPENAPI_SHA256 = 'a7e8157f8e66a8ee0c8b88f00104dfb0792071979db4bf969eeb1ee4d1b0140b' as const // gitleaks:allow -- a SHA-256 of openapi.json, not a secret.
 
 export const OPERATION_IDS = [
   'getProjectAnalysis',
@@ -340,6 +340,10 @@ export type OperationRequests = {
     params: {
       id: string
     }
+    query: {
+      base: 'live' | number
+      head: string | number
+    }
     idempotencyKey?: string
     signal?: AbortSignal
   }
@@ -347,38 +351,48 @@ export type OperationRequests = {
     params: {
       id: string
     }
-    body?: {
-      content: {
-        pack: 'sky' | 'crowd'
-        clauses: Array<{
-          key: string
-          name: string
-          enabled: boolean
-          builtin?: 'silent_input'
-          scope: 'site' | 'window' | 'night'
-          requires: Array<string>
-          optional?: Array<string>
-          span?: {
-            from: string
-            to: string
+    body?:
+      | {
+          content: {
+            pack: 'sky' | 'crowd'
+            clauses: Array<{
+              key: string
+              name: string
+              enabled: boolean
+              builtin?: 'silent_input'
+              scope: 'site' | 'window' | 'night'
+              requires: Array<string>
+              optional?: Array<string>
+              span?: {
+                from: string
+                to: string
+              }
+              when: string
+              expiry?: 'start' | 'end'
+              proposes: {
+                mode?: 'normal' | 'outdoor_limited' | 'commute_disruption' | 'hybrid_recommended' | 'surge_night'
+                watch?: true
+                recommendations?: Array<
+                  'keep_with_advisory' | 'shift_start' | 'shift_end' | 'ask_shuttle' | 'leave_before_doors'
+                >
+                note?: 'flood_note' | 'single_source_flag' | 'calendar_entry'
+              }
+              wording: {
+                en?: string
+                ms?: string
+              }
+            }>
           }
-          when: string
-          expiry?: 'start' | 'end'
-          proposes: {
-            mode?: 'normal' | 'outdoor_limited' | 'commute_disruption' | 'hybrid_recommended' | 'surge_night'
-            watch?: true
-            recommendations?: Array<
-              'keep_with_advisory' | 'shift_start' | 'shift_end' | 'ask_shuttle' | 'leave_before_doors'
-            >
-            note?: 'flood_note' | 'single_source_flag' | 'calendar_entry'
-          }
-          wording: {
-            en?: string
-            ms?: string
-          }
-        }>
-      }
-    }
+          at?: string
+        }
+      | {
+          draft_id: string
+          at?: string
+        }
+      | {
+          version_n: number
+          at?: string
+        }
     idempotencyKey?: string
     signal?: AbortSignal
   }
@@ -428,6 +442,7 @@ export type OperationRequests = {
           }
         }>
       }
+      base_n?: number
     }
     idempotencyKey?: string
     signal?: AbortSignal
@@ -2640,8 +2655,6 @@ export type OperationResponses = {
   listClauseSheetVersions: {
     data: Array<{
       id: string
-      status: 'draft' | 'published'
-      n: number
       content: {
         pack: 'sky' | 'crowd'
         clauses: Array<{
@@ -2674,13 +2687,27 @@ export type OperationResponses = {
       }
       content_hash: string
       published_by: string | null
+      base_n: number | null
+      published_at: string | null
+      check: {
+        ok: boolean
+        publishable: boolean
+        issues: Array<{
+          clause_key: string | null
+          message: string
+          offset: number
+          length: number
+        }>
+      } | null
+      publishable: boolean
+      validation_status: 'checked' | 'unavailable'
+      status: 'published'
+      n: number
     }>
     next_cursor: string | null
   }
   getClauseSheetVersion: {
     id: string
-    status: 'draft' | 'published'
-    n: number
     content: {
       pack: 'sky' | 'crowd'
       clauses: Array<{
@@ -2713,6 +2740,22 @@ export type OperationResponses = {
     }
     content_hash: string
     published_by: string | null
+    base_n: number | null
+    published_at: string | null
+    check: {
+      ok: boolean
+      publishable: boolean
+      issues: Array<{
+        clause_key: string | null
+        message: string
+        offset: number
+        length: number
+      }>
+    } | null
+    publishable: boolean
+    validation_status: 'checked' | 'unavailable'
+    status: 'published'
+    n: number
   }
   getClauseSheetDiff: Array<{
     key: string
@@ -2933,12 +2976,43 @@ export type OperationResponses = {
       }>
       hash: string
     }
+    label: 'live' | 'replay'
+    explanations: Array<{
+      key: string
+      result: 'fired' | 'not_fired' | 'blocked' | 'not_open'
+      blocked_by: Array<{
+        name: string
+        source_id: string | null
+        state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
+        since: string
+      }>
+      span?: {
+        from: string
+        to: string
+        complete: boolean
+      }
+      inputs: Array<{
+        name: string
+        value: number | boolean | string | Array<number> | unknown | null
+        unit: string
+        state: 'fresh' | 'stale' | 'error' | 'recovered' | 'pending' | 'probation' | 'off_hours'
+        since: string | null
+        age_s: number | null
+        source_ids: Array<string>
+        source_url: string | null
+        reading_ids: Array<string>
+        observed_at: string | null
+      }>
+      cel: string
+      wording: {
+        en?: string
+        ms?: string
+      }
+    }>
   }
   listClauseSheetDrafts: {
     data: Array<{
       id: string
-      status: 'draft' | 'published'
-      n: number
       content: {
         pack: 'sky' | 'crowd'
         clauses: Array<{
@@ -2971,13 +3045,27 @@ export type OperationResponses = {
       }
       content_hash: string
       published_by: string | null
+      base_n: number | null
+      published_at: string | null
+      check: {
+        ok: boolean
+        publishable: boolean
+        issues: Array<{
+          clause_key: string | null
+          message: string
+          offset: number
+          length: number
+        }>
+      } | null
+      publishable: boolean
+      validation_status: 'checked' | 'unavailable'
+      status: 'draft'
+      n: unknown | null
     }>
     next_cursor: string | null
   }
   createClauseSheetDraft: {
     id: string
-    status: 'draft' | 'published'
-    n: number
     content: {
       pack: 'sky' | 'crowd'
       clauses: Array<{
@@ -3010,11 +3098,25 @@ export type OperationResponses = {
     }
     content_hash: string
     published_by: string | null
+    base_n: number | null
+    published_at: string | null
+    check: {
+      ok: boolean
+      publishable: boolean
+      issues: Array<{
+        clause_key: string | null
+        message: string
+        offset: number
+        length: number
+      }>
+    } | null
+    publishable: boolean
+    validation_status: 'checked' | 'unavailable'
+    status: 'draft'
+    n: unknown | null
   }
   getClauseSheetDraft: {
     id: string
-    status: 'draft' | 'published'
-    n: number
     content: {
       pack: 'sky' | 'crowd'
       clauses: Array<{
@@ -3047,6 +3149,22 @@ export type OperationResponses = {
     }
     content_hash: string
     published_by: string | null
+    base_n: number | null
+    published_at: string | null
+    check: {
+      ok: boolean
+      publishable: boolean
+      issues: Array<{
+        clause_key: string | null
+        message: string
+        offset: number
+        length: number
+      }>
+    } | null
+    publishable: boolean
+    validation_status: 'checked' | 'unavailable'
+    status: 'draft'
+    n: unknown | null
   }
   deleteClauseSheetDraft: {
     id: string

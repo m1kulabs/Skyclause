@@ -37,6 +37,7 @@ export {
   type AuditRow
 } from './audit'
 export * from './channels'
+export * from './clause-sheets'
 export * from './connect'
 export * from './data-rights'
 export * from './evidence'
@@ -72,5 +73,6 @@ export * from './replies'
 export * from './schema'
 export * from './schema/partitioned'
 export * from './subscribers'
+export * from './sources'
 
 export * from './auditor'
