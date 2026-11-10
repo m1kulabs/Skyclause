@@ -92,6 +92,13 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() !== 'k' || !(event.metaKey || event.ctrlKey) || event.altKey) return
+      const target = event.target
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      )
+        return
       event.preventDefault()
       if (event.repeat || open) return
       if (document.activeElement instanceof HTMLElement) previousFocus.current = document.activeElement

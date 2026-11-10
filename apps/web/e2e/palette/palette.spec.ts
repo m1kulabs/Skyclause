@@ -20,6 +20,32 @@ for (const shortcut of ['Meta+k', 'Control+k']) {
   })
 }
 
+test('palette shortcut does not open while an editable control has focus', async ({ page }) => {
+  await page.goto('/_test/set-7')
+  await page.evaluate(() => {
+    const input = document.createElement('input')
+    input.id = 'shortcut-input'
+    const textarea = document.createElement('textarea')
+    textarea.id = 'shortcut-textarea'
+    const editor = document.createElement('div')
+    editor.id = 'shortcut-editor'
+    editor.contentEditable = 'true'
+    editor.tabIndex = 0
+    document.body.append(input, textarea, editor)
+  })
+
+  const dialog = page.getByRole('dialog', { name: t('palette.title'), exact: true })
+  for (const selector of ['#shortcut-input', '#shortcut-textarea', '#shortcut-editor']) {
+    const target = page.locator(selector)
+    for (const shortcut of ['Control+k', 'Meta+k']) {
+      await target.focus()
+      await page.keyboard.press(shortcut)
+      await expect(target).toBeFocused()
+      await expect(dialog).toBeHidden()
+    }
+  }
+})
+
 for (const theme of ['dark', 'light', 'high-contrast'] as const) {
   test(`palette is axe-clean and unclipped at 375px in ${theme}`, async ({ page, baseURL, expectAxeClean }) => {
     await page.context().addCookies([
