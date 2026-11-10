@@ -13,6 +13,31 @@ function jsonResponse(body: unknown, status = 200) {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.unstubAllEnvs()
+})
+
+test('routes /api to the app origin and /v1 to API_ORIGIN in multi-host mode', async () => {
+  vi.stubEnv('HOST_MODE', 'multi')
+  vi.stubEnv('NEXT_PUBLIC_API_ORIGIN', 'https://api.example.test')
+  vi.stubGlobal('window', { location: { origin: 'https://app.example.test', pathname: '/' } })
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse(validProblem))
+  vi.stubGlobal('fetch', fetchMock)
+  const fetcher = createApiFetch({
+    ...testRegistry,
+    getMyPreferences: {
+      method: 'GET',
+      path: '/api/me/preferences',
+      response: { parse: (value: unknown) => value }
+    }
+  })
+
+  await fetcher('getMyPreferences', {})
+  await fetcher('getProjects', { params: { instance: 'acme' } })
+
+  expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
+    'https://app.example.test/api/me/preferences',
+    'https://api.example.test/v1/orgs/acme/projects'
+  ])
 })
 
 test('uses the organisation slug in the current URL for Skyclause-Organization', async () => {
