@@ -35,6 +35,8 @@
     "minute": "{value} min",
     "value": "{value} {unit}",
     "latest_empty": "Tiada bacaan lagi (n=0).",
+    "error_since": "Ralat {source} sejak {time} · HTTP {status}",
+    "unknown_status": "tidak diketahui",
     "ticks_label": "{count} tinjauan terakhir",
     "tick_received": "diterima",
     "tick_missed": "tiada",
@@ -45,6 +47,8 @@
   },
   "call": {
     "window": "Tetingkap {id}",
+    "dashboard_window": "{project} · {title}",
+    "unknown_mode": "Tidak diketahui",
     "night": "Malam {id}",
     "expires": "Tamat {time}",
     "fired_item": "{clause}: {inputs}",
@@ -80,7 +84,8 @@
     "period": "{from} hingga {to}",
     "replay": "Ulangan",
     "empty": "Tiada tetingkap dinilai lagi (n=0).",
-    "interval_label": "Selang Wilson 95% {low} hingga {high}"
+    "interval_label": "Selang Wilson 95% {low} hingga {high}",
+    "wilson_95": "Wilson 95%: {low}–{high}"
   },
   "pack": {
     "clause_engine": "Keputusan enjin klausa: belum disemak, belum dihantar",

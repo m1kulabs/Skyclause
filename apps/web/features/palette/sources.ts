@@ -1,22 +1,59 @@
 import type { Role } from '@skyclause/contracts'
 
+export interface PaletteMembership {
+  account_id: string
+  org_id: string
+  org_name: string
+  org_slug: string
+  role: Role
+}
+
+export interface PaletteProject {
+  id: string
+  org_id: string
+  org_name: string
+  org_slug: string
+  name: string
+  slug: string
+  role: Role
+  account_id: string
+}
+
+export interface PaletteContext {
+  pathname: string
+  memberships: readonly PaletteMembership[]
+  projects: readonly PaletteProject[]
+  query: string
+  projectQuery: string
+  projectChoice: 'window' | 'ledger' | null
+  changeTheme: (theme: 'light' | 'dark' | 'system') => void
+  chooseProject: (purpose: 'window' | 'ledger') => void
+  navigate: (href: string) => void
+}
+
 export interface PaletteItem {
   id: string
   /** A translated label supplied by the source. */
   label: string
   keywords?: string[]
+  translateNo?: boolean
+  keepOpen?: boolean
   onSelect: () => void
 }
 
 export interface PaletteSource {
   id: string
-  roles: readonly Role[]
-  items: readonly PaletteItem[]
+  roles: readonly Role[] | 'all'
+  items?: readonly PaletteItem[]
+  load?: (signal: AbortSignal) => Promise<Pick<PaletteContext, 'memberships' | 'projects'>>
+  itemsFor?: (context: PaletteContext) => readonly PaletteItem[]
+  search?: (query: string, context: PaletteContext, signal: AbortSignal) => Promise<PaletteItem[]>
 }
 
-// #176 and domain owners append one imported source per line here (spec §7).
-export const paletteSources: readonly PaletteSource[] = []
+import { dashboardPaletteSource } from '../dashboard/palette-source'
+
+export const paletteSources: readonly PaletteSource[] = [dashboardPaletteSource]
 
 export function sourcesForRole(sources: readonly PaletteSource[], role: Role | null): PaletteSource[] {
-  return role === null ? [] : sources.filter((source) => source.roles.includes(role))
+  return sources.filter((source) => source.roles === 'all' || (role !== null && source.roles.includes(role)))
 }

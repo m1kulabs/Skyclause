@@ -1,5 +1,7 @@
 import { notBuilt } from '@skyclause/contracts'
-import { budgetGate, RUNS_REQUESTED } from '@skyclause/db'
+import { createChainResolver } from '@skyclause/agent'
+import { budgetGate, loadAiKeyRows, RUNS_REQUESTED, type Tx } from '@skyclause/db'
+import { modelFor } from '../ai-keys/model-for'
 import { z } from 'zod'
 import type { WorkerPart } from '../server'
 import { republishQueuedRuns, requestScheduledRuns } from './batch'
@@ -37,15 +39,15 @@ const origins = () => [
 ]
 
 /**
- * Production ports. SnapshotSource and ShadowEvaluator (#133), ModelResolver and modelFor (#206) aren't built: until
- * each owner swaps in its implementation here, a run fails at its first step that calls one.
+ * Production ports. SnapshotSource and ShadowEvaluator (#133) aren't built: until each owner swaps in its
+ * implementation here, a run fails at its first step that calls one. ModelResolver and modelFor (#206) are live.
  */
 export const runs = createRunsPart({
   snapshots: notBuilt('b-evaluator'),
   shadow: notBuilt('b-evaluator'),
   budget: budgetGate,
-  models: notBuilt('e-byok-api'),
-  modelFor: notBuilt('e-byok-api'),
+  models: createChainResolver((tx, q) => loadAiKeyRows(tx as Tx, q)),
+  modelFor,
   ...(process.env.GCP_PROJECT && process.env.VERTEX_LOCATION
     ? { vertex: { project: process.env.GCP_PROJECT, location: process.env.VERTEX_LOCATION } }
     : {}),

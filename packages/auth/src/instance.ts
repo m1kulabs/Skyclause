@@ -1,4 +1,3 @@
-import { apiKey } from '@better-auth/api-key'
 import { cimd } from '@better-auth/cimd'
 import { fetchClientMetadataResource } from '@better-auth/cimd/node'
 import { mcp } from '@better-auth/mcp'
@@ -9,6 +8,7 @@ import { betterAuth, type BetterAuthOptions, type BetterAuthPlugin } from 'bette
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { anonymous, bearer, deviceAuthorization, jwt, organization } from 'better-auth/plugins'
 import { ac, roles } from './access'
+import { apiKeyPlugin } from './plugins/a-api-keys'
 import { PLUGINS } from './plugins'
 
 /** What the instance needs from the web env (#79 §6). */
@@ -53,7 +53,7 @@ function basePlugins(s: AuthSettings) {
             },
             deletionRequestedAt: { type: 'date', required: false, ...fixed },
             purgeAfter: { type: 'date', required: false, ...fixed },
-            onboardingSkipped: { type: 'boolean', required: true, defaultValue: false, ...fixed },
+            onboardingSkipped: { type: 'json', required: true, defaultValue: [], ...fixed },
             aiFallbackEnabled: { type: 'boolean', required: true, defaultValue: false, ...fixed },
             allowMemberAiKeys: { type: 'boolean', required: true, defaultValue: false, ...fixed }
           }
@@ -65,9 +65,8 @@ function basePlugins(s: AuthSettings) {
       }
     }),
     anonymous(),
-    // #106 and #128 store scopes in `permissions.scopes`, the creator in `metadata.account_id` and a device key's
-    // source in `metadata.source_id`. #93's `rateLimit` limits each credential, so the plugin's 10 a day is off.
-    apiKey({ references: 'organization', defaultPrefix: 'skc_', enableMetadata: true, rateLimit: { enabled: false } }),
+    // #106 replaces the plugin #94 registered here, keeping Better Auth's auth-table generation order stable.
+    apiKeyPlugin,
     passkey(),
     deviceAuthorization(),
     bearer(),
@@ -100,6 +99,15 @@ function unbuiltPaths(base: readonly BetterAuthPlugin[], plugins: readonly Bette
     .map((endpoint) => endpoint.path)
 }
 
+/** The API-key plugin is available to `auth.api`, but its less restrictive HTTP manager stays off. */
+function apiKeyHttpPaths(plugins: readonly BetterAuthPlugin[]): string[] {
+  return plugins
+    .filter(({ id }) => id === 'api-key')
+    .flatMap((plugin) => Object.values(plugin.endpoints ?? {}))
+    .filter((endpoint) => endpoint.path && !endpoint.options?.metadata?.SERVER_ONLY)
+    .map((endpoint) => endpoint.path)
+}
+
 /**
  * Better Auth on `auth_app` over the `auth` schema, with #91's plugin set; tests pass extra plugins and providers.
  * @internal Its inferred type is too large for tsc to emit, so declarations leave it out (`stripInternal`).
@@ -109,7 +117,7 @@ export function createAuth(
   extra: { plugins?: BetterAuthPlugin[]; socialProviders?: BetterAuthOptions['socialProviders'] } = {}
 ) {
   const base = basePlugins(s)
-  const plugins = withOwners(base, [...PLUGINS, ...(extra.plugins ?? [])])
+  const plugins = withOwners(base, [...PLUGINS(s), ...(extra.plugins ?? [])])
   return betterAuth({
     secret: s.secret,
     baseURL: s.appOrigin,
@@ -128,7 +136,7 @@ export function createAuth(
     session: { additionalFields: { reauthenticatedAt: { type: 'date', required: false, ...fixed } } },
     socialProviders: extra.socialProviders,
     plugins,
-    disabledPaths: unbuiltPaths(base, plugins)
+    disabledPaths: [...unbuiltPaths(base, plugins), ...apiKeyHttpPaths(plugins)]
   })
 }
 

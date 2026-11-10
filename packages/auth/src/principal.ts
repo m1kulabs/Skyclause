@@ -163,13 +163,24 @@ async function oauthPrincipal(token: string, surface: Surface, clientName: Clien
   const claims = await verifyAccessToken(token, surface)
   const { sub, client_id: clientId, grant_id: grantId, scope } = claims ?? {}
   if (typeof sub !== 'string' || typeof clientId !== 'string' || typeof grantId !== 'string') return null
+  const resourceUrls = resources(getAuth().settings)
+  const audiences = typeof claims?.aud === 'string' ? [claims.aud] : Array.isArray(claims?.aud) ? claims.aud : []
+  if (audiences.length !== 1) return null
+  const resource = audiences[0] === resourceUrls.api ? 'api' : audiences[0] === resourceUrls.mcp ? 'mcp' : null
+  if (!resource) return null
   const found = await credentialRow('oauth_grant', grantId, async (tx, id) => {
     const [grant] = await tx.select().from(oauthGrant).where(eq(oauthGrant.id, id))
     if (!grant?.shareLinkId) return grant && { grant, link: null }
     const [link] = await tx.select().from(shareLink).where(eq(shareLink.id, grant.shareLinkId))
     return { grant, link: link ?? null }
   })
-  if (!found || found.grant.accountId !== sub || found.grant.clientId !== clientId || !(await liveAccount(sub))) {
+  if (
+    !found ||
+    found.grant.accountId !== sub ||
+    found.grant.clientId !== clientId ||
+    found.grant.resource !== resource ||
+    !(await liveAccount(sub))
+  ) {
     return null
   }
   const { grant, link } = found
@@ -183,15 +194,6 @@ async function oauthPrincipal(token: string, surface: Surface, clientName: Clien
     if (!role) return null
     projectIds = grant.projectIds ?? 'all'
   }
-  const audiences = [claims!.aud].flat()
-  const resource =
-    surface === 'v1'
-      ? 'api'
-      : surface === 'mcp'
-        ? 'mcp'
-        : audiences.includes(resources(getAuth().settings).mcp)
-          ? 'mcp'
-          : 'api'
   const granted = typeof scope === 'string' ? scope.split(' ') : []
   return {
     kind: 'oauth',

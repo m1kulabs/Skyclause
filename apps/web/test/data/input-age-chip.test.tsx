@@ -99,6 +99,13 @@ describe('InputAgeChip', () => {
     expect(screen.getByLabelText(/14 min old/)).toBeTruthy()
   })
 
+  test('uses a captured age when a call page renders the drafting snapshot', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-11-02T07:30:00Z'))
+    render(<InputAgeChip input={{ ...inputAt(30, 'fresh') }} ageSeconds={300} />)
+    expect(screen.getByLabelText(/gauge 5 min old/)).toBeTruthy()
+  })
+
   test('targets meet 34px and honour the shared timer', () => {
     render(<InputAgeChip input={{ ...inputAt(12, 'fresh') }} />)
     const trigger = screen.getByLabelText(/gauge/)

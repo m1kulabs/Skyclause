@@ -11,6 +11,8 @@ import {
   asSession,
   asShareLink,
   createTestApi,
+  TEST_APP_ORIGIN,
+  TEST_NOW,
   testDeps,
   testOrg
 } from './harness'
@@ -21,6 +23,7 @@ async function problem(response: Response) {
   return body as { type: string; status: number }
 }
 const slug = (body: { type: string }) => body.type.split('/').at(-1)
+const oauthRecordId = '8fcab91d-bf86-7ea7-87fa-9b13e74f0c70' // gitleaks:allow -- a UUIDv7 record id, not a secret.
 
 // Test-only first-party routes for rules that need a built handler.
 const ok = { 200: { description: 'OK', content: { 'application/json': { schema: z.object({ ok: z.boolean() }) } } } }
@@ -154,6 +157,20 @@ describe('/api surface', () => {
     // c-subscribers' handler answers: the token is unknown.
     expect(response.status).toBe(410)
   })
+
+  it('refuses an OAuth principal on bundle approval before the approval handler runs', async () => {
+    const { api } = createTestApi()
+    const oauth = asOAuth({ org: 'approval-surface', role: 'owner', scopes: ['read', 'draft'] })
+    const response = await apiRequest(api, {
+      as: oauth,
+      method: 'POST',
+      path: '/api/bundles/b-1/approve',
+      org: 'approval-surface',
+      body: { review_hash: 'test-hash', calls: [] }
+    })
+    expect(response.status).toBe(403)
+    expect(slug(await problem(response))).toBe('insufficient-scope')
+  })
 })
 
 describe('organisation (D2)', () => {
@@ -186,11 +203,218 @@ describe('organisation (D2)', () => {
   })
 
   it('reads the organisation from an /api/orgs/{org} path', async () => {
-    const { api } = createTestApi()
+    const listQuery = {
+      from() {
+        return this
+      },
+      innerJoin() {
+        return this
+      },
+      where() {
+        return this
+      },
+      orderBy() {
+        return this
+      },
+      async limit() {
+        return []
+      }
+    }
+    const { api } = createTestApi({
+      deps: testDeps({
+        withTenant: async (ctx, fn) =>
+          fn({ orgId: ctx.orgId, principal: ctx.principal, select: () => listQuery } as never)
+      })
+    })
     testOrg('path-other')
     const admin = asSession({ org: 'path-org', role: 'admin' })
-    expect((await apiRequest(api, { as: admin, method: 'GET', path: '/api/orgs/path-org/members' })).status).toBe(501)
+    expect((await apiRequest(api, { as: admin, method: 'GET', path: '/api/orgs/path-org/members' })).status).toBe(200)
     expect((await apiRequest(api, { as: admin, method: 'GET', path: '/api/orgs/path-other/members' })).status).toBe(404)
+  })
+})
+
+describe('#198 OAuth organisation settings routes', () => {
+  it('requires recent authentication before creating an organisation OAuth client', async () => {
+    const { api } = createTestApi()
+    const staleOwner = asSession({
+      org: 'oauth-admin',
+      role: 'owner',
+      authenticatedAt: new Date('2026-11-07T13:00:00Z')
+    })
+    const response = await apiRequest(api, {
+      as: staleOwner,
+      method: 'POST',
+      path: '/api/orgs/oauth-admin/oauth-clients',
+      org: 'oauth-admin',
+      idempotencyKey: 'oauth-create-1',
+      body: {
+        client_name: 'Gemini Enterprise',
+        redirect_uris: ['https://vertexaisearch.cloud.google.com/oauth-redirect'],
+        scopes: ['read', 'draft']
+      }
+    })
+    expect(response.status).toBe(401)
+    expect(slug(await problem(response))).toBe('reauth-required')
+  })
+
+  it('requires recent authentication before deleting an organisation OAuth client', async () => {
+    const { api } = createTestApi()
+    const staleOwner = asSession({
+      org: 'oauth-delete',
+      role: 'owner',
+      authenticatedAt: new Date('2026-11-07T13:00:00Z')
+    })
+    const response = await apiRequest(api, {
+      as: staleOwner,
+      method: 'DELETE',
+      path: `/api/orgs/oauth-delete/oauth-clients/${oauthRecordId}`,
+      org: 'oauth-delete'
+    })
+    expect(response.status).toBe(401)
+    expect(slug(await problem(response))).toBe('reauth-required')
+  })
+
+  it.each([
+    {
+      method: 'POST',
+      path: '/api/orgs/oauth-viewer/oauth-clients',
+      idempotencyKey: 'oauth-viewer-create',
+      body: {
+        client_name: 'Gemini Enterprise',
+        redirect_uris: ['https://vertexaisearch.cloud.google.com/oauth-redirect'],
+        scopes: ['read']
+      }
+    },
+    {
+      method: 'DELETE',
+      path: `/api/orgs/oauth-viewer/oauth-clients/${oauthRecordId}`
+    }
+  ])('requires integrations.manage for $method client writes', async (operation) => {
+    const base = testDeps()
+    const createClient = vi.fn(base.oauth.createClient)
+    const deleteClient = vi.fn(base.oauth.deleteClient)
+    const { api } = createTestApi({ deps: testDeps({ oauth: { ...base.oauth, createClient, deleteClient } }) })
+    const viewer = asSession({ org: 'oauth-viewer', role: 'viewer' })
+    const response = await apiRequest(api, {
+      as: viewer,
+      method: operation.method,
+      path: operation.path,
+      org: 'oauth-viewer',
+      idempotencyKey: 'idempotencyKey' in operation ? operation.idempotencyKey : undefined,
+      body: 'body' in operation ? operation.body : undefined
+    })
+    expect(response.status).toBe(403)
+    expect(slug(await problem(response))).toBe('insufficient-scope')
+    expect(createClient).not.toHaveBeenCalled()
+    expect(deleteClient).not.toHaveBeenCalled()
+  })
+
+  it('lets an Admin list OAuth clients and grants and revoke both kinds', async () => {
+    const base = testDeps()
+    const createClient = vi.fn(async (input: Parameters<typeof base.oauth.createClient>[0]) => ({
+      ...(await base.oauth.createClient(input)),
+      id: '8fcab91d-bf86-7ea7-87fa-9b13e74f0c70'
+    }))
+    const { api } = createTestApi({ deps: testDeps({ oauth: { ...base.oauth, createClient } }) })
+    const admin = asSession({ org: 'oauth-admin', role: 'admin' })
+    expect(
+      (
+        await apiRequest(api, {
+          as: admin,
+          method: 'POST',
+          path: '/api/orgs/oauth-admin/oauth-clients',
+          org: 'oauth-admin',
+          idempotencyKey: 'oauth-admin-create',
+          body: {
+            client_name: 'Gemini Enterprise',
+            redirect_uris: ['https://vertexaisearch.cloud.google.com/oauth-redirect'],
+            scopes: ['read']
+          }
+        })
+      ).status
+    ).toBe(201)
+    expect(
+      (
+        await apiRequest(api, {
+          as: admin,
+          method: 'GET',
+          path: '/api/orgs/oauth-admin/oauth-clients',
+          org: 'oauth-admin'
+        })
+      ).status
+    ).toBe(200)
+    expect(
+      (
+        await apiRequest(api, {
+          as: admin,
+          method: 'GET',
+          path: '/api/orgs/oauth-admin/oauth-grants',
+          org: 'oauth-admin'
+        })
+      ).status
+    ).toBe(200)
+    expect(
+      (
+        await apiRequest(api, {
+          as: admin,
+          method: 'DELETE',
+          path: `/api/orgs/oauth-admin/oauth-clients/${oauthRecordId}`,
+          org: 'oauth-admin'
+        })
+      ).status
+    ).toBe(204)
+    expect(
+      (
+        await apiRequest(api, {
+          as: admin,
+          method: 'DELETE',
+          path: `/api/orgs/oauth-admin/oauth-grants/${oauthRecordId}`,
+          org: 'oauth-admin'
+        })
+      ).status
+    ).toBe(204)
+  })
+
+  it('returns the client secret once and does not store it in an idempotent replay', async () => {
+    const base = testDeps()
+    const createClient = vi.fn(
+      async (input: { clientName: string; redirectUris: string[]; scopes: Array<'read' | 'draft'> }) => ({
+        id: '8fcab91d-bf86-7ea7-87fa-9b13e74f0c70',
+        client_id: 'one-time-client',
+        client_name: input.clientName,
+        redirect_uris: input.redirectUris,
+        scopes: input.scopes,
+        created_at: TEST_NOW.toISOString(),
+        client_secret: 'one-time-secret',
+        redirect_uri: 'https://vertexaisearch.cloud.google.com/oauth-redirect',
+        authorization_url: `${TEST_APP_ORIGIN}/api/auth/oauth2/authorize`,
+        token_url: `${TEST_APP_ORIGIN}/api/auth/oauth2/token`
+      })
+    )
+    const oauth = { ...base.oauth, createClient }
+    const { api } = createTestApi({ deps: testDeps({ oauth }) })
+    const owner = asSession({ org: 'oauth-create', role: 'owner' })
+    const input = {
+      client_name: 'Gemini Enterprise',
+      redirect_uris: ['https://vertexaisearch.cloud.google.com/oauth-redirect'],
+      scopes: ['read', 'draft']
+    }
+    const create = () =>
+      apiRequest(api, {
+        as: owner,
+        method: 'POST',
+        path: '/api/orgs/oauth-create/oauth-clients',
+        org: 'oauth-create',
+        idempotencyKey: 'oauth-create-secret-1',
+        body: input
+      })
+    const first = await create()
+    expect(first.status).toBe(201)
+    expect(await first.json()).toMatchObject({ client_secret: 'one-time-secret', client_id: 'one-time-client' })
+    const replay = await create()
+    expect(replay.status).toBe(422)
+    expect(await replay.text()).not.toContain('one-time-secret')
+    expect(createClient).toHaveBeenCalledTimes(1)
   })
 })
 
