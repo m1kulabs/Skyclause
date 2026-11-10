@@ -86,6 +86,24 @@ test('Admin saves two labellers, and a third is refused inline', async ({ page }
   await expectZonedTimes(page)
 })
 
+test('labeller selections support keyboard removal and Escape', async ({ page }) => {
+  await prepare(page)
+  await page.goto(probationUrl('progress'))
+  await pickMember(page, 'Amina')
+  await pickMember(page, 'Bala')
+  const chips = page.locator('[data-slot="combobox-chip"]')
+  const box = page.getByRole('combobox', { name: t('picker_search'), exact: true })
+  await box.press('Backspace')
+  await expect(chips).toHaveCount(1)
+  await pickMember(page, 'Bala')
+  await box.fill('Citra')
+  await box.press('Escape')
+  await expect(box).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByRole('option')).toHaveCount(0)
+  await expect(chips).toHaveText(['Amina Labeller', 'Bala Labeller'])
+  await expect(box).toBeFocused()
+})
+
 test('a Viewer sees no picker; a labeller sees the pair read-only', async ({ page }) => {
   await prepare(page, { ...member, role: 'viewer' })
   await page.goto(probationUrl('progress'))
@@ -444,6 +462,56 @@ test('touch targets are 44 px', async ({ browser }) => {
     expect(box!.height).toBeGreaterThanOrEqual(44)
   }
   await context.close()
+})
+
+test('frame answers have full contrast as soon as loading enables them', async ({ page, baseURL, expectAxeClean }) => {
+  await prepare(page, { ...member, role: 'editor', accountId: labellerOne })
+  const context = page.context()
+  await context.addCookies([
+    {
+      name: 'skyclause-test-appearance',
+      value: JSON.stringify({ theme: 'light', contrast: 'standard' }),
+      url: baseURL!
+    }
+  ])
+  await page.setViewportSize({ width: 320, height: 812 })
+  await stubNextSequence(page, [frameFixture('frame-1')])
+  let release!: () => void
+  const held = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route(`${framesBase}*.svg`, async (route) => {
+    await held
+    await route.fallback()
+  })
+  await page.goto(probationUrl('label'))
+  const answers = page.locator('.probation-actions > button')
+  await expect(answers.first()).toBeDisabled()
+  const enabledOpacities = page.evaluate(() => {
+    // Sample the first enabled render, before a fade can conceal low-contrast actionable text.
+    const buttons = [...document.querySelectorAll<HTMLButtonElement>('.probation-actions > button')]
+    buttons.forEach((button) => getComputedStyle(button).opacity)
+    return new Promise<number[]>((resolve) => {
+      const samples: number[] = []
+      const observer = new MutationObserver((records) => {
+        for (const record of records) {
+          const button = record.target as HTMLButtonElement
+          if (!button.disabled) samples.push(Number(getComputedStyle(button).opacity))
+        }
+        if (samples.length === buttons.length) {
+          observer.disconnect()
+          resolve(samples)
+        }
+      })
+      buttons.forEach((button) => observer.observe(button, { attributes: true, attributeFilter: ['disabled'] }))
+    })
+  })
+  // The evaluation is queued before this round trip, so its observer is installed before release.
+  await answers.first().isDisabled()
+  release()
+  await expect(page.getByAltText(frameAltRe)).toBeVisible()
+  expect(await enabledOpacities).toEqual([1, 1])
+  await expectAxeClean(page)
 })
 
 for (const theme of ['dark', 'light', 'high-contrast'] as const) {
