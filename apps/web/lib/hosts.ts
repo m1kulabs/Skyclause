@@ -109,10 +109,15 @@ export function routeRequest(o: HostConfig & { host: string; pathname: string })
  * the global not-found page. It never sets a cookie and rewrites only on the request's own host, so session cookies
  * stay host-only on APP_ORIGIN.
  */
-export function proxyResponse(request: NextRequest, config: HostConfig): NextResponse {
+export function proxyResponse(
+  request: NextRequest,
+  config: HostConfig,
+  init?: Parameters<typeof NextResponse.next>[0]
+): NextResponse {
   const { pathname, search } = request.nextUrl
   const target = routeRequest({ ...config, host: request.headers.get('host') ?? request.nextUrl.host, pathname })
-  if (!target) return NextResponse.rewrite(new URL('/_not-found', request.url))
-  if (target.pathname !== pathname) return NextResponse.rewrite(new URL(`${target.pathname}${search}`, request.url))
-  return NextResponse.next()
+  if (!target) return NextResponse.rewrite(new URL('/_not-found', request.url), init)
+  if (target.pathname !== pathname)
+    return NextResponse.rewrite(new URL(`${target.pathname}${search}`, request.url), init)
+  return NextResponse.next(init)
 }

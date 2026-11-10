@@ -1,5 +1,7 @@
 export * from './schema'
 export * from './models'
+export * from './providers'
+export * from './routing'
 export * from './budget'
 export { quotable } from './quotable'
 export { INSTRUCTIONS, serialise } from './prompt'

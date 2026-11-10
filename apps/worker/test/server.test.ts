@@ -372,7 +372,8 @@ describe('worker 15-minute batch connection', () => {
         'shift-reminder-plan',
         'approver-alert-resend',
         'auditor',
-        'sources-ingest'
+        'sources-ingest',
+        'exports:timeout'
       ])
       const response = await post(app, '/ticks/batch', { bearer: await token() })
       expect(response.status).toBe(500)

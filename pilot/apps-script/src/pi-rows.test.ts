@@ -59,20 +59,47 @@ function errorPost(): PiRowsBody {
   }
 }
 
+function heartbeatPost(): PiRowsBody {
+  return {
+    kind: PI_ROWS_KIND,
+    device_id: 'pi-01',
+    rows: [
+      {
+        kind: 'heartbeat',
+        row_id: 'heartbeat-1',
+        device_time: '2026-11-06T22:56:45+08:00',
+        posted_at: '2026-11-06T22:56:46+08:00'
+      }
+    ],
+    poll: {
+      poll_id: 'heartbeat-1',
+      started_at: '2026-11-06T22:56:45+08:00',
+      received_at: '2026-11-06T22:56:46+08:00',
+      http_status: 200,
+      latency_ms: 1,
+      outcome: 'ok'
+    }
+  }
+}
+
 function fakeStore(): PiRowsStore & {
   sources: Row<'sources'>[]
+  devices: Row<'devices'>[]
   polls: Row<'polls'>[]
   readings: Row<'readings'>[]
 } {
   const sources: Row<'sources'>[] = []
+  const devices: Row<'devices'>[] = []
   const polls: Row<'polls'>[] = []
   const readings: Row<'readings'>[] = []
   return {
     sources,
+    devices,
     polls,
     readings,
     sourceRow: (sourceId) => sources.find((row) => row.source_id === sourceId) ?? null,
     appendSource: (row) => void sources.push(row),
+    storedPollIds: () => polls.map((row) => String(row.poll_id ?? '')),
     storedReadings: () =>
       readings.map((row) => ({
         reading_id: row.reading_id ?? '',
@@ -80,12 +107,73 @@ function fakeStore(): PiRowsStore & {
         value: row.value ?? '',
         revision: row.revision ?? ''
       })),
+    deviceRow: (deviceId) => devices.find((row) => row.device_id === deviceId) ?? null,
+    appendDevice: (row) => void devices.push(row),
+    touchDevice: (deviceId, deviceTime) => {
+      const row = devices.find((candidate) => candidate.device_id === deviceId)
+      if (row) {
+        row.kind = 'pi'
+        row.last_heartbeat_at = deviceTime
+        row.last_row_at = deviceTime
+      }
+    },
     appendPoll: (row) => void polls.push(row),
     appendReadings: (rows) => void readings.push(...rows)
   }
 }
 
 describe('handlePiRows', () => {
+  test('a Pi heartbeat updates devices and appends one poll without a reading', () => {
+    const store = fakeStore()
+    expect(handlePiRows(heartbeatPost(), store, NOW)).toEqual({ ok: true, duplicate: false })
+    expect(store.sources[0]).toMatchObject({ source_id: 'pi-01', kind: 'pi', cadence_min: 1, stale_after_min: 60 })
+    expect(store.devices).toEqual([
+      {
+        device_id: 'pi-01',
+        kind: 'pi',
+        last_heartbeat_at: '2026-11-06T22:56:45+08:00',
+        last_row_at: '2026-11-06T22:56:45+08:00'
+      }
+    ])
+    expect(store.polls).toHaveLength(1)
+    expect(store.polls[0]).toMatchObject({
+      poll_id: 'heartbeat-1',
+      source_kind: 'pi',
+      source_id: 'pi-01',
+      started_at: '2026-11-06T22:56:45+08:00',
+      received_at: '2026-11-06T22:56:45+08:00',
+      outcome: 'ok'
+    })
+    expect(store.readings).toEqual([])
+  })
+
+  test('a Pi heartbeat refreshes an existing devices row', () => {
+    const store = fakeStore()
+    store.devices.push({ device_id: 'pi-01', kind: 'pi', last_heartbeat_at: '2026-11-06T21:00:00+08:00' })
+
+    handlePiRows(heartbeatPost(), store, NOW)
+
+    expect(store.devices).toEqual([
+      {
+        device_id: 'pi-01',
+        kind: 'pi',
+        last_heartbeat_at: '2026-11-06T22:56:45+08:00',
+        last_row_at: '2026-11-06T22:56:45+08:00'
+      }
+    ])
+  })
+
+  test('a repeated heartbeat row is a duplicate and adds nothing', () => {
+    const store = fakeStore()
+    const post = heartbeatPost()
+    expect(handlePiRows(post, store, NOW)).toEqual({ ok: true, duplicate: false })
+    const counts = { devices: store.devices.length, polls: store.polls.length, readings: store.readings.length }
+    expect(handlePiRows(post, store, NOW)).toEqual({ ok: true, duplicate: true })
+    expect({ devices: store.devices.length, polls: store.polls.length, readings: store.readings.length }).toEqual(
+      counts
+    )
+  })
+
   test('stores the rapidrail_od sources default row on the first post', () => {
     const store = fakeStore()
     expect(handlePiRows(okPost([{ date: '2026-11-04', value: 33804 }]), store, NOW)).toEqual({

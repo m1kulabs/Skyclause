@@ -85,6 +85,7 @@ export async function makeApiKey(o: {
     body: {
       organizationId: o.orgId,
       userId: o.accountId,
+      name: 'Test API key',
       permissions: { scopes: o.scopes },
       metadata: { account_id: o.accountId, ...(o.sourceId ? { source_id: o.sourceId } : {}) }
     }
@@ -137,6 +138,7 @@ export async function makeGrant(o: {
   orgId: string
   accountId: string
   clientId?: string
+  resource?: 'api' | 'mcp'
   scopes: Array<'read' | 'draft'>
   projectIds?: string[]
   shareLinkId?: string
@@ -147,6 +149,7 @@ export async function makeGrant(o: {
     makeOauthGrant(tx, {
       accountId: o.accountId,
       clientId,
+      resource: o.resource ?? 'mcp',
       scopes: o.scopes,
       projectIds: o.projectIds ?? null,
       shareLinkId: o.shareLinkId ?? null,
@@ -176,7 +179,11 @@ export async function mintAccessToken(o: {
 }): Promise<string> {
   const auth = harness()
   const settings = authSettings()
-  const jwtOptions = auth.options.plugins.find((plugin) => plugin.id === 'jwt')!.options
+  const jwtPlugin = (
+    auth.options.plugins as Array<{ id: string; options: Parameters<typeof signJWT>[1]['options'] }>
+  ).find((plugin) => plugin.id === 'jwt')
+  if (!jwtPlugin) throw new Error('The JWT plugin is not registered in the auth test harness')
+  const jwtOptions = jwtPlugin.options
   const iat = Math.floor(Date.now() / 1000)
   return signJWT({ context: await auth.$context } as never, {
     options: jwtOptions,

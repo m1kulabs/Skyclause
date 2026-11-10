@@ -66,6 +66,8 @@ locals {
   account_roles = [
     # Enqueuers put the invoker's OIDC token on Cloud Tasks.
     { account = "invoker", member = "web", role = "roles/iam.serviceAccountUser" },
+    # Saved AI key tests call the worker directly using its existing invoker identity.
+    { account = "invoker", member = "web", role = "roles/iam.serviceAccountOpenIdTokenCreator" },
     { account = "invoker", member = "worker", role = "roles/iam.serviceAccountUser" },
     # Keyless V4 signed URLs for export files sign through the account itself.
     { account = "web", member = "web", role = "roles/iam.serviceAccountTokenCreator" },

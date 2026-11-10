@@ -1,6 +1,6 @@
 {
-  "id": "5181e139-77f2-4cd0-8b77-9815e62f7277",
-  "prevId": "b4b71b2f-d7b2-4160-a2bd-2d5f15b0989e",
+  "id": "6bd00504-5cd1-4e1b-8b0b-68137a28185f",
+  "prevId": "02f9107b-c9f8-4aef-b144-b2ccf745b65e",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -949,7 +949,7 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
-          "default": "now()"
+          "default": "date_trunc('milliseconds', now())"
         },
         "org_id": {
           "name": "org_id",
@@ -984,8 +984,122 @@
               "nulls": "last"
             },
             {
-              "expression": "at",
+              "expression": "\"at\" desc",
+              "isExpression": true,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "audit_event_org_action_at_idx": {
+          "name": "audit_event_org_action_at_idx",
+          "columns": [
+            {
+              "expression": "org_id",
               "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "action",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "\"at\" desc",
+              "isExpression": true,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "audit_event_org_actor_at_idx": {
+          "name": "audit_event_org_actor_at_idx",
+          "columns": [
+            {
+              "expression": "org_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "actor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "\"at\" desc",
+              "isExpression": true,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "audit_event_org_target_at_idx": {
+          "name": "audit_event_org_target_at_idx",
+          "columns": [
+            {
+              "expression": "org_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "target_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "target_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "\"at\" desc",
+              "isExpression": true,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "audit_event_org_project_at_idx": {
+          "name": "audit_event_org_project_at_idx",
+          "columns": [
+            {
+              "expression": "org_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "\"at\" desc",
+              "isExpression": true,
               "asc": true,
               "nulls": "last"
             }
@@ -10147,7 +10261,7 @@
           "name": "licence_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "licence_label": {
           "name": "licence_label",

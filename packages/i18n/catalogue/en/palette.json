@@ -5,5 +5,19 @@
   "placeholder": "Search commands…",
   "results": "Available commands",
   "empty": "n=0 commands. Press Escape to return to the app.",
-  "no_matches": "n=0 matches. Try another search."
+  "no_matches": "n=0 matches. Try another search.",
+  "searching": "Searching…",
+  "loading": "Loading commands…",
+  "choose_project": "Choose a project",
+  "choose_project_empty": "No project is available for this action.",
+  "open_organisation": "Open organisation {name}",
+  "open_project": "Open project {name}",
+  "declare_window": "Declare a window",
+  "declare_window_for": "Declare a window · {name}",
+  "search_ledger": "Search ledger",
+  "light": "Light",
+  "dark": "Dark",
+  "system": "System",
+  "theme_saved": "Theme preference saved.",
+  "theme_failed": "Theme could not be saved. Try again."
 }

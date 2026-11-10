@@ -4,7 +4,7 @@ import { createRoute } from '../create-route'
 import { Page, PageQuery } from '../shared'
 
 const searchResultSchema = z.object({
-  kind: z.enum(['project', 'source', 'window', 'call']),
+  kind: z.enum(['project', 'source', 'window', 'bundle', 'call', 'ledger']),
   id: z.string(),
   label: z.string(),
   href: z.string(),

@@ -1,8 +1,16 @@
 // #158 c-sender-email: the worker sends approved calls' notices once, re-checking each recipient, records SES's
 // answer and the delivery events SES reports, and settles each call. Real Postgres; SES and SNS are doubles.
-import { emailHash, settleCall, verifySubscriberToken, withTenant, systemPrincipal } from '@skyclause/db'
+import {
+  emailHash,
+  notice,
+  settleCall,
+  verifySubscriberToken,
+  withSystem,
+  withTenant,
+  systemPrincipal
+} from '@skyclause/db'
 import { ledgerOf } from '@skyclause/db/test/bundles/scene'
-import { makeOrganization } from '@skyclause/db/test/factories/index'
+import { makeOrganization, makeUser } from '@skyclause/db/test/factories/index'
 import { expectEvent } from '@skyclause/db/test/harness/index'
 import { certificates, signed } from '@skyclause/delivery/test/sns-double'
 import { beforeAll, describe, expect, test, vi } from 'vitest'
@@ -353,6 +361,35 @@ describe('POST /ses/events (NTC-10)', () => {
     const { sesEvents } = senderPart(null, { certificate: certificates })
     await sesEvents(sesEvent(providerId, permanentBounce(address), { category: 'confirmation' }))
     expect((await noticeRow(row!.id)).status).toBe('bounced')
+  })
+
+  test('an account export bounce updates its orgless system notice without an org suppression', async () => {
+    const account = await makeUser({ name: 'Export requester', email: `export-${crypto.randomUUID()}@example.test` })
+    const providerId = '0108export-ready-000000'
+    const [created] = await withSystem('test:export-ready', (tx) =>
+      tx
+        .insert(notice)
+        .values({
+          orgId: null,
+          projectId: null,
+          kind: 'export_ready',
+          channel: 'email',
+          idempotencyKey: crypto.randomUUID(),
+          accountId: account.id,
+          language: 'en',
+          status: 'sent',
+          providerMessageId: providerId
+        })
+        .returning({ id: notice.id })
+    )
+    if (!created) throw new Error('expected the export notice to be inserted')
+
+    const { sesEvents } = senderPart(null, { certificate: certificates })
+    const response = await sesEvents(sesEvent(providerId, permanentBounce(account.email), { category: 'export_ready' }))
+
+    expect(response.status).toBe(204)
+    expect(await noticeRow(created.id)).toMatchObject({ status: 'bounced' })
+    expect(await sql('SELECT 1 FROM suppression WHERE email_hash = $1', [emailHash(account.email)])).toEqual([])
   })
 
   test('an event whose notice isn’t recorded yet answers 503 so SNS retries; mail with no notice is acknowledged', async () => {
