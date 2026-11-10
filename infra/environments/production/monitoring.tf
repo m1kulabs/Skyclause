@@ -47,8 +47,8 @@ locals {
     approver_alerted = {
       title   = "Approver alerts failed for two bundles in a row"
       query   = "max(max_over_time({\"skyclause.approver_alerted\", stat=\"breach\"}[20m])) > 0"
-      target  = "NFR-2, CAL-18: approver alerts delivered within 60 seconds of needs review."
-      waits   = "#90 deploying the `sli` batch handler, then a day of data."
+      target  = "NFR-2, CAL-18: approver alerts delivered within 60 seconds of needs review. A bundle with nobody on duty counts as failed; one that left Needs review within 60 seconds with no alert isn't counted."
+      waits   = "the rota lookups (#454: until then production's `onDuty` isn't built, so every alert fails) and shift conditions (#455), #90 deploying the `sli` batch handler, then a day of data."
       enabled = false
     }
     approval_to_provider = {
@@ -61,7 +61,7 @@ locals {
     approval_sla = {
       title   = "An approval SLA was breached with no escalation"
       query   = "max(max_over_time({\"skyclause.approval_sla\", stat=\"breach\"}[20m])) > 0"
-      target  = "TRD: escalation is the alert; an unescalated breach pages."
+      target  = "TRD: escalation is the alert; an unescalated breach pages. Escalation acts only in Needs review, so a bundle that expires before `sla_due_at` has no `escalate` row and counts as an unescalated breach."
       waits   = "#90 deploying the `sli` batch handler, then a day of data."
       enabled = false
     }
