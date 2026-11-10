@@ -23,7 +23,7 @@ export const source = pgTable(
     cadenceS: integer('cadence_s').notNull(),
     freshness: freshness('freshness').notNull(),
     staleAfterS: integer('stale_after_s').notNull(),
-    licenceId: text('licence_id').notNull(),
+    licenceId: text('licence_id'),
     licenceLabel: text('licence_label').notNull(),
     probation: boolean('probation').notNull().default(false),
     meta: jsonb('meta')

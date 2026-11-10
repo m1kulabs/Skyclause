@@ -21,7 +21,10 @@ export const poll = pgTable(
     latencyMs: integer('latency_ms').notNull(),
     outcome: text('outcome').notNull(),
     errorCode: text('error_code'),
-    message: text('message')
+    message: text('message'),
+    purpose: text('purpose').notNull().default('poll'),
+    bodySha256: text('body_sha256'),
+    apiFamily: text('api_family')
   },
   (self) => [primaryKey({ columns: [self.id, self.startedAt] })]
 )
@@ -47,7 +50,7 @@ export const reading = pgTable(
     valueText: text('value_text'),
     valueJson: jsonb('value_json'),
     deviceTime: instant('device_time'),
-    itemKey: text('item_key'),
+    itemKey: text('item_key').default(''),
     revision: integer('revision').notNull().default(0)
   },
   (self) => [primaryKey({ columns: [self.id, self.observedAt] })]

@@ -47,5 +47,6 @@ export * from './replies'
 export * from './schema'
 export * from './schema/partitioned'
 export * from './subscribers'
+export * from './sources'
 
 export * from './auditor'
