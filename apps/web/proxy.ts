@@ -1,6 +1,7 @@
 import { pagePrincipal } from '@skyclause/auth'
-import { NextResponse, type NextRequest } from 'next/server'
-import { hostConfig, proxyResponse, routeRequest, type HostConfig } from './lib/hosts'
+import type { NextRequest } from 'next/server'
+import { securityHeaders } from './features/hardening/security-headers'
+import { hostConfig, routeRequest, type HostConfig } from './lib/hosts'
 
 let hosts: HostConfig | undefined
 // One-segment app routes that are not organisations. Add new ones here (#102 adds /new).
@@ -24,8 +25,9 @@ export async function proxy(request: NextRequest) {
     !(process.env.APP_ENV === 'test' && request.cookies.has('skyclause_test_principal'))
   ) {
     const { org } = await pagePrincipal(new Headers(request.headers), { org: segments[0]! })
-    if (!org) return NextResponse.rewrite(new URL('/_not-found', request.url))
+    // #115's headers cover the not-found page too.
+    if (!org) return securityHeaders(request, hosts, { notFound: true })
   }
 
-  return proxyResponse(request, hosts)
+  return securityHeaders(request, hosts)
 }

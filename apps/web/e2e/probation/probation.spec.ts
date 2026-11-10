@@ -8,6 +8,7 @@ import { wilson } from '../../features/probation/model'
 import { probationOperations } from '../../features/probation/operations'
 import {
   frameFixture,
+  framesBase,
   labellerOne,
   labellerTwo,
   member,
@@ -145,7 +146,7 @@ test('a labeller labels three frames by keyboard with visible focus and no short
   })
   let images = 0
   page.on('request', (request) => {
-    if (request.url().startsWith('https://frames.test/')) images += 1
+    if (request.url().startsWith(framesBase)) images += 1
   })
   await page.goto(probationUrl('label'))
   // A letter key is not a shortcut: nothing posts.
@@ -264,7 +265,7 @@ test('a non-labeller gets the not-a-labeller state and no frame loads', async ({
   await prepare(page, { ...member, role: 'editor', accountId: 'account-stranger' })
   let images = 0
   page.on('request', (request) => {
-    if (request.url().startsWith('https://frames.test/')) images += 1
+    if (request.url().startsWith(framesBase)) images += 1
   })
   await page.route('**/api/sources/*/probation/next*', (route) =>
     route.fulfill({ status: 403, json: { title: 'Forbidden', status: 403 } })
@@ -348,7 +349,7 @@ test('a failed frame names its time and status with Retry', async ({ page }) => 
   await prepare(page, { ...member, role: 'editor', accountId: labellerOne })
   await stubNextSequence(page, [frameFixture('frame-1')])
   let failImage = true
-  await page.route('https://frames.test/*.svg', (route) => {
+  await page.route(`${framesBase}*.svg`, (route) => {
     if (failImage) return route.fulfill({ status: 500 })
     return route.fallback()
   })

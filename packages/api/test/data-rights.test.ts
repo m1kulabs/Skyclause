@@ -86,6 +86,37 @@ test('an Owner queues one organisation export, tracks it, and audits it once', a
   }).run()
 })
 
+// #115's meta-test: the organisation export and deletion operations answer 404 for another organisation.
+test('another organisation’s exports and deletion answer 404 through crossOrgCase', async () => {
+  const org = testOrg(`rights-${randomUUID().slice(0, 8)}`)
+  const other = testOrg(`rights-other-${randomUUID().slice(0, 8)}`)
+  for (const { id, slug } of [org, other]) await makeOrganization({ id, slug })
+  const owner = asSession({ org: org.slug, role: 'owner' })
+  const app = setup()
+  const cases = [
+    crossOrgCase('createOrganisationExport', {
+      app: app.api,
+      as: owner,
+      params: { org: other.slug },
+      body: { formats: ['json'] }
+    }),
+    crossOrgCase('getOrganisationDeletion', { app: app.api, as: owner, params: { org: other.slug } }),
+    crossOrgCase('requestOrganisationDeletion', {
+      app: app.api,
+      as: owner,
+      params: { org: other.slug },
+      body: { slug: other.slug }
+    }),
+    crossOrgCase('cancelOrganisationDeletion', { app: app.api, as: owner, params: { org: other.slug } })
+  ]
+  for (const crossOrg of cases) await crossOrg.run()
+  expect(app.scheduled).toEqual([])
+  const otherJobs = await withSystem('test:data-rights', (tx) =>
+    tx.select().from(exportJob).where(eq(exportJob.orgId, other.id))
+  )
+  expect(otherJobs).toEqual([])
+})
+
 test('only an Owner can schedule organisation deletion', async () => {
   const org = testOrg(`rights-${randomUUID().slice(0, 8)}`)
   await makeOrganization({ id: org.id, slug: org.slug })
@@ -257,12 +288,7 @@ test('download redirects for the requester or an organisation admin and hides cr
 
   const otherOrg = await makeOrganization()
   const otherOwner = asSession({ org: otherOrg.slug, role: 'owner' })
-  const otherOrgHidden = await apiRequest(app.api, {
-    as: otherOwner,
-    method: 'GET',
-    path: `/api/exports/${job.id}/download`
-  })
-  expect(otherOrgHidden.status).toBe(404)
+  await crossOrgCase('downloadExport', { app: app.api, as: otherOwner, params: { id: job.id } }).run()
 
   await withSystem('test:data-rights', async (tx) => {
     await tx

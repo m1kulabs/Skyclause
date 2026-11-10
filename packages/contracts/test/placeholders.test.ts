@@ -13,10 +13,6 @@ const packages: Array<{ name: string; owners: Record<string, string[]> }> = [
     }
   },
   {
-    name: 'config',
-    owners: { 'a-hardening': ['assertPublicUrl', 'safeFetch'] }
-  },
-  {
     name: 'forecast',
     owners: { 'b-forecast': ['baseline', 'uplift', 'periods', 'backtest', 'forecastNight'] }
   },

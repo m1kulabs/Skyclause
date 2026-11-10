@@ -11,6 +11,7 @@ import {
   asSession,
   asShareLink,
   createTestApi,
+  crossOrgCase,
   TEST_APP_ORIGIN,
   TEST_NOW,
   testDeps,
@@ -373,6 +374,40 @@ describe('#198 OAuth organisation settings routes', () => {
         })
       ).status
     ).toBe(204)
+  })
+
+  // #115's meta-test: every OAuth settings operation answers 404 for another organisation, before the port runs.
+  it('answers 404 for another organisation’s OAuth clients and grants through crossOrgCase', async () => {
+    const base = testDeps()
+    const oauth = {
+      listClients: vi.fn(base.oauth.listClients),
+      createClient: vi.fn(base.oauth.createClient),
+      deleteClient: vi.fn(base.oauth.deleteClient),
+      listGrants: vi.fn(base.oauth.listGrants),
+      revokeGrant: vi.fn(base.oauth.revokeGrant)
+    }
+    const { api } = createTestApi({ deps: testDeps({ oauth }) })
+    const admin = asSession({ org: 'oauth-admin', role: 'admin' })
+    const other = testOrg('oauth-other').slug
+    for (const crossOrg of [
+      crossOrgCase('listOauthClients', { app: api, as: admin, params: { org: other } }),
+      crossOrgCase('createOauthClient', {
+        app: api,
+        as: admin,
+        params: { org: other },
+        body: {
+          client_name: 'Gemini Enterprise',
+          redirect_uris: ['https://vertexaisearch.cloud.google.com/oauth-redirect'],
+          scopes: ['read']
+        }
+      }),
+      crossOrgCase('deleteOauthClient', { app: api, as: admin, params: { org: other, id: oauthRecordId } }),
+      crossOrgCase('listOauthGrants', { app: api, as: admin, params: { org: other } }),
+      crossOrgCase('revokeOauthGrant', { app: api, as: admin, params: { org: other, id: oauthRecordId } })
+    ]) {
+      await crossOrg.run()
+    }
+    for (const call of Object.values(oauth)) expect(call).not.toHaveBeenCalled()
   })
 
   it('returns the client secret once and does not store it in an idempotent replay', async () => {

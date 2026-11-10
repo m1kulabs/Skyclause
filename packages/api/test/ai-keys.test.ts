@@ -276,12 +276,49 @@ describe('organisation keys', () => {
       as: owner(),
       params: { org: other.slug }
     }).name,
-    crossOrgCase('listOrganisationAiKeys', {
-      app: setup().api,
-      as: owner(),
-      params: { org: other.slug }
-    }).run
+    () =>
+      crossOrgCase('listOrganisationAiKeys', {
+        app: setup().api,
+        as: owner(),
+        params: { org: other.slug }
+      }).run()
   )
+
+  // #115's meta-test: every organisation key, settings and usage operation answers 404 for another organisation.
+  test('another organisation’s keys, settings and usage answer 404 through crossOrgCase', async () => {
+    const { api, v1 } = setup()
+    const key = await create(api, otherOwner(), createBody(`sk-o-${randomUUID()}`), other.slug)
+    expect(key.status).toBe(201)
+    const id = ((await key.json()) as { id: string }).id
+    const cases = [
+      crossOrgCase('createOrganisationAiKey', {
+        app: api,
+        as: owner(),
+        params: { org: other.slug },
+        body: createBody(`sk-c-${randomUUID()}`)
+      }),
+      crossOrgCase('updateOrganisationAiKey', {
+        app: api,
+        as: owner(),
+        params: { org: other.slug, id },
+        body: { enabled: false }
+      }),
+      crossOrgCase('testOrganisationAiKey', { app: api, as: owner(), params: { org: other.slug, id } }),
+      crossOrgCase('deleteOrganisationAiKey', { app: api, as: owner(), params: { org: other.slug, id } }),
+      crossOrgCase('getOrganisationAiKeyUsage', { app: api, as: owner(), params: { org: other.slug } }),
+      crossOrgCase('getOrganisationAiSettings', { app: api, as: owner(), params: { org: other.slug } }),
+      crossOrgCase('updateOrganisationAiSettings', {
+        app: api,
+        as: owner(),
+        params: { org: other.slug },
+        body: { ai_fallback_enabled: true }
+      }),
+      crossOrgCase('getUsage', { app: v1, as: owner(), org: other.slug, params: {} })
+    ]
+    for (const crossOrg of cases) await crossOrg.run()
+    const kept = await inOrg(other.id, (tx) => tx.select().from(aiKey).where(eq(aiKey.id, id)))
+    expect(kept[0]).toMatchObject({ enabled: true })
+  })
 })
 
 describe('organisation key updates, tests and deletes', () => {

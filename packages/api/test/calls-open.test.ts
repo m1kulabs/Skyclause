@@ -5,7 +5,7 @@ import { makeOrganization, makeProject } from '@skyclause/db/test/factories/inde
 import { eq } from 'drizzle-orm'
 import { beforeAll, describe, expect, test } from 'vitest'
 import type { WithTenant } from '../src/tenancy'
-import { apiRequest, asApiKey, asSession, createTestApi, testDeps, testOrg } from './harness'
+import { apiRequest, asApiKey, asSession, createTestApi, crossOrgCase, testDeps, testOrg } from './harness'
 
 const A = 'calls-open-a'
 const B = 'calls-open-b'
@@ -49,13 +49,11 @@ describe('GET /api/calls/{id}/open', () => {
   })
 
   test('hides another organisation’s call from a member', async () => {
-    const response = await apiRequest(api, {
+    await crossOrgCase('openCall', {
+      app: api,
       as: asSession({ org: B, role: 'viewer' }),
-      method: 'GET',
-      path: `/api/calls/${callId}/open`
-    })
-
-    expect(response.status).toBe(404)
+      params: { id: callId }
+    }).run()
   })
 
   test('returns 404 for an unknown call', async () => {
