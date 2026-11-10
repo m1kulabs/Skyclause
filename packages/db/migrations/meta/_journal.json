@@ -180,8 +180,22 @@
     {
       "idx": 25,
       "version": "7",
-      "when": 1794277760348,
-      "tag": "0025_a-analytics-health",
+      "when": 1794278826723,
+      "tag": "0025_b-auditor-findings",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794282192959,
+      "tag": "0026_a-audit-log-indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1794286813724,
+      "tag": "0027_a-analytics-health",
       "breakpoints": true
     }
   ]

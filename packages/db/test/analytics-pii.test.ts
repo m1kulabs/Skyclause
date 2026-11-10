@@ -126,7 +126,8 @@ const EMITTED: Name[] = [
   'channel_connected',
   'evidence_replied',
   'evidence_requested',
-  'unsubscribed'
+  'unsubscribed',
+  'cli_login'
 ]
 
 /** Every catalogue event is either emitted (passing case below) or listed as `it.todo`. */

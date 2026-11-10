@@ -238,9 +238,43 @@ export async function updatePreferences(
  */
 export async function confirmSubscription(
   ctx: ServiceContext,
-  input: Omit<LinkRequest, 'appOrigin'> & { subscriberId: string; tokenId: string }
+  input: Omit<LinkRequest, 'appOrigin'> & {
+    subscriberId: string
+    tokenId: string
+    addressHash?: string
+    email?: string
+  }
 ): Promise<Subscriber> {
   const tx = ctx.tx as Tx
+  const [current] = await tx.select().from(subscriber).where(eq(subscriber.id, input.subscriberId))
+  if (!current) throw linkExpired()
+  let correctedEmail: string | undefined
+  let correctedHash: string | undefined
+  if (input.addressHash !== undefined || input.email !== undefined) {
+    if (!input.addressHash || !input.email) {
+      throw new ApiError(422, 'validation-failed', 'The address confirmation is incomplete.', {
+        errors: [{ in: 'body', pointer: '/email', detail: 'Email and address_hash are both required' }]
+      })
+    }
+    correctedEmail = normalizeEmail(input.email)
+    correctedHash = emailHash(correctedEmail)
+    if (correctedHash !== input.addressHash) {
+      throw new ApiError(422, 'validation-failed', 'The address confirmation does not match this link.', {
+        errors: [{ in: 'body', pointer: '/email', detail: 'Does not match the confirmation link' }]
+      })
+    }
+    if (correctedEmail !== current.email) {
+      const [duplicate] = await tx
+        .select({ id: subscriber.id })
+        .from(subscriber)
+        .where(and(eq(subscriber.projectId, current.projectId), eq(subscriber.email, correctedEmail)))
+      if (duplicate) {
+        throw new ApiError(422, 'validation-failed', 'That address already has a subscription for this project.', {
+          errors: [{ in: 'body', pointer: '/email', detail: 'Already subscribed' }]
+        })
+      }
+    }
+  }
   if (!(await consumeSubscriberToken(tx, input.tokenId))) throw linkExpired()
   const [joined] = await tx
     .select({ noticeVersion: consentRecord.noticeVersion })
@@ -251,17 +285,32 @@ export async function confirmSubscription(
   const { now } = input
   const [row] = await tx
     .update(subscriber)
-    .set({ confirmedAt: now, unsubscribedAt: null, updatedAt: now })
+    .set(
+      correctedEmail
+        ? {
+            email: correctedEmail,
+            emailHash: correctedHash,
+            confirmedAt: current.confirmedAt ?? now,
+            updatedAt: now
+          }
+        : { confirmedAt: now, unsubscribedAt: null, updatedAt: now }
+    )
     .where(eq(subscriber.id, input.subscriberId))
     .returning()
   const hash = emailHash(row!.email)
-  const [stillOut] = await tx
-    .select({ id: subscriber.id })
-    .from(subscriber)
-    .where(and(eq(subscriber.emailHash, hash), isNotNull(subscriber.unsubscribedAt), ne(subscriber.id, row!.id)))
-    .limit(1)
-  if (!stillOut) {
-    await tx.delete(suppression).where(and(eq(suppression.emailHash, hash), eq(suppression.reason, 'unsubscribe')))
+  if (!correctedEmail) {
+    const [stillOut] = await tx
+      .select({ id: subscriber.id })
+      .from(subscriber)
+      .where(and(eq(subscriber.emailHash, hash), isNotNull(subscriber.unsubscribedAt), ne(subscriber.id, row!.id)))
+      .limit(1)
+    if (!stillOut) {
+      await tx
+        .delete(suppression)
+        .where(
+          and(eq(suppression.orgId, tx.orgId!), eq(suppression.emailHash, hash), eq(suppression.reason, 'unsubscribe'))
+        )
+    }
   }
   await tx.insert(consentRecord).values({
     orgId: tx.orgId!,
@@ -269,6 +318,7 @@ export async function confirmSubscription(
     form: 'confirm',
     noticeVersion: joined?.noticeVersion ?? publishedNoticeVersion(),
     language: row!.language,
+    changed: correctedEmail ? ['email'] : [],
     ipHash: input.ipHash
   })
   return subscriberWire(row!)

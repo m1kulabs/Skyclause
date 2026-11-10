@@ -22,6 +22,7 @@ test('lists each documented audit action once', () => {
     'export.requested',
     'organisation.deleted',
     'account.deleted',
+    'subscriber.deleted',
     'mcp.consent_granted',
     'bundle.escalated',
     'listing.proposed',
