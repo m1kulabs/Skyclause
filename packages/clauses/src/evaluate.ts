@@ -1,9 +1,8 @@
 import { canonicalHash } from './canonical-hash'
 import { evalCelCondition, indicatorValToCel, toCelDuration, toCelTimestamp } from './cel'
-import { formatInstant, resolveWindowSpan } from './span'
+import { clauseWindowSpan, effectiveWindowSpan, formatInstant, RAIN_WINDOW_SPAN, resolveWindowSpan } from './span'
 import { localCalendarAt } from './local-calendar'
 import { rainPeriod } from './rain'
-import type { WarningObservation } from './snapshot'
 import type {
   BlockedInput,
   CheckedSheet,
@@ -82,7 +81,7 @@ const VALID_INDICATOR_CEL_TYPES = new Set<IndicatorDefinition['celType']>([
 ])
 
 function resolveRegistryTypeLookup(sheet: CheckedSheet): (indicatorName: string) => IndicatorDefinition['celType'] {
-  const raw = (sheet as CheckedSheet & { registryTypes?: unknown }).registryTypes
+  const raw = sheet.registryTypes
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     throw new Error('CheckedSheet is missing authoritative registryTypes metadata from check(sheet, registry)')
   }
@@ -293,11 +292,7 @@ function computeWindowWarningIndicator(
   const endMs = span?.toMs ?? Date.parse(window.endsAt)
   const warnSeries = snapshot.series[indName] ?? []
 
-  const observations = (
-    snapshot as IndicatorSnapshot & {
-      warningObservations?: Record<string, WarningObservation>
-    }
-  ).warningObservations
+  const observations = snapshot.warningObservations
   const matchingIds: string[] = []
   const matchingSourceIds = new Set<string>()
   let latestObsIso: Instant | null = null
@@ -502,13 +497,9 @@ function evaluateClauseInScope(
 ): ClauseExplanation {
   let spanInfo: { from: Instant; to: Instant; complete: boolean; fromMs: number; toMs: number } | undefined
   if (window && clause.scope === 'window') {
-    const usesRainWindowIndicator =
-      clause.requires.some((r) => r === 'w.rain_max_60m_mm' || r === 'w.rain_max_4h_mm') ||
-      (clause.optional ?? []).some((r) => r === 'w.rain_max_60m_mm' || r === 'w.rain_max_4h_mm')
-    const effectiveSpanDef =
-      clause.span ?? (usesRainWindowIndicator ? { from: 'end-30m' as const, to: 'end+60m' as const } : undefined)
-    if (effectiveSpanDef) {
-      const resolved = resolveWindowSpan(window, effectiveSpanDef)
+    if (clauseWindowSpan(clause)) {
+      const span = effectiveWindowSpan(clause, window)
+      const resolved = { ...span, fromMs: Date.parse(span.from), toMs: Date.parse(span.to) }
       const complete = tEvalMs >= resolved.toMs
       spanInfo = {
         from: resolved.from,
@@ -581,7 +572,7 @@ function evaluateClauseInScope(
     }
 
     if (window && (name === 'w.rain_max_60m_mm' || name === 'w.rain_max_4h_mm')) {
-      const defaultRainSpan = resolveWindowSpan(window, { from: 'end-30m', to: 'end+60m' })
+      const defaultRainSpan = resolveWindowSpan(window, RAIN_WINDOW_SPAN)
       const fromMs = spanInfo ? spanInfo.fromMs : defaultRainSpan.fromMs
       const toMs = spanInfo ? spanInfo.toMs : defaultRainSpan.toMs
       const wiv = computeWindowRainIndicator(name, snapshot, fromMs, toMs, tEvalMs)

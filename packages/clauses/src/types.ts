@@ -89,7 +89,11 @@ export type Clause = {
   wording: { en?: string | undefined; ms?: string | undefined }
 }
 export type SheetInput = { pack: Pack; clauses: Clause[] }
-export type CheckedSheet = SheetInput & { contentHash: string; registryHash: string }
+export type CheckedSheet = SheetInput & {
+  contentHash: string
+  registryHash: string
+  readonly registryTypes?: Readonly<Record<string, IndicatorDefinition['celType']>>
+}
 export interface CheckIssue {
   clauseKey: string | null
   message: string
@@ -155,6 +159,14 @@ export interface NightInput {
   forecastId: string | null
   state: InputState | ForecastNoCallReason
 }
+export interface WarningObservation {
+  sourceId: string
+  observedAt: Instant
+  receivedAt: Instant
+  validFrom: Instant
+  validTo: Instant | null
+}
+
 export interface IndicatorSnapshot {
   projectId: string
   pack: Pack
@@ -163,6 +175,7 @@ export interface IndicatorSnapshot {
   site: Record<string, IndicatorValue>
   series: Record<string, Array<[Instant, number | null, string]>>
   nights: NightInput[]
+  warningObservations?: Record<string, WarningObservation>
   registryHash: string
   hash: string
 }

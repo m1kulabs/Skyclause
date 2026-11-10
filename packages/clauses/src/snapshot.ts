@@ -13,7 +13,8 @@ import type {
   Pack,
   ReadingHistory,
   SnapshotAt,
-  SourceKind
+  SourceKind,
+  WarningObservation
 } from './types'
 
 const MYT_OFFSET_MS = 8 * 3_600_000
@@ -38,13 +39,7 @@ export interface NormalizedReading {
   revision: number
 }
 
-export interface WarningObservation {
-  sourceId: string
-  observedAt: Instant
-  receivedAt: Instant
-  validFrom: Instant
-  validTo: Instant | null
-}
+export type { WarningObservation } from './types'
 
 export interface NormalizedPoll {
   id: string
@@ -82,7 +77,7 @@ export function dedupeReadingsAt(h: ReadingHistory, tEvalMs: number): Normalized
     if (!Number.isFinite(observedMs) || !Number.isFinite(receivedMs)) continue
     if (receivedMs > tEvalMs || observedMs > tEvalMs) continue
 
-    const identityKey = `${r.sourceId}|${r.metric}|${r.itemKey || r.observedAt}`
+    const identityKey = JSON.stringify([r.sourceId, r.metric, observedMs, r.itemKey])
     const existing = byKey.get(identityKey)
     const candidate: NormalizedReading = {
       id: r.id,
@@ -276,6 +271,21 @@ export function resolveSourceAt(
       observedAt,
       ageS,
       readingIds
+    }
+  }
+
+  if (source.kind === 'gtfs_static' && typeof source.meta?.calendar_end === 'string') {
+    // The provider supplies a validated local feed date. Polls do not renew it.
+    const calendarEndMs = Date.parse(`${source.meta.calendar_end}T00:00:00+08:00`) + 86_400_000
+    if (Number.isFinite(calendarEndMs) && tEvalMs >= calendarEndMs) {
+      return {
+        sourceId,
+        state: 'stale',
+        since: formatInstant(calendarEndMs),
+        observedAt,
+        ageS,
+        readingIds
+      }
     }
   }
 

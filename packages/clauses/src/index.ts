@@ -1,3 +1,6 @@
 export * from './types'
 export * from './placeholders/b-clauses'
 export * from './placeholders/b-replay'
+export { resolveSourceAt } from './snapshot'
+export type { SourceResolution } from './snapshot'
+export { effectiveWindowSpan } from './span'

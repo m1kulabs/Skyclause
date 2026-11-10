@@ -1,4 +1,4 @@
-import type { Instant, SpanRef, Window } from './types'
+import type { Clause, Instant, SpanRef, Window } from './types'
 
 export interface ParsedSpanRef {
   anchor: 'start' | 'end'
@@ -78,4 +78,18 @@ export function resolveWindowSpan(
     from: formatInstant(fromMs),
     to: formatInstant(toMs)
   }
+}
+
+export const RAIN_WINDOW_SPAN = { from: 'end-30m', to: 'end+60m' }
+
+export function clauseWindowSpan(clause: Clause): Clause['span'] {
+  const usesRainWindowIndicator = [...clause.requires, ...(clause.optional ?? [])].some(
+    (name) => name === 'w.rain_max_60m_mm' || name === 'w.rain_max_4h_mm'
+  )
+  return clause.span ?? (usesRainWindowIndicator ? RAIN_WINDOW_SPAN : undefined)
+}
+
+export function effectiveWindowSpan(clause: Clause, window: Window): { from: Instant; to: Instant } {
+  const { from, to } = resolveWindowSpan(window, clauseWindowSpan(clause))
+  return { from, to }
 }
