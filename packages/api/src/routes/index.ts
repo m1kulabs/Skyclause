@@ -5,6 +5,7 @@ import type { ApiEnv } from '../context'
 import { approvalHandlers } from './approvals'
 import { aiKeyHandlers } from './ai-keys'
 import { alertHandlers } from './alerts'
+import { analysisHandlers } from './analysis'
 import { bundleHandlers } from './bundles'
 import { channelHandlers } from './channels'
 import { evidenceHandlers } from './evidence'
@@ -50,5 +51,6 @@ export const HANDLERS: Handlers = {
   ...runHandlers, // c-run-orchestrator
   ...approvalHandlers, // c-approval-api
   ...alertHandlers, // c-approver-alerts
-  ...notificationHandlers // c-notifications
+  ...notificationHandlers, // c-notifications
+  ...analysisHandlers // c-analysis-api
 }

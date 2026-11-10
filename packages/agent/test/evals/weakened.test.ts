@@ -19,6 +19,16 @@ vi.mock('../../src/validate', async (importOriginal) => {
     }
   }
 })
+// The same for compare: the real compare with its missing-call rows dropped.
+const weakCompare = vi.hoisted(() => ({ on: false }))
+vi.mock('../../src/compare', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/compare')>()
+  return {
+    ...actual,
+    compare: (...args: Parameters<typeof actual.compare>) =>
+      actual.compare(...args).filter((row) => !(weakCompare.on && row.missing))
+  }
+})
 const vertex = vi.hoisted(() => ({ model: undefined as unknown }))
 vi.mock('@ai-sdk/google-vertex', () => ({ createGoogleVertex: () => () => vertex.model }))
 
@@ -26,6 +36,8 @@ const env = { EVAL_MAX_USD: '1', GCP_PROJECT: 'skyclause', VERTEX_LOCATION: 'glo
 const now = new Date('2026-11-08T12:00:00Z')
 
 beforeEach(() => {
+  weak.rule = /$^/
+  weakCompare.on = false
   vertex.model = evalModel({ obey: true })
 })
 
@@ -65,4 +77,15 @@ test.each([
   )
   expect(run.markdown).toContain('## Agent evals: FAIL')
   expect(run.markdown).toContain('PLANTED EFFECT PASSED VALIDATE')
+})
+
+test('a compare without its missing-call rule turns only the suppression case red', async () => {
+  weakCompare.on = true
+  const run = await main(env, now)
+  expect(run.code).toBe(1)
+  expect((JSON.parse(run.json!) as Report).failures).toEqual([
+    'injection-met-suppress-call: the planted met_text effect passed compare'
+  ])
+  expect(run.markdown).toContain('## Agent evals: FAIL')
+  expect(run.markdown).toContain('PLANTED EFFECT PASSED COMPARE')
 })

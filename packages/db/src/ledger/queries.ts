@@ -1,7 +1,22 @@
 import type { TxHandle } from '@skyclause/contracts'
-import { and, asc, count, desc, eq, gt, inArray, lt, lte, sql, type SQL } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  getTableColumns,
+  getViewSelectedFields,
+  gt,
+  inArray,
+  isNotNull,
+  lt,
+  lte,
+  sql,
+  type SQL
+} from 'drizzle-orm'
 import type { Tx } from '../client'
-import { grade, ledgerEntry, project, window } from '../schema'
+import { call, grade, ledgerEntry, project, publicCall, window } from '../schema'
 
 // #146 ticket decision, reads: `from` and `to` are local dates on `at` in the project's zone; `pack` and `mode` match
 // `body.pack` and `body.mode`; `state` matches `kind` (`call_<state>`, so a state with no ledger kind matches none).
@@ -14,6 +29,18 @@ export interface LedgerFilters {
   state?: string
   kind?: string
 }
+
+/**
+ * Who reads: a `member` sees a call whole; anyone else sees what `public_call` shows, which is approved calls without
+ * `notices`, `recipients`, `recommendations` or `reason`. `recipients` are subscriber IDs and never leave this module.
+ */
+export type LedgerAudience = 'member' | 'public'
+
+const { recipients: _recipients, ...memberCallColumns } = getTableColumns(call)
+// Named by `public_call`'s own columns, so a column added to `call` stays private until the view lists it.
+const publicCallColumns = Object.fromEntries(
+  Object.keys(getViewSelectedFields(publicCall)).map((key) => [key, call[key as keyof typeof call.$inferSelect]])
+) as Omit<typeof memberCallColumns, 'notices' | 'recommendations' | 'reason'>
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -51,10 +78,20 @@ const entryColumns = {
   corrects: ledgerEntry.corrects
 }
 
-/** Newest first, `limit + 1` rows below `beforeSeq`, each with the window and grade its refs name; and the total. */
+/**
+ * Newest first, `limit + 1` rows below `beforeSeq`, each with the window, grade and call its refs name (the call as
+ * `audience` may see it); and the total.
+ */
 export async function listLedger(
   handle: TxHandle,
-  q: { projectId: string; timeZone: string; filters: LedgerFilters; limit: number; beforeSeq?: number }
+  q: {
+    projectId: string
+    timeZone: string
+    filters: LedgerFilters
+    limit: number
+    beforeSeq?: number
+    audience: LedgerAudience
+  }
 ) {
   const tx = handle as Tx
   const where = matching(q.projectId, q.timeZone, q.filters)
@@ -72,6 +109,7 @@ export async function listLedger(
     })
   const windowIds = named('window_id')
   const gradeIds = named('grade_id')
+  const callIds = named('call_id')
   const windows = windowIds.length
     ? await tx
         .select({
@@ -115,15 +153,28 @@ export async function listLedger(
         .from(grade)
         .where(inArray(grade.id, gradeIds))
     : []
+  const calls = callIds.length
+    ? q.audience === 'public'
+      ? await tx
+          .select(publicCallColumns)
+          .from(call)
+          .where(and(inArray(call.id, callIds), eq(call.projectId, q.projectId), isNotNull(call.approvedAt)))
+      : await tx
+          .select(memberCallColumns)
+          .from(call)
+          .where(and(inArray(call.id, callIds), eq(call.projectId, q.projectId)))
+    : []
   const windowById = new Map(windows.map((row) => [row.id, row]))
   const gradeById = new Map(grades.map((row) => [row.id, row]))
+  const callById = new Map<string, (typeof calls)[number]>(calls.map((row) => [row.id, row]))
   const rows = entries.map((entry) => {
     const refs = entry.refs as Record<string, string>
     return {
       ...entry,
       refs,
       window: windowById.get(refs.window_id ?? '') ?? null,
-      grade: gradeById.get(refs.grade_id ?? '') ?? null
+      grade: gradeById.get(refs.grade_id ?? '') ?? null,
+      call: callById.get(refs.call_id ?? '') ?? null
     }
   })
   return { rows, total }

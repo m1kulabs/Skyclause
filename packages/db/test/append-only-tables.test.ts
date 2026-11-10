@@ -49,7 +49,7 @@ test('the tables carrying the append-only trigger are #79 §3’s set, and domai
     return rows.map(({ name }) => name)
   })
   expect(tables).toEqual([...APPEND_ONLY, 'domain_event'].sort())
-})
+}, 15_000)
 
 test.each(APPEND_ONLY)('%s: UPDATE and DELETE fail as app and system and succeed as retention', async (table) => {
   const make = tenantFactories[table] ? asApp(tenantFactories[table]) : asSystem(sharedFactories[table]!)

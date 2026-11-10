@@ -1,3 +1,4 @@
+import { HTTP_PROBLEM_STATUS } from '@skyclause/contracts'
 import type { Channel, Language, Mode, Pack, Page } from '@skyclause/contracts'
 import { channelProject, latestSentCall, listProjectChannels, setProjectChannel, track, type Tx } from '@skyclause/db'
 import { REPLAY_2_NOVEMBER, renderNotice, renderReplayPreview, type NoticeContext } from '@skyclause/delivery'
@@ -30,7 +31,11 @@ const invalid = (detail: string, pointer: string) =>
 export async function channelProjectFor(ctx: ServiceContext, projectId: string, canManage: (id: string) => boolean) {
   const project = await channelProject(ctx.tx, projectId)
   if (!project || !canManage(projectId)) {
-    throw new ApiError(404, 'not-found', 'No such project, or you can’t manage its channels.')
+    throw new ApiError(
+      HTTP_PROBLEM_STATUS['not-found'],
+      'not-found',
+      'No such project, or you can’t manage its channels.'
+    )
   }
   return project
 }

@@ -1,4 +1,19 @@
-import { REGISTRY } from '@skyclause/contracts'
+import { listMyMemberships } from '@skyclause/contracts/api/first-party/me'
+import {
+  evaluateWhatIf as evaluate,
+  getProjectAnalysis,
+  getOrganisationAnalysis
+} from '@skyclause/contracts/api/v1/analysis'
+import {
+  listClauseSheets,
+  listClauseSheetVersions,
+  listClauseSheetDrafts
+} from '@skyclause/contracts/api/v1/clause-sheets'
+import { listGrades } from '@skyclause/contracts/api/v1/grades'
+import { listProjectListings } from '@skyclause/contracts/api/v1/listings'
+import { listNights } from '@skyclause/contracts/api/v1/nights'
+import { listProjects } from '@skyclause/contracts/api/v1/projects'
+import { updateReviewItem as update, listReviewItems } from '@skyclause/contracts/api/v1/review-items'
 import { createApiFetch } from '../../lib/api-fetch'
 
 function operation<
@@ -24,21 +39,18 @@ function operation<
   }
 }
 
-const evaluate = REGISTRY.find((route) => route.operationId === 'evaluateWhatIf')!
-const update = REGISTRY.find((route) => route.operationId === 'updateReviewItem')!
-
 export const analysisOperations = {
-  getProjectAnalysis: operation(REGISTRY.find((route) => route.operationId === 'getProjectAnalysis')!),
-  getOrganisationAnalysis: operation(REGISTRY.find((route) => route.operationId === 'getOrganisationAnalysis')!),
-  listProjects: operation(REGISTRY.find((route) => route.operationId === 'listProjects')!),
-  listMyMemberships: operation(REGISTRY.find((route) => route.operationId === 'listMyMemberships')!),
-  listGrades: operation(REGISTRY.find((route) => route.operationId === 'listGrades')!),
-  listReviewItems: operation(REGISTRY.find((route) => route.operationId === 'listReviewItems')!),
-  listClauseSheets: operation(REGISTRY.find((route) => route.operationId === 'listClauseSheets')!),
-  listClauseSheetVersions: operation(REGISTRY.find((route) => route.operationId === 'listClauseSheetVersions')!),
-  listClauseSheetDrafts: operation(REGISTRY.find((route) => route.operationId === 'listClauseSheetDrafts')!),
-  listNights: operation(REGISTRY.find((route) => route.operationId === 'listNights')!),
-  listProjectListings: operation(REGISTRY.find((route) => route.operationId === 'listProjectListings')!),
+  getProjectAnalysis: operation(getProjectAnalysis),
+  getOrganisationAnalysis: operation(getOrganisationAnalysis),
+  listProjects: operation(listProjects),
+  listMyMemberships: operation(listMyMemberships),
+  listGrades: operation(listGrades),
+  listReviewItems: operation(listReviewItems),
+  listClauseSheets: operation(listClauseSheets),
+  listClauseSheetVersions: operation(listClauseSheetVersions),
+  listClauseSheetDrafts: operation(listClauseSheetDrafts),
+  listNights: operation(listNights),
+  listProjectListings: operation(listProjectListings),
   evaluateWhatIf: {
     ...operation(evaluate),
     request: { params: evaluate.request.params, body: evaluate.request.body.content['application/json'].schema }
