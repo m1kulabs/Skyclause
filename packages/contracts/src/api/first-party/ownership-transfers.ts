@@ -20,7 +20,7 @@ export const acceptOwnershipTransfer = createRoute({
     410: problemResponse('The ownership transfer token expired.'),
     429: problemResponse('The request is rate limited.')
   },
-  x: { owner: 'a-members-api', statement: 'session', idempotent: false }
+  x: { owner: 'a-members-api', statement: 'token', idempotent: false }
 })
 
 export const routes = [acceptOwnershipTransfer] as const

@@ -10,3 +10,10 @@ export async function requireSettings(target: SettingsTarget) {
   if (!maySeeSettings(principal, { ...target, orgId: orgId ?? undefined })) notFound()
   return principal
 }
+
+export async function requireOrganisationSettings(target: SettingsTarget) {
+  if (target.scope !== 'organisation' || !target.orgId) throw new Error('Organisation settings require an organisation')
+  const { principal, orgId, organisation } = await getOrgPrincipal(target.orgId)
+  if (!maySeeSettings(principal, { ...target, orgId: orgId ?? undefined })) notFound()
+  return { principal, organisation }
+}

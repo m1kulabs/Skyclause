@@ -1,0 +1,22 @@
+@keyframes dashboardBundleFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.bundleEnter {
+  animation: dashboardBundleFade 200ms ease-out both;
+}
+
+:global(html[data-motion='reduce']) .bundleEnter {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bundleEnter {
+    animation: none;
+  }
+}

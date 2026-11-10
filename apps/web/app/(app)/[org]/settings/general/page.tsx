@@ -7,7 +7,7 @@ export default async function Page({ params }: { params: Promise<{ org: string }
   const principal = await requireSettings({ scope: 'organisation', section: 'general', orgId: org })
   return (
     <SettingsFrame scope="organisation" section="general" principal={principal} org={org}>
-      <Panel />
+      <Panel org={org} />
     </SettingsFrame>
   )
 }
