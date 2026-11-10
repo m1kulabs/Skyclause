@@ -45,11 +45,11 @@ export interface ApiFetchOptions<Operation> {
   query?: RequestInput<Operation, 'query'>
   body?: RequestInput<Operation, 'body'>
   signal?: AbortSignal
+  /** Forwarded to fetch so undoable actions can flush with keepalive on pagehide. */
+  keepalive?: boolean
   /** Device operations supply their bearer and stable capture idempotency key. */
   headers?: HeadersInit
   credentials?: RequestCredentials
-  /** Deferred SET-7 writes must survive pagehide. */
-  keepalive?: boolean
   /** Required when calling from a server context without an organisation in the URL. */
   org?: string
   /** Reuse across a recent-auth retry of the same logical write. */
