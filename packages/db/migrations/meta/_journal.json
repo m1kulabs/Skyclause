@@ -288,6 +288,20 @@
       "when": 1794289012146,
       "tag": "0040_b-create-project-ui-activation",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1794308727539,
+      "tag": "0041_b-clause-sheets-api-versions",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1794308738545,
+      "tag": "0042_b-clause-sheets-immutability",
+      "breakpoints": true
     }
   ]
 }

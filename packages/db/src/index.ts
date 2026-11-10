@@ -30,6 +30,7 @@ export {
   type AuditRow
 } from './audit'
 export * from './channels'
+export * from './clause-sheets'
 export * from './connect'
 export * from './data-rights'
 export * from './evidence'

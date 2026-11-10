@@ -37,5 +37,5 @@ export async function sheetVersionIn(tx: Tx, projectId: string) {
   const { rows } = await tx.execute<{ n: number }>(
     sql`SELECT coalesce(max(n), 0)::int + 1 AS n FROM sheet_version WHERE sheet_id = ${sheetId}`
   )
-  return (await makeSheetVersion(tx, { sheetId, n: rows[0]!.n })).id
+  return (await makeSheetVersion(tx, { sheetId, n: rows[0]!.n, status: 'published' })).id
 }
