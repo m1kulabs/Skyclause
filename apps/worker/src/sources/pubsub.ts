@@ -93,24 +93,31 @@ export function sourceSubscription(
 }
 
 const pendingPath = 'control/pending-results.json'
-const Pending = z.array(ResultReference)
+const ResultReservation = ResultReference.omit({ sha256: true }).extend({ reserved_until: z.iso.datetime() })
+const Pending = z.array(z.union([ResultReference, ResultReservation]))
+type PendingEntry = z.infer<typeof Pending>[number]
 export const MAX_PENDING_RESULTS = 1000
-/** A failed publish remains discoverable to subsequent jobs and batches. */
-export async function pendingResult(
-  store: SourceObjectStore,
-  reference: ResultReference,
-  remove: boolean
-): Promise<void> {
+// Longer than the current 600-second Cloud Run source execution limit. Expiry reports a stalled
+// reservation; it never releases capacity, creates another operation ID, or refetches captured bytes.
+export const SOURCE_RESERVATION_MS = 20 * 60 * 1000
+async function updatePending(store: SourceObjectStore, entry: PendingEntry, remove: boolean): Promise<void> {
   for (;;) {
     const saved = await store.read(pendingPath)
     const pending = saved ? Pending.parse(decodeObject(saved.body)) : []
-    const previous = pending.find((r) => r.operation_id === reference.operation_id)
-    if (previous && JSON.stringify(previous) !== JSON.stringify(reference))
+    const previous = pending.find((r) => r.operation_id === entry.operation_id)
+    if (
+      previous &&
+      (previous.kind !== entry.kind ||
+        previous.object_path !== entry.object_path ||
+        ('sha256' in previous && 'sha256' in entry && previous.sha256 !== entry.sha256))
+    )
       throw new Error('Conflicting pending source result')
+    // A retry of an operation's reservation cannot replace its finalized hash or renew the reporting clock.
+    if (previous && !remove && 'reserved_until' in entry) return
     if (!remove && !previous && pending.length >= MAX_PENDING_RESULTS)
       throw new Error('Source result outbox is full; ingestion must drain before admission')
-    const next = pending.filter((r) => r.operation_id !== reference.operation_id)
-    if (!remove) next.push(reference)
+    const next = pending.filter((r) => r.operation_id !== entry.operation_id)
+    if (!remove) next.push(entry)
     try {
       await store.write(pendingPath, encodeObject(next), saved?.generation ?? '0')
       return
@@ -119,19 +126,41 @@ export async function pendingResult(
     }
   }
 }
-export async function assertSourceAdmission(store: SourceObjectStore): Promise<void> {
-  const saved = await store.read(pendingPath)
-  if (saved && Pending.parse(decodeObject(saved.body)).length >= MAX_PENDING_RESULTS)
-    throw new Error('Source result outbox is full; ingestion must drain before admission')
+/** Generation CAS claims one bounded slot for this operation before any provider HTTP is admitted. */
+export function reserveSourceResult(
+  store: SourceObjectStore,
+  operationId: string,
+  kind: SourceExecutionResult['kind'],
+  now: Date
+): Promise<void> {
+  return updatePending(
+    store,
+    ResultReservation.parse({
+      operation_id: operationId,
+      kind,
+      object_path: resultPath(kind, operationId),
+      reserved_until: new Date(now.getTime() + SOURCE_RESERVATION_MS).toISOString()
+    }),
+    false
+  )
+}
+/** Finalization reuses the operation's reserved slot even when other producers have filled the outbox. */
+export function pendingResult(store: SourceObjectStore, reference: ResultReference, remove: boolean): Promise<void> {
+  return updatePending(store, reference, remove)
 }
 export async function repairSourceResults(ports: {
   store: SourceObjectStore
   publish: (data: ResultReference) => Promise<void>
+  now?: () => Date
 }): Promise<void> {
   const saved = await ports.store.read(pendingPath),
     failures: unknown[] = []
   for (const ref of saved ? Pending.parse(decodeObject(saved.body)) : []) {
     try {
+      if ('reserved_until' in ref) {
+        if (Date.parse(ref.reserved_until) > (ports.now?.() ?? new Date()).getTime()) continue
+        throw new Error(`Source reservation expired before durable result: ${ref.operation_id}`)
+      }
       const receipt = await ports.store.read(`control/receipts/${ref.operation_id}.json`)
       if (receipt) {
         const stored = ResultReference.parse(decodeObject(receipt.body))

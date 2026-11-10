@@ -18,6 +18,8 @@ export interface BackfillPorts {
   id(): string
   contextFactory: SourceContextFactory
   publish(result: SourceExecutionResult): Promise<void>
+  /** Runtime reserves durable outbox capacity for the winning operation before HTTP. */
+  admit?(operationId: string): Promise<void>
   /** Poll-plan/ingest receipt check. Without a receipt, redelivery safely republishes stable IDs. */
   acknowledged?(operationId: string): Promise<boolean>
   scheduledAt?: string | null
@@ -98,6 +100,9 @@ export async function runBackfillOnce<Raw>(
     }
   })()
   try {
+    await ports.admit?.(claim.operationId)
+    if (renewalError) throw renewalError
+    if (lost || claim.leaseExpiresAt <= clock.now().getTime()) return 'running'
     const result = await executeAdapter(adapter, [source], ports.contextFactory, {
       operationId: claim.operationId,
       purpose: 'backfill',

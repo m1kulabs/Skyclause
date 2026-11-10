@@ -180,7 +180,8 @@ const S = [
   'handled_event',
   'handled_message',
   'idempotency_key',
-  'rate_limit'
+  'rate_limit',
+  'source_observation_head'
 ]
 
 test('app and public_reader read G tables and write none; neither reaches an S table', async () => {

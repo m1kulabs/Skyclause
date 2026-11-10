@@ -302,6 +302,13 @@
       "when": 1794309835078,
       "tag": "0042_b-source-poll-metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1794310615439,
+      "tag": "0043_b-source-observation-head",
+      "breakpoints": true
     }
   ]
 }
