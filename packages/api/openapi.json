@@ -22629,7 +22629,10 @@
                               "type": "string"
                             },
                             "http_status": {
-                              "type": "integer"
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
                             },
                             "new_rows": {
                               "type": "integer"
@@ -39810,7 +39813,10 @@
                               "type": "string"
                             },
                             "http_status": {
-                              "type": "integer"
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
                             },
                             "new_rows": {
                               "type": "integer"
@@ -55584,7 +55590,10 @@
                                         "type": "string"
                                       },
                                       "http_status": {
-                                        "type": "integer"
+                                        "type": [
+                                          "integer",
+                                          "null"
+                                        ]
                                       },
                                       "new_rows": {
                                         "type": "integer"

@@ -1,6 +1,6 @@
 import type { Principal, RecordAudit } from '@skyclause/contracts'
-import type { Tx } from './client'
-import { auditEvent } from './schema'
+import type { Tx } from '../client'
+import { auditEvent } from '../schema'
 
 // #79 §1 recordAudit: the actor and client come from the transaction's principal, never the caller; no personal data.
 
