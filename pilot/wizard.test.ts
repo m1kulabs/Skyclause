@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { readdirSync, readFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const repo = join(import.meta.dir, '..')
@@ -49,6 +50,49 @@ describe('pilot/wizard.sh', () => {
       `*@gmail.com | *@googlemail.com) warn "that's a consumer account; use the Workspace one" ;;`
     )
     expect(owner).toContain('?*@?*.?*) break ;;')
+  })
+
+  test('deployment guard ignores workflow records but detects untracked and tracked bundle changes', () => {
+    const statusCommand = stages.match(/\$\((git status [^\n]+)\)"/)?.[1]
+    expect(statusCommand).toBeDefined()
+    const dir = mkdtempSync(join(tmpdir(), 'pilot-wizard-'))
+    const run = (command: string[]) => {
+      const result = Bun.spawnSync(command, { cwd: dir })
+      expect(result.exitCode).toBe(0)
+      return result.stdout.toString()
+    }
+
+    try {
+      run(['git', 'init', '-q'])
+      mkdirSync(join(dir, 'pilot/shared'), { recursive: true })
+      writeFileSync(join(dir, 'pilot/shared/time.ts'), 'export const value = 1\n')
+      run(['git', 'add', '.'])
+      run([
+        'git',
+        '-c',
+        'user.name=Wizard test',
+        '-c',
+        'user.email=wizard@example.test',
+        '-c',
+        'commit.gpgsign=false',
+        'commit',
+        '-qm',
+        'initial'
+      ])
+      mkdirSync(join(dir, 'pilot/workflows/setup-2026-11-06'), { recursive: true })
+      writeFileSync(join(dir, 'pilot/workflows/setup-2026-11-06/x.json'), '{}\n')
+      expect(run(['bash', '-c', statusCommand!])).toBe('')
+
+      mkdirSync(join(dir, 'pilot/apps-script'), { recursive: true })
+      writeFileSync(join(dir, 'pilot/apps-script/untracked.ts'), 'export {}\n')
+      expect(run(['bash', '-c', statusCommand!])).toContain('?? pilot/apps-script/')
+      rmSync(join(dir, 'pilot/apps-script'), { recursive: true })
+
+      writeFileSync(join(dir, 'pilot/shared/time.ts'), 'export const value = 2\n')
+      expect(run(['bash', '-c', statusCommand!])).toContain(' M pilot/shared/time.ts')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 
   test('parses with bash -n', () => {

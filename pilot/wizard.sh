@@ -439,8 +439,8 @@ else
   # An existing deployment is kept: its /exec URL may already be on the phone and the Pi.
   if [[ -z "$INGEST_DEPLOYMENT_ID" ]]; then
     git fetch -q origin main
-    if ! git merge-base --is-ancestor HEAD origin/main || [[ -n "$(git status --porcelain -- pilot)" ]]; then
-      warn "check out a commit on origin/main with no local changes under pilot/: CI's scope guard reads the manifest"
+    if ! git merge-base --is-ancestor HEAD origin/main || [[ -n "$(git status --porcelain -- pilot ':(exclude)pilot/workflows')" ]]; then
+      warn "check out a commit on origin/main with no local changes under pilot/ except pilot/workflows/: CI's scope guard reads the manifest"
       warn "at the commit this stage deploys"
       exit 1
     fi
