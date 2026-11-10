@@ -110,6 +110,11 @@ test('each SLI from the stored timestamps of every organisation', async () => {
     await handedOver(tx, projectId, call.id, at('09:05', 10))
     await handedOver(tx, projectId, call.id, at('09:05', 40))
     await handedOver(tx, projectId, call.id, null, { status: 'suppressed' })
+    // Calls approved before and after the hour.
+    for (const approvedAt of ['08:30', '09:50']) {
+      const outside = await approved(tx, first.id, approvedAt)
+      await handedOver(tx, projectId, outside.id, at(approvedAt, 5))
+    }
     // Approval SLA: approved in time; breached but escalated; superseded by a newer draft before it fell due.
     const decided = await reviewed(tx, projectId, '09:01', [], { slaDueAt: at('09:31') })
     await makeApproval(tx, { bundleId: decided.id, createdAt: at('09:29') })
@@ -132,6 +137,9 @@ test('each SLI from the stored timestamps of every organisation', async () => {
     await handedOver(tx, projectId, call.id, at('09:26', 15))
     await handedOver(tx, projectId, call.id, null)
     await reviewed(tx, projectId, '09:10', [], { slaDueAt: at('09:40') })
+    // Alerted in time, but after the window: the next batch's, not part of this one's streak.
+    const next = await reviewed(tx, projectId, '09:50', [])
+    await makeBundleAlert(tx, { bundleId: next.id, acceptedAt: at('09:50', 10) })
   })
 
   expect(await measure(batch)).toEqual({
