@@ -36,6 +36,21 @@ describe('pilot/wizard.sh', () => {
     expect(written('secret')).toEqual(['CLASPRC_JSON'])
   })
 
+  test('asks for any Workspace owner and still refuses consumer Gmail', () => {
+    const owner = stages.slice(
+      stages.indexOf('stage "Pick the pilot owner"'),
+      stages.indexOf('stage "Apps Script API and the admin checks"')
+    )
+    expect(owner).toContain('One Google Workspace account owns')
+    expect(owner).toContain('Consumer Gmail has no Workspace admin console for stage 2.')
+    expect(owner).toMatch(/Top 5 final.*pilot's data reachable from the GE-licensed domain.*#576/)
+    expect(stages.split('\n').filter((line) => line.includes('GE-licensed'))).toHaveLength(1)
+    expect(owner).toContain(
+      `*@gmail.com | *@googlemail.com) warn "that's a consumer account; use the Workspace one" ;;`
+    )
+    expect(owner).toContain('?*@?*.?*) break ;;')
+  })
+
   test('parses with bash -n', () => {
     expect(Bun.spawnSync(['bash', '-n', join(import.meta.dir, 'wizard.sh')]).exitCode).toBe(0)
   })
