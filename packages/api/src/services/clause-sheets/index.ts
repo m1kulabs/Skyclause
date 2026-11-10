@@ -246,7 +246,9 @@ export async function evaluateClauseSheet(
     )
     if (!recorded.history.sources.length || !recorded.history.readings.length)
       throw notPublishable('Recorded history is unavailable at the requested time.')
-    windows = FrozenWindows.parse(recorded.windows)
+    const frozen = FrozenWindows.safeParse(recorded.windows)
+    if (!frozen.success) throw notPublishable('The recorded frozen windows are incomplete or invalid.')
+    windows = frozen.data
     snapshot = await dependency(() => snapshotAt(recorded.history, registry, sheet.projectId, sheet.pack, tEval))
   } else {
     if (!ports.snapshots) throw unavailable()

@@ -528,6 +528,21 @@ test('live_evaluate_is_nonpersisting_and_historical_evaluate_is_labelled', async
   ).rejects.toMatchObject({ status: 422 })
 })
 
+test('historical_evaluate_rejects_malformed_frozen_windows_as_not_publishable', async () => {
+  const made = await recorded()
+  services.setClauseSheetPorts({
+    registry: { load: async () => TEST_REGISTRY },
+    snapshots: null,
+    recordedAt: async () => ({
+      history: capturedHistory(),
+      windows: made.windows.map((w) => ({ ...w, startsAt: 'not-an-instant' }))
+    })
+  })
+  await expect(
+    inOrg((ctx) => services.evaluateClauseSheet(ctx, { id: made.id, content: rainSheet(), at: tEval, ...access }))
+  ).rejects.toMatchObject({ status: 422, slug: 'not-publishable' })
+})
+
 test('lists_and_selectors_are_paginated_and_bound_to_sheet_and_project', async () => {
   const made = await recorded()
   const second = await inOrg((ctx) =>

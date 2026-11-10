@@ -76,4 +76,20 @@ export { calendarFeed, serveCalendarFeed, type CalendarFeed, type CalendarFeedDe
 export { inTenant, type ServiceContext, type WithTenant } from './tenancy'
 export { unbuiltOperations } from './unbuilt'
 
-export { setClauseSheetPorts, type ClauseSheetPorts, type RuntimeIndicatorRegistry } from './services/clause-sheets'
+export {
+  createClauseSheetDraft,
+  deleteClauseSheetDraft,
+  evaluateClauseSheet,
+  getClauseSheetDiff,
+  getClauseSheetDraft,
+  getClauseSheetPublishPreview,
+  getClauseSheetVersion,
+  listClauseSheetDrafts,
+  listClauseSheets,
+  listClauseSheetVersions,
+  publishClauseSheet,
+  setClauseSheetPorts,
+  type ClauseSheetAccess,
+  type ClauseSheetPorts,
+  type RuntimeIndicatorRegistry
+} from './services/clause-sheets'

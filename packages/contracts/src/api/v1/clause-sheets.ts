@@ -31,7 +31,12 @@ const EvaluateBody = z.union([
 ])
 const DiffQuery = z.object({
   base: z.union([z.literal('live'), z.coerce.number().int().positive()]),
-  head: z.union([z.templateLiteral(['draft:', z.uuidv7()]), z.coerce.number().int().positive()])
+  head: z.union([
+    z.templateLiteral(['draft:', z.uuidv7()]).openapi({
+      pattern: '^draft:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$'
+    }),
+    z.coerce.number().int().positive()
+  ])
 })
 const SheetDiffEntry = z.object({ key: z.string(), before: Clause.nullable(), after: Clause.nullable() })
 const ReplayResult = z.object({
