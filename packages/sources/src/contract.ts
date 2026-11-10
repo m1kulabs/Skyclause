@@ -46,6 +46,7 @@ export interface CrowdPeriod {
 }
 export interface PollContext {
   now(): Instant
+  // Real response status only; transport and budget failures throw typed errors.
   http(
     url: string,
     options?: { headers?: Record<string, string> }
@@ -56,6 +57,7 @@ export interface PollContext {
     text(): Promise<string>
     arrayBuffer(): Promise<ArrayBuffer>
   }>
+  // Shared across scheduled fetches and contract probes; no Postgres access.
   budget: { take(family: ApiFamily): Promise<void> }
   storage: {
     get(path: string): Promise<Uint8Array | null>
@@ -187,7 +189,9 @@ export interface SourceAdapter<Raw> {
   freshness: 'observed' | 'polled'
   licence: Licence
   batch: 'all_bound' | 'per_source'
+  // HttpError, TimeoutError, NetworkError and RateLimitedError retain failure identity.
   fetch(sources: Source[], ctx: PollContext): Promise<Raw>
+  // Pure; throw SchemaError when the published payload no longer matches.
   parse(raw: Raw, sources: Source[]): ReadingInput[]
   backfill?(source: Source, ctx: PollContext): Promise<Raw>
   discover?(): Promise<DiscoveredSource[]>
