@@ -72,6 +72,14 @@ export function isMember(principal: Principal) {
   return role !== null && role !== 'guest'
 }
 
+/**
+ * A window as the principal may read it: a non-member gets no title (NFR-11) and no `declared_by`, which can name a
+ * subscriber who declared by form.
+ */
+export function windowFor<W extends { title: string; declared_by: string }>(principal: Principal, w: W): W {
+  return isMember(principal) ? w : { ...w, title: '', declared_by: '' }
+}
+
 export async function visibleProject(ctx: ServiceContext, projectId: string) {
   const [row] = await tx(ctx).select().from(project).where(eq(project.id, projectId))
   if (!row || !inScope(ctx.principal, row.id)) throw notFound('project')
@@ -497,12 +505,12 @@ export async function getCall(ctx: ServiceContext, input: { id: string; origin: 
     ...(await explanation(ctx, row)),
     project_id: row.projectId,
     window: w
-      ? {
+      ? windowFor(ctx.principal, {
           id: w.id,
           project_id: w.projectId,
           starts_at: instant(w.startsAt),
           ends_at: instant(w.endsAt),
-          title: isMember(ctx.principal) ? w.title : '',
+          title: w.title,
           kind: w.kind,
           tz: w.tz,
           declared_by: w.declaredBy,
@@ -514,7 +522,7 @@ export async function getCall(ctx: ServiceContext, input: { id: string; origin: 
           cancelled_at: at(w.cancelledAt),
           share_link_id: w.shareLinkId,
           moderation: w.moderation
-        }
+        })
       : null,
     night: n
       ? {
