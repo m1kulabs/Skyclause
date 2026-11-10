@@ -11,6 +11,7 @@ import { evidenceHandlers } from './evidence'
 import { gradesHandlers } from './grades'
 import { ledgerHandlers } from './ledger'
 import { notificationHandlers } from './notifications'
+import { onboardingHandlers } from './onboarding'
 import { projectHandlers } from './projects'
 import { replyHandlers } from './replies'
 import { runHandlers } from './runs'
@@ -50,5 +51,6 @@ export const HANDLERS: Handlers = {
   ...approvalHandlers, // c-approval-api
   ...alertHandlers, // c-approver-alerts
   ...notificationHandlers, // c-notifications
+  ...onboardingHandlers, // b-create-project-ui
   ...analysisHandlers // c-analysis-api
 }

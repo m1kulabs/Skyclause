@@ -105,7 +105,7 @@ export const organization = authSchema.table('organization', {
     .notNull(),
   deletionRequestedAt: timestamp('deletion_requested_at', { withTimezone: true }),
   purgeAfter: timestamp('purge_after', { withTimezone: true }),
-  onboardingSkipped: boolean('onboarding_skipped').default(false).notNull(),
+  onboardingSkipped: jsonb('onboarding_skipped').default([]).notNull(),
   aiFallbackEnabled: boolean('ai_fallback_enabled').default(false).notNull(),
   allowMemberAiKeys: boolean('allow_member_ai_keys').default(false).notNull()
 })

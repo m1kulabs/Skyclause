@@ -53,7 +53,7 @@ function basePlugins(s: AuthSettings) {
             },
             deletionRequestedAt: { type: 'date', required: false, ...fixed },
             purgeAfter: { type: 'date', required: false, ...fixed },
-            onboardingSkipped: { type: 'boolean', required: true, defaultValue: false, ...fixed },
+            onboardingSkipped: { type: 'json', required: true, defaultValue: [], ...fixed },
             aiFallbackEnabled: { type: 'boolean', required: true, defaultValue: false, ...fixed },
             allowMemberAiKeys: { type: 'boolean', required: true, defaultValue: false, ...fixed }
           }

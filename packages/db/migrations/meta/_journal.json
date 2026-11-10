@@ -176,6 +176,20 @@
       "when": 1794247592936,
       "tag": "0024_c-bundle-lifecycle-missing-calls",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794272064530,
+      "tag": "0025_b-create-project-ui-onboarding-skips",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794272076492,
+      "tag": "0026_b-create-project-ui-activation",
+      "breakpoints": true
     }
   ]
 }
