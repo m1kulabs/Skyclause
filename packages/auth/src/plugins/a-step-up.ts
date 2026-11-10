@@ -74,12 +74,8 @@ function bucketHash(key: string, value: string) {
 }
 
 function ipOf(request: Request | undefined) {
-  return (
-    request?.headers.get('cf-connecting-ip')?.trim() ||
-    request?.headers.get('x-real-ip')?.trim() ||
-    request?.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    'unknown'
-  )
+  // Cloud Run appends the client address; earlier entries and other IP headers can be forged.
+  return request?.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim() || 'unknown'
 }
 
 async function checkLimit(

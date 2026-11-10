@@ -20,7 +20,8 @@ function request(
   cookie?: string,
   body?: unknown,
   auth = getAuth().auth,
-  ip = '192.0.2.1'
+  ip = '192.0.2.1',
+  headers: Record<string, string> = {}
 ) {
   return auth.handler(
     new Request(`${APP}/api/auth${path}`, {
@@ -28,6 +29,7 @@ function request(
       headers: {
         Origin: APP,
         'X-Forwarded-For': ip,
+        ...headers,
         ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
         ...(cookie ? { Cookie: cookie } : {})
       },
@@ -194,6 +196,25 @@ test('step-up email sends are capped at ten per hashed IP in one hour', async ()
   expect(responses.filter(({ status }) => status === 200)).toHaveLength(10)
   expect(responses.filter(({ status }) => status === 429)).toHaveLength(1)
   expect(sendStepUpEmail).toHaveBeenCalledTimes(10)
+})
+
+test('spoofed IP headers cannot bypass the confirmation limit behind Cloud Run', async () => {
+  const responses = await Promise.all(
+    Array.from({ length: 11 }, (_, index) =>
+      request(
+        'POST',
+        '/step-up/magic-link/confirm',
+        undefined,
+        { token: 'invalid-token' },
+        getAuth().auth,
+        `192.0.2.${index + 1}, 198.51.100.70`,
+        { 'cf-connecting-ip': `203.0.113.${index + 1}`, 'x-real-ip': `192.0.2.${index + 1}` }
+      )
+    )
+  )
+
+  expect(responses.filter(({ status }) => status === 303)).toHaveLength(10)
+  expect(responses.filter(({ status }) => status === 429)).toHaveLength(1)
 })
 
 test('passkey assertion options are capped at ten per account in one hour', async () => {
