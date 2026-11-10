@@ -52,12 +52,13 @@ export function memberOf(orgId: string, role: 'owner' | 'viewer' = 'owner'): Pri
   }
 }
 
-/** Tables in `public` and `auth` with a NOT NULL `org_id` (T tables), from the live catalogue. */
+/** Tenant-policy tables in `public` and `auth`, including nullable-scope tables such as account export notices. */
 export async function tenantTables() {
   return asLogin('postgres', async (client) => {
     const { rows } = await client.query<{ name: string }>(`
       SELECT c.relname AS name FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-      JOIN pg_attribute a ON a.attrelid = c.oid AND a.attname = 'org_id' AND a.attnotnull AND NOT a.attisdropped
+      JOIN pg_attribute a ON a.attrelid = c.oid AND a.attname = 'org_id' AND NOT a.attisdropped
+      JOIN pg_policy p ON p.polrelid = c.oid AND p.polname = 'tenant'
       WHERE n.nspname IN ('public', 'auth') AND c.relkind IN ('r', 'p') AND NOT c.relispartition ORDER BY 1`)
     return rows.map(({ name }) => name)
   })

@@ -13,6 +13,32 @@ function asDate(value: DateValue): Date {
   return value instanceof Date ? value : new Date(value)
 }
 
+/** Locale-independent wall-clock parts for schedules that use a project time zone. */
+export function zonedDateTimeParts(value: DateValue, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    weekday: 'short',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(asDate(value))
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)!.value
+
+  return {
+    year: part('year'),
+    month: part('month'),
+    day: part('day'),
+    weekday: part('weekday'),
+    hour: Number(part('hour')),
+    minute: Number(part('minute')),
+    second: Number(part('second'))
+  }
+}
+
 function dateParts(value: DateValue, locale: Locale, withWeekday = false) {
   const parts = new Intl.DateTimeFormat(intlLocale(locale), {
     timeZone: TIME_ZONE,

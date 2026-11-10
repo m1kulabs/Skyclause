@@ -189,6 +189,9 @@ test('Admin creates the selected organisation client and sees its secret only on
         client_id: 'oauth_test_client',
         client_secret: secret,
         created_at: '2026-11-06T00:00:00Z',
+        redirect_uri: 'https://vertexaisearch.cloud.google.com/oauth-redirect',
+        authorization_url: new URL('/api/auth/oauth2/authorize', route.request().url()).href,
+        token_url: new URL('/api/auth/oauth2/token', route.request().url()).href,
         ...route.request().postDataJSON()
       }
     })
@@ -250,6 +253,9 @@ test('an unscoped session chooses its organisation and clears the secret on orga
         client_id: 'oauth_second_client',
         client_secret: secret,
         created_at: '2026-11-06T00:00:00Z',
+        redirect_uri: 'https://vertexaisearch.cloud.google.com/oauth-redirect',
+        authorization_url: new URL('/api/auth/oauth2/authorize', route.request().url()).href,
+        token_url: new URL('/api/auth/oauth2/token', route.request().url()).href,
         ...route.request().postDataJSON()
       }
     })

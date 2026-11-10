@@ -181,7 +181,7 @@ test('project rota adds a field-edited override with the project id', async ({ p
   expect(submitted).toMatchObject({
     project_id: projectFixtureData.projectId,
     account_id: adminId,
-    days: ['monday'],
+    days: [1],
     local_start: '14:00',
     local_end: '19:15',
     template: 'storm_afternoon'

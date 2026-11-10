@@ -11150,6 +11150,49 @@
                               "null"
                             ],
                             "minimum": 0
+                          },
+                          "source_state": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "fresh",
+                                  "stale",
+                                  "error",
+                                  "recovered",
+                                  "pending",
+                                  "probation",
+                                  "off_hours"
+                                ]
+                              },
+                              "since": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "http_status": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "pending_until": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "state",
+                              "since",
+                              "http_status",
+                              "pending_until"
+                            ]
                           }
                         },
                         "required": [
@@ -11166,7 +11209,8 @@
                           "licence_id",
                           "licence_label",
                           "latest_reading",
-                          "age_s"
+                          "age_s",
+                          "source_state"
                         ]
                       }
                     },
@@ -49935,7 +49979,10 @@
                         "type": "object",
                         "properties": {
                           "run_id": {
-                            "type": "string"
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "ai_key_id": {
                             "type": [

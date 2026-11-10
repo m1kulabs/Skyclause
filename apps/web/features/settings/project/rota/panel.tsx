@@ -23,7 +23,8 @@ type Template = RotaShift['template']
 type Condition = 'storm_afternoon' | 'surge_night' | null
 type ShiftForm = {
   accountId: string
-  days: string[]
+  /** ISO weekdays, Monday 1 to Sunday 7, as `RotaShift.days` (#103). */
+  days: number[]
   localStart: string
   localEnd: string
   condition: Condition
@@ -71,7 +72,7 @@ function shiftSchedule(shift: RotaShift, timeZone: string, locale: Locale) {
     'project-settings.shift_schedule',
     {
       days: formatList(
-        shift.days.map((day) => t(`project-settings.weekdays.${day}`, {}, locale)),
+        shift.days.map((day) => t(`project-settings.weekdays.${weekdays[day - 1]}`, {}, locale)),
         locale
       ),
       start: shift.local_start,
@@ -147,7 +148,7 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
     setError('')
   }
 
-  const toggleDay = (day: string) =>
+  const toggleDay = (day: number) =>
     setForm((current) => ({
       ...current,
       days: current.days.includes(day) ? current.days.filter((item) => item !== day) : [...current.days, day]
@@ -320,10 +321,11 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
 
           <fieldset className="grid min-w-0 gap-2 sm:grid-cols-2">
             <legend className="mb-2 text-sm font-medium">{t('project-settings.days', {}, locale)}</legend>
-            {weekdays.map((day) => {
-              const id = `rota-day-${day}`
+            {weekdays.map((name, index) => {
+              const day = index + 1
+              const id = `rota-day-${name}`
               return (
-                <label key={day} htmlFor={id} className="flex min-h-11 items-center gap-2 rounded border px-3 text-sm">
+                <label key={name} htmlFor={id} className="flex min-h-11 items-center gap-2 rounded border px-3 text-sm">
                   <input
                     id={id}
                     name="days"
@@ -333,7 +335,7 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
                     checked={form.days.includes(day)}
                     onChange={() => toggleDay(day)}
                   />
-                  {t(`project-settings.weekdays.${day}`, {}, locale)}
+                  {t(`project-settings.weekdays.${name}`, {}, locale)}
                 </label>
               )
             })}

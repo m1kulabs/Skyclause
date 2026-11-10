@@ -64,6 +64,31 @@ test(named('API keys are stored as their SHA-256, never in plaintext'), async ()
   expect(dump).not.toContain(key.key.slice(12))
 })
 
+test(named('the disabled per-key limit still records lastRequest when verifyApiKey accepts a key'), async () => {
+  const before = await asLogin('postgres', (client) =>
+    client.query<{ rate_limit_enabled: boolean; last_request: Date | null }>(
+      'SELECT rate_limit_enabled, last_request FROM auth.apikey WHERE id = $1',
+      [key.id]
+    )
+  )
+  expect(before.rows[0]).toMatchObject({ rate_limit_enabled: false, last_request: null })
+
+  expect(
+    await resolvePrincipal(new Request(`${APP}/v1/me`, { headers: { Authorization: `Bearer ${key.key}` } }), {
+      surface: 'v1'
+    })
+  ).toMatchObject({ kind: 'api_key' })
+
+  const after = await asLogin('postgres', (client) =>
+    client.query<{ rate_limit_enabled: boolean; last_request: Date | null }>(
+      'SELECT rate_limit_enabled, last_request FROM auth.apikey WHERE id = $1',
+      [key.id]
+    )
+  )
+  expect(after.rows[0]?.rate_limit_enabled).toBe(false)
+  expect(after.rows[0]?.last_request).toBeInstanceOf(Date)
+})
+
 test(named('the plugin reads x-api-key; Skyclause reads keys only from Authorization: Bearer'), async () => {
   // Turned on, the plugin's session hook picks the key up from x-api-key alone, then refuses an organisation key.
   const sessionKeys = createAuth(authSettings(), {

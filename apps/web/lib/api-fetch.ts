@@ -135,7 +135,7 @@ export function createApiFetch<const Registry extends ApiRegistry>(
     const baseUrl = config.baseUrl ?? defaultBaseUrl(path)
     const requestUrl = addQuery(baseUrl ? new URL(path, baseUrl) : path, requestOptions.query)
     const headers = new Headers(options.headers)
-    headers.set('Accept', 'application/json')
+    if (!headers.has('Accept')) headers.set('Accept', 'application/json')
 
     if (organization) headers.set('Skyclause-Organization', organization)
     if (operation.idempotent && !headers.has('Idempotency-Key'))
