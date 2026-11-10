@@ -21,8 +21,8 @@ CREATE VIEW bundles_past_sla WITH (security_barrier) AS
 CREATE VIEW signal_health WITH (security_barrier) AS
   WITH hours AS (
     SELECT p.source_id, date_trunc('hour', p.started_at) AS hour,
-      bool_or(p.error_code IS NOT NULL OR (p.http_status IS NOT NULL AND p.http_status >= 500)) AS errored,
-      bool_or(p.outcome <> 'ok') AS not_ok
+      bool_or(p.outcome IN ('error', 'timeout') OR p.error_code IS NOT NULL OR p.http_status >= 400) AS errored,
+      bool_or(p.outcome NOT IN ('ok', 'unchanged')) AS not_ok
     FROM poll p
     GROUP BY p.source_id, date_trunc('hour', p.started_at)
   ),

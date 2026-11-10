@@ -96,9 +96,11 @@ test('signal health shares poll hours fresh, stale and erroring, with the curren
     const { id } = await makeSource(tx)
     await makePoll(tx, { sourceId: id, startedAt: at(6, 15) })
     await makePoll(tx, { sourceId: id, startedAt: at(6, 45) })
-    await makePoll(tx, { sourceId: id, startedAt: at(6, 59) })
+    await makePoll(tx, { sourceId: id, startedAt: at(6, 59), outcome: 'unchanged', httpStatus: 304 })
     await makePoll(tx, { sourceId: id, startedAt: at(7, 0), outcome: 'timeout', httpStatus: 503, errorCode: 'timeout' })
     await makePoll(tx, { sourceId: id, startedAt: at(8, 30), outcome: 'stale_snapshot', httpStatus: 200 })
+    await makePoll(tx, { sourceId: id, startedAt: at(9, 0), outcome: 'error', httpStatus: 404 })
+    await makePoll(tx, { sourceId: id, startedAt: at(10, 0), outcome: 'error', httpStatus: null })
     await makeSourceState(tx, { sourceId: id, state: 'stale', since: at(8, 45) })
     return id
   })
@@ -113,13 +115,13 @@ test('signal health shares poll hours fresh, stale and erroring, with the curren
       sourceId,
       currentState: 'stale',
       stateSince: at(8, 45),
-      hoursTotal: 3,
+      hoursTotal: 5,
       hoursFresh: 1,
       hoursStale: 1,
-      hoursError: 1,
-      shareFresh: 1 / 3,
-      shareStale: 1 / 3,
-      shareError: 1 / 3
+      hoursError: 3,
+      shareFresh: 1 / 5,
+      shareStale: 1 / 5,
+      shareError: 3 / 5
     },
     {
       sourceId: quietId,
