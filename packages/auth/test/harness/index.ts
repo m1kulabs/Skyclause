@@ -138,6 +138,7 @@ export async function makeGrant(o: {
   orgId: string
   accountId: string
   clientId?: string
+  resource?: 'api' | 'mcp'
   scopes: Array<'read' | 'draft'>
   projectIds?: string[]
   shareLinkId?: string
@@ -148,6 +149,7 @@ export async function makeGrant(o: {
     makeOauthGrant(tx, {
       accountId: o.accountId,
       clientId,
+      resource: o.resource ?? 'mcp',
       scopes: o.scopes,
       projectIds: o.projectIds ?? null,
       shareLinkId: o.shareLinkId ?? null,

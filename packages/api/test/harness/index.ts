@@ -18,9 +18,10 @@ import {
   type SkyclauseRoute
 } from '@skyclause/contracts'
 import type { Tx } from '@skyclause/db'
+import { withPublicReader, withSystem } from '@skyclause/db'
 import { expect } from 'vitest'
 import { createApi, type ApiApp, type Registry } from '../../src/app'
-import type { ApiDeps } from '../../src/context'
+import type { ApiDeps, OAuthManagement } from '../../src/context'
 import { HANDLERS } from '../../src/routes'
 import type { IdempotencyRecord, IdempotencyStore, MembershipLookup, RateLimitStore } from '../../src/stores'
 
@@ -242,6 +243,35 @@ export interface TestDeps extends ApiDeps {
   clock: { advance(ms: number): void }
 }
 
+const oauthDouble: OAuthManagement = {
+  async listClients() {
+    return { data: [], next_cursor: null }
+  },
+  async createClient(input) {
+    return {
+      id: randomUUID(),
+      client_id: 'test-oauth-client',
+      client_name: input.clientName,
+      redirect_uris: input.redirectUris,
+      scopes: input.scopes,
+      created_at: TEST_NOW.toISOString(),
+      client_secret: 'test-only-secret',
+      redirect_uri: 'https://vertexaisearch.cloud.google.com/oauth-redirect',
+      authorization_url: `${TEST_APP_ORIGIN}/api/auth/oauth2/authorize`,
+      token_url: `${TEST_APP_ORIGIN}/api/auth/oauth2/token`
+    }
+  },
+  async deleteClient() {
+    return true
+  },
+  async listGrants() {
+    return { data: [], next_cursor: null }
+  },
+  async revokeGrant() {
+    return true
+  }
+}
+
 /** In-memory stores, the membership and `can` doubles, a `withTenant` double and a clock starting at TEST_NOW. */
 export function testDeps(overrides: Omit<Partial<ApiDeps>, 'idempotency'> = {}): TestDeps {
   let now = TEST_NOW.getTime()
@@ -301,11 +331,15 @@ export function testDeps(overrides: Omit<Partial<ApiDeps>, 'idempotency'> = {}):
     idempotency,
     rateLimits: memoryRateLimitStore(),
     withTenant: async (ctx, fn) => fn({ orgId: ctx.orgId, principal: ctx.principal } as unknown as Tx),
+    // #111's `/e` seams; the real ones, so a handler test writes rows on the #79 §7 test database.
+    withSystem,
+    withPublicReader,
     apiKeys,
     recordAudit: async (tx, e) => {
       const { orgId, principal } = tx as unknown as FakeTx
       audits.push({ orgId, actor: principal, action: e.action, target: e.target, after: e.after })
     },
+    oauth: oauthDouble,
     track: async (_tx, name, props) => {
       tracked.push({ name, props })
     },

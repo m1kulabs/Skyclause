@@ -143,7 +143,7 @@ export const notice = tenantTable(
   'notice',
   {
     id: id(),
-    projectId: uuid('project_id').notNull(),
+    projectId: uuid('project_id'),
     kind: noticeKind('kind').notNull(),
     channel: noticeChannel('channel').notNull(),
     idempotencyKey: text('idempotency_key').notNull().unique(),
@@ -162,6 +162,10 @@ export const notice = tenantTable(
     ...timestamps()
   },
   (self) => [
+    check(
+      'notice_scope_check',
+      sql`(${self.kind} = 'export_ready' AND ${self.projectId} IS NULL AND ${self.callId} IS NULL AND ${self.subscriberId} IS NULL AND ${self.accountId} IS NOT NULL) OR (${self.kind} <> 'export_ready' AND ${self.orgId} IS NOT NULL AND ${self.projectId} IS NOT NULL)`
+    ),
     sameOrg('notice_project', self, self.projectId, project, true),
     sameOrg('notice_call', self, self.callId, call, true),
     sameOrg('notice_subscriber', self, self.subscriberId, subscriber, true),
@@ -170,7 +174,8 @@ export const notice = tenantTable(
     index('notice_queued_idx')
       .on(self.orgId)
       .where(sql`${self.status} = 'queued'`)
-  ]
+  ],
+  { nullableOrg: true }
 )
 
 /** A Crowd recipient's reply to a call (CAL-17); append-only. */

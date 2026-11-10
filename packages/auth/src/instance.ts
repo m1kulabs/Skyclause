@@ -53,7 +53,7 @@ function basePlugins(s: AuthSettings) {
             },
             deletionRequestedAt: { type: 'date', required: false, ...fixed },
             purgeAfter: { type: 'date', required: false, ...fixed },
-            onboardingSkipped: { type: 'boolean', required: true, defaultValue: false, ...fixed },
+            onboardingSkipped: { type: 'json', required: true, defaultValue: [], ...fixed },
             aiFallbackEnabled: { type: 'boolean', required: true, defaultValue: false, ...fixed },
             allowMemberAiKeys: { type: 'boolean', required: true, defaultValue: false, ...fixed }
           }
@@ -79,13 +79,10 @@ function basePlugins(s: AuthSettings) {
 }
 
 /** #79 §7: an owner's plugin replaces the base plugin with its `id` in place, or is appended. */
-function withOwners<T extends BetterAuthPlugin[], O extends readonly BetterAuthPlugin[]>(
-  base: T,
-  owners: O
-): Array<T[number] | O[number]> {
+function withOwners<T extends BetterAuthPlugin[]>(base: T, owners: readonly BetterAuthPlugin[]): T {
   const byId = new Map(owners.map((plugin) => [plugin.id, plugin]))
   const added = owners.filter((plugin) => !base.some(({ id }) => id === plugin.id))
-  return [...base.map((plugin) => byId.get(plugin.id) ?? plugin), ...added] as Array<T[number] | O[number]>
+  return [...base.map((plugin) => byId.get(plugin.id) ?? plugin), ...added] as T
 }
 
 /**
@@ -120,7 +117,7 @@ export function createAuth(
   extra: { plugins?: BetterAuthPlugin[]; socialProviders?: BetterAuthOptions['socialProviders'] } = {}
 ) {
   const base = basePlugins(s)
-  const plugins = withOwners(base, [...PLUGINS, ...(extra.plugins ?? [])])
+  const plugins = withOwners(base, [...PLUGINS(s), ...(extra.plugins ?? [])])
   return betterAuth({
     secret: s.secret,
     baseURL: s.appOrigin,

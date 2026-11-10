@@ -83,6 +83,28 @@ export const requireIdempotency: MiddlewareHandler<ApiEnv> = async (c, next) => 
   // Hono turns an error thrown downstream into `c.res` before `next()` resolves.
   await next()
   const claim = { ...id, requestHash }
+  if (c.res.headers.get('X-Skyclause-One-Time') === 'true') {
+    const headers = new Headers(c.res.headers)
+    headers.delete('X-Skyclause-One-Time')
+    c.res = new Response(c.res.body, { status: c.res.status, statusText: c.res.statusText, headers })
+    await idempotency.complete(
+      claim,
+      {
+        status: 422,
+        contentType: 'application/problem+json',
+        location: null,
+        body: JSON.stringify({
+          type: 'https://api.skyclause.com/problems/idempotency-mismatch',
+          title: 'Idempotency key already used',
+          status: 422,
+          detail: 'The one-time value cannot be replayed. Start a new request with a new Idempotency-Key.',
+          instance: url.pathname
+        })
+      },
+      new Date(at.getTime() + IDEMPOTENCY_TTL_MS)
+    )
+    return
+  }
   if (c.res.status >= 200 && c.res.status < 400) {
     await idempotency.complete(
       claim,

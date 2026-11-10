@@ -12,15 +12,35 @@ export function expectedStatus(route: CrawlRoute, role: Role) {
   if (route.group === 'app' && route.path.startsWith('/account/')) {
     if (!hasSession(role) || (role === 'guest' && route.path !== '/account/appearance')) return 404
   }
+  if (route.group === 'app' && route.params?.includes('org')) {
+    const isOwnerOrAdmin = role === 'Owner' || role === 'Admin'
+    if (route.path.endsWith('/new') || route.path.endsWith('/settings/packs')) {
+      return isOwnerOrAdmin ? route.status : 404
+    }
+  }
   return route.status
 }
 
 export async function visit(page: Page, route: CrawlRoute, role: Role = 'signed out'): Promise<Finding[]> {
   const response = await page.goto(route.path)
+  if ((route.path === '/sign-in' || route.path === '/sign-up') && hasSession(role) && role !== 'guest') {
+    await expect(page).toHaveURL(/\/api\/auth\/continue(?:\?.*)?$/)
+    return []
+  }
   if (route.path === '/connect' && (!hasSession(role) || role === 'guest')) {
     await expect(page).toHaveURL(/\/sign-up$/)
     await expect(page.locator('[data-connect-page]')).toHaveCount(0)
-    // #97 owns sign-up; the gate is testable before that destination is built.
+    return []
+  }
+  if (route.path === '/device' && (!hasSession(role) || role === 'guest')) {
+    await expect(page).toHaveURL(hasSession(role) ? /\/sign-up$/ : /\/sign-in\?next=%2Fdevice$/)
+    await expect(page.locator('#device-access-title')).toHaveCount(0)
+    // #98 owns sign-in and sign-up; the gate is testable before those destinations are built.
+    return []
+  }
+  if (route.path === '/oauth/consent' && (role === 'guest' || !hasSession(role))) {
+    await expect(page).toHaveURL(role === 'guest' ? /\/sign-up$/ : /\/sign-in$/)
+    await expect(page.locator('main[aria-labelledby="oauth-consent-title"]')).toHaveCount(0)
     return []
   }
   await expectZonedTimes(page)
