@@ -68,6 +68,16 @@ describe('catalogue translations', () => {
     expect(t('format.ageMinute', { value: 12 }, 'en')).toBe('12 min old')
   })
 
+  test('renders auth email copy from English and carries an MYT expiry time', () => {
+    expect(
+      t('auth.magic_link.body', {
+        url: 'https://app.skyclause.m1ku.tech/sign-in?link=token',
+        expiresAt: formatDateTime(new Date('2026-11-09T00:15:00Z'), 'en')
+      })
+    ).toContain('9 November 2026, 08:15 MYT')
+    expect(t('auth.magic_link_disabled.body')).toContain('Magic-link sign-in is off')
+  })
+
   test('falls back to English when a Malay value is missing', () => {
     const malayFormat = catalogueFiles['../catalogue/ms/format.json'] as { default: { zone?: string } }
     const zone = malayFormat.default.zone

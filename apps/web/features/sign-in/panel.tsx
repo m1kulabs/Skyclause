@@ -167,7 +167,7 @@ export function SignInPanel({ mode, next, state }: { mode: Mode; next: string | 
         {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ link: state.link })
+          body: JSON.stringify({ link: state.link, ...(!state.stepUp && state.resend ? { resend: state.resend } : {}) })
         }
       )
       if (response.redirected) {

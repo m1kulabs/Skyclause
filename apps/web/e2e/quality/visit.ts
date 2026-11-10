@@ -24,18 +24,31 @@ export function expectedStatus(route: CrawlRoute, role: Role) {
   return route.status
 }
 
+/** #98 redirects members through #97's continue endpoint to their account destination. */
+export function redirectsToAccount(route: CrawlRoute, role: Role) {
+  return (route.path === '/sign-in' || route.path === '/sign-up') && hasSession(role) && role !== 'guest'
+}
+
 export async function visit(
   page: Page,
   route: CrawlRoute,
   role: Role = 'signed out',
-  readySelector?: string
+  readySelector?: string,
+  orgSlug?: string
 ): Promise<Finding[]> {
   // #174's project UI routes keep their pattern path; their fixtures serve test-org/test-project.
   const path = route.path.replace('[org]', 'test-org').replace('[project]', 'test-project')
+  const continuation = redirectsToAccount(route, role)
+    ? page.waitForResponse(
+        (response) => new URL(response.url()).pathname === '/api/auth/continue' && response.status() === 303
+      )
+    : undefined
   const response = await page.goto(path)
   if (readySelector) await page.locator(readySelector).waitFor({ state: 'attached' })
-  if ((route.path === '/sign-in' || route.path === '/sign-up') && hasSession(role) && role !== 'guest') {
-    await expect(page).toHaveURL(/\/api\/auth\/continue(?:\?.*)?$/)
+  if (continuation) {
+    expect(orgSlug).toBeTruthy()
+    expect((await continuation).headers().location).toBe(`/${orgSlug}`)
+    await expect(page).toHaveURL(new URL(`/${orgSlug}`, page.url()).href)
     return []
   }
   if (route.path === '/connect' && (!hasSession(role) || role === 'guest')) {
