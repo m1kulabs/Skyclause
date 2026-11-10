@@ -10,6 +10,7 @@ import { analysisHandlers } from './analysis'
 import { bundleHandlers } from './bundles'
 import { channelHandlers } from './channels'
 import { callHandlers } from './calls'
+import { connectHandlers } from './connect'
 import { evidenceHandlers } from './evidence'
 import { gradesHandlers } from './grades'
 import { apiKeyHandlers } from './api-keys'
@@ -72,5 +73,6 @@ export const HANDLERS: Handlers = {
   ...memberHandlers, // a-members-api
   ...rotaHandlers, // a-members-api
   ...oauthHandlers, // e-mcp-auth
-  ...organisationHandlers // a-org-projects
+  ...organisationHandlers, // a-org-projects
+  ...connectHandlers // e-connect-api
 }

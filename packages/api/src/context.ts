@@ -21,6 +21,8 @@ export type WithPublicReader = typeof withPublicReader
 export interface ApiConfig {
   appEnv: 'dev' | 'production' | 'test'
   appOrigin: string | undefined
+  /** Public HTTP MCP endpoint (#208). */
+  mcpOrigin?: string
   ipHashKey: string | undefined
   /** Where permalinks `/c/{callId}` live under HOST_MODE=multi; unset on a single host (#152). */
   marketingOrigin?: string
