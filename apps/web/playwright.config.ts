@@ -17,6 +17,8 @@ if (shared) Object.assign(process.env, shared)
 const allBrowsers = process.env.QUALITY_BROWSERS === 'all'
 // Firefox and WebKit run the crawl and the checks' self-tests, JS-off the crawl; the rest run once, in Chromium.
 const crawl = /quality\/(crawl|checks)\.spec\.ts$/
+// The lab vitals (NFR-9) of the bundle page and the dashboard.
+const mobileVitals = /(?:bundles|dashboard)\/mobile\.spec\.ts$/
 
 export default defineConfig({
   testDir: 'e2e',
@@ -28,7 +30,7 @@ export default defineConfig({
   timeout: process.env.E2E_TIMEOUT ? Number(process.env.E2E_TIMEOUT) : 30_000,
   reporter: process.env.CI ? [['github'], ['list']] : 'list',
   use: { baseURL: deployed ?? `http://localhost:${port}` },
-  testIgnore: pseudo ? undefined : [/(?:quality|camera)\/pseudo\.spec\.ts$/, /bundles\/mobile\.spec\.ts$/],
+  testIgnore: pseudo ? undefined : [/(?:quality|camera)\/pseudo\.spec\.ts$/, mobileVitals],
   projects: pseudo
     ? [
         {
@@ -46,11 +48,14 @@ export default defineConfig({
           testMatch: /quality\/crawl\.spec\.ts$/,
           use: { ...devices['Desktop Chrome'], javaScriptEnabled: false }
         },
+        // NFR-9 in the lab: after the functional projects and one at a time, so neither axe work nor another
+        // measurement takes the throttled CPU.
         {
-          name: 'bundle-mobile',
-          testMatch: /bundles\/mobile\.spec\.ts$/,
+          name: 'mobile-vitals',
+          testMatch: mobileVitals,
           testIgnore: [],
           dependencies: ['chromium', 'chromium-no-js'],
+          workers: 1,
           use: { ...devices['Desktop Chrome'] }
         },
         ...(allBrowsers
