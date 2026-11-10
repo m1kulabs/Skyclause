@@ -18,6 +18,7 @@
     "@skyclause/contracts": "workspace:*",
     "@skyclause/db": "workspace:*",
     "@skyclause/delivery": "workspace:*",
+    "@skyclause/sources": "workspace:*",
     "drizzle-orm": "0.45.4",
     "hono": "4.13.16",
     "jose": "6.2.15",
