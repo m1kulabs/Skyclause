@@ -263,7 +263,14 @@ export async function loadExportDelivery(id: string) {
       .from(notice)
       .where(eq(notice.idempotencyKey, `export-ready:${job.id}`))
       .limit(1)
-    if (!recipient || recipient.deletedAt || !noticeRow || noticeRow.status === 'sent') return null
+    if (
+      !recipient ||
+      recipient.deletedAt ||
+      !noticeRow ||
+      noticeRow.acceptedAt ||
+      !['queued', 'failed'].includes(noticeRow.status)
+    )
+      return null
     return { job, notice: noticeRow, email: recipient.email }
   })
 }

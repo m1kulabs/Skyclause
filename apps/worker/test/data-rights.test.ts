@@ -136,6 +136,11 @@ test('an export task writes one ZIP with matching per-project call counts and se
       .where(and(eq(notice.kind, 'export_ready'), eq(notice.accountId, requester.id)))
   )
   expect(notices).toHaveLength(1)
+  for (const status of ['sent', 'delivered', 'bounced', 'complained'] as const) {
+    await withSystem('test:data-rights', (tx) => tx.update(notice).set({ status }).where(eq(notice.id, notices[0]!.id)))
+    await part.queues!.exports!({ name: 'export-test', retryCount: 1, body: { export_id: job.id } })
+    expect(sent).toHaveLength(1)
+  }
 })
 
 test('an account export writes under its account prefix without auth secrets', async () => {
