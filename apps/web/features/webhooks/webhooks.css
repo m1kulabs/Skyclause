@@ -164,7 +164,8 @@
 @media (max-width: 767px) {
   .webhook-panes {
     display: flex;
-    flex-direction: column;
+    /* The panel library's inline row direction stays until useIsMobile re-renders the group as vertical. */
+    flex-direction: column !important;
     height: auto;
   }
   .webhook-panes > [data-slot='resizable-panel'] {
