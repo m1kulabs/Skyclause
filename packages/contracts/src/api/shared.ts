@@ -632,14 +632,36 @@ export type PublicProjectState = z.infer<typeof PublicProjectState>
 // Spec §1 clause fields (`../clauses`) and §3 version metadata, used by read/draft/evaluate/publish operations.
 export const SheetContent = SheetInput
 export type SheetContent = z.infer<typeof SheetContent>
-export const SheetVersion = z.object({
+export const SheetCheckIssue = z.object({
+  clause_key: z.string().nullable(),
+  message: z.string(),
+  offset: z.number().int().nonnegative(),
+  length: z.number().int().nonnegative()
+})
+export const SheetCheckResult = z.object({
+  ok: z.boolean(),
+  publishable: z.boolean(),
+  issues: z.array(SheetCheckIssue)
+})
+const SheetVersionFields = z.object({
   id: z.string(),
-  status: z.enum(['draft', 'published']),
-  n: z.number().int(),
   content: SheetContent,
   content_hash: z.string(),
-  published_by: z.string().nullable()
+  published_by: z.string().nullable(),
+  base_n: z.number().int().nonnegative().nullable(),
+  published_at: Instant.nullable(),
+  check: SheetCheckResult.nullable(),
+  publishable: z.boolean(),
+  validation_status: z.enum(['checked', 'unavailable'])
 })
+export const DraftSheetVersion = SheetVersionFields.extend({ status: z.literal('draft'), n: z.null() })
+export type DraftSheetVersion = z.infer<typeof DraftSheetVersion>
+export const PublishedSheetVersion = SheetVersionFields.extend({
+  status: z.literal('published'),
+  n: z.number().int().positive()
+})
+export type PublishedSheetVersion = z.infer<typeof PublishedSheetVersion>
+export const SheetVersion = z.discriminatedUnion('status', [DraftSheetVersion, PublishedSheetVersion])
 export type SheetVersion = z.infer<typeof SheetVersion>
 export const ClauseSheet = z.object({
   id: z.string(),

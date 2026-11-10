@@ -1,14 +1,16 @@
 import { IdParams, ProblemResponse, ReauthProblems as CommonProblems, IdempotencyHeaders } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Instant, SheetVersion, Verdict } from '../shared'
+import { Instant, DraftSheetVersion, PublishedSheetVersion, Verdict } from '../shared'
 import { Clause } from '../../clauses'
 
-const PublishSelection = z.object({ draft_id: z.string() })
-const PublishedSheetVersion = SheetVersion.extend({ published_at: Instant.nullable() })
+const PublishSelection = z.object({ draft_id: z.uuidv7() })
 const PublishPreview = z.object({
-  draft: PublishedSheetVersion,
+  draft: DraftSheetVersion,
   live: PublishedSheetVersion.nullable(),
+  base_n: z.number().int().nonnegative(),
+  live_n: z.number().int().positive().nullable(),
+  base_drift: z.boolean(),
   preview_hash: z.string(),
   publishable: z.boolean(),
   errors: z.array(z.object({ path: z.string(), message: z.string() })),
@@ -31,6 +33,7 @@ export const getClauseSheetPublishPreview = createRoute({
   request: { params: IdParams, query: PublishSelection },
   responses: {
     ...CommonProblems,
+    501: { ...ProblemResponse, description: 'not-built: an authoritative publication dependency is unavailable' },
     422: { ...ProblemResponse, description: 'not-publishable or idempotency-mismatch' },
     200: { description: 'Success', content: { 'application/json': { schema: PublishPreview } } }
   },
@@ -52,6 +55,7 @@ export const publishClauseSheet = createRoute({
   },
   responses: {
     ...CommonProblems,
+    501: { ...ProblemResponse, description: 'not-built: an authoritative publication dependency is unavailable' },
     422: { ...ProblemResponse, description: 'not-publishable or idempotency-mismatch' },
     201: {
       description: 'Immutable version published',

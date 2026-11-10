@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { integer, jsonb, text, unique, uuid, type PgTableExtraConfigValue } from 'drizzle-orm/pg-core'
+import { check, integer, jsonb, text, unique, uuid, type PgTableExtraConfigValue } from 'drizzle-orm/pg-core'
 import { id, instant, orgKey, sameOrg, tenantTable, timestamps } from './columns'
 import { scopeKind, sheetStatus } from './enums'
 import { pack, project } from './project'
@@ -31,7 +31,12 @@ export const sheetVersion = tenantTable(
   {
     id: id(),
     sheetId: uuid('sheet_id').notNull(),
-    n: integer('n').notNull(),
+    n: integer('n'),
+    baseN: integer('base_n'),
+    checkResult: jsonb('check_result'),
+    checkedContent: jsonb('checked_content'),
+    validationRegistryHash: text('validation_registry_hash'),
+    publishPreview: jsonb('publish_preview'),
     status: sheetStatus('status').notNull().default('draft'),
     content: jsonb('content').notNull(),
     contentHash: text('content_hash').notNull(),
@@ -42,7 +47,11 @@ export const sheetVersion = tenantTable(
   (self): PgTableExtraConfigValue[] => [
     orgKey('sheet_version', self),
     sameOrg('sheet_version_sheet', self, self.sheetId, clauseSheet, true),
-    unique('sheet_version_sheet_id_n_key').on(self.sheetId, self.n)
+    unique('sheet_version_sheet_id_n_key').on(self.sheetId, self.n),
+    check(
+      'sheet_version_status_n_check',
+      sql`(${self.status} = 'draft' AND ${self.n} IS NULL) OR (${self.status} = 'published' AND ${self.n} IS NOT NULL AND ${self.n} > 0)`
+    )
   ]
 )
 

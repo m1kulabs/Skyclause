@@ -139,6 +139,10 @@
                 }
               },
               "required": ["pack", "clauses"]
+            },
+            "base_n": {
+              "type": "integer",
+              "minimum": 0
             }
           },
           "required": ["content"]
@@ -160,13 +164,6 @@
               "properties": {
                 "id": {
                   "type": "string"
-                },
-                "status": {
-                  "type": "string",
-                  "enum": ["draft", "published"]
-                },
-                "n": {
-                  "type": "integer"
                 },
                 "content": {
                   "type": "object",
@@ -289,9 +286,78 @@
                 },
                 "published_by": {
                   "type": ["string", "null"]
+                },
+                "base_n": {
+                  "type": ["integer", "null"],
+                  "minimum": 0
+                },
+                "published_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                },
+                "check": {
+                  "type": ["object", "null"],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "publishable": {
+                      "type": "boolean"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "clause_key": {
+                            "type": ["string", "null"]
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "offset": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "length": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "required": ["clause_key", "message", "offset", "length"]
+                      }
+                    }
+                  },
+                  "required": ["ok", "publishable", "issues"]
+                },
+                "publishable": {
+                  "type": "boolean"
+                },
+                "validation_status": {
+                  "type": "string",
+                  "enum": ["checked", "unavailable"]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["draft"]
+                },
+                "n": {
+                  "type": "null"
                 }
               },
-              "required": ["id", "status", "n", "content", "content_hash", "published_by"]
+              "required": [
+                "id",
+                "content",
+                "content_hash",
+                "published_by",
+                "base_n",
+                "published_at",
+                "check",
+                "publishable",
+                "validation_status",
+                "status",
+                "n"
+              ]
             }
           },
           "required": ["status", "body"],
