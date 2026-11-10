@@ -348,6 +348,7 @@ test('401 reauth-required opens step-up and retries client creation with the sam
   await page.keyboard.press('Enter')
   await expect(page.getByText('step_up_secret', { exact: true })).toBeVisible()
   expect(writes).toBe(2)
+  expect(keys[0]).toBeTruthy()
   expect(keys[1]).toBe(keys[0])
 })
 

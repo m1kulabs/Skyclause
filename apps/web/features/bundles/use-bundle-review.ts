@@ -206,7 +206,12 @@ export function useBundleReview(bundleId: string, org: string, initial?: Initial
     setError(undefined)
     try {
       const result = await withReauth(
-        (idempotencyKey) => apiFetch('approveBundle', { params: { id: bundleId }, body, idempotencyKey }),
+        (idempotencyKey) =>
+          apiFetch('approveBundle', {
+            params: { id: bundleId },
+            body,
+            headers: { 'Idempotency-Key': idempotencyKey }
+          }),
         () => setReauth(body)
       )
       if (currentGeneration !== generation.current || terminal.current) return
