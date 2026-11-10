@@ -83,6 +83,18 @@
 - [ ] Run the focused source+worker tests, `rtk bun run lint`, `rtk bun run typecheck`, `rtk bun run test`, and `rtk terraform fmt -check infra/environments/production/jps-rain.tf`; all must pass. Run `rtk terraform -chdir=infra/environments/production validate` only with existing initialized providers; report any unavailable verification honestly. After code edits, run `rtk graphify update .` per repository instructions. Commit Task 2 as `feat: schedule JPS rain polling`.
 - [ ] For production completion after approved deployment/apply: run the job twice a few minutes apart and capture actual ingested polls after the batch. Keep the issue's 24-hour measurement open until 288 real slots have elapsed; report actual count/errors/newest-observation median lag. Record that the captured graph proves `data[].timestamp`, `data[].rf` and top-level `stationId`, closing this adapter's TRD JSON-path uncertainty. Do not claim deployment, 24-hour evidence or scheduler-lag verification from local tests.
 
+### Task 3: Preserve genuine pre-HTTP slot error results
+
+**Files:** `apps/worker/src/sources/slots.ts`, directly required `execute.ts` no-transport producer normalization if needed, and `apps/worker/test/sources-slots.test.ts`/directly affected execution tests.
+
+**Evidence:** The single final-wave scoped rereview found Important I2 (artifact `121-final-budget-rereview.md`): invalid jps_id before ctx.http creates an existing valid synthetic request with url/status/body null and omitted optional transportStartedAt. savedResult rejects that optional shape, aborting later healthy gauges. The original duplicate-GET finding is addressed.
+
+- [ ] RED actual two-gauge job: genuine completed backfills, clock advanced beyond cadence, first gauge invalid jps_id, second valid75. Assert first schema error publishes with zero physical starts and second gauge performs one normal GET. Same-slot replay preserves the original error/result IDs without another GET.
+- [ ] Cover both omitted and explicit-null no-transport error variants. Normalize the canonical producer or safely recognize the existing unambiguous synthetic no-HTTP shape without rewriting saved bytes. Never treat a real HTTP response with a missing start timestamp as proven no-transport. Keep future/out-of-slot transport/hash/source/receipt corruption rejected.
+- [ ] Fix only compatibility and physical-start counting for nullish transport metadata. Maintain schema classification, true null HTTP/body fields, immutable result hashes/paths and at-most-one slot admission. No HTTP retry, invalid-data skip, broader source protocol or claim release.
+- [ ] Run focused slots/execution and affected source/JPS regressions, typecheck/lint/worker/OpenAPI/seed as affected; preserve existing/global timeouts and all migration/SDK/capture bytes. Fresh full suite only if new source changes/failures create an uncovered concern beyond this narrow path.
+- [ ] Normal-hook code commit, one separate AST graph commit, exact command/output and pin/proof report. Root performs task-scoped spec/quality review. No second broad final fix wave or whole-branch review.
+
 ## Dependencies and completion
 
 Task 2 depends on Task 1 and merged Source120, including resolution of the inspected first-bind double-GET admission discrepancy before claiming the request budget. #131/#133 can consume the indicator definitions and stored rainfall independently; their implementation is outside this plan. Both tasks fit one coherent #121 PR with separate commits. The production elapsed-time criterion and shared scheduler timestamp limitation are explicit evidence/dependency limits, not fabricated success. No new contract change is required for the chosen null-coordinate behavior or discover implementation.
