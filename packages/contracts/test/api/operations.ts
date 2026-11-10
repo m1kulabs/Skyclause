@@ -1408,6 +1408,17 @@ export const OPERATIONS: readonly ExpandedOperation[] = [
     note: 'AI keys use collection GET/POST, item DELETE, POST test and GET usage; saved secrets remain write-only (SET-5).'
   },
   {
+    method: 'patch',
+    path: '/api/orgs/{org}/ai-keys/{id}',
+    surface: 'api',
+    operationId: 'updateOrganisationAiKey',
+    owner: 'e-byok-api',
+    statement: 'ai_keys.manage',
+    idempotent: false,
+    crossOrg: false,
+    note: 'AI keys use collection GET/POST, item PATCH/DELETE, POST test and GET usage; saved secrets remain write-only (SET-5).'
+  },
+  {
     method: 'delete',
     path: '/api/orgs/{org}/ai-keys/{id}',
     surface: 'api',

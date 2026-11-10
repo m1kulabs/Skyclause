@@ -3,6 +3,7 @@ import type { OperationId, Operations } from '@skyclause/contracts'
 import type { Context, MiddlewareHandler } from 'hono'
 import type { ApiEnv } from '../context'
 import { approvalHandlers } from './approvals'
+import { aiKeyHandlers } from './ai-keys'
 import { alertHandlers } from './alerts'
 import { auditHandlers } from './audit'
 import { analysisHandlers } from './analysis'
@@ -44,6 +45,7 @@ export type Handlers = { [Id in OperationId]?: HandlerEntry<Operations[Id]> }
  */
 export const HANDLERS: Handlers = {
   ...auditHandlers, // a-audit-log
+  ...aiKeyHandlers, // e-byok-api
   ...channelHandlers, // c-notice-templates
   ...ledgerHandlers, // c-ledger-chain
   ...subscriberHandlers,
