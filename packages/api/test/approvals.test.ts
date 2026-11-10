@@ -201,6 +201,8 @@ interface Made {
   scene: Scene
   bundleId: string
   callIds: string[]
+  /** #499: the waves the draft left out, whose engine verdict fired. */
+  missing: string[]
   subscribers: { en: string; en2: string; ms: string; unconfirmed: string }
   gauge: { id: string; externalId: string }
 }
@@ -223,6 +225,9 @@ async function draft(
     /** Storm confirmed's wording in the pinned sheet, which is then version 2. */
     wording?: { en?: string; ms?: string }
     draftOnly?: boolean
+    /** #499: the next waves after the calls that the draft leaves out, and the mode the run's engine saw for them. */
+    missing?: number
+    missingMode?: 'outdoor_limited'
   } = {}
 ): Promise<Made> {
   return inOrg(o.org ?? A, async (tx) => {
@@ -263,7 +268,7 @@ async function draft(
       ['15:15', '15:30'],
       ['15:30', '15:45'],
       ['15:45', '16:00']
-    ].slice(0, o.calls ?? 3)
+    ].slice(0, (o.calls ?? 3) + (o.missing ?? 0))
     const windows = []
     for (const [from, to] of waves) windows.push(await windowOf(tx, scene, myt(from!), myt(to!), `Release ${to}`))
     const tEval = myt('15:05').toISOString()
@@ -281,7 +286,16 @@ async function draft(
       runId: r.id,
       pack: 'sky',
       draftOnly: o.draftOnly ?? false,
-      calls: windows.map((w, i) =>
+      missing: windows.slice(o.calls ?? 3).map((w, i) => {
+        const seen = wire(verdicts.windows[(o.calls ?? 3) + i]!, gauge.url)
+        return {
+          windowId: w.id,
+          nightId: null,
+          shadow: o.missingMode ? { ...seen, mode: o.missingMode } : seen,
+          recipients: Object.values(subscribers)
+        }
+      }),
+      calls: windows.slice(0, o.calls ?? 3).map((w, i) =>
         callDraft({
           windowId: w.id,
           mode: o.agentMode ?? 'commute_disruption',
@@ -300,6 +314,7 @@ async function draft(
       scene,
       bundleId: created.bundleId,
       callIds: created.callIds,
+      missing: windows.slice(o.calls ?? 3).map((w) => w.id),
       subscribers,
       gauge: { id: gauge.id, externalId: gauge.externalId }
     }
@@ -352,7 +367,12 @@ async function bundleRow(made: Made) {
 function approve(
   as: Principal,
   made: Made,
-  body: { review_hash?: string; reconfirm?: boolean; calls: Array<Record<string, unknown>> },
+  body: {
+    review_hash?: string
+    reconfirm?: boolean
+    calls: Array<Record<string, unknown>>
+    missing?: Array<Record<string, unknown>>
+  },
   o: { idempotencyKey?: string; reviewHash?: string } = {}
 ) {
   return apiRequest(api, {
@@ -571,6 +591,26 @@ describe('CAL-9: a reading arriving between draft and approval is re-checked', (
     expect(rows.approvals.map((a) => a.action)).toEqual(['reconfirm'])
     expect(rows.calls.map((c) => c.state)).toEqual(['drafted'])
     expect(await bundleState(made)).toBe('reconfirm')
+  })
+
+  test('#499: a redraft-required approval drafts nothing for a missing call, which stays unresolved', async () => {
+    clock = myt('15:12')
+    const made = await draft({
+      calls: 1,
+      missing: 1,
+      notices: [{ language: 'en', subject: 'Storm', body: 'The gauge read 44.5 mm in the last hour.' }]
+    })
+    await inOrg(A, (tx) => storeReadings(tx, made.gauge.id, '15:05', '15:10'))
+    const as = await approver()
+    const decide = { calls: approveAll(made), missing: [{ window_id: made.missing[0], action: 'draft' }] }
+    const conflict = (await (
+      await approve(as, made, { review_hash: await currentHash(made), ...decide })
+    ).json()) as Conflict
+    const response = await approve(as, made, { review_hash: conflict.review_hash, reconfirm: true, ...decide })
+    expect(response.status).toBe(422)
+    expect(((await response.json()) as { type: string }).type).toMatch(/redraft-required$/)
+    expect((await bundleRow(made)).calls).toHaveLength(1)
+    expect((await inOrg(A, (tx) => bundleOf(tx, made))).missing).toMatchObject([{ resolution: null }])
   })
 })
 
@@ -916,5 +956,242 @@ describe('CAL-7, CAL-8 and the bundle’s state', () => {
       calls: [{ call_id: randomUUID(), action: 'approve' }]
     })
     expect(response.status).toBe(422)
+  })
+})
+
+describe('#499: a missing call is drafted or dismissed before the bundle is approved', () => {
+  const dismiss = (made: Made, reason?: string) => ({
+    window_id: made.missing[0],
+    action: 'dismiss',
+    ...(reason === undefined ? {} : { reason })
+  })
+
+  test('approving only the calls, or dismissing without a reason, is refused and writes nothing', async () => {
+    clock = myt('15:07')
+    const made = await draft({ calls: 1, missing: 1 })
+    const as = await approver()
+    const review_hash = await currentHash(made)
+    const unresolved = await approve(as, made, { review_hash, calls: approveAll(made) })
+    expect(unresolved.status).toBe(422)
+    expect(await unresolved.json()).toMatchObject({ detail: expect.stringMatching(/draft it or dismiss it/) })
+    for (const reason of [undefined, '   ']) {
+      const bare = await approve(as, made, { review_hash, calls: approveAll(made), missing: [dismiss(made, reason)] })
+      expect(bare.status).toBe(422)
+    }
+    const stranger = await approve(as, made, {
+      review_hash,
+      calls: approveAll(made),
+      missing: [dismiss(made, 'r'), { window_id: randomUUID(), action: 'dismiss', reason: 'r' }]
+    })
+    expect(stranger.status).toBe(422)
+    // A calls-less request that decides nothing is refused the same way.
+    expect((await approve(as, made, { review_hash, calls: [] })).status).toBe(422)
+    expect((await bundleRow(made)).approvals).toEqual([])
+    expect(await bundleState(made)).toBe('needs_review')
+  })
+
+  test('a dismissal with a reason approves a calls-less bundle, with an approval row, a ledger entry and an audit event', async () => {
+    clock = myt('15:07')
+    const made = await draft({ calls: 0, missing: 1 })
+    const as = await approver()
+    const response = await approve(as, made, {
+      review_hash: await currentHash(made),
+      calls: [],
+      missing: [dismiss(made, ' Gauge reads high after maintenance ')]
+    })
+    expect(response.status, await response.clone().text()).toBe(200)
+    const body = (await response.json()) as { state: string; missing: Array<Record<string, unknown>> }
+    expect(body.state).toBe('approved')
+    expect(body.missing).toEqual([
+      expect.objectContaining({
+        window_id: made.missing[0],
+        resolution: 'dismissed',
+        reason: 'Gauge reads high after maintenance',
+        resolved_by: as.accountId,
+        resolved_at: '2026-11-02T07:07:00Z'
+      })
+    ])
+    const { calls, notices, approvals } = await bundleRow(made)
+    expect([calls, notices]).toEqual([[], []])
+    expect(approvals.map((a) => [a.action, a.callId, a.diff])).toEqual([
+      ['reject', null, { window_id: made.missing[0], reason: 'Gauge reads high after maintenance' }]
+    ])
+    // The ledger can be public, so it holds the dismissal but not its free-text reason.
+    expect(await ledgerOf(made.scene.projectId)).toEqual([
+      {
+        kind: 'call_rejected',
+        refs: { bundle_id: made.bundleId, window_id: made.missing[0] },
+        body: { pack: 'sky', mode: 'commute_disruption', watch: false, approver_role: 'approver', missing: true }
+      }
+    ])
+    expect(await expectOneAudit('call.rejected', { targetId: made.missing[0] })).toMatchObject({
+      actor_id: as.accountId,
+      target_type: 'window',
+      after: { missing: true, bundle_id: made.bundleId, reason: 'Gauge reads high after maintenance' }
+    })
+    expect(await expectOneAudit('bundle.approved', { targetId: made.bundleId })).toMatchObject({
+      after: expect.objectContaining({ sending_call_ids: [], drafted_call_ids: [], dismissed: [made.missing[0]] })
+    })
+  })
+
+  test('a draft adds the engine’s call, worded by its clause, sent to the window’s confirmed subscribers', async () => {
+    clock = myt('15:07')
+    const made = await draft({
+      calls: 1,
+      missing: 1,
+      wording: { en: 'Storm confirmed: {site.rain_60m_mm.value} {site.rain_60m_mm.unit} at the gauge.' }
+    })
+    const as = await approver()
+    const response = await approve(as, made, {
+      review_hash: await currentHash(made),
+      calls: approveAll(made),
+      missing: [{ window_id: made.missing[0], action: 'draft' }]
+    })
+    expect(response.status, await response.clone().text()).toBe(200)
+    const body = (await response.json()) as { state: string; missing: Array<{ call_id: string; resolution: string }> }
+    expect(body.state).toBe('sending')
+    const rows = await bundleRow(made)
+    const drafted = rows.calls.find((c) => c.windowId === made.missing[0])!
+    expect(body.missing).toEqual([expect.objectContaining({ resolution: 'drafted', call_id: drafted.id })])
+    expect(drafted).toMatchObject({
+      state: 'sending',
+      chosen: 'shadow',
+      agrees: true,
+      mode: 'commute_disruption',
+      fired: [{ clause: 'storm_confirmed', inputs: [GAUGE] }],
+      notices: [{ language: 'en', subject: '', body: 'Storm confirmed: 44.5 mm at the gauge.' }],
+      // Storm confirmed expires at the wave's end (CAL-8).
+      expiresAt: myt('15:45')
+    })
+    // NTC-8: the three confirmed subscribers, the unconfirmed one left out.
+    expect(
+      rows.notices
+        .filter((n) => n.callId === drafted.id)
+        .map((n) => n.subscriberId)
+        .sort()
+    ).toEqual([made.subscribers.en, made.subscribers.en2, made.subscribers.ms].sort())
+    // No agent call was there to choose against, so no choose_verdict row.
+    expect(rows.approvals.filter((a) => a.callId === drafted.id).map((a) => a.action)).toEqual(['approve'])
+    expect((await ledgerOf(made.scene.projectId)).find((e) => e.refs.call_id === drafted.id)).toMatchObject({
+      kind: 'call_approved',
+      body: { chosen: 'shadow', missing: true }
+    })
+    expect(await expectOneAudit('bundle.approved', { targetId: made.bundleId })).toMatchObject({
+      after: expect.objectContaining({
+        sending_call_ids: [made.callIds[0], drafted.id],
+        drafted_call_ids: [drafted.id]
+      })
+    })
+  })
+
+  test('a draft whose engine call changed since the run answers 422 redraft-required and adds no call', async () => {
+    clock = myt('15:07')
+    const made = await draft({ calls: 0, missing: 1, missingMode: 'outdoor_limited' })
+    const as = await approver()
+    const response = await approve(as, made, {
+      review_hash: await currentHash(made),
+      calls: [],
+      missing: [{ window_id: made.missing[0], action: 'draft' }]
+    })
+    expect(response.status).toBe(422)
+    expect(((await response.json()) as { type: string }).type).toMatch(/redraft-required$/)
+    expect((await bundleRow(made)).calls).toEqual([])
+    expect(await bundleState(made)).toBe('needs_review')
+  })
+
+  test('a dismissal approves a bundle whose only call is overdue; the call expires unsent (CAL-8)', async () => {
+    clock = myt('15:35')
+    const made = await draft({ calls: 1, missing: 1, until: '15:35' })
+    const as = await approver()
+    const decide = { calls: [], missing: [dismiss(made, 'Storm call drafted by hand')] }
+    // The 15:35 re-check shows the overdue call's input moved (CAL-9); the confirm then approves.
+    const changed = await approve(as, made, { review_hash: await currentHash(made), ...decide })
+    expect(changed.status).toBe(409)
+    const { review_hash } = (await changed.json()) as Conflict
+    const response = await approve(as, made, { review_hash, reconfirm: true, ...decide })
+    expect(response.status, await response.clone().text()).toBe(200)
+    expect((await response.json()) as { state: string }).toMatchObject({ state: 'approved' })
+    expect((await bundleRow(made)).calls.map((c) => c.state)).toEqual(['expired'])
+    expect((await ledgerOf(made.scene.projectId)).map((e) => e.kind)).toEqual(['call_expired', 'call_rejected'])
+  })
+
+  test('a request that decides no call and no missing call is refused, even when every call is overdue', async () => {
+    clock = myt('15:35')
+    const made = await draft({ calls: 1 })
+    const response = await approve(await approver(), made, { review_hash: await currentHash(made), calls: [] })
+    expect(response.status).toBe(422)
+    expect(await bundleState(made)).toBe('needs_review')
+  })
+
+  /** A newer run of `made`'s project, at 15:06, whose draft dropped the call for its first wave. */
+  async function droppedAfter(made: Made): Promise<Made> {
+    return inOrg(A, async (tx) => {
+      const [old] = await tx.select().from(call).where(eq(call.id, made.callIds[0]!))
+      const [parent] = await tx
+        .select()
+        .from(run)
+        .where(eq(run.id, (await bundleOf(tx, made)).runId))
+      const r = await runOf(tx, { ...made.scene, snapshotId: parent!.snapshotId! }, myt('15:06'))
+      const created = await createBundle(tx, {
+        runId: r.id,
+        pack: 'sky',
+        draftOnly: false,
+        calls: [],
+        missing: [{ windowId: old!.windowId, nightId: null, shadow: old!.shadow, recipients: old!.recipients }],
+        triggeredAt: r.triggeredAt,
+        now: myt('15:06')
+      })
+      return { ...made, bundleId: created.bundleId, callIds: [], missing: [old!.windowId!] }
+    })
+  }
+
+  for (const order of ['older first', 'newer first'] as const) {
+    test(`a newer run that drops the call supersedes the older one: approving both, ${order}, sends the wave once`, async () => {
+      clock = myt('15:07')
+      const older = await draft({ calls: 1 })
+      const newer = await droppedAfter(older)
+      const as = await approver()
+      const attempts = {
+        older: async () => approve(as, older, { review_hash: await currentHash(older), calls: approveAll(older) }),
+        newer: async () =>
+          approve(as, newer, {
+            review_hash: await currentHash(newer),
+            calls: [],
+            missing: [{ window_id: newer.missing[0], action: 'draft' }]
+          })
+      }
+      const answers: Record<string, Response> = {}
+      for (const which of order === 'older first' ? (['older', 'newer'] as const) : (['newer', 'older'] as const)) {
+        answers[which] = await attempts[which]()
+      }
+      expect(answers.newer!.status, await answers.newer!.clone().text()).toBe(200)
+      expect(answers.older!.status).toBe(409)
+      expect(await answers.older!.json()).toMatchObject({
+        type: 'https://docs.skyclause.m1ku.tech/problems/bundle-superseded',
+        successor_bundle_id: newer.bundleId
+      })
+      const drafted = (await bundleRow(newer)).calls
+      expect(drafted).toHaveLength(1)
+      // One notice set: the drafted call's, to the three confirmed subscribers; none for the superseded call.
+      const { notices, calls } = await bundleRow(older)
+      expect(calls.map((c) => c.state)).toEqual(['superseded'])
+      expect(notices.map((n) => n.callId)).toEqual([drafted[0]!.id, drafted[0]!.id, drafted[0]!.id])
+    })
+  }
+
+  test('a draft for a wave already over is refused; dismissing it is still possible', async () => {
+    clock = myt('15:46')
+    const made = await draft({ calls: 0, missing: 1, until: '15:45' })
+    const as = await approver()
+    const review_hash = await currentHash(made)
+    const late = await approve(as, made, {
+      review_hash,
+      calls: [],
+      missing: [{ window_id: made.missing[0], action: 'draft' }]
+    })
+    expect(late.status).toBe(422)
+    expect((await bundleRow(made)).calls).toEqual([])
+    const dismissed = await approve(as, made, { review_hash, calls: [], missing: [dismiss(made, 'Wave has passed')] })
+    expect(dismissed.status, await dismissed.clone().text()).toBe(200)
   })
 })

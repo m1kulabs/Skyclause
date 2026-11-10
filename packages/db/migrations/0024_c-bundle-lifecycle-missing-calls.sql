@@ -1,0 +1,1 @@
+ALTER TABLE "bundle" ADD COLUMN "missing" jsonb DEFAULT '[]' NOT NULL;

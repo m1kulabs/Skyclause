@@ -407,6 +407,24 @@ export const BundleState = z.enum([
   'graded'
 ])
 export type BundleState = z.infer<typeof BundleState>
+// #499: a window or night whose engine verdict fired with no call in the draft (#467's compare `missing` row). It holds
+// the bundle in review until an approver drafts the engine's call for it (`call_id`) or dismisses it with a `reason`,
+// or a newer bundle covering it supersedes it (`superseded_by`).
+export const MissingCall = z.object({
+  window_id: z.string().nullable(),
+  night_id: z.string().nullable(),
+  // The engine's verdict as the run saw it.
+  shadow: Verdict,
+  // The window's candidate subscribers at the run: a drafted call's recipients.
+  recipients: z.array(z.string()),
+  resolution: z.enum(['drafted', 'dismissed', 'superseded']).nullable(),
+  call_id: z.string().nullable(),
+  reason: z.string().nullable(),
+  resolved_by: z.string().nullable(),
+  resolved_at: Instant.nullable(),
+  superseded_by: z.string().nullable()
+})
+export type MissingCall = z.infer<typeof MissingCall>
 export const Bundle = z.object({
   id: z.string(),
   project_id: z.string(),
@@ -421,7 +439,9 @@ export const Bundle = z.object({
   approved_by: z.string().nullable(),
   escalation_level: z.number().int(),
   draft_only: z.boolean(),
-  calls: z.array(CallView)
+  calls: z.array(CallView),
+  // #499 (optional): sent only when the draft left out a fired window or night.
+  missing: z.array(MissingCall).optional()
 })
 export type Bundle = z.infer<typeof Bundle>
 export const LedgerKind = z.enum([
