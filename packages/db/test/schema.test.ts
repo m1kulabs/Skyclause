@@ -123,6 +123,42 @@ test.each([
   }
 )
 
+test.each([
+  { name: 'poll_request_id_idx', table: poll, columns: ['request_id'] },
+  { name: 'reading_poll_id_idx', table: reading, columns: ['poll_id'] },
+  { name: 'poll_source_purpose_started_at_idx', table: poll, columns: ['source_id', 'purpose', 'started_at', 'id'] }
+])(
+  'source persistence index $name matches the declaration and covers every existing partition',
+  async ({ name, table, columns }) => {
+    const config = getTableConfig(table)
+    const declared = config.indexes.find((index) => index.config.name === name)
+    expect(declared?.config.columns.map((column) => ('name' in column ? column.name : null))).toEqual(columns)
+    const live = await asLogin('postgres', async (client) => {
+      const { rows } = await client.query<{
+        kind: string
+        valid: boolean
+        columns: string[]
+        partitions: number
+        indexed: number
+      }>(
+        `
+      SELECT c.relkind AS kind, i.indisvalid AS valid,
+        ARRAY(SELECT a.attname::text FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, n)
+          JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum ORDER BY k.n) AS columns,
+        (SELECT count(*)::int FROM pg_inherits WHERE inhparent = i.indrelid) AS partitions,
+        (SELECT count(*)::int FROM pg_inherits h JOIN pg_index child ON child.indexrelid = h.inhrelid
+          WHERE h.inhparent = i.indexrelid AND child.indisvalid) AS indexed
+      FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid WHERE c.relname = $1`,
+        [name]
+      )
+      return rows[0]
+    })
+    expect(live).toMatchObject({ kind: 'I', valid: true, columns })
+    expect(live!.partitions).toBeGreaterThan(1)
+    expect(live!.indexed).toBe(live!.partitions)
+  }
+)
+
 test('every table in public has a factory', async () => {
   const tables = await asLogin('postgres', async (client) => {
     const { rows } = await client.query<{ name: string }>(`
@@ -144,7 +180,8 @@ const S = [
   'handled_event',
   'handled_message',
   'idempotency_key',
-  'rate_limit'
+  'rate_limit',
+  'source_observation_head'
 ]
 
 test('app and public_reader read G tables and write none; neither reaches an S table', async () => {

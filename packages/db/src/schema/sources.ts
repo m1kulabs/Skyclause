@@ -1,5 +1,16 @@
 import { sql } from 'drizzle-orm'
-import { boolean, doublePrecision, foreignKey, integer, jsonb, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
+import {
+  boolean,
+  doublePrecision,
+  foreignKey,
+  integer,
+  jsonb,
+  pgTable,
+  primaryKey,
+  text,
+  unique,
+  uuid
+} from 'drizzle-orm/pg-core'
 import { organization } from './auth'
 import { id, instant, sameOrg, tenantTable, timestamps } from './columns'
 import { freshness, inputState, sourceKind, sourceRole } from './enums'
@@ -23,7 +34,7 @@ export const source = pgTable(
     cadenceS: integer('cadence_s').notNull(),
     freshness: freshness('freshness').notNull(),
     staleAfterS: integer('stale_after_s').notNull(),
-    licenceId: text('licence_id').notNull(),
+    licenceId: text('licence_id'),
     licenceLabel: text('licence_label').notNull(),
     probation: boolean('probation').notNull().default(false),
     meta: jsonb('meta')
@@ -68,3 +79,18 @@ export const sourceState = pgTable('source_state', {
   pendingUntil: instant('pending_until'),
   updatedAt: instant('updated_at').notNull().defaultNow()
 })
+
+/** Private S metadata: latest successful capture that explicitly contained each observation key. */
+export const sourceObservationHead = pgTable(
+  'source_observation_head',
+  {
+    sourceId: uuid('source_id')
+      .notNull()
+      .references(() => source.id, { onDelete: 'cascade' }),
+    metric: text('metric').notNull(),
+    observedAt: instant('observed_at').notNull(),
+    itemKey: text('item_key').notNull().default(''),
+    capturedAt: instant('captured_at').notNull()
+  },
+  (self) => [primaryKey({ columns: [self.sourceId, self.metric, self.observedAt, self.itemKey] })]
+)

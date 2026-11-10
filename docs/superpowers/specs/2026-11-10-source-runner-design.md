@@ -100,11 +100,13 @@ sidecar; adapter authors still see only the established `PollContext`.
   `SchemaError`. Schema and reading validation failures are poll errors, never
   partial readings. Bodies may be persisted to GCS and represented by pointers
   to avoid Pub/Sub size limits.
-- Compare each source with its previous successful `ok` body digest for the same
-  purpose. For a single-response fetch, skip parsing entirely if all participating
-  sources match; otherwise parse once and filter unchanged sources from writes.
-  Do not bypass aggregate multi-response parsing based only on the last body's
-  digest. Empty valid results are `unchanged` and never create placeholder values.
+- Cached poll-plan digests have no proven freshness: production fetch jobs spend
+  parse CPU, then ingestion performs authoritative digest/value deduplication
+  under its source lock. The executor's optional single-response parse skip is
+  valid only with a proven fresh baseline for every participating source and the
+  same purpose; the production cached plan does not supply that proof. Never
+  bypass aggregate parsing based only on the last response digest. Empty valid
+  results are `unchanged` and never create placeholder values.
 - Typed metadata: status is the observed HTTP status, or null if no response
   exists; latency is always the measured nonnegative integer, including timeout,
   network and budget wait. This requires nullable `poll.recorded.http_status`.
@@ -134,6 +136,16 @@ do not rewrite append-only historical readings. New initial revision is 1;
 changed `(value, value_text, canonical value_json, unit)` appends latest+1.
 Equal values append nothing. Two list items at one observation time stay distinct.
 Explicit row revision values avoid changing legacy callers' behavior needlessly.
+
+Keep a private S table, `source_observation_head`, with only `source_id`, `metric`,
+`observed_at`, normalized `item_key`, and `captured_at`; copy no reading values.
+Its source foreign key cascades on deletion, and `system_table` restricts access
+to system/retention roles. A successful capture advances each explicitly present
+key's watermark even when its value is unchanged. Under the same source lock,
+reject an older capture for that key, preserving newer corrections while omitted
+keys and unseen historical observations remain eligible. Legacy readings without
+a head retain the latest reading's linked poll `started_at` fallback. Polls and
+readings remain append-only; only this private capture metadata is mutable.
 
 Add `poll.purpose` default `poll`, `body_sha256` nullable, and an API-family field
 for truthful historical request accounting. Use a stable envelope ID/request IDs

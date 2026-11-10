@@ -64,3 +64,46 @@ resource "google_cloud_scheduler_job" "ticks_batch" {
     }
   }
 }
+
+# Pull-only durable source results. No push endpoint may wake Postgres per poll.
+resource "google_pubsub_topic" "poll_results" {
+  project = local.project_id
+  name    = "poll-results"
+
+  message_storage_policy {
+    allowed_persistence_regions = [local.region]
+  }
+}
+
+resource "google_pubsub_subscription" "poll_results" {
+  project                    = local.project_id
+  name                       = "poll-results-worker"
+  topic                      = google_pubsub_topic.poll_results.id
+  ack_deadline_seconds       = 600
+  message_retention_duration = "604800s"
+
+  expiration_policy {
+    ttl = ""
+  }
+
+  retry_policy {
+    minimum_backoff = "10s"
+    maximum_backoff = "600s"
+  }
+}
+
+resource "google_pubsub_topic_iam_member" "poll_results_publisher" {
+  for_each = { worker = local.member.worker, jobs = local.member.jobs }
+
+  project = local.project_id
+  topic   = google_pubsub_topic.poll_results.name
+  role    = "roles/pubsub.publisher"
+  member  = each.value
+}
+
+resource "google_pubsub_subscription_iam_member" "poll_results_subscriber" {
+  project      = local.project_id
+  subscription = google_pubsub_subscription.poll_results.name
+  role         = "roles/pubsub.subscriber"
+  member       = local.member.worker
+}
