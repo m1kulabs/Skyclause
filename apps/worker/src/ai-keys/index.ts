@@ -3,6 +3,7 @@ import { generateText } from 'ai'
 import { log, type WorkerPart } from '../server'
 import { keyTestBody, runKeyTest, type KeyTestDeps } from './test'
 import { rewrapKeys } from './rewrap'
+import './audit'
 
 // e-byok-api's worker part: the on-demand key test (`POST /internal/ai-keys/:id/test`, Google OIDC via server.ts),
 // the daily `kms:rewrap` Cloud Run job, and `modelFor` for the run orchestrator (wired in `runs`, not here).

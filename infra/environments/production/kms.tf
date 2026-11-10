@@ -47,3 +47,10 @@ resource "google_kms_crypto_key_iam_member" "worker_rewrap" {
   role          = "roles/cloudkms.cryptoKeyEncrypter"
   member        = local.member.worker
 }
+
+# The platform rotation audit lists version metadata for this purpose only.
+resource "google_kms_crypto_key_iam_member" "worker_rotation_audit" {
+  crypto_key_id = google_kms_crypto_key.this["ai-keys"].id
+  role          = "roles/cloudkms.viewer"
+  member        = local.member.worker
+}
