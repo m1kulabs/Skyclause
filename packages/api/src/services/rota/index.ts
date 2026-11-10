@@ -328,12 +328,20 @@ export function createRotaService(conditions: ShiftConditions = unknownCondition
     for (let offset = 0; offset < days; offset++) {
       const date = addDate(today, offset)
       const weekday = isoWeekday(date)
+      const available: ShiftRow[] = []
+      for (const shift of eligibleRows) {
+        if (
+          shift.days.includes(weekday) &&
+          (await conditionActive(ctx.tx, conditions, shift, date, q.projectId, orgProjectIds))
+        )
+          available.push(shift)
+      }
       for (const template of ROTA_TEMPLATES) {
         const state = await conditionState(ctx.tx, conditions, template.condition, date, q.projectId, orgProjectIds)
         const start = timeParts(template.local_start)
         const end = timeParts(template.local_end)
-        const covered = eligibleRows
-          .filter((shift) => shift.template === template.template && shift.days.includes(weekday))
+        const covered = available
+          .filter((shift) => shift.template === template.template)
           .map(
             (shift) => [Math.max(start, timeParts(shift.localStart)), Math.min(end, timeParts(shift.localEnd))] as const
           )
