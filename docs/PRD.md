@@ -577,7 +577,7 @@ Events carry random IDs for organisation and project, counts and enums only: no 
 | `mcp_connected`      | An MCP client completes consent          | `client` (claude, chatgpt, gemini_cli, gemini_enterprise, cursor, vscode, other) |
 | `mcp_tool_called`    | An MCP tool returns                      | `tool`, `scope`, `ok`                                                            |
 | `api_key_created`    | An API key is created                    | `scopes`, `expiry_days`                                                          |
-| `cli_login`          | A device-code login completes            | `os`                                                                             |
+| `cli_login`          | A device-code login completes            | `os` (macos, linux, windows, unknown)                                            |
 | `embed_loaded`       | An embed renders                         | `component`, `mode`                                                              |
 | `export_requested`   | An export is requested                   | `scope` (account, organisation)                                                  |
 

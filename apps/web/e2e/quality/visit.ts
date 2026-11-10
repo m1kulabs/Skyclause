@@ -23,6 +23,12 @@ export async function visit(page: Page, route: CrawlRoute, role: Role = 'signed 
     // #97 owns sign-up; the gate is testable before that destination is built.
     return []
   }
+  if (route.path === '/device' && (!hasSession(role) || role === 'guest')) {
+    await expect(page).toHaveURL(hasSession(role) ? /\/sign-up$/ : /\/sign-in\?next=%2Fdevice$/)
+    await expect(page.locator('#device-access-title')).toHaveCount(0)
+    // #98 owns sign-in and sign-up; the gate is testable before those destinations are built.
+    return []
+  }
   await expectZonedTimes(page)
   const expected = expectedStatus(route, role)
   // Firefox revalidates a static page it has cached; 304 is its 200.
