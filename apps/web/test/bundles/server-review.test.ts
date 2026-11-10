@@ -1,7 +1,7 @@
 // #372: the bundle page's server read, through #150's services on this file's test database. Rows come from #92's
 // factories and the account from #94's harness; `getOrgPrincipal` stands in for the request's cookies.
 import '@skyclause/auth/test/harness/database'
-import { addMember, inOrg, makeAccount, makeOrg } from '@skyclause/auth/testing'
+import { addMember, inOrg, makeAccount, makeOrg, setTestPreferences } from '@skyclause/auth/testing'
 import type { Principal, Role } from '@skyclause/contracts'
 import { makeBundle, makeCall, makeNotice, makeSubscriber, makeWindow } from '@skyclause/db/test/factories/index'
 import { beforeAll, expect, test, vi } from 'vitest'
@@ -38,8 +38,9 @@ beforeAll(async () => {
   ;({ bundleId, callId, projectId } = rows)
 })
 
-async function signedIn(role: Role | null): Promise<Principal> {
+async function signedIn(role: Role | null, preferences?: { shortcuts: boolean }): Promise<Principal> {
   const account = await makeAccount()
+  if (preferences) await setTestPreferences(account.id, preferences)
   if (role) await addMember(org.id, account.id, role)
   return {
     kind: 'session',
@@ -71,6 +72,14 @@ test('an approver’s page arrives with the bundle and each call read on the ser
 test('a viewer’s page arrives read on the server, without approval', async () => {
   vi.mocked(getOrgPrincipal).mockResolvedValue({ principal: await signedIn('viewer'), orgId: org.id })
   expect((await serverReview(org.slug, bundleId))?.data.canApprove).toBe(false)
+})
+
+test('the server first render honours the account shortcut preference', async () => {
+  vi.mocked(getOrgPrincipal).mockResolvedValue({
+    principal: await signedIn('approver', { shortcuts: false }),
+    orgId: org.id
+  })
+  expect((await serverReview(org.slug, bundleId))?.data.shortcuts).toBe(false)
 })
 
 test('#521: a guest’s page, by an anonymous session or the guest role, arrives without titles, recipients, notices or reasons', async () => {

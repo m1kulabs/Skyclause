@@ -36,10 +36,10 @@ describe('card models', () => {
         ]
       },
       captured: '2 November 2026, 15:00 MYT',
-      reading: '39 mm site.rain_60m_mm at 15:00 MYT'
+      reading: '39 mm Rain in the last 60 minutes at 15:00 MYT'
     })
     expect(cardAlt(card)).toBe(
-      'Commute disruption. 15:30 MYT – 17:00 MYT · Monday 2 November 2026. Deciding reading: 39 mm site.rain_60m_mm at 15:00 MYT.'
+      'Commute disruption. 15:30 MYT – 17:00 MYT · Monday 2 November 2026. Deciding reading: 39 mm Rain in the last 60 minutes at 15:00 MYT.'
     )
   })
 
@@ -59,10 +59,11 @@ describe('card models', () => {
     expect(cardAlt(card)).toBe('No approved call yet.')
   })
 
-  test('a failing required input adds No call, and a single strip point draws no line', () => {
+  test('a failing required input uses display names in No call and alt text', () => {
     const noCall = {
       inputs: [
-        { name: 'site.rain_60m_mm', source_id: 'src-jps', state: 'error' as const, since: '2026-11-02T06:50:00Z' }
+        { name: 'site.rain_60m_mm', source_id: 'src-jps', state: 'error' as const, since: '2026-11-02T06:50:00Z' },
+        { name: 'site.api_max', source_id: 'src-apims', state: 'error' as const, since: '2026-11-02T06:55:00Z' }
       ]
     }
     const card = projectCard(
@@ -71,9 +72,11 @@ describe('card models', () => {
       NOW
     )
 
-    expect(card.noCall).toBe('No call: site.rain_60m_mm failing since 14:50 MYT')
+    expect(card.noCall).toBe(
+      'No call: Rain in the last 60 minutes, Highest Air Pollution Index failing since 14:50 MYT'
+    )
     expect(cardAlt(card)).toBe(
-      'Commute disruption. 15:30 MYT – 17:00 MYT · Monday 2 November 2026. Deciding reading: 39 mm site.rain_60m_mm at 15:00 MYT. No call: site.rain_60m_mm failing since 14:50 MYT.'
+      'Commute disruption. 15:30 MYT – 17:00 MYT · Monday 2 November 2026. Deciding reading: 39 mm Rain in the last 60 minutes at 15:00 MYT. No call: Rain in the last 60 minutes, Highest Air Pollution Index failing since 14:50 MYT.'
     )
     expect(card.strip).toBeNull()
     expect(card.captured).toBe('2 November 2026, 15:00 MYT')
@@ -91,7 +94,7 @@ describe('card models', () => {
       noCall: null,
       strip: null,
       captured: '2 November 2026, 15:00 MYT',
-      reading: '39 mm site.rain_60m_mm at 15:00 MYT'
+      reading: '39 mm Rain in the last 60 minutes at 15:00 MYT'
     })
   })
 
@@ -100,7 +103,7 @@ describe('card models', () => {
       'Commute disruption. 15:30 MYT – 17:00 MYT · Monday 2 November 2026.'
     )
     expect(cardAlt(callCard(call({ window: null })))).toBe(
-      'Commute disruption. Deciding reading: 39 mm site.rain_60m_mm at 15:00 MYT.'
+      'Commute disruption. Deciding reading: 39 mm Rain in the last 60 minutes at 15:00 MYT.'
     )
   })
 

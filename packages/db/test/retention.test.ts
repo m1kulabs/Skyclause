@@ -2,6 +2,7 @@
 // in-memory bucket double and an `eraseSubscriber` double (until #110 merges). Every comparison is strict: a row
 // exactly on its boundary stays until the next run, and a rerun the same night deletes 0.
 
+import { randomUUID } from 'node:crypto'
 import type { EraseSubscriber } from '@skyclause/contracts'
 import { log } from '@skyclause/config'
 import { eq } from 'drizzle-orm'
@@ -190,19 +191,21 @@ describe('sweepExportFiles', () => {
       frame(`orgs/${orgId}/exports/past.zip`, {}),
       frame(`orgs/${orgId}/exports/inside.zip`, {})
     ])
+    // #109 allows one queued or running export per organisation; a finished export has its file.
     const past = await inOrg((tx) =>
-      makeExportJob(tx, { expiresAt: ago(1), objectPath: `orgs/${orgId}/exports/past.zip` })
+      makeExportJob(tx, { status: 'ready', expiresAt: ago(1), objectPath: `orgs/${orgId}/exports/past.zip` })
     )
     const inside = await inOrg((tx) =>
       makeExportJob(tx, {
+        status: 'ready',
         expiresAt: new Date(NOW.getTime() + DAY_MS),
         objectPath: `orgs/${orgId}/exports/inside.zip`
       })
     )
     const boundary = await inOrg((tx) =>
-      makeExportJob(tx, { expiresAt: NOW, objectPath: `orgs/${orgId}/exports/past.zip` })
+      makeExportJob(tx, { status: 'ready', expiresAt: NOW, objectPath: `orgs/${orgId}/exports/past.zip` })
     )
-    await inOrg((tx) => makeExportJob(tx, { expiresAt: ago(1), objectPath: null }))
+    await inOrg((tx) => makeExportJob(tx, { status: 'failed', expiresAt: ago(1), objectPath: null }))
     const full = deps(deletingErase, { frames: memoryBucket().bucket, exports: bucket })
     expect(await retain((tx) => sweepExportFiles(tx, { orgId, now: NOW }, full))).toEqual({
       deleted: 1,
@@ -220,16 +223,25 @@ describe('sweepExportFiles', () => {
   })
 
   test('sweeps account-scope rows with no organisation', async () => {
-    const { bucket, deleted } = memoryBucket([frame('account-exports/past.zip', {})])
+    // #109 keeps an account export under `accounts/{account_id}/exports/`.
+    const path = `accounts/${randomUUID()}/exports/past.zip`
+    const { bucket, deleted } = memoryBucket([frame(path, {})])
     await withSystem('test', (tx) =>
-      makeExportJob(tx, { scope: 'account', orgId: null, expiresAt: ago(1), objectPath: 'account-exports/past.zip' })
+      makeExportJob(tx, {
+        scope: 'account',
+        orgId: null,
+        accountId: path.split('/')[1],
+        status: 'ready',
+        expiresAt: ago(1),
+        objectPath: path
+      })
     )
     const full = deps(deletingErase, { frames: memoryBucket().bucket, exports: bucket })
     expect(await retain((tx) => sweepExportFiles(tx, { orgId: null, now: NOW }, full))).toEqual({
       deleted: 1,
       pseudonymised: 0
     })
-    expect(deleted).toEqual(['account-exports/past.zip'])
+    expect(deleted).toEqual([path])
   })
 })
 
@@ -444,6 +456,7 @@ describe('NFR-14 retention table', () => {
 describe('runRetentionSweep', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllEnvs()
   })
 
   test('logs one line per sweeper per organisation with counts only, and sweeps account-scope exports', async () => {
@@ -451,12 +464,14 @@ describe('runRetentionSweep', () => {
     vi.spyOn(log, 'error').mockImplementation(() => {})
     const prefix = `orgs/${orgId}/`
     const frames = memoryBucket([frame(`${prefix}old.jpg`, { timeCreated: ago(200) })])
-    const exports = memoryBucket([frame(`${prefix}past.zip`, {})])
+    const exports = memoryBucket([frame(`${prefix}exports/past.zip`, {})])
     const project = await inOrg((tx) => makeProject(tx))
     const email = `swept-${Date.now()}@example.test`
     const messageId = `private-message-${Date.now()}`
     await inOrg((tx) => makeSubscriber(tx, { projectId: project.id, email, unsubscribedAt: ago(31) }))
-    await inOrg((tx) => makeExportJob(tx, { expiresAt: ago(1), objectPath: `${prefix}past.zip` }))
+    await inOrg((tx) =>
+      makeExportJob(tx, { status: 'ready', expiresAt: ago(1), objectPath: `${prefix}exports/past.zip` })
+    )
     await inOrg((tx) => makeSubscriber(tx, { projectId: project.id, unsubscribedAt: ago(29) }))
     await inOrg((tx) => makeHandledMessage(tx, { consumer: 'retention-runner', messageId, handledAt: ago(2) }))
 
@@ -476,6 +491,30 @@ describe('runRetentionSweep', () => {
     expect(JSON.stringify(lines)).not.toContain('@')
     expect(JSON.stringify(lines)).not.toContain(email)
     expect(JSON.stringify(lines)).not.toContain(messageId)
+  })
+
+  test("erases due subscribers through #110's erasure by default, in each subscriber's organisation", async () => {
+    // #110's erasure keeps the address's suppression hash, keyed by EMAIL_HASH_KEY.
+    vi.stubEnv('EMAIL_HASH_KEY', 'retention-test-email-hash-key-32-characters')
+    const info = vi.spyOn(log, 'info').mockImplementation(() => {})
+    vi.spyOn(log, 'error').mockImplementation(() => {})
+    const own = (await makeOrganization()).id
+    const inOwn = <T>(fn: (tx: Tx) => Promise<T>) => withTenant({ orgId: own, principal: systemPrincipal('test') }, fn)
+    const project = await inOwn((tx) => makeProject(tx))
+    const due = await inOwn((tx) => makeSubscriber(tx, { projectId: project.id, unsubscribedAt: ago(31) }))
+
+    await runRetentionSweep(NOW, { buckets: emptyBuckets() })
+
+    expect(await inOwn((tx) => findSubscriber(tx, due.id))).toMatchObject({
+      email: `${due.id}@deleted.invalid`,
+      emailHash: null
+    })
+    expect(info.mock.calls.map(([, fields]) => fields)).toContainEqual({
+      sweeper: 'subscribers',
+      org_id: own,
+      deleted: 0,
+      pseudonymised: 1
+    })
   })
 
   test('keeps going after a failing sweeper and exits non-zero at the end', async () => {

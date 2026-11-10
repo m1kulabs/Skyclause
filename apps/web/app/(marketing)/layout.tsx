@@ -4,6 +4,7 @@ import { MarketingLanguageSuggestion } from './language-suggestion'
 import { RootDocument } from '../../components/root-document'
 
 export const metadata = { ...brandMetadata, title: 'Skyclause' }
+export const instant = false
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (

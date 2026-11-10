@@ -2,8 +2,8 @@
 // and Playwright's signInAs. Accounts, organisations and sessions made here exist only in tests (NFR-15). Callers set
 // the web env first (Vitest's setupFiles, or playwright.config.ts) and point DATABASE_URL_* at a test database.
 import { randomUUID } from 'node:crypto'
-import type { Role, Scope } from '@skyclause/contracts'
-import { tokenHash, withTenant, type Tx } from '@skyclause/db'
+import { DEFAULT_PREFERENCES, type EmailTransport, type Preferences, type Role, type Scope } from '@skyclause/contracts'
+import { account, passkey, session, tokenHash, user, withTenant, type Tx } from '@skyclause/db'
 import {
   makeGuestToken,
   makeMember,
@@ -13,8 +13,10 @@ import {
   makeShareLink,
   makeUser
 } from '@skyclause/db/test/factories/index'
+import { authDatabase } from '@skyclause/db/auth'
 import { memberOf } from '@skyclause/db/test/harness/index'
 import { signJWT, testUtils, type TestCookie, type TestHelpers } from 'better-auth/plugins'
+import { eq } from 'drizzle-orm'
 import { authSettings, createAuth, resources } from '../../src/instance'
 
 export { TEST_AUTH_ENV } from './env'
@@ -24,6 +26,13 @@ let instance: ReturnType<typeof createAuth> | undefined
 /** The app's configuration plus Better Auth's test-utils plugin, on the same database and secret. */
 const harness = () => (instance ??= createAuth(authSettings(), { plugins: [testUtils()] }))
 const helpers = async () => ((await harness().$context) as unknown as { test: TestHelpers }).test
+
+/** A real auth instance with a mailbox double for integration tests. */
+export function createAuthWithStepUpEmail(sendStepUpEmail: EmailTransport['send']): {
+  handler: (request: Request) => Promise<Response>
+} {
+  return createAuth(authSettings(), { sendStepUpEmail })
+}
 
 export interface TestAccount {
   id: string
@@ -69,6 +78,56 @@ export async function signIn(accountId: string): Promise<TestSession> {
   return { sessionId: session.id, token, cookie: headers.get('cookie')!, cookies }
 }
 
+/** Adds a credential-shaped passkey row for account settings tests; never used as application data. */
+export async function addTestPasskey(accountId: string, name = 'Test passkey'): Promise<{ id: string }> {
+  const [row] = await authDatabase()
+    .insert(passkey)
+    .values({
+      userId: accountId,
+      name,
+      publicKey: 'test-public-key',
+      credentialID: `credential-${accountId}-${randomUUID()}`,
+      counter: 0,
+      deviceType: 'platform',
+      backedUp: false
+    })
+    .returning({ id: passkey.id })
+  return row!
+}
+
+/** Adds a linked Google row for account settings tests; never used as application data. */
+export async function addTestGoogleAccount(accountId: string): Promise<{ id: string }> {
+  const [row] = await authDatabase()
+    .insert(account)
+    .values({ userId: accountId, accountId: `google-${accountId}-${randomUUID()}`, providerId: 'google' })
+    .returning({ id: account.id })
+  return row!
+}
+
+export async function setTestMagicLinkEnabled(accountId: string, enabled: boolean): Promise<void> {
+  await authDatabase().update(user).set({ magicLinkEnabled: enabled }).where(eq(user.id, accountId))
+}
+
+export async function getTestMagicLinkEnabled(accountId: string): Promise<boolean | undefined> {
+  const [row] = await authDatabase().select({ enabled: user.magicLinkEnabled }).from(user).where(eq(user.id, accountId))
+  return row?.enabled
+}
+
+export async function setTestPreferences(accountId: string, update: Partial<Preferences>): Promise<void> {
+  await authDatabase()
+    .update(user)
+    .set({ preferences: { ...DEFAULT_PREFERENCES, ...update } })
+    .where(eq(user.id, accountId))
+}
+
+export async function setTestSessionUserAgent(sessionId: string, userAgent: string): Promise<void> {
+  await authDatabase().update(session).set({ userAgent }).where(eq(session.id, sessionId))
+}
+
+export async function deleteTestAccount(accountId: string): Promise<void> {
+  await authDatabase().delete(user).where(eq(user.id, accountId))
+}
+
 /** Revokes a session as signing out does: its row is deleted. */
 export async function revokeSession(token: string): Promise<void> {
   await (await harness().$context).internalAdapter.deleteSession(token)
@@ -85,6 +144,7 @@ export async function makeApiKey(o: {
     body: {
       organizationId: o.orgId,
       userId: o.accountId,
+      name: 'Test API key',
       permissions: { scopes: o.scopes },
       metadata: { account_id: o.accountId, ...(o.sourceId ? { source_id: o.sourceId } : {}) }
     }
@@ -137,6 +197,7 @@ export async function makeGrant(o: {
   orgId: string
   accountId: string
   clientId?: string
+  resource?: 'api' | 'mcp'
   scopes: Array<'read' | 'draft'>
   projectIds?: string[]
   shareLinkId?: string
@@ -147,6 +208,7 @@ export async function makeGrant(o: {
     makeOauthGrant(tx, {
       accountId: o.accountId,
       clientId,
+      resource: o.resource ?? 'mcp',
       scopes: o.scopes,
       projectIds: o.projectIds ?? null,
       shareLinkId: o.shareLinkId ?? null,
@@ -176,7 +238,11 @@ export async function mintAccessToken(o: {
 }): Promise<string> {
   const auth = harness()
   const settings = authSettings()
-  const jwtOptions = auth.options.plugins.find((plugin) => plugin.id === 'jwt')!.options
+  const jwtPlugin = (
+    auth.options.plugins as Array<{ id: string; options: Parameters<typeof signJWT>[1]['options'] }>
+  ).find((plugin) => plugin.id === 'jwt')
+  if (!jwtPlugin) throw new Error('The JWT plugin is not registered in the auth test harness')
+  const jwtOptions = jwtPlugin.options
   const iat = Math.floor(Date.now() / 1000)
   return signJWT({ context: await auth.$context } as never, {
     options: jwtOptions,

@@ -5,8 +5,10 @@
 
 import { log } from '@skyclause/config'
 import type { EraseSubscriber } from '@skyclause/contracts'
-import { withRetention } from '../client'
-import { eraseSubscriber } from '../placeholders/a-subscriber-rights'
+import { eq } from 'drizzle-orm'
+import { systemPrincipal, withRetention, withTenant, type Tx } from '../client'
+import { subscriber } from '../schema'
+import { eraseSubscriber } from '../subscriber-rights'
 import type { RetentionBuckets } from './buckets'
 import { JOB, listOrganizationIds, SWEEPERS, type SweepCounts, type SweepDeps } from './sweepers'
 
@@ -16,9 +18,22 @@ export interface RetentionDeps {
   buckets: RetentionBuckets
 }
 
+/**
+ * #110's erasure needs a tenant transaction: it writes the suppression and audit rows, which `retention` may not. So it
+ * commits in the subscriber's own organisation as this job, and the sweeper then sees the row it left.
+ */
+const eraseInOrganisation: EraseSubscriber = async (handle, subscriberId) => {
+  const [row] = await (handle as Tx)
+    .select({ orgId: subscriber.orgId })
+    .from(subscriber)
+    .where(eq(subscriber.id, subscriberId))
+  if (!row) return
+  await withTenant({ orgId: row.orgId, principal: systemPrincipal(JOB) }, (tx) => eraseSubscriber(tx, subscriberId))
+}
+
 /** Runs every sweeper; throws naming each failed sweeper once they have all had their turn. */
 export async function runRetentionSweep(now: Date, deps: RetentionDeps): Promise<void> {
-  const full: SweepDeps = { eraseSubscriber: deps.eraseSubscriber ?? eraseSubscriber, buckets: deps.buckets }
+  const full: SweepDeps = { eraseSubscriber: deps.eraseSubscriber ?? eraseInOrganisation, buckets: deps.buckets }
   const orgs = await listOrganizationIds()
   const failures: string[] = []
   const sweep = async (name: string, orgId: string | null, work: () => Promise<SweepCounts>) => {

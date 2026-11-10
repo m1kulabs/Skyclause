@@ -475,7 +475,7 @@ Brand assets, live favicons, previews and embeds.
 - **WEB-1** (P1) A static favicon set: SVG with `prefers-color-scheme`, ICO fallback, apple-touch icon and manifest icons including maskable. Acceptance: each file is linked from every page's head.
 - **WEB-2** (P1) The app tab's favicon shows the count of bundles needing review in the current organisation, updated within 10 seconds. Acceptance: approving the last bundle clears the badge.
 - **WEB-3** (P1) `/p/{org}/{project}/favicon.svg` is coloured by the highest mode of the approved calls in force (until each window's last span end or the night's exit end), or shows the no-call state when none are in force; a failing required input adds No call and shows the error colour. It is cached for at most 60 seconds. Acceptance: the favicon changes within 60 seconds of the public state changing.
-- **WEB-4** (P1) Open Graph images per project, call and window (`/c/{callId}/og.png`, 1200×630) with `twitter:card` and alt text. Acceptance: each image shows the mode, window time and capture time of the data.
+- **WEB-4** (P1) Open Graph images per project, call and window (`/c/{callId}/og.png`, 1200×630) with `twitter:card` and alt text. Acceptance: each image shows the mode, window time and capture time of the data; alt text and No call copy use indicator display names, not registry keys.
 - **WEB-5** (P1) [oEmbed](https://oembed.com/) at `/oembed`, discovered by `<link rel="alternate" type="application/json+oembed">` on public pages. Acceptance: the endpoint returns a valid rich response for any public project or call URL.
 - **WEB-6** (P1) `<skyclause-status>` and `<skyclause-window>` custom elements, with an iframe fallback from `embed.skyclause.m1ku.tech`, show the current mode, inputs with ages, attribution and the non-affiliation line, and render errors as errors. Acceptance: with the gauge erroring, the element shows No call, not a value.
 - **WEB-7** (P1) A subscribe-to-calendar button offers `webcal:`, Google Calendar and Outlook links for the conditions calendar. Acceptance: each link adds the same ICS feed.
@@ -499,7 +499,7 @@ What a project chooses to show the world, with attribution and no personal data.
 
 Every consequential change is logged; people can see, take and delete their data.
 
-- **AUD-1** (P1) The audit log records every approval, edit and rejection, key created or revoked (API and AI), role change, invite, clause publish, share link, source binding, SLA change, export, deletion and MCP consent, with who, when, client and before and after. Acceptance: each listed action creates exactly one entry.
+- **AUD-1** (P1) The audit log records every approval, edit and rejection, key created or revoked (API and AI), role change, invite, clause publish, share link, source binding, SLA change, export, deletion and MCP consent, including consent granted or denied, consent revoked, and organisation OAuth client created or revoked, with who, when, client and before and after. Acceptance: each listed action creates exactly one entry.
 - **AUD-2** (P1) The audit log is append-only, filterable at `/{org}/settings/audit` and exportable, and kept for the life of the organisation. Acceptance: no role can delete an entry.
 - **AUD-3** (P1) Accounts export their data and Owners or Admins export the organisation's (projects, windows, clause versions, calls, bundles, ledger, grades, subscribers, audit) as JSON and CSV within 24 hours; download links expire after 7 days. Acceptance: an export of a project re-counts to the same number of calls as the app.
 - **AUD-4** (P1) Deletion: an account deletes itself unless it is the sole Owner of an organisation (ledger and audit keep a pseudonymous ID); an Owner deletes an organisation by typing its slug, with a 30-day grace during which the organisation is suspended and export offered first, then a purge. Acceptance: a sole Owner cannot delete their account; the organisation is suspended during the grace period; after the purge no row with the organisation's ID remains outside the database's restore window, which ages it out per NFR-14.
@@ -578,7 +578,7 @@ Events carry random IDs for organisation and project, counts and enums only: no 
 | `mcp_connected`      | An MCP client completes consent          | `client` (claude, chatgpt, gemini_cli, gemini_enterprise, cursor, vscode, other) |
 | `mcp_tool_called`    | An MCP tool returns                      | `tool`, `scope`, `ok`                                                            |
 | `api_key_created`    | An API key is created                    | `scopes`, `expiry_days`                                                          |
-| `cli_login`          | A device-code login completes            | `os`                                                                             |
+| `cli_login`          | A device-code login completes            | `os` (macos, linux, windows, unknown)                                            |
 | `embed_loaded`       | An embed renders                         | `component`, `mode`                                                              |
 | `export_requested`   | An export is requested                   | `scope` (account, organisation)                                                  |
 

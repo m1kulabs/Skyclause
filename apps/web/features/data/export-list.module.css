@@ -1,0 +1,39 @@
+.region {
+  max-height: 448px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.list {
+  display: grid;
+  gap: 0;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 16px;
+  height: 112px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.row:not(:last-child) {
+  margin-bottom: 12px;
+}
+
+.spacer {
+  pointer-events: none;
+}
+
+@media (width < 640px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    padding: 8px 10px;
+  }
+}

@@ -1,7 +1,10 @@
 import { afterEach, expect, test, vi } from 'vitest'
 import { loadShellData } from '../../features/shell/load'
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.unstubAllEnvs()
+})
 
 const membership = {
   id: 'membership-test',
@@ -100,4 +103,13 @@ test('reads a saved rail preference from the server', async () => {
     )
   )
   expect((await loadShellData()).sidebarCollapsed).toBe(true)
+})
+
+test('uses the empty shell state in the test runtime without calling the API', async () => {
+  vi.stubEnv('APP_ENV', 'test')
+  const fetcher = vi.fn()
+  vi.stubGlobal('fetch', fetcher)
+
+  expect(await loadShellData()).toEqual({ memberships: [], projects: [], sidebarCollapsed: false })
+  expect(fetcher).not.toHaveBeenCalled()
 })
