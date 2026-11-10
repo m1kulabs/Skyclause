@@ -78,7 +78,7 @@ export function WindowStrip({ windows, strip, locale = 'en' }: WindowStripProps)
       </div>
       <div className="relative w-full">
         <div
-          className="w-full overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          className="w-full overflow-hidden [&>svg]:h-auto [&>svg]:w-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           // biome-ignore lint/security/noDangerouslySetInnerHtml: stripSvg is deterministic geometry from readings.
           dangerouslySetInnerHTML={{ __html: svg }}
         />

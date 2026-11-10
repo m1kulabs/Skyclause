@@ -175,7 +175,7 @@ export const PollRecordedEventSchema = eventEnvelope(
     source_id: idSchema,
     poll_id: idSchema,
     outcome: z.string(),
-    http_status: z.number().int(),
+    http_status: z.number().int().nullable(),
     new_rows: z.number().int()
   })
 )

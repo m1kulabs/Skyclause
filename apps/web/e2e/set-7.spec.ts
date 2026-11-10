@@ -5,6 +5,7 @@ import { t } from './palette/messages'
 import { expectUnclippedText } from './harness/expect-unclipped-text'
 import { windowUndoCase, windowUnsavedCase } from './windows/set7-cases'
 import { prepareSettings, projectFixtureData, projectPath } from './project-ui/fixtures'
+import { subscriberRemoval } from './subscribers/removal'
 
 const route = '/_test/set-7'
 const name = t('set7.harness.name')
@@ -232,7 +233,6 @@ for (const title of [
   'revoke AI key — #105 a-keys-ui',
   'remove member — #104 a-members-ui',
   'lower role — #104 a-members-ui',
-  'remove subscriber — #169 c-channels-ui',
   'delete clause sheet draft — #144'
 ]) {
   test.fixme(title, async () => {})
@@ -243,6 +243,7 @@ test('notifications panel removes a registered device immediately by keyboard �
 })
 test('cancel window — #143 b-windows-ui', async ({ page }) => windowUndoCase(page))
 test('unsaved window warns before leaving — #143 b-windows-ui', async ({ page }) => windowUnsavedCase(page))
+test('remove subscriber — #169 c-channels-ui', async ({ page }) => subscriberRemoval(page))
 
 test('archive project can be undone within 10 seconds — #174 b-project-ui', async ({ page }) => {
   await page.clock.install({ time: new Date(projectFixtureData.capturedAt) })

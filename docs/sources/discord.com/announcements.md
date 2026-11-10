@@ -14,6 +14,7 @@ Contents:
 1.  [Google Meet QR code](#google-meet-qr-code)
 1.  [Briefing started](#briefing-started)
 1.  [Google tools and cloud credits](#google-tools-and-cloud-credits)
+1.  [Submission deadline and Gemini Enterprise update](#submission-deadline-and-gemini-enterprise-update)
 1.  [See also](#see-also)
 
 ## Registration and updates
@@ -115,6 +116,32 @@ The recording of the briefing is captured in the [Briefing session transcript](/
 Posted 3 November 2026 at 6:46 PM and edited at 6:52 PM.
 
 As you plan your hackathon project, please make use of Google tools and services where they fit your idea, for example Gemini, Gemini Enterprise, Antigravity, and Google Cloud. You're welcome to use other tools to support your solution too. If you're unsure which tools to use, ask us in [#help-desk](help-desk.md). We'll share an update on Google Cloud credits once the details are confirmed.
+
+## Submission deadline and Gemini Enterprise update
+
+Posted 8 November 2026 at 5:08 PM by Cindy, to `@everyone`. Captured on 9 November 2026.
+
+📢 **Submission Deadline and Gemini Enterprise Update**
+
+Hi everyone! We're extending the submission deadline to give teams more time to work on their prototypes while Gemini Enterprise licences are being distributed.
+
+📅 **Updated submission deadline**
+
+- Previous: 10 November 2026, 11:59 PM
+- New: 13 November 2026, 12:00 PM (noon, Malaysia time)
+
+🔑 **Gemini Enterprise licences**
+
+Based on the latest information available to us, licences are expected to be distributed on Tuesday, 10 November, after the Diwali holidays. This date is not guaranteed. Distribution is managed by APU and Google, and GDGoC APU does not control when the licences are issued.
+
+💻 **What do teams need to submit?**
+
+- 13 November — Prototype submission: Your prototype does not need to incorporate Gemini Enterprise tools.
+- 17 November — Final pitching: If your team is selected as one of the Top 5 finalists, the final product presented at pitching must incorporate Gemini Enterprise tools.
+
+Please plan your development around the new deadline. If you have questions, feel free to ask in the server's help desk.
+
+Thank you for your patience and understanding. We look forward to seeing what your teams build! 🙏
 
 ## See also
 

@@ -12,7 +12,7 @@ import {
   type LedgerFilters
 } from '@skyclause/db'
 import { decodeCursor, page } from '../pagination'
-import { callView, isMember } from './bundles'
+import { callView, isMember, windowFor } from './bundles'
 import { ApiError } from '../problems'
 import { instant, toWire } from '../serialize'
 import type { ServiceContext } from '../tenancy'
@@ -92,7 +92,7 @@ export async function listLedgerEntries(
         ...(row.corrects ? { corrects: row.corrects } : {}),
         pack: pack.success ? pack.data : null,
         call: row.call ? ledgerCall(row.call) : null,
-        window: row.window ? (toWire(row.window) as LedgerRow['window']) : null,
+        window: row.window ? windowFor(ctx.principal, toWire(row.window) as NonNullable<LedgerRow['window']>) : null,
         grade: row.grade ? (toWire(row.grade) as LedgerRow['grade']) : null,
         approver_role: isRole(body?.approver_role) ? body.approver_role : null
       }

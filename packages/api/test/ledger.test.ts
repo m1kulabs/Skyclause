@@ -1,7 +1,8 @@
 // #146 c-ledger-chain: the four /v1 ledger reads on the #79 §7 test database, through createTestApi with the real
 // withTenant and recordAudit (only the auth seams and the archive URL signer are doubles).
+import { randomUUID } from 'node:crypto'
 import { canonicalJson } from '@skyclause/clauses'
-import { LedgerKind, REGISTRY } from '@skyclause/contracts'
+import { LedgerKind, REGISTRY, type Principal } from '@skyclause/contracts'
 import {
   appendLedger,
   recordAudit,
@@ -21,6 +22,8 @@ import {
   TEST_NOW,
   apiRequest,
   asApiKey,
+  asGuestToken,
+  asOAuth,
   asSession,
   asShareLink,
   createTestApi,
@@ -348,6 +351,55 @@ describe('LedgerRow.call: the call an entry references, by who is reading', () =
     })
     const { data } = await ledgerPage(await get(`/v1/projects/${projectId}/ledger`))
     expect(data.map((row) => row.call)).toEqual([null, null, null, null])
+  })
+})
+
+describe('#521 LedgerRow.window: its title and who declared it go to members only (NFR-11)', () => {
+  const scene = async () => {
+    const projectId = await newProject()
+    const window = await inOrg(async (tx) => {
+      const row = await makeWindow(tx, { projectId, title: 'Lecture 3A' })
+      await appendLedger(tx, { projectId, kind: 'grade', refs: { window_id: row.id }, body: {} })
+      return row
+    })
+    return { projectId, window }
+  }
+  const entryWindow = async (projectId: string, as: Principal) => {
+    const response = await apiRequest(v1, { as, method: 'GET', path: `/v1/projects/${projectId}/ledger`, org: ORG })
+    expect(response.status).toBe(200)
+    const text = await response.text()
+    return { text, window: (JSON.parse(text) as LedgerPage).data[0]!.window }
+  }
+
+  test.each([
+    {
+      reader: 'a reviewer share link',
+      as: (projectId: string) => asShareLink({ org: ORG, projectId, access: 'reviewer' })
+    },
+    { reader: 'a guest token', as: () => asGuestToken({ org: ORG }) },
+    {
+      reader: 'a link-bound OAuth grant',
+      as: (projectId: string) =>
+        asOAuth({ org: ORG, role: null, resource: 'api', projectIds: [projectId], shareLinkId: randomUUID() })
+    },
+    { reader: 'a session with the guest role', as: () => asSession({ org: ORG, role: 'guest' }) },
+    { reader: 'a guest’s API key', as: () => asApiKey({ org: ORG, role: 'guest', scopes: ['read'] }) }
+  ])('$reader gets the window without its title or who declared it', async ({ as }) => {
+    const { projectId, window } = await scene()
+    const { text, window: seen } = await entryWindow(projectId, as(projectId))
+    expect(seen).toMatchObject({ id: window.id, project_id: projectId, title: '', declared_by: '' })
+    expect(text).not.toContain('Lecture 3A')
+    expect(text).not.toContain(window.declaredBy)
+  })
+
+  test('a member, by session or API key, sees both', async () => {
+    const { projectId, window } = await scene()
+    for (const as of [viewer, asApiKey({ org: ORG, role: 'viewer', scopes: ['read'] })]) {
+      expect((await entryWindow(projectId, as)).window).toMatchObject({
+        title: 'Lecture 3A',
+        declared_by: window.declaredBy
+      })
+    }
   })
 })
 
