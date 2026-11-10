@@ -46,6 +46,7 @@ export function useBundleReview(bundleId: string, org: string, initial?: Initial
   const locked = useRef(false)
   const terminal = useRef(false)
   const generation = useRef(0)
+  const reauthKey = useRef<string | undefined>(undefined)
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000)
@@ -64,6 +65,7 @@ export function useBundleReview(bundleId: string, org: string, initial?: Initial
     setConflict(undefined)
     setError(undefined)
     setReauth(undefined)
+    reauthKey.current = undefined
     setPending(false)
     const signal = controller.signal
     async function load() {
@@ -191,14 +193,18 @@ export function useBundleReview(bundleId: string, org: string, initial?: Initial
   const includesTeachingLine = reviewable.some((call) => teachingLineIncluded(call, decisions[call.id] ?? {}))
   const blocked = !editable || !reviewable.length || !!visible?.errors.length || missingChoice || includesTeachingLine
 
-  async function send(body: ApprovalBody, afterReauth = false) {
+  async function send(body: ApprovalBody, idempotencyKey: string, afterReauth = false) {
     if (locked.current || terminal.current || blocked) return
     locked.current = true
     const currentGeneration = generation.current
     setPending(true)
     setError(undefined)
     try {
-      const result = await apiFetch('approveBundle', { params: { id: bundleId }, body })
+      const result = await apiFetch('approveBundle', {
+        params: { id: bundleId },
+        body,
+        headers: { 'Idempotency-Key': idempotencyKey }
+      })
       if (currentGeneration !== generation.current || terminal.current) return
       terminal.current = true
       setData((current) =>
@@ -242,6 +248,7 @@ export function useBundleReview(bundleId: string, org: string, initial?: Initial
         return
       }
       if (problem?.status === 401 && code === 'reauth-required' && !afterReauth) {
+        reauthKey.current = idempotencyKey
         setReauth(body)
         return
       }
@@ -270,11 +277,14 @@ export function useBundleReview(bundleId: string, org: string, initial?: Initial
     if (!visible || blocked || pending || (conflict && !reconfirm)) return
     const calls = decisionsFor(visible.calls, decisions, Date.now())
     if (!calls.length) return
-    await send({
-      review_hash: reconfirm && conflict?.review_hash ? conflict.review_hash : visible.bundle.review_hash,
-      reconfirm,
-      calls
-    })
+    await send(
+      {
+        review_hash: reconfirm && conflict?.review_hash ? conflict.review_hash : visible.bundle.review_hash,
+        reconfirm,
+        calls
+      },
+      globalThis.crypto.randomUUID()
+    )
   }
 
   return {
@@ -297,8 +307,10 @@ export function useBundleReview(bundleId: string, org: string, initial?: Initial
     retry: () => setRevision((value) => value + 1),
     retryAfterReauth: async () => {
       const body = reauth
+      const idempotencyKey = reauthKey.current
+      reauthKey.current = undefined
       setReauth(undefined)
-      if (body) await send(body, true)
+      if (body) await send(body, idempotencyKey ?? globalThis.crypto.randomUUID(), true)
     }
   }
 }
