@@ -1,8 +1,10 @@
 import { metrics, type Attributes, type Meter } from '@opentelemetry/api'
 import { METRICS, type SliStat } from '@skyclause/contracts'
+import type { WorkerPart } from '../server'
+import { databaseReads } from './reads'
 
 // a-observability: TRD's SLIs from stored timestamps. The handler runs in the worker's 15-minute batch (D45),
-// on the batch's own transaction, so it never wakes the database itself.
+// on the batch's shared connection, so it never wakes the database itself.
 
 /** `[from, to)`. */
 export interface TimeWindow {
@@ -50,16 +52,19 @@ export interface SlaDue {
   escalatedAt: Date | null
 }
 
-/** The timestamp reads, as `system`. Each method is one query; rows fall in a window by the field named. */
+/**
+ * The timestamp reads, as `system`. Each method is one query; rows fall in a window by the field named. An SLI whose
+ * read is absent records nothing, like an empty window.
+ */
 export interface SliReads {
   /** Every Scheduler slot each adapter was due in the window (`slotAt`). */
-  pollSlots(window: TimeWindow): Promise<PollSlot[]>
+  pollSlots?(window: TimeWindow): Promise<PollSlot[]>
   /** Each adapter's latest `count` slots due before `before`. */
-  latestPollSlots(before: Date, count: number): Promise<PollSlot[]>
+  latestPollSlots?(before: Date, count: number): Promise<PollSlot[]>
   /** By `storedAt`. */
   storedReadings(window: TimeWindow): Promise<StoredReading[]>
   /** By `evaluatedAt`. */
-  evaluations(window: TimeWindow): Promise<Evaluation[]>
+  evaluations?(window: TimeWindow): Promise<Evaluation[]>
   /** Bundles reaching needs review (`needsReviewAt`), with their run's `crossing.at`. */
   reviews(window: TimeWindow): Promise<Review[]>
   /** By `needsReviewAt`. */
@@ -140,18 +145,21 @@ export function sli(reads: SliReads, meter: Meter = metrics.getMeter('skyclause'
     const window = { from: new Date(slot - 2 * BATCH), to }
     const hour = { from: new Date(to.getTime() - 60 * MINUTE), to }
 
+    const pending = [
+      reads.pollSlots?.(window) ?? [],
+      reads.latestPollSlots?.(to, TARGET.missedInARow) ?? [],
+      reads.storedReadings(window),
+      reads.evaluations?.(hour) ?? [],
+      reads.reviews(hour),
+      reads.approverAlerts(window),
+      reads.latestApproverAlerts(to, TARGET.failedInARow),
+      reads.handovers(hour),
+      reads.slaDue(window)
+    ] as const
+    // Every read settles before the handler does: the batch's shared connection refuses a call made after that.
+    await Promise.allSettled(pending)
     const [slots, latestSlots, readings, evaluations, reviews, alerts, latestAlerts, handovers, sla] =
-      await Promise.all([
-        reads.pollSlots(window),
-        reads.latestPollSlots(to, TARGET.missedInARow),
-        reads.storedReadings(window),
-        reads.evaluations(hour),
-        reads.reviews(hour),
-        reads.approverAlerts(window),
-        reads.latestApproverAlerts(to, TARGET.failedInARow),
-        reads.handovers(hour),
-        reads.slaDue(window)
-      ])
+      await Promise.all(pending)
 
     for (const [adapter, rows] of byAdapter(slots)) {
       record(
@@ -242,3 +250,10 @@ export function sli(reads: SliReads, meter: Meter = metrics.getMeter('skyclause'
     }
   }
 }
+
+/** The `sli` batch handler over the database's timestamps; `meter` is for tests. */
+export function createSliPart(meter?: Meter): WorkerPart {
+  return { owner: 'a-observability', batch: { sli: (now) => sli(databaseReads(), meter)(now) } }
+}
+
+export const sliPart = createSliPart()
