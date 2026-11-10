@@ -11,6 +11,7 @@ import {
   domainEvent,
   exportJob,
   handledEvent,
+  handledMessage,
   idempotencyKey,
   rateLimit,
   runRetentionSweep,
@@ -35,6 +36,7 @@ import {
 import {
   makeDomainEvent,
   makeExportJob,
+  makeHandledMessage,
   makeHandledEvent,
   makeOrganization,
   makeProject,
@@ -326,6 +328,33 @@ describe('sweepDomainEvents', () => {
   })
 })
 
+describe('sweepHandledMessages', () => {
+  test('deletes marks older than one day, keeps the boundary and newer marks, and a rerun deletes 0', async () => {
+    const sweeper = SWEEPERS.find(({ name }) => name === 'handled-messages')
+    expect(sweeper?.name).toBe('handled-messages')
+    if (!sweeper) return
+
+    const consumer = `retention-${Date.now()}`
+    const add = (handledAt: Date) => inOrg((tx) => makeHandledMessage(tx, { consumer, handledAt }))
+    await add(ago(2))
+    const boundary = await add(ago(1))
+    const recent = await add(new Date(NOW.getTime() - 23 * 60 * 60 * 1_000))
+    const run = (tx: Tx<SystemPrincipal>) => sweeper.run(tx, { orgId: null, now: NOW }, deps(deletingErase))
+
+    expect(await retain(run)).toEqual({ deleted: 1, pseudonymised: 0 })
+    const remaining = await inOrg((tx) =>
+      tx
+        .select({ messageId: handledMessage.messageId })
+        .from(handledMessage)
+        .where(eq(handledMessage.consumer, consumer))
+    )
+    expect(new Set(remaining.map(({ messageId }) => messageId))).toEqual(
+      new Set([boundary.messageId, recent.messageId])
+    )
+    expect(await retain(run)).toEqual({ deleted: 0, pseudonymised: 0 })
+  })
+})
+
 /**
  * NFR-14's table, one row per data class naming the mechanism that enforces it: a sweeper here, a bucket lifecycle
  * rule, or the owner's job. A class with no mechanism fails; rows owned elsewhere stay `it.todo` until their owner
@@ -402,8 +431,8 @@ const NFR14: { data: string; mechanism: string; sweeper?: string; owner: string;
   {
     data: 'handled SES message IDs',
     mechanism: 'a handled-message sweep here (#461)',
-    owner: 'a-retention',
-    todo: 'after #461 lands the handled_message table'
+    sweeper: 'handled-messages',
+    owner: 'a-retention'
   }
 ]
 
@@ -438,11 +467,13 @@ describe('runRetentionSweep', () => {
     const exports = memoryBucket([frame(`${prefix}exports/past.zip`, {})])
     const project = await inOrg((tx) => makeProject(tx))
     const email = `swept-${Date.now()}@example.test`
+    const messageId = `private-message-${Date.now()}`
     await inOrg((tx) => makeSubscriber(tx, { projectId: project.id, email, unsubscribedAt: ago(31) }))
     await inOrg((tx) =>
       makeExportJob(tx, { status: 'ready', expiresAt: ago(1), objectPath: `${prefix}exports/past.zip` })
     )
     await inOrg((tx) => makeSubscriber(tx, { projectId: project.id, unsubscribedAt: ago(29) }))
+    await inOrg((tx) => makeHandledMessage(tx, { consumer: 'retention-runner', messageId, handledAt: ago(2) }))
 
     await runRetentionSweep(NOW, {
       eraseSubscriber: deletingErase,
@@ -453,11 +484,13 @@ describe('runRetentionSweep', () => {
     expect(lines).toContainEqual({ sweeper: 'frames', org_id: orgId, deleted: 1, pseudonymised: 0 })
     expect(lines).toContainEqual({ sweeper: 'subscribers', org_id: orgId, deleted: 1, pseudonymised: 0 })
     expect(lines).toContainEqual({ sweeper: 'export-files', org_id: orgId, deleted: 1, pseudonymised: 0 })
+    expect(lines).toContainEqual({ sweeper: 'handled-messages', org_id: null, deleted: 1, pseudonymised: 0 })
     for (const name of ['idempotency-keys', 'rate-limits', 'domain-events'])
       expect(lines).toContainEqual({ sweeper: name, org_id: null, deleted: 0, pseudonymised: 0 })
     // Counts and IDs only: never an address, a name or an account ID.
     expect(JSON.stringify(lines)).not.toContain('@')
     expect(JSON.stringify(lines)).not.toContain(email)
+    expect(JSON.stringify(lines)).not.toContain(messageId)
   })
 
   test("erases due subscribers through #110's erasure by default, in each subscriber's organisation", async () => {

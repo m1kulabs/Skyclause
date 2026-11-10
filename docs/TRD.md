@@ -767,6 +767,7 @@ Retention periods are PRD's [NFR-14](/docs/PRD.md#non-functional-requirements); 
 | Raw bus positions             | Memory and a scratch object with a 1-day lifecycle rule; segment times kept                                                                              |
 | Guest windows and accounts    | Nightly jobs that log deletions by count                                                                                                                 |
 | Subscribers                   | A nightly job erases unsubscribed rows after the grace period, leaving the hashed `suppression` entry; `consent_record` rows are pseudonymised           |
+| SES message deduplication     | The nightly retention job deletes `handled_message` marks older than 24 hours; the inbound-mail bucket has a 1-day lifecycle rule                        |
 | Ledger and audit log          | Personal fields pseudonymised on account or subscriber deletion; the hash chain holds no emails, so it stays valid                                       |
 | Deleted organisation          | Soft delete, then a purge job; purged rows leave Neon's 6-hour restore window, and there are no backups                                                  |
 | Export files                  | Signed URLs and a lifecycle rule                                                                                                                         |

@@ -4,13 +4,22 @@
 // through `SweepDeps`, so tests run on doubles; `eraseSubscriber` is #110's (tests use a double until it merges).
 
 import type { EraseSubscriber } from '@skyclause/contracts'
-import { and, asc, eq, inArray, isNotNull, isNull, lt } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNotNull, isNull, lt, or } from 'drizzle-orm'
 import { withSystem, type SystemPrincipal, type Tx } from '../client'
-import { domainEvent, exportJob, handledEvent, idempotencyKey, organization, rateLimit, subscriber } from '../schema'
+import {
+  domainEvent,
+  exportJob,
+  handledEvent,
+  handledMessage,
+  idempotencyKey,
+  organization,
+  rateLimit,
+  subscriber
+} from '../schema'
 import type { RetentionBuckets } from './buckets'
 
 const DAY_MS = 24 * 60 * 60 * 1_000
-/** NFR-14's subscriber grace, camera frame ceiling and domain event window. */
+/** NFR-14's subscriber grace, camera frame ceiling and domain event window; handled message marks use one day. */
 const SUBSCRIBER_GRACE_MS = 30 * DAY_MS
 const FRAME_CEILING_MS = 183 * DAY_MS
 const DOMAIN_EVENT_WINDOW_MS = 30 * DAY_MS
@@ -216,15 +225,46 @@ export async function sweepDomainEvents(
   }
 }
 
-/** Every sweeper this job owns; other owners keep their own jobs. `audit_finding` (#132) and `handled_message` (#461)
-// have no tables yet, so they have no sweeper here. */
+/** `handled_message` marks for SES IDs more than one day old. */
+export async function sweepHandledMessages(
+  tx: Tx<SystemPrincipal>,
+  q: { orgId: string | null; now: Date }
+): Promise<SweepCounts> {
+  void q.orgId
+  const counts = none()
+  const cutoff = new Date(q.now.getTime() - DAY_MS)
+  for (;;) {
+    const due = await tx
+      .select({ consumer: handledMessage.consumer, messageId: handledMessage.messageId })
+      .from(handledMessage)
+      .where(lt(handledMessage.handledAt, cutoff))
+      .orderBy(asc(handledMessage.consumer), asc(handledMessage.messageId))
+      .limit(BATCH)
+    if (!due.length) return counts
+    const gone = await tx
+      .delete(handledMessage)
+      .where(
+        or(
+          ...due.map(({ consumer, messageId }) =>
+            and(eq(handledMessage.consumer, consumer), eq(handledMessage.messageId, messageId))
+          )
+        )
+      )
+      .returning({ messageId: handledMessage.messageId })
+    counts.deleted += gone.length
+    if (due.length < BATCH) return counts
+  }
+}
+
+/** Every sweeper this job owns; other owners keep their own jobs. `audit_finding` (#132) has no table yet. */
 export const SWEEPERS: Sweeper[] = [
   { name: 'subscribers', scope: 'org', run: sweepSubscribers },
   { name: 'frames', scope: 'org', run: sweepFrames },
   { name: 'export-files', scope: 'org', unscoped: true, run: sweepExportFiles },
   { name: 'idempotency-keys', scope: 'global', run: sweepIdempotencyKeys },
   { name: 'rate-limits', scope: 'global', run: sweepRateLimits },
-  { name: 'domain-events', scope: 'global', run: sweepDomainEvents }
+  { name: 'domain-events', scope: 'global', run: sweepDomainEvents },
+  { name: 'handled-messages', scope: 'global', run: sweepHandledMessages }
 ]
 
 export const JOB = 'retention'
