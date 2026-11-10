@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import axe from 'axe-core'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { SubscriberData } from '@skyclause/contracts'
@@ -94,7 +94,7 @@ test('the delete confirm names the project, shows pending state, then focuses th
   const result = await screen.findByRole('heading', {
     name: 'Deleted. We keep only a one-way hash of your address so we never email it again.'
   })
-  expect(document.activeElement).toBe(result)
+  await waitFor(() => expect(document.activeElement).toBe(result))
 })
 
 test('subscriber page has no axe violations', async () => {
