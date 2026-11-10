@@ -539,3 +539,80 @@ test('a guest cannot complete OAuth consent or receive an authorization code', a
     })
   ).rejects.toThrow('A signed-up member session is required for OAuth consent.')
 })
+
+async function playgroundConsent(cookie: string, state: string) {
+  const verifier = 'k8R2yW1uQ5mK9nP2aS7dF4hJ0xV6cB8zT1eL5qN3wA'
+  const challenge = Buffer.from(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))).toString(
+    'base64url'
+  )
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: 'skyclause-playground',
+    redirect_uri: `${APP}/developers/mcp/callback`,
+    scope: 'read',
+    state,
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
+    resource: resources(authSettings()).mcp
+  })
+  const response = await request(getAuth().auth, `/oauth2/authorize?${params}`, { headers: { Cookie: cookie } })
+  expect(response.status).toBe(302)
+  return { oauthQuery: new URL(response.headers.get('Location')!, APP).search.slice(1), verifier }
+}
+
+test('an outstanding code cannot acquire a replacement consent grant’s projects', async () => {
+  const org = await makeOrg()
+  const account = await makeAccount()
+  await addMember(org.id, account.id, 'editor')
+  const projectA = await makeProjectIn(org.id)
+  const projectB = await makeProjectIn(org.id)
+  const session = await signIn(account.id)
+  const first = await playgroundConsent(session.cookie, 'grant-a')
+  const headers = new Headers({ Cookie: session.cookie, Origin: APP })
+  const original = await completeOAuthConsent({
+    headers,
+    oauthQuery: first.oauthQuery,
+    orgId: org.id,
+    projectIds: [projectA.id],
+    scopes: ['read'],
+    accept: true
+  })
+  const second = await playgroundConsent(session.cookie, 'grant-b')
+  const replacement = await completeOAuthConsent({
+    headers,
+    oauthQuery: second.oauthQuery,
+    orgId: org.id,
+    projectIds: [projectB.id],
+    scopes: ['read'],
+    accept: true
+  })
+  expect(original.grantId).not.toBe(replacement.grantId)
+
+  const exchange = await request(getAuth().auth, '/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: 'skyclause-playground',
+      code: new URL(original.url).searchParams.get('code')!,
+      redirect_uri: `${APP}/developers/mcp/callback`,
+      code_verifier: first.verifier,
+      resource: resources(authSettings()).mcp
+    }).toString()
+  })
+  expect(exchange.status).toBeGreaterThanOrEqual(400)
+  expect(await exchange.json()).not.toHaveProperty('access_token')
+})
+
+test('a guest cannot bypass the consent page through the provider’s native consent endpoint', async () => {
+  const member = await signIn((await makeAccount()).id)
+  const guest = await signIn((await makeAccount({ anonymous: true })).id)
+  const { oauthQuery } = await playgroundConsent(member.cookie, 'guest-native-consent')
+  const response = await request(getAuth().auth, '/oauth2/consent', {
+    method: 'POST',
+    headers: { Cookie: guest.cookie, Origin: APP, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accept: true, scope: 'read', oauth_query: oauthQuery })
+  })
+  expect(response.status).toBe(403)
+  expect(await response.json()).not.toHaveProperty('url')
+})

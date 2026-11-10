@@ -399,7 +399,7 @@ export async function completeOAuthConsent(
     return grant!
   })
 
-  const referenceId = details.link ? `grant:${inserted.id}` : selectedOrg
+  const referenceId = `grant:${inserted.id}`
   await db.update(authSession).set({ activeOrganizationId: referenceId }).where(eq(authSession.id, session.session.id))
   try {
     const result = await applyOAuthConsent(headers, { accept: true, scope: scopes.join(' '), oauth_query: oauthQuery })
@@ -683,7 +683,7 @@ export async function revokeOAuthGrant(input: {
     return row ?? null
   })
   if (!grant) return false
-  const referenceId = grant.shareLinkId ? `grant:${grant.id}` : input.orgId
+  const referenceId = `grant:${grant.id}`
   await authDatabase()
     .delete(oauthConsent)
     .where(

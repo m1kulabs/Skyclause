@@ -12,8 +12,8 @@ import {
   withTenant
 } from '@skyclause/db'
 import { authDatabase, credentialOwner } from '@skyclause/db/auth'
-import { and, desc, eq, isNull } from 'drizzle-orm'
-import { APIError, createAuthMiddleware } from 'better-auth/api'
+import { and, eq, isNull } from 'drizzle-orm'
+import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api'
 import type { BetterAuthPlugin } from 'better-auth'
 import type { AuthSettings } from '../instance'
 import { resources } from '../instance'
@@ -139,34 +139,14 @@ export function eMcpAuth(s: AuthSettings): BetterAuthPlugin {
                 error_description: 'The resource is not supported.'
               })
             }
-            let grant
-            if (referenceId.startsWith('grant:')) {
-              const grantId = referenceId.slice('grant:'.length)
-              const owner = await credentialOwner('oauth_grant', grantId)
-              if (!owner) throw new APIError('UNAUTHORIZED', { error: 'invalid_grant' })
-              ;[grant] = await withTenant(
-                { orgId: owner.orgId, principal: systemPrincipal('auth:oauth-token') },
-                async (tx) => tx.select().from(oauthGrant).where(eq(oauthGrant.id, grantId)).limit(1)
-              )
-            } else {
-              ;[grant] = await withTenant(
-                { orgId: referenceId, principal: systemPrincipal('auth:oauth-token') },
-                async (tx) =>
-                  tx
-                    .select()
-                    .from(oauthGrant)
-                    .where(
-                      and(
-                        eq(oauthGrant.accountId, user.id),
-                        eq(oauthGrant.clientId, client.clientId),
-                        eq(oauthGrant.resource, resource),
-                        isNull(oauthGrant.revokedAt)
-                      )
-                    )
-                    .orderBy(desc(oauthGrant.createdAt))
-                    .limit(1)
-              )
-            }
+            if (!referenceId.startsWith('grant:')) throw new APIError('UNAUTHORIZED', { error: 'invalid_grant' })
+            const grantId = referenceId.slice('grant:'.length)
+            const owner = await credentialOwner('oauth_grant', grantId)
+            if (!owner) throw new APIError('UNAUTHORIZED', { error: 'invalid_grant' })
+            const [grant] = await withTenant(
+              { orgId: owner.orgId, principal: systemPrincipal('auth:oauth-token') },
+              async (tx) => tx.select().from(oauthGrant).where(eq(oauthGrant.id, grantId)).limit(1)
+            )
             if (
               !grant ||
               grant.accountId !== user.id ||
@@ -217,11 +197,22 @@ export function eMcpAuth(s: AuthSettings): BetterAuthPlugin {
       before: [
         ...provider.hooks.before,
         {
-          matcher: ({ path }) => ['/oauth2/authorize', '/oauth2/token', '/oauth2/register'].includes(path ?? ''),
+          matcher: ({ path }) =>
+            ['/oauth2/authorize', '/oauth2/consent', '/oauth2/token', '/oauth2/register'].includes(path ?? ''),
           handler: createAuthMiddleware(async (ctx) => {
             const request = ctx.request
             if (!request) return
             const requestPath = new URL(request.url).pathname
+            if (requestPath.endsWith('/oauth2/consent')) {
+              const session = await getSessionFromCtx<{ isAnonymous?: boolean }>(ctx)
+              if (session?.user.isAnonymous) {
+                throw new APIError('FORBIDDEN', {
+                  error: 'access_denied',
+                  error_description: 'Sign up before granting OAuth consent.'
+                })
+              }
+              return
+            }
             if (requestPath.endsWith('/oauth2/register')) {
               const body = ctx.body as { token_endpoint_auth_method?: unknown; require_pkce?: unknown } | undefined
               if (body?.token_endpoint_auth_method !== 'none' || body.require_pkce === false) {
