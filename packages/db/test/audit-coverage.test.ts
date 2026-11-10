@@ -36,6 +36,7 @@ const OWNERS: Record<AuditAction, string> = {
   'export.requested': '#109',
   'organisation.deleted': '#109',
   'account.deleted': '#109',
+  'subscriber.deleted': '#110',
   'mcp.consent_granted': '#198',
   'mcp.tool_called': '#93 and #199',
   'bundle.approve_denied': '#93',

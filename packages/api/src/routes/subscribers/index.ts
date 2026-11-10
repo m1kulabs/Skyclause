@@ -146,8 +146,16 @@ export const subscriberHandlers: Handlers = {
   },
   confirmSubscription: {
     handler: async (c) => {
+      const { address_hash } = c.req.valid('query')
+      const body = c.req.valid('json')
       const confirmed = await byLink(c, c.req.valid('param').token, ['confirm'], (ctx, found) =>
-        confirmSubscription(ctx, { ...linkRequest(c), subscriberId: found.subscriberId, tokenId: found.tokenId })
+        confirmSubscription(ctx, {
+          ...linkRequest(c),
+          subscriberId: found.subscriberId,
+          tokenId: found.tokenId,
+          addressHash: address_hash,
+          email: body?.email
+        })
       )
       return c.json(confirmed, 200)
     }
