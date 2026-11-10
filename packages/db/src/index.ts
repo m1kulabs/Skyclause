@@ -9,7 +9,13 @@ export {
   type SystemPrincipal,
   type Tx
 } from './client'
-export { countSignInMethods, readAccountPreferences, writeAccountPreferences, writeMagicLinkEnabled } from './auth'
+export {
+  countSignInMethods,
+  readAccountPreferences,
+  withAccountSecurityLock,
+  writeAccountPreferences,
+  writeMagicLinkEnabled
+} from './auth'
 export * from './alerts'
 export * from './analysis'
 export { track } from './analytics'

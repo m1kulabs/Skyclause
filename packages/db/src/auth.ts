@@ -12,6 +12,14 @@ export function authDatabase() {
   return drizzle(connection('AUTH').pool, { schema: auth })
 }
 
+/** Serializes the complete last-method check and mutation across API and Better Auth requests, on every instance. */
+export function withAccountSecurityLock<T>(userId: string, fn: () => Promise<T>): Promise<T> {
+  return connection('AUTH', 'account-security').db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`account-security:${userId}`}, 0))`)
+    return fn()
+  })
+}
+
 /** The current sign-in methods for one account, shared by the API and Better Auth's last-method guard. */
 export async function countSignInMethods(userId: string) {
   const db = authDatabase()

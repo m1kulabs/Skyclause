@@ -1,10 +1,11 @@
 import { account, passkey, session, user } from '@skyclause/db'
-import { authDatabase } from '@skyclause/db/auth'
+import { authDatabase, countSignInMethods } from '@skyclause/db/auth'
 import { eq } from 'drizzle-orm'
 import { passkey as passkeyPlugin } from '@better-auth/passkey'
+import { createAuthMiddleware } from 'better-auth/api'
 import { afterEach, expect, test } from 'vitest'
 import { authSettings, createAuth } from '../src/instance'
-import { makeAccount, signIn, TEST_AUTH_ENV } from './harness'
+import { addTestPasskey, makeAccount, signIn, TEST_AUTH_ENV } from './harness'
 
 const createdUserIds: string[] = []
 const APP = TEST_AUTH_ENV.APP_ORIGIN
@@ -75,6 +76,54 @@ test('removing the only passkey while magic link is off returns last-sign-in-met
 
   expect(response.status).toBe(409)
   expect(await bodyCode(response)).toMatchObject({ code: 'last-sign-in-method' })
+})
+
+test('concurrent passkey removals cannot remove every sign-in method', async () => {
+  const current = await addAccount({ magicLinkEnabled: false, passkey: true })
+  const second = await addTestPasskey(current.accountId)
+  const release = Promise.withResolvers<void>()
+  let checked = 0
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const concurrent = createAuth(authSettings(), {
+    plugins: [
+      passkeyPlugin(),
+      {
+        id: 'test-concurrent-removal',
+        hooks: {
+          before: [
+            {
+              matcher: (context) => context.path === '/passkey/delete-passkey',
+              handler: createAuthMiddleware(async () => {
+                // Pause after the last-method guard, giving another request time to pass it before either deletes.
+                timer ??= setTimeout(release.resolve, 1_000)
+                if (++checked === 2) release.resolve()
+                await release.promise
+              })
+            }
+          ]
+        }
+      }
+    ]
+  })
+  let responses: Response[]
+  try {
+    responses = await Promise.all(
+      [current.passkeyId, second.id].map((id) =>
+        concurrent.handler(
+          new Request(`${APP}/api/auth/passkey/delete-passkey`, {
+            method: 'POST',
+            headers: { Cookie: current.login.cookie, Origin: APP, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+          })
+        )
+      )
+    )
+  } finally {
+    clearTimeout(timer)
+  }
+
+  expect(responses.map((response) => response.status).sort()).toEqual([200, 409])
+  expect(await countSignInMethods(current.accountId)).toMatchObject({ passkeys: 1, magicLinkEnabled: false })
 })
 
 test('unlinking the only Google account while magic link is off returns last-sign-in-method', async () => {

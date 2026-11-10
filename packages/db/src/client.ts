@@ -23,15 +23,21 @@ export type Login = 'APP' | 'AUTH' | 'SYSTEM' | 'RETENTION'
 
 const connections = new Map<string, { pool: pg.Pool; db: NodePgDatabase<Schema> }>()
 
-/** The pool for a login, made on first use from `DATABASE_URL_<login>`. */
-export function connection(login: Login) {
+/** Security lock waiters use a separate pool so they cannot exhaust the connections needed by the lock holder. */
+export function connection(login: Login, purpose?: 'account-security') {
   const name = `DATABASE_URL_${login}`
   const url = process.env[name]
   if (!url) throw new Error(`${name} is not set`)
-  let found = connections.get(url)
+  const key = purpose ? `${purpose}:${url}` : url
+  let found = connections.get(key)
   if (!found) {
     // D45: nothing holds an idle connection, so a sleeping Neon compute stays asleep.
-    const pool = new pg.Pool({ connectionString: url, idleTimeoutMillis: 5_000, allowExitOnIdle: true })
+    const pool = new pg.Pool({
+      connectionString: url,
+      idleTimeoutMillis: 5_000,
+      allowExitOnIdle: true,
+      ...(purpose ? { max: 2 } : {})
+    })
     // A client whose connection fails (the server ended it) emits `error`, which would crash the process with no
     // listener, and pg-pool listens only while the client is idle; so each client keeps one of its own, checked out or
     // not. A query on it still rejects for its caller, the pool drops the client, and the next query connects again.
@@ -41,7 +47,7 @@ export function connection(login: Login) {
     // pg-pool re-emits an idle client's error here, and throws it without a listener; the client's own logged it.
     pool.on('error', () => {})
     found = { pool, db: drizzle(pool, { schema }) }
-    connections.set(url, found)
+    connections.set(key, found)
   }
   return found
 }

@@ -4,7 +4,7 @@ import { fetchClientMetadataResource } from '@better-auth/cimd/node'
 import { mcp } from '@better-auth/mcp'
 import { passkey } from '@better-auth/passkey'
 import { loadEnv } from '@skyclause/config'
-import { authDatabase } from '@skyclause/db/auth'
+import { authDatabase, withAccountSecurityLock } from '@skyclause/db/auth'
 import { betterAuth, type BetterAuthOptions, type BetterAuthPlugin } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { anonymous, bearer, deviceAuthorization, jwt, organization } from 'better-auth/plugins'
@@ -110,7 +110,7 @@ export function createAuth(
 ) {
   const base = basePlugins(s)
   const plugins = withOwners(base, [...PLUGINS, ...(extra.plugins ?? [])])
-  return betterAuth({
+  const auth = betterAuth({
     secret: s.secret,
     baseURL: s.appOrigin,
     database: drizzleAdapter(authDatabase(), { provider: 'pg' }),
@@ -134,6 +134,18 @@ export function createAuth(
     plugins,
     disabledPaths: unbuiltPaths(base, plugins)
   })
+  // A before hook alone cannot hold the last-method check through Better Auth's subsequent deletion.
+  const handle = auth.handler
+  auth.handler = async (request) => {
+    const path = new URL(request.url).pathname.replace(/\/+$/, '')
+    if (request.method !== 'POST' || !['/api/auth/unlink-account', '/api/auth/passkey/delete-passkey'].includes(path)) {
+      return handle(request)
+    }
+    const current = await auth.api.getSession({ headers: request.headers, query: { disableRefresh: true } })
+    if (!current) return handle(request)
+    return withAccountSecurityLock(current.user.id, () => handle(request))
+  }
+  return auth
 }
 
 /** @internal */
