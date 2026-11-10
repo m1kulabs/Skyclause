@@ -1,3 +1,4 @@
+import { auditor } from './auditor'
 import { alerts } from './alerts'
 import { analysis } from './analysis'
 import { bundles } from './bundles'
@@ -32,5 +33,6 @@ export const registry = defineRegistry([
   alerts, // c-approver-alerts
   notifications, // c-notifications
   ics, // c-ics-feed
-  analysis // c-analysis-api
+  analysis, // c-analysis-api
+  auditor // b-auditor
 ])

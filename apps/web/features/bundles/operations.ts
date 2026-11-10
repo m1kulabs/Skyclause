@@ -1,15 +1,15 @@
-import { REGISTRY } from '@skyclause/contracts'
+import { approveBundle as approve } from '@skyclause/contracts/api/first-party/bundles'
+import {
+  getMyPreferences as preferences,
+  listMyMemberships as memberships
+} from '@skyclause/contracts/api/first-party/me'
+import { getBundle as bundle, streamBundles } from '@skyclause/contracts/api/v1/bundles'
+import { getCall as call, getCallExplanation as explanation } from '@skyclause/contracts/api/v1/calls'
+import { getRun as run } from '@skyclause/contracts/api/v1/runs'
+import { getProjectStrip as strip } from '@skyclause/contracts/api/v1/strip'
 import { createApiFetch } from '../../lib/api-fetch'
 
-const bundle = REGISTRY.find((route) => route.operationId === 'getBundle')!
-const call = REGISTRY.find((route) => route.operationId === 'getCall')!
-const explanation = REGISTRY.find((route) => route.operationId === 'getCallExplanation')!
-const run = REGISTRY.find((route) => route.operationId === 'getRun')!
-const strip = REGISTRY.find((route) => route.operationId === 'getProjectStrip')!
-const approve = REGISTRY.find((route) => route.operationId === 'approveBundle')!
-const preferences = REGISTRY.find((route) => route.operationId === 'getMyPreferences')!
-const memberships = REGISTRY.find((route) => route.operationId === 'listMyMemberships')!
-export const bundleStream = REGISTRY.find((route) => route.operationId === 'streamBundles')!
+export const bundleStream = streamBundles
 
 export const bundleOperations = {
   getBundle: {

@@ -15,10 +15,29 @@ export { track } from './analytics'
 export * from './api'
 export * from './approvals'
 export * from './bundles'
-export { recordAudit } from './audit'
+export {
+  auditExportPage,
+  auditHead,
+  DELETED_ACCOUNT_NAME,
+  listAudit,
+  recordAudit,
+  resolveActorDisplay,
+  type ActorDisplay,
+  type AuditCursor,
+  type AuditFilters,
+  type AuditRow
+} from './audit'
 export * from './channels'
 export * from './evidence'
-export { emitEvent, handleOnce, loadEvent, republishEvents, setEventPublisher, type EventPublisher } from './events'
+export {
+  DOMAIN_EVENTS_TOPIC,
+  emitEvent,
+  handleOnce,
+  loadEvent,
+  republishEvents,
+  setEventPublisher,
+  type EventPublisher
+} from './events'
 export { FEATURE_FLAGS, isFlagEnabled, setFlag, type FeatureFlagKey } from './flags'
 export { projectGate } from './gate'
 export * from './grades'
@@ -39,3 +58,5 @@ export * from './replies'
 export * from './schema'
 export * from './schema/partitioned'
 export * from './subscribers'
+
+export * from './auditor'

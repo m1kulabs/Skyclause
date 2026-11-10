@@ -63,12 +63,15 @@ export function BundleCard({
             {t('data.bundle.escalation', { level: bundle.escalation_level }, locale)}
           </p>
         ) : null}
-        <div
-          className="mt-3 flex min-h-[34px] flex-wrap items-center gap-2 [@media(pointer:coarse)]:min-h-[44px]"
-          aria-label={t('data.bundle.actions', {}, locale)}
-        >
-          {bundle.draft_only ? <span>{t('data.bundle.draft_only', {}, locale)}</span> : actions}
-        </div>
+        {bundle.draft_only || actions ? (
+          <div
+            role="group"
+            className="mt-3 flex min-h-[34px] flex-wrap items-center gap-2 [@media(pointer:coarse)]:min-h-[44px]"
+            aria-label={t('data.bundle.actions', {}, locale)}
+          >
+            {bundle.draft_only ? <span>{t('data.bundle.draft_only', {}, locale)}</span> : actions}
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   )

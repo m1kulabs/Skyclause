@@ -112,7 +112,7 @@
   "save": "Simpan suntingan",
   "cancel": "Batal",
   "teaching": "Mod pengajaran ialah keputusan pensyarah dan universiti. Skyclause tidak pernah mengecualikan kehadiran.",
-  "teaching_required": "Pulihkan ayat mod pengajaran dalam setiap bahasa sebelum meluluskan.",
+  "teaching_forbidden": "Padam ayat mod pengajaran daripada setiap bahasa sebelum meluluskan.",
   "changed": "Berubah sejak draf disediakan",
   "changed_help": "Semak input, usia dan keputusan lama serta baharu. Sahkan untuk menyemak semula petikan ini sebelum menghantar.",
   "before": "Dahulu: {value}",

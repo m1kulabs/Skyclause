@@ -1,3 +1,4 @@
+import { HTTP_PROBLEM_STATUS } from '@skyclause/contracts'
 import { OpenAPIHono } from '@hono/zod-openapi'
 import { log } from '@skyclause/config'
 import { API_ROUTES, NotBuiltError, V1_ROUTES, type RouteMetadata, type SkyclauseRoute } from '@skyclause/contracts'
@@ -21,6 +22,7 @@ import { rateLimit } from './middleware/rate-limit'
 import { apiSurfaceGate, auditToolCall } from './middleware/surface'
 import { ApiError, problemResponse, toApiError, validationFailed } from './problems'
 import { HANDLERS, type AnyHandlerEntry } from './routes'
+import { mountAuditWriteGuards } from './routes/audit'
 
 type Middleware = MiddlewareHandler<ApiEnv>
 
@@ -74,8 +76,14 @@ function surfaceApp(
     }
     return problemResponse(c, problem)
   })
-  app.notFound((c) => problemResponse(c, new ApiError(404, 'not-found', 'No operation answers this method and path.')))
+  app.notFound((c) =>
+    problemResponse(
+      c,
+      new ApiError(HTTP_PROBLEM_STATUS['not-found'], 'not-found', 'No operation answers this method and path.')
+    )
+  )
   for (const route of routes) mount(app, surface, route, handlers[route.operationId])
+  if (surface === 'api') mountAuditWriteGuards(app)
   return app
 }
 

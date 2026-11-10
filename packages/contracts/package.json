@@ -3,9 +3,14 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./analytics": "./src/analytics.ts"
+    "./analytics": "./src/analytics.ts",
+    "./api/shared": "./src/api/shared.ts",
+    "./not-built": "./src/not-built.ts",
+    "./api/v1/*": "./src/api/v1/*.ts",
+    "./api/first-party/*": "./src/api/first-party/*.ts"
   },
   "dependencies": {
     "@hono/zod-openapi": "1.6.3",
