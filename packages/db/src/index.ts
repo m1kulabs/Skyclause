@@ -15,7 +15,18 @@ export { track } from './analytics'
 export * from './api'
 export * from './approvals'
 export * from './bundles'
-export { recordAudit } from './audit'
+export {
+  auditExportPage,
+  auditHead,
+  DELETED_ACCOUNT_NAME,
+  listAudit,
+  recordAudit,
+  resolveActorDisplay,
+  type ActorDisplay,
+  type AuditCursor,
+  type AuditFilters,
+  type AuditRow
+} from './audit'
 export * from './channels'
 export * from './evidence'
 export {
@@ -48,3 +59,5 @@ export * from './replies'
 export * from './schema'
 export * from './schema/partitioned'
 export * from './subscribers'
+
+export * from './auditor'

@@ -15,7 +15,6 @@ export const expectedOwners: Record<string, string[]> = {
   'e-mcp-auth': panels('organisation', ['integrations']),
   'b-project-ui': panels('project', ['general', 'rota', 'share']),
   'b-create-project-ui': panels('project', ['packs']),
-  'c-channels-ui': panels('project', ['channels']),
   'd-public-project-page': panels('project', ['public']),
   'a-step-up': ['apps/web/features/reauth/use-reauth.ts', 'apps/web/features/reauth/reauth-dialog.tsx'],
   'd-org-live': ['apps/web/features/org-live/index.tsx']
@@ -37,5 +36,5 @@ test('check:unbuilt reports every settings panel and shared part under its spec 
   const panelFiles = Object.values(byOwner)
     .flat()
     .filter((file) => file.includes('/settings/') && file.endsWith('/panel.tsx'))
-  expect(panelFiles).toHaveLength(22)
+  expect(panelFiles).toHaveLength(21)
 })

@@ -45,11 +45,11 @@ export interface ApiFetchOptions<Operation> {
   query?: RequestInput<Operation, 'query'>
   body?: RequestInput<Operation, 'body'>
   signal?: AbortSignal
+  /** Forwarded to fetch so undoable actions can flush with keepalive on pagehide. */
+  keepalive?: boolean
   /** Device operations supply their bearer and stable capture idempotency key. */
   headers?: HeadersInit
   credentials?: RequestCredentials
-  /** Deferred SET-7 writes must survive pagehide. */
-  keepalive?: boolean
   /** Required when calling from a server context without an organisation in the URL. */
   org?: string
   /** Reuse across a recent-auth retry of the same logical write. */
@@ -103,7 +103,11 @@ function problemBody(value: unknown, status: number, statusText: string): ApiPro
   return { type: 'about:blank', title: statusText || `HTTP ${status}`, status }
 }
 
-function defaultBaseUrl(): string | undefined {
+function defaultBaseUrl(path: string): string | undefined {
+  if (path.startsWith('/api/')) {
+    if (typeof window !== 'undefined') return window.location.origin
+    if (process.env.HOST_MODE === 'multi') return process.env.APP_ORIGIN
+  }
   if (typeof window !== 'undefined') return process.env.NEXT_PUBLIC_API_ORIGIN
   return process.env.API_ORIGIN ?? 'https://api.skyclause.m1ku.tech'
 }
@@ -128,7 +132,7 @@ export function createApiFetch<const Registry extends ApiRegistry>(
       body?: unknown
     }
     const path = fillPath(operation.path, requestOptions.params, organization)
-    const baseUrl = config.baseUrl ?? defaultBaseUrl()
+    const baseUrl = config.baseUrl ?? defaultBaseUrl(path)
     const requestUrl = addQuery(baseUrl ? new URL(path, baseUrl) : path, requestOptions.query)
     const headers = new Headers(options.headers)
     headers.set('Accept', 'application/json')
@@ -155,7 +159,12 @@ export function createApiFetch<const Registry extends ApiRegistry>(
       throw new ApiProblem(response.status, problemBody(body, response.status, response.statusText))
     }
 
-    const body = response.status === 204 ? undefined : await response.json()
+    const body =
+      response.status === 204
+        ? undefined
+        : response.headers.get('Content-Type')?.includes('text/csv')
+          ? await response.text()
+          : await response.json()
     return operation.response.parse(body) as OutputOf<Registry[OperationId]['response']>
   }
 }
