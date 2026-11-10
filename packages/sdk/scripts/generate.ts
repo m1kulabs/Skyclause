@@ -80,7 +80,7 @@ function schemaToType(value: unknown): string {
     result = 'number'
   } else if (nonNullTypes.includes('boolean')) {
     result = 'boolean'
-  } else if (nonNullTypes.includes('null')) {
+  } else if (types.includes('null') && !nonNullTypes.length) {
     result = 'null'
   } else if (!nonNullTypes.length) {
     result = 'unknown'
