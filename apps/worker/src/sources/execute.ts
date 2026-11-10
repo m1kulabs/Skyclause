@@ -59,21 +59,31 @@ export async function executeAdapter<Raw>(
   }
   const groups = adapter.batch === 'all_bound' ? (unique.length ? [unique] : []) : unique.map((source) => [source])
   for (const group of groups) {
-    const { ctx, requests } = contextFactory(group, options)
+    const { ctx, requests, closeAndDrain } = contextFactory(group, options)
     const started = options.clock.monotonic(),
       startedAt = options.clock.now().toISOString()
     let error: SourceError | null = null
     let rows: ReadingInput[] = []
     let unchanged = new Set<string>()
+    let fetched: { raw: Raw } | undefined
     try {
-      const raw =
-        options.purpose === 'backfill'
-          ? await (adapter.backfill
-              ? adapter.backfill(group[0]!, ctx)
-              : Promise.reject(new SchemaError('Adapter does not support backfill')))
-          : await adapter.fetch(group, ctx)
-      error = requests.find((request) => request.error)?.error ?? null
-      if (!error) {
+      fetched = {
+        raw:
+          options.purpose === 'backfill'
+            ? await (adapter.backfill
+                ? adapter.backfill(group[0]!, ctx)
+                : Promise.reject(new SchemaError('Adapter does not support backfill')))
+            : await adapter.fetch(group, ctx)
+      }
+    } catch (cause) {
+      error = sourceError(cause)
+    } finally {
+      // Promise.all can reject before its siblings settle. Close admission now and join the ledger.
+      await closeAndDrain()
+    }
+    error ??= requests.find((request) => request.error)?.error ?? null
+    if (!error && fetched) {
+      try {
         if (!requests.length) throw new SchemaError('Adapter produced no HTTP request')
         // A final body alone says nothing about preceding responses in an aggregate fetch.
         if (requests.length === 1 && requests[0]!.bodySha256 !== null)
@@ -83,12 +93,14 @@ export async function executeAdapter<Raw>(
               .map((source) => source.id)
           )
         if (unchanged.size !== group.length)
-          rows = validateReadings(adapter.kind, group, adapter.parse(raw, group)).filter(
+          rows = validateReadings(adapter.kind, group, adapter.parse(fetched.raw, group)).filter(
             (row) => !unchanged.has(row.sourceId)
           )
+      } catch (cause) {
+        error = sourceError(cause)
+        const finalRequest = requests.at(-1)
+        if (finalRequest && !finalRequest.error) finalRequest.error = error
       }
-    } catch (cause) {
-      error = sourceError(cause)
     }
     if (!requests.length)
       requests.push({
@@ -104,7 +116,6 @@ export async function executeAdapter<Raw>(
       })
     if (error) rows = []
     const last = requests.at(-1)!
-    if (error && last.error === null) last.error = error
     for (const request of requests) {
       for (const source of group) {
         const readings = request === last ? rows.filter((row) => row.sourceId === source.id) : []
@@ -129,5 +140,6 @@ export async function executeAdapter<Raw>(
     }
     result.requests.push(...requests)
   }
-  return result
+  // Adapter-held buffers and response readers cannot mutate the published/durable snapshot later.
+  return structuredClone(result)
 }

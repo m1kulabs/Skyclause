@@ -227,3 +227,36 @@ test('renewal cadence includes GCS latency instead of sleeping twenty seconds af
   release()
   await running
 })
+
+test('backfill cannot commit or publish while a parallel HTTP sibling remains unsettled', async () => {
+  const t = setup()
+  let release!: (response: Response) => void
+  const held = new Promise<Response>((resolve) => {
+    release = resolve
+  })
+  t.ports.contextFactory = (sources) =>
+    context({
+      sources,
+      clock: t.clock,
+      http: async (url) => (String(url).endsWith('/bad') ? new Response('', { status: 500 }) : held)
+    })
+  const a = adapter({
+    backfill: async (_, ctx) =>
+      Promise.all([ctx.http('https://example.test/bad'), ctx.http('https://example.test/held')])
+  })
+  const running = runBackfillOnce(a, source(), t.ports)
+  await flush()
+  expect(t.published).toEqual([])
+  expect(JSON.parse(Buffer.from((await t.store.read('control/backfills/rain-a.json'))!.body).toString()).state).toBe(
+    'running'
+  )
+  await t.clock.advance(125)
+  release(new Response('hello', { status: 201 }))
+  expect(await running).toBe('complete')
+  expect(t.published[0]?.requests.map((request) => request.httpStatus)).toEqual([500, 201])
+  expect(t.published[0]?.requests.map((request) => request.error?.type ?? null)).toEqual(['http', null])
+  expect(t.published[0]?.polls.flatMap((poll) => poll.readings)).toEqual([])
+  const saved = JSON.stringify(t.published)
+  await t.clock.advance(20000)
+  expect(JSON.stringify(t.published)).toBe(saved)
+})

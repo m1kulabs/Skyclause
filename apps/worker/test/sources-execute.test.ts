@@ -1,7 +1,8 @@
 import { expect, test } from 'vitest'
 import { SchemaError } from '@skyclause/sources'
 import { executeAdapter } from '../src/sources/execute'
-import { adapter, context, reading, source, TestClock } from './support/source-adapter'
+import { saveSourceResult, loadSourceResult } from '../src/sources/storage'
+import { adapter, context, reading, source, TestClock, MemoryStore, flush } from './support/source-adapter'
 const options = () => ({
   operationId: 'operation',
   purpose: 'poll' as const,
@@ -154,4 +155,138 @@ test('schema failures annotate the final request and logs preserve the scheduled
     http_status: 200,
     outcome: 'unchanged'
   })
+})
+
+test('parallel failure drains its held sibling before durable results, preserving each response error and stable bytes', async () => {
+  const clock = new TestClock(),
+    store = new MemoryStore()
+  let release!: (response: Response) => void,
+    returned = false,
+    calls = 0
+  let buffered: Awaited<ReturnType<ReturnType<typeof context>['ctx']['http']>> | undefined
+  const held = new Promise<Response>((resolve) => {
+    release = resolve
+  })
+  const c = context({
+    clock,
+    http: async (url) => {
+      calls++
+      return String(url).endsWith('/bad') ? new Response('', { status: 500 }) : held
+    }
+  })
+  const a = adapter({
+    fetch: async (_, ctx) =>
+      Promise.all([
+        ctx.http('https://example.test/bad'),
+        ctx.http('https://example.test/held').then((response) => {
+          buffered = response
+          return response
+        })
+      ])
+  })
+  const execution = executeAdapter(a, [source()], () => c, { ...options(), clock }).then((result) => {
+    returned = true
+    return result
+  })
+  await flush()
+  expect(returned).toBe(false)
+  await clock.advance(125)
+  release(new Response('hello', { status: 201 }))
+  await flush()
+  const result = await execution
+  expect(result.requests.map((request) => request.httpStatus)).toEqual([500, 201])
+  expect(result.requests.map((request) => request.error?.type ?? null)).toEqual(['http', null])
+  expect(result.requests[1]).toMatchObject({
+    latencyMs: 125,
+    bodySha256: '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824'
+  })
+  expect(result.polls.map((poll) => poll.outcome)).toEqual(['error', 'error'])
+  expect(result.polls.flatMap((poll) => poll.readings)).toEqual([])
+  await saveSourceResult(store, 'control/results/settled.json', result)
+  const serialized = JSON.stringify(result),
+    saved = await store.read('control/results/settled.json')
+  await expect(buffered!.json()).rejects.toBeInstanceOf(SchemaError)
+  await expect(c.ctx.http('https://example.test/late')).rejects.toBeInstanceOf(SchemaError)
+  await expect(c.ctx.budget.take('datagovmy-weather')).rejects.toBeInstanceOf(SchemaError)
+  await clock.advance(30000)
+  expect(calls).toBe(2)
+  expect(JSON.stringify(result)).toBe(serialized)
+  expect(await store.read('control/results/settled.json')).toEqual(saved)
+  expect(structuredClone(await loadSourceResult(store, 'control/results/settled.json'))).toEqual(result)
+})
+
+test('fetch settlement closes admission and drains detached preflight work before returning', async () => {
+  const clock = new TestClock(),
+    store = new MemoryStore()
+  let release!: () => void,
+    returned = false,
+    calls = 0
+  const held = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  store.read = async () => {
+    await held
+    return null
+  }
+  const c = context({
+    clock,
+    budget: store,
+    http: async () => {
+      calls++
+      return new Response('ok')
+    }
+  })
+  const a = adapter({
+    fetch: async (_, ctx) => {
+      void ctx.budget.take('datagovmy-weather')
+      throw new SchemaError('fetch failed')
+    }
+  })
+  const execution = executeAdapter(a, [source()], () => c, { ...options(), clock }).then((result) => {
+    returned = true
+    return result
+  })
+  await flush()
+  expect(returned).toBe(false)
+  await expect(c.ctx.http('https://example.test/late')).rejects.toBeInstanceOf(SchemaError)
+  await clock.advance(20000)
+  const result = await execution,
+    serialized = JSON.stringify(result)
+  expect(result.requests[0]).toMatchObject({ httpStatus: null, latencyMs: 20000, error: { type: 'rate_limited' } })
+  release()
+  await flush()
+  expect(calls).toBe(0)
+  expect(JSON.stringify(result)).toBe(serialized)
+})
+
+test('draining a timed-out parallel request preserves its own timeout and rejects late response mutation', async () => {
+  const clock = new TestClock()
+  let release!: (response: Response) => void,
+    returned = false
+  const held = new Promise<Response>((resolve) => {
+    release = resolve
+  })
+  const c = context({
+    clock,
+    http: async (url) => (String(url).endsWith('/bad') ? new Response('', { status: 500 }) : held)
+  })
+  const a = adapter({
+    fetch: async (_, ctx) => Promise.all([ctx.http('https://example.test/bad'), ctx.http('https://example.test/held')])
+  })
+  const execution = executeAdapter(a, [source()], () => c, { ...options(), clock }).then((result) => {
+    returned = true
+    return result
+  })
+  await flush()
+  await clock.advance(19999)
+  expect(returned).toBe(false)
+  await clock.advance(1)
+  const result = await execution,
+    serialized = JSON.stringify(result)
+  expect(result.requests.map((request) => request.error?.type)).toEqual(['http', 'timeout'])
+  expect(result.requests[1]).toMatchObject({ httpStatus: null, latencyMs: 20000, body: null })
+  expect(result.polls.flatMap((poll) => poll.readings)).toEqual([])
+  release(new Response('late', { status: 201 }))
+  await flush()
+  expect(JSON.stringify(result)).toBe(serialized)
 })

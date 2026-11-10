@@ -157,3 +157,60 @@ test.each(['read', 'write'] as const)(
     expect(c.requests[0]).toMatchObject({ httpStatus: null, latencyMs: 20000, error: { type: 'rate_limited' } })
   }
 )
+
+test('nineteen-second preflight admission is consumed without another GCS read or a restarted deadline', async () => {
+  const clock = new TestClock(),
+    store = new MemoryStore(),
+    read = store.read.bind(store)
+  let reads = 0
+  const sentAt: number[] = []
+  store.read = async (path) => {
+    reads++
+    await clock.sleep(19000)
+    return read(path)
+  }
+  const c = context({
+    clock,
+    budget: store,
+    http: async () => {
+      sentAt.push(clock.monotonic())
+      return new Response('ok')
+    }
+  })
+  const request = (async () => {
+    await c.ctx.budget.take('datagovmy-weather')
+    return c.ctx.http('https://example.test/data')
+  })()
+  await flush()
+  await clock.advance(19000)
+  expect(reads).toBe(1)
+  expect(sentAt).toEqual([19000])
+  await request
+  expect(c.requests[0]).toMatchObject({ latencyMs: 19000, httpStatus: 200 })
+})
+
+test('an unused preflight credit expires at its original twenty-second deadline without HTTP or another read', async () => {
+  const clock = new TestClock(),
+    store = new MemoryStore(),
+    read = store.read.bind(store)
+  let reads = 0,
+    sent = 0
+  store.read = async (path) => {
+    reads++
+    return read(path)
+  }
+  const c = context({
+    clock,
+    budget: store,
+    http: async () => {
+      sent++
+      return new Response('ok')
+    }
+  })
+  await c.ctx.budget.take('datagovmy-weather')
+  await clock.advance(20000)
+  await expect(c.ctx.http('https://example.test/data')).rejects.toBeInstanceOf(RateLimitedError)
+  expect(reads).toBe(1)
+  expect(sent).toBe(0)
+  expect(c.requests[0]).toMatchObject({ httpStatus: null, latencyMs: 20000, error: { type: 'rate_limited' } })
+})

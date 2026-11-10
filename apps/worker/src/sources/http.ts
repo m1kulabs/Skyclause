@@ -59,6 +59,19 @@ export function createPollContext(options: PollContextOptions): CapturedPollCont
   const requests: RequestCapture[] = []
   type Credit = { capture: RequestCapture; started: number; family: ApiFamily; reserved: Promise<void> }
   const credits: Credit[] = []
+  const pending = new Set<Promise<unknown>>()
+  let accepting = true,
+    finalized = false
+  const track = <T>(start: () => Promise<T>): Promise<T> => {
+    const operation = accepting ? start() : Promise.reject<T>(new SchemaError('Source context admission is closed'))
+    pending.add(operation)
+    // Observe even detached adapter calls; closeAndDrain joins the same operations.
+    void operation.then(
+      () => pending.delete(operation),
+      () => pending.delete(operation)
+    )
+    return operation
+  }
   const capture = (): RequestCapture => ({
     requestId: options.requestId(),
     sourceIds: options.sources.map((source) => source.id),
@@ -77,90 +90,102 @@ export function createPollContext(options: PollContextOptions): CapturedPollCont
     openCrowdPeriods: options.periods,
     log: options.log,
     budget: {
-      async take(family) {
-        if (family !== options.family) throw new SchemaError('Budget family differs from the adapter family')
-        const request = capture(),
-          started = clock.monotonic()
-        const credit: Credit = {
-          capture: request,
-          started,
-          family,
-          reserved: takeSourceBudget(options.budget, family, request.requestId, clock)
-        }
-        credits.push(credit)
-        try {
-          await credit.reserved
-        } catch (error) {
-          const index = credits.indexOf(credit)
-          if (index >= 0) credits.splice(index, 1)
-          request.error = sourceError(error)
-          request.latencyMs = elapsed(started)
-          if (!requests.includes(request)) requests.push(request)
-          throw error
-        }
-      }
-    },
-    async http(url, init) {
-      const credit = credits.shift()
-      const request = credit?.capture ?? capture(),
-        started = credit?.started ?? clock.monotonic()
-      request.url = url
-      requests.push(request)
-      const timer = new AbortController(),
-        transport = new AbortController()
-      let response: Response | undefined
-      try {
-        if (credit) await credit.reserved
-        if (options.family) await takeSourceBudget(options.budget, options.family, request.requestId, clock)
-        const headers = new Headers(init?.headers)
-        headers.set('User-Agent', options.userAgent)
-        const timeout = clock.sleep(20000, timer.signal).then(() => {
-          if (!timer.signal.aborted) {
-            transport.abort()
-            throw new TimeoutError(url)
+      take: (family) =>
+        track(async () => {
+          if (family !== options.family) throw new SchemaError('Budget family differs from the adapter family')
+          const request = capture(),
+            started = clock.monotonic()
+          const credit: Credit = {
+            capture: request,
+            started,
+            family,
+            reserved: takeSourceBudget(options.budget, family, request.requestId, clock)
           }
-          return new Promise<never>(() => {})
-        })
-        const data = (async () => {
+          credits.push(credit)
           try {
-            response = await options.http(url, { headers, redirect: 'manual', signal: transport.signal })
-            if (transport.signal.aborted) throw new TimeoutError(url)
-            request.httpStatus = response.status
-            if (!response.ok) throw new HttpError(response.status, url)
-            return new Uint8Array(await response.arrayBuffer())
+            await credit.reserved
           } catch (error) {
-            if (error instanceof HttpError) throw error
-            if (transport.signal.aborted) throw new TimeoutError(url)
-            throw new NetworkError(url, error)
+            const index = credits.indexOf(credit)
+            if (index >= 0) credits.splice(index, 1)
+            request.error = sourceError(error)
+            request.latencyMs = elapsed(started)
+            if (!requests.includes(request)) requests.push(request)
+            throw error
           }
-        })()
-        const body = await Promise.race([data, timeout])
-        request.body = body
-        request.bodySha256 = createHash('sha256').update(body).digest('hex')
-        const text = () => new TextDecoder().decode(body)
-        return {
-          status: request.httpStatus!,
-          headers: response!.headers,
-          text: async () => text(),
-          arrayBuffer: async () => body.slice().buffer,
-          json: async () => {
+        })
+    },
+    http: (url, init) =>
+      track(async () => {
+        const credit = credits.shift()
+        const request = credit?.capture ?? capture(),
+          started = credit?.started ?? clock.monotonic()
+        request.url = url
+        requests.push(request)
+        const timer = new AbortController(),
+          transport = new AbortController()
+        let response: Response | undefined
+        try {
+          if (credit) await credit.reserved
+          else if (options.family) await takeSourceBudget(options.budget, options.family, request.requestId, clock)
+          // Preflight credit retains its original deadline; consuming it never restarts admission.
+          if (options.family && clock.monotonic() >= started + 20000) throw new RateLimitedError(options.family)
+          const headers = new Headers(init?.headers)
+          headers.set('User-Agent', options.userAgent)
+          const timeout = clock.sleep(20000, timer.signal).then(() => {
+            if (!timer.signal.aborted) {
+              transport.abort()
+              throw new TimeoutError(url)
+            }
+            return new Promise<never>(() => {})
+          })
+          const data = (async () => {
             try {
-              return JSON.parse(text()) as unknown
-            } catch (cause) {
-              const error = new SchemaError('Invalid JSON response', { cause })
-              request.error = sourceError(error)
-              throw error
+              response = await options.http(url, { headers, redirect: 'manual', signal: transport.signal })
+              if (transport.signal.aborted) throw new TimeoutError(url)
+              request.httpStatus = response.status
+              if (!response.ok) throw new HttpError(response.status, url)
+              return new Uint8Array(await response.arrayBuffer())
+            } catch (error) {
+              if (error instanceof HttpError) throw error
+              if (transport.signal.aborted) throw new TimeoutError(url)
+              throw new NetworkError(url, error)
+            }
+          })()
+          const body = await Promise.race([data, timeout])
+          request.body = body
+          request.bodySha256 = createHash('sha256').update(body).digest('hex')
+          const text = () => new TextDecoder().decode(body)
+          return {
+            status: request.httpStatus!,
+            headers: response!.headers,
+            text: async () => text(),
+            arrayBuffer: async () => body.slice().buffer,
+            json: async () => {
+              try {
+                return JSON.parse(text()) as unknown
+              } catch (cause) {
+                const error = new SchemaError('Invalid JSON response', { cause })
+                if (!finalized) request.error = sourceError(error)
+                throw error
+              }
             }
           }
+        } catch (error) {
+          request.error = sourceError(error)
+          throw error
+        } finally {
+          timer.abort()
+          request.latencyMs = elapsed(started)
         }
-      } catch (error) {
-        request.error = sourceError(error)
-        throw error
-      } finally {
-        timer.abort()
-        request.latencyMs = elapsed(started)
-      }
+      })
+  }
+  return {
+    ctx,
+    requests,
+    async closeAndDrain() {
+      accepting = false
+      await Promise.allSettled([...pending])
+      finalized = true
     }
   }
-  return { ctx, requests }
 }

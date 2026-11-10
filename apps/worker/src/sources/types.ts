@@ -45,4 +45,6 @@ export interface SourceExecutionResult {
 export interface CapturedPollContext {
   ctx: PollContext
   requests: RequestCapture[]
+  /** Stop new HTTP/budget admission and settle every operation already started. */
+  closeAndDrain(): Promise<void>
 }
