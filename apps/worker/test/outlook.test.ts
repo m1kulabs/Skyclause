@@ -2,7 +2,8 @@
 // double of #127's ForecastSource, each batch run on one shared system connection as the batch route runs it.
 import type { NightInput } from '@skyclause/clauses'
 import { log } from '@skyclause/config'
-import { run, shareSystemConnection, systemPrincipal, withTenant, type Tx } from '@skyclause/db'
+import { organization, run, shareSystemConnection, systemPrincipal, withTenant, type Tx } from '@skyclause/db'
+import { authDatabase } from '@skyclause/db/auth'
 import {
   makeFeatureFlag,
   makeNight,
@@ -151,15 +152,40 @@ describe('crowd-outlook', () => {
     expect(await runsOf(p.id)).toMatchObject([{ dedupeKey: `schedule:${p.id}:crowd:2026-11-17:07:00` }])
   })
 
-  test('the registry’s outlook has no ForecastSource yet: it requests nothing, naming #127', async () => {
-    const p = await crowdProject()
+  test('the registry’s outlook has no ForecastSource yet: it requests nothing and logs once a batch, naming #127', async () => {
+    const [p, q] = [await crowdProject(), await crowdProject()]
     const errors = vi.spyOn(log, 'error').mockImplementation(() => {})
     await shareSystemConnection(() => registry.batch['crowd-outlook']!(myt('2026-11-18T07:00:00')))
     expect(await runsOf(p.id)).toEqual([])
+    expect(await runsOf(q.id)).toEqual([])
+    expect(errors).toHaveBeenCalledOnce()
     expect(errors).toHaveBeenCalledWith(
-      'ForecastSource failed; no Crowd outlook this batch',
-      expect.objectContaining({ project_id: p.id, error: 'Error: no ForecastSource: #127 has not set one' })
+      'no ForecastSource: #127 has not set one; no Crowd outlook this batch',
+      expect.objectContaining({ project_ids: expect.arrayContaining([p.id, q.id]) })
     )
+  })
+
+  test('a project suspended while its nights are read is refused, and the next project still gets its run', async () => {
+    const lateOrg = (await makeOrganization()).id
+    await inOrg((tx) => makeFeatureFlag(tx, { key: 'pack_crowd', enabled: true }), lateOrg)
+    const refused = await crowdProject({ org: lateOrg })
+    const next = await crowdProject()
+    expect(refused.id < next.id).toBe(true) // the batch works through projects in ID order
+    const { forecast } = forecastDouble()
+    const suspending: ListedNights = {
+      nights: async (tx, q) => {
+        if (q.projectId === refused.id) {
+          await authDatabase()
+            .update(organization)
+            .set({ deletionRequestedAt: new Date() })
+            .where(eq(organization.id, lateOrg))
+        }
+        return forecast.nights(tx, q)
+      }
+    }
+    await outlook(suspending, myt('2026-11-19T07:00:00'))
+    expect(await runsOf(refused.id, lateOrg)).toEqual([])
+    expect(await runsOf(next.id)).toMatchObject([{ dedupeKey: `schedule:${next.id}:crowd:2026-11-19:07:00` }])
   })
 
   test('no run with pack_crowd off, the pack disabled, or the project archived or suspended', async () => {

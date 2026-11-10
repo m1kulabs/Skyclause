@@ -4,13 +4,13 @@ import {
   CROWD_OUTLOOK_AT,
   crowdOutlooksDue,
   projectGate,
-  requestRun,
   runsServing,
   startOfLocalDay,
   systemPrincipal,
   withSystem,
   withTenant
 } from '@skyclause/db'
+import { requestUnlessRefused } from '../runs/consumers'
 import { addDays, minutesOf } from '../runs/inputs'
 import { log, type WorkerPart } from '../server'
 
@@ -25,6 +25,15 @@ export type ListedNights = Pick<ForecastSource, 'nights'>
 /** Requests today's outlook for each project due one, under `withTenant` as system job `crowd-outlook`. */
 async function requestOutlooks(forecast: ListedNights | null, now: Date) {
   const due = await withSystem(JOB, (tx) => crowdOutlooksDue(tx, now))
+  if (!forecast) {
+    // No outlook can run without the port: one line a batch, not one per project.
+    if (due.length) {
+      log('ERROR', 'no ForecastSource: #127 has not set one; no Crowd outlook this batch', {
+        project_ids: due.map((p) => p.projectId)
+      })
+    }
+    return
+  }
   for (const p of due) {
     const dedupeKey = `schedule:${p.projectId}:crowd:${p.date}:${CROWD_OUTLOOK_AT}`
     await withTenant({ orgId: p.orgId, principal: systemPrincipal(JOB) }, async (tx) => {
@@ -36,7 +45,6 @@ async function requestOutlooks(forecast: ListedNights | null, now: Date) {
       // A failed read requests nothing: no run starts on stale or invented nights, and the next batch retries.
       let nights: NightInput[]
       try {
-        if (!forecast) throw new Error('no ForecastSource: #127 has not set one')
         nights = await forecast.nights(tx, { projectId: p.projectId, from: p.date, to: addDays(p.date, 13) })
       } catch (error) {
         log('ERROR', 'ForecastSource failed; no Crowd outlook this batch', {
@@ -46,7 +54,8 @@ async function requestOutlooks(forecast: ListedNights | null, now: Date) {
         return
       }
       const midnight = await startOfLocalDay(tx, p.date, p.timeZone)
-      await requestRun(tx, {
+      // A suspension since the gate was read above is refused here, and the batch goes on to the next project.
+      await requestUnlessRefused(tx, {
         projectId: p.projectId,
         pack: 'crowd',
         trigger: 'schedule',
@@ -64,7 +73,7 @@ export function createOutlookPart(forecast: ListedNights | null): WorkerPart {
 }
 
 /**
- * Production. #127's ForecastSource isn't built: until its owner passes it here, every due outlook logs the failure
- * and requests nothing.
+ * Production. #127's ForecastSource isn't built: until its owner passes it here, a batch with outlooks due logs one
+ * error and requests nothing.
  */
 export const outlook = createOutlookPart(null)
