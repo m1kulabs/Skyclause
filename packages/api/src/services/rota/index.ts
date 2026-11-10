@@ -1,7 +1,16 @@
-import { bundleAlert, lockMemberWrites, member, project, rotaShift, track, type Tx } from '@skyclause/db'
+import {
+  bundleAlert,
+  lockMemberWrites,
+  member,
+  project,
+  rotaLocalInstant as localInstant,
+  rotaShift,
+  track,
+  type Tx
+} from '@skyclause/db'
 import type { Can, Principal, ShiftConditions } from '@skyclause/contracts'
 import { zonedDateTimeParts } from '@skyclause/i18n/format'
-import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNull, or } from 'drizzle-orm'
 import { ApiError } from '../../problems'
 
 export type RotaCondition = 'storm_afternoon' | 'surge_night'
@@ -149,14 +158,6 @@ async function conditionActive(
     (await conditionState(tx, conditions, shift.condition as RotaCondition, date, projectId, orgProjectIds)) !==
     'inactive'
   )
-}
-
-async function localInstant(tx: Tx, date: string, time: string, zone: string): Promise<Date> {
-  const { rows } = await tx.execute<{ at: Date }>(
-    sql`SELECT ((${date}::date + ${time}::time) AT TIME ZONE ${zone}) AS at`
-  )
-  const at = rows[0]!.at as Date | string
-  return at instanceof Date ? at : new Date(at)
 }
 
 function isoTime(seconds: number) {
@@ -328,13 +329,20 @@ export function createRotaService(conditions: ShiftConditions = unknownCondition
     for (let offset = 0; offset < days; offset++) {
       const date = addDate(today, offset)
       const weekday = isoWeekday(date)
+      const available: ShiftRow[] = []
+      for (const shift of eligibleRows) {
+        if (
+          shift.days.includes(weekday) &&
+          (await conditionActive(ctx.tx, conditions, shift, date, q.projectId, orgProjectIds))
+        )
+          available.push(shift)
+      }
       for (const template of ROTA_TEMPLATES) {
         const state = await conditionState(ctx.tx, conditions, template.condition, date, q.projectId, orgProjectIds)
-        if (state === 'inactive') continue
         const start = timeParts(template.local_start)
         const end = timeParts(template.local_end)
-        const covered = eligibleRows
-          .filter((shift) => shift.template === template.template && shift.days.includes(weekday))
+        const covered = available
+          .filter((shift) => shift.template === template.template)
           .map(
             (shift) => [Math.max(start, timeParts(shift.localStart)), Math.min(end, timeParts(shift.localEnd))] as const
           )
@@ -486,6 +494,7 @@ export function createRotaService(conditions: ShiftConditions = unknownCondition
     can?: Can
   ) {
     await lockMemberWrites(ctx.tx)
+    canEdit(ctx.principal, ctx.principal.kind === 'session' ? ctx.principal.accountId : '', can)
     await ensureProject(ctx, input.projectId)
     if (!shiftSetMatchesTemplates(input.templates))
       throw new ApiError(400, 'validation-failed', 'Rota templates are code-defined and cannot be changed.')
@@ -505,7 +514,11 @@ export function createRotaService(conditions: ShiftConditions = unknownCondition
         throw new ApiError(400, 'validation-failed', 'A shift must have a non-empty time range.')
     }
     const scope = input.projectId === null ? isNull(rotaShift.projectId) : eq(rotaShift.projectId, input.projectId)
-    await ctx.tx.delete(rotaShift).where(and(eq(rotaShift.orgId, ctx.tx.orgId!), scope))
+    const ownShifts =
+      ctx.principal.kind === 'session' && ctx.principal.role === 'approver'
+        ? eq(rotaShift.accountId, ctx.principal.accountId)
+        : undefined
+    await ctx.tx.delete(rotaShift).where(and(eq(rotaShift.orgId, ctx.tx.orgId!), scope, ownShifts))
     const inserted = input.shifts.length
       ? await ctx.tx
           .insert(rotaShift)

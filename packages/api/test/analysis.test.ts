@@ -422,12 +422,12 @@ describe('POST /v1/projects/{id}/analysis/what-if', () => {
     expect(response.status).toBe(501)
     expect(await response.json()).toMatchObject({ type: expect.stringMatching(/\/not-built$/), owner: 'b-evaluator' })
     setWhatIfEngine({
-      registry: {} as IndicatorRegistry,
+      registry: [],
       history: async () => ({ sources: [], polls: [], readings: [] })
     })
     const unbuilt = await post(projectId, { sheet, range })
     expect(unbuilt.status).toBe(501)
-    expect(await unbuilt.json()).toMatchObject({ owner: 'b-clauses' })
+    expect(await unbuilt.json()).toMatchObject({ owner: 'b-replay' })
   })
 })
 

@@ -5,6 +5,15 @@ import { tokenHash } from '../tokens'
 import { account, invitation, passkey } from '../schema/auth'
 import { ownershipTransfer } from '../schema/members'
 
+/** Interpret rota wall-clock times in their scope's time zone using Postgres's zone rules. */
+export async function rotaLocalInstant(tx: Tx, date: string, time: string, zone: string): Promise<Date> {
+  const { rows } = await tx.execute<{ at: Date | string }>(
+    sql`SELECT ((${date}::date + ${time}::time) AT TIME ZONE ${zone}) AS at`
+  )
+  const at = rows[0]!.at
+  return at instanceof Date ? at : new Date(at)
+}
+
 export type MemberTokenOwner =
   | { kind: 'invitation'; orgId: string; id: string; status: string; expiresAt: Date }
   | { kind: 'ownership_transfer'; orgId: string; id: string; status: string; expiresAt: Date }

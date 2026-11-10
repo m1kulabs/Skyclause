@@ -52,6 +52,8 @@ export interface Recheck {
   sheet: CheckedSheet
   /** The fresh verdict of each call's window or night, by call ID. */
   verdicts: Map<string, EngineVerdict>
+  /** #499: every fresh window and night verdict, by window or night ID (a drafted missing call's). */
+  byScope: Map<string, EngineVerdict>
   changedInputs: InputChange[]
   changedVerdicts: VerdictChange[]
   /** Binds the bundle's content and the differences, on the fields compared only (no ages). */
@@ -117,6 +119,9 @@ const verdictKey = (v: Verdict) => ({
 })
 
 const same = (a: unknown, b: unknown) => canonicalHash(a) === canonicalHash(b)
+
+/** Whether two verdicts make the same call (CAL-9's comparison, ages and values aside). */
+export const sameCall = (a: Verdict, b: Verdict) => same(verdictKey(a), verdictKey(b))
 
 /** The run's pinned sheet version as the engine's checked sheet (CAL-9: the version the bundle was drafted on). */
 async function pinnedSheet(tx: Tx, runRow: typeof run.$inferSelect, registryHash: string): Promise<CheckedSheet> {
@@ -192,6 +197,7 @@ export async function recheck(
     snapshot: taken.snapshot,
     sheet,
     verdicts: fresh,
+    byScope: new Map([...verdicts.windows, ...verdicts.nights].flatMap((v) => (v.scope.id ? [[v.scope.id, v]] : []))),
     changedInputs,
     changedVerdicts,
     diffHash
