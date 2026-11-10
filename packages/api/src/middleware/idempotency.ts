@@ -14,6 +14,24 @@ export const IDEMPOTENCY_TTL_MS = 24 * 3_600_000
  */
 export const IDEMPOTENCY_PENDING_MS = 600_000
 
+const keyCreateOperations = new Set(['createMyApiKey', 'createOrganisationApiKey'])
+
+/** A create replay may return metadata, but an idempotency row never holds the one-time plaintext key. */
+async function storedBody(response: Response, operationId: string): Promise<string> {
+  const body = await response.clone().text()
+  if (!keyCreateOperations.has(operationId)) return body
+  try {
+    const parsed: unknown = JSON.parse(body)
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && 'key' in parsed) {
+      delete (parsed as { key?: unknown }).key
+      return JSON.stringify(parsed)
+    }
+  } catch {
+    // Only the declared API-key creation response is JSON; keep unexpected bodies unchanged for normal error handling.
+  }
+  return body
+}
+
 /**
  * TRD "API conventions": `Idempotency-Key` on creating POSTs, kept 24 hours with the organisation, route and request
  * hash. A repeat replays the stored response; the same key with another request is 422 `idempotency-mismatch`;
@@ -94,7 +112,7 @@ export const requireIdempotency: MiddlewareHandler<ApiEnv> = async (c, next) => 
         status: c.res.status,
         contentType: c.res.headers.get('Content-Type'),
         location: c.res.headers.get('Location'),
-        body: await c.res.clone().text()
+        body: await storedBody(c.res, c.get('operation').operationId)
       },
       new Date(at.getTime() + IDEMPOTENCY_TTL_MS)
     )

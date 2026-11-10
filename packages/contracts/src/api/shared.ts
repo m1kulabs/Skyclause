@@ -565,8 +565,10 @@ export const ApiKey = z.object({
   name: z.string(),
   prefix: z.string(),
   scopes: z.array(z.enum(['read', 'draft', 'admin'])),
+  created_at: Instant,
   expires_at: Instant,
-  last_used_at: Instant.nullable()
+  last_used_at: Instant.nullable(),
+  created_by: z.string()
 })
 export type ApiKey = z.infer<typeof ApiKey>
 export const AiKey = z.object({

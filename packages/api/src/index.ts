@@ -24,6 +24,7 @@ export { requireIdempotency } from './middleware/idempotency'
 export { requireOrg } from './middleware/org'
 export { rateLimit } from './middleware/rate-limit'
 export { deprecate } from './deprecation'
+export { setApiKeyManager } from './api-key-manager'
 export { health } from './health'
 // #111's `POST /e`, served by `apps/web/app/e/route.ts` on the marketing host (spec §4 Hosts).
 export { handleAnalyticsIngest } from './analytics'

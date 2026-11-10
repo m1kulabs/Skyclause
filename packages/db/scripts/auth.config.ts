@@ -40,7 +40,13 @@ export const auth: { options: BetterAuthOptions } = betterAuth({
       }
     }),
     anonymous(),
-    apiKey({ references: 'organization' }),
+    apiKey({
+      references: 'organization',
+      defaultPrefix: 'skc_',
+      enableMetadata: true,
+      requireName: true,
+      rateLimit: { enabled: false }
+    }),
     passkey(),
     deviceAuthorization(),
     bearer(),

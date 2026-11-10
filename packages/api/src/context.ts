@@ -5,7 +5,9 @@ import type {
   RecordAudit,
   ResolvePrincipal,
   SkyclauseRoute,
-  ShiftConditions
+  ShiftConditions,
+  ApiKeyManager,
+  Track
 } from '@skyclause/contracts'
 import type { withPublicReader, withSystem } from '@skyclause/db'
 import type { Scope } from '@skyclause/contracts'
@@ -90,6 +92,8 @@ export interface ApiDeps {
   withPublicReader: WithPublicReader
   recordAudit: RecordAudit
   oauth: OAuthManagement
+  apiKeys: ApiKeyManager
+  track: Track
   /** Spec §1 `EmailTransport` for the emails a route sends itself (c-subscribers' confirmations). */
   email: EmailTransport
   /** Cloud Tasks and GCS seams for a-data-rights; tests inject deterministic doubles. */
