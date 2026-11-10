@@ -307,7 +307,7 @@ export const createMyExport = createRoute({
     202: { description: 'The account export was queued.', content: { 'application/json': { schema: exportSummary } } },
     ...validationErrors,
     403: problemResponse('The session cannot export account data.'),
-    409: problemResponse('An export is already queued or running for this account.'),
+    409: problemResponse('export-pending: an account export is already being prepared.'),
     503: problemResponse('The export could not be queued right now.'),
     422: problemResponse('The idempotency key was already used with a different request.')
   },

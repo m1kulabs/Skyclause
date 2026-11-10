@@ -45,11 +45,12 @@ async function expectPage(page: Page, path: string, allowed: boolean) {
     else if (path.endsWith('/settings/integrations')) {
       await expect(page.getByRole('heading', { name: 'OAuth clients', exact: true })).toBeVisible()
       await expect(page.getByRole('heading', { name: 'Connected grants', exact: true })).toBeVisible()
+    } else {
+      // #102 built the organisation general panel and #108 billing, audit and data; the rest are placeholders.
+      const builtBy102 = /^\/[^/]+\/settings\/general$/.test(path)
+      const builtBy108 = path === '/account/data' || /\/settings\/(?:billing|audit|data)$/.test(path)
+      await expect(page.locator('[data-settings-panel] [data-unbuilt]')).toHaveCount(builtBy102 || builtBy108 ? 0 : 1)
     }
-    // #102 built the organisation general panel; every other settings panel is still a placeholder.
-    else if (/^\/[^/]+\/settings\/general$/.test(path))
-      await expect(page.locator('[data-settings-panel] [data-unbuilt]')).toHaveCount(0)
-    else await expect(page.locator('[data-settings-panel] [data-unbuilt]')).toHaveCount(1)
   } else {
     // Next may stream a 200 shell before a page-level notFound; the rendered 404 is the gate.
     await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible()

@@ -1,16 +1,19 @@
 // Page helpers for server components: the principal, with a session's organisation role taken from the URL.
 import { beforeAll, expect, test } from 'vitest'
-import { pagePrincipal } from '../src/pages'
+import { pageAccountEmail, pagePrincipal } from '../src/pages'
 import { addMember, makeAccount, makeOrg, makeShareLinkFor, signIn } from './harness'
 
 let org: { id: string; slug: string }
 let other: { id: string; slug: string }
 let cookie: string
 let accountId: string
+let accountEmail: string
 beforeAll(async () => {
   org = await makeOrg()
   other = await makeOrg()
-  accountId = (await makeAccount()).id
+  const account = await makeAccount()
+  accountId = account.id
+  accountEmail = account.email
   await addMember(org.id, accountId, 'approver')
   cookie = (await signIn(accountId)).cookie
 })
@@ -20,9 +23,15 @@ const headers = (value: string) => new Headers({ Cookie: value, Host: 'app.skycl
 test('a member’s session takes the URL organisation’s ID and role, by slug or ID', async () => {
   for (const ref of [org.slug, org.id]) {
     const { principal, org: found } = await pagePrincipal(headers(cookie), { org: ref })
-    expect(found).toEqual(org)
+    expect(found).toMatchObject(org)
+    expect(found).toMatchObject({ plan: 'community' })
     expect(principal).toMatchObject({ kind: 'session', accountId, orgId: org.id, role: 'approver' })
   }
+})
+
+test('server-rendered account settings can read the signed-in email without adding it to Principal', async () => {
+  expect(await pageAccountEmail(headers(cookie))).toBe(accountEmail)
+  expect(await pageAccountEmail(new Headers())).toBeNull()
 })
 
 test('a non-member keeps no organisation; an unknown organisation is null; no org leaves the session as is', async () => {
