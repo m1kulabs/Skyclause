@@ -1,6 +1,6 @@
 // #198 e-mcp-auth: the MCP OAuth provider contract on the pinned Better Auth version.
 import { readFileSync } from 'node:fs'
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { and, eq, sql } from 'drizzle-orm'
 import { expectOneAudit } from '@skyclause/db/test/harness/index'
 import { analyticsEvent, oauthGrant, rateLimit, systemPrincipal, withSystem, withTenant } from '@skyclause/db'
@@ -615,4 +615,66 @@ test('a guest cannot bypass the consent page through the provider’s native con
   })
   expect(response.status).toBe(403)
   expect(await response.json()).not.toHaveProperty('url')
+})
+
+test('concurrent consents in one session keep each code bound to its selected organisation', async () => {
+  const auth = getAuth().auth
+  const account = await makeAccount()
+  const orgs = [await makeOrg(), await makeOrg()]
+  for (const org of orgs) await addMember(org.id, account.id, 'editor')
+  const session = await signIn(account.id)
+  const requests = await Promise.all(orgs.map((org) => playgroundConsent(session.cookie, org.id)))
+  const handler = auth.handler.bind(auth)
+  let arrived = 0
+  let release!: () => void
+  const barrier = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const spy = vi.spyOn(auth, 'handler').mockImplementation(async (request) => {
+    if (new URL(request.url).pathname.endsWith('/oauth2/consent')) {
+      if (++arrived === 2) release()
+      await barrier
+    }
+    return handler(request)
+  })
+  let consents
+  try {
+    consents = await Promise.all(
+      orgs.map((org, index) =>
+        completeOAuthConsent({
+          headers: new Headers({ Cookie: session.cookie, Origin: APP }),
+          oauthQuery: requests[index]!.oauthQuery,
+          orgId: org.id,
+          projectIds: null,
+          scopes: ['read'],
+          accept: true
+        })
+      )
+    )
+  } finally {
+    spy.mockRestore()
+  }
+  for (const [index, consent] of consents.entries()) {
+    const exchange = await request(auth, '/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: 'skyclause-playground',
+        code: new URL(consent.url).searchParams.get('code')!,
+        redirect_uri: `${APP}/developers/mcp/callback`,
+        code_verifier: requests[index]!.verifier,
+        resource: resources(authSettings()).mcp
+      }).toString()
+    })
+    expect(exchange.status).toBe(200)
+    const { access_token: token } = (await exchange.json()) as { access_token: string }
+    const principal = await resolvePrincipal(
+      new Request(resources(authSettings()).mcp, {
+        headers: { Authorization: `Bearer ${token}` }
+      }),
+      { surface: 'mcp' }
+    )
+    expect(principal).toMatchObject({ kind: 'oauth', orgId: orgs[index]!.id, grantId: consent.grantId })
+  }
 })

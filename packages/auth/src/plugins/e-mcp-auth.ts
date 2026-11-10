@@ -17,6 +17,7 @@ import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/a
 import type { BetterAuthPlugin } from 'better-auth'
 import type { AuthSettings } from '../instance'
 import { resources } from '../instance'
+import { oauthConsentReference } from '../oauth-consent-context'
 
 const PLAYGROUND_CLIENT = 'skyclause-playground'
 const PLAYGROUND_REDIRECT = '/developers/mcp/callback'
@@ -118,7 +119,7 @@ export function eMcpAuth(s: AuthSettings): BetterAuthPlugin {
     consentPage: '/oauth/consent',
     postLogin: {
       page: '/oauth/consent',
-      consentReferenceId: ({ session }) => activeOrganization(session),
+      consentReferenceId: () => oauthConsentReference.getStore(),
       shouldRedirect: () => false
     },
     extensions: [
@@ -209,6 +210,12 @@ export function eMcpAuth(s: AuthSettings): BetterAuthPlugin {
                 throw new APIError('FORBIDDEN', {
                   error: 'access_denied',
                   error_description: 'Sign up before granting OAuth consent.'
+                })
+              }
+              if (!oauthConsentReference.getStore()) {
+                throw new APIError('FORBIDDEN', {
+                  error: 'access_denied',
+                  error_description: 'Choose the organisation and projects on the consent page.'
                 })
               }
               return

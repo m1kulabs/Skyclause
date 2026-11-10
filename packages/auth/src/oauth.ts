@@ -9,7 +9,6 @@ import {
   project,
   recordAudit,
   shareLink,
-  session as authSession,
   systemPrincipal,
   tokenHash,
   track,
@@ -19,6 +18,7 @@ import { authDatabase, credentialOwner } from '@skyclause/db/auth'
 import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
 import { can } from './can'
 import { getAuth, resources } from './instance'
+import { oauthConsentReference } from './oauth-consent-context'
 
 const GEMINI_REDIRECT = 'https://vertexaisearch.cloud.google.com/oauth-redirect'
 const SCOPE_VALUES = ['read', 'draft'] as const
@@ -94,19 +94,22 @@ async function sessionFor(headers: Headers): Promise<SessionSnapshot> {
 
 async function applyOAuthConsent(
   headers: Headers,
-  body: { accept: boolean; scope?: string; oauth_query: string }
+  body: { accept: boolean; scope?: string; oauth_query: string },
+  referenceId: string
 ): Promise<{ url: string }> {
   const auth = getAuth()
   const requestHeaders = new Headers(headers)
   requestHeaders.set('Content-Type', 'application/json')
   requestHeaders.set('Accept', 'application/json')
   requestHeaders.set('Origin', auth.settings.appOrigin)
-  const response = await auth.auth.handler(
-    new Request(`${auth.settings.appOrigin}/api/auth/oauth2/consent`, {
-      method: 'POST',
-      headers: requestHeaders,
-      body: JSON.stringify(body)
-    })
+  const response = await oauthConsentReference.run(referenceId, () =>
+    auth.auth.handler(
+      new Request(`${auth.settings.appOrigin}/api/auth/oauth2/consent`, {
+        method: 'POST',
+        headers: requestHeaders,
+        body: JSON.stringify(body)
+      })
+    )
   )
   const responseBody = (await response.json().catch(() => null)) as { url?: unknown } | null
   if (!response.ok || typeof responseBody?.url !== 'string')
@@ -335,31 +338,16 @@ export async function completeOAuthConsent(
     role,
     authenticatedAt: session.session.reauthenticatedAt ?? session.session.createdAt
   }
-  const db = authDatabase()
-  const referenceIdForConsent = details.link ? 'grant:' : ''
-  const previousActiveOrg = session.session.activeOrganizationId ?? null
-
   if (!accept) {
-    await db
-      .update(authSession)
-      .set({ activeOrganizationId: details.link ? `${referenceIdForConsent}denied-${details.link.id}` : selectedOrg })
-      .where(eq(authSession.id, session.session.id))
-    try {
-      const result = await applyOAuthConsent(headers, { accept: false, oauth_query: oauthQuery })
-      await withTenant({ orgId: selectedOrg, principal }, async (tx) => {
-        await recordAudit(tx, {
-          action: 'mcp.consent_denied',
-          target: { type: 'oauth_client', id: details.clientId },
-          after: { resource: details.resource }
-        })
+    const result = await applyOAuthConsent(headers, { accept: false, oauth_query: oauthQuery }, 'denied')
+    await withTenant({ orgId: selectedOrg, principal }, async (tx) => {
+      await recordAudit(tx, {
+        action: 'mcp.consent_denied',
+        target: { type: 'oauth_client', id: details.clientId },
+        after: { resource: details.resource }
       })
-      return { url: result.url }
-    } finally {
-      await db
-        .update(authSession)
-        .set({ activeOrganizationId: previousActiveOrg })
-        .where(eq(authSession.id, session.session.id))
-    }
+    })
+    return { url: result.url }
   }
 
   const inserted = await withTenant({ orgId: selectedOrg, principal }, async (tx) => {
@@ -400,9 +388,12 @@ export async function completeOAuthConsent(
   })
 
   const referenceId = `grant:${inserted.id}`
-  await db.update(authSession).set({ activeOrganizationId: referenceId }).where(eq(authSession.id, session.session.id))
   try {
-    const result = await applyOAuthConsent(headers, { accept: true, scope: scopes.join(' '), oauth_query: oauthQuery })
+    const result = await applyOAuthConsent(
+      headers,
+      { accept: true, scope: scopes.join(' '), oauth_query: oauthQuery },
+      referenceId
+    )
     await withTenant({ orgId: selectedOrg, principal }, async (tx) => {
       await recordAudit(tx, {
         action: 'mcp.consent_granted',
@@ -432,11 +423,6 @@ export async function completeOAuthConsent(
       })
     })
     throw error
-  } finally {
-    await db
-      .update(authSession)
-      .set({ activeOrganizationId: previousActiveOrg })
-      .where(eq(authSession.id, session.session.id))
   }
 }
 
