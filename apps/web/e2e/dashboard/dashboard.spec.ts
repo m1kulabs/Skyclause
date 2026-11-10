@@ -11,6 +11,8 @@ async function openPalette(page: Page) {
 
 async function waitForBundleFade(page: Page) {
   const entry = page.locator('[data-dashboard-bundle-entry="new"]')
+  // The read lands after goto; checking for the entry while the skeleton shows would skip the fade wait.
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0)
   if (await entry.count()) {
     await expect(entry).toHaveCSS('animation-duration', '0.2s')
     await entry.evaluate(async (element) => {
