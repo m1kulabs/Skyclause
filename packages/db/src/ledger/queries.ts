@@ -90,7 +90,7 @@ export async function listLedger(
     filters: LedgerFilters
     limit: number
     beforeSeq?: number
-    audience?: LedgerAudience
+    audience: LedgerAudience
   }
 ) {
   const tx = handle as Tx
