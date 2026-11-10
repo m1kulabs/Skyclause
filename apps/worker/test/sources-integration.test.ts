@@ -331,3 +331,94 @@ test('source.bound stores intent in its tenant transaction, then executes outsid
   // A successful event-triggered fetch also runs after its tenant transaction has fully returned.
   expect(calls).toBe(3)
 })
+
+test.each([
+  ['ordered', false],
+  ['reordered', false],
+  ['ordered', true],
+  ['reordered', true]
+] as const)(
+  'a cached A plan preserves A to B to A corrections with %s delivery (aggregate: %s)',
+  async (order, aggregate) => {
+    const org = await makeOrganization(),
+      s = await withSystem('test', (tx) => makeSource(tx)),
+      store = new MemoryStore(),
+      clock = new TestClock()
+    await withTenant({ orgId: org.id, principal }, async (tx) => {
+      const project = await makeProject(tx)
+      await makeProjectSource(tx, { projectId: project.id, sourceId: s.id, role: 'rain_gauge' })
+    })
+    let value = 1,
+      parseCalls = 0
+    const refs: ResultReference[] = [],
+      results: SourceExecutionResult[] = []
+    const a = adapter({
+      apiFamily: undefined,
+      fetch: async (sources, ctx) => {
+        if (aggregate) await ctx.http(sources[0]!.url + 'first')
+        return (await ctx.http(sources[0]!.url)).json()
+      },
+      parse: (raw, sources) => {
+        parseCalls++
+        return sources.map((source) => ({
+          sourceId: source.id,
+          metric: 'rain_5m_mm',
+          observedAt: '2026-11-10T00:00:00.000Z',
+          value: (raw as { value: number }).value,
+          unit: 'mm',
+          valueJson: null
+        }))
+      }
+    })
+    const jobs = createSourceJobs({
+      store,
+      scratch: store,
+      clock,
+      id: randomUUID,
+      adapters: [a],
+      http: async () => new Response(JSON.stringify({ value })),
+      userAgent: 'test',
+      publish: async (result) => {
+        results.push(result)
+        await publishSourceResult(result, {
+          store,
+          publish: async (ref) => {
+            refs.push(ref)
+          }
+        })
+      },
+      database: {
+        snapshot: async (now) => {
+          const plan = await sourceSnapshot(now)
+          return { ...plan, sources: plan.sources.filter((entry) => entry.source.id === s.id) }
+        },
+        catalogue: async () => {}
+      },
+      log: () => {}
+    })
+    const ingest = (ref: ResultReference) =>
+      ingestSourceResult(ref, { store, ...sourceIngestionDatabase([a]), publish: async () => {} })
+    await jobs.refreshSourcePlan(clock.now())
+    await jobs.runAdapter('jps_rain', null)
+    await ingest(refs[0]!)
+    await jobs.refreshSourcePlan(clock.now())
+    const planBytes = (await store.read('control/plan.json'))!
+    value = 2
+    await clock.advance(1000)
+    await jobs.runAdapter('jps_rain', null)
+    value = 1
+    await clock.advance(1000)
+    await jobs.runAdapter('jps_rain', null)
+    expect(await store.read('control/plan.json')).toEqual(planBytes)
+    expect(results.map((result) => result.polls.flatMap((poll) => poll.readings.map((row) => row.value)))).toEqual([
+      [1],
+      [2],
+      [1]
+    ])
+    expect(parseCalls).toBe(3)
+    for (const index of order === 'ordered' ? [1, 2] : [2, 1]) await ingest(refs[index]!)
+    const rows = await withSystem('test', (tx) => tx.select().from(reading).where(eq(reading.sourceId, s.id)))
+    const values = rows.sort((a, b) => a.revision - b.revision).map((row) => row.value)
+    expect(values).toEqual(order === 'ordered' ? [1, 2, 1] : [1])
+  }
+)

@@ -3,7 +3,7 @@ import { executeAdapter } from './execute'
 import { runBackfillOnce } from './backfill'
 import { createPollContext } from './http'
 import { activePeriods, readSourcePlan, refreshSourcePlan, type SourcePlan, type PlannedSource } from './plan'
-import { assertSourceAdmission, ResultReference, resultPath } from './pubsub'
+import { reserveSourceResult, ResultReference, resultPath } from './pubsub'
 import { receiptPath } from './ingest'
 import { adapterStorage, decodeObject } from './storage'
 import type { SourceClock, SourceExecutionResult, SourceObjectStore } from './types'
@@ -48,7 +48,6 @@ export function createSourceJobs(ports: SourceJobPorts) {
         requestId: ports.id
       })
   const backfill = async (entry: PlannedSource, plan: Pick<SourcePlan, 'periods'>, scheduledAt: string | null) => {
-    await assertSourceAdmission(ports.store)
     const adapter = adapterFor(entry.source.kind)
     return runBackfillOnce(adapter, entry.source, {
       store: ports.store,
@@ -57,8 +56,7 @@ export function createSourceJobs(ports: SourceJobPorts) {
       contextFactory: contextFactory(adapter, plan),
       publish: ports.publish,
       scheduledAt,
-      previousDigest: (_, purpose) =>
-        purpose === 'backfill' ? entry.previousBackfillDigest : entry.previousPollDigest,
+      admit: (operationId) => reserveSourceResult(ports.store, operationId, adapter.kind, ports.clock.now()),
       acknowledged: async (operationId) => {
         const receipt = await ports.store.read(receiptPath(operationId))
         if (!receipt) return false
@@ -77,31 +75,41 @@ export function createSourceJobs(ports: SourceJobPorts) {
     async runAdapter(kind: string, scheduledAt: string | null): Promise<void> {
       const adapter = adapterFor(kind)
       await ports.repair?.()
-      await assertSourceAdmission(ports.store)
       if (scheduledAt !== null && !Number.isFinite(Date.parse(scheduledAt))) throw new Error('Invalid scheduled-at')
       const plan = await readSourcePlan(ports.store),
         entries = plan.sources.filter((s) => s.source.kind === kind)
-      for (const entry of entries) await backfill(entry, plan, scheduledAt)
+      const ready: PlannedSource[] = []
+      for (const entry of entries) if ((await backfill(entry, plan, scheduledAt)) !== 'running') ready.push(entry)
+      if (!ready.length) {
+        ports.log('source.adapter.complete', {
+          adapter: kind,
+          sources: 0,
+          deferred_sources: entries.length,
+          requests: 0,
+          scheduled_at: scheduledAt
+        })
+        return
+      }
+      const operationId = ports.id()
+      await reserveSourceResult(ports.store, operationId, adapter.kind, ports.clock.now())
       const result = await executeAdapter(
         adapter,
-        entries.map((s) => s.source),
+        ready.map((s) => s.source),
         contextFactory(adapter, plan),
         {
-          operationId: ports.id(),
+          operationId,
           purpose: 'poll',
           scheduledAt,
           clock: ports.clock,
-          requestId: ports.id,
-          previousDigest: (id, purpose) => {
-            const entry = entries.find((s) => s.source.id === id)
-            return (purpose === 'poll' ? entry?.previousPollDigest : entry?.previousBackfillDigest) ?? null
-          }
+          // A fifteen-minute plan cannot prove the latest persisted body; ingestion owns deduplication.
+          requestId: ports.id
         }
       )
       await ports.publish(result)
       ports.log('source.adapter.complete', {
         adapter: kind,
-        sources: entries.length,
+        sources: ready.length,
+        deferred_sources: entries.length - ready.length,
         requests: result.requests.length,
         scheduled_at: scheduledAt
       })

@@ -2,7 +2,7 @@ import { and, asc, desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import type { SystemPrincipal, Tx } from '../client'
 import { emitEvent, handleOnce } from '../events'
-import { projectSource, source } from '../schema'
+import { projectSource, source, sourceObservationHead } from '../schema'
 import { poll, reading } from '../schema/partitioned'
 import { previousSourceDigest } from './queries'
 import type { SourceReadingWrite, SourceRequestWrite, StoredSourcePoll } from './types'
@@ -59,9 +59,23 @@ async function appendReading(
   sourceId: string,
   pollId: string,
   startedAt: Date,
-  input: SourceReadingWrite
+  input: SourceReadingWrite,
+  sameBody: boolean
 ): Promise<number> {
   const itemKey = input.itemKey ?? ''
+  const key = { sourceId, metric: input.metric, observedAt: input.observedAt, itemKey }
+  const [head] = await tx
+    .select({ capturedAt: sourceObservationHead.capturedAt })
+    .from(sourceObservationHead)
+    .where(
+      and(
+        eq(sourceObservationHead.sourceId, sourceId),
+        eq(sourceObservationHead.metric, input.metric),
+        eq(sourceObservationHead.observedAt, input.observedAt),
+        eq(sourceObservationHead.itemKey, itemKey)
+      )
+    )
+  if (head && head.capturedAt > startedAt) return 0
   const [latest] = await tx
     .select()
     .from(reading)
@@ -84,6 +98,23 @@ async function appendReading(
         .limit(1)
       if (capture && capture.startedAt > startedAt) return 0
     }
+  }
+  // Even an unchanged value proves this exact key was seen by the newer successful capture.
+  // No source-wide clock: omitted keys and unseen historical observations remain eligible.
+  await tx
+    .insert(sourceObservationHead)
+    .values({ ...key, capturedAt: startedAt })
+    .onConflictDoUpdate({
+      target: [
+        sourceObservationHead.sourceId,
+        sourceObservationHead.metric,
+        sourceObservationHead.observedAt,
+        sourceObservationHead.itemKey
+      ],
+      set: { capturedAt: sql`greatest(${sourceObservationHead.capturedAt}, ${startedAt})` }
+    })
+  if (sameBody) return 0
+  if (latest) {
     const { rows } = await tx.execute<{ equal: boolean }>(sql`SELECT
       ${latest.value}::double precision IS NOT DISTINCT FROM ${input.value}::double precision
       AND ${latest.valueText}::text IS NOT DISTINCT FROM ${input.valueText ?? null}::text
@@ -136,9 +167,10 @@ export async function recordSourceRequest(
         rows: [identity]
       } = await tx.execute<{ id: string }>(sql`SELECT uuidv7() AS id`)
       let newRows = 0
-      if (entry.outcome === 'ok' && !(entry.bodySha256 !== null && entry.bodySha256 === previousDigest)) {
+      if (entry.outcome === 'ok') {
+        const sameBody = entry.bodySha256 !== null && entry.bodySha256 === previousDigest
         for (const value of entry.readings)
-          newRows += await appendReading(tx, entry.sourceId, identity!.id, request.startedAt, value)
+          newRows += await appendReading(tx, entry.sourceId, identity!.id, request.startedAt, value, sameBody)
       }
       // Both tables are append-only; insert the poll once its actual reading count is known.
       await tx.insert(poll).values({

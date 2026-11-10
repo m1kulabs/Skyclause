@@ -3,6 +3,7 @@ import { and, asc, eq } from 'drizzle-orm'
 import { expect, test } from 'vitest'
 import {
   domainEvent,
+  closeConnections,
   emitSourcePoll,
   loadStoredRequest,
   poll,
@@ -300,4 +301,49 @@ test('fan-out receipts distinguish projects and organisations, and repeat delive
       )
   )
   expect(events.map(({ projectId }) => projectId).sort()).toEqual(projects.map(({ id }) => id).sort())
+})
+
+test.each(['single', 'aggregate'] as const)(
+  'unchanged %s captures advance only their seen observation watermarks across restart',
+  async (kind) => {
+    const id = await sourceId(),
+      first = request(id, 1)
+    first.startedAt = new Date('2026-11-10T00:00:00Z')
+    first.sources[0]!.bodySha256 = kind === 'single' ? 'a'.repeat(64) : null
+    await store(first)
+    const newest = request(id, 1)
+    newest.startedAt = new Date('2026-11-10T00:02:00Z')
+    newest.sources[0]!.bodySha256 = first.sources[0]!.bodySha256
+    expect(await store(newest)).toMatchObject([{ outcome: 'unchanged', newRows: 0 }])
+    await closeConnections()
+    const delayed = request(id, 2)
+    delayed.startedAt = new Date('2026-11-10T00:01:00Z')
+    delayed.sources[0]!.bodySha256 = kind === 'single' ? 'b'.repeat(64) : null
+    expect(await store(delayed)).toMatchObject([{ outcome: 'unchanged', newRows: 0 }])
+    expect((await rows(id)).map((row) => row.value)).toEqual([1])
+    const heads = await asLogin('system', (client) =>
+      client.query('SELECT captured_at, item_key FROM source_observation_head WHERE source_id = $1', [id])
+    )
+    expect(heads.rows).toEqual([{ captured_at: newest.startedAt, item_key: '' }])
+  }
+)
+test('a newer response omitting a key does not block an older correction or an unseen backfill key', async () => {
+  const id = await sourceId(),
+    first = request(id, 1)
+  first.startedAt = new Date('2026-11-10T00:00:00Z')
+  first.sources[0]!.readings.push({ ...first.sources[0]!.readings[0]!, itemKey: 'other' })
+  await store(first)
+  const newer = request(id, 4)
+  newer.startedAt = new Date('2026-11-10T00:02:00Z')
+  newer.sources[0]!.readings[0]!.itemKey = 'other'
+  await store(newer)
+  const older = request(id, 2)
+  older.startedAt = new Date('2026-11-10T00:01:00Z')
+  older.purpose = 'backfill'
+  older.sources[0]!.readings.push({ ...older.sources[0]!.readings[0]!, itemKey: 'unseen', value: 8 })
+  expect(await store(older)).toMatchObject([{ newRows: 2 }])
+  const found = await rows(id)
+  expect(found.filter((row) => row.itemKey === '').map((row) => row.value)).toEqual([1, 2])
+  expect(found.filter((row) => row.itemKey === 'other').map((row) => row.value)).toEqual([1, 4])
+  expect(found.filter((row) => row.itemKey === 'unseen').map((row) => row.value)).toEqual([8])
 })

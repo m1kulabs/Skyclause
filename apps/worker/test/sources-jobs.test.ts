@@ -182,3 +182,177 @@ test('source WorkerPart dispatches real adapter arguments through runJob', async
   await runJob(defineRegistry([part]), 'adapter', ['jps_rain', '--scheduled-at', '2026-11-09T23:59:00.000Z'])
   expect(t.publish.mock.calls[0]?.[0]).toMatchObject({ scheduledAt: '2026-11-09T23:59:00.000Z' })
 })
+
+test.each([false, true])('running backfills defer only their own sources (has ready peer: %s)', async (readyPeer) => {
+  const store = new MemoryStore(),
+    clock = new TestClock(),
+    readyId = '00000000-0000-7000-8000-000000000002'
+  const polled: string[][] = [],
+    backfilled: string[] = [],
+    published: SourceExecutionResult[] = []
+  let seq = 100
+  const a = adapter({
+    apiFamily: undefined,
+    fetch: async (sources, ctx) => {
+      polled.push(sources.map((s) => s.id))
+      return (await ctx.http(sources[0]!.url)).json()
+    },
+    backfill: async (source, ctx) => {
+      backfilled.push(source.id)
+      return (await ctx.http(source.url)).json()
+    },
+    parse: () => []
+  })
+  await store.write(
+    'control/plan.json',
+    encodeObject({
+      version: 1,
+      generatedAt: clock.now().toISOString(),
+      sources: (readyPeer ? [sid, readyId] : [sid]).map((id) => ({
+        source: source(id),
+        bindings: [{ orgId: sid, projectId: sid }],
+        previousPollDigest: null,
+        previousBackfillDigest: null
+      })),
+      periods: []
+    }),
+    '0'
+  )
+  await store.write(
+    `control/backfills/${sid}.json`,
+    encodeObject({
+      state: 'running',
+      operationId: sid,
+      owner: sid,
+      leaseExpiresAt: clock.now().getTime() + 60000,
+      resultPath: 'control/results/held.json',
+      scheduledAt: null
+    }),
+    '0'
+  )
+  const jobs = createSourceJobs({
+    store,
+    scratch: store,
+    clock,
+    id: () => `00000000-0000-7000-8000-${String(++seq).padStart(12, '0')}`,
+    adapters: [a],
+    http: async () => new Response('{}'),
+    userAgent: 'test',
+    publish: async (result) => {
+      published.push(result)
+    },
+    database: {
+      snapshot: async () => {
+        throw new Error('database forbidden')
+      },
+      catalogue: async () => {}
+    },
+    log: () => {}
+  })
+  await jobs.runAdapter('jps_rain', null)
+  expect(polled).toEqual(readyPeer ? [[readyId]] : [])
+  expect(backfilled).toEqual(readyPeer ? [readyId] : [])
+  expect(
+    published
+      .filter((result) => result.purpose === 'poll')
+      .flatMap((result) => result.polls.map((poll) => poll.sourceId))
+  ).toEqual(readyPeer ? [readyId] : [])
+})
+
+import { randomUUID } from 'node:crypto'
+import { MAX_PENDING_RESULTS, publishSourceResult } from '../src/sources/pubsub'
+async function boundedJobs(backfill = false) {
+  const store = new MemoryStore(),
+    clock = new TestClock(),
+    published: SourceExecutionResult[] = []
+  let calls = 0
+  const a = adapter({
+    apiFamily: undefined,
+    parse: () => [],
+    ...(backfill
+      ? {
+          backfill: async (
+            source: import('@skyclause/sources').Source,
+            ctx: import('@skyclause/sources').PollContext
+          ) => (await ctx.http(source.url)).json()
+        }
+      : {})
+  })
+  await store.write(
+    'control/plan.json',
+    encodeObject({
+      version: 1,
+      generatedAt: clock.now().toISOString(),
+      sources: [
+        {
+          source: source(sid),
+          bindings: [{ orgId: sid, projectId: sid }],
+          previousPollDigest: null,
+          previousBackfillDigest: null
+        }
+      ],
+      periods: []
+    }),
+    '0'
+  )
+  await store.write(
+    'control/pending-results.json',
+    encodeObject(
+      Array.from({ length: MAX_PENDING_RESULTS - 1 }, () => {
+        const id = randomUUID()
+        return {
+          operation_id: id,
+          kind: 'jps_rain',
+          object_path: `control/deliveries/jps_rain/${id}.json`,
+          sha256: 'a'.repeat(64)
+        }
+      })
+    ),
+    '0'
+  )
+  const jobs = createSourceJobs({
+    store,
+    scratch: store,
+    clock,
+    id: randomUUID,
+    adapters: [a],
+    http: async () => {
+      calls++
+      return new Response('{}')
+    },
+    userAgent: 'test',
+    publish: async (result) => {
+      await publishSourceResult(result, { store, publish: async () => {} })
+      published.push(result)
+    },
+    database: {
+      snapshot: async () => {
+        throw new Error('database forbidden')
+      },
+      catalogue: async () => {}
+    },
+    log: () => {}
+  })
+  return { store, jobs, published, calls: () => calls }
+}
+test('concurrent jobs reserve the final outbox slot before any HTTP capture', async () => {
+  const t = await boundedJobs()
+  const settled = await Promise.allSettled([t.jobs.runAdapter('jps_rain', null), t.jobs.runAdapter('jps_rain', null)])
+  expect(settled.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
+  expect(settled.filter((r) => r.status === 'rejected')).toHaveLength(1)
+  expect(t.calls()).toBe(1)
+  expect(t.published).toHaveLength(1)
+  expect([...t.store.objects.keys()].filter((path) => path.startsWith('control/deliveries/'))).toHaveLength(1)
+  expect(JSON.parse(Buffer.from((await t.store.read('control/pending-results.json'))!.body).toString())).toHaveLength(
+    MAX_PENDING_RESULTS
+  )
+})
+test('backfill consuming the final slot stops subsequent polling before HTTP', async () => {
+  const t = await boundedJobs(true)
+  await expect(t.jobs.runAdapter('jps_rain', null)).rejects.toThrow('outbox is full')
+  expect(t.calls()).toBe(1)
+  expect(t.published.map((result) => result.purpose)).toEqual(['backfill'])
+  expect(JSON.parse(Buffer.from((await t.store.read(`control/backfills/${sid}.json`))!.body).toString()).state).toBe(
+    'complete'
+  )
+})

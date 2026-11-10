@@ -139,7 +139,7 @@ test('REST failures propagate without pretending an empty pull succeeded', async
   await expect(subscription.pullSourceResults()).rejects.toThrow('403')
 })
 
-import { repairSourceResults, MAX_PENDING_RESULTS, assertSourceAdmission, pendingResult } from '../src/sources/pubsub'
+import { repairSourceResults, MAX_PENDING_RESULTS, reserveSourceResult, pendingResult } from '../src/sources/pubsub'
 import { encodeObject } from '../src/sources/storage'
 test('failed publication repairs immutable bytes and stable identity without a new execution', async () => {
   const store = new MemoryStore(),
@@ -203,8 +203,68 @@ test('concurrent outbox CAS appends preserve every pending operation and capacit
   const full = Array.from({ length: MAX_PENDING_RESULTS }, (_, n) => ({ ...refs[0]!, operation_id: id(n + 100) }))
   const saved = (await store.read('control/pending-results.json'))!
   await store.write('control/pending-results.json', encodeObject(full), saved.generation)
-  await expect(assertSourceAdmission(store)).rejects.toThrow('outbox is full')
+  await expect(reserveSourceResult(store, id(1), 'jps_rain', new Date())).rejects.toThrow('outbox is full')
   await expect(pendingResult(store, refs[0]!, false)).rejects.toThrow('outbox is full')
+  expect(JSON.parse(Buffer.from((await store.read('control/pending-results.json'))!.body).toString())).toHaveLength(
+    MAX_PENDING_RESULTS
+  )
+})
+
+import { SOURCE_RESERVATION_MS } from '../src/sources/pubsub'
+test('an in-flight reservation is repair-safe, while expiry reports without reclaiming its slot', async () => {
+  const store = new MemoryStore(),
+    now = new Date('2026-11-10T00:00:00.000Z'),
+    publish = vi.fn(async () => {})
+  await reserveSourceResult(store, id(5000), 'jps_rain', now)
+  const saved = await store.read('control/pending-results.json')
+  await repairSourceResults({ store, publish, now: () => now })
+  expect(publish).not.toHaveBeenCalled()
+  await expect(
+    repairSourceResults({ store, publish, now: () => new Date(now.getTime() + SOURCE_RESERVATION_MS) })
+  ).rejects.toThrow('reservation expired')
+  expect(await store.read('control/pending-results.json')).toEqual(saved)
+  // Retrying the reservation cannot restart its reporting clock.
+  await reserveSourceResult(store, id(5000), 'jps_rain', new Date(now.getTime() + SOURCE_RESERVATION_MS))
+  expect(await store.read('control/pending-results.json')).toEqual(saved)
+})
+test('a reserved operation finalizes and repairs the same bytes after other producers fill capacity', async () => {
+  const store = new MemoryStore(),
+    r = result(),
+    now = new Date()
+  await reserveSourceResult(store, r.operationId, r.kind, now)
+  const existing = JSON.parse(Buffer.from((await store.read('control/pending-results.json'))!.body).toString())
+  const saved = (await store.read('control/pending-results.json'))!
+  await store.write(
+    'control/pending-results.json',
+    encodeObject([
+      ...existing,
+      ...Array.from({ length: MAX_PENDING_RESULTS - 1 }, (_, n) => ({
+        operation_id: id(n + 10),
+        kind: 'jps_rain',
+        object_path: `control/deliveries/jps_rain/${id(n + 10)}.json`,
+        reserved_until: new Date(now.getTime() + SOURCE_RESERVATION_MS).toISOString()
+      }))
+    ]),
+    saved.generation
+  )
+  await expect(
+    publishSourceResult(r, {
+      store,
+      publish: async () => {
+        throw new Error('publish failed')
+      }
+    })
+  ).rejects.toThrow('publish failed')
+  const published: unknown[] = []
+  await repairSourceResults({
+    store,
+    publish: async (ref) => {
+      published.push(ref)
+    },
+    now: () => now
+  })
+  expect(published).toHaveLength(1)
+  expect(published[0]).toMatchObject({ operation_id: r.operationId })
   expect(JSON.parse(Buffer.from((await store.read('control/pending-results.json'))!.body).toString())).toHaveLength(
     MAX_PENDING_RESULTS
   )

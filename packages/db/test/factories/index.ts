@@ -1,3 +1,4 @@
+import { makeSourceObservationHead } from './source_observation_head'
 import type { Tx } from '../../src/client'
 import { makeAiKey } from './ai_key'
 import { makeAiUsage } from './ai_usage'
@@ -243,5 +244,6 @@ export const sharedFactories: Record<string, (tx: Tx) => Promise<unknown>> = {
   reading: makeReading,
   source: makeSource,
   source_state: makeSourceState,
+  source_observation_head: makeSourceObservationHead,
   verification: makeVerification
 }
