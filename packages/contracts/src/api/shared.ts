@@ -543,7 +543,8 @@ export const RotaShift = z.object({
   id: z.string(),
   account_id: z.string(),
   project_id: z.string().nullable(),
-  days: z.array(z.string()),
+  // TRD rota days use ISO weekdays (Monday=1 through Sunday=7), matching `rota_shift.days`' integer array.
+  days: z.array(z.number().int().min(1).max(7)),
   local_start: z.string(),
   local_end: z.string(),
   condition: z.string().nullable(),
@@ -584,6 +585,8 @@ export const ExportJob = z.object({
   id: z.string(),
   scope: z.enum(['account', 'organisation']),
   status: z.string(),
+  formats: z.array(z.enum(['json', 'csv'])),
+  error: z.string().nullable(),
   expires_at: Instant.nullable()
 })
 export type ExportJob = z.infer<typeof ExportJob>
@@ -655,7 +658,7 @@ export type Invitation = z.infer<typeof Invitation>
 export const OwnershipTransfer = z.object({ id: z.string(), to_member_id: z.string(), status: z.string() })
 export type OwnershipTransfer = z.infer<typeof OwnershipTransfer>
 export const AiUsage = z.object({
-  run_id: z.string(),
+  run_id: z.string().nullable(),
   ai_key_id: z.string().nullable(),
   model: z.string(),
   tokens_in: z.number().int(),

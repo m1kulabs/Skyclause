@@ -69,6 +69,14 @@ export interface ModelEntry {
   declaredTier: string
 }
 
+/** One organisation's key rows behind `ModelResolver.chain`; `packages/db` loads them, owning the SQL. */
+export interface ChainRows {
+  orgKeys: ModelEntry[]
+  accountKeys: ModelEntry[]
+  allowMemberKeys: boolean
+  fallbackEnabled: boolean
+}
+
 export interface ModelResolver {
   // e-byok-api; a null keyId selects platform Vertex.
   chain(tx: TxHandle, q: { orgId: string; accountId: string | null; unattended: boolean }): Promise<ModelEntry[]>

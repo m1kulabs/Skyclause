@@ -16,6 +16,7 @@ import {
   type SkyclauseRoute
 } from '@skyclause/contracts'
 import type { Tx } from '@skyclause/db'
+import { withPublicReader, withSystem } from '@skyclause/db'
 import { expect } from 'vitest'
 import { createApi, type ApiApp, type Registry } from '../../src/app'
 import type { ApiDeps, OAuthManagement } from '../../src/context'
@@ -262,6 +263,9 @@ export function testDeps(overrides: Partial<ApiDeps> = {}): TestDeps {
     idempotency: memoryIdempotencyStore(),
     rateLimits: memoryRateLimitStore(),
     withTenant: async (ctx, fn) => fn({ orgId: ctx.orgId, principal: ctx.principal } as unknown as Tx),
+    // #111's `/e` seams; the real ones, so a handler test writes rows on the #79 §7 test database.
+    withSystem,
+    withPublicReader,
     recordAudit: async (tx, e) => {
       const { orgId, principal } = tx as unknown as FakeTx
       audits.push({ orgId, actor: principal, action: e.action, target: e.target, after: e.after })

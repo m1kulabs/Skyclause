@@ -1179,10 +1179,21 @@ export const OPERATIONS: readonly ExpandedOperation[] = [
     surface: 'api',
     operationId: 'acceptInvitation',
     owner: 'a-members-api',
-    statement: 'session',
+    statement: 'token',
     idempotent: false,
     crossOrg: false,
     note: 'Token acceptance uses POST at the IA invite path; the accepting session need not already be a member.'
+  },
+  {
+    method: 'get',
+    path: '/api/invite/{token}',
+    surface: 'api',
+    operationId: 'inspectMemberToken',
+    owner: 'a-members-api',
+    statement: 'token',
+    idempotent: false,
+    crossOrg: false,
+    note: 'The invite page can inspect token kind and state before the accepting person signs in.'
   },
   // Ownership transfers
   {
@@ -1197,12 +1208,23 @@ export const OPERATIONS: readonly ExpandedOperation[] = [
     note: 'POST creates the pending transfer; acceptance is a separate token action (ORG-3).'
   },
   {
+    method: 'delete',
+    path: '/api/orgs/{org}/ownership-transfers/{id}',
+    surface: 'api',
+    operationId: 'cancelOwnershipTransfer',
+    owner: 'a-members-api',
+    statement: 'members.manage',
+    idempotent: false,
+    crossOrg: false,
+    note: 'Only the Owner may cancel the organisation’s pending transfer.'
+  },
+  {
     method: 'post',
     path: '/api/ownership-transfers/{token}/accept',
     surface: 'api',
     operationId: 'acceptOwnershipTransfer',
     owner: 'a-members-api',
-    statement: 'session',
+    statement: 'token',
     idempotent: false,
     crossOrg: false,
     note: 'Use POST /ownership-transfers/{token}/accept for the unspecified token accept; bind it to the accepting session.'
@@ -1229,6 +1251,17 @@ export const OPERATIONS: readonly ExpandedOperation[] = [
     idempotent: false,
     crossOrg: false,
     note: 'Rota GET includes shifts and templates; PATCH edits settings; shift POST/PATCH/DELETE manages individual shifts (ORG-4).'
+  },
+  {
+    method: 'put',
+    path: '/api/orgs/{org}/rota/shifts',
+    surface: 'api',
+    operationId: 'replaceRotaShifts',
+    owner: 'a-members-api',
+    statement: 'rota.manage',
+    idempotent: true,
+    crossOrg: false,
+    note: 'Replace shifts and code-defined templates for the organisation or one project scope.'
   },
   {
     method: 'post',
@@ -1373,6 +1406,17 @@ export const OPERATIONS: readonly ExpandedOperation[] = [
     idempotent: true,
     crossOrg: false,
     note: 'AI keys use collection GET/POST, item DELETE, POST test and GET usage; saved secrets remain write-only (SET-5).'
+  },
+  {
+    method: 'patch',
+    path: '/api/orgs/{org}/ai-keys/{id}',
+    surface: 'api',
+    operationId: 'updateOrganisationAiKey',
+    owner: 'e-byok-api',
+    statement: 'ai_keys.manage',
+    idempotent: false,
+    crossOrg: false,
+    note: 'AI keys use collection GET/POST, item PATCH/DELETE, POST test and GET usage; saved secrets remain write-only (SET-5).'
   },
   {
     method: 'delete',
