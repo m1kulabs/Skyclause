@@ -115,9 +115,11 @@ describe('organisation reads and rename (#102)', () => {
     const account = await makeUser()
     const first = await makeOrganization({ slug: 'db-orgs-first', name: 'First org' })
     const second = await makeOrganization({ slug: 'db-orgs-second', name: 'Second org' })
+    // #103's unique (organization_id, user_id) index allows one membership per organisation.
+    const third = await makeOrganization({ slug: 'db-orgs-third', name: 'Third org' })
     await makeMember({ organizationId: first.id, userId: account.id, role: 'owner' })
     await makeMember({ organizationId: second.id, userId: account.id, role: 'viewer' })
-    await makeMember({ organizationId: second.id, userId: account.id, role: 'member' })
+    await makeMember({ organizationId: third.id, userId: account.id, role: 'member' })
 
     const rows = await asSystem((tx) => listMembershipRecords(tx, account.id))
     expect(rows.map(({ orgId, role }) => ({ orgId, role }))).toEqual([

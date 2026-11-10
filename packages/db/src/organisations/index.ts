@@ -172,7 +172,8 @@ export function toOrganisation(row: typeof organization.$inferSelect): Organisat
     plan: row.plan,
     deletion_requested_at: row.deletionRequestedAt ? toIso(row.deletionRequestedAt) : null,
     purge_after: row.purgeAfter ? toIso(row.purgeAfter) : null,
-    onboarding_skipped: row.onboardingSkipped,
+    // #142 stores the skipped first-run steps as a jsonb list; the wire field says whether any step was skipped.
+    onboarding_skipped: Array.isArray(row.onboardingSkipped) && row.onboardingSkipped.length > 0,
     ai_fallback_enabled: row.aiFallbackEnabled,
     allow_member_ai_keys: row.allowMemberAiKeys
   }
