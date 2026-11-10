@@ -1,5 +1,6 @@
 'use client'
 
+import './catalogue'
 import { t } from '@skyclause/i18n'
 import { useMemo, useState } from 'react'
 import type { getOAuthConsentDetails } from '@skyclause/auth'
