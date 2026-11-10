@@ -2,11 +2,12 @@
 
 import { readFileSync } from 'node:fs'
 import { describe, expect, expectTypeOf, test } from 'vitest'
-import { REGISTRY_NAMES } from '../src/types'
-import type { BlockedInput, WordingPlaceholder } from '../src/types'
+import { check, REGISTRY_NAMES } from '../src'
+import type { BlockedInput, SheetInput, WordingPlaceholder } from '../src/types'
+import { TEST_REGISTRY } from './test-helpers'
 
-const readDefault = (pack: 'sky' | 'crowd') =>
-  JSON.parse(readFileSync(`${import.meta.dirname}/../defaults/${pack}.json`, 'utf8'))
+const readDefault = (pack: 'sky' | 'crowd'): SheetInput =>
+  JSON.parse(readFileSync(`${import.meta.dirname}/../defaults/${pack}.json`, 'utf8')) as SheetInput
 
 describe.each([
   { pack: 'sky', sheet: readDefault('sky') },
@@ -42,4 +43,17 @@ test('blocked inputs can name no bound source and wording uses registry fields',
   expectTypeOf<'{site.rain_60m_mm.unknown}'>().not.toExtend<WordingPlaceholder>()
 })
 
-test.skip('default CEL type-checks with check after #131', () => {})
+test('default CEL type-checks with check after #131', () => {
+  for (const pack of ['sky', 'crowd'] as const) {
+    const sheet = readDefault(pack)
+    const start = performance.now()
+    const res = check(sheet, TEST_REGISTRY)
+    const elapsedMs = performance.now() - start
+    expect(res.ok).toBe(true)
+    expect(res.publishable).toBe(true)
+    expect(res.issues).toEqual([])
+    expect(res.sheet?.contentHash).toMatch(/^[0-9a-f]{64}$/)
+    expect(res.sheet?.registryHash).toMatch(/^[0-9a-f]{64}$/)
+    expect(elapsedMs).toBeLessThanOrEqual(50)
+  }
+})
