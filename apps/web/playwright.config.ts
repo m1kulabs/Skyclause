@@ -2,6 +2,7 @@ import path from 'node:path'
 import { defineConfig, devices } from '@playwright/test'
 import { e2eEnv } from './e2e/harness/env'
 
+// Separate worktrees can run acceptance checks concurrently without reusing another build.
 const port = Number(process.env.E2E_PORT ?? 3100)
 // deploy.yml points the @smoke tests at the deployed web service; otherwise the suite builds and starts its own.
 const deployed = process.env.E2E_BASE_URL
@@ -33,7 +34,7 @@ export default defineConfig({
         {
           name: 'pseudo',
           testMatch:
-            /(?:quality\/pseudo|connect\/connect|camera\/pseudo|brand\/badge|bundles\/bundle|alerts\/pseudo|windows\/(?:windows|form))\.spec\.ts$/,
+            /(?:quality\/pseudo|connect\/connect|camera\/pseudo|brand\/badge|bundles\/bundle|alerts\/pseudo|windows\/(?:windows|form)|probation\/probation)\.spec\.ts$/,
           use: { ...devices['Desktop Chrome'] }
         }
       ]
