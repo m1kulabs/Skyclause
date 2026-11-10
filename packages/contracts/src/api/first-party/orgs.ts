@@ -120,10 +120,13 @@ const AuditEntry = z.object({
 const AuditFilters = z.object({
   action: AuditAction.optional(),
   actor_id: z.string().optional(),
+  target_type: z.string().optional(),
+  target_id: z.string().optional(),
   project_id: Id.optional(),
   from: Instant.optional(),
   to: Instant.optional()
 })
+const AuditExportQuery = AuditFilters.extend({ format: z.enum(['csv', 'json']).default('csv') })
 
 // SET-5 and TRD BYOK: saved secrets stay write-only; model names are provider-defined.
 const KeyTestResult = z.object({ ok: z.boolean(), tested_at: Instant, detail: z.string().nullable() })
@@ -548,9 +551,15 @@ export const exportAuditLog = createRoute({
   path: '/api/orgs/{org}/audit/export',
   operationId: 'exportAuditLog',
   tags: ['audit'],
-  request: { params: OrgParams, query: AuditFilters },
+  request: { params: OrgParams, query: AuditExportQuery },
   responses: {
-    200: { description: 'Success.', content: { 'text/csv': { schema: z.string() } } },
+    200: {
+      description: 'Success.',
+      content: {
+        'text/csv': { schema: z.string() },
+        'application/json': { schema: z.array(AuditEntry) }
+      }
+    },
     401: Unauthorized,
     403: Forbidden,
     404: NotFound,
