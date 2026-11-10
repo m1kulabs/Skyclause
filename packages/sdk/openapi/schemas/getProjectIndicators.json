@@ -1,0 +1,339 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "getProjectIndicators request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "pack": {
+              "type": "string",
+              "enum": ["sky", "crowd"]
+            }
+          },
+          "required": ["pack"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params", "query"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "project_id": {
+                  "type": "string"
+                },
+                "pack": {
+                  "type": "string",
+                  "enum": ["sky", "crowd"]
+                },
+                "t_eval": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "inputs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "state": {
+                        "type": "string",
+                        "enum": ["fresh", "stale", "error", "recovered", "pending", "probation", "off_hours"]
+                      },
+                      "since": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "http_status": {
+                        "type": ["integer", "null"]
+                      },
+                      "pending_until": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      },
+                      "source_id": {
+                        "type": "string"
+                      },
+                      "age_s": {
+                        "type": ["integer", "null"],
+                        "minimum": 0
+                      }
+                    },
+                    "required": ["state", "since", "http_status", "pending_until", "source_id", "age_s"]
+                  }
+                },
+                "site": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "anyOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "number"
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "unit": {
+                        "type": "string"
+                      },
+                      "state": {
+                        "type": "string",
+                        "enum": ["fresh", "stale", "error", "recovered", "pending", "probation", "off_hours"]
+                      },
+                      "since": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      },
+                      "age_s": {
+                        "type": ["integer", "null"],
+                        "minimum": 0
+                      },
+                      "source_ids": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "source_url": {
+                        "type": ["string", "null"],
+                        "format": "uri"
+                      },
+                      "reading_ids": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "observed_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value",
+                      "unit",
+                      "state",
+                      "since",
+                      "age_s",
+                      "source_ids",
+                      "source_url",
+                      "reading_ids",
+                      "observed_at"
+                    ]
+                  }
+                },
+                "series": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "array",
+                      "prefixItems": [
+                        {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        {
+                          "type": ["number", "null"]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "nights": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "night": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "project_id": {
+                            "type": "string"
+                          },
+                          "date": {
+                            "type": "string",
+                            "format": "date"
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": ["upcoming", "in_progress", "awaiting_actuals", "graded", "unlisted"]
+                          },
+                          "doors": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "show": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "arrival_start": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "arrival_end": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "exit_start": {
+                            "type": ["string", "null"],
+                            "format": "date-time"
+                          },
+                          "exit_end": {
+                            "type": ["string", "null"],
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "project_id",
+                          "date",
+                          "state",
+                          "doors",
+                          "show",
+                          "arrival_start",
+                          "arrival_end",
+                          "exit_start",
+                          "exit_end"
+                        ]
+                      },
+                      "forecast": {
+                        "type": ["object", "null"],
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "night_id": {
+                            "type": "string"
+                          },
+                          "baseline": {
+                            "type": "number"
+                          },
+                          "uplift": {
+                            "type": "number"
+                          },
+                          "forecast": {
+                            "type": "number"
+                          },
+                          "band_low": {
+                            "type": "number"
+                          },
+                          "band_high": {
+                            "type": "number"
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "method": {
+                            "type": "string"
+                          },
+                          "reading_ids": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "night_id",
+                          "baseline",
+                          "uplift",
+                          "forecast",
+                          "band_low",
+                          "band_high",
+                          "created_at",
+                          "method",
+                          "reading_ids"
+                        ]
+                      },
+                      "single_source": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": ["night", "forecast", "single_source"]
+                  }
+                },
+                "registry_hash": {
+                  "type": "string"
+                },
+                "hash": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "project_id",
+                "pack",
+                "t_eval",
+                "inputs",
+                "site",
+                "series",
+                "nights",
+                "registry_hash",
+                "hash"
+              ]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "getProjectIndicators",
+  "x-method": "GET",
+  "x-path": "/v1/projects/{id}/indicators"
+}

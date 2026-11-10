@@ -42,6 +42,7 @@ const cookiesOf = (response: Response) =>
 test(named('every installed plugin and package is the pinned version'), () => {
   const plugins = Object.fromEntries(getAuth().auth.options.plugins.map((plugin) => [plugin.id, plugin.version]))
   expect(plugins).toEqual({
+    'a-auth-signin-api': VERSION,
     organization: VERSION,
     anonymous: VERSION,
     'api-key': VERSION,

@@ -7,6 +7,7 @@ import { aiKeyHandlers } from './ai-keys'
 import { alertHandlers } from './alerts'
 import { auditHandlers } from './audit'
 import { analysisHandlers } from './analysis'
+import { accountHandlers } from './account'
 import { bundleHandlers } from './bundles'
 import { channelHandlers } from './channels'
 import { callHandlers } from './calls'
@@ -53,6 +54,7 @@ export const HANDLERS: Handlers = {
   ...apiKeyHandlers, // a-api-keys
   ...auditHandlers, // a-audit-log
   ...aiKeyHandlers, // e-byok-api
+  ...accountHandlers, // a-account-settings
   ...channelHandlers, // c-notice-templates
   ...callHandlers, // c-call-page-ui
   ...ledgerHandlers, // c-ledger-chain

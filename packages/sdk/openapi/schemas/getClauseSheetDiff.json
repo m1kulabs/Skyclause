@@ -1,0 +1,264 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "getClauseSheetDiff request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string"
+                  },
+                  "before": {
+                    "type": ["object", "null"],
+                    "properties": {
+                      "key": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "builtin": {
+                        "type": "string",
+                        "enum": ["silent_input"]
+                      },
+                      "scope": {
+                        "type": "string",
+                        "enum": ["site", "window", "night"]
+                      },
+                      "requires": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "optional": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "span": {
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "type": "string",
+                            "pattern": "^(start|end)([+-]\\d+m)?$"
+                          },
+                          "to": {
+                            "type": "string",
+                            "pattern": "^(start|end)([+-]\\d+m)?$"
+                          }
+                        },
+                        "required": ["from", "to"]
+                      },
+                      "when": {
+                        "type": "string"
+                      },
+                      "expiry": {
+                        "type": "string",
+                        "enum": ["start", "end"]
+                      },
+                      "proposes": {
+                        "type": "object",
+                        "properties": {
+                          "mode": {
+                            "type": "string",
+                            "enum": [
+                              "normal",
+                              "outdoor_limited",
+                              "commute_disruption",
+                              "hybrid_recommended",
+                              "surge_night"
+                            ]
+                          },
+                          "watch": {
+                            "type": "boolean",
+                            "enum": [true]
+                          },
+                          "recommendations": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "keep_with_advisory",
+                                "shift_start",
+                                "shift_end",
+                                "ask_shuttle",
+                                "leave_before_doors"
+                              ]
+                            }
+                          },
+                          "note": {
+                            "type": "string",
+                            "enum": ["flood_note", "single_source_flag", "calendar_entry"]
+                          }
+                        }
+                      },
+                      "wording": {
+                        "type": "object",
+                        "properties": {
+                          "en": {
+                            "type": "string"
+                          },
+                          "ms": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "required": ["key", "name", "enabled", "scope", "requires", "when", "proposes", "wording"]
+                  },
+                  "after": {
+                    "type": ["object", "null"],
+                    "properties": {
+                      "key": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "builtin": {
+                        "type": "string",
+                        "enum": ["silent_input"]
+                      },
+                      "scope": {
+                        "type": "string",
+                        "enum": ["site", "window", "night"]
+                      },
+                      "requires": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "optional": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "span": {
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "type": "string",
+                            "pattern": "^(start|end)([+-]\\d+m)?$"
+                          },
+                          "to": {
+                            "type": "string",
+                            "pattern": "^(start|end)([+-]\\d+m)?$"
+                          }
+                        },
+                        "required": ["from", "to"]
+                      },
+                      "when": {
+                        "type": "string"
+                      },
+                      "expiry": {
+                        "type": "string",
+                        "enum": ["start", "end"]
+                      },
+                      "proposes": {
+                        "type": "object",
+                        "properties": {
+                          "mode": {
+                            "type": "string",
+                            "enum": [
+                              "normal",
+                              "outdoor_limited",
+                              "commute_disruption",
+                              "hybrid_recommended",
+                              "surge_night"
+                            ]
+                          },
+                          "watch": {
+                            "type": "boolean",
+                            "enum": [true]
+                          },
+                          "recommendations": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "keep_with_advisory",
+                                "shift_start",
+                                "shift_end",
+                                "ask_shuttle",
+                                "leave_before_doors"
+                              ]
+                            }
+                          },
+                          "note": {
+                            "type": "string",
+                            "enum": ["flood_note", "single_source_flag", "calendar_entry"]
+                          }
+                        }
+                      },
+                      "wording": {
+                        "type": "object",
+                        "properties": {
+                          "en": {
+                            "type": "string"
+                          },
+                          "ms": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "required": ["key", "name", "enabled", "scope", "requires", "when", "proposes", "wording"]
+                  }
+                },
+                "required": ["key", "before", "after"]
+              }
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "getClauseSheetDiff",
+  "x-method": "GET",
+  "x-path": "/v1/clause-sheets/{id}/diff"
+}

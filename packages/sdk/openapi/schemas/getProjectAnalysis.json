@@ -1,0 +1,295 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "getProjectAnalysis request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "cursor": {
+              "type": "string"
+            },
+            "from": {
+              "type": "string",
+              "format": "date"
+            },
+            "to": {
+              "type": "string",
+              "format": "date"
+            },
+            "pack": {
+              "type": "string",
+              "enum": ["sky", "crowd"]
+            },
+            "period": {
+              "type": "string",
+              "enum": ["7d", "30d", "90d", "all"]
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "to": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "updated_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "metrics": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "metric": {
+                        "type": "string"
+                      },
+                      "x": {
+                        "type": ["number", "null"]
+                      },
+                      "value": {
+                        "type": ["number", "null"]
+                      },
+                      "n": {
+                        "type": "integer"
+                      },
+                      "low": {
+                        "type": ["number", "null"]
+                      },
+                      "high": {
+                        "type": ["number", "null"]
+                      },
+                      "pack": {
+                        "type": "string",
+                        "enum": ["sky", "crowd"]
+                      },
+                      "clause_key": {
+                        "type": ["string", "null"]
+                      }
+                    },
+                    "required": ["metric", "x", "n", "low", "high", "pack", "clause_key"]
+                  }
+                },
+                "series": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "metrics": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "metric": {
+                              "type": "string"
+                            },
+                            "x": {
+                              "type": ["number", "null"]
+                            },
+                            "value": {
+                              "type": ["number", "null"]
+                            },
+                            "n": {
+                              "type": "integer"
+                            },
+                            "low": {
+                              "type": ["number", "null"]
+                            },
+                            "high": {
+                              "type": ["number", "null"]
+                            },
+                            "pack": {
+                              "type": "string",
+                              "enum": ["sky", "crowd"]
+                            },
+                            "clause_key": {
+                              "type": ["string", "null"]
+                            }
+                          },
+                          "required": ["metric", "x", "n", "low", "high", "pack", "clause_key"]
+                        }
+                      }
+                    },
+                    "required": ["at", "metrics"]
+                  }
+                },
+                "grades": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "call_id": {
+                            "type": ["string", "null"]
+                          },
+                          "night_id": {
+                            "type": ["string", "null"]
+                          },
+                          "outcome": {
+                            "type": "string"
+                          },
+                          "sheet_version_id": {
+                            "type": "string"
+                          },
+                          "pack": {
+                            "type": "string",
+                            "enum": ["sky", "crowd"]
+                          },
+                          "window_id": {
+                            "type": ["string", "null"]
+                          },
+                          "proposed_mode": {
+                            "type": ["string", "null"],
+                            "enum": [
+                              "normal",
+                              "outdoor_limited",
+                              "commute_disruption",
+                              "hybrid_recommended",
+                              "surge_night",
+                              null
+                            ]
+                          },
+                          "observed_mode": {
+                            "type": ["string", "null"],
+                            "enum": [
+                              "normal",
+                              "outdoor_limited",
+                              "commute_disruption",
+                              "hybrid_recommended",
+                              "surge_night",
+                              null
+                            ]
+                          },
+                          "mode_diff": {
+                            "type": "number"
+                          },
+                          "no_call": {
+                            "type": "boolean"
+                          },
+                          "agrees": {
+                            "type": "boolean"
+                          },
+                          "stale_inputs": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "call_id",
+                          "night_id",
+                          "outcome",
+                          "sheet_version_id",
+                          "pack",
+                          "window_id",
+                          "proposed_mode",
+                          "observed_mode",
+                          "mode_diff",
+                          "no_call",
+                          "agrees",
+                          "stale_inputs"
+                        ]
+                      }
+                    },
+                    "next_cursor": {
+                      "type": ["string", "null"]
+                    }
+                  },
+                  "required": ["data", "next_cursor"]
+                },
+                "kill_line_exceeded": {
+                  "type": "boolean"
+                },
+                "evidence_minutes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "metric": {
+                        "type": "string"
+                      },
+                      "x": {
+                        "type": ["number", "null"]
+                      },
+                      "value": {
+                        "type": ["number", "null"]
+                      },
+                      "n": {
+                        "type": "integer"
+                      },
+                      "low": {
+                        "type": ["number", "null"]
+                      },
+                      "high": {
+                        "type": ["number", "null"]
+                      }
+                    },
+                    "required": ["metric", "x", "n", "low", "high"]
+                  }
+                }
+              },
+              "required": ["from", "to", "updated_at", "metrics", "series", "grades", "kill_line_exceeded"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "getProjectAnalysis",
+  "x-method": "GET",
+  "x-path": "/v1/projects/{id}/analysis"
+}

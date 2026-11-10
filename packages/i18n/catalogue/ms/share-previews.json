@@ -1,0 +1,46 @@
+{
+  "title": "{brand} · {project}",
+  "noApprovedCall": "Belum ada panggilan yang diluluskan",
+  "range": "{from} – {to}",
+  "window": "{range} · {date}",
+  "approved": "Diluluskan pada {time}",
+  "noCall": "Tiada keputusan: {inputs} gagal sejak {time}",
+  "captured": "Data direkodkan",
+  "reading": "{value} {unit} {name} pada {time}",
+  "alt": {
+    "state": "{state}.",
+    "window": "{state}. {window}.",
+    "reading": "{state}. Bacaan penentu: {reading}.",
+    "full": "{state}. {window}. Bacaan penentu: {reading}.",
+    "noCall": "{alt} {noCall}."
+  },
+  "indicators": {
+    "site": {
+      "rain_60m_mm": "Hujan dalam 60 minit lalu",
+      "api_max": "Indeks Pencemaran Udara tertinggi",
+      "api_0600_min_last3_max": "Tertinggi antara tiga bacaan Indeks Pencemaran Udara 06:00 terakhir",
+      "met_warning_in_force": "Amaran MET berkuat kuasa",
+      "met_afternoon_thunderstorm": "Ramalan ribut petir petang",
+      "camera_far_low_frames": "Bingkai kamera jauh berkontras rendah",
+      "night": {
+        "baseline": "Garis dasar kehadiran malam",
+        "uplift": "Peningkatan kehadiran malam",
+        "forecast": "Ramalan kehadiran malam",
+        "band_low": "Jalur bawah ramalan malam",
+        "band_high": "Jalur atas ramalan malam",
+        "doors": "Waktu pintu dibuka",
+        "show": "Waktu persembahan",
+        "arrival_start": "Mula tempoh ketibaan",
+        "arrival_end": "Akhir tempoh ketibaan",
+        "exit_start": "Mula tempoh keluar",
+        "exit_end": "Akhir tempoh keluar",
+        "single_source": "Senarai satu sumber"
+      }
+    },
+    "w": {
+      "rain_max_60m_mm": "Hujan maksimum dalam 60 minit",
+      "rain_max_4h_mm": "Hujan maksimum dalam 4 jam",
+      "met_warning_in_force": "Amaran MET berkuat kuasa semasa tetingkap"
+    }
+  }
+}

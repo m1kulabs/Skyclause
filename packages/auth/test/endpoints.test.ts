@@ -23,7 +23,6 @@ const UNBUILT = [
   ['POST', '/api-key/create'],
   ['POST', '/api-key/update'],
   ['POST', '/api-key/delete'],
-  ['GET', '/passkey/generate-register-options'],
   ['GET', '/jwks']
 ] as const
 

@@ -88,6 +88,7 @@ jobs:
         working-directory: apps/web
       - run: bun run db:up
       - run: bun run test
+      - run: bun run --filter @skyclause/sdk test:runtimes
 
   e2e:
     needs: changes

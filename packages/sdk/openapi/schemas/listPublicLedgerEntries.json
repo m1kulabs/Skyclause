@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "listPublicLedgerEntries request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "org": {
+              "type": "string",
+              "minLength": 1
+            },
+            "project": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["org", "project"],
+          "additionalProperties": false
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "project_id": {
+                        "type": "string"
+                      },
+                      "seq": {
+                        "type": "integer"
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "call_approved",
+                          "call_edited",
+                          "call_rejected",
+                          "call_expired",
+                          "call_sent",
+                          "grade",
+                          "night_graded",
+                          "listing_listed",
+                          "listing_changed",
+                          "listing_cancelled",
+                          "clause_version",
+                          "window_cancelled",
+                          "evidence_replied",
+                          "crowd_reply",
+                          "correction"
+                        ]
+                      },
+                      "refs": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "string"
+                        }
+                      },
+                      "prev_hash": {
+                        "type": "string"
+                      },
+                      "hash": {
+                        "type": "string"
+                      },
+                      "at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "corrects": {
+                        "type": "string"
+                      },
+                      "derived_values": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "value": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "number"
+                                  }
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "unit": {
+                              "type": "string"
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": ["fresh", "stale", "error", "recovered", "pending", "probation", "off_hours"]
+                            },
+                            "since": {
+                              "type": ["string", "null"],
+                              "format": "date-time"
+                            },
+                            "age_s": {
+                              "type": ["integer", "null"],
+                              "minimum": 0
+                            },
+                            "source_ids": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "source_url": {
+                              "type": ["string", "null"],
+                              "format": "uri"
+                            },
+                            "reading_ids": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "observed_at": {
+                              "type": ["string", "null"],
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "value",
+                            "unit",
+                            "state",
+                            "since",
+                            "age_s",
+                            "source_ids",
+                            "source_url",
+                            "reading_ids",
+                            "observed_at"
+                          ]
+                        }
+                      }
+                    },
+                    "required": ["id", "project_id", "seq", "kind", "refs", "prev_hash", "hash", "at", "derived_values"]
+                  }
+                },
+                "next_cursor": {
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["data", "next_cursor"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "listPublicLedgerEntries",
+  "x-method": "GET",
+  "x-path": "/v1/public/{org}/{project}/ledger"
+}
