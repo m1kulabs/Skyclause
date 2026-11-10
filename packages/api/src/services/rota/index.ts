@@ -1,7 +1,16 @@
-import { bundleAlert, lockMemberWrites, member, project, rotaShift, track, type Tx } from '@skyclause/db'
+import {
+  bundleAlert,
+  lockMemberWrites,
+  member,
+  project,
+  rotaLocalInstant as localInstant,
+  rotaShift,
+  track,
+  type Tx
+} from '@skyclause/db'
 import type { Can, Principal, ShiftConditions } from '@skyclause/contracts'
 import { zonedDateTimeParts } from '@skyclause/i18n/format'
-import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNull, or } from 'drizzle-orm'
 import { ApiError } from '../../problems'
 
 export type RotaCondition = 'storm_afternoon' | 'surge_night'
@@ -149,14 +158,6 @@ async function conditionActive(
     (await conditionState(tx, conditions, shift.condition as RotaCondition, date, projectId, orgProjectIds)) !==
     'inactive'
   )
-}
-
-async function localInstant(tx: Tx, date: string, time: string, zone: string): Promise<Date> {
-  const { rows } = await tx.execute<{ at: Date }>(
-    sql`SELECT ((${date}::date + ${time}::time) AT TIME ZONE ${zone}) AS at`
-  )
-  const at = rows[0]!.at as Date | string
-  return at instanceof Date ? at : new Date(at)
 }
 
 function isoTime(seconds: number) {
