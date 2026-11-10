@@ -135,6 +135,7 @@ describe('with inbound_email on', () => {
   ])('%s is dropped with one audit row and no request', async (_name, overrides, reason) => {
     const message = mail(overrides)
     await handleEvidenceMail(message, options)
+    await handleEvidenceMail(message, options)
     expect((await requests()).filter((r) => r.messageId === message.messageId)).toEqual([])
     const audits = await drops(message.messageId)
     expect(audits).toHaveLength(1)

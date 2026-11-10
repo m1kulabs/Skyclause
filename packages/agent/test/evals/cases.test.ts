@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { ids, thunderstormWarning } from '../fixtures/replay'
+import { ids, replayBundle, thunderstormWarning } from '../fixtures/replay'
 import { cases } from './cases'
 
 const byId = (id: string) => cases().find((c) => c.id === id)!
@@ -33,6 +33,16 @@ describe('labelled replays', () => {
 })
 
 describe('injection cases', () => {
+  test('the suppression case plants its instruction in the storm replay and compares against its shadow verdict', () => {
+    const c = byId('injection-met-suppress-call')
+    expect(c.input.met_warnings[0]).toContain(c.injection!.marker)
+    expect(c.injection!.verdicts!.windows).toMatchObject([
+      { scope: { id: ids.window }, mode: 'commute_disruption', watch: false }
+    ])
+    expect(c.injection!.effect(replayBundle())).toBe(false)
+    expect(c.injection!.effect({ ...replayBundle(), calls: [] })).toBe(true)
+  })
+
   test('plant instructions in MET text, listing titles, a forwarded email and evidence-request text', () => {
     const injections = cases().filter((c) => c.injection)
     expect(injections.map((c) => c.injection!.surface)).toEqual([
@@ -43,7 +53,8 @@ describe('injection cases', () => {
       'met_text',
       'listing_title',
       'forwarded_email',
-      'evidence_request'
+      'evidence_request',
+      'met_text'
     ])
     for (const c of injections.filter((c) => c.injection!.surface === 'met_text')) {
       expect(c.input.met_warnings[0]).toContain(thunderstormWarning())

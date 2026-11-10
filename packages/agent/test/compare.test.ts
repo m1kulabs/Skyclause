@@ -122,6 +122,47 @@ describe('compare', () => {
   })
 })
 
+describe('a call the model dropped', () => {
+  const watching = { ...verdict(windows[1]!, 'normal'), watch: true }
+  const bundle = (...kept: string[]): ProposedBundle => ({
+    pack: 'sky',
+    items: [],
+    calls: kept.map((id) => call(id, id === ids.window ? 'commute_disruption' : 'normal'))
+  })
+
+  test('is a disagreement row marked missing, sorted before the calls that agree', () => {
+    const shadow = verdicts([verdict(windows[0]!, 'normal'), watching, verdict(ids.window, 'commute_disruption')])
+    expect(compare(bundle(windows[0]!), shadow)).toEqual([
+      { windowId: windows[1], agrees: false, staleInputs: false, missing: true },
+      { windowId: ids.window, agrees: false, staleInputs: false, missing: true },
+      { windowId: windows[0], agrees: true, staleInputs: false }
+    ])
+  })
+
+  test('is not one when the shadow verdict is Normal without watch or No call', () => {
+    const noCall = { ...verdict(windows[1]!, 'normal'), mode: null, noCall: { inputs: [] } }
+    const shadow = verdicts([verdict(windows[0]!, 'normal'), noCall])
+    expect(compare(bundle(), shadow)).toEqual([])
+  })
+
+  test('is not one for a Crowd night the bundle answers with a surge night item', () => {
+    const night = { ...verdict(windows[0]!, 'surge_night'), scope: { kind: 'night' as const, id: windows[0]! } }
+    const answered: ProposedBundle = {
+      pack: 'crowd',
+      calls: [],
+      items: [{ kind: 'surge_night_entry', night_id: windows[0]! }]
+    }
+    expect(compare(answered, { ...verdicts([]), nights: [night] })).toEqual([])
+  })
+
+  test('counts a Crowd night with a fired shadow verdict and no call', () => {
+    const night = { ...verdict(windows[0]!, 'surge_night'), scope: { kind: 'night' as const, id: windows[0]! } }
+    expect(compare({ pack: 'crowd', items: [], calls: [] }, { ...verdicts([]), nights: [night] })).toEqual([
+      { windowId: windows[0], agrees: false, staleInputs: false, missing: true }
+    ])
+  })
+})
+
 test('flags only inputs the verdict shows not fresh; an input it does not name is not stale', () => {
   const bundle = replayBundle()
   bundle.calls[0]!.fired[0]!.inputs = ['site.rain_60m_mm']

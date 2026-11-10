@@ -1,3 +1,4 @@
+import { HTTP_PROBLEM_STATUS } from '@skyclause/contracts'
 import {
   NotBuiltError,
   SCOPE_STATEMENTS,
@@ -41,7 +42,12 @@ const insufficient = (detail: string) => new ApiError(403, 'insufficient-scope',
 
 export function principalOf(c: Context<ApiEnv>): Principal {
   const principal = c.get('principal')
-  if (!principal) throw new ApiError(401, 'unauthenticated', 'Sign in, or send an API key or token.')
+  if (!principal)
+    throw new ApiError(
+      HTTP_PROBLEM_STATUS['unauthenticated'],
+      'unauthenticated',
+      'Sign in, or send an API key or token.'
+    )
   return principal
 }
 

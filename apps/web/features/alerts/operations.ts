@@ -1,16 +1,21 @@
-import { REGISTRY } from '@skyclause/contracts'
+import {
+  getMyNotificationPreferences as preferences,
+  updateMyNotificationPreferences as save
+} from '@skyclause/contracts/api/first-party/me'
+import {
+  listNotifications as inbox,
+  markNotificationRead as read,
+  streamNotifications as stream
+} from '@skyclause/contracts/api/first-party/notifications'
+import { getVapidPublicKey as vapid } from '@skyclause/contracts/api/first-party/push'
+import {
+  listPushSubscriptions as devices,
+  createPushSubscription as create,
+  deletePushSubscription as remove
+} from '@skyclause/contracts/api/first-party/push-subscriptions'
 import { createApiFetch } from '../../lib/api-fetch'
 
-const inbox = REGISTRY.find((r) => r.operationId === 'listNotifications')!
-const read = REGISTRY.find((r) => r.operationId === 'markNotificationRead')!
-const preferences = REGISTRY.find((r) => r.operationId === 'getMyNotificationPreferences')!
-const save = REGISTRY.find((r) => r.operationId === 'updateMyNotificationPreferences')!
-const devices = REGISTRY.find((r) => r.operationId === 'listPushSubscriptions')!
-const create = REGISTRY.find((r) => r.operationId === 'createPushSubscription')!
-const remove = REGISTRY.find((r) => r.operationId === 'deletePushSubscription')!
-const vapid = REGISTRY.find((r) => r.operationId === 'getVapidPublicKey')!
-const stream = REGISTRY.find((r) => r.operationId === 'streamNotifications')!
-export const notificationStreamPath = REGISTRY.find((r) => r.operationId === 'streamNotifications')!.path
+export const notificationStreamPath = stream.path
 
 export const alertsOperations = {
   streamNotifications: {

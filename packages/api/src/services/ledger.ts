@@ -1,3 +1,4 @@
+import { HTTP_PROBLEM_STATUS } from '@skyclause/contracts'
 import type { z } from '@hono/zod-openapi'
 import { canonicalJson } from '@skyclause/clauses'
 import { Pack, ROLES, type LedgerKind, type Operations, type Role } from '@skyclause/contracts'
@@ -11,6 +12,7 @@ import {
   type LedgerFilters
 } from '@skyclause/db'
 import { decodeCursor, page } from '../pagination'
+import { callView, isMember, windowFor } from './bundles'
 import { ApiError } from '../problems'
 import { instant, toWire } from '../serialize'
 import type { ServiceContext } from '../tenancy'
@@ -27,7 +29,8 @@ type Ok<Id extends 'listLedgerEntries' | 'verifyLedger' | 'getPilotArchive'> = z
 >
 type LedgerRow = Ok<'listLedgerEntries'>['data'][number]
 
-const notFound = () => new ApiError(404, 'not-found', 'No such project, or you can’t see its ledger.')
+const notFound = () =>
+  new ApiError(HTTP_PROBLEM_STATUS['not-found'], 'not-found', 'No such project, or you can’t see its ledger.')
 
 /** The project, if this principal may read its ledger; else 404, as for another organisation's project. */
 export async function ledgerProjectFor(
@@ -38,6 +41,16 @@ export async function ledgerProjectFor(
   const project = await ledgerProject(ctx.tx, projectId)
   if (!project || !canView(projectId)) throw notFound()
   return project
+}
+
+/**
+ * The entry's call as #150's `CallView`. `recipients` are subscriber IDs, so the ledger never shows them, and a reader
+ * without a member's role gets a row without `notices`, `recommendations` and `reason` (`public_call`'s columns).
+ */
+function ledgerCall(
+  row: NonNullable<Awaited<ReturnType<typeof listLedger>>['rows'][number]['call']>
+): LedgerRow['call'] {
+  return callView({ notices: [], recommendations: [], reason: null, ...row, recipients: [] })
 }
 
 const isRole = (value: unknown): value is Role => (ROLES as readonly unknown[]).includes(value)
@@ -56,7 +69,11 @@ export async function listLedgerEntries(
     }
     beforeSeq = seq
   }
-  const { rows, total } = await listLedger(ctx.tx, { ...q, beforeSeq })
+  const { rows, total } = await listLedger(ctx.tx, {
+    ...q,
+    beforeSeq,
+    audience: isMember(ctx.principal) ? 'member' : 'public'
+  })
   const { data, next_cursor } = page(rows, q.limit, (row) => ({ seq: row.seq }))
   return {
     data: data.map((row): LedgerRow => {
@@ -74,9 +91,8 @@ export async function listLedgerEntries(
         at: row.at.toISOString(),
         ...(row.corrects ? { corrects: row.corrects } : {}),
         pack: pack.success ? pack.data : null,
-        // CallView's notices, recipients and shadow verdict are c-bundle-lifecycle's (#150) to assemble.
-        call: null,
-        window: row.window ? (toWire(row.window) as LedgerRow['window']) : null,
+        call: row.call ? ledgerCall(row.call) : null,
+        window: row.window ? windowFor(ctx.principal, toWire(row.window) as NonNullable<LedgerRow['window']>) : null,
         grade: row.grade ? (toWire(row.grade) as LedgerRow['grade']) : null,
         approver_role: isRole(body?.approver_role) ? body.approver_role : null
       }
