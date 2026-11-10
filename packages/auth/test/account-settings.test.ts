@@ -81,7 +81,10 @@ test('removing the only passkey while magic link is off returns last-sign-in-met
 test('concurrent passkey removals cannot remove every sign-in method', async () => {
   const current = await addAccount({ magicLinkEnabled: false, passkey: true })
   const second = await addTestPasskey(current.accountId)
-  const release = Promise.withResolvers<void>()
+  let release!: () => void
+  const released = new Promise<void>((resolve) => {
+    release = resolve
+  })
   let checked = 0
   let timer: ReturnType<typeof setTimeout> | undefined
   const concurrent = createAuth(authSettings(), {
@@ -95,9 +98,9 @@ test('concurrent passkey removals cannot remove every sign-in method', async () 
               matcher: (context) => context.path === '/passkey/delete-passkey',
               handler: createAuthMiddleware(async () => {
                 // Pause after the last-method guard, giving another request time to pass it before either deletes.
-                timer ??= setTimeout(release.resolve, 1_000)
-                if (++checked === 2) release.resolve()
-                await release.promise
+                timer ??= setTimeout(release, 1_000)
+                if (++checked === 2) release()
+                await released
               })
             }
           ]
