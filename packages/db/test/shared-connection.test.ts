@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm'
 import { expect, test } from 'vitest'
 import type { Principal } from '@skyclause/contracts'
 import { shareSystemConnection, withSystem, withTenant, type Tx } from '../src'
+import { connection } from '../src/client'
 import { makeOrganization } from './factories'
 
 const pid = async (tx: Tx<Principal | null>) =>
@@ -38,6 +39,39 @@ test('a with* call left running after shareSystemConnection settles fails instea
     late = new Promise((resolve) => setTimeout(resolve, 20)).then(() => withSystem('batch', async () => 'late'))
   })
   await expect(late).rejects.toThrow(/was released/)
+})
+
+test('a broken shared client rejects queued transactions without entering their callbacks', async () => {
+  let entered = false
+  let brokenPid = 0
+  await expect(
+    shareSystemConnection(async () => {
+      const broken = withSystem('auditor', async (tx) => {
+        brokenPid = await pid(tx)
+        await tx.execute(sql`SELECT pg_terminate_backend(pg_backend_pid())`)
+      })
+      const queued = withSystem('auditor', async () => {
+        entered = true
+      })
+      const outcomes = await Promise.allSettled([broken, queued])
+      expect(outcomes.map((outcome) => outcome.status)).toEqual(['rejected', 'rejected'])
+    })
+  ).rejects.toThrow(/terminated/)
+  expect(entered).toBe(false)
+  expect(await withSystem('auditor', pid)).not.toBe(brokenPid)
+})
+
+test('shared connections retain only the permanent client error listener after release', async () => {
+  for (let i = 0; i < 3; i++) {
+    await shareSystemConnection(() => withSystem('auditor', pid))
+    const client = await connection('SYSTEM').pool.connect()
+    try {
+      // pg-pool removes its idle listener on acquisition; only the permanent logger remains, never a batch listener.
+      expect(client.listenerCount('error')).toBe(1)
+    } finally {
+      client.release()
+    }
+  }
 })
 
 test('a with* call made while a left-running one holds the shared connection as it ends fails instead of running after it', async () => {
