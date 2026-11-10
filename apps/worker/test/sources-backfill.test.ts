@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest'
+import { SchemaError } from '@skyclause/sources'
 import { runBackfillOnce } from '../src/sources/backfill'
 import { loadSourceResult, saveSourceResult } from '../src/sources/storage'
 import { adapter, context, MemoryStore, source, TestClock, flush } from './support/source-adapter'
@@ -132,7 +133,7 @@ test('completed errors consume the one attempt and unsupported adapters do not c
   const bad = adapter({
     backfill: async (s, ctx) => {
       await ctx.http(s.url)
-      throw new Error('failed adapter')
+      throw new SchemaError('failed adapter')
     }
   })
   await runBackfillOnce(bad, source(), t.ports)
@@ -259,4 +260,20 @@ test('backfill cannot commit or publish while a parallel HTTP sibling remains un
   const saved = JSON.stringify(t.published)
   await t.clock.advance(20000)
   expect(JSON.stringify(t.published)).toBe(saved)
+})
+
+test('programming errors remain retryable and never complete a backfill claim', async () => {
+  const t = setup()
+  const broken = adapter({
+    parse: () => {
+      throw new TypeError('programming bug')
+    }
+  })
+  broken.backfill = async (s, ctx) => (await ctx.http(s.url)).json()
+  await expect(runBackfillOnce(broken, source(), t.ports)).rejects.toThrow('programming bug')
+  expect(t.published).toEqual([])
+  expect([...t.store.objects.keys()].filter((path) => path.startsWith('control/results/'))).toEqual([])
+  expect(JSON.parse(Buffer.from((await t.store.read('control/backfills/rain-a.json'))!.body).toString()).state).toBe(
+    'running'
+  )
 })

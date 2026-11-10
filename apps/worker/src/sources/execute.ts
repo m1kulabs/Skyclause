@@ -77,11 +77,14 @@ export async function executeAdapter<Raw>(
       }
     } catch (cause) {
       error = sourceError(cause)
+      if (error.type === 'internal') throw cause
     } finally {
       // Promise.all can reject before its siblings settle. Close admission now and join the ledger.
       await closeAndDrain()
     }
     error ??= requests.find((request) => request.error)?.error ?? null
+    const internal = requests.find((request) => request.error?.type === 'internal')?.error
+    if (internal) throw new Error(internal.message)
     if (!error && fetched) {
       try {
         if (!requests.length) throw new SchemaError('Adapter produced no HTTP request')
@@ -98,6 +101,7 @@ export async function executeAdapter<Raw>(
           )
       } catch (cause) {
         error = sourceError(cause)
+        if (error.type === 'internal') throw cause
         const finalRequest = requests.at(-1)
         if (finalRequest && !finalRequest.error) finalRequest.error = error
       }
