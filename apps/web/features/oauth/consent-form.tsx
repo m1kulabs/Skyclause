@@ -7,18 +7,15 @@ import { Button } from '#ui/button'
 
 type Details = Awaited<ReturnType<typeof getOAuthConsentDetails>>
 type Scope = 'read' | 'draft'
-type Action = (formData: FormData) => void | Promise<void>
 
 export function OAuthConsentForm({
   details,
   oauthQuery,
-  locale,
-  action
+  locale
 }: {
   details: Details
   oauthQuery: string
   locale: 'en' | 'ms'
-  action: Action
 }) {
   const initialOrg = details.link?.orgId ?? details.lockedOrgId ?? details.organisations[0]?.id ?? ''
   const [orgId, setOrgId] = useState(initialOrg)
@@ -59,7 +56,11 @@ export function OAuthConsentForm({
   }
 
   return (
-    <form action={action} className="grid gap-5 rounded-md border border-border bg-card p-5">
+    <form
+      action="/api/auth/oauth/consent"
+      method="post"
+      className="grid gap-5 rounded-md border border-border bg-card p-5"
+    >
       <input type="hidden" name="oauth_query" value={oauthQuery} />
       <dl className="grid gap-4 text-sm sm:grid-cols-2">
         <div className="grid gap-1">

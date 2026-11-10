@@ -7,7 +7,6 @@ import { prefersMalay } from '../../../../lib/preferred-language'
 import { oauthConsentRedirect } from '../../../../features/oauth/guard'
 import '../../../../features/oauth/catalogue'
 import { OAuthConsentForm } from '../../../../features/oauth/consent-form'
-import { submitOAuthConsent } from './actions'
 
 export default async function OAuthConsentPage({
   searchParams
@@ -44,7 +43,7 @@ export default async function OAuthConsentPage({
         <p className="text-sm leading-6 text-muted-foreground">{t('oauth.consent.intro', {}, locale)}</p>
       </header>
       {hasChoices ? (
-        <OAuthConsentForm details={details} oauthQuery={oauthQuery} locale={locale} action={submitOAuthConsent} />
+        <OAuthConsentForm details={details} oauthQuery={oauthQuery} locale={locale} />
       ) : (
         <p role="alert" className="rounded-md border border-border bg-card p-4 text-sm leading-6">
           {t('oauth.consent.noOrganisations', {}, locale)}

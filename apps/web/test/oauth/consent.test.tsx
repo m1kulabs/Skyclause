@@ -70,7 +70,7 @@ test('guests go to sign-up before consent and only member sessions can continue'
 })
 
 test('consent identifies the request and exposes equal, keyboard-focusable native controls', async () => {
-  render(<OAuthConsentForm details={details} oauthQuery="client_id=public-test-client" locale="en" action={vi.fn()} />)
+  render(<OAuthConsentForm details={details} oauthQuery="client_id=public-test-client" locale="en" />)
   expect(screen.getByText('Claude Desktop')).toBeTruthy()
   expect(screen.getByText('claude.example')).toBeTruthy()
   expect(screen.getByText('Bukit Jalil')).toBeTruthy()

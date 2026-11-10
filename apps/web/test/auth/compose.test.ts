@@ -3,7 +3,7 @@
 import '@skyclause/auth/test/harness/database'
 import { requireHumanSession, type ApiApp } from '@skyclause/api'
 import { apiRequest, createTestApi, testDeps } from '@skyclause/api/testing'
-import { authHandler, can, completeOAuthConsent, oauthManagement, resolvePrincipal } from '@skyclause/auth'
+import { authHandler, can, oauthManagement, resolvePrincipal } from '@skyclause/auth'
 import {
   addMember,
   makeAccount,
@@ -20,6 +20,7 @@ import { API_ROUTES, createRoute, SCOPE_STATEMENTS, V1_ROUTES, type SkyclauseRou
 import { beforeAll, describe, expect, test } from 'vitest'
 import { GET } from '../../app/v1/[[...route]]/route'
 import { GET as getOAuthMetadata } from '../../app/.well-known/oauth-authorization-server/route'
+import { POST as submitOAuthConsent } from '../../app/api/auth/oauth/consent/route'
 import { TEST_AUTH_ENV } from '@skyclause/auth/testing'
 
 const slug = async (response: Response) => ((await response.json()) as { type: string }).type.split('/').at(-1)
@@ -191,15 +192,22 @@ test('a full PKCE token gets 403 on bundle approval and every first-party /api r
   )
   expect(started.status).toBe(302)
   const oauthQuery = new URL(started.headers.get('Location')!, TEST_AUTH_ENV.APP_ORIGIN).search.slice(1)
-  const consent = await completeOAuthConsent({
-    headers: new Headers({ Cookie: session.cookie, Origin: TEST_AUTH_ENV.APP_ORIGIN }),
-    oauthQuery,
-    orgId: org.id,
-    projectIds: null,
-    scopes: ['read', 'draft'],
-    accept: true
-  })
-  const code = new URL(consent.url, TEST_AUTH_ENV.APP_ORIGIN).searchParams.get('code')!
+  const consent = await submitOAuthConsent(
+    new Request(`${TEST_AUTH_ENV.APP_ORIGIN}/api/auth/oauth/consent`, {
+      method: 'POST',
+      headers: { Cookie: session.cookie, Origin: TEST_AUTH_ENV.APP_ORIGIN },
+      body: new URLSearchParams([
+        ['oauth_query', oauthQuery],
+        ['org_id', org.id],
+        ['all_projects', 'true'],
+        ['scopes', 'read'],
+        ['scopes', 'draft'],
+        ['accept', 'true']
+      ])
+    })
+  )
+  expect(consent.status).toBe(303)
+  const code = new URL(consent.headers.get('Location')!, TEST_AUTH_ENV.APP_ORIGIN).searchParams.get('code')!
   const tokenResponse = await authHandler(
     new Request(`${TEST_AUTH_ENV.APP_ORIGIN}/api/auth/oauth2/token`, {
       method: 'POST',
@@ -217,6 +225,9 @@ test('a full PKCE token gets 403 on bundle approval and every first-party /api r
   expect(tokenResponse.status).toBe(200)
   const token = ((await tokenResponse.json()) as { access_token: string }).access_token
   const headers = { Authorization: `Bearer ${token}` }
+  const granted = await resolvePrincipal(new Request(`${apiResource}/projects`, { headers }), { surface: 'v1' })
+  expect(granted?.kind).toBe('oauth')
+  if (granted?.kind !== 'oauth') throw new Error('The consent token did not resolve to its grant.')
   const approval = await apiRequest(apps.api, {
     method: 'POST',
     path: '/api/bundles/11111111-1111-7111-8111-111111111111/approve',
@@ -245,7 +256,7 @@ test('a full PKCE token gets 403 on bundle approval and every first-party /api r
     { surface: 'v1' }
   )
   expect(revoker?.kind).toBe('session')
-  await oauthManagement.revokeGrant({ orgId: org.id, id: consent.grantId!, now: new Date(), principal: revoker! })
+  await oauthManagement.revokeGrant({ orgId: org.id, id: granted.grantId, now: new Date(), principal: revoker! })
   const revokedRequest = await apiRequest(apps.v1, { method: 'GET', path: '/v1/projects', headers })
   expect(revokedRequest.status).toBe(401)
   expect(await slug(revokedRequest)).toBe('unauthenticated')
