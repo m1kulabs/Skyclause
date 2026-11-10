@@ -11,7 +11,15 @@ export const listNotifications = createRoute({
   request: { query: PageQuery },
   responses: {
     ...CommonProblems,
-    200: { description: 'Success', content: { 'application/json': { schema: Page(Notification) } } }
+    200: {
+      description: 'Success',
+      content: {
+        'application/json': {
+          // #156: the account's unread total across every page.
+          schema: Page(Notification).extend({ unread_count: z.number().int().nonnegative().optional() })
+        }
+      }
+    }
   },
   x: { owner: 'c-notifications', statement: 'session', idempotent: false }
 })

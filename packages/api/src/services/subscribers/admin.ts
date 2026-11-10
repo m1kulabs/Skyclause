@@ -1,3 +1,4 @@
+import { HTTP_PROBLEM_STATUS } from '@skyclause/contracts'
 import type { Page } from '@skyclause/contracts'
 import {
   consentRecord,
@@ -170,6 +171,6 @@ export async function removeSubscriber(ctx: ServiceContext, subscriberId: string
   const [row] = isUuid(subscriberId)
     ? await tx.select({ id: subscriber.id }).from(subscriber).where(eq(subscriber.id, subscriberId))
     : []
-  if (!row) throw new ApiError(404, 'not-found', 'No such subscriber.')
+  if (!row) throw new ApiError(HTTP_PROBLEM_STATUS['not-found'], 'not-found', 'No such subscriber.')
   await eraseSubscriber(tx, row.id)
 }

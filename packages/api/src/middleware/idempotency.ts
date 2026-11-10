@@ -1,3 +1,4 @@
+import { HTTP_PROBLEM_STATUS } from '@skyclause/contracts'
 import { createHash } from 'node:crypto'
 import type { MiddlewareHandler } from 'hono'
 import { routePath } from 'hono/route'
@@ -66,7 +67,11 @@ export const requireIdempotency: MiddlewareHandler<ApiEnv> = async (c, next) => 
       throw new ApiError(422, 'idempotency-mismatch', 'This Idempotency-Key was used with a different request.')
     }
     if (!held.response) {
-      throw new ApiError(409, 'idempotency-in-progress', 'A request with this Idempotency-Key is still running.')
+      throw new ApiError(
+        HTTP_PROBLEM_STATUS['idempotency-in-progress'],
+        'idempotency-in-progress',
+        'A request with this Idempotency-Key is still running.'
+      )
     }
     const { status, contentType, location, body } = held.response
     return c.newResponse(body, status as 200, {

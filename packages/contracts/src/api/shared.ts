@@ -143,9 +143,9 @@ export type NotificationPreference = z.infer<typeof NotificationPreference>
 export const ProjectPack = z.object({
   pack: Pack,
   enabled: z.boolean(),
-  sheet_id: z.string(),
-  schedule: z.string(),
-  sla_s: z.number().int()
+  sheet_id: z.string().nullable(),
+  schedule: JsonValue.nullable(),
+  sla_s: z.number().int().nullable()
 })
 export type ProjectPack = z.infer<typeof ProjectPack>
 export const Project = z.object({
@@ -155,13 +155,13 @@ export const Project = z.object({
   slug: z.string(),
   time_zone: z.string(),
   public: z.boolean(),
-  semester_ends_on: LocalDate,
-  site_name: z.string(),
-  site_lat: z.number(),
-  site_lon: z.number(),
+  semester_ends_on: LocalDate.nullable(),
+  site_name: z.string().nullable(),
+  site_lat: z.number().nullable(),
+  site_lon: z.number().nullable(),
   archived_at: Instant.nullable(),
-  camera_day_start: z.string(),
-  camera_day_end: z.string(),
+  camera_day_start: z.string().nullable(),
+  camera_day_end: z.string().nullable(),
   warning_area_terms: z.array(z.string()),
   packs: z.array(ProjectPack)
 })
@@ -319,15 +319,16 @@ export const Run = z.object({
   pack: Pack,
   trigger: RunTrigger,
   dedupe_key: z.string(),
-  sheet_version_id: z.string(),
-  snapshot_id: z.string(),
+  // #151: null until the run's snapshot and shadow steps set them, so for every queued run.
+  sheet_version_id: z.string().nullable(),
+  snapshot_id: z.string().nullable(),
   model: z.string().nullable(),
   fallback_used: z.boolean(),
   status: z.enum(['queued', 'running', 'drafted', 'no_draft', 'failed']),
   reason: z.string().nullable(),
   trigger_ref: z.string().nullable(),
   window_ids: z.array(z.string()),
-  verdict_hash: z.string()
+  verdict_hash: z.string().nullable()
 })
 export type Run = z.infer<typeof Run>
 export const Notice = z.object({ language: Language, subject: z.string().max(120), body: z.string().max(2000) })
@@ -396,6 +397,24 @@ export const BundleState = z.enum([
   'graded'
 ])
 export type BundleState = z.infer<typeof BundleState>
+// #499: a window or night whose engine verdict fired with no call in the draft (#467's compare `missing` row). It holds
+// the bundle in review until an approver drafts the engine's call for it (`call_id`) or dismisses it with a `reason`,
+// or a newer bundle covering it supersedes it (`superseded_by`).
+export const MissingCall = z.object({
+  window_id: z.string().nullable(),
+  night_id: z.string().nullable(),
+  // The engine's verdict as the run saw it.
+  shadow: Verdict,
+  // The window's candidate subscribers at the run: a drafted call's recipients.
+  recipients: z.array(z.string()),
+  resolution: z.enum(['drafted', 'dismissed', 'superseded']).nullable(),
+  call_id: z.string().nullable(),
+  reason: z.string().nullable(),
+  resolved_by: z.string().nullable(),
+  resolved_at: Instant.nullable(),
+  superseded_by: z.string().nullable()
+})
+export type MissingCall = z.infer<typeof MissingCall>
 export const Bundle = z.object({
   id: z.string(),
   project_id: z.string(),
@@ -410,7 +429,9 @@ export const Bundle = z.object({
   approved_by: z.string().nullable(),
   escalation_level: z.number().int(),
   draft_only: z.boolean(),
-  calls: z.array(CallView)
+  calls: z.array(CallView),
+  // #499 (optional): sent only when the draft left out a fired window or night.
+  missing: z.array(MissingCall).optional()
 })
 export type Bundle = z.infer<typeof Bundle>
 export const LedgerKind = z.enum([

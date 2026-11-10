@@ -8,12 +8,15 @@ export {
   canMoveCall,
   closes,
   type BundleState,
-  type CallState
+  type CallState,
+  type MissingCall
 } from './machine'
 export {
   approveGuard,
   createBundle,
   DEFAULT_SLA_S,
+  dismissMissing,
+  draftMissingCall,
   expireCall,
   markSending,
   reviewHash,
@@ -22,5 +25,6 @@ export {
   type ApproveGuard,
   type CallDraft,
   type CreateBundleInput,
-  type ExpireOutcome
+  type ExpireOutcome,
+  type MissingDraft
 } from './repository'

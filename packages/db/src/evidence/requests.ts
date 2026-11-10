@@ -28,7 +28,7 @@ export interface DraftEvidenceInput {
   leavesOrg: boolean
   replyChannel: 'email' | 'in_app'
   receivedAt: Date
-  /** The SES message ID of an emailed request; a second request for the same message is never made. */
+  /** The SES message ID of an emailed request (`handleOnce` keeps a redelivery from reaching here). */
   messageId?: string
 }
 
@@ -56,34 +56,33 @@ async function answered(tx: Tx, row: EvidenceRequestRow, approvalNeeded: boolean
 
 /**
  * Records a request, assembles its pack once and stores it with `pack_hash`. A member's reply is committed at once; a
- * reply leaving the organisation waits for approval. Returns null when `messageId` already has a request.
+ * reply leaving the organisation waits for approval.
  */
 export async function draftEvidenceRequest(
   handle: TxHandle,
   input: DraftEvidenceInput,
   now: Date
-): Promise<EvidenceRequestRow | null> {
+): Promise<EvidenceRequestRow> {
   const tx = handle as Tx
-  const insert = tx.insert(evidenceRequest).values({
-    orgId: tx.orgId!,
-    projectId: input.projectId,
-    spanFrom: input.from,
-    spanTo: input.to,
-    requester: input.requester.id,
-    requesterKind: input.requester.kind,
-    accountId: input.requester.accountId,
-    subscriberId: input.requester.subscriberId,
-    messageId: input.messageId,
-    callId: input.callId,
-    via: input.via,
-    leavesOrg: input.leavesOrg,
-    replyChannel: input.replyChannel,
-    receivedAt: input.receivedAt
-  })
-  const [received] = await (
-    input.messageId ? insert.onConflictDoNothing({ target: evidenceRequest.messageId }) : insert
-  ).returning({ id: evidenceRequest.id })
-  if (!received) return null
+  const [received] = await tx
+    .insert(evidenceRequest)
+    .values({
+      orgId: tx.orgId!,
+      projectId: input.projectId,
+      spanFrom: input.from,
+      spanTo: input.to,
+      requester: input.requester.id,
+      requesterKind: input.requester.kind,
+      accountId: input.requester.accountId,
+      subscriberId: input.requester.subscriberId,
+      messageId: input.messageId,
+      callId: input.callId,
+      via: input.via,
+      leavesOrg: input.leavesOrg,
+      replyChannel: input.replyChannel,
+      receivedAt: input.receivedAt
+    })
+    .returning({ id: evidenceRequest.id })
 
   const pack = await assembleEvidencePack(tx, input)
   const draftedAt = latest(now, input.receivedAt)
@@ -98,7 +97,7 @@ export async function draftEvidenceRequest(
       status: guest ? 'not_reviewed' : waits ? 'waiting_for_approval' : 'replied',
       repliedAt: waits ? null : draftedAt
     })
-    .where(eq(evidenceRequest.id, received.id))
+    .where(eq(evidenceRequest.id, received!.id))
     .returning()
   await track(tx, 'evidence_requested', { via: input.via }, { projectId: input.projectId })
   if (!waits) await answered(tx, row!, false)

@@ -17,7 +17,7 @@ it('records the route template with its surface prefix, and nothing for an unmat
   await apiRequest(v1, { method: 'GET', path: '/v1/no/such/route' })
 
   expect(vi.mocked(recordHttpServerDuration).mock.calls).toEqual([
-    [{ method: 'GET', route: '/v1/projects/:id', status: 501 }, expect.any(Number)],
+    [{ method: 'GET', route: '/v1/projects/:id', status: 404 }, expect.any(Number)],
     [{ method: 'GET', route: '/api/subscribe/:token', status: 410 }, expect.any(Number)]
   ])
 })

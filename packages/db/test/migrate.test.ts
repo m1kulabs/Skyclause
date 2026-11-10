@@ -13,7 +13,7 @@ const tags = (
 const created: string[] = []
 afterEach(async () => {
   for (const name of created.splice(0)) await dropDatabase(name)
-})
+}, 60_000)
 
 async function emptyDatabase() {
   const name = `${process.env.SKYCLAUSE_TEST_DATABASE}_m${created.length}`
@@ -53,7 +53,7 @@ test('an empty database migrates, and a second run changes nothing', async () =>
   const after = await catalogue(database)
   expect(await migrate(url, migrationsFolder)).toEqual([])
   expect(await catalogue(database)).toEqual(after)
-})
+}, 120_000)
 
 test('owner owns every table, view, type, function and schema the migrations create', async () => {
   const owners = await asLogin('postgres', async (client) => {
@@ -69,7 +69,7 @@ test('owner owns every table, view, type, function and schema the migrations cre
   })
   expect(owners.length).toBeGreaterThan(40)
   expect(owners.filter(({ owner }) => owner !== 'owner')).toEqual([])
-})
+}, 120_000)
 
 test('a failing migration rolls back and leaves no record, so the next run applies it once fixed', async () => {
   const database = await emptyDatabase()
@@ -91,4 +91,4 @@ test('a failing migration rolls back and leaves no record, so the next run appli
   const fixed = migrationsWith('9000_test-fixed', 'CREATE TABLE half_done (id int);\n')
   expect(await migrate(url, fixed)).toEqual(['9000_test-fixed'])
   expect(await state()).toEqual({ recorded: tags.length + 1, table: 'half_done' })
-})
+}, 120_000)

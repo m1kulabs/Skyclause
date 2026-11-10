@@ -83,7 +83,9 @@ export const publicProject = pgView('public_project', {
   siteName: text('site_name'),
   siteLat: doublePrecision('site_lat'),
   siteLon: doublePrecision('site_lon'),
-  archivedAt: instant('archived_at')
+  archivedAt: instant('archived_at'),
+  /** The organisation's deletion is requested (projectGate's `suspended`); added in migration 0008. */
+  suspended: boolean('suspended').notNull()
 }).existing()
 
 /** The packs of public projects (P). Created in migration 0002. */

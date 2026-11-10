@@ -1,22 +1,15 @@
 /// <reference types="node" />
 
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { NotBuiltError } from '../src/not-built'
 
 // Load workspace entrypoints at runtime: this integration check must not add reverse project references to contracts.
 const packages: Array<{ name: string; owners: Record<string, string[]> }> = [
   {
-    name: 'api',
-    owners: {
-      'b-auditor': ['registerAuditCheck']
-    }
-  },
-  {
     name: 'db',
     owners: {
-      'c-run-orchestrator': ['requestRun'],
       'a-org-projects': ['createOrganisation'],
-      'c-notifications': ['notify'],
+      'd-guest-rules': ['budgetGate'],
       'd-org-api': ['listenEvents'],
       'a-subscriber-rights': ['eraseSubscriber']
     }
@@ -36,10 +29,16 @@ const packages: Array<{ name: string; owners: Record<string, string[]> }> = [
 ]
 
 describe.each(packages)('$name placeholders', ({ name, owners }) => {
+  let module: Record<string, unknown>
+
+  // The cold import of a package entrypoint can load much of the platform; keep it out of the per-test 5 s timeout.
+  beforeAll(async () => {
+    const entrypoint = new URL(`../../${name}/src/index.ts`, import.meta.url).pathname
+    module = await import(entrypoint)
+  }, 60_000)
+
   for (const [owner, exports] of Object.entries(owners)) {
-    it.each(exports)('%s throws NotBuiltError with its owner', async (nameOfExport) => {
-      const entrypoint = new URL(`../../${name}/src/index.ts`, import.meta.url).pathname
-      const module: Record<string, unknown> = await import(entrypoint)
+    it.each(exports)('%s throws NotBuiltError with its owner', (nameOfExport) => {
       const placeholder = module[nameOfExport]
       expect(placeholder).toBeTypeOf('function')
       expect(() => Reflect.apply(placeholder as (...args: unknown[]) => unknown, undefined, [])).toThrow(

@@ -136,6 +136,8 @@ export const notificationKind = pgEnum('notification_kind', [
 export const rotaTemplate = pgEnum('rota_template', ['storm_afternoon', 'surge_night', 'custom'])
 export const alertChannel = pgEnum('alert_channel', ['web_push', 'email'])
 export const alertLevel = pgEnum('alert_level', ['on_duty', 'next_approver', 'admins'])
+/** c-approver-alerts (#155): 30 minutes before a shift, or when a conditional shift switches on (CAL-19). */
+export const shiftReminderKind = pgEnum('shift_reminder_kind', ['before_shift', 'switched_on'])
 export const gradeOutcome = pgEnum('grade_outcome', [
   'hit',
   'miss',

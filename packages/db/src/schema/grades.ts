@@ -170,20 +170,38 @@ export const evidenceRequest = tenantTable(
   ]
 )
 
-/** A computed analysis figure with its Wilson interval (`c-analysis-api`). */
+/**
+ * A figure the `analysis-materialise` job computed from `grade` and the call and evidence times (`c-analysis-api`,
+ * #162): per project, pack (null: evidence minutes, which no pack owns), clause (null: the whole pack) and period
+ * (`7d`, `30d`, `90d`, `all`, or `day` for one date of the series), over the project-local dates `range_from` to
+ * `range_to`. A rate keeps `x` of `n` and its Wilson interval; a quantile keeps `value` and the `samples` it was taken
+ * over, so the roll-up can pool projects. n = 0 leaves value, low and high null.
+ */
 export const analysisMetric = tenantTable(
   'analysis_metric',
   {
     id: id(),
     projectId: uuid('project_id').notNull(),
+    pack: pack('pack'),
+    clause: text('clause'),
+    period: text('period').notNull(),
     metric: text('metric').notNull(),
-    x: integer('x').notNull(),
+    x: integer('x'),
     n: integer('n').notNull(),
-    low: doublePrecision('low').notNull(),
-    high: doublePrecision('high').notNull(),
+    value: doublePrecision('value'),
+    low: doublePrecision('low'),
+    high: doublePrecision('high'),
+    samples: doublePrecision('samples').array(),
+    rangeFrom: date('range_from').notNull(),
+    rangeTo: date('range_to').notNull(),
     computedAt: instant('computed_at').notNull().defaultNow()
   },
-  (self) => [sameOrg('analysis_metric_project', self, self.projectId, project, true)]
+  (self) => [
+    sameOrg('analysis_metric_project', self, self.projectId, project, true),
+    unique('analysis_metric_figure_key')
+      .on(self.projectId, self.period, self.pack, self.clause, self.metric, self.rangeFrom)
+      .nullsNotDistinct()
+  ]
 )
 
 /** The per-project hash chain (TRD, D11); append-only, `seq` gapless per project. P through `public_ledger_entry`. */

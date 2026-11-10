@@ -10,11 +10,16 @@ export async function makeAnalysisMetric(tx: Tx, overrides: Partial<typeof analy
     .insert(analysisMetric)
     .values({
       orgId: tx.orgId!,
+      pack: 'sky',
+      period: '30d',
       metric: 'agreement',
       x: 40,
       n: 50,
+      value: 0.8,
       low: 0.67,
       high: 0.89,
+      rangeFrom: '2026-10-11',
+      rangeTo: '2026-11-09',
       ...overrides,
       projectId: parent.id
     })

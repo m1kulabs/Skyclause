@@ -174,3 +174,70 @@ test('withSystem reads every organisation’s events, and app can’t read handl
   expect(seen).toHaveLength(1)
   expect(await refusal(asMember((tx) => tx.execute(sql`SELECT * FROM handled_event`)))).toMatch(/permission denied/)
 })
+
+test('handleOnce dedupes on an SES message ID: the same message delivered twice runs fn once', async () => {
+  const messageId = `0100019a${crypto.randomUUID().replaceAll('-', '')}-000000`
+  const runs: string[] = []
+  const deliver = (consumer: string, id = messageId) =>
+    withTenant({ orgId, principal: system }, (tx) =>
+      handleOnce(tx, consumer, { messageId: id }, async () => void runs.push(consumer))
+    )
+  expect([
+    await deliver('evidence-inbound'),
+    await deliver('evidence-inbound'),
+    await deliver('crowd-replies'),
+    await deliver('evidence-inbound', `${messageId}-other`)
+  ]).toEqual([true, false, true, true])
+  expect(runs).toEqual(['evidence-inbound', 'crowd-replies', 'evidence-inbound'])
+})
+
+test('handleOnce records no SES message when fn throws, so the redelivery runs it', async () => {
+  const messageId = `0100019a${crypto.randomUUID().replaceAll('-', '')}-000001`
+  const deliver = (fn: () => Promise<void>) =>
+    withTenant({ orgId, principal: system }, (tx) => handleOnce(tx, 'evidence-inbound', { messageId }, fn))
+  await expect(deliver(async () => Promise.reject(new Error('reply failed')))).rejects.toThrow('reply failed')
+  expect(await deliver(async () => {})).toBe(true)
+})
+
+test('app can’t read handled_message', async () => {
+  expect(await refusal(asMember((tx) => tx.execute(sql`SELECT * FROM handled_message`)))).toMatch(/permission denied/)
+})
+
+test('a publisher set through one copy of the module serves another, as Next.js may load two', async () => {
+  // A query string makes Vitest load a second, separate instance of the module.
+  const second: string = '../src/events.ts?second-instance'
+  const copy = (await import(second)) as typeof import('../src/events')
+  expect(copy.setEventPublisher).not.toBe(setEventPublisher)
+  const projectId = await asMember(async (tx) => (await makeProject(tx)).id)
+  const event = await asMember((tx) => emitEvent(tx, bound(projectId)))
+  copy.setEventPublisher(async ({ event_id }) => void published.push(event_id))
+  await republishEvents(new Date(Date.now() + 31_000))
+  expect(published).toContain(event.id)
+})
+
+test('the republish marks what it sent before a failed publish, and throws', async () => {
+  const projectId = await asMember(async (tx) => (await makeProject(tx)).id)
+  const first = await asMember((tx) => emitEvent(tx, bound(projectId)))
+  const second = await asMember((tx) => emitEvent(tx, bound(projectId)))
+  setEventPublisher(async ({ event_id }) => {
+    if (event_id === second.id) throw new Error('Pub/Sub unavailable')
+    published.push(event_id)
+  })
+  await expect(republishEvents(new Date(Date.now() + 31_000))).rejects.toThrow('Pub/Sub unavailable')
+  expect([(await row(first.id)).published_at, (await row(second.id)).published_at]).toEqual([expect.any(Date), null])
+})
+
+test('after commit, a failed publish stops the rest, which wait for the batch, so an outage delays a request once', async () => {
+  const projectId = await asMember(async (tx) => (await makeProject(tx)).id)
+  const attempts: string[] = []
+  setEventPublisher(async ({ event_id }) => {
+    attempts.push(event_id)
+    throw new Error('Pub/Sub unavailable')
+  })
+  const [first, second] = await asMember(async (tx) => [
+    await emitEvent(tx, bound(projectId)),
+    await emitEvent(tx, bound(projectId))
+  ])
+  expect(attempts).toEqual([first!.id])
+  expect([(await row(first!.id)).published_at, (await row(second!.id)).published_at]).toEqual([null, null])
+})

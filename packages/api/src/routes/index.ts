@@ -2,12 +2,20 @@ import type { RouteConfig, RouteHandler } from '@hono/zod-openapi'
 import type { OperationId, Operations } from '@skyclause/contracts'
 import type { Context, MiddlewareHandler } from 'hono'
 import type { ApiEnv } from '../context'
+import { approvalHandlers } from './approvals'
+import { alertHandlers } from './alerts'
+import { auditHandlers } from './audit'
+import { analysisHandlers } from './analysis'
 import { bundleHandlers } from './bundles'
 import { channelHandlers } from './channels'
 import { evidenceHandlers } from './evidence'
 import { gradesHandlers } from './grades'
 import { apiKeyHandlers } from './api-keys'
 import { ledgerHandlers } from './ledger'
+import { notificationHandlers } from './notifications'
+import { projectHandlers } from './projects'
+import { replyHandlers } from './replies'
+import { runHandlers } from './runs'
 import { subscriberHandlers } from './subscribers'
 
 /**
@@ -33,10 +41,18 @@ export type Handlers = { [Id in OperationId]?: HandlerEntry<Operations[Id]> }
  */
 export const HANDLERS: Handlers = {
   ...apiKeyHandlers, // a-api-keys
+  ...auditHandlers, // a-audit-log
   ...channelHandlers, // c-notice-templates
   ...ledgerHandlers, // c-ledger-chain
   ...subscriberHandlers,
   ...bundleHandlers, // c-bundle-lifecycle
   ...evidenceHandlers, // c-evidence
-  ...gradesHandlers // c-grades
+  ...gradesHandlers, // c-grades
+  ...projectHandlers, // b-projects-api
+  ...replyHandlers, // c-recipient-replies
+  ...runHandlers, // c-run-orchestrator
+  ...approvalHandlers, // c-approval-api
+  ...alertHandlers, // c-approver-alerts
+  ...notificationHandlers, // c-notifications
+  ...analysisHandlers // c-analysis-api
 }

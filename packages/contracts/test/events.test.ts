@@ -1,5 +1,11 @@
 import { expect, test } from 'vitest'
-import { DOMAIN_EVENT_SCHEMAS, DomainEventSchema, EventEnvelopeSchema, WEBHOOK_EVENT_TYPES } from '../src/events'
+import {
+  DOMAIN_EVENT_SCHEMAS,
+  DomainEventSchema,
+  EventEnvelopeSchema,
+  PollRecordedEventSchema,
+  WEBHOOK_EVENT_TYPES
+} from '../src/events'
 
 const domainEventTypes = [
   'source.error',
@@ -83,4 +89,52 @@ test('validates the TRD event envelope and the event-specific data shape', () =>
     DomainEventSchema.safeParse({ ...event, data: { run_id: '0192a111-2222-7222-8222-222222222222' } }).success
   ).toBe(false)
   expect(DomainEventSchema.safeParse({ ...event, id: 'event-id' }).success).toBe(false)
+})
+
+test('call.sent carries a null mode for a No call', () => {
+  const sent = {
+    id: '0192a111-2222-7222-8222-222222222222',
+    type: 'call.sent',
+    created_at: '2026-11-06T00:00:00Z',
+    org_id: '0192a111-2222-7222-8222-222222222222',
+    project_id: '0192a111-2222-7222-8222-222222222222',
+    data: { call_id: '0192a111-2222-7222-8222-222222222222', mode: null, outcome: 'sent' }
+  }
+  expect(DOMAIN_EVENT_SCHEMAS['call.sent'].safeParse(sent).success).toBe(true)
+  expect(
+    DOMAIN_EVENT_SCHEMAS['call.sent'].safeParse({ ...sent, data: { ...sent.data, mode: 'no_call' } }).success
+  ).toBe(false)
+})
+
+const pollRecorded = (httpStatus: unknown, outcome = 'error') => ({
+  id: '0192a111-2222-7222-8222-222222222222',
+  type: 'poll.recorded',
+  created_at: '2026-11-06T00:00:00Z',
+  org_id: '0192a111-2222-7222-8222-222222222222',
+  project_id: '0192a111-2222-7222-8222-222222222222',
+  data: {
+    source_id: '0192a111-2222-7222-8222-222222222222',
+    poll_id: '0192a111-2222-7222-8222-222222222222',
+    outcome,
+    http_status: httpStatus,
+    new_rows: 0
+  }
+})
+
+test.each(['timeout', 'network', 'rate_limited'])('poll.recorded accepts no-response status for %s', (outcome) => {
+  const event = pollRecorded(null, outcome)
+  expect(PollRecordedEventSchema.parse(event).data.http_status).toBeNull()
+  expect(DomainEventSchema.parse(event).data).toEqual(event.data)
+})
+
+test.each([200, 301, 500])('poll.recorded preserves actual response status %i', (status) => {
+  const event = pollRecorded(status)
+  expect(PollRecordedEventSchema.parse(event).data.http_status).toBe(status)
+  expect(DomainEventSchema.parse(event).data).toEqual(event.data)
+})
+
+test.each([undefined, '200', 200.5, NaN, true, {}])('poll.recorded rejects malformed status %s', (status) => {
+  const event = pollRecorded(status)
+  expect(PollRecordedEventSchema.safeParse(event).success).toBe(false)
+  expect(DomainEventSchema.safeParse(event).success).toBe(false)
 })
