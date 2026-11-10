@@ -478,9 +478,27 @@ test('#372 a signed-in approver’s bundle arrives rendered by the server and hy
   page.on('pageerror', (error) => errors.push(error.message))
   await signInAs(page, 'approver', org)
   await stubReads(page, review.bundle, review.calls, { org })
-  await open(page, review.path)
-  // The run line comes only from the client's own reads, after hydration; they paint the call list the server did.
+  // Pause the client refresh so the full call list can be compared at hydration, before #404 adds the readings.
+  let releaseStrip!: () => void
+  const stripPaused = new Promise<void>((resolve) => {
+    releaseStrip = resolve
+  })
+  await page.route('**/v1/projects/*/strip', async (route) => {
+    await stripPaused
+    await route.fallback()
+  })
+  const stripRequested = page.waitForRequest('**/v1/projects/*/strip')
+  try {
+    await open(page, review.path)
+    // This read starts in an effect, so hydration has committed while the refresh is still paused.
+    await stripRequested
+    expect(await page.locator('.bundle-call-list').innerText()).toBe(rendered)
+  } finally {
+    releaseStrip()
+  }
+  // The run and strip arrive in the client refresh; new readings must replace the server's empty strip.
   await expect(page.locator('.bundle-trace')).toContainText(review.bundle.run_id)
-  expect(await page.locator('.bundle-call-list').innerText()).toBe(rendered)
+  await expect(page.locator('.bundle-call-list figure svg')).toBeVisible()
+  await expect(page.locator('.bundle-call-list figure figcaption')).toContainText('50')
   expect(errors.filter((error) => /hydrat|Minified React error #(418|419|421|422|423|425)\b/i.test(error))).toEqual([])
 })
