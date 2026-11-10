@@ -143,6 +143,31 @@ test('explicit organisation wins over the global connect route for client creati
   expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Skyclause-Organization')).toBe('chosen-org')
 })
 
+test('reads a text/csv API response as text for filtered audit exports', async () => {
+  const csvFetch = createApiFetch({
+    exportCsv: {
+      method: 'GET',
+      path: '/api/orgs/acme/audit/export',
+      response: {
+        parse(value: unknown) {
+          if (typeof value !== 'string') throw new TypeError('Expected a CSV string')
+          return value
+        }
+      }
+    }
+  })
+  const fetchMock = vi.fn(
+    async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      new Response('id,action\nentry-1,member.role_changed\n', { headers: { 'Content-Type': 'text/csv' } })
+  )
+  vi.stubGlobal('fetch', fetchMock)
+
+  await expect(csvFetch('exportCsv', { headers: { Accept: 'text/csv' } })).resolves.toBe(
+    'id,action\nentry-1,member.role_changed\n'
+  )
+  expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Accept')).toBe('text/csv')
+})
+
 test('parses a CSV export as text through the operation response schema', async () => {
   const csv = 'id,kind\r\nentry-1,call_approved\r\n'
   vi.stubGlobal(

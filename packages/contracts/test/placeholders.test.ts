@@ -8,15 +8,13 @@ const packages: Array<{ name: string; owners: Record<string, string[]> }> = [
   {
     name: 'db',
     owners: {
-      'a-org-projects': ['createOrganisation'],
       'd-guest-rules': ['budgetGate'],
-      'd-org-api': ['listenEvents'],
-      'a-subscriber-rights': ['eraseSubscriber']
+      'd-org-api': ['listenEvents']
     }
   },
   {
     name: 'config',
-    owners: { 'e-byok-api': ['sealSecret', 'openSecret'], 'a-hardening': ['assertPublicUrl', 'safeFetch'] }
+    owners: { 'a-hardening': ['assertPublicUrl', 'safeFetch'] }
   },
   {
     name: 'forecast',

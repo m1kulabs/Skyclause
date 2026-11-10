@@ -1,0 +1,79 @@
+// @vitest-environment jsdom
+import { afterEach, expect, test, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import axe from 'axe-core'
+import '../../features/organisations/catalogue'
+import { OrgCreateForm } from '../../features/organisations/org-create-form'
+import { apiFetch } from '../../features/organisations/operations'
+import { ApiProblem } from '../../lib/api-fetch'
+
+vi.mock('../../features/organisations/operations', async (original) => ({
+  ...(await original<typeof import('../../features/organisations/operations')>()),
+  apiFetch: vi.fn()
+}))
+
+const push = vi.fn()
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }))
+
+afterEach(() => {
+  cleanup()
+  vi.mocked(apiFetch).mockReset()
+  push.mockReset()
+})
+
+async function expectAxeClean(): Promise<void> {
+  const results = await axe.run(document.body, {
+    runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] },
+    rules: { 'color-contrast': { enabled: false } }
+  } as Parameters<typeof axe.run>[1])
+  const blocking = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
+  expect(blocking.map((v) => `${v.id}: ${v.help}`).join('\n')).toBe('')
+}
+
+test('reserved and format errors show inline as you type, with spellcheck off on the slug', async () => {
+  render(<OrgCreateForm />)
+  const slug = screen.getByLabelText('Slug') as HTMLInputElement
+  expect(slug.getAttribute('spellcheck')).toBe('false')
+
+  fireEvent.change(slug, { target: { value: 'New' } })
+  expect(await screen.findByText('new is reserved. Choose another slug.')).toBeTruthy()
+  fireEvent.change(slug, { target: { value: 'A' } })
+  expect(await screen.findByText(/Use 2–39 lowercase letters/)).toBeTruthy()
+  await expectAxeClean()
+})
+
+test('the slug is suggested from the name and stays editable', async () => {
+  render(<OrgCreateForm />)
+  fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'River Watch' } })
+  expect((screen.getByLabelText('Slug') as HTMLInputElement).value).toBe('river-watch')
+  fireEvent.change(screen.getByLabelText('Slug'), { target: { value: 'custom-slug' } })
+  fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'River Watch 2' } })
+  expect((screen.getByLabelText('Slug') as HTMLInputElement).value).toBe('custom-slug')
+})
+
+test('a taken slug shows its reason on submit, with focus moved to the field (ORG-1)', async () => {
+  vi.mocked(apiFetch).mockRejectedValue(
+    new ApiProblem(409, {
+      type: 'https://docs.skyclause.m1ku.tech/problems/slug-taken',
+      title: 'Slug taken',
+      status: 409,
+      detail: 'river-watch is taken. Choose another slug.'
+    })
+  )
+  render(<OrgCreateForm />)
+  fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'River Watch' } })
+  const slug = screen.getByLabelText('Slug')
+  fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }))
+  expect(await screen.findByText('river-watch is taken. Choose another slug.')).toBeTruthy()
+  await waitFor(() => expect(document.activeElement).toBe(slug))
+  expect(push).not.toHaveBeenCalled()
+  await expectAxeClean()
+})
+
+test('success continues to the first run next step', async () => {
+  vi.mocked(apiFetch).mockResolvedValue({ id: 'org-id', slug: 'river-watch' } as never)
+  render(<OrgCreateForm />)
+  fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'River Watch' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }))
+  await waitFor(() => expect(push).toHaveBeenCalledWith('/river-watch/new'))
+})

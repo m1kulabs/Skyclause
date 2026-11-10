@@ -1,7 +1,19 @@
 import { problemResponse, OrganizationHeaders } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Grade, Instant, LocalDate, Mode, Pack, ProjectRef, Source, SourceState, Verdict, Window } from '../shared'
+import {
+  AnalysisMetric,
+  Grade,
+  Instant,
+  LocalDate,
+  Mode,
+  Pack,
+  ProjectRef,
+  Source,
+  SourceState,
+  Verdict,
+  Window
+} from '../shared'
 
 const dashboardBlock = <Item extends z.ZodType>(item: Item) =>
   z.object({
@@ -36,10 +48,15 @@ const upcomingRiskSchema = z.object({
   pack: Pack,
   date: LocalDate,
   starts_at: Instant,
-  mode: Mode.nullable()
+  mode: Mode.nullable(),
+  show_name: z.string().nullable().optional(),
+  warning: z
+    .object({ text: z.string(), gloss: z.string().nullable(), valid_from: Instant, valid_to: Instant })
+    .nullable()
+    .optional()
 })
 
-const yesterdayGradeSchema = z.object({ project: ProjectRef, grade: Grade })
+const yesterdayGradeSchema = z.object({ project: ProjectRef, grade: Grade, metric: AnalysisMetric })
 
 export const getDashboard = createRoute({
   method: 'get',

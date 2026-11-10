@@ -208,14 +208,21 @@ describe('OAuth access tokens (D37)', () => {
   }
 
   test('a /v1 token is refused on /mcp and an /mcp token on /v1; /api resolves either for its 403', async () => {
-    const { account, grant } = await grantFor()
+    const { account, grant } = await grantFor({ resource: 'api' })
+    const mcpGrant = await makeGrant({
+      orgId,
+      accountId: account.id,
+      clientId: grant.clientId,
+      resource: 'mcp',
+      scopes: ['read', 'draft']
+    })
     const token = (resource: 'api' | 'mcp') =>
       mintAccessToken({
         accountId: account.id,
         clientId: grant.clientId,
         resource,
         scope: 'read draft',
-        grantId: grant.id
+        grantId: resource === 'api' ? grant.id : mcpGrant.id
       })
     const expected: Principal = {
       kind: 'oauth',
@@ -235,7 +242,12 @@ describe('OAuth access tokens (D37)', () => {
     expect(await resolve(bearer(api), 'v1')).toEqual(expected)
     expect(await resolve(bearer(api), 'mcp')).toBeNull()
     const mcp = await token('mcp')
-    expect(await resolve(bearer(mcp), 'mcp')).toEqual({ ...expected, client: 'mcp', resource: 'mcp' })
+    expect(await resolve(bearer(mcp), 'mcp')).toEqual({
+      ...expected,
+      grantId: mcpGrant.id,
+      client: 'mcp',
+      resource: 'mcp'
+    })
     expect(await resolve(bearer(mcp), 'v1')).toBeNull()
     expect(await resolve(bearer(api), 'api')).toMatchObject({ kind: 'oauth', resource: 'api' })
     expect(await resolve(bearer(mcp), 'api')).toMatchObject({ kind: 'oauth', resource: 'mcp' })
@@ -258,7 +270,7 @@ describe('OAuth access tokens (D37)', () => {
   })
 
   test('a revoked grant, another account’s or client’s token, a foreign issuer or no grant_id resolve to null', async () => {
-    const { account, grant } = await grantFor()
+    const { account, grant } = await grantFor({ resource: 'api' })
     const mint = (o: Partial<Parameters<typeof mintAccessToken>[0]>) =>
       mintAccessToken({
         accountId: account.id,

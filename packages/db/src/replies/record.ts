@@ -49,6 +49,8 @@ export async function recordCrowdReply(
   const [row] = await tx
     .insert(crowdReply)
     .values({
+      // The spent token ID ties the append-only reply to its subscriber without adding a personal-data column.
+      id: r.tokenId,
       orgId: tx.orgId!,
       projectId: r.projectId,
       windowId: r.windowId,

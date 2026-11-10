@@ -9,19 +9,13 @@ export const downloadExport = createRoute({
   tags: ['Data Rights'],
   request: { params: z.object({ id: z.string().min(1) }) },
   responses: {
-    200: {
-      description: 'The completed account export file.',
-      headers: z.object({ 'Content-Disposition': z.string() }),
-      content: {
-        'application/json': { schema: z.record(z.string(), z.unknown()) },
-        'text/csv': { schema: z.string() }
-      }
-    },
+    302: { description: 'Redirects to the completed ZIP export.', headers: z.object({ Location: z.url() }) },
     401: problemResponse('A signed-in session is required.'),
-    404: problemResponse('The export does not exist for this account.'),
-    409: problemResponse('The export is still being prepared.'),
-    410: problemResponse('The export download has expired.'),
-    429: problemResponse('The request is rate limited.')
+    404: problemResponse('The export does not exist for this account or organisation.'),
+    409: problemResponse('export-pending: the export is still being prepared.'),
+    410: problemResponse('link-expired: the export download has expired.'),
+    429: problemResponse('The request is rate limited.'),
+    503: problemResponse('Export downloads are not available right now.')
   },
   x: { owner: 'a-data-rights', statement: 'session', idempotent: false }
 })

@@ -131,7 +131,7 @@ type ExpectedAnalyticsEvent =
       }
     }
   | { name: 'api_key_created'; props: { scopes: Array<'read' | 'draft' | 'admin'>; expiry_days: number } }
-  | { name: 'cli_login'; props: { os: 'macos' | 'linux' | 'windows' } }
+  | { name: 'cli_login'; props: { os: 'macos' | 'linux' | 'windows' | 'unknown' } }
   | {
       name: 'embed_loaded'
       props: {
