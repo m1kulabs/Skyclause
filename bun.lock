@@ -138,6 +138,7 @@
         "@skyclause/db": "workspace:*",
         "@skyclause/delivery": "workspace:*",
         "@skyclause/i18n": "workspace:*",
+        "@skyclause/sources": "workspace:*",
         "ai": "7.0.163",
         "drizzle-orm": "0.45.4",
         "google-auth-library": "11.3.3",

@@ -229,6 +229,7 @@ export interface ReadingHistory {
     id: string
     sourceId: string
     startedAt: Instant
+    receivedAt?: Instant
     outcome: 'ok' | 'unchanged' | 'error'
     httpStatus: number | null
   }>
@@ -243,6 +244,8 @@ export interface ReadingHistory {
     valueJson: Record<string, unknown> | null
     itemKey: string
     revision: number
+    unit?: string | null
+    deviceTime?: Instant | null
   }>
 }
 export interface ReplayRange {

@@ -94,3 +94,6 @@ export {
   type ClauseSheetPorts,
   type RuntimeIndicatorRegistry
 } from './services/clause-sheets'
+
+export { createRuntimeRegistry } from './services/evaluator/registry'
+export { loadEvaluatorHistory } from './services/evaluator/history'

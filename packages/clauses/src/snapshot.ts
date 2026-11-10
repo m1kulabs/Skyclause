@@ -122,6 +122,11 @@ export function filterPollsAt(h: ReadingHistory, tEvalMs: number): NormalizedPol
   for (const p of h.polls) {
     const startedMs = Date.parse(p.startedAt)
     if (!Number.isFinite(startedMs) || startedMs > tEvalMs) continue
+    if (
+      p.receivedAt !== undefined &&
+      (!Number.isFinite(Date.parse(p.receivedAt)) || Date.parse(p.receivedAt) > tEvalMs)
+    )
+      continue
     out.push({
       id: p.id,
       sourceId: p.sourceId,
