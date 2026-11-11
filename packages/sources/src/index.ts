@@ -1,4 +1,5 @@
 export * from './contract'
 export * from './errors'
 export * from './adapters'
+export { createApimsAdapter, type ApimsRaw } from './adapters/apims'
 export * from './placeholders/b-adapter-listings'

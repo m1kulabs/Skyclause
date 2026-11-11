@@ -1,7 +1,12 @@
 import { expect, test } from 'vitest'
 import { SchemaError } from '@skyclause/sources'
+import { readFileSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
+import { createApimsAdapter } from '../../../packages/sources/src/adapters/apims'
+import { discoverApims } from '../../../packages/sources/src/adapters/apims-discovery'
 import { executeAdapter } from '../src/sources/execute'
 import { saveSourceResult, loadSourceResult } from '../src/sources/storage'
+import { parseSourceResult } from '../src/sources/ingest'
 import { adapter, context, reading, source, TestClock, MemoryStore, flush } from './support/source-adapter'
 const options = () => ({
   operationId: 'operation',
@@ -11,6 +16,107 @@ const options = () => ({
   requestId: () => 'no-request'
 })
 const factory = (sources: ReturnType<typeof source>[]) => context({ sources, http: async () => new Response('{}') })
+
+const apimsBytes = readFileSync(
+  new URL('../../../packages/sources/test/fixtures/mapcaqm-20261105T1313Z.json', import.meta.url)
+)
+const apimsSources = ['CA16W', 'CA19B', 'CA17W'].map((externalId) => ({
+  ...discoverApims(JSON.parse(apimsBytes.toString())).find((s) => s.externalId === externalId)!,
+  id: randomUUID(),
+  kind: 'apims' as const
+}))
+test('source-local parse failure preserves D15 siblings', async () => {
+  const body = JSON.parse(apimsBytes.toString())
+  body.data = body.data.filter((r: { STATION_ID: string }) => r.STATION_ID !== 'CA19B')
+  let calls = 0
+  const result = await executeAdapter(
+    createApimsAdapter(),
+    apimsSources,
+    (sources) =>
+      context({
+        kind: 'apims',
+        family: undefined,
+        sources,
+        requestId: randomUUID,
+        http: async () => {
+          calls++
+          return Response.json(body)
+        }
+      }),
+    { ...options(), operationId: randomUUID() }
+  )
+  expect(calls).toBe(1)
+  expect(result.requests).toHaveLength(1)
+  expect(result.requests[0]).toMatchObject({ httpStatus: 200, error: null, sourceIds: apimsSources.map((s) => s.id) })
+  expect(result.polls).toHaveLength(3)
+  expect(result.polls.map((p) => p.outcome)).toEqual(['ok', 'error', 'ok'])
+  expect(result.polls.flatMap((p) => p.readings)).toHaveLength(2)
+  expect(result.polls[1]).toMatchObject({
+    readings: [],
+    error: { type: 'schema', message: expect.stringContaining(apimsSources[1]!.id) }
+  })
+  expect(new Set(result.polls.map((p) => p.requestId))).toEqual(new Set([result.requests[0]!.requestId]))
+  expect(result.polls[1]!.error!.message).toContain('CA19B')
+  const store = new MemoryStore()
+  await saveSourceResult(store, 'control/results/apims.json', result)
+  expect(structuredClone(await loadSourceResult(store, 'control/results/apims.json', parseSourceResult))).toEqual(
+    result
+  )
+  body.data.length = 0
+  expect(result.polls.flatMap((p) => p.readings)).toHaveLength(2)
+})
+test('all-malformed APIMS gives three source errors without falsifying physical HTTP200', async () => {
+  const result = await executeAdapter(
+    createApimsAdapter(),
+    apimsSources,
+    (sources) =>
+      context({
+        kind: 'apims',
+        family: undefined,
+        sources,
+        http: async () => Response.json({})
+      }),
+    options()
+  )
+  expect(result.requests).toHaveLength(1)
+  expect(result.requests[0]).toMatchObject({ httpStatus: 200, error: null })
+  expect(result.polls.map((p) => p.error?.type)).toEqual(['schema', 'schema', 'schema'])
+  expect(result.polls.flatMap((p) => p.readings)).toEqual([])
+})
+test('APIMS 20-second transport timeout remains shared with real null status and latency', async () => {
+  const clock = new TestClock()
+  const execution = executeAdapter(
+    createApimsAdapter(),
+    apimsSources,
+    (sources) =>
+      context({
+        clock,
+        kind: 'apims',
+        family: undefined,
+        sources,
+        http: async () => new Promise<Response>(() => {})
+      }),
+    { ...options(), clock }
+  )
+  await flush()
+  await clock.advance(20000)
+  const result = await execution
+  expect(result.requests).toHaveLength(1)
+  expect(result.requests[0]).toMatchObject({ httpStatus: null, latencyMs: 20000, error: { type: 'timeout' } })
+  expect(result.polls.map((p) => p.error?.type)).toEqual(['timeout', 'timeout', 'timeout'])
+  expect(result.polls.flatMap((p) => p.readings)).toEqual([])
+})
+test('per-source opt-in validates typed rows independently and retains default aggregate parsing', async () => {
+  for (const parseMode of [undefined, 'per_source'] as const) {
+    const a = adapter({
+      parseMode,
+      parse: (_, sources) => sources.map((s) => ({ ...reading(s.id), unit: s.id === 'rain-b' ? 'bad' : 'mm' })) as never
+    })
+    const result = await executeAdapter(a, [source(), source('rain-b')], factory, options())
+    expect(result.polls.map((p) => p.outcome)).toEqual(parseMode ? ['ok', 'error'] : ['error', 'error'])
+    expect(result.requests[0]!.error?.type ?? null).toBe(parseMode ? null : 'schema')
+  }
+})
 test.each(['all_bound', 'per_source'] as const)(
   '%s deduplicates bindings and attaches readings only to the participating sources',
   async (batch) => {
