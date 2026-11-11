@@ -4,7 +4,7 @@ locals {
   # Generated here through write-only arguments, so no value reaches state or a plan.
   generated_secrets = ["BETTER_AUTH_SECRET", "EMAIL_HASH_KEY", "GUEST_COOKIE_SECRET", "IP_HASH_KEY"]
   # Empty containers a person fills (#118).
-  human_secrets = ["GOOGLE_CLIENT_SECRET", "SKYCLAUSE_STAFF_EMAILS", "TURNSTILE_SECRET_KEY"]
+  human_secrets = ["GOOGLE_CLIENT_SECRET", "RESEND_RECEIVING_API_KEY", "RESEND_SENDING_API_KEY", "RESEND_WEBHOOK_SECRET", "SKYCLAUSE_STAFF_EMAILS", "TURNSTILE_SECRET_KEY"]
 
   managed_secrets = concat(
     local.generated_secrets,
@@ -17,9 +17,12 @@ locals {
     web = [
       "DATABASE_URL_APP", "DATABASE_URL_AUTH", "DATABASE_URL_SYSTEM", "DATABASE_URL_RETENTION",
       "BETTER_AUTH_SECRET", "EMAIL_HASH_KEY", "GUEST_COOKIE_SECRET", "IP_HASH_KEY",
-      "GOOGLE_CLIENT_SECRET", "SKYCLAUSE_STAFF_EMAILS", "TURNSTILE_SECRET_KEY",
+      "GOOGLE_CLIENT_SECRET", "RESEND_SENDING_API_KEY", "SKYCLAUSE_STAFF_EMAILS", "TURNSTILE_SECRET_KEY",
     ]
-    worker   = ["DATABASE_URL_APP", "DATABASE_URL_SYSTEM", "DATABASE_URL_RETENTION", "EMAIL_HASH_KEY", "SKYCLAUSE_STAFF_EMAILS", "VAPID_PRIVATE_KEY"]
+    worker = [
+      "DATABASE_URL_APP", "DATABASE_URL_SYSTEM", "DATABASE_URL_RETENTION", "EMAIL_HASH_KEY",
+      "RESEND_RECEIVING_API_KEY", "RESEND_SENDING_API_KEY", "RESEND_WEBHOOK_SECRET", "SKYCLAUSE_STAFF_EMAILS", "VAPID_PRIVATE_KEY",
+    ]
     jobs     = ["DATABASE_URL_SYSTEM", "DATABASE_URL_RETENTION"]
     migrator = ["DATABASE_URL_MIGRATE"]
   }
@@ -35,6 +38,19 @@ locals {
   mounts = {
     for account, names in local.wanted_secrets : account => [for name in names : name if contains(local.ready_secrets, name)]
   }
+
+  # Mail (#653). A service has all of a mail group's settings or none (mail off), so the group's plain values
+  # (run.tf) reach a service only once the group's secrets are supplied: the sender addresses with the sending key,
+  # the inbound domain with the two receiving secrets.
+  sending_secrets   = ["RESEND_SENDING_API_KEY"]
+  receiving_secrets = ["RESEND_RECEIVING_API_KEY", "RESEND_WEBHOOK_SECRET"]
+  mail_secrets      = concat(local.sending_secrets, local.receiving_secrets)
+  sending_ready     = alltrue([for name in local.sending_secrets : contains(var.supplied_secrets, name)])
+  receiving_ready   = alltrue([for name in local.receiving_secrets : contains(var.supplied_secrets, name)])
+
+  # What a job on the worker account mounts: the worker's list without the mail secrets, since no job sends or receives
+  # mail and a mail secret without its plain values would leave the worker profile half set.
+  worker_job_mounts = [for name in local.mounts.worker : name if !contains(local.mail_secrets, name)]
 }
 
 resource "google_secret_manager_secret" "this" {
