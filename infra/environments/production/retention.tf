@@ -9,6 +9,8 @@
 # (storage.tf), which this job lists and deletes under `orgs/{org_id}/`.
 #
 # D9: a failing sweeper is logged and the run goes on; the job exits non-zero at the end.
+#
+# It also mounts EMAIL_HASH_KEY (#551), which eraseSubscriber hashes addresses with. No other job mounts it.
 
 module "retention" {
   source = "../../modules/job"
@@ -19,7 +21,7 @@ module "retention" {
   service_account           = local.sa.jobs
   args                      = ["job", "retention"]
   env                       = merge(local.env, { OTEL_SERVICE_NAME = "retention" })
-  secrets                   = { for name in local.mounts.jobs : name => name }
+  secrets                   = merge({ for name in local.mounts.jobs : name => name }, { EMAIL_HASH_KEY = "EMAIL_HASH_KEY" })
   schedule                  = "30 3 * * *"
   paused                    = true
   scheduler_service_account = local.sa.invoker
@@ -27,6 +29,7 @@ module "retention" {
   # Cloud Run checks a revision's secrets and its access to them when it deploys it.
   depends_on = [
     google_secret_manager_secret_iam_member.access,
+    google_secret_manager_secret_iam_member.retention_hash_key,
     google_secret_manager_secret_version.generated,
     google_secret_manager_secret_version.database
   ]

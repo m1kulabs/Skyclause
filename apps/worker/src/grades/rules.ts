@@ -1,4 +1,4 @@
-import type { SkyMode } from '@skyclause/clauses'
+import { effectiveSpan, type Clause, type SkyMode } from '@skyclause/clauses'
 import { REVIEW_REASONS, type ReviewReason } from '@skyclause/db'
 
 // #161 c-grades: TRD grading's outcomes, read literally, and the ticket's review reasons. Pure.
@@ -64,14 +64,18 @@ export function spanAt(window: { startsAt: Date; endsAt: Date }, ref: string): D
   return new Date(base + offset)
 }
 
-/** When the window's last enabled window-scope clause span closes; never before the window ends. */
+/**
+ * When the window's last enabled window-scope clause span closes, as the engine evaluates it (a clause reading a window
+ * rain maximum with no written span has the default one); never before the window ends.
+ */
 export function lastSpanEnd(
   window: { startsAt: Date; endsAt: Date },
-  clauses: Array<{ scope: string; enabled: boolean; span?: { to: string } | undefined }>
+  clauses: Array<Pick<Clause, 'scope' | 'enabled' | 'requires' | 'optional' | 'span'>>
 ): Date {
   const ends = clauses
-    .filter((clause) => clause.enabled && clause.scope === 'window' && clause.span)
-    .map((clause) => spanAt(window, clause.span!.to).getTime())
+    .filter((clause) => clause.enabled && clause.scope === 'window')
+    .flatMap((clause) => effectiveSpan(clause) ?? [])
+    .map((span) => spanAt(window, span.to).getTime())
   return new Date(Math.max(window.endsAt.getTime(), ...ends))
 }
 

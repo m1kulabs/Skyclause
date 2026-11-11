@@ -18,7 +18,15 @@ export default async function setup(project: TestProject) {
       cause: error
     })
   }
-  await migrate(localUrl('migrator', template), migrationsFolder)
+  await migrate(localUrl('migrator', template), migrationsFolder).catch((error: unknown) => {
+    // 0004 grants neon_superuser's data roles, which an older data directory's init.sql never gave migrator.
+    if (!String(error).includes('permission denied to grant role')) throw error
+    throw new Error(
+      'migrator may not grant the data roles: if the container predates the pg_partman 5.1.0 image, recreate it: ' +
+        'docker compose -f packages/db/compose.yaml down -v && bun run db:up',
+      { cause: error }
+    )
+  })
   project.provide('dbTemplate', template)
   return async () => {
     const { rows } = await withLocal('postgres', 'postgres', (admin) =>

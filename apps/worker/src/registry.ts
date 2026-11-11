@@ -1,3 +1,4 @@
+import './agent-evals/retirement' // registers `model_retirement` with the auditor; it has no part of its own
 import { auditor } from './auditor'
 import { alerts } from './alerts'
 import { aiKeys } from './ai-keys'
@@ -12,6 +13,7 @@ import { ics } from './ics'
 import { migrations } from './migrate'
 import { notices } from './notices'
 import { notifications } from './notifications'
+import { outlook } from './outlook'
 import { pilotArchive } from './pilot-archive'
 import { replies } from './replies'
 import { restoreDrill } from './restore-drill'
@@ -42,5 +44,6 @@ export const registry = defineRegistry([
   auditor, // b-auditor
   sources, // b-sources-core
   dataRights, // a-data-rights
-  retention // a-retention
+  retention, // a-retention
+  outlook // c-crowd-outlook
 ])

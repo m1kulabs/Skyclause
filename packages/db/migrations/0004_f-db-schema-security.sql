@@ -1,20 +1,21 @@
 -- #92: the partitioned tables, pg_partman, RLS per #79 §3's letters, append-only triggers, the public_* views and the
 -- SECURITY DEFINER writes behind emitEvent and track. TRD "Tenancy, append-only tables and partitions". Runs as `owner`.
 
--- pg_partman is the migrator login's, as on Neon (its control file says `superuser = false`). Neon ships 5.1.0, so only
--- 5.1's API is used here. `owner` gets what create_parent and run_maintenance need, so partitions are owner's.
+-- Neon ships pg_partman 5.1.0 as a trusted extension, so its config tables are Neon's superuser's and take no grant from
+-- migrator (#602). `owner` runs create_parent and run_maintenance, so partitions are owner's: it reads and writes the
+-- config through the predefined data roles, which migrator may grant (neon_superuser holds them), and makes the template
+-- tables in partman. Functions are executable by PUBLIC already.
 RESET ROLE;
 CREATE SCHEMA partman;
 CREATE EXTENSION pg_partman SCHEMA partman;
-GRANT USAGE ON SCHEMA partman TO "owner";
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA partman TO "owner";
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA partman TO "owner";
-GRANT EXECUTE ON ALL PROCEDURES IN SCHEMA partman TO "owner";
+GRANT USAGE, CREATE ON SCHEMA partman TO "owner";
+GRANT pg_read_all_data, pg_write_all_data TO "owner";
 SET LOCAL ROLE "owner";
 --> statement-breakpoint
 
 -- poll and reading (TRD), by hand because drizzle-kit 0.31 can't emit PARTITION BY; src/schema/partitioned.ts mirrors
--- them. Every unique index holds the partition key, so no partman template table is needed.
+-- them. Every unique index holds the partition key, so partman's template tables add nothing; 5.1.0 still needs them,
+-- since its `p_template_table := 'false'` fails on the default partition (fixed in 5.3.0).
 CREATE TABLE poll (
   id uuid NOT NULL DEFAULT uuidv7(),
   source_id uuid NOT NULL REFERENCES source (id) ON DELETE CASCADE,
@@ -52,11 +53,14 @@ CREATE INDEX reading_received_at_brin ON reading USING brin (received_at);
 -- Monthly partitions, three premade ahead (and three behind, create_parent's default), and a default partition for rows
 -- outside them. infinite_time_partitions keeps premaking from now() even while a table is empty. The worker's batch
 -- runs partition_maintenance() hourly (below; no pg_cron, D45).
-SELECT partman.create_parent('public.poll', 'started_at', '1 month', p_premake := 3, p_template_table := 'false',
-  p_jobmon := false);
-SELECT partman.create_parent('public.reading', 'observed_at', '1 month', p_premake := 3, p_template_table := 'false',
-  p_jobmon := false);
+SELECT partman.create_parent('public.poll', 'started_at', '1 month', p_premake := 3, p_jobmon := false);
+SELECT partman.create_parent('public.reading', 'observed_at', '1 month', p_premake := 3, p_jobmon := false);
 UPDATE partman.part_config SET infinite_time_partitions = true WHERE parent_table IN ('public.poll', 'public.reading');
+-- Maintenance makes partitions in public, so owner keeps no CREATE in partman once the template tables exist.
+-- A later migration calling create_parent must grant owner CREATE on partman first and revoke it after, as here.
+RESET ROLE;
+REVOKE CREATE ON SCHEMA partman FROM "owner";
+SET LOCAL ROLE "owner";
 --> statement-breakpoint
 
 -- run_maintenance_proc() COMMITs between partition sets, so it can run neither inside a with* transaction nor in a
