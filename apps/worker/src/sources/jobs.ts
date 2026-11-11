@@ -1,5 +1,5 @@
 import { type SourceAdapter, type SourceKind, type PollContext } from '@skyclause/sources'
-import { currentSlotBody, runSourceSlot } from './slots'
+import { currentSlotBody, runSourceSlot, runLatestSlot, readCurrentSlotCapture } from './slots'
 import { executeAdapter } from './execute'
 import { runGroupedBackfillOnce } from './grouped-backfill'
 import { runBackfillOnce } from './backfill'
@@ -94,6 +94,18 @@ export function createSourceJobs(ports: SourceJobPorts) {
         }
       }
     )
+  const latest = (
+    adapter: SourceAdapter<unknown>,
+    sources: PlannedSource['source'][],
+    plan: Pick<SourcePlan, 'periods'>,
+    scheduledAt: string | null
+  ) =>
+    runLatestSlot(adapter, sources, {
+      ...ports,
+      scheduledAt,
+      contextFactory: (window) => contextFactory(adapter, plan, window),
+      reserve: (operationId) => reserveSourceResult(ports.store, operationId, adapter.kind, ports.clock.now())
+    })
   const backfillWithCapture = async (
     entry: PlannedSource,
     plan: Pick<SourcePlan, 'periods'>,
@@ -202,6 +214,21 @@ export function createSourceJobs(ports: SourceJobPorts) {
         })
         return
       }
+      if (adapter.latestSlot) {
+        const outcome = await latest(
+          adapter,
+          ready.map((entry) => entry.source),
+          plan,
+          scheduledAt
+        )
+        ports.log('source.slot.complete', {
+          adapter: kind,
+          state: outcome.state,
+          scheduled_at: scheduledAt,
+          ...(outcome.state === 'not-covered' ? { source_ids: outcome.sourceIds.join(',') } : {})
+        })
+        return
+      }
       const operationId = ports.id()
       await reserveSourceResult(ports.store, operationId, adapter.kind, ports.clock.now())
       const result = await executeAdapter(
@@ -232,9 +259,23 @@ export function createSourceJobs(ports: SourceJobPorts) {
     async catalogueSync(): Promise<void> {
       let count = 0
       for (const adapter of ports.adapters)
-        if (adapter.discover) {
+        if (adapter.latestSlot?.discover || adapter.discover) {
           // Discovery must finish before the transaction; a provider error preserves the catalogue.
-          const entries = await adapter.discover()
+          let entries
+          if (adapter.latestSlot?.discover) {
+            const plan = await readSourcePlan(ports.store)
+            const sources = plan.sources.filter((entry) => entry.source.kind === adapter.kind)
+            if (!sources.length) await latest(adapter, [], plan, null)
+            const capture = await readCurrentSlotCapture(
+              ports.store,
+              adapter.kind,
+              adapter.latestSlot.seconds,
+              ports.clock.now()
+            )
+            if (!capture?.body)
+              throw new Error(`Catalogue unavailable: no successful current-slot capture for ${adapter.kind}`)
+            entries = adapter.latestSlot.discover(capture.body)
+          } else entries = await adapter.discover!()
           await ports.database.catalogue(adapter, entries)
           count++
         }
@@ -259,11 +300,22 @@ export function createSourceJobs(ports: SourceJobPorts) {
               ? [...entries].sort((a, b) => a.source.id.localeCompare(b.source.id)).slice(0, 1)
               : entries
           if (adapter.latestSlot) {
-            if (adapter.batch !== 'per_source')
-              throw new Error('All-bound current-slot probes are unavailable until slot coordination is installed')
-            const source = probe[0]!.source
-            const body = await currentSlotBody(adapter, source, ports.store, ports.clock)
-            adapter.parse(adapter.latestSlot.decode(body), [source])
+            const body =
+              adapter.batch === 'per_source'
+                ? await currentSlotBody(adapter, probe[0]!.source, ports.store, ports.clock)
+                : (
+                    await readCurrentSlotCapture(
+                      ports.store,
+                      adapter.kind,
+                      adapter.latestSlot.seconds,
+                      ports.clock.now()
+                    )
+                  )?.body
+            if (!body) throw new Error('Contract probe unavailable: no successful current-slot capture')
+            adapter.parse(
+              adapter.latestSlot.decode(body),
+              probe.map((entry) => entry.source)
+            )
             ports.log('source.contract.passed', { adapter: adapter.kind })
             continue
           }

@@ -4,17 +4,22 @@ import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { expect, expectTypeOf, test } from 'vitest'
 import type { IndicatorDefinition } from '@skyclause/clauses'
-import { indicators, jpsRainIndicators } from '../src/indicators'
+import { indicators, jpsRainIndicators, apimsIndicators } from '../src/indicators'
 
 const expected = [
   { name: 'site.rain_60m_mm', celType: 'double', unit: 'mm', scope: 'site', sourceKind: 'jps_rain' },
   { name: 'w.rain_max_60m_mm', celType: 'double', unit: 'mm', scope: 'window', sourceKind: 'jps_rain' },
   { name: 'w.rain_max_4h_mm', celType: 'double', unit: 'mm', scope: 'window', sourceKind: 'jps_rain' }
 ]
+const expectedApims = [
+  { name: 'site.api_max', celType: 'int', unit: 'API', scope: 'site', sourceKind: 'apims' },
+  { name: 'site.api_0600_min_last3_max', celType: 'int', unit: 'API', scope: 'site', sourceKind: 'apims' }
+]
 
-test('exports only the three rain definitions with the named clauses type', () => {
+test('exports real rain and APIMS definitions with the named clauses type', () => {
   expect(jpsRainIndicators).toEqual(expected)
-  expect(indicators).toEqual(expected)
+  expect(apimsIndicators).toEqual(expectedApims)
+  expect(indicators).toEqual([...expected, ...expectedApims])
   expectTypeOf(indicators).toEqualTypeOf<IndicatorDefinition[]>()
   expectTypeOf(jpsRainIndicators).toEqualTypeOf<IndicatorDefinition[]>()
   expect(readFileSync(new URL('../src/indicators/index.ts', import.meta.url), 'utf8')).toContain(
@@ -33,7 +38,7 @@ test('installed Bun bundles the public subpath for browsers without server depen
     expect(code).not.toMatch(/process|node:|worker|adapters|ADAPTER_USER_AGENT|\brequire\s*\(/)
     writeFileSync(output, code)
     const bundled = await import(/* @vite-ignore */ pathToFileURL(output).href)
-    expect(bundled.indicators).toEqual(expected)
+    expect(bundled.indicators).toEqual([...expected, ...expectedApims])
     expect(bundled.jpsRainIndicators).toEqual(expected)
   } finally {
     rmSync(directory, { recursive: true, force: true })

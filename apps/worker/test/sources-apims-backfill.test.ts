@@ -531,6 +531,10 @@ test('authoritative cross-tenant v2 plan, event race, six history GETs, actual m
   expect(refreshed.backfillGroups.every((g) => !g.eligible)).toBe(true)
   await jobs.runAdapter('apims', null)
   expect(historyUrls).toHaveLength(6)
+  expect(results.at(-1)!.polls.some((p) => p.sourceId === late.id)).toBe(false)
+  await t.clock.advance(900000)
+  await jobs.runAdapter('apims', null)
+  expect(historyUrls).toHaveLength(6)
   expect(results.at(-1)!.polls.some((p) => p.sourceId === late.id)).toBe(true)
   const latePolls = await withSystem(principal.job, (tx) => tx.select().from(poll).where(eq(poll.sourceId, late.id)))
   expect(latePolls).toHaveLength(0)
@@ -844,9 +848,16 @@ test('expired unfinished group reservations let scheduled recovery, latest and u
   expect(final.children.map((c) => c.operationId)).toEqual(original.children.map((c) => c.operationId))
   expect((await t.store.read(original.children[0]!.resultPath))!.body).toEqual(savedChild.body)
   expect(urls.filter((url) => url.includes('/apitablehourly'))).toHaveLength(3)
-  expect(urls.filter((url) => url.includes('/mapcaqm'))).toHaveLength(2)
+  expect(urls.filter((url) => url.includes('/mapcaqm'))).toHaveLength(1)
   expect(urls.filter((url) => url.includes('GetRainfallGraph'))).toHaveLength(1)
   expect(results.filter((result) => result.kind === 'apims' && result.purpose === 'poll')).toHaveLength(2)
+  expect(
+    new Set(
+      results
+        .filter((result) => result.kind === 'apims' && result.purpose === 'poll')
+        .map((result) => result.operationId)
+    ).size
+  ).toBe(1)
   for (const child of original.children) {
     const deliveries = refs.filter((ref) => ref.operation_id === child.operationId)
     expect(deliveries.length).toBeGreaterThan(0)
