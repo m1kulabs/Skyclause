@@ -1,7 +1,8 @@
-import { createEvaluatorProviders, type EvaluatorProviders } from '@skyclause/api/evaluator'
+import { productionEvaluatorProviders, type EvaluatorProviders } from '@skyclause/api/evaluator'
 import { PollRecordedEventSchema, type EventType } from '@skyclause/contracts'
 import {
   lockEvaluatorProject,
+  completeEvaluatorReevaluation,
   evaluatorNeedsEvaluation,
   findSourceTargets,
   listEvaluatorProjects,
@@ -17,7 +18,7 @@ import {
   type SourceTarget,
   type Tx
 } from '@skyclause/db'
-import { adapters, ReadingsUpdated } from '@skyclause/sources'
+import { ReadingsUpdated } from '@skyclause/sources'
 import { z } from 'zod'
 import { onEvent } from '../events'
 import { type EventConsumer, type WorkerPart } from '../server'
@@ -50,7 +51,7 @@ export function createEvaluatorPart(q: {
       })
       const result = await evaluateProject(
         tx,
-        { projectId: target.projectId, tEval: now.toISOString(), measurementPollId },
+        { projectId: target.projectId, tEval: now.toISOString(), measurementPollId, deferCompletion: true },
         q.providers
       )
       await replaceEvaluatorDeadline(tx, { projectId: target.projectId, dueAt: result.deadline })
@@ -71,6 +72,13 @@ export function createEvaluatorPart(q: {
       )
       throw error
     }
+    // A crash before this acknowledgement leaves the original tenant request pending.
+    // Conditional completion cannot erase a newer event while global fanout was running.
+    await run(target, async (tx) => {
+      for (const pack of ['sky', 'crowd'] as const)
+        if (!result.deferredPacks.includes(pack))
+          await completeEvaluatorReevaluation(tx, { projectId: target.projectId, pack, tEval: result.tEval })
+    })
     await repairEvaluatorDeadline(target, q.tasks, now)
   }
   function consumer<T extends EventType>(
@@ -201,7 +209,7 @@ export function createEvaluatorPart(q: {
 let production: WorkerPart | undefined
 function part(): WorkerPart {
   return (production ??= createEvaluatorPart({
-    providers: createEvaluatorProviders({ adapters, forecast: null }),
+    providers: productionEvaluatorProviders(),
     clock: () => new Date(),
     tasks: cloudEvaluatorTasks()
   }))

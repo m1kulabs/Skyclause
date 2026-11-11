@@ -32,7 +32,7 @@ export interface EvaluationCommit {
 /** No nested tenant transactions. Each pack atomically commits its original archive, verdicts and outbox events. */
 export async function evaluateProject(
   tx: TxHandle,
-  q: { projectId: string; tEval: Instant; measurementPollId?: string },
+  q: { projectId: string; tEval: Instant; measurementPollId?: string; deferCompletion?: boolean },
   providers: EvaluatorProviders
 ): Promise<EvaluationCommit> {
   const result: EvaluationCommit = {
@@ -100,7 +100,7 @@ export async function evaluateProject(
         }
         if (q.measurementPollId)
           await recordUsedReadingLatency(child, { ...query, pollId: q.measurementPollId, readingIds: [...readingIds] })
-        await completeEvaluatorReevaluation(child, query)
+        if (!q.deferCompletion) await completeEvaluatorReevaluation(child, query)
         const deadline = nextEvaluationAt({
           history,
           sheet: published.sheet,

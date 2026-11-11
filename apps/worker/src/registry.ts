@@ -10,8 +10,11 @@ import { evidence } from './evidence'
 import { domainEvents } from './events'
 import { dataRights } from './data-rights'
 import { grades, setGradeEngine } from './grades'
-import { installedIndicatorDefinitions, productionEvaluatorProviders } from '@skyclause/api/evaluator'
-import { adapters } from '@skyclause/sources'
+import {
+  installedIndicatorDefinitions,
+  productionEvaluatorProviders,
+  productionIndicatorProviders
+} from '@skyclause/api/evaluator'
 import { ics } from './ics'
 import { migrations } from './migrate'
 import { notices } from './notices'
@@ -26,7 +29,7 @@ import { defineRegistry } from './server'
 import { sliPart } from './sli'
 import { sources } from './sources'
 
-const definitions = installedIndicatorDefinitions(adapters)
+const definitions = installedIndicatorDefinitions(productionIndicatorProviders())
 setGradeEngine({
   registry: definitions.length ? definitions : null,
   history: (...args) => productionEvaluatorProviders().history(...args)

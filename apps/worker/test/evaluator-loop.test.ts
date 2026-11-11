@@ -732,3 +732,68 @@ test('different poll deliveries at the same instant cannot cancel an already pla
   await dispatchEvent(x.part.events!, events.at(-1)!.id)
   expect(await x.run((tx) => database.loadEvaluatorDeadline(tx, x.q.projectId))).toEqual(first)
 })
+
+test('batch repairs a crash after committed error evaluation but before source-state handoff without another poll', async () => {
+  // This restart case concerns one project. Archive earlier test-owned fixtures so
+  // the global batch does not repeat their unrelated pending-Crowd scenarios twice.
+  const earlier = await withSystem('test-fixture-isolation', database.listEvaluatorProjects)
+  for (const target of earlier)
+    await withTenant({ orgId: target.orgId, principal: systemPrincipal('test-fixture-isolation') }, (tx) =>
+      tx
+        .update(project)
+        .set({ archivedAt: new Date(at) })
+        .where(eq(project.id, target.projectId))
+    )
+  const x = await pollScene('ok')
+  await x.run((tx) => tx.update(projectPack).set({ enabled: false }).where(eq(projectPack.pack, 'crowd')))
+  await x.part.topics!['readings-updated']!({
+    data: { source_id: x.s.id, poll_id: x.p.id, kind: x.s.kind, new_rows: 1 },
+    messageId: 'before-crash',
+    publishTime: at,
+    attributes: {}
+  })
+  const errorAt = '2026-11-10T05:00:00Z'
+  x.clock(errorAt)
+  const poll = await withSystem('error-before-crash', (tx) =>
+    makePoll(tx, {
+      sourceId: x.s.id,
+      startedAt: new Date(errorAt),
+      receivedAt: new Date(errorAt),
+      outcome: 'error',
+      httpStatus: 503
+    })
+  )
+  // Reproduce the exact committed tenant phase, then end execution before global source recording.
+  await x.run(async (tx) => {
+    await database.requestEvaluatorPoll(tx, {
+      projectId: x.q.projectId,
+      sourceId: x.s.id,
+      pollId: poll.id,
+      tEval: errorAt
+    })
+    const result = await evaluateProject(
+      tx,
+      { projectId: x.q.projectId, tEval: errorAt, deferCompletion: true },
+      x.providers
+    )
+    await database.replaceEvaluatorDeadline(tx, { projectId: x.q.projectId, dueAt: result.deadline })
+  })
+  expect(await x.run((tx) => database.loadEvaluatorDeadline(tx, x.q.projectId))).toBeNull()
+  const before = await x.run((tx) => tx.select().from(crossing))
+  expect(await x.run((tx) => database.evaluatorNeedsEvaluation(tx, { projectId: x.q.projectId, tEval: errorAt }))).toBe(
+    true
+  )
+  await x.part.batch!['evaluator-repair']!(new Date(errorAt))
+  const state = await withSystem('read-repaired-state', (tx) =>
+    tx.select().from(database.sourceState).where(eq(database.sourceState.sourceId, x.s.id))
+  )
+  expect(state[0]?.state).toBe('error')
+  const events = await x.run((tx) => tx.select().from(domainEvent).where(eq(domainEvent.type, 'source.error')))
+  expect(events).toHaveLength(1)
+  expect(await x.run((tx) => tx.select().from(crossing))).toEqual(before)
+  expect(await x.run((tx) => database.evaluatorNeedsEvaluation(tx, { projectId: x.q.projectId, tEval: errorAt }))).toBe(
+    false
+  )
+  await x.part.batch!['evaluator-repair']!(new Date(errorAt))
+  expect(await x.run((tx) => tx.select().from(domainEvent).where(eq(domainEvent.type, 'source.error')))).toHaveLength(1)
+})

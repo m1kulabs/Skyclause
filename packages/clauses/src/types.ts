@@ -31,6 +31,11 @@ export const SOURCE_KINDS = [
   'pi'
 ] as const
 export type SourceKind = (typeof SOURCE_KINDS)[number]
+/** Current evaluator capabilities; cross-pack dependencies require an explicit supported provider contract. */
+export const PACK_SOURCE_KINDS: Record<Pack, readonly SourceKind[]> = {
+  sky: ['jps_rain', 'apims', 'met_warning', 'met_forecast', 'camera'],
+  crowd: ['rapidrail_od', 'gtfs_static', 'gtfs_rt', 'golive', 'wikipedia', 'pi']
+}
 
 export const INDICATOR_NAMES = [
   'site.rain_60m_mm',

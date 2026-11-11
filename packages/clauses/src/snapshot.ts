@@ -239,6 +239,11 @@ export function resolveSourceAt(
   const latestPoll = polls.length > 0 ? polls[polls.length - 1]! : null
   const goodPolls = polls.filter((p) => p.outcome === 'ok' || p.outcome === 'unchanged')
   const latestGoodPoll = goodPolls.length > 0 ? goodPolls[goodPolls.length - 1]! : null
+  const captures = new Map(goodPolls.map((poll) => [poll.id, poll.startedMs]))
+  // Only matched normal successes establish a physical capture. Legacy pure callers
+  // without poll identity retain their receipt clock; unproved associations cannot clear errors.
+  const captureClock = (reading: NormalizedReading) =>
+    reading.pollId ? (captures.get(reading.pollId) ?? Number.NEGATIVE_INFINITY) : reading.receivedMs
 
   const observedAt =
     source.freshness === 'observed'
@@ -291,8 +296,8 @@ export function resolveSourceAt(
     const supersededByNewerReading =
       source.freshness === 'observed' &&
       latestReading !== null &&
-      latestReading.receivedMs > latestPoll.startedMs &&
-      (!latestGoodPoll || latestReading.receivedMs > latestGoodPoll.startedMs)
+      captureClock(latestReading) > latestPoll.startedMs &&
+      (!latestGoodPoll || captureClock(latestReading) > latestGoodPoll.startedMs)
     if (!supersededByNewerReading) {
       return {
         sourceId,
@@ -364,9 +369,6 @@ export function resolveSourceAt(
     const latestObservation = observations.get(latestReading!.observedMs)!
     // A catch-up response can contain many missed frames but is one capture. Physical
     // poll time keeps normal 15-minute ingestion batches distinct from a provider outage.
-    const captures = new Map(polls.map((poll) => [poll.id, poll.startedMs]))
-    const captureClock = (reading: NormalizedReading) =>
-      (reading.pollId ? captures.get(reading.pollId) : undefined) ?? reading.receivedMs
     const latestCapture = captureClock(latestObservation)
     const priorObservations = Array.from(observations.values()).filter(
       (reading) =>
@@ -384,8 +386,8 @@ export function resolveSourceAt(
     const hadErrorBeforeLatest =
       lastErrorPoll !== null &&
       (prevReading === null ||
-        prevReading.receivedMs <= lastErrorPoll.startedMs ||
-        latestObservation.receivedMs <= lastErrorPoll.startedMs)
+        captureClock(prevReading) <= lastErrorPoll.startedMs ||
+        latestCapture <= lastErrorPoll.startedMs)
 
     if (hadStaleGapBeforeLatest || hadErrorBeforeLatest) {
       return {

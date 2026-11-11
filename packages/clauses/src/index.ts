@@ -1,4 +1,5 @@
 export * from './types'
+export { CAMERA_INDICATORS } from './indicators'
 export * from './placeholders/b-clauses'
 export * from './placeholders/b-replay'
 export { resolveSourceAt } from './snapshot'

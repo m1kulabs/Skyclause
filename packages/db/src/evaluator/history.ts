@@ -1,15 +1,10 @@
-import type { ReadingHistory, SourceKind } from '@skyclause/clauses'
+import { PACK_SOURCE_KINDS, type ReadingHistory } from '@skyclause/clauses'
 import { NotBuiltError, type Pack, type TxHandle } from '@skyclause/contracts'
 import { and, asc, desc, eq, inArray, isNull, lte, or, sql } from 'drizzle-orm'
 import type { Tx } from '../client'
 import { project, projectSource, source } from '../schema'
 import { poll, reading } from '../schema/partitioned'
 import type { EvaluatorQuery } from './types'
-
-const packKinds: Record<Pack, SourceKind[]> = {
-  sky: ['jps_rain', 'apims', 'met_warning', 'met_forecast', 'camera'],
-  crowd: ['rapidrail_od', 'gtfs_static', 'gtfs_rt', 'golive', 'wikipedia', 'pi']
-}
 
 /** All retained history is needed for recovery, pre-window warnings, rain and exact local mornings. */
 async function history(
@@ -32,7 +27,7 @@ async function history(
       and(
         eq(project.id, projectId),
         isNull(project.archivedAt),
-        pack ? inArray(source.kind, packKinds[pack]) : undefined
+        pack ? inArray(source.kind, [...PACK_SOURCE_KINDS[pack]]) : undefined
       )
     )
     .orderBy(asc(source.id))

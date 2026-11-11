@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { canonicalHash, type IndicatorDefinition } from '@skyclause/clauses'
+import { canonicalHash, resolveSourceAt, type IndicatorDefinition } from '@skyclause/clauses'
 import type { TxHandle } from '@skyclause/contracts'
 import { adapters, type SourceAdapter } from '@skyclause/sources'
 import { withSystem, withTenant, systemPrincipal } from '@skyclause/db'
@@ -37,6 +37,7 @@ async function projectScene() {
 test('persist=false uses a read-only tenant transaction and writes nothing', async () => {
   const { run, created, providers } = await projectScene()
   const q = { projectId: created.project.id, pack: 'sky' as const, tEval, windows: [], persist: false }
+  const originalDefinitions = await run((tx) => providers.registry.load(tx, q))
   const taken = await run(async (tx) => {
     await tx.execute(sql`SET TRANSACTION READ ONLY`)
     return providers.snapshots.take(tx, q)
@@ -60,7 +61,7 @@ test('persist=false uses a read-only tenant transaction and writes nothing', asy
     await run((tx) =>
       removed.registry.load(tx, { projectId: q.projectId, pack: q.pack, registryHash: saved.snapshot.registryHash })
     )
-  ).toEqual(expect.arrayContaining(TEST_REGISTRY))
+  ).toEqual(originalDefinitions)
   await expect(
     run((tx) => removed.registry.load(tx, { projectId: q.projectId, pack: q.pack, registryHash: 'unknown' }))
   ).rejects.toMatchObject({ owner: 'b-evaluator:historical-registry' })
@@ -423,4 +424,126 @@ test('Sky history does not depend on unavailable bound Crowd metadata', async ()
   await expect(
     s.run((tx) => loadEvaluatorHistory(tx, { projectId: s.created.project.id, pack: 'crowd', tEval }))
   ).rejects.toMatchObject({ name: 'NotBuiltError' })
+})
+
+test.each(['required', 'optional'] as const)(
+  'the API checker explicitly rejects unsupported cross-pack %s indicators',
+  async (mode) => {
+    const { checkedValidation } = await import('../src/services/clause-sheets/ports')
+    const jps = adapters.find((a) => a.kind === 'jps_rain')!
+    const crowd = adapter(TEST_REGISTRY.filter((d) => d.name === 'site.night.baseline'))
+    const registry = await createRuntimeRegistry([jps, crowd]).load(tx, { projectId: 'project', pack: 'crowd' })
+    const content = {
+      pack: 'crowd' as const,
+      clauses: [
+        {
+          key: 'rain_watch',
+          name: 'Rain watch',
+          enabled: true,
+          scope: 'site' as const,
+          requires: mode === 'required' ? ['site.rain_60m_mm'] : [],
+          optional: mode === 'optional' ? ['site.rain_60m_mm'] : [],
+          when: mode === 'required' ? 'site.rain_60m_mm > 20.0' : 'has(site.rain_60m_mm) && site.rain_60m_mm > 20.0',
+          proposes: { watch: true as const },
+          wording: { en: 'Rain watch' }
+        }
+      ]
+    }
+    const validation = await checkedValidation(content, registry)
+    expect(validation.result.publishable).toBe(false)
+    expect(validation.result.issues.some((i) => i.message.includes('site.rain_60m_mm'))).toBe(true)
+  }
+)
+
+test.each([
+  {
+    events: [
+      [5, 'ok'],
+      [10, 'error']
+    ] as const,
+    want: 'error'
+  },
+  {
+    events: [
+      [0, 'ok'],
+      [5, 'error'],
+      [10, 'ok']
+    ] as const,
+    want: 'recovered'
+  }
+])('DB history preserves physical capture ordering across a shared receipt ($want)', async ({ events, want }) => {
+  const s = await projectScene(),
+    at = (minute: number) => new Date(`2026-11-10T10:${String(minute).padStart(2, '0')}:00Z`)
+  const source = await withSystem('batched-error-order', async (tx) => {
+    const source = await makeSource(tx, { kind: 'jps_rain', freshness: 'observed', staleAfterS: 600 })
+    for (const [minute, outcome] of events) {
+      const { makePoll } = await import('../../db/test/factories')
+      const poll = await makePoll(tx, {
+        sourceId: source.id,
+        startedAt: at(minute),
+        receivedAt: at(15),
+        outcome,
+        httpStatus: outcome === 'error' ? 503 : 200
+      })
+      if (outcome === 'ok')
+        await makeReading(tx, {
+          sourceId: source.id,
+          pollId: poll.id,
+          metric: 'rain_5m_mm',
+          unit: 'mm',
+          value: 0,
+          observedAt: at(minute),
+          receivedAt: at(15)
+        })
+    }
+    return source
+  })
+  await s.run((tx) =>
+    makeProjectSource(tx, { projectId: s.created.project.id, sourceId: source.id, role: 'rain_gauge' })
+  )
+  const history = await s.run((tx) =>
+    loadEvaluatorHistory(tx, { projectId: s.created.project.id, pack: 'sky', tEval: at(15).toISOString() })
+  )
+  expect(resolveSourceAt(history, source.id, at(15).toISOString()).state).toBe(want)
+})
+
+test('historical registry lookup preserves all archived definitions but rejects unsupported cross-pack use', async () => {
+  const s = await projectScene()
+  const { snapshotAt } = await import('@skyclause/clauses')
+  const { saveEvaluatorSnapshot } = await import('@skyclause/db')
+  const q = { projectId: s.created.project.id, pack: 'sky' as const, tEval: '2026-11-10T08:00:00Z' }
+  const snapshot = snapshotAt({ sources: [], readings: [], polls: [] }, TEST_REGISTRY, q.projectId, q.pack, q.tEval)
+  await s.run((tx) => saveEvaluatorSnapshot(tx, { snapshot, registry: TEST_REGISTRY, windows: [] }))
+  const empty = createEvaluatorProviders({ adapters: [], forecast: null })
+  const archived = await s.run((tx) => empty.registry.load(tx, { ...q, registryHash: snapshot.registryHash }))
+  expect(archived).toEqual(TEST_REGISTRY)
+  const supported = await s.run((tx) =>
+    empty.loadCheckedPublishedVersion(tx, { ...q, registryHash: snapshot.registryHash })
+  )
+  expect(supported.sheet.registryHash).toBe(snapshot.registryHash)
+  const original = s.created.versions.find((v) => (v.content as { pack: string }).pack === 'sky')!
+  const content = {
+    pack: 'sky' as const,
+    clauses: [
+      {
+        key: 'rail_watch',
+        name: 'Rail watch',
+        enabled: true,
+        scope: 'site' as const,
+        requires: ['site.night.baseline'],
+        when: 'site.night.baseline > 20',
+        proposes: { watch: true as const },
+        wording: { en: 'Rail watch' }
+      }
+    ]
+  }
+  const version = await s.run(async (tx) => {
+    const { makeSheetVersion } = await import('../../db/test/factories')
+    return makeSheetVersion(tx, { sheetId: original.sheetId, n: 2, status: 'published', content })
+  })
+  await expect(
+    s.run((tx) =>
+      empty.loadCheckedPublishedVersion(tx, { ...q, versionId: version.id, registryHash: snapshot.registryHash })
+    )
+  ).rejects.toMatchObject({ owner: 'b-evaluator:unsupported-pack-input' })
 })

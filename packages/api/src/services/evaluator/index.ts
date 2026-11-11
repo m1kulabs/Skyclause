@@ -1,9 +1,8 @@
 import type { ReadingHistory } from '@skyclause/clauses'
 import type { ForecastSource, SnapshotSource, ShadowEvaluator, TxHandle } from '@skyclause/contracts'
-import type { SourceAdapter } from '@skyclause/sources'
 import type { RuntimeIndicatorRegistry } from '../clause-sheets/ports'
 import { loadEvaluatorRangeHistory } from './history'
-import { createRuntimeRegistry } from './registry'
+import { createRuntimeRegistry, type IndicatorProvider } from './registry'
 import { createShadowEvaluator } from './shadow'
 import { createSnapshotSource } from './snapshot'
 
@@ -17,7 +16,7 @@ export interface EvaluatorProviders {
   recordedAt: null
 }
 export function createEvaluatorProviders(q: {
-  adapters: readonly SourceAdapter<unknown>[]
+  adapters: readonly IndicatorProvider[]
   forecast: ForecastSource | null
 }): EvaluatorProviders {
   const registry = createRuntimeRegistry(q.adapters)
@@ -35,4 +34,4 @@ export { semanticVerdictKey } from './scope'
 export { createRuntimeRegistry, installedIndicatorDefinitions } from './registry'
 export { loadEvaluatorHistory } from './history'
 export { nextEvaluationAt, evaluatorWindows } from './deadline'
-export { productionEvaluatorProviders, configureProductionEvaluator } from './production'
+export { productionEvaluatorProviders, productionIndicatorProviders, configureProductionEvaluator } from './production'
