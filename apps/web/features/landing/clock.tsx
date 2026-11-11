@@ -9,8 +9,9 @@ function mytTime(date: Date): string {
 }
 
 export function FooterClock({ initial }: { initial?: string }) {
-  const [now, setNow] = useState(initial ?? '21:12 MYT')
-  const [iso, setIso] = useState('2026-11-10T13:12:00Z')
+  // No time prints until the browser reads its clock: a fixed placeholder would read as the live time.
+  const [now, setNow] = useState(initial ?? '')
+  const [iso, setIso] = useState('')
   useEffect(() => {
     const tick = () => {
       const date = new Date()
@@ -23,7 +24,12 @@ export function FooterClock({ initial }: { initial?: string }) {
   }, [])
   return (
     <span data-source="clock:Asia/Kuala_Lumpur">
-      Skyclause · Kuala Lumpur, <time dateTime={iso}>{now}</time>
+      Skyclause · Kuala Lumpur
+      {now ? (
+        <>
+          , <time dateTime={iso || undefined}>{now}</time>
+        </>
+      ) : null}
     </span>
   )
 }
