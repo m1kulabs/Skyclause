@@ -13,7 +13,7 @@ import type { RetentionBuckets } from './buckets'
 import { JOB, listOrganizationIds, SWEEPERS, type SweepCounts, type SweepDeps } from './sweepers'
 
 export interface RetentionDeps {
-  /** Defaults to #110's `eraseSubscriber`; tests pass a double until it merges. */
+  /** Defaults to #110's `eraseSubscriber`; tests pass a double. */
   eraseSubscriber?: EraseSubscriber
   buckets: RetentionBuckets
 }

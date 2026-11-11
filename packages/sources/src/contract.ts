@@ -206,6 +206,7 @@ export interface SourceAdapter<Raw> {
   // Absent retains whole-group validation and failure semantics.
   parseMode?: 'per_source'
   groupedBackfill?: GroupedBackfill<Raw>
+  // Opt-in physical request budget and pure decoding of the current slot's captured bytes.
   latestSlot?: {
     seconds: number
     decode(body: Uint8Array): Raw

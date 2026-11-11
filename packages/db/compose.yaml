@@ -3,6 +3,9 @@
 name: skyclause
 services:
   postgres:
+    # `up --build` keeps the old data directory, and docker/init.sql runs only on an empty one. A container that predates
+    # the pg_partman 5.1.0 image fails 0004 with `permission denied to grant role "pg_read_all_data"`; recreate it:
+    # docker compose -f packages/db/compose.yaml down -v && bun run db:up
     build: ./docker
     environment:
       POSTGRES_PASSWORD: postgres

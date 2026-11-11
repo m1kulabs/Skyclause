@@ -3,10 +3,20 @@ import { expect, test } from 'vitest'
 import { registry } from '../src/registry'
 import { auditChecks } from '../src/auditor'
 
-test('actual registry mounts the batch auditor and the BYOK rotation check', () => {
+test('actual registry mounts the batch auditor with the platform and organisation audit checks', () => {
   expect(registry.batch.auditor).toBeTypeOf('function')
   expect(registry.ticks).not.toHaveProperty('auditor')
-  expect(auditChecks()).toEqual([expect.objectContaining({ name: 'kek_rotation', scope: 'platform' })])
+  // Sorted: registration order follows the owners' import order, which no check depends on.
+  expect(
+    auditChecks()
+      .map(({ name, scope }) => [name, scope])
+      .sort(([a], [b]) => a!.localeCompare(b!))
+  ).toEqual([
+    ['crossing_without_bundle', 'org'],
+    ['kek_rotation', 'platform'],
+    ['model_retirement', 'platform'],
+    ['no_approver', 'org']
+  ])
   expect(registry.batch['shift-reminder-plan']).toBeTypeOf('function')
   expect(registry.batch['approver-alert-resend']).toBeTypeOf('function')
   expect(registry.batch['runs-sky-schedule']).toBeTypeOf('function')

@@ -90,10 +90,10 @@ function readsOver(tables: Tables): SliReads {
 }
 
 /** Runs the handler at `now` and returns every recorded point as `metric stat [adapter]` → value. */
-async function measure(tables: Tables, now: Date) {
+async function measure(tables: Tables, now: Date, reads = readsOver(tables)) {
   const exporter = new InMemoryMetricExporter(AggregationTemporality.CUMULATIVE)
   const provider = new MeterProvider({ readers: [new PeriodicExportingMetricReader({ exporter })] })
-  await sli(readsOver(tables), provider.getMeter('test'))(now)
+  await sli(reads, provider.getMeter('test'))(now)
   await provider.forceFlush()
   const points: Record<string, number> = {}
   for (const metric of exporter.getMetrics().flatMap((r) => r.scopeMetrics.flatMap((s) => s.metrics))) {
@@ -214,4 +214,38 @@ test('a batch late in its slot reads the same windows', async () => {
   const tables = { reviews: [review('08:45', 10), review('09:44', 10), review('09:45', 10)] }
   expect(await measure(tables, at('10:14', 59))).toEqual(await measure(tables, at('10:00')))
   expect((await measure(tables, at('10:00')))['skyclause.crossing_to_needs_review bundles']).toBe(2)
+})
+
+test('a failed-alert streak is recorded once, by the batch its newest bundle reaches', async () => {
+  const tables = { alerts: [alerted('09:10', null), alerted('09:20', null)] }
+  // The batch at 09:45 reads [09:15, 09:30), which holds the newer bundle.
+  expect(await measure(tables, at('09:45'))).toEqual({
+    'skyclause.approver_alerted bundles': 1,
+    'skyclause.approver_alerted within_60s': 0,
+    'skyclause.approver_alerted failed_in_a_row': 2,
+    'skyclause.approver_alerted breach': 1
+  })
+  // Later batches see no new bundle, so they record nothing rather than the same streak again.
+  expect(await measure(tables, batch)).toEqual({})
+})
+
+test('an SLI whose read is absent records nothing', async () => {
+  const tables = { slots: [slot('jps_rain', '09:30', 5)], evaluations: [evaluation('09:20', 900)] }
+  const { pollSlots: _slots, latestPollSlots: _latest, evaluations: _evaluations, ...reads } = readsOver(tables)
+  expect(await measure(tables, batch, reads)).toEqual({})
+})
+
+test('a failed read fails the batch only once every other read has settled', async () => {
+  let settled = false
+  const reads: SliReads = {
+    ...readsOver({}),
+    storedReadings: () => Promise.reject(new Error('connection lost')),
+    slaDue: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      settled = true
+      return []
+    }
+  }
+  await expect(sli(reads, new MeterProvider().getMeter('test'))(batch)).rejects.toThrow('connection lost')
+  expect(settled).toBe(true)
 })

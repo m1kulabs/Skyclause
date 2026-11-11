@@ -365,8 +365,9 @@ gh auth status >/dev/null 2>&1 || { warn "run gh auth login first, then re-run";
 banner "Skyclause pilot setup"
 
 stage "Pick the pilot owner"
-say "One Google Workspace account in the GE-licensed domain (#7) owns the script, its triggers, the web app,"
-say "the workbook, the calendars and the CI token. Consumer Gmail can't use the GE Drive, Gmail and Calendar connectors."
+say "One Google Workspace account owns the script, its triggers, the web app,"
+say "the workbook, the calendars and the CI token. Consumer Gmail has no Workspace admin console for stage 2."
+say "A Top 5 final needs the pilot's data reachable from the GE-licensed domain; #576 covers that step."
 while true; do
   ask PILOT_OWNER_EMAIL "Pilot owner's Workspace email:"
   case "$PILOT_OWNER_EMAIL" in
@@ -438,8 +439,8 @@ else
   # An existing deployment is kept: its /exec URL may already be on the phone and the Pi.
   if [[ -z "$INGEST_DEPLOYMENT_ID" ]]; then
     git fetch -q origin main
-    if ! git merge-base --is-ancestor HEAD origin/main || [[ -n "$(git status --porcelain -- pilot)" ]]; then
-      warn "check out a commit on origin/main with no local changes under pilot/: CI's scope guard reads the manifest"
+    if ! git merge-base --is-ancestor HEAD origin/main || [[ -n "$(git status --porcelain -- pilot ':(exclude)pilot/workflows')" ]]; then
+      warn "check out a commit on origin/main with no local changes under pilot/ except pilot/workflows/: CI's scope guard reads the manifest"
       warn "at the commit this stage deploys"
       exit 1
     fi

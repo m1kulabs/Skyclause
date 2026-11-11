@@ -192,6 +192,20 @@ export async function repairSourceResults(ports: {
       }
       if ('reserved_until' in entry) {
         if (await recover()) continue
+        // Normal slot execution may save immutable delivery bytes before starting publication.
+        if (!entry.backfill_source_id) {
+          if (entry.object_path !== resultPath(entry.kind, entry.operation_id))
+            throw new Error('Invalid reserved result path')
+          const saved = await ports.store.read(entry.object_path)
+          if (saved) {
+            const { parseSourceResult } = await import('./ingest')
+            const result = parseSourceResult(decodeObject(saved.body))
+            if (result.operationId !== entry.operation_id || result.kind !== entry.kind || result.purpose !== 'poll')
+              throw new Error('Invalid reserved result identity')
+            await publishSourceResult(result, ports)
+            continue
+          }
+        }
         if (Date.parse(entry.reserved_until) > (ports.now?.() ?? new Date()).getTime()) continue
         throw new Error(`Source reservation expired before durable result: ${entry.operation_id}`)
       }

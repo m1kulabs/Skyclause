@@ -24,6 +24,16 @@ export function createJpsRainAdapter(options: JpsDiscoveryOptions = {}): SourceA
   const adapter: SourceAdapter<unknown> = {
     kind: 'jps_rain',
     cadence: 300,
+    latestSlot: {
+      seconds: 300,
+      decode(body) {
+        try {
+          return JSON.parse(new TextDecoder().decode(body)) as unknown
+        } catch (cause) {
+          throw new SchemaError('Invalid JSON response', { cause })
+        }
+      }
+    },
     freshness: 'observed',
     batch: 'per_source',
     licence: { id: null, label: 'No published terms found (5 Nov 2026)' },

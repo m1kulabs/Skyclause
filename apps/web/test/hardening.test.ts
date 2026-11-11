@@ -18,8 +18,9 @@ const ORIGINS = {
   DOCS_ORIGIN: 'https://docs.skyclause.m1ku.tech'
 } as const
 
-const multi = hostConfig(ORIGINS)
-const single = hostConfig({ HOST_MODE: 'single' })
+// The planted route in the lists below is served only in test builds.
+const multi = hostConfig({ ...ORIGINS, PLANTED_ROUTES: '1' })
+const single = hostConfig({ HOST_MODE: 'single', PLANTED_ROUTES: '1' })
 
 const nonceOf = (csp: string) => {
   const match = /script-src[^;]*'nonce-([^']+)'/.exec(csp)

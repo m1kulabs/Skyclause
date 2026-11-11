@@ -65,12 +65,26 @@ test('every id column defaults to uuidv7()', async () => {
   expect(version.rows[0].v).toBe(7)
 }, 15_000)
 
-test('the migrations create pg_partman as migrator, as on Neon, and the image has no pg_cron (D45)', async () => {
+// Neon's pg_partman is 5.1.0, a trusted extension whose tables are its superuser's; the image matches, so 0004 meets the
+// same version and privileges here (#602).
+test('the migrations create pg_partman 5.1.0 as migrator with superuser-owned tables, as on Neon, and the image has no pg_cron (D45)', async () => {
   await asLogin('postgres', async (client) => {
     const { rows } = await client.query(
-      "SELECT pg_get_userbyid(extowner) AS owner, extnamespace::regnamespace::text AS schema FROM pg_extension WHERE extname = 'pg_partman'"
+      `SELECT pg_get_userbyid(extowner) AS owner, extnamespace::regnamespace::text AS schema, extversion AS version,
+        has_schema_privilege('owner', 'partman', 'CREATE') AS "ownerCreates"
+      FROM pg_extension WHERE extname = 'pg_partman'`
     )
-    expect(rows).toEqual([{ owner: 'migrator', schema: 'partman' }])
+    expect(rows).toEqual([{ owner: 'migrator', schema: 'partman', version: '5.1.0', ownerCreates: false }])
+    const tables = await client.query(
+      "SELECT relname AS name, pg_get_userbyid(relowner) AS owner FROM pg_class WHERE relnamespace = 'partman'::regnamespace AND relkind IN ('r', 'v') ORDER BY 1"
+    )
+    expect(tables.rows).toEqual([
+      { name: 'part_config', owner: 'postgres' },
+      { name: 'part_config_sub', owner: 'postgres' },
+      { name: 'table_privs', owner: 'postgres' },
+      { name: 'template_public_poll', owner: 'owner' },
+      { name: 'template_public_reading', owner: 'owner' }
+    ])
     const cron = await client.query("SELECT FROM pg_available_extensions WHERE name = 'pg_cron'")
     expect(cron.rowCount).toBe(0)
   })
