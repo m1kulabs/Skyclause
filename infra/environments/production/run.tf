@@ -5,8 +5,8 @@ locals {
   # The plain mail values: committed in app_config, delivered by group and only to a service (secrets.tf, "Mail"), never to a job.
   sending_values   = ["EMAIL_FROM_AUTH", "EMAIL_FROM_NOTICES"]
   receiving_values = ["INBOUND_DOMAIN"]
-  sending_env      = local.sending_ready ? { for name, value in var.app_config : name => value if contains(local.sending_values, name) } : {}
-  receiving_env    = local.receiving_ready ? { for name, value in var.app_config : name => value if contains(local.receiving_values, name) } : {}
+  sending_env      = local.mail_ready ? { for name, value in var.app_config : name => value if contains(local.sending_values, name) } : {}
+  receiving_env    = local.mail_ready ? { for name, value in var.app_config : name => value if contains(local.receiving_values, name) } : {}
 
   shared_config = { for name, value in var.app_config : name => value if !contains(concat(local.sending_values, local.receiving_values), name) }
 
