@@ -458,9 +458,11 @@ describe('registration', () => {
   test('c-sender-email registers the sender, the sweep and the four delivery events once', () => {
     expect(registry.events.filter((c) => c.consumer === 'sender').map((c) => c.types)).toEqual([['bundle.approved']])
     expect(registry.batch['notice-sweep']).toBeTypeOf('function')
-    expect(Object.keys(registry.resend).sort()).toEqual(
+    expect(Object.keys(senderPart(null).part.resend!).sort()).toEqual(
       ['email.bounced', 'email.complained', 'email.delivered', 'email.suppressed'].sort()
     )
-    expect(registry.ses['/events']).toBeUndefined()
+    expect(Object.keys(registry.resend).sort()).toEqual(
+      ['email.bounced', 'email.complained', 'email.delivered', 'email.received', 'email.suppressed'].sort()
+    )
   })
 })

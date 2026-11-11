@@ -1,4 +1,3 @@
-export { webIdentityCredentials, type AwsCredentials, type WebIdentityOptions } from './aws-credentials'
 export {
   createEmailTransport,
   EmailSendError,
@@ -10,16 +9,14 @@ export {
 } from './email'
 export { parseResendWebhook, verifyResendWebhook, WebhookVerificationError, type ResendWebhook } from './resend-webhook'
 export { googleLinkEmail, magicLinkDisabledEmail, magicLinkEmail } from './auth-emails'
-export { isSnsUrl, SnsVerificationError, verifySnsMessage, type SnsMessage, type VerifyOptions } from './sns'
 export {
   createInboundRouter,
   onInbound,
-  sesInboundForAws,
-  sesInboundHandler,
-  type InboundBucket,
+  resendInboundHandler,
   type InboundHandler,
   type InboundMessage,
-  type SesInboundOptions
+  type InboundOptions,
+  type Verdict
 } from './inbound'
 export {
   checkRequiredLines,

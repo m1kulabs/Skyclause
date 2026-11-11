@@ -66,8 +66,6 @@ export interface WorkerPart {
   batch?: Record<string, BatchHandler>
   /** `POST /internal<path>`, with Hono path params such as `/ai-keys/:id/test`. */
   internal?: Record<string, RouteHandler>
-  /** `POST /ses<path>`, without Google OIDC: the handler checks the SNS signature. */
-  ses?: Record<string, RouteHandler>
   /**
    * Resend webhook events by `type`, such as `email.delivered`, from `POST /resend/webhook` without Google OIDC: the
    * route checks the Svix signature and parses the body first. A type no part registers is acknowledged.
@@ -78,11 +76,11 @@ export interface WorkerPart {
   events?: EventConsumer[]
 }
 
-type KeyedKind = 'topics' | 'queues' | 'ticks' | 'batch' | 'internal' | 'ses' | 'resend' | 'jobs'
+type KeyedKind = 'topics' | 'queues' | 'ticks' | 'batch' | 'internal' | 'resend' | 'jobs'
 
 export type Registry = { [K in KeyedKind]: NonNullable<WorkerPart[K]> } & { events: EventConsumer[] }
 
-const KEYED_KINDS: KeyedKind[] = ['topics', 'queues', 'ticks', 'batch', 'internal', 'ses', 'resend', 'jobs']
+const KEYED_KINDS: KeyedKind[] = ['topics', 'queues', 'ticks', 'batch', 'internal', 'resend', 'jobs']
 
 export function defineRegistry(parts: WorkerPart[]): Registry {
   const registry: Registry = {
@@ -91,7 +89,6 @@ export function defineRegistry(parts: WorkerPart[]): Registry {
     ticks: {},
     batch: {},
     internal: {},
-    ses: {},
     resend: {},
     jobs: {},
     events: []
@@ -267,13 +264,8 @@ export function createServer(options: ServerOptions) {
     return failed.length ? c.json({ failed }, 500) : c.body(null, 204)
   })
 
-  for (const [prefix, routes] of [
-    ['/internal', registry.internal],
-    ['/ses', registry.ses]
-  ] as const) {
-    for (const [path, handler] of Object.entries(routes)) {
-      app.post(prefix + path, (c) => handler(c.req.raw, c.req.param()))
-    }
+  for (const [path, handler] of Object.entries(registry.internal)) {
+    app.post(`/internal${path}`, (c) => handler(c.req.raw, c.req.param()))
   }
 
   // Every Resend webhook, the Free plan's one endpoint: the signature is checked on the raw body before anything parses

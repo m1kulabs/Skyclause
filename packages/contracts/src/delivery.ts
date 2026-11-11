@@ -47,6 +47,6 @@ export type OnInbound = (
     text: string
     messageId: string
     receivedAt: string
-    verdicts: Record<'spf' | 'dkim' | 'spam' | 'virus', string>
+    verdicts: Record<'spf' | 'dkim' | 'dmarc', 'PASS' | 'FAIL' | 'NONE'>
   }) => Promise<void>
 ) => void

@@ -18,18 +18,14 @@ const sending = {
   EMAIL_FROM_AUTH: z.string().min(1),
   EMAIL_FROM_NOTICES: z.string().min(1)
 }
-// The worker's SES inbound mail (infra/aws's app_config): optional until gate 4B, then all set together.
-const arn = (service: string) => z.string().regex(new RegExp(`^arn:aws:${service}:[a-z0-9-]*:\\d{12}:.+$`))
+// The worker's Resend receiving: a full-access key that reads received mail (#657) and the signing secret of Resend's one
+// webhook, which `POST /resend/webhook` checks every call with (#656), both Secret Manager, and the inbound domain.
+// Optional until set, then all set together; none set means `POST /resend/webhook` answers 503.
 const receiving = {
-  SES_REGION: z.string().regex(/^[a-z]{2}(-[a-z]+)+-\d$/),
-  AWS_ROLE_ARN: arn('iam'),
-  INBOUND_DOMAIN: z.string().min(1),
-  INBOUND_BUCKET: z.string().min(1),
-  INBOUND_SNS_TOPIC_ARN: arn('sns')
+  RESEND_RECEIVING_API_KEY: z.string().regex(/^re_\S+$/),
+  RESEND_WEBHOOK_SECRET: z.string().regex(/^whsec_[A-Za-z0-9+/]+={0,2}$/),
+  INBOUND_DOMAIN: z.string().min(1)
 }
-// The signing secret of Resend's one webhook (Secret Manager), which `POST /resend/webhook` checks every call with
-// (#656). Optional and on its own until set; the route answers 503 without it.
-const webhook = { RESEND_WEBHOOK_SECRET: z.string().regex(/^whsec_[A-Za-z0-9+/]+={0,2}$/) }
 
 // c-approver-alerts' VAPID values (#113 generates them): optional until the vapid-keys job has
 // run; VAPID_SUBJECT is APP_ORIGIN from Terraform.
@@ -127,7 +123,6 @@ const schemas = {
       SOURCES_BUCKET: z.string().min(1).optional(),
       ...optional(sending),
       ...optional(receiving),
-      ...optional(webhook),
       ...vapidPublic,
       VAPID_PRIVATE_KEY: base64urlBytes(32).optional()
     })

@@ -16,8 +16,8 @@ import { evidenceSpanOf } from './span'
 
 // #159 c-evidence, email intake (D7, LED-3): `{org}.{project}@{INBOUND_DOMAIN}` becomes an evidence request, while
 // the global `inbound_email` flag is on. Only a confirmed subscriber of the project (the reply goes by email, after
-// approval) or a member's account address (the reply stays in-app) may ask, with SPF or DKIM and the spam and virus
-// scans passing. Anything else is dropped with an audit row and no reply.
+// approval) or a member's account address (the reply stays in-app) may ask, with SPF or DKIM passing. Anything else is
+// dropped with an audit row and no reply.
 
 const JOB = 'evidence-inbound'
 const CONSUMER = 'evidence'
@@ -32,7 +32,7 @@ export interface EvidenceInboundOptions {
   now?: () => Date
 }
 
-/** One inbound message for `evidence`; the router calls it at most once per SES message ID. */
+/** One inbound message for `evidence`; `handleOnce` runs it at most once per Resend received-email ID. */
 export async function handleEvidenceMail(m: InboundMessage, o: EvidenceInboundOptions = {}) {
   const inboundDomain = o.inboundDomain ?? (() => loadEnv('worker').INBOUND_DOMAIN)
   const now = o.now ?? (() => new Date())
@@ -62,9 +62,7 @@ export async function handleEvidenceMail(m: InboundMessage, o: EvidenceInboundOp
         })
         log('INFO', 'inbound evidence mail dropped', { messageId: m.messageId, reason })
       }
-      const pass = (verdict: string) => verdict === 'PASS'
-      const { spf, dkim, spam, virus } = m.verdicts
-      if (!(pass(spf) || pass(dkim)) || !pass(spam) || !pass(virus)) return drop('verdicts')
+      if (m.verdicts.spf !== 'PASS' && m.verdicts.dkim !== 'PASS') return drop('verdicts')
       const sender = await inboundSender(tx, { orgId: target.orgId, projectId: target.projectId, address: m.from })
       if (!sender) return drop('unknown_sender')
       const line = m.text.split(/\r?\n/).find((text) => text.trim() !== '') ?? m.subject

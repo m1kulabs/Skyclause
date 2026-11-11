@@ -54,13 +54,12 @@ describe('loadEnv', () => {
     EMAIL_FROM_AUTH: 'Skyclause <sign-in@notices.skyclause.m1ku.tech>',
     EMAIL_FROM_NOTICES: 'Skyclause <notices@notices.skyclause.m1ku.tech>'
   }
-  // The worker's SES inbound mail, from infra/aws's app_config.
+  // The worker's Resend receiving settings: the full-access key and the webhook's signing secret are Secret Manager
+  // secrets (shaped like Resend's, not real ones), the domain Terraform's.
   const inbound = {
-    SES_REGION: 'ap-southeast-2',
-    AWS_ROLE_ARN: 'arn:aws:iam::776566309118:role/skyclause-production-email',
-    INBOUND_DOMAIN: 'in.skyclause.m1ku.tech',
-    INBOUND_BUCKET: 'skyclause-production-inbound-776566309118',
-    INBOUND_SNS_TOPIC_ARN: 'arn:aws:sns:ap-southeast-2:776566309118:skyclause-production-inbound'
+    RESEND_RECEIVING_API_KEY: 're_test_full_access',
+    RESEND_WEBHOOK_SECRET: 'whsec_plJ3nmyCDGBKInavdOK15jsl', // gitleaks:allow -- Svix's published test-vector secret.
+    INBOUND_DOMAIN: 'in.skyclause.m1ku.tech'
   }
 
   test('the worker needs EMAIL_HASH_KEY and reads the notice origins', () => {
@@ -72,7 +71,7 @@ describe('loadEnv', () => {
 
   test('the sending and receiving variables are optional, and each group is read together', () => {
     expect(loadEnv('worker', worker)).not.toHaveProperty('RESEND_SENDING_API_KEY')
-    expect(loadEnv('worker', worker)).not.toHaveProperty('SES_REGION')
+    expect(loadEnv('worker', worker)).not.toHaveProperty('RESEND_RECEIVING_API_KEY')
     expect(loadEnv('worker', { ...worker, ...email, ...inbound })).toEqual({
       ...worker,
       ...email,
@@ -84,58 +83,37 @@ describe('loadEnv', () => {
     expect(loadEnv('web', { ...web, ...email })).toEqual({ ...web, ...email })
   })
 
-  test('sending needs no SES variable, and web takes none of them', () => {
-    const ses = { SES_REGION: 'ap-southeast-2', SES_CONFIGURATION_SET: 'skyclause-production' }
-    expect(loadEnv('web', { ...web, ...email, ...ses, AWS_ROLE_ARN: inbound.AWS_ROLE_ARN })).toEqual({
-      ...web,
-      ...email
-    })
-    expect(loadEnv('worker', { ...worker, ...email, ...inbound, ...ses })).not.toHaveProperty('SES_CONFIGURATION_SET')
+  test('the receiving variables are the worker’s only: web takes none of them', () => {
+    expect(loadEnv('web', { ...web, ...email, ...inbound })).toEqual({ ...web, ...email })
   })
 
   test('a partial email set fails the start naming what is missing', () => {
     const { RESEND_SENDING_API_KEY: _, ...noKey } = email
     expect(() => loadEnv('web', { ...web, ...noKey })).toThrow(/RESEND_SENDING_API_KEY/)
     expect(() => loadEnv('worker', { ...worker, ...noKey, ...inbound })).toThrow(/RESEND_SENDING_API_KEY/)
-    const { INBOUND_SNS_TOPIC_ARN: __, ...partial } = inbound
-    expect(() => loadEnv('worker', { ...worker, ...email, ...partial })).toThrow(/INBOUND_SNS_TOPIC_ARN/)
+    for (const name of Object.keys(inbound)) {
+      const partial = Object.fromEntries(Object.entries(inbound).filter(([other]) => other !== name))
+      expect(() => loadEnv('worker', { ...worker, ...email, ...partial }), name).toThrow(new RegExp(name))
+    }
   })
 
-  test('refuses a Resend key that is not one, and an AWS_ROLE_ARN or topic that is not an ARN', () => {
+  test('refuses a Resend key that is not one', () => {
     for (const RESEND_SENDING_API_KEY of ['skyclause-production', 're_test_sending_only\n', 'whsec_test']) {
       expect(() => loadEnv('web', { ...web, ...email, RESEND_SENDING_API_KEY })).toThrow(/RESEND_SENDING_API_KEY/)
     }
-    expect(() => loadEnv('worker', { ...worker, ...inbound, AWS_ROLE_ARN: 'skyclause-production-email' })).toThrow(
-      /AWS_ROLE_ARN/
-    )
-    expect(() => loadEnv('worker', { ...worker, ...inbound, INBOUND_SNS_TOPIC_ARN: 'inbound' })).toThrow(
-      /INBOUND_SNS_TOPIC_ARN/
-    )
-  })
-
-  // Shaped like Resend's signing secret, not the real one.
-  const webhook = { RESEND_WEBHOOK_SECRET: 'whsec_plJ3nmyCDGBKInavdOK15jsl' } // gitleaks:allow -- Svix's published test-vector secret.
-
-  test('the worker takes RESEND_WEBHOOK_SECRET on its own, and web takes none', () => {
-    expect(loadEnv('worker', worker)).not.toHaveProperty('RESEND_WEBHOOK_SECRET')
-    expect(loadEnv('worker', { ...worker, ...webhook })).toEqual({ ...worker, ...webhook, PORT: 8080 })
-    expect(loadEnv('worker', { ...worker, ...email, ...inbound, ...webhook })).toMatchObject(webhook)
-    expect(loadEnv('web', { ...web, ...webhook })).toEqual(web)
-  })
-
-  test('refuses a webhook secret that is not a whsec_ one', () => {
-    for (const RESEND_WEBHOOK_SECRET of ['plJ3nmyCDGBKInavdOK15jsl', 're_test_sending_only', 'whsec_', 'whsec_a b']) {
-      expect(() => loadEnv('worker', { ...worker, RESEND_WEBHOOK_SECRET }), RESEND_WEBHOOK_SECRET).toThrow(
-        /RESEND_WEBHOOK_SECRET/
+    for (const RESEND_RECEIVING_API_KEY of ['skyclause-production', 're_test_full_access\n', 'whsec_test']) {
+      expect(() => loadEnv('worker', { ...worker, ...inbound, RESEND_RECEIVING_API_KEY })).toThrow(
+        /RESEND_RECEIVING_API_KEY/
       )
     }
   })
 
-  test('the SES events topic is no longer read', () => {
-    const topic = 'arn:aws:sns:ap-southeast-2:776566309118:skyclause-production-ses-events'
-    expect(loadEnv('worker', { ...worker, ...inbound, SES_EVENTS_SNS_TOPIC_ARN: topic })).not.toHaveProperty(
-      'SES_EVENTS_SNS_TOPIC_ARN'
-    )
+  test('refuses a webhook secret that is not a whsec_ one', () => {
+    for (const RESEND_WEBHOOK_SECRET of ['plJ3nmyCDGBKInavdOK15jsl', 're_test_sending_only', 'whsec_', 'whsec_a b']) {
+      expect(() => loadEnv('worker', { ...worker, ...inbound, RESEND_WEBHOOK_SECRET }), RESEND_WEBHOOK_SECRET).toThrow(
+        /RESEND_WEBHOOK_SECRET/
+      )
+    }
   })
 
   test('reads the VAPID values once the vapid-keys job has made them, and checks their encoding', () => {

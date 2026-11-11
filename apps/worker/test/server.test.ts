@@ -424,11 +424,6 @@ describe('worker routes', () => {
     const res = await post(app, '/internal/ai-keys/k1/test', { bearer: await token() })
     expect(await res.json()).toEqual({ id: 'k1' })
   })
-
-  test('an /ses route skips Google OIDC, since its owner checks the SNS signature', async () => {
-    const app = server({ owner: 'test', ses: { '/inbound': async () => new Response(null, { status: 204 }) } })
-    expect((await post(app, '/ses/inbound')).status).toBe(204)
-  })
 })
 
 describe('POST /resend/webhook', () => {
