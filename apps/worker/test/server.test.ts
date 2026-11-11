@@ -9,6 +9,7 @@ import {
 } from '@skyclause/db'
 import { makeOrganization, makeProject, makeSource } from '@skyclause/db/test/factories/index'
 import { asLogin, memberOf, testDatabase } from '@skyclause/db/test/harness/index'
+import { resendEvent, signedHeaders, webhookSecret } from '@skyclause/delivery/test/resend-double'
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose'
 import { beforeAll, describe, expect, test, vi } from 'vitest'
 import { registry } from '../src/registry'
@@ -425,8 +426,61 @@ describe('worker routes', () => {
   })
 
   test('an /ses route skips Google OIDC, since its owner checks the SNS signature', async () => {
-    const app = server({ owner: 'test', ses: { '/events': async () => new Response(null, { status: 204 }) } })
-    expect((await post(app, '/ses/events')).status).toBe(204)
+    const app = server({ owner: 'test', ses: { '/inbound': async () => new Response(null, { status: 204 }) } })
+    expect((await post(app, '/ses/inbound')).status).toBe(204)
+  })
+})
+
+describe('POST /resend/webhook', () => {
+  const received: unknown[] = []
+  const part: WorkerPart = {
+    owner: 'test',
+    resend: { 'email.delivered': async (event) => (received.push(event), new Response(null, { status: 200 })) }
+  }
+  const app = (secret: string | undefined = webhookSecret) =>
+    createServer({ registry: defineRegistry([part]), audience, invoker, jwks, resendWebhookSecret: secret })
+  const deliver = (body: string, headers: Record<string, string> = signedHeaders(body), secret?: string) =>
+    app(secret).request('/resend/webhook', { method: 'POST', headers, body })
+
+  test('skips Google OIDC, checks the signature and hands the parsed event to the part registered for its type', async () => {
+    received.length = 0
+    const event = resendEvent('email.delivered')
+    const res = await deliver(JSON.stringify(event))
+    expect(res.status).toBe(200)
+    expect(received).toEqual([event])
+  })
+
+  test('acknowledges a type no part registered with 200', async () => {
+    received.length = 0
+    expect((await deliver(JSON.stringify(resendEvent('email.failed')))).status).toBe(200)
+    expect(received).toEqual([])
+  })
+
+  test('refuses a call signed with another secret, altered or stale with 401 before any handler runs', async () => {
+    received.length = 0
+    const body = JSON.stringify(resendEvent('email.delivered'))
+    const other = `whsec_${Buffer.from('another-resend-webhook-secret').toString('base64')}`
+    expect((await deliver(body, signedHeaders(body, { secret: other }))).status).toBe(401)
+    expect((await deliver(body.replace('delivered@', 'altered@'), signedHeaders(body))).status).toBe(401)
+    const stale = Math.floor(Date.now() / 1000) - 6 * 60
+    expect((await deliver(body, signedHeaders(body, { timestamp: stale }))).status).toBe(401)
+    expect((await deliver(body, {})).status).toBe(401)
+    expect(received).toEqual([])
+  })
+
+  test('answers 400 to a validly signed body that is not a Resend event', async () => {
+    for (const body of ['not json', 'null', '"email.delivered"', '{"data":{}}']) {
+      expect((await deliver(body)).status, body).toBe(400)
+    }
+  })
+
+  test('answers 503 until RESEND_WEBHOOK_SECRET is set', async () => {
+    const body = JSON.stringify(resendEvent('email.delivered'))
+    const res = await createServer({ registry: defineRegistry([part]), audience, invoker, jwks }).request(
+      '/resend/webhook',
+      { method: 'POST', headers: signedHeaders(body), body }
+    )
+    expect(res.status).toBe(503)
   })
 })
 
@@ -447,6 +501,16 @@ describe('worker registry', () => {
         { owner: 'b-auditor', batch: { sli: async () => {} } }
       ])
     ).toThrow('batch sli is registered by a-observability and b-auditor')
+  })
+
+  test('a Resend event type registered by two owners is refused, naming both', () => {
+    const handler = async () => new Response(null, { status: 200 })
+    expect(() =>
+      defineRegistry([
+        { owner: 'c-sender-email', resend: { 'email.delivered': handler } },
+        { owner: 'a-email-transport', resend: { 'email.delivered': handler } }
+      ])
+    ).toThrow('resend email.delivered is registered by c-sender-email and a-email-transport')
   })
 
   test('collects onEvent consumers for the domain-events dispatch', () => {

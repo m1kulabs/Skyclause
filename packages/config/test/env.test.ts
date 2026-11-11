@@ -54,11 +54,10 @@ describe('loadEnv', () => {
     EMAIL_FROM_AUTH: 'Skyclause <sign-in@notices.skyclause.m1ku.tech>',
     EMAIL_FROM_NOTICES: 'Skyclause <notices@notices.skyclause.m1ku.tech>'
   }
-  // The worker's SES delivery events and inbound mail, from infra/aws's app_config.
+  // The worker's SES inbound mail, from infra/aws's app_config.
   const inbound = {
     SES_REGION: 'ap-southeast-2',
     AWS_ROLE_ARN: 'arn:aws:iam::776566309118:role/skyclause-production-email',
-    SES_EVENTS_SNS_TOPIC_ARN: 'arn:aws:sns:ap-southeast-2:776566309118:skyclause-production-ses-events',
     INBOUND_DOMAIN: 'in.skyclause.m1ku.tech',
     INBOUND_BUCKET: 'skyclause-production-inbound-776566309118',
     INBOUND_SNS_TOPIC_ARN: 'arn:aws:sns:ap-southeast-2:776566309118:skyclause-production-inbound'
@@ -111,6 +110,31 @@ describe('loadEnv', () => {
     )
     expect(() => loadEnv('worker', { ...worker, ...inbound, INBOUND_SNS_TOPIC_ARN: 'inbound' })).toThrow(
       /INBOUND_SNS_TOPIC_ARN/
+    )
+  })
+
+  // Shaped like Resend's signing secret, not the real one.
+  const webhook = { RESEND_WEBHOOK_SECRET: 'whsec_plJ3nmyCDGBKInavdOK15jsl' } // gitleaks:allow -- Svix's published test-vector secret.
+
+  test('the worker takes RESEND_WEBHOOK_SECRET on its own, and web takes none', () => {
+    expect(loadEnv('worker', worker)).not.toHaveProperty('RESEND_WEBHOOK_SECRET')
+    expect(loadEnv('worker', { ...worker, ...webhook })).toEqual({ ...worker, ...webhook, PORT: 8080 })
+    expect(loadEnv('worker', { ...worker, ...email, ...inbound, ...webhook })).toMatchObject(webhook)
+    expect(loadEnv('web', { ...web, ...webhook })).toEqual(web)
+  })
+
+  test('refuses a webhook secret that is not a whsec_ one', () => {
+    for (const RESEND_WEBHOOK_SECRET of ['plJ3nmyCDGBKInavdOK15jsl', 're_test_sending_only', 'whsec_', 'whsec_a b']) {
+      expect(() => loadEnv('worker', { ...worker, RESEND_WEBHOOK_SECRET }), RESEND_WEBHOOK_SECRET).toThrow(
+        /RESEND_WEBHOOK_SECRET/
+      )
+    }
+  })
+
+  test('the SES events topic is no longer read', () => {
+    const topic = 'arn:aws:sns:ap-southeast-2:776566309118:skyclause-production-ses-events'
+    expect(loadEnv('worker', { ...worker, ...inbound, SES_EVENTS_SNS_TOPIC_ARN: topic })).not.toHaveProperty(
+      'SES_EVENTS_SNS_TOPIC_ARN'
     )
   })
 

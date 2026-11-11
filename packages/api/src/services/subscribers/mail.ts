@@ -8,7 +8,7 @@ import type { WithTenant } from '../../tenancy'
 
 // #157: the `confirmation` and `preference_link` emails (one owner per kind, #79 §1). The flow's transaction mints the
 // token and writes the `notice` row; after it commits, `deliverSubscriberEmail` sends it and records the answer.
-// #158's `/ses/events` then updates the row's status.
+// Resend's delivery events on the worker's `/resend/webhook` then update the row's status.
 
 export interface QueuedEmail {
   orgId: string

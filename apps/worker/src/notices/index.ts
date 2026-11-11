@@ -11,34 +11,25 @@ import {
   withSystem,
   withTenant
 } from '@skyclause/db'
-import { emailTransportFromEnv, sesEventsHandler, type SesEvent } from '@skyclause/delivery'
-import { log, type WorkerPart } from '../server'
-import { sendCallNotices, settleCalls, type SenderConfig, type SenderDeps } from './send'
+import { DELIVERY_EVENT_TYPES, deliveryEvent, emailTransportFromEnv, type DeliveryEvent } from '@skyclause/delivery'
+import { log, type ResendHandler, type WorkerPart } from '../server'
+import { sendCallNotices, settleCalls, type SenderDeps } from './send'
 
 // #158 c-sender-email's part: consumer `sender` on `bundle.approved`, the `notice-sweep` in the 15-minute batch (D45:
-// the minute tick never touches Postgres) that retries failed sends and settles calls, and `POST /ses/events`.
+// the minute tick never touches Postgres) that retries failed sends and settles calls, and Resend's delivery events
+// from `POST /resend/webhook` (#656).
 
-export interface NoticesDeps extends SenderDeps {
-  config: () => SenderConfig & {
-    /** `SES_REGION` */
-    sesRegion?: string
-    /** `SES_EVENTS_SNS_TOPIC_ARN` */
-    eventsTopicArn?: string
-  }
-  /** Tests only: the SNS certificate fetch and the subscription confirmation. */
-  certificate?: (url: string) => Promise<string>
-  fetch?: typeof fetch
-}
+export type NoticesDeps = SenderDeps
 
 /** How far back the sweep looks for calls to settle: a settle that failed after a call's last send is retried. */
 const SETTLE_LOOKBACK_MS = 24 * 60 * 60_000
 
 export function createNoticesPart(deps: NoticesDeps): WorkerPart {
-  const sesEvents = systemPrincipal('ses-events')
+  const deliveryEvents = systemPrincipal('delivery-events')
   const sender = systemPrincipal('sender')
 
-  async function apply(event: SesEvent): Promise<boolean> {
-    const found = await withSystem('ses-events', (tx) => noticeForProviderMessage(tx, event.providerMessageId))
+  async function apply(event: DeliveryEvent): Promise<boolean> {
+    const found = await withSystem('delivery-events', (tx) => noticeForProviderMessage(tx, event.providerMessageId))
     // Mail with no outbox row (sign-in links) is acknowledged; a notice's event can beat its send's record.
     if (!found) return !(event.category && NOTICE_KINDS.includes(event.category))
     if (found.orgId === null && found.kind !== 'export_ready') {
@@ -46,15 +37,22 @@ export function createNoticesPart(deps: NoticesDeps): WorkerPart {
     }
     const moved =
       found.orgId === null
-        ? await withSystem('ses-events', (tx) => recordDeliveryEvent(tx, found.id, event, deps.now()))
-        : await withTenant({ orgId: found.orgId, principal: sesEvents }, (tx) =>
+        ? await withSystem('delivery-events', (tx) => recordDeliveryEvent(tx, found.id, event, deps.now()))
+        : await withTenant({ orgId: found.orgId, principal: deliveryEvents }, (tx) =>
             recordDeliveryEvent(tx, found.id, event, deps.now())
           )
-    log('INFO', 'ses event recorded', { notice_id: found.id, type: event.type, moved })
+    log('INFO', 'delivery event recorded', { notice_id: found.id, type: event.type, moved })
     return true
   }
 
-  let handleEvents: ((request: Request) => Promise<Response>) | undefined
+  // A notice's event can beat its send's record: 503 makes Resend retry it. Anything else is acknowledged with 200, the
+  // only answer Resend counts as delivered.
+  const onDeliveryEvent: ResendHandler = async (webhook) => {
+    const event = deliveryEvent(webhook)
+    if (event && !(await apply(event))) return new Response('send not recorded yet', { status: 503 })
+    return new Response(null, { status: 200 })
+  }
+
   return {
     owner: 'c-sender-email',
     events: [
@@ -93,22 +91,7 @@ export function createNoticesPart(deps: NoticesDeps): WorkerPart {
         if (failed.length) throw new Error(`notice sweep failed for ${failed.join('; ')}`)
       }
     },
-    ses: {
-      '/events': async (request) => {
-        if (!handleEvents) {
-          const { sesRegion, eventsTopicArn } = deps.config()
-          if (!sesRegion || !eventsTopicArn) return new Response('SES events are not configured', { status: 503 })
-          handleEvents = sesEventsHandler({
-            topicArn: eventsTopicArn,
-            region: sesRegion,
-            certificate: deps.certificate,
-            fetch: deps.fetch,
-            apply
-          })
-        }
-        return handleEvents(request)
-      }
-    }
+    resend: Object.fromEntries(DELIVERY_EVENT_TYPES.map((type) => [type, onDeliveryEvent]))
   }
 }
 
@@ -119,9 +102,7 @@ export const notices = createNoticesPart({
     return {
       appOrigin: env.APP_ORIGIN,
       marketingOrigin: env.MARKETING_ORIGIN,
-      inboundDomain: env.INBOUND_DOMAIN,
-      sesRegion: env.SES_REGION,
-      eventsTopicArn: env.SES_EVENTS_SNS_TOPIC_ARN
+      inboundDomain: env.INBOUND_DOMAIN
     }
   },
   now: () => new Date()

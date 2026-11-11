@@ -169,7 +169,7 @@ export const notice = tenantTable(
     sameOrg('notice_project', self, self.projectId, project, true),
     sameOrg('notice_call', self, self.callId, call, true),
     sameOrg('notice_subscriber', self, self.subscriberId, subscriber, true),
-    // `/ses/events` maps SES's message ID back to its notice; the sweep finds queued rows.
+    // `/resend/webhook` maps Resend's email ID back to its notice; the sweep finds queued rows.
     index('notice_provider_message_id_idx').on(self.providerMessageId),
     index('notice_queued_idx')
       .on(self.orgId)

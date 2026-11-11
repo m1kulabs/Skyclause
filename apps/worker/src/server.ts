@@ -2,6 +2,12 @@ import { trace } from '@opentelemetry/api'
 import { log as telemetryLog } from '@skyclause/config'
 import type { HeartbeatName } from '@skyclause/contracts'
 import { shareSystemConnection } from '@skyclause/db'
+import {
+  parseResendWebhook,
+  verifyResendWebhook,
+  WebhookVerificationError,
+  type ResendWebhook
+} from '@skyclause/delivery'
 import { Hono, type MiddlewareHandler } from 'hono'
 import { routePath } from 'hono/route'
 import { jwtVerify, type JWTPayload, type JWTVerifyGetKey } from 'jose'
@@ -31,6 +37,9 @@ export type BatchHandler = (now: Date) => Promise<void>
 
 export type RouteHandler = (request: Request, params: Record<string, string>) => Promise<Response>
 
+/** One Resend webhook event, verified and parsed; its answer goes back to Resend, which retries anything but a 200. */
+export type ResendHandler = (event: ResendWebhook) => Promise<Response>
+
 export type JobHandler = (args: string[]) => Promise<void>
 
 /** An `onEvent` consumer; #92 dispatches `domain-events` to these. */
@@ -59,16 +68,21 @@ export interface WorkerPart {
   internal?: Record<string, RouteHandler>
   /** `POST /ses<path>`, without Google OIDC: the handler checks the SNS signature. */
   ses?: Record<string, RouteHandler>
+  /**
+   * Resend webhook events by `type`, such as `email.delivered`, from `POST /resend/webhook` without Google OIDC: the
+   * route checks the Svix signature and parses the body first. A type no part registers is acknowledged.
+   */
+  resend?: Record<string, ResendHandler>
   /** Cloud Run jobs, `node main.js job <name> [args]`. */
   jobs?: Record<string, JobHandler>
   events?: EventConsumer[]
 }
 
-type KeyedKind = 'topics' | 'queues' | 'ticks' | 'batch' | 'internal' | 'ses' | 'jobs'
+type KeyedKind = 'topics' | 'queues' | 'ticks' | 'batch' | 'internal' | 'ses' | 'resend' | 'jobs'
 
 export type Registry = { [K in KeyedKind]: NonNullable<WorkerPart[K]> } & { events: EventConsumer[] }
 
-const KEYED_KINDS: KeyedKind[] = ['topics', 'queues', 'ticks', 'batch', 'internal', 'ses', 'jobs']
+const KEYED_KINDS: KeyedKind[] = ['topics', 'queues', 'ticks', 'batch', 'internal', 'ses', 'resend', 'jobs']
 
 export function defineRegistry(parts: WorkerPart[]): Registry {
   const registry: Registry = {
@@ -78,6 +92,7 @@ export function defineRegistry(parts: WorkerPart[]): Registry {
     batch: {},
     internal: {},
     ses: {},
+    resend: {},
     jobs: {},
     events: []
   }
@@ -115,6 +130,8 @@ export interface ServerOptions {
   /** Expected `email`: `WORKER_INVOKER_SA`. */
   invoker: string
   jwks: JWTVerifyGetKey
+  /** `RESEND_WEBHOOK_SECRET`; unset, `POST /resend/webhook` answers 503. */
+  resendWebhookSecret?: string
   /** Records `skyclause.heartbeat{name}`: `main.ts` passes telemetry's gauge; defaults to a log line. */
   heartbeat?: (name: HeartbeatName) => void
 }
@@ -258,6 +275,27 @@ export function createServer(options: ServerOptions) {
       app.post(prefix + path, (c) => handler(c.req.raw, c.req.param()))
     }
   }
+
+  // Every Resend webhook, the Free plan's one endpoint: the signature is checked on the raw body before anything parses
+  // it, then the event goes to the part registered for its type. Resend counts only a 200 as delivered.
+  app.post('/resend/webhook', async (c) => {
+    if (!options.resendWebhookSecret) return c.text('Resend webhooks are not configured', 503)
+    const body = await c.req.text()
+    try {
+      verifyResendWebhook(options.resendWebhookSecret, c.req.raw.headers, body, new Date())
+    } catch (error) {
+      if (error instanceof WebhookVerificationError) return c.text(error.message, 401)
+      throw error
+    }
+    let event: ResendWebhook
+    try {
+      event = parseResendWebhook(body)
+    } catch {
+      return c.text('malformed Resend webhook', 400)
+    }
+    const handler = registry.resend[event.type]
+    return handler ? handler(event) : c.body(null, 200)
+  })
 
   return app
 }
