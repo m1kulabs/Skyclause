@@ -158,9 +158,6 @@ const sesSubscription = (arn: string): CliReply => ({
 
 function gcloud(overrides: Record<string, CliReply> = {}): Record<string, CliReply> {
   return {
-    'secrets versions list ONCALL_CONTACTS *': {
-      stdout: 'NAME  STATE    CREATE_TIME\n1     ENABLED  2026-11-11T03:00:00Z\n'
-    },
     'run jobs list *': { stdout: '' },
     ...overrides
   }
@@ -291,7 +288,7 @@ const keyLine = `${keyId} ${secretKey}`
 // gcloud and aws. No argv carries the key, and curl's stdin config only ever adds headers.
 function expectOnlyReads(calls: { curl: string; curlStdin: string; gcloud: string; aws: string; open: string }) {
   for (const line of calls.gcloud.trim().split('\n').filter(Boolean)) {
-    expect(line).toMatch(/^(secrets versions list|run jobs list|run jobs executions list) /)
+    expect(line).toMatch(/^(run jobs list|run jobs executions list) /)
   }
   for (const line of calls.aws.trim().split('\n').filter(Boolean)) {
     expect(line).toMatch(/^(sts get-caller-identity|sns list-subscriptions-by-topic) /)
@@ -337,7 +334,7 @@ describe('infra/wizards/production-pilot.sh static invariants', () => {
     expect(commands, 'a flag before the subcommand hides it from this check').not.toMatch(/\b(gcloud|aws) +-/)
     for (const [call] of cloudCalls) {
       expect(call).toMatch(
-        /^(gcloud (secrets versions list|run jobs list|run jobs executions list)|aws (sts get-caller-identity|sns list-subscriptions-by-topic))/
+        /^(gcloud (run jobs list|run jobs executions list)|aws (sts get-caller-identity|sns list-subscriptions-by-topic))/
       )
     }
 
@@ -613,35 +610,12 @@ describe('infra/wizards/production-pilot.sh reports what still waits, and every 
     expect(envContent).not.toContain(secretKey)
     expect(evidenceContent).not.toContain(secretKey)
     expect(evidenceContent).toContain('skc_live…')
-    expect(evidenceContent).toContain(
-      '## #118 / #629 — ONCALL_CONTACTS has an enabled version (listed by name, never accessed; the channels and a test page are still to check)'
-    )
-    expect(output).toContain(
-      '#629 check the on-call notification channels exist and a test incident pages within 5 minutes'
-    )
     expect(evidenceContent).toContain('## #194 — Organisation, project and default Sky clause sheet')
     expect(evidenceContent).toContain('## #531 — Production /ledger/verify for the pilot project')
     expect(evidenceContent).toContain('"valid":true')
     expect(evidenceContent).toContain('## #194 — Approver rota configured (your confirmation')
     expect(evidenceContent).toContain('## #194 — Confirmed subscriber counts')
     expect(evidenceContent).toContain('## #539 — Malay reader sign-off on packages/i18n/catalogue/ms/replies.json')
-  })
-
-  test("stops with gcloud's own error and a sign-in hint when gcloud is signed out", () => {
-    const { result, output } = runWizard({
-      input: answers,
-      gcloud: gcloud({
-        'secrets versions list ONCALL_CONTACTS *': {
-          exit: 1,
-          stderr: 'ERROR: (gcloud.secrets.versions.list) You do not currently have an active account selected.\n'
-        }
-      })
-    })
-
-    expect(result.status).toBe(1)
-    expect(output).toContain('You do not currently have an active account selected.')
-    expect(output).toContain("Sign in as a project owner with 'gcloud auth login'")
-    expect(output).toContain('Stopped in stage 1/')
   })
 
   test('stops and says so when it cannot read an answer, rather than carrying on as if it were empty', () => {
