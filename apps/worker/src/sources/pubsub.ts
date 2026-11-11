@@ -1,3 +1,4 @@
+import type { GroupedBackfillClaim, GroupRecovery } from './grouped-backfill'
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { SourceKind } from '@skyclause/sources'
@@ -93,7 +94,22 @@ export function sourceSubscription(
 }
 
 const pendingPath = 'control/pending-results.json'
-const Recovery = { backfill_source_id: z.uuid().optional() }
+const Recovery = {
+  // Existing source reservations remain readable during the plan/protocol rollout.
+  backfill_source_id: z.uuid().optional(),
+  recovery: z
+    .discriminatedUnion('type', [
+      z.strictObject({ type: z.literal('source'), sourceId: z.uuid() }),
+      z.strictObject({
+        type: z.literal('group'),
+        key: Digest,
+        anchor: z.iso.datetime(),
+        sourceIds: z.array(z.uuid()).min(1),
+        step: z.number().int().nonnegative()
+      })
+    ])
+    .optional()
+}
 const PendingDelivery = ResultReference.extend(Recovery)
 const ResultReservation = ResultReference.omit({ sha256: true }).extend({
   reserved_until: z.iso.datetime(),
@@ -105,31 +121,43 @@ export const MAX_PENDING_RESULTS = 1000
 // Longer than the current 600-second Cloud Run source execution limit. Expiry reports a stalled
 // reservation; it never releases capacity, creates another operation ID, or refetches captured bytes.
 export const SOURCE_RESERVATION_MS = 20 * 60 * 1000
-async function updatePending(store: SourceObjectStore, entry: PendingEntry, remove: boolean): Promise<void> {
+async function updatePending(
+  store: SourceObjectStore,
+  entries: PendingEntry | PendingEntry[],
+  remove: boolean
+): Promise<void> {
   for (;;) {
     const saved = await store.read(pendingPath)
-    const pending = saved ? Pending.parse(decodeObject(saved.body)) : []
-    const previous = pending.find((r) => r.operation_id === entry.operation_id)
-    if (
-      previous &&
-      (previous.kind !== entry.kind ||
-        previous.object_path !== entry.object_path ||
-        ('sha256' in previous && 'sha256' in entry && previous.sha256 !== entry.sha256) ||
-        (previous.backfill_source_id !== undefined &&
-          entry.backfill_source_id !== undefined &&
-          previous.backfill_source_id !== entry.backfill_source_id))
-    )
-      throw new Error('Conflicting pending source result')
-    // A retry of an operation's reservation cannot replace its finalized hash or renew the reporting clock.
-    if (previous && !remove && 'reserved_until' in entry) return
-    if (!remove && !previous && pending.length >= MAX_PENDING_RESULTS)
+    let next = saved ? Pending.parse(decodeObject(saved.body)) : []
+    let changed = false
+    for (const entry of Array.isArray(entries) ? entries : [entries]) {
+      const previous = next.find((r) => r.operation_id === entry.operation_id)
+      if (
+        previous &&
+        (previous.kind !== entry.kind ||
+          previous.object_path !== entry.object_path ||
+          ('sha256' in previous && 'sha256' in entry && previous.sha256 !== entry.sha256) ||
+          (previous.recovery &&
+            entry.recovery &&
+            JSON.stringify(previous.recovery) !== JSON.stringify(entry.recovery)) ||
+          (previous.backfill_source_id &&
+            entry.backfill_source_id &&
+            previous.backfill_source_id !== entry.backfill_source_id))
+      )
+        throw new Error('Conflicting pending source result')
+      if (previous && !remove && 'reserved_until' in entry) continue
+      changed = true
+      next = next.filter((r) => r.operation_id !== entry.operation_id)
+      if (!remove)
+        next.push({
+          ...entry,
+          ...(previous?.backfill_source_id ? { backfill_source_id: previous.backfill_source_id } : {}),
+          ...(previous?.recovery ? { recovery: previous.recovery } : {})
+        })
+    }
+    if (!changed) return
+    if (next.length > MAX_PENDING_RESULTS)
       throw new Error('Source result outbox is full; ingestion must drain before admission')
-    const next = pending.filter((r) => r.operation_id !== entry.operation_id)
-    if (!remove)
-      next.push({
-        ...entry,
-        ...(previous?.backfill_source_id ? { backfill_source_id: previous.backfill_source_id } : {})
-      })
     try {
       await store.write(pendingPath, encodeObject(next), saved?.generation ?? '0')
       return
@@ -137,6 +165,32 @@ async function updatePending(store: SourceObjectStore, entry: PendingEntry, remo
       if (!hasCode(error, 412)) throw error
     }
   }
+}
+/** Reserve the whole frozen series atomically: no partial capacity leak and no HTTP on rejection. */
+export function reserveGroupedSourceResults(
+  store: SourceObjectStore,
+  claim: GroupedBackfillClaim,
+  now: Date
+): Promise<void> {
+  return updatePending(
+    store,
+    claim.children.map((child, step) =>
+      ResultReservation.parse({
+        operation_id: child.operationId,
+        kind: claim.group.kind,
+        object_path: resultPath(claim.group.kind, child.operationId),
+        reserved_until: new Date(now.getTime() + SOURCE_RESERVATION_MS).toISOString(),
+        recovery: {
+          type: 'group',
+          key: claim.group.key,
+          anchor: claim.group.anchor,
+          sourceIds: claim.group.sourceIds,
+          step
+        }
+      })
+    ),
+    false
+  )
 }
 /** Generation CAS claims one bounded slot for this operation before any provider HTTP is admitted. */
 export function reserveSourceResult(
@@ -153,7 +207,9 @@ export function reserveSourceResult(
       kind,
       object_path: resultPath(kind, operationId),
       reserved_until: new Date(now.getTime() + SOURCE_RESERVATION_MS).toISOString(),
-      ...(backfillSourceId ? { backfill_source_id: backfillSourceId } : {})
+      ...(backfillSourceId
+        ? { backfill_source_id: backfillSourceId, recovery: { type: 'source', sourceId: backfillSourceId } }
+        : {})
     }),
     false
   )
@@ -166,6 +222,12 @@ export async function repairSourceResults(ports: {
   store: SourceObjectStore
   publish: (data: ResultReference) => Promise<void>
   now?: () => Date
+  recoverGroup?(
+    recovery: GroupRecovery,
+    operationId: string,
+    kind: SourceExecutionResult['kind'],
+    now: Date
+  ): Promise<SourceExecutionResult | null>
   recoverBackfill?(
     sourceId: string,
     operationId: string,
@@ -178,14 +240,25 @@ export async function repairSourceResults(ports: {
   for (const entry of saved ? Pending.parse(decodeObject(saved.body)) : []) {
     try {
       const recover = async () => {
-        if (!entry.backfill_source_id) return false
-        if (!ports.recoverBackfill) throw new Error('Backfill recovery is not configured')
-        const result = await ports.recoverBackfill(
-          entry.backfill_source_id,
-          entry.operation_id,
-          entry.kind,
-          ports.now?.() ?? new Date()
-        )
+        const recovery =
+          entry.recovery ??
+          (entry.backfill_source_id ? { type: 'source' as const, sourceId: entry.backfill_source_id } : undefined)
+        if (!recovery) return false
+        let result: SourceExecutionResult | null
+        if (recovery.type === 'group') {
+          if (!ports.recoverGroup) throw new Error('Grouped backfill recovery is not configured')
+          result = await ports.recoverGroup(recovery, entry.operation_id, entry.kind, ports.now?.() ?? new Date())
+        } else {
+          if (entry.backfill_source_id && entry.backfill_source_id !== recovery.sourceId)
+            throw new Error('Invalid source recovery identity')
+          if (!ports.recoverBackfill) throw new Error('Backfill recovery is not configured')
+          result = await ports.recoverBackfill(
+            recovery.sourceId,
+            entry.operation_id,
+            entry.kind,
+            ports.now?.() ?? new Date()
+          )
+        }
         if (!result) return false
         await publishSourceResult(result, ports)
         return true
@@ -193,7 +266,7 @@ export async function repairSourceResults(ports: {
       if ('reserved_until' in entry) {
         if (await recover()) continue
         // Normal slot execution may save immutable delivery bytes before starting publication.
-        if (!entry.backfill_source_id) {
+        if (!entry.backfill_source_id && !entry.recovery) {
           if (entry.object_path !== resultPath(entry.kind, entry.operation_id))
             throw new Error('Invalid reserved result path')
           const saved = await ports.store.read(entry.object_path)
@@ -210,7 +283,7 @@ export async function repairSourceResults(ports: {
         throw new Error(`Source reservation expired before durable result: ${entry.operation_id}`)
       }
       // Recovery metadata stays private; Pub/Sub still receives exactly its four-field reference.
-      const { backfill_source_id: _, ...reference } = entry
+      const { backfill_source_id: _, recovery: _recovery, ...reference } = entry
       const ref = ResultReference.parse(reference)
       const receipt = await ports.store.read(`control/receipts/${ref.operation_id}.json`)
       if (receipt) {

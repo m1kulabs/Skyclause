@@ -14,6 +14,7 @@ import { log, type EventConsumer, type WorkerPart } from '../server'
 import { createSourceJobs } from './jobs'
 import { drainSourceResults, ingestSourceResult, sourceIngestionDatabase, parseSourceResult } from './ingest'
 import { sourceClock } from './http'
+import { recoverSavedGroupedBackfill } from './grouped-backfill'
 import { recoverSavedBackfill } from './backfill'
 import { sourceSnapshot, SourceSchema, type PlannedSource, type SourcePlan } from './plan'
 import { publishSourceResult, sourceSubscription, repairSourceResults } from './pubsub'
@@ -50,6 +51,8 @@ function live() {
     repairSourceResults({
       store,
       publish: resultPublisher,
+      recoverGroup: (recovery, operationId, kind, now) =>
+        recoverSavedGroupedBackfill({ store, recovery, operationId, kind, now, validate: parseSourceResult }),
       recoverBackfill: (sourceId, operationId, kind, now) =>
         recoverSavedBackfill({ store, sourceId, operationId, kind, now, validate: parseSourceResult })
     })
@@ -101,7 +104,7 @@ export function sourceBoundConsumer(runtime: typeof live = live): EventConsumer 
           )
           if (!bound) continue
           const adapter = ports.jobs.adapterFor(kind)
-          if (!adapter?.backfill) return
+          if (!adapter?.backfill && !adapter?.groupedBackfill) return
           const entry: PlannedSource = {
             source: SourceSchema.parse({
               id: bound.id,

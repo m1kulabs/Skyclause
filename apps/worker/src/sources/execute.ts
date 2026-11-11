@@ -1,4 +1,11 @@
-import { SchemaError, SOURCE_METRICS, type ReadingInput, type Source, type SourceAdapter } from '@skyclause/sources'
+import {
+  SchemaError,
+  SOURCE_METRICS,
+  type ReadingInput,
+  type Source,
+  type SourceAdapter,
+  type SourceFetchStep
+} from '@skyclause/sources'
 import { z } from 'zod'
 import { sourceError } from './http'
 import type { CapturedPollContext, SourceClock, SourceError, SourceExecutionResult, SourcePurpose } from './types'
@@ -168,4 +175,45 @@ export async function executeAdapter<Raw>(
   }
   // Adapter-held buffers and response readers cannot mutate the published/durable snapshot later.
   return structuredClone(result)
+}
+
+/** A grouped child owns exactly one physical request and its own parsed readings. */
+export async function executeSourceStep<Raw>(
+  adapter: SourceAdapter<Raw>,
+  sources: Source[],
+  step: SourceFetchStep<Raw>,
+  factory: SourceContextFactory,
+  options: ExecuteOptions
+): Promise<SourceExecutionResult> {
+  if (!sources.length) throw new SchemaError('A source step requires frozen membership')
+  return executeAdapter(
+    {
+      ...adapter,
+      batch: 'all_bound',
+      backfill: (_source, ctx) => step.fetch(ctx),
+      fetch: (_sources, ctx) => step.fetch(ctx)
+    },
+    sources,
+    (group, opts) => {
+      const capture = factory(group, opts)
+      let calls = 0
+      const http = capture.ctx.http
+      return {
+        ...capture,
+        ctx: {
+          ...capture.ctx,
+          http: (...args) => {
+            if (++calls !== 1) throw new SchemaError('A source step requires exactly one physical request')
+            return http(...args)
+          }
+        },
+        closeAndDrain: async () => {
+          await capture.closeAndDrain()
+          if (calls !== 1 || capture.requests.length !== 1)
+            throw new SchemaError('A source step requires exactly one physical request')
+        }
+      }
+    },
+    options
+  )
 }
