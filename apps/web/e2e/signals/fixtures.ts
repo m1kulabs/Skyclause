@@ -1,8 +1,8 @@
 import type { Page } from '@playwright/test'
 import type { Principal, Role } from '@skyclause/contracts'
-import apimsCapture from '../../../../docs/sources/eqms.doe.gov.my/mapcaqm-20261105T1313Z.json' with { type: 'json' }
-import rainCapture from '../../../../docs/sources/infobanjirjpskl.water.gov.my/rainfall-graph-75-20261105T1312Z.json' with { type: 'json' }
-import warningCapture from '../../../../docs/sources/api.data.gov.my/weather-warning-20261105T1313Z.json' with { type: 'json' }
+import apimsCapture from '../../../../packages/db/test/fixtures/mapcaqm-20261105T1313Z.json' with { type: 'json' }
+import rainCapture from '../../../../packages/db/test/fixtures/rainfall-graph-75-20261105T1312Z.json' with { type: 'json' }
+import warningCapture from '../../../../packages/db/test/fixtures/weather-warning-20261105T1313Z.json' with { type: 'json' }
 import { signalsOperations as registry, type ProjectSource } from '../../features/signals/operations'
 import { asPage, stubApi } from '../harness'
 
