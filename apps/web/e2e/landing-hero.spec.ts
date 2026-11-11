@@ -181,7 +181,8 @@ test('one crimson element and no navigation at 1440 and 375', async ({ page }) =
   await page.goto('/')
   await hero(page).getByRole('slider').press('ArrowRight')
   await expect(hero(page).getByText('Clause engine verdict: not reviewed, not sent')).toBeVisible()
-  expect(await page.locator('nav, header nav').count()).toBe(0)
+  // The sections' footer (#185) carries the page's only nav; nothing navigates above it.
+  expect(await page.locator('nav:not([aria-label="Footer"])').count()).toBe(0)
   const crimson = await page.evaluate(
     () =>
       [...document.querySelectorAll('rect, line, path, circle')].filter((el) => el.getAttribute('stroke') === '#f0566c')
