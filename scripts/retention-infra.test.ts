@@ -11,6 +11,8 @@ test('the retention job mounts EMAIL_HASH_KEY from Secret Manager, on its own, t
     .split('\n}\n')[0]!
   expect(job).toContain('EMAIL_HASH_KEY = "EMAIL_HASH_KEY"')
   expect(job).toContain('google_secret_manager_secret_iam_member.retention_hash_key')
+  // The schedule runs: #110's erasure has merged, so the nightly sweep is no longer held back.
+  expect(job).toMatch(/\n\s+paused\s+= false\n/)
   expect(grant).toContain('google_secret_manager_secret.this["EMAIL_HASH_KEY"].secret_id')
   expect(grant).toContain('roles/secretmanager.secretAccessor')
   expect(grant).toMatch(/member\s+= local\.member\.jobs/)
