@@ -29,10 +29,8 @@ async function scene() {
 test('cold API and worker composition is credential-free and makes no network connections', () => {
   const worker = new URL('../../../apps/worker/src/registry.ts', import.meta.url).pathname
   const result = spawnSync(
-    'rtk',
+    'bun',
     [
-      'proxy',
-      'bun',
       '--eval',
       `const net=await import('node:net');net.Socket.prototype.connect=()=>{throw new Error('network at import')};globalThis.fetch=()=>{throw new Error('fetch at import')};await import('@skyclause/api/evaluator');await import('@skyclause/api');await import(${JSON.stringify(worker)});`
     ],
