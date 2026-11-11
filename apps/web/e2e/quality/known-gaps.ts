@@ -18,6 +18,8 @@ export interface KnownGap {
 
 const MEMBERS: Role[] = ['Owner', 'Admin', 'Approver', 'Editor', 'Viewer', 'guest']
 const ADMINS: Role[] = ['Owner', 'Admin']
+const NON_MEMBERS: Role[] = ['share-link reviewer', 'signed out']
+const SHOWN = /^answered 200 with the page, expected 404$/
 
 export const KNOWN_GAPS: KnownGap[] = [
   {
@@ -27,6 +29,14 @@ export const KNOWN_GAPS: KnownGap[] = [
     issue: 596,
     why: 'the empty state has no h1',
     roles: MEMBERS
+  },
+  {
+    route: '/[org]/analysis',
+    check: 'status',
+    detail: SHOWN,
+    issue: 596,
+    why: 'the organisation roll-up renders for non-members instead of 404',
+    roles: NON_MEMBERS
   },
   {
     route: '/[org]/analysis',
@@ -96,6 +106,137 @@ export const KNOWN_GAPS: KnownGap[] = [
     issue: 596,
     why: 'the slug field has no autocomplete',
     roles: ADMINS
+  },
+  {
+    route: '/[org]/[project]/analysis',
+    check: 'status',
+    detail: SHOWN,
+    issue: 596,
+    why: 'the project analysis renders for non-members instead of 404',
+    roles: NON_MEMBERS
+  },
+  {
+    route: '/[org]/[project]/analysis',
+    check: 'form-fields',
+    detail:
+      /^(?:select "(?:Choose a clause sheet|Choose a version or draft|Published version(?:Draft)?|Each recorded reading.*)"|input#base-ui-_r_\w+_) has no (?:name|autocomplete)$/,
+    issue: 596,
+    why: 'the replay’s selects and dates have no name or autocomplete',
+    roles: MEMBERS
+  },
+  {
+    route: '/[org]/[project]/analysis',
+    check: 'focus-visible',
+    detail: /^input shows no :focus-visible ring$/,
+    issue: 596,
+    why: 'the replay’s dates have no ring',
+    roles: MEMBERS,
+    // Firefox draws its own ring on a focused date field.
+    projects: ['chromium', 'webkit', 'iphone']
+  },
+  {
+    route: '/[org]/[project]/analysis',
+    check: 'target-size',
+    detail:
+      /^select "(?:Choose a clause sheet|Choose a version or draft|Published version(?:Draft)?|Each recorded reading.*)" is \d+×21 px$/,
+    issue: 596,
+    why: 'WebKit draws the replay’s selects 21 px tall',
+    roles: MEMBERS,
+    projects: ['webkit', 'iphone']
+  },
+  {
+    route: '/[org]/[project]/bundles/[id]',
+    check: 'status',
+    detail: SHOWN,
+    issue: 596,
+    why: 'the bundle page renders for non-members instead of 404',
+    roles: NON_MEMBERS
+  },
+  {
+    route: '/[org]/[project]/bundles/[id]',
+    check: 'target-size',
+    detail: /^(?:a "Open project"|button "Read inputs · \d+ ms") is \d+×\d+ px$/,
+    issue: 596,
+    why: 'the project link and the trace’s step buttons are under 24 px tall',
+    roles: MEMBERS
+  },
+  {
+    route: '/[org]/[project]/camera/[sourceId]',
+    check: 'focus-visible',
+    detail: /^input shows no :focus-visible ring$/,
+    issue: 596,
+    why: 'the day start and end times show no ring on their last segment',
+    projects: ['chromium', 'webkit', 'iphone']
+  },
+  {
+    route: '/[org]/[project]/ledger',
+    check: 'status',
+    detail: SHOWN,
+    issue: 596,
+    why: 'the ledger renders for non-members instead of 404',
+    roles: NON_MEMBERS
+  },
+  {
+    route: '/[org]/[project]/ledger',
+    check: 'form-fields',
+    detail: /^select#ledger-(pack|mode|state)\[name="\1"\] ".*" has no autocomplete$/,
+    issue: 596,
+    why: 'the pack, mode and state filters have no autocomplete',
+    roles: MEMBERS
+  },
+  {
+    route: '/[org]/[project]/ledger',
+    check: 'focus-visible',
+    detail: /^input shows no :focus-visible ring$/,
+    issue: 596,
+    why: 'the date filters have no ring',
+    roles: MEMBERS,
+    projects: ['chromium', 'webkit', 'iphone']
+  },
+  {
+    route: '/[org]/[project]/ledger',
+    check: 'target-size',
+    detail: /^select#ledger-(pack|mode|state)\[name="\1"\] ".*" is \d+×20 px$/,
+    issue: 596,
+    why: 'WebKit draws the pack, mode and state filters 20 px tall',
+    roles: MEMBERS,
+    projects: ['webkit', 'iphone']
+  },
+  {
+    route: '/[org]/[project]/subscribers',
+    check: 'status',
+    detail: /^answered \d+ with "Page not found", expected the page$/,
+    issue: 596,
+    why: 'the page gate compares the URL’s organisation with a real session’s orgId, which is always null',
+    roles: ['Owner', 'Admin', 'Approver']
+  },
+  ...['', '/confirm', '/feedback', '/reply', '/unsubscribe'].map((page) => ({
+    route: `/subscribe/[token]${page}`,
+    check: 'target-size',
+    detail: /^a "Access, export or erase your data" is \d+×20 px$/,
+    issue: 596,
+    why: 'the footer’s data link is 20 px tall'
+  })),
+  {
+    route: '/subscribe/[token]/data',
+    check: 'form-fields',
+    detail: /^input has no (?:name|autocomplete)$/,
+    issue: 596,
+    why: 'the correction form’s email and role fields have no name, and role no autocomplete'
+  },
+  {
+    route: '/subscribe/[token]/data',
+    check: 'spellcheck',
+    detail: /^input needs spellcheck="false"$/,
+    issue: 596,
+    why: 'the correction form’s email field leaves spellcheck on'
+  },
+  {
+    route: '/subscribe/[token]/data',
+    check: 'reflow',
+    detail: /^the page is \d+ px wide in a 320 px viewport$/,
+    issue: 596,
+    why: 'the page scrolls sideways at 320 px'
   }
 ]
 

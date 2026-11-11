@@ -70,3 +70,63 @@ const reported = [
 test.each(reported)('the %s gap in %s covers its reported %s finding', (route, project, check, detail) => {
   expect(sortFindings([{ check, detail }], { route, role: 'Owner', project }).open).toEqual([])
 })
+
+// Copied from the Chromium crawl, 11 November 2026, with the role that saw each.
+const reportedTo = [
+  ['/[org]/analysis', 'signed out', 'status', 'answered 200 with the page, expected 404'],
+  ['/[org]/[project]/analysis', 'share-link reviewer', 'status', 'answered 200 with the page, expected 404'],
+  ['/[org]/[project]/analysis', 'Viewer', 'form-fields', 'select "Choose a clause sheet" has no name'],
+  ['/[org]/[project]/analysis', 'Owner', 'form-fields', 'select "Published versionDraft" has no autocomplete'],
+  [
+    '/[org]/[project]/analysis',
+    'Owner',
+    'form-fields',
+    'select "Each recorded readingEvery 5 minutesEver" has no name'
+  ],
+  ['/[org]/[project]/analysis', 'guest', 'form-fields', 'input#base-ui-_r_h_ has no autocomplete'],
+  ['/[org]/[project]/analysis', 'Editor', 'focus-visible', 'input shows no :focus-visible ring'],
+  ['/[org]/[project]/bundles/[id]', 'Approver', 'target-size', 'a "Open project" is 89×16 px'],
+  ['/[org]/[project]/bundles/[id]', 'Approver', 'target-size', 'button "Read inputs · 12 ms" is 144×20 px'],
+  ['/[org]/[project]/camera/[sourceId]', 'signed out', 'focus-visible', 'input shows no :focus-visible ring'],
+  [
+    '/[org]/[project]/ledger',
+    'Admin',
+    'form-fields',
+    'select#ledger-mode[name="mode"] "AllNormalOutdoor limitedCommute disrupti" has no autocomplete'
+  ],
+  ['/[org]/[project]/subscribers', 'Approver', 'status', 'answered 200 with "Page not found", expected the page'],
+  ['/subscribe/[token]/reply', 'guest', 'target-size', 'a "Access, export or erase your data" is 295×20 px'],
+  ['/subscribe/[token]/data', 'share-link reviewer', 'reflow', 'the page is 360 px wide in a 320 px viewport']
+] as const
+
+// The same pages in the other engines (`QUALITY_BROWSERS=all`), 11 November 2026.
+const reportedIn = [
+  ['/[org]/[project]/analysis', 'webkit', 'target-size', 'select "Choose a clause sheet" is 435×21 px'],
+  [
+    '/[org]/[project]/analysis',
+    'iphone',
+    'target-size',
+    'select "Each recorded readingEvery 5 minutesEver" is 295×21 px'
+  ],
+  ['/[org]/[project]/ledger', 'webkit', 'target-size', 'select#ledger-pack[name="pack"] "AllSkyCrowd" is 189×20 px'],
+  ['/[org]/[project]/bundles/[id]', 'firefox', 'target-size', 'a "Open project" is 89×18 px']
+] as const
+
+test.each(reportedIn)('the %s gap in %s covers its reported %s finding', (route, project, check, detail) => {
+  expect(sortFindings([{ check, detail }], { route, role: 'Editor', project }).open).toEqual([])
+})
+
+test('a ring gap leaves out Firefox, which rings a focused date or time field itself', () => {
+  const where = { route: '/[org]/[project]/ledger', role: 'Owner' as const, project: 'firefox' }
+  expect(sortFindings([], where).stale.map((gap) => gap.check)).not.toContain('focus-visible')
+})
+
+test.each(reportedTo)('the %s gap for %s covers its reported %s finding', (route, role, check, detail) => {
+  expect(sortFindings([{ check, detail }], { route, role, project: 'chromium' }).open).toEqual([])
+})
+
+test('a gap for a page that renders instead of 404 never covers a member, who should see it', () => {
+  const shown = { check: 'status', detail: 'answered 200 with the page, expected 404' }
+  const where = { route: '/[org]/analysis', role: 'Viewer' as const, project: 'chromium' }
+  expect(sortFindings([shown], where).open).toEqual([shown])
+})
