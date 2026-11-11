@@ -18,6 +18,8 @@ export interface KnownGap {
 
 const MEMBERS: Role[] = ['Owner', 'Admin', 'Approver', 'Editor', 'Viewer', 'guest']
 const ADMINS: Role[] = ['Owner', 'Admin']
+const NON_MEMBERS: Role[] = ['share-link reviewer', 'signed out']
+const SHOWN = /^answered 200 with the page, expected 404$/
 
 export const KNOWN_GAPS: KnownGap[] = [
   {
@@ -27,6 +29,14 @@ export const KNOWN_GAPS: KnownGap[] = [
     issue: 596,
     why: 'the empty state has no h1',
     roles: MEMBERS
+  },
+  {
+    route: '/[org]/analysis',
+    check: 'status',
+    detail: SHOWN,
+    issue: 596,
+    why: 'the organisation roll-up renders for non-members instead of 404',
+    roles: NON_MEMBERS
   },
   {
     route: '/[org]/analysis',

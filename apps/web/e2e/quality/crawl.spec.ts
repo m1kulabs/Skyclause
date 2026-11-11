@@ -272,11 +272,6 @@ for (const discovered of builtRoutes()) {
         route.dynamic && !route.params && !PROJECT_UI_ROUTES.has(route.path) && route.path !== '/[org]',
         `${route.path} needs param fixtures with stubApi bodies (#95)`
       )
-      // Expected to fail until the page 404s for non-members; then it passes, which fails, so this line goes.
-      test.fail(
-        route.path === '/[org]/analysis' && (session.role === 'share-link reviewer' || session.role === 'signed out'),
-        'the organisation roll-up renders for non-members instead of 404 (#596)'
-      )
       const dashboard = route.path === '/[org]'
       const visitRoute = dashboard ? { ...route, path: '/test-org', dynamic: false } : route
       const dashboardRoles: Record<Role, 'owner' | 'admin' | 'approver' | 'editor' | 'viewer' | 'guest' | null> = {

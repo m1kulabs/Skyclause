@@ -22,7 +22,7 @@ export function expectedStatus(route: CrawlRoute, role: Role) {
     if (/^\/[^/]+\/settings\//.test(route.path)) {
       return isOwnerOrAdmin || (role === 'Approver' && route.path.endsWith('/rota')) ? route.status : 404
     }
-    // The organisation layout 404s without a membership in the URL's organisation.
+    // PRD routes: an organisation's pages are its members'. Its layout only checks that it exists (#596).
     if (!hasSession(role)) return 404
   }
   if (route.path.startsWith('/[org]/[project]/settings') && role !== 'Owner' && role !== 'Admin') return 404
@@ -86,9 +86,15 @@ export async function visit(
   const status = response?.status() === 304 ? 200 : response?.status()
   const notFound = page.getByRole('heading', { level: 1, name: /^Page not found~*$/ })
   if (expected === 404) {
-    // A streamed notFound may have already sent HTTP 200. Require the real gate in either case.
-    await expect(notFound).toBeVisible()
-    await expect(page.locator('[data-settings-frame]')).toHaveCount(0)
+    // A streamed notFound may have already sent HTTP 200. Require the real gate in either case. A page that renders
+    // instead is a finding, so a known gap can name it and the crawl still inspects what the role was shown.
+    const denied = await notFound.waitFor({ timeout: 5_000 }).then(
+      () => true,
+      () => false
+    )
+    if (!denied || (await page.locator('[data-settings-frame]').count()) > 0) {
+      return [{ check: 'status', detail: `answered ${status} with the page, expected 404` }]
+    }
     if (status === 200 || status === 404) return []
   }
   // The same streaming lets a wrongly denied role reach a "Page not found" that answered 200.

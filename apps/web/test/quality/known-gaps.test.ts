@@ -70,3 +70,16 @@ const reported = [
 test.each(reported)('the %s gap in %s covers its reported %s finding', (route, project, check, detail) => {
   expect(sortFindings([{ check, detail }], { route, role: 'Owner', project }).open).toEqual([])
 })
+
+// Copied from the Chromium crawl, 11 November 2026, with the role that saw each.
+const reportedTo = [['/[org]/analysis', 'signed out', 'status', 'answered 200 with the page, expected 404']] as const
+
+test.each(reportedTo)('the %s gap for %s covers its reported %s finding', (route, role, check, detail) => {
+  expect(sortFindings([{ check, detail }], { route, role, project: 'chromium' }).open).toEqual([])
+})
+
+test('a gap for a page that renders instead of 404 never covers a member, who should see it', () => {
+  const shown = { check: 'status', detail: 'answered 200 with the page, expected 404' }
+  const where = { route: '/[org]/analysis', role: 'Viewer' as const, project: 'chromium' }
+  expect(sortFindings([shown], where).open).toEqual([shown])
+})
