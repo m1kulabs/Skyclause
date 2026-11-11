@@ -23,6 +23,12 @@ export function asLogin<T>(login: LocalLogin, fn: (client: pg.Client) => Promise
   return withLocal(login, database, fn)
 }
 
+/** The database clock, for cutoffs compared with database-generated timestamps. */
+export async function databaseNow(): Promise<Date> {
+  const { rows } = await asLogin('postgres', (client) => client.query<{ now: Date }>('SELECT clock_timestamp() AS now'))
+  return rows[0]!.now
+}
+
 /** A copy of the repo's migrations with one more appended through the journal, as `drizzle-kit generate` would. */
 export function migrationsWith(tag: string, sql: string) {
   const folder = mkdtempSync(join(tmpdir(), 'skyclause-migrations-'))
