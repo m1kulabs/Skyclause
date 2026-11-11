@@ -31,7 +31,7 @@ export interface InboundOptions {
 // The `email.received` fields read. Mail is routed on `to`, where Resend names the address at the receiving domain it
 // was delivered for, as its docs advise; `received_for` holds the addresses it was forwarded for, taken from the
 // message's own `Received` headers.
-interface Received {
+interface ReceivedEvent {
   email_id?: unknown
   created_at?: unknown
   to?: unknown
@@ -40,7 +40,7 @@ interface Received {
 // The fields read from `GET /emails/receiving/{id}`
 // (https://resend.com/docs/api-reference/emails/retrieve-received-email.md): `from` is the bare address, `text` is null
 // for an HTML-only message and `authentication` null for older mail.
-interface Email {
+interface ReceivedEmail {
   from?: string
   subject?: string | null
   text?: string | null
@@ -70,7 +70,7 @@ const UNRETRIEVABLE: Record<number, string> = { 404: 'not_found', 403: 'email_ab
  * The received email, or null when Resend can't ever return it. Throws on any other failure, so the webhook answers
  * 500 and Resend retries.
  */
-async function retrieve(options: InboundOptions, messageId: string): Promise<Email | null> {
+async function retrieve(options: InboundOptions, messageId: string): Promise<ReceivedEmail | null> {
   const response = await (options.fetch ?? fetch)(
     // Images stay `cid:` references rather than inlined base64: only the text is read.
     `https://api.resend.com/emails/receiving/${encodeURIComponent(messageId)}?html_format=cid`,
@@ -78,7 +78,7 @@ async function retrieve(options: InboundOptions, messageId: string): Promise<Ema
     { headers: { Authorization: `Bearer ${options.apiKey}`, 'User-Agent': 'skyclause' } }
   )
   // The email on success, `{statusCode, message, name}` on an error.
-  const answer = (await response.json().catch(() => ({}))) as Email & { name?: unknown }
+  const answer = (await response.json().catch(() => ({}))) as ReceivedEmail & { name?: unknown }
   if (response.ok) return answer
   const name = typeof answer.name === 'string' ? answer.name : 'unknown'
   if (UNRETRIEVABLE[response.status] !== name) {
@@ -164,7 +164,7 @@ export function createInboundRouter() {
    */
   function handler(options: InboundOptions) {
     return async (event: ResendWebhook): Promise<Response> => {
-      const { email_id: messageId, created_at: receivedAt, to } = (event.data ?? {}) as Received
+      const { email_id: messageId, created_at: receivedAt, to } = (event.data ?? {}) as ReceivedEvent
       if (
         typeof messageId !== 'string' ||
         typeof receivedAt !== 'string' ||
