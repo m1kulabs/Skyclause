@@ -12,6 +12,7 @@ import { z } from 'zod'
 import { onEvent } from '../events'
 import { log, type EventConsumer, type WorkerPart } from '../server'
 import { createSourceJobs } from './jobs'
+import { configureMetDiscovery } from './met'
 import { drainSourceResults, ingestSourceResult, sourceIngestionDatabase, parseSourceResult } from './ingest'
 import { sourceClock } from './http'
 import { recoverSavedBackfill } from './backfill'
@@ -46,6 +47,17 @@ function live() {
     store = gcsObjectStore(config.bucket),
     scratch = gcsObjectStore(config.scratch)
   const resultPublisher = pubsubPublisher(config.project, 'poll-results')
+  const sourceLog = (message: string, fields?: Record<string, unknown>) =>
+    log(message === 'source.contract.failed' ? 'ERROR' : 'INFO', message, fields)
+  const configuredAdapters = configureMetDiscovery(adapters, {
+    store,
+    scratch,
+    clock: sourceClock,
+    id,
+    http: fetch,
+    userAgent: config.userAgent,
+    log: sourceLog
+  })
   const repair = () =>
     repairSourceResults({
       store,
@@ -59,7 +71,7 @@ function live() {
     scratch,
     clock: sourceClock,
     id,
-    adapters,
+    adapters: configuredAdapters,
     http: fetch,
     userAgent: config.userAgent,
     publish: (result) => publishSourceResult(result, { store, publish: resultPublisher }),
@@ -68,7 +80,7 @@ function live() {
       catalogue: (adapter, entries) =>
         withSystem('sources:catalogue', (tx) => upsertSourceCatalogue(tx, adapter, entries))
     },
-    log: (message, fields) => log(message === 'source.contract.failed' ? 'ERROR' : 'INFO', message, fields)
+    log: sourceLog
   })
   return {
     jobs,
@@ -78,7 +90,7 @@ function live() {
     ingest: (data: unknown) =>
       ingestSourceResult(data, {
         store,
-        ...sourceIngestionDatabase(adapters),
+        ...sourceIngestionDatabase(configuredAdapters),
         publish: pubsubPublisher(config.project, 'readings-updated')
       })
   }
