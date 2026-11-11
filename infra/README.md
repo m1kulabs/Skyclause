@@ -77,6 +77,7 @@ Set these in a pull request, in `environments/production/terraform.tfvars`, whic
   ```
 
 - `oncall_contacts_ready`: set to `true` once `infra/wizards/oncall-contacts.sh` has stored `ONCALL_CONTACTS`.
+- `infra/wizards/production-pilot.sh`: walks through the human-only production setup and live verification steps (#194, #531, #534, #536, #539, #113, #629, #118, #622), checks each step's precondition live before prompting, skips unbuilt routes naming their blocking ticket, and captures redacted evidence into `infra/wizards/production-pilot.evidence.md`.
 
 ## Pilot archive
 
