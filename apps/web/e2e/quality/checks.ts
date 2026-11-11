@@ -118,7 +118,10 @@ function domFindings(reflow: boolean): Finding[] {
     // The right type for what an editable field holds: its autocomplete token says, else a word of its name or id.
     if (el instanceof HTMLInputElement && typed.has(type) && !el.readOnly) {
       const tokens = (el.getAttribute('autocomplete') ?? '').toLowerCase().split(/\s+/)
-      const words = `${el.getAttribute('name') ?? ''} ${el.id}`.toLowerCase().split(/[^a-z]+/)
+      const words = `${el.getAttribute('name') ?? ''} ${el.id}`
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .toLowerCase()
+        .split(/[^a-z]+/)
       const holding = holdings.find(
         ({ token, word }) => tokens.some((t) => token.test(t)) || words.some((w) => word.test(w))
       )

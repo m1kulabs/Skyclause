@@ -131,6 +131,7 @@ test('a field whose type doesn’t fit what it holds fails input-type', async ({
   const html = planted(
     `<h1>T</h1>${field('name="contact" autocomplete="email"')}${field('name="email" autocomplete="off"')}
      ${field('name="site" autocomplete="url"')}${field('name="phone" autocomplete="off"')}
+     ${field('name="webhookUrl" autocomplete="off"')}
      ${field('type="email" name="email" autocomplete="email"')}${field('type="tel" name="mobile" autocomplete="tel-national"')}`
   )
   const types = (await findingsOn(page, html)).filter((finding) => finding.check === 'input-type')
@@ -138,7 +139,8 @@ test('a field whose type doesn’t fit what it holds fails input-type', async ({
     'input[name="contact"] holds an email address but is type="text"; use type="email"',
     'input[name="email"] holds an email address but is type="text"; use type="email"',
     'input[name="site"] holds a URL but is type="text"; use type="url"',
-    'input[name="phone"] holds a phone number but is type="text"; use type="tel"'
+    'input[name="phone"] holds a phone number but is type="text"; use type="tel"',
+    'input[name="webhookUrl"] holds a URL but is type="text"; use type="url"'
   ])
 })
 
@@ -146,13 +148,14 @@ test('a code in a number field fails input-type, and a quantity there passes', a
   const field = (attrs: string) => `<label>F <input type="number" ${attrs} spellcheck="false"></label>`
   const html = planted(
     `<h1>T</h1>${field('name="postcode" autocomplete="postal-code"')}${field('name="otp" autocomplete="one-time-code"')}
-     ${field('name="pin" autocomplete="off"')}${field('name="count" autocomplete="off"')}`
+     ${field('name="pin" autocomplete="off"')}${field('name="postalCode" autocomplete="off"')}${field('name="count" autocomplete="off"')}`
   )
   const types = (await findingsOn(page, html)).filter((finding) => finding.check === 'input-type')
   expect(types.map((finding) => finding.detail)).toEqual([
     'input[name="postcode"] holds a code but is type="number"; use type="text" with inputmode="numeric"',
     'input[name="otp"] holds a code but is type="number"; use type="text" with inputmode="numeric"',
-    'input[name="pin"] holds a code but is type="number"; use type="text" with inputmode="numeric"'
+    'input[name="pin"] holds a code but is type="number"; use type="text" with inputmode="numeric"',
+    'input[name="postalCode"] holds a code but is type="number"; use type="text" with inputmode="numeric"'
   ])
 })
 
