@@ -6,3 +6,5 @@ export { loadEvaluatorRegistry } from './registry'
 export * from './transitions'
 
 export * from './deadlines'
+
+export * from './audit'

@@ -34,7 +34,7 @@ export function createEvaluatorPart(q: {
 }): WorkerPart {
   const run = <T>(target: SourceTarget, fn: Parameters<typeof withTenant<T>>[1]) =>
     withTenant({ orgId: target.orgId, principal: systemPrincipal('evaluator') }, fn)
-  async function evaluate(target: SourceTarget, body?: z.infer<typeof Body>) {
+  async function evaluate(target: SourceTarget, body?: z.infer<typeof Body>, measurementPollId?: string) {
     const result = await run(target, async (tx) => {
       await lockEvaluatorProject(tx, target.projectId)
       const now = q.clock()
@@ -48,7 +48,11 @@ export function createEvaluatorPart(q: {
         tEval: now.toISOString(),
         reason: body ? 'deadline' : 'delivery'
       })
-      const result = await evaluateProject(tx, { projectId: target.projectId, tEval: now.toISOString() }, q.providers)
+      const result = await evaluateProject(
+        tx,
+        { projectId: target.projectId, tEval: now.toISOString(), measurementPollId },
+        q.providers
+      )
       await replaceEvaluatorDeadline(tx, { projectId: target.projectId, dueAt: result.deadline })
       return result
     })
@@ -79,11 +83,16 @@ export function createEvaluatorPart(q: {
       types,
       handler: async (raw) => {
         let target: SourceTarget | null = null
+        let measurementPollId: string | undefined
         await onEvent(types, name, async (event, tx) => {
-          if (await request(event, tx)) target = { orgId: event.org_id, projectId: event.project_id }
+          if (await request(event, tx)) {
+            target = { orgId: event.org_id, projectId: event.project_id }
+            if (event.type === 'poll.recorded')
+              measurementPollId = PollRecordedEventSchema.shape.data.parse(event.data).poll_id
+          }
         }).handler(raw)
         // onEvent has committed and released its transaction before any source-global/transport work.
-        if (target) await evaluate(target)
+        if (target) await evaluate(target, undefined, measurementPollId)
       }
     }
   }
@@ -117,7 +126,7 @@ export function createEvaluatorPart(q: {
                 tEval: q.clock().toISOString()
               })
             )
-            if (claimed) await evaluate(target)
+            if (claimed) await evaluate(target, undefined, message.poll_id)
           }
         }
       }

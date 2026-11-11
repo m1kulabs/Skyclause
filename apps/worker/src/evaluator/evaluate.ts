@@ -5,6 +5,7 @@ import {
   semanticVerdictKey,
   type EvaluatorProviders
 } from '@skyclause/api'
+import { recordUsedReadingLatency } from './measurement'
 import type { ReadingHistory } from '@skyclause/clauses'
 import type { Instant, Pack, TxHandle } from '@skyclause/contracts'
 import {
@@ -31,7 +32,7 @@ export interface EvaluationCommit {
 /** No nested tenant transactions. Each pack atomically commits its original archive, verdicts and outbox events. */
 export async function evaluateProject(
   tx: TxHandle,
-  q: { projectId: string; tEval: Instant },
+  q: { projectId: string; tEval: Instant; measurementPollId?: string },
   providers: EvaluatorProviders
 ): Promise<EvaluationCommit> {
   const result: EvaluationCommit = {
@@ -97,6 +98,8 @@ export async function evaluateProject(
           for (const clause of verdict.clauses)
             for (const input of clause.inputs) for (const readingId of input.readingIds) readingIds.add(readingId)
         }
+        if (q.measurementPollId)
+          await recordUsedReadingLatency(child, { ...query, pollId: q.measurementPollId, readingIds: [...readingIds] })
         await completeEvaluatorReevaluation(child, query)
         const deadline = nextEvaluationAt({
           history,

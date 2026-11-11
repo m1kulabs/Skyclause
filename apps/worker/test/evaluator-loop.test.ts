@@ -671,3 +671,43 @@ test('batch bootstraps an existing shadow once even when no future deadline exis
   await database.shareSystemConnection(() => x.part.batch!['evaluator-repair']!(new Date(at)))
   expect(await x.run((tx) => tx.select().from(indicatorSnapshot))).toHaveLength(2)
 }, 15_000)
+
+test('real delivery records receipt latency once and due-time reuse records no historical sample', async () => {
+  const { metrics } = await import('@opentelemetry/api')
+  const { InMemoryMetricExporter, MeterProvider, PeriodicExportingMetricReader, AggregationTemporality } =
+    await import('@opentelemetry/sdk-metrics')
+  const exporter = new InMemoryMetricExporter(AggregationTemporality.CUMULATIVE)
+  const provider = new MeterProvider({ readers: [new PeriodicExportingMetricReader({ exporter })] })
+  metrics.setGlobalMeterProvider(provider)
+  try {
+    const x = await pollScene('ok')
+    x.clock('2026-11-10T04:00:15Z')
+    const message = {
+      data: { source_id: x.s.id, poll_id: x.p.id, kind: x.s.kind, new_rows: 1 },
+      messageId: 'metric-ingestion',
+      publishTime: at,
+      attributes: {}
+    }
+    await x.part.topics!['readings-updated']!(message)
+    await x.part.topics!['readings-updated']!(message)
+    const intent = await x.run((tx) => database.loadEvaluatorDeadline(tx, x.q.projectId))
+    expect(intent).not.toBeNull()
+    x.clock(intent!.dueAt)
+    await x.part.queues!['evaluator-deadlines']!({
+      body: { org: x.orgId, project: x.q.projectId, generation: intent!.generation, dueAt: intent!.dueAt },
+      name: null,
+      retryCount: 0
+    })
+    await provider.forceFlush()
+    const points = exporter
+      .getMetrics()
+      .flatMap((r) => r.scopeMetrics.flatMap((s) => s.metrics))
+      .filter((m) => m.descriptor.name === 'skyclause.reading_to_shadow_verdict')
+      .at(-1)
+      ?.dataPoints.map((p) => p.value)
+    expect(points).toMatchObject([{ count: 1, sum: 15, min: 15, max: 15 }])
+  } finally {
+    metrics.disable()
+    await provider.shutdown()
+  }
+})
