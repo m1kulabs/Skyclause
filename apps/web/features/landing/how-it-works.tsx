@@ -46,7 +46,7 @@ export function HowItWorks() {
       </p>
       <figure className="landing-inner landing-reveal-2">
         <img
-          src="https://commons.wikimedia.org/wiki/Special:FilePath/Rain%2C_Kuala_Lumpur_%28Unsplash%29.jpg?width=800"
+          src="/landing/rain-kuala-lumpur.jpg"
           alt="Rain over Kuala Lumpur"
           width={800}
           height={533}
