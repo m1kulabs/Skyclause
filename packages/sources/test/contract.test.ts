@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { ReadingsUpdated, SOURCE_METRICS } from '../src/contract'
 import * as sources from '../src'
 import type { PollContext, ReadingInput, Source, SourceAdapter } from '../src/contract'
+import { capture } from './met-support'
 
 test('each source kind declares exactly its documented metrics and units', () => {
   expect(
@@ -28,6 +29,22 @@ test('each source kind declares exactly its documented metrics and units', () =>
 })
 
 describe('value_json contracts', () => {
+  test('MET forecast requires the complete published row', () => {
+    const raw = capture(
+      'weather-forecast-kl-20261108T014413Z.json',
+      '1a4ec347805b28a3a5492513e922bd91fc177b3b8715c2efcab355d766487877'
+    )[0]!
+    const schema = SOURCE_METRICS.met_forecast.forecast_day.value_json
+    const value = { ...raw, gloss_en: {} }
+    expect(schema.safeParse(value).success).toBe(true)
+    for (const field of Object.keys(value)) {
+      const incomplete: Record<string, unknown> = { ...value }
+      delete incomplete[field]
+      expect(schema.safeParse(incomplete).success, field).toBe(false)
+    }
+    for (const value of [null, '23', Infinity, NaN, 23.5])
+      expect(schema.safeParse({ ...raw, gloss_en: {}, min_temp: value }).success).toBe(false)
+  })
   test('APIMS preserves published class and parameter text', () => {
     const schema = SOURCE_METRICS.apims.api.value_json
     expect(schema.parse({ class: 'Moderate', param: 'PM2.5' })).toEqual({ class: 'Moderate', param: 'PM2.5' })

@@ -13,5 +13,18 @@
     "capture_time_precision": "approximate collection time from recon manifest; exact HTTP capture time not recorded",
     "station_id": "all",
     "sha256": "2bbe128c892708226c4419a57ce401e57d4933d1feab3e99ed0f5a8254a82d8b"
+  },
+  {
+    "file": "weather-warning-20261105T1313Z.json",
+    "url": "https://api.data.gov.my/weather/warning/",
+    "captured_at": "2026-11-05T13:13:00Z",
+    "capture_time_precision": "minute precision recorded by source archive",
+    "sha256": "4217dfb611b09e1ad421fbe5c00277a4b170aa78089d6e3452d39193a2903415"
+  },
+  {
+    "file": "weather-forecast-kl-20261108T014413Z.json",
+    "url": "https://api.data.gov.my/weather/forecast/?contains=Kuala%20Lumpur@location__location_name",
+    "captured_at": "2026-11-08T01:44:13.158881Z",
+    "sha256": "1a4ec347805b28a3a5492513e922bd91fc177b3b8715c2efcab355d766487877"
   }
 ]

@@ -25,3 +25,7 @@ packages/agent/test/fixtures/mapcaqm-*.json
 packages/sources/test/fixtures/rainfall-graph-*.json
 packages/sources/test/fixtures/rainfall-latest-data-*.html
 docs/sources/infobanjirjpskl.water.gov.my/rainfall-latest-data-*.html
+
+# Preserve MET response captures byte-for-byte.
+packages/sources/test/fixtures/weather-warning-20261105T1313Z.json
+packages/sources/test/fixtures/weather-forecast-kl-20261108T014413Z.json
