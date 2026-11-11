@@ -45,13 +45,22 @@ resource "aws_iam_role" "email" {
 }
 
 data "aws_iam_policy_document" "email" {
+  # SES checks a raw message as ses:SendRawEmail, and in the sandbox (D48) checks each verified recipient's identity
+  # as well as the sender's (#623). So any identity in the account's region, with the From kept to notices.
+  # ses:SendEmail stays for the API's own action name: the code sends only raw messages.
   statement {
     sid     = "Send"
-    actions = ["ses:SendEmail"]
+    actions = ["ses:SendEmail", "ses:SendRawEmail"]
     resources = [
-      aws_sesv2_email_identity.notices.arn,
+      "arn:aws:ses:${local.region}:${local.account_id}:identity/*",
       aws_sesv2_configuration_set.this.arn,
     ]
+
+    condition {
+      test     = "StringLike"
+      variable = "ses:FromAddress"
+      values   = ["*@${local.sending_domain}"]
+    }
   }
 
   statement {

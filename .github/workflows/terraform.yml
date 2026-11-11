@@ -41,6 +41,8 @@ jobs:
             terraform -chdir="$dir" init -backend=false -input=false
             terraform -chdir="$dir" validate
           done
+      - name: Test the email role's policy
+        run: terraform -chdir=infra/aws test
       - name: Test the region check
         run: infra/scripts/check-region.test.sh
 
