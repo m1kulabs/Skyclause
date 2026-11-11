@@ -23,7 +23,11 @@ const sending = {
 // Optional until set, then all set together; none set means `POST /resend/webhook` answers 503.
 const receiving = {
   RESEND_RECEIVING_API_KEY: z.string().regex(/^re_\S+$/),
-  RESEND_WEBHOOK_SECRET: z.string().regex(/^whsec_[A-Za-z0-9+/]+={0,2}$/),
+  // The Base64 part is the HMAC key, so an empty or tiny one (`whsec_A` decodes to no byte) must not pass.
+  RESEND_WEBHOOK_SECRET: z
+    .string()
+    .regex(/^whsec_[A-Za-z0-9+/]+={0,2}$/)
+    .refine((value) => Buffer.from(value.slice('whsec_'.length), 'base64').length >= 24, 'must hold 24 bytes or more'),
   INBOUND_DOMAIN: z.string().min(1)
 }
 

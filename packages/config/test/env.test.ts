@@ -58,7 +58,8 @@ describe('loadEnv', () => {
   // secrets (shaped like Resend's, not real ones), the domain Terraform's.
   const inbound = {
     RESEND_RECEIVING_API_KEY: 're_test_full_access',
-    RESEND_WEBHOOK_SECRET: 'whsec_plJ3nmyCDGBKInavdOK15jsl', // gitleaks:allow -- Svix's published test-vector secret.
+    // A 24-byte key, the least the schema takes.
+    RESEND_WEBHOOK_SECRET: `whsec_${Buffer.from('skyclause env test value').toString('base64')}`,
     INBOUND_DOMAIN: 'in.skyclause.m1ku.tech'
   }
 
@@ -114,6 +115,20 @@ describe('loadEnv', () => {
         /RESEND_WEBHOOK_SECRET/
       )
     }
+  })
+
+  test('refuses a webhook secret whose HMAC key is under 24 bytes', () => {
+    // `whsec_A` decodes to no byte at all, so anyone could sign with the empty key.
+    const short = ['whsec_A', `whsec_${Buffer.alloc(23, 7).toString('base64')}`]
+    for (const RESEND_WEBHOOK_SECRET of short) {
+      expect(() => loadEnv('worker', { ...worker, ...inbound, RESEND_WEBHOOK_SECRET }), RESEND_WEBHOOK_SECRET).toThrow(
+        /RESEND_WEBHOOK_SECRET/
+      )
+    }
+    const RESEND_WEBHOOK_SECRET = `whsec_${Buffer.alloc(24, 7).toString('base64')}`
+    expect(loadEnv('worker', { ...worker, ...inbound, RESEND_WEBHOOK_SECRET }).RESEND_WEBHOOK_SECRET).toBe(
+      RESEND_WEBHOOK_SECRET
+    )
   })
 
   test('reads the VAPID values once the vapid-keys job has made them, and checks their encoding', () => {
