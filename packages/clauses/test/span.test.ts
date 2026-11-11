@@ -1,6 +1,24 @@
 import { describe, expect, test } from 'vitest'
-import { effectiveSpan } from '../src'
+import { effectiveSpan, parseSpanRef } from '../src'
 import type { Clause } from '../src/types'
+
+describe('parseSpanRef', () => {
+  test.each([
+    ['start', { anchor: 'start', offsetMs: 0 }],
+    ['end', { anchor: 'end', offsetMs: 0 }],
+    ['end+90s', { anchor: 'end', offsetMs: 90_000 }],
+    ['start-30m', { anchor: 'start', offsetMs: -1_800_000 }],
+    ['end+2h', { anchor: 'end', offsetMs: 7_200_000 }],
+    ['end+1d', { anchor: 'end', offsetMs: 86_400_000 }]
+  ] as const)('parses %s across s, m, h and d units', (ref, expected) => {
+    expect(parseSpanRef(ref)).toEqual(expected)
+  })
+
+  test('returns null outside (start|end)[+-]<n>(s|m|h|d)', () => {
+    expect(parseSpanRef('end+1w')).toBeNull()
+    expect(parseSpanRef('noon')).toBeNull()
+  })
+})
 
 const clause = (over: Partial<Clause>): Clause => ({
   key: 'c',

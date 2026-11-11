@@ -136,7 +136,12 @@ describe('lastSpanEnd', () => {
     expect(lastSpanEnd(window, [flashFlood(false)])).toEqual(window.endsAt)
   })
 
+  test('accepts s and d span units as the clause engine does', () => {
+    expect(lastSpanEnd(window, [clause('window', 'end+90s')])).toEqual(new Date('2026-11-02T09:01:30Z'))
+    expect(lastSpanEnd(window, [clause('window', 'end+1d')])).toEqual(new Date('2026-11-03T09:00:00Z'))
+  })
+
   test('refuses a span reference outside the TRD form', () => {
-    expect(() => lastSpanEnd(window, [clause('window', 'end+1d')])).toThrow(/span/)
+    expect(() => lastSpanEnd(window, [clause('window', 'end+1w')])).toThrow(/span/)
   })
 })
