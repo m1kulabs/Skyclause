@@ -22,7 +22,10 @@ const templatePath = fileURLToPath(new URL('../.agents/skills/wizard/template.sh
 // Stand-ins for every tool that could reach a real cloud or GitHub. Each answers only the calls a test lists in
 // $FAKE_STATE/<tool>.routes (first matching glob wins), logs every call, and records any other call in
 // $FAKE_STATE/unexpected, which fails the test. terraform, gh and bun get no routes, so any call to them fails.
+// Each also records an API key that reaches its environment, which fails the test too.
+const keyInEnv = `[[ -z "\${SKYCLAUSE_API_KEY:-}" ]] || printf '%s: %s\\n' "$(basename "$0")" "$SKYCLAUSE_API_KEY" >> "$FAKE_STATE/key-in-env"`
 const fakeCli = `#!/usr/bin/env bash
+${keyInEnv}
 name="$(basename "$0")"
 printf '%s\\n' "$*" >> "$FAKE_STATE/$name.calls"
 while IFS=$'\\t' read -r pattern code out err; do
@@ -36,18 +39,20 @@ printf '%s %s\\n' "$name" "$*" >> "$FAKE_STATE/unexpected"
 exit 97
 `
 
-// curl answers by URL; a write flag is never expected, whatever the URL.
+// curl answers by URL; a write flag, in any spelling, is never expected.
 const fakeCurl = `#!/usr/bin/env bash
+${keyInEnv}
 printf '%q ' "$@" >> "$FAKE_STATE/curl.calls"
 printf '\\n' >> "$FAKE_STATE/curl.calls"
 url="\${!#}"
 with_code=no
 for arg in "$@"; do
+  if [[ "$arg" =~ ^-[A-Za-z]*[XdFT] || "$arg" =~ ^--(request|data|form|upload-file|json) ]]; then
+    printf 'curl %s\\n' "$*" >> "$FAKE_STATE/unexpected"
+    exit 97
+  fi
   case "$arg" in
     -K) cat >> "$FAKE_STATE/curl.stdin"; printf '\\n' >> "$FAKE_STATE/curl.stdin" ;;
-    -X | --request | -d | --data* | -F | --form | -T | --upload-file | --json)
-      printf 'curl %s\\n' "$*" >> "$FAKE_STATE/unexpected"
-      exit 97 ;;
     *http_code*) with_code=yes ;;
   esac
 done
@@ -198,8 +203,10 @@ function runWizard(options: {
   gcloud?: Record<string, CliReply>
   aws?: Record<string, CliReply>
   existingEnvFile?: string
+  env?: Record<string, string>
 }) {
-  const dir = plantRepo({ 'bin/curl': fakeCurl, 'bin/open': '#!/usr/bin/env bash\nexit 0\n' })
+  const fakeOpen = `#!/usr/bin/env bash\n${keyInEnv}\nprintf '%s\\n' "$*" >> "$FAKE_STATE/open.calls"\n`
+  const dir = plantRepo({ 'bin/curl': fakeCurl, 'bin/open': fakeOpen })
   const bin = join(dir, 'bin')
   for (const tool of ['gcloud', 'aws', 'terraform', 'gh', 'bun']) writeFileSync(join(bin, tool), fakeCli)
   for (const tool of ['curl', 'open', 'gcloud', 'aws', 'terraform', 'gh', 'bun']) chmodSync(join(bin, tool), 0o755)
@@ -241,8 +248,10 @@ function runWizard(options: {
     cwd: repoRoot,
     input: `${options.input.join('\n')}\n`,
     encoding: 'utf8',
+    timeout: 60_000,
     env: {
       ...inherited,
+      ...options.env,
       PATH: bin,
       HOME: dir,
       FAKE_STATE: state,
@@ -252,33 +261,43 @@ function runWizard(options: {
   })
 
   const read = (path: string) => (existsSync(path) ? readFileSync(path, 'utf8') : '')
+  const calls = {
+    curl: read(join(state, 'curl.calls')),
+    curlStdin: read(join(state, 'curl.stdin')),
+    gcloud: read(join(state, 'gcloud.calls')),
+    aws: read(join(state, 'aws.calls')),
+    open: read(join(state, 'open.calls'))
+  }
+  expect(result.error, 'the run timed out or could not start').toBeUndefined()
   expect(read(join(state, 'unexpected')), 'a call no stand-in answers').toBe('')
+  expect(read(join(state, 'key-in-env')), 'an API key in a child process environment').toBe('')
+  expect(result.stderr, 'a shell error').not.toMatch(/command not found|unbound variable|syntax error/)
+  expectOnlyReads(calls)
   return {
     result,
     output: result.stdout + result.stderr,
     envContent: read(envFile),
     evidenceContent: read(evidenceFile),
-    calls: {
-      curl: read(join(state, 'curl.calls')),
-      curlStdin: read(join(state, 'curl.stdin')),
-      gcloud: read(join(state, 'gcloud.calls')),
-      aws: read(join(state, 'aws.calls'))
-    }
+    calls
   }
 }
 
 const secretKey = 'skc_live_9876543210abcdefSECRETVALUE'
 
-// Every remote call is a read: GETs to production, and list or identity reads in gcloud and aws.
-function expectOnlyReads(calls: ReturnType<typeof runWizard>['calls']) {
+// Every remote call is a read: GETs to production hosts (the key only to the API), and list or identity reads in
+// gcloud and aws. No argv carries the key, and curl's stdin config only ever adds headers.
+function expectOnlyReads(calls: { curl: string; curlStdin: string; gcloud: string; aws: string; open: string }) {
   for (const line of calls.gcloud.trim().split('\n').filter(Boolean)) {
     expect(line).toMatch(/^(secrets versions list|run jobs list|run jobs executions list) /)
   }
   for (const line of calls.aws.trim().split('\n').filter(Boolean)) {
     expect(line).toMatch(/^(sts get-caller-identity|sns list-subscriptions-by-topic) /)
   }
-  expect(calls.curl).not.toMatch(/(^| )(-X|--request|-d|--data[a-z-]*|-F|--form|-T|--json) /m)
-  // curl's stdin config only ever adds headers.
+  for (const line of calls.curl.trim().split('\n').filter(Boolean)) {
+    expect(line).toMatch(/ https:\/\/(api\.|app\.)?skyclause\.m1ku\.tech\/\S* ?$/)
+    if (line.includes(' -K - ')) expect(line).toMatch(/ https:\/\/api\.skyclause\.m1ku\.tech\/\S* ?$/)
+  }
+  for (const log of [calls.curl, calls.gcloud, calls.aws, calls.open]) expect(log).not.toContain('skc_')
   for (const line of calls.curlStdin.split('\n').filter(Boolean)) expect(line).toMatch(/^header = "[^"]*"$/)
 }
 
@@ -311,6 +330,8 @@ describe('infra/wizards/production-pilot.sh static invariants', () => {
       .join('\n')
     const cloudCalls = [...commands.matchAll(/\b(gcloud|aws) ([a-z][a-z0-9-]*(?: [a-z][a-z0-9-]*){0,3})/g)]
     expect(cloudCalls.length).toBeGreaterThan(0)
+    expect(commands).not.toMatch(/\b(terraform|gh|bun)\b/)
+    expect(commands, 'a flag before the subcommand hides it from this check').not.toMatch(/\b(gcloud|aws) +-/)
     for (const [call] of cloudCalls) {
       expect(call).toMatch(
         /^(gcloud (secrets versions list|run jobs list|run jobs executions list)|aws (sts get-caller-identity|sns list-subscriptions-by-topic))/
@@ -384,7 +405,9 @@ describe('infra/wizards/production-pilot.sh only reads', () => {
     const { result, calls, evidenceContent } = runWizard({ input: allNo })
 
     expect(result.status, result.stdout + result.stderr).toBe(0)
-    expectOnlyReads(calls)
+    // runWizard checks every run only reads; spelled out here for this case.
+    expect(calls.gcloud).not.toMatch(/ (add|create|update|delete|access|execute|deploy) /)
+    expect(calls.aws).not.toMatch(/ (create|delete|put|set|subscribe|confirm|publish|verify)-/)
     expect(evidenceContent).not.toContain('Approver rota')
     expect(evidenceContent).not.toContain('Malay reader sign-off')
   })
@@ -475,8 +498,11 @@ describe('infra/wizards/production-pilot.sh evidence holds no credential', () =>
   test.each([
     ['a signed-URL parameter', signedUrl],
     ['a bearer token', 'Authorization: Bearer stand-in-access-token-0123456789'],
+    ['a bearer token', 'Bearer abcdefghijklmno'],
     ['an API key', secretKey],
-    ['an email address', 'pilot-tester@example.org']
+    ['an API key', 'skc_ab12cd34'],
+    ['an email address', 'pilot-tester@example.org'],
+    ['an email address', 'owner.call-1@skyclause.m1ku.tech']
   ])('refuses to record a production answer that holds %s', (kind, secret) => {
     const { result, output, evidenceContent } = runWizard({
       input: answers,
@@ -488,6 +514,50 @@ describe('infra/wizards/production-pilot.sh evidence holds no credential', () =>
     expect(evidenceContent).not.toContain(secret)
     expect(evidenceContent).not.toContain('/ledger/verify')
     // The rest of the run still records what holds no credential.
+    expect(evidenceContent).toContain('## #194 — Organisation, project and default Sky clause sheet')
+  })
+})
+
+describe('infra/wizards/production-pilot.sh environment', () => {
+  const answers = [
+    '', // banner
+    '', // stage 1
+    '', // stage 2
+    '', // stage 3: signed in
+    'skyclause-ops', // ORG_SLUG
+    'bukit-jalil', // PROJECT_SLUG
+    'n', // open /new?
+    secretKey // read key
+  ]
+
+  test('an API key already exported in the shell never reaches a child process', () => {
+    const { result, output } = runWizard({
+      input: answers,
+      env: { SKYCLAUSE_API_KEY: 'skc_exported_0123456789abcdef' }
+    })
+
+    expect(result.status, output).toBe(0)
+  })
+
+  test('ignores origins set in the environment, so the key only ever goes to production', () => {
+    const { result, output } = runWizard({
+      input: answers,
+      env: {
+        API_ORIGIN: 'https://api.example.org',
+        APP_ORIGIN: 'https://app.example.org',
+        MARKETING_ORIGIN: 'https://example.org'
+      }
+    })
+
+    expect(result.status, output).toBe(0)
+  })
+
+  test('records evidence for a project whose slug starts with sk-', () => {
+    const { result, output, evidenceContent } = runWizard({
+      input: [...answers.slice(0, 4), 'skyclause-ops', 'sk-bukit-jalil-pilot-site', 'n', secretKey]
+    })
+
+    expect(result.status, output).toBe(0)
     expect(evidenceContent).toContain('## #194 — Organisation, project and default Sky clause sheet')
   })
 })
@@ -574,9 +644,55 @@ describe('infra/wizards/production-pilot.sh reports what still waits, and every 
     })
 
     expect(result.status).toBe(1)
-    expect(output).toContain("Couldn't read data['confirmed'] from the answer: <html>maintenance</html>")
+    expect(output).toContain("Couldn't read int(data['confirmed']) from the answer: <html>maintenance</html>")
     expect(output).toContain('Stopped in stage 10/')
     expect(evidenceContent).not.toContain('Confirmed subscriber counts')
+  })
+
+  test('reports a ledger chain that does not verify, and records no #531 verify evidence', () => {
+    const { result, output, evidenceContent } = runWizard({
+      input: answers,
+      curl: production({
+        '*/v1/projects/*/ledger/verify': json(200, {
+          ...ledgerVerify,
+          valid: false,
+          checked_entries: 3,
+          first_bad_entry_id: '019a7000-0000-7000-8000-0000000000aa'
+        })
+      })
+    })
+
+    expect(result.status, output).toBe(0)
+    expect(output).toContain("The ledger chain doesn't verify")
+    expect(output).toContain('019a7000-0000-7000-8000-0000000000aa')
+    expect(evidenceContent).not.toContain('/ledger/verify')
+  })
+
+  test('records no empty evidence: windows still empty after declaring, or a job with no execution', () => {
+    const { result, output, evidenceContent } = runWizard({
+      input: [...answers.slice(0, 11), '', ...answers.slice(11)],
+      curl: production({ '*/v1/projects/*/windows': json(200, { data: [], next_cursor: null }) }),
+      gcloud: gcloud({
+        'run jobs list *': { stdout: 'commons-provision\n' },
+        'run jobs executions list --job=commons-provision *': { stdout: '' }
+      })
+    })
+
+    expect(result.status, output).toBe(0)
+    expect(output).toContain('The project still has no window')
+    expect(output).toContain('commons-provision has no execution yet')
+    expect(evidenceContent).not.toContain('Declared project windows')
+    expect(evidenceContent).not.toContain('## #622')
+  })
+
+  test('stops on a count that is not a number', () => {
+    const { result, output } = runWizard({
+      input: answers,
+      curl: production({ '*/v1/projects/*/subscriber-counts': json(200, { ...subscriberCounts(2), confirmed: null }) })
+    })
+
+    expect(result.status).toBe(1)
+    expect(output).toContain("Couldn't read int(data['confirmed'])")
   })
 
   test('records no project evidence when the clause sheets read fails, and says why', () => {
@@ -632,7 +748,10 @@ describe('infra/wizards/production-pilot.sh reports what still waits, and every 
       existingEnvFile: "ORG_SLUG='skyclause-ops'\nPROJECT_SLUG='bukit-jalil'\n",
       curl: production({
         '*/v1/catalogue/sources': json(200, { data: [], next_cursor: null }),
-        '*/v1/projects/*/windows': json(200, { data: [], next_cursor: null }),
+        '*/v1/projects/*/windows': json(200, {
+          data: [{ id: 'win-1', kind: 'storm_afternoon', date: '2026-11-12', start: '14:00', end: '19:15' }],
+          next_cursor: null
+        }),
         '*/v1/projects/*/calls?state=sent&limit=1': json(200, {
           data: [{ id: 'call-1', state: 'sent' }],
           next_cursor: null
@@ -658,7 +777,6 @@ describe('infra/wizards/production-pilot.sh reports what still waits, and every 
         '', // stage 6
         '', // stage 7: sources bound
         '', // stage 7
-        '', // stage 8: windows declared
         '', // stage 8
         'y', // rota saved?
         '', // stage 9

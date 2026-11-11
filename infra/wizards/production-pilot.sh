@@ -205,14 +205,15 @@ finish() {
 # infra/wizards/production-pilot.evidence.md, refusing any section that holds a credential or an email address.
 # Only the organisation and project slugs and the project ID go to infra/wizards/.env.
 
-PROJECT="${PROJECT:-skyclause}"
-GCP_REGION="${GCP_REGION:-asia-southeast1}"
-AWS_ACCOUNT="${AWS_ACCOUNT:-776566309118}"
-SES_REGION="${SES_REGION:-ap-southeast-2}"
-SES_EVENTS_TOPIC_ARN="${SES_EVENTS_TOPIC_ARN:-arn:aws:sns:ap-southeast-2:776566309118:skyclause-production-ses-events}"
-MARKETING_ORIGIN="${MARKETING_ORIGIN:-https://skyclause.m1ku.tech}"
-APP_ORIGIN="${APP_ORIGIN:-https://app.skyclause.m1ku.tech}"
-API_ORIGIN="${API_ORIGIN:-https://api.skyclause.m1ku.tech}"
+# Fixed, not read from the environment: an exported API_ORIGIN (a #79 §6 name) must not redirect the key.
+PROJECT=skyclause
+GCP_REGION=asia-southeast1
+AWS_ACCOUNT=776566309118
+SES_REGION=ap-southeast-2
+SES_EVENTS_TOPIC_ARN=arn:aws:sns:ap-southeast-2:776566309118:skyclause-production-ses-events
+MARKETING_ORIGIN=https://skyclause.m1ku.tech
+APP_ORIGIN=https://app.skyclause.m1ku.tech
+API_ORIGIN=https://api.skyclause.m1ku.tech
 EVIDENCE_FILE="${EVIDENCE_FILE:-infra/wizards/production-pilot.evidence.md}"
 SLUG_PATTERN='^[a-z0-9]+(-[a-z0-9]+)*$'
 API_KEY_PATTERN='^skc_[A-Za-z0-9_-]{8,}$'
@@ -237,18 +238,18 @@ key_prefix() {
 }
 
 # credentials_in names each kind of credential in stdin: the shapes packages/config/src/redact.ts scrubs from logs,
-# plus signed-URL parameters. A call's ICS UID (call-…@ or night-…@skyclause.m1ku.tech) isn't an address. A key
-# prefix (8 characters) is too short to match.
+# plus signed-URL parameters. A call's ICS UID (call-…@ or night-…@skyclause.m1ku.tech) isn't an address. The
+# 8-character key prefix is the longest key or bearer text that passes; a provider sk- key is far longer than a slug.
 credentials_in() {
   python3 -c '
 import re, sys
 text = sys.stdin.read()
-text = re.sub(r"\b(?:call|night)-[^\s@]+@skyclause\.m1ku\.tech\b", "", text)
+text = re.sub(r"(?<![A-Za-z0-9._%+-])(?:call|night)-[^\s@]+@skyclause\.m1ku\.tech\b", "", text)
 kinds = [
     ("a private key", r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
     ("a signed-URL parameter", r"(?i)[?&](?:x-goog-signature|x-goog-credential|x-amz-signature|x-amz-credential|x-amz-security-token|googleaccessid|signature)="),
-    ("a bearer token", r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{16,}"),
-    ("an API key", r"ya29\.[A-Za-z0-9._-]+|sk[cgw]_[A-Za-z0-9_-]{16,}|AIza[0-9A-Za-z_-]{35}|(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{16,}|\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
+    ("a bearer token", r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{9,}"),
+    ("an API key", r"ya29\.[A-Za-z0-9._-]+|sk[cgw]_[A-Za-z0-9_-]{5,}|AIza[0-9A-Za-z_-]{35}|(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{32,}|\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
     ("a subscriber link token", r"/subscribe/[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])"),
     ("an email address", r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"),
 ]
@@ -334,6 +335,8 @@ on_exit() {
 run_wizard() {
 
 TOTAL_STAGES=13
+# An exported SKYCLAUSE_API_KEY (the CLI reads one) would carry the pasted key into every child's environment.
+unset SKYCLAUSE_API_KEY
 trap on_exit EXIT
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 # Not the root .env, which Bun loads in local development.
@@ -384,14 +387,17 @@ if ! commons_job="$(gcloud run jobs list --region="$GCP_REGION" --project="$PROJ
 elif [[ -z "$commons_job" ]]; then
   warn "Cloud Run has no commons-provision job yet: #179 adds it."
   SKIPPED+=("#622 commons:provision runs after migrate, once #179 adds the job")
-elif commons_out="$(gcloud run jobs executions list --job=commons-provision --region="$GCP_REGION" \
+elif ! commons_out="$(gcloud run jobs executions list --job=commons-provision --region="$GCP_REGION" \
   --project="$PROJECT" --limit=1 --format='table(name,status.completionTime,status.succeededCount)')"; then
+  warn "Couldn't list commons-provision's executions: gcloud's error is above."
+  SKIPPED+=("#622 commons:provision runs after migrate (the Cloud Run read failed; re-run)")
+elif [[ -z "$commons_out" ]]; then
+  warn "commons-provision has no execution yet: a deploy runs it after migrate."
+  SKIPPED+=("#622 commons:provision runs after migrate: quote its first execution")
+else
   record_evidence "#622" "Latest commons-provision execution (that it ran after migrate in the same deploy is still to check)" \
     "gcloud run jobs executions list --job=commons-provision --region=$GCP_REGION --project=$PROJECT --limit=1" \
     "$commons_out"
-else
-  warn "Couldn't list commons-provision's executions: gcloud's error is above."
-  SKIPPED+=("#622 commons:provision runs after migrate (the Cloud Run read failed; re-run)")
 fi
 SKIPPED+=("#622 one deploy runs end to end on GitHub Actions, once it can start jobs again")
 pause
@@ -456,14 +462,17 @@ pause
 
 stage "Verify the ledger chain and pilot archive (#531)"
 api_get "/v1/projects/$PROJECT_ID/ledger/verify"
-if [[ "$API_STATUS" == "200" ]] && [[ "$(json_field "data.get('valid')")" == "True" ]]; then
+if [[ "$API_STATUS" != "200" ]]; then
+  warn "GET /v1/projects/$PROJECT_ID/ledger/verify answered HTTP $API_STATUS: $API_BODY"
+  SKIPPED+=("#531 verify the ledger chain (HTTP $API_STATUS)")
+elif [[ "$(json_field "data['valid'] is True")" == "True" ]]; then
   printf '  %s✓ verified%s /v1/projects/%s/ledger/verify answered valid=true\n' "$GREEN" "$RESET" "$PROJECT_ID"
   record_evidence "#531" "Production /ledger/verify for the pilot project" \
     "curl -fsS -H 'Authorization: Bearer $KEY_HINT' -H 'Skyclause-Organization: $ORG_SLUG' '$API_ORIGIN/v1/projects/$PROJECT_ID/ledger/verify'" \
     "$API_BODY"
 else
-  warn "GET /v1/projects/$PROJECT_ID/ledger/verify answered HTTP $API_STATUS: $API_BODY"
-  SKIPPED+=("#531 verify ledger chain")
+  warn "The ledger chain doesn't verify: $API_BODY"
+  SKIPPED+=("#531 the pilot project's ledger chain doesn't verify: report its first_bad_entry_id to #146's owner")
 fi
 api_get "/v1/projects/$PROJECT_ID/pilot-archive"
 if [[ "$API_STATUS" != "200" ]]; then
@@ -521,13 +530,15 @@ elif [[ "$API_STATUS" == "200" ]]; then
     pause "Press Enter once the windows are declared"
     api_get "/v1/projects/$PROJECT_ID/windows"
   fi
-  if [[ "$API_STATUS" == "200" ]]; then
+  window_count=0
+  [[ "$API_STATUS" == "200" ]] && window_count="$(json_field "len(data['data'])")"
+  if (( window_count > 0 )); then
     record_evidence "#194" "Declared project windows" \
       "curl -fsS -H 'Authorization: Bearer $KEY_HINT' -H 'Skyclause-Organization: $ORG_SLUG' '$API_ORIGIN/v1/projects/$PROJECT_ID/windows'" \
       "$API_BODY"
   else
-    warn "GET /v1/projects/$PROJECT_ID/windows answered HTTP $API_STATUS: $API_BODY"
-    SKIPPED+=("#194 record the declared windows (HTTP $API_STATUS)")
+    warn "The project still has no window: GET /v1/projects/$PROJECT_ID/windows answered HTTP $API_STATUS: $API_BODY"
+    SKIPPED+=("#194 declare windows on forecast storm afternoons")
   fi
 else
   warn "GET /v1/projects/$PROJECT_ID/windows answered HTTP $API_STATUS: $API_BODY"
@@ -555,7 +566,7 @@ if [[ "$API_STATUS" != "200" ]]; then
   warn "GET /v1/projects/$PROJECT_ID/subscriber-counts answered HTTP $API_STATUS: $API_BODY"
   SKIPPED+=("#194 subscribe and confirm one team Gmail and one team Outlook address (the counts read answered HTTP $API_STATUS)")
 else
-  confirmed_count="$(json_field "data['confirmed']")"
+  confirmed_count="$(json_field "int(data['confirmed'])")"
   if (( confirmed_count >= 2 )); then
     printf '  %s✓ verified%s %s confirmed subscribers on project %s\n' "$GREEN" "$RESET" "$confirmed_count" "$PROJECT_SLUG"
     record_evidence "#194" "$subscribers_label" "$subscribers_cmd" "$API_BODY"
@@ -566,7 +577,7 @@ else
     pause "Press Enter once both confirmation links are clicked"
     api_get "/v1/projects/$PROJECT_ID/subscriber-counts"
     confirmed_count=0
-    [[ "$API_STATUS" == "200" ]] && confirmed_count="$(json_field "data['confirmed']")"
+    [[ "$API_STATUS" == "200" ]] && confirmed_count="$(json_field "int(data['confirmed'])")"
     if (( confirmed_count >= 2 )); then
       record_evidence "#194" "$subscribers_label" "$subscribers_cmd" "$API_BODY"
     else
