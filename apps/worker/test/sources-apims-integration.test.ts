@@ -170,12 +170,14 @@ async function fixture(ids = ['CA16W', 'CA17W', 'CA19B']) {
         .map((p) => ({
           ...p,
           startedAt: p.startedAt.toISOString(),
+          receivedAt: p.receivedAt?.toISOString(),
           outcome: p.outcome as 'ok' | 'unchanged' | 'error'
         })),
       readings: stored.readings.map((r) => ({
         ...r,
         observedAt: r.observedAt.toISOString(),
         receivedAt: r.receivedAt.toISOString(),
+        deviceTime: r.deviceTime?.toISOString() ?? null,
         itemKey: r.itemKey ?? '',
         valueJson: r.valueJson as Record<string, unknown> | null
       }))
