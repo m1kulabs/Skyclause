@@ -21,8 +21,7 @@ export {
   resendInboundHandler,
   type InboundHandler,
   type InboundMessage,
-  type InboundOptions,
-  type Verdict
+  type InboundOptions
 } from './inbound'
 export {
   checkRequiredLines,

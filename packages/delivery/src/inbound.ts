@@ -2,10 +2,8 @@
 // metadata only (https://resend.com/docs/webhooks/emails/received.md), to the worker's `POST /resend/webhook`. The
 // handler reads the message from Resend and hands it to the matching consumer. Bodies and addresses never reach the logs.
 import { log as sharedLog } from '@skyclause/config'
+import type { InboundVerdict } from '@skyclause/contracts'
 import type { ResendWebhook } from './resend-webhook'
-
-/** Resend's SPF, DKIM or DMARC result: `pass` is `PASS`, `fail` is `FAIL`, and anything else or none is `NONE`. */
-export type Verdict = 'PASS' | 'FAIL' | 'NONE'
 
 /** What a consumer receives (spec §1 `onInbound`). */
 export interface InboundMessage {
@@ -17,7 +15,7 @@ export interface InboundMessage {
   messageId: string
   /** When Resend received it, RFC 3339. */
   receivedAt: string
-  verdicts: Record<'spf' | 'dkim' | 'dmarc', Verdict>
+  verdicts: Record<'spf' | 'dkim' | 'dmarc', InboundVerdict>
 }
 
 export type InboundHandler = (m: InboundMessage) => Promise<void>
@@ -60,7 +58,8 @@ function log(severity: 'INFO' | 'ERROR', message: string, fields: Record<string,
 // hour inside those 24 hours for clock skew, is acknowledged unread, so no consumer can run twice for it.
 const MAX_AGE_MS = 23 * 60 * 60_000
 
-const verdict = (result: string | undefined): Verdict =>
+// Resend's result: `pass` is `PASS`, `fail` is `FAIL`, and anything else or none is `NONE`.
+const verdict = (result: string | undefined): InboundVerdict =>
   result === 'pass' ? 'PASS' : result === 'fail' ? 'FAIL' : 'NONE'
 
 // Errors that retrying won't mend, by status (https://resend.com/docs/api-reference/errors.md): no such email, or one

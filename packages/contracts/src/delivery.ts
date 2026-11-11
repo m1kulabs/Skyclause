@@ -37,6 +37,9 @@ export interface WebhookTransport {
   }>
 }
 
+/** An inbound message's SPF, DKIM or DMARC result. */
+export type InboundVerdict = 'PASS' | 'FAIL' | 'NONE'
+
 export type OnInbound = (
   recipient: RegExp,
   consumer: string,
@@ -47,6 +50,6 @@ export type OnInbound = (
     text: string
     messageId: string
     receivedAt: string
-    verdicts: Record<'spf' | 'dkim' | 'dmarc', 'PASS' | 'FAIL' | 'NONE'>
+    verdicts: Record<'spf' | 'dkim' | 'dmarc', InboundVerdict>
   }) => Promise<void>
 ) => void
