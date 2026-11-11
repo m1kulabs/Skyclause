@@ -8,20 +8,21 @@ import { plantRepo } from './test-helpers'
 
 const script = fileURLToPath(new URL('./check-image.sh', import.meta.url))
 
-// Stand-ins for docker, curl and sleep. docker records each detached run's arguments (one per line) and tracks live
-// containers under FAKE_LOG/cid-<role>; a crashed role (not in FAKE_HEALTHY) started with --rm is removed at once, as
-// Docker does, while one started without --rm stays until `docker rm` so `docker logs` can read its boot error.
+// Stand-ins for docker, curl and sleep. docker records each detached run's arguments (one per line) and keeps each
+// container under FAKE_LOG/cid-<role> until `docker rm`, so `docker logs` can read its boot error. A role in FAKE_EXITED
+// has exited before anything asks for its port, so `docker port` fails as Docker's does; a role in FAKE_HEALTHY answers
+// /health; any other role runs but never answers.
 const fakeDocker = `#!/usr/bin/env bash
 set -euo pipefail
 port_of() { case "$1" in cid-web) echo 41001 ;; cid-worker) echo 41002 ;; *) echo 0 ;; esac; }
 case "$1" in
   image) echo app ;;
-  port) echo "0.0.0.0:$(port_of "$2")" ;;
-  stop)
-    if grep -qx -- --rm "$FAKE_LOG/\${2#cid-}.argv" 2>/dev/null; then
-      rm -f "$FAKE_LOG/$2"
+  port)
+    if [[ " $FAKE_EXITED " == *" \${2#cid-} "* ]]; then
+      echo "Error response from daemon: No public port '8080/tcp' published for $2" >&2
+      exit 1
     fi
-    echo "$2" ;;
+    echo "0.0.0.0:$(port_of "$2")" ;;
   rm)
     rm -f "$FAKE_LOG/\${!#}"
     echo "\${!#}" ;;
@@ -37,9 +38,6 @@ case "$1" in
       printf '%s\\n' "$@" > "$FAKE_LOG/$role.argv"
       cid="cid-$role"
       echo "$role crashed on boot" > "$FAKE_LOG/$cid"
-      if [[ " $FAKE_HEALTHY " != *" $role "* && " $* " == *" --rm "* ]]; then
-        rm -f "$FAKE_LOG/$cid"
-      fi
       echo "$cid"
     elif [[ " $* " == *" --entrypoint "* ]]; then
       echo 1000
@@ -72,7 +70,7 @@ if [ -n "\${FAKE_INTERRUPT:-}" ]; then
 fi
 `
 
-function runCheck(healthy: string, interrupt = '') {
+function runCheck(healthy: string, interrupt = '', exited = '') {
   const fake = plantRepo({
     'bin/docker': fakeDocker,
     'bin/curl': fakeCurl,
@@ -87,6 +85,7 @@ function runCheck(healthy: string, interrupt = '') {
       PATH: `${join(fake, 'bin')}:${process.env.PATH}`,
       FAKE_LOG: log,
       FAKE_HEALTHY: healthy,
+      FAKE_EXITED: exited,
       FAKE_INTERRUPT: interrupt
     }
   })
@@ -147,9 +146,17 @@ test('fails, prints the crashed container log, and removes the container when we
   expect(run.containers).toEqual([])
 })
 
-test('removes the running container when interrupted', () => {
-  const run = runCheck('worker', 'INT')
-  expect(run.status).not.toBe(0)
+test('prints the log of a container that exits before docker port reads its port, then removes it', () => {
+  const run = runCheck('worker', '', 'web')
+  expect(run.status).toBe(1)
+  expect(run.stderr).toContain('web crashed on boot')
+  expect(run.containers).toEqual([])
+})
+
+test.each(['INT', 'TERM'])('prints the log and removes the running container when interrupted by %s', (signal) => {
+  const run = runCheck('worker', signal)
+  expect(run.status).toBe(130)
+  expect(run.stderr).toContain('web crashed on boot')
   expect(run.stdout).not.toContain('worker')
   expect(run.containers).toEqual([])
 })

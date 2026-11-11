@@ -25,7 +25,16 @@ cleanup() {
     container=''
   fi
 }
-trap cleanup EXIT
+# On a non-zero exit (a failed docker port lookup, an interrupt, any set -e abort) print the container's log before it is
+# removed. This trap never exits, so the script keeps its status.
+on_exit() {
+  local status=$?
+  if [ "$status" -ne 0 ] && [ -n "$container" ]; then
+    docker logs "$container" >&2 || true
+  fi
+  cleanup
+}
+trap on_exit EXIT
 trap 'exit 130' INT TERM
 
 # serves <role> <env...>: starts the role and waits up to 30 s for /health to answer ok.
