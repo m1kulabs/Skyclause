@@ -65,8 +65,8 @@ terraform -chdir=infra/environments/production plan
 
 Set these in a pull request, in `environments/production/terraform.tfvars`, which Terraform loads by itself. `variables.tf` describes and validates each one.
 
-- `app_config`: the #79 §6 TF values other tickets make, such as `GOOGLE_CLIENT_ID`, `TURNSTILE_SITE_KEY`, `VAPID_PUBLIC_KEY`, the two mail sender addresses and the inbound domain. Each is set on every service and job once given.
-- `supplied_secrets`: `GOOGLE_CLIENT_SECRET`, `TURNSTILE_SECRET_KEY`, `SKYCLAUSE_STAFF_EMAILS`, `RESEND_SENDING_API_KEY`, `RESEND_RECEIVING_API_KEY` and `RESEND_WEBHOOK_SECRET` start as empty secrets. Add a version with `gcloud secrets versions add`, then list the name here to mount it. Cloud Run fails a revision whose secret has no version. Three wizards add the versions and print the public values:
+- `app_config`: the #79 §6 TF values other tickets make, such as `GOOGLE_CLIENT_ID`, `TURNSTILE_SITE_KEY`, `VAPID_PUBLIC_KEY`, the two mail sender addresses and the inbound domain. Each is set on every service and job once given, except the mail values, which reach only the services whose Resend secrets are supplied and never a job ([Email on Resend](#email-on-resend)).
+- `supplied_secrets`: `GOOGLE_CLIENT_SECRET`, `TURNSTILE_SECRET_KEY`, `SKYCLAUSE_STAFF_EMAILS`, `RESEND_SENDING_API_KEY`, `RESEND_RECEIVING_API_KEY` and `RESEND_WEBHOOK_SECRET` start as empty secrets. Add a version with `gcloud secrets versions add`, then list the name here to mount it. Cloud Run fails a revision whose secret has no version. List the three Resend secrets together or not at all: Terraform refuses a part-set at plan time. Three wizards add the versions and print the public values:
   - `infra/wizards/google-sign-in.sh` (about 25 minutes): Google Auth Platform branding and the Web OAuth client (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`), and the app host's Turnstile widget (`TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`).
   - `infra/wizards/staff-emails.sh` (about 2 minutes): `SKYCLAUSE_STAFF_EMAILS`.
   - `infra/wizards/resend.sh` (about 20 minutes, see [Email on Resend](#email-on-resend)): `RESEND_SENDING_API_KEY`, `RESEND_RECEIVING_API_KEY` and `RESEND_WEBHOOK_SECRET`.
@@ -109,10 +109,18 @@ gcloud run jobs execute pilot-archive --region=asia-southeast1 --project=skyclau
 Resend sends, tracks and receives all of Skyclause's email. Its Free plan allows 100 emails a day and 3,000 a month (sent and received both count), 3 domains, 1 webhook endpoint and 10 requests a second, and an address on a verified domain needs no per-address setup. Resend has no Terraform provider, so Terraform holds only the secrets and `infra/wizards/resend.sh` does the rest.
 
 - **Domains**, both in Tokyo (`ap-northeast-1`) with open and click tracking off: `notices.skyclause.m1ku.tech` sends (the two senders in `app_config`) and `in.skyclause.m1ku.tech` only receives (`INBOUND_DOMAIN`).
-- **Secrets**, empty Secret Manager containers that Terraform makes and the wizard fills: `RESEND_SENDING_API_KEY` is a key that can only send, and only from `notices.` (web and worker); `RESEND_RECEIVING_API_KEY` is a full-access key the worker reads received mail with; `RESEND_WEBHOOK_SECRET` is the webhook's signing secret. The last two are the worker's alone. Each mounts once `supplied_secrets` lists it.
+- **Secrets**, empty Secret Manager containers that Terraform makes and the wizard fills: `RESEND_SENDING_API_KEY` is a key that can only send, and only from `notices.` (web and worker); `RESEND_RECEIVING_API_KEY` is a full-access key the worker reads received mail with; `RESEND_WEBHOOK_SECRET` is the webhook's signing secret. The last two are the worker's alone. Each mounts once `supplied_secrets` lists it, and the three are listed together or not at all.
 - **Webhook**, one endpoint: the worker's public URL plus `/resend/webhook`, subscribed to `email.delivered`, `email.bounced`, `email.complained`, `email.suppressed` and `email.received`. The worker is public for this route alone, and checks Resend's Svix signature in place of Google OIDC.
 
-A person runs the wizard once the production apply has made the three secrets and the worker (about 20 minutes, plus Resend's DNS check, which usually takes up to 15 minutes). It needs `gcloud` signed in as a `skyclause` owner, `bun`, `M1KU_CLOUDFLARE_API_TOKEN` in the shell, and a full-access Resend API key, which Resend shows once when you create it at <https://resend.com/api-keys>: export it as `RESEND_FULL_ACCESS_KEY` or paste it at the hidden prompt. The key is never written to disk, and becomes `RESEND_RECEIVING_API_KEY`.
+A service refuses to start with only some of its mail settings, so Terraform gives them out by group. The two sender addresses reach web and the worker only when `RESEND_SENDING_API_KEY` is in `supplied_secrets`, and `INBOUND_DOMAIN` reaches the worker only when `RESEND_RECEIVING_API_KEY` and `RESEND_WEBHOOK_SECRET` both are. Until then no service has any mail setting or mail secret, which is valid for the old image and the new one, and mail is off. No Cloud Run job ever gets a mail setting or a mail secret, `kms-rewrap` included. The addresses and the domain stay committed in `app_config`; only their delivery is conditional (`terraform test` in `environments/production` checks it).
+
+The cutover order:
+
+1.  Merge and deploy as usual. The secrets are empty, so mail is off from the deploy of this change until step 4: nothing is sent or received in between.
+1.  Run the wizard below (about 20 minutes, plus Resend's DNS check, which usually takes up to 15 minutes). The production apply must have made the three secrets and the worker. It needs `gcloud` signed in as a `skyclause` owner, `bun`, `M1KU_CLOUDFLARE_API_TOKEN` in the shell, and a full-access Resend API key, which Resend shows once when you create it at <https://resend.com/api-keys>: export it as `RESEND_FULL_ACCESS_KEY` or paste it at the hidden prompt. The key is never written to disk, and becomes `RESEND_RECEIVING_API_KEY`.
+1.  Commit the `supplied_secrets` line the wizard prints in `environments/production/terraform.tfvars`, in a pull request.
+1.  The next apply turns mail on: Terraform mounts the three secrets and gives the services their sender addresses and the worker its inbound domain.
+1.  Check with a real send, a bounce and an inbound reply. Until the Free plan is upgraded, the 100-a-day limit is the known limit that replaces the old SES sandbox. Then turn on `inbound_email` with the audited `flag:set` script (#92) if it is off.
 
 ```shell
 M1KU_CLOUDFLARE_API_TOKEN=... ./infra/wizards/resend.sh
@@ -128,11 +136,7 @@ In order, the wizard:
 1.  Creates the sending-only key for `notices.` and stores it as `RESEND_SENDING_API_KEY`. Resend shows a token only once, so a key whose token isn't stored is deleted and made again after a yes.
 1.  Stores the full-access key as `RESEND_RECEIVING_API_KEY`, and prints the `supplied_secrets` line to commit.
 
-Every step reads before it writes, so a re-run changes nothing that is already right, and a secret whose stored value differs is replaced only after a yes. After it finishes:
-
-1.  Commit the printed `supplied_secrets` line in `environments/production/terraform.tfvars` in a pull request. Terraform mounts the secrets on the next apply.
-1.  Check with a real send, a bounce and an inbound reply. Until the Free plan is upgraded, the 100-a-day limit is the known limit that replaces the old SES sandbox.
-1.  Turn on `inbound_email` with the audited `flag:set` script (#92) if it is off.
+Every step reads before it writes, so a re-run changes nothing that is already right, and a secret whose stored value differs is replaced only after a yes. Its closing message says the same as step 1: mail stays off until the printed line is committed and applied.
 
 `./infra/wizards/production-pilot.sh` later reads both Resend domains' status and the webhook's status, with `RESEND_FULL_ACCESS_KEY` exported.
 
