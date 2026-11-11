@@ -1,4 +1,4 @@
-export const OPENAPI_SHA256 = 'f5e46646be8dde4316b795596f9a1e4772e8c04cfac565619d035fae20b946f6' as const // gitleaks:allow -- a SHA-256 of openapi.json, not a secret.
+export const OPENAPI_SHA256 = '0b06981f7cfb79daf4f90146216c99f88ccaf7756cfb998dac1600c0d6898998' as const // gitleaks:allow -- a SHA-256 of openapi.json, not a secret.
 
 export const OPERATION_IDS = [
   'getProjectAnalysis',
@@ -6355,7 +6355,7 @@ export type OperationResponses = {
               source_id: string
               state: 'error'
               since: string
-              http_status: number
+              http_status: number | null
             }
           }
         | {
@@ -6368,7 +6368,7 @@ export type OperationResponses = {
               source_id: string
               state: 'stale'
               since: string
-              http_status: number
+              http_status: number | null
             }
           }
         | {
@@ -6381,7 +6381,7 @@ export type OperationResponses = {
               source_id: string
               state: 'recovered'
               since: string
-              http_status: number
+              http_status: number | null
             }
           }
         | {

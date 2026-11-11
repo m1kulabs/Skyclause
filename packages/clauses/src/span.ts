@@ -80,6 +80,8 @@ export function resolveWindowSpan(
   }
 }
 
+export const RAIN_WINDOW_SPAN = { from: 'end-30m', to: 'end+60m' }
+
 const RAIN_WINDOW_INDICATORS = ['w.rain_max_60m_mm', 'w.rain_max_4h_mm']
 
 /**
@@ -92,5 +94,11 @@ export function effectiveSpan(
   const readsWindowRain = [...clause.requires, ...(clause.optional ?? [])].some((name) =>
     RAIN_WINDOW_INDICATORS.includes(name)
   )
-  return clause.span ?? (readsWindowRain ? { from: 'end-30m', to: 'end+60m' } : undefined)
+  return clause.span ?? (readsWindowRain ? RAIN_WINDOW_SPAN : undefined)
+}
+
+/** Concrete bounds for deadline consumers; no-span clauses keep their engine eligibility unchanged. */
+export function effectiveWindowSpan(clause: Clause, window: Window): { from: Instant; to: Instant } {
+  const { from, to } = resolveWindowSpan(window, effectiveSpan(clause))
+  return { from, to }
 }

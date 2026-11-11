@@ -138,6 +138,25 @@ export function afterCommit(tx: Tx<Principal | null>, hook: CommitHook) {
   hooks.push(hook)
 }
 
+/** A SQL savepoint with its own event buffer identity and commit hooks. Failed children release no effects. */
+export async function withSavepoint<T>(handle: TxHandle, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  const parent = handle as Tx
+  const parentHooks = commitHooks.get(parent)
+  if (!parentHooks) throw new Error('withSavepoint needs a transaction from a with* helper')
+  const hooks: CommitHook[] = []
+  const result = await parent.transaction(async (nested) => {
+    const child = Object.assign(nested, { principal: parent.principal, orgId: parent.orgId }) as Tx
+    commitHooks.set(child, hooks)
+    try {
+      return await fn(child)
+    } finally {
+      commitHooks.delete(child)
+    }
+  })
+  parentHooks.push(...hooks)
+  return result
+}
+
 async function transaction<T, P extends Principal | null>(
   db: NodePgDatabase<Schema>,
   context: { principal: P; orgId: string | null; setRole?: 'public_reader' },

@@ -8,6 +8,10 @@ import { postgresIdempotency, postgresMembership, postgresRateLimits } from './p
 import { createDataRightsTransports } from './services/data-rights/transports'
 import { registeredApiKeyManager } from './api-key-manager'
 
+import { configureProductionEvaluator } from './services/evaluator/production'
+
+configureProductionEvaluator()
+
 let config: ApiConfig | undefined
 
 /** Read on the first request, never at import, so a build or a test can load the package without the web env. */

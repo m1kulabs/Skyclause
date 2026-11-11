@@ -110,10 +110,16 @@ export const indicatorSnapshot = tenantTable(
     series: jsonb('series').notNull(),
     nights: jsonb('nights').notNull(),
     hash: text('hash').notNull(),
+    // Nullable means legacy evidence is unknown, never reconstructed from current context.
+    snapshotBody: jsonb('snapshot_body'),
+    registryDefinitions: jsonb('registry_definitions'),
+    frozenWindows: jsonb('frozen_windows'),
+    archiveHash: text('archive_hash'),
     createdAt: instant('created_at').notNull().defaultNow()
   },
   (self) => [
     orgKey('indicator_snapshot', self),
+    unique('indicator_snapshot_project_pack_t_eval_key').on(self.projectId, self.pack, self.tEval),
     sameOrg('indicator_snapshot_project', self, self.projectId, project, true)
   ]
 )
@@ -131,6 +137,7 @@ export const shadowState = tenantTable(
     verdictHash: text('verdict_hash').notNull(),
     sheetVersionId: uuid('sheet_version_id').notNull(),
     since: instant('since').notNull(),
+    evaluatedAt: instant('evaluated_at'),
     ...timestamps()
   },
   (self) => [

@@ -21786,7 +21786,10 @@
                               "format": "date-time"
                             },
                             "http_status": {
-                              "type": "integer"
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
                             }
                           },
                           "required": [
@@ -21849,7 +21852,10 @@
                               "format": "date-time"
                             },
                             "http_status": {
-                              "type": "integer"
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
                             }
                           },
                           "required": [
@@ -21912,7 +21918,10 @@
                               "format": "date-time"
                             },
                             "http_status": {
-                              "type": "integer"
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
                             }
                           },
                           "required": [
@@ -40541,7 +40550,10 @@
                               "format": "date-time"
                             },
                             "http_status": {
-                              "type": "integer"
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
                             }
                           },
                           "required": [
@@ -40604,7 +40616,10 @@
                               "format": "date-time"
                             },
                             "http_status": {
-                              "type": "integer"
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
                             }
                           },
                           "required": [
@@ -40667,7 +40682,10 @@
                               "format": "date-time"
                             },
                             "http_status": {
-                              "type": "integer"
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
                             }
                           },
                           "required": [
@@ -54926,7 +54944,10 @@
                                         "format": "date-time"
                                       },
                                       "http_status": {
-                                        "type": "integer"
+                                        "type": [
+                                          "integer",
+                                          "null"
+                                        ]
                                       }
                                     },
                                     "required": [
@@ -54989,7 +55010,10 @@
                                         "format": "date-time"
                                       },
                                       "http_status": {
-                                        "type": "integer"
+                                        "type": [
+                                          "integer",
+                                          "null"
+                                        ]
                                       }
                                     },
                                     "required": [
@@ -55052,7 +55076,10 @@
                                         "format": "date-time"
                                       },
                                       "http_status": {
-                                        "type": "integer"
+                                        "type": [
+                                          "integer",
+                                          "null"
+                                        ]
                                       }
                                     },
                                     "required": [

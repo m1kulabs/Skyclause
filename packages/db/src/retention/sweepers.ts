@@ -17,6 +17,7 @@ import {
   subscriber
 } from '../schema'
 import type { RetentionBuckets } from './buckets'
+import { sweepEvaluatorCoordination } from '../evaluator/transitions'
 
 const DAY_MS = 24 * 60 * 60 * 1_000
 /** NFR-14's subscriber grace, camera frame ceiling and domain event window; handled message marks use one day. */
@@ -268,6 +269,7 @@ export async function sweepHandledMessages(
 
 /** Every sweeper this job owns; other owners keep their own jobs. `audit_finding` (#132) has its table (migration 0025); #549 adds its sweep. */
 export const SWEEPERS: Sweeper[] = [
+  { name: 'evaluator-coordination', scope: 'global', run: (tx, q) => sweepEvaluatorCoordination(tx, q.now) },
   { name: 'subscribers', scope: 'org', run: sweepSubscribers },
   { name: 'frames', scope: 'org', run: sweepFrames },
   { name: 'export-files', scope: 'org', unscoped: true, run: sweepExportFiles },

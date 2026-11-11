@@ -21,6 +21,7 @@ import { requireOrg } from './middleware/org'
 import { rateLimit } from './middleware/rate-limit'
 import { apiSurfaceGate, auditToolCall } from './middleware/surface'
 import { ApiError, problemResponse, toApiError, validationFailed } from './problems'
+import { readResponseBody } from './response-body'
 import { HANDLERS, type AnyHandlerEntry } from './routes'
 import { mountAuditWriteGuards } from './routes/audit'
 
@@ -166,10 +167,12 @@ function checkResponse(route: SkyclauseRoute, handler: AnyHandlerEntry['handler'
     const type = response.headers.get('Content-Type')?.split(';')[0]?.trim()
     const schema = type ? declared.content?.[type]?.schema : undefined
     if (type?.endsWith('json') && isZod(schema)) {
-      const result = schema.safeParse(await response.clone().json())
+      const inspected = await readResponseBody(response)
+      const result = schema.safeParse(JSON.parse(new TextDecoder().decode(inspected.bytes)))
       if (!result.success) {
         throw new Error(`${route.operationId} ${response.status} doesn't match its schema: ${result.error.message}`)
       }
+      return inspected.response
     }
     return response
   }

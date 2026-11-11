@@ -25,14 +25,14 @@ export interface CloudTasksOptions {
 
 const TOKEN_URL = 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token'
 
-function workerConfig() {
+export function workerConfig() {
   const env = loadEnv('worker')
   if (!env.GCP_PROJECT || !env.GCP_REGION) throw new Error('Cloud Tasks needs GCP_PROJECT and GCP_REGION (f-infra)')
   return { project: env.GCP_PROJECT, region: env.GCP_REGION, workerUrl: env.WORKER_URL, invoker: env.WORKER_INVOKER_SA }
 }
 
 /** The metadata server's token for the service account, kept until a minute before it expires. */
-function metadataToken(send: typeof fetch) {
+export function metadataToken(send: typeof fetch) {
   let held: { token: string; until: number } | undefined
   return async () => {
     if (held && held.until > Date.now()) return held.token
