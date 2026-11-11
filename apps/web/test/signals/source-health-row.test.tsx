@@ -42,7 +42,8 @@ test('source rows show a custom latest value, current state detail and source li
   expect(screen.getAllByText('Fresh · Moderate')).toHaveLength(2)
   expect(screen.getByText(lastErrorLabel)).toBeTruthy()
   expect(screen.getByText('Open data')).toBeTruthy()
-  expect(screen.getByRole('img', { name: 'Last 48 polls' }).children).toHaveLength(48)
+  // No ticks were passed, so no poll strip is drawn: unknown polls never render as received.
+  expect(screen.queryByRole('img', { name: /polls/ })).toBeNull()
   expect(screen.getByRole('link', { name: 'Open source' }).getAttribute('href')).toBe(source.url)
   expect(screen.getByText('CA16W').getAttribute('translate')).toBe('no')
 })
