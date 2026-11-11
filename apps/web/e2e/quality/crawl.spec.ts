@@ -22,7 +22,9 @@ const PUBLIC_GROUPS = new Set(['marketing', 'public'])
 /** Pages that read in an effect: inspected once a read has landed (content, empty state or error), never loading. */
 const READY: Record<string, string> = {
   '/[org]/projects': ':is(h1, [data-slot="empty"], [data-slot="alert"])',
-  '/[org]/analysis': ':is(.analysis-muted, .analysis-error)'
+  '/[org]/analysis': ':is(.analysis-muted, .analysis-error)',
+  '/[org]/settings/members':
+    ':is(#members-table-heading, [data-slot="empty"], [data-slot="alert"]), h1:has-text("Page not found")'
 }
 const PROJECT_UI_ROUTES = new Set([
   '/[org]/[project]',

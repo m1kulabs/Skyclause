@@ -64,10 +64,20 @@ export const KNOWN_GAPS: KnownGap[] = [
   {
     route: '/[org]/settings/integrations',
     check: 'axe',
-    detail: /^scrollable-region-focusable \(serious\): .*\[data-slot="table-container"\]/,
+    // axe names the region by whichever selector is shortest, which differs between engines.
+    detail: /^scrollable-region-focusable \(serious\): /,
     issue: 596,
     why: 'scrolling tables have no keyboard stop at 375 and 320 px',
     roles: ADMINS
+  },
+  {
+    route: '/[org]/settings/members',
+    check: 'axe',
+    detail: /^color-contrast \(serious\): .* at \.\w+_activityCell$/,
+    issue: 596,
+    why: 'the activity column fails contrast at 320 px in WebKit',
+    roles: ADMINS,
+    projects: ['webkit', 'iphone']
   },
   {
     route: '/[org]/settings/audit',

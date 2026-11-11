@@ -35,7 +35,7 @@ test('a known gap applies only to its route, roles and browser projects', () => 
   }
 })
 
-// Copied from the Chromium and WebKit crawl output of 11 November 2026 that #596 lists.
+// Copied from the Chromium, WebKit and iPhone crawl output of 11 November 2026 that #596 lists.
 const reported = [
   ['/[org]/projects', 'chromium', 'headings', '0 h1 elements; a screen has exactly one'],
   ['/[org]/analysis', 'chromium', 'form-fields', 'select "Choose a project" has no name'],
@@ -50,6 +50,18 @@ const reported = [
     'chromium',
     'axe',
     'scrollable-region-focusable (serious): Scrollable region must have keyboard access at section[aria-labelledby="oauth-grants-heading"] > .overflow-x-auto.relative[data-slot="table-container"]'
+  ],
+  [
+    '/[org]/settings/integrations',
+    'iphone',
+    'axe',
+    'scrollable-region-focusable (serious): Scrollable region must have keyboard access at .overflow-x-auto'
+  ],
+  [
+    '/[org]/settings/members',
+    'webkit',
+    'axe',
+    'color-contrast (serious): Elements must meet minimum color contrast ratio thresholds at .WiivEq_activityCell'
   ],
   ['/[org]/settings/audit', 'chromium', 'focus-visible', 'input shows no :focus-visible ring'],
   ['/[org]/settings/general', 'chromium', 'form-fields', 'input#org-general-slug[name="slug"] has no autocomplete']
