@@ -11,8 +11,11 @@ import {
 } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { plantRepo } from './test-helpers'
+
+// Each test runs the wizard in a child process, and the 40-check wait runs it many times; the default 5 s is short on a busy machine.
+vi.setConfig({ testTimeout: 60_000 })
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url))
 const wizardPath = fileURLToPath(new URL('../infra/wizards/staff-emails.sh', import.meta.url))
