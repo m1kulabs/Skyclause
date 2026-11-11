@@ -1,5 +1,5 @@
 import { loadEnv } from '@skyclause/config'
-import { BundleApprovedEventSchema, type EmailTransport, type EventEnvelope } from '@skyclause/contracts'
+import { BundleApprovedEventSchema, type EventEnvelope } from '@skyclause/contracts'
 import {
   NOTICE_KINDS,
   noticeForProviderMessage,
@@ -11,34 +11,26 @@ import {
   withSystem,
   withTenant
 } from '@skyclause/db'
-import { emailTransportForAws, sesEventsHandler, type SesEvent } from '@skyclause/delivery'
-import { log, type WorkerPart } from '../server'
-import { sendCallNotices, settleCalls, type SenderConfig, type SenderDeps } from './send'
+import { DELIVERY_EVENT_TYPES, deliveryEvent, emailTransportFromEnv, type DeliveryEvent } from '@skyclause/delivery'
+import { log, type ResendHandler, type WorkerPart } from '../server'
+import { sendCallNotices, settleCalls, type SenderDeps } from './send'
 
 // #158 c-sender-email's part: consumer `sender` on `bundle.approved`, the `notice-sweep` in the 15-minute batch (D45:
-// the minute tick never touches Postgres) that retries failed sends and settles calls, and `POST /ses/events`.
-
-export interface NoticesDeps extends SenderDeps {
-  config: () => SenderConfig & {
-    /** `SES_REGION` */
-    sesRegion?: string
-    /** `SES_EVENTS_SNS_TOPIC_ARN` */
-    eventsTopicArn?: string
-  }
-  /** Tests only: the SNS certificate fetch and the subscription confirmation. */
-  certificate?: (url: string) => Promise<string>
-  fetch?: typeof fetch
-}
+// the minute tick never touches Postgres) that retries failed sends and settles calls, and Resend's delivery events
+// from `POST /resend/webhook` (#656).
 
 /** How far back the sweep looks for calls to settle: a settle that failed after a call's last send is retried. */
 const SETTLE_LOOKBACK_MS = 24 * 60 * 60_000
 
-export function createNoticesPart(deps: NoticesDeps): WorkerPart {
-  const sesEvents = systemPrincipal('ses-events')
+/** How long after Resend made a notice's event its missing row is waited for; Resend retries after 5 s and 5 min. */
+const RETRY_UNMATCHED_MS = 10 * 60_000
+
+export function createNoticesPart(deps: SenderDeps): WorkerPart {
+  const deliveryEvents = systemPrincipal('delivery-events')
   const sender = systemPrincipal('sender')
 
-  async function apply(event: SesEvent): Promise<boolean> {
-    const found = await withSystem('ses-events', (tx) => noticeForProviderMessage(tx, event.providerMessageId))
+  async function apply(event: DeliveryEvent): Promise<boolean> {
+    const found = await withSystem('delivery-events', (tx) => noticeForProviderMessage(tx, event.providerMessageId))
     // Mail with no outbox row (sign-in links) is acknowledged; a notice's event can beat its send's record.
     if (!found) return !(event.category && NOTICE_KINDS.includes(event.category))
     if (found.orgId === null && found.kind !== 'export_ready') {
@@ -46,15 +38,33 @@ export function createNoticesPart(deps: NoticesDeps): WorkerPart {
     }
     const moved =
       found.orgId === null
-        ? await withSystem('ses-events', (tx) => recordDeliveryEvent(tx, found.id, event, deps.now()))
-        : await withTenant({ orgId: found.orgId, principal: sesEvents }, (tx) =>
+        ? await withSystem('delivery-events', (tx) => recordDeliveryEvent(tx, found.id, event, deps.now()))
+        : await withTenant({ orgId: found.orgId, principal: deliveryEvents }, (tx) =>
             recordDeliveryEvent(tx, found.id, event, deps.now())
           )
-    log('INFO', 'ses event recorded', { notice_id: found.id, type: event.type, moved })
+    log('INFO', 'delivery event recorded', { notice_id: found.id, type: event.type, moved })
     return true
   }
 
-  let handleEvents: ((request: Request) => Promise<Response>) | undefined
+  // A notice's event can beat its send's record: 503 makes Resend retry it while the event is young. A row still missing
+  // after that may be gone for good (an alert settled after leaving `queued`, a purged organisation), and Resend would
+  // retry for about 27 hours on the one endpoint every event shares, which it disables after repeated failures, so the
+  // event is logged and acknowledged. Anything else is acknowledged with 200, the only answer Resend counts as delivered.
+  const onDeliveryEvent: ResendHandler = async (webhook) => {
+    const event = deliveryEvent(webhook)
+    if (!event || (await apply(event))) return new Response(null, { status: 200 })
+    // A missing or unreadable `created_at` is NaN, which no comparison passes: it counts as old.
+    const createdAt = typeof webhook.created_at === 'string' ? Date.parse(webhook.created_at) : NaN
+    if (deps.now().getTime() - createdAt < RETRY_UNMATCHED_MS) {
+      return new Response('send not recorded yet', { status: 503 })
+    }
+    log('WARNING', 'delivery event for a notice never recorded', {
+      provider_message_id: event.providerMessageId,
+      category: event.category
+    })
+    return new Response(null, { status: 200 })
+  }
+
   return {
     owner: 'c-sender-email',
     events: [
@@ -93,47 +103,18 @@ export function createNoticesPart(deps: NoticesDeps): WorkerPart {
         if (failed.length) throw new Error(`notice sweep failed for ${failed.join('; ')}`)
       }
     },
-    ses: {
-      '/events': async (request) => {
-        if (!handleEvents) {
-          const { sesRegion, eventsTopicArn } = deps.config()
-          if (!sesRegion || !eventsTopicArn) return new Response('SES events are not configured', { status: 503 })
-          handleEvents = sesEventsHandler({
-            topicArn: eventsTopicArn,
-            region: sesRegion,
-            certificate: deps.certificate,
-            fetch: deps.fetch,
-            apply
-          })
-        }
-        return handleEvents(request)
-      }
-    }
+    resend: Object.fromEntries(DELIVERY_EVENT_TYPES.map((type) => [type, onDeliveryEvent]))
   }
 }
 
-let transport: EmailTransport | undefined
-
 export const notices = createNoticesPart({
-  email: () => {
-    const env = loadEnv('worker')
-    if (!env.SES_REGION || !env.AWS_ROLE_ARN || !env.SES_CONFIGURATION_SET) return null
-    return (transport ??= emailTransportForAws({
-      region: env.SES_REGION,
-      roleArn: env.AWS_ROLE_ARN,
-      configurationSet: env.SES_CONFIGURATION_SET,
-      fromAuth: env.EMAIL_FROM_AUTH!,
-      fromNotices: env.EMAIL_FROM_NOTICES!
-    }))
-  },
+  email: () => emailTransportFromEnv('worker'),
   config: () => {
     const env = loadEnv('worker')
     return {
       appOrigin: env.APP_ORIGIN,
       marketingOrigin: env.MARKETING_ORIGIN,
-      inboundDomain: env.INBOUND_DOMAIN,
-      sesRegion: env.SES_REGION,
-      eventsTopicArn: env.SES_EVENTS_SNS_TOPIC_ARN
+      inboundDomain: env.INBOUND_DOMAIN
     }
   },
   now: () => new Date()

@@ -25,6 +25,11 @@ const plants: fc.Arbitrary<Plant> = fc.oneof(
   fc
     .tuple(fc.constantFrom('AKIA', 'ASIA'), chars('ABCDEFGHIJKLMNOPQRSTUVWXYZ234567', 16, 16))
     .map(([prefix, body]) => ({ text: prefix + body, secret: prefix + body })),
+  // Resend's API keys and its webhook signing secrets.
+  chars(`${ALNUM}_-`, 8, 40).map((body) => ({ text: `re_${body}`, secret: `re_${body}` })),
+  fc
+    .tuple(chars(`${ALNUM}+/`, 32, 44), fc.constantFrom('', '=', '=='))
+    .map(([body, padding]) => ({ text: `whsec_${body}${padding}`, secret: `whsec_${body}` })),
   chars(`${ALNUM}._-`, 16, 60).map((token) => ({ text: `Authorization: Bearer ${token}`, secret: token })),
   chars(ALNUM, 16, 40).map((token) => ({ text: `bearer ${token}`, secret: token })),
   chars(ALNUM, 16, 40).map((token) => ({ text: `authorization=${token}`, secret: token })),

@@ -200,7 +200,7 @@ finish() {
 
 # Walks the repository owner through the human-only production steps of #194, #531, #534, #536, #539 and #622
 # in one sitting. It only reads: GETs to production (the product's API with a read key held in memory)
-# and gcloud and aws lists. Every write is the human's, in the browser, or printed for them to run. It checks each
+# gcloud lists, and Resend's domain and webhook lists. Every write is the human's, in the browser, or printed for them to run. It checks each
 # step live first, names the ticket when production answers 501 not-built, and records evidence in the git-ignored
 # infra/wizards/production-pilot.evidence.md, refusing any section that holds a credential or an email address.
 # Only the organisation and project slugs and the project ID go to infra/wizards/.env.
@@ -208,9 +208,11 @@ finish() {
 # Fixed, not read from the environment: an exported API_ORIGIN (a #79 §6 name) must not redirect the key.
 PROJECT=skyclause
 GCP_REGION=asia-southeast1
-AWS_ACCOUNT=776566309118
-SES_REGION=ap-southeast-2
-SES_EVENTS_TOPIC_ARN=arn:aws:sns:ap-southeast-2:776566309118:skyclause-production-ses-events
+RESEND_API=https://api.resend.com
+RESEND_DOMAINS="notices.skyclause.m1ku.tech in.skyclause.m1ku.tech"
+# The worker's one webhook route, and the events Resend must send to it (infra/wizards/resend.sh sets both).
+RESEND_WEBHOOK_PATH=/resend/webhook
+RESEND_WEBHOOK_EVENTS='["email.delivered","email.bounced","email.complained","email.suppressed","email.received"]'
 MARKETING_ORIGIN=https://skyclause.m1ku.tech
 APP_ORIGIN=https://app.skyclause.m1ku.tech
 API_ORIGIN=https://api.skyclause.m1ku.tech
@@ -251,7 +253,8 @@ kinds = [
     ("a private key", r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
     ("a signed-URL parameter", r"(?i)[?&](?:x-goog-signature|x-goog-credential|x-amz-signature|x-amz-credential|x-amz-security-token|googleaccessid|signature)="),
     ("a bearer token", r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{9,}"),
-    ("an API key", r"ya29\.[A-Za-z0-9._-]+|sk[cgw]_[A-Za-z0-9_-]{5,}|AIza[0-9A-Za-z_-]{35}|(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{32,}|\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
+    ("an API key", r"ya29\.[A-Za-z0-9._-]+|sk[cgw]_[A-Za-z0-9_-]{5,}|AIza[0-9A-Za-z_-]{35}|(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{32,}|\b(?:AKIA|ASIA)[0-9A-Z]{16}\b|(?<![A-Za-z0-9_-])re_[A-Za-z0-9_-]{8,}"),
+    ("a signing secret", r"whsec_[A-Za-z0-9+/]+"),
     ("a subscriber link token", r"/subscribe/[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])"),
     ("an email address", r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"),
 ]
@@ -290,6 +293,15 @@ api_get() {
   API_BODY="${raw%$'\n'*}"
 }
 
+# resend_get PATH calls GET $RESEND_API$PATH with RESEND_KEY passed over stdin, setting API_STATUS and API_BODY.
+resend_get() {
+  local raw
+  raw="$(printf 'header = "Authorization: Bearer %s"\nheader = "Accept: application/json"\n' "$RESEND_KEY" |
+    curl -sS -K - -w $'\n%{http_code}' "$RESEND_API$1")" || return 1
+  API_STATUS="${raw##*$'\n'}"
+  API_BODY="${raw%$'\n'*}"
+}
+
 # public_get URL calls GET URL with no credentials, setting API_STATUS and API_BODY.
 public_get() {
   local raw
@@ -309,11 +321,12 @@ sys.exit(0 if body.get("type", "").endswith("/problems/not-built") and body.get(
 }
 
 # json_field EXPR prints EXPR evaluated over API_BODY's JSON as data. An answer it can't read fails with a warning
-# on stderr, which stops the wizard wherever the result is assigned.
+# on stderr naming EXPR and the HTTP status, never the answer, which can hold a secret (Resend's webhook list carries
+# each signing secret); it stops the wizard wherever the result is assigned.
 json_field() {
   local expr="$1"
   printf '%s' "$API_BODY" | python3 -c "import json, sys; data = json.load(sys.stdin); print($expr)" 2>/dev/null ||
-    { warn "Couldn't read $expr from the answer: $API_BODY" >&2; return 1; }
+    { warn "Couldn't read $expr from the HTTP $API_STATUS answer." >&2; return 1; }
 }
 
 # revoke_snippet prints the DevTools line that revokes only this run's API key, by the id its creation logged. A
@@ -339,7 +352,10 @@ run_wizard() {
 
 TOTAL_STAGES=13
 # An exported SKYCLAUSE_API_KEY (the CLI reads one) would carry the pasted key into every child's environment.
+# RESEND_FULL_ACCESS_KEY moves into a variable for the same reason.
 unset SKYCLAUSE_API_KEY KEY_LINE
+RESEND_KEY="${RESEND_FULL_ACCESS_KEY:-}"
+unset RESEND_FULL_ACCESS_KEY
 trap on_exit EXIT
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 # Not the root .env, which Bun loads in local development.
@@ -348,7 +364,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 banner "Production pilot checks and human steps (#194, #531, #534, #536, #539, #622)"
 
 stage "Check tools and hosts"
-for tool in curl python3 gcloud aws; do
+for tool in curl python3 gcloud; do
   command -v "$tool" >/dev/null 2>&1 || { warn "$tool is missing: install it and re-run"; exit 1; }
 done
 for origin in "$MARKETING_ORIGIN" "$APP_ORIGIN" "$API_ORIGIN"; do
@@ -390,7 +406,6 @@ pause
 stage "Sign in (#194)"
 open_url "$APP_ORIGIN/sign-in"
 step "Sign in to $APP_ORIGIN with Google, or with a link sent to your email address."
-note "While SES is in the sandbox, a sign-in link reaches only an address verified with ./infra/wizards/staff-and-ses.sh."
 pause "Press Enter once you are signed in to $APP_ORIGIN in the browser"
 
 stage "Create the organisation and pilot project (#194)"
@@ -560,7 +575,6 @@ else
     printf '  %s✓ verified%s %s confirmed subscribers on project %s\n' "$GREEN" "$RESET" "$confirmed_count" "$PROJECT_SLUG"
     record_evidence "#194" "$subscribers_label" "$subscribers_cmd" "$API_BODY"
   elif confirm "Open $APP_ORIGIN/$ORG_SLUG/$PROJECT_SLUG/subscribers to subscribe and confirm the team Gmail and Outlook addresses now?"; then
-    note "While SES is in the sandbox, verify both addresses first with ./infra/wizards/staff-and-ses.sh."
     open_url "$APP_ORIGIN/$ORG_SLUG/$PROJECT_SLUG/subscribers"
     step "Import one team Gmail and one team Outlook address, then click the confirmation link in each inbox."
     pause "Press Enter once both confirmation links are clicked"
@@ -634,28 +648,48 @@ elif [[ -n "$sent_calls" ]]; then
 fi
 pause
 
-stage "Check ses_events, notices & replies, and Malay sign-off (#536, #539, #194)"
-# Read-only: SES delivery events (#536's NTC-1) reach the worker only through a confirmed subscription.
-say "Checking the ses_events SNS subscription on $SES_EVENTS_TOPIC_ARN (#536)..."
-aws_account="$(aws sts get-caller-identity --query Account --output text)" || aws_account=""
-if [[ "$aws_account" != "$AWS_ACCOUNT" ]]; then
-  warn "The AWS CLI isn't signed in to account $AWS_ACCOUNT${aws_account:+ (it is in $aws_account)}, so the subscription wasn't read."
-  SKIPPED+=("#536 check the ses_events subscription: sign in to AWS account $AWS_ACCOUNT and re-run")
-elif ! ses_subs="$(aws sns list-subscriptions-by-topic --region "$SES_REGION" --topic-arn "$SES_EVENTS_TOPIC_ARN" \
-  --query 'Subscriptions[*].[Protocol,Endpoint,SubscriptionArn]' --output text)"; then
-  warn "Couldn't read the ses_events subscription: AWS's error is above."
-  SKIPPED+=("#536 check the ses_events subscription (the read failed)")
-elif [[ "$ses_subs" == *arn:aws:sns:* && "$ses_subs" != *PendingConfirmation* ]]; then
-  printf '  %s✓ confirmed%s %s\n' "$GREEN" "$RESET" "$ses_subs"
+stage "Check Resend, notices & replies, and Malay sign-off (#536, #539, #194)"
+# Read-only: Resend's delivery events (#536's NTC-1) reach the worker only while both domains are verified and the webhook is enabled.
+say "Checking Resend's domains and its webhook (#536)..."
+if [[ -z "$RESEND_KEY" ]]; then
+  warn "RESEND_FULL_ACCESS_KEY isn't set in this shell, so Resend wasn't read."
+  SKIPPED+=("#536 check Resend's domains and webhook: export RESEND_FULL_ACCESS_KEY (a full-access key) and re-run")
+elif ! resend_get "/domains?limit=100"; then
+  warn "Couldn't reach Resend: curl's error is above."
+  SKIPPED+=("#536 check Resend's domains (the read failed)")
+elif [[ "$API_STATUS" != "200" ]]; then
+  warn "GET /domains answered HTTP $API_STATUS: $API_BODY"
+  SKIPPED+=("#536 check Resend's domains (HTTP $API_STATUS)")
 else
-  warn "The ses_events subscription isn't confirmed: ${ses_subs:-the topic has no subscription}."
-  note "infra/README.md 'AWS email', 'Check the subscriptions': the worker confirms it once /ses/events is live. If it"
-  note "still reads PendingConfirmation, a person with AWS access sends the confirmation again from an up-to-date"
-  note "main checkout. That apply covers all of infra/aws, so read its plan first and approve it only if it replaces"
-  note "this one subscription and changes nothing else:"
-  note "  terraform -chdir=infra/aws init"
-  note "  terraform -chdir=infra/aws apply -replace=aws_sns_topic_subscription.ses_events"
-  SKIPPED+=("#536 confirm the ses_events subscription by hand (infra/README.md 'AWS email')")
+  for domain in $RESEND_DOMAINS; do
+    domain_status="$(json_field "next((x['status'] for x in data['data'] if x['name'] == '$domain'), 'missing')")"
+    if [[ "$domain_status" == verified ]]; then
+      printf '  %s✓ verified%s Resend domain %s\n' "$GREEN" "$RESET" "$domain"
+    else
+      warn "Resend domain $domain is $domain_status, not verified."
+      SKIPPED+=("#536 Resend domain $domain is $domain_status: run ./infra/wizards/resend.sh (infra/README.md 'Email on Resend')")
+    fi
+  done
+  if ! resend_get "/webhooks?limit=100"; then
+    warn "Couldn't reach Resend: curl's error is above."
+    SKIPPED+=("#536 check Resend's webhook (the read failed)")
+  elif [[ "$API_STATUS" != "200" ]]; then
+    warn "GET /webhooks answered HTTP $API_STATUS: $API_BODY"
+    SKIPPED+=("#536 check Resend's webhook (HTTP $API_STATUS)")
+  else
+    # Only the endpoint, status and missing events are read; the answer's signing secret is never kept.
+    hook="$(json_field "next((w['endpoint'] + ' ' + w['status'] + ' ' + ','.join(sorted(set(json.loads('$RESEND_WEBHOOK_EVENTS')) - set(w.get('events') or []))) for w in data['data'] if w['endpoint'].endswith('$RESEND_WEBHOOK_PATH')), 'missing')")"
+    read -r hook_endpoint hook_status hook_missing <<<"$hook"
+    if [[ "$hook" == missing ]]; then
+      warn "Resend has no webhook whose endpoint ends $RESEND_WEBHOOK_PATH."
+      SKIPPED+=("#536 add Resend's webhook: run ./infra/wizards/resend.sh (infra/README.md 'Email on Resend')")
+    elif [[ "$hook_status" != enabled || -n "${hook_missing:-}" ]]; then
+      warn "Resend's webhook $hook_endpoint is $hook_status${hook_missing:+ and lacks $hook_missing}."
+      SKIPPED+=("#536 put Resend's webhook right: run ./infra/wizards/resend.sh (infra/README.md 'Email on Resend')")
+    else
+      printf '  %s✓ enabled%s Resend webhook %s with its five events\n' "$GREEN" "$RESET" "$hook_endpoint"
+    fi
+  fi
 fi
 
 if [[ "$sent_calls" == "0" ]]; then

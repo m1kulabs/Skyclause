@@ -1,5 +1,6 @@
-// #158 c-sender-email: the worker sends approved calls' notices once, re-checking each recipient, records SES's
-// answer and the delivery events SES reports, and settles each call. Real Postgres; SES and SNS are doubles.
+// #158 c-sender-email: the worker sends approved calls' notices once, re-checking each recipient, records the
+// provider's answer and the delivery events Resend's webhooks report (#656), and settles each call. Real Postgres; the
+// provider is a double and the webhooks are Resend's documented examples, signed with a test secret.
 import {
   emailHash,
   notice,
@@ -12,12 +13,11 @@ import {
 import { ledgerOf } from '@skyclause/db/test/bundles/scene'
 import { makeOrganization, makeUser } from '@skyclause/db/test/factories/index'
 import { expectEvent } from '@skyclause/db/test/harness/index'
-import { certificates, signed } from '@skyclause/delivery/test/sns-double'
+import { resendEvent, signedHeaders } from '@skyclause/delivery/test/resend-double'
 import { beforeAll, describe, expect, test, vi } from 'vitest'
 import { registry } from '../src/registry'
 import {
   APPROVED_AT,
-  EVENTS_TOPIC,
   approvedCall,
   at,
   mailbox,
@@ -112,7 +112,7 @@ describe('the sender on bundle.approved', () => {
     const row = await noticeRow(made.subscribers[0]!.noticeId)
     expect(row.accepted_at).toEqual(clock.now)
     expect((row.accepted_at!.getTime() - APPROVED_AT.getTime()) / 1000).toBeLessThanOrEqual(60)
-    expect(row.provider_message_id).toMatch(/^0108/)
+    expect(row.provider_message_id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
   })
 
   test('NTC-8, NTC-9, NTC-10: unconfirmed, unsubscribed and suppressed addresses get no send', async () => {
@@ -186,7 +186,7 @@ describe('the sender on bundle.approved', () => {
     })
   })
 
-  test('before gate 4B (no SES values) the send fails loudly and spends no attempt', async () => {
+  test('with mail off (no sending settings) the send fails loudly and spends no attempt', async () => {
     const made = await approvedCall(orgId, { recipients: [{}] })
     await expect(senderPart(null).approve(made.event)).rejects.toThrow(/email is off/)
     expect(await noticeRow(made.subscribers[0]!.noticeId)).toMatchObject({ status: 'queued', attempts: 0 })
@@ -239,7 +239,7 @@ describe('retries on the batch sweep (D45)', () => {
     })
   })
 
-  test('the sweep sends what the consumer couldn’t, once SES answers', async () => {
+  test('the sweep sends what the consumer couldn’t, once Resend answers', async () => {
     const made = await approvedCall(orgId, { recipients: [{}] })
     let down = true
     const box = mailbox({ fail: () => down })
@@ -254,45 +254,51 @@ describe('retries on the batch sweep (D45)', () => {
   })
 })
 
-/** An SES event for `providerMessageId` as SNS posts it to /ses/events (AWS's event-publishing shape). */
-function sesEvent(providerMessageId: string, event: Record<string, unknown>, o: { category?: string } = {}) {
-  return signed({
-    Type: 'Notification',
-    TopicArn: EVENTS_TOPIC,
-    MessageId: crypto.randomUUID(),
-    Message: JSON.stringify({
-      mail: { messageId: providerMessageId, tags: { category: [o.category ?? 'call'] } },
-      ...event
-    })
+/**
+ * Resend's documented `type` webhook for `providerMessageId` (its email ID) to `address`, tagged `category`, as the
+ * body Resend posts to /resend/webhook; `createdAt` replaces the envelope's `created_at`.
+ */
+function resendBody(
+  type: string,
+  providerMessageId: string,
+  address: string,
+  o: { category?: string; data?: Record<string, unknown>; createdAt?: string } = {}
+) {
+  const event = resendEvent(type, {
+    email_id: providerMessageId,
+    to: [address],
+    tags: { category: o.category ?? 'call' },
+    ...o.data
   })
+  return JSON.stringify('createdAt' in o ? { ...event, created_at: o.createdAt } : event)
 }
-const permanentBounce = (address: string) => ({
-  eventType: 'Bounce',
-  bounce: { bounceType: 'Permanent', bouncedRecipients: [{ emailAddress: address, status: '5.1.1' }] }
-})
+const permanentBounce = (providerMessageId: string, address: string, o: { category?: string } = {}) =>
+  resendBody('email.bounced', providerMessageId, address, o)
 
-describe('POST /ses/events (NTC-10)', () => {
+const suppressionOf = (address: string) =>
+  sql<{ reason: string }>('SELECT reason FROM suppression WHERE org_id = $1 AND email_hash = $2', [
+    orgId,
+    emailHash(address)
+  ])
+
+describe('POST /resend/webhook (NTC-10)', () => {
   test('a hard-bounced address is skipped next time and the bundle shows it as suppressed', async () => {
     const address = 'gone@example.test'
     const first = await approvedCall(orgId, { recipients: [{ email: address }] })
     const box = mailbox()
-    const { approve, sesEvents } = senderPart(box, { certificate: certificates })
+    const { approve, webhook } = senderPart(box)
     await approve(first.event)
     const sent = await noticeRow(first.subscribers[0]!.noticeId)
 
-    const bounce = sesEvent(sent.provider_message_id!, permanentBounce(address))
-    expect((await sesEvents(bounce)).status).toBe(204)
+    const bounce = permanentBounce(sent.provider_message_id!, address)
+    const headers = signedHeaders(bounce)
+    expect((await webhook(bounce, headers)).status).toBe(200)
     expect((await noticeRow(first.subscribers[0]!.noticeId)).status).toBe('bounced')
-    const suppressed = () =>
-      sql<{ reason: string }>('SELECT reason FROM suppression WHERE org_id = $1 AND email_hash = $2', [
-        orgId,
-        emailHash(address)
-      ])
-    expect(await suppressed()).toEqual([{ reason: 'bounce' }])
+    expect(await suppressionOf(address)).toEqual([{ reason: 'bounce' }])
 
-    // A replay (SNS redelivering, or anyone resending the signed body) changes nothing.
-    expect((await sesEvents(bounce)).status).toBe(204)
-    expect(await suppressed()).toEqual([{ reason: 'bounce' }])
+    // A replay (Resend redelivering, or anyone resending the signed call within five minutes) changes nothing.
+    expect((await webhook(bounce, headers)).status).toBe(200)
+    expect(await suppressionOf(address)).toEqual([{ reason: 'bounce' }])
 
     const next = await approvedCall(orgId, { recipients: [{ email: address }, {}] })
     await approve(next.event)
@@ -306,66 +312,87 @@ describe('POST /ses/events (NTC-10)', () => {
     expect(counted).toEqual([{ n: 1 }])
   })
 
-  test('Delivery, then Complaint; a replayed Delivery never undoes the complaint, and a transient bounce is nothing', async () => {
-    const made = await approvedCall(orgId, { recipients: [{ email: 'reader@example.test' }] })
-    const { approve, sesEvents } = senderPart(mailbox(), { certificate: certificates })
+  test('delivered, then complained; a replayed delivery never undoes the complaint, and a transient bounce is nothing', async () => {
+    const address = 'reader@example.test'
+    const made = await approvedCall(orgId, { recipients: [{ email: address }] })
+    const { approve, webhook } = senderPart(mailbox())
     await approve(made.event)
     const id = made.subscribers[0]!.noticeId
     const providerId = (await noticeRow(id)).provider_message_id!
-    const delivery = sesEvent(providerId, { eventType: 'Delivery', delivery: { recipients: ['reader@example.test'] } })
-    const transient = sesEvent(providerId, {
-      eventType: 'Bounce',
-      bounce: { bounceType: 'Transient', bouncedRecipients: [{ emailAddress: 'reader@example.test' }] }
-    })
-    const complaint = sesEvent(providerId, {
-      eventType: 'Complaint',
-      complaint: { complainedRecipients: [{ emailAddress: 'reader@example.test' }] }
+    const delivered = resendBody('email.delivered', providerId, address)
+    const transient = resendBody('email.bounced', providerId, address, {
+      data: { bounce: { message: 'Mailbox full', subType: 'MailboxFull', type: 'Transient' } }
     })
 
-    await sesEvents(delivery)
+    expect((await webhook(delivered)).status).toBe(200)
     expect((await noticeRow(id)).status).toBe('delivered')
-    await sesEvents(transient)
+    expect((await webhook(transient)).status).toBe(200)
     expect((await noticeRow(id)).status).toBe('delivered')
-    await sesEvents(complaint)
-    await sesEvents(delivery)
+    expect(await suppressionOf(address)).toEqual([])
+    expect((await webhook(resendBody('email.complained', providerId, address))).status).toBe(200)
+    expect((await webhook(delivered)).status).toBe(200)
     expect((await noticeRow(id)).status).toBe('complained')
-    const reasons = await sql<{ reason: string }>('SELECT reason FROM suppression WHERE email_hash = $1', [
-      emailHash('reader@example.test')
-    ])
-    expect(reasons).toEqual([{ reason: 'complaint' }])
+    expect(await suppressionOf(address)).toEqual([{ reason: 'complaint' }])
+  })
+
+  test('a send Resend suppressed is bounced and suppresses the address', async () => {
+    const address = 'on-resend-list@example.test'
+    const made = await approvedCall(orgId, { recipients: [{ email: address }] })
+    const { approve, webhook } = senderPart(mailbox())
+    await approve(made.event)
+    const providerId = (await noticeRow(made.subscribers[0]!.noticeId)).provider_message_id!
+    expect((await webhook(resendBody('email.suppressed', providerId, address))).status).toBe(200)
+    expect((await noticeRow(made.subscribers[0]!.noticeId)).status).toBe('bounced')
+    expect(await suppressionOf(address)).toEqual([{ reason: 'bounce' }])
+  })
+
+  test('every other event type is acknowledged and changes nothing', async () => {
+    const address = 'unchanged@example.test'
+    const made = await approvedCall(orgId, { recipients: [{ email: address }] })
+    const { approve, webhook } = senderPart(mailbox())
+    await approve(made.event)
+    const providerId = (await noticeRow(made.subscribers[0]!.noticeId)).provider_message_id!
+    for (const body of [
+      resendBody('email.failed', providerId, address),
+      resendBody('email.bounced', providerId, address, {
+        data: { bounce: { message: 'Unknown', subType: 'Undetermined', type: 'Undetermined' } }
+      }),
+      JSON.stringify(resendEvent('suppression.added', { email: address }))
+    ]) {
+      expect((await webhook(body)).status, body).toBe(200)
+    }
+    expect((await noticeRow(made.subscribers[0]!.noticeId)).status).toBe('sent')
+    expect(await suppressionOf(address)).toEqual([])
   })
 
   test('a bounce replaces an unsubscribe suppression, so a later confirmation can’t lift it', async () => {
     const address = 'left-then-bounced@example.test'
     const made = await approvedCall(orgId, { recipients: [{ email: address }] })
-    const { approve, sesEvents } = senderPart(mailbox(), { certificate: certificates })
+    const { approve, webhook } = senderPart(mailbox())
     await approve(made.event)
     await suppress(address, 'unsubscribe')
     const providerId = (await noticeRow(made.subscribers[0]!.noticeId)).provider_message_id!
-    await sesEvents(sesEvent(providerId, permanentBounce(address)))
-    const reasons = await sql<{ reason: string }>('SELECT reason FROM suppression WHERE email_hash = $1', [
-      emailHash(address)
-    ])
-    expect(reasons).toEqual([{ reason: 'bounce' }])
+    await webhook(permanentBounce(providerId, address))
+    expect(await suppressionOf(address)).toEqual([{ reason: 'bounce' }])
   })
 
   test('maps every notice kind: a confirmation email’s bounce suppresses too', async () => {
     const address = 'typo@example.test'
     const made = await approvedCall(orgId, { recipients: [] })
-    const providerId = '0108confirmation-000000'
+    const providerId = crypto.randomUUID()
     const [row] = await sql<{ id: string }>(
       `INSERT INTO notice (org_id, project_id, kind, channel, idempotency_key, language, status, provider_message_id)
        VALUES ($1, $2, 'confirmation', 'email', $3, 'en', 'sent', $4) RETURNING id`,
       [orgId, made.projectId, crypto.randomUUID(), providerId]
     )
-    const { sesEvents } = senderPart(null, { certificate: certificates })
-    await sesEvents(sesEvent(providerId, permanentBounce(address), { category: 'confirmation' }))
+    const { webhook } = senderPart(null)
+    await webhook(permanentBounce(providerId, address, { category: 'confirmation' }))
     expect((await noticeRow(row!.id)).status).toBe('bounced')
   })
 
   test('an account export bounce updates its orgless system notice without an org suppression', async () => {
     const account = await makeUser({ name: 'Export requester', email: `export-${crypto.randomUUID()}@example.test` })
-    const providerId = '0108export-ready-000000'
+    const providerId = crypto.randomUUID()
     const [created] = await withSystem('test:export-ready', (tx) =>
       tx
         .insert(notice)
@@ -384,39 +411,94 @@ describe('POST /ses/events (NTC-10)', () => {
     )
     if (!created) throw new Error('expected the export notice to be inserted')
 
-    const { sesEvents } = senderPart(null, { certificate: certificates })
-    const response = await sesEvents(sesEvent(providerId, permanentBounce(account.email), { category: 'export_ready' }))
+    const { webhook } = senderPart(null)
+    const response = await webhook(permanentBounce(providerId, account.email, { category: 'export_ready' }))
 
-    expect(response.status).toBe(204)
+    expect(response.status).toBe(200)
     expect(await noticeRow(created.id)).toMatchObject({ status: 'bounced' })
     expect(await sql('SELECT 1 FROM suppression WHERE email_hash = $1', [emailHash(account.email)])).toEqual([])
   })
 
-  test('an event whose notice isn’t recorded yet answers 503 so SNS retries; mail with no notice is acknowledged', async () => {
-    const { sesEvents } = senderPart(null, { certificate: certificates })
-    const delivery = { eventType: 'Delivery', delivery: { recipients: ['x@example.test'] } }
-    expect((await sesEvents(sesEvent('0108unknown-000000', delivery))).status).toBe(503)
-    expect((await sesEvents(sesEvent('0108sign-in-000000', delivery, { category: 'magic_link' }))).status).toBe(204)
+  test('an event whose notice isn’t recorded yet answers 503 so Resend retries; mail with no outbox row is acknowledged', async () => {
+    const { webhook, clock } = senderPart(null)
+    const delivered = (category: string) =>
+      resendBody('email.delivered', crypto.randomUUID(), 'x@example.test', {
+        category,
+        createdAt: clock.now.toISOString()
+      })
+    expect((await webhook(delivered('call'))).status).toBe(503)
+    for (const category of ['magic_link', 'member-invitation', 'auditor']) {
+      expect((await webhook(delivered(category))).status, category).toBe(200)
+    }
+    const untagged = resendEvent('email.delivered', { email_id: crypto.randomUUID(), tags: undefined })
+    expect((await webhook(JSON.stringify(untagged))).status).toBe(200)
   })
 
-  test('refuses forged and wrong-topic messages, and answers 503 until the SES values are set', async () => {
-    const { sesEvents } = senderPart(null, { certificate: certificates })
-    const delivery = sesEvent('0108x-000000', { eventType: 'Delivery', delivery: { recipients: [] } })
-    expect((await sesEvents({ ...delivery, MessageId: 'tampered' })).status).toBe(403)
-    expect((await sesEvents({ ...delivery, TopicArn: EVENTS_TOPIC.replace('ses-events', 'inbound') })).status).toBe(403)
+  test('a notice’s event still unmatched 10 minutes after Resend made it is logged once and acknowledged', async () => {
+    // The row may be gone for good (an alert settled after leaving `queued`, a purged organisation), and Resend
+    // disables the one endpoint every event shares after repeated failures.
+    const { webhook, clock } = senderPart(null)
+    const providerId = crypto.randomUUID()
+    const madeAgo = (ms: number) => new Date(clock.now.getTime() - ms).toISOString()
+    const delivered = (createdAt: string | undefined) =>
+      resendBody('email.delivered', providerId, 'x@example.test', { category: 'call', createdAt })
+    const lines: Array<Record<string, unknown>> = []
+    const spies = (['log', 'error'] as const).map((level) =>
+      vi.spyOn(console, level).mockImplementation((line: unknown) => void lines.push(JSON.parse(String(line))))
+    )
+    try {
+      expect((await webhook(delivered(madeAgo(10 * 60_000 - 1)))).status).toBe(503)
+      expect(lines).toEqual([])
+      // A missing or unreadable `created_at` counts as old.
+      for (const createdAt of [madeAgo(10 * 60_000), undefined, 'yesterday']) {
+        expect((await webhook(delivered(createdAt))).status, String(createdAt)).toBe(200)
+      }
+    } finally {
+      for (const spy of spies) spy.mockRestore()
+    }
+    expect(lines).toEqual(
+      Array(3).fill(
+        expect.objectContaining({
+          severity: 'WARNING',
+          message: 'delivery event for a notice never recorded',
+          provider_message_id: providerId,
+          category: 'call'
+        })
+      )
+    )
+  })
 
-    const unset = senderPart(null, {
-      certificate: certificates,
-      config: () => ({})
-    })
-    expect((await unset.sesEvents(delivery)).status).toBe(503)
+  test('a call signed with another secret, altered or stale answers 401 and writes nothing', async () => {
+    const address = 'forged@example.test'
+    const made = await approvedCall(orgId, { recipients: [{ email: address }] })
+    const { approve, webhook } = senderPart(mailbox())
+    await approve(made.event)
+    const providerId = (await noticeRow(made.subscribers[0]!.noticeId)).provider_message_id!
+    const bounce = permanentBounce(providerId, address)
+    const other = `whsec_${Buffer.from('not-the-worker-webhook-secret').toString('base64')}`
+    const stale = Math.floor(Date.now() / 1000) - 6 * 60
+
+    expect((await webhook(bounce, signedHeaders(bounce, { secret: other }))).status).toBe(401)
+    expect((await webhook(bounce, signedHeaders(bounce.replace('"call"', '"auditor"')))).status).toBe(401)
+    expect((await webhook(bounce, signedHeaders(bounce, { timestamp: stale }))).status).toBe(401)
+    expect((await noticeRow(made.subscribers[0]!.noticeId)).status).toBe('sent')
+    expect(await suppressionOf(address)).toEqual([])
+  })
+
+  test('a validly signed body that isn’t JSON answers 400', async () => {
+    expect((await senderPart(null).webhook('{"type":"email.bounced",')).status).toBe(400)
   })
 })
 
 describe('registration', () => {
-  test('c-sender-email registers the sender, the sweep and /ses/events once', () => {
+  test('c-sender-email registers the sender, the sweep and the four delivery events once', () => {
     expect(registry.events.filter((c) => c.consumer === 'sender').map((c) => c.types)).toEqual([['bundle.approved']])
     expect(registry.batch['notice-sweep']).toBeTypeOf('function')
-    expect(registry.ses['/events']).toBeTypeOf('function')
+    expect(Object.keys(senderPart(null).part.resend!).sort()).toEqual(
+      ['email.bounced', 'email.complained', 'email.delivered', 'email.suppressed'].sort()
+    )
+    expect(Object.keys(registry.resend).sort()).toEqual(
+      ['email.bounced', 'email.complained', 'email.delivered', 'email.received', 'email.suppressed'].sort()
+    )
   })
 })

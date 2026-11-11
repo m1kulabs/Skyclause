@@ -484,7 +484,7 @@ const NFR14: { data: string; mechanism: string; sweeper?: string; owner: string;
     todo: 'after #132 merges the table'
   },
   {
-    data: 'handled SES message IDs',
+    data: 'handled message IDs',
     mechanism: 'a handled-message sweep here (#461)',
     sweeper: 'handled-messages',
     owner: 'a-retention'
