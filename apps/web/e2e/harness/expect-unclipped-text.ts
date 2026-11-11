@@ -2,6 +2,20 @@ import type { Page } from '@playwright/test'
 
 /** NFR-12: detect text clipped by its own box or any ancestor, including ellipsis and line clamps. */
 export async function expectUnclippedText(page: Page): Promise<void> {
+  // An entrance animation's transform overflows its mask until it ends: check the settled page. Infinite animations
+  // keep running; the wait is bounded at 3 s.
+  await page.evaluate(() =>
+    Promise.race([
+      Promise.allSettled(
+        document.getAnimations().map((animation) => {
+          const timing = (animation.effect as KeyframeEffect | null)?.getTiming()
+          if (timing && (timing.iterations === Infinity || timing.duration === Infinity)) return null
+          return animation.finished.catch(() => null)
+        })
+      ),
+      new Promise((resolve) => setTimeout(resolve, 3000))
+    ])
+  )
   const findings = await page.locator('body').evaluate((body) => {
     const failures = new Set<string>()
     const modalOpen = !!body.querySelector(

@@ -1,4 +1,4 @@
-import { asLogin } from '@skyclause/db/test/harness/index'
+import { asLogin, databaseNow } from '@skyclause/db/test/harness/index'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { resolvePrincipal } from '../src/principal'
 import { deviceAuthorizationPageData } from '../src/pages'
@@ -102,7 +102,10 @@ test('a pending device can be denied and its token poll returns access_denied', 
 })
 
 test('a confirmed device issues a CLI bearer with the confirmer authentication time and tracks one OS-only login', async () => {
-  const startedAt = new Date()
+  // Analytics timestamps come from PostgreSQL even when the application clock is ahead.
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(Date.now() + 60_000)
+  const startedAt = await databaseNow()
   const { json } = await startDevice({ ua: 'skyclause-cli/1.0.0 (darwin; Work laptop)', ip: '198.51.100.43' })
   expect(
     await deviceAuthorizationPageData(
@@ -124,7 +127,6 @@ test('a confirmed device issues a CLI bearer with the confirmer authentication t
   const fast = await token(json.device_code)
   expect(fast.status).toBe(400)
   expect(await fast.json()).toMatchObject({ error: 'slow_down' })
-  vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(Date.now() + 5_000)
   const issued = await token(json.device_code)
   expect(issued.status).toBe(200)
@@ -167,7 +169,7 @@ test('a confirmed device issues a CLI bearer with the confirmer authentication t
 })
 
 test('a code without a user agent still completes with the explicit unknown OS analytics value', async () => {
-  const startedAt = new Date()
+  const startedAt = await databaseNow()
   const { json } = await startDevice({ ip: '198.51.100.45' })
   const stored = await asLogin('postgres', (client) =>
     client.query('SELECT value, expires_at FROM auth.verification WHERE identifier = $1', [

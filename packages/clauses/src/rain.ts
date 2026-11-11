@@ -1,5 +1,5 @@
 // JPS samples cover (T - 5 minutes, T]; poll cadence is not measurement cadence.
-const RAIN_STEP_MS = 300_000
+export const RAIN_STEP_MS = 300_000
 interface RainSample {
   iso: string
   ms: number

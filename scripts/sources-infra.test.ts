@@ -18,7 +18,7 @@ test('sources use pull-only results, worker subscriber IAM and real daily job mo
   expect(sources).toContain('service_account           = local.sa.jobs')
   expect(run).toContain('SOURCE_RESULTS_SUBSCRIPTION')
   expect(read('variables.tf')).toContain('ADAPTER_USER_AGENT')
-  expect(run).toContain('merge(var.app_config,')
+  expect(run).toContain('merge(local.shared_config,')
   expect(run).not.toContain('SOURCE_USER_AGENT')
   expect(run).not.toMatch(/ADAPTER_USER_AGENT\s*=/)
 })
@@ -30,7 +30,7 @@ test('production sets every value the source runner requires, and the user agent
     )
   ].map((match) => match[1]!)
   const runEnv = read('run.tf')
-    .split(/\n\s+env\s+= merge\(var\.app_config, \{/)[1]!
+    .split(/\n\s+env\s+= merge\(local\.shared_config, \{/)[1]!
     .split('\n  })')[0]!
   const appConfig = read('terraform.tfvars').split('\napp_config = {')[1]!.split('\n}\n')[0]!
   expect(required).toContain('ADAPTER_USER_AGENT')

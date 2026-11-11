@@ -3,7 +3,8 @@ import {
   IdempotentOrganizationHeaders,
   IdParams as ProjectParams,
   IdParams as SourceParams,
-  problemResponse
+  problemResponse,
+  Problem
 } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
@@ -14,11 +15,28 @@ const PageRequest = z.object({ ...PageQuery.shape })
 const ProjectSource = Source.extend({
   project_id: z.string(),
   role: SourceRole,
-  state: SourceState,
+  state: SourceState.nullable(),
   latest_reading: Reading.nullable(),
   age_s: z.number().int().nonnegative().nullable(),
-  recent_errors: z.array(Poll)
+  recent_errors: z.array(Poll),
+  // #173 needs the camera's current probation count and agreement beside its source state.
+  probation: z
+    .object({
+      source_id: z.string(),
+      probation: z.boolean(),
+      labeller_ids: z.array(z.string()),
+      n: z.number().int().nonnegative(),
+      obscured_frames: z.number().int().nonnegative(),
+      agreement: z.number().min(0).max(1).nullable()
+    })
+    .optional()
 })
+export const PackPrerequisitesProblem = Problem.extend({ missing: z.array(SourceRole) })
+export const packPrerequisitesResponse = {
+  description: 'The enabled Crowd pack requires these source roles.',
+  content: { 'application/problem+json': { schema: PackPrerequisitesProblem } }
+}
+
 const DeviceCredential = z.object({
   source_id: z.string(),
   token: z.string(),
@@ -59,6 +77,7 @@ export const unbindSource = createRoute({
   request: { headers: OrganizationHeaders, params: ProjectSourceParams },
   responses: {
     204: { description: 'Source unbound' },
+    409: packPrerequisitesResponse,
     ...projectErrors
   },
   x: { owner: 'b-source-binding', statement: 'sources.manage', idempotent: false }

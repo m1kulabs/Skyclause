@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import { deriveInputState, snapshotAt } from '../src'
+import { deriveInputState, resolveSourceAt, snapshotAt } from '../src'
+import { dedupeReadingsAt } from '../src/snapshot'
 import type { ReadingHistory } from '../src/types'
 import { TEST_REGISTRY } from './test-helpers'
 
@@ -651,5 +652,101 @@ describe('review regressions: source observations and current mornings', () => {
       'CA16W-api-2026-11-01T22:00:00Z'
     ])
     expect(snap.site['site.api_0600_min_last3_max']?.observedAt).toBe('2026-11-01T22:00:00Z')
+  })
+})
+
+// Isolated boundary tests use explicit test readings and receipt clocks.
+describe('isolated history identity and GTFS calendar boundaries', () => {
+  const warning = (
+    overrides: Partial<ReadingHistory['readings'][number]> = {}
+  ): ReadingHistory['readings'][number] => ({
+    id: 'warning-old',
+    sourceId: 'met-warn',
+    metric: 'warning',
+    observedAt: '2026-11-02T07:00:00Z',
+    receivedAt: '2026-11-02T07:01:00Z',
+    value: true,
+    valueText: null,
+    valueJson: null,
+    itemKey: 'warning-1',
+    revision: 1,
+    ...overrides
+  })
+
+  test('preserves distinct MET items at the same observation', () => {
+    const h = baseHistory()
+    h.readings = [warning(), warning({ id: 'warning-other', itemKey: 'warning-2' })]
+    expect(dedupeReadingsAt(h, Date.parse('2026-11-02T07:05:00Z')).map((r) => r.id)).toEqual([
+      'warning-old',
+      'warning-other'
+    ])
+  })
+
+  test('keeps independent revision sequences for the same MET item at different observations', () => {
+    const h = baseHistory()
+    h.readings = [
+      warning({ revision: 9, receivedAt: '2026-11-02T07:04:00Z' }),
+      warning({ id: 'warning-new', observedAt: '2026-11-02T07:02:00Z', receivedAt: '2026-11-02T07:03:00Z' })
+    ]
+    expect(dedupeReadingsAt(h, Date.parse('2026-11-02T07:05:00Z')).map((r) => r.id)).toEqual([
+      'warning-old',
+      'warning-new'
+    ])
+  })
+
+  test('selects the earlier revision at an earlier receipt cutoff', () => {
+    const h = baseHistory()
+    h.readings = [warning(), warning({ id: 'warning-revised', revision: 2, receivedAt: '2026-11-02T07:04:00Z' })]
+    expect(dedupeReadingsAt(h, Date.parse('2026-11-02T07:03:00Z')).map((r) => r.id)).toEqual(['warning-old'])
+    expect(dedupeReadingsAt(h, Date.parse('2026-11-02T07:04:00Z')).map((r) => r.id)).toEqual(['warning-revised'])
+  })
+
+  test('GTFS calendar_end is inclusive through the MYT date and successful polls cannot extend it', () => {
+    const h: ReadingHistory = {
+      sources: [
+        {
+          id: 'gtfs',
+          kind: 'gtfs_static',
+          cadenceS: 300,
+          staleAfterS: 600,
+          freshness: 'polled',
+          probation: false,
+          meta: { calendar_end: '2026-11-02' }
+        }
+      ],
+      readings: [],
+      polls: [
+        { id: 'before-midnight', sourceId: 'gtfs', startedAt: '2026-11-02T15:59:00Z', outcome: 'ok', httpStatus: 200 }
+      ]
+    }
+    expect(deriveInputState(h, 'gtfs', '2026-11-02T15:59:59Z')).toBe('fresh')
+    expect(deriveInputState(h, 'gtfs', '2026-11-02T16:00:00Z')).toBe('stale')
+    h.polls.push({
+      id: 'after-midnight',
+      sourceId: 'gtfs',
+      startedAt: '2026-11-02T16:01:00Z',
+      outcome: 'unchanged',
+      httpStatus: 304
+    })
+    expect(resolveSourceAt(h, 'gtfs', '2026-11-02T16:01:00Z')).toMatchObject({
+      state: 'stale',
+      since: '2026-11-02T16:00:00Z',
+      ageS: 0
+    })
+    h.polls.push({
+      id: 'failed-after-expiry',
+      sourceId: 'gtfs',
+      startedAt: '2026-11-02T16:02:00Z',
+      outcome: 'error',
+      httpStatus: 503
+    })
+    expect(deriveInputState(h, 'gtfs', '2026-11-02T16:02:00Z')).toBe('error')
+  })
+
+  test('freshness is current at age 600 seconds and stale at 601 seconds', () => {
+    const h = baseHistory()
+    h.readings = [warning({ sourceId: '0232901RF', metric: 'rain_5m_mm' })]
+    expect(deriveInputState(h, '0232901RF', '2026-11-02T07:10:00Z')).toBe('fresh')
+    expect(deriveInputState(h, '0232901RF', '2026-11-02T07:10:01Z')).toBe('stale')
   })
 })

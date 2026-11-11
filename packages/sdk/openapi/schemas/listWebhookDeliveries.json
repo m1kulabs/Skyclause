@@ -129,7 +129,7 @@
                                     "format": "date-time"
                                   },
                                   "http_status": {
-                                    "type": "integer"
+                                    "type": ["integer", "null"]
                                   }
                                 },
                                 "required": ["source_id", "state", "since", "http_status"]
@@ -176,7 +176,7 @@
                                     "format": "date-time"
                                   },
                                   "http_status": {
-                                    "type": "integer"
+                                    "type": ["integer", "null"]
                                   }
                                 },
                                 "required": ["source_id", "state", "since", "http_status"]
@@ -223,7 +223,7 @@
                                     "format": "date-time"
                                   },
                                   "http_status": {
-                                    "type": "integer"
+                                    "type": ["integer", "null"]
                                   }
                                 },
                                 "required": ["source_id", "state", "since", "http_status"]

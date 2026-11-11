@@ -42,6 +42,7 @@
   "sources_title": "Pautkan sumber",
   "source_search": "Cari sumber",
   "source_error": "Ralat · HTTP {status}",
+  "source_not_evaluated": "Belum dinilai",
   "source_error_unknown": "Ralat",
   "bind": "Pautkan {source}",
   "binding": "Memautkan…",

@@ -12,12 +12,12 @@ Contents:
 
 ## On-call rota
 
-| Role      | Name          | Carries                                                                                 |
-| --------- | ------------- | --------------------------------------------------------------------------------------- |
-| Primary   | `kymil4`      | Every Cloud Monitoring page; acknowledges within 15 minutes in P1 and 5 minutes from P2 |
-| Secondary | `AlaskanTuna` | Pages the primary hasn't acknowledged in time                                           |
+| Role      | Name          | Carries                                                                                                 |
+| --------- | ------------- | ------------------------------------------------------------------------------------------------------- |
+| Primary   | `kymil4`      | Watches Cloud Monitoring incidents on shift; acknowledges within 15 minutes in P1 and 5 minutes from P2 |
+| Secondary | `AlaskanTuna` | Takes over pages the primary hasn't acknowledged in time                                                |
 
-Names are GitHub handles, named by the product lead on 6 November 2026. Phone numbers and email addresses are in the Secret Manager secret `ONCALL_CONTACTS` (`gcloud secrets versions access latest --secret=ONCALL_CONTACTS --project=skyclause`), never in this repository.
+Names are GitHub handles, named by the product lead on 6 November 2026.
 
 The breach owner and deputy are separate roles, named in the [breach runbook](breach.md#breach-owner-and-deputy); the same people hold them today.
 
@@ -25,7 +25,7 @@ The breach owner and deputy are separate roles, named in the [breach runbook](br
 
 Check each before the shift starts:
 
-- **Paging:** the Cloud Monitoring app installed and signed in, with push and SMS notifications on ([#114](https://github.com/m1kulabs/Skyclause/issues/114)).
+- **Incidents:** you can open the Cloud Monitoring incidents page for the `skyclause` project, which you watch during your shift because alert policies send no notification ([#114](https://github.com/m1kulabs/Skyclause/issues/114)).
 - **Staff list:** your sign-in email is in `SKYCLAUSE_STAFF_EMAILS`, so you can open `/status` incidents at `/admin/incidents`. An owner adds it with `gcloud secrets versions add SKYCLAUSE_STAFF_EMAILS --project=skyclause --data-file=-`, and it takes effect on the next deploy.
 - **Google Cloud:** `gcloud auth login` works and you can run `gcloud run services list --project=skyclause --region=asia-southeast1`; rolling back needs `roles/run.developer` on the project ([rollback runbook](rollback.md)).
 - **Neon:** you can sign in to the Neon Console for the `skyclause-production` project, which a restore needs ([restore runbook](restore.md)).

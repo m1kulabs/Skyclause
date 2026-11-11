@@ -21,8 +21,21 @@ test('the landing page renders its full shell per request for the CSP nonce', as
   const response = await request.get('/')
   expect(response.status()).toBe(200)
   const html = await response.text()
-  expect(html).toMatch(/<h1\b[^>]*>Skyclause<\/h1>/)
   expect(html).toContain('class="skip-link"')
   expect(html).toContain('id="main-content"')
   expect(html).toContain('id="skyclause-announcer"')
+
+  // #184 hero: the product-name h1 below is the hero copy deck's h1, rendered per request for no-JS.
+  expect(html).toMatch(/<h1\b[^>]*>[\s\S]*?The call for[\s\S]*?every window[\s\S]*?<\/h1>/)
+  expect(html).toContain('Skyclause reads the rain gauge')
+  expect(html).toContain('Open the Commons')
+  expect(html).toContain('Sign in')
+  // #185 sections follow the hero.
+  expect(html).toContain('class="landing-frame"')
+  // No-JS live verdict: the server-rendered GET form and picker, with the next hour's verdict or the honest error.
+  expect(html).toContain('data-ui')
+  expect(html).toContain('name="date"')
+  expect(html).toContain('name="start"')
+  expect(html).toContain('name="end"')
+  expect(html).toMatch(/Clause engine verdict|Couldn't reach the live verdict/)
 })

@@ -39,6 +39,7 @@ const OWNERS: Record<AuditAction, string> = {
   'source.bound': '#138',
   'source.unbound': '#138',
   'sla.changed': '#138',
+  'pack.updated': '#138',
   'export.requested': '#109',
   'organisation.deletion_requested': '#109',
   'organisation.deletion_cancelled': '#109',

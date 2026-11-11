@@ -93,7 +93,7 @@ export async function queueFeedbackNotice(
   return row ? { id: row.id, idempotencyKey } : null
 }
 
-/** Records SES's answer to a send: `sent` with its message ID, or `failed` (null). #158's `/ses/events` takes over. */
+/** Records the provider's answer to a send: `sent` with its message ID, or `failed` (null). `/resend/webhook` takes over. */
 export async function recordNoticeSend(tx: Tx, noticeId: string, providerMessageId: string | null): Promise<void> {
   const now = new Date()
   await tx

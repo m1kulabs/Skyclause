@@ -1,3 +1,4 @@
+import { canonicalHash } from '@skyclause/clauses'
 import { randomUUID } from 'node:crypto'
 import type { Tx } from '../../src/client'
 import { clauseSheet, sheetVersion } from '../../src/schema'
@@ -13,7 +14,7 @@ export async function makeSheetVersion(tx: Tx, overrides: Partial<typeof sheetVe
       orgId: tx.orgId!,
       n: overrides.status === 'published' ? 1 : null,
       content: { pack: parent.pack, clauses: [] },
-      contentHash: randomUUID(),
+      contentHash: overrides.content ? canonicalHash(overrides.content) : randomUUID(),
       ...overrides,
       sheetId: parent.id
     })

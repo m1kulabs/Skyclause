@@ -48,19 +48,19 @@ describe('loadEnv', () => {
     expect(loadEnv('worker', { ...worker, PORT: '9000' }).PORT).toBe(9000)
   })
 
-  // Set from infra/aws's app_config output once gate 4B is done; until then none is set.
+  // Resend sending: the key is a Secret Manager secret (shaped like one, not real), the senders Terraform's.
   const email = {
-    SES_REGION: 'ap-southeast-2',
-    SES_CONFIGURATION_SET: 'skyclause-production',
+    RESEND_SENDING_API_KEY: 're_test_sending_only',
     EMAIL_FROM_AUTH: 'Skyclause <sign-in@notices.skyclause.m1ku.tech>',
-    EMAIL_FROM_NOTICES: 'Skyclause <notices@notices.skyclause.m1ku.tech>',
-    AWS_ROLE_ARN: 'arn:aws:iam::776566309118:role/skyclause-production-email'
+    EMAIL_FROM_NOTICES: 'Skyclause <notices@notices.skyclause.m1ku.tech>'
   }
+  // The worker's Resend receiving settings: the full-access key and the webhook's signing secret are Secret Manager
+  // secrets (shaped like Resend's, not real ones), the domain Terraform's.
   const inbound = {
-    SES_EVENTS_SNS_TOPIC_ARN: 'arn:aws:sns:ap-southeast-2:776566309118:skyclause-production-ses-events',
-    INBOUND_DOMAIN: 'in.skyclause.m1ku.tech',
-    INBOUND_BUCKET: 'skyclause-production-inbound-776566309118',
-    INBOUND_SNS_TOPIC_ARN: 'arn:aws:sns:ap-southeast-2:776566309118:skyclause-production-inbound'
+    RESEND_RECEIVING_API_KEY: 're_test_full_access',
+    // A 24-byte key, the least the schema takes.
+    RESEND_WEBHOOK_SECRET: `whsec_${Buffer.from('skyclause env test value').toString('base64')}`,
+    INBOUND_DOMAIN: 'in.skyclause.m1ku.tech'
   }
 
   test('the worker needs EMAIL_HASH_KEY and reads the notice origins', () => {
@@ -70,29 +70,64 @@ describe('loadEnv', () => {
     expect(loadEnv('worker', { ...worker, ...links })).toMatchObject(links)
   })
 
-  test('the email variables are optional until gate 4B, then read together', () => {
-    expect(loadEnv('worker', worker)).not.toHaveProperty('SES_REGION')
+  test('the sending and receiving variables are optional, and each group is read together', () => {
+    expect(loadEnv('worker', worker)).not.toHaveProperty('RESEND_SENDING_API_KEY')
+    expect(loadEnv('worker', worker)).not.toHaveProperty('RESEND_RECEIVING_API_KEY')
     expect(loadEnv('worker', { ...worker, ...email, ...inbound })).toEqual({
       ...worker,
       ...email,
       ...inbound,
       PORT: 8080
     })
+    expect(loadEnv('worker', { ...worker, ...email })).toEqual({ ...worker, ...email, PORT: 8080 })
+    expect(loadEnv('worker', { ...worker, ...inbound })).toEqual({ ...worker, ...inbound, PORT: 8080 })
     expect(loadEnv('web', { ...web, ...email })).toEqual({ ...web, ...email })
   })
 
-  test('a partial email set fails the start naming what is missing', () => {
-    const { AWS_ROLE_ARN: _, ...partial } = email
-    expect(() => loadEnv('web', { ...web, ...partial })).toThrow(/AWS_ROLE_ARN/)
-    expect(() => loadEnv('worker', { ...worker, ...email })).toThrow(/INBOUND_SNS_TOPIC_ARN/)
+  test('the receiving variables are the worker’s only: web takes none of them', () => {
+    expect(loadEnv('web', { ...web, ...email, ...inbound })).toEqual({ ...web, ...email })
   })
 
-  test('refuses an AWS_ROLE_ARN or topic that is not an ARN', () => {
-    expect(() => loadEnv('web', { ...web, ...email, AWS_ROLE_ARN: 'skyclause-production-email' })).toThrow(
-      /AWS_ROLE_ARN/
-    )
-    expect(() => loadEnv('worker', { ...worker, ...email, ...inbound, INBOUND_SNS_TOPIC_ARN: 'inbound' })).toThrow(
-      /INBOUND_SNS_TOPIC_ARN/
+  test('a partial email set fails the start naming what is missing', () => {
+    const { RESEND_SENDING_API_KEY: _, ...noKey } = email
+    expect(() => loadEnv('web', { ...web, ...noKey })).toThrow(/RESEND_SENDING_API_KEY/)
+    expect(() => loadEnv('worker', { ...worker, ...noKey, ...inbound })).toThrow(/RESEND_SENDING_API_KEY/)
+    for (const name of Object.keys(inbound)) {
+      const partial = Object.fromEntries(Object.entries(inbound).filter(([other]) => other !== name))
+      expect(() => loadEnv('worker', { ...worker, ...email, ...partial }), name).toThrow(new RegExp(name))
+    }
+  })
+
+  test('refuses a Resend key that is not one', () => {
+    for (const RESEND_SENDING_API_KEY of ['skyclause-production', 're_test_sending_only\n', 'whsec_test']) {
+      expect(() => loadEnv('web', { ...web, ...email, RESEND_SENDING_API_KEY })).toThrow(/RESEND_SENDING_API_KEY/)
+    }
+    for (const RESEND_RECEIVING_API_KEY of ['skyclause-production', 're_test_full_access\n', 'whsec_test']) {
+      expect(() => loadEnv('worker', { ...worker, ...inbound, RESEND_RECEIVING_API_KEY })).toThrow(
+        /RESEND_RECEIVING_API_KEY/
+      )
+    }
+  })
+
+  test('refuses a webhook secret that is not a whsec_ one', () => {
+    for (const RESEND_WEBHOOK_SECRET of ['plJ3nmyCDGBKInavdOK15jsl', 're_test_sending_only', 'whsec_', 'whsec_a b']) {
+      expect(() => loadEnv('worker', { ...worker, ...inbound, RESEND_WEBHOOK_SECRET }), RESEND_WEBHOOK_SECRET).toThrow(
+        /RESEND_WEBHOOK_SECRET/
+      )
+    }
+  })
+
+  test('refuses a webhook secret whose HMAC key is under 24 bytes', () => {
+    // `whsec_A` decodes to no byte at all, so anyone could sign with the empty key.
+    const short = ['whsec_A', `whsec_${Buffer.alloc(23, 7).toString('base64')}`]
+    for (const RESEND_WEBHOOK_SECRET of short) {
+      expect(() => loadEnv('worker', { ...worker, ...inbound, RESEND_WEBHOOK_SECRET }), RESEND_WEBHOOK_SECRET).toThrow(
+        /RESEND_WEBHOOK_SECRET/
+      )
+    }
+    const RESEND_WEBHOOK_SECRET = `whsec_${Buffer.alloc(24, 7).toString('base64')}`
+    expect(loadEnv('worker', { ...worker, ...inbound, RESEND_WEBHOOK_SECRET }).RESEND_WEBHOOK_SECRET).toBe(
+      RESEND_WEBHOOK_SECRET
     )
   })
 

@@ -2,7 +2,7 @@
 
 import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
-import { check, diff, evaluate, explain, snapshotAt } from '../src'
+import { check, diff, effectiveWindowSpan, evaluate, explain, snapshotAt } from '../src'
 import type { IndicatorSnapshot, NightInput, ReadingHistory, SheetInput, Window } from '../src/types'
 import { TEST_REGISTRY, completeRainSeries } from './test-helpers'
 import { terminalRainCases } from './final-review-cases'
@@ -611,4 +611,40 @@ describe('review regression: warning observation interval and provenance', () =>
 
 describe('Task 2 historical rainfall endpoint', () => {
   test.each(terminalRainCases)('$name', ({ run }) => run())
+})
+
+describe('shared effective window span boundary', () => {
+  const window: Window = {
+    id: 'isolated-span',
+    startsAt: '2026-11-02T07:00:00Z',
+    endsAt: '2026-11-02T08:00:00Z',
+    kind: 'class',
+    tz: 'Asia/Kuala_Lumpur'
+  }
+  const clause: SheetInput['clauses'][number] = {
+    key: 'span',
+    name: 'Span',
+    enabled: true,
+    scope: 'window',
+    requires: [],
+    when: 'true',
+    proposes: {},
+    wording: {}
+  }
+
+  test('uses actual window bounds without rain requirements or an explicit span', () => {
+    expect(effectiveWindowSpan(clause, window)).toEqual({ from: window.startsAt, to: window.endsAt })
+  })
+
+  test.each(['requires', 'optional'] as const)('uses the implicit rain span for %s', (field) => {
+    expect(effectiveWindowSpan({ ...clause, [field]: ['w.rain_max_60m_mm'] }, window)).toEqual({
+      from: '2026-11-02T07:30:00Z',
+      to: '2026-11-02T09:00:00Z'
+    })
+  })
+
+  test('an explicit span takes precedence over the implicit rain span', () => {
+    const explicit = { ...clause, requires: ['w.rain_max_4h_mm'], span: { from: 'start-5m', to: 'end+10m' } }
+    expect(effectiveWindowSpan(explicit, window)).toEqual({ from: '2026-11-02T06:55:00Z', to: '2026-11-02T08:10:00Z' })
+  })
 })

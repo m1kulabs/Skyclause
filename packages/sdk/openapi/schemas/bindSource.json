@@ -89,7 +89,7 @@
                   "type": "integer"
                 },
                 "licence_id": {
-                  "type": "string"
+                  "type": ["string", "null"]
                 },
                 "licence_label": {
                   "type": "string"
@@ -113,7 +113,7 @@
                   ]
                 },
                 "state": {
-                  "type": "object",
+                  "type": ["object", "null"],
                   "properties": {
                     "state": {
                       "type": "string",
@@ -241,6 +241,37 @@
                       "error_code"
                     ]
                   }
+                },
+                "probation": {
+                  "type": "object",
+                  "properties": {
+                    "source_id": {
+                      "type": "string"
+                    },
+                    "probation": {
+                      "type": "boolean"
+                    },
+                    "labeller_ids": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "n": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "obscured_frames": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "agreement": {
+                      "type": ["number", "null"],
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "required": ["source_id", "probation", "labeller_ids", "n", "obscured_frames", "agreement"]
                 }
               },
               "required": [

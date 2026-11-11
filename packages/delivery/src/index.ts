@@ -1,24 +1,27 @@
-export { webIdentityCredentials, type AwsCredentials, type WebIdentityOptions } from './aws-credentials'
 export {
   createEmailTransport,
-  emailTransportForAws,
-  SesError,
+  EmailSendError,
+  emailTransportFromEnv,
+  requireEmailTransport,
   type EmailMessage,
   type EmailTransport,
-  type EmailTransportOptions,
-  type SesClient
+  type EmailTransportOptions
 } from './email'
+export {
+  checkResendWebhookHeaders,
+  parseResendWebhook,
+  verifyResendWebhook,
+  WebhookVerificationError,
+  type ResendWebhook
+} from './resend-webhook'
 export { googleLinkEmail, magicLinkDisabledEmail, magicLinkEmail } from './auth-emails'
-export { isSnsUrl, SnsVerificationError, verifySnsMessage, type SnsMessage, type VerifyOptions } from './sns'
 export {
   createInboundRouter,
   onInbound,
-  sesInboundForAws,
-  sesInboundHandler,
-  type InboundBucket,
+  resendInboundHandler,
   type InboundHandler,
   type InboundMessage,
-  type SesInboundOptions
+  type InboundOptions
 } from './inbound'
 export {
   checkRequiredLines,
@@ -37,7 +40,7 @@ export {
 } from './notices'
 export { renderFeedbackEmail } from './feedback-email'
 export { callNoticeEmail, type CallNoticeOptions } from './call-notice'
-export { parseSesEvent, sesEventsHandler, type SesEvent, type SesEventsOptions } from './ses-events'
+export { DELIVERY_EVENT_TYPES, deliveryEvent, type DeliveryEvent } from './delivery-events'
 export { renderExportReadyEmail } from './export-ready-email'
 export { renderSubscriberEmail, type SubscriberEmailKind } from './subscriber-emails'
 export { ensureVapidKeys, type VapidKeysOptions } from './vapid'

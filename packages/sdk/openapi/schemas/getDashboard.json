@@ -513,7 +513,7 @@
                                 "type": "integer"
                               },
                               "licence_id": {
-                                "type": "string"
+                                "type": ["string", "null"]
                               },
                               "licence_label": {
                                 "type": "string"
