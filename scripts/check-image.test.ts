@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { chmodSync, mkdirSync, readFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, test } from 'vitest'
@@ -8,22 +8,39 @@ import { plantRepo } from './test-helpers'
 
 const script = fileURLToPath(new URL('./check-image.sh', import.meta.url))
 
-// Stand-ins for docker, curl and sleep. docker records each detached run's arguments (one per line) and answers the
-// calls check-image.sh makes; the one-off runs fail with the messages the script looks for. curl answers ok for the
-// roles in FAKE_HEALTHY.
+// Stand-ins for docker, curl and sleep. docker records each detached run's arguments (one per line) and tracks live
+// containers under FAKE_LOG/cid-<role>; a crashed role (not in FAKE_HEALTHY) started with --rm is removed at once, as
+// Docker does, while one started without --rm stays until `docker rm` so `docker logs` can read its boot error.
 const fakeDocker = `#!/usr/bin/env bash
 set -euo pipefail
 port_of() { case "$1" in cid-web) echo 41001 ;; cid-worker) echo 41002 ;; *) echo 0 ;; esac; }
 case "$1" in
   image) echo app ;;
   port) echo "0.0.0.0:$(port_of "$2")" ;;
-  stop) echo "$2" ;;
-  logs) echo 'fake log line' >&2 ;;
+  stop)
+    if grep -qx -- --rm "$FAKE_LOG/\${2#cid-}.argv" 2>/dev/null; then
+      rm -f "$FAKE_LOG/$2"
+    fi
+    echo "$2" ;;
+  rm)
+    rm -f "$FAKE_LOG/\${!#}"
+    echo "\${!#}" ;;
+  logs)
+    if [ ! -f "$FAKE_LOG/$2" ]; then
+      echo "Error response from daemon: No such container: $2" >&2
+      exit 1
+    fi
+    cat "$FAKE_LOG/$2" >&2 ;;
   run)
     if [ "$2" = -d ]; then
       role=$(printf '%s\\n' "$@" | sed -n 's/^K_SERVICE=//p')
       printf '%s\\n' "$@" > "$FAKE_LOG/$role.argv"
-      echo "cid-$role"
+      cid="cid-$role"
+      echo "$role crashed on boot" > "$FAKE_LOG/$cid"
+      if [[ " $FAKE_HEALTHY " != *" $role "* && " $* " == *" --rm "* ]]; then
+        rm -f "$FAKE_LOG/$cid"
+      fi
+      echo "$cid"
     elif [[ " $* " == *" --entrypoint "* ]]; then
       echo 1000
     else
@@ -49,20 +66,32 @@ esac
 case " $FAKE_HEALTHY " in *" $role "*) echo ok ;; *) exit 7 ;; esac
 `
 
-function runCheck(healthy: string) {
+const fakeSleep = `#!/usr/bin/env bash
+if [ -n "\${FAKE_INTERRUPT:-}" ]; then
+  kill -s "$FAKE_INTERRUPT" "$PPID"
+fi
+`
+
+function runCheck(healthy: string, interrupt = '') {
   const fake = plantRepo({
     'bin/docker': fakeDocker,
     'bin/curl': fakeCurl,
-    'bin/sleep': '#!/usr/bin/env bash\nexit 0\n'
+    'bin/sleep': fakeSleep
   })
   for (const name of ['docker', 'curl', 'sleep']) chmodSync(join(fake, 'bin', name), 0o755)
   const log = join(fake, 'log')
   mkdirSync(log)
   const result = spawnSync(script, ['skyclause-check:image'], {
     encoding: 'utf8',
-    env: { PATH: `${join(fake, 'bin')}:${process.env.PATH}`, FAKE_LOG: log, FAKE_HEALTHY: healthy }
+    env: {
+      PATH: `${join(fake, 'bin')}:${process.env.PATH}`,
+      FAKE_LOG: log,
+      FAKE_HEALTHY: healthy,
+      FAKE_INTERRUPT: interrupt
+    }
   })
-  return { ...result, log }
+  const containers = readdirSync(log).filter((name) => name.startsWith('cid-'))
+  return { ...result, log, containers }
 }
 
 // The -e NAME=value pairs a detached run of `role` was given.
@@ -102,14 +131,25 @@ test('worker, with its environment, satisfies loadEnv', () => {
   expect(() => loadEnv('worker', envOf(runCheck('web worker').log, 'worker'))).not.toThrow()
 })
 
-test('passes when web and worker answer /health', () => {
+test('passes when web and worker answer /health, and removes both containers', () => {
   const run = runCheck('web worker')
   expect(run.status, run.stderr).toBe(0)
   expect(run.stdout).toContain('ok   web answers /health')
+  expect(run.containers).toEqual([])
 })
 
-test('fails and names web when web does not answer /health', () => {
+test('fails, prints the crashed container log, and removes the container when web does not answer /health', () => {
   const run = runCheck('worker')
   expect(run.status).toBe(1)
-  expect(run.stderr).toContain("FAIL: web didn't answer /health with ok")
+  expect(run.stderr).toContain("FAIL: web didn't answer /health with ok; its log:")
+  expect(run.stderr).toContain('web crashed on boot')
+  expect(run.stderr).not.toContain('No such container')
+  expect(run.containers).toEqual([])
+})
+
+test('removes the running container when interrupted', () => {
+  const run = runCheck('worker', 'INT')
+  expect(run.status).not.toBe(0)
+  expect(run.stdout).not.toContain('worker')
+  expect(run.containers).toEqual([])
 })
