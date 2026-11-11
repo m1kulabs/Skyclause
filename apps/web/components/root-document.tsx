@@ -52,6 +52,7 @@ export async function RootDocument({
       data-sidebar-collapsed={String(preferences.sidebar_collapsed)}
       suppressHydrationWarning
     >
+      {/* eslint-disable-next-line @next/next/no-head-element -- Shared App Router document; appearance runs before the body paints. */}
       <head>
         {/* JavaScript owns the live meta; keeping it out of React's hoist cache avoids a duplicate after prepaint. */}
         <noscript dangerouslySetInnerHTML={{ __html: `<meta name="theme-color" content="${resolved.color}">` }} />
