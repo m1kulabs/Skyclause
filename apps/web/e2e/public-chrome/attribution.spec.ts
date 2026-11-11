@@ -18,7 +18,7 @@ test('PUB-5 source attribution opens the complete details and returns focus with
     await expect(dialog).toBeVisible()
     await expect(dialog).toContainText(source.name)
     await expect(dialog.locator('dd[translate="no"]').first()).toHaveText(source.external_id)
-    await expect(dialog.locator('[data-licence-id]')).toHaveAttribute('data-licence-id', source.licence_id)
+    await expect(dialog.locator('[data-licence-id]')).toHaveAttribute('data-licence-id', String(source.licence_id))
     await expect(dialog).toContainText(source.licence_label)
     await expect(dialog.locator(`a[href="${source.url}"]`)).toHaveText(source.url)
 
@@ -63,7 +63,7 @@ test('PUB-5 source attribution links to the complete list without JavaScript', a
       )
       await expect(entry).toContainText(source.name)
       await expect(entry.locator('dd[translate="no"]').first()).toHaveText(source.external_id)
-      await expect(entry.locator('[data-licence-id]')).toHaveAttribute('data-licence-id', source.licence_id)
+      await expect(entry.locator('[data-licence-id]')).toHaveAttribute('data-licence-id', String(source.licence_id))
       await expect(entry).toContainText(source.licence_label)
       await expect(entry.locator(`a[href="${source.url}"]`)).toHaveText(source.url)
       const rules = attributionRules[source.kind]
