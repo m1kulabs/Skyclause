@@ -44,6 +44,10 @@ describe('value_json contracts', () => {
     }
     for (const value of [null, '23', Infinity, NaN, 23.5])
       expect(schema.safeParse({ ...raw, gloss_en: {}, min_temp: value }).success).toBe(false)
+    for (const field of ['location_id', 'location_name']) {
+      const location = { ...(raw.location as Record<string, unknown>), [field]: '   ' }
+      expect(schema.safeParse({ ...value, location }).success, field).toBe(false)
+    }
   })
   test('APIMS preserves published class and parameter text', () => {
     const schema = SOURCE_METRICS.apims.api.value_json

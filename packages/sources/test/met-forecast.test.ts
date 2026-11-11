@@ -114,6 +114,38 @@ test('catalogue derives only published identities and rejects invalid or conflic
   expect(() => parseMetForecastCatalogue(conflict)).toThrow(SchemaError)
 })
 
+test.each(['location_id', 'location_name'])(
+  'catalogue rejects whitespace-only %s before returning sources',
+  async (field) => {
+    // Fault injection changes copies of the genuine archive, including a mixed catalogue.
+    // One day per distinct ID avoids a conflicting-name rejection hiding this regression.
+    for (const body of [[raw()[0]!], [raw()[0]!, raw()[7]!, raw()[14]!]]) {
+      const badRow = body.at(-1)!
+      ;(badRow.location as Record<string, unknown>)[field] = '   '
+      expect(() => parseMetForecastCatalogue(body)).toThrow(SchemaError)
+      const adapter = createMetForecastAdapter({ discoveryHttp: async () => response(body) })
+      await expect(adapter.discover!()).rejects.toBeInstanceOf(SchemaError)
+    }
+  }
+)
+
+test('catalogue preserves nonblank published identity bytes without trimming', () => {
+  const body = [raw()[0]!]
+  // Isolated mutation proves validation does not normalize valid surrounding whitespace.
+  const location = body[0]!.location as Record<string, unknown>
+  const publishedId = ' Ds058 '
+  const publishedName = '\tKuala Lumpur  '
+  location.location_id = publishedId
+  location.location_name = publishedName
+  const original = structuredClone(body)
+  const [source] = parseMetForecastCatalogue(body)
+  expect(Buffer.from(source!.externalId)).toEqual(Buffer.from(publishedId))
+  expect(Buffer.from(source!.name)).toEqual(Buffer.from(publishedName))
+  const [reading] = parseMetForecast(body, [{ ...forecastSource, ...source! }])
+  expect(reading!.valueJson.location).toEqual(original[0]!.location)
+  expect(body).toEqual(original)
+})
+
 test('forecast factory requires injected discovery HTTP and polls through context once', async () => {
   await expect(createMetForecastAdapter().discover!()).rejects.toBeInstanceOf(SchemaError)
   let discoveryCalls = 0

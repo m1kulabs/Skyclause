@@ -85,7 +85,10 @@ const WarningValue = z.looseObject({
 })
 // #122 stores the published forecast row verbatim with per-field English glosses.
 const ForecastDayValue = z.looseObject({
-  location: z.looseObject({ location_id: z.string().min(1), location_name: z.string().min(1) }),
+  location: z.looseObject({
+    location_id: z.string().min(1).regex(/\S/),
+    location_name: z.string().min(1).regex(/\S/)
+  }),
   date: LocalDate,
   morning_forecast: z.string(),
   afternoon_forecast: z.string(),
