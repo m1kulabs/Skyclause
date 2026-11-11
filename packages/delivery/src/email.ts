@@ -1,7 +1,5 @@
-import { createHash, randomUUID } from 'node:crypto'
-import { SendEmailCommand, SESv2Client } from '@aws-sdk/client-sesv2'
+import { createHash } from 'node:crypto'
 import { loadEnv } from '@skyclause/config'
-import { webIdentityCredentials } from './aws-credentials'
 
 /** Spec §1 `EmailTransport.send` input; #87 moves the type to `packages/contracts`. */
 export interface EmailMessage {
@@ -12,7 +10,7 @@ export interface EmailMessage {
   html?: string
   replyTo?: string
   headers?: Record<string, string>
-  /** SES tag value: ASCII letters, digits, `_` and `-`. */
+  /** The `category` tag's value: ASCII letters, digits, `_` and `-`. */
   category: string
   idempotencyKey: string
 }
@@ -21,71 +19,96 @@ export interface EmailTransport {
   send(m: EmailMessage): Promise<{ providerMessageId: string }>
 }
 
-/** A send that failed: `code` is the provider's error name, `status` its HTTP status or null with no response. */
+/**
+ * Whether the same send may succeed later: no response, throttling or a quota (429), a server error (5xx), or Resend
+ * still running a request with the same idempotency key. Every other 4xx will be refused again.
+ */
+function isRetryable(status: number | null, code: string) {
+  return (
+    status === null || status === 429 || status >= 500 || (status === 409 && code === 'concurrent_idempotent_requests')
+  )
+}
+
+/**
+ * A send that failed: `code` is the provider's error name, `status` its HTTP status or null with no response, and
+ * `retryable` the transport's verdict on trying again.
+ */
 export class EmailSendError extends Error {
   readonly status: number | null
   readonly code: string
+  readonly retryable: boolean
 
   constructor(message: string, details: { status: number | null; code: string; cause?: unknown }) {
     super(message, { cause: details.cause })
     this.name = 'EmailSendError'
     this.status = details.status
     this.code = details.code
+    this.retryable = isRetryable(details.status, details.code)
   }
 }
 
-/** The part of the SES v2 client the transport uses. */
-export interface SesClient {
-  send(command: SendEmailCommand): Promise<{ MessageId?: string }>
-}
-
 export interface EmailTransportOptions {
-  ses: SesClient
-  /** `SES_CONFIGURATION_SET` */
-  configurationSet: string
+  /** `RESEND_SENDING_API_KEY`: a sending-only key. */
+  apiKey: string
   /** `EMAIL_FROM_AUTH`, for `from: 'auth'` */
   fromAuth: string
   /** `EMAIL_FROM_NOTICES`, for `from: 'notices'` and `'system'` */
   fromNotices: string
+  /** Tests only. */
+  fetch?: typeof fetch
 }
+
+const SEND_URL = 'https://api.resend.com/emails'
 
 export function createEmailTransport(options: EmailTransportOptions): EmailTransport {
   return {
     async send(m) {
-      const from = m.from === 'auth' ? options.fromAuth : options.fromNotices
-      const raw = buildMime(m, from)
-      const command = new SendEmailCommand({
-        // The bare address, so SES authorises the sender (ses:FromAddress, #623) without reading the MIME header.
-        FromEmailAddress: /<([^<>]+)>$/.exec(from)?.[1] ?? from,
-        Content: { Raw: { Data: raw } },
-        ConfigurationSetName: options.configurationSet,
-        EmailTags: [
-          { Name: 'category', Value: m.category },
-          { Name: 'idempotency_key_sha256', Value: createHash('sha256').update(m.idempotencyKey).digest('hex') }
-        ]
+      checkHeaders(m)
+      const body = JSON.stringify({
+        from: m.from === 'auth' ? options.fromAuth : options.fromNotices,
+        to: m.to,
+        subject: m.subject,
+        text: m.text,
+        ...(m.html !== undefined && { html: m.html }),
+        ...(m.replyTo && { reply_to: m.replyTo }),
+        ...(m.headers && { headers: m.headers }),
+        tags: [{ name: 'category', value: m.category }]
       })
-      let result: { MessageId?: string }
+      let response: Response
       try {
-        result = await options.ses.send(command)
+        response = await (options.fetch ?? fetch)(SEND_URL, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${options.apiKey}`,
+            'Content-Type': 'application/json',
+            // Resend refuses a request without one.
+            'User-Agent': 'skyclause',
+            // Over the body too: a retry with the same content is deduplicated for 24 hours, while new content (fresh
+            // links after a reclaim) is a new send rather than Resend's 409 for a known key with another body. JSON
+            // holds no raw line break, so the newline separates the two unambiguously.
+            'Idempotency-Key': createHash('sha256').update(`${m.idempotencyKey}\n${body}`).digest('hex')
+          },
+          body
+        })
       } catch (error) {
         const code = error instanceof Error ? error.name : 'Unknown'
-        const status = (error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode ?? null
-        const reason = status === null ? 'no HTTP response' : `HTTP ${status}`
-        throw new EmailSendError(`SES SendEmail failed: ${code} (${reason})`, { status, code, cause: error })
+        throw new EmailSendError(`Resend send failed: ${code} (no HTTP response)`, { status: null, code, cause: error })
       }
-      if (!result.MessageId) throw new Error('SES SendEmail returned no MessageId')
-      return { providerMessageId: result.MessageId }
+      // `{id}` on success, `{statusCode, message, name}` on an error.
+      const answer = (await response.json().catch(() => ({}))) as { id?: unknown; name?: unknown; message?: unknown }
+      if (!response.ok) {
+        const code = typeof answer.name === 'string' ? answer.name : 'unknown'
+        const cause = typeof answer.message === 'string' ? new Error(answer.message) : undefined
+        throw new EmailSendError(`Resend send failed: ${code} (HTTP ${response.status})`, {
+          status: response.status,
+          code,
+          cause
+        })
+      }
+      if (typeof answer.id !== 'string' || !answer.id) throw new Error('Resend returned no email id')
+      return { providerMessageId: answer.id }
     }
   }
-}
-
-/** `createEmailTransport` on SES in `region` as `AWS_ROLE_ARN`, with keyless credentials (D42). */
-export function emailTransportForAws(
-  config: Omit<EmailTransportOptions, 'ses'> & { region: string; roleArn: string }
-): EmailTransport {
-  const { region, roleArn, ...options } = config
-  const ses = new SESv2Client({ region, credentials: webIdentityCredentials({ roleArn, region }) })
-  return createEmailTransport({ ...options, ses })
 }
 
 const built: Partial<Record<'web' | 'worker', EmailTransport>> = {}
@@ -96,12 +119,10 @@ const built: Partial<Record<'web' | 'worker', EmailTransport>> = {}
  */
 export function emailTransportFromEnv(service: 'web' | 'worker'): EmailTransport | null {
   if (built[service]) return built[service]
-  const { SES_REGION, AWS_ROLE_ARN, SES_CONFIGURATION_SET, EMAIL_FROM_AUTH, EMAIL_FROM_NOTICES } = loadEnv(service)
-  if (!SES_REGION || !AWS_ROLE_ARN || !SES_CONFIGURATION_SET || !EMAIL_FROM_AUTH || !EMAIL_FROM_NOTICES) return null
-  return (built[service] = emailTransportForAws({
-    region: SES_REGION,
-    roleArn: AWS_ROLE_ARN,
-    configurationSet: SES_CONFIGURATION_SET,
+  const { RESEND_SENDING_API_KEY, EMAIL_FROM_AUTH, EMAIL_FROM_NOTICES } = loadEnv(service)
+  if (!RESEND_SENDING_API_KEY || !EMAIL_FROM_AUTH || !EMAIL_FROM_NOTICES) return null
+  return (built[service] = createEmailTransport({
+    apiKey: RESEND_SENDING_API_KEY,
     fromAuth: EMAIL_FROM_AUTH,
     fromNotices: EMAIL_FROM_NOTICES
   }))
@@ -110,11 +131,11 @@ export function emailTransportFromEnv(service: 'web' | 'worker'): EmailTransport
 /** `emailTransportFromEnv`, refusing while mail is off. */
 export function requireEmailTransport(service: 'web' | 'worker'): EmailTransport {
   const transport = emailTransportFromEnv(service)
-  if (!transport) throw new Error('email is off: the SES variables are unset until gate 4B')
+  if (!transport)
+    throw new Error('email is off: RESEND_SENDING_API_KEY, EMAIL_FROM_AUTH and EMAIL_FROM_NOTICES are unset')
   return transport
 }
 
-const CRLF = '\r\n'
 const RESERVED = new Set([
   'from',
   'to',
@@ -142,57 +163,4 @@ function checkHeaders(m: EmailMessage) {
     if (RESERVED.has(name.toLowerCase())) throw new Error(`${name} is set by the transport`)
     if (!/^[\x20-\x7e\t]*$/.test(value)) throw new Error(`${name} must be ASCII`)
   }
-}
-
-/** RFC 2047 encoded words of at most 45 UTF-8 bytes each, folded, for a non-ASCII value. */
-function encodeWords(value: string) {
-  if (/^[\x20-\x7e]*$/.test(value)) return value
-  const words: string[] = []
-  let chunk = ''
-  for (const char of value) {
-    if (Buffer.byteLength(chunk + char) > 45) {
-      words.push(chunk)
-      chunk = ''
-    }
-    chunk += char
-  }
-  words.push(chunk)
-  return words.map((word) => `=?UTF-8?B?${Buffer.from(word, 'utf8').toString('base64')}?=`).join(`${CRLF} `)
-}
-
-function base64Lines(text: string) {
-  return (
-    Buffer.from(text, 'utf8')
-      .toString('base64')
-      .match(/.{1,76}/g) ?? []
-  ).join(CRLF)
-}
-
-function textPart(type: 'plain' | 'html', body: string) {
-  return [`Content-Type: text/${type}; charset=UTF-8`, 'Content-Transfer-Encoding: base64', '', base64Lines(body)].join(
-    CRLF
-  )
-}
-
-function alternative(text: string, html: string) {
-  const boundary = `skyclause-${randomUUID()}`
-  return [
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
-    '',
-    `--${boundary}`,
-    textPart('plain', text),
-    `--${boundary}`,
-    textPart('html', html),
-    `--${boundary}--`
-  ].join(CRLF)
-}
-
-function buildMime(m: EmailMessage, from: string): Uint8Array {
-  checkHeaders(m)
-  const head = [`From: ${from}`, `To: ${m.to}`]
-  if (m.replyTo) head.push(`Reply-To: ${m.replyTo}`)
-  head.push(`Subject: ${encodeWords(m.subject)}`, `Date: ${new Date().toUTCString()}`, 'MIME-Version: 1.0')
-  for (const [name, value] of Object.entries(m.headers ?? {})) head.push(`${name}: ${value}`)
-  const body = m.html === undefined ? textPart('plain', m.text) : alternative(m.text, m.html)
-  return new TextEncoder().encode([...head, body].join(CRLF) + CRLF)
 }

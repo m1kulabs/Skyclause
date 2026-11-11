@@ -6,8 +6,7 @@ export {
   requireEmailTransport,
   type EmailMessage,
   type EmailTransport,
-  type EmailTransportOptions,
-  type SesClient
+  type EmailTransportOptions
 } from './email'
 export { googleLinkEmail, magicLinkDisabledEmail, magicLinkEmail } from './auth-emails'
 export { isSnsUrl, SnsVerificationError, verifySnsMessage, type SnsMessage, type VerifyOptions } from './sns'

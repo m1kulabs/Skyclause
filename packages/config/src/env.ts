@@ -11,17 +11,19 @@ const base = z.object({
   GCP_REGION: z.string().min(1).optional()
 })
 
-// a-email-transport (#113): infra/aws's app_config output. Optional until gate 4B, then all of a
-// service's set together.
-const arn = (service: string) => z.string().regex(new RegExp(`^arn:aws:${service}:[a-z0-9-]*:\\d{12}:.+$`))
+// a-email-transport: sending through Resend, with a sending-only key (Secret Manager) and the two senders. Optional
+// until set, then all of a service's set together; none set means mail is off.
 const sending = {
-  SES_REGION: z.string().regex(/^[a-z]{2}(-[a-z]+)+-\d$/),
-  SES_CONFIGURATION_SET: z.string().min(1),
+  RESEND_SENDING_API_KEY: z.string().regex(/^re_\S+$/),
   EMAIL_FROM_AUTH: z.string().min(1),
-  EMAIL_FROM_NOTICES: z.string().min(1),
-  AWS_ROLE_ARN: arn('iam')
+  EMAIL_FROM_NOTICES: z.string().min(1)
 }
+// The worker's SES delivery events and inbound mail (infra/aws's app_config): optional until gate 4B, then all set
+// together.
+const arn = (service: string) => z.string().regex(new RegExp(`^arn:aws:${service}:[a-z0-9-]*:\\d{12}:.+$`))
 const receiving = {
+  SES_REGION: z.string().regex(/^[a-z]{2}(-[a-z]+)+-\d$/),
+  AWS_ROLE_ARN: arn('iam'),
   SES_EVENTS_SNS_TOPIC_ARN: arn('sns'),
   INBOUND_DOMAIN: z.string().min(1),
   INBOUND_BUCKET: z.string().min(1),
@@ -127,7 +129,8 @@ const schemas = {
       ...vapidPublic,
       VAPID_PRIVATE_KEY: base64urlBytes(32).optional()
     })
-    .superRefine(together([...Object.keys(sending), ...Object.keys(receiving)])),
+    .superRefine(together(Object.keys(sending)))
+    .superRefine(together(Object.keys(receiving))),
   // GCP_PROJECT is f-infra's; the vapid-keys job reads it.
   job: base.extend({ GCP_PROJECT: z.string().min(1).optional() })
 }
