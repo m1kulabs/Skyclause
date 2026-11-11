@@ -10,10 +10,11 @@ import {
   SpanStatusCode,
   trace,
   TraceFlags,
+  type Attributes,
   type Gauge
 } from '@opentelemetry/api'
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks'
-import { W3CTraceContextPropagator } from '@opentelemetry/core'
+import { ExportResultCode, hrTimeToMilliseconds, W3CTraceContextPropagator } from '@opentelemetry/core'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto'
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto'
 import { resourceFromAttributes } from '@opentelemetry/resources'
@@ -22,6 +23,8 @@ import {
   InstrumentType,
   MeterProvider,
   PeriodicExportingMetricReader,
+  type DataPoint,
+  type MetricData,
   type PushMetricExporter
 } from '@opentelemetry/sdk-metrics'
 import { AlwaysOnSampler, BatchSpanProcessor, TracerProvider, type SpanExporter } from '@opentelemetry/sdk-trace'
@@ -130,6 +133,68 @@ function gaugesAsDelta(exporter: PushMetricExporter): PushMetricExporter {
   }
 }
 
+/** Cloud Monitoring: "the end times of points written to a time series be at least 5 seconds apart" (its quotas page). */
+const SERIES_SPACING_MS = 5_000
+
+/**
+ * Leaves out each point whose series was written less than 5 seconds before, which the Telemetry API answers with 400:
+ * two requests flushing at once (the minute tick and the batch), a flush during the periodic export, or shutdown just
+ * after a flush. A cumulative series sends its total with its next point. A gauge loses such a point, but a heartbeat
+ * or an SLI is recorded minutes apart.
+ */
+function spacedSeries(exporter: PushMetricExporter): PushMetricExporter {
+  const written = new Map<string, number>()
+  const key = (scope: string, name: string, attributes: Attributes) => JSON.stringify([scope, name, attributes])
+  return {
+    export: (data, done) => {
+      const ends: Array<[string, number]> = []
+      const scopeMetrics = data.scopeMetrics
+        .map((scope) => ({
+          ...scope,
+          metrics: scope.metrics
+            .map((metric) => {
+              const dataPoints = (metric.dataPoints as Array<DataPoint<unknown>>).filter((point) => {
+                const series = key(scope.scope.name, metric.descriptor.name, point.attributes)
+                const end = hrTimeToMilliseconds(point.endTime)
+                if (end - (written.get(series) ?? -Infinity) < SERIES_SPACING_MS) return false
+                ends.push([series, end])
+                return true
+              })
+              return { ...metric, dataPoints } as MetricData
+            })
+            .filter((metric) => metric.dataPoints.length)
+        }))
+        .filter((scope) => scope.metrics.length)
+      if (!scopeMetrics.length) return done({ code: ExportResultCode.SUCCESS })
+      exporter.export({ ...data, scopeMetrics }, (result) => {
+        if (result.code === ExportResultCode.SUCCESS) for (const [series, end] of ends) written.set(series, end)
+        else log.error('telemetry: metrics export failed', failure(result.error))
+        done(result)
+      })
+    },
+    forceFlush: () => exporter.forceFlush(),
+    shutdown: () => exporter.shutdown()
+  }
+}
+
+/**
+ * What a failed export says: the SDK's own error line keeps only the status text, while the API's answer says what it
+ * refused. A protobuf answer (`google.rpc.Status`), which the SDK decodes as text, is logged as its length and its runs
+ * of printable characters, which hold the status message, instead of its bytes.
+ */
+function failure(error: (Error & { code?: number; data?: string }) | undefined) {
+  const answer = error?.data
+  // eslint-disable-next-line no-control-regex
+  const binary = answer !== undefined && /[\u0000-\u0008\u000e-\u001f\ufffd]/.test(answer)
+  return {
+    error: error?.message,
+    ...(error?.code !== undefined && { status: error.code }),
+    ...(answer && !binary && { answer }),
+    ...(answer &&
+      binary && { answer_length: answer.length, answer_text: answer.match(/[\x20-\x7e]{8,}/g)?.join(' ') ?? '' })
+  }
+}
+
 function googleExporters(project: string) {
   const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' })
   const headers = async () => ({
@@ -182,7 +247,12 @@ export function startTelemetry(service: Service, options: TelemetryOptions = {})
   const meterProvider = new MeterProvider({
     resource,
     readers: metricExporter
-      ? [new PeriodicExportingMetricReader({ exporter: gaugesAsDelta(metricExporter), exportIntervalMillis: 60_000 })]
+      ? [
+          new PeriodicExportingMetricReader({
+            exporter: gaugesAsDelta(spacedSeries(metricExporter)),
+            exportIntervalMillis: 60_000
+          })
+        ]
       : []
   })
 
@@ -206,9 +276,13 @@ export function startTelemetry(service: Service, options: TelemetryOptions = {})
   return {
     heartbeat: (name) => heartbeats.record(1, { name }),
     flush,
+    // Each provider flushes as it shuts down; a flush first would collect the metrics twice within milliseconds.
     shutdown: async () => {
-      await flush()
-      await Promise.all([tracerProvider.shutdown(), meterProvider.shutdown()])
+      try {
+        await Promise.all([tracerProvider.shutdown(), meterProvider.shutdown()])
+      } catch (error) {
+        log.error('telemetry flush failed', { error })
+      }
       stopHttpServerDuration()
       stopWebVitals()
       trace.disable()
