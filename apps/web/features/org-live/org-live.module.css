@@ -1,0 +1,3 @@
+.count::after {
+  content: attr(data-count);
+}
