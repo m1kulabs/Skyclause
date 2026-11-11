@@ -1,5 +1,14 @@
 import { createHash } from 'node:crypto'
-import { type Can, type Operations, type Page, type SourceKind, type SourceRole } from '@skyclause/contracts'
+import {
+  type Can,
+  type Operations,
+  type Page,
+  type Pack,
+  type ProjectPack,
+  type SourceKind,
+  type SourceRole
+} from '@skyclause/contracts'
+import { updateProjectPack as packRoute } from '@skyclause/contracts/api/v1/packs'
 import { listCatalogueSources as catalogueRoute } from '@skyclause/contracts/api/v1/catalogue'
 import {
   listSourcePickerRecords,
@@ -10,6 +19,9 @@ import {
   sourceBindings,
   insertSourceBinding,
   deleteSourceBinding,
+  projectPackRecord,
+  patchProjectPackRecord,
+  isFlagEnabled,
   sourceProjection,
   recordAudit,
   emitEvent,
@@ -52,10 +64,9 @@ const sourceRoles = {
 const unavailable = () => new ApiError(404, 'not-found', 'The project or source is unavailable.')
 type BindingInput = { projectId: string; sourceId: string }
 
-async function bindingSource(ctx: ServiceContext, input: BindingInput, access: SourcesAccess) {
+async function sourceProject(ctx: ServiceContext, projectId: string, access: SourcesAccess) {
   const { principal, tx } = ctx
-  const { projectId, sourceId } = input
-  if (!tx.orgId || !z.uuid().safeParse(projectId).success || !z.uuid().safeParse(sourceId).success) throw unavailable()
+  if (!tx.orgId || !z.uuid().safeParse(projectId).success) throw unavailable()
   if (principal.kind === 'system') {
     if (tx.principal.kind !== 'system') throw unavailable()
   } else {
@@ -67,6 +78,13 @@ async function bindingSource(ctx: ServiceContext, input: BindingInput, access: S
   if (!(await lockSourceProject(tx, projectId))) throw unavailable()
   if (principal.kind !== 'system' && !access.can(principal, 'sources.manage', { projectId }))
     throw new ApiError(403, 'insufficient-scope', 'This operation requires sources.manage.')
+}
+
+async function bindingSource(ctx: ServiceContext, input: BindingInput, access: SourcesAccess) {
+  const { tx } = ctx
+  const { projectId, sourceId } = input
+  if (!z.uuid().safeParse(sourceId).success) throw unavailable()
+  await sourceProject(ctx, projectId, access)
   let src = await visibleBindingSource(tx, sourceId)
   if (!src) throw unavailable()
   const owned = (row: typeof source.$inferSelect) => {
@@ -128,10 +146,16 @@ export async function bindSource(
 /** Available-source absent DELETE is a no-op; ownership is checked even without a binding. */
 export async function unbindSource(ctx: ServiceContext, input: BindingInput, access: SourcesAccess): Promise<void> {
   const src = await bindingSource(ctx, input, access)
-  const bindings = (await projectBindings(ctx.tx, input.projectId)).filter((row) => row.sourceId === src.id)
+  const allBindings = await projectBindings(ctx.tx, input.projectId)
+  const bindings = allBindings.filter((row) => row.sourceId === src.id)
   if (bindings.some((row) => row.role !== sourceRoles[src.kind]))
     throw new ApiError(422, 'validation-failed', 'The existing source binding has an incompatible role.')
   if (!bindings.length) return
+  if (crowdRoles.some((role) => role === sourceRoles[src.kind])) {
+    const crowd = await projectPackRecord(ctx.tx, input.projectId, 'crowd')
+    const remaining = allBindings.filter((row) => row.sourceId !== src.id)
+    if (crowd?.enabled && !remaining.some((row) => row.role === sourceRoles[src.kind])) requireCrowdRoles(remaining)
+  }
   for (const binding of bindings) {
     if (!(await deleteSourceBinding(ctx.tx, binding.id))) continue
     const data = { source_id: src.id, role: binding.role }
@@ -143,6 +167,57 @@ export async function unbindSource(ctx: ServiceContext, input: BindingInput, acc
       after: null
     })
     await emitEvent(ctx.tx, { projectId: input.projectId, type: 'source.unbound', data })
+  }
+}
+
+const crowdRoles = ['rail_station', 'venue_listings'] as const
+function requireCrowdRoles(bindings: Array<{ role: SourceRole }>) {
+  const missing = crowdRoles.filter((role) => !bindings.some((row) => row.role === role))
+  if (missing.length)
+    throw new ApiError(409, 'pack-prerequisites', 'Crowd requires rail and venue listing sources.', { missing })
+}
+
+/** Partial settings overlay in the caller's transaction; old bundle deadlines and sheets are immutable here. */
+export async function updateProjectPack(
+  ctx: ServiceContext,
+  input: { projectId: string; pack: Pack; enabled?: boolean; sla_s?: number | null },
+  access: SourcesAccess
+): Promise<ProjectPack> {
+  await sourceProject(ctx, input.projectId, access)
+  const parsed = packRoute.request.body.content['application/json'].schema.safeParse(input)
+  if (!parsed.success) throw validationFailed('json', parsed.error)
+  const patch = parsed.data
+  const existing = await projectPackRecord(ctx.tx, input.projectId, input.pack)
+  if (!existing) throw unavailable()
+  if (input.pack === 'crowd' && patch.enabled === true) {
+    if (!(await isFlagEnabled(ctx.tx, 'pack_crowd', ctx.tx.orgId!)))
+      throw new ApiError(403, 'feature-off', 'Crowd is off for this organisation.')
+    requireCrowdRoles(await projectBindings(ctx.tx, input.projectId))
+  }
+  const enabled = patch.enabled ?? existing.enabled
+  const slaS = patch.sla_s === undefined ? existing.slaS : patch.sla_s
+  const changedSla = slaS !== existing.slaS
+  let row = existing
+  if (enabled !== existing.enabled || changedSla) {
+    row = await patchProjectPackRecord(
+      ctx.tx,
+      { projectId: input.projectId, pack: input.pack, enabled, slaS },
+      access.now
+    )
+    await recordAudit(ctx.tx, {
+      action: changedSla ? 'sla.changed' : 'pack.updated',
+      target: { type: 'project_pack', id: existing.id },
+      projectId: input.projectId,
+      before: { pack: existing.pack, enabled: existing.enabled, sla_s: existing.slaS },
+      after: { pack: row.pack, enabled: row.enabled, sla_s: row.slaS }
+    })
+  }
+  return {
+    pack: row.pack,
+    enabled: row.enabled,
+    sheet_id: row.sheetId,
+    schedule: (row.schedule as ProjectPack['schedule']) ?? null,
+    sla_s: row.slaS
   }
 }
 

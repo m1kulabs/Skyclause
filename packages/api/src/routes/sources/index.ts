@@ -1,8 +1,19 @@
 import type { Handlers } from '..'
-import { bindSource, listCatalogueSources, unbindSource } from '../../services/sources'
+import { bindSource, listCatalogueSources, unbindSource, updateProjectPack } from '../../services/sources'
 import { inTenant } from '../../tenancy'
 
 export const sourceHandlers: Handlers = {
+  updateProjectPack: {
+    handler: async (c) => {
+      const { id: projectId, pack } = c.req.valid('param')
+      const patch = c.req.valid('json')
+      const { can, now } = c.get('deps')
+      const result = await inTenant(c, (ctx) =>
+        updateProjectPack(ctx, { projectId, pack, ...patch }, { can, now: now() })
+      )
+      return c.json(result as never, 200)
+    }
+  },
   bindSource: {
     handler: async (c) => {
       const { id: projectId } = c.req.valid('param')

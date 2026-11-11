@@ -6,7 +6,9 @@ export {
   sourceBindings,
   projectBindings,
   insertSourceBinding,
-  deleteSourceBinding
+  deleteSourceBinding,
+  projectPackRecord,
+  patchProjectPackRecord
 } from './binding'
 export { listSourcePickerRecords, sourceProjection, type PickerQuery, type SourceProjection } from './picker'
 export { upsertSourceCatalogue } from './catalogue'

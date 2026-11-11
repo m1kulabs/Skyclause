@@ -78,6 +78,7 @@ export { inTenant, type ServiceContext, type WithTenant } from './tenancy'
 export {
   bindSource,
   unbindSource,
+  updateProjectPack,
   listCatalogueSources,
   type CatalogueQuery,
   type SourcesAccess,

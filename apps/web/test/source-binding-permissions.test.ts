@@ -1,6 +1,6 @@
 import '@skyclause/auth/test/harness/database'
 import { can } from '@skyclause/auth/can'
-import { bindSource, listCatalogueSources, unbindSource } from '@skyclause/api'
+import { bindSource, listCatalogueSources, unbindSource, updateProjectPack } from '@skyclause/api'
 import {
   apiRequest,
   asApiKey,
@@ -13,7 +13,13 @@ import {
   testOrg
 } from '@skyclause/api/testing'
 import { withSystem, withTenant } from '@skyclause/db'
-import { makeOrganization, makeProject, makeReading, makeSource } from '@skyclause/db/test/factories/index'
+import {
+  makeOrganization,
+  makeProject,
+  makeProjectPack,
+  makeReading,
+  makeSource
+} from '@skyclause/db/test/factories/index'
 import { memberOf } from '@skyclause/db/test/harness/index'
 import { beforeAll, describe, expect, test } from 'vitest'
 import { randomUUID } from 'node:crypto'
@@ -171,6 +177,71 @@ describe('catalogue', () => {
         (await apiRequest(v1, { as: principal, method: 'GET', path: '/v1/catalogue/sources', org: ORG, query: { q } }))
           .status
       ).toBe(403)
+    }
+  })
+})
+
+describe('pack settings', () => {
+  test('service_permissions uses production Can for direct pack writes and HTTP', async () => {
+    const [a, b] = await tenant(async (tx) => {
+      const a = await makeProject(tx)
+      await makeProjectPack(tx, { projectId: a.id, pack: 'sky' })
+      return [a, await makeProject(tx)]
+    })
+    const session = (role: 'admin' | 'owner' | 'editor' | 'viewer' | 'guest') => ({
+      ...asSession({ org: ORG, role }),
+      orgId,
+      role
+    })
+    const allowed = [
+      session('admin'),
+      session('owner'),
+      asApiKey({ org: ORG, role: 'admin', scopes: ['admin'] }),
+      asApiKey({ org: ORG, role: 'owner', scopes: ['admin'] })
+    ]
+    const denied = [
+      session('editor'),
+      session('viewer'),
+      session('guest'),
+      asApiKey({ org: ORG, role: 'editor', scopes: ['admin'] }),
+      asApiKey({ org: ORG, role: 'admin', scopes: ['read'] }),
+      asOAuth({ org: ORG, role: 'admin', projectIds: [a.id] }),
+      asShareLink({ org: ORG, projectId: a.id }),
+      asDevice({ org: ORG })
+    ]
+    for (const principal of [...allowed, ...denied]) {
+      const write = () =>
+        withTenant({ orgId, principal }, (tx) =>
+          updateProjectPack(
+            { tx, principal },
+            { projectId: a.id, pack: 'sky', enabled: true },
+            { can, now: new Date() }
+          )
+        )
+      if (allowed.includes(principal)) expect(await write()).toMatchObject({ pack: 'sky', enabled: true })
+      else await expect(write()).rejects.toMatchObject({ status: 403 })
+      const response = await apiRequest(v1, {
+        as: principal,
+        org: ORG,
+        method: 'PATCH',
+        path: `/v1/projects/${a.id}/packs/sky`,
+        body: { enabled: true }
+      })
+      expect(response.status).toBe(allowed.includes(principal) ? 200 : 403)
+    }
+    for (const principal of [
+      asOAuth({ org: ORG, role: 'admin', projectIds: [a.id] }),
+      asShareLink({ org: ORG, projectId: a.id })
+    ]) {
+      await expect(
+        withTenant({ orgId, principal }, (tx) =>
+          updateProjectPack(
+            { tx, principal },
+            { projectId: b.id, pack: 'sky', enabled: true },
+            { can, now: new Date() }
+          )
+        )
+      ).rejects.toMatchObject({ status: 404 })
     }
   })
 })

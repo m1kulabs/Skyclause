@@ -1,7 +1,7 @@
-import type { SourceRole } from '@skyclause/contracts'
+import type { Pack, SourceRole } from '@skyclause/contracts'
 import { and, eq, inArray } from 'drizzle-orm'
 import type { Tx } from '../client'
-import { project } from '../schema/project'
+import { project, projectPack } from '../schema/project'
 import { projectSource, source } from '../schema/sources'
 
 /** All source/pack mutations share this first lock and keep it until the caller commits. */
@@ -65,4 +65,30 @@ export async function insertSourceBinding(
 export async function deleteSourceBinding(tx: Tx, bindingId: string): Promise<boolean> {
   const rows = await tx.delete(projectSource).where(eq(projectSource.id, bindingId)).returning({ id: projectSource.id })
   return rows.length > 0
+}
+
+/** Caller holds the common project lock before reading or changing pack settings. */
+export async function projectPackRecord(tx: Tx, projectId: string, pack: Pack) {
+  const [row] = await tx
+    .select()
+    .from(projectPack)
+    .where(and(eq(projectPack.projectId, projectId), eq(projectPack.pack, pack)))
+  return row ?? null
+}
+
+export async function patchProjectPackRecord(
+  tx: Tx,
+  input: { projectId: string; pack: Pack; enabled?: boolean; slaS?: number | null },
+  now: Date
+) {
+  const patch: Partial<typeof projectPack.$inferInsert> = { updatedAt: now }
+  if (input.enabled !== undefined) patch.enabled = input.enabled
+  if (input.slaS !== undefined) patch.slaS = input.slaS
+  const [row] = await tx
+    .update(projectPack)
+    .set(patch)
+    .where(and(eq(projectPack.projectId, input.projectId), eq(projectPack.pack, input.pack)))
+    .returning()
+  if (!row) throw new Error('Project pack disappeared while holding the project lock')
+  return row
 }
