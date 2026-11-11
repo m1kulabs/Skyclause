@@ -1,0 +1,275 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "listClauseSheetVersions request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "content": {
+                        "type": "object",
+                        "properties": {
+                          "pack": {
+                            "type": "string",
+                            "enum": ["sky", "crowd"]
+                          },
+                          "clauses": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "key": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "enabled": {
+                                  "type": "boolean"
+                                },
+                                "builtin": {
+                                  "type": "string",
+                                  "enum": ["silent_input"]
+                                },
+                                "scope": {
+                                  "type": "string",
+                                  "enum": ["site", "window", "night"]
+                                },
+                                "requires": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "optional": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "span": {
+                                  "type": "object",
+                                  "properties": {
+                                    "from": {
+                                      "type": "string",
+                                      "pattern": "^(start|end)([+-]\\d+m)?$"
+                                    },
+                                    "to": {
+                                      "type": "string",
+                                      "pattern": "^(start|end)([+-]\\d+m)?$"
+                                    }
+                                  },
+                                  "required": ["from", "to"]
+                                },
+                                "when": {
+                                  "type": "string"
+                                },
+                                "expiry": {
+                                  "type": "string",
+                                  "enum": ["start", "end"]
+                                },
+                                "proposes": {
+                                  "type": "object",
+                                  "properties": {
+                                    "mode": {
+                                      "type": "string",
+                                      "enum": [
+                                        "normal",
+                                        "outdoor_limited",
+                                        "commute_disruption",
+                                        "hybrid_recommended",
+                                        "surge_night"
+                                      ]
+                                    },
+                                    "watch": {
+                                      "type": "boolean",
+                                      "enum": [true]
+                                    },
+                                    "recommendations": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "enum": [
+                                          "keep_with_advisory",
+                                          "shift_start",
+                                          "shift_end",
+                                          "ask_shuttle",
+                                          "leave_before_doors"
+                                        ]
+                                      }
+                                    },
+                                    "note": {
+                                      "type": "string",
+                                      "enum": ["flood_note", "single_source_flag", "calendar_entry"]
+                                    }
+                                  }
+                                },
+                                "wording": {
+                                  "type": "object",
+                                  "properties": {
+                                    "en": {
+                                      "type": "string"
+                                    },
+                                    "ms": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              },
+                              "required": ["key", "name", "enabled", "scope", "requires", "when", "proposes", "wording"]
+                            }
+                          }
+                        },
+                        "required": ["pack", "clauses"]
+                      },
+                      "content_hash": {
+                        "type": "string"
+                      },
+                      "published_by": {
+                        "type": ["string", "null"]
+                      },
+                      "base_n": {
+                        "type": ["integer", "null"],
+                        "minimum": 0
+                      },
+                      "published_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      },
+                      "check": {
+                        "type": ["object", "null"],
+                        "properties": {
+                          "ok": {
+                            "type": "boolean"
+                          },
+                          "publishable": {
+                            "type": "boolean"
+                          },
+                          "issues": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "clause_key": {
+                                  "type": ["string", "null"]
+                                },
+                                "message": {
+                                  "type": "string"
+                                },
+                                "offset": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "length": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                }
+                              },
+                              "required": ["clause_key", "message", "offset", "length"]
+                            }
+                          }
+                        },
+                        "required": ["ok", "publishable", "issues"]
+                      },
+                      "publishable": {
+                        "type": "boolean"
+                      },
+                      "validation_status": {
+                        "type": "string",
+                        "enum": ["checked", "unavailable"]
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": ["published"]
+                      },
+                      "n": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "content",
+                      "content_hash",
+                      "published_by",
+                      "base_n",
+                      "published_at",
+                      "check",
+                      "publishable",
+                      "validation_status",
+                      "status",
+                      "n"
+                    ]
+                  }
+                },
+                "next_cursor": {
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["data", "next_cursor"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "listClauseSheetVersions",
+  "x-method": "GET",
+  "x-path": "/v1/clause-sheets/{id}/versions"
+}

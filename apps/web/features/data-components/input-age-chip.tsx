@@ -12,6 +12,8 @@ export interface InputAgeChipProps {
   receiptAt?: string | null
   latencyMs?: number | null
   dailyDate?: string | null
+  /** Snapshot age in seconds. Use on historical call evidence instead of aging the reading at view time. */
+  ageSeconds?: number | null
   locale?: 'en' | 'ms'
 }
 
@@ -51,6 +53,7 @@ export function InputAgeChip({
   receiptAt = null,
   latencyMs = null,
   dailyDate = null,
+  ageSeconds = null,
   locale = 'en'
 }: InputAgeChipProps) {
   useMinuteTick()
@@ -68,7 +71,7 @@ export function InputAgeChip({
   } else if (dailyDate) {
     label = t('data.age.daily', { date: formatDate(dailyDate, locale) }, locale)
   } else if (observed) {
-    const age = formatAge(observed, locale)
+    const age = formatAge(ageSeconds === null ? observed : Date.now() - ageSeconds * 1000, locale)
     label = isStale
       ? t('data.age.label_stale', { name: input.name, age, stale: t('data.age.stale', {}, locale) }, locale)
       : t('data.age.label', { name: input.name, age }, locale)

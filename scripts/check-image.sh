@@ -18,11 +18,30 @@ else
   echo "ok   runs as $user (uid $uid)"
 fi
 
+container=''
+cleanup() {
+  if [ -n "$container" ]; then
+    docker rm -f "$container" >/dev/null || true
+    container=''
+  fi
+}
+# On a non-zero exit (a failed docker port lookup, an interrupt, any set -e abort) print the container's log before it is
+# removed. This trap never exits, so the script keeps its status.
+on_exit() {
+  local status=$?
+  if [ "$status" -ne 0 ] && [ -n "$container" ]; then
+    docker logs "$container" >&2 || true
+  fi
+  cleanup
+}
+trap on_exit EXIT
+trap 'exit 130' INT TERM
+
 # serves <role> <env...>: starts the role and waits up to 30 s for /health to answer ok.
 serves() {
-  local role=$1 container port body=''
+  local role=$1 port body=''
   shift
-  container=$(docker run -d --rm -p 127.0.0.1::8080 -e "K_SERVICE=$role" "$@" "$image")
+  container=$(docker run -d -p 127.0.0.1::8080 -e "K_SERVICE=$role" "$@" "$image")
   port=$(docker port "$container" 8080/tcp | head -n1 | cut -d: -f2)
   for _ in $(seq 30); do
     body=$(curl -fsS "http://127.0.0.1:$port/health" 2>/dev/null) && break
@@ -34,13 +53,15 @@ serves() {
     fail "$role didn't answer /health with ok; its log:"
     docker logs "$container" >&2 || true
   fi
-  docker stop "$container" >/dev/null || true
+  cleanup
 }
 
 # Throwaway hash keys: web needs both to start (IP_HASH_KEY #93, EMAIL_HASH_KEY #157), the worker EMAIL_HASH_KEY (#158);
 # production mounts the real ones.
+# web also refuses to start without BETTER_AUTH_SECRET (#418): a random one, for this run only (#603).
+auth_secret=$(openssl rand -hex 32)
 serves web -e APP_ENV=production -e IP_HASH_KEY=check-image-only-ip-hash-key-0000000000 \
-  -e EMAIL_HASH_KEY=check-image-only-email-hash-key-0000000
+  -e BETTER_AUTH_SECRET="$auth_secret" -e EMAIL_HASH_KEY=check-image-only-email-hash-key-0000000
 serves worker -e APP_ENV=production -e WORKER_URL=https://worker.example.test \
   -e WORKER_INVOKER_SA=skyclause-invoker@skyclause.iam.gserviceaccount.com \
   -e EMAIL_HASH_KEY=check-image-only-email-hash-key-0000000

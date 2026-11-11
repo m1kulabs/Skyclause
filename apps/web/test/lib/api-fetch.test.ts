@@ -4,6 +4,14 @@ import { testRegistry, validProblem } from './registry'
 
 const apiFetch = createApiFetch(testRegistry)
 
+test('explicit organisation scopes developer pages instead of the developers path segment', async () => {
+  vi.stubGlobal('window', { location: { pathname: '/developers/webhooks' } })
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse(validProblem))
+  vi.stubGlobal('fetch', fetchMock)
+  await apiFetch('getProjects', { org: 'real-org', params: { instance: 'real-org' } })
+  expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Skyclause-Organization')).toBe('real-org')
+})
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -13,6 +21,55 @@ function jsonResponse(body: unknown, status = 200) {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.unstubAllEnvs()
+})
+
+test('routes /api to the app origin and /v1 to API_ORIGIN in multi-host mode', async () => {
+  vi.stubEnv('HOST_MODE', 'multi')
+  vi.stubEnv('NEXT_PUBLIC_API_ORIGIN', 'https://api.example.test')
+  vi.stubGlobal('window', { location: { origin: 'https://app.example.test', pathname: '/' } })
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse(validProblem))
+  vi.stubGlobal('fetch', fetchMock)
+  const fetcher = createApiFetch({
+    ...testRegistry,
+    getMyPreferences: {
+      method: 'GET',
+      path: '/api/me/preferences',
+      response: { parse: (value: unknown) => value }
+    }
+  })
+
+  await fetcher('getMyPreferences', {})
+  await fetcher('getProjects', { params: { instance: 'acme' } })
+
+  expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
+    'https://app.example.test/api/me/preferences',
+    'https://api.example.test/v1/orgs/acme/projects'
+  ])
+})
+
+test('routes server /api calls to APP_ORIGIN and /v1 calls to API_ORIGIN in multi-host mode', async () => {
+  vi.stubEnv('HOST_MODE', 'multi')
+  vi.stubEnv('APP_ORIGIN', 'https://app.example.test')
+  vi.stubEnv('API_ORIGIN', 'https://api.example.test')
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse(validProblem))
+  vi.stubGlobal('fetch', fetchMock)
+  const fetcher = createApiFetch({
+    ...testRegistry,
+    getMyPreferences: {
+      method: 'GET',
+      path: '/api/me/preferences',
+      response: { parse: (value: unknown) => value }
+    }
+  })
+
+  await fetcher('getMyPreferences', {})
+  await fetcher('getProjects', { params: { instance: 'acme' } })
+
+  expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
+    'https://app.example.test/api/me/preferences',
+    'https://api.example.test/v1/orgs/acme/projects'
+  ])
 })
 
 test('uses the organisation slug in the current URL for Skyclause-Organization', async () => {
@@ -108,4 +165,51 @@ test('explicit organisation wins over the global connect route for client creati
   vi.stubGlobal('fetch', fetchMock)
   await apiFetch('getProjects', { params: { instance: 'chosen-org' }, org: 'chosen-org' })
   expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Skyclause-Organization')).toBe('chosen-org')
+})
+
+test('reads a text/csv API response as text for filtered audit exports', async () => {
+  const csvFetch = createApiFetch({
+    exportCsv: {
+      method: 'GET',
+      path: '/api/orgs/acme/audit/export',
+      response: {
+        parse(value: unknown) {
+          if (typeof value !== 'string') throw new TypeError('Expected a CSV string')
+          return value
+        }
+      }
+    }
+  })
+  const fetchMock = vi.fn(
+    async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      new Response('id,action\nentry-1,member.role_changed\n', { headers: { 'Content-Type': 'text/csv' } })
+  )
+  vi.stubGlobal('fetch', fetchMock)
+
+  await expect(csvFetch('exportCsv', { headers: { Accept: 'text/csv' } })).resolves.toBe(
+    'id,action\nentry-1,member.role_changed\n'
+  )
+  expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Accept')).toBe('text/csv')
+})
+
+test('parses a CSV export as text through the operation response schema', async () => {
+  const csv = 'id,kind\r\nentry-1,call_approved\r\n'
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response(csv, { headers: { 'Content-Type': 'text/csv; charset=utf-8' } }))
+  )
+  const fetcher = createApiFetch({
+    exportLedger: {
+      method: 'GET',
+      path: '/v1/projects/{id}/ledger/export',
+      request: { params: {} as { id: string } },
+      response: {
+        parse: (value: unknown) => {
+          if (typeof value !== 'string') throw new Error('Expected CSV')
+          return value
+        }
+      }
+    }
+  })
+  expect(await fetcher('exportLedger', { params: { id: 'p' } })).toBe(csv)
 })

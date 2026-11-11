@@ -9,6 +9,8 @@ test('@smoke production serves no test route', async ({ request }) => {
     '/_test/shell',
     '/_test/set-7',
     '/quality-planted/unlabelled-input',
+    '/quality-planted/motion',
+    '/quality-planted/form-types',
     '/quality-planted/vitals'
   ]) {
     const response = await request.get(path)

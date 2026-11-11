@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "listReviewItems request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "cursor": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string",
+              "enum": ["miss", "false_alarm", "expired_above_normal", "out_of_band", "unlisted_surge", "no_call"]
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "grade_id": {
+                        "type": "string"
+                      },
+                      "state": {
+                        "type": "string"
+                      },
+                      "explanation": {
+                        "type": "string"
+                      },
+                      "grade": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "call_id": {
+                            "type": ["string", "null"]
+                          },
+                          "night_id": {
+                            "type": ["string", "null"]
+                          },
+                          "outcome": {
+                            "type": "string"
+                          },
+                          "sheet_version_id": {
+                            "type": "string"
+                          },
+                          "pack": {
+                            "type": "string",
+                            "enum": ["sky", "crowd"]
+                          },
+                          "window_id": {
+                            "type": ["string", "null"]
+                          },
+                          "proposed_mode": {
+                            "type": ["string", "null"],
+                            "enum": [
+                              "normal",
+                              "outdoor_limited",
+                              "commute_disruption",
+                              "hybrid_recommended",
+                              "surge_night",
+                              null
+                            ]
+                          },
+                          "observed_mode": {
+                            "type": ["string", "null"],
+                            "enum": [
+                              "normal",
+                              "outdoor_limited",
+                              "commute_disruption",
+                              "hybrid_recommended",
+                              "surge_night",
+                              null
+                            ]
+                          },
+                          "mode_diff": {
+                            "type": "number"
+                          },
+                          "no_call": {
+                            "type": "boolean"
+                          },
+                          "agrees": {
+                            "type": "boolean"
+                          },
+                          "stale_inputs": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "call_id",
+                          "night_id",
+                          "outcome",
+                          "sheet_version_id",
+                          "pack",
+                          "window_id",
+                          "proposed_mode",
+                          "observed_mode",
+                          "mode_diff",
+                          "no_call",
+                          "agrees",
+                          "stale_inputs"
+                        ]
+                      },
+                      "reasons": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "miss",
+                            "false_alarm",
+                            "expired_above_normal",
+                            "out_of_band",
+                            "unlisted_surge",
+                            "no_call"
+                          ]
+                        }
+                      },
+                      "explained_by": {
+                        "type": ["string", "null"]
+                      },
+                      "explained_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      },
+                      "opened_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    },
+                    "required": ["id", "grade_id", "state", "explanation", "grade"]
+                  }
+                },
+                "next_cursor": {
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["data", "next_cursor"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "listReviewItems",
+  "x-method": "GET",
+  "x-path": "/v1/projects/{id}/review-items"
+}

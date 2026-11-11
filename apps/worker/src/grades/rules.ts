@@ -1,4 +1,4 @@
-import type { SkyMode } from '@skyclause/clauses'
+import { effectiveSpan, parseSpanRef, type Clause, type SkyMode } from '@skyclause/clauses'
 import { REVIEW_REASONS, type ReviewReason } from '@skyclause/db'
 
 // #161 c-grades: TRD grading's outcomes, read literally, and the ticket's review reasons. Pure.
@@ -52,26 +52,26 @@ export function gradeSky({ call, observed, shadowFired, windowApproved }: SkyGra
 export const crowdOutcome = (actual: number, band: { low: number; high: number }) =>
   band.low <= actual && actual <= band.high ? ('in_band' as const) : ('out_of_band' as const)
 
-const SPAN_REF = /^(start|end)(?:([+-])(\d+)([mh]))?$/
-
-/** A TRD span reference (`end+60m`, `start-4h`, `end`) against its window. */
+/** A span reference (`end+60m`, `end+90s`, `start-4h`, `end+1d`, `end`) against its window. */
 export function spanAt(window: { startsAt: Date; endsAt: Date }, ref: string): Date {
-  const match = SPAN_REF.exec(ref)
-  if (!match) throw new Error(`span reference ${JSON.stringify(ref)} isn't start or end ± minutes or hours`)
-  const [, anchor, sign, amount, unit] = match
-  const base = (anchor === 'start' ? window.startsAt : window.endsAt).getTime()
-  const offset = amount ? Number(amount) * (unit === 'h' ? 3_600_000 : 60_000) * (sign === '-' ? -1 : 1) : 0
-  return new Date(base + offset)
+  const parsed = parseSpanRef(ref)
+  if (!parsed) throw new Error(`span reference ${JSON.stringify(ref)} isn't (start|end)[+-]<n>(s|m|h|d)`)
+  const base = (parsed.anchor === 'start' ? window.startsAt : window.endsAt).getTime()
+  return new Date(base + parsed.offsetMs)
 }
 
-/** When the window's last enabled window-scope clause span closes; never before the window ends. */
+/**
+ * When the window's last enabled window-scope clause span closes, as the engine evaluates it (a clause reading a window
+ * rain maximum with no written span has the default one); never before the window ends.
+ */
 export function lastSpanEnd(
   window: { startsAt: Date; endsAt: Date },
-  clauses: Array<{ scope: string; enabled: boolean; span?: { to: string } | undefined }>
+  clauses: Array<Pick<Clause, 'scope' | 'enabled' | 'requires' | 'optional' | 'span'>>
 ): Date {
   const ends = clauses
-    .filter((clause) => clause.enabled && clause.scope === 'window' && clause.span)
-    .map((clause) => spanAt(window, clause.span!.to).getTime())
+    .filter((clause) => clause.enabled && clause.scope === 'window')
+    .flatMap((clause) => effectiveSpan(clause) ?? [])
+    .map((span) => spanAt(window, span.to).getTime())
   return new Date(Math.max(window.endsAt.getTime(), ...ends))
 }
 

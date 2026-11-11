@@ -2,6 +2,7 @@ import { problemType, v1, withPublicCors } from '@skyclause/api'
 import { NotBuiltError } from '@skyclause/contracts'
 import { projectFaviconSvg } from '@skyclause/elements'
 import { callCard, projectCard, windowCard } from './card'
+import { previewLocale } from './i18n'
 import { oembedAnswer } from './oembed'
 import { cardImage } from './og-card'
 import { notFound, problem } from './problems'
@@ -57,18 +58,24 @@ export const favicon = handler<ProjectParams>(async (request, { org, project }, 
 
 /** WEB-4: the project card, from the headline pack's approved call in force. */
 export const projectOg = handler<ProjectParams>(async (request, { org, project }, { reads, now }) => {
+  const locale = previewLocale(request)
   const read = reads(request)
   const state = await read.projectStatus(org, project)
   if (!state) return notFound()
   const callId = headline(state.packs)?.call_id
-  return cardImage(projectCard(state, callId ? await read.call(callId) : null, now()), MINUTE)
+  return cardImage(projectCard(state, callId ? await read.call(callId) : null, now(), locale), MINUTE, locale)
 })
 
 /** WEB-4 and D33: only an approved call on a public project has a card; a sent one never changes again. */
 export const callOg = handler<{ callId: string }>(async (request, { callId }, { reads }) => {
+  const locale = previewLocale(request)
   const call = await reads(request).call(callId)
   if (!call) return notFound()
-  return cardImage(callCard(call), call.state === 'sent' ? 'public, max-age=31536000, immutable' : MINUTE)
+  return cardImage(
+    callCard(call, locale),
+    call.state === 'sent' ? 'public, max-age=31536000, immutable' : MINUTE,
+    locale
+  )
 })
 
 /**
@@ -76,10 +83,11 @@ export const callOg = handler<{ callId: string }>(async (request, { callId }, { 
  * window under another public project's path isn't told apart yet.
  */
 export const windowOg = handler<ProjectParams & { id: string }>(async (request, { org, project, id }, { reads }) => {
+  const locale = previewLocale(request)
   const read = reads(request)
   const [state, window] = await Promise.all([read.projectStatus(org, project), read.window(id)])
   if (!state || !window) return notFound()
-  return cardImage(windowCard(state, window, await read.call(window.call_id)), MINUTE)
+  return cardImage(windowCard(state, window, await read.call(window.call_id), locale), MINUTE, locale)
 })
 
 const oembedAnswered = handler<null>((request, _params, { reads }) => oembedAnswer(request, reads(request)))

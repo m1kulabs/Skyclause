@@ -6,6 +6,11 @@ import { Badge } from '#ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '#ui/card'
 import { t } from './catalogue'
 
+const percentFormatters = {
+  en: new Intl.NumberFormat('en-MY', { style: 'percent', maximumFractionDigits: 1 }),
+  ms: new Intl.NumberFormat('ms-MY', { style: 'percent', maximumFractionDigits: 1 })
+}
+
 export interface GradeCardProps {
   grade: Grade
   metric?: AnalysisMetric | null
@@ -28,6 +33,7 @@ export function GradeCard({
   const low = metric?.low ?? null
   const high = metric?.high ?? null
   const showBar = n > 0 && low !== null && high !== null && value !== null && value !== undefined
+  const percent = percentFormatters[locale].format
 
   return (
     <Card data-grade={grade.id}>
@@ -56,23 +62,29 @@ export function GradeCard({
           </p>
         ) : null}
         {showBar ? (
-          <div
-            role="img"
-            aria-label={t('data.grade.interval_label', { low: low as number, high: high as number }, locale)}
-            className="relative mt-3 h-6 w-full rounded bg-muted"
-          >
+          <>
             <div
-              className="absolute top-1/2 h-2 -translate-y-1/2 rounded bg-foreground/70"
-              style={{
-                left: `${(low as number) * 100}%`,
-                width: `${Math.max(0, (high as number) - (low as number)) * 100}%`
-              }}
-            />
-            <div
-              className="absolute top-0 h-full w-[2px] bg-foreground"
-              style={{ left: `calc(${(value as number) * 100}% - 1px)` }}
-            />
-          </div>
+              role="img"
+              aria-label={t('data.grade.interval_label', { low: low as number, high: high as number }, locale)}
+              className="relative mt-3 h-6 w-full rounded bg-muted"
+              data-wilson-interval
+            >
+              <div
+                className="absolute top-1/2 h-2 -translate-y-1/2 rounded bg-foreground/70"
+                style={{
+                  left: `${(low as number) * 100}%`,
+                  width: `${Math.max(0, (high as number) - (low as number)) * 100}%`
+                }}
+              />
+              <div
+                className="absolute top-0 h-full w-[2px] bg-foreground"
+                style={{ left: `calc(${(value as number) * 100}% - 1px)` }}
+              />
+            </div>
+            <p className="mt-1 text-xs tabular-nums text-muted-foreground">
+              {t('data.grade.wilson_95', { low: percent(low as number), high: percent(high as number) }, locale)}
+            </p>
+          </>
         ) : (
           <p className="mt-2 text-sm text-muted-foreground">
             {n === 0 ? t('data.grade.empty', {}, locale) : t('data.grade.n_zero', {}, locale)}

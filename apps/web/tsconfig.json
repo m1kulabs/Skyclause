@@ -14,6 +14,7 @@
   },
   "include": [
     "app",
+    "app/.well-known/**/*.ts",
     "components",
     "features",
     "lib",
@@ -43,6 +44,9 @@
     },
     {
       "path": "../../packages/api"
+    },
+    {
+      "path": "../../packages/forecast"
     }
   ]
 }

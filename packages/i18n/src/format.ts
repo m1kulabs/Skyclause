@@ -13,6 +13,32 @@ function asDate(value: DateValue): Date {
   return value instanceof Date ? value : new Date(value)
 }
 
+/** Locale-independent wall-clock parts for schedules that use a project time zone. */
+export function zonedDateTimeParts(value: DateValue, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    weekday: 'short',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(asDate(value))
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)!.value
+
+  return {
+    year: part('year'),
+    month: part('month'),
+    day: part('day'),
+    weekday: part('weekday'),
+    hour: Number(part('hour')),
+    minute: Number(part('minute')),
+    second: Number(part('second'))
+  }
+}
+
 function dateParts(value: DateValue, locale: Locale, withWeekday = false) {
   const parts = new Intl.DateTimeFormat(intlLocale(locale), {
     timeZone: TIME_ZONE,
@@ -32,18 +58,54 @@ function dateParts(value: DateValue, locale: Locale, withWeekday = false) {
 }
 
 export function formatTime(value: DateValue, locale: Locale): string {
-  const time = new Intl.DateTimeFormat(intlLocale(locale), {
+  const time = formatClock(value, locale)
+
+  return t('format.time', { time, zone: t('format.zone', {}, locale) }, locale)
+}
+
+export function formatClock(value: DateValue, locale: Locale): string {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
     timeZone: TIME_ZONE,
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23'
   }).format(asDate(value))
+}
 
-  return t('format.time', { time, zone: t('format.zone', {}, locale) }, locale)
+export function formatDateKey(value: DateValue): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(asDate(value))
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)!.value
+  return `${part('year')}-${part('month')}-${part('day')}`
+}
+
+export function formatDateCompact(value: DateValue, locale: Locale): string {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
+    timeZone: TIME_ZONE,
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short'
+  }).format(asDate(value))
 }
 
 export function formatDate(value: DateValue, locale: Locale): string {
   return t('format.date', dateParts(value, locale), locale)
+}
+
+/** Return an ISO local date key for a date-only API field or local calendar grouping. */
+export function formatLocalDateKey(value: DateValue, timeZone = TIME_ZONE): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(asDate(value))
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)!.value
+  return `${part('year')}-${part('month')}-${part('day')}`
 }
 
 export function formatDateLong(value: DateValue, locale: Locale): string {
@@ -64,6 +126,34 @@ export function formatAge(value: DateValue, locale: Locale): string {
   return t('format.ageMinute', { value: ageMinutes }, locale)
 }
 
-export function formatNumber(value: number, locale: Locale): string {
-  return new Intl.NumberFormat(intlLocale(locale)).format(value)
+export function formatNumber(value: number, locale: Locale, options?: Intl.NumberFormatOptions): string {
+  return new Intl.NumberFormat(intlLocale(locale), options).format(value)
+}
+
+export function formatDateKeyAt(value: DateValue, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(asDate(value))
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? ''
+  return `${part('year')}-${part('month')}-${part('day')}`
+}
+
+export function formatList(values: string[], locale: Locale): string {
+  return new Intl.ListFormat(intlLocale(locale), { style: 'long', type: 'conjunction' }).format(values)
+}
+
+export function formatTimeZoneName(timeZone: string, locale: Locale): string {
+  if (timeZone === 'Asia/Kuala_Lumpur') return 'MYT'
+  try {
+    const parts = new Intl.DateTimeFormat(intlLocale(locale), {
+      timeZone,
+      timeZoneName: 'short'
+    }).formatToParts(new Date())
+    return parts.find((part) => part.type === 'timeZoneName')?.value ?? timeZone
+  } catch {
+    return timeZone
+  }
 }

@@ -46,6 +46,20 @@ describe('WEB-4: Open Graph cards', () => {
     expect(image.bytes).toBeLessThan(MB_8)
   })
 
+  test('a Malay request gets a language-labelled card response that varies in caches', async () => {
+    const reads = readsOf({ status: status({ packs: [inForce], strip }), calls: [call()] })
+    const response = await projectOg(
+      new Request(`${ORIGIN}/p/apu/bukit-jalil/og.png`, {
+        headers: { 'Accept-Language': 'ms-MY, en;q=0.8' }
+      }),
+      project,
+      deps(reads)
+    )
+
+    expect(response.headers.get('Content-Language')).toBe('ms')
+    expect(response.headers.get('Vary')).toBe('Accept-Language')
+  })
+
   test('a project card with no call in force and no strip still renders', async () => {
     const response = await projectOg(
       new Request(`${ORIGIN}/p/apu/bukit-jalil/og.png`),
@@ -113,8 +127,8 @@ describe('WEB-4: Open Graph cards', () => {
 })
 
 describe('what a card draws', () => {
-  const text = (card: Parameters<typeof CardView>[0]['card']) =>
-    renderToStaticMarkup(createElement(CardView, { card }))
+  const text = (card: Parameters<typeof CardView>[0]['card'], locale: 'en' | 'ms' = 'en') =>
+    renderToStaticMarkup(createElement(CardView, { card, locale }))
       .replace(/<[^>]+>/g, '|')
       .split('|')
       .filter(Boolean)
@@ -143,6 +157,14 @@ describe('what a card draws', () => {
         '15:30 MYT – 17:00 MYT',
         '2 November 2026, 15:00 MYT'
       ])
+    )
+  })
+
+  test('a Malay card renders its mode, approval and capture labels in Malay', () => {
+    const card = callCard(call(), 'ms')
+
+    expect(text(card, 'ms')).toEqual(
+      expect.arrayContaining(['Skyclause', 'Gangguan perjalanan', 'Diluluskan pada 15:12 MYT', 'Data direkodkan'])
     )
   })
 })

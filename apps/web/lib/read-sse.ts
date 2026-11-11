@@ -127,7 +127,7 @@ export async function readSse(url: string | URL, options: ReadSseOptions): Promi
 
     if (options.signal?.aborted) return
     if (sawEvent) backoffMs = INITIAL_BACKOFF_MS
-    await pause(backoffMs, options.signal)
+    await pause(Math.ceil(backoffMs * (0.5 + Math.random() * 0.5)), options.signal)
     backoffMs = Math.min(backoffMs * 2, MAX_BACKOFF_MS)
   }
 }

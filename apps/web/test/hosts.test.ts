@@ -30,11 +30,8 @@ const MULTI: Array<[string, string, [string, string] | null]> = [
   ['skyclause.m1ku.tech', '/openapi.json', ['/openapi.json', '/openapi.json']],
   ['skyclause.m1ku.tech', '/skills', ['/skills', '/skills']],
   ['skyclause.m1ku.tech', '/e', ['/e', '/e']],
-  // Test-only routes sit on the marketing host, where deploy's @smoke run checks production ships none.
-  ['skyclause.m1ku.tech', '/_test/tokens', ['planted', '/_test/tokens']],
-  ['skyclause.m1ku.tech', '/quality-planted/vitals', ['planted', '/quality-planted/vitals']],
-  ['app.skyclause.m1ku.tech', '/_test/tokens', null],
   ['skyclause.m1ku.tech', '/apu', null],
+  ['skyclause.m1ku.tech', '/aaa/bbb', null],
   ['skyclause.m1ku.tech', '/sign-in', null],
   ['skyclause.m1ku.tech', '/v1/projects', null],
   ['skyclause.m1ku.tech', '/api/me/memberships', null],
@@ -91,6 +88,54 @@ describe('HOST_MODE=multi', () => {
     const local = hostConfig({ HOST_MODE: 'multi', ...ORIGINS, API_ORIGIN: 'http://localhost:3101' })
     expect(routeRequest({ ...local, host: 'LOCALHOST:3101', pathname: '/v1/me' })?.group).toBe('/v1')
     expect(routeRequest({ ...local, host: 'localhost:3102', pathname: '/v1/me' })).toBeNull()
+  })
+})
+
+// Test builds (PLANTED_ROUTES=1) serve the planted pages on the marketing host; production serves none, and deploy's
+// @smoke run expects 404. A path the proxy lets through is matched by the app's `/[org]/[project]` page whichever host
+// asked, and its notFound() answers 200 (#610), so without the flag the prefixes are no route on any host: the proxy
+// rewrites them to the not-found page.
+describe('test-only routes', () => {
+  const PLANTED = ['/_test/tokens', '/_test/nothing-here', '/quality-planted/motion', '/quality-planted/vitals']
+  const HOSTS = [...Object.values(ORIGINS).map((origin) => new URL(origin).host), RUN_APP]
+  const planted = hostConfig({ HOST_MODE: 'multi', PLANTED_ROUTES: '1', ...ORIGINS })
+
+  it.each(PLANTED)(
+    'PLANTED_ROUTES=1 serves %s on the marketing host, not on the app, api, mcp or run.app hosts',
+    (pathname) => {
+      expect(routeRequest({ ...planted, host: 'skyclause.m1ku.tech', pathname })).toEqual({
+        group: 'planted',
+        pathname
+      })
+      for (const host of ['app.skyclause.m1ku.tech', 'api.skyclause.m1ku.tech', 'mcp.skyclause.m1ku.tech', RUN_APP]) {
+        expect(routeRequest({ ...planted, host, pathname }), host).toBeNull()
+      }
+    }
+  )
+
+  it('are no route on any host, in either mode, without PLANTED_ROUTES', () => {
+    for (const config of [multi, single]) {
+      for (const host of HOSTS) {
+        for (const pathname of PLANTED) {
+          expect(routeRequest({ ...config, host, pathname }), `${config.mode} ${host}${pathname}`).toBeNull()
+        }
+      }
+    }
+  })
+
+  it('are rewritten to the not-found page without PLANTED_ROUTES', () => {
+    for (const [config, host] of [
+      [multi, 'skyclause.m1ku.tech'],
+      [single, 'skyclause.m1ku.tech']
+    ] as const) {
+      for (const pathname of PLANTED) {
+        const response = proxyResponse(new NextRequest(`https://${host}${pathname}`), config)
+        expect(response.headers.get('x-middleware-rewrite'), `${config.mode} ${pathname}`).toBe(
+          `https://${host}/_not-found`
+        )
+        expect(response.headers.get('x-middleware-next')).toBeNull()
+      }
+    }
   })
 })
 

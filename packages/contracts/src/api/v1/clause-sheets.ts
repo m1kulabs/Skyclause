@@ -8,20 +8,36 @@ import {
 } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Page, PageQuery, ClauseSheet, SheetVersion, Verdicts } from '../shared'
+import {
+  Page,
+  PageQuery,
+  ClauseSheet,
+  DraftSheetVersion,
+  PublishedSheetVersion,
+  SheetCheckResult,
+  ClauseExplanation,
+  Verdicts
+} from '../shared'
 import { Clause, SheetInput } from '../../clauses'
 
 const VersionParams = IdParams.extend({ n: z.coerce.number().int().positive() })
 const DraftParams = IdParams.extend({ draftId: IdParams.shape.id })
 
-const CheckIssue = z.object({
-  clause_key: z.string().nullable(),
-  message: z.string(),
-  offset: z.number().int().nonnegative(),
-  length: z.number().int().nonnegative()
+const SheetContentBody = z.object({ content: SheetInput, base_n: z.number().int().nonnegative().optional() })
+const EvaluateBody = z.union([
+  z.object({ content: SheetInput, at: z.iso.datetime().optional() }).strict(),
+  z.object({ draft_id: z.uuidv7(), at: z.iso.datetime().optional() }).strict(),
+  z.object({ version_n: z.number().int().positive(), at: z.iso.datetime().optional() }).strict()
+])
+const DiffQuery = z.object({
+  base: z.union([z.literal('live'), z.coerce.number().int().positive()]),
+  head: z.union([
+    z.templateLiteral(['draft:', z.uuidv7()]).openapi({
+      pattern: '^draft:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$'
+    }),
+    z.coerce.number().int().positive()
+  ])
 })
-const CheckResult = z.object({ ok: z.boolean(), publishable: z.boolean(), issues: z.array(CheckIssue) })
-const SheetContentBody = z.object({ content: SheetInput })
 const SheetDiffEntry = z.object({ key: z.string(), before: Clause.nullable(), after: Clause.nullable() })
 const ReplayResult = z.object({
   id: z.uuidv7(),
@@ -62,7 +78,7 @@ export const listClauseSheetVersions = createRoute({
   responses: {
     200: {
       description: 'Immutable clause sheet versions',
-      content: { 'application/json': { schema: Page(SheetVersion) } }
+      content: { 'application/json': { schema: Page(PublishedSheetVersion) } }
     },
     ...commonErrors
   },
@@ -76,7 +92,10 @@ export const getClauseSheetVersion = createRoute({
   tags: ['clause-sheets'],
   request: { params: VersionParams, headers: OrganizationHeader },
   responses: {
-    200: { description: 'A numbered clause sheet version', content: { 'application/json': { schema: SheetVersion } } },
+    200: {
+      description: 'A numbered clause sheet version',
+      content: { 'application/json': { schema: PublishedSheetVersion } }
+    },
     ...commonErrors
   },
   x: { owner: 'b-clause-sheets-api', statement: 'project.view', idempotent: false }
@@ -87,7 +106,7 @@ export const getClauseSheetDiff = createRoute({
   path: '/v1/clause-sheets/{id}/diff',
   operationId: 'getClauseSheetDiff',
   tags: ['clause-sheets'],
-  request: { params: IdParams, headers: OrganizationHeader },
+  request: { params: IdParams, headers: OrganizationHeader, query: DiffQuery },
   responses: {
     200: {
       description: 'Clause changes against the live version',
@@ -106,15 +125,25 @@ export const evaluateClauseSheet = createRoute({
   request: {
     params: IdParams,
     headers: OrganizationHeader,
-    body: { content: { 'application/json': { schema: SheetContentBody } } }
+    body: { content: { 'application/json': { schema: EvaluateBody } } }
   },
   responses: {
     200: {
       description: 'Type-check and evaluate a clause sheet against current indicators',
-      content: { 'application/json': { schema: z.object({ check: CheckResult, verdicts: Verdicts }) } }
+      content: {
+        'application/json': {
+          schema: z.object({
+            check: SheetCheckResult,
+            verdicts: Verdicts,
+            label: z.enum(['live', 'replay']),
+            explanations: z.array(ClauseExplanation)
+          })
+        }
+      }
     },
     ...commonErrors,
-    422: problemResponse('The clause sheet cannot be evaluated')
+    422: problemResponse('The clause sheet cannot be evaluated'),
+    501: problemResponse('not-built: an authoritative evaluation dependency is unavailable')
   },
   x: { owner: 'b-clause-sheets-api', statement: 'project.view', idempotent: false }
 })
@@ -128,7 +157,7 @@ export const listClauseSheetDrafts = createRoute({
   responses: {
     200: {
       description: 'Saved draft versions of a clause sheet',
-      content: { 'application/json': { schema: Page(SheetVersion) } }
+      content: { 'application/json': { schema: Page(DraftSheetVersion) } }
     },
     ...commonErrors
   },
@@ -146,7 +175,7 @@ export const createClauseSheetDraft = createRoute({
     body: { content: { 'application/json': { schema: SheetContentBody } } }
   },
   responses: {
-    201: { description: 'A saved clause sheet draft', content: { 'application/json': { schema: SheetVersion } } },
+    201: { description: 'A saved clause sheet draft', content: { 'application/json': { schema: DraftSheetVersion } } },
     ...commonErrors,
     409: problemResponse('A conflicting draft prevents this save'),
     422: problemResponse('The clause sheet is invalid')
@@ -161,7 +190,7 @@ export const getClauseSheetDraft = createRoute({
   tags: ['clause-sheets'],
   request: { params: DraftParams, headers: OrganizationHeader },
   responses: {
-    200: { description: 'A saved clause sheet draft', content: { 'application/json': { schema: SheetVersion } } },
+    200: { description: 'A saved clause sheet draft', content: { 'application/json': { schema: DraftSheetVersion } } },
     ...commonErrors
   },
   x: { owner: 'b-clause-sheets-api', statement: 'clause_draft.edit', idempotent: false }

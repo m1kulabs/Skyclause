@@ -18,6 +18,8 @@ test.describe('HOST_MODE=multi', () => {
         APP_ENV: 'test',
         IP_HASH_KEY: 'test-only-ip-hash-key-for-playwright-runs',
         EMAIL_HASH_KEY: 'test-only-email-hash-key-for-playwright-runs',
+        // Production's setting, whatever the shell exports: the test-only routes are off.
+        PLANTED_ROUTES: '',
         HOST_MODE: 'multi',
         MARKETING_ORIGIN: 'https://skyclause.m1ku.tech',
         APP_ORIGIN: 'https://app.skyclause.m1ku.tech',
@@ -81,6 +83,26 @@ test.describe('HOST_MODE=multi', () => {
     expect(apiOnApp.headers()['content-type']).toMatch(/^application\/problem\+json/)
     for (const host of ['skyclause.m1ku.tech', 'app.skyclause.m1ku.tech', 'mcp.skyclause.m1ku.tech']) {
       expect((await get(host, '/health')).status(), host).toBe(200)
+    }
+  })
+
+  // This server starts without PLANTED_ROUTES, as production does. Next matches a two-segment path such as
+  // /_test/tokens to the app's /[org]/[project] page whichever host asked, and that page's notFound() answers 200 once
+  // the shell streams (#610): the proxy must send the test routes to the not-found page itself, on every host.
+  test('test-only routes and unknown paths answer the not-found page on every host', async ({ request }) => {
+    const hosts = [
+      RUN_APP,
+      ...['', 'app.', 'api.', 'mcp.', 'embed.', 'docs.'].map((prefix) => `${prefix}skyclause.m1ku.tech`)
+    ]
+    const pathnames = ['/_test/tokens', '/_test/nothing-here', '/quality-planted/motion', '/aaa/bbb/ccc/ddd']
+    const requests = hosts.flatMap((host) => pathnames.map((pathname) => ({ host, pathname })))
+    requests.push({ host: 'skyclause.m1ku.tech', pathname: '/aaa/bbb' })
+    for (const { host, pathname } of requests) {
+      const response = await request.get(`${origin}${pathname}`, { headers: { host }, maxRedirects: 0 })
+      expect(response.status(), `${host}${pathname}`).toBe(404)
+      const html = await response.text()
+      expect(html, `${host}${pathname}`).toContain('class="skip-link"')
+      expect(html, `${host}${pathname}`).toContain('id="skyclause-announcer"')
     }
   })
 })

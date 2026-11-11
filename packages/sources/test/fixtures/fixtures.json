@@ -1,0 +1,17 @@
+[
+  {
+    "file": "rainfall-graph-75-20261105T1312Z.json",
+    "url": "https://infobanjirjpskl.water.gov.my/Rainfall/GetRainfallGraph/75",
+    "captured_at": "2026-11-05T13:12:00Z",
+    "station_id": "0232901RF",
+    "sha256": "25cae3be496cff29b9925595d23fc63b7ddf9c1a4fb29e22b806b00d4ed3bd95"
+  },
+  {
+    "file": "rainfall-latest-data-all-20261110T1215Z.html",
+    "url": "https://infobanjirjpskl.water.gov.my/Rainfall/LatestData/All",
+    "captured_at": "2026-11-10T12:15:28.616407Z",
+    "capture_time_precision": "approximate collection time from recon manifest; exact HTTP capture time not recorded",
+    "station_id": "all",
+    "sha256": "2bbe128c892708226c4419a57ce401e57d4933d1feab3e99ed0f5a8254a82d8b"
+  }
+]

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "createWindowReport request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 201
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "window_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "report_count": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "moderation": {
+                  "type": "string",
+                  "enum": ["visible", "hidden_pending_review", "removed"]
+                }
+              },
+              "required": ["window_id", "report_count", "moderation"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "createWindowReport",
+  "x-method": "POST",
+  "x-path": "/v1/windows/{id}/reports"
+}

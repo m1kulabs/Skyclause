@@ -15,11 +15,11 @@ locals {
   # What each unit reads (#89 ticket decision, secrets per service).
   wanted_secrets = {
     web = [
-      "DATABASE_URL_APP", "DATABASE_URL_AUTH", "DATABASE_URL_SYSTEM",
+      "DATABASE_URL_APP", "DATABASE_URL_AUTH", "DATABASE_URL_SYSTEM", "DATABASE_URL_RETENTION",
       "BETTER_AUTH_SECRET", "EMAIL_HASH_KEY", "GUEST_COOKIE_SECRET", "IP_HASH_KEY",
       "GOOGLE_CLIENT_SECRET", "SKYCLAUSE_STAFF_EMAILS", "TURNSTILE_SECRET_KEY",
     ]
-    worker   = ["DATABASE_URL_APP", "DATABASE_URL_SYSTEM", "EMAIL_HASH_KEY", "SKYCLAUSE_STAFF_EMAILS", "VAPID_PRIVATE_KEY"]
+    worker   = ["DATABASE_URL_APP", "DATABASE_URL_SYSTEM", "DATABASE_URL_RETENTION", "EMAIL_HASH_KEY", "SKYCLAUSE_STAFF_EMAILS", "VAPID_PRIVATE_KEY"]
     jobs     = ["DATABASE_URL_SYSTEM", "DATABASE_URL_RETENTION"]
     migrator = ["DATABASE_URL_MIGRATE"]
   }
@@ -75,4 +75,13 @@ resource "google_secret_manager_secret_iam_member" "access" {
   secret_id = try(google_secret_manager_secret.this[each.value.secret].secret_id, each.value.secret)
   role      = "roles/secretmanager.secretAccessor"
   member    = local.member[each.value.account]
+}
+
+# retention (#551) is the only job on the jobs account that mounts EMAIL_HASH_KEY; kms-rewrap mounts it through the
+# worker account's grant. It stays out of wanted_secrets.jobs, which would mount it on every job through
+# local.mounts.jobs; the jobs account's grant is made here instead.
+resource "google_secret_manager_secret_iam_member" "retention_hash_key" {
+  secret_id = google_secret_manager_secret.this["EMAIL_HASH_KEY"].secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = local.member.jobs
 }

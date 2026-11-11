@@ -94,6 +94,7 @@ lighthouse-results/
 # Environment
 .env*
 !.env.example
+infra/wizards/*.evidence.md
 
 # Apps Script credentials, clasp project files, the clasp bundle and the camera build
 .clasprc.json

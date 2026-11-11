@@ -34,8 +34,10 @@ export function resolveAppearance(
   }
 }
 
-// This runs in <head>, before the body paints. Attribute changes are the seam for #99's account preferences.
-function followSystem(colors: typeof THEME_COLORS) {
+// This runs in <head>, before the body paints. Attribute changes are the seam for #99's account preferences. A plain
+// string, never `fn.toString()`: every bundler rewrites function text, which would break the CSP hash in
+// features/hardening/security-headers.ts. test/hardening.test.ts recomputes the hash and fails when this changes.
+export const APPEARANCE_SCRIPT = `(function (colors) {
   const root = document.documentElement
   const scheme = matchMedia('(prefers-color-scheme: light)')
   const contrast = matchMedia('(prefers-contrast: more)')
@@ -50,7 +52,7 @@ function followSystem(colors: typeof THEME_COLORS) {
     root.classList.toggle('hc', hc)
     root.style.colorScheme = light ? 'light' : 'dark'
     root.dataset.motion = reduce ? 'reduce' : 'full'
-    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]') ?? document.createElement('meta')
+    const meta = document.querySelector('meta[name="theme-color"]') || document.createElement('meta')
     meta.name = 'theme-color'
     meta.content = light ? (hc ? colors.lightHc : colors.light) : hc ? colors.darkHc : colors.dark
     if (!meta.isConnected) document.head.append(meta)
@@ -61,6 +63,4 @@ function followSystem(colors: typeof THEME_COLORS) {
     attributes: true,
     attributeFilter: ['data-theme', 'data-contrast', 'data-motion-preference']
   })
-}
-
-export const APPEARANCE_SCRIPT = `(${followSystem.toString()})(${JSON.stringify(THEME_COLORS)})`
+})(${JSON.stringify(THEME_COLORS)})`

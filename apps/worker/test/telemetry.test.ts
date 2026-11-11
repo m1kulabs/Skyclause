@@ -150,12 +150,12 @@ test('each request records http.server.request.duration under its route template
   expect((await fetch(post('/tasks/bundle-timers', '{}', { authorization: 'Bearer nope' }))).status).toBe(401)
   // An unrouted path has no template, so it records nothing rather than a raw path.
   expect((await fetch(post('/no-such-path', '{}'))).status).toBe(404)
+  // Each request's flush writes only the series not written in the last 5 seconds (Cloud Monitoring's rule).
   const recorded = metrics
     .getMetrics()
     .flatMap((resource) => resource.scopeMetrics.flatMap((scope) => scope.metrics))
     .filter((metric) => metric.descriptor.name === 'http.server.request.duration')
-    .at(-1)
-    ?.dataPoints.map((point) => [point.attributes, (point.value as { count: number }).count])
+    .flatMap((metric) => metric.dataPoints.map((point) => [point.attributes, (point.value as { count: number }).count]))
   expect(recorded).toEqual([
     [{ 'http.request.method': 'POST', 'http.route': '/tasks/:queue', 'http.response.status_code': 204 }, 1],
     [{ 'http.request.method': 'POST', 'http.route': '/tasks/:queue', 'http.response.status_code': 401 }, 1]

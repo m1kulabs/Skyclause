@@ -1,0 +1,44 @@
+{
+  "create": {
+    "title": "Cipta organisasi",
+    "description": "Organisasi memegang projek, sumber dan pelulus. Anda menjadi Pemiliknya.",
+    "name": "Nama organisasi",
+    "nameHint": "Dipaparkan dalam penukar dan pada notis.",
+    "slug": "Slug",
+    "slugHint": "Huruf kecil, digit dan sempang tunggal, 2–39 aksara.",
+    "format": "Gunakan 2–39 huruf kecil, digit dan sempang tunggal, bermula dan berakhir dengan huruf atau digit.",
+    "reserved": "{slug} dikhaskan. Pilih slug lain.",
+    "taken": "{slug} telah digunakan. Pilih slug lain.",
+    "submit": "Cipta organisasi",
+    "creating": "Mencipta…",
+    "signedOut": "Log masuk untuk mencipta organisasi."
+  },
+  "general": {
+    "name": "Nama organisasi",
+    "slug": "Slug (baca sahaja)",
+    "slugHint": "URL awam dan suapan kalendar membawa slug, jadi ia tidak berubah.",
+    "save": "Simpan nama",
+    "saving": "Menyimpan…",
+    "saved": "Nama disimpan.",
+    "loadError": "Tidak dapat memuatkan organisasi ini.",
+    "retry": "Cuba lagi"
+  },
+  "projects": {
+    "title": "Projek",
+    "count": "n={count}",
+    "empty": "Tiada projek lagi (n=0).",
+    "create": "Cipta projek",
+    "askAdmin": "Minta Admin mencipta projek",
+    "needsReview": "{count} perlu semakan",
+    "meta": "{review} · {signal}",
+    "signal": "Kesihatan isyarat: {state} · {reporting}{oldest}",
+    "inputsReporting": "{count} input melaporkan",
+    "oldestAge": "· tertua {age}",
+    "noCall": "Tiada panggilan: {input} sejak {time}",
+    "archived": "Diarkib",
+    "showArchived": "Tunjuk yang diarkib",
+    "hideArchived": "Sembunyi yang diarkib",
+    "loadError": "Tidak dapat memuatkan projek.",
+    "retry": "Cuba lagi"
+  }
+}

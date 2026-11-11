@@ -61,6 +61,14 @@ resource "postgresql_role" "login" {
   name     = each.key
   login    = true
   password = random_password.login[each.key].result
+
+  # The migrations own these logins' memberships: 0000 creates the group roles and grants
+  # `public_reader` to `app` WITH INHERIT FALSE, SET TRUE. Terraform runs first on a new database,
+  # when no group role exists, and reads every membership back, so an unset `roles` would revoke
+  # them. Updating a login in place still revokes all of them and re-grants with INHERIT TRUE (#619).
+  lifecycle {
+    ignore_changes = [roles]
+  }
 }
 
 # Direct (unpooled) host: Neon's pooler runs PgBouncer in transaction mode, which drops

@@ -4,9 +4,11 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./indicators": "./src/indicators/index.ts"
   },
   "dependencies": {
+    "@skyclause/clauses": "workspace:*",
     "@skyclause/contracts": "workspace:*",
     "zod": "4.6.7"
   }

@@ -418,12 +418,25 @@
     background: var(--background);
     color: var(--foreground);
     scroll-padding-top: 64px;
+    --density-row-height: 48px;
+    --density-body-size: 14px;
+  }
+  html[data-density='compact'] {
+    --density-row-height: 42px;
+    --density-body-size: 13px;
+  }
+  html[data-density='comfortable'] {
+    --density-row-height: 48px;
+    --density-body-size: 14px;
   }
   body {
     margin: 0;
     font-family: var(--font-sans);
-    font-size: 13px;
+    font-size: var(--density-body-size);
     line-height: 20px;
+  }
+  [data-density-row] {
+    min-height: var(--density-row-height);
   }
   h1,
   h2,

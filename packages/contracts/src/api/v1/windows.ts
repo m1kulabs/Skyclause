@@ -31,6 +31,7 @@ const WindowCallSummary = z.object({
   mode: Mode.nullable()
 })
 const WindowView = WindowSchema.extend({
+  at_risk: z.boolean().optional(),
   recurrence: Recurrence.nullable().optional(),
   latest_calls: z.object({ sky: WindowCallSummary.nullable(), crowd: WindowCallSummary.nullable() })
 })

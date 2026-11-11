@@ -2,7 +2,7 @@ import { expect, test } from './fixtures'
 
 test('the home page has no serious or critical axe findings', { tag: '@smoke' }, async ({ page, expectAxeClean }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Skyclause')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('The call for every window')
   await expectAxeClean(page)
 })
 

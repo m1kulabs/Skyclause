@@ -1,0 +1,1566 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "listWebhookDeliveries request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "event_id": {
+                        "type": "string"
+                      },
+                      "dispatch_id": {
+                        "type": "string"
+                      },
+                      "attempt": {
+                        "type": "integer"
+                      },
+                      "status_code": {
+                        "type": ["integer", "null"]
+                      },
+                      "latency_ms": {
+                        "type": "number"
+                      },
+                      "state": {
+                        "type": "string"
+                      },
+                      "attempted_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "request_headers": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "string"
+                        }
+                      },
+                      "request_body": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["source.error"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "source_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "state": {
+                                    "type": "string",
+                                    "enum": ["error"]
+                                  },
+                                  "since": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "http_status": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "required": ["source_id", "state", "since", "http_status"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["source.stale"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "source_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "state": {
+                                    "type": "string",
+                                    "enum": ["stale"]
+                                  },
+                                  "since": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "http_status": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "required": ["source_id", "state", "since", "http_status"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["source.recovered"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "source_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "state": {
+                                    "type": "string",
+                                    "enum": ["recovered"]
+                                  },
+                                  "since": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "http_status": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "required": ["source_id", "state", "since", "http_status"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["crossing.detected"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "crossing_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "pack": {
+                                    "type": "string",
+                                    "enum": ["sky", "crowd"]
+                                  },
+                                  "scope": {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": ["site", "window", "night"]
+                                      },
+                                      "id": {
+                                        "type": ["string", "null"],
+                                        "format": "uuid"
+                                      }
+                                    },
+                                    "required": ["kind", "id"]
+                                  },
+                                  "from": {
+                                    "type": ["string", "null"],
+                                    "enum": [
+                                      "normal",
+                                      "outdoor_limited",
+                                      "commute_disruption",
+                                      "hybrid_recommended",
+                                      "surge_night",
+                                      null
+                                    ]
+                                  },
+                                  "to": {
+                                    "type": ["string", "null"],
+                                    "enum": [
+                                      "normal",
+                                      "outdoor_limited",
+                                      "commute_disruption",
+                                      "hybrid_recommended",
+                                      "surge_night",
+                                      null
+                                    ]
+                                  },
+                                  "at": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "snapshot_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "verdict_hash": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "crossing_id",
+                                  "pack",
+                                  "scope",
+                                  "from",
+                                  "to",
+                                  "at",
+                                  "snapshot_id",
+                                  "verdict_hash"
+                                ]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["run.completed"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "run_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "pack": {
+                                    "type": "string",
+                                    "enum": ["sky", "crowd"]
+                                  },
+                                  "trigger": {
+                                    "type": "string",
+                                    "enum": ["schedule", "crossing", "listing", "calendar", "request"]
+                                  },
+                                  "bundle_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "shadow_mode": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": ["run_id", "pack", "trigger", "bundle_id", "shadow_mode"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["run.failed"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "run_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "pack": {
+                                    "type": "string",
+                                    "enum": ["sky", "crowd"]
+                                  },
+                                  "trigger": {
+                                    "type": "string",
+                                    "enum": ["schedule", "crossing", "listing", "calendar", "request"]
+                                  },
+                                  "reason": {
+                                    "type": "string"
+                                  },
+                                  "shadow_mode": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": ["run_id", "pack", "trigger", "reason", "shadow_mode"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["bundle.drafted"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "bundle_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "pack": {
+                                    "type": "string",
+                                    "enum": ["sky", "crowd"]
+                                  },
+                                  "state": {
+                                    "type": "string",
+                                    "enum": [
+                                      "drafted",
+                                      "needs_review",
+                                      "superseded",
+                                      "expired",
+                                      "escalated",
+                                      "approved"
+                                    ]
+                                  },
+                                  "call_ids": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    }
+                                  },
+                                  "sla_due_at": {
+                                    "type": ["string", "null"],
+                                    "format": "date-time"
+                                  }
+                                },
+                                "required": ["bundle_id", "pack", "state", "call_ids", "sla_due_at"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["bundle.needs_review"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "bundle_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "pack": {
+                                    "type": "string",
+                                    "enum": ["sky", "crowd"]
+                                  },
+                                  "state": {
+                                    "type": "string",
+                                    "enum": [
+                                      "drafted",
+                                      "needs_review",
+                                      "superseded",
+                                      "expired",
+                                      "escalated",
+                                      "approved"
+                                    ]
+                                  },
+                                  "call_ids": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    }
+                                  },
+                                  "sla_due_at": {
+                                    "type": ["string", "null"],
+                                    "format": "date-time"
+                                  }
+                                },
+                                "required": ["bundle_id", "pack", "state", "call_ids", "sla_due_at"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["bundle.superseded"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "bundle_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "pack": {
+                                    "type": "string",
+                                    "enum": ["sky", "crowd"]
+                                  },
+                                  "state": {
+                                    "type": "string",
+                                    "enum": [
+                                      "drafted",
+                                      "needs_review",
+                                      "superseded",
+                                      "expired",
+                                      "escalated",
+                                      "approved"
+                                    ]
+                                  },
+                                  "call_ids": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    }
+                                  },
+                                  "sla_due_at": {
+                                    "type": ["string", "null"],
+                                    "format": "date-time"
+                                  }
+                                },
+                                "required": ["bundle_id", "pack", "state", "call_ids", "sla_due_at"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["bundle.expired"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "bundle_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "pack": {
+                                    "type": "string",
+                                    "enum": ["sky", "crowd"]
+                                  },
+                                  "state": {
+                                    "type": "string",
+                                    "enum": [
+                                      "drafted",
+                                      "needs_review",
+                                      "superseded",
+                                      "expired",
+                                      "escalated",
+                                      "approved"
+                                    ]
+                                  },
+                                  "call_ids": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    }
+                                  },
+                                  "sla_due_at": {
+                                    "type": ["string", "null"],
+                                    "format": "date-time"
+                                  }
+                                },
+                                "required": ["bundle_id", "pack", "state", "call_ids", "sla_due_at"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["bundle.escalated"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "bundle_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "pack": {
+                                    "type": "string",
+                                    "enum": ["sky", "crowd"]
+                                  },
+                                  "state": {
+                                    "type": "string",
+                                    "enum": [
+                                      "drafted",
+                                      "needs_review",
+                                      "superseded",
+                                      "expired",
+                                      "escalated",
+                                      "approved"
+                                    ]
+                                  },
+                                  "call_ids": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    }
+                                  },
+                                  "sla_due_at": {
+                                    "type": ["string", "null"],
+                                    "format": "date-time"
+                                  },
+                                  "level": {
+                                    "type": "string",
+                                    "enum": ["next_approver", "admins"]
+                                  }
+                                },
+                                "required": ["bundle_id", "pack", "state", "call_ids", "sla_due_at", "level"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["bundle.approved"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "bundle_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "pack": {
+                                    "type": "string",
+                                    "enum": ["sky", "crowd"]
+                                  },
+                                  "state": {
+                                    "type": "string",
+                                    "enum": [
+                                      "drafted",
+                                      "needs_review",
+                                      "superseded",
+                                      "expired",
+                                      "escalated",
+                                      "approved"
+                                    ]
+                                  },
+                                  "call_ids": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    }
+                                  },
+                                  "sla_due_at": {
+                                    "type": ["string", "null"],
+                                    "format": "date-time"
+                                  },
+                                  "sending_call_ids": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    }
+                                  },
+                                  "rejected_call_ids": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "bundle_id",
+                                  "pack",
+                                  "state",
+                                  "call_ids",
+                                  "sla_due_at",
+                                  "sending_call_ids",
+                                  "rejected_call_ids"
+                                ]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["call.sent"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "call_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "mode": {
+                                    "type": ["string", "null"],
+                                    "enum": [
+                                      "normal",
+                                      "outdoor_limited",
+                                      "commute_disruption",
+                                      "hybrid_recommended",
+                                      "surge_night",
+                                      null
+                                    ]
+                                  },
+                                  "outcome": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["call_id", "mode", "outcome"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["call.graded"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "call_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "outcome": {
+                                    "type": "string",
+                                    "enum": [
+                                      "hit",
+                                      "miss",
+                                      "false_alarm",
+                                      "correct_normal",
+                                      "no_call",
+                                      "in_band",
+                                      "out_of_band",
+                                      "unlisted_surge",
+                                      "pending"
+                                    ]
+                                  }
+                                },
+                                "required": ["call_id", "outcome"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["night.graded"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "night_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "outcome": {
+                                    "type": "string",
+                                    "enum": [
+                                      "hit",
+                                      "miss",
+                                      "false_alarm",
+                                      "correct_normal",
+                                      "no_call",
+                                      "in_band",
+                                      "out_of_band",
+                                      "unlisted_surge",
+                                      "pending"
+                                    ]
+                                  }
+                                },
+                                "required": ["night_id", "outcome"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["review_item.opened"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "review_item_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "outcome": {
+                                    "type": "string",
+                                    "enum": [
+                                      "hit",
+                                      "miss",
+                                      "false_alarm",
+                                      "correct_normal",
+                                      "no_call",
+                                      "in_band",
+                                      "out_of_band",
+                                      "unlisted_surge",
+                                      "pending"
+                                    ]
+                                  }
+                                },
+                                "required": ["review_item_id", "outcome"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["listing.proposed"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "listing_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "state": {
+                                    "type": "string",
+                                    "enum": ["proposed", "listed", "rejected", "cancelled", "unlisted"]
+                                  },
+                                  "night_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  }
+                                },
+                                "required": ["listing_id", "state", "night_id"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["listing.listed"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "listing_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "state": {
+                                    "type": "string",
+                                    "enum": ["proposed", "listed", "rejected", "cancelled", "unlisted"]
+                                  },
+                                  "night_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  }
+                                },
+                                "required": ["listing_id", "state", "night_id"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["listing.changed"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "listing_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "state": {
+                                    "type": "string",
+                                    "enum": ["proposed", "listed", "rejected", "cancelled", "unlisted"]
+                                  },
+                                  "night_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  }
+                                },
+                                "required": ["listing_id", "state", "night_id"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["evidence_request.answered"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "evidence_request_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "reply_channel": {
+                                    "type": "string",
+                                    "enum": ["email", "app", "api", "mcp"]
+                                  }
+                                },
+                                "required": ["evidence_request_id", "reply_channel"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["window.created"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "window_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "via": {
+                                    "type": "string",
+                                    "enum": ["form", "ics", "m365", "api", "cli", "mcp", "guest", "share"]
+                                  },
+                                  "times_changed": {
+                                    "type": "boolean"
+                                  },
+                                  "series_id": {
+                                    "type": ["string", "null"],
+                                    "format": "uuid"
+                                  }
+                                },
+                                "required": ["window_id", "via", "times_changed", "series_id"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["window.updated"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "window_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "via": {
+                                    "type": "string",
+                                    "enum": ["form", "ics", "m365", "api", "cli", "mcp", "guest", "share"]
+                                  },
+                                  "times_changed": {
+                                    "type": "boolean"
+                                  },
+                                  "series_id": {
+                                    "type": ["string", "null"],
+                                    "format": "uuid"
+                                  }
+                                },
+                                "required": ["window_id", "via", "times_changed", "series_id"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["window.cancelled"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "window_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "via": {
+                                    "type": "string",
+                                    "enum": ["form", "ics", "m365", "api", "cli", "mcp", "guest", "share"]
+                                  },
+                                  "times_changed": {
+                                    "type": "boolean"
+                                  },
+                                  "series_id": {
+                                    "type": ["string", "null"],
+                                    "format": "uuid"
+                                  }
+                                },
+                                "required": ["window_id", "via", "times_changed", "series_id"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["poll.recorded"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "source_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "poll_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "outcome": {
+                                    "type": "string"
+                                  },
+                                  "http_status": {
+                                    "type": ["integer", "null"]
+                                  },
+                                  "new_rows": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "required": ["source_id", "poll_id", "outcome", "http_status", "new_rows"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["source.bound"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "source_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "role": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["source_id", "role"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["source.unbound"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "source_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "role": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["source_id", "role"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["clause_sheet.published"]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "org_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "project_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "data": {
+                                "type": "object",
+                                "properties": {
+                                  "sheet_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "pack": {
+                                    "type": "string",
+                                    "enum": ["sky", "crowd"]
+                                  },
+                                  "version_n": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "required": ["sheet_id", "pack", "version_n"]
+                              }
+                            },
+                            "required": ["id", "type", "created_at", "org_id", "project_id", "data"]
+                          }
+                        ]
+                      },
+                      "response_headers": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "string"
+                        }
+                      },
+                      "response_body": {
+                        "type": ["string", "null"]
+                      },
+                      "raw_request_body": {
+                        "type": "string"
+                      },
+                      "error": {
+                        "type": ["string", "null"]
+                      },
+                      "next_retry_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "event_id",
+                      "dispatch_id",
+                      "attempt",
+                      "status_code",
+                      "latency_ms",
+                      "state",
+                      "attempted_at",
+                      "request_headers",
+                      "request_body",
+                      "response_headers",
+                      "response_body"
+                    ]
+                  }
+                },
+                "next_cursor": {
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["data", "next_cursor"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "listWebhookDeliveries",
+  "x-method": "GET",
+  "x-path": "/v1/webhooks/{id}/deliveries"
+}

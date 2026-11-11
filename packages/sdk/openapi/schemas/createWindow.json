@@ -1,0 +1,305 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "createWindow request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "kind": {
+              "type": "string",
+              "enum": ["class", "event", "commute_wave"]
+            },
+            "starts_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "ends_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "tz": {
+              "type": "string",
+              "minLength": 1
+            },
+            "recurrence": {
+              "type": "object",
+              "properties": {
+                "frequency": {
+                  "type": "string",
+                  "enum": ["weekly"]
+                },
+                "days_of_week": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+                  },
+                  "minItems": 1
+                },
+                "until": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "count": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "skip_dates": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                }
+              },
+              "required": ["frequency", "days_of_week", "skip_dates"]
+            }
+          },
+          "required": ["title", "kind", "starts_at", "ends_at", "tz"]
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 201
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "project_id": {
+                  "type": "string"
+                },
+                "starts_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "ends_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": ["class", "event", "commute_wave"]
+                },
+                "tz": {
+                  "type": "string"
+                },
+                "declared_by": {
+                  "type": "string"
+                },
+                "guest": {
+                  "type": "boolean"
+                },
+                "via": {
+                  "type": "string",
+                  "enum": ["app", "form", "ics", "api", "cli", "mcp", "guest", "share"]
+                },
+                "expires_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                },
+                "series_id": {
+                  "type": ["string", "null"]
+                },
+                "ics_feed_id": {
+                  "type": ["string", "null"]
+                },
+                "cancelled_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                },
+                "share_link_id": {
+                  "type": ["string", "null"]
+                },
+                "moderation": {
+                  "type": "string",
+                  "enum": ["visible", "hidden_pending_review", "removed"]
+                },
+                "at_risk": {
+                  "type": "boolean"
+                },
+                "recurrence": {
+                  "type": ["object", "null"],
+                  "properties": {
+                    "frequency": {
+                      "type": "string",
+                      "enum": ["weekly"]
+                    },
+                    "days_of_week": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+                      },
+                      "minItems": 1
+                    },
+                    "until": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "count": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "skip_dates": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "format": "date"
+                      }
+                    }
+                  },
+                  "required": ["frequency", "days_of_week", "skip_dates"]
+                },
+                "latest_calls": {
+                  "type": "object",
+                  "properties": {
+                    "sky": {
+                      "type": ["object", "null"],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "bundle_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "drafted",
+                            "approved",
+                            "edited",
+                            "rejected",
+                            "expired",
+                            "superseded",
+                            "sending",
+                            "sent",
+                            "failed"
+                          ]
+                        },
+                        "mode": {
+                          "type": ["string", "null"],
+                          "enum": [
+                            "normal",
+                            "outdoor_limited",
+                            "commute_disruption",
+                            "hybrid_recommended",
+                            "surge_night",
+                            null
+                          ]
+                        }
+                      },
+                      "required": ["id", "bundle_id", "state", "mode"]
+                    },
+                    "crowd": {
+                      "type": ["object", "null"],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "bundle_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "drafted",
+                            "approved",
+                            "edited",
+                            "rejected",
+                            "expired",
+                            "superseded",
+                            "sending",
+                            "sent",
+                            "failed"
+                          ]
+                        },
+                        "mode": {
+                          "type": ["string", "null"],
+                          "enum": [
+                            "normal",
+                            "outdoor_limited",
+                            "commute_disruption",
+                            "hybrid_recommended",
+                            "surge_night",
+                            null
+                          ]
+                        }
+                      },
+                      "required": ["id", "bundle_id", "state", "mode"]
+                    }
+                  },
+                  "required": ["sky", "crowd"]
+                }
+              },
+              "required": [
+                "id",
+                "project_id",
+                "starts_at",
+                "ends_at",
+                "title",
+                "kind",
+                "tz",
+                "declared_by",
+                "guest",
+                "via",
+                "expires_at",
+                "series_id",
+                "ics_feed_id",
+                "cancelled_at",
+                "share_link_id",
+                "moderation",
+                "latest_calls"
+              ]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "createWindow",
+  "x-method": "POST",
+  "x-path": "/v1/projects/{id}/windows"
+}

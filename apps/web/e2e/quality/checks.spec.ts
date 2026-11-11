@@ -26,6 +26,18 @@ test('a clean page has no findings', async ({ page }) => {
   expect(await findingsOn(page, html)).toEqual([])
 })
 
+test('Next.js development tools are outside the app keyboard audit', async ({ page }) => {
+  await page.setContent(planted('<h1>App page</h1><button type="button">Save</button>'))
+  await page.evaluate(() => {
+    const portal = document.createElement('nextjs-portal')
+    const shadow = portal.attachShadow({ mode: 'open' })
+    shadow.innerHTML = '<button type="button">Open Next.js Dev Tools</button>'
+    document.body.append(portal)
+  })
+
+  expect(await inspectPage(page, { axe: false, reflow: false })).toEqual([])
+})
+
 test('a page whose first Tab stop is not a skip link fails skip-link', async ({ page }) => {
   await page.setContent(
     '<!doctype html><html lang="en"><head><title>P</title></head><body><main><h1>T</h1><a href="/x">Home</a></main></body></html>'
@@ -48,6 +60,16 @@ test('a focus ring removed without a replacement fails focus-visible', async ({ 
   expect(findings).toContainEqual(
     expect.objectContaining({ check: 'focus-visible', detail: expect.stringMatching(/Bare/) })
   )
+})
+
+test('a native date control can use its field wrapper focus ring', async ({ page }) => {
+  const head =
+    '<style>input:focus-visible { outline: none } [data-focus-ring]:focus-within { outline: 2px solid rgb(0 0 0); outline-offset: 2px }</style>'
+  const html = planted(
+    '<h1>T</h1><div data-focus-ring><label>Semester ends <input type="date" name="ends" autocomplete="off"></label></div>',
+    head
+  )
+  expect(await findingsOn(page, html)).toEqual([])
 })
 
 test('a ring drawn with box-shadow replaces the outline', async ({ page }) => {
@@ -77,6 +99,24 @@ test('an input without a label, name or autocomplete fails form-fields', async (
   expect(checksOf(findings)).toContain('axe')
 })
 
+test('a generated or generic name fails form-fields', async ({ page }) => {
+  const field = (name: string) => `<label>F <input name="${name}" autocomplete="off"></label>`
+  const html = planted(
+    `<h1>T</h1>${['_r_1_', '_R_2bm_', '«r3»', ':r4:', 'input', 'field-2', '7', 'site_name', 'sla_s_sky'].map(field).join('')}`
+  )
+  const names = (await findingsOn(page, html)).filter((finding) => / name /.test(finding.detail))
+  expect(names.map((finding) => finding.detail)).toEqual([
+    'input[name="_r_1_"] has a name that doesn’t say what it holds',
+    'input[name="_R_2bm_"] has a name that doesn’t say what it holds',
+    'input[name="«r3»"] has a name that doesn’t say what it holds',
+    'input[name=":r4:"] has a name that doesn’t say what it holds',
+    'input[name="input"] has a name that doesn’t say what it holds',
+    'input[name="field-2"] has a name that doesn’t say what it holds',
+    'input[name="7"] has a name that doesn’t say what it holds'
+  ])
+  expect(names.every((finding) => finding.check === 'form-fields')).toBe(true)
+})
+
 test('email, code, slug and station fields without spellcheck="false" fail spellcheck', async ({ page }) => {
   const field = (attrs: string) => `<label>F <input ${attrs} autocomplete="off"></label>`
   const html = planted(
@@ -84,6 +124,53 @@ test('email, code, slug and station fields without spellcheck="false" fail spell
   )
   const spellcheck = (await findingsOn(page, html)).filter((finding) => finding.check === 'spellcheck')
   expect(spellcheck).toHaveLength(4)
+})
+
+test('a field whose type doesn’t fit what it holds fails input-type', async ({ page }) => {
+  const field = (attrs: string) => `<label>F <input ${attrs} spellcheck="false"></label>`
+  const html = planted(
+    `<h1>T</h1>${field('name="contact" autocomplete="email"')}${field('name="email" autocomplete="off"')}
+     ${field('name="site" autocomplete="url"')}${field('name="phone" autocomplete="off"')}
+     ${field('name="webhookUrl" autocomplete="off"')}
+     ${field('type="email" name="email" autocomplete="email"')}${field('type="tel" name="mobile" autocomplete="tel-national"')}`
+  )
+  const types = (await findingsOn(page, html)).filter((finding) => finding.check === 'input-type')
+  expect(types.map((finding) => finding.detail)).toEqual([
+    'input[name="contact"] holds an email address but is type="text"; use type="email"',
+    'input[name="email"] holds an email address but is type="text"; use type="email"',
+    'input[name="site"] holds a URL but is type="text"; use type="url"',
+    'input[name="phone"] holds a phone number but is type="text"; use type="tel"',
+    'input[name="webhookUrl"] holds a URL but is type="text"; use type="url"'
+  ])
+})
+
+test('a code in a number field fails input-type, and a quantity there passes', async ({ page }) => {
+  const field = (attrs: string) => `<label>F <input type="number" ${attrs} spellcheck="false"></label>`
+  const html = planted(
+    `<h1>T</h1>${field('name="postcode" autocomplete="postal-code"')}${field('name="otp" autocomplete="one-time-code"')}
+     ${field('name="pin" autocomplete="off"')}${field('name="postalCode" autocomplete="off"')}${field('name="count" autocomplete="off"')}`
+  )
+  const types = (await findingsOn(page, html)).filter((finding) => finding.check === 'input-type')
+  expect(types.map((finding) => finding.detail)).toEqual([
+    'input[name="postcode"] holds a code but is type="number"; use type="text" with inputmode="numeric"',
+    'input[name="otp"] holds a code but is type="number"; use type="text" with inputmode="numeric"',
+    'input[name="pin"] holds a code but is type="number"; use type="text" with inputmode="numeric"',
+    'input[name="postalCode"] holds a code but is type="number"; use type="text" with inputmode="numeric"'
+  ])
+})
+
+test('an inputmode that contradicts the type fails input-type', async ({ page }) => {
+  const field = (attrs: string) => `<label>F <input ${attrs} autocomplete="off" spellcheck="false"></label>`
+  const html = planted(
+    `<h1>T</h1>${field('type="url" name="hook" inputmode="numeric"')}${field('type="number" name="km" inputmode="text"')}
+     ${field('type="email" name="email" inputmode="email"')}${field('type="number" name="lat" inputmode="decimal"')}
+     ${field('name="station" inputmode="text"')}`
+  )
+  const types = (await findingsOn(page, html)).filter((finding) => finding.check === 'input-type')
+  expect(types.map((finding) => finding.detail)).toEqual([
+    'input[name="hook"] is type="url" but inputmode="numeric"; use inputmode="url" or none',
+    'input[name="km"] is type="number" but inputmode="text"; use inputmode="numeric", "decimal" or none'
+  ])
 })
 
 test('a field that cancels paste fails paste', async ({ page }) => {

@@ -9,6 +9,26 @@ import { stripFromCapture } from './fixtures/generate'
 const here = dirname(fileURLToPath(import.meta.url))
 
 describe('layoutStrip on the labelled 2 November replay', () => {
+  test('rain lines share their lane y positions with the matching ticks', () => {
+    const strip = stripFromCapture({ replay: false })
+    const layout = layoutStrip({
+      ...strip,
+      rain5: [
+        { at: strip.from, value: 5, state: 'received' },
+        { at: strip.to, value: 0, state: 'received' }
+      ],
+      rain60: [
+        { at: strip.from, value: 40 },
+        { at: strip.to, value: 0 }
+      ]
+    })
+    const rain5TickY = layout.lanes.find((lane) => lane.key === 'rain5')!.ticks.find((tick) => tick.value === 5)!.y
+    const rain60TickY = layout.lanes.find((lane) => lane.key === 'rain60')!.ticks.find((tick) => tick.value === 40)!.y
+
+    expect(Number(layout.rain5Path.match(/^[ML][^,]+,([0-9.]+)/)![1])).toBe(rain5TickY)
+    expect(Number(layout.rain60Path.match(/^[ML][^,]+,([0-9.]+)/)![1])).toBeCloseTo(rain60TickY, 1)
+  })
+
   test('the 60-minute lane crosses the Lebat line at 15:00 with 39.0 mm', () => {
     const strip = stripFromCapture({ replay: true })
     const layout = layoutStrip(strip)

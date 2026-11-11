@@ -21,7 +21,7 @@ Contents:
 - **When:** 26 October – 17 November 2026 ([home page]).
 - **Format:** the build phase is online. Final pitching for the top five teams is currently planned for 17 November at the APU Auditorium during NexConnect '26 ([#faq-and-guidelines], [#key-dates-and-briefing]).
 - **Organisers:** APU School of Technology, with GDGoC APU supporting coordination and execution ([event details]). The site lists NexConnect 2026, NTT DATA (sponsor), and Google Cloud as partners ([community]).
-- **Tools:** the organisers encourage Google tools such as Gemini Enterprise where they fit, and welcome others; the NTT DATA presenters at the briefing said Gemini Enterprise is mandatory (see [Tools](#tools)).
+- **Tools:** the organisers encourage Google tools such as Gemini Enterprise where they fit, and welcome others; the NTT DATA presenters at the briefing said Gemini Enterprise is mandatory (see [Tools](#tools)). The 8 November ruling says Gemini Enterprise is not required for the 13 November prototype, but is required for a Top 5 finalist's product at the 17 November pitching ([#announcements]).
 - **Prizes:** RM4,000 in cash across five places ([home page]).
 - **Cost:** free ([#faq-and-guidelines]).
 
@@ -66,19 +66,21 @@ Earlier posts are looser: the welcome post says to "build a solution using Googl
 
 All times are Malaysia time (MYT).
 
-| Date                    | Milestone                                                                                    | Source                                      |
-| ----------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| Mon 26 Oct              | Registration opens                                                                           | [event details]                             |
-| Tue 3 Nov, 6:00 PM      | Problem statement briefing and Gemini Enterprise training with NTT DATA, held on Google Meet | [#announcements], [briefing]                |
-| Sun 8 Nov, 11:59 PM     | Registration closes                                                                          | [event details], [#key-dates-and-briefing]  |
-| Tue 10 Nov, 11:59 PM    | Prototype submission deadline                                                                | [event details], [#submission-guidelines]   |
-| Wed 11 Nov – Sat 14 Nov | Submission assessment: every submitted prototype is reviewed and scored                      | [event details]                             |
-| Sun 15 Nov              | Top 5 announcement                                                                           | [event details], [#key-dates-and-briefing]  |
-| Tue 17 Nov              | Top 5 final pitching at the APU Auditorium during NexConnect '26                             | [#key-dates-and-briefing], [#announcements] |
+| Date                    | Milestone                                                                                                | Source                                      |
+| ----------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Mon 26 Oct              | Registration opens                                                                                       | [event details]                             |
+| Tue 3 Nov, 6:00 PM      | Problem statement briefing and Gemini Enterprise training with NTT DATA, held on Google Meet             | [#announcements], [briefing]                |
+| Sun 8 Nov, 11:59 PM     | Registration closes                                                                                      | [event details], [#key-dates-and-briefing]  |
+| Wed 11 Nov – Sat 14 Nov | Submission assessment: every submitted prototype is reviewed and scored                                  | [event details]                             |
+| Fri 13 Nov, 12:00 PM    | Prototype submission deadline, moved from Tue 10 Nov, 11:59 PM; Gemini Enterprise not required           | [#announcements]                            |
+| Sun 15 Nov              | Top 5 announcement                                                                                       | [event details], [#key-dates-and-briefing]  |
+| Tue 17 Nov              | Top 5 final pitching at the APU Auditorium during NexConnect '26; the product must use Gemini Enterprise | [#key-dates-and-briefing], [#announcements] |
 
 The briefing moved from Bevy to Google Meet on the day and ran from about 6:05 PM to 7:45 PM ([#announcements], [briefing]). Its recording is in the organisers' Google Drive folder and is captured as the [briefing] transcript and [briefing slides].
 
-The 8 November date closes registration only. A participant noted that the registration form asks for a repository and pitch deck; an organiser confirmed that teams can submit or update their prototype until the 10 November deadline ([#general]), up to the final submission, which locks the entry (see [Submission requirements](#submission-requirements)). The workspace shows the submission window the organisers actually enforce ([event details]), and `#announcements` carries any schedule changes ([#key-dates-and-briefing]).
+On 8 November the organisers moved the prototype deadline to 12:00 PM on Fri 13 November, because Gemini Enterprise licences were still being distributed; they expect the licences on Tue 10 November, after the Diwali holidays, but do not guarantee the date. The prototype need not use Gemini Enterprise; a Top 5 finalist's product at the 17 November pitching must ([#announcements]). The announcement did not move the assessment or Top 5 dates.
+
+The 8 November date closes registration only. A participant noted that the registration form asks for a repository and pitch deck; an organiser confirmed that teams can submit or update their prototype until the deadline, then 10 November ([#general]), up to the final submission, which locks the entry (see [Submission requirements](#submission-requirements)). The workspace shows the submission window the organisers actually enforce ([event details]), and `#announcements` carries any schedule changes ([#key-dates-and-briefing]).
 
 ## Submission requirements
 
@@ -131,9 +133,8 @@ The 4th and 5th places are consolation prizes ([home page]).
 The sources do not answer these as of 3 November 2026:
 
 - What the official judging criteria are; the briefing gave only a spoken outline.
-- Whether Gemini Enterprise is required or only encouraged (see [Source discrepancies](#source-discrepancies)).
 - Whether Google Cloud credits are provided ([#announcements]).
-- Whether Gemini Enterprise licences are allocated per person or per team, and when ([briefing Q&A]).
+- Whether Gemini Enterprise licences are allocated per person or per team ([briefing Q&A]); they are expected on 10 November, without a guarantee ([#announcements]).
 - Whether the briefing's README and video are required on top of the workspace's list.
 - Why some teams cannot edit their project details in the workspace ([#general]).
 - How to change team members or the challenge after registering ([#faq-and-guidelines]).
@@ -144,7 +145,7 @@ The sources do not answer these as of 3 November 2026:
 
 ## Source discrepancies
 
-- **Gemini Enterprise:** mandatory, with agents built inside it, according to the NTT DATA presenters, who called Antigravity both a "required prerequisite" and a supporting tool ([briefing Q&A], [briefing]); encouraged "where it fits", with other tools welcome, in `#announcements` and `#project-discussion`. Earlier, `#welcome-and-rules` said to build "using Google AI tools" and `#faq-and-guidelines` said no required tech stack is listed ([Discord capture]).
+- **Gemini Enterprise:** resolved on 8 November: not required for the 13 November prototype, required for a Top 5 finalist's product at the 17 November pitching ([#announcements]). Before that it was mandatory, with agents built inside it, according to the NTT DATA presenters, who called Antigravity both a "required prerequisite" and a supporting tool ([briefing Q&A], [briefing]); encouraged "where it fits", with other tools welcome, in `#announcements` and `#project-discussion`. Earlier, `#welcome-and-rules` said to build "using Google AI tools" and `#faq-and-guidelines` said no required tech stack is listed ([Discord capture]).
 - **Deliverables:** the NTT DATA presenters asked for a README covering five points and a three-to-four-minute video ([briefing Q&A]); the website and `#submission-guidelines` ask for a repository link, a PDF pitch deck, and a demo link, with no video. Organiser Cindy Pua pointed participants to the website and Discord list ([briefing Q&A]).
 - **Demo link:** optional on the website, in `#faq-and-guidelines`, and on the briefing's slide 6 ([Discord capture], [briefing slides]); listed without "optional" in `#submission-guidelines` ([Discord capture]); a "deployed app or website link" in the organiser's briefing chat ([briefing Q&A]).
 - **Solo entries:** the website requires 2–5 members and `#announcements` rules out solo entries ([event details], [#announcements]); the NTT DATA presenter mentioned individual entries in passing when describing the README ([briefing]).

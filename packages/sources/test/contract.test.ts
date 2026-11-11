@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, test } from 'vitest'
 import { z } from 'zod'
 import { ReadingsUpdated, SOURCE_METRICS } from '../src/contract'
+import * as sources from '../src'
 import type { PollContext, ReadingInput, Source, SourceAdapter } from '../src/contract'
 
 test('each source kind declares exactly its documented metrics and units', () => {
@@ -107,4 +108,32 @@ test('adapter types take all bound sources and expose the Spec §1 additions', (
   expectTypeOf<SourceAdapter<unknown>['licence']>().toEqualTypeOf<{ id: string | null; label: string }>()
   expectTypeOf<PollContext['openCrowdPeriods']>().toBeFunction()
   expectTypeOf<SourceAdapter<unknown>['discover']>().toBeNullable()
+})
+
+test('adapter lookup exposes registered JPS and rejects unknown kinds without a runtime fallback', () => {
+  expect(sources.getAdapter('jps_rain').kind).toBe('jps_rain')
+  expect(() => sources.getAdapter('invented')).toThrow(/unregistered source adapter/)
+})
+
+test('source and metric-specific reading shapes retain the adapter boundary', () => {
+  expectTypeOf<Source>().toEqualTypeOf<{
+    id: string
+    kind: sources.SourceKind
+    externalId: string
+    name: string
+    lat: number | null
+    lon: number | null
+    url: string
+    meta: Record<string, z.infer<ReturnType<typeof z.json>>>
+  }>()
+  expectTypeOf<ReadingInput<'jps_rain'>>().toEqualTypeOf<{
+    sourceId: string
+    metric: 'rain_5m_mm'
+    observedAt: string
+    value: number | null
+    valueText?: string | null
+    valueJson: null
+    unit: 'mm'
+    itemKey?: string
+  }>()
 })

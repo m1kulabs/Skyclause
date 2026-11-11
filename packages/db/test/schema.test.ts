@@ -65,12 +65,26 @@ test('every id column defaults to uuidv7()', async () => {
   expect(version.rows[0].v).toBe(7)
 }, 15_000)
 
-test('the migrations create pg_partman as migrator, as on Neon, and the image has no pg_cron (D45)', async () => {
+// Neon's pg_partman is 5.1.0, a trusted extension whose tables are its superuser's; the image matches, so 0004 meets the
+// same version and privileges here (#602).
+test('the migrations create pg_partman 5.1.0 as migrator with superuser-owned tables, as on Neon, and the image has no pg_cron (D45)', async () => {
   await asLogin('postgres', async (client) => {
     const { rows } = await client.query(
-      "SELECT pg_get_userbyid(extowner) AS owner, extnamespace::regnamespace::text AS schema FROM pg_extension WHERE extname = 'pg_partman'"
+      `SELECT pg_get_userbyid(extowner) AS owner, extnamespace::regnamespace::text AS schema, extversion AS version,
+        has_schema_privilege('owner', 'partman', 'CREATE') AS "ownerCreates"
+      FROM pg_extension WHERE extname = 'pg_partman'`
     )
-    expect(rows).toEqual([{ owner: 'migrator', schema: 'partman' }])
+    expect(rows).toEqual([{ owner: 'migrator', schema: 'partman', version: '5.1.0', ownerCreates: false }])
+    const tables = await client.query(
+      "SELECT relname AS name, pg_get_userbyid(relowner) AS owner FROM pg_class WHERE relnamespace = 'partman'::regnamespace AND relkind IN ('r', 'v') ORDER BY 1"
+    )
+    expect(tables.rows).toEqual([
+      { name: 'part_config', owner: 'postgres' },
+      { name: 'part_config_sub', owner: 'postgres' },
+      { name: 'table_privs', owner: 'postgres' },
+      { name: 'template_public_poll', owner: 'owner' },
+      { name: 'template_public_reading', owner: 'owner' }
+    ])
     const cron = await client.query("SELECT FROM pg_available_extensions WHERE name = 'pg_cron'")
     expect(cron.rowCount).toBe(0)
   })
@@ -123,6 +137,42 @@ test.each([
   }
 )
 
+test.each([
+  { name: 'poll_request_id_idx', table: poll, columns: ['request_id'] },
+  { name: 'reading_poll_id_idx', table: reading, columns: ['poll_id'] },
+  { name: 'poll_source_purpose_started_at_idx', table: poll, columns: ['source_id', 'purpose', 'started_at', 'id'] }
+])(
+  'source persistence index $name matches the declaration and covers every existing partition',
+  async ({ name, table, columns }) => {
+    const config = getTableConfig(table)
+    const declared = config.indexes.find((index) => index.config.name === name)
+    expect(declared?.config.columns.map((column) => ('name' in column ? column.name : null))).toEqual(columns)
+    const live = await asLogin('postgres', async (client) => {
+      const { rows } = await client.query<{
+        kind: string
+        valid: boolean
+        columns: string[]
+        partitions: number
+        indexed: number
+      }>(
+        `
+      SELECT c.relkind AS kind, i.indisvalid AS valid,
+        ARRAY(SELECT a.attname::text FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, n)
+          JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum ORDER BY k.n) AS columns,
+        (SELECT count(*)::int FROM pg_inherits WHERE inhparent = i.indrelid) AS partitions,
+        (SELECT count(*)::int FROM pg_inherits h JOIN pg_index child ON child.indexrelid = h.inhrelid
+          WHERE h.inhparent = i.indexrelid AND child.indisvalid) AS indexed
+      FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid WHERE c.relname = $1`,
+        [name]
+      )
+      return rows[0]
+    })
+    expect(live).toMatchObject({ kind: 'I', valid: true, columns })
+    expect(live!.partitions).toBeGreaterThan(1)
+    expect(live!.indexed).toBe(live!.partitions)
+  }
+)
+
 test('every table in public has a factory', async () => {
   const tables = await asLogin('postgres', async (client) => {
     const { rows } = await client.query<{ name: string }>(`
@@ -137,13 +187,15 @@ test('every table in public has a factory', async () => {
 const G = ['component_check', 'feature_flag', 'guest_block', 'incident', 'incident_update', 'verification']
 const S = [
   'analytics_event',
+  'audit_finding',
   'event_counter',
   'export_job',
   'guest_budget',
   'handled_event',
   'handled_message',
   'idempotency_key',
-  'rate_limit'
+  'rate_limit',
+  'source_observation_head'
 ]
 
 test('app and public_reader read G tables and write none; neither reaches an S table', async () => {

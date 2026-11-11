@@ -5,6 +5,32 @@ const stamp = { sha: '2fcb76b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6', builtAt: '2026-
 const now = new Date('2026-11-06T15:13:30+08:00')
 
 describe('buildHealth', () => {
+  test('reports Pi age from successful heartbeat polls', () => {
+    const health = buildHealth({
+      stamp,
+      now,
+      sources: [{ source_id: 'pi-01', kind: 'pi', freshness: 'polled', state: 'fresh', stale_after_min: 60 }],
+      polls: [
+        {
+          source_id: 'pi-01',
+          source_kind: 'pi',
+          outcome: 'ok',
+          received_at: '2026-11-06T15:12:30+08:00'
+        }
+      ]
+    })
+
+    expect(health.sources).toEqual([
+      {
+        source_id: 'pi-01',
+        state: 'fresh',
+        received_at: '2026-11-06T15:12:30+08:00',
+        age_min: 1,
+        stale_after_min: 60
+      }
+    ])
+  })
+
   test('reports the build and each source’s newest ok poll, counting unchanged polls only for polled sources', () => {
     const health = buildHealth({
       stamp,

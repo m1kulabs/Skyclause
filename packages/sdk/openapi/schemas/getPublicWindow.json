@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "getPublicWindow request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "call_id": {
+                  "type": "string"
+                },
+                "pack": {
+                  "type": "string",
+                  "enum": ["sky", "crowd"]
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": ["class", "event", "commute_wave"]
+                },
+                "starts_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "ends_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "mode": {
+                  "type": ["string", "null"],
+                  "enum": ["normal", "outdoor_limited", "commute_disruption", "hybrid_recommended", "surge_night", null]
+                },
+                "watch": {
+                  "type": "boolean"
+                },
+                "permalink": {
+                  "type": "string"
+                }
+              },
+              "required": ["id", "call_id", "pack", "kind", "starts_at", "ends_at", "mode", "watch", "permalink"]
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "getPublicWindow",
+  "x-method": "GET",
+  "x-path": "/v1/public/windows/{id}"
+}

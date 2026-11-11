@@ -189,6 +189,9 @@ test('Admin creates the selected organisation client and sees its secret only on
         client_id: 'oauth_test_client',
         client_secret: secret,
         created_at: '2026-11-06T00:00:00Z',
+        redirect_uri: 'https://vertexaisearch.cloud.google.com/oauth-redirect',
+        authorization_url: new URL('/api/auth/oauth2/authorize', route.request().url()).href,
+        token_url: new URL('/api/auth/oauth2/token', route.request().url()).href,
         ...route.request().postDataJSON()
       }
     })
@@ -250,6 +253,9 @@ test('an unscoped session chooses its organisation and clears the secret on orga
         client_id: 'oauth_second_client',
         client_secret: secret,
         created_at: '2026-11-06T00:00:00Z',
+        redirect_uri: 'https://vertexaisearch.cloud.google.com/oauth-redirect',
+        authorization_url: new URL('/api/auth/oauth2/authorize', route.request().url()).href,
+        token_url: new URL('/api/auth/oauth2/token', route.request().url()).href,
         ...route.request().postDataJSON()
       }
     })
@@ -286,36 +292,90 @@ test('verification finding includes subsequent API pages', async ({ page }) => {
   ).toHaveCount(2)
 })
 
-test('401 reauth-required reaches the shared step-up seam without retrying a write before success', async ({
+test('401 reauth-required opens step-up and retries client creation with the same idempotency key', async ({
   page
 }) => {
   await prepare(page)
   let writes = 0
+  let confirmed = false
+  const keys: string[] = []
   await page.route('**/api/orgs/*/oauth-clients', (route) => {
     writes += 1
+    keys.push(route.request().headers()['idempotency-key'] ?? '')
+    if (writes === 1)
+      return route.fulfill({
+        status: 401,
+        json: {
+          type: 'https://skyclause.m1ku.tech/problems/reauth-required',
+          title: 'Recent sign-in required',
+          status: 401
+        }
+      })
     return route.fulfill({
-      status: 401,
-      json: { type: 'reauth-required', title: 'Recent sign-in required', status: 401 }
+      status: 201,
+      json: {
+        id: orgId,
+        client_id: 'oauth_step_up_client',
+        client_secret: 'step_up_secret',
+        created_at: '2026-11-06T00:00:00Z',
+        redirect_uri: 'https://vertexaisearch.cloud.google.com/oauth-redirect',
+        authorization_url: new URL('/api/auth/oauth2/authorize', route.request().url()).href,
+        token_url: new URL('/api/auth/oauth2/token', route.request().url()).href,
+        ...route.request().postDataJSON()
+      }
     })
+  })
+  await page.route('**/api/auth/step-up', (route) =>
+    route.fulfill({
+      json: {
+        fresh_until: confirmed ? '2099-01-01T00:00:00.000Z' : '2000-01-01T00:00:00.000Z',
+        passkey: false
+      }
+    })
+  )
+  await page.route('**/api/auth/step-up/magic-link', (route) => route.fulfill({ json: { sent: true } }))
+  await page.route('**/api/auth/step-up/magic-link/confirm', (route) => {
+    confirmed = true
+    return route.fulfill({ json: { confirmed: true } })
   })
   await page.goto('/connect?target=gemini_enterprise')
   await page.getByRole('button', { name: t('create_client'), exact: true }).click()
-  // #100 is still a placeholder. This assertion will be replaced with its real dialog flow when it lands.
-  await expect(page.getByText(t('reauth_unavailable'), { exact: true })).toBeVisible()
+  const dialog = page.getByRole('dialog', { name: 'Confirm it’s you' })
+  await expect(dialog).toBeVisible()
   expect(writes).toBe(1)
-  await page.getByRole('button', { name: t('cancel'), exact: true }).focus()
+  await dialog.getByRole('button', { name: 'Send me a sign-in link' }).focus()
   await page.keyboard.press('Enter')
-  await expect(page.getByText(t('create_error'), { exact: true })).toBeVisible()
+  await expect(dialog.getByText('Check your email, then press Continue')).toBeVisible()
+  await dialog.getByRole('button', { name: 'Continue' }).focus()
+  await page.keyboard.press('Enter')
+  await expect(dialog.getByRole('alert')).toContainText('This session has not been confirmed yet.')
   expect(writes).toBe(1)
+  await page.evaluate(async () => {
+    await fetch('/api/auth/step-up/magic-link/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: 'test-link-token' })
+    })
+  })
+  await dialog.getByRole('button', { name: 'Continue' }).focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByText('step_up_secret', { exact: true })).toBeVisible()
+  expect(writes).toBe(2)
+  expect(keys[0]).toBeTruthy()
+  expect(keys[1]).toBe(keys[0])
 })
 
 for (const guest of [false, true]) {
   test(`${guest ? 'guest' : 'signed-out visitor'} goes to sign-up`, async ({ page }) => {
     if (guest) await asPage(page, { ...member, isGuest: true })
     else
-      await page
-        .context()
-        .addCookies([{ name: 'skyclause_test_principal', value: 'null', url: 'http://localhost:3100' }])
+      await page.context().addCookies([
+        {
+          name: 'skyclause_test_principal',
+          value: 'null',
+          url: process.env.E2E_BASE_URL ?? `http://localhost:${process.env.E2E_PORT ?? 3100}`
+        }
+      ])
     await page.goto('/connect')
     await expect(page).toHaveURL(/\/sign-up$/)
     await expect(page.locator('[data-connect-page]')).toHaveCount(0)

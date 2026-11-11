@@ -10,6 +10,8 @@ export interface HostConfig {
   mode: 'single' | 'multi'
   /** Each surface's `*_ORIGIN` host, such as `app.skyclause.m1ku.tech`. */
   hosts: Partial<Record<Surface, string>>
+  /** PLANTED_ROUTES=1: the test build serves its `planted` pages. Production has none, so those paths are no route. */
+  planted: boolean
 }
 
 const ORIGIN_VARS: Record<Surface, string> = {
@@ -28,7 +30,7 @@ export function hostConfig(env: Record<string, string | undefined>): HostConfig 
     const origin = env[name]
     if (origin) hosts[surface] = new URL(origin).host
   }
-  return { mode: env.HOST_MODE === 'multi' ? 'multi' : 'single', hosts }
+  return { mode: env.HOST_MODE === 'multi' ? 'multi' : 'single', hosts, planted: env.PLANTED_ROUTES === '1' }
 }
 
 const exact =
@@ -71,6 +73,8 @@ const ROUTES: Array<{ group: string; surface: Surface | null; match: (path: stri
   { group: '(embed)', surface: 'embed', match: under('/embed') },
   { group: 'docs', surface: 'docs', match: under('/docs') },
   // Test builds only (PLANTED_ROUTES=1); on the marketing host, where deploy's @smoke run checks production has none.
+  // `routeRequest` answers null for it unless `planted`: with no page of its own, Next would match `/_test/x` to the
+  // app's `/[org]/[project]`, whose notFound() answers 200 once the shell streams (#610). Null is the 404.
   { group: 'planted', surface: 'marketing', match: under('/_test', '/quality-planted') },
   {
     group: '(marketing)',
@@ -94,6 +98,7 @@ export function routeRequest(o: HostConfig & { host: string; pathname: string })
   pathname: string
 } | null {
   const route = classify(o.pathname)
+  if (route.group === 'planted' && !o.planted) return null
   if (o.mode === 'single' || route.surface === null) return { group: route.group, pathname: o.pathname }
   const host = o.host.toLowerCase()
   const surface = (Object.entries(o.hosts) as Array<[Surface, string]>).find(([, value]) => value === host)?.[0]
@@ -113,16 +118,22 @@ export function routeRequest(o: HostConfig & { host: string; pathname: string })
  * the global not-found page. It never sets a cookie and rewrites only on the request's own host, so session cookies
  * stay host-only on APP_ORIGIN.
  */
-export function proxyResponse(request: NextRequest, config: HostConfig): NextResponse {
+export function proxyResponse(
+  request: NextRequest,
+  config: HostConfig,
+  init?: Parameters<typeof NextResponse.next>[0]
+): NextResponse {
   const { pathname, search } = request.nextUrl
   const target = routeRequest({ ...config, host: request.headers.get('host') ?? request.nextUrl.host, pathname })
-  if (!target) return NextResponse.rewrite(new URL('/_not-found', request.url))
-  if (target.pathname !== pathname) return NextResponse.rewrite(new URL(`${target.pathname}${search}`, request.url))
+  if (!target) return NextResponse.rewrite(new URL('/_not-found', request.url), init)
+  if (target.pathname !== pathname)
+    return NextResponse.rewrite(new URL(`${target.pathname}${search}`, request.url), init)
   if (target.group === '(public)') {
-    const requestHeaders = new Headers(request.headers)
+    // Keep the downstream headers `init` carries (the CSP nonce) and add the public locale and path.
+    const requestHeaders = new Headers(init?.request?.headers ?? request.headers)
     requestHeaders.set('x-skyclause-locale', pathname.startsWith('/ms/legal') ? 'ms' : 'en')
     requestHeaders.set('x-skyclause-public-path', pathname)
-    return NextResponse.next({ request: { headers: requestHeaders } })
+    return NextResponse.next({ ...init, request: { ...init?.request, headers: requestHeaders } })
   }
-  return NextResponse.next()
+  return NextResponse.next(init)
 }

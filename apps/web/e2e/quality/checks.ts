@@ -69,11 +69,29 @@ function domFindings(reflow: boolean): Finding[] {
     previous = levels[i]!
   })
 
-  // NFR-6: label, name and autocomplete; spellcheck off for emails, codes, slugs and station IDs; paste allowed.
+  // NFR-6: label, name and autocomplete; the right type; spellcheck off for emails, codes, slugs and station IDs;
+  // paste allowed.
   const unnamed = new Set(['hidden', 'submit', 'reset', 'button', 'image'])
   const autofilled = new Set(
     'text search url tel email password number date month week time datetime-local range color'.split(' ')
   )
+  // A meaningful name says what the field holds: not React's generated id (`_r_1_`, `«r1»`, `:r1:`), a number or a
+  // generic word.
+  const meaningless = /^(?:_r_[\da-z]+_|[«:]r[\da-z]+[»:]|(?:input|field|text|value)?[-_]?\d*)$/i
+  const typed = new Set(['text', 'search', 'email', 'url', 'tel', 'number'])
+  const holdings = [
+    { what: 'an email address', type: 'email', token: /^email$/, word: /^email$/ },
+    { what: 'a URL', type: 'url', token: /^(?:url|photo|impp)$/, word: /^(?:url|website)$/ },
+    { what: 'a phone number', type: 'tel', token: /^tel(?:-|$)/, word: /^(?:tel|phone)$/ }
+  ]
+  // The keyboard each type already brings; an inputmode, if set, asks for the same one.
+  const keyboards: Record<string, string[]> = {
+    email: ['email'],
+    url: ['url'],
+    tel: ['tel'],
+    search: ['search'],
+    number: ['numeric', 'decimal']
+  }
   const controls = [
     ...document.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('input, select, textarea')
   ].filter((el) => !(el instanceof HTMLInputElement && unnamed.has(el.type)) && exposed(el))
@@ -88,10 +106,49 @@ function domFindings(reflow: boolean): Finding[] {
       !!el.getAttribute('aria-label')?.trim() ||
       labelledBy.length > 0
     if (!labelled) findings.push({ check: 'form-fields', detail: `${describe(el)} has no label` })
-    if (!el.getAttribute('name')?.trim()) findings.push({ check: 'form-fields', detail: `${describe(el)} has no name` })
+    const name = el.getAttribute('name')?.trim()
+    if (!name) findings.push({ check: 'form-fields', detail: `${describe(el)} has no name` })
+    else if (meaningless.test(name)) {
+      findings.push({ check: 'form-fields', detail: `${describe(el)} has a name that doesn’t say what it holds` })
+    }
     const needsAutocomplete = !(el instanceof HTMLInputElement) || autofilled.has(type)
     if (needsAutocomplete && !el.getAttribute('autocomplete')?.trim()) {
       findings.push({ check: 'form-fields', detail: `${describe(el)} has no autocomplete` })
+    }
+    // The right type for what an editable field holds: its autocomplete token says, else a word of its name or id.
+    if (el instanceof HTMLInputElement && typed.has(type) && !el.readOnly) {
+      const tokens = (el.getAttribute('autocomplete') ?? '').toLowerCase().split(/\s+/)
+      const words = `${el.getAttribute('name') ?? ''} ${el.id}`
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .toLowerCase()
+        .split(/[^a-z]+/)
+      const holding = holdings.find(
+        ({ token, word }) => tokens.some((t) => token.test(t)) || words.some((w) => word.test(w))
+      )
+      if (holding && type !== holding.type) {
+        findings.push({
+          check: 'input-type',
+          detail: `${describe(el)} holds ${holding.what} but is type="${type}"; use type="${holding.type}"`
+        })
+      }
+      // A number field is for quantities: it drops leading zeros and steps with the arrow keys.
+      const code =
+        tokens.some((t) => /^(?:one-time-code|postal-code|cc-number|cc-csc)$/.test(t)) ||
+        words.some((w) => /^(?:code|otp|pin|postcode|zip)$/.test(w))
+      if (!holding && code && type === 'number') {
+        findings.push({
+          check: 'input-type',
+          detail: `${describe(el)} holds a code but is type="number"; use type="text" with inputmode="numeric"`
+        })
+      }
+      const mode = el.getAttribute('inputmode')
+      const modes = keyboards[type]
+      if (mode && modes && !modes.includes(mode)) {
+        findings.push({
+          check: 'input-type',
+          detail: `${describe(el)} is type="${type}" but inputmode="${mode}"; use inputmode=${modes.map((m) => `"${m}"`).join(', ')} or none`
+        })
+      }
     }
     if (el instanceof HTMLSelectElement) continue
     const words = `${el.getAttribute('name') ?? ''} ${el.id} ${el.getAttribute('autocomplete') ?? ''}`
@@ -196,6 +253,7 @@ async function keyboardFindings(page: Page): Promise<Finding[]> {
           el.tabIndex >= 0 &&
           !el.matches(':disabled') &&
           !el.closest('[inert]') &&
+          !el.closest('nextjs-portal') &&
           el.checkVisibility({ visibilityProperty: true }) &&
           el.getClientRects().length > 0
       )
@@ -218,7 +276,7 @@ async function keyboardFindings(page: Page): Promise<Finding[]> {
     await page.keyboard.press(tab)
     const stop = await page.evaluate((): Stop | null => {
       const el = document.activeElement as HTMLElement | null
-      if (!el || el === document.body || el === document.documentElement) return null
+      if (!el || el === document.body || el === document.documentElement || el.closest('nextjs-portal')) return null
       const style = getComputedStyle(el)
       const outline =
         style.outlineStyle !== 'none' &&
@@ -228,6 +286,13 @@ async function keyboardFindings(page: Page): Promise<Finding[]> {
       const rect = el.getBoundingClientRect()
       const href = el.getAttribute('href') ?? ''
       const text = (el.getAttribute('aria-label') ?? el.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 40)
+      const ringOwner = el.closest<HTMLElement>('[data-focus-ring]')
+      const ownerStyle = ringOwner ? getComputedStyle(ringOwner) : null
+      const ownerOutline =
+        ownerStyle !== null &&
+        ownerStyle.outlineStyle !== 'none' &&
+        parseFloat(ownerStyle.outlineWidth) > 0 &&
+        !/rgba\(.*, 0\)$/.test(ownerStyle.outlineColor)
       return {
         id: el.dataset.qualityStop ?? null,
         label: `${el.tagName.toLowerCase()}${text ? ` "${text}"` : ''}`,
@@ -237,7 +302,9 @@ async function keyboardFindings(page: Page): Promise<Finding[]> {
           href.startsWith('#') &&
           !!document.getElementById(href.slice(1)),
         visible: rect.width >= 1 && rect.height >= 1 && rect.bottom > 0 && rect.right > 0,
-        ring: el.matches(':focus-visible') && (outline || shadow)
+        ring:
+          (el.matches(':focus-visible') && (outline || shadow)) ||
+          (!!ringOwner?.matches(':focus-within') && ownerOutline)
       }
     })
     if (!stop) {

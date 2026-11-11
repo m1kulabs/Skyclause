@@ -1,0 +1,1 @@
+ALTER TABLE "oauth_grant" ADD COLUMN "resource" text DEFAULT 'mcp' NOT NULL;

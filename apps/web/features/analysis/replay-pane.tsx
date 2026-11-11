@@ -1,5 +1,6 @@
 'use client'
 
+import type { SheetVersion } from '@skyclause/contracts'
 import { useCallback, useRef, useState, type FormEvent } from 'react'
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip } from '#ui/chart'
@@ -136,7 +137,7 @@ export function ReplayPane({
   const versionsRead = useCallback(
     async (signal: AbortSignal) => {
       if (!sheet || (state.subject === 'draft' && !canDraft)) return []
-      return allPages((cursor) =>
+      return allPages<SheetVersion>((cursor) =>
         apiFetch(state.subject === 'draft' ? 'listClauseSheetDrafts' : 'listClauseSheetVersions', {
           org,
           params: { id: sheet.id },
@@ -260,11 +261,13 @@ export function ReplayPane({
                       .filter((item) => item.status === (state.subject === 'draft' ? 'draft' : 'published'))
                       .map((item) => (
                         <option key={item.id} value={item.id}>
-                          {t(
-                            'analysis.versionLabel',
-                            { subject: t(`analysis.${state.subject}`, {}, locale), n: item.n, id: item.id },
-                            locale
-                          )}
+                          {item.status === 'draft'
+                            ? `${t('analysis.draft', {}, locale)} · ${item.id}`
+                            : t(
+                                'analysis.versionLabel',
+                                { subject: t(`analysis.${state.subject}`, {}, locale), n: item.n, id: item.id },
+                                locale
+                              )}
                         </option>
                       ))}
                 </select>
@@ -317,7 +320,7 @@ export function ReplayPane({
                 {
                   sheet: state.sheet,
                   subject: t(`analysis.${state.subject}`, {}, locale),
-                  version: version.n,
+                  version: version.n ?? version.id,
                   from: formatDate(state.from, locale),
                   to: formatDate(state.to, locale)
                 },

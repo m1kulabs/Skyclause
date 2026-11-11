@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "exportLedger request and response",
+  "allOf": [
+    {
+      "$ref": "#/$defs/request"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "format": "date"
+            },
+            "to": {
+              "type": "string",
+              "format": "date"
+            },
+            "pack": {
+              "type": "string",
+              "enum": ["sky", "crowd"]
+            },
+            "mode": {
+              "type": "string",
+              "enum": ["normal", "outdoor_limited", "commute_disruption", "hybrid_recommended", "surge_night"]
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "drafted",
+                "approved",
+                "edited",
+                "rejected",
+                "expired",
+                "superseded",
+                "sending",
+                "sent",
+                "failed"
+              ]
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "call_approved",
+                "call_edited",
+                "call_rejected",
+                "call_expired",
+                "call_sent",
+                "grade",
+                "night_graded",
+                "listing_listed",
+                "listing_changed",
+                "listing_cancelled",
+                "clause_version",
+                "window_cancelled",
+                "evidence_replied",
+                "crowd_reply",
+                "correction"
+              ]
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": ["params"],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "string"
+            }
+          },
+          "required": ["status", "body"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "x-operationId": "exportLedger",
+  "x-method": "GET",
+  "x-path": "/v1/projects/{id}/ledger/export"
+}

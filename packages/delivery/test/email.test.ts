@@ -91,6 +91,27 @@ describe('EmailTransport.send', () => {
     expect(text.split('\r\n\r\n')[0]).toMatch(/^[ -~\r\n\t]*$/)
   })
 
+  test('the command names the bare From address SES authorises, and the header keeps its display name', async () => {
+    const shapes = [
+      ['auth', 'Skyclause <sign-in@notices.skyclause.m1ku.tech>', 'sign-in@notices.skyclause.m1ku.tech'],
+      ['notices', 'Skyclause <notices@notices.skyclause.m1ku.tech>', 'notices@notices.skyclause.m1ku.tech'],
+      ['auth', 'sign-in@notices.skyclause.m1ku.tech', 'sign-in@notices.skyclause.m1ku.tech'],
+      ['notices', 'notices@notices.skyclause.m1ku.tech', 'notices@notices.skyclause.m1ku.tech']
+    ] as const
+    for (const [from, configured, address] of shapes) {
+      const ses = sesDouble()
+      await createEmailTransport({
+        ses: ses.client,
+        configurationSet: 'skyclause-production',
+        fromAuth: from === 'auth' ? configured : config.fromAuth,
+        fromNotices: from === 'notices' ? configured : config.fromNotices
+      }).send({ ...notice, from })
+
+      expect(ses.inputs[0]?.FromEmailAddress).toBe(address)
+      expect((await rawOf(ses.inputs[0])).text.startsWith(`From: ${configured}\r\n`)).toBe(true)
+    }
+  })
+
   test('a line break in an address, subject or header is refused before any SES call', async () => {
     const ses = sesDouble()
     const transport = createEmailTransport({ ses: ses.client, ...config })
