@@ -32,7 +32,8 @@
             },
             "sla_s": {
               "type": ["integer", "null"],
-              "exclusiveMinimum": 0
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647
             }
           }
         }
