@@ -20,7 +20,7 @@ module "topic" {
 
 module "queue" {
   source   = "../../modules/queue"
-  for_each = toset(["bundle-timers", "webhook-deliveries", "shift-reminders", "exports"])
+  for_each = toset(["bundle-timers", "webhook-deliveries", "shift-reminders", "exports", "evaluator-deadlines"])
 
   project_id = local.project_id
   region     = local.region
@@ -106,4 +106,13 @@ resource "google_pubsub_subscription_iam_member" "poll_results_subscriber" {
   subscription = google_pubsub_subscription.poll_results.name
   role         = "roles/pubsub.subscriber"
   member       = local.member.worker
+}
+
+# Only the worker may remove evaluator tasks; creation and invoker actAs use the existing grants.
+resource "google_cloud_tasks_queue_iam_member" "evaluator_deleter" {
+  project  = local.project_id
+  location = local.region
+  name     = module.queue["evaluator-deadlines"].name
+  role     = "roles/cloudtasks.taskDeleter"
+  member   = local.member.worker
 }

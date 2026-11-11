@@ -1,5 +1,7 @@
 export {
   closeConnections,
+  afterCommit,
+  withSavepoint,
   shareSystemConnection,
   systemPrincipal,
   withPublicReader,
@@ -77,3 +79,5 @@ export * from './subscribers'
 export * from './sources'
 
 export * from './auditor'
+
+export * from './evaluator'

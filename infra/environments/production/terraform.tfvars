@@ -1,16 +1,10 @@
 # Values other tickets make (infra/README.md, "Values set by other tickets"); variables.tf validates them.
 
 app_config = {
-  # #113: infra/aws's app_config output, applied 6 Nov 2026.
-  AWS_ROLE_ARN             = "arn:aws:iam::776566309118:role/skyclause-production-email"
-  EMAIL_FROM_AUTH          = "Skyclause <sign-in@notices.skyclause.m1ku.tech>"
-  EMAIL_FROM_NOTICES       = "Skyclause <notices@notices.skyclause.m1ku.tech>"
-  INBOUND_BUCKET           = "skyclause-production-inbound-776566309118"
-  INBOUND_DOMAIN           = "in.skyclause.m1ku.tech"
-  INBOUND_SNS_TOPIC_ARN    = "arn:aws:sns:ap-southeast-2:776566309118:skyclause-production-inbound"
-  SES_CONFIGURATION_SET    = "skyclause-production"
-  SES_EVENTS_SNS_TOPIC_ARN = "arn:aws:sns:ap-southeast-2:776566309118:skyclause-production-ses-events"
-  SES_REGION               = "ap-southeast-2"
+  # #653: the sender addresses and the inbound domain, on the Resend domains infra/wizards/resend.sh sets up.
+  EMAIL_FROM_AUTH    = "Skyclause <sign-in@notices.skyclause.m1ku.tech>"
+  EMAIL_FROM_NOTICES = "Skyclause <notices@notices.skyclause.m1ku.tech>"
+  INBOUND_DOMAIN     = "in.skyclause.m1ku.tech"
 
   # #113: logged by the vapid-keys job's first run (vapid-keys-wg7x9), 6 Nov 2026. VAPID_SUBJECT is
   # APP_ORIGIN, set in run.tf.
@@ -25,7 +19,7 @@ app_config = {
   ADAPTER_USER_AGENT = "Skyclause/1.0 (+https://skyclause.m1ku.tech)"
 }
 
-# #118 gate 3: each has a version, from infra/wizards/google-sign-in.sh and staff-and-ses.sh.
+# #118 gate 3: each has a version, from infra/wizards/google-sign-in.sh and staff-emails.sh.
 supplied_secrets = ["GOOGLE_CLIENT_SECRET", "SKYCLAUSE_STAFF_EMAILS", "TURNSTILE_SECRET_KEY"]
 
 # VAPID_PRIVATE_KEY has its one version (#113), so the worker mounts it.

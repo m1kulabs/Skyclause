@@ -1,4 +1,5 @@
 import { connection } from 'next/server'
+import { LandingSections } from '../../features/landing'
 import { LandingHero } from '../../features/landing-hero/landing-hero'
 
 // The verdict is per-request (no-JS acceptance), so this route blocks instead of prerendering a stale snapshot.
@@ -14,7 +15,7 @@ export default async function Home({
   return (
     <main>
       <LandingHero searchParams={searchParams} />
-      <div data-unbuilt="d-landing-sections" />
+      <LandingSections />
     </main>
   )
 }

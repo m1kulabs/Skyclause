@@ -21,9 +21,9 @@ const templatePath = fileURLToPath(new URL('../.agents/skills/wizard/template.sh
 
 // Stand-ins for every tool that could reach a real cloud or GitHub. Each answers only the calls a test lists in
 // $FAKE_STATE/<tool>.routes (first matching glob wins), logs every call, and records any other call in
-// $FAKE_STATE/unexpected, which fails the test. terraform, gh and bun get no routes, so any call to them fails.
+// $FAKE_STATE/unexpected, which fails the test. terraform, gh, bun and aws get no routes, so any call to them fails.
 // Each also records an API key that reaches its environment, which fails the test too.
-const keyInEnv = `[[ -z "\${SKYCLAUSE_API_KEY:-}" ]] || printf '%s: %s\\n' "$(basename "$0")" "$SKYCLAUSE_API_KEY" >> "$FAKE_STATE/key-in-env"`
+const keyInEnv = `[[ -z "\${SKYCLAUSE_API_KEY:-}\${RESEND_FULL_ACCESS_KEY:-}" ]] || printf '%s: %s\\n' "$(basename "$0")" "\${SKYCLAUSE_API_KEY:-}\${RESEND_FULL_ACCESS_KEY:-}" >> "$FAKE_STATE/key-in-env"`
 const fakeCli = `#!/usr/bin/env bash
 ${keyInEnv}
 name="$(basename "$0")"
@@ -143,6 +143,9 @@ function production(overrides: Record<string, Reply> = {}): Record<string, Reply
     }),
     '*/v1/projects/*/calls?state=sent&limit=1': json(200, { data: [], next_cursor: null }),
     '*/v1/projects/*/ledger?kind=crowd_reply': json(200, { data: [], next_cursor: null, total: 0 }),
+    // Resend as infra/wizards/resend.sh leaves it: both domains verified, and the one webhook enabled with its five events.
+    '*/domains?limit=100': json(200, resendDomains()),
+    '*/webhooks?limit=100': json(200, resendWebhooks()),
     '*/p/*/*/calendar.ics': {
       status: 200,
       body: 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:call-1@skyclause.m1ku.tech\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n'
@@ -151,25 +154,46 @@ function production(overrides: Record<string, Reply> = {}): Record<string, Reply
   }
 }
 
-const TOPIC = 'arn:aws:sns:ap-southeast-2:776566309118:skyclause-production-ses-events'
-const sesSubscription = (arn: string): CliReply => ({
-  stdout: `https\thttps://api.skyclause.m1ku.tech/ses/events\t${arn}\n`
+const resendKey = 're_pilotcheck_0123456789abcdef'
+const RESEND_EVENTS = ['email.delivered', 'email.bounced', 'email.complained', 'email.suppressed', 'email.received']
+const resendDomain = (name: string, status: string) => ({
+  id: `4dd369bc-aa82-4ff3-97de-${name.length.toString().padStart(12, '0')}`,
+  name,
+  status,
+  created_at: '2026-11-11 08:00:00.000000+00',
+  region: 'ap-northeast-1',
+  open_tracking: false,
+  click_tracking: false,
+  capabilities: {
+    sending: name.startsWith('notices.') ? 'enabled' : 'disabled',
+    receiving: name.startsWith('in.') ? 'enabled' : 'disabled'
+  }
 })
+function resendDomains(statuses: { notices?: string; in?: string } = {}) {
+  return {
+    object: 'list',
+    has_more: false,
+    data: [
+      resendDomain('notices.skyclause.m1ku.tech', statuses.notices ?? 'verified'),
+      resendDomain('in.skyclause.m1ku.tech', statuses.in ?? 'verified')
+    ]
+  }
+}
+const resendWebhook = (overrides: Record<string, unknown> = {}) => ({
+  id: '4dd369bc-aa82-4ff3-97de-514ae3000ee0',
+  endpoint: 'https://worker-413187272599.asia-southeast1.run.app/resend/webhook',
+  events: RESEND_EVENTS,
+  status: 'enabled',
+  created_at: '2026-11-11T08:00:00.000Z',
+  ...overrides
+})
+function resendWebhooks(hooks: object[] = [resendWebhook()]) {
+  return { object: 'list', has_more: false, data: hooks }
+}
 
 function gcloud(overrides: Record<string, CliReply> = {}): Record<string, CliReply> {
   return {
-    'secrets versions list ONCALL_CONTACTS *': {
-      stdout: 'NAME  STATE    CREATE_TIME\n1     ENABLED  2026-11-11T03:00:00Z\n'
-    },
     'run jobs list *': { stdout: '' },
-    ...overrides
-  }
-}
-
-function aws(overrides: Record<string, CliReply> = {}): Record<string, CliReply> {
-  return {
-    'sts get-caller-identity *': { stdout: '776566309118\n' },
-    'sns list-subscriptions-by-topic *': sesSubscription(`${TOPIC}:sub-123`),
     ...overrides
   }
 }
@@ -201,7 +225,6 @@ function runWizard(options: {
   input: string[]
   curl?: Record<string, Reply>
   gcloud?: Record<string, CliReply>
-  aws?: Record<string, CliReply>
   existingEnvFile?: string
   env?: Record<string, string>
 }) {
@@ -225,18 +248,13 @@ function runWizard(options: {
     'curl',
     Object.entries(options.curl ?? production()).map(([glob, r]) => `${glob}\t${r.status}\t${reply(r.body)}`)
   )
-  for (const [tool, table] of [
-    ['gcloud', options.gcloud ?? gcloud()],
-    ['aws', options.aws ?? aws()]
-  ] as const) {
-    routes(
-      tool,
-      Object.entries(table).map(
-        ([glob, r]) => `${glob}\t${r.exit ?? 0}\t${reply(r.stdout ?? '')}\t${reply(r.stderr ?? '')}`
-      )
+  routes(
+    'gcloud',
+    Object.entries(options.gcloud ?? gcloud()).map(
+      ([glob, r]) => `${glob}\t${r.exit ?? 0}\t${reply(r.stdout ?? '')}\t${reply(r.stderr ?? '')}`
     )
-  }
-  for (const tool of ['terraform', 'gh', 'bun']) routes(tool, [])
+  )
+  for (const tool of ['aws', 'terraform', 'gh', 'bun']) routes(tool, [])
 
   const envFile = join(dir, 'wizard.env')
   const evidenceFile = join(dir, 'production-pilot.evidence.md')
@@ -265,7 +283,6 @@ function runWizard(options: {
     curl: read(join(state, 'curl.calls')),
     curlStdin: read(join(state, 'curl.stdin')),
     gcloud: read(join(state, 'gcloud.calls')),
-    aws: read(join(state, 'aws.calls')),
     open: read(join(state, 'open.calls'))
   }
   expect(result.error, 'the run timed out or could not start').toBeUndefined()
@@ -287,20 +304,22 @@ const secretKey = 'skc_live_9876543210abcdefSECRETVALUE'
 const keyId = 'k7Qm2xTzR9aLpW4nVb8cYd3eFg6hJ1sU'
 const keyLine = `${keyId} ${secretKey}`
 
-// Every remote call is a read: GETs to production hosts (the key only to the API), and list or identity reads in
-// gcloud and aws. No argv carries the key, and curl's stdin config only ever adds headers.
-function expectOnlyReads(calls: { curl: string; curlStdin: string; gcloud: string; aws: string; open: string }) {
+// Every remote call is a read: GETs to production hosts (the key only to the API) and to Resend's domain and webhook
+// lists (its key only there), and list reads in gcloud. No argv carries a key, and curl's stdin config only ever adds
+// headers.
+function expectOnlyReads(calls: { curl: string; curlStdin: string; gcloud: string; open: string }) {
   for (const line of calls.gcloud.trim().split('\n').filter(Boolean)) {
-    expect(line).toMatch(/^(secrets versions list|run jobs list|run jobs executions list) /)
-  }
-  for (const line of calls.aws.trim().split('\n').filter(Boolean)) {
-    expect(line).toMatch(/^(sts get-caller-identity|sns list-subscriptions-by-topic) /)
+    expect(line).toMatch(/^(run jobs list|run jobs executions list) /)
   }
   for (const line of calls.curl.trim().split('\n').filter(Boolean)) {
-    expect(line).toMatch(/ https:\/\/(api\.|app\.)?skyclause\.m1ku\.tech\/\S* ?$/)
-    if (line.includes(' -K - ')) expect(line).toMatch(/ https:\/\/api\.skyclause\.m1ku\.tech\/\S* ?$/)
+    expect(line).toMatch(
+      / (https:\/\/(api\.|app\.)?skyclause\.m1ku\.tech\/\S*|https:\/\/api\.resend\.com\/(domains|webhooks)\\\?limit=100) ?$/
+    )
+    if (line.includes(' -K - ')) {
+      expect(line).toMatch(/ (https:\/\/api\.skyclause\.m1ku\.tech\/\S*|https:\/\/api\.resend\.com\/\S*) ?$/)
+    }
   }
-  for (const log of [calls.curl, calls.gcloud, calls.aws, calls.open]) expect(log).not.toContain('skc_')
+  for (const log of [calls.curl, calls.gcloud, calls.open]) expect(log).not.toMatch(/skc_|re_pilotcheck/)
   for (const line of calls.curlStdin.split('\n').filter(Boolean)) expect(line).toMatch(/^header = "[^"]*"$/)
 }
 
@@ -325,21 +344,21 @@ describe('infra/wizards/production-pilot.sh static invariants', () => {
     // Never runs Terraform, GitHub, Bun or another wizard: it only prints them for a person.
     expect(wizard).not.toMatch(/^\s*(terraform|gh|bun)\s/m)
     expect(wizard).not.toMatch(/^\s*\.\/infra\/wizards\//m)
-    // Every gcloud and aws command it runs, on any path, is a read; messages to the person are left out.
+    // Every gcloud command it runs, on any path, is a read, and it needs no AWS CLI; messages to the person are left out.
     const commands = wizard
       .slice(wizard.indexOf(marker))
       .split('\n')
       .filter((line) => !/^\s*(#|warn|note|say|step|SKIPPED|for tool in)/.test(line))
       .join('\n')
-    const cloudCalls = [...commands.matchAll(/\b(gcloud|aws) ([a-z][a-z0-9-]*(?: [a-z][a-z0-9-]*){0,3})/g)]
+    const cloudCalls = [...commands.matchAll(/\b(gcloud) ([a-z][a-z0-9-]*(?: [a-z][a-z0-9-]*){0,3})/g)]
     expect(cloudCalls.length).toBeGreaterThan(0)
-    expect(commands).not.toMatch(/\b(terraform|gh|bun)\b/)
-    expect(commands, 'a flag before the subcommand hides it from this check').not.toMatch(/\b(gcloud|aws) +-/)
+    expect(commands).not.toMatch(/\b(terraform|gh|bun|aws)\b/)
+    expect(commands, 'a flag before the subcommand hides it from this check').not.toMatch(/\bgcloud +-/)
     for (const [call] of cloudCalls) {
-      expect(call).toMatch(
-        /^(gcloud (secrets versions list|run jobs list|run jobs executions list)|aws (sts get-caller-identity|sns list-subscriptions-by-topic))/
-      )
+      expect(call).toMatch(/^gcloud (run jobs list|run jobs executions list)/)
     }
+    // Every Resend call is a GET: curl never gets a request method or a body, and nothing names the retired SES wizard.
+    expect(commands).not.toMatch(/ -X | --data| -d |amazonaws|staff-and-ses/)
 
     const bashCheck = spawnSync('bash', ['-n', wizardPath], { cwd: repoRoot, encoding: 'utf8' })
     expect(bashCheck.status, bashCheck.stderr).toBe(0)
@@ -412,7 +431,6 @@ describe('infra/wizards/production-pilot.sh only reads', () => {
     expect(result.status, result.stdout + result.stderr).toBe(0)
     // runWizard checks every run only reads; spelled out here for this case.
     expect(calls.gcloud).not.toMatch(/ (add|create|update|delete|access|execute|deploy) /)
-    expect(calls.aws).not.toMatch(/ (create|delete|put|set|subscribe|confirm|publish|verify)-/)
     expect(evidenceContent).not.toContain('Approver rota')
     expect(evidenceContent).not.toContain('Malay reader sign-off')
   })
@@ -426,32 +444,111 @@ describe('infra/wizards/production-pilot.sh only reads', () => {
     expect(calls.curlStdin).toContain(`Authorization: Bearer ${secretKey}`)
   })
 
-  test('reports a pending ses_events subscription with the README procedure, and never runs Terraform', () => {
-    const { result, output } = runWizard({
-      input: allYes,
-      aws: aws({ 'sns list-subscriptions-by-topic *': sesSubscription('PendingConfirmation') })
-    })
+  test('verifies both Resend domains and the webhook, printing only what it read', () => {
+    const { result, output, calls } = runWizard({ input: allYes, env: { RESEND_FULL_ACCESS_KEY: resendKey } })
 
     expect(result.status, output).toBe(0)
-    expect(output).toContain('PendingConfirmation')
-    expect(output).toContain('terraform -chdir=infra/aws apply -replace=aws_sns_topic_subscription.ses_events')
+    expect(output).toContain('✓ verified Resend domain notices.skyclause.m1ku.tech')
+    expect(output).toContain('✓ verified Resend domain in.skyclause.m1ku.tech')
+    expect(output).toContain(
+      '✓ enabled Resend webhook https://worker-413187272599.asia-southeast1.run.app/resend/webhook'
+    )
+    expect(calls.curl).toContain('https://api.resend.com/domains\\?limit=100')
+    expect(calls.curl).toContain('https://api.resend.com/webhooks\\?limit=100')
+    expect(output).not.toContain('whsec_')
   })
 
-  test('reports a failed AWS read as a failed read, not as a pending subscription', () => {
-    const denied: CliReply = {
-      exit: 254,
-      stderr:
-        'An error occurred (AuthorizationError) when calling the ListSubscriptionsByTopic operation: User is not authorized\n'
-    }
+  test('sends the Resend key to curl only over stdin, and no child process ever holds it', () => {
+    const { result, output, calls } = runWizard({ input: allNo, env: { RESEND_FULL_ACCESS_KEY: resendKey } })
+
+    // runWizard fails the run if the key reached any stand-in's environment.
+    expect(result.status, output).toBe(0)
+    expect(calls.curl).not.toContain(resendKey)
+    expect(calls.curlStdin).toContain(`Authorization: Bearer ${resendKey}`)
+  })
+
+  test('names an unverified domain and a disabled webhook that lacks an event, and points to the Resend wizard', () => {
     const { result, output } = runWizard({
       input: allYes,
-      aws: aws({ 'sns list-subscriptions-by-topic *': denied })
+      env: { RESEND_FULL_ACCESS_KEY: resendKey },
+      curl: production({
+        '*/domains?limit=100': json(200, resendDomains({ in: 'pending' })),
+        '*/webhooks?limit=100': json(
+          200,
+          resendWebhooks([resendWebhook({ status: 'disabled', events: ['email.delivered', 'email.bounced'] })])
+        )
+      })
     })
 
     expect(result.status, output).toBe(0)
-    expect(output).toContain('AuthorizationError')
-    expect(output).toContain("Couldn't read the ses_events subscription")
-    expect(output).not.toContain("isn't confirmed")
+    expect(output).toContain('Resend domain in.skyclause.m1ku.tech is pending, not verified.')
+    expect(output).toContain('✓ verified Resend domain notices.skyclause.m1ku.tech')
+    expect(output).toContain('is disabled and lacks email.complained,email.received,email.suppressed')
+    expect(output).not.toContain('✓ enabled Resend webhook')
+    expect(output).toContain('run ./infra/wizards/resend.sh')
+  })
+
+  test('reports a domain Resend does not list, and a missing webhook', () => {
+    const { result, output } = runWizard({
+      input: allYes,
+      env: { RESEND_FULL_ACCESS_KEY: resendKey },
+      curl: production({
+        '*/domains?limit=100': json(200, { object: 'list', has_more: false, data: [] }),
+        '*/webhooks?limit=100': json(200, resendWebhooks([]))
+      })
+    })
+
+    expect(result.status, output).toBe(0)
+    expect(output).toContain('Resend domain notices.skyclause.m1ku.tech is missing, not verified.')
+    expect(output).toContain('Resend has no webhook whose endpoint ends /resend/webhook.')
+  })
+
+  test('reports a failed Resend read as a failed read, not as an unverified domain', () => {
+    const { result, output } = runWizard({
+      input: allYes,
+      env: { RESEND_FULL_ACCESS_KEY: resendKey },
+      curl: production({
+        '*/domains?limit=100': json(401, {
+          statusCode: 401,
+          message: 'This API key is restricted to only send emails.',
+          name: 'restricted_api_key'
+        })
+      })
+    })
+
+    expect(result.status, output).toBe(0)
+    expect(output).toContain('GET /domains answered HTTP 401')
+    expect(output).toContain('restricted_api_key')
+    expect(output).not.toContain('not verified')
+  })
+
+  test('a webhook list it cannot read stops the run, naming the field and status, never printing the answer', () => {
+    // Resend's list carries each webhook's signing secret; this entry lacks the status the wizard reads.
+    const signingSecret = 'whsec_pilotListAnswer0123456789abcdefABCD'
+    const { result, output, evidenceContent } = runWizard({
+      input: allYes,
+      env: { RESEND_FULL_ACCESS_KEY: resendKey },
+      curl: production({
+        '*/webhooks?limit=100': json(
+          200,
+          resendWebhooks([{ ...resendWebhook({ signing_secret: signingSecret }), status: undefined }])
+        )
+      })
+    })
+
+    expect(result.status, output).not.toBe(0)
+    expect(output).toContain("Couldn't read")
+    expect(output).toContain('the HTTP 200 answer')
+    expect(output).not.toContain(signingSecret)
+    expect(evidenceContent).not.toContain(signingSecret)
+  })
+
+  test('says so and reads nothing from Resend when no key is exported', () => {
+    const { result, output, calls } = runWizard({ input: allYes })
+
+    expect(result.status, output).toBe(0)
+    expect(output).toContain("RESEND_FULL_ACCESS_KEY isn't set in this shell")
+    expect(calls.curl).not.toContain('api.resend.com')
   })
 })
 
@@ -506,6 +603,8 @@ describe('infra/wizards/production-pilot.sh evidence holds no credential', () =>
     ['a bearer token', 'Bearer abcdefghijklmno'],
     ['an API key', secretKey],
     ['an API key', 'skc_ab12cd34'],
+    ['an API key', 're_pilot_0123456789abcdef'], // gitleaks:allow -- a stand-in shaped like a Resend key.
+    ['a signing secret', 'whsec_pilotEvidence0123456789abcdefABCD'], // gitleaks:allow -- a stand-in secret.
     ['an email address', 'pilot-tester@example.org'],
     ['an email address', 'owner.call-1@skyclause.m1ku.tech'],
     ['an email address', 'pilot-tester%40example.org'],
@@ -613,35 +712,12 @@ describe('infra/wizards/production-pilot.sh reports what still waits, and every 
     expect(envContent).not.toContain(secretKey)
     expect(evidenceContent).not.toContain(secretKey)
     expect(evidenceContent).toContain('skc_live…')
-    expect(evidenceContent).toContain(
-      '## #118 / #629 — ONCALL_CONTACTS has an enabled version (listed by name, never accessed; the channels and a test page are still to check)'
-    )
-    expect(output).toContain(
-      '#629 check the on-call notification channels exist and a test incident pages within 5 minutes'
-    )
     expect(evidenceContent).toContain('## #194 — Organisation, project and default Sky clause sheet')
     expect(evidenceContent).toContain('## #531 — Production /ledger/verify for the pilot project')
     expect(evidenceContent).toContain('"valid":true')
     expect(evidenceContent).toContain('## #194 — Approver rota configured (your confirmation')
     expect(evidenceContent).toContain('## #194 — Confirmed subscriber counts')
     expect(evidenceContent).toContain('## #539 — Malay reader sign-off on packages/i18n/catalogue/ms/replies.json')
-  })
-
-  test("stops with gcloud's own error and a sign-in hint when gcloud is signed out", () => {
-    const { result, output } = runWizard({
-      input: answers,
-      gcloud: gcloud({
-        'secrets versions list ONCALL_CONTACTS *': {
-          exit: 1,
-          stderr: 'ERROR: (gcloud.secrets.versions.list) You do not currently have an active account selected.\n'
-        }
-      })
-    })
-
-    expect(result.status).toBe(1)
-    expect(output).toContain('You do not currently have an active account selected.')
-    expect(output).toContain("Sign in as a project owner with 'gcloud auth login'")
-    expect(output).toContain('Stopped in stage 1/')
   })
 
   test('stops and says so when it cannot read an answer, rather than carrying on as if it were empty', () => {
@@ -651,7 +727,8 @@ describe('infra/wizards/production-pilot.sh reports what still waits, and every 
     })
 
     expect(result.status).toBe(1)
-    expect(output).toContain("Couldn't read int(data['confirmed']) from the answer: <html>maintenance</html>")
+    expect(output).toContain("Couldn't read int(data['confirmed']) from the HTTP 200 answer.")
+    expect(output).not.toContain('maintenance')
     expect(output).toContain('Stopped in stage 10/')
     expect(evidenceContent).not.toContain('Confirmed subscriber counts')
   })

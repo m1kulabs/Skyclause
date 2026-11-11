@@ -7,7 +7,8 @@
     ".": "./src/index.ts",
     "./members": "./src/services/members/index.ts",
     "./rota": "./src/services/rota/index.ts",
-    "./testing": "./test/harness/index.ts"
+    "./testing": "./test/harness/index.ts",
+    "./evaluator": "./src/services/evaluator/index.ts"
   },
   "dependencies": {
     "@google-cloud/storage": "8.4.0",
@@ -19,6 +20,7 @@
     "@skyclause/db": "workspace:*",
     "@skyclause/delivery": "workspace:*",
     "@skyclause/i18n": "workspace:*",
+    "@skyclause/sources": "workspace:*",
     "ai": "7.0.163",
     "drizzle-orm": "0.45.4",
     "google-auth-library": "11.3.3",

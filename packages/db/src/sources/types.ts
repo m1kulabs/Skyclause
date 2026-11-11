@@ -83,4 +83,5 @@ export interface StoredSourcePoll {
   newRows: number
   purpose: 'poll' | 'backfill'
   startedAt: Date
+  receivedAt: Date | null
 }

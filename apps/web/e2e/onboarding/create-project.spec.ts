@@ -139,6 +139,7 @@ function catalogue() {
       name: row.STATION_LOCATION,
       lat: row.LATITUDE,
       lon: row.LONGITUDE,
+      distance_km: null, // The picker requests no near point.
       url: 'https://eqms.doe.gov.my/api3/publicportalapims/mapcaqm',
       cadence_s: 3600,
       stale_after_s: 7200,

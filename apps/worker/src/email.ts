@@ -1,30 +1,27 @@
 import { loadEnv, type Env } from '@skyclause/config'
-import { ensureVapidKeys, sesInboundForAws } from '@skyclause/delivery'
-import type { WorkerPart } from './server'
+import { ensureVapidKeys, resendInboundHandler } from '@skyclause/delivery'
+import type { ResendHandler, WorkerPart } from './server'
 
 /**
- * a-email-transport's part: `POST /ses/inbound` (D7), 503 until infra/aws's values are on the worker
- * (gate 4B), and the `vapid-keys` job.
+ * a-email-transport's part: inbound mail, Resend's `email.received` on `POST /resend/webhook` (#657), read from Resend
+ * with `RESEND_RECEIVING_API_KEY` and answering 503 until the receiving settings are on the worker, and the
+ * `vapid-keys` job.
  */
-export function createEmailPart(load: () => Env<'worker'> = () => loadEnv('worker')): WorkerPart {
-  let handle: ((request: Request) => Promise<Response>) | undefined
+export function createEmailPart(
+  load: () => Env<'worker'> = () => loadEnv('worker'),
+  o: { fetch?: typeof fetch } = {}
+): WorkerPart {
+  let handle: ResendHandler | undefined
   return {
     owner: 'a-email-transport',
-    ses: {
-      '/inbound': async (request) => {
+    resend: {
+      'email.received': async (event) => {
         if (!handle) {
-          const env = load()
-          if (!env.SES_REGION || !env.AWS_ROLE_ARN || !env.INBOUND_SNS_TOPIC_ARN || !env.INBOUND_BUCKET) {
-            return new Response('inbound email is not configured', { status: 503 })
-          }
-          handle = sesInboundForAws({
-            region: env.SES_REGION,
-            roleArn: env.AWS_ROLE_ARN,
-            topicArn: env.INBOUND_SNS_TOPIC_ARN,
-            bucket: env.INBOUND_BUCKET
-          })
+          const apiKey = load().RESEND_RECEIVING_API_KEY
+          if (!apiKey) return new Response('inbound email is not configured', { status: 503 })
+          handle = resendInboundHandler({ apiKey, fetch: o.fetch })
         }
-        return handle(request)
+        return handle(event)
       }
     },
     jobs: {

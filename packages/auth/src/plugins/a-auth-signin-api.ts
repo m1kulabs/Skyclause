@@ -2,13 +2,13 @@ import { createHmac, randomBytes, randomUUID } from 'node:crypto'
 import type { EmailTransport } from '@skyclause/contracts'
 import { member, organization, track, verification, withSystem } from '@skyclause/db'
 import { authDatabase } from '@skyclause/db/auth'
-import { emailTransportForAws, googleLinkEmail, magicLinkDisabledEmail, magicLinkEmail } from '@skyclause/delivery'
+import { googleLinkEmail, magicLinkDisabledEmail, magicLinkEmail, requireEmailTransport } from '@skyclause/delivery'
 import { loadEnv } from '@skyclause/config'
 import { APIError, getSessionFromCtx } from 'better-auth/api'
 import type { BetterAuthPlugin } from 'better-auth'
 import { magicLink } from 'better-auth/plugins'
 import { asc, eq, sql } from 'drizzle-orm'
-import { withSesRefusal } from '../ses-refusal'
+import { withSendRefusal } from '../send-refusal'
 
 const OWNER = 'a-auth-signin-api'
 const HANDLE = 'magic-link-resend:'
@@ -80,25 +80,8 @@ interface AuthApiRuntime {
 
 const runtimes = new WeakMap<BetterAuthPlugin, Required<AuthSignInApiDependencies>>()
 
-let ses: EmailTransport | undefined
-
-function productionEmail(): EmailTransport {
-  const env = loadEnv('web')
-  const { SES_REGION, AWS_ROLE_ARN, SES_CONFIGURATION_SET, EMAIL_FROM_AUTH, EMAIL_FROM_NOTICES } = env
-  if (!SES_REGION || !AWS_ROLE_ARN || !SES_CONFIGURATION_SET || !EMAIL_FROM_AUTH || !EMAIL_FROM_NOTICES) {
-    throw new Error('email is off: the SES variables are unset until gate 4B')
-  }
-  return emailTransportForAws({
-    region: SES_REGION,
-    roleArn: AWS_ROLE_ARN,
-    configurationSet: SES_CONFIGURATION_SET,
-    fromAuth: EMAIL_FROM_AUTH,
-    fromNotices: EMAIL_FROM_NOTICES
-  })
-}
-
 const sendEmail: EmailTransport = {
-  send: (message) => (ses ??= productionEmail()).send(message)
+  send: (message) => requireEmailTransport('web').send(message)
 }
 
 async function recordSignup(props: SignedUpProps) {
@@ -355,7 +338,7 @@ async function sendGoogleLink(
 export function aAuthSignInApi(overrides: AuthSignInApiDependencies = {}): BetterAuthPlugin {
   const email = overrides.email ?? sendEmail
   const deps: Required<AuthSignInApiDependencies> = {
-    email: { send: withSesRefusal((message) => email.send(message)) },
+    email: { send: withSendRefusal((message) => email.send(message)) },
     now: overrides.now ?? (() => new Date()),
     trackSignup: overrides.trackSignup ?? recordSignup
   }

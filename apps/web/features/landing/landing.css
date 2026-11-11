@@ -1,0 +1,420 @@
+/* Landing sections (#185): frame, inversion, motion. DESIGN landing composition.
+   Frame: 40px outer margins (20px phones via [data-surface=marketing] padding + .landing-frame),
+   12-col grid 24px gutters, 520px text column from ~22%, sections 120–140px apart by space only.
+   No rounded corners or lines outside data-ui fragments, tables and forms. */
+.landing-frame {
+  max-width: 1440px;
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  column-gap: 24px;
+  row-gap: 0;
+  border-radius: 0;
+}
+
+.landing-section {
+  grid-column: 1 / -1;
+  margin-top: clamp(120px, 10vw, 140px);
+  padding-top: 0;
+  border-top: 0;
+  border-radius: 0;
+}
+
+.landing-inner {
+  max-width: 520px;
+  margin-left: 22%;
+}
+
+@media (max-width: 1100px) {
+  .landing-inner {
+    margin-left: 0;
+    max-width: 100%;
+  }
+}
+
+.landing-inverted {
+  background: #efefef;
+  color: #0a0a0a;
+}
+
+.landing-inverted .landing-soft {
+  color: #595959;
+}
+
+.landing-soft {
+  color: #8c8c8c;
+  transition: opacity 150ms ease;
+}
+
+.landing-soft:hover {
+  opacity: 1;
+}
+
+.landing-head {
+  font-size: clamp(26px, 2.1vw, 32px);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.landing-proof-names {
+  font-size: 22px;
+  line-height: 1.3;
+  font-weight: 400;
+}
+
+.landing-small {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Three 640px copies; phones crop at the right. */
+.landing-copies {
+  display: grid;
+  grid-template-columns: repeat(3, 640px);
+  gap: 24px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-radius: 0;
+}
+
+.landing-copy {
+  width: 640px;
+  flex: none;
+}
+
+@media (max-width: 640px) {
+  .landing-copies {
+    grid-template-columns: repeat(3, 640px);
+    overflow-x: auto;
+  }
+  .landing-slip {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+/* The slip: full width on phones, zigzag foot via clip-path. */
+.landing-slip {
+  max-width: 760px;
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - 10px),
+    97.5% 100%,
+    95% calc(100% - 10px),
+    92.5% 100%,
+    90% calc(100% - 10px),
+    87.5% 100%,
+    85% calc(100% - 10px),
+    82.5% 100%,
+    80% calc(100% - 10px),
+    77.5% 100%,
+    75% calc(100% - 10px),
+    72.5% 100%,
+    70% calc(100% - 10px),
+    67.5% 100%,
+    65% calc(100% - 10px),
+    62.5% 100%,
+    60% calc(100% - 10px),
+    57.5% 100%,
+    55% calc(100% - 10px),
+    52.5% 100%,
+    50% calc(100% - 10px),
+    47.5% 100%,
+    45% calc(100% - 10px),
+    42.5% 100%,
+    40% calc(100% - 10px),
+    37.5% 100%,
+    35% calc(100% - 10px),
+    32.5% 100%,
+    30% calc(100% - 10px),
+    27.5% 100%,
+    25% calc(100% - 10px),
+    22.5% 100%,
+    20% calc(100% - 10px),
+    17.5% 100%,
+    15% calc(100% - 10px),
+    12.5% 100%,
+    10% calc(100% - 10px),
+    7.5% 100%,
+    5% calc(100% - 10px),
+    2.5% 100%,
+    0 calc(100% - 10px)
+  );
+  border-radius: 0;
+}
+
+.landing-slip-final {
+  background: #efefef;
+  color: #0a0a0a;
+}
+
+/* Inverted slip rows keep contrast: #0a0a0a on #efefef. */
+.landing-inverted .landing-slip-final {
+  background: #0a0a0a;
+  color: #efefef;
+}
+
+/* The marketing ground: the frame paints DESIGN's #0a0a0a ground with #efefef ink so every section
+   (and axe) resolves text against a solid background. Inverted sections repaint their own ground. */
+[data-surface='marketing'] {
+  background: #0a0a0a;
+  color: #efefef;
+}
+
+/* Crimson marks: one per screen. Showcase window line, features selection line, FAQ dot, CTA button.
+   How it works, proof and pricing carry none. */
+.landing-crimson-line {
+  height: 1px;
+  background: #b11226;
+  border-radius: 0;
+}
+
+.landing-crimson-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #b11226;
+  flex: none;
+}
+
+.landing-cta-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 18px;
+  background: #b11226;
+  color: #ffffff;
+  border-radius: 0;
+  transition:
+    transform 100ms ease,
+    opacity 150ms ease;
+}
+
+.landing-cta-button:active {
+  transform: scale(0.98);
+}
+
+.landing-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 0;
+  transition:
+    transform 100ms ease,
+    opacity 150ms ease;
+}
+
+.landing-button:active {
+  transform: scale(0.98);
+}
+
+/* Middle copy: inputs revealed on focus or click via :focus-within, no JS needed. */
+.landing-middle-details {
+  display: none;
+}
+
+.landing-middle:focus-within .landing-middle-details,
+.landing-middle:target .landing-middle-details {
+  display: block;
+}
+
+@media (hover: hover) {
+  .landing-middle:hover .landing-middle-details {
+    display: block;
+  }
+}
+
+/* FAQ: heading, text, fragment stagger; pane crossfades over 150ms. */
+.landing-faq-pane {
+  transition: opacity 150ms ease;
+}
+
+/* Section entrances: heading, text, fragment staggered 70ms, rise 24px with opacity, once.
+   Content is never hidden without the animation (no JS-gated hidden state). */
+@keyframes landing-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.landing-reveal-0,
+.landing-reveal-1,
+.landing-reveal-2 {
+  animation: landing-rise 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.landing-reveal-1 {
+  animation-delay: 70ms;
+}
+
+.landing-reveal-2 {
+  animation-delay: 140ms;
+}
+
+/* Stadium drift 1.00→1.04 over 24s, with pause control. */
+@keyframes landing-drift {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.04);
+  }
+}
+
+.landing-drift {
+  animation: landing-drift 24s ease-in-out infinite alternate;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.landing-drift-paused {
+  animation-play-state: paused;
+}
+
+/* No-JS FAQ: radios + CSS show one pane; answers stack under questions on phones. */
+.landing-faq {
+  position: relative;
+}
+
+/* Visually hidden but keyboard-focusable: arrows move between radios, labels show the pane. */
+.landing-faq-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.landing-faq-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    opacity 150ms ease,
+    transform 100ms ease;
+}
+
+.landing-faq-label:active {
+  transform: scale(0.98);
+}
+
+#faq-0:focus-visible ~ .landing-faq-index > label[for='faq-0'],
+#faq-1:focus-visible ~ .landing-faq-index > label[for='faq-1'],
+#faq-2:focus-visible ~ .landing-faq-index > label[for='faq-2'],
+#faq-3:focus-visible ~ .landing-faq-index > label[for='faq-3'],
+#faq-4:focus-visible ~ .landing-faq-index > label[for='faq-4'],
+#faq-5:focus-visible ~ .landing-faq-index > label[for='faq-5'],
+#faq-6:focus-visible ~ .landing-faq-index > label[for='faq-6'],
+#faq-7:focus-visible ~ .landing-faq-index > label[for='faq-7'] {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.landing-faq-dot {
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+#faq-0:checked ~ .landing-faq-index > label[for='faq-0'] .landing-faq-dot,
+#faq-1:checked ~ .landing-faq-index > label[for='faq-1'] .landing-faq-dot,
+#faq-2:checked ~ .landing-faq-index > label[for='faq-2'] .landing-faq-dot,
+#faq-3:checked ~ .landing-faq-index > label[for='faq-3'] .landing-faq-dot,
+#faq-4:checked ~ .landing-faq-index > label[for='faq-4'] .landing-faq-dot,
+#faq-5:checked ~ .landing-faq-index > label[for='faq-5'] .landing-faq-dot,
+#faq-6:checked ~ .landing-faq-index > label[for='faq-6'] .landing-faq-dot,
+#faq-7:checked ~ .landing-faq-index > label[for='faq-7'] .landing-faq-dot {
+  opacity: 1;
+}
+
+.landing-faq-pane {
+  display: none;
+  transition: opacity 150ms ease;
+}
+
+#faq-0:checked ~ .landing-faq-panes > #faq-0-pane,
+#faq-1:checked ~ .landing-faq-panes > #faq-1-pane,
+#faq-2:checked ~ .landing-faq-panes > #faq-2-pane,
+#faq-3:checked ~ .landing-faq-panes > #faq-3-pane,
+#faq-4:checked ~ .landing-faq-panes > #faq-4-pane,
+#faq-5:checked ~ .landing-faq-panes > #faq-5-pane,
+#faq-6:checked ~ .landing-faq-panes > #faq-6-pane,
+#faq-7:checked ~ .landing-faq-panes > #faq-7-pane {
+  display: block;
+}
+
+/* No-JS drift pause: a checkbox holds the drift at scale(1) when checked. */
+.landing-drift-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.landing-drift-wrap:has(.landing-drift-input:checked) .landing-drift {
+  animation-play-state: paused;
+}
+
+/* Text links need a 24px target (NFR-4): Read the docs gets padding. */
+.landing-text-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  min-width: 24px;
+  padding-block: 4px;
+}
+
+/* Only transform and opacity animate (NFR-7): no transition: all, no layout/colour animation. */
+.landing-cta-button,
+.landing-button,
+.landing-faq-label,
+.landing-faq-pane,
+.landing-soft {
+  transition-property: transform, opacity;
+  transition-duration: 100ms, 150ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-reveal-0,
+  .landing-reveal-1,
+  .landing-reveal-2,
+  .landing-drift {
+    animation: none !important;
+  }
+  .landing-cta-button,
+  .landing-button,
+  .landing-faq-label,
+  .landing-faq-pane,
+  .landing-soft {
+    transition: none !important;
+  }
+  .landing-cta-button:active,
+  .landing-button:active {
+    transform: none;
+  }
+}
+
+html[data-motion='reduce'] .landing-reveal-0,
+html[data-motion='reduce'] .landing-reveal-1,
+html[data-motion='reduce'] .landing-reveal-2,
+html[data-motion='reduce'] .landing-drift {
+  animation: none !important;
+}
+html[data-motion='reduce'] .landing-cta-button,
+html[data-motion='reduce'] .landing-button,
+html[data-motion='reduce'] .landing-faq-label,
+html[data-motion='reduce'] .landing-faq-pane,
+html[data-motion='reduce'] .landing-soft {
+  transition: none !important;
+}

@@ -47,7 +47,6 @@ variable "app_config" {
   validation {
     condition = alltrue([for name in keys(var.app_config) : contains([
       "ADAPTER_USER_AGENT",
-      "AWS_ROLE_ARN",
       "COMMONS_MODEL_TOKENS_PER_DAY",
       "EMAIL_FROM_AUTH",
       "EMAIL_FROM_NOTICES",
@@ -55,15 +54,10 @@ variable "app_config" {
       "GUEST_ACTIVE_WINDOWS",
       "GUEST_EVIDENCE_PER_DAY",
       "GUEST_RUNS_PER_DAY",
-      "INBOUND_BUCKET",
       "INBOUND_DOMAIN",
-      "INBOUND_SNS_TOPIC_ARN",
       "PILOT_PROJECT",
       "REVIEWER_EVIDENCE_PER_DAY",
       "REVIEWER_WINDOWS_PER_DAY",
-      "SES_CONFIGURATION_SET",
-      "SES_EVENTS_SNS_TOPIC_ARN",
-      "SES_REGION",
       "TURNSTILE_SITE_KEY",
       "VAPID_PUBLIC_KEY",
     ], name)])
@@ -77,8 +71,20 @@ variable "supplied_secrets" {
   default     = []
 
   validation {
-    condition     = alltrue([for name in var.supplied_secrets : contains(["GOOGLE_CLIENT_SECRET", "SKYCLAUSE_STAFF_EMAILS", "TURNSTILE_SECRET_KEY"], name)])
-    error_message = "supplied_secrets takes GOOGLE_CLIENT_SECRET, SKYCLAUSE_STAFF_EMAILS or TURNSTILE_SECRET_KEY."
+    condition = alltrue([for name in var.supplied_secrets : contains([
+      "GOOGLE_CLIENT_SECRET",
+      "RESEND_RECEIVING_API_KEY",
+      "RESEND_SENDING_API_KEY",
+      "RESEND_WEBHOOK_SECRET",
+      "SKYCLAUSE_STAFF_EMAILS",
+      "TURNSTILE_SECRET_KEY",
+    ], name)])
+    error_message = "supplied_secrets takes GOOGLE_CLIENT_SECRET, RESEND_RECEIVING_API_KEY, RESEND_SENDING_API_KEY, RESEND_WEBHOOK_SECRET, SKYCLAUSE_STAFF_EMAILS or TURNSTILE_SECRET_KEY."
+  }
+
+  validation {
+    condition     = contains([0, 3], length(setintersection(var.supplied_secrets, toset(["RESEND_RECEIVING_API_KEY", "RESEND_SENDING_API_KEY", "RESEND_WEBHOOK_SECRET"]))))
+    error_message = "supplied_secrets takes the three Resend secrets together or none of them: RESEND_RECEIVING_API_KEY, RESEND_SENDING_API_KEY and RESEND_WEBHOOK_SECRET. A service given only some of its mail settings refuses to start."
   }
 }
 
@@ -101,12 +107,6 @@ variable "neon_compute_cu" {
 
 variable "map_domains" {
   description = "Map the hosts under skyclause.m1ku.tech to web. Turn on only after Search Console lists skyclause-terraform as a verified owner of skyclause.m1ku.tech."
-  type        = bool
-  default     = false
-}
-
-variable "oncall_contacts_ready" {
-  description = "Create the on-call notification channels from ONCALL_CONTACTS once infra/wizards/oncall-contacts.sh has stored it (#114)."
   type        = bool
   default     = false
 }

@@ -1,3 +1,4 @@
+import type { GroupedBackfillClaim } from './grouped-backfill'
 import { z } from 'zod'
 import type { Source, SourceAdapter } from '@skyclause/sources'
 import { executeAdapter, type SourceContextFactory } from './execute'
@@ -21,6 +22,7 @@ export interface BackfillPorts {
   publish(result: SourceExecutionResult): Promise<void>
   /** Runtime reserves durable outbox capacity for the winning operation before HTTP. */
   admit?(operationId: string): Promise<void>
+  admitGroup?(claim: GroupedBackfillClaim): Promise<void>
   /** Poll-plan/ingest receipt check. Without a receipt, redelivery safely republishes stable IDs. */
   acknowledged?(operationId: string): Promise<boolean>
   /** Private runner handoff of the actual durable capture, including acknowledged results. */

@@ -39,6 +39,7 @@ async function main([mode, name, ...args]: string[]) {
     audience: env.WORKER_URL,
     invoker: env.WORKER_INVOKER_SA,
     jwks: createRemoteJWKSet(GOOGLE_JWKS),
+    resendWebhookSecret: env.RESEND_WEBHOOK_SECRET,
     heartbeat: telemetry.heartbeat
   })
   // Cloud Run sends SIGTERM 10 s before it stops the instance: export what's left, then exit.

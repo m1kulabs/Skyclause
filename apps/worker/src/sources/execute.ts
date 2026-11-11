@@ -1,4 +1,11 @@
-import { SchemaError, SOURCE_METRICS, type ReadingInput, type Source, type SourceAdapter } from '@skyclause/sources'
+import {
+  SchemaError,
+  SOURCE_METRICS,
+  type ReadingInput,
+  type Source,
+  type SourceAdapter,
+  type SourceFetchStep
+} from '@skyclause/sources'
 import { z } from 'zod'
 import { sourceError } from './http'
 import type { CapturedPollContext, SourceClock, SourceError, SourceExecutionResult, SourcePurpose } from './types'
@@ -64,6 +71,7 @@ export async function executeAdapter<Raw>(
       startedAt = options.clock.now().toISOString()
     let error: SourceError | null = null
     let rows: ReadingInput[] = []
+    const parseErrors = new Map<string, SourceError>()
     let unchanged = new Set<string>()
     let fetched: { raw: Raw } | undefined
     try {
@@ -95,10 +103,27 @@ export async function executeAdapter<Raw>(
               .filter((source) => options.previousDigest?.(source.id, options.purpose) === requests[0]!.bodySha256)
               .map((source) => source.id)
           )
-        if (unchanged.size !== group.length)
-          rows = validateReadings(adapter.kind, group, adapter.parse(fetched.raw, group)).filter(
-            (row) => !unchanged.has(row.sourceId)
-          )
+        if (unchanged.size !== group.length) {
+          if (adapter.parseMode === 'per_source') {
+            for (const source of group) {
+              if (unchanged.has(source.id)) continue
+              try {
+                rows.push(...validateReadings(adapter.kind, [source], adapter.parse(fetched.raw, [source])))
+              } catch (cause) {
+                const localError = sourceError(cause)
+                if (localError.type === 'internal') throw cause
+                parseErrors.set(source.id, {
+                  ...localError,
+                  message: `${source.externalId} (${source.id}): ${localError.message}`
+                })
+              }
+            }
+          } else {
+            rows = validateReadings(adapter.kind, group, adapter.parse(fetched.raw, group)).filter(
+              (row) => !unchanged.has(row.sourceId)
+            )
+          }
+        }
       } catch (cause) {
         error = sourceError(cause)
         if (error.type === 'internal') throw cause
@@ -122,9 +147,10 @@ export async function executeAdapter<Raw>(
     const last = requests.at(-1)!
     for (const request of requests) {
       for (const source of group) {
-        const readings = request === last ? rows.filter((row) => row.sourceId === source.id) : []
-        const outcome = error ? 'error' : readings.length ? 'ok' : 'unchanged'
-        result.polls.push({ sourceId: source.id, requestId: request.requestId, outcome, error, readings })
+        const pollError = error ?? parseErrors.get(source.id) ?? null
+        const readings = !pollError && request === last ? rows.filter((row) => row.sourceId === source.id) : []
+        const outcome = pollError ? 'error' : readings.length ? 'ok' : 'unchanged'
+        result.polls.push({ sourceId: source.id, requestId: request.requestId, outcome, error: pollError, readings })
       }
       ctx.log('source.request', {
         adapter: adapter.kind,
@@ -140,7 +166,7 @@ export async function executeAdapter<Raw>(
           options.scheduledAt === null
             ? null
             : Math.max(0, Date.parse(request.startedAt) - Date.parse(options.scheduledAt)),
-        outcome: error ? 'error' : request === last && rows.length ? 'ok' : 'unchanged',
+        outcome: error || parseErrors.size ? 'error' : request === last && rows.length ? 'ok' : 'unchanged',
         http_status: request.httpStatus,
         duration_ms: request.latencyMs
       })
@@ -149,4 +175,45 @@ export async function executeAdapter<Raw>(
   }
   // Adapter-held buffers and response readers cannot mutate the published/durable snapshot later.
   return structuredClone(result)
+}
+
+/** A grouped child owns exactly one physical request and its own parsed readings. */
+export async function executeSourceStep<Raw>(
+  adapter: SourceAdapter<Raw>,
+  sources: Source[],
+  step: SourceFetchStep<Raw>,
+  factory: SourceContextFactory,
+  options: ExecuteOptions
+): Promise<SourceExecutionResult> {
+  if (!sources.length) throw new SchemaError('A source step requires frozen membership')
+  return executeAdapter(
+    {
+      ...adapter,
+      batch: 'all_bound',
+      backfill: (_source, ctx) => step.fetch(ctx),
+      fetch: (_sources, ctx) => step.fetch(ctx)
+    },
+    sources,
+    (group, opts) => {
+      const capture = factory(group, opts)
+      let calls = 0
+      const http = capture.ctx.http
+      return {
+        ...capture,
+        ctx: {
+          ...capture.ctx,
+          http: (...args) => {
+            if (++calls !== 1) throw new SchemaError('A source step requires exactly one physical request')
+            return http(...args)
+          }
+        },
+        closeAndDrain: async () => {
+          await capture.closeAndDrain()
+          if (calls !== 1 || capture.requests.length !== 1)
+            throw new SchemaError('A source step requires exactly one physical request')
+        }
+      }
+    },
+    options
+  )
 }

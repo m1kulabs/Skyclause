@@ -19,6 +19,9 @@ const PATTERNS: Array<[RegExp, string]> = [
   [/AIza[0-9A-Za-z_-]{35}/g, REDACTED],
   [/(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{16,}/g, REDACTED],
   [/\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g, REDACTED],
+  // Resend's API keys (`re_`) and webhook signing secrets (`whsec_`).
+  [/(?<![A-Za-z0-9_-])re_[A-Za-z0-9_-]{8,}/g, REDACTED],
+  [/whsec_[A-Za-z0-9+/]+={0,2}/g, REDACTED],
   // Subscriber link tokens (#157), which have no prefix: 32 bytes of base64url in a `/subscribe/` path.
   [/(\/subscribe\/)[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])/g, `$1${REDACTED}`],
   [/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, REDACTED]
