@@ -216,7 +216,6 @@ export async function loadEvaluatorScope(handle: TxHandle, q: { projectId: strin
         eq(window.projectId, q.projectId),
         isNull(window.cancelledAt),
         eq(window.moderation, 'visible'),
-        gt(window.endsAt, new Date(q.tEval)),
         or(isNull(window.expiresAt), gt(window.expiresAt, new Date(q.tEval)))
       )
     )

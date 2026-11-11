@@ -4,6 +4,7 @@ import { aiKeys } from './ai-keys'
 import { analysis } from './analysis'
 import { bundles } from './bundles'
 import { email } from './email'
+import { evaluator } from './evaluator'
 import { evidence } from './evidence'
 import { domainEvents } from './events'
 import { dataRights } from './data-rights'
@@ -41,6 +42,7 @@ export const registry = defineRegistry([
   analysis, // c-analysis-api
   auditor, // b-auditor
   sources, // b-sources-core
+  evaluator, // b-evaluator
   dataRights, // a-data-rights
   retention // a-retention
 ])

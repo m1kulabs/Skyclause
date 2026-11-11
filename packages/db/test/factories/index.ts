@@ -1,4 +1,9 @@
-import { makeEvaluatorReevaluation, makeEvaluatorSourceTransition, makeEvaluatorSourceDelivery } from './evaluator'
+import {
+  makeEvaluatorDeadline,
+  makeEvaluatorReevaluation,
+  makeEvaluatorSourceTransition,
+  makeEvaluatorSourceDelivery
+} from './evaluator'
 import { makeSourceObservationHead } from './source_observation_head'
 import type { Tx } from '../../src/client'
 import { makeAiKey } from './ai_key'
@@ -164,6 +169,7 @@ export { nextSeq, rowOf, sheetVersionIn } from './rows'
  * cross-organisation test reads the live schema and fails on a T table missing here, so a new T table joins it.
  */
 export const tenantFactories: Record<string, (tx: Tx) => Promise<unknown>> = {
+  evaluator_deadline: makeEvaluatorDeadline,
   evaluator_reevaluation: makeEvaluatorReevaluation,
   ai_key: makeAiKey,
   ai_key_test: makeAiKeyTest,

@@ -1,5 +1,10 @@
 import type { Tx } from '../../src/client'
-import { evaluatorReevaluation, evaluatorSourceTransition, evaluatorSourceDelivery } from '../../src/schema'
+import {
+  evaluatorDeadline,
+  evaluatorReevaluation,
+  evaluatorSourceTransition,
+  evaluatorSourceDelivery
+} from '../../src/schema'
 import { makeProject } from './project'
 import { makeSource } from './source'
 
@@ -32,6 +37,15 @@ export async function makeEvaluatorSourceDelivery(tx: Tx) {
   const [row] = await tx
     .insert(evaluatorSourceDelivery)
     .values({ transitionId: t.id, recipientOrgId: tx.orgId!, projectId: p.id })
+    .returning()
+  return row!
+}
+
+export async function makeEvaluatorDeadline(tx: Tx) {
+  const p = await makeProject(tx)
+  const [row] = await tx
+    .insert(evaluatorDeadline)
+    .values({ orgId: tx.orgId!, projectId: p.id, generation: p.id, dueAt: new Date() })
     .returning()
   return row!
 }

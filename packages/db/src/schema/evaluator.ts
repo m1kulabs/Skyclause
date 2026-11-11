@@ -48,3 +48,21 @@ export const evaluatorReevaluation = tenantTable(
     unique('evaluator_reevaluation_project_pack_key').on(self.projectId, self.pack)
   ]
 )
+
+/** Each generation retains its own cleanup state; a delayed delete can never erase its successor. */
+export const evaluatorDeadline = tenantTable(
+  'evaluator_deadline',
+  {
+    id: id(),
+    projectId: uuid('project_id').notNull(),
+    generation: uuid('generation').notNull(),
+    dueAt: instant('due_at').notNull(),
+    createdAt: instant('created_at'),
+    retiredAt: instant('retired_at'),
+    cleanedAt: instant('cleaned_at')
+  },
+  (self) => [
+    sameOrg('evaluator_deadline_project', self, self.projectId, project, true),
+    unique('evaluator_deadline_generation_key').on(self.projectId, self.generation)
+  ]
+)

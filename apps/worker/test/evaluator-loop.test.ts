@@ -182,7 +182,11 @@ test('same-key persisted archive keeps original windows and definitions even aft
 test('cancelled and expired windows are excluded while zero eligible windows retain the Sky site', async () => {
   const { run, q, providers } = await scene()
   await run(async (tx) => {
-    for (const extra of [{ cancelledAt: new Date(at) }, { expiresAt: new Date(at) }, { endsAt: new Date(at) }])
+    for (const extra of [
+      { cancelledAt: new Date(at) },
+      { expiresAt: new Date(at) },
+      { endsAt: new Date('2026-11-10T02:00:00Z') }
+    ])
       await makeWindow(tx, {
         projectId: q.projectId,
         startsAt: new Date('2026-11-10T03:00:00Z'),
@@ -369,3 +373,301 @@ test('global source wrapper reads bindings in each tenant and delivers once with
       { type: 'source.stale', data: { http_status: null } }
     ])
 })
+
+test('window remains active through its rain span terminal, then retires without a past deadline', async () => {
+  const { run, q, providers } = await scene()
+  const w = await run((tx) =>
+    makeWindow(tx, {
+      projectId: q.projectId,
+      startsAt: new Date('2026-11-10T03:00:00Z'),
+      endsAt: new Date('2026-11-10T04:30:00Z')
+    })
+  )
+  for (const tEval of [
+    '2026-11-10T04:29:59Z',
+    '2026-11-10T04:30:00Z',
+    '2026-11-10T04:30:01Z',
+    '2026-11-10T05:30:00Z'
+  ]) {
+    const result = await run((tx) => evaluateProject(tx, { ...q, tEval }, providers))
+    const archive = await run((tx) => loadEvaluatorSnapshot(tx, { ...q, tEval, pack: 'sky' }))
+    expect(archive.windows.map((x) => x.id)).toContain(w.id)
+    if (tEval === '2026-11-10T05:30:00Z') expect(result.deadline).toBeNull()
+  }
+})
+
+import { createEvaluatorPart } from '../src/evaluator'
+import { repairEvaluatorDeadline } from '../src/evaluator/delivery'
+import { TaskNameUnavailable } from '../src/evaluator/cloud-tasks'
+import { makePoll } from '../../../packages/db/test/factories'
+import { dispatchEvent } from '../src/events'
+
+async function deliveryScene() {
+  const x = await scene()
+  let now = new Date(at)
+  const creates: database.DeadlineIntent[] = [],
+    deletes: string[] = []
+  const tasks = {
+    create: vi.fn(async (intent: database.DeadlineIntent) => {
+      creates.push(intent)
+    }),
+    remove: vi.fn(async (name: string) => {
+      deletes.push(name)
+    })
+  }
+  const part = createEvaluatorPart({ providers: x.providers, clock: () => now, tasks })
+  return {
+    ...x,
+    part,
+    tasks,
+    creates,
+    deletes,
+    clock: (next: string) => {
+      now = new Date(next)
+    },
+    target: { orgId: x.orgId, projectId: x.q.projectId }
+  }
+}
+async function pollScene(outcome: 'ok' | 'unchanged' | 'error') {
+  const x = await deliveryScene()
+  const s = await withSystem('test', (tx) => makeSource(tx, { kind: 'apims', freshness: 'polled', staleAfterS: 600 }))
+  const p = await withSystem('test', (tx) =>
+    makePoll(tx, {
+      sourceId: s.id,
+      startedAt: new Date(at),
+      receivedAt: new Date(at),
+      outcome,
+      httpStatus: outcome === 'error' ? null : 200
+    })
+  )
+  if (outcome === 'ok')
+    await withSystem('test', (tx) =>
+      makeReading(tx, {
+        sourceId: s.id,
+        pollId: p.id,
+        metric: 'api',
+        value: 50,
+        observedAt: new Date(at),
+        receivedAt: new Date(at)
+      })
+    )
+  await x.run((tx) => makeProjectSource(tx, { projectId: x.q.projectId, sourceId: s.id }))
+  const stored = {
+    id: p.id,
+    sourceId: s.id,
+    kind: s.kind,
+    outcome,
+    httpStatus: p.httpStatus,
+    newRows: outcome === 'ok' ? 1 : 0,
+    purpose: 'poll' as const,
+    startedAt: p.startedAt,
+    receivedAt: p.receivedAt
+  }
+  return { ...x, s, p, stored }
+}
+test.each(['error', 'unchanged'] as const)(
+  'actual tenant poll.recorded %s with zero rows evaluates and deduplicates',
+  async (outcome) => {
+    const x = await pollScene(outcome)
+    await x.run((tx) => database.emitSourcePoll(tx, x.q.projectId, x.stored))
+    const [event] = await x.run((tx) => tx.select().from(domainEvent).where(eq(domainEvent.type, 'poll.recorded')))
+    await database.shareSystemConnection(() => dispatchEvent(x.part.events!, event!.id))
+    expect(await x.run((tx) => tx.select().from(shadowState))).toHaveLength(1)
+    const snapshots = await x.run((tx) => tx.select().from(indicatorSnapshot))
+    expect(snapshots).toHaveLength(1)
+    x.clock('2026-11-10T04:01:00Z')
+    await dispatchEvent(x.part.events!, event!.id)
+    expect(await x.run((tx) => tx.select().from(indicatorSnapshot))).toHaveLength(1)
+    expect(await x.run((tx) => tx.select().from(evaluatorReevaluation))).toEqual(
+      expect.arrayContaining([expect.objectContaining({ pack: 'crowd', completedAt: null })])
+    )
+  }
+)
+test('positive source message evaluates only bindings and shares project/poll dedupe with actual domain delivery', async () => {
+  const x = await pollScene('ok'),
+    unbound = await scene()
+  const message = {
+    data: { source_id: x.s.id, poll_id: x.p.id, kind: x.s.kind, new_rows: 1 },
+    messageId: 'positive',
+    publishTime: at,
+    attributes: {}
+  }
+  await x.part.topics!['readings-updated']!(message)
+  expect(await x.run((tx) => tx.select().from(indicatorSnapshot))).toHaveLength(1)
+  expect(await unbound.run((tx) => tx.select().from(indicatorSnapshot))).toHaveLength(0)
+  await x.run((tx) => database.emitSourcePoll(tx, x.q.projectId, x.stored))
+  const [event] = await x.run((tx) => tx.select().from(domainEvent).where(eq(domainEvent.type, 'poll.recorded')))
+  x.clock('2026-11-10T04:01:00Z')
+  await dispatchEvent(x.part.events!, event!.id)
+  await x.part.topics!['readings-updated']!(message)
+  expect(await x.run((tx) => tx.select().from(indicatorSnapshot))).toHaveLength(1)
+  await expect(
+    x.part.topics!['readings-updated']!({ ...message, data: { ...message.data, kind: 'jps_rain' } })
+  ).rejects.toThrow('identity mismatch')
+  await expect(
+    unbound.run((tx) =>
+      database.requestEvaluatorPoll(tx, { projectId: unbound.q.projectId, sourceId: x.s.id, pollId: x.p.id, tEval: at })
+    )
+  ).rejects.toThrow('not bound')
+})
+test('domain changes persist requests through handleOnce before evaluation and batch repairs failed creation', async () => {
+  const x = await deliveryScene()
+  await x.run((tx) =>
+    makeWindow(tx, {
+      projectId: x.q.projectId,
+      startsAt: new Date('2026-11-10T05:00:00Z'),
+      endsAt: new Date('2026-11-10T06:00:00Z')
+    })
+  )
+  const event = await x.run((tx) =>
+    database.emitEvent(tx, {
+      projectId: x.q.projectId,
+      type: 'window.updated',
+      data: { window_id: x.q.projectId, via: 'form', times_changed: true, series_id: null }
+    })
+  )
+  x.tasks.create.mockRejectedValueOnce(new Error('create unavailable'))
+  await expect(database.shareSystemConnection(() => dispatchEvent(x.part.events!, event.id))).rejects.toThrow(
+    'create unavailable'
+  )
+  const intent = await x.run((tx) => database.loadEvaluatorDeadline(tx, x.q.projectId))
+  expect(intent).toMatchObject({ createdAt: null })
+  await database.shareSystemConnection(() => x.part.batch!['evaluator-repair']!(new Date(at)))
+  expect(await x.run((tx) => database.loadEvaluatorDeadline(tx, x.q.projectId))).toMatchObject({
+    generation: intent!.generation,
+    createdAt: expect.any(String)
+  })
+})
+test('409 rotates durable name without deleting prior tasks before replacement succeeds; far future waits for batch horizon', async () => {
+  const x = await deliveryScene()
+  const first = (await x.run((tx) =>
+    database.replaceEvaluatorDeadline(tx, { projectId: x.q.projectId, dueAt: '2026-11-10T05:00:00Z' })
+  ))!
+  x.tasks.create.mockRejectedValueOnce(new TaskNameUnavailable('tombstone'))
+  await expect(repairEvaluatorDeadline(x.target, x.tasks, new Date(at))).rejects.toThrow('tombstone')
+  const second = (await x.run((tx) => database.loadEvaluatorDeadline(tx, x.q.projectId)))!
+  expect(second.generation).not.toBe(first.generation)
+  expect(x.deletes).toEqual([])
+  await repairEvaluatorDeadline(x.target, x.tasks, new Date(at))
+  expect(x.creates.at(-1)!.generation).toBe(second.generation)
+  expect(x.deletes).toContain(first.taskName)
+  const far = (await x.run((tx) =>
+    database.replaceEvaluatorDeadline(tx, { projectId: x.q.projectId, dueAt: '2027-01-01T00:00:00Z' })
+  ))!
+  const count = x.creates.length
+  await repairEvaluatorDeadline(x.target, x.tasks, new Date(at))
+  expect(x.creates).toHaveLength(count)
+  expect(await x.run((tx) => database.loadEvaluatorDeadline(tx, x.q.projectId))).toMatchObject(far)
+  await repairEvaluatorDeadline(x.target, x.tasks, new Date('2026-12-20T00:00:00Z'))
+  expect(x.creates.at(-1)!.generation).toBe(far.generation)
+})
+test('timer evaluates actual clock, early current generation retries and obsolete/retried deliveries do no writes', async () => {
+  const x = await pollScene('ok')
+  const first = (await x.run((tx) =>
+    database.replaceEvaluatorDeadline(tx, { projectId: x.q.projectId, dueAt: '2026-11-10T04:10:01Z' })
+  ))!
+  const task = {
+    name: first.taskName,
+    retryCount: 0,
+    body: { org: first.org, project: first.project, generation: first.generation, dueAt: first.dueAt }
+  }
+  await expect(x.part.queues!['evaluator-deadlines']!(task)).rejects.toThrow('not due')
+  expect(await x.run((tx) => tx.select().from(indicatorSnapshot))).toEqual([])
+  x.clock('2026-11-10T04:12:00Z')
+  await x.part.queues!['evaluator-deadlines']!(task)
+  const rows = await x.run((tx) => tx.select().from(indicatorSnapshot))
+  expect(rows).toHaveLength(1)
+  expect(rows[0]!.tEval).toEqual(new Date('2026-11-10T04:12:00Z'))
+  x.clock('2026-11-10T04:13:00Z')
+  await x.part.queues!['evaluator-deadlines']!(task)
+  expect(await x.run((tx) => tx.select().from(indicatorSnapshot))).toHaveLength(1)
+})
+test.each(['archived', 'off'] as const)('current timer for %s project commits no evaluation', async (kind) => {
+  const x = await deliveryScene()
+  const first = (await x.run((tx) => database.replaceEvaluatorDeadline(tx, { projectId: x.q.projectId, dueAt: at })))!
+  if (kind === 'archived')
+    await x.run((tx) =>
+      tx
+        .update(project)
+        .set({ archivedAt: new Date(at) })
+        .where(eq(project.id, x.q.projectId))
+    )
+  else
+    await x.run((tx) => tx.update(projectPack).set({ enabled: false }).where(eq(projectPack.projectId, x.q.projectId)))
+  await x.part.queues!['evaluator-deadlines']!({
+    name: first.taskName,
+    retryCount: 0,
+    body: { org: first.org, project: first.project, generation: first.generation, dueAt: first.dueAt }
+  })
+  expect(await x.run((tx) => tx.select().from(indicatorSnapshot))).toEqual([])
+  expect(await x.run((tx) => database.loadEvaluatorDeadline(tx, x.q.projectId))).toBeNull()
+})
+
+test('two in-flight replacements preserve newest intent and retry cleanup after a late create response', async () => {
+  const x = await deliveryScene()
+  const one = (await x.run((tx) =>
+    database.replaceEvaluatorDeadline(tx, { projectId: x.q.projectId, dueAt: '2026-11-10T05:00:00Z' })
+  ))!
+  await repairEvaluatorDeadline(x.target, x.tasks, new Date(at))
+  const two = (await x.run((tx) =>
+    database.replaceEvaluatorDeadline(tx, { projectId: x.q.projectId, dueAt: '2026-11-10T06:00:00Z' })
+  ))!
+  let started!: () => void, release!: () => void
+  const entered = new Promise<void>((resolve) => {
+      started = resolve
+    }),
+    gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+  x.tasks.create.mockImplementationOnce(async () => {
+    started()
+    await gate
+  })
+  const slow = repairEvaluatorDeadline(x.target, x.tasks, new Date(at))
+  await entered
+  const three = (await x.run((tx) =>
+    database.replaceEvaluatorDeadline(tx, { projectId: x.q.projectId, dueAt: '2026-11-10T07:00:00Z' })
+  ))!
+  await repairEvaluatorDeadline(x.target, x.tasks, new Date(at))
+  release()
+  await slow
+  expect((await x.run((tx) => database.loadEvaluatorDeadline(tx, x.q.projectId)))!.generation).toBe(three.generation)
+  expect(x.deletes).toContain(one.taskName)
+  expect(x.deletes.filter((n) => n === two.taskName)).toHaveLength(2)
+  expect(x.deletes).not.toContain(three.taskName)
+})
+test('failed cleanup is retained after replacement creation and retried independently', async () => {
+  const x = await deliveryScene()
+  const old = (await x.run((tx) =>
+    database.replaceEvaluatorDeadline(tx, { projectId: x.q.projectId, dueAt: '2026-11-10T05:00:00Z' })
+  ))!
+  await repairEvaluatorDeadline(x.target, x.tasks, new Date(at))
+  const current = (await x.run((tx) =>
+    database.replaceEvaluatorDeadline(tx, { projectId: x.q.projectId, dueAt: '2026-11-10T06:00:00Z' })
+  ))!
+  x.tasks.remove.mockRejectedValueOnce(new Error('delete unavailable'))
+  await expect(repairEvaluatorDeadline(x.target, x.tasks, new Date(at))).rejects.toThrow('delete unavailable')
+  expect(
+    (await x.run((tx) => database.listEvaluatorDeadlineCleanup(tx, x.q.projectId))).map((x) => x.generation)
+  ).toContain(old.generation)
+  await repairEvaluatorDeadline(x.target, x.tasks, new Date(at))
+  expect(x.creates.filter((x) => x.generation === current.generation)).toHaveLength(1)
+  expect(await x.run((tx) => database.listEvaluatorDeadlineCleanup(tx, x.q.projectId))).toEqual([])
+})
+
+// This batch visits every active project created by the integration suite, not only this scene.
+test('batch bootstraps an existing shadow once even when no future deadline exists', async () => {
+  const x = await deliveryScene()
+  await x.run((tx) => tx.update(projectPack).set({ enabled: false }).where(eq(projectPack.pack, 'crowd')))
+  await x.run((tx) => evaluateProject(tx, x.q, x.providers))
+  expect(await x.run((tx) => tx.select().from(evaluatorReevaluation))).toEqual([])
+  x.clock('2026-11-10T04:01:00Z')
+  await database.shareSystemConnection(() => x.part.batch!['evaluator-repair']!(new Date(at)))
+  expect(await x.run((tx) => tx.select().from(evaluatorReevaluation))).toMatchObject([
+    { pack: 'sky', completedAt: expect.any(Date) }
+  ])
+  expect(await x.run((tx) => tx.select().from(indicatorSnapshot))).toHaveLength(2)
+  x.clock('2026-11-10T04:02:00Z')
+  await database.shareSystemConnection(() => x.part.batch!['evaluator-repair']!(new Date(at)))
+  expect(await x.run((tx) => tx.select().from(indicatorSnapshot))).toHaveLength(2)
+}, 15_000)

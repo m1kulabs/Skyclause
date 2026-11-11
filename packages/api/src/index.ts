@@ -98,3 +98,5 @@ export {
 export { createRuntimeRegistry } from './services/evaluator/registry'
 export { loadEvaluatorHistory } from './services/evaluator/history'
 export { createEvaluatorProviders, semanticVerdictKey, type EvaluatorProviders } from './services/evaluator'
+
+export { nextEvaluationAt, evaluatorWindows } from './services/evaluator/deadline'

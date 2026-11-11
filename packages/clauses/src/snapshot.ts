@@ -59,6 +59,62 @@ function parseClockMinutes(clock: string): number | null {
   return hh * 60 + mm
 }
 
+export function latestMytMorning(epochMs: number): number {
+  return (
+    Math.floor((epochMs + MYT_OFFSET_MS - 6 * 60 * MINUTE_MS) / 86400000) * 86400000 +
+    6 * 60 * MINUTE_MS -
+    MYT_OFFSET_MS
+  )
+}
+function cameraHours(source: ReadingHistory['sources'][number]): [number, number] {
+  const start =
+    typeof source.meta?.cameraDayStart === 'string' ? source.meta.cameraDayStart : source.meta?.camera_day_start
+  const end = typeof source.meta?.cameraDayEnd === 'string' ? source.meta.cameraDayEnd : source.meta?.camera_day_end
+  return [
+    typeof start === 'string' ? (parseClockMinutes(start) ?? 435) : 435,
+    typeof end === 'string' ? (parseClockMinutes(end) ?? 1140) : 1140
+  ]
+}
+function pendingInstant(source: ReadingHistory['sources'][number]): number {
+  const value =
+    source.meta.next_update ?? source.meta.nextUpdate ?? source.meta.pending_until ?? source.meta.pendingUntil
+  return typeof value === 'string' ? Date.parse(value) : NaN
+}
+function calendarExpiry(source: ReadingHistory['sources'][number]): number {
+  return typeof source.meta.calendar_end === 'string'
+    ? Date.parse(`${source.meta.calendar_end}T00:00:00+08:00`) + 86400000
+    : NaN
+}
+function freshnessBasis(
+  source: ReadingHistory['sources'][number],
+  readings: NormalizedReading[],
+  polls: NormalizedPoll[]
+): number | null {
+  const latest = readings.at(-1)
+  return source.freshness === 'observed'
+    ? (latest?.observedMs ?? null)
+    : (polls.filter((p) => p.outcome !== 'error').at(-1)?.startedMs ?? latest?.observedMs ?? null)
+}
+function freshnessLimit(source: ReadingHistory['sources'][number]): number {
+  return source.staleAfterS > 0 ? source.staleAfterS : source.cadenceS * 2
+}
+
+function metForecastDates(r: NormalizedReading): { jsonDate: string | null; keyDate: string | null } {
+  return {
+    jsonDate: typeof r.valueJson?.date === 'string' ? r.valueJson.date : null,
+    keyDate: /^\d{4}-\d{2}-\d{2}$/.test(r.itemKey) ? r.itemKey : null
+  }
+}
+export function metForecastDateBoundaries(readings: NormalizedReading[]): number[] {
+  return readings.flatMap((r) =>
+    Object.values(metForecastDates(r)).flatMap((date) => {
+      if (date === null || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return []
+      const start = Date.parse(`${date}T00:00:00+08:00`)
+      return [start, start + 86400000]
+    })
+  )
+}
+
 export function toLocalMinutes(epochMs: number): number {
   const shifted = new Date(epochMs + MYT_OFFSET_MS)
   return shifted.getUTCHours() * 60 + shifted.getUTCMinutes()
@@ -174,7 +230,7 @@ export function resolveSourceAt(
 
   const readings = (dedupedReadings ?? dedupeReadingsAt(h, tEvalMs)).filter((r) => r.sourceId === sourceId)
   const polls = (filteredPolls ?? filterPollsAt(h, tEvalMs)).filter((p) => p.sourceId === sourceId)
-  const staleLimitS = source.staleAfterS > 0 ? source.staleAfterS : source.cadenceS * 2
+  const staleLimitS = freshnessLimit(source)
   const staleLimitMs = staleLimitS * 1_000
 
   const latestReading = readings.length > 0 ? readings[readings.length - 1]! : null
@@ -186,10 +242,7 @@ export function resolveSourceAt(
     source.freshness === 'observed'
       ? (latestReading?.observedAt ?? null)
       : (latestReading?.observedAt ?? latestGoodPoll?.startedAt ?? null)
-  const basisMs =
-    source.freshness === 'observed'
-      ? (latestReading?.observedMs ?? null)
-      : (latestGoodPoll?.startedMs ?? latestReading?.observedMs ?? null)
+  const basisMs = freshnessBasis(source, readings, polls)
   const ageS = basisMs !== null ? Math.max(0, Math.floor((tEvalMs - basisMs) / 1_000)) : null
   const readingIds = latestReading ? [latestReading.id] : []
 
@@ -204,20 +257,7 @@ export function resolveSourceAt(
         readingIds
       }
     }
-    const dayStartStr =
-      typeof source.meta?.cameraDayStart === 'string'
-        ? source.meta.cameraDayStart
-        : typeof source.meta?.camera_day_start === 'string'
-          ? source.meta.camera_day_start
-          : '07:15'
-    const dayEndStr =
-      typeof source.meta?.cameraDayEnd === 'string'
-        ? source.meta.cameraDayEnd
-        : typeof source.meta?.camera_day_end === 'string'
-          ? source.meta.camera_day_end
-          : '19:00'
-    const startMin = parseClockMinutes(dayStartStr) ?? 7 * 60 + 15
-    const endMin = parseClockMinutes(dayEndStr) ?? 19 * 60
+    const [startMin, endMin] = cameraHours(source)
     const curMin = toLocalMinutes(tEvalMs)
     if (curMin < startMin || curMin >= endMin) {
       return {
@@ -232,19 +272,15 @@ export function resolveSourceAt(
   }
 
   if (source.kind === 'rapidrail_od') {
-    const nextUpdateRaw =
-      source.meta?.next_update ?? source.meta?.nextUpdate ?? source.meta?.pending_until ?? source.meta?.pendingUntil
-    if (typeof nextUpdateRaw === 'string') {
-      const nextUpdateMs = Date.parse(nextUpdateRaw)
-      if (Number.isFinite(nextUpdateMs) && tEvalMs < nextUpdateMs) {
-        return {
-          sourceId,
-          state: 'pending',
-          since: formatInstant(nextUpdateMs),
-          observedAt,
-          ageS,
-          readingIds
-        }
+    const nextUpdateMs = pendingInstant(source)
+    if (Number.isFinite(nextUpdateMs) && tEvalMs < nextUpdateMs) {
+      return {
+        sourceId,
+        state: 'pending',
+        since: formatInstant(nextUpdateMs),
+        observedAt,
+        ageS,
+        readingIds
       }
     }
   }
@@ -281,7 +317,7 @@ export function resolveSourceAt(
 
   if (source.kind === 'gtfs_static' && typeof source.meta?.calendar_end === 'string') {
     // The provider supplies a validated local feed date. Polls do not renew it.
-    const calendarEndMs = Date.parse(`${source.meta.calendar_end}T00:00:00+08:00`) + 86_400_000
+    const calendarEndMs = calendarExpiry(source)
     if (Number.isFinite(calendarEndMs) && tEvalMs >= calendarEndMs) {
       return {
         sourceId,
@@ -297,8 +333,7 @@ export function resolveSourceAt(
   if (source.kind === 'met_forecast' && readings.length > 0) {
     const todayMyt = toMytDateString(tEvalMs)
     const coversToday = readings.some((r) => {
-      const jsonDate = typeof r.valueJson?.date === 'string' ? r.valueJson.date : null
-      const keyDate = /^\d{4}-\d{2}-\d{2}$/.test(r.itemKey) ? r.itemKey : null
+      const { jsonDate, keyDate } = metForecastDates(r)
       if (!jsonDate && !keyDate) return true
       return jsonDate === todayMyt || keyDate === todayMyt
     })
@@ -461,8 +496,9 @@ function aggregateSourcesForKind(
   return worst
 }
 
-function isKlMetWarningReading(r: NormalizedReading): {
+export function isKlMetWarningReading(r: NormalizedReading): {
   isKlWarning: boolean
+  completeValidity: boolean
   validFromIso: Instant
   validFromMs: number
   validToMs: number | null
@@ -486,15 +522,17 @@ function isKlMetWarningReading(r: NormalizedReading): {
     }
     return null
   }
-  const validFromMs = validityMs(json.valid_from_utc, json.valid_from) ?? r.observedMs
+  const actualFromMs = validityMs(json.valid_from_utc, json.valid_from)
+  const validFromMs = actualFromMs ?? r.observedMs
   const validToMs = validityMs(json.valid_to_utc, json.valid_to)
+  const completeValidity = actualFromMs !== null && validToMs !== null && actualFromMs <= validToMs
 
   if (r.value === false || r.value === 0) {
-    return { isKlWarning: false, validFromIso: formatInstant(validFromMs), validFromMs, validToMs }
+    return { isKlWarning: false, completeValidity, validFromIso: formatInstant(validFromMs), validFromMs, validToMs }
   }
 
   if (combined.includes('no advisory') || combined.includes('tiada nasihat') || combined.includes('marine')) {
-    return { isKlWarning: false, validFromIso: formatInstant(validFromMs), validFromMs, validToMs }
+    return { isKlWarning: false, completeValidity, validFromIso: formatInstant(validFromMs), validFromMs, validToMs }
   }
 
   const mentionsKl =
@@ -504,6 +542,7 @@ function isKlMetWarningReading(r: NormalizedReading): {
 
   return {
     isKlWarning: mentionsKl,
+    completeValidity,
     validFromIso: formatInstant(validFromMs),
     validFromMs,
     validToMs
@@ -699,9 +738,7 @@ export const snapshotAt: SnapshotAt = (
 
       for (const sid of boundSourceIds) {
         const dayMs = 24 * 60 * MINUTE_MS
-        const morningOffsetMs = 6 * 60 * MINUTE_MS
-        const latestMorningMs =
-          Math.floor((tEvalMs + MYT_OFFSET_MS - morningOffsetMs) / dayMs) * dayMs + morningOffsetMs - MYT_OFFSET_MS
+        const latestMorningMs = latestMytMorning(tEvalMs)
         const morning: NormalizedReading[] = []
         for (let daysAgo = 2; daysAgo >= 0; daysAgo--) {
           const requiredMs = latestMorningMs - daysAgo * dayMs
@@ -777,8 +814,7 @@ export const snapshotAt: SnapshotAt = (
       const todayMyt = toMytDateString(tEvalMs)
       const fcstReadings = readings.filter((rd) => boundSourceIds.includes(rd.sourceId))
       const matching = fcstReadings.filter((rd) => {
-        const jsonDate = typeof rd.valueJson?.date === 'string' ? rd.valueJson.date : null
-        const keyDate = /^\d{4}-\d{2}-\d{2}$/.test(rd.itemKey) ? rd.itemKey : null
+        const { jsonDate, keyDate } = metForecastDates(rd)
         if (jsonDate && jsonDate !== todayMyt) return false
         if (keyDate && keyDate !== todayMyt) return false
         if (rd.value === true || rd.value === 1) return true
@@ -869,4 +905,28 @@ export const snapshotAt: SnapshotAt = (
     ...baseSnapshot,
     hash: canonicalHash(baseSnapshot)
   }
+}
+
+/** Candidate clocks share the resolver's exact rules; only actual state changes survive. */
+export function nextSourceChangeAt(h: ReadingHistory, sourceId: string, tEval: Instant): Instant | null {
+  const at = Date.parse(tEval),
+    source = h.sources.find((s) => s.id === sourceId)
+  if (!source) return null
+  const readings = dedupeReadingsAt(h, at).filter((r) => r.sourceId === sourceId)
+  const polls = filterPollsAt(h, at).filter((p) => p.sourceId === sourceId)
+  const candidates: number[] = []
+  const basis = freshnessBasis(source, readings, polls)
+  if (basis !== null) candidates.push(basis + (Math.floor(freshnessLimit(source)) + 1) * 1000)
+  if (source.kind === 'rapidrail_od') candidates.push(pendingInstant(source))
+  if (source.kind === 'gtfs_static') candidates.push(calendarExpiry(source))
+  if (source.kind === 'camera' && !source.probation) {
+    const day = Date.parse(`${toMytDateString(at)}T00:00:00+08:00`)
+    for (const minute of cameraHours(source))
+      for (const offset of [0, 86400000]) candidates.push(day + minute * 60000 + offset)
+  }
+  if (source.kind === 'met_forecast') candidates.push(...metForecastDateBoundaries(readings))
+  const before = resolveSourceAt(h, sourceId, tEval).state
+  for (const candidate of candidates.filter((n) => Number.isFinite(n) && n > at).sort((a, b) => a - b))
+    if (resolveSourceAt(h, sourceId, formatInstant(candidate)).state !== before) return formatInstant(candidate)
+  return null
 }

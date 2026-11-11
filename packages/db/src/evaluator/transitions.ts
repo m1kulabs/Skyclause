@@ -224,5 +224,8 @@ export async function sweepEvaluatorCoordination(
     sql`DELETE FROM evaluator_source_transition t WHERE t.created_at < ${cutoff} AND NOT EXISTS (SELECT 1 FROM evaluator_source_delivery d WHERE d.transition_id=t.id AND (d.completed_at IS NULL OR d.completed_at >= ${cutoff})) RETURNING id`
   )
   const intents = await tx.execute(sql`DELETE FROM evaluator_reevaluation WHERE completed_at < ${cutoff} RETURNING id`)
-  return { deleted: transitions.rows.length + intents.rows.length, pseudonymised: 0 }
+  const deadlines = await tx.execute(
+    sql`DELETE FROM evaluator_deadline WHERE retired_at IS NOT NULL AND cleaned_at < ${cutoff} RETURNING id`
+  )
+  return { deleted: transitions.rows.length + intents.rows.length + deadlines.rows.length, pseudonymised: 0 }
 }
