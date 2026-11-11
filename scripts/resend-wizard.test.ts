@@ -222,7 +222,7 @@ function sandbox(overrides: Partial<Behaviour> = {}) {
       )
       const output = result.stdout + result.stderr
       // No secret reaches the screen.
-      for (const secret of [FULL_KEY, SENDING_ONLY_KEY, 're_sending', 'whsec_', CLOUDFLARE_TOKEN]) {
+      for (const secret of [FULL_KEY, SENDING_ONLY_KEY, 're_sending', 're_full', 'whsec_', CLOUDFLARE_TOKEN]) {
         expect(output, `${secret} on the screen`).not.toContain(secret)
       }
       return {
@@ -298,6 +298,7 @@ describe('infra/wizards/resend.sh on an account with nothing set up', () => {
       'POST /domains/<id>/verify',
       'POST /domains/<id>/verify',
       'POST /webhooks',
+      'POST /api-keys',
       'POST /api-keys'
     ])
   })
@@ -372,21 +373,22 @@ describe('infra/wizards/resend.sh on an account with nothing set up', () => {
     expect(order.lastIndexOf('GET /domains/<id>')).toBeLessThan(order.indexOf('POST /webhooks'))
   })
 
-  test('creates a sending-only key restricted to the sending domain', () => {
+  test('creates a sending-only key restricted to the sending domain, then a full-access key for the worker', () => {
     const sendingId = box.resend().domains.find((domain: { name: string }) => domain.name === SENDING).id
-    const key = first.requests.find((call) => call.method === 'POST' && call.path === '/api-keys')
-    expect(key?.body).toEqual({
-      name: 'skyclause-production-sending',
-      permission: 'sending_access',
-      domain_id: sendingId
-    })
+    const keys = first.requests.filter((call) => call.method === 'POST' && call.path === '/api-keys')
+    expect(keys.map((call) => call.body)).toEqual([
+      { name: 'skyclause-production-sending', permission: 'sending_access', domain_id: sendingId },
+      { name: 'skyclause-production-worker', permission: 'full_access' }
+    ])
   })
 
-  test('stores the three secrets in Secret Manager and prints the supplied_secrets line to commit', () => {
+  test('stores the three secrets in Secret Manager, never the pasted key, and prints the supplied_secrets line', () => {
     const state = box.resend()
     expect(box.secret('RESEND_SENDING_API_KEY')).toEqual([state.keys[0].token])
     expect(box.secret('RESEND_WEBHOOK_SECRET')).toEqual([state.webhooks[0].signing_secret])
-    expect(box.secret('RESEND_RECEIVING_API_KEY')).toEqual([FULL_KEY])
+    // The worker's own key: revoking the person's key never stops inbound mail.
+    expect(box.secret('RESEND_RECEIVING_API_KEY')).toEqual([state.keys[1].token])
+    expect(readdirSync(join(box.state, 'secrets')).flatMap((name) => box.secret(name))).not.toContain(FULL_KEY)
     expect(box.secret('SKYCLAUSE_STAFF_EMAILS')).toEqual(['unrelated'])
     expect(first.output).toContain(ALL_SUPPLIED)
     // Mail is off until that line is committed and applied, and the wizard says so.
@@ -475,7 +477,7 @@ describe('infra/wizards/resend.sh stops before it writes anything it should not'
 
     expect(run.result.status, run.output).toBe(0)
     expect(run.output).toContain('Paste the whole key')
-    expect(box.secret('RESEND_RECEIVING_API_KEY')).toEqual([FULL_KEY])
+    expect(box.secret('RESEND_RECEIVING_API_KEY')).toEqual([box.resend().keys[1].token])
   })
 
   test('stops at the start when Terraform has not made a secret, before any call to Resend', () => {
@@ -597,6 +599,14 @@ describe('infra/wizards/resend.sh finds what exists', () => {
     last_used_at: null,
     token: 're_sending_existing'
   }
+  const workerKey = {
+    id: 'key-2',
+    name: 'skyclause-production-worker',
+    created_at: '2026-11-10T08:00:00.000Z',
+    last_used_at: null,
+    token: 're_worker_existing',
+    permission: 'full_access'
+  }
   // Domains verified, so the DNS stage has only DMARC to check; one pause fewer than a full run asks.
   const verified = [PAUSE, PAUSE, PAUSE, PAUSE, 'y', PAUSE, PAUSE, PAUSE]
 
@@ -636,6 +646,7 @@ describe('infra/wizards/resend.sh finds what exists', () => {
     expect(accepted.result.status, accepted.output).toBe(0)
     expect(writesOf(accepted.requests).map((call) => `${call.method} ${call.path}`)).toEqual([
       'DELETE /api-keys/key-1',
+      'POST /api-keys',
       'POST /api-keys'
     ])
     expect(box.secret('RESEND_SENDING_API_KEY')).toHaveLength(1)
@@ -663,9 +674,38 @@ describe('infra/wizards/resend.sh finds what exists', () => {
     expect(run.result.status, run.output).toBe(0)
     expect(writesOf(run.requests).map((call) => `${call.method} ${call.path}`)).toEqual([
       'DELETE /api-keys/key-1',
+      'POST /api-keys',
       'POST /api-keys'
     ])
     expect(box.secret('RESEND_SENDING_API_KEY')).toHaveLength(2)
+  })
+
+  test('keeps a stored worker key Resend accepts, and replaces a lost one only after a yes', () => {
+    const box = sandbox()
+    box.seedResend({ domains: verifiedDomains, webhooks: [hook()], keys: [key, workerKey] })
+    box.seedSecret('RESEND_SENDING_API_KEY', 're_sending_existing')
+    box.seedSecret('RESEND_WEBHOOK_SECRET', 'whsec_existing')
+    box.seedSecret('RESEND_RECEIVING_API_KEY', 're_worker_existing')
+    const kept = box.run({ input: [...verified, PAUSE] })
+
+    expect(kept.result.status, kept.output).toBe(0)
+    expect(writesOf(kept.requests).filter((call) => call.path.startsWith('/api-keys'))).toEqual([])
+    expect(kept.output).toContain('RESEND_RECEIVING_API_KEY holds a live full-access key')
+
+    // The stored token was revoked in Resend's dashboard, the key named for the worker kept.
+    box.seedResend({ domains: verifiedDomains, webhooks: [hook()], keys: [key, { ...workerKey, token: 'revoked' }] })
+    const declined = box.run({ input: [...nothingToDo.slice(0, 7), 'n'] })
+    expect(declined.result.status).toBe(1)
+    expect(declined.output).toContain("RESEND_RECEIVING_API_KEY doesn't hold a live token")
+    expect(writesOf(declined.requests)).toEqual([])
+
+    const replaced = box.run({ input: [...nothingToDo.slice(0, 7), 'y', PAUSE] })
+    expect(replaced.result.status, replaced.output).toBe(0)
+    expect(writesOf(replaced.requests).map((call) => `${call.method} ${call.path}`)).toEqual([
+      'DELETE /api-keys/key-2',
+      'POST /api-keys'
+    ])
+    expect(box.secret('RESEND_RECEIVING_API_KEY')).toEqual(['re_worker_existing', box.resend().keys[1].token])
   })
 
   test('asks whose account it is when the account already holds other domains', () => {
@@ -710,7 +750,7 @@ describe('infra/wizards/resend.sh resumes and refuses', () => {
     expect(resumed.requests.filter((call) => call.method === 'POST' && call.path === '/domains')).toEqual([])
     expect(resumed.bunCalls.filter((call) => !call.includes('--dry-run'))).toEqual([])
     expect(box.resend().webhooks).toHaveLength(1)
-    expect(box.secret('RESEND_RECEIVING_API_KEY')).toEqual([FULL_KEY])
+    expect(box.secret('RESEND_RECEIVING_API_KEY')).toEqual([box.resend().keys[1].token])
   })
 
   test('writes nothing when Cloudflare refuses a record at the dry run', () => {

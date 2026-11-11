@@ -200,13 +200,13 @@ finish() {
 
 # #653: sets Resend up as production's one mail provider, end to end: the sending domain and the receive-only domain
 # in Tokyo (tracking off), their DNS records in Cloudflare through scripts/cloudflare-record.ts, the one webhook on the
-# worker's route, a sending-only API key for the sending domain, and the three Secret Manager secrets. Every stage reads
-# before it writes, so a re-run changes nothing that is already right.
+# worker's route, a sending-only API key for the sending domain, a full-access key of the worker's own, and the three
+# Secret Manager secrets. Every stage reads before it writes, so a re-run changes nothing that is already right.
 #
-# A person supplies: a full-access Resend API key (RESEND_FULL_ACCESS_KEY in the environment, or at the hidden prompt),
-# M1KU_CLOUDFLARE_API_TOKEN in the shell, a gcloud sign-in as a skyclause owner, and a yes at each write. Run it from
-# anywhere in the repo after the production Terraform apply has made the three secrets and the worker. About 20 minutes
-# plus Resend's DNS check, which usually takes up to 15 minutes.
+# A person supplies: a full-access Resend API key the wizard works with and never stores (RESEND_FULL_ACCESS_KEY in the
+# environment, or at the hidden prompt), M1KU_CLOUDFLARE_API_TOKEN in the shell, a gcloud sign-in as a skyclause owner,
+# and a yes at each write. Run it from anywhere in the repo after the production Terraform apply has made the three
+# secrets and the worker. About 20 minutes plus Resend's DNS check, which usually takes up to 15 minutes.
 #
 # DNS names, values and MX priorities come from what Resend's Domains API returns, never from this file. The wizard
 # touches no other record, so every SES record stays, except the MX at in. (replaced by Resend's) and the DMARC
@@ -223,6 +223,8 @@ DNS_ZONE=m1ku.tech
 WEBHOOK_PATH=/resend/webhook
 WEBHOOK_EVENTS_JSON='["email.delivered","email.bounced","email.complained","email.suppressed","email.received"]'
 SENDING_KEY_NAME=skyclause-production-sending
+# The worker's own full-access key, so revoking a person's key never stops inbound mail.
+WORKER_KEY_NAME=skyclause-production-worker
 # DMARC for notices. keeps p=quarantine but loses its rua: the SES rule that caught the reports goes, and nothing read them.
 DMARC_NAME="_dmarc.$SENDING_DOMAIN"
 DMARC_VALUE='v=DMARC1; p=quarantine'
@@ -290,6 +292,11 @@ resend_list() {
 # to sending: only a live sending-only key gets that answer, and a deleted or mistyped one gets "invalid".
 sending_key_is_live() {
   ( FULL_ACCESS_KEY="$1"; resend GET "/domains?limit=1" && [[ "$API_STATUS" == 401 && "$API_BODY" == *restricted_api_key* ]] )
+}
+
+# full_key_is_live KEY succeeds when Resend lets KEY do what only a full-access key may.
+full_key_is_live() {
+  ( FULL_ACCESS_KEY="$1"; resend GET "/domains?limit=1" && [[ "$API_STATUS" == 2* ]] )
 }
 
 # add_version NAME VALUE adds VALUE as a new version of the Secret Manager secret NAME.
@@ -453,7 +460,7 @@ if [[ -n "$other_domains" ]]; then
   say "This Resend account also holds: $other_domains."
   confirm "Is it Skyclause's account?" || { say "Nothing changed."; exit 1; }
 fi
-note "This key becomes RESEND_RECEIVING_API_KEY in stage 8: the worker reads received mail with it."
+note "The wizard works with this key and never stores it: stage 7 makes the worker a full-access key of its own."
 pause
 
 stage "Resend: the two domains"
@@ -548,10 +555,11 @@ store_secret RESEND_WEBHOOK_SECRET "$hook_secret"
 unset hook_secret
 pause
 
-stage "Resend: the sending-only API key"
+stage "Resend: the two API keys"
 say "RESEND_SENDING_API_KEY is a key that can only send, and only from $SENDING_DOMAIN: web and worker hold it."
 resend_list /api-keys
 key_id="$(json "next((k['id'] for k in d['data'] if k['name'] == a[0]), '')" "$SENDING_KEY_NAME")"
+worker_key_id="$(json "next((k['id'] for k in d['data'] if k['name'] == a[0]), '')" "$WORKER_KEY_NAME")"
 stored_key="$(gcloud secrets versions access latest --secret=RESEND_SENDING_API_KEY --project="$PROJECT" 2>/dev/null || true)"
 if [[ -n "$stored_key" ]] && sending_key_is_live "$stored_key"; then
   printf '  %s✓ unchanged%s RESEND_SENDING_API_KEY holds a live sending-only key\n' "$GREEN" "$RESET"
@@ -569,13 +577,28 @@ else
   add_version RESEND_SENDING_API_KEY "$sending_key"
   unset sending_key
 fi
-unset stored_key
+say "RESEND_RECEIVING_API_KEY is $WORKER_KEY_NAME, a full-access key of the worker's own: the worker alone reads received mail with it."
+stored_key="$(gcloud secrets versions access latest --secret=RESEND_RECEIVING_API_KEY --project="$PROJECT" 2>/dev/null || true)"
+if [[ -n "$stored_key" ]] && full_key_is_live "$stored_key"; then
+  printf '  %s✓ unchanged%s RESEND_RECEIVING_API_KEY holds a live full-access key\n' "$GREEN" "$RESET"
+else
+  if [[ -n "$worker_key_id" ]]; then
+    warn "Resend has a key named $WORKER_KEY_NAME, but RESEND_RECEIVING_API_KEY doesn't hold a live token for it, and Resend shows a token only once."
+    confirm "Delete the key in Resend and make a new one?" || { say "Nothing changed."; exit 1; }
+    resend_ok DELETE "/api-keys/$worker_key_id"
+  elif [[ -n "$stored_key" ]]; then
+    warn "RESEND_RECEIVING_API_KEY holds a token Resend doesn't accept as full access, and Resend has no key named $WORKER_KEY_NAME."
+    confirm "Make a new key and add it as a new version?" || { say "Nothing changed."; exit 1; }
+  fi
+  resend_ok POST /api-keys "{\"name\":\"$WORKER_KEY_NAME\",\"permission\":\"full_access\"}"
+  worker_key="$(json "d['token']")"
+  add_version RESEND_RECEIVING_API_KEY "$worker_key"
+  unset worker_key
+fi
+unset stored_key FULL_ACCESS_KEY
 pause
 
-stage "Secret Manager: the receiving key, and what to commit"
-say "The full-access key from stage 2 is RESEND_RECEIVING_API_KEY: only the worker mounts it."
-store_secret RESEND_RECEIVING_API_KEY "$FULL_ACCESS_KEY"
-unset FULL_ACCESS_KEY
+stage "Terraform: what to commit"
 if listed="$(python3 -c '
 import re, sys
 match = re.search(r"^supplied_secrets\s*=\s*\[([^]]*)\]", open(sys.argv[1]).read(), re.M)

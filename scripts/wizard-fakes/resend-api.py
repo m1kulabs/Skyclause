@@ -66,9 +66,11 @@ def error(code, name, message):
 
 
 key = (re.search(r'Bearer (\S+)"', stdin_config) or [None, ""])[1]
-if key == config["sendingOnlyKey"] or key in [k_["token"] for k_ in state["keys"]]:
+# A key keeps the permission it was made with; one seeded without a permission can only send.
+made = {k_["token"]: k_.get("permission", "sending_access") for k_ in state["keys"]}
+if key == config["sendingOnlyKey"] or made.get(key) == "sending_access":
     error(401, "restricted_api_key", "This API key is restricted to only send emails.")
-if key != config["fullKey"]:
+if key != config["fullKey"] and made.get(key) != "full_access":
     error(400, "validation_error", "API key is invalid")
 
 
@@ -156,13 +158,15 @@ m = re.fullmatch(r"/api-keys(?:/([^/]+))?", path)
 if m:
     identifier = m.group(1)
     if not identifier and method == "GET":
-        respond(200, {"object": "list", "has_more": False, "data": [{k: v for k, v in k_.items() if k != "token"} for k_ in state["keys"]]})
+        respond(200, {"object": "list", "has_more": False, "data": [{k: v for k, v in k_.items() if k not in ("token", "permission")} for k_ in state["keys"]]})
     if not identifier and method == "POST":
         if payload.get("permission") not in ("full_access", "sending_access"):
             error(422, "validation_error", "permission is invalid")
         if payload.get("domain_id") and not any(d["id"] == payload["domain_id"] for d in state["domains"]):
             error(422, "validation_error", "domain_id is unknown")
-        created = {"id": new_id(), "name": payload["name"], "created_at": "2026-11-11T08:00:00.000Z", "last_used_at": None, "token": "re_sending%d_testtoken" % (state["n"] + 1)}
+        kind = "full" if payload["permission"] == "full_access" else "sending"
+        created = {"id": new_id(), "name": payload["name"], "created_at": "2026-11-11T08:00:00.000Z", "last_used_at": None,
+                   "token": "re_%s%d_testtoken" % (kind, state["n"] + 1), "permission": payload["permission"]}
         state["keys"].append(created)
         respond(201, {"id": created["id"], "token": created["token"]})
     if method == "DELETE":
