@@ -19,6 +19,7 @@ Contents:
 - `aws/`: Amazon SES sending and receiving, their SNS topics, the inbound bucket and the role `web` and `worker` assume with Google ID tokens (#113), in AWS account `776566309118`. It has its own state in S3, and a person applies it by hand.
 - `modules/`: `service` (Cloud Run service), `job` (Cloud Run job with an optional schedule), `topic` (Pub/Sub topic with a push subscription to the worker) and `queue` (Cloud Tasks).
 - `scripts/check-region`: fails unless every located resource in a `terraform show -json` document is in Singapore. CI runs it on each plan before applying, and `scripts/check-region.test.sh` tests it.
+- `wizards/production-pilot.sh`: walks the repository owner through the human-only production pilot steps of #194, #531, #534, #536, #539, #629, #118 and #622. It only reads, through the product's API with a `read` key and through `gcloud` and `aws` lists; every write is the person's, in the browser or printed for them to run. It records evidence in the git-ignored `infra/wizards/production-pilot.evidence.md` and refuses any section that holds a credential or an email address.
 
 ## Bootstrap
 
@@ -77,7 +78,6 @@ Set these in a pull request, in `environments/production/terraform.tfvars`, whic
   ```
 
 - `oncall_contacts_ready`: set to `true` once `infra/wizards/oncall-contacts.sh` has stored `ONCALL_CONTACTS`.
-- `infra/wizards/production-pilot.sh`: walks through the human-only production setup and live verification steps (#194, #531, #534, #536, #539, #113, #629, #118, #622), checks each step's precondition live before prompting, skips unbuilt routes naming their blocking ticket, and captures redacted evidence into `infra/wizards/production-pilot.evidence.md`.
 
 ## Pilot archive
 
