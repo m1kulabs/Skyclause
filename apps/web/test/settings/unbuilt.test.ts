@@ -7,8 +7,7 @@ const panels = (scope: string, sections: string[]) =>
 
 export const expectedOwners: Record<string, string[]> = {
   'a-keys-ui': [...panels('account', ['ai-keys', 'api-keys']), ...panels('organisation', ['ai-keys', 'api-keys'])],
-  'd-public-project-page': panels('project', ['public']),
-  'd-org-live': ['apps/web/features/org-live/index.tsx']
+  'd-public-project-page': panels('project', ['public'])
 }
 
 test('check:unbuilt reports every settings panel and shared part under its spec owner', () => {
