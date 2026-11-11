@@ -1,11 +1,12 @@
 // The #116 crawl: every built page, per role, in dark, light and high contrast at the project's size, at 375 px,
-// at 320 px (200% zoom) and under reduced motion. One failure lists route, role, theme, size and rule.
+// at 320 px (200% zoom) and under reduced motion, from the OS and from the account. One failure lists route, role,
+// theme, size and rule.
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { inspectPage, motionFindings, type Finding } from './checks'
-import { KNOWN_GAPS } from './known-gaps'
+import { sortFindings } from './known-gaps'
 import { sessions, signedOut, type Role, type Session } from './roles'
 import { builtRoutes, type CrawlRoute } from './routes'
-import { redirectsToAccount, visit } from './visit'
+import { hasSession, redirectsToAccount, visit } from './visit'
 import { onboardingOperations } from '../../features/onboarding/operations'
 import { AUTH_REAUTH_DIALOG_SELECTOR, isAuthRoute } from '../../features/sign-in/model'
 import { sourceOperations } from '../../features/sources/operations'
@@ -15,7 +16,16 @@ import { stubApi } from '../harness'
 import { prepareCrawl } from '../project-ui/fixtures'
 
 const PLANTED_FAILURE = '/quality-planted/unlabelled-input'
+const PLANTED_MOTION = '/quality-planted/motion'
+const ACCOUNT_MOTION = 'dark, account reduced motion'
 const PUBLIC_GROUPS = new Set(['marketing', 'public'])
+/** Pages that read in an effect: inspected once a read has landed (content, empty state or error), never loading. */
+const READY: Record<string, string> = {
+  '/[org]/projects': ':is(h1, [data-slot="empty"], [data-slot="alert"])',
+  '/[org]/analysis': ':is(.analysis-muted, .analysis-error)',
+  '/[org]/settings/members':
+    ':is(#members-table-heading, [data-slot="empty"], [data-slot="alert"]), h1:has-text("Page not found")'
+}
 const PROJECT_UI_ROUTES = new Set([
   '/[org]/[project]',
   '/[org]/[project]/settings',
@@ -96,6 +106,25 @@ async function stubDynamicPage(page: Page, route: CrawlRoute) {
 
   await stubApi(page, 'listProjects', { data: [CRAWL_PROJECT], next_cursor: null }, { registry: onboardingOperations })
   await stubApi(page, 'listProjectSources', { data: [], next_cursor: null }, { registry: sourceOperations })
+}
+
+/**
+ * Turns on the account's reduced motion (#99): saved through the API for a real session; for the `asPage` fixtures,
+ * which have no Better Auth session, the test cookie RequestRootLayout reads in its place.
+ */
+async function reduceMotionOnAccount(page: Page, realSession: boolean) {
+  const origin = new URL(page.url()).origin
+  if (!realSession) {
+    await page
+      .context()
+      .addCookies([{ name: 'skyclause-test-appearance', value: JSON.stringify({ motion: 'reduce' }), url: origin }])
+    return
+  }
+  const saved = await page.request.patch(`${origin}/api/me/preferences`, {
+    headers: { Origin: origin },
+    data: { reduced_motion: true }
+  })
+  expect(saved.status(), 'PATCH /api/me/preferences saves reduced motion').toBe(200)
 }
 
 interface Located extends Finding {
@@ -189,6 +218,26 @@ async function crawl(
       ...(await motionFindings(page))
     ]
     found.push(...findings.map((finding) => ({ ...finding, theme: 'dark, reduced motion', size: 'project size' })))
+    // SET-2: reduced motion on the account overrides an OS that allows motion. Marketing and public pages follow the
+    // viewer's OS instead (DESIGN themes, LND-5), and only a role with an account has the setting.
+    if (hasSession(session.role) && !(route.group && PUBLIC_GROUPS.has(route.group))) {
+      await page.emulateMedia({ reducedMotion: 'no-preference' })
+      await reduceMotionOnAccount(page, org !== null)
+      const visited = await visit(page, concreteRoute, session.role, readySelector, org?.slug)
+      const applied = await page.evaluate(
+        () =>
+          document.documentElement.dataset.motion === 'reduce' &&
+          !matchMedia('(prefers-reduced-motion: reduce)').matches
+      )
+      const findings = [
+        ...visited,
+        ...(applied
+          ? []
+          : [{ check: 'account-motion', detail: 'the account’s reduced motion, not the OS, must set data-motion' }]),
+        ...(await motionFindings(page))
+      ]
+      found.push(...findings.map((finding) => ({ ...finding, theme: ACCOUNT_MOTION, size: 'project size' })))
+    }
   } else {
     note(info, 'JavaScript off', 'axe and reduced motion need page scripts; they run in the JavaScript projects')
   }
@@ -223,6 +272,11 @@ for (const discovered of builtRoutes()) {
         route.dynamic && !route.params && !PROJECT_UI_ROUTES.has(route.path) && route.path !== '/[org]',
         `${route.path} needs param fixtures with stubApi bodies (#95)`
       )
+      // Expected to fail until the page 404s for non-members; then it passes, which fails, so this line goes.
+      test.fail(
+        route.path === '/[org]/analysis' && (session.role === 'share-link reviewer' || session.role === 'signed out'),
+        'the organisation roll-up renders for non-members instead of 404 (#596)'
+      )
       const dashboard = route.path === '/[org]'
       const visitRoute = dashboard ? { ...route, path: '/test-org', dynamic: false } : route
       const dashboardRoles: Record<Role, 'owner' | 'admin' | 'approver' | 'editor' | 'viewer' | 'guest' | null> = {
@@ -248,7 +302,11 @@ for (const discovered of builtRoutes()) {
           ? route.path.endsWith('/calls')
             ? '[data-calls-ready="true"] [data-call]'
             : '[data-calls-ready="true"] h1'
-          : undefined
+          : route.path === PLANTED_MOTION
+            ? '[data-planted-motion]'
+            : jsOn
+              ? READY[route.path]
+              : undefined
       )
 
       if (route.path === PLANTED_FAILURE) {
@@ -260,19 +318,28 @@ for (const discovered of builtRoutes()) {
         return
       }
 
-      const gaps = KNOWN_GAPS.filter((gap) => gap.route === route.path)
-      const open = findings.filter((finding) => !gaps.some((gap) => gap.check === finding.check))
-      for (const gap of gaps) {
-        if (findings.some((finding) => finding.check === gap.check)) {
-          note(info, 'known gap', `${gap.check} on ${gap.route}: ${gap.why} (#${gap.issue})`)
-        } else if (jsOn) {
-          open.push({
+      const plantedMotion = route.path === PLANTED_MOTION
+      if (plantedMotion) {
+        // The planted animation honours the OS and ignores the account setting, so only the account pass fails it.
+        const motion = findings.filter((finding) => finding.check === 'reduced-motion')
+        expect(motion.map((finding) => finding.theme)).toEqual(jsOn && hasSession(session.role) ? [ACCOUNT_MOTION] : [])
+      }
+
+      const { open, seen, stale } = sortFindings(
+        findings.filter((finding) => !(plantedMotion && finding.check === 'reduced-motion')),
+        { route: route.path, role: session.role, project: info.project.name }
+      )
+      for (const gap of seen) note(info, 'known gap', `${gap.check} on ${gap.route}: ${gap.why} (#${gap.issue})`)
+      // Without JavaScript there is no axe, so only the JavaScript projects can call an entry stale.
+      if (jsOn) {
+        open.push(
+          ...stale.map((gap) => ({
             check: 'known-gaps',
-            detail: `${gap.check} no longer fails here; remove its entry`,
+            detail: `${gap.check} ${gap.detail} no longer fails here; remove its entry`,
             theme: '-',
             size: '-'
-          })
-        }
+          }))
+        )
       }
       if (open.length) throw new Error(report(route, session, open))
     })

@@ -159,6 +159,8 @@ test.describe('HOST_MODE=multi', () => {
         APP_ENV: 'test',
         IP_HASH_KEY: 'test-only-ip-hash-key-for-playwright-runs',
         EMAIL_HASH_KEY: 'test-only-email-hash-key-for-playwright-runs',
+        // The CSP checks include a planted page on the marketing host.
+        PLANTED_ROUTES: '1',
         HOST_MODE: 'multi',
         MARKETING_ORIGIN: 'https://skyclause.m1ku.tech',
         APP_ORIGIN: 'https://app.skyclause.m1ku.tech',

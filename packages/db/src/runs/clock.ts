@@ -13,7 +13,8 @@ export interface LocalClock {
   minutes: number
 }
 
-const clockOf = (at: Date, zone: unknown) => {
+/** `at` on the clock of `zone`, a zone name or column, as SQL expressions. */
+export const clockOf = (at: Date, zone: unknown) => {
   const local = sql`(${at.toISOString()}::timestamptz AT TIME ZONE ${zone})`
   return {
     date: sql<string>`to_char(${local}, 'YYYY-MM-DD')`,

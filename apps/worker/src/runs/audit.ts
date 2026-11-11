@@ -1,11 +1,11 @@
 import type { RegisterAuditCheck } from '@skyclause/contracts'
 import { bundle, crossing, member, projectGate, runsServing, type Tx } from '@skyclause/db'
 import { and, asc, eq, gte, inArray, lte } from 'drizzle-orm'
+import { registerAuditCheck } from '../auditor/registry'
 import { startsRun } from './start-rule'
 
 // #151, SIG-12's 5-minute case (platform: noticed at the next batch, D45): a crossing that met the start rule with no
-// bundle 5 minutes later. `b-auditor` (#132) notifies once per open key and once on recovery. Registered once #132
-// replaces `registerAuditCheck`'s placeholder, which would throw at worker start.
+// bundle 5 minutes later. `b-auditor` (#132) notifies once per open key and once on recovery. Registered with it below.
 
 const GRACE_MS = 5 * 60_000
 /** A crossing a day old no longer needs a bundle; its finding closes then. */
@@ -66,3 +66,5 @@ export const crossingWithoutBundle: Parameters<RegisterAuditCheck>[0] = {
     return findings
   }
 }
+
+registerAuditCheck(crossingWithoutBundle)
