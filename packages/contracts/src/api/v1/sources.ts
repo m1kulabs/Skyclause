@@ -18,7 +18,18 @@ const ProjectSource = Source.extend({
   state: SourceState.nullable(),
   latest_reading: Reading.nullable(),
   age_s: z.number().int().nonnegative().nullable(),
-  recent_errors: z.array(Poll)
+  recent_errors: z.array(Poll),
+  // #173 needs the camera's current probation count and agreement beside its source state.
+  probation: z
+    .object({
+      source_id: z.string(),
+      probation: z.boolean(),
+      labeller_ids: z.array(z.string()),
+      n: z.number().int().nonnegative(),
+      obscured_frames: z.number().int().nonnegative(),
+      agreement: z.number().min(0).max(1).nullable()
+    })
+    .optional()
 })
 export const PackPrerequisitesProblem = Problem.extend({ missing: z.array(SourceRole) })
 export const packPrerequisitesResponse = {
