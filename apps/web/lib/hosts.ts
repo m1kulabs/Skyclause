@@ -10,6 +10,8 @@ export interface HostConfig {
   mode: 'single' | 'multi'
   /** Each surface's `*_ORIGIN` host, such as `app.skyclause.m1ku.tech`. */
   hosts: Partial<Record<Surface, string>>
+  /** PLANTED_ROUTES=1: the test build serves its `planted` pages. Production has none, so those paths are no route. */
+  planted: boolean
 }
 
 const ORIGIN_VARS: Record<Surface, string> = {
@@ -28,7 +30,7 @@ export function hostConfig(env: Record<string, string | undefined>): HostConfig 
     const origin = env[name]
     if (origin) hosts[surface] = new URL(origin).host
   }
-  return { mode: env.HOST_MODE === 'multi' ? 'multi' : 'single', hosts }
+  return { mode: env.HOST_MODE === 'multi' ? 'multi' : 'single', hosts, planted: env.PLANTED_ROUTES === '1' }
 }
 
 const exact =
@@ -71,6 +73,8 @@ const ROUTES: Array<{ group: string; surface: Surface | null; match: (path: stri
   { group: '(embed)', surface: 'embed', match: under('/embed') },
   { group: 'docs', surface: 'docs', match: under('/docs') },
   // Test builds only (PLANTED_ROUTES=1); on the marketing host, where deploy's @smoke run checks production has none.
+  // `routeRequest` answers null for it unless `planted`: with no page of its own, Next would match `/_test/x` to the
+  // app's `/[org]/[project]`, whose notFound() answers 200 once the shell streams (#610). Null is the 404.
   { group: 'planted', surface: 'marketing', match: under('/_test', '/quality-planted') },
   { group: '(marketing)', surface: 'marketing', match: (path) => path === '/' || under('/ms', '/legal')(path) },
   { group: '(public)', surface: 'marketing', match: under('/status', '/p', '/c') },
@@ -90,6 +94,7 @@ export function routeRequest(o: HostConfig & { host: string; pathname: string })
   pathname: string
 } | null {
   const route = classify(o.pathname)
+  if (route.group === 'planted' && !o.planted) return null
   if (o.mode === 'single' || route.surface === null) return { group: route.group, pathname: o.pathname }
   const host = o.host.toLowerCase()
   const surface = (Object.entries(o.hosts) as Array<[Surface, string]>).find(([, value]) => value === host)?.[0]
