@@ -47,9 +47,13 @@ export function verifyResendWebhook(secret: string, headers: Headers, body: stri
   if (!matches) throw new WebhookVerificationError('no signature matches')
 }
 
-/** A Resend webhook's body: its event `type`, such as `email.delivered`, and `data`, which the type's handler reads. */
+/**
+ * A Resend webhook's body: its event `type`, such as `email.delivered`, `created_at`, when Resend made the event (RFC
+ * 3339, unchecked), and `data`, which the type's handler reads.
+ */
 export interface ResendWebhook {
   type: string
+  created_at?: unknown
   data: unknown
 }
 

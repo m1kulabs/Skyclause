@@ -256,22 +256,21 @@ describe('retries on the batch sweep (D45)', () => {
 
 /**
  * Resend's documented `type` webhook for `providerMessageId` (its email ID) to `address`, tagged `category`, as the
- * body Resend posts to /resend/webhook.
+ * body Resend posts to /resend/webhook; `createdAt` replaces the envelope's `created_at`.
  */
 function resendBody(
   type: string,
   providerMessageId: string,
   address: string,
-  o: { category?: string; data?: Record<string, unknown> } = {}
+  o: { category?: string; data?: Record<string, unknown>; createdAt?: string } = {}
 ) {
-  return JSON.stringify(
-    resendEvent(type, {
-      email_id: providerMessageId,
-      to: [address],
-      tags: { category: o.category ?? 'call' },
-      ...o.data
-    })
-  )
+  const event = resendEvent(type, {
+    email_id: providerMessageId,
+    to: [address],
+    tags: { category: o.category ?? 'call' },
+    ...o.data
+  })
+  return JSON.stringify('createdAt' in o ? { ...event, created_at: o.createdAt } : event)
 }
 const permanentBounce = (providerMessageId: string, address: string, o: { category?: string } = {}) =>
   resendBody('email.bounced', providerMessageId, address, o)
@@ -421,15 +420,52 @@ describe('POST /resend/webhook (NTC-10)', () => {
   })
 
   test('an event whose notice isn’t recorded yet answers 503 so Resend retries; mail with no outbox row is acknowledged', async () => {
-    const { webhook } = senderPart(null)
+    const { webhook, clock } = senderPart(null)
     const delivered = (category: string) =>
-      resendBody('email.delivered', crypto.randomUUID(), 'x@example.test', { category })
+      resendBody('email.delivered', crypto.randomUUID(), 'x@example.test', {
+        category,
+        createdAt: clock.now.toISOString()
+      })
     expect((await webhook(delivered('call'))).status).toBe(503)
     for (const category of ['magic_link', 'member-invitation', 'auditor']) {
       expect((await webhook(delivered(category))).status, category).toBe(200)
     }
     const untagged = resendEvent('email.delivered', { email_id: crypto.randomUUID(), tags: undefined })
     expect((await webhook(JSON.stringify(untagged))).status).toBe(200)
+  })
+
+  test('a notice’s event still unmatched 10 minutes after Resend made it is logged once and acknowledged', async () => {
+    // The row may be gone for good (an alert settled after leaving `queued`, a purged organisation), and Resend
+    // disables the one endpoint every event shares after repeated failures.
+    const { webhook, clock } = senderPart(null)
+    const providerId = crypto.randomUUID()
+    const madeAgo = (ms: number) => new Date(clock.now.getTime() - ms).toISOString()
+    const delivered = (createdAt: string | undefined) =>
+      resendBody('email.delivered', providerId, 'x@example.test', { category: 'call', createdAt })
+    const lines: Array<Record<string, unknown>> = []
+    const spies = (['log', 'error'] as const).map((level) =>
+      vi.spyOn(console, level).mockImplementation((line: unknown) => void lines.push(JSON.parse(String(line))))
+    )
+    try {
+      expect((await webhook(delivered(madeAgo(10 * 60_000 - 1)))).status).toBe(503)
+      expect(lines).toEqual([])
+      // A missing or unreadable `created_at` counts as old.
+      for (const createdAt of [madeAgo(10 * 60_000), undefined, 'yesterday']) {
+        expect((await webhook(delivered(createdAt))).status, String(createdAt)).toBe(200)
+      }
+    } finally {
+      for (const spy of spies) spy.mockRestore()
+    }
+    expect(lines).toEqual(
+      Array(3).fill(
+        expect.objectContaining({
+          severity: 'WARNING',
+          message: 'delivery event for a notice never recorded',
+          provider_message_id: providerId,
+          category: 'call'
+        })
+      )
+    )
   })
 
   test('a call signed with another secret, altered or stale answers 401 and writes nothing', async () => {

@@ -24,6 +24,9 @@ export type NoticesDeps = SenderDeps
 /** How far back the sweep looks for calls to settle: a settle that failed after a call's last send is retried. */
 const SETTLE_LOOKBACK_MS = 24 * 60 * 60_000
 
+/** How long after Resend made a notice's event its missing row is waited for; Resend retries after 5 s and 5 min. */
+const RETRY_UNMATCHED_MS = 10 * 60_000
+
 export function createNoticesPart(deps: NoticesDeps): WorkerPart {
   const deliveryEvents = systemPrincipal('delivery-events')
   const sender = systemPrincipal('sender')
@@ -45,11 +48,22 @@ export function createNoticesPart(deps: NoticesDeps): WorkerPart {
     return true
   }
 
-  // A notice's event can beat its send's record: 503 makes Resend retry it. Anything else is acknowledged with 200, the
-  // only answer Resend counts as delivered.
+  // A notice's event can beat its send's record: 503 makes Resend retry it while the event is young. A row still missing
+  // after that may be gone for good (an alert settled after leaving `queued`, a purged organisation), and Resend would
+  // retry for about 27 hours on the one endpoint every event shares, which it disables after repeated failures, so the
+  // event is logged and acknowledged. Anything else is acknowledged with 200, the only answer Resend counts as delivered.
   const onDeliveryEvent: ResendHandler = async (webhook) => {
     const event = deliveryEvent(webhook)
-    if (event && !(await apply(event))) return new Response('send not recorded yet', { status: 503 })
+    if (!event || (await apply(event))) return new Response(null, { status: 200 })
+    // A missing or unreadable `created_at` is NaN, which no comparison passes: it counts as old.
+    const createdAt = typeof webhook.created_at === 'string' ? Date.parse(webhook.created_at) : NaN
+    if (deps.now().getTime() - createdAt < RETRY_UNMATCHED_MS) {
+      return new Response('send not recorded yet', { status: 503 })
+    }
+    log('WARNING', 'delivery event for a notice never recorded', {
+      provider_message_id: event.providerMessageId,
+      category: event.category
+    })
     return new Response(null, { status: 200 })
   }
 
