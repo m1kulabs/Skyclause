@@ -16,8 +16,8 @@ import { evidenceSpanOf } from './span'
 
 // #159 c-evidence, email intake (D7, LED-3): `{org}.{project}@{INBOUND_DOMAIN}` becomes an evidence request, while
 // the global `inbound_email` flag is on. Only a confirmed subscriber of the project (the reply goes by email, after
-// approval) or a member's account address (the reply stays in-app) may ask, with SPF or DKIM passing. Anything else is
-// dropped with an audit row and no reply.
+// approval) or a member's account address (the reply stays in-app) may ask, with DMARC passing: SPF or DKIM alone can
+// pass for a domain other than the From address's. Anything else is dropped with an audit row and no reply.
 
 const JOB = 'evidence-inbound'
 const CONSUMER = 'evidence'
@@ -62,7 +62,7 @@ export async function handleEvidenceMail(m: InboundMessage, o: EvidenceInboundOp
         })
         log('INFO', 'inbound evidence mail dropped', { messageId: m.messageId, reason })
       }
-      if (m.verdicts.spf !== 'PASS' && m.verdicts.dkim !== 'PASS') return drop('verdicts')
+      if (m.verdicts.dmarc !== 'PASS') return drop('verdicts')
       const sender = await inboundSender(tx, { orgId: target.orgId, projectId: target.projectId, address: m.from })
       if (!sender) return drop('unknown_sender')
       const line = m.text.split(/\r?\n/).find((text) => text.trim() !== '') ?? m.subject

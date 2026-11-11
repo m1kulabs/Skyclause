@@ -51,15 +51,16 @@ function parseReply(text: string): { kind: CrowdReplyKind; shiftTo: string | nul
 
 /** Why a reply whose token verified isn't logged, or null when it can be. */
 function dropReason(m: InboundMessage, sender: string, readable: boolean): ReplyDropReason | null {
-  if (m.verdicts.spf !== 'PASS' && m.verdicts.dkim !== 'PASS') return 'verdict'
+  if (m.verdicts.dmarc !== 'PASS') return 'verdict'
   if (normalizeEmail(m.from) !== normalizeEmail(sender)) return 'sender'
   return readable ? null : 'unparsed'
 }
 
 /**
- * Logs the reply in the token's organisation (CAL-17), at Resend's receipt time. Mail needs SPF or DKIM `PASS`, a
- * sender equal to the token's subscriber and a readable first line; otherwise it is dropped with an audit row and the
- * token keeps its one reply. A redelivery of the received email (`handleOnce`) does nothing; once a reply is logged,
+ * Logs the reply in the token's organisation (CAL-17), at Resend's receipt time. Mail needs DMARC `PASS` (SPF or DKIM
+ * aligned with the From domain, so a sender's own domain without a DMARC record is dropped), a sender equal to the
+ * token's subscriber and a readable first line; otherwise it is dropped with an audit row and the token keeps its one
+ * reply. A redelivery of the received email (`handleOnce`) does nothing; once a reply is logged,
  * its spent token also refuses a redelivery, and a second mail on a spent token. Mail for another domain than
  * `INBOUND_DOMAIN`, with `inbound_email` or `pack_crowd` off, or with a token that doesn't verify writes nothing.
  */

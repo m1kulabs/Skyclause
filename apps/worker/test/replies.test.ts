@@ -194,16 +194,19 @@ describe('crowd-replies: a reply to a Crowd notice’s Reply-To', () => {
     expect((await replies()).find((row) => row.kind === 'shift')!.shift_to).toEqual(new Date('2026-11-19T23:05:00Z'))
   })
 
-  test('mail passing neither SPF nor DKIM, or from another address, is dropped, and its token keeps its reply', async () => {
+  test('mail without a DMARC pass, or from another address, is dropped, and its token keeps its reply', async () => {
     const token = await replyToken()
-    const unauthenticated = mail(token, { verdicts: { spf: 'FAIL', dkim: 'NONE', dmarc: 'PASS' } })
+    // A forged From (SPF passes for the sending server's own domain, unaligned), and a domain with no DMARC record.
+    const forged = mail(token, { verdicts: { spf: 'PASS', dkim: 'FAIL', dmarc: 'FAIL' } })
+    const noPolicy = mail(token, { verdicts: { spf: 'PASS', dkim: 'PASS', dmarc: 'NONE' } })
     const forwarded = mail(token, { from: 'someone.else@example.com' })
-    await handle(unauthenticated)
-    await handle(forwarded)
+    for (const message of [forged, noPolicy, forwarded]) await handle(message)
 
-    expect((await drops(unauthenticated.messageId)).map((row) => [row.action, row.after])).toEqual([
-      ['crowd_reply.dropped', { dropped: 'verdict' }]
-    ])
+    for (const message of [forged, noPolicy]) {
+      expect((await drops(message.messageId)).map((row) => [row.action, row.after])).toEqual([
+        ['crowd_reply.dropped', { dropped: 'verdict' }]
+      ])
+    }
     expect((await drops(forwarded.messageId)).map((row) => [row.action, row.after])).toEqual([
       ['crowd_reply.dropped', { dropped: 'sender' }]
     ])
@@ -212,10 +215,9 @@ describe('crowd-replies: a reply to a Crowd notice’s Reply-To', () => {
     expect((await replies()).map((row) => row.kind)).toEqual(['keep'])
   })
 
-  test('SPF or DKIM passing alone is enough, whatever DMARC says', async () => {
-    await handle(mail(await replyToken(), { text: 'keep', verdicts: { spf: 'PASS', dkim: 'NONE', dmarc: 'FAIL' } }))
-    await handle(mail(await replyToken(), { text: 'shuttle', verdicts: { spf: 'FAIL', dkim: 'PASS', dmarc: 'NONE' } }))
-    expect((await replies()).map((row) => row.kind)).toEqual(['keep', 'shuttle'])
+  test('DMARC passing is enough, whatever SPF and DKIM say', async () => {
+    await handle(mail(await replyToken(), { text: 'keep', verdicts: { spf: 'FAIL', dkim: 'NONE', dmarc: 'PASS' } }))
+    expect((await replies()).map((row) => row.kind)).toEqual(['keep'])
   })
 
   test('a bad token, another domain, a reply after the window ends, or inbound_email or pack_crowd off writes nothing', async () => {

@@ -111,12 +111,10 @@ describe('with inbound_email on', () => {
     expect(notices).toEqual([])
   })
 
-  test('SPF or DKIM passing alone is enough, whatever DMARC says', async () => {
-    const spfOnly = mail({ verdicts: { spf: 'PASS', dkim: 'NONE', dmarc: 'FAIL' } })
-    const dkimOnly = mail({ verdicts: { spf: 'FAIL', dkim: 'PASS', dmarc: 'NONE' } })
-    for (const message of [spfOnly, dkimOnly]) await handleEvidenceMail(message, options)
-    const ids = (await requests()).map((r) => r.messageId)
-    expect(ids).toEqual(expect.arrayContaining([spfOnly.messageId, dkimOnly.messageId]))
+  test('DMARC passing is enough, whatever SPF and DKIM say', async () => {
+    const message = mail({ verdicts: { spf: 'FAIL', dkim: 'NONE', dmarc: 'PASS' } })
+    await handleEvidenceMail(message, options)
+    expect((await requests()).map((r) => r.messageId)).toContain(message.messageId)
   })
 
   test('a member’s account address gets the reply in-app at once', async () => {
@@ -135,8 +133,11 @@ describe('with inbound_email on', () => {
 
   test.each<[string, Partial<InboundMessage>, string]>([
     ['an unknown sender', { from: 'stranger@example.test' }, 'unknown_sender'],
-    ['SPF and DKIM both failing', { verdicts: { ...PASS, spf: 'FAIL', dkim: 'NONE' } }, 'verdicts'],
-    ['SPF and DKIM both unknown', { verdicts: { spf: 'NONE', dkim: 'NONE', dmarc: 'NONE' } }, 'verdicts'],
+    // A forged From: SPF passes for the sending server's own domain, which DMARC finds unaligned.
+    ['SPF passing with DMARC failing', { verdicts: { spf: 'PASS', dkim: 'FAIL', dmarc: 'FAIL' } }, 'verdicts'],
+    // A sender domain that publishes no DMARC record.
+    ['SPF and DKIM passing with no DMARC result', { verdicts: { ...PASS, dmarc: 'NONE' } }, 'verdicts'],
+    ['no result at all', { verdicts: { spf: 'NONE', dkim: 'NONE', dmarc: 'NONE' } }, 'verdicts'],
     ['a run request, pilot-only (CAL-1)', { text: 'call for tomorrow' }, 'no_span'],
     ['a first line naming no span', { text: 'hello\nevidence for 2 Nov 14:00–16:30' }, 'no_span']
   ])('%s is dropped with one audit row and no request', async (_name, overrides, reason) => {

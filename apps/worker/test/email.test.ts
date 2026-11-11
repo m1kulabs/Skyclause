@@ -155,22 +155,24 @@ describe('email.received reaches the worker’s consumers', () => {
     ).toEqual([{ requester_kind: 'subscriber', via: 'email', span_from: new Date('2026-11-02T06:00:00Z') }])
   })
 
-  test('mail passing neither SPF nor DKIM is dropped and audited by both consumers', async () => {
-    const id = randomUUID()
-    const to = [evidenceAddress(), await replyAddress()]
-    t.resend.emails[id] = email({
-      id,
-      to,
-      text: 'keep\n',
-      authentication: { spf: 'fail', dkim: 'gray', dmarc: 'fail' }
-    })
+  test('mail without a DMARC pass is dropped and audited by both consumers, whatever SPF says', async () => {
+    // A server on its own domain passes SPF for its envelope while `From` names the subscriber; DMARC fails, since
+    // neither SPF nor DKIM is aligned with the From domain. Older mail has no `authentication` at all.
+    for (const authentication of [{ spf: 'pass', dkim: 'fail', dmarc: 'fail' }, null]) {
+      const id = randomUUID()
+      const to = [evidenceAddress(), await replyAddress()]
+      t.resend.emails[id] = email({ id, to, text: 'keep\n', authentication })
 
-    expect((await t.post(id, to)).status).toBe(200)
+      expect((await t.post(id, to)).status).toBe(200)
 
-    expect(await sql(`SELECT action, after FROM audit_event WHERE target_id = $1 ORDER BY action`, [id])).toEqual([
-      { action: 'crowd_reply.dropped', after: { dropped: 'verdict' } },
-      { action: 'evidence_request.dropped', after: { reason: 'verdicts' } }
-    ])
-    expect(await sql(`SELECT 1 FROM evidence_request WHERE message_id = $1`, [id])).toEqual([])
+      expect(
+        await sql(`SELECT action, after FROM audit_event WHERE target_id = $1 ORDER BY action`, [id]),
+        JSON.stringify(authentication)
+      ).toEqual([
+        { action: 'crowd_reply.dropped', after: { dropped: 'verdict' } },
+        { action: 'evidence_request.dropped', after: { reason: 'verdicts' } }
+      ])
+      expect(await sql(`SELECT 1 FROM evidence_request WHERE message_id = $1`, [id])).toEqual([])
+    }
   })
 })
