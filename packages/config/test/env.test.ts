@@ -48,15 +48,16 @@ describe('loadEnv', () => {
     expect(loadEnv('worker', { ...worker, PORT: '9000' }).PORT).toBe(9000)
   })
 
-  // Set from infra/aws's app_config output once gate 4B is done; until then none is set.
+  // Resend sending: the key is a Secret Manager secret (shaped like one, not real), the senders Terraform's.
   const email = {
-    SES_REGION: 'ap-southeast-2',
-    SES_CONFIGURATION_SET: 'skyclause-production',
+    RESEND_API_KEY: 're_test_sending_only',
     EMAIL_FROM_AUTH: 'Skyclause <sign-in@notices.skyclause.m1ku.tech>',
-    EMAIL_FROM_NOTICES: 'Skyclause <notices@notices.skyclause.m1ku.tech>',
-    AWS_ROLE_ARN: 'arn:aws:iam::776566309118:role/skyclause-production-email'
+    EMAIL_FROM_NOTICES: 'Skyclause <notices@notices.skyclause.m1ku.tech>'
   }
+  // The worker's SES delivery events and inbound mail, from infra/aws's app_config.
   const inbound = {
+    SES_REGION: 'ap-southeast-2',
+    AWS_ROLE_ARN: 'arn:aws:iam::776566309118:role/skyclause-production-email',
     SES_EVENTS_SNS_TOPIC_ARN: 'arn:aws:sns:ap-southeast-2:776566309118:skyclause-production-ses-events',
     INBOUND_DOMAIN: 'in.skyclause.m1ku.tech',
     INBOUND_BUCKET: 'skyclause-production-inbound-776566309118',
@@ -70,7 +71,8 @@ describe('loadEnv', () => {
     expect(loadEnv('worker', { ...worker, ...links })).toMatchObject(links)
   })
 
-  test('the email variables are optional until gate 4B, then read together', () => {
+  test('the sending and receiving variables are optional, and each group is read together', () => {
+    expect(loadEnv('worker', worker)).not.toHaveProperty('RESEND_API_KEY')
     expect(loadEnv('worker', worker)).not.toHaveProperty('SES_REGION')
     expect(loadEnv('worker', { ...worker, ...email, ...inbound })).toEqual({
       ...worker,
@@ -78,20 +80,36 @@ describe('loadEnv', () => {
       ...inbound,
       PORT: 8080
     })
+    expect(loadEnv('worker', { ...worker, ...email })).toEqual({ ...worker, ...email, PORT: 8080 })
+    expect(loadEnv('worker', { ...worker, ...inbound })).toEqual({ ...worker, ...inbound, PORT: 8080 })
     expect(loadEnv('web', { ...web, ...email })).toEqual({ ...web, ...email })
   })
 
-  test('a partial email set fails the start naming what is missing', () => {
-    const { AWS_ROLE_ARN: _, ...partial } = email
-    expect(() => loadEnv('web', { ...web, ...partial })).toThrow(/AWS_ROLE_ARN/)
-    expect(() => loadEnv('worker', { ...worker, ...email })).toThrow(/INBOUND_SNS_TOPIC_ARN/)
+  test('sending needs no SES variable, and web takes none of them', () => {
+    const ses = { SES_REGION: 'ap-southeast-2', SES_CONFIGURATION_SET: 'skyclause-production' }
+    expect(loadEnv('web', { ...web, ...email, ...ses, AWS_ROLE_ARN: inbound.AWS_ROLE_ARN })).toEqual({
+      ...web,
+      ...email
+    })
+    expect(loadEnv('worker', { ...worker, ...email, ...inbound, ...ses })).not.toHaveProperty('SES_CONFIGURATION_SET')
   })
 
-  test('refuses an AWS_ROLE_ARN or topic that is not an ARN', () => {
-    expect(() => loadEnv('web', { ...web, ...email, AWS_ROLE_ARN: 'skyclause-production-email' })).toThrow(
+  test('a partial email set fails the start naming what is missing', () => {
+    const { RESEND_API_KEY: _, ...noKey } = email
+    expect(() => loadEnv('web', { ...web, ...noKey })).toThrow(/RESEND_API_KEY/)
+    expect(() => loadEnv('worker', { ...worker, ...noKey, ...inbound })).toThrow(/RESEND_API_KEY/)
+    const { INBOUND_SNS_TOPIC_ARN: __, ...partial } = inbound
+    expect(() => loadEnv('worker', { ...worker, ...email, ...partial })).toThrow(/INBOUND_SNS_TOPIC_ARN/)
+  })
+
+  test('refuses a Resend key that is not one, and an AWS_ROLE_ARN or topic that is not an ARN', () => {
+    for (const RESEND_API_KEY of ['skyclause-production', 're_test_sending_only\n', 'whsec_test']) {
+      expect(() => loadEnv('web', { ...web, ...email, RESEND_API_KEY })).toThrow(/RESEND_API_KEY/)
+    }
+    expect(() => loadEnv('worker', { ...worker, ...inbound, AWS_ROLE_ARN: 'skyclause-production-email' })).toThrow(
       /AWS_ROLE_ARN/
     )
-    expect(() => loadEnv('worker', { ...worker, ...email, ...inbound, INBOUND_SNS_TOPIC_ARN: 'inbound' })).toThrow(
+    expect(() => loadEnv('worker', { ...worker, ...inbound, INBOUND_SNS_TOPIC_ARN: 'inbound' })).toThrow(
       /INBOUND_SNS_TOPIC_ARN/
     )
   })

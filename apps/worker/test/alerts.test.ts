@@ -283,14 +283,14 @@ describe('CAL-18 and CAL-10: Needs review alerts everyone on duty', () => {
     ).toEqual(['failed'])
   })
 
-  test('an SES rejection, such as the D48 sandbox refusing an unverified address, fails the email notice', async () => {
+  test('a permanent refusal, such as Resend refusing an unverified sending domain, fails the email notice', async () => {
     const o = await org()
     const a = await account(o.id)
     const made = await reviewBundle(o.id)
-    const rejected = new EmailSendError('SES SendEmail failed: MessageRejected (HTTP 400)', {
-      status: 400,
-      code: 'MessageRejected',
-      cause: new Error('Email address is not verified.')
+    const rejected = new EmailSendError('Resend send failed: validation_error (HTTP 403)', {
+      status: 403,
+      code: 'validation_error',
+      cause: new Error('The `domain.com` domain is not verified. Please, add and verify your domain.')
     })
     const d = doubles({ clock: at('2026-11-02T07:10:01Z'), onDuty: [a], email: async () => Promise.reject(rejected) })
     await dispatchEvent(createAlertsPart(d.deps).events!, made.eventId)
@@ -300,6 +300,24 @@ describe('CAL-18 and CAL-10: Needs review alerts everyone on duty', () => {
       )
     ).toEqual(['failed'])
     expect(await rows('SELECT 1 FROM bundle_alert WHERE bundle_id = $1', [made.bundleId])).toEqual([])
+  })
+
+  test('a refusal the transport calls retryable, a 4xx included, leaves the email notice queued', async () => {
+    const o = await org()
+    const a = await account(o.id)
+    const made = await reviewBundle(o.id)
+    const inFlight = new EmailSendError('Resend send failed: concurrent_idempotent_requests (HTTP 409)', {
+      status: 409,
+      code: 'concurrent_idempotent_requests',
+      cause: new Error('There is another request in progress with the same idempotency key.')
+    })
+    const d = doubles({ clock: at('2026-11-02T07:10:01Z'), onDuty: [a], email: async () => Promise.reject(inFlight) })
+    await dispatchEvent(createAlertsPart(d.deps).events!, made.eventId)
+    expect(
+      (await rows<{ status: string }>('SELECT status FROM notice WHERE project_id = $1', [made.projectId])).map(
+        (n) => n.status
+      )
+    ).toEqual(['queued'])
   })
 })
 

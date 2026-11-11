@@ -66,7 +66,8 @@ export function createAuditor(
     email ??= emailTransportFromEnv('worker') ?? undefined
     if (!email) throw new Error('auditor email transport is not configured')
     const transition = recovered ? 'recovered' : 'opened'
-    // SES tags this key; it does not deduplicate sends. A rollback after partial delivery can resend on retry.
+    // Resend deduplicates the same message under this key for 24 hours, so a retry after partial delivery within a day
+    // doesn't mail a recipient twice.
     for (const to of recipients)
       await email.send({
         to,
