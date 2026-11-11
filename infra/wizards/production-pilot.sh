@@ -215,7 +215,6 @@ API_ORIGIN="${API_ORIGIN:-https://api.skyclause.m1ku.tech}"
 DOCS_ORIGIN="${DOCS_ORIGIN:-https://docs.skyclause.m1ku.tech}"
 EVIDENCE_FILE="${EVIDENCE_FILE:-infra/wizards/production-pilot.evidence.md}"
 SLUG_PATTERN='^[a-z0-9]+(-[a-z0-9]+)*$'
-ADDRESS_PATTERN='^[^@[:space:],\"\\]+@[^@[:space:],\"\\]+\.[^@[:space:],\"\\]+$'
 API_KEY_PATTERN='^skc_[A-Za-z0-9_-]{8,}$'
 
 API_STATUS=""
@@ -300,7 +299,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 banner "Production pilot checks and human steps (#194, #531, #534, #536, #539, #113, #629, #118, #622)"
 
 stage "Check tools, hosts and on-call contacts (#118, #629)"
-for tool in curl python3 gcloud aws bun; do
+for tool in curl python3 gcloud aws; do
   command -v "$tool" >/dev/null 2>&1 || { warn "$tool is missing: install it and re-run"; exit 1; }
 done
 for origin in "$MARKETING_ORIGIN" "$APP_ORIGIN" "$API_ORIGIN"; do
@@ -314,11 +313,8 @@ say "Checking ONCALL_CONTACTS in Secret Manager ($PROJECT) for #118 and #629..."
 oncall_versions="$(gcloud secrets versions list ONCALL_CONTACTS --project="$PROJECT" --filter=state=ENABLED --format='value(name)' 2>/dev/null | wc -l | tr -d ' ')"
 if (( oncall_versions == 0 )); then
   warn "ONCALL_CONTACTS has no enabled version yet (#118, #629)."
-  note "infra/wizards/oncall-contacts.sh owns storing ONCALL_CONTACTS and verifying the SMS channels."
-  if confirm "Run ./infra/wizards/oncall-contacts.sh now?"; then
-    ./infra/wizards/oncall-contacts.sh
-    oncall_versions="$(gcloud secrets versions list ONCALL_CONTACTS --project="$PROJECT" --filter=state=ENABLED --format='value(name)' 2>/dev/null | wc -l | tr -d ' ')"
-  fi
+  note "Run ./infra/wizards/oncall-contacts.sh yourself (about 10 minutes): it stores the contacts, and a second"
+  note "run after oncall_contacts_ready is applied verifies the SMS numbers. Then re-run this wizard."
 fi
 if (( oncall_versions > 0 )); then
   oncall_list="$(gcloud secrets versions list ONCALL_CONTACTS --project="$PROJECT" --filter=state=ENABLED --format='table(name,state,createTime)')"
@@ -352,34 +348,10 @@ note "#622 failing migrate rehearsal is tracked separately against a throwaway N
 SKIPPED+=("#622 end-to-end deploy on GitHub Actions (waits on GitHub Actions billing)")
 pause
 
-stage "Sign in and check magic-link delivery (#113, #194)"
+stage "Sign in (#194)"
 open_url "$APP_ORIGIN/sign-in"
-step "Sign in to $APP_ORIGIN with Google (Continue with Google)."
-note "Magic-link email sign-in (#113) waits on #623 (SES sandbox IAM policy in infra/aws) and a team"
-note "address verified in SES via ./infra/wizards/staff-and-ses.sh."
-if confirm "Test #113 magic-link sign-in delivery to a verified team address now?"; then
-  ask_valid ask_secret TEAM_MAGIC_EMAIL "SES-verified team email address (hidden):" "$ADDRESS_PATTERN" "Enter a valid email address."
-  magic_payload="$( TEAM_MAGIC_EMAIL="$TEAM_MAGIC_EMAIL" python3 -c 'import json, os; print(json.dumps({"email": os.environ["TEAM_MAGIC_EMAIL"], "callbackURL": "/api/auth/continue"}))' )"
-  unset TEAM_MAGIC_EMAIL
-  magic_status="$(printf '%s' "$magic_payload" | curl -sS -o /dev/null -w '%{http_code}' -X POST \
-    -H "Origin: $APP_ORIGIN" -H 'Content-Type: application/json' --data-binary @- \
-    "$APP_ORIGIN/api/auth/sign-in/magic-link")"
-  unset magic_payload
-  if [[ "$magic_status" == "200" ]]; then
-    if confirm "Did the magic link arrive in the team inbox?"; then
-      record_evidence "#113" "Production magic link reaches a team inbox" \
-        "curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'Origin: $APP_ORIGIN' -H 'Content-Type: application/json' -d '{\"email\":\"<redacted-email>\",\"callbackURL\":\"/api/auth/continue\"}' $APP_ORIGIN/api/auth/sign-in/magic-link" \
-        "HTTP 200 (delivery confirmed in team inbox)"
-    else
-      SKIPPED+=("#113 confirm magic link in team inbox")
-    fi
-  else
-    warn "POST $APP_ORIGIN/api/auth/sign-in/magic-link answered HTTP $magic_status: waits on #623 (SES sandbox IAM fix in infra/aws)."
-    SKIPPED+=("#113 production magic link reaches a team inbox (HTTP $magic_status; waits on #623)")
-  fi
-else
-  SKIPPED+=("#113 production magic link reaches a team inbox (waits on #623)")
-fi
+step "Sign in to $APP_ORIGIN with Google, or with a link sent to your email address."
+note "While SES is in the sandbox, a sign-in link reaches only an address verified with ./infra/wizards/staff-and-ses.sh."
 pause "Press Enter once you are signed in to $APP_ORIGIN in the browser"
 
 stage "Create the organisation and pilot project (#194)"
@@ -537,7 +509,7 @@ pause
 
 stage "Add webhook receiver and check ICS feed (#194, #534)"
 api_get "/v1/webhooks"
-if [[ "$API_STATUS" == "501" ]] || ! bun scripts/check-unbuilt.ts --owner e-webhooks >/dev/null 2>&1; then
+if [[ "$API_STATUS" == "501" ]]; then
   warn "Signed webhooks are not built yet: waits on #193 (e-webhooks)."
   SKIPPED+=("#194 add webhook to an HTTPS receiver (not built yet, waits on #193)")
 else
@@ -574,34 +546,31 @@ else
 fi
 pause
 
-stage "Confirm ses_events, check notices & replies, and Malay sign-off (#536, #539, #113, #194)"
-say "Checking AWS SNS subscription on $SES_EVENTS_TOPIC_ARN (#536, #113)..."
-if [[ "$(aws sts get-caller-identity --query Account --output text 2>/dev/null || true)" == "$AWS_ACCOUNT" ]]; then
-  ses_sub_arn="$(aws sns list-subscriptions-by-topic --region "$SES_REGION" --topic-arn "$SES_EVENTS_TOPIC_ARN" \
-    --query 'Subscriptions[0].SubscriptionArn' --output text 2>/dev/null || true)"
-  if [[ "$ses_sub_arn" == "PendingConfirmation" || -z "$ses_sub_arn" || "$ses_sub_arn" == "None" ]]; then
-    warn "ses_events subscription is $ses_sub_arn."
-    if confirm "Run terraform -chdir=infra/aws apply -replace=aws_sns_topic_subscription.ses_events now?"; then
-      terraform -chdir=infra/aws apply -replace=aws_sns_topic_subscription.ses_events
-      ses_sub_arn="$(aws sns list-subscriptions-by-topic --region "$SES_REGION" --topic-arn "$SES_EVENTS_TOPIC_ARN" \
-        --query 'Subscriptions[0].SubscriptionArn' --output text 2>/dev/null || true)"
-    fi
-  fi
-  if [[ "$ses_sub_arn" == arn:aws:sns:* ]]; then
-    ses_subs="$(aws sns list-subscriptions-by-topic --region "$SES_REGION" --topic-arn "$SES_EVENTS_TOPIC_ARN" \
-      --query 'Subscriptions[*].[Protocol,Endpoint,SubscriptionArn]' --output text)"
-    record_evidence "#536 / #113" "Confirmed ses_events SNS subscription" \
-      "aws sns list-subscriptions-by-topic --region $SES_REGION --topic-arn $SES_EVENTS_TOPIC_ARN" \
-      "$ses_subs"
-  else
-    SKIPPED+=("#536 / #113 confirm aws_sns_topic_subscription.ses_events in infra/aws")
-  fi
+stage "Check ses_events, notices & replies, and Malay sign-off (#536, #539, #194)"
+# Read-only: SES delivery events (#536's NTC-1) reach the worker only through a confirmed subscription.
+say "Checking the ses_events SNS subscription on $SES_EVENTS_TOPIC_ARN (#536)..."
+aws_account="$(aws sts get-caller-identity --query Account --output text)" || aws_account=""
+if [[ "$aws_account" != "$AWS_ACCOUNT" ]]; then
+  warn "The AWS CLI isn't signed in to account $AWS_ACCOUNT${aws_account:+ (it is in $aws_account)}, so the subscription wasn't read."
+  SKIPPED+=("#536 check the ses_events subscription: sign in to AWS account $AWS_ACCOUNT and re-run")
+elif ! ses_subs="$(aws sns list-subscriptions-by-topic --region "$SES_REGION" --topic-arn "$SES_EVENTS_TOPIC_ARN" \
+  --query 'Subscriptions[*].[Protocol,Endpoint,SubscriptionArn]' --output text)"; then
+  warn "Couldn't read the ses_events subscription: AWS's error is above."
+  SKIPPED+=("#536 check the ses_events subscription (the read failed)")
+elif [[ "$ses_subs" == *arn:aws:sns:* && "$ses_subs" != *PendingConfirmation* ]]; then
+  printf '  %s✓ confirmed%s %s\n' "$GREEN" "$RESET" "$ses_subs"
 else
-  warn "AWS CLI is not signed in to account $AWS_ACCOUNT; skipping live ses_events SNS check."
-  SKIPPED+=("#536 / #113 check aws_sns_topic_subscription.ses_events (sign in to AWS $AWS_ACCOUNT)")
+  warn "The ses_events subscription isn't confirmed: ${ses_subs:-the topic has no subscription}."
+  note "infra/README.md 'AWS email', 'Check the subscriptions': the worker confirms it once /ses/events is live. If it"
+  note "still reads PendingConfirmation, a person with AWS access sends the confirmation again from an up-to-date"
+  note "main checkout. That apply covers all of infra/aws, so read its plan first and approve it only if it replaces"
+  note "this one subscription and changes nothing else:"
+  note "  terraform -chdir=infra/aws init"
+  note "  terraform -chdir=infra/aws apply -replace=aws_sns_topic_subscription.ses_events"
+  SKIPPED+=("#536 confirm the ses_events subscription by hand (infra/README.md 'AWS email')")
 fi
 
-if ! bun scripts/check-unbuilt.ts --owner b-evaluator >/dev/null 2>&1 || (( ${sent_calls:-0} == 0 )); then
+if (( ${sent_calls:-0} == 0 )); then
   warn "Live notice delivery (#536), bundle approval (#194) and 'keep' reply (#539) wait on #133 (b-evaluator), #138, #139 and #623."
   SKIPPED+=("#536 real notice to confirmed subscriber and Approval-to-provider SLI (waits on #133, #138, #139, #623)")
   SKIPPED+=("#194 approve first real crossing and run @production specs (waits on #133, #138, #139, #193)")
