@@ -13,6 +13,7 @@ Contents:
 1. [Auditor and measurement](#auditor-and-measurement)
 1. [Integration and dependencies](#integration-and-dependencies)
 1. [Acceptance conflicts and rulings](#acceptance-conflicts-and-rulings)
+1. [Implementation capability boundaries](#implementation-capability-boundaries)
 
 ## Evidence and intent
 
@@ -106,3 +107,15 @@ Schema work appends after the latest merged migration prefix. #135 currently own
 - **Timing precision:** preserve the current engine's strict stale inequality, not an assumed 10:00.000 transition. A contract change to exactly 10 minutes belongs in a separately reviewed engine adjustment, not silently in the worker.
 - **Historical context:** current mutable bindings/windows and today's metadata do not prove past project configuration. `recordedAt` stays unavailable; exact stored-run replay uses its frozen inputs and registry. Cost: arbitrary-time sheet replay remains gated on #136.
 - **Production readiness:** missing providers and inactive auditor are explicit partial acceptance. Merge of tested core code must not auto-close #133 as fully live-complete; list remaining acceptance under #557 or the existing owning issues before any closure decision.
+
+## Implementation capability boundaries
+
+Current registry declarations and instant history use the same pack capabilities. Sky supports JPS, APIMS, MET warnings/forecasts and camera inputs; Crowd supports ridership, GTFS, venue listings and Pi inputs. Required and optional cross-pack dependencies are rejected during actual API checking and checked-publication loading. They must not be accepted and then evaluated as missing bindings. Exact historical registry lookups retain their complete archived definitions and original hash; they are not filtered into a new hash. Supporting cross-pack rules later requires dependency-aware provider composition.
+
+Camera indicator metadata belongs to the implemented clause-engine reducer. Production composes that metadata with the real network adapters through a metadata-only provider seam. It does not invent a camera fetch adapter. Current or historical camera eligibility without authoritative ownership/settings provenance remains explicitly unavailable; a present-day toggle cannot enable old evidence.
+
+Reading receipt remains the availability cutoff and latency basis. Optional genuine reading-to-poll identity associates an observed reading with its source-matched successful normal physical capture. Error supersession, stale gaps and the first/second fresh-capture decision use that physical chronology, so a fifteen-minute database batch does not turn an older success into recovery after a later error. A catch-up response containing several missed frames is one capture. Legacy pure callers without poll identity retain their documented receipt-clock behavior; an unproved association cannot clear a known error.
+
+Worker orchestration leaves successful-pack reevaluation work pending until source-state transitions and recipient delivery have durably succeeded. Completion is conditional on the original evaluation timestamp so it cannot erase a newer request. A process restart repairs current source health even when no future deadline or new poll exists. This does not promise retention of an intermediate resolution that was never globally recorded before later evidence arrived; already recorded transitions retain their immutable order and recipients.
+
+The verified labelled Nov2 batch/deadline replay contains twelve semantic window crossings. At15:05:01MYT the input becomes No call; the required15:15MYT commute-disruption crossing follows that state. D45 freshness transitions are preserved instead of coercing exactly one total Normal-to-disruption crossing. Real cloud behavior, usability, notifications and latency evidence remain unverified in#670; the configured pack-sheet-pointer follow-up is#669.
