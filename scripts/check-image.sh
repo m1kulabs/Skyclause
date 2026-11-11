@@ -39,8 +39,10 @@ serves() {
 
 # Throwaway hash keys: web needs both to start (IP_HASH_KEY #93, EMAIL_HASH_KEY #157), the worker EMAIL_HASH_KEY (#158);
 # production mounts the real ones.
+# web also refuses to start without BETTER_AUTH_SECRET (#418): a random one, for this run only (#603).
+auth_secret=$(openssl rand -hex 32)
 serves web -e APP_ENV=production -e IP_HASH_KEY=check-image-only-ip-hash-key-0000000000 \
-  -e EMAIL_HASH_KEY=check-image-only-email-hash-key-0000000
+  -e BETTER_AUTH_SECRET="$auth_secret" -e EMAIL_HASH_KEY=check-image-only-email-hash-key-0000000
 serves worker -e APP_ENV=production -e WORKER_URL=https://worker.example.test \
   -e WORKER_INVOKER_SA=skyclause-invoker@skyclause.iam.gserviceaccount.com \
   -e EMAIL_HASH_KEY=check-image-only-email-hash-key-0000000
