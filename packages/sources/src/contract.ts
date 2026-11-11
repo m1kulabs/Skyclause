@@ -142,7 +142,7 @@ export const SOURCE_METRICS = {
   jps_rain: { rain_5m_mm: { unit: 'mm', value_json: z.null() } },
   met_warning: { warning: { unit: null, value_json: WarningValue } },
   met_forecast: { forecast_day: { unit: null, value_json: ForecastDayValue } },
-  apims: { api: { unit: 'API', value_json: z.object({ class: z.string(), param: z.string() }) } },
+  apims: { api: { unit: 'API', value_json: z.object({ class: z.string().optional(), param: z.string() }) } },
   rapidrail_od: {
     exits_daily: { unit: 'exits', value_json: ExitsDailyValue },
     metadata: { unit: null, value_json: MetadataValue }
@@ -182,6 +182,20 @@ export type ReadingInput<K extends SourceKind = SourceKind> = {
   }[keyof MetricContracts[Kind]]
 }[K]
 
+export interface RequiredObservation {
+  metric: string
+  observedAt: string
+}
+export interface SourceFetchStep<Raw> {
+  key: string
+  fetch(ctx: PollContext): Promise<Raw>
+}
+export interface GroupedBackfill<Raw> {
+  groupByMeta: string
+  requiredObservations(now: string): RequiredObservation[]
+  steps(sources: Source[], anchor: string): SourceFetchStep<Raw>[]
+}
+
 export interface SourceAdapter<Raw> {
   kind: SourceKind
   apiFamily?: ApiFamily
@@ -189,6 +203,9 @@ export interface SourceAdapter<Raw> {
   freshness: 'observed' | 'polled'
   licence: Licence
   batch: 'all_bound' | 'per_source'
+  // Absent retains whole-group validation and failure semantics.
+  parseMode?: 'per_source'
+  groupedBackfill?: GroupedBackfill<Raw>
   // Opt-in physical request budget and pure decoding of the current slot's captured bytes.
   latestSlot?: {
     seconds: number

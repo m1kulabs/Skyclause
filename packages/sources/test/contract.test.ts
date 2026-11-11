@@ -2,7 +2,15 @@ import { describe, expect, expectTypeOf, test } from 'vitest'
 import { z } from 'zod'
 import { ReadingsUpdated, SOURCE_METRICS } from '../src/contract'
 import * as sources from '../src'
-import type { PollContext, ReadingInput, Source, SourceAdapter } from '../src/contract'
+import type {
+  GroupedBackfill,
+  PollContext,
+  ReadingInput,
+  RequiredObservation,
+  Source,
+  SourceAdapter,
+  SourceFetchStep
+} from '../src/contract'
 
 test('each source kind declares exactly its documented metrics and units', () => {
   expect(
@@ -31,6 +39,8 @@ describe('value_json contracts', () => {
   test('APIMS preserves published class and parameter text', () => {
     const schema = SOURCE_METRICS.apims.api.value_json
     expect(schema.parse({ class: 'Moderate', param: 'PM2.5' })).toEqual({ class: 'Moderate', param: 'PM2.5' })
+    expect(schema.parse({ param: '**' })).toEqual({ param: '**' })
+    expect(schema.safeParse({ class: null, param: '**' }).success).toBe(false)
     expect(schema.safeParse({ class: 'Moderate' }).success).toBe(false)
     expect(schema.safeParse({ class: 62, param: 'PM2.5' }).success).toBe(false)
   })
@@ -108,6 +118,20 @@ test('adapter types take all bound sources and expose the Spec §1 additions', (
   expectTypeOf<SourceAdapter<unknown>['licence']>().toEqualTypeOf<{ id: string | null; label: string }>()
   expectTypeOf<PollContext['openCrowdPeriods']>().toBeFunction()
   expectTypeOf<SourceAdapter<unknown>['discover']>().toBeNullable()
+  expectTypeOf<SourceAdapter<unknown>['parseMode']>().toEqualTypeOf<'per_source' | undefined>()
+  expectTypeOf<SourceAdapter<unknown>['groupedBackfill']>().toEqualTypeOf<GroupedBackfill<unknown> | undefined>()
+  expectTypeOf<GroupedBackfill<unknown>['requiredObservations']>().parameter(0).toBeString()
+  expectTypeOf<GroupedBackfill<unknown>['requiredObservations']>().returns.toEqualTypeOf<RequiredObservation[]>()
+  expectTypeOf<GroupedBackfill<unknown>['steps']>().returns.toEqualTypeOf<SourceFetchStep<unknown>[]>()
+  expectTypeOf<SourceFetchStep<unknown>['fetch']>().parameter(0).toEqualTypeOf<PollContext>()
+  expectTypeOf<SourceAdapter<unknown>['latestSlot']>().toEqualTypeOf<
+    | {
+        seconds: number
+        decode(body: Uint8Array): unknown
+        discover?(body: Uint8Array): sources.DiscoveredSource[]
+      }
+    | undefined
+  >()
 })
 
 test('adapter lookup exposes registered JPS and rejects unknown kinds without a runtime fallback', () => {
