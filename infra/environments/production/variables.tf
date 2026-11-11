@@ -73,13 +73,13 @@ variable "supplied_secrets" {
   validation {
     condition = alltrue([for name in var.supplied_secrets : contains([
       "GOOGLE_CLIENT_SECRET",
-      "RESEND_API_KEY",
       "RESEND_RECEIVING_API_KEY",
+      "RESEND_SENDING_API_KEY",
       "RESEND_WEBHOOK_SECRET",
       "SKYCLAUSE_STAFF_EMAILS",
       "TURNSTILE_SECRET_KEY",
     ], name)])
-    error_message = "supplied_secrets takes GOOGLE_CLIENT_SECRET, RESEND_API_KEY, RESEND_RECEIVING_API_KEY, RESEND_WEBHOOK_SECRET, SKYCLAUSE_STAFF_EMAILS or TURNSTILE_SECRET_KEY."
+    error_message = "supplied_secrets takes GOOGLE_CLIENT_SECRET, RESEND_RECEIVING_API_KEY, RESEND_SENDING_API_KEY, RESEND_WEBHOOK_SECRET, SKYCLAUSE_STAFF_EMAILS or TURNSTILE_SECRET_KEY."
   }
 }
 

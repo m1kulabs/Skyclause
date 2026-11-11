@@ -37,7 +37,7 @@ const SPF = 'v=spf1 include:amazonses.com ~all'
 const EVENTS = ['email.delivered', 'email.bounced', 'email.complained', 'email.suppressed', 'email.received']
 const TFVARS = 'supplied_secrets = ["GOOGLE_CLIENT_SECRET", "SKYCLAUSE_STAFF_EMAILS", "TURNSTILE_SECRET_KEY"]\n'
 const ALL_SUPPLIED =
-  'supplied_secrets = ["GOOGLE_CLIENT_SECRET", "RESEND_API_KEY", "RESEND_RECEIVING_API_KEY", "RESEND_WEBHOOK_SECRET", "SKYCLAUSE_STAFF_EMAILS", "TURNSTILE_SECRET_KEY"]'
+  'supplied_secrets = ["GOOGLE_CLIENT_SECRET", "RESEND_RECEIVING_API_KEY", "RESEND_SENDING_API_KEY", "RESEND_WEBHOOK_SECRET", "SKYCLAUSE_STAFF_EMAILS", "TURNSTILE_SECRET_KEY"]'
 
 // What Cloudflare holds before the wizard runs: the SES records, each entered through the record script.
 const ses = (type: string, name: string, content: string, priority?: number) => ({
@@ -98,7 +98,7 @@ function sandbox(overrides: Partial<Behaviour> = {}) {
     sendingRecords: 'mx-txt',
     receivingMx: 'inbound-smtp.ap-northeast-1.amazonaws.com',
     verifyAfter: 1,
-    secrets: ['RESEND_API_KEY', 'RESEND_RECEIVING_API_KEY', 'RESEND_WEBHOOK_SECRET'],
+    secrets: ['RESEND_SENDING_API_KEY', 'RESEND_RECEIVING_API_KEY', 'RESEND_WEBHOOK_SECRET'],
     ...overrides
   }
   const dir = plantRepo({
@@ -263,7 +263,7 @@ describe('infra/wizards/resend.sh static invariants', () => {
 
     // Keys never persist to ENV_FILE and never reach argv; the other clouds and Terraform are never run.
     expect(stagesSection).not.toMatch(/write_env/)
-    expect(wizard).not.toMatch(/curl[^\n]*(FULL_ACCESS_KEY|RESEND_API_KEY)/)
+    expect(wizard).not.toMatch(/curl[^\n]*(FULL_ACCESS_KEY|RESEND_SENDING_API_KEY)/)
     expect(wizard).not.toMatch(/^\s*(terraform|gh|aws)\s/m)
     // Names, values and priorities of DNS records come from Resend's answer at run time.
     expect(wizard).not.toMatch(/amazonses|amazonaws|feedback-smtp|inbound-smtp|resend\._domainkey|rmta\.net/)
@@ -384,7 +384,7 @@ describe('infra/wizards/resend.sh on an account with nothing set up', () => {
 
   test('stores the three secrets in Secret Manager and prints the supplied_secrets line to commit', () => {
     const state = box.resend()
-    expect(box.secret('RESEND_API_KEY')).toEqual([state.keys[0].token])
+    expect(box.secret('RESEND_SENDING_API_KEY')).toEqual([state.keys[0].token])
     expect(box.secret('RESEND_WEBHOOK_SECRET')).toEqual([state.webhooks[0].signing_secret])
     expect(box.secret('RESEND_RECEIVING_API_KEY')).toEqual([FULL_KEY])
     expect(box.secret('SKYCLAUSE_STAFF_EMAILS')).toEqual(['unrelated'])
@@ -407,7 +407,7 @@ describe('infra/wizards/resend.sh on an account with nothing set up', () => {
     expect(again.cloudflareCalls.filter((call) => !call.startsWith('GET '))).toEqual([])
     expect(again.bunCalls.filter((call) => !call.includes('--dry-run'))).toEqual([])
     expect(again.gcloudCalls.filter((call) => call.startsWith('secrets versions add'))).toEqual([])
-    expect(box.secret('RESEND_API_KEY')).toHaveLength(1)
+    expect(box.secret('RESEND_SENDING_API_KEY')).toHaveLength(1)
     expect(box.secret('RESEND_WEBHOOK_SECRET')).toHaveLength(1)
     expect(box.secret('RESEND_RECEIVING_API_KEY')).toHaveLength(1)
     expect(again.output).toContain('Every record is already in Cloudflare.')
@@ -477,7 +477,7 @@ describe('infra/wizards/resend.sh stops before it writes anything it should not'
   })
 
   test('stops at the start when Terraform has not made a secret, before any call to Resend', () => {
-    const box = sandbox({ secrets: ['RESEND_API_KEY', 'RESEND_WEBHOOK_SECRET'] })
+    const box = sandbox({ secrets: ['RESEND_SENDING_API_KEY', 'RESEND_WEBHOOK_SECRET'] })
     const run = box.run({ input: [PAUSE, PAUSE] })
 
     expect(run.result.status).toBe(1)
@@ -551,7 +551,7 @@ describe('infra/wizards/resend.sh stops before it writes anything it should not'
     expect(run.result.status).toBe(1)
     expect(run.output).toContain('Nothing written.')
     expect(box.cloudflareWrites()).toEqual([])
-    expect(box.secret('RESEND_API_KEY')).toEqual([])
+    expect(box.secret('RESEND_SENDING_API_KEY')).toEqual([])
   })
 
   test('stops on a failed verification, before the webhook, the key and the secrets', () => {
@@ -605,7 +605,7 @@ describe('infra/wizards/resend.sh finds what exists', () => {
       webhooks: [hook({ events: ['email.sent'], status: 'disabled' })],
       keys: [key]
     })
-    box.seedSecret('RESEND_API_KEY', 're_sending_existing')
+    box.seedSecret('RESEND_SENDING_API_KEY', 're_sending_existing')
     const run = box.run({ input: [...verified, PAUSE] })
 
     expect(run.result.status, run.output).toBe(0)
@@ -615,7 +615,7 @@ describe('infra/wizards/resend.sh finds what exists', () => {
     })
     expect(writesOf(run.requests).some((call) => call.path === '/webhooks' && call.method === 'POST')).toBe(false)
     expect(box.secret('RESEND_WEBHOOK_SECRET')).toEqual(['whsec_existing'])
-    expect(box.secret('RESEND_API_KEY')).toEqual(['re_sending_existing'])
+    expect(box.secret('RESEND_SENDING_API_KEY')).toEqual(['re_sending_existing'])
   })
 
   test('keeps a key it cannot recover the token of, until it is told to replace it', () => {
@@ -624,9 +624,9 @@ describe('infra/wizards/resend.sh finds what exists', () => {
     const declined = box.run({ input: [...verified, 'n'] })
 
     expect(declined.result.status).toBe(1)
-    expect(declined.output).toContain("RESEND_API_KEY doesn't hold a live token")
+    expect(declined.output).toContain("RESEND_SENDING_API_KEY doesn't hold a live token")
     expect(writesOf(declined.requests).filter((call) => call.path.startsWith('/api-keys'))).toEqual([])
-    expect(box.secret('RESEND_API_KEY')).toEqual([])
+    expect(box.secret('RESEND_SENDING_API_KEY')).toEqual([])
 
     // The first run already put the DMARC record right, so this one asks nothing in the DNS stage.
     const accepted = box.run({ input: [...nothingToDo.slice(0, 7), 'y', PAUSE] })
@@ -636,13 +636,13 @@ describe('infra/wizards/resend.sh finds what exists', () => {
       'DELETE /api-keys/key-1',
       'POST /api-keys'
     ])
-    expect(box.secret('RESEND_API_KEY')).toHaveLength(1)
+    expect(box.secret('RESEND_SENDING_API_KEY')).toHaveLength(1)
   })
 
   test('asks before replacing a secret whose value differs, and leaves it when told no', () => {
     const box = sandbox()
     box.seedResend({ domains: verifiedDomains, webhooks: [hook()], keys: [key] })
-    box.seedSecret('RESEND_API_KEY', 're_sending_existing')
+    box.seedSecret('RESEND_SENDING_API_KEY', 're_sending_existing')
     box.seedSecret('RESEND_WEBHOOK_SECRET', 'whsec_stale')
     const run = box.run({ input: [...verified, 'n'] })
 
@@ -655,7 +655,7 @@ describe('infra/wizards/resend.sh finds what exists', () => {
   test('replaces a stored sending key that Resend no longer accepts', () => {
     const box = sandbox()
     box.seedResend({ domains: verifiedDomains, webhooks: [hook()], keys: [key] })
-    box.seedSecret('RESEND_API_KEY', 're_sending_deleted_long_ago')
+    box.seedSecret('RESEND_SENDING_API_KEY', 're_sending_deleted_long_ago')
     const run = box.run({ input: [...verified, 'y', PAUSE] })
 
     expect(run.result.status, run.output).toBe(0)
@@ -663,7 +663,7 @@ describe('infra/wizards/resend.sh finds what exists', () => {
       'DELETE /api-keys/key-1',
       'POST /api-keys'
     ])
-    expect(box.secret('RESEND_API_KEY')).toHaveLength(2)
+    expect(box.secret('RESEND_SENDING_API_KEY')).toHaveLength(2)
   })
 
   test('asks whose account it is when the account already holds other domains', () => {

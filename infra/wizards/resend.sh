@@ -226,7 +226,7 @@ SENDING_KEY_NAME=skyclause-production-sending
 # DMARC for notices. keeps p=quarantine but loses its rua: the SES rule that caught the reports goes, and nothing read them.
 DMARC_NAME="_dmarc.$SENDING_DOMAIN"
 DMARC_VALUE='v=DMARC1; p=quarantine'
-SECRETS=(RESEND_API_KEY RESEND_RECEIVING_API_KEY RESEND_WEBHOOK_SECRET)
+SECRETS=(RESEND_RECEIVING_API_KEY RESEND_SENDING_API_KEY RESEND_WEBHOOK_SECRET)
 TFVARS_FILE="${TFVARS_FILE:-infra/environments/production/terraform.tfvars}"
 KEY_PATTERN='^re_[A-Za-z0-9_-]{8,}$'
 
@@ -549,24 +549,24 @@ unset hook_secret
 pause
 
 stage "Resend: the sending-only API key"
-say "RESEND_API_KEY is a key that can only send, and only from $SENDING_DOMAIN: web and worker hold it."
+say "RESEND_SENDING_API_KEY is a key that can only send, and only from $SENDING_DOMAIN: web and worker hold it."
 resend_list /api-keys
 key_id="$(json "next((k['id'] for k in d['data'] if k['name'] == a[0]), '')" "$SENDING_KEY_NAME")"
-stored_key="$(gcloud secrets versions access latest --secret=RESEND_API_KEY --project="$PROJECT" 2>/dev/null || true)"
+stored_key="$(gcloud secrets versions access latest --secret=RESEND_SENDING_API_KEY --project="$PROJECT" 2>/dev/null || true)"
 if [[ -n "$stored_key" ]] && sending_key_is_live "$stored_key"; then
-  printf '  %s✓ unchanged%s RESEND_API_KEY holds a live sending-only key\n' "$GREEN" "$RESET"
+  printf '  %s✓ unchanged%s RESEND_SENDING_API_KEY holds a live sending-only key\n' "$GREEN" "$RESET"
 else
   if [[ -n "$key_id" ]]; then
-    warn "Resend has a key named $SENDING_KEY_NAME, but RESEND_API_KEY doesn't hold a live token for it, and Resend shows a token only once."
+    warn "Resend has a key named $SENDING_KEY_NAME, but RESEND_SENDING_API_KEY doesn't hold a live token for it, and Resend shows a token only once."
     confirm "Delete the key in Resend and make a new one?" || { say "Nothing changed."; exit 1; }
     resend_ok DELETE "/api-keys/$key_id"
   elif [[ -n "$stored_key" ]]; then
-    warn "RESEND_API_KEY holds a token Resend doesn't accept, and Resend has no key named $SENDING_KEY_NAME."
+    warn "RESEND_SENDING_API_KEY holds a token Resend doesn't accept, and Resend has no key named $SENDING_KEY_NAME."
     confirm "Make a new key and add it as a new version?" || { say "Nothing changed."; exit 1; }
   fi
   resend_ok POST /api-keys "{\"name\":\"$SENDING_KEY_NAME\",\"permission\":\"sending_access\",\"domain_id\":\"$SENDING_ID\"}"
   sending_key="$(json "d['token']")"
-  add_version RESEND_API_KEY "$sending_key"
+  add_version RESEND_SENDING_API_KEY "$sending_key"
   unset sending_key
 fi
 unset stored_key
