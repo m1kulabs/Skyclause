@@ -108,7 +108,8 @@ function problemBody(value: unknown, status: number, statusText: string): ApiPro
 function defaultBaseUrl(path: string): string | undefined {
   if (path.startsWith('/api/')) {
     if (typeof window !== 'undefined') return window.location.origin
-    if (process.env.HOST_MODE === 'multi') return process.env.APP_ORIGIN
+    if (process.env.HOST_MODE === 'multi') return process.env.APP_ORIGIN ?? 'https://app.skyclause.m1ku.tech'
+    return process.env.APP_ORIGIN ?? process.env.API_ORIGIN ?? 'https://app.skyclause.m1ku.tech'
   }
   if (typeof window !== 'undefined') return process.env.NEXT_PUBLIC_API_ORIGIN
   return process.env.API_ORIGIN ?? 'https://api.skyclause.m1ku.tech'

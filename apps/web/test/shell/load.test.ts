@@ -58,6 +58,39 @@ test('loads only real memberships and their scoped projects, following cursors a
   expect(fetcher).toHaveBeenCalledTimes(4)
 })
 
+test('routes /api/me reads to APP_ORIGIN and /v1/projects to API_ORIGIN in multi-host mode', async () => {
+  vi.stubEnv('HOST_MODE', 'multi')
+  vi.stubEnv('APP_ORIGIN', 'https://app.skyclause.m1ku.tech')
+  vi.stubEnv('API_ORIGIN', 'https://api.skyclause.m1ku.tech')
+  const fetcher = vi.fn(async (input: string | URL) => {
+    const url = new URL(input)
+    if (url.pathname === '/api/me/memberships') {
+      return Response.json({ data: [membership], next_cursor: null })
+    }
+    if (url.pathname === '/api/me/preferences') {
+      return Response.json({
+        theme: 'dark',
+        high_contrast: false,
+        density: 'comfortable',
+        reduced_motion: false,
+        language: 'en',
+        sidebar_collapsed: true
+      })
+    }
+    return Response.json({ data: [project], next_cursor: null })
+  })
+  vi.stubGlobal('fetch', fetcher)
+
+  const data = await loadShellData(new Headers({ cookie: 'session=test' }))
+
+  expect(data).toEqual({ memberships: [membership], projects: [project], sidebarCollapsed: true })
+  expect(fetcher.mock.calls.map(([url]) => String(url)).sort()).toEqual([
+    'https://api.skyclause.m1ku.tech/v1/projects',
+    'https://app.skyclause.m1ku.tech/api/me/memberships',
+    'https://app.skyclause.m1ku.tech/api/me/preferences'
+  ])
+})
+
 test.each([501, 500, 401])('returns empty data when memberships answer %s', async (status) => {
   vi.stubGlobal(
     'fetch',
