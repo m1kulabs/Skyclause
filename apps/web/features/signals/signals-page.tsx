@@ -16,6 +16,7 @@ import {
   readSourceReadings,
   signalsOperations,
   type Project,
+  type EvaluatedSource,
   type ProjectSource,
   type ProjectStrip,
   type SourcePoll,
@@ -39,9 +40,21 @@ type DetailState =
   | { status: 'loading'; sourceId: string }
   | { status: 'error'; sourceId: string }
   | { status: 'ready'; sourceId: string; readings: SourceReading[]; polls: SourcePoll[] }
-type PendingSourceEvent = { sourceId: string; state: InputState; since: string; httpStatus: number; announce: boolean }
+// A timeout has no HTTP status; say so instead of printing "HTTP null".
+const errorAnnouncement = (source: string, status: number | null, locale: Parameters<typeof t>[2]) =>
+  status === null
+    ? t('signals.announcement_error_no_status', { source }, locale)
+    : t('signals.announcement_error', { source, status }, locale)
 
-function inputFor(source: ProjectSource): InputValue {
+type PendingSourceEvent = {
+  sourceId: string
+  state: InputState
+  since: string
+  httpStatus: number | null
+  announce: boolean
+}
+
+function inputFor(source: EvaluatedSource): InputValue {
   const latest = source.latest_reading
   return {
     name: source.name,
@@ -57,7 +70,7 @@ function inputFor(source: ProjectSource): InputValue {
   }
 }
 
-function stateLabel(source: ProjectSource, locale: Locale): string {
+function stateLabel(source: EvaluatedSource, locale: Locale): string {
   if (source.state.state === 'pending' && source.state.pending_until) {
     return t('signals.pending_until', { time: formatTime(source.state.pending_until, locale) }, locale)
   }
@@ -84,7 +97,7 @@ function stateLabel(source: ProjectSource, locale: Locale): string {
   return t(`brand.states.${source.state.state}`, {}, locale)
 }
 
-function latestLabel(source: ProjectSource, strip: ProjectStrip, locale: Locale): string | undefined {
+function latestLabel(source: EvaluatedSource, strip: ProjectStrip, locale: Locale): string | undefined {
   const reading = source.latest_reading
   if (source.kind === 'jps_rain') {
     const input = strip.inputs.find(
@@ -179,7 +192,10 @@ export function SignalsPage({ org, project: projectSlug, locale }: { org: string
   }, [project, refresh, reloadProjectData])
 
   const selectedSource = useMemo(
-    () => data?.sources.find((source) => source.external_id === selectedExternalId) ?? null,
+    () =>
+      data?.sources.find(
+        (source): source is EvaluatedSource => source.external_id === selectedExternalId && source.state !== null
+      ) ?? null,
     [data?.sources, selectedExternalId]
   )
 
@@ -193,13 +209,16 @@ export function SignalsPage({ org, project: projectSlug, locale }: { org: string
       pendingSourceEvents.current.delete(source.id)
       changed = true
       if (pending.announce) {
-        setAnnouncement(
-          t('signals.announcement_error', { source: source.external_id, status: pending.httpStatus }, locale)
-        )
+        setAnnouncement(errorAnnouncement(source.external_id, pending.httpStatus, locale))
       }
       return {
         ...source,
-        state: { ...source.state, state: pending.state, since: pending.since, http_status: pending.httpStatus }
+        state: {
+          pending_until: source.state?.pending_until ?? null,
+          state: pending.state,
+          since: pending.since,
+          http_status: pending.httpStatus
+        }
       }
     })
     if (changed) setData((previous) => (previous ? { ...previous, sources } : previous))
@@ -272,7 +291,7 @@ export function SignalsPage({ org, project: projectSlug, locale }: { org: string
                   ? {
                       ...source,
                       state: {
-                        ...source.state,
+                        pending_until: source.state?.pending_until ?? null,
                         state: item.data.state,
                         since: item.data.since,
                         http_status: item.data.http_status
@@ -283,10 +302,7 @@ export function SignalsPage({ org, project: projectSlug, locale }: { org: string
             }
           })
           if (item.type === 'source.error') {
-            if (sourceName)
-              setAnnouncement(
-                t('signals.announcement_error', { source: sourceName, status: item.data.http_status }, locale)
-              )
+            if (sourceName) setAnnouncement(errorAnnouncement(sourceName, item.data.http_status, locale))
           }
         } else if (item.type === 'poll.recorded') {
           setRefresh((value) => value + 1)
@@ -314,13 +330,16 @@ export function SignalsPage({ org, project: projectSlug, locale }: { org: string
 
   const agedSources = useMemo(
     () =>
-      (data?.sources ?? []).map((source) => ({
-        ...source,
-        age_s: ageAt(source.age_s, data?.readAt ?? clockNow, clockNow)
-      })),
+      (data?.sources ?? [])
+        .filter((source): source is EvaluatedSource => source.state !== null)
+        .map((source) => ({
+          ...source,
+          age_s: ageAt(source.age_s, data?.readAt ?? clockNow, clockNow)
+        })),
     [clockNow, data]
   )
   const orderedSources = useMemo(() => orderSources(agedSources), [agedSources])
+  const unevaluated = useMemo(() => (data?.sources ?? []).filter((source) => source.state === null), [data])
   const errors = useMemo(() => {
     if (!data) return []
     const byId = new Map(data.sources.map((source) => [source.id, source]))
@@ -421,6 +440,11 @@ export function SignalsPage({ org, project: projectSlug, locale }: { org: string
                   })}
                 </tbody>
               </table>
+              {unevaluated.length > 0 && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {t('signals.not_evaluated', { sources: unevaluated.map((source) => source.name).join(', ') }, locale)}
+                </p>
+              )}
             </div>
           ) : (
             <p className="rounded-md border border-border p-4 text-sm text-muted-foreground">

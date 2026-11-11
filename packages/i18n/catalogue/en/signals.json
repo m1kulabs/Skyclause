@@ -58,5 +58,7 @@
   "baseline": "Baseline",
   "copied": "Tail command copied",
   "copy_tail": "Copy tail command",
-  "announcement_error": "New source error for {source}, HTTP {status}"
+  "announcement_error": "New source error for {source}, HTTP {status}",
+  "announcement_error_no_status": "New source error for {source}, no HTTP response",
+  "not_evaluated": "Not evaluated yet: {sources}"
 }
