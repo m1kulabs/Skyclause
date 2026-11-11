@@ -347,3 +347,21 @@ test('a newer response omitting a key does not block an older correction or an u
   expect(found.filter((row) => row.itemKey === 'other').map((row) => row.value)).toEqual([1, 4])
   expect(found.filter((row) => row.itemKey === 'unseen').map((row) => row.value)).toEqual([8])
 })
+
+test('poll receipt uses the actual server clock and remains stable on request replay', async () => {
+  const id = await sourceId()
+  const input = request(id)
+  input.startedAt = new Date('2026-11-01T00:00:00Z')
+  const before = new Date()
+  const first = await store(input)
+  const after = new Date()
+  expect(first[0]!.receivedAt).toBeInstanceOf(Date)
+  expect(first[0]!.receivedAt!.getTime()).toBeGreaterThanOrEqual(before.getTime())
+  expect(first[0]!.receivedAt!.getTime()).toBeLessThanOrEqual(after.getTime())
+  expect(first[0]!.receivedAt).not.toEqual(input.startedAt)
+  expect(first[0]!.receivedAt).not.toEqual(input.sources[0]!.readings[0]!.receivedAt)
+  const replay = await withSystem(system.job, (tx) =>
+    recordSourceRequest(tx, input, () => new Date('2099-01-01T00:00:00Z'))
+  )
+  expect(replay).toEqual(first)
+})

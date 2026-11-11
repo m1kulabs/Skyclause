@@ -8,7 +8,7 @@ export interface PickerSource {
   url: string
   cadence_s: number
   stale_after_s: number
-  licence_id: string
+  licence_id: string | null
   licence_label: string
   latest_reading: {
     id: string

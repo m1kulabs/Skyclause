@@ -31,6 +31,11 @@ export const SOURCE_KINDS = [
   'pi'
 ] as const
 export type SourceKind = (typeof SOURCE_KINDS)[number]
+/** Current evaluator capabilities; cross-pack dependencies require an explicit supported provider contract. */
+export const PACK_SOURCE_KINDS: Record<Pack, readonly SourceKind[]> = {
+  sky: ['jps_rain', 'apims', 'met_warning', 'met_forecast', 'camera'],
+  crowd: ['rapidrail_od', 'gtfs_static', 'gtfs_rt', 'golive', 'wikipedia', 'pi']
+}
 
 export const INDICATOR_NAMES = [
   'site.rain_60m_mm',
@@ -89,7 +94,11 @@ export type Clause = {
   wording: { en?: string | undefined; ms?: string | undefined }
 }
 export type SheetInput = { pack: Pack; clauses: Clause[] }
-export type CheckedSheet = SheetInput & { contentHash: string; registryHash: string }
+export type CheckedSheet = SheetInput & {
+  contentHash: string
+  registryHash: string
+  readonly registryTypes?: Readonly<Record<string, IndicatorDefinition['celType']>>
+}
 export interface CheckIssue {
   clauseKey: string | null
   message: string
@@ -155,6 +164,14 @@ export interface NightInput {
   forecastId: string | null
   state: InputState | ForecastNoCallReason
 }
+export interface WarningObservation {
+  sourceId: string
+  observedAt: Instant
+  receivedAt: Instant
+  validFrom: Instant
+  validTo: Instant | null
+}
+
 export interface IndicatorSnapshot {
   projectId: string
   pack: Pack
@@ -163,6 +180,7 @@ export interface IndicatorSnapshot {
   site: Record<string, IndicatorValue>
   series: Record<string, Array<[Instant, number | null, string]>>
   nights: NightInput[]
+  warningObservations?: Record<string, WarningObservation>
   registryHash: string
   hash: string
 }
@@ -216,11 +234,13 @@ export interface ReadingHistory {
     id: string
     sourceId: string
     startedAt: Instant
+    receivedAt?: Instant
     outcome: 'ok' | 'unchanged' | 'error'
     httpStatus: number | null
   }>
   readings: Array<{
     id: string
+    pollId?: string | null
     sourceId: string
     metric: string
     observedAt: Instant
@@ -230,6 +250,8 @@ export interface ReadingHistory {
     valueJson: Record<string, unknown> | null
     itemKey: string
     revision: number
+    unit?: string | null
+    deviceTime?: Instant | null
   }>
 }
 export interface ReplayRange {

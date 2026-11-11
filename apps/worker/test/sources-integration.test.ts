@@ -146,6 +146,8 @@ test('one HTTP request yields three polls and two tenant event sets; failed fano
   expect(acks).toEqual([])
   const first = await t.counts()
   expect(first.polls).toHaveLength(3)
+  expect(first.polls.every((p) => p.receivedAt?.getTime() === t.receiptTime.getTime())).toBe(true)
+  expect(first.polls.every((p) => p.startedAt.getTime() === Date.parse(t.result.requests[0]!.startedAt))).toBe(true)
   expect(first.readings).toHaveLength(3)
   expect(first.events).toHaveLength(0)
   let publishFail = true

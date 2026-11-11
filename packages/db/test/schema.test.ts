@@ -186,6 +186,8 @@ test('every table in public has a factory', async () => {
 // #79 §3: G is read-only to app and public_reader; S is system and retention only.
 const G = ['component_check', 'feature_flag', 'guest_block', 'incident', 'incident_update', 'verification']
 const S = [
+  'evaluator_source_transition',
+  'evaluator_source_delivery',
   'analytics_event',
   'audit_finding',
   'event_counter',

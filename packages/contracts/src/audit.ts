@@ -22,6 +22,7 @@ export const AUDIT_ACTIONS = [
   'source.bound',
   'source.unbound',
   'sla.changed',
+  'pack.updated',
   'export.requested',
   'organisation.deletion_requested',
   'organisation.deletion_cancelled',

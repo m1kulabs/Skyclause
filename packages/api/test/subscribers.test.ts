@@ -317,12 +317,12 @@ describe('NTC-8: join and confirm', () => {
     expect(mailbox.sent).toEqual([])
   })
 
-  test('a join whose email fails at SES still answers the same, and the notice records the failure', async () => {
+  test('a join whose email fails at Resend still answers the same, and the notice records the failure', async () => {
     const errors: string[] = []
     vi.spyOn(console, 'error').mockImplementation((line: unknown) => void errors.push(String(line)))
     const failing: EmailTransport = {
       send: async () => {
-        throw new Error('SES SendEmail failed: MessageRejected (HTTP 400)')
+        throw new Error('Resend send failed: validation_error (HTTP 422)')
       }
     }
     const { v1, api } = setup({ email: failing })

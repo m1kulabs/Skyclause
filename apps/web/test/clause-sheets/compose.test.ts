@@ -7,7 +7,7 @@ import { addMember, makeAccount, makeApiKey, makeOrg, signIn, TEST_AUTH_ENV } fr
 import { memberOf } from '@skyclause/db/test/harness/index'
 import { expect, test } from 'vitest'
 
-test('web composition serves raw drafts with real auth and leaves absent evaluator ports explicit', async () => {
+test('web composition serves raw drafts with real auth and checks drafts against installed evaluator definitions', async () => {
   const org = await makeOrg(),
     account = await makeAccount()
   await addMember(org.id, account.id, 'owner')
@@ -26,7 +26,11 @@ test('web composition serves raw drafts with real auth and leaves absent evaluat
       new Date()
     )
   )
-  expect(clauseSheetPorts()).toEqual({ registry: null, snapshots: null, recordedAt: null })
+  expect(clauseSheetPorts()).toMatchObject({
+    registry: expect.any(Object),
+    snapshots: expect.any(Object),
+    recordedAt: null
+  })
   const id = made.sheets[0]!.id
   const content = made.versions[0]!.content
   const headers = {
@@ -45,12 +49,16 @@ test('web composition serves raw drafts with real auth and leaves absent evaluat
   )
   expect(savedResponse.status, await savedResponse.clone().text()).toBe(201)
   const draft = (await savedResponse.json()) as { id: string }
-  expect(draft).toMatchObject({ validation_status: 'unavailable', check: null, content })
+  expect(draft).toMatchObject({
+    validation_status: 'checked',
+    check: expect.objectContaining({ ok: false, publishable: false }),
+    content
+  })
   const response = await api.fetch(
     new Request(`${TEST_AUTH_ENV.APP_ORIGIN}/api/clause-sheets/${id}/publish-preview?draft_id=${draft.id}`, { headers })
   )
-  expect(response.status).toBe(501)
-  expect(await response.json()).toMatchObject({ owner: 'b-evaluator' })
+  expect(response.status).toBe(200)
+  expect(await response.json()).toMatchObject({ publishable: false, errors: expect.any(Array) })
   const key = await makeApiKey({ orgId: org.id, accountId: account.id, scopes: ['admin'] })
   const keyHeaders = {
     Authorization: `Bearer ${key.key}`,
@@ -99,6 +107,6 @@ test('web composition serves raw drafts with real auth and leaves absent evaluat
       body: payload
     })
   )
-  expect(bearerPublish.status, await bearerPublish.clone().text()).toBe(501)
-  expect(await bearerPublish.json()).toMatchObject({ owner: 'b-evaluator' })
+  expect(bearerPublish.status, await bearerPublish.clone().text()).toBe(422)
+  expect(await bearerPublish.json()).toMatchObject({ status: 422 })
 })

@@ -1,4 +1,4 @@
-import { notBuilt } from '@skyclause/contracts'
+import { productionEvaluatorProviders } from '@skyclause/api/evaluator'
 import { createChainResolver } from '@skyclause/agent'
 import { budgetGate, loadAiKeyRows, RUNS_REQUESTED, type Tx } from '@skyclause/db'
 import { modelFor } from '../ai-keys/model-for'
@@ -39,12 +39,14 @@ const origins = () => [
 ]
 
 /**
- * Production ports. SnapshotSource and ShadowEvaluator (#133) aren't built: until each owner swaps in its
- * implementation here, a run fails at its first step that calls one. ModelResolver and modelFor (#206) are live.
+ * Production ports resolve the real evaluator lazily. Missing provider declarations remain explicit on use.
  */
 export const runs = createRunsPart({
-  snapshots: notBuilt('b-evaluator'),
-  shadow: notBuilt('b-evaluator'),
+  snapshots: { take: (...args) => productionEvaluatorProviders().snapshots.take(...args) },
+  shadow: {
+    loadPublished: (...args) => productionEvaluatorProviders().shadow.loadPublished(...args),
+    evaluate: (...args) => productionEvaluatorProviders().shadow.evaluate(...args)
+  },
   budget: budgetGate,
   models: createChainResolver((tx, q) => loadAiKeyRows(tx as Tx, q)),
   modelFor,

@@ -1,5 +1,7 @@
+import { createHash } from 'node:crypto'
 import {
   boundSources,
+  sourceBackfillCoverage,
   listSourceOrganisations,
   plannedCrowdPeriods,
   previousSourceDigest,
@@ -7,7 +9,7 @@ import {
   withSystem,
   withTenant
 } from '@skyclause/db'
-import { SourceKind, type CrowdPeriod } from '@skyclause/sources'
+import { adapters, SourceKind, type SourceAdapter, type CrowdPeriod } from '@skyclause/sources'
 import { z } from 'zod'
 import { decodeObject, encodeObject, hasCode } from './storage'
 import type { SourceObjectStore } from './types'
@@ -37,15 +39,46 @@ export const PeriodSchema = z.strictObject({
   exitStart: z.iso.datetime().nullable(),
   exitEnd: z.iso.datetime().nullable()
 })
-export const SourcePlan = z.strictObject({
-  version: z.literal(1),
+export const PlannedBackfillGroup = z.strictObject({
+  key: Digest,
+  kind: SourceKind,
+  sourceIds: z.array(z.uuid()).min(1),
+  anchor: z.iso.datetime(),
+  requiredObservations: z.array(z.strictObject({ metric: z.string().min(1), observedAt: z.iso.datetime() })).min(1),
+  eligible: z.boolean()
+})
+export type PlannedBackfillGroup = z.infer<typeof PlannedBackfillGroup>
+const PlanFields = z.strictObject({
   generatedAt: z.iso.datetime(),
   sources: z.array(PlannedSource),
   periods: z.array(PeriodSchema)
 })
+export const SourcePlan = z.discriminatedUnion('version', [
+  PlanFields.extend({ version: z.literal(1) }),
+  PlanFields.extend({ version: z.literal(2), backfillGroups: z.array(PlannedBackfillGroup) })
+])
+/** Canonical JSON identity; object key order cannot split a public group. */
+export function backfillGroupKey(kind: string, meta: string, value: unknown): string {
+  const canonical = (v: unknown): unknown =>
+    Array.isArray(v)
+      ? v.map(canonical)
+      : v !== null && typeof v === 'object'
+        ? Object.fromEntries(
+            Object.entries(v)
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([k, x]) => [k, canonical(x)])
+          )
+        : v
+  return createHash('sha256')
+    .update(JSON.stringify([kind, meta, canonical(value)]))
+    .digest('hex')
+}
 export type SourcePlan = z.infer<typeof SourcePlan>
 export type PlannedSource = z.infer<typeof PlannedSource>
-export async function sourceSnapshot(now: Date): Promise<SourcePlan> {
+export async function sourceSnapshot(
+  now: Date,
+  registry: readonly SourceAdapter<unknown>[] = adapters
+): Promise<SourcePlan> {
   const orgs = await withSystem('sources:plan', listSourceOrganisations)
   const sources = new Map<string, PlannedSource>(),
     periods: CrowdPeriod[] = []
@@ -80,7 +113,43 @@ export async function sourceSnapshot(now: Date): Promise<SourcePlan> {
     }
     periods.push(...snapshot.periods)
   }
-  return SourcePlan.parse({ version: 1, generatedAt: now.toISOString(), sources: [...sources.values()], periods })
+  const anchor = now.toISOString(),
+    backfillGroups: PlannedBackfillGroup[] = []
+  for (const adapter of registry) {
+    const policy = adapter.groupedBackfill
+    if (!policy) continue
+    if (adapter.backfill) throw new Error('Adapter cannot declare both backfill policies')
+    const groups = new Map<string, PlannedSource[]>()
+    for (const entry of sources.values())
+      if (entry.source.kind === adapter.kind) {
+        const value = entry.source.meta[policy.groupByMeta]
+        if (value === undefined) throw new Error('Grouped source is missing metadata')
+        const key = backfillGroupKey(adapter.kind, policy.groupByMeta, value)
+        groups.set(key, [...(groups.get(key) ?? []), entry])
+      }
+    const requiredObservations = policy.requiredObservations(anchor)
+    for (const [key, entries] of groups) {
+      const sourceIds = entries.map((e) => e.source.id).sort()
+      const coverage = await withSystem('sources:plan', (tx) =>
+        sourceBackfillCoverage(tx, {
+          kind: adapter.kind,
+          groupByMeta: policy.groupByMeta,
+          groupValue: entries[0]!.source.meta[policy.groupByMeta]!,
+          sourceIds,
+          required: requiredObservations.map((r) => ({ metric: r.metric, observedAt: new Date(r.observedAt) }))
+        })
+      )
+      backfillGroups.push({
+        key,
+        kind: adapter.kind,
+        sourceIds,
+        anchor,
+        requiredObservations,
+        eligible: !coverage.hasBackfillPoll && coverage.missingSourceIds.length > 0
+      })
+    }
+  }
+  return SourcePlan.parse({ version: 2, generatedAt: anchor, sources: [...sources.values()], periods, backfillGroups })
 }
 export async function refreshSourcePlan(now: Date, store: SourceObjectStore, snapshot = sourceSnapshot): Promise<void> {
   const plan = SourcePlan.parse(await snapshot(now))

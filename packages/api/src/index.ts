@@ -75,6 +75,16 @@ export type * from './stores'
 export { calendarFeed, serveCalendarFeed, type CalendarFeed, type CalendarFeedDeps } from './services/ics'
 export { getAccountPreferences } from './services/account'
 export { inTenant, type ServiceContext, type WithTenant } from './tenancy'
+export {
+  bindSource,
+  unbindSource,
+  updateProjectPack,
+  listCatalogueSources,
+  type CatalogueQuery,
+  type SourcesAccess,
+  type CatalogueSourceView,
+  type BoundSourceView
+} from './services/sources'
 export { unbuiltOperations } from './unbuilt'
 
 export {
@@ -94,3 +104,9 @@ export {
   type ClauseSheetPorts,
   type RuntimeIndicatorRegistry
 } from './services/clause-sheets'
+
+export { createRuntimeRegistry } from './services/evaluator/registry'
+export { loadEvaluatorHistory } from './services/evaluator/history'
+export { createEvaluatorProviders, semanticVerdictKey, type EvaluatorProviders } from './services/evaluator'
+
+export { nextEvaluationAt, evaluatorWindows } from './services/evaluator/deadline'
