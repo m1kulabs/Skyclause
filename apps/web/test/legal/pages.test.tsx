@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import type { ReactNode } from 'react'
 import { expect, test } from 'vitest'
 import { PRIVACY_NOTICE_VERSION, TERMS_VERSION } from '@skyclause/contracts'
+import { t } from '@skyclause/i18n'
 import { PrivacyNoticePage, TermsPage } from '../../features/legal'
 
 const html = (node: ReactNode) => renderToStaticMarkup(node)
@@ -66,8 +67,15 @@ test('the Malay privacy notice is fully translated and publishes the same versio
   ]) {
     expect(page).toContain(item)
   }
-  for (const englishHeading of ['What we collect', 'Where data is stored', 'Your rights', 'Breach notification']) {
-    expect(page).not.toContain(englishHeading)
+  for (const heading of [
+    'collectionHeading',
+    'processorsHeading',
+    'regionHeading',
+    'rightsHeading',
+    'retentionHeading',
+    'breachHeading'
+  ]) {
+    expect(page).not.toContain(t(`legal.privacy.${heading}`))
   }
 })
 

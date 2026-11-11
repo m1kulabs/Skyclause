@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, test } from 'vitest'
+import { t } from '@skyclause/i18n'
 import { Attribution, AttributionList } from '../../features/public-chrome'
 import { sourceFixture, sourceKinds } from './source-fixtures'
 
@@ -23,9 +24,19 @@ describe('public attribution', () => {
     }
   })
 
+  // The fixture's 'Derived only' label would satisfy a bare 'Derived', so the label is swapped out here.
   test.each(['jps_rain', 'apims', 'golive'] as const)('%s is marked as derived', (kind) => {
-    const html = renderToStaticMarkup(<AttributionList sources={[sourceFixture(kind)]} />)
-    expect(html).toContain('Derived')
+    const html = renderToStaticMarkup(
+      <AttributionList sources={[{ ...sourceFixture(kind), licence_label: 'Label' }]} />
+    )
+    expect(html).toContain(t('legal.attribution.derived'))
+  })
+
+  test('a CC BY source is not marked as derived', () => {
+    const html = renderToStaticMarkup(
+      <AttributionList sources={[{ ...sourceFixture('met_warning'), licence_label: 'Label' }]} />
+    )
+    expect(html).not.toContain(t('legal.attribution.derived'))
   })
 
   test('Wikipedia attribution explains share-alike on derived listings', () => {

@@ -19,7 +19,7 @@ test('the public frame carries the shared header, both brand lines and the five 
   for (const label of ['Docs', 'Status', 'Terms', 'Privacy', 'Bahasa Melayu']) expect(page).toContain(label)
 })
 
-test('brand lines retain their catalogue copy on the landing page', () => {
+test('brand lines render their catalogue copy', () => {
   const page = renderToStaticMarkup(<BrandLines locale="en" />)
   expect(page).toContain(t('brand.non_affiliation'))
   expect(page).toContain(t('brand.not_safety_service'))
@@ -38,6 +38,9 @@ test('Malay public copy and the 404 exits are catalogue-backed', () => {
 
   expect(frame).toContain(t('brand.non_affiliation', {}, 'ms'))
   expect(frame).toContain(t('brand.not_safety_service', {}, 'ms'))
+  // A missing Malay line would fall back to English and still pass the two checks above.
+  expect(frame).not.toContain(t('brand.non_affiliation'))
+  expect(frame).not.toContain(t('brand.not_safety_service'))
   expect(frame).toContain('Dokumen')
   expect(notFound).toContain('404')
   expect(notFound.match(/<a /g)).toHaveLength(3)
