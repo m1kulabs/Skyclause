@@ -3,7 +3,7 @@ import { SchemaError, SourceKind, type Source, type SourceAdapter } from '@skycl
 import { executeAdapter, executeSourceStep, type SourceContextFactory } from './execute'
 import { sourceError } from './http'
 import { parseSourceResult, receiptPath } from './ingest'
-import { reserveSourceResult, ResultReference, resultPath, sha256 } from './pubsub'
+import { reserveSourceResult, ResultReference, resultPath, sha256, LatestSlotRecovery } from './pubsub'
 import { decodeObject, encodeObject, hasCode, saveSourceResult } from './storage'
 import type { RequestCapture, SourceClock, SourceExecutionResult, SourceObjectStore } from './types'
 
@@ -217,7 +217,7 @@ export interface LatestSlotPorts {
   scheduledAt: string | null
   contextFactory(window: { start: number; end: number }): SourceContextFactory
   publish(result: SourceExecutionResult): Promise<void>
-  reserve(operationId: string): Promise<void>
+  reserve(operationId: string, recovery: LatestSlotRecovery): Promise<void>
 }
 const LatestClaim = Claim.extend({
   purpose: z.enum(['poll', 'discovery']),
@@ -377,7 +377,12 @@ export async function runLatestSlot<Raw>(
         requestId: ports.id
       }
       if (claim.purpose === 'poll') {
-        await ports.reserve(claim.operationId)
+        await ports.reserve(claim.operationId, {
+          type: 'latest',
+          slotStart: slot.start,
+          slotSeconds: adapter.latestSlot.seconds,
+          claimSha256: sha256(encodeObject({ ...claim, lost: false }))
+        })
         const result = await executeSourceStep(
           adapter,
           members,
@@ -451,4 +456,32 @@ export async function readCurrentSlotCapture(
   )
     return null
   return request
+}
+
+export type LatestSlotRecoveryResult =
+  { state: 'captured'; result: SourceExecutionResult } | { state: 'running' | 'lost' }
+
+/** Repair validates the original immutable identity even if a delivery already exists. No HTTP or writes. */
+export async function recoverLatestSlot(ports: {
+  store: SourceObjectStore
+  recovery: LatestSlotRecovery
+  operationId: string
+  kind: SourceKind
+  now: Date
+}): Promise<LatestSlotRecoveryResult> {
+  const recovery = LatestSlotRecovery.parse(ports.recovery)
+  const slot = latestSlotFor(ports.kind, recovery.slotSeconds, new Date(recovery.slotStart))
+  if (slot.start !== recovery.slotStart) throw new Error('Invalid latest slot recovery interval')
+  const saved = await ports.store.read(slot.path)
+  if (!saved) throw new Error('Missing latest slot recovery claim')
+  const claim = parseLatestClaim(saved.body)
+  if (
+    claim.operationId !== ports.operationId ||
+    claim.purpose !== 'poll' ||
+    sha256(encodeObject({ ...claim, lost: false })) !== recovery.claimSha256
+  )
+    throw new Error('Invalid latest slot recovery claim identity')
+  const capture = await savedLatestCapture(ports.store, ports.kind, slot, claim)
+  if (capture?.purpose === 'poll') return { state: 'captured', result: capture.result }
+  return { state: claim.lost || ports.now.getTime() >= claim.captureDeadline ? 'lost' : 'running' }
 }

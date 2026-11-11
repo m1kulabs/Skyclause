@@ -1,4 +1,5 @@
 import type { GroupedBackfillClaim, GroupRecovery, GroupRecoveryResult } from './grouped-backfill'
+import type { LatestSlotRecoveryResult } from './slots'
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { SourceKind } from '@skyclause/sources'
@@ -94,6 +95,13 @@ export function sourceSubscription(
 }
 
 const pendingPath = 'control/pending-results.json'
+export const LatestSlotRecovery = z.strictObject({
+  type: z.literal('latest'),
+  slotStart: z.number().int().nonnegative(),
+  slotSeconds: z.number().int().positive(),
+  claimSha256: Digest
+})
+export type LatestSlotRecovery = z.infer<typeof LatestSlotRecovery>
 const Recovery = {
   // Existing source reservations remain readable during the plan/protocol rollout.
   backfill_source_id: z.uuid().optional(),
@@ -106,7 +114,8 @@ const Recovery = {
         anchor: z.iso.datetime(),
         sourceIds: z.array(z.uuid()).min(1),
         step: z.number().int().nonnegative()
-      })
+      }),
+      LatestSlotRecovery
     ])
     .optional()
 }
@@ -119,7 +128,8 @@ const Pending = z.array(z.union([PendingDelivery, ResultReservation]))
 type PendingEntry = z.infer<typeof Pending>[number]
 export const MAX_PENDING_RESULTS = 1000
 // Longer than the current 600-second Cloud Run source execution limit. Expiry reports a stalled
-// reservation unless a valid unfinished group can resume; it never releases capacity,
+// reservation unless a validated unfinished group or consumed latest slot can remain pending;
+// it never releases capacity,
 // creates another operation ID, or refetches captured bytes.
 export const SOURCE_RESERVATION_MS = 20 * 60 * 1000
 async function updatePending(
@@ -215,6 +225,26 @@ export function reserveSourceResult(
     false
   )
 }
+/** Bind this reservation to its original consumed slot, never the current plan or clock bucket. */
+export function reserveLatestSlotResult(
+  store: SourceObjectStore,
+  operationId: string,
+  kind: SourceExecutionResult['kind'],
+  now: Date,
+  recovery: LatestSlotRecovery
+): Promise<void> {
+  return updatePending(
+    store,
+    ResultReservation.parse({
+      operation_id: operationId,
+      kind,
+      object_path: resultPath(kind, operationId),
+      reserved_until: new Date(now.getTime() + SOURCE_RESERVATION_MS).toISOString(),
+      recovery: LatestSlotRecovery.parse(recovery)
+    }),
+    false
+  )
+}
 /** Finalization reuses the operation's reserved slot even when other producers have filled the outbox. */
 export function pendingResult(store: SourceObjectStore, reference: ResultReference, remove: boolean): Promise<void> {
   return updatePending(store, reference, remove)
@@ -223,6 +253,17 @@ export async function repairSourceResults(ports: {
   store: SourceObjectStore
   publish: (data: ResultReference) => Promise<void>
   now?: () => Date
+  recoverLatest?(
+    recovery: LatestSlotRecovery,
+    operationId: string,
+    kind: SourceExecutionResult['kind'],
+    now: Date
+  ): Promise<LatestSlotRecoveryResult>
+  unavailableLatest?(fields: {
+    operationId: string
+    kind: SourceExecutionResult['kind']
+    state: 'running' | 'lost'
+  }): void
   recoverGroup?(
     recovery: GroupRecovery,
     operationId: string,
@@ -240,11 +281,32 @@ export async function repairSourceResults(ports: {
     failures: unknown[] = []
   for (const entry of saved ? Pending.parse(decodeObject(saved.body)) : []) {
     try {
+      if (entry.recovery?.type === 'latest') {
+        if (entry.backfill_source_id || entry.object_path !== resultPath(entry.kind, entry.operation_id))
+          throw new Error('Invalid latest slot recovery identity')
+        if (!ports.recoverLatest) throw new Error('Latest slot recovery is not configured')
+        const recovered = await ports.recoverLatest(
+          entry.recovery,
+          entry.operation_id,
+          entry.kind,
+          ports.now?.() ?? new Date()
+        )
+        if ('reserved_until' in entry) {
+          if (recovered.state === 'captured') await publishSourceResult(recovered.result, ports)
+          else ports.unavailableLatest?.({ operationId: entry.operation_id, kind: entry.kind, state: recovered.state })
+          // Retain capacity and recovery identity for late durable bytes. Expiry never grants a new GET.
+          continue
+        }
+        if (recovered.state !== 'captured')
+          throw new Error(`Pending latest slot capture missing: ${entry.operation_id}`)
+      }
       const recover = async () => {
         const recovery =
           entry.recovery ??
           (entry.backfill_source_id ? { type: 'source' as const, sourceId: entry.backfill_source_id } : undefined)
         if (!recovery) return false
+        // Latest slots were validated above even when delivery bytes already existed.
+        if (recovery.type === 'latest') return false
         let result: GroupRecoveryResult
         if (recovery.type === 'group') {
           if (!ports.recoverGroup) throw new Error('Grouped backfill recovery is not configured')

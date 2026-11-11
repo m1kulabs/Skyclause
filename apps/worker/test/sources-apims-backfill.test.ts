@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { expect, test } from 'vitest'
 import { createJpsRainAdapter } from '../../../packages/sources/src/adapters/jps'
 import { createApimsAdapter } from '../../../packages/sources/src/adapters/apims'
+import { recoverLatestSlot } from '../src/sources/slots'
 import type { Source } from '@skyclause/sources'
 import { runGroupedBackfillOnce, type GroupedBackfillClaim } from '../src/sources/grouped-backfill'
 import { executeSourceStep } from '../src/sources/execute'
@@ -801,6 +802,8 @@ test('expired unfinished group reservations let scheduled recovery, latest and u
         store: t.store,
         now: t.clock.now,
         publish,
+        recoverLatest: (recovery, operationId, kind, now) =>
+          recoverLatestSlot({ store: t.store, recovery, operationId, kind, now }),
         recoverGroup: (recovery, operationId, kind, now) =>
           recoverSavedGroupedBackfill({ store: t.store, recovery, operationId, kind, now, validate: parseSourceResult })
       }),

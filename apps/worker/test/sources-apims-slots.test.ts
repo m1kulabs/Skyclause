@@ -4,10 +4,12 @@ import { expect, test, vi } from 'vitest'
 import { createApimsAdapter } from '../../../packages/sources/src/adapters/apims'
 import { createSourceJobs } from '../src/sources/jobs'
 import { createPollContext } from '../src/sources/http'
-import { runLatestSlot, readCurrentSlotCapture } from '../src/sources/slots'
+import { runLatestSlot, readCurrentSlotCapture, recoverLatestSlot } from '../src/sources/slots'
 import {
   publishSourceResult,
   reserveSourceResult,
+  reserveLatestSlotResult,
+  type LatestSlotRecovery,
   repairSourceResults,
   MAX_PENDING_RESULTS,
   SOURCE_RESERVATION_MS,
@@ -20,7 +22,8 @@ import { MemoryStore, TestClock } from './support/source-adapter'
 import { withSystem, withTenant, systemPrincipal, poll, reading, loadStoredRequest } from '@skyclause/db'
 import { makeOrganization, makeProject, makeProjectSource, makeSource } from '../../../packages/db/test/factories'
 import { inArray } from 'drizzle-orm'
-import { sourceIngestionDatabase, ingestSourceResult } from '../src/sources/ingest'
+import { sourceIngestionDatabase, ingestSourceResult, parseSourceResult } from '../src/sources/ingest'
+import { jpsRain } from '../../../packages/sources/src/adapters/jps'
 
 const map = readFileSync(
   new URL('../../../packages/sources/test/fixtures/mapcaqm-20261105T1313Z.json', import.meta.url)
@@ -97,7 +100,8 @@ async function fixture(sources = [a]) {
     id: randomUUID,
     scheduledAt: null,
     publish: ports.publish,
-    reserve: (operationId: string) => reserveSourceResult(store, operationId, 'apims', clock.now()),
+    reserve: (operationId: string, recovery: LatestSlotRecovery) =>
+      reserveLatestSlotResult(store, operationId, 'apims', clock.now(), recovery),
     contextFactory: (window: { start: number; end: number }) => (members: Source[]) =>
       createPollContext({
         kind: 'apims',
@@ -297,6 +301,8 @@ test('saved poll bytes repair through the existing outbox without another physic
   await repairSourceResults({
     store: t.store,
     now: t.clock.now,
+    recoverLatest: (recovery, operationId, kind, now) =>
+      recoverLatestSlot({ store: t.store, recovery, operationId, kind, now }),
     publish: async (ref) => {
       sent.push(ref)
     }
@@ -578,3 +584,279 @@ test.each(['body', 'operation', 'cohort', 'time', 'status', 'request-id'] as con
     expect(t.results).toEqual([])
   }
 )
+
+function slotRepair(t: Awaited<ReturnType<typeof fixture>>) {
+  return () =>
+    repairSourceResults({
+      store: t.store,
+      now: t.clock.now,
+      publish: async (ref) => {
+        t.refs.push(ref)
+      },
+      recoverLatest: (recovery, operationId, kind, now) =>
+        recoverLatestSlot({ store: t.store, recovery, operationId, kind, now })
+    })
+}
+
+test.each(['cohort', 'scheduled-at', 'transport'] as const)(
+  'reserved repair rejects coherent %s changes against the original consumed slot',
+  async (field) => {
+    const t = await fixture(),
+      repair = slotRepair(t)
+    const jobs = createSourceJobs({
+      ...t.ports,
+      repair,
+      publish: async () => {
+        throw new Error('publication interrupted')
+      }
+    })
+    await expect(jobs.runAdapter('apims', null)).rejects.toThrow('publication interrupted')
+    const [path, saved] = [...t.store.objects.entries()].find(([path]) => path.startsWith('control/deliveries/'))!
+    const result = parseSourceResult(decodeObject(saved.body))
+    if (field === 'cohort') {
+      result.requests[0]!.sourceIds.push(b.id)
+      result.polls.push({
+        sourceId: b.id,
+        requestId: result.requests[0]!.requestId,
+        outcome: 'ok',
+        error: null,
+        readings: t.adapter.parse(t.adapter.latestSlot!.decode(map), [b])
+      })
+    }
+    if (field === 'scheduled-at') result.scheduledAt = '2026-11-10T00:00:00.000Z'
+    if (field === 'transport')
+      result.requests[0]!.startedAt = result.requests[0]!.transportStartedAt = '2026-11-10T00:15:00.000Z'
+    const normalized = parseSourceResult({
+      ...result,
+      requests: result.requests.map((r) => ({
+        ...r,
+        body: r.body === null ? null : Buffer.from(r.body).toString('base64')
+      }))
+    })
+    const bytes = encodeObject({
+      ...normalized,
+      requests: normalized.requests.map((r) => ({
+        ...r,
+        body: r.body === null ? null : Buffer.from(r.body).toString('base64')
+      }))
+    })
+    // Coherent domain payload: the new check must come from the frozen claim, not parser shape.
+    expect(parseSourceResult(decodeObject(bytes)).operationId).toBe(result.operationId)
+    await t.store.write(path, bytes, saved.generation)
+    const before = JSON.stringify([...t.store.objects])
+    await expect(repair()).rejects.toThrow(/latest slot/)
+    expect(t.refs).toEqual([])
+    expect(t.results).toEqual([])
+    expect(JSON.stringify([...t.store.objects])).toBe(before)
+    expect(t.http).toHaveBeenCalledTimes(1)
+  }
+)
+
+test.each(['reserved', 'published'] as const)(
+  '%s repair validates durable slot identity even when delivery bytes already exist',
+  async (state) => {
+    const t = await fixture(),
+      repair = slotRepair(t)
+    const jobs = createSourceJobs({
+      ...t.ports,
+      repair,
+      ...(state === 'reserved'
+        ? {
+            publish: async () => {
+              throw new Error('publication interrupted')
+            }
+          }
+        : {})
+    })
+    if (state === 'reserved') await expect(jobs.runAdapter('apims', null)).rejects.toThrow('publication interrupted')
+    else await jobs.runAdapter('apims', null)
+    const [path, saved] = [...t.store.objects.entries()].find(([path]) => path.startsWith('control/latest-slots/'))!
+    const claim = decodeObject<{ scheduledAt: string | null }>(saved.body)
+    claim.scheduledAt = '2026-11-10T00:00:00.000Z'
+    await t.store.write(path, encodeObject(claim), saved.generation)
+    const sent = t.refs.length
+    await expect(repair()).rejects.toThrow(/latest slot/)
+    expect(t.refs).toHaveLength(sent)
+    expect(t.http).toHaveBeenCalledTimes(1)
+  }
+)
+
+test('lost consumed capture does not poison actual job entry for later APIMS slots or unrelated JPS', async () => {
+  const t = await fixture(),
+    write = t.store.write.bind(t.store),
+    repair = slotRepair(t)
+  const jps: Source = { ...a, id: randomUUID(), kind: 'jps_rain', externalId: '0232901RF', meta: { jps_id: 75 } }
+  const graph = readFileSync(
+    new URL('../../../packages/sources/test/fixtures/rainfall-graph-75-20261105T1312Z.json', import.meta.url)
+  )
+  const urls: string[] = []
+  const jobs = createSourceJobs({
+    ...t.ports,
+    repair,
+    adapters: [t.adapter, { ...jpsRain, backfill: undefined }],
+    http: async (url) => {
+      urls.push(String(url))
+      return new Response(String(url).includes('GetRainfallGraph') ? graph : map)
+    }
+  })
+  await t.plan([a, jps])
+  t.store.write = async (path, body, generation) => {
+    if (path.startsWith('control/deliveries/apims/')) throw new Error('lost capture')
+    return write(path, body, generation)
+  }
+  await expect(jobs.runAdapter('apims', null)).rejects.toThrow('lost capture')
+  const reservation = decodeObject<Array<{ operation_id: string }>>(
+    (await t.store.read('control/pending-results.json'))!.body
+  )[0]!
+  t.store.write = write
+  await t.clock.advance(30 * 60000)
+  await expect(jobs.runAdapter('jps_rain', null)).resolves.toBeUndefined()
+  await expect(jobs.runAdapter('apims', null)).resolves.toBeUndefined()
+  await t.clock.advance(15 * 60000)
+  await expect(jobs.runAdapter('apims', null)).resolves.toBeUndefined()
+  expect(urls.filter((url) => url.includes('mapcaqm'))).toHaveLength(3)
+  expect(urls.filter((url) => url.includes('GetRainfallGraph'))).toHaveLength(1)
+  expect(
+    t.results.filter((result) => result.kind === 'apims').map((result) => result.requests[0]!.transportStartedAt)
+  ).toEqual(['2026-11-10T00:30:00.000Z', '2026-11-10T00:45:00.000Z'])
+  expect(t.results.some((result) => result.operationId === reservation.operation_id)).toBe(false)
+  expect(
+    decodeObject<Array<{ operation_id: string }>>((await t.store.read('control/pending-results.json'))!.body).some(
+      (entry) => entry.operation_id === reservation.operation_id
+    )
+  ).toBe(true)
+})
+
+test('repair retains a late capture reservation at full capacity and recovers its original bytes without refetch', async () => {
+  const t = await fixture(),
+    write = t.store.write.bind(t.store),
+    repair = slotRepair(t)
+  let entered!: () => void, release!: () => void
+  const started = new Promise<void>((resolve) => {
+      entered = resolve
+    }),
+    gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+  let captured: Uint8Array | undefined
+  t.store.write = async (path, body, generation) => {
+    if (path.startsWith('control/deliveries/') && !captured) {
+      captured = body.slice()
+      entered()
+      await gate
+    }
+    return write(path, body, generation)
+  }
+  const execution = createSourceJobs({ ...t.ports, repair }).runAdapter('apims', null)
+  await started
+  await t.clock.advance(SOURCE_RESERVATION_MS + 1)
+  const pending = (await t.store.read('control/pending-results.json'))!,
+    entries = decodeObject<Array<{ operation_id: string }>>(pending.body)
+  const original = entries[0]!
+  await t.store.write(
+    'control/pending-results.json',
+    encodeObject([
+      ...entries,
+      ...Array.from({ length: MAX_PENDING_RESULTS - 1 }, () => {
+        const id = randomUUID()
+        return {
+          operation_id: id,
+          kind: 'apims',
+          object_path: `control/deliveries/apims/${id}.json`,
+          reserved_until: new Date(t.clock.now().getTime() + SOURCE_RESERVATION_MS).toISOString()
+        }
+      })
+    ]),
+    pending.generation
+  )
+  await expect(repair()).resolves.toBeUndefined()
+  expect(
+    decodeObject<Array<{ operation_id: string }>>((await t.store.read('control/pending-results.json'))!.body)
+  ).toHaveLength(MAX_PENDING_RESULTS)
+  await expect(reserveSourceResult(t.store, randomUUID(), 'jps_rain', t.clock.now())).rejects.toThrow('outbox is full')
+  release()
+  await execution
+  expect(t.refs).toHaveLength(1)
+  expect(t.refs[0]!.operation_id).toBe(original.operation_id)
+  expect((await t.store.read(t.refs[0]!.object_path))!.body).toEqual(captured)
+  await repair()
+  expect(t.refs).toEqual([t.refs[0], t.refs[0]])
+  expect(t.http).toHaveBeenCalledTimes(1)
+  expect(decodeObject<unknown[]>((await t.store.read('control/pending-results.json'))!.body)).toHaveLength(
+    MAX_PENDING_RESULTS
+  )
+})
+
+test.each(['digest', 'slot', 'missing-claim'] as const)(
+  'missing bytes with corrupt %s recovery still fail instead of being treated as a lost capture',
+  async (field) => {
+    const t = await fixture(),
+      write = t.store.write.bind(t.store),
+      repair = slotRepair(t)
+    t.store.write = async (path, body, generation) => {
+      if (path.startsWith('control/deliveries/')) throw new Error('lost capture')
+      return write(path, body, generation)
+    }
+    await expect(createSourceJobs({ ...t.ports, repair }).runAdapter('apims', null)).rejects.toThrow('lost capture')
+    t.store.write = write
+    const pending = (await t.store.read('control/pending-results.json'))!,
+      entries = decodeObject<Array<{ recovery: LatestSlotRecovery }>>(pending.body)
+    if (field === 'digest') entries[0]!.recovery.claimSha256 = '0'.repeat(64)
+    if (field === 'slot') entries[0]!.recovery.slotStart += 900000
+    if (field === 'missing-claim')
+      t.store.objects.delete([...t.store.objects.keys()].find((path) => path.startsWith('control/latest-slots/'))!)
+    await t.store.write('control/pending-results.json', encodeObject(entries), pending.generation)
+    await t.clock.advance(SOURCE_RESERVATION_MS + 1)
+    await expect(repair()).rejects.toThrow(/latest slot/)
+    expect(t.refs).toEqual([])
+    expect(t.http).toHaveBeenCalledTimes(1)
+    expect(decodeObject<unknown[]>((await t.store.read('control/pending-results.json'))!.body)).toHaveLength(1)
+  }
+)
+
+test('a lost marker does not discard actual bytes that commit after repair observed their absence', async () => {
+  const t = await fixture(),
+    write = t.store.write.bind(t.store),
+    repair = slotRepair(t)
+  let delayed: { path: string; body: Uint8Array; generation: string } | undefined
+  t.store.write = async (path, body, generation) => {
+    if (path.startsWith('control/deliveries/')) {
+      delayed = { path, body: body.slice(), generation }
+      throw new Error('ambiguous storage failure')
+    }
+    return write(path, body, generation)
+  }
+  await expect(createSourceJobs({ ...t.ports, repair }).runAdapter('apims', null)).rejects.toThrow(
+    'ambiguous storage failure'
+  )
+  t.store.write = write
+  await t.clock.advance(SOURCE_RESERVATION_MS + 1)
+  await repair()
+  expect(t.refs).toEqual([])
+  if (!delayed) throw new Error('expected actual capture bytes')
+  const original = parseSourceResult(decodeObject(delayed.body))
+  await write(delayed.path, delayed.body, delayed.generation)
+  await repair()
+  expect(t.refs).toHaveLength(1)
+  expect(t.refs[0]!.operation_id).toBe(original.operationId)
+  expect((await t.store.read(t.refs[0]!.object_path))!.body).toEqual(delayed.body)
+  const delivered: SourceExecutionResult[] = []
+  await ingestSourceResult(t.refs[0], {
+    store: t.store,
+    persist: async (result) => {
+      delivered.push(result)
+      return []
+    },
+    fanout: async () => {},
+    publish: async () => {}
+  })
+  expect(delivered).toEqual([original])
+  expect(original.requests[0]).toMatchObject({
+    sourceIds: [a.id],
+    transportStartedAt: '2026-11-10T00:00:00.000Z',
+    httpStatus: 200,
+    latencyMs: 37
+  })
+  expect(t.http).toHaveBeenCalledTimes(1)
+  expect(decodeObject<unknown[]>((await t.store.read('control/pending-results.json'))!.body)).toEqual([])
+})

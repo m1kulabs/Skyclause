@@ -12,7 +12,13 @@ import {
   type PlannedSource,
   type PlannedBackfillGroup
 } from './plan'
-import { reserveGroupedSourceResults, reserveSourceResult, ResultReference, resultPath } from './pubsub'
+import {
+  reserveGroupedSourceResults,
+  reserveSourceResult,
+  reserveLatestSlotResult,
+  ResultReference,
+  resultPath
+} from './pubsub'
 import { receiptPath } from './ingest'
 import { adapterStorage, decodeObject } from './storage'
 import type { SourceClock, SourceExecutionResult, SourceObjectStore } from './types'
@@ -104,7 +110,8 @@ export function createSourceJobs(ports: SourceJobPorts) {
       ...ports,
       scheduledAt,
       contextFactory: (window) => contextFactory(adapter, plan, window),
-      reserve: (operationId) => reserveSourceResult(ports.store, operationId, adapter.kind, ports.clock.now())
+      reserve: (operationId, recovery) =>
+        reserveLatestSlotResult(ports.store, operationId, adapter.kind, ports.clock.now(), recovery)
     })
   const backfillWithCapture = async (
     entry: PlannedSource,

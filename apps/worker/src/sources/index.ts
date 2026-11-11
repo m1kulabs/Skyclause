@@ -14,6 +14,7 @@ import { log, type EventConsumer, type WorkerPart } from '../server'
 import { createSourceJobs } from './jobs'
 import { drainSourceResults, ingestSourceResult, sourceIngestionDatabase, parseSourceResult } from './ingest'
 import { sourceClock } from './http'
+import { recoverLatestSlot } from './slots'
 import { recoverSavedGroupedBackfill } from './grouped-backfill'
 import { recoverSavedBackfill } from './backfill'
 import { sourceSnapshot, SourceSchema, type PlannedSource, type SourcePlan } from './plan'
@@ -51,6 +52,9 @@ function live() {
     repairSourceResults({
       store,
       publish: resultPublisher,
+      recoverLatest: (recovery, operationId, kind, now) =>
+        recoverLatestSlot({ store, recovery, operationId, kind, now }),
+      unavailableLatest: (fields) => log(fields.state === 'lost' ? 'ERROR' : 'INFO', 'source.slot.unavailable', fields),
       recoverGroup: (recovery, operationId, kind, now) =>
         recoverSavedGroupedBackfill({ store, recovery, operationId, kind, now, validate: parseSourceResult }),
       recoverBackfill: (sourceId, operationId, kind, now) =>
