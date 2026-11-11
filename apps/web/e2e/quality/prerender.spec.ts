@@ -30,7 +30,8 @@ test('the landing page renders its full shell per request for the CSP nonce', as
   expect(html).toContain('Skyclause reads the rain gauge')
   expect(html).toContain('Open the Commons')
   expect(html).toContain('Sign in')
-  expect(html).toContain('data-unbuilt="d-landing-sections"')
+  // #185 sections follow the hero.
+  expect(html).toContain('class="landing-frame"')
   // No-JS live verdict: the server-rendered GET form and picker, with the next hour's verdict or the honest error.
   expect(html).toContain('data-ui')
   expect(html).toContain('name="date"')
