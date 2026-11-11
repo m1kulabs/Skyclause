@@ -11,13 +11,11 @@ export class WebhookVerificationError extends Error {
 const TOLERANCE_S = 5 * 60
 
 /**
- * Checks a Resend webhook call by Svix's steps (https://docs.svix.com/receiving/verifying-payloads/how-manual.md):
- * `svix-timestamp` within five minutes of `now` either way, and an HMAC-SHA256 keyed with the Base64 part of the
- * `whsec_` secret, over `svix-id.svix-timestamp.body`, equal in constant time to any `v1,` entry of the space-separated
- * `svix-signature`. `body` is the raw text as received: JSON parsed and serialised again wouldn't match. Throws
+ * The checks that need no body, so a caller can refuse a call before reading it: all three Svix headers, and
+ * `svix-timestamp` within five minutes of `now` either way. Returns the three values; throws
  * `WebhookVerificationError`.
  */
-export function verifyResendWebhook(secret: string, headers: Headers, body: string, now: Date): void {
+export function checkResendWebhookHeaders(headers: Headers, now: Date) {
   const id = headers.get('svix-id')
   const timestamp = headers.get('svix-timestamp')
   const signatures = headers.get('svix-signature')
@@ -25,6 +23,18 @@ export function verifyResendWebhook(secret: string, headers: Headers, body: stri
   if (!/^\d+$/.test(timestamp) || Math.abs(now.getTime() / 1000 - Number(timestamp)) > TOLERANCE_S) {
     throw new WebhookVerificationError('timestamp outside the five-minute tolerance')
   }
+  return { id, timestamp, signatures }
+}
+
+/**
+ * Checks a Resend webhook call by Svix's steps (https://docs.svix.com/receiving/verifying-payloads/how-manual.md):
+ * `checkResendWebhookHeaders`, then an HMAC-SHA256 keyed with the Base64 part of the `whsec_` secret, over
+ * `svix-id.svix-timestamp.body`, equal in constant time to any `v1,` entry of the space-separated `svix-signature`.
+ * `body` is the raw text as received: JSON parsed and serialised again wouldn't match. Throws
+ * `WebhookVerificationError`.
+ */
+export function verifyResendWebhook(secret: string, headers: Headers, body: string, now: Date): void {
+  const { id, timestamp, signatures } = checkResendWebhookHeaders(headers, now)
   const expected = createHmac('sha256', Buffer.from(secret.replace(/^whsec_/, ''), 'base64'))
     .update(`${id}.${timestamp}.${body}`)
     .digest()

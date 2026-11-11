@@ -3,12 +3,14 @@ import { log as telemetryLog } from '@skyclause/config'
 import type { HeartbeatName } from '@skyclause/contracts'
 import { shareSystemConnection } from '@skyclause/db'
 import {
+  checkResendWebhookHeaders,
   parseResendWebhook,
   verifyResendWebhook,
   WebhookVerificationError,
   type ResendWebhook
 } from '@skyclause/delivery'
-import { Hono, type MiddlewareHandler } from 'hono'
+import { Hono, type Context, type MiddlewareHandler } from 'hono'
+import { bodyLimit } from 'hono/body-limit'
 import { routePath } from 'hono/route'
 import { jwtVerify, type JWTPayload, type JWTVerifyGetKey } from 'jose'
 
@@ -176,6 +178,9 @@ async function runAll(label: string, handlers: Record<string, TickHandler | Batc
 
 const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com']
 
+/** Resend's webhooks carry metadata only, far below this. */
+const RESEND_WEBHOOK_MAX_BYTES = 256 * 1024
+
 export function createServer(options: ServerOptions) {
   const { registry } = options
   const app = new Hono()
@@ -268,26 +273,47 @@ export function createServer(options: ServerOptions) {
     app.post(`/internal${path}`, (c) => handler(c.req.raw, c.req.param()))
   }
 
-  // Every Resend webhook, the Free plan's one endpoint: the signature is checked on the raw body before anything parses
-  // it, then the event goes to the part registered for its type. Resend counts only a 200 as delivered.
-  app.post('/resend/webhook', async (c) => {
-    if (!options.resendWebhookSecret) return c.text('Resend webhooks are not configured', 503)
-    const body = await c.req.text()
-    try {
-      verifyResendWebhook(options.resendWebhookSecret, c.req.raw.headers, body, new Date())
-    } catch (error) {
+  // Every Resend webhook, the Free plan's one endpoint, open to anyone: a call without the Svix headers or with a stale
+  // timestamp is refused before its body is read, a body over the cap is refused while it is read, and the signature is
+  // checked on the raw body before anything parses it. Then the event goes to the part registered for its type. Resend
+  // counts only a 200 as delivered.
+  const resendSecret = options.resendWebhookSecret
+  if (!resendSecret) app.post('/resend/webhook', (c) => c.text('Resend webhooks are not configured', 503))
+  else {
+    const refuse = (c: Context, error: unknown) => {
       if (error instanceof WebhookVerificationError) return c.text(error.message, 401)
       throw error
     }
-    let event: ResendWebhook
-    try {
-      event = parseResendWebhook(body)
-    } catch {
-      return c.text('malformed Resend webhook', 400)
-    }
-    const handler = registry.resend[event.type]
-    return handler ? handler(event) : c.body(null, 200)
-  })
+    app.post(
+      '/resend/webhook',
+      async (c, next) => {
+        try {
+          checkResendWebhookHeaders(c.req.raw.headers, new Date())
+        } catch (error) {
+          return refuse(c, error)
+        }
+        await next()
+      },
+      // The handler's own answer: the default throws, which `onError` would turn into a 500.
+      bodyLimit({ maxSize: RESEND_WEBHOOK_MAX_BYTES, onError: (c) => c.text('Resend webhook body too large', 413) }),
+      async (c) => {
+        const body = await c.req.text()
+        try {
+          verifyResendWebhook(resendSecret, c.req.raw.headers, body, new Date())
+        } catch (error) {
+          return refuse(c, error)
+        }
+        let event: ResendWebhook
+        try {
+          event = parseResendWebhook(body)
+        } catch {
+          return c.text('malformed Resend webhook', 400)
+        }
+        const handler = registry.resend[event.type]
+        return handler ? handler(event) : c.body(null, 200)
+      }
+    )
+  }
 
   return app
 }

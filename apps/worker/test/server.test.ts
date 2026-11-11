@@ -463,6 +463,60 @@ describe('POST /resend/webhook', () => {
     expect(received).toEqual([])
   })
 
+  /** A streamed body without Content-Length that hands out a 64 KiB chunk only when read, counting what it handed out. */
+  function streamed(chunks: number) {
+    const chunk = new Uint8Array(64 * 1024).fill(0x61)
+    const counted = { bytes: 0 }
+    let left = chunks
+    const body = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          if (left-- <= 0) return controller.close()
+          counted.bytes += chunk.length
+          controller.enqueue(chunk)
+        }
+      },
+      { highWaterMark: 0 }
+    )
+    return { body, counted }
+  }
+  const post = (headers: Record<string, string>, body: string | ReadableStream<Uint8Array>) =>
+    app().request('/resend/webhook', { method: 'POST', headers, body, duplex: 'half' } as RequestInit)
+  const fresh = () => ({ ...signedHeaders(''), 'svix-signature': 'v1,c2lnbmF0dXJlLW5vdC15ZXQtY2hlY2tlZA==' })
+
+  test('refuses a call without the Svix headers or with a stale timestamp before reading any of its body', async () => {
+    const stale = String(Math.floor(Date.now() / 1000) - 6 * 60)
+    for (const headers of [{}, { ...fresh(), 'svix-id': '' }, { ...fresh(), 'svix-timestamp': stale }]) {
+      const { body, counted } = streamed(1024)
+      expect((await post(headers, body)).status, JSON.stringify(headers)).toBe(401)
+      expect(counted.bytes).toBe(0)
+    }
+  })
+
+  test('refuses a body over 256 KiB with 413, reading no more than the cap and a chunk', async () => {
+    const { body, counted } = streamed(1024)
+    expect((await post(fresh(), body)).status).toBe(413)
+    expect(counted.bytes).toBeLessThanOrEqual(256 * 1024 + 64 * 1024)
+    // A Content-Length over the cap is refused on its word.
+    const declared = { ...fresh(), 'content-length': String(256 * 1024 + 1) }
+    expect((await post(declared, 'a'.repeat(256 * 1024 + 1))).status).toBe(413)
+  })
+
+  test('reads a signed body of exactly 256 KiB, and refuses one byte more', async () => {
+    received.length = 0
+    const event = resendEvent('email.delivered')
+    const padded = (bytes: number) =>
+      JSON.stringify({
+        ...event,
+        padding: 'x'.repeat(bytes - Buffer.byteLength(JSON.stringify({ ...event, padding: '' })))
+      })
+    const atCap = padded(256 * 1024)
+    expect((await deliver(atCap)).status).toBe(200)
+    expect(received).toHaveLength(1)
+    expect((await deliver(padded(256 * 1024 + 1))).status).toBe(413)
+    expect(received).toHaveLength(1)
+  })
+
   test('answers 400 to a validly signed body that is not a Resend event', async () => {
     for (const body of ['not json', 'null', '"email.delivered"', '{"data":{}}']) {
       expect((await deliver(body)).status, body).toBe(400)

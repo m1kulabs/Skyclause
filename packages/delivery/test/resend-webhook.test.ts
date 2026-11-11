@@ -1,7 +1,7 @@
 // #656: Resend signs every webhook call with Svix's scheme. The published vector is Svix's own
 // (https://docs.svix.com/receiving/verifying-payloads/how-manual.md).
 import { describe, expect, test } from 'vitest'
-import { verifyResendWebhook, WebhookVerificationError } from '../src/resend-webhook'
+import { checkResendWebhookHeaders, verifyResendWebhook, WebhookVerificationError } from '../src/resend-webhook'
 
 const vector = {
   secret: 'whsec_plJ3nmyCDGBKInavdOK15jsl', // gitleaks:allow -- Svix's published test-vector secret.
@@ -56,6 +56,16 @@ describe('verifyResendWebhook', () => {
     expect(verifying(vector.secret, headers(), vector.body, off(-301))).toThrow(/five-minute tolerance/)
     expect(verifying(vector.secret, headers(), vector.body, off(300))).not.toThrow()
     expect(verifying(vector.secret, headers(), vector.body, off(-300))).not.toThrow()
+  })
+
+  test('checks the headers and the timestamp alone, before there is a body, and leaves the signature for later', () => {
+    const missing = headers()
+    missing.delete('svix-id')
+    expect(() => checkResendWebhookHeaders(missing, signedAt)).toThrow(/missing Svix headers/)
+    expect(() => checkResendWebhookHeaders(headers(), new Date(signedAt.getTime() + 301_000))).toThrow(
+      /five-minute tolerance/
+    )
+    expect(() => checkResendWebhookHeaders(headers({ 'svix-signature': 'v1,unchecked' }), signedAt)).not.toThrow()
   })
 
   test('passes when any space-separated v1 entry matches, and ignores other versions', () => {

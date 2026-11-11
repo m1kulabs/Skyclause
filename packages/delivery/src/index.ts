@@ -7,7 +7,13 @@ export {
   type EmailTransport,
   type EmailTransportOptions
 } from './email'
-export { parseResendWebhook, verifyResendWebhook, WebhookVerificationError, type ResendWebhook } from './resend-webhook'
+export {
+  checkResendWebhookHeaders,
+  parseResendWebhook,
+  verifyResendWebhook,
+  WebhookVerificationError,
+  type ResendWebhook
+} from './resend-webhook'
 export { googleLinkEmail, magicLinkDisabledEmail, magicLinkEmail } from './auth-emails'
 export {
   createInboundRouter,
