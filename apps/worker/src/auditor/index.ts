@@ -1,5 +1,5 @@
 import { metrics } from '@opentelemetry/api'
-import { loadEnv, log } from '@skyclause/config'
+import { log } from '@skyclause/config'
 import { METRICS, type EmailTransport, type Notify } from '@skyclause/contracts'
 import {
   listAuditOrganisations,
@@ -12,7 +12,7 @@ import {
   type AuditFindingRow,
   type Tx
 } from '@skyclause/db'
-import { emailTransportForAws } from '@skyclause/delivery'
+import { emailTransportFromEnv } from '@skyclause/delivery'
 import type { WorkerPart } from '../server'
 import { auditChecks, type AuditCheck } from './registry'
 
@@ -23,26 +23,6 @@ class CheckFailure extends Error {
   constructor(cause: unknown) {
     super('auditor check failed', { cause })
   }
-}
-
-function productionEmail(): EmailTransport {
-  const env = loadEnv('worker')
-  if (
-    !env.SES_REGION ||
-    !env.AWS_ROLE_ARN ||
-    !env.SES_CONFIGURATION_SET ||
-    !env.EMAIL_FROM_AUTH ||
-    !env.EMAIL_FROM_NOTICES
-  ) {
-    throw new Error('auditor email transport is not configured')
-  }
-  return emailTransportForAws({
-    region: env.SES_REGION,
-    roleArn: env.AWS_ROLE_ARN,
-    configurationSet: env.SES_CONFIGURATION_SET,
-    fromAuth: env.EMAIL_FROM_AUTH,
-    fromNotices: env.EMAIL_FROM_NOTICES
-  })
 }
 
 /** The batch auditor; dependencies are resolved on use, so importing the registry opens no connections. */
@@ -83,7 +63,8 @@ export function createAuditor(
       log.warn('auditor platform finding has no staff recipients', { check: row.check, findingId: row.id })
       return
     }
-    email ??= productionEmail()
+    email ??= emailTransportFromEnv('worker') ?? undefined
+    if (!email) throw new Error('auditor email transport is not configured')
     const transition = recovered ? 'recovered' : 'opened'
     // SES tags this key; it does not deduplicate sends. A rollback after partial delivery can resend on retry.
     for (const to of recipients)

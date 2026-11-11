@@ -17,7 +17,7 @@ import {
   makeWindow
 } from '@skyclause/db/test/factories/index'
 import { asLogin, expectEvent, expectOneAudit } from '@skyclause/db/test/harness/index'
-import { SesError } from '@skyclause/delivery'
+import { EmailSendError } from '@skyclause/delivery'
 import { eq } from 'drizzle-orm'
 import { afterAll, describe, expect, test } from 'vitest'
 import { createAlertsPart, noApproverCheck, slaTimer, type AlertsDeps } from '../src/alerts'
@@ -287,13 +287,11 @@ describe('CAL-18 and CAL-10: Needs review alerts everyone on duty', () => {
     const o = await org()
     const a = await account(o.id)
     const made = await reviewBundle(o.id)
-    const rejected = new SesError(
-      'SendEmail',
-      Object.assign(new Error('Email address is not verified.'), {
-        name: 'MessageRejected',
-        $metadata: { httpStatusCode: 400 }
-      })
-    )
+    const rejected = new EmailSendError('SES SendEmail failed: MessageRejected (HTTP 400)', {
+      status: 400,
+      code: 'MessageRejected',
+      cause: new Error('Email address is not verified.')
+    })
     const d = doubles({ clock: at('2026-11-02T07:10:01Z'), onDuty: [a], email: async () => Promise.reject(rejected) })
     await dispatchEvent(createAlertsPart(d.deps).events!, made.eventId)
     expect(

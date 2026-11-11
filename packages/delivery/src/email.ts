@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { SendEmailCommand, SESv2Client } from '@aws-sdk/client-sesv2'
+import { loadEnv } from '@skyclause/config'
 import { webIdentityCredentials } from './aws-credentials'
 
 /** Spec §1 `EmailTransport.send` input; #87 moves the type to `packages/contracts`. */
@@ -20,18 +21,16 @@ export interface EmailTransport {
   send(m: EmailMessage): Promise<{ providerMessageId: string }>
 }
 
-/** A failed SES call: `code` is SES's error name, `status` its HTTP status or null with no response. */
-export class SesError extends Error {
+/** A send that failed: `code` is the provider's error name, `status` its HTTP status or null with no response. */
+export class EmailSendError extends Error {
   readonly status: number | null
   readonly code: string
 
-  constructor(operation: string, cause: unknown) {
-    const code = cause instanceof Error ? cause.name : 'Unknown'
-    const status = (cause as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode ?? null
-    super(`SES ${operation} failed: ${code} (${status === null ? 'no HTTP response' : `HTTP ${status}`})`, { cause })
-    this.name = 'SesError'
-    this.status = status
-    this.code = code
+  constructor(message: string, details: { status: number | null; code: string; cause?: unknown }) {
+    super(message, { cause: details.cause })
+    this.name = 'EmailSendError'
+    this.status = details.status
+    this.code = details.code
   }
 }
 
@@ -69,7 +68,10 @@ export function createEmailTransport(options: EmailTransportOptions): EmailTrans
       try {
         result = await options.ses.send(command)
       } catch (error) {
-        throw new SesError('SendEmail', error)
+        const code = error instanceof Error ? error.name : 'Unknown'
+        const status = (error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode ?? null
+        const reason = status === null ? 'no HTTP response' : `HTTP ${status}`
+        throw new EmailSendError(`SES SendEmail failed: ${code} (${reason})`, { status, code, cause: error })
       }
       if (!result.MessageId) throw new Error('SES SendEmail returned no MessageId')
       return { providerMessageId: result.MessageId }
@@ -84,6 +86,32 @@ export function emailTransportForAws(
   const { region, roleArn, ...options } = config
   const ses = new SESv2Client({ region, credentials: webIdentityCredentials({ roleArn, region }) })
   return createEmailTransport({ ...options, ses })
+}
+
+const built: Partial<Record<'web' | 'worker', EmailTransport>> = {}
+
+/**
+ * The production transport for `service`, built from its environment on first use; null while its sending variables
+ * are unset and mail is off. The one place that reads them.
+ */
+export function emailTransportFromEnv(service: 'web' | 'worker'): EmailTransport | null {
+  if (built[service]) return built[service]
+  const { SES_REGION, AWS_ROLE_ARN, SES_CONFIGURATION_SET, EMAIL_FROM_AUTH, EMAIL_FROM_NOTICES } = loadEnv(service)
+  if (!SES_REGION || !AWS_ROLE_ARN || !SES_CONFIGURATION_SET || !EMAIL_FROM_AUTH || !EMAIL_FROM_NOTICES) return null
+  return (built[service] = emailTransportForAws({
+    region: SES_REGION,
+    roleArn: AWS_ROLE_ARN,
+    configurationSet: SES_CONFIGURATION_SET,
+    fromAuth: EMAIL_FROM_AUTH,
+    fromNotices: EMAIL_FROM_NOTICES
+  }))
+}
+
+/** `emailTransportFromEnv`, refusing while mail is off. */
+export function requireEmailTransport(service: 'web' | 'worker'): EmailTransport {
+  const transport = emailTransportFromEnv(service)
+  if (!transport) throw new Error('email is off: the SES variables are unset until gate 4B')
+  return transport
 }
 
 const CRLF = '\r\n'

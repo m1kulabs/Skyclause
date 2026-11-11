@@ -1,5 +1,5 @@
 import type { EmailTransport } from '@skyclause/contracts'
-import { SesError } from '@skyclause/delivery'
+import { EmailSendError } from '@skyclause/delivery'
 import { createMailbox } from '@skyclause/delivery/testing'
 import { makeUser } from '@skyclause/db/test/factories/user'
 import { asLogin } from '@skyclause/db/test/harness/index'
@@ -184,7 +184,11 @@ test('a send SES refuses is one structured ERROR line naming SES and its status,
         ),
         { name: 'AccessDeniedException', $metadata: { httpStatusCode: 403 } }
       )
-      throw new SesError('SendEmail', denied)
+      throw new EmailSendError('SES SendEmail failed: AccessDeniedException (HTTP 403)', {
+        status: 403,
+        code: 'AccessDeniedException',
+        cause: denied
+      })
     }
   })
   await request('POST', '/sign-in/magic-link', { email: 'refused@example.test' })
