@@ -1,0 +1,20 @@
+{
+  "created_at": "2026-11-11T15:35:03.000Z",
+  "data": {
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "created_at": "2026-11-11T15:35:05.895Z",
+    "email_id": "260df29d-f19d-4af4-97c6-8c8b934e8a68",
+    "from": "sign-in@notices.skyclause.m1ku.tech",
+    "message_id": "<010601a1cb3f915e-0fc13128-3e9a-48dd-899c-dd74ac352b07-000000@ap-northeast-1.amazonses.com>",
+    "received_for": [
+      "cutover-probe@in.skyclause.m1ku.tech"
+    ],
+    "subject": "Your Skyclause sign-in link",
+    "to": [
+      "cutover-probe@in.skyclause.m1ku.tech"
+    ]
+  },
+  "type": "email.received"
+}

@@ -1,0 +1,45 @@
+{
+  "object": "email",
+  "id": "260df29d-f19d-4af4-97c6-8c8b934e8a68",
+  "to": [
+    "cutover-probe@in.skyclause.m1ku.tech"
+  ],
+  "from": "sign-in@notices.skyclause.m1ku.tech",
+  "created_at": "2026-11-11T15:35:05.895Z",
+  "subject": "Your Skyclause sign-in link",
+  "message_id": "<010601a1cb3f915e-0fc13128-3e9a-48dd-899c-dd74ac352b07-000000@ap-northeast-1.amazonses.com>",
+  "bcc": [],
+  "cc": [],
+  "reply_to": [],
+  "html": "<removed>",
+  "html_format": "data_uri",
+  "text": "<the sign-in email text, removed: it held a sign-in link>",
+  "headers": {
+    "x-kumoref": "eyJfQF8iOiJcXF8vIiwicmVjaXBpZW50IjoiY3V0b3Zlci1wcm9iZUBpbi5za3ljbGF1c2UubTF rdS50ZWNoIn0=",
+    "received": "from e234-54.smtp-out.ap-northeast-1.amazonses.com (23.251.234.54) by receive.forge.rmta.net (KumoMTA 10.1.0.227)  with ESMTPS (TLSv1_3:TLS13_AES_128_GCM_SHA256)  id 77c68e8adde511f1a11d12ffcddf02a1 for <cutover-probe@in.skyclause.m1ku.tech>; Wed, 11 Nov 2026 15:35:05 +0000",
+    "dkim-signature": "[{\"value\":\"v=1\",\"params\":{\"a\":\"rsa-sha256\",\"q\":\"dns/txt\",\"c\":\"relaxed/simple\",\"s\":\"resend\",\"d\":\"notices.skyclause.m1ku.tech\",\"t\":\"1794411303\",\"h\":\"From:To:Subject:Message-ID:Content-Transfer-Encoding:Date:MIME-Version:Content-Type\",\"bh\":\"X+dg1vs3P9aQ+U2xExTFjaoKXTEQOOaafzbLW6Vk01E=\",\"b\":\"uKqObk9pHleffBSEzLnUrOmCEi/UERs+s/h7gqBzxSA7yv0XL9ps/7tS28eMELqp 4f+qKwAyxLbw2G+jLMwsLIAY77Dwy/iOefjX13DzUiHTmHtkgJep0BsV8IZxqD5aEO3 FUuQ79LG7Vn3XC/HtLPCP8U/uVocm4ehmtIZGK6o=\"}},{\"value\":\"v=1\",\"params\":{\"a\":\"rsa-sha256\",\"q\":\"dns/txt\",\"c\":\"relaxed/simple\",\"s\":\"zh4gjftm6etwoq6afzugpky45synznly\",\"d\":\"amazonses.com\",\"t\":\"1794411303\",\"h\":\"From:To:Subject:Message-ID:Content-Transfer-Encoding:Date:MIME-Version:Content-Type:Feedback-ID\",\"bh\":\"X+dg1vs3P9aQ+U2xExTFjaoKXTEQOOaafzbLW6Vk01E=\",\"b\":\"Yr9In4CsQXZe7PxRprKCzPADOJo6bbEPbVjoMdG/w5fHCt5yJJ0XpF1cY9J2N0fr uSe29OYYpQ1I+APZF9O4YYSZvtz5nkg8fsfy10VeTqMlbntnHIFUlzuZFPk47q/vzRJ 0sSdlZTo1lXQJtxXJXrUI3AZ9HNFuA0NE8u24AwE=\"}}]",
+    "from": "\"Skyclause\" <sign-in@notices.skyclause.m1ku.tech>",
+    "to": "cutover-probe@in.skyclause.m1ku.tech",
+    "subject": "Your Skyclause sign-in link",
+    "message-id": "<010601a1cb3f915e-0fc13128-3e9a-48dd-899c-dd74ac352b07-000000@ap-northeast-1.amazonses.com>",
+    "content-transfer-encoding": "quoted-printable",
+    "date": "\"2026-11-11T15:35:03.000Z\"",
+    "mime-version": "1.0",
+    "content-type": "text/plain",
+    "feedback-id": ":1.ap-northeast-1.KDNm+o+jyNu720q1rK1ooYvR0lMbAhvNE+RfFHPYjJNCWF9lxz9T1DX9R78ABGzw6AAefiZmHBBnN1vQAyZ/6ZqCY+fQNZXTIUs8I1bT90mo7cuPRln/kNNt9KadxSCQpJL5DhqaufZCGSQd0+L/gs3HLTd4ZeCRhHIlXxpEP44+oxYF8LGwXAGABtdrFm2I:1.ap-northeast-1.DTXDV/V9GPBWozcllKo8innbNB2qs2O/3F8XZSzd9ZM=:AmazonSES",
+    "x-ses-outgoing": "2026.11.11-23.251.234.54"
+  },
+  "received_for": [
+    "cutover-probe@in.skyclause.m1ku.tech"
+  ],
+  "authentication": {
+    "spf": "pass",
+    "dkim": "pass",
+    "dmarc": "pass"
+  },
+  "raw": {
+    "download_url": "<signed URL removed>",
+    "expires_at": "2026-11-11T16:37:28.466Z"
+  },
+  "attachments": []
+}

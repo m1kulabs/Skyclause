@@ -1,6 +1,7 @@
 // #158 c-sender-email: the worker sends approved calls' notices once, re-checking each recipient, records the
 // provider's answer and the delivery events Resend's webhooks report (#656), and settles each call. Real Postgres; the
-// provider is a double and the webhooks are Resend's documented examples, signed with a test secret.
+// provider is a double and the webhooks are the ones captured in production (11 Nov 2026), signed with a test secret;
+// `email.suppressed`, `email.failed` and `suppression.added` have no capture, so they are Resend's documented examples.
 import {
   emailHash,
   notice,
@@ -255,8 +256,9 @@ describe('retries on the batch sweep (D45)', () => {
 })
 
 /**
- * Resend's documented `type` webhook for `providerMessageId` (its email ID) to `address`, tagged `category`, as the
- * body Resend posts to /resend/webhook; `createdAt` replaces the envelope's `created_at`.
+ * The captured `type` webhook (documented, for `email.suppressed` and `email.failed`) for `providerMessageId` (its email
+ * ID) to `address`, tagged `category`, as the body Resend posts to /resend/webhook; `createdAt` replaces the envelope's
+ * `created_at`.
  */
 function resendBody(
   type: string,
@@ -274,6 +276,11 @@ function resendBody(
 }
 const permanentBounce = (providerMessageId: string, address: string, o: { category?: string } = {}) =>
   resendBody('email.bounced', providerMessageId, address, o)
+/** The captured `bounce` with the fields that make it another kind replaced. */
+const bounceOf = (fields: Record<string, unknown>) => ({
+  ...(resendEvent('email.bounced').data.bounce as Record<string, unknown>),
+  ...fields
+})
 
 const suppressionOf = (address: string) =>
   sql<{ reason: string }>('SELECT reason FROM suppression WHERE org_id = $1 AND email_hash = $2', [
@@ -321,7 +328,7 @@ describe('POST /resend/webhook (NTC-10)', () => {
     const providerId = (await noticeRow(id)).provider_message_id!
     const delivered = resendBody('email.delivered', providerId, address)
     const transient = resendBody('email.bounced', providerId, address, {
-      data: { bounce: { message: 'Mailbox full', subType: 'MailboxFull', type: 'Transient' } }
+      data: { bounce: bounceOf({ message: 'Mailbox full', subType: 'MailboxFull', type: 'Transient' }) }
     })
 
     expect((await webhook(delivered)).status).toBe(200)
@@ -355,7 +362,7 @@ describe('POST /resend/webhook (NTC-10)', () => {
     for (const body of [
       resendBody('email.failed', providerId, address),
       resendBody('email.bounced', providerId, address, {
-        data: { bounce: { message: 'Unknown', subType: 'Undetermined', type: 'Undetermined' } }
+        data: { bounce: bounceOf({ message: 'Unknown', subType: 'Undetermined', type: 'Undetermined' }) }
       }),
       JSON.stringify(resendEvent('suppression.added', { email: address }))
     ]) {

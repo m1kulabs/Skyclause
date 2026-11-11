@@ -1,0 +1,17 @@
+{
+  "created_at": "2026-11-11T15:36:34.201Z",
+  "data": {
+    "created_at": "2026-11-11T15:36:30.250Z",
+    "email_id": "01a1cb40-e497-7923-ba5b-29afdcccb3f5",
+    "from": "Skyclause <sign-in@notices.skyclause.m1ku.tech>",
+    "message_id": "<010601a1cb40e71d-98d214ec-adc4-420f-bd05-06399aa20fac-000000@ap-northeast-1.amazonses.com>",
+    "subject": "Your Skyclause sign-in link",
+    "tags": {
+      "category": "magic_link"
+    },
+    "to": [
+      "complained@resend.dev"
+    ]
+  },
+  "type": "email.complained"
+}

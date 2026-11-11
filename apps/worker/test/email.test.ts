@@ -1,6 +1,6 @@
 // a-email-transport's part (#657): Resend's `email.received` on `POST /resend/webhook`, read from Resend through a
 // `fetch` double and handed to the worker's own consumers on the shared router, down to their rows in Postgres. Calls
-// are Resend's documented examples, signed with the test secret.
+// are the `email.received` webhook and received email captured in production (11 Nov 2026), signed with the test secret.
 import { randomUUID } from 'node:crypto'
 import { loadEnv } from '@skyclause/config'
 import { issueSubscriberToken, setFlag, systemPrincipal, withSystem, withTenant, type Tx } from '@skyclause/db'
@@ -51,7 +51,7 @@ function app(load: Parameters<typeof createEmailPart>[0], resend = retrieveDoubl
   })
   return {
     resend,
-    /** Posts Resend's `email.received` example for `emailId`, received now, to `to`, signed now. */
+    /** Posts the captured `email.received` for `emailId`, received now, to `to`, signed now. */
     post: (emailId: string, to: string[]) => {
       const body = JSON.stringify(
         resendEvent('email.received', { email_id: emailId, to, created_at: new Date().toISOString() })
@@ -126,7 +126,7 @@ describe('email.received reaches the worker’s consumers', () => {
   const replyAddress = async () =>
     `r+${await inOrg((tx) => issueSubscriberToken(tx, { subscriberId, purpose: 'reply', callId, windowId }))}@${DOMAIN}`
   const evidenceAddress = () => `${orgSlug}.${project.slug}@${DOMAIN}`
-  /** Resend's documented received email, from the subscriber, with `fields` replaced. */
+  /** The captured received email, from the subscriber, with `fields` replaced. */
   const email = (fields: Record<string, unknown>) => receivedEmail({ from: subscriberEmail, ...fields })
 
   test('a Crowd reply is logged once, however often Resend delivers it', async () => {

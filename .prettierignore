@@ -15,6 +15,7 @@ packages/sdk/openapi/openapi.json
 packages/agent/test/fixtures/rainfall-graph-*.json
 packages/agent/test/fixtures/weather-warning-*.json
 packages/delivery/test/fixtures/rainfall-graph-*.json
+packages/delivery/test/fixtures/resend-*-20??-??-??.json
 packages/db/test/fixtures/rainfall-graph-*.json
 packages/clauses/test/fixtures/rainfall-graph-*.json
 apps/worker/test/fixtures/rapidrail-sp17-*.json
