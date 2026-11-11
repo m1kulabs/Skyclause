@@ -3,7 +3,7 @@
 // theme, size and rule.
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { inspectPage, motionFindings, type Finding } from './checks'
-import { KNOWN_GAPS } from './known-gaps'
+import { sortFindings } from './known-gaps'
 import { sessions, signedOut, type Role, type Session } from './roles'
 import { builtRoutes, type CrawlRoute } from './routes'
 import { hasSession, redirectsToAccount, visit } from './visit'
@@ -19,6 +19,13 @@ const PLANTED_FAILURE = '/quality-planted/unlabelled-input'
 const PLANTED_MOTION = '/quality-planted/motion'
 const ACCOUNT_MOTION = 'dark, account reduced motion'
 const PUBLIC_GROUPS = new Set(['marketing', 'public'])
+/** Pages that read in an effect: inspected once a read has landed (content, empty state or error), never loading. */
+const READY: Record<string, string> = {
+  '/[org]/projects': ':is(h1, [data-slot="empty"], [data-slot="alert"])',
+  '/[org]/analysis': ':is(.analysis-muted, .analysis-error)',
+  '/[org]/settings/members':
+    ':is(#members-table-heading, [data-slot="empty"], [data-slot="alert"]), h1:has-text("Page not found")'
+}
 const PROJECT_UI_ROUTES = new Set([
   '/[org]/[project]',
   '/[org]/[project]/settings',
@@ -265,6 +272,11 @@ for (const discovered of builtRoutes()) {
         route.dynamic && !route.params && !PROJECT_UI_ROUTES.has(route.path) && route.path !== '/[org]',
         `${route.path} needs param fixtures with stubApi bodies (#95)`
       )
+      // Expected to fail until the page 404s for non-members; then it passes, which fails, so this line goes.
+      test.fail(
+        route.path === '/[org]/analysis' && (session.role === 'share-link reviewer' || session.role === 'signed out'),
+        'the organisation roll-up renders for non-members instead of 404 (#596)'
+      )
       const dashboard = route.path === '/[org]'
       const visitRoute = dashboard ? { ...route, path: '/test-org', dynamic: false } : route
       const dashboardRoles: Record<Role, 'owner' | 'admin' | 'approver' | 'editor' | 'viewer' | 'guest' | null> = {
@@ -292,7 +304,9 @@ for (const discovered of builtRoutes()) {
             : '[data-calls-ready="true"] h1'
           : route.path === PLANTED_MOTION
             ? '[data-planted-motion]'
-            : undefined
+            : jsOn
+              ? READY[route.path]
+              : undefined
       )
 
       if (route.path === PLANTED_FAILURE) {
@@ -311,22 +325,21 @@ for (const discovered of builtRoutes()) {
         expect(motion.map((finding) => finding.theme)).toEqual(jsOn && hasSession(session.role) ? [ACCOUNT_MOTION] : [])
       }
 
-      const gaps = KNOWN_GAPS.filter((gap) => gap.route === route.path)
-      const open = findings.filter(
-        (finding) =>
-          !(plantedMotion && finding.check === 'reduced-motion') && !gaps.some((gap) => gap.check === finding.check)
+      const { open, seen, stale } = sortFindings(
+        findings.filter((finding) => !(plantedMotion && finding.check === 'reduced-motion')),
+        { route: route.path, role: session.role, project: info.project.name }
       )
-      for (const gap of gaps) {
-        if (findings.some((finding) => finding.check === gap.check)) {
-          note(info, 'known gap', `${gap.check} on ${gap.route}: ${gap.why} (#${gap.issue})`)
-        } else if (jsOn) {
-          open.push({
+      for (const gap of seen) note(info, 'known gap', `${gap.check} on ${gap.route}: ${gap.why} (#${gap.issue})`)
+      // Without JavaScript there is no axe, so only the JavaScript projects can call an entry stale.
+      if (jsOn) {
+        open.push(
+          ...stale.map((gap) => ({
             check: 'known-gaps',
-            detail: `${gap.check} no longer fails here; remove its entry`,
+            detail: `${gap.check} ${gap.detail} no longer fails here; remove its entry`,
             theme: '-',
             size: '-'
-          })
-        }
+          }))
+        )
       }
       if (open.length) throw new Error(report(route, session, open))
     })

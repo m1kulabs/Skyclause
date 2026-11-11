@@ -17,9 +17,10 @@ export interface CrawlRoute {
 // Next renders `_global-error` only when the root layout throws; it has no URL to visit.
 const UNVISITABLE = new Set(['/_global-error'])
 const PARAM_FIXTURES: Record<string, Array<'org' | 'project'>> = {
-  '/[org]/new': ['org'],
   '/[org]/[project]/settings/packs': ['org', 'project']
 }
+/** A page under an organisation with no other parameter, such as `/[org]/settings/members`: each role's own one. */
+const ORG_PAGE = /^\/\[org\](?:\/[^[\]/]+)+$/
 
 export function crawlRoutes(manifest: Record<string, string>): CrawlRoute[] {
   return Object.entries(manifest)
@@ -28,7 +29,11 @@ export function crawlRoutes(manifest: Record<string, string>): CrawlRoute[] {
       path: url,
       group: /\/\(([^)]+)\)\//.exec(entry)?.[1] ?? null,
       dynamic: url.includes('['),
-      ...(PARAM_FIXTURES[url] ? { params: PARAM_FIXTURES[url] } : {}),
+      ...(PARAM_FIXTURES[url]
+        ? { params: PARAM_FIXTURES[url] }
+        : ORG_PAGE.test(url)
+          ? { params: ['org' as const] }
+          : {}),
       status: url === '/_not-found' ? (404 as const) : (200 as const)
     }))
     .sort((a, b) => (a.path < b.path ? -1 : 1))
