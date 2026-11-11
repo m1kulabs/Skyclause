@@ -11,7 +11,10 @@ test('landing sections render below the hero', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Common questions' })).toBeVisible()
   await expect(page.getByText('No live grades yet (n=0)')).toBeVisible()
   await expect(page.getByText('proposal, untested').first()).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Open the Commons' })).toHaveAttribute('href', /\/guest$/)
+  await expect(page.locator('.landing-frame').getByRole('link', { name: 'Open the Commons' })).toHaveAttribute(
+    'href',
+    /\/guest$/
+  )
 })
 
 test('landing sections keep DESIGN order', async ({ page }) => {
