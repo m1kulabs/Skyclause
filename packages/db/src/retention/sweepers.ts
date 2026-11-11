@@ -231,7 +231,11 @@ export async function sweepDomainEvents(
   }
 }
 
-/** `handled_message` marks for SES IDs more than one day old. */
+/**
+ * `handled_message` marks (Resend received-email IDs, and the sources' request and poll keys) more than one day old.
+ * Inbound mail relies on that day: `packages/delivery/src/inbound.ts` acknowledges unread any email received over 23
+ * hours ago.
+ */
 export async function sweepHandledMessages(
   tx: Tx<SystemPrincipal>,
   q: { orgId: string | null; now: Date }

@@ -1,4 +1,4 @@
-// #158, TRD "Channels and sends": a crash after SES accepted a notice but before the outbox recorded it repeats at
+// #158, TRD "Channels and sends": a crash after Resend accepted a notice but before the outbox recorded it repeats at
 // most that one email, under the same idempotency key, and the first email's links keep working. The crash is the
 // record failing once after the provider call.
 import { verifySubscriberToken } from '@skyclause/db'
@@ -14,7 +14,7 @@ vi.mock('@skyclause/db', async (importOriginal) => {
     recordCallNotice: async (...args: Parameters<typeof actual.recordCallNotice>) => {
       if (crash.next && args[2].status === 'sent') {
         crash.next = false
-        throw new Error('the worker stopped after SES accepted the email')
+        throw new Error('the worker stopped after Resend accepted the email')
       }
       return actual.recordCallNotice(...args)
     }
@@ -32,7 +32,7 @@ test('a crash after the provider call repeats one email under the same key, once
   const box = mailbox()
   const { approve, sweep, clock } = senderPart(box)
   crash.next = true
-  await expect(approve(made.event)).rejects.toThrow(/stopped after SES accepted/)
+  await expect(approve(made.event)).rejects.toThrow(/stopped after Resend accepted/)
   expect(box.sent).toHaveLength(1)
   const id = made.subscribers[0]!.noticeId
   expect(await noticeRow(id)).toMatchObject({ status: 'queued', attempts: 1 })

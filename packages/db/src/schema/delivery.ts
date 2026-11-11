@@ -123,7 +123,7 @@ export const consentRecord = tenantTable(
   (self) => [sameOrg('consent_record_subscriber', self, self.subscriberId, subscriber, true)]
 )
 
-/** An address never to email again (SES bounces and complaints, unsubscribes), by `emailHash`. */
+/** An address never to email again (the provider's bounces and complaints, unsubscribes), by `emailHash`. */
 export const suppression = tenantTable(
   'suppression',
   {
@@ -169,7 +169,7 @@ export const notice = tenantTable(
     sameOrg('notice_project', self, self.projectId, project, true),
     sameOrg('notice_call', self, self.callId, call, true),
     sameOrg('notice_subscriber', self, self.subscriberId, subscriber, true),
-    // `/ses/events` maps SES's message ID back to its notice; the sweep finds queued rows.
+    // `/resend/webhook` maps Resend's email ID back to its notice; the sweep finds queued rows.
     index('notice_provider_message_id_idx').on(self.providerMessageId),
     index('notice_queued_idx')
       .on(self.orgId)
@@ -189,7 +189,7 @@ export const crowdReply = tenantTable(
     callId: uuid('call_id').notNull(),
     kind: crowdReplyKind('kind').notNull(),
     shiftTo: instant('shift_to'),
-    /** When the recipient answered: SES's receipt time for an email, the request's for a link. */
+    /** When the recipient answered: Resend's receipt time for an email, the request's for a link. */
     at: instant('at').notNull(),
     createdAt: instant('created_at').notNull().defaultNow()
   },

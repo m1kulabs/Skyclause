@@ -60,7 +60,7 @@ async function byLink<A extends Accepted, T>(
     )
 }
 
-/** A link's email goes out after its transaction commits; a public flow answers the same whatever SES says. */
+/** A link's email goes out after its transaction commits; a public flow answers the same whatever Resend says. */
 async function sendFromLink(c: Context<ApiEnv>, email: QueuedEmail | null) {
   if (email) await deliverSubscriberEmail(c.get('deps'), LINK_PRINCIPAL, email, { rethrow: false })
 }

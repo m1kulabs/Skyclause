@@ -143,9 +143,9 @@ export async function loadEvent(
 }
 
 /**
- * Runs `fn` unless `consumer` already handled the event (an event ID) or the external message (`{ messageId }`, an SES
- * message ID), recording it in the same transaction, so a redelivery is a no-op and a failed `fn` leaves no record.
- * Returns whether `fn` ran. Needs a system principal (handled_event and handled_message are S).
+ * Runs `fn` unless `consumer` already handled the event (an event ID) or the external message (`{ messageId }`, such as
+ * Resend's received-email ID), recording it in the same transaction, so a redelivery is a no-op and a failed `fn`
+ * leaves no record. Returns whether `fn` ran. Needs a system principal (handled_event and handled_message are S).
  */
 export async function handleOnce(
   tx: Tx,

@@ -1,5 +1,6 @@
-// #163 (c-recipient-replies) at the worker's transport seams: the `crowd-replies` inbound consumer, fed what the
-// `/ses/inbound` router hands it, and the `plan-feedback` consumer of `call.graded`, sending through a mailbox double.
+// #163 (c-recipient-replies) at the worker's transport seams: the `crowd-replies` inbound consumer, fed what the inbound
+// router behind `POST /resend/webhook` hands it, and the `plan-feedback` consumer of `call.graded`, sending through a
+// mailbox double.
 import { randomUUID } from 'node:crypto'
 import type { EmailTransport } from '@skyclause/contracts'
 import type { InboundMessage } from '@skyclause/delivery'
@@ -28,7 +29,7 @@ import {
 import { asLogin } from '@skyclause/db/test/harness/index'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import { dispatchEvent } from '../src/events'
-import { createRepliesPart, crowdReplyRecipient, handleCrowdReply } from '../src/replies'
+import { createRepliesPart, CROWD_REPLY_RECIPIENT, handleCrowdReply } from '../src/replies'
 
 const DOMAIN = 'in.skyclause.m1ku.tech'
 let orgId: string
@@ -71,9 +72,8 @@ describe('crowd-replies registration', () => {
     }
   }
 
-  test('the worker registers crowd-replies on /ses/inbound’s router when INBOUND_DOMAIN is set, and not before', async () => {
-    expect(await registered()).toBe(false)
-    vi.stubEnv('INBOUND_DOMAIN', DOMAIN)
+  test('the part registers crowd-replies at import without reading a mail setting, as a Cloud Run job imports it', async () => {
+    vi.stubEnv('INBOUND_DOMAIN', undefined)
     expect(await registered()).toBe(true)
   })
 })
@@ -109,11 +109,12 @@ describe('crowd-replies: a reply to a Crowd notice’s Reply-To', () => {
     from: 'Ana.Lecturer@example.edu.my',
     subject: 'Re: Surge night tonight',
     text: 'Shift to 19:30\n\nOn Fri, 20 Nov 2026 at 17:00, Skyclause wrote:\n> Surge night: expect crowds.\n',
-    messageId: `ses-${randomUUID()}`,
+    messageId: randomUUID(),
     receivedAt: RECEIVED,
-    verdicts: { spf: 'PASS', dkim: 'PASS', spam: 'PASS', virus: 'PASS' },
+    verdicts: { spf: 'PASS', dkim: 'PASS', dmarc: 'PASS' },
     ...o
   })
+  const handle = (m: InboundMessage) => handleCrowdReply(m, { inboundDomain: () => DOMAIN })
   const replies = () =>
     sql(`SELECT call_id, kind, shift_to, at FROM crowd_reply WHERE window_id = $1 ORDER BY created_at`, [windowId])
   const drops = (messageId: string) =>
@@ -121,14 +122,14 @@ describe('crowd-replies: a reply to a Crowd notice’s Reply-To', () => {
       messageId
     ])
 
-  test('CAL-17: the reply writes a crowd_reply row and a ledger entry at SES’s receipt time, once', async () => {
+  test('CAL-17: the reply writes a crowd_reply row and a ledger entry at Resend’s receipt time, once', async () => {
     const token = await replyToken()
     // The router matches the address lower-cased and hands it over as received (the token is case-sensitive).
-    expect(crowdReplyRecipient(DOMAIN).test(`r+${token}@${DOMAIN}`.toLowerCase())).toBe(true)
+    expect(CROWD_REPLY_RECIPIENT.test(`r+${token}@${DOMAIN}`.toLowerCase())).toBe(true)
     const message = mail(token)
 
-    await handleCrowdReply(message)
-    await handleCrowdReply(message)
+    await handle(message)
+    await handle(message)
 
     expect(await replies()).toMatchObject([
       { call_id: callId, kind: 'shift', shift_to: new Date('2026-11-20T11:30:00Z'), at: new Date(RECEIVED) }
@@ -143,18 +144,18 @@ describe('crowd-replies: a reply to a Crowd notice’s Reply-To', () => {
     expect(await drops(message.messageId)).toEqual([])
   })
 
-  test('a redelivered SES message writes no second reply, ledger entry or drop, even with an unspent token', async () => {
+  test('a redelivered email writes no second reply, ledger entry or drop, even with an unspent token', async () => {
     const message = mail(await replyToken())
-    await handleCrowdReply(message)
+    await handle(message)
     // Same message ID, a fresh token: only the handled-message record stops it.
     const again = { ...message, recipient: `r+${await replyToken()}@${DOMAIN}` }
-    await handleCrowdReply(again)
+    await handle(again)
     expect(await replies()).toHaveLength(1)
     expect(await sql(`SELECT 1 FROM ledger_entry WHERE project_id = $1`, [projectId])).toHaveLength(1)
 
     const unreadable = mail(await replyToken(), { text: 'Keep please' })
-    await handleCrowdReply(unreadable)
-    await handleCrowdReply({ ...unreadable, recipient: `r+${await replyToken()}@${DOMAIN}` })
+    await handle(unreadable)
+    await handle({ ...unreadable, recipient: `r+${await replyToken()}@${DOMAIN}` })
     expect(await drops(unreadable.messageId)).toHaveLength(1)
     expect(
       await sql(`SELECT 1 FROM handled_message WHERE consumer = 'crowd-replies' AND message_id = $1`, [
@@ -165,8 +166,8 @@ describe('crowd-replies: a reply to a Crowd notice’s Reply-To', () => {
 
   test('a spent token still refuses a different message', async () => {
     const token = await replyToken()
-    await handleCrowdReply(mail(token, { text: 'keep' }))
-    await handleCrowdReply(mail(token, { text: 'shuttle' }))
+    await handle(mail(token, { text: 'keep' }))
+    await handle(mail(token, { text: 'shuttle' }))
     expect((await replies()).map((row) => row.kind)).toEqual(['keep'])
   })
 
@@ -181,8 +182,8 @@ describe('crowd-replies: a reply to a Crowd notice’s Reply-To', () => {
     ]
     for (const [text, kind] of cases) {
       const message = mail(await replyToken(), { text })
-      await handleCrowdReply(message)
-      await handleCrowdReply(message)
+      await handle(message)
+      await handle(message)
       if (kind === null) {
         expect(await drops(message.messageId), text).toEqual([
           { action: 'crowd_reply.dropped', after: { dropped: 'unparsed' }, actor_id: 'inbound:crowd-replies' }
@@ -193,40 +194,56 @@ describe('crowd-replies: a reply to a Crowd notice’s Reply-To', () => {
     expect((await replies()).find((row) => row.kind === 'shift')!.shift_to).toEqual(new Date('2026-11-19T23:05:00Z'))
   })
 
-  test('mail without spam and virus PASS, or from another address, is dropped, and its token keeps its reply', async () => {
+  test('mail without a DMARC pass, or from another address, is dropped, and its token keeps its reply', async () => {
     const token = await replyToken()
-    const unscanned = mail(token, { verdicts: { spf: 'PASS', dkim: 'PASS', spam: 'GRAY', virus: 'PASS' } })
+    // A forged From (SPF passes for the sending server's own domain, unaligned), and a domain with no DMARC record.
+    const forged = mail(token, { verdicts: { spf: 'PASS', dkim: 'FAIL', dmarc: 'FAIL' } })
+    const noPolicy = mail(token, { verdicts: { spf: 'PASS', dkim: 'PASS', dmarc: 'NONE' } })
     const forwarded = mail(token, { from: 'someone.else@example.com' })
-    await handleCrowdReply(unscanned)
-    await handleCrowdReply(forwarded)
+    for (const message of [forged, noPolicy, forwarded]) await handle(message)
 
-    expect((await drops(unscanned.messageId)).map((row) => [row.action, row.after])).toEqual([
-      ['crowd_reply.dropped', { dropped: 'verdict' }]
-    ])
+    for (const message of [forged, noPolicy]) {
+      expect((await drops(message.messageId)).map((row) => [row.action, row.after])).toEqual([
+        ['crowd_reply.dropped', { dropped: 'verdict' }]
+      ])
+    }
     expect((await drops(forwarded.messageId)).map((row) => [row.action, row.after])).toEqual([
       ['crowd_reply.dropped', { dropped: 'sender' }]
     ])
     expect(await replies()).toEqual([])
-    await handleCrowdReply(mail(token, { text: 'keep' }))
+    await handle(mail(token, { text: 'keep' }))
     expect((await replies()).map((row) => row.kind)).toEqual(['keep'])
   })
 
-  test('a bad token, a reply after the window ends, or inbound_email or pack_crowd off writes nothing', async () => {
+  test('DMARC passing is enough, whatever SPF and DKIM say', async () => {
+    await handle(mail(await replyToken(), { text: 'keep', verdicts: { spf: 'FAIL', dkim: 'NONE', dmarc: 'PASS' } }))
+    expect((await replies()).map((row) => row.kind)).toEqual(['keep'])
+  })
+
+  test('a bad token, another domain, a reply after the window ends, or inbound_email or pack_crowd off writes nothing', async () => {
     const wrong = await inOrg((tx) => issueSubscriberToken(tx, { subscriberId, purpose: 'manage' }))
-    const messages = [mail(wrong), mail('A'.repeat(43)), mail(await replyToken(), { receivedAt: ENDS.toISOString() })]
-    for (const message of messages) await handleCrowdReply(message)
+    const other = await replyToken()
+    const messages = [
+      mail(wrong),
+      mail('A'.repeat(43)),
+      mail(other, { recipient: `r+${other}@elsewhere.example.test` }),
+      mail(await replyToken(), { receivedAt: ENDS.toISOString() })
+    ]
+    for (const message of messages) await handle(message)
+    // Without INBOUND_DOMAIN no reply is read.
+    await handleCrowdReply(mail(await replyToken()), { inboundDomain: () => undefined })
 
     const token = await replyToken()
     await setInboundEmail(false)
-    await handleCrowdReply(mail(token))
+    await handle(mail(token))
     await setInboundEmail(true)
     await setFlag({ key: 'pack_crowd', enabled: false, orgId })
-    await handleCrowdReply(mail(token))
+    await handle(mail(token))
     await setFlag({ key: 'pack_crowd', enabled: true, orgId })
 
     expect(await replies()).toEqual([])
     for (const message of messages) expect(await drops(message.messageId)).toEqual([])
-    await handleCrowdReply(mail(token))
+    await handle(mail(token))
     expect(await replies()).toHaveLength(1)
   })
 })
@@ -235,14 +252,14 @@ describe('plan-feedback: after a graded Sky window, one email to each subscriber
   const APP = 'https://app.skyclause.m1ku.tech'
   type Sent = Parameters<EmailTransport['send']>[0]
 
-  /** A mailbox double; `failFor` addresses answer as SES does outside its sandbox's verified list (D48). */
+  /** A mailbox double; `failFor` addresses are refused, as Resend refuses an invalid address. */
   function mailbox(failFor: string[] = []) {
     const sent: Sent[] = []
     const transport: EmailTransport = {
       async send(message) {
-        if (failFor.includes(message.to)) throw new Error('MessageRejected: Email address is not verified.')
+        if (failFor.includes(message.to)) throw new Error('Resend send failed: validation_error (HTTP 422)')
         sent.push(message)
-        return { providerMessageId: `ses-${sent.length}` }
+        return { providerMessageId: `email-${sent.length}` }
       }
     }
     return { sent, transport }
@@ -320,8 +337,8 @@ describe('plan-feedback: after a graded Sky window, one email to each subscriber
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
     })
     expect(await feedbackNotices(night.projectId)).toEqual([
-      { status: 'sent', provider_message_id: 'ses-1', call_id: null },
-      { status: 'sent', provider_message_id: 'ses-2', call_id: null }
+      { status: 'sent', provider_message_id: 'email-1', call_id: null },
+      { status: 'sent', provider_message_id: 'email-2', call_id: null }
     ])
   })
 
@@ -359,7 +376,7 @@ describe('plan-feedback: after a graded Sky window, one email to each subscriber
     expect(box.sent).toEqual([])
   })
 
-  test('an SES refusal marks that notice failed; the others still send and the event completes', async () => {
+  test('a refused send marks that notice failed; the others still send and the event completes', async () => {
     const night = await graded()
     await recipient(night, 'ana@example.edu.my', 'sent')
     await recipient(night, 'unverified@example.com', 'sent')

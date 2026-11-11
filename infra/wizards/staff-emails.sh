@@ -198,16 +198,10 @@ finish() {
 # the whole file before the first prompt, so an edit mid-run can't break it.
 # ──────────────────────────────────────────────────────────────────────────
 
-# #118 gates 3 and 4A: the staff addresses (D30) into Secret Manager SKYCLAUSE_STAFF_EMAILS, then,
-# optionally, SES sandbox verification of the team addresses #113's live checks send to. SES is
-# in ap-southeast-2, the only region the account's SCP allows. The address identities are made
-# here, not in Terraform, and matter only while SES is in the sandbox. Run from anywhere in the
-# repo, signed in to gcloud as a skyclause owner (and to AWS for the SES stage). About 5 minutes,
-# plus the inbox clicks.
+# #118 gate 3: the staff addresses (D30) into Secret Manager SKYCLAUSE_STAFF_EMAILS. Run from anywhere
+# in the repo, signed in to gcloud as a skyclause owner. About 2 minutes.
 
 PROJECT=skyclause
-AWS_ACCOUNT=776566309118
-SES_REGION=ap-southeast-2
 ADDRESS_PATTERN='[^@[:space:],]+@[^@[:space:],]+\.[^@[:space:],]+'
 ADDRESS_LIST_PATTERN="^ *$ADDRESS_PATTERN( *, *$ADDRESS_PATTERN)* *$"
 
@@ -234,25 +228,14 @@ ask_valid() {
   done
 }
 
-# unverified ADDRESS... prints each address SES hasn't verified for sending yet; AWS's own error
-# shows for anything but a missing identity.
-unverified() {
-  local address status
-  for address in "$@"; do
-    status="$(aws sesv2 get-email-identity --email-identity "$address" --region "$SES_REGION" \
-      --query VerifiedForSendingStatus --output text 2> >(grep -v NotFoundException >&2) || true)"
-    [[ "$status" == True ]] || printf '%s\n' "$address"
-  done
-}
-
 run_wizard() {
 
-TOTAL_STAGES=4
+TOTAL_STAGES=2
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 # Not the root .env, which Bun loads in local development.
 ENV_FILE=infra/wizards/.env
 
-banner "Staff addresses and SES sandbox recipients"
+banner "Staff addresses"
 
 stage "Check your tools"
 command -v gcloud >/dev/null 2>&1 || { warn "gcloud is missing: install it and re-run"; exit 1; }
@@ -273,50 +256,6 @@ if confirm "Store the staff addresses now?"; then
   note "Then add \"SKYCLAUSE_STAFF_EMAILS\" to supplied_secrets in infra/environments/production/terraform.tfvars."
 else
   note "Skipped."
-fi
-pause
-
-stage "SES sandbox: ask AWS to verify team addresses (optional)"
-say "While SES is in the sandbox in $SES_REGION, it delivers only to verified addresses."
-say "Verify each team address #113's live checks send to. Skip this once production access is granted."
-addresses=()
-if confirm "Verify team addresses now?"; then
-  command -v aws >/dev/null 2>&1 || { warn "aws is missing: install it and re-run"; exit 1; }
-  if [[ "$(aws sts get-caller-identity --query Account --output text)" != "$AWS_ACCOUNT" ]]; then
-    warn "The AWS CLI isn't signed in to account $AWS_ACCOUNT: sign in and re-run."
-    exit 1
-  fi
-  ask_valid ask TEAM_ADDRESSES "Team addresses:" "$ADDRESS_LIST_PATTERN" "Use comma-separated addresses."
-  IFS=',' read -ra addresses <<<"${TEAM_ADDRESSES// /}"
-  pending="$(unverified "${addresses[@]}")"
-  # Creates the identity, or re-sends the email for one still pending (its link lasts 24 hours).
-  while IFS= read -r address; do
-    [[ -n "$address" ]] || continue
-    aws ses verify-email-identity --email-address "$address" --region "$SES_REGION" >/dev/null
-    printf '  %s✓ sent%s an AWS verification email to %s\n' "$GREEN" "$RESET" "$address"
-  done <<<"$pending"
-  [[ -n "$pending" ]] || note "Every address is already verified."
-else
-  note "Skipped."
-fi
-pause
-
-stage "SES sandbox: confirm the links"
-if ((${#addresses[@]} == 0)); then
-  note "Nothing to confirm."
-else
-  step "Each inbox gets an AWS 'Email Address Verification Request' for Asia Pacific (Sydney)."
-  step "Click the link in each one; it expires after 24 hours. Re-run this wizard to re-send."
-  pause "Press Enter once every link is clicked"
-  while pending="$(unverified "${addresses[@]}")" && [[ -n "$pending" ]]; do
-    warn "Not verified yet: ${pending//$'\n'/, }"
-    confirm "Check again?" || break
-  done
-  if [[ -z "$pending" ]]; then
-    printf '  %s✓ verified%s every team address\n' "$GREEN" "$RESET"
-  else
-    SKIPPED+=("SES verification of ${pending//$'\n'/, } (re-run to re-send)")
-  fi
 fi
 
 finish

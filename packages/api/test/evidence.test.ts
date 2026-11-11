@@ -1,6 +1,6 @@
 // #159 c-evidence: the three evidence operations on the #79 §7 test database, through createTestApi with the real
 // withTenant and recordAudit. Doubles: the auth seams, d-guest-rules' BudgetGate (live after #181), the mailbox for
-// SES (EmailTransport) and the frame URL signer.
+// Resend (EmailTransport) and the frame URL signer.
 import type { BudgetGate, Principal } from '@skyclause/contracts'
 import { draftEvidenceRequest, recordAudit, subscriber as subscriberTable, withTenant, type Tx } from '@skyclause/db'
 import { eq as drizzleEq } from 'drizzle-orm'
@@ -282,7 +282,7 @@ describe('LED-3: every evidence_reply notice has an approve_reply approval', () 
     mailbox = {
       sent: [],
       async send() {
-        throw new Error('SES SendEmail failed: MessageRejected (HTTP 400)')
+        throw new Error('Resend send failed: validation_error (HTTP 422)')
       }
     }
     const approved = await approve(approver(), request.id)
