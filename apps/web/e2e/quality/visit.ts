@@ -5,7 +5,7 @@ import type { Finding } from './checks'
 import { expectZonedTimes } from '../harness/expect-zoned-times'
 
 /** A share link is a credential but no session (#94). */
-const hasSession = (role: Role) => role !== 'signed out' && role !== 'share-link reviewer'
+export const hasSession = (role: Role) => role !== 'signed out' && role !== 'share-link reviewer'
 
 /** The account gate denies everyone without a session, and guests outside Appearance (#96). */
 export function expectedStatus(route: CrawlRoute, role: Role) {

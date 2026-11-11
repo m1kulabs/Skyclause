@@ -1,6 +1,6 @@
 import { canonicalHash } from './canonical-hash'
 import { evalCelCondition, indicatorValToCel, toCelDuration, toCelTimestamp } from './cel'
-import { formatInstant, resolveWindowSpan } from './span'
+import { effectiveSpan, formatInstant, resolveWindowSpan } from './span'
 import { localCalendarAt } from './local-calendar'
 import { rainPeriod } from './rain'
 import type { WarningObservation } from './snapshot'
@@ -502,11 +502,7 @@ function evaluateClauseInScope(
 ): ClauseExplanation {
   let spanInfo: { from: Instant; to: Instant; complete: boolean; fromMs: number; toMs: number } | undefined
   if (window && clause.scope === 'window') {
-    const usesRainWindowIndicator =
-      clause.requires.some((r) => r === 'w.rain_max_60m_mm' || r === 'w.rain_max_4h_mm') ||
-      (clause.optional ?? []).some((r) => r === 'w.rain_max_60m_mm' || r === 'w.rain_max_4h_mm')
-    const effectiveSpanDef =
-      clause.span ?? (usesRainWindowIndicator ? { from: 'end-30m' as const, to: 'end+60m' as const } : undefined)
+    const effectiveSpanDef = effectiveSpan(clause)
     if (effectiveSpanDef) {
       const resolved = resolveWindowSpan(window, effectiveSpanDef)
       const complete = tEvalMs >= resolved.toMs

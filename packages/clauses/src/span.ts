@@ -1,4 +1,4 @@
-import type { Instant, SpanRef, Window } from './types'
+import type { Clause, Instant, SpanRef, Window } from './types'
 
 export interface ParsedSpanRef {
   anchor: 'start' | 'end'
@@ -78,4 +78,19 @@ export function resolveWindowSpan(
     from: formatInstant(fromMs),
     to: formatInstant(toMs)
   }
+}
+
+const RAIN_WINDOW_INDICATORS = ['w.rain_max_60m_mm', 'w.rain_max_4h_mm']
+
+/**
+ * The span the engine evaluates a window clause over: the one written on it, else 30 minutes before to 60 minutes
+ * after the window's end for a clause that reads a window rain maximum, else none.
+ */
+export function effectiveSpan(
+  clause: Pick<Clause, 'requires' | 'optional' | 'span'>
+): { from: SpanRef; to: SpanRef } | undefined {
+  const readsWindowRain = [...clause.requires, ...(clause.optional ?? [])].some((name) =>
+    RAIN_WINDOW_INDICATORS.includes(name)
+  )
+  return clause.span ?? (readsWindowRain ? { from: 'end-30m', to: 'end+60m' } : undefined)
 }
