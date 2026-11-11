@@ -198,11 +198,12 @@ finish() {
 # the whole file before the first prompt, so an edit mid-run can't break it.
 # ──────────────────────────────────────────────────────────────────────────
 
-# Walks the repository owner through the human-only production verification steps across #194, #531, #534,
-# #536, #539, #113, #629, #118 and #622 in one sitting. Checks each step's precondition live before asking
-# the human to act, skips steps whose product handlers answer 501 not-built (naming the blocking ticket),
-# and writes paste-ready, redacted evidence into infra/wizards/production-pilot.evidence.md (git-ignored).
-# Non-secret slugs and IDs go to infra/wizards/.env; SKYCLAUSE_API_KEY and email addresses stay in memory only.
+# Walks the repository owner through the human-only production steps of #194, #531, #534, #536, #539, #629, #118
+# and #622 in one sitting. It only reads: GETs to production (the product's API with a read key held in memory)
+# and gcloud and aws lists. Every write is the human's, in the browser, or printed for them to run. It checks each
+# step live first, names the ticket when production answers 501 not-built, and records evidence in the git-ignored
+# infra/wizards/production-pilot.evidence.md, refusing any section that holds a credential or an email address.
+# Only the organisation and project slugs and the project ID go to infra/wizards/.env.
 
 PROJECT="${PROJECT:-skyclause}"
 GCP_REGION="${GCP_REGION:-asia-southeast1}"
@@ -212,7 +213,6 @@ SES_EVENTS_TOPIC_ARN="${SES_EVENTS_TOPIC_ARN:-arn:aws:sns:ap-southeast-2:7765663
 MARKETING_ORIGIN="${MARKETING_ORIGIN:-https://skyclause.m1ku.tech}"
 APP_ORIGIN="${APP_ORIGIN:-https://app.skyclause.m1ku.tech}"
 API_ORIGIN="${API_ORIGIN:-https://api.skyclause.m1ku.tech}"
-DOCS_ORIGIN="${DOCS_ORIGIN:-https://docs.skyclause.m1ku.tech}"
 EVIDENCE_FILE="${EVIDENCE_FILE:-infra/wizards/production-pilot.evidence.md}"
 SLUG_PATTERN='^[a-z0-9]+(-[a-z0-9]+)*$'
 API_KEY_PATTERN='^skc_[A-Za-z0-9_-]{8,}$'
@@ -287,6 +287,24 @@ api_get() {
   API_BODY="${raw%$'\n'*}"
 }
 
+# public_get URL calls GET URL with no credentials, setting API_STATUS and API_BODY.
+public_get() {
+  local raw
+  raw="$(curl -sS -w $'\n%{http_code}' "$1")" || return 1
+  API_STATUS="${raw##*$'\n'}"
+  API_BODY="${raw%$'\n'*}"
+}
+
+# not_built OWNER succeeds when the last answer is the API's 501 not-built problem for OWNER (#79 §1): production
+# says the operation has no handler yet. Any other answer, even a 501, is not that.
+not_built() {
+  [[ "$API_STATUS" == "501" ]] && printf '%s' "$API_BODY" | python3 -c '
+import json, sys
+body = json.load(sys.stdin)
+sys.exit(0 if body.get("type", "").endswith("/problems/not-built") and body.get("owner") == sys.argv[1] else 1)
+' "$1" 2>/dev/null
+}
+
 # json_field EXPR readsAPI_BODY with python3 and prints the evaluated expression.
 json_field() {
   local expr="$1"
@@ -300,7 +318,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 # Not the root .env, which Bun loads in local development.
 [[ "$ENV_FILE" == .env ]] && ENV_FILE=infra/wizards/.env
 
-banner "Production pilot checks and human steps (#194, #531, #534, #536, #539, #113, #629, #118, #622)"
+banner "Production pilot checks and human steps (#194, #531, #534, #536, #539, #629, #118, #622)"
 
 stage "Check tools, hosts and on-call contacts (#118, #629)"
 for tool in curl python3 gcloud aws; do
@@ -330,26 +348,28 @@ else
 fi
 pause
 
-stage "Check deploy criteria still blocked (#622)"
-say "Checking #622's remaining deploy criteria live..."
-if ! grep -q '"build"' apps/docs/package.json 2>/dev/null; then
-  warn "#622 web image docs export: not built yet, waits on #210 (apps/docs has no build script)."
-  SKIPPED+=("#622 web image contains the docs export (waits on #210)")
-else
-  docs_status="$(curl -sS -o /dev/null -w '%{http_code}' "$DOCS_ORIGIN/")"
-  record_evidence "#622" "Docs host status" "curl -sS -o /dev/null -w '%{http_code}' $DOCS_ORIGIN/" "HTTP $docs_status"
-fi
-if gcloud run jobs describe commons-provision --region="$GCP_REGION" --project="$PROJECT" >/dev/null 2>&1; then
-  commons_out="$(gcloud run jobs executions list --job=commons-provision --region="$GCP_REGION" --project="$PROJECT" --limit=1 --format='table(name,status.completionTime,status.succeededCount)')"
-  record_evidence "#622" "commons:provision execution" \
+stage "Check #622's deploy criteria that still wait"
+# The docs host answers 200 on every path with or without a docs build, so its status proves nothing.
+note "#622's docs criterion comes after #210 gives apps/docs a build; then check the deployed web image by hand."
+SKIPPED+=("#622 the web image contains the docs export: after #210 gives apps/docs a build, check the deployed image by hand")
+say "Checking Cloud Run for the commons-provision job (#622)..."
+if ! commons_job="$(gcloud run jobs list --region="$GCP_REGION" --project="$PROJECT" \
+  --filter=metadata.name=commons-provision --format='value(metadata.name)')"; then
+  warn "Couldn't list Cloud Run jobs in $PROJECT: gcloud's error is above."
+  SKIPPED+=("#622 commons:provision runs after migrate (the Cloud Run read failed; re-run)")
+elif [[ -z "$commons_job" ]]; then
+  warn "Cloud Run has no commons-provision job yet: #179 adds it."
+  SKIPPED+=("#622 commons:provision runs after migrate, once #179 adds the job")
+elif commons_out="$(gcloud run jobs executions list --job=commons-provision --region="$GCP_REGION" \
+  --project="$PROJECT" --limit=1 --format='table(name,status.completionTime,status.succeededCount)')"; then
+  record_evidence "#622" "Latest commons-provision execution (that it ran after migrate in the same deploy is still to check)" \
     "gcloud run jobs executions list --job=commons-provision --region=$GCP_REGION --project=$PROJECT --limit=1" \
     "$commons_out"
 else
-  warn "#622 commons:provision after migrate: not built yet, waits on #179 (job commons-provision not in Cloud Run)."
-  SKIPPED+=("#622 commons:provision runs after migrate (waits on #179)")
+  warn "Couldn't list commons-provision's executions: gcloud's error is above."
+  SKIPPED+=("#622 commons:provision runs after migrate (the Cloud Run read failed; re-run)")
 fi
-note "#622 failing migrate rehearsal is tracked separately against a throwaway Neon branch; GitHub Actions deploy waits on billing recovery."
-SKIPPED+=("#622 end-to-end deploy on GitHub Actions (waits on GitHub Actions billing)")
+SKIPPED+=("#622 one deploy runs end to end on GitHub Actions, once it can start jobs again")
 pause
 
 stage "Sign in (#194)"
@@ -416,56 +436,72 @@ else
   SKIPPED+=("#531 verify ledger chain")
 fi
 api_get "/v1/projects/$PROJECT_ID/pilot-archive"
-# Each object's url is a signed download link, a credential for 15 minutes, so only these fields are kept.
-archive_objects="$(json_field "'\n'.join('kind=%s sha256=%s captured_at=%s' % (o['kind'], o['sha256'], o['captured_at']) for o in data.get('data', []))")"
-if [[ "$API_STATUS" == "200" ]] && [[ -n "$archive_objects" ]]; then
-  record_evidence "#531" "Pilot archive objects (kind, sha256 and capture time; download links left out)" \
-    "curl -fsS -H 'Authorization: Bearer $KEY_HINT' -H 'Skyclause-Organization: $ORG_SLUG' '$API_ORIGIN/v1/projects/$PROJECT_ID/pilot-archive'" \
-    "$archive_objects"
+if [[ "$API_STATUS" != "200" ]]; then
+  warn "GET /v1/projects/$PROJECT_ID/pilot-archive answered HTTP $API_STATUS: $API_BODY"
+  SKIPPED+=("#531 check the pilot archive (HTTP $API_STATUS)")
 else
-  note "Pilot archive (#531 criterion 2) has 0 objects: the pilot-archive job runs after 17 November 2026 (infra/README.md 'Pilot archive')."
-  SKIPPED+=("#531 upload and run pilot-archive job (after 17 November 2026)")
+  # Each object's url is a signed download link, a credential for 15 minutes, so only these fields are kept.
+  archive_objects="$(json_field "'\n'.join('kind=%s sha256=%s captured_at=%s' % (o['kind'], o['sha256'], o['captured_at']) for o in data.get('data', []))")"
+  if [[ -n "$archive_objects" ]]; then
+    record_evidence "#531" "Pilot archive objects (kind, sha256 and capture time; download links left out)" \
+      "curl -fsS -H 'Authorization: Bearer $KEY_HINT' -H 'Skyclause-Organization: $ORG_SLUG' '$API_ORIGIN/v1/projects/$PROJECT_ID/pilot-archive'" \
+      "$archive_objects"
+  else
+    note "The pilot archive has no object yet: a person uploads the files and runs the pilot-archive job after"
+    note "17 November 2026 (infra/README.md 'Pilot archive')."
+    SKIPPED+=("#531 upload the pilot archive files and run the pilot-archive job, after 17 November 2026")
+  fi
 fi
 pause
 
 stage "Bind Bukit Jalil sources (#194)"
 api_get "/v1/catalogue/sources"
-if [[ "$API_STATUS" == "501" ]]; then
-  warn "Source binding is not built yet: GET /v1/catalogue/sources answered 501 (waits on #138, b-source-binding)."
-  SKIPPED+=("#194 bind Bukit Jalil sources to project (not built yet, waits on #138)")
+if not_built b-source-binding; then
+  warn "Source binding isn't built in production: GET /v1/catalogue/sources answers 501 not-built (b-source-binding, #138)."
+  SKIPPED+=("#194 bind the Bukit Jalil sources, once production builds source binding (#138)")
 elif [[ "$API_STATUS" == "200" ]]; then
   open_url "$APP_ORIGIN/$ORG_SLUG/$PROJECT_SLUG/settings/packs"
   step "Bind the real Bukit Jalil sources for the Sky pack and save."
   pause "Press Enter once Bukit Jalil sources are bound"
   api_get "/v1/projects?slug=$PROJECT_SLUG&include=summary"
-  record_evidence "#194" "Project summary after binding Bukit Jalil sources" \
-    "curl -fsS -H 'Authorization: Bearer $KEY_HINT' -H 'Skyclause-Organization: $ORG_SLUG' '$API_ORIGIN/v1/projects?slug=$PROJECT_SLUG&include=summary'" \
-    "$API_BODY"
+  if [[ "$API_STATUS" == "200" ]]; then
+    record_evidence "#194" "Project summary after binding the Bukit Jalil sources (its next step, not the bound sources)" \
+      "curl -fsS -H 'Authorization: Bearer $KEY_HINT' -H 'Skyclause-Organization: $ORG_SLUG' '$API_ORIGIN/v1/projects?slug=$PROJECT_SLUG&include=summary'" \
+      "$API_BODY"
+  else
+    warn "GET /v1/projects?slug=$PROJECT_SLUG&include=summary answered HTTP $API_STATUS: $API_BODY"
+    SKIPPED+=("#194 record the project summary after binding sources (HTTP $API_STATUS)")
+  fi
 else
   warn "GET /v1/catalogue/sources answered HTTP $API_STATUS: $API_BODY"
-  SKIPPED+=("#194 bind Bukit Jalil sources (HTTP $API_STATUS)")
+  SKIPPED+=("#194 bind the Bukit Jalil sources (the sources read answered HTTP $API_STATUS)")
 fi
 pause
 
 stage "Declare storm-afternoon windows (#194)"
 api_get "/v1/projects/$PROJECT_ID/windows"
-if [[ "$API_STATUS" == "501" ]]; then
-  warn "Window declaration is not built yet: GET /v1/projects/$PROJECT_ID/windows answered 501 (waits on #139, b-windows-api)."
-  SKIPPED+=("#194 declare forecast storm-afternoon windows (not built yet, waits on #139)")
+if not_built b-windows-api; then
+  warn "Windows aren't built in production: GET /v1/projects/$PROJECT_ID/windows answers 501 not-built (b-windows-api, #139)."
+  SKIPPED+=("#194 declare windows on forecast storm afternoons, once production builds windows (#139)")
 elif [[ "$API_STATUS" == "200" ]]; then
   window_count="$(json_field "len(data.get('data', []))")"
-  if (( ${window_count:-0} == 0 )); then
+  if (( window_count == 0 )); then
     open_url "$APP_ORIGIN/$ORG_SLUG/$PROJECT_SLUG/windows"
     step "Declare windows on forecast storm afternoons (14:00–19:15 MYT)."
     pause "Press Enter once the windows are declared"
     api_get "/v1/projects/$PROJECT_ID/windows"
   fi
-  record_evidence "#194" "Declared project windows" \
-    "curl -fsS -H 'Authorization: Bearer $KEY_HINT' -H 'Skyclause-Organization: $ORG_SLUG' '$API_ORIGIN/v1/projects/$PROJECT_ID/windows'" \
-    "$API_BODY"
+  if [[ "$API_STATUS" == "200" ]]; then
+    record_evidence "#194" "Declared project windows" \
+      "curl -fsS -H 'Authorization: Bearer $KEY_HINT' -H 'Skyclause-Organization: $ORG_SLUG' '$API_ORIGIN/v1/projects/$PROJECT_ID/windows'" \
+      "$API_BODY"
+  else
+    warn "GET /v1/projects/$PROJECT_ID/windows answered HTTP $API_STATUS: $API_BODY"
+    SKIPPED+=("#194 record the declared windows (HTTP $API_STATUS)")
+  fi
 else
   warn "GET /v1/projects/$PROJECT_ID/windows answered HTTP $API_STATUS: $API_BODY"
-  SKIPPED+=("#194 declare windows (HTTP $API_STATUS)")
+  SKIPPED+=("#194 declare windows (the windows read answered HTTP $API_STATUS)")
 fi
 pause
 
@@ -473,80 +509,96 @@ stage "Put yourself on the rota (#194)"
 open_url "$APP_ORIGIN/$ORG_SLUG/settings/rota"
 step "Add a storm_afternoon shift (14:00–19:15 MYT) for your approver account and click Save."
 if confirm "Have you saved your shift on the rota at $APP_ORIGIN/$ORG_SLUG/settings/rota?"; then
-  record_evidence "#194" "Approver rota configured" \
+  record_evidence "#194" "Approver rota configured (your confirmation, not checked by the wizard)" \
     "open $APP_ORIGIN/$ORG_SLUG/settings/rota" \
-    "Confirmed: storm_afternoon shift (14:00–19:15 Asia/Kuala_Lumpur) saved on organisation '$ORG_SLUG' (account redacted)."
+    "Confirmed in the browser: a storm_afternoon shift (14:00–19:15 Asia/Kuala_Lumpur) is saved on organisation '$ORG_SLUG'."
 else
   SKIPPED+=("#194 put yourself on the rota at $APP_ORIGIN/$ORG_SLUG/settings/rota")
 fi
 pause
 
 stage "Subscribe team Gmail and Outlook addresses (#194, #536)"
+subscribers_label="Confirmed subscriber counts (counts only: not which inboxes they are)"
+subscribers_cmd="curl -fsS -H 'Authorization: Bearer $KEY_HINT' -H 'Skyclause-Organization: $ORG_SLUG' '$API_ORIGIN/v1/projects/$PROJECT_ID/subscriber-counts'"
 api_get "/v1/projects/$PROJECT_ID/subscriber-counts"
-confirmed_count="$(json_field "data.get('confirmed', 0)")"
-if [[ "$API_STATUS" == "200" ]] && (( ${confirmed_count:-0} >= 2 )); then
-  printf '  %s✓ verified%s %s confirmed subscribers on project %s\n' "$GREEN" "$RESET" "$confirmed_count" "$PROJECT_SLUG"
-  record_evidence "#194" "Confirmed subscriber counts (no personal addresses)" \
-    "curl -fsS -H 'Authorization: Bearer $KEY_HINT' -H 'Skyclause-Organization: $ORG_SLUG' '$API_ORIGIN/v1/projects/$PROJECT_ID/subscriber-counts'" \
-    "$API_BODY"
+if [[ "$API_STATUS" != "200" ]]; then
+  warn "GET /v1/projects/$PROJECT_ID/subscriber-counts answered HTTP $API_STATUS: $API_BODY"
+  SKIPPED+=("#194 subscribe and confirm one team Gmail and one team Outlook address (the counts read answered HTTP $API_STATUS)")
 else
-  note "Subscribing and confirming addresses in the SES sandbox requires both addresses verified via"
-  note "./infra/wizards/staff-and-ses.sh and #623's IAM fix applied in infra/aws."
-  if confirm "Open $APP_ORIGIN/$ORG_SLUG/$PROJECT_SLUG/subscribers to subscribe and confirm the team Gmail and Outlook addresses now?"; then
+  confirmed_count="$(json_field "data['confirmed']")"
+  if (( confirmed_count >= 2 )); then
+    printf '  %s✓ verified%s %s confirmed subscribers on project %s\n' "$GREEN" "$RESET" "$confirmed_count" "$PROJECT_SLUG"
+    record_evidence "#194" "$subscribers_label" "$subscribers_cmd" "$API_BODY"
+  elif confirm "Open $APP_ORIGIN/$ORG_SLUG/$PROJECT_SLUG/subscribers to subscribe and confirm the team Gmail and Outlook addresses now?"; then
+    note "While SES is in the sandbox, verify both addresses first with ./infra/wizards/staff-and-ses.sh."
     open_url "$APP_ORIGIN/$ORG_SLUG/$PROJECT_SLUG/subscribers"
     step "Import one team Gmail and one team Outlook address, then click the confirmation link in each inbox."
     pause "Press Enter once both confirmation links are clicked"
     api_get "/v1/projects/$PROJECT_ID/subscriber-counts"
-    confirmed_count="$(json_field "data.get('confirmed', 0)")"
-    if [[ "$API_STATUS" == "200" ]] && (( ${confirmed_count:-0} >= 2 )); then
-      record_evidence "#194" "Confirmed subscriber counts (no personal addresses)" \
-        "curl -fsS -H 'Authorization: Bearer $KEY_HINT' -H 'Skyclause-Organization: $ORG_SLUG' '$API_ORIGIN/v1/projects/$PROJECT_ID/subscriber-counts'" \
-        "$API_BODY"
+    confirmed_count=0
+    [[ "$API_STATUS" == "200" ]] && confirmed_count="$(json_field "data['confirmed']")"
+    if (( confirmed_count >= 2 )); then
+      record_evidence "#194" "$subscribers_label" "$subscribers_cmd" "$API_BODY"
     else
-      warn "Project currently has ${confirmed_count:-0} confirmed subscriber(s) (needs 2: Gmail + Outlook; waits on #623 if confirmation emails failed)."
-      SKIPPED+=("#194 subscribe and confirm team Gmail and Outlook addresses (waits on #623)")
+      warn "GET /v1/projects/$PROJECT_ID/subscriber-counts answered HTTP $API_STATUS, without 2 confirmed subscribers: $API_BODY"
+      SKIPPED+=("#194 subscribe and confirm one team Gmail and one team Outlook address")
     fi
   else
-    SKIPPED+=("#194 subscribe and confirm team Gmail and Outlook addresses (waits on #623)")
+    SKIPPED+=("#194 subscribe and confirm one team Gmail and one team Outlook address")
   fi
 fi
 pause
 
 stage "Add webhook receiver and check ICS feed (#194, #534)"
 api_get "/v1/webhooks"
-if [[ "$API_STATUS" == "501" ]]; then
-  warn "Signed webhooks are not built yet: waits on #193 (e-webhooks)."
-  SKIPPED+=("#194 add webhook to an HTTPS receiver (not built yet, waits on #193)")
-else
-  open_url "$APP_ORIGIN/$ORG_SLUG/settings/webhooks"
-  step "Register an HTTPS webhook receiver you control for project '$PROJECT_SLUG'."
-  if confirm "Has the webhook been added and verified?"; then
-    record_evidence "#194" "Webhook endpoint registered" \
-      "open $APP_ORIGIN/$ORG_SLUG/settings/webhooks" \
-      "Confirmed: HTTPS webhook endpoint registered for organisation '$ORG_SLUG'."
-  else
-    SKIPPED+=("#194 add webhook to an HTTPS receiver")
+if not_built e-webhooks; then
+  warn "Signed webhooks aren't built in production: GET /v1/webhooks answers 501 not-built (e-webhooks, #193)."
+  SKIPPED+=("#194 add a webhook to an HTTPS receiver you control, once production builds webhooks (#193)")
+elif [[ "$API_STATUS" == "200" || "$API_STATUS" == "403" ]]; then
+  if [[ "$API_STATUS" == "403" ]]; then
+    note "A read key gets 403 from GET /v1/webhooks: listing webhooks needs integrations.manage, an admin-scope"
+    note "statement. So the wizard can't tell whether webhooks are built; the settings page shows you."
   fi
-fi
-api_get "/v1/projects/$PROJECT_ID/ics-feeds"
-ics_feeds_status="$API_STATUS"
-api_get "/v1/projects/$PROJECT_ID/calls"
-sent_calls="$(json_field "len([c for c in data.get('data', []) if c.get('state') == 'sent'])")"
-if [[ "$ics_feeds_status" == "501" ]]; then
-  warn "ICS feed management (/v1/projects/$PROJECT_ID/ics-feeds) answered 501: not built yet, waits on #139 (b-windows-api)."
-fi
-if (( ${sent_calls:-0} == 0 )); then
-  warn "#534 production ICS feed validation needs at least one sent call (currently 0; waits on #138, #139, #133)."
-  SKIPPED+=("#534 validate production ICS feed with a sent call (waits on #138, #139, #133)")
-else
-  ics_body="$(curl -fsS "$MARKETING_ORIGIN/p/$ORG_SLUG/$PROJECT_SLUG/calendar.ics" || true)"
-  if [[ "$ics_body" == *"BEGIN:VCALENDAR"* && "$ics_body" == *"BEGIN:VEVENT"* ]]; then
-    record_evidence "#534" "Production ICS feed with sent call" \
-      "curl -fsS '$MARKETING_ORIGIN/p/$ORG_SLUG/$PROJECT_SLUG/calendar.ics'" \
-      "$ics_body"
+  open_url "$APP_ORIGIN/$ORG_SLUG/settings/webhooks"
+  step "Register an HTTPS receiver you control for project '$PROJECT_SLUG'."
+  step "If the page can't load webhooks, open DevTools' Network tab: a 501 not-built answer from /v1/webhooks"
+  note "  means they aren't built yet (#193), so answer n."
+  if confirm "Is a webhook to your HTTPS receiver registered?"; then
+    record_evidence "#194" "Webhook endpoint registered (your confirmation, not checked by the wizard)" \
+      "open $APP_ORIGIN/$ORG_SLUG/settings/webhooks" \
+      "Confirmed in the browser: an HTTPS webhook endpoint is registered for organisation '$ORG_SLUG'."
   else
-    warn "Calendar feed $MARKETING_ORIGIN/p/$ORG_SLUG/$PROJECT_SLUG/calendar.ics is not public or has no VEVENT yet."
-    SKIPPED+=("#534 validate production ICS feed at $MARKETING_ORIGIN/p/$ORG_SLUG/$PROJECT_SLUG/calendar.ics")
+    SKIPPED+=("#194 add a webhook to an HTTPS receiver you control (a 501 not-built from /v1/webhooks means it waits on #193)")
+  fi
+else
+  warn "GET /v1/webhooks answered HTTP $API_STATUS: $API_BODY"
+  SKIPPED+=("#194 add a webhook to an HTTPS receiver you control (the webhooks read answered HTTP $API_STATUS)")
+fi
+
+# sent_calls stays empty when the read fails, so nothing below mistakes a failure for "no call yet".
+sent_calls=""
+api_get "/v1/projects/$PROJECT_ID/calls?state=sent&limit=1"
+if [[ "$API_STATUS" == "200" ]]; then
+  sent_calls="$(json_field "len(data['data'])")"
+else
+  warn "GET /v1/projects/$PROJECT_ID/calls?state=sent answered HTTP $API_STATUS: $API_BODY"
+  SKIPPED+=("#534, #536, #539 and #194's live checks (the calls read answered HTTP $API_STATUS; re-run)")
+fi
+if [[ "$sent_calls" == "0" ]]; then
+  warn "#534 needs a feed with a sent call, and the project has none yet. A first real crossing needs bound"
+  note "sources (#138), declared windows (#139) and the evaluator that writes crossings (#133)."
+  SKIPPED+=("#534 validate the production ICS feed, once a call is sent")
+elif [[ -n "$sent_calls" ]]; then
+  feed_url="$MARKETING_ORIGIN/p/$ORG_SLUG/$PROJECT_SLUG/calendar.ics"
+  public_get "$feed_url"
+  if [[ "$API_STATUS" == "200" && "$API_BODY" == *"BEGIN:VCALENDAR"* && "$API_BODY" == *"BEGIN:VEVENT"* ]]; then
+    # No strict RFC 5545 validator is in the repo or a standard tool (ical.js only parses), so this is the feed only.
+    record_evidence "#534" "Production ICS feed with a sent call (not validated: needs a strict RFC 5545 validator)" \
+      "curl -fsS '$feed_url'" "$API_BODY"
+    SKIPPED+=("#534 run a strict RFC 5545 validator on the recorded feed and quote its output")
+  else
+    warn "$feed_url answered HTTP $API_STATUS without a VEVENT."
+    SKIPPED+=("#534 validate the production ICS feed at $feed_url (HTTP $API_STATUS, no VEVENT)")
   fi
 fi
 pause
@@ -575,21 +627,28 @@ else
   SKIPPED+=("#536 confirm the ses_events subscription by hand (infra/README.md 'AWS email')")
 fi
 
-if (( ${sent_calls:-0} == 0 )); then
-  warn "Live notice delivery (#536), bundle approval (#194) and 'keep' reply (#539) wait on #133 (b-evaluator), #138, #139 and #623."
-  SKIPPED+=("#536 real notice to confirmed subscriber and Approval-to-provider SLI (waits on #133, #138, #139, #623)")
-  SKIPPED+=("#194 approve first real crossing and run @production specs (waits on #133, #138, #139, #193)")
-  SKIPPED+=("#539 reply 'keep' to a production notice (waits on a sent notice: #133, #138, #139, #623)")
-else
+if [[ "$sent_calls" == "0" ]]; then
+  warn "With no sent call yet, #536's real notice, #539's 'keep' reply and #194's first approval wait on a real crossing."
+  SKIPPED+=("#536 a real notice reaches a confirmed subscriber with its delivery event, and the Approval to provider SLI, once a call is sent")
+  SKIPPED+=("#194 approve the first real crossing and run the @production specs, once one needs review")
+  SKIPPED+=("#539 reply 'keep' to a production notice, once one is sent")
+elif [[ -n "$sent_calls" ]]; then
   api_get "/v1/projects/$PROJECT_ID/ledger?kind=crowd_reply"
-  reply_count="$(json_field "len(data.get('data', []))")"
-  if (( ${reply_count:-0} > 0 )); then
-    record_evidence "#539" "Production crowd_reply ledger entry" \
-      "curl -fsS -H 'Authorization: Bearer $KEY_HINT' -H 'Skyclause-Organization: $ORG_SLUG' '$API_ORIGIN/v1/projects/$PROJECT_ID/ledger?kind=crowd_reply'" \
-      "$API_BODY"
+  if [[ "$API_STATUS" != "200" ]]; then
+    warn "GET /v1/projects/$PROJECT_ID/ledger?kind=crowd_reply answered HTTP $API_STATUS: $API_BODY"
+    SKIPPED+=("#539 capture the crowd_reply ledger entry (HTTP $API_STATUS)")
   else
-    SKIPPED+=("#539 reply 'keep' to a production notice and re-run to capture the crowd_reply ledger entry")
+    reply_count="$(json_field "len(data['data'])")"
+    if (( reply_count > 0 )); then
+      record_evidence "#539" "Production crowd_reply ledger entries (that one is your 'keep' reply is your check)" \
+        "curl -fsS -H 'Authorization: Bearer $KEY_HINT' -H 'Skyclause-Organization: $ORG_SLUG' '$API_ORIGIN/v1/projects/$PROJECT_ID/ledger?kind=crowd_reply'" \
+        "$API_BODY"
+    else
+      SKIPPED+=("#539 reply 'keep' to a production notice and re-run to capture the crowd_reply ledger entry")
+    fi
   fi
+  SKIPPED+=("#536 quote a real notice's delivery event (NTC-1) and the production Approval to provider SLI, by hand")
+  SKIPPED+=("#194 approve the first real crossing and run the @production specs, by hand")
 fi
 
 say "Malay reader check for #539 (packages/i18n/catalogue/ms/replies.json):"
@@ -597,7 +656,7 @@ ms_sha="$(shasum -a 256 packages/i18n/catalogue/ms/replies.json | awk '{print $1
 note "SHA-256: $ms_sha"
 printf '%s\n' "$(cat packages/i18n/catalogue/ms/replies.json)"
 if confirm "Has a Malay reader checked and signed off packages/i18n/catalogue/ms/replies.json for #539?"; then
-  record_evidence "#539" "Malay reader sign-off on packages/i18n/catalogue/ms/replies.json" \
+  record_evidence "#539" "Malay reader sign-off on packages/i18n/catalogue/ms/replies.json (your confirmation, by its SHA-256)" \
     "shasum -a 256 packages/i18n/catalogue/ms/replies.json && cat packages/i18n/catalogue/ms/replies.json" \
     "$(printf '%s  packages/i18n/catalogue/ms/replies.json\n%s' "$ms_sha" "$(cat packages/i18n/catalogue/ms/replies.json)")"
 else

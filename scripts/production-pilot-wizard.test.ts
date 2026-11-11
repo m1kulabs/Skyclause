@@ -113,7 +113,6 @@ const subscriberCounts = (confirmed: number) => ({
 function production(overrides: Record<string, Reply> = {}): Record<string, Reply> {
   return {
     '*/health': { status: 200, body: 'ok' },
-    'https://docs.skyclause.m1ku.tech/': { status: 200, body: '<html id="__next_error__"></html>' },
     '*/v1/projects?slug=*include=summary': json(200, { data: [project], next_cursor: null }),
     '*/v1/projects/*/clause-sheets': json(200, {
       data: [{ id: '019a7000-0000-7000-8000-000000000002', pack: 'sky', live_version: { n: 1, status: 'published' } }]
@@ -123,9 +122,14 @@ function production(overrides: Record<string, Reply> = {}): Record<string, Reply
     '*/v1/catalogue/sources': notBuilt('b-source-binding'),
     '*/v1/projects/*/windows': notBuilt('b-windows-api'),
     '*/v1/projects/*/subscriber-counts': json(200, subscriberCounts(2)),
-    '*/v1/webhooks': notBuilt('e-webhooks'),
-    '*/v1/projects/*/ics-feeds': notBuilt('b-windows-api'),
-    '*/v1/projects/*/calls*': json(200, { data: [], next_cursor: null }),
+    // listWebhooks needs integrations.manage, which a read key lacks; the auth gate answers before not-built.
+    '*/v1/webhooks': json(403, {
+      type: 'https://docs.skyclause.m1ku.tech/problems/insufficient-scope',
+      title: 'Insufficient scope',
+      status: 403,
+      detail: 'This key lacks integrations.manage.'
+    }),
+    '*/v1/projects/*/calls?state=sent&limit=1': json(200, { data: [], next_cursor: null }),
     '*/v1/projects/*/ledger?kind=crowd_reply': json(200, { data: [], next_cursor: null, total: 0 }),
     '*/p/*/*/calendar.ics': {
       status: 200,
@@ -146,10 +150,7 @@ function gcloud(overrides: Record<string, CliReply> = {}): Record<string, CliRep
     'secrets versions list ONCALL_CONTACTS *': {
       stdout: 'NAME  STATE    CREATE_TIME\n1     ENABLED  2026-11-11T03:00:00Z\n'
     },
-    'run jobs describe commons-provision *': {
-      exit: 1,
-      stderr: 'ERROR: (gcloud.run.jobs.describe) Cannot find job.\n'
-    },
+    'run jobs list *': { stdout: '' },
     ...overrides
   }
 }
@@ -267,7 +268,7 @@ const secretKey = 'skc_live_9876543210abcdefSECRETVALUE'
 // Every remote call is a read: GETs to production, and list or identity reads in gcloud and aws.
 function expectOnlyReads(calls: ReturnType<typeof runWizard>['calls']) {
   for (const line of calls.gcloud.trim().split('\n').filter(Boolean)) {
-    expect(line).toMatch(/^(secrets versions list|run jobs (list|describe|executions list)) /)
+    expect(line).toMatch(/^(secrets versions list|run jobs list|run jobs executions list) /)
   }
   for (const line of calls.aws.trim().split('\n').filter(Boolean)) {
     expect(line).toMatch(/^(sts get-caller-identity|sns list-subscriptions-by-topic) /)
@@ -333,9 +334,10 @@ describe('infra/wizards/production-pilot.sh only reads', () => {
     'n', // rota saved?
     '', // stage 9
     '', // stage 10
+    'n', // webhook registered?
     '', // stage 11
     'n', // Malay sign-off?
-    'n' // revoke? (later stages)
+    'n' // revoke the key?
   ]
   const allYes = [
     '', // banner
@@ -354,9 +356,11 @@ describe('infra/wizards/production-pilot.sh only reads', () => {
     'y', // rota saved?
     '', // stage 9
     '', // stage 10
+    'y', // webhook registered?
     '', // stage 11
     'y', // Malay sign-off?
-    'y' // revoke? (later stages)
+    'y', // revoke the key?
+    '' // revoked
   ]
 
   test('answering "n" to every confirmation performs no write of any kind', () => {
@@ -468,5 +472,145 @@ describe('infra/wizards/production-pilot.sh evidence holds no credential', () =>
     expect(evidenceContent).not.toContain('/ledger/verify')
     // The rest of the run still records what holds no credential.
     expect(evidenceContent).toContain('## #194 — Organisation, project and default Sky clause sheet')
+  })
+})
+
+describe('infra/wizards/production-pilot.sh reports what still waits from production', () => {
+  const answers = [
+    '', // banner
+    '', // stage 1
+    '', // stage 2
+    '', // stage 3: signed in
+    'skyclause-ops', // ORG_SLUG
+    'bukit-jalil', // PROJECT_SLUG
+    'n', // open /new?
+    secretKey, // read key
+    '', // stage 5
+    '', // stage 6
+    '', // stage 7
+    '', // stage 8
+    'y', // rota saved?
+    '', // stage 9
+    '', // stage 10
+    'n', // webhook registered?
+    '', // stage 11
+    'y', // Malay sign-off?
+    'n' // revoke the key?
+  ]
+
+  test('names the ticket behind each not-built answer and missing job, and no closed ticket', () => {
+    const { result, output, envContent, evidenceContent } = runWizard({ input: answers })
+
+    expect(result.status, output).toBe(0)
+    expect(output).toContain('GET /v1/catalogue/sources answers 501 not-built (b-source-binding, #138)')
+    expect(output).toContain(`GET /v1/projects/${PROJECT_ID}/windows answers 501 not-built (b-windows-api, #139)`)
+    expect(output).toContain('A read key gets 403 from GET /v1/webhooks')
+    expect(output).toContain('#193')
+    expect(output).toContain('#133')
+    expect(output).toContain('Cloud Run has no commons-provision job yet: #179 adds it')
+    expect(output).toContain('#210')
+    // #113 and #623 are closed: magic-link sign-in works in production.
+    expect(output).not.toMatch(/#623|#113\b/)
+
+    expect(output).not.toContain(secretKey)
+    expect(envContent).toContain("ORG_SLUG='skyclause-ops'")
+    expect(envContent).toContain("PROJECT_SLUG='bukit-jalil'")
+    expect(envContent).toContain(`PROJECT_ID='${PROJECT_ID}'`)
+    expect(envContent).not.toContain(secretKey)
+    expect(evidenceContent).not.toContain(secretKey)
+    expect(evidenceContent).toContain('skc_live…')
+    expect(evidenceContent).toContain('## #118 / #629')
+    expect(evidenceContent).toContain('## #194 — Organisation, project and default Sky clause sheet')
+    expect(evidenceContent).toContain('## #531 — Production /ledger/verify for the pilot project')
+    expect(evidenceContent).toContain('"valid":true')
+    expect(evidenceContent).toContain('## #194 — Approver rota configured (your confirmation')
+    expect(evidenceContent).toContain('## #194 — Confirmed subscriber counts')
+    expect(evidenceContent).toContain('## #539 — Malay reader sign-off on packages/i18n/catalogue/ms/replies.json')
+  })
+
+  test('reports a 501 that is not the not-built problem as a failed read, not as waiting on a ticket', () => {
+    const { result, output } = runWizard({
+      input: answers,
+      curl: production({
+        '*/v1/catalogue/sources': { status: 501, body: '<html><body>501 Not Implemented</body></html>' }
+      })
+    })
+
+    expect(result.status, output).toBe(0)
+    expect(output).toContain('GET /v1/catalogue/sources answered HTTP 501')
+    expect(output).not.toContain('b-source-binding, #138')
+  })
+
+  test('reports a failed Cloud Run read as a failed read, not as waiting on #179', () => {
+    const { result, output } = runWizard({
+      input: answers,
+      gcloud: gcloud({
+        'run jobs list *': {
+          exit: 1,
+          stderr: 'ERROR: (gcloud.run.jobs.list) PERMISSION_DENIED: Permission denied on resource project skyclause.\n'
+        }
+      })
+    })
+
+    expect(result.status, output).toBe(0)
+    expect(output).toContain('PERMISSION_DENIED')
+    expect(output).toContain("Couldn't list Cloud Run jobs")
+    expect(output).not.toContain('#179')
+  })
+
+  test('re-running reuses the saved slugs and records each step production has built, saying what it does not prove', () => {
+    const { result, output, evidenceContent } = runWizard({
+      existingEnvFile: "ORG_SLUG='skyclause-ops'\nPROJECT_SLUG='bukit-jalil'\n",
+      curl: production({
+        '*/v1/catalogue/sources': json(200, { data: [], next_cursor: null }),
+        '*/v1/projects/*/windows': json(200, { data: [], next_cursor: null }),
+        '*/v1/projects/*/calls?state=sent&limit=1': json(200, {
+          data: [{ id: 'call-1', state: 'sent' }],
+          next_cursor: null
+        }),
+        '*/v1/projects/*/ledger?kind=crowd_reply': json(200, {
+          data: [
+            { id: 'led-1', project_id: PROJECT_ID, seq: 2, kind: 'crowd_reply', refs: {}, body: { answer: 'keep' } }
+          ],
+          next_cursor: null,
+          total: 1
+        })
+      }),
+      input: [
+        '', // banner
+        '', // stage 1
+        '', // stage 2
+        '', // stage 3: signed in
+        '', // ORG_SLUG: Enter keeps it
+        '', // PROJECT_SLUG: Enter keeps it
+        'n', // open /new?
+        secretKey, // read key
+        '', // stage 5
+        '', // stage 6
+        '', // stage 7: sources bound
+        '', // stage 7
+        '', // stage 8: windows declared
+        '', // stage 8
+        'y', // rota saved?
+        '', // stage 9
+        '', // stage 10
+        'y', // webhook registered?
+        '', // stage 11
+        'y', // Malay sign-off?
+        'n' // revoke the key?
+      ]
+    })
+
+    expect(result.status, output).toBe(0)
+    expect(evidenceContent).not.toContain(secretKey)
+    expect(evidenceContent).toContain('## #194 — Project summary after binding the Bukit Jalil sources')
+    expect(evidenceContent).toContain('## #194 — Declared project windows')
+    expect(evidenceContent).toContain('## #194 — Webhook endpoint registered (your confirmation')
+    expect(evidenceContent).toContain(
+      '## #534 — Production ICS feed with a sent call (not validated: needs a strict RFC 5545 validator)'
+    )
+    expect(evidenceContent).toContain('UID:call-1@skyclause.m1ku.tech')
+    expect(evidenceContent).toContain('## #539 — Production crowd_reply ledger entries')
+    expect(output).toContain('#534 run a strict RFC 5545 validator on the recorded feed')
   })
 })
