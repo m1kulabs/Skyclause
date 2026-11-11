@@ -18,21 +18,6 @@ export interface InspectOptions {
 export async function inspectPage(page: Page, options: InspectOptions): Promise<Finding[]> {
   const findings: Finding[] = []
   if (options.axe) {
-    // Entrance animations (the landing's staggered rise) run once after paint; audit the settled page, not a
-    // mid-fade frame. Infinite animations (the stadium drift) are left running. Bounded so a long animation
-    // delays the audit by 3 s at most.
-    await page.evaluate(() =>
-      Promise.race([
-        Promise.allSettled(
-          document.getAnimations().map((animation) => {
-            const timing = (animation.effect as KeyframeEffect | null)?.getTiming()
-            if (timing && (timing.iterations === Infinity || timing.duration === Infinity)) return null
-            return animation.finished.catch(() => null)
-          })
-        ),
-        new Promise((resolve) => setTimeout(resolve, 3000))
-      ])
-    )
     for (const violation of await blockingViolations(page)) {
       const where = violation.nodes.map((node) => node.target.join(' ')).join(', ')
       findings.push({ check: 'axe', detail: `${violation.id} (${violation.impact}): ${violation.help} at ${where}` })

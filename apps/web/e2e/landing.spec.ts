@@ -52,11 +52,11 @@ test('faq shows one answer pane with one selected dot', async ({ page }) => {
         ).length
     )
   await expect(page.getByText('No live grades yet (n=0)')).toBeVisible()
-  expect(await visibleDots()).toBe(1)
+  await expect.poll(visibleDots).toBe(1)
   await page.getByText('Who makes the call?', { exact: true }).click()
   await expect(page.getByText('A person on the approver rota approves it before anyone hears it.')).toBeVisible()
   await expect(page.getByText('No live grades yet (n=0)')).toBeHidden()
-  expect(await visibleDots()).toBe(1)
+  await expect.poll(visibleDots).toBe(1)
 })
 
 // LND-4: no numeral on the whole rendered `/` (hero included) outside an element carrying a data-source link.
