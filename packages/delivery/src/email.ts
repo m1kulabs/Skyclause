@@ -48,7 +48,7 @@ export class EmailSendError extends Error {
 }
 
 export interface EmailTransportOptions {
-  /** `RESEND_API_KEY`: a sending-only key. */
+  /** `RESEND_SENDING_API_KEY`: a sending-only key. */
   apiKey: string
   /** `EMAIL_FROM_AUTH`, for `from: 'auth'` */
   fromAuth: string
@@ -119,10 +119,10 @@ const built: Partial<Record<'web' | 'worker', EmailTransport>> = {}
  */
 export function emailTransportFromEnv(service: 'web' | 'worker'): EmailTransport | null {
   if (built[service]) return built[service]
-  const { RESEND_API_KEY, EMAIL_FROM_AUTH, EMAIL_FROM_NOTICES } = loadEnv(service)
-  if (!RESEND_API_KEY || !EMAIL_FROM_AUTH || !EMAIL_FROM_NOTICES) return null
+  const { RESEND_SENDING_API_KEY, EMAIL_FROM_AUTH, EMAIL_FROM_NOTICES } = loadEnv(service)
+  if (!RESEND_SENDING_API_KEY || !EMAIL_FROM_AUTH || !EMAIL_FROM_NOTICES) return null
   return (built[service] = createEmailTransport({
-    apiKey: RESEND_API_KEY,
+    apiKey: RESEND_SENDING_API_KEY,
     fromAuth: EMAIL_FROM_AUTH,
     fromNotices: EMAIL_FROM_NOTICES
   }))
@@ -131,7 +131,8 @@ export function emailTransportFromEnv(service: 'web' | 'worker'): EmailTransport
 /** `emailTransportFromEnv`, refusing while mail is off. */
 export function requireEmailTransport(service: 'web' | 'worker'): EmailTransport {
   const transport = emailTransportFromEnv(service)
-  if (!transport) throw new Error('email is off: RESEND_API_KEY, EMAIL_FROM_AUTH and EMAIL_FROM_NOTICES are unset')
+  if (!transport)
+    throw new Error('email is off: RESEND_SENDING_API_KEY, EMAIL_FROM_AUTH and EMAIL_FROM_NOTICES are unset')
   return transport
 }
 

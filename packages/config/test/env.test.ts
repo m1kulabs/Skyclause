@@ -50,7 +50,7 @@ describe('loadEnv', () => {
 
   // Resend sending: the key is a Secret Manager secret (shaped like one, not real), the senders Terraform's.
   const email = {
-    RESEND_API_KEY: 're_test_sending_only',
+    RESEND_SENDING_API_KEY: 're_test_sending_only',
     EMAIL_FROM_AUTH: 'Skyclause <sign-in@notices.skyclause.m1ku.tech>',
     EMAIL_FROM_NOTICES: 'Skyclause <notices@notices.skyclause.m1ku.tech>'
   }
@@ -72,7 +72,7 @@ describe('loadEnv', () => {
   })
 
   test('the sending and receiving variables are optional, and each group is read together', () => {
-    expect(loadEnv('worker', worker)).not.toHaveProperty('RESEND_API_KEY')
+    expect(loadEnv('worker', worker)).not.toHaveProperty('RESEND_SENDING_API_KEY')
     expect(loadEnv('worker', worker)).not.toHaveProperty('SES_REGION')
     expect(loadEnv('worker', { ...worker, ...email, ...inbound })).toEqual({
       ...worker,
@@ -95,16 +95,16 @@ describe('loadEnv', () => {
   })
 
   test('a partial email set fails the start naming what is missing', () => {
-    const { RESEND_API_KEY: _, ...noKey } = email
-    expect(() => loadEnv('web', { ...web, ...noKey })).toThrow(/RESEND_API_KEY/)
-    expect(() => loadEnv('worker', { ...worker, ...noKey, ...inbound })).toThrow(/RESEND_API_KEY/)
+    const { RESEND_SENDING_API_KEY: _, ...noKey } = email
+    expect(() => loadEnv('web', { ...web, ...noKey })).toThrow(/RESEND_SENDING_API_KEY/)
+    expect(() => loadEnv('worker', { ...worker, ...noKey, ...inbound })).toThrow(/RESEND_SENDING_API_KEY/)
     const { INBOUND_SNS_TOPIC_ARN: __, ...partial } = inbound
     expect(() => loadEnv('worker', { ...worker, ...email, ...partial })).toThrow(/INBOUND_SNS_TOPIC_ARN/)
   })
 
   test('refuses a Resend key that is not one, and an AWS_ROLE_ARN or topic that is not an ARN', () => {
-    for (const RESEND_API_KEY of ['skyclause-production', 're_test_sending_only\n', 'whsec_test']) {
-      expect(() => loadEnv('web', { ...web, ...email, RESEND_API_KEY })).toThrow(/RESEND_API_KEY/)
+    for (const RESEND_SENDING_API_KEY of ['skyclause-production', 're_test_sending_only\n', 'whsec_test']) {
+      expect(() => loadEnv('web', { ...web, ...email, RESEND_SENDING_API_KEY })).toThrow(/RESEND_SENDING_API_KEY/)
     }
     expect(() => loadEnv('worker', { ...worker, ...inbound, AWS_ROLE_ARN: 'skyclause-production-email' })).toThrow(
       /AWS_ROLE_ARN/

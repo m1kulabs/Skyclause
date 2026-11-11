@@ -66,7 +66,8 @@ interface Ready {
 /** What a send can't go without, checked before its lease, so a missing setting costs no attempt. */
 function readiness(deps: SenderDeps, c: ClaimedNotice): Omit<Ready, 'tokens'> {
   const transport = deps.email()
-  if (!transport) throw new Error('email is off: RESEND_API_KEY, EMAIL_FROM_AUTH and EMAIL_FROM_NOTICES are unset')
+  if (!transport)
+    throw new Error('email is off: RESEND_SENDING_API_KEY, EMAIL_FROM_AUTH and EMAIL_FROM_NOTICES are unset')
   const config = deps.config()
   const { appOrigin, marketingOrigin } = config
   if (!appOrigin || !marketingOrigin) throw new Error('APP_ORIGIN and MARKETING_ORIGIN must be set to send notices')

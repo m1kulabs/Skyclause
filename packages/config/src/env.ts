@@ -14,7 +14,7 @@ const base = z.object({
 // a-email-transport: sending through Resend, with a sending-only key (Secret Manager) and the two senders. Optional
 // until set, then all of a service's set together; none set means mail is off.
 const sending = {
-  RESEND_API_KEY: z.string().regex(/^re_\S+$/),
+  RESEND_SENDING_API_KEY: z.string().regex(/^re_\S+$/),
   EMAIL_FROM_AUTH: z.string().min(1),
   EMAIL_FROM_NOTICES: z.string().min(1)
 }
