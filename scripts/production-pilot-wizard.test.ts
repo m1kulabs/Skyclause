@@ -146,7 +146,6 @@ const sesSubscription = (arn: string): CliReply => ({
 
 function gcloud(overrides: Record<string, CliReply> = {}): Record<string, CliReply> {
   return {
-    'secrets versions list ONCALL_CONTACTS *value*': { stdout: '1\n' },
     'secrets versions list ONCALL_CONTACTS *': {
       stdout: 'NAME  STATE    CREATE_TIME\n1     ENABLED  2026-11-11T03:00:00Z\n'
     },
@@ -175,11 +174,9 @@ const UTILITIES = [
   'date',
   'dirname',
   'basename',
+  'tail',
   'shasum',
-  'awk',
-  'wc',
-  'tr',
-  'tail'
+  'awk'
 ]
 
 function systemTool(name: string) {
@@ -475,7 +472,7 @@ describe('infra/wizards/production-pilot.sh evidence holds no credential', () =>
   })
 })
 
-describe('infra/wizards/production-pilot.sh reports what still waits from production', () => {
+describe('infra/wizards/production-pilot.sh reports what still waits, and every failure', () => {
   const answers = [
     '', // banner
     '', // stage 1
@@ -519,13 +516,47 @@ describe('infra/wizards/production-pilot.sh reports what still waits from produc
     expect(envContent).not.toContain(secretKey)
     expect(evidenceContent).not.toContain(secretKey)
     expect(evidenceContent).toContain('skc_live…')
-    expect(evidenceContent).toContain('## #118 / #629')
+    expect(evidenceContent).toContain(
+      '## #118 / #629 — ONCALL_CONTACTS has an enabled version (listed by name, never accessed; the channels and a test page are still to check)'
+    )
+    expect(output).toContain(
+      '#629 check the on-call notification channels exist and a test incident pages within 5 minutes'
+    )
     expect(evidenceContent).toContain('## #194 — Organisation, project and default Sky clause sheet')
     expect(evidenceContent).toContain('## #531 — Production /ledger/verify for the pilot project')
     expect(evidenceContent).toContain('"valid":true')
     expect(evidenceContent).toContain('## #194 — Approver rota configured (your confirmation')
     expect(evidenceContent).toContain('## #194 — Confirmed subscriber counts')
     expect(evidenceContent).toContain('## #539 — Malay reader sign-off on packages/i18n/catalogue/ms/replies.json')
+  })
+
+  test("stops with gcloud's own error and a sign-in hint when gcloud is signed out", () => {
+    const { result, output } = runWizard({
+      input: answers,
+      gcloud: gcloud({
+        'secrets versions list ONCALL_CONTACTS *': {
+          exit: 1,
+          stderr: 'ERROR: (gcloud.secrets.versions.list) You do not currently have an active account selected.\n'
+        }
+      })
+    })
+
+    expect(result.status).toBe(1)
+    expect(output).toContain('You do not currently have an active account selected.')
+    expect(output).toContain("Sign in as a project owner with 'gcloud auth login'")
+    expect(output).toContain('Stopped in stage 1/')
+  })
+
+  test('stops and says so when it cannot read an answer, rather than carrying on as if it were empty', () => {
+    const { result, output, evidenceContent } = runWizard({
+      input: answers,
+      curl: production({ '*/v1/projects/*/subscriber-counts': { status: 200, body: '<html>maintenance</html>' } })
+    })
+
+    expect(result.status).toBe(1)
+    expect(output).toContain("Couldn't read data['confirmed'] from the answer: <html>maintenance</html>")
+    expect(output).toContain('Stopped in stage 10/')
+    expect(evidenceContent).not.toContain('Confirmed subscriber counts')
   })
 
   test('reports a 501 that is not the not-built problem as a failed read, not as waiting on a ticket', () => {

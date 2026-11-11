@@ -305,15 +305,24 @@ sys.exit(0 if body.get("type", "").endswith("/problems/not-built") and body.get(
 ' "$1" 2>/dev/null
 }
 
-# json_field EXPR readsAPI_BODY with python3 and prints the evaluated expression.
+# json_field EXPR prints EXPR evaluated over API_BODY's JSON as data. An answer it can't read fails with a warning
+# on stderr, which stops the wizard wherever the result is assigned.
 json_field() {
   local expr="$1"
-  printf '%s' "$API_BODY" | python3 -c "import json, sys; data = json.load(sys.stdin); print($expr)" 2>/dev/null || true
+  printf '%s' "$API_BODY" | python3 -c "import json, sys; data = json.load(sys.stdin); print($expr)" 2>/dev/null ||
+    { warn "Couldn't read $expr from the answer: $API_BODY" >&2; return 1; }
+}
+
+# on_exit names the stage a run stopped in, so no early exit is silent.
+on_exit() {
+  local status=$?
+  (( status == 0 )) || warn "Stopped in stage $_STAGE_INDEX/$TOTAL_STAGES (exit $status): the message above says why."
 }
 
 run_wizard() {
 
 TOTAL_STAGES=12
+trap on_exit EXIT
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 # Not the root .env, which Bun loads in local development.
 [[ "$ENV_FILE" == .env ]] && ENV_FILE=infra/wizards/.env
@@ -332,19 +341,22 @@ for origin in "$MARKETING_ORIGIN" "$APP_ORIGIN" "$API_ORIGIN"; do
 done
 say "Production hosts ($MARKETING_ORIGIN, $APP_ORIGIN, $API_ORIGIN) answer /health with 200."
 say "Checking ONCALL_CONTACTS in Secret Manager ($PROJECT) for #118 and #629..."
-oncall_versions="$(gcloud secrets versions list ONCALL_CONTACTS --project="$PROJECT" --filter=state=ENABLED --format='value(name)' 2>/dev/null | wc -l | tr -d ' ')"
-if (( oncall_versions == 0 )); then
+if ! oncall_list="$(gcloud secrets versions list ONCALL_CONTACTS --project="$PROJECT" --filter=state=ENABLED \
+  --format='table(name,state,createTime)')"; then
+  warn "gcloud couldn't list ONCALL_CONTACTS's versions in $PROJECT: its error is above."
+  warn "Sign in as a project owner with 'gcloud auth login' and re-run."
+  exit 1
+fi
+if [[ -z "$oncall_list" ]]; then
   warn "ONCALL_CONTACTS has no enabled version yet (#118, #629)."
   note "Run ./infra/wizards/oncall-contacts.sh yourself (about 10 minutes): it stores the contacts, and a second"
   note "run after oncall_contacts_ready is applied verifies the SMS numbers. Then re-run this wizard."
-fi
-if (( oncall_versions > 0 )); then
-  oncall_list="$(gcloud secrets versions list ONCALL_CONTACTS --project="$PROJECT" --filter=state=ENABLED --format='table(name,state,createTime)')"
-  record_evidence "#118 / #629" "ONCALL_CONTACTS enabled versions (checked by name, never access)" \
+  SKIPPED+=("#118 / #629 store ONCALL_CONTACTS with ./infra/wizards/oncall-contacts.sh, then re-run")
+else
+  record_evidence "#118 / #629" "ONCALL_CONTACTS has an enabled version (listed by name, never accessed; the channels and a test page are still to check)" \
     "gcloud secrets versions list ONCALL_CONTACTS --project=$PROJECT --filter=state=ENABLED --format='table(name,state,createTime)'" \
     "$oncall_list"
-else
-  SKIPPED+=("#118 / #629: run ./infra/wizards/oncall-contacts.sh to store ONCALL_CONTACTS and verify SMS channels")
+  SKIPPED+=("#629 check the on-call notification channels exist and a test incident pages within 5 minutes, by hand")
 fi
 pause
 
