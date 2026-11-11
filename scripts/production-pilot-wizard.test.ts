@@ -579,6 +579,24 @@ describe('infra/wizards/production-pilot.sh reports what still waits, and every 
     expect(evidenceContent).not.toContain('Confirmed subscriber counts')
   })
 
+  test('records no project evidence when the clause sheets read fails, and says why', () => {
+    const { result, output, evidenceContent } = runWizard({
+      input: answers,
+      curl: production({
+        '*/v1/projects/*/clause-sheets': json(503, {
+          type: 'https://docs.skyclause.m1ku.tech/problems/internal-error',
+          title: 'Internal error',
+          status: 503,
+          detail: 'The server failed to answer this request.'
+        })
+      })
+    })
+
+    expect(result.status, output).toBe(0)
+    expect(output).toContain(`GET /v1/projects/${PROJECT_ID}/clause-sheets answered HTTP 503`)
+    expect(evidenceContent).not.toContain('## #194 — Organisation, project and default Sky clause sheet')
+  })
+
   test('reports a 501 that is not the not-built problem as a failed read, not as waiting on a ticket', () => {
     const { result, output } = runWizard({
       input: answers,

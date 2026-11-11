@@ -444,10 +444,14 @@ fi
 write_env PROJECT_ID "$PROJECT_ID"
 project_summary="$API_BODY"
 api_get "/v1/projects/$PROJECT_ID/clause-sheets"
-sheets_body="$API_BODY"
-record_evidence "#194" "Organisation, project and default Sky clause sheet (API key $KEY_HINT)" \
-  "curl -fsS -H 'Authorization: Bearer $KEY_HINT' -H 'Skyclause-Organization: $ORG_SLUG' '$API_ORIGIN/v1/projects?slug=$PROJECT_SLUG&include=summary' && curl -fsS -H 'Authorization: Bearer $KEY_HINT' -H 'Skyclause-Organization: $ORG_SLUG' '$API_ORIGIN/v1/projects/$PROJECT_ID/clause-sheets'" \
-  "$(printf '%s\n%s' "$project_summary" "$sheets_body")"
+if [[ "$API_STATUS" == "200" ]]; then
+  record_evidence "#194" "Organisation, project and default Sky clause sheet (API key $KEY_HINT)" \
+    "curl -fsS -H 'Authorization: Bearer $KEY_HINT' -H 'Skyclause-Organization: $ORG_SLUG' '$API_ORIGIN/v1/projects?slug=$PROJECT_SLUG&include=summary' && curl -fsS -H 'Authorization: Bearer $KEY_HINT' -H 'Skyclause-Organization: $ORG_SLUG' '$API_ORIGIN/v1/projects/$PROJECT_ID/clause-sheets'" \
+    "$(printf '%s\n%s' "$project_summary" "$API_BODY")"
+else
+  warn "GET /v1/projects/$PROJECT_ID/clause-sheets answered HTTP $API_STATUS: $API_BODY"
+  SKIPPED+=("#194 record the project and its default Sky clause sheet (the sheets read answered HTTP $API_STATUS)")
+fi
 pause
 
 stage "Verify the ledger chain and pilot archive (#531)"
