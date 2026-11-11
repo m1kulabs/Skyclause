@@ -23,7 +23,8 @@
     "sha256": "f530883dc9ca9dcc7fe798efb613e710d0a9ec7e8bf0d694e4526d8b9d4d9a56",
     "capture_time_precision": "minute; exact start/end not recorded",
     "started_at": null,
-    "ended_at": null
+    "ended_at": null,
+    "station_id": "all"
   },
   {
     "file": "apitablehourly-state14-20261101T230000-20261107T080610Z.json",
@@ -36,7 +37,8 @@
     "state_id": 14,
     "started_at": null,
     "ended_at": null,
-    "capture_time_precision": "capture instant recorded; exact HTTP start/end not recorded"
+    "capture_time_precision": "capture instant recorded; exact HTTP start/end not recorded",
+    "station_id": "all"
   },
   {
     "file": "apitablehourly-state14-20261102T230000-20261107T080610Z.json",
@@ -49,7 +51,8 @@
     "state_id": 14,
     "started_at": null,
     "ended_at": null,
-    "capture_time_precision": "capture instant recorded; exact HTTP start/end not recorded"
+    "capture_time_precision": "capture instant recorded; exact HTTP start/end not recorded",
+    "station_id": "all"
   },
   {
     "file": "apitablehourly-state14-20261103T230000-20261107T080610Z.json",
@@ -62,7 +65,8 @@
     "state_id": 14,
     "started_at": null,
     "ended_at": null,
-    "capture_time_precision": "capture instant recorded; exact HTTP start/end not recorded"
+    "capture_time_precision": "capture instant recorded; exact HTTP start/end not recorded",
+    "station_id": "all"
   },
   {
     "file": "apitablehourly-state10-20261101T230000-20261107T080610Z.json",
@@ -75,7 +79,8 @@
     "state_id": 10,
     "started_at": null,
     "ended_at": null,
-    "capture_time_precision": "capture instant recorded; exact HTTP start/end not recorded"
+    "capture_time_precision": "capture instant recorded; exact HTTP start/end not recorded",
+    "station_id": "all"
   },
   {
     "file": "apitablehourly-state10-20261102T230000-20261107T080610Z.json",
@@ -88,7 +93,8 @@
     "state_id": 10,
     "started_at": null,
     "ended_at": null,
-    "capture_time_precision": "capture instant recorded; exact HTTP start/end not recorded"
+    "capture_time_precision": "capture instant recorded; exact HTTP start/end not recorded",
+    "station_id": "all"
   },
   {
     "file": "apitablehourly-state10-20261103T230000-20261107T080610Z.json",
@@ -101,7 +107,8 @@
     "state_id": 10,
     "started_at": null,
     "ended_at": null,
-    "capture_time_precision": "capture instant recorded; exact HTTP start/end not recorded"
+    "capture_time_precision": "capture instant recorded; exact HTTP start/end not recorded",
+    "station_id": "all"
   },
   {
     "file": "apitablehourly-state16-20261101T230000-20261107T080611Z.json",
@@ -114,7 +121,8 @@
     "state_id": 16,
     "started_at": null,
     "ended_at": null,
-    "capture_time_precision": "capture instant recorded; exact HTTP start/end not recorded"
+    "capture_time_precision": "capture instant recorded; exact HTTP start/end not recorded",
+    "station_id": "all"
   },
   {
     "file": "apitablehourly-state16-20261102T230000-20261107T080611Z.json",
@@ -127,7 +135,8 @@
     "state_id": 16,
     "started_at": null,
     "ended_at": null,
-    "capture_time_precision": "capture instant recorded; exact HTTP start/end not recorded"
+    "capture_time_precision": "capture instant recorded; exact HTTP start/end not recorded",
+    "station_id": "all"
   },
   {
     "file": "apitablehourly-state16-20261103T230000-20261107T080611Z.json",
@@ -140,7 +149,8 @@
     "state_id": 16,
     "started_at": null,
     "ended_at": null,
-    "capture_time_precision": "capture instant recorded; exact HTTP start/end not recorded"
+    "capture_time_precision": "capture instant recorded; exact HTTP start/end not recorded",
+    "station_id": "all"
   },
   {
     "file": "apitablehourly-state14-20261110T141922Z.json",
@@ -151,7 +161,10 @@
     "bytes": 13538,
     "sha256": "bf24b460cc7cb4d2ac55a1b2e9a4acc3daecb59c066e1a279f664f010b770592",
     "requested_through_myt": "2026-11-10T22:00:00",
-    "state_id": 14
+    "state_id": 14,
+    "station_id": "all",
+    "captured_at": "2026-11-10T14:19:22.541256+00:00",
+    "capture_time_precision": "HTTP completion instant from recorded ended_at"
   },
   {
     "file": "apitablehourly-state10-20261110T141922Z.json",
@@ -162,7 +175,10 @@
     "bytes": 40064,
     "sha256": "3ea1b46353611008c1411a301cf65cfd7508cb99e317ec831f1f9b0d93682043",
     "requested_through_myt": "2026-11-10T22:00:00",
-    "state_id": 10
+    "state_id": 10,
+    "station_id": "all",
+    "captured_at": "2026-11-10T14:19:22.666264+00:00",
+    "capture_time_precision": "HTTP completion instant from recorded ended_at"
   },
   {
     "file": "apitablehourly-state16-20261110T141922Z.json",
@@ -173,6 +189,9 @@
     "bytes": 6738,
     "sha256": "1aa692bc4732ea408b1470059989147a86fb9ce2863d951359c1613862954c4c",
     "requested_through_myt": "2026-11-10T22:00:00",
-    "state_id": 16
+    "state_id": 16,
+    "station_id": "all",
+    "captured_at": "2026-11-10T14:19:22.760894+00:00",
+    "capture_time_precision": "HTTP completion instant from recorded ended_at"
   }
 ]
