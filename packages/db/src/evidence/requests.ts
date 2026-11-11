@@ -28,7 +28,7 @@ export interface DraftEvidenceInput {
   leavesOrg: boolean
   replyChannel: 'email' | 'in_app'
   receivedAt: Date
-  /** The SES message ID of an emailed request (`handleOnce` keeps a redelivery from reaching here). */
+  /** Resend's received-email ID of an emailed request (`handleOnce` keeps a redelivery from reaching here). */
   messageId?: string
 }
 

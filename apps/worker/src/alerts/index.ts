@@ -3,7 +3,6 @@ import {
   BundleNeedsReviewEventSchema,
   notBuilt,
   RunFailedEventSchema,
-  type EmailTransport,
   type EventEnvelope,
   type EventType,
   type PushTransport,
@@ -22,7 +21,7 @@ import {
   withSystem,
   type Tx
 } from '@skyclause/db'
-import { createPushTransport, emailTransportForAws } from '@skyclause/delivery'
+import { createPushTransport, requireEmailTransport } from '@skyclause/delivery'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { registerAuditCheck } from '../auditor/registry'
@@ -238,21 +237,6 @@ export function createAlertsPart(deps: AlertsDeps): WorkerPart {
   }
 }
 
-/** SES as `worker` (#113), from the SES variables gate 4B set; built on the first send. */
-function workerEmail(env: Env<'worker'>): EmailTransport {
-  const { SES_REGION, AWS_ROLE_ARN, SES_CONFIGURATION_SET, EMAIL_FROM_AUTH, EMAIL_FROM_NOTICES } = env
-  if (!SES_REGION || !AWS_ROLE_ARN || !SES_CONFIGURATION_SET || !EMAIL_FROM_AUTH || !EMAIL_FROM_NOTICES) {
-    throw new Error('email is off: the SES variables are unset until gate 4B')
-  }
-  return emailTransportForAws({
-    region: SES_REGION,
-    roleArn: AWS_ROLE_ARN,
-    configurationSet: SES_CONFIGURATION_SET,
-    fromAuth: EMAIL_FROM_AUTH,
-    fromNotices: EMAIL_FROM_NOTICES
-  })
-}
-
 /**
  * Production's seams. Until their owners land, the rota lookups (#103) and `ShiftConditions` (#134) are placeholders,
  * so the handlers that need them fail and their work is retried.
@@ -261,7 +245,6 @@ function productionDeps(): AlertsDeps {
   let env: Env<'worker'> | undefined
   const load = () => (env ??= loadEnv('worker'))
   let push: PushTransport | null | undefined
-  let email: EmailTransport | undefined
   return {
     push: () => {
       if (push !== undefined) return push
@@ -269,7 +252,7 @@ function productionDeps(): AlertsDeps {
       return (push =
         publicKey && privateKey && subject ? createPushTransport({ publicKey, privateKey, subject }) : null)
     },
-    email: () => (email ??= workerEmail(load())),
+    email: () => requireEmailTransport('worker'),
     schedule: cloudTasks(),
     onDuty: notBuilt<OnDuty>('a-members-api'),
     nextApprovers: notBuilt<NextApprovers>('a-members-api'),

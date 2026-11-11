@@ -3,6 +3,7 @@
 #
 # It runs as `worker`, the only account that may open a sealed key (D39). Re-wrapping also encrypts each DEK under the
 # primary version, so kms.tf grants `worker` cryptoKeyEncrypter on `ai-keys` too; `web` still can't open anything.
+# It mounts the worker's secrets without the mail ones (secrets.tf, worker_job_mounts), as no job takes mail values.
 module "kms_rewrap" {
   source = "../../modules/job"
 
@@ -12,7 +13,7 @@ module "kms_rewrap" {
   service_account           = local.sa.worker
   args                      = ["job", "kms:rewrap"]
   env                       = merge(local.env, { OTEL_SERVICE_NAME = "kms-rewrap" })
-  secrets                   = { for name in local.mounts.worker : name => name }
+  secrets                   = { for name in local.worker_job_mounts : name => name }
   schedule                  = "15 4 * * *"
   scheduler_service_account = local.sa.invoker
 

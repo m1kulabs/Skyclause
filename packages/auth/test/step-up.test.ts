@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test, vi } from 'vitest'
-import { SesError } from '@skyclause/delivery'
+import { EmailSendError } from '@skyclause/delivery'
 import { authSettings, createAuth, getAuth } from '../src/instance'
 import { asLogin } from '@skyclause/db/test/harness/index'
 import { passkey as passkeyRecord } from '@skyclause/db'
@@ -142,16 +142,20 @@ test('magic-link step-up confirms the bound session once, even without that sess
   expect(current?.session.reauthenticatedAt).toBeInstanceOf(Date)
 })
 
-test('a step-up email SES refuses is one structured ERROR line naming SES and its status, answered 502', async () => {
+test('a step-up email Resend refuses is one structured ERROR line naming its error and status, answered 502', async () => {
   const account = await makeAccount()
   const session = await signIn(account.id)
-  const denied = Object.assign(new Error('Email address is not verified.'), {
-    name: 'MessageRejected',
-    $metadata: { httpStatusCode: 400 }
-  })
+  // Resend's 403 for an unverified sending domain (https://resend.com/docs/api-reference/errors.md).
+  const denied = new Error(
+    'The `notices.skyclause.m1ku.tech` domain is not verified. Please, add and verify your domain.'
+  )
   const auth = createAuth(authSettings(), {
     sendStepUpEmail: async () => {
-      throw new SesError('SendEmail', denied)
+      throw new EmailSendError('Resend send failed: validation_error (HTTP 403)', {
+        status: 403,
+        code: 'validation_error',
+        cause: denied
+      })
     }
   })
   const lines: unknown[][] = []
@@ -170,9 +174,9 @@ test('a step-up email SES refuses is one structured ERROR line naming SES and it
   expect(lines[0]).toHaveLength(1)
   expect(JSON.parse(String(lines[0]![0]))).toMatchObject({
     severity: 'ERROR',
-    message: 'SES SendEmail failed: MessageRejected (HTTP 400)',
-    code: 'MessageRejected',
-    status: 400,
+    message: 'Resend send failed: validation_error (HTTP 403)',
+    code: 'validation_error',
+    status: 403,
     category: 'step-up'
   })
 })

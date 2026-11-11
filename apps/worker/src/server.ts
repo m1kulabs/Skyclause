@@ -2,7 +2,15 @@ import { trace } from '@opentelemetry/api'
 import { log as telemetryLog } from '@skyclause/config'
 import type { HeartbeatName } from '@skyclause/contracts'
 import { shareSystemConnection } from '@skyclause/db'
-import { Hono, type MiddlewareHandler } from 'hono'
+import {
+  checkResendWebhookHeaders,
+  parseResendWebhook,
+  verifyResendWebhook,
+  WebhookVerificationError,
+  type ResendWebhook
+} from '@skyclause/delivery'
+import { Hono, type Context, type MiddlewareHandler } from 'hono'
+import { bodyLimit } from 'hono/body-limit'
 import { routePath } from 'hono/route'
 import { jwtVerify, type JWTPayload, type JWTVerifyGetKey } from 'jose'
 
@@ -31,6 +39,9 @@ export type BatchHandler = (now: Date) => Promise<void>
 
 export type RouteHandler = (request: Request, params: Record<string, string>) => Promise<Response>
 
+/** One Resend webhook event, verified and parsed; its answer goes back to Resend, which retries anything but a 200. */
+export type ResendHandler = (event: ResendWebhook) => Promise<Response>
+
 export type JobHandler = (args: string[]) => Promise<void>
 
 /** An `onEvent` consumer; #92 dispatches `domain-events` to these. */
@@ -57,18 +68,21 @@ export interface WorkerPart {
   batch?: Record<string, BatchHandler>
   /** `POST /internal<path>`, with Hono path params such as `/ai-keys/:id/test`. */
   internal?: Record<string, RouteHandler>
-  /** `POST /ses<path>`, without Google OIDC: the handler checks the SNS signature. */
-  ses?: Record<string, RouteHandler>
+  /**
+   * Resend webhook events by `type`, such as `email.delivered`, from `POST /resend/webhook` without Google OIDC: the
+   * route checks the Svix signature and parses the body first. A type no part registers is acknowledged.
+   */
+  resend?: Record<string, ResendHandler>
   /** Cloud Run jobs, `node main.js job <name> [args]`. */
   jobs?: Record<string, JobHandler>
   events?: EventConsumer[]
 }
 
-type KeyedKind = 'topics' | 'queues' | 'ticks' | 'batch' | 'internal' | 'ses' | 'jobs'
+type KeyedKind = 'topics' | 'queues' | 'ticks' | 'batch' | 'internal' | 'resend' | 'jobs'
 
 export type Registry = { [K in KeyedKind]: NonNullable<WorkerPart[K]> } & { events: EventConsumer[] }
 
-const KEYED_KINDS: KeyedKind[] = ['topics', 'queues', 'ticks', 'batch', 'internal', 'ses', 'jobs']
+const KEYED_KINDS: KeyedKind[] = ['topics', 'queues', 'ticks', 'batch', 'internal', 'resend', 'jobs']
 
 export function defineRegistry(parts: WorkerPart[]): Registry {
   const registry: Registry = {
@@ -77,7 +91,7 @@ export function defineRegistry(parts: WorkerPart[]): Registry {
     ticks: {},
     batch: {},
     internal: {},
-    ses: {},
+    resend: {},
     jobs: {},
     events: []
   }
@@ -115,13 +129,16 @@ export interface ServerOptions {
   /** Expected `email`: `WORKER_INVOKER_SA`. */
   invoker: string
   jwks: JWTVerifyGetKey
+  /** `RESEND_WEBHOOK_SECRET`; unset, `POST /resend/webhook` answers 503. */
+  resendWebhookSecret?: string
   /** Records `skyclause.heartbeat{name}`: `main.ts` passes telemetry's gauge; defaults to a log line. */
   heartbeat?: (name: HeartbeatName) => void
 }
 
 /** Redacted and linked to the active trace (#114). */
-export function log(severity: 'INFO' | 'ERROR', message: string, fields: Record<string, unknown> = {}) {
+export function log(severity: 'INFO' | 'WARNING' | 'ERROR', message: string, fields: Record<string, unknown> = {}) {
   if (severity === 'ERROR') telemetryLog.error(message, fields)
+  else if (severity === 'WARNING') telemetryLog.warn(message, fields)
   else telemetryLog.info(message, fields)
 }
 
@@ -161,6 +178,9 @@ async function runAll(label: string, handlers: Record<string, TickHandler | Batc
 }
 
 const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com']
+
+/** Resend's webhooks carry metadata only, far below this. */
+const RESEND_WEBHOOK_MAX_BYTES = 256 * 1024
 
 export function createServer(options: ServerOptions) {
   const { registry } = options
@@ -250,13 +270,53 @@ export function createServer(options: ServerOptions) {
     return failed.length ? c.json({ failed }, 500) : c.body(null, 204)
   })
 
-  for (const [prefix, routes] of [
-    ['/internal', registry.internal],
-    ['/ses', registry.ses]
-  ] as const) {
-    for (const [path, handler] of Object.entries(routes)) {
-      app.post(prefix + path, (c) => handler(c.req.raw, c.req.param()))
+  for (const [path, handler] of Object.entries(registry.internal)) {
+    app.post(`/internal${path}`, (c) => handler(c.req.raw, c.req.param()))
+  }
+
+  // Every Resend webhook, the Free plan's one endpoint, open to anyone: a call without the Svix headers or with a stale
+  // timestamp is refused before its body is read, a body over the cap is refused while it is read, and the signature is
+  // checked on the raw body before anything parses it. Then the event goes to the part registered for its type. Resend
+  // counts only a 200 as delivered.
+  const resendSecret = options.resendWebhookSecret
+  if (!resendSecret) app.post('/resend/webhook', (c) => c.text('Resend webhooks are not configured', 503))
+  else {
+    // A refusal is a security event: its reason goes to the log with the call's `svix-id`, never the signature, the
+    // secret or the body, and the caller learns nothing from the bare 401.
+    const refuse = (c: Context, error: unknown) => {
+      if (!(error instanceof WebhookVerificationError)) throw error
+      log('WARNING', 'Resend webhook refused', { reason: error.message, svix_id: c.req.header('svix-id') || null })
+      return c.body(null, 401)
     }
+    app.post(
+      '/resend/webhook',
+      async (c, next) => {
+        try {
+          checkResendWebhookHeaders(c.req.raw.headers, new Date())
+        } catch (error) {
+          return refuse(c, error)
+        }
+        await next()
+      },
+      // The handler's own answer: the default throws, which `onError` would turn into a 500.
+      bodyLimit({ maxSize: RESEND_WEBHOOK_MAX_BYTES, onError: (c) => c.text('Resend webhook body too large', 413) }),
+      async (c) => {
+        const body = await c.req.text()
+        try {
+          verifyResendWebhook(resendSecret, c.req.raw.headers, body, new Date())
+        } catch (error) {
+          return refuse(c, error)
+        }
+        let event: ResendWebhook
+        try {
+          event = parseResendWebhook(body)
+        } catch {
+          return c.text('malformed Resend webhook', 400)
+        }
+        const handler = registry.resend[event.type]
+        return handler ? handler(event) : c.body(null, 200)
+      }
+    )
   }
 
   return app

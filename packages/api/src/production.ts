@@ -1,7 +1,6 @@
 import { loadEnv } from '@skyclause/config'
-import type { EmailTransport } from '@skyclause/contracts'
 import { recordAudit, track, withPublicReader, withSystem, withTenant } from '@skyclause/db'
-import { emailTransportForAws } from '@skyclause/delivery'
+import { requireEmailTransport } from '@skyclause/delivery'
 import type { ApiConfig, ApiDeps } from './context'
 import { registeredPermission, registeredPrincipal } from './middleware/auth'
 import { registeredOAuthManagement } from './middleware/oauth'
@@ -28,24 +27,6 @@ function loadConfig(): ApiConfig {
   }
 }
 
-let ses: EmailTransport | undefined
-
-/** SES as `web` (#113), built on the first send; until gate 4B its variables are unset and mail is off. */
-function loadEmail(): EmailTransport {
-  const env = loadEnv('web')
-  const { SES_REGION, AWS_ROLE_ARN, SES_CONFIGURATION_SET, EMAIL_FROM_AUTH, EMAIL_FROM_NOTICES } = env
-  if (!SES_REGION || !AWS_ROLE_ARN || !SES_CONFIGURATION_SET || !EMAIL_FROM_AUTH || !EMAIL_FROM_NOTICES) {
-    throw new Error('email is off: the SES variables are unset until gate 4B')
-  }
-  return emailTransportForAws({
-    region: SES_REGION,
-    roleArn: AWS_ROLE_ARN,
-    configurationSet: SES_CONFIGURATION_SET,
-    fromAuth: EMAIL_FROM_AUTH,
-    fromNotices: EMAIL_FROM_NOTICES
-  })
-}
-
 export const productionDeps: ApiDeps = {
   resolvePrincipal: registeredPrincipal,
   can: registeredPermission,
@@ -59,7 +40,7 @@ export const productionDeps: ApiDeps = {
   oauth: registeredOAuthManagement,
   apiKeys: registeredApiKeyManager,
   track,
-  email: { send: (message) => (ses ??= loadEmail()).send(message) },
+  email: { send: (message) => requireEmailTransport('web').send(message) },
   dataRights: createDataRightsTransports(),
   config: () => (config ??= loadConfig()),
   now: () => new Date()

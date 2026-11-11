@@ -111,7 +111,10 @@ export const handledEvent = pgTable(
   (self) => [primaryKey({ columns: [self.consumer, self.eventId] })]
 )
 
-/** Which consumer has handled which external message (an SES message ID; `handleOnce`), so a redelivery runs nothing. S. */
+/**
+ * Which consumer has handled which external message (a Resend received-email ID; `handleOnce`), so a redelivery runs
+ * nothing. S.
+ */
 export const handledMessage = pgTable(
   'handled_message',
   {
