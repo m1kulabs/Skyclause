@@ -303,6 +303,19 @@ describe('infra/wizards/production-pilot.sh static invariants', () => {
     // Never runs Terraform, GitHub, Bun or another wizard: it only prints them for a person.
     expect(wizard).not.toMatch(/^\s*(terraform|gh|bun)\s/m)
     expect(wizard).not.toMatch(/^\s*\.\/infra\/wizards\//m)
+    // Every gcloud and aws command it runs, on any path, is a read; messages to the person are left out.
+    const commands = wizard
+      .slice(wizard.indexOf(marker))
+      .split('\n')
+      .filter((line) => !/^\s*(#|warn|note|say|step|SKIPPED|for tool in)/.test(line))
+      .join('\n')
+    const cloudCalls = [...commands.matchAll(/\b(gcloud|aws) ([a-z][a-z0-9-]*(?: [a-z][a-z0-9-]*){0,3})/g)]
+    expect(cloudCalls.length).toBeGreaterThan(0)
+    for (const [call] of cloudCalls) {
+      expect(call).toMatch(
+        /^(gcloud (secrets versions list|run jobs list|run jobs executions list)|aws (sts get-caller-identity|sns list-subscriptions-by-topic))/
+      )
+    }
 
     const bashCheck = spawnSync('bash', ['-n', wizardPath], { cwd: repoRoot, encoding: 'utf8' })
     expect(bashCheck.status, bashCheck.stderr).toBe(0)
