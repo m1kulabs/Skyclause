@@ -5,6 +5,7 @@ import {
   makeOrganization,
   makePoll,
   makeProject,
+  makeProjectPack,
   makeReading,
   makeSource,
   makeSourceState
@@ -22,6 +23,7 @@ import {
   asSession,
   asShareLink,
   createTestApi,
+  crossOrgCase,
   testCan,
   testDeps,
   testOrg
@@ -81,6 +83,43 @@ async function effectCounts(projectId: string) {
 const newPublic = (overrides = {}) => withSystem('binding-test', (tx) => makeSource(tx, overrides))
 
 describe('binding', () => {
+  test('cross_org_harness hides foreign source operations without effects', async () => {
+    const foreign = await withTenant(
+      { orgId: testOrg(OTHER).id, principal: { ...admin, orgId: testOrg(OTHER).id } },
+      async (tx) => {
+        const project = await makeProject(tx)
+        await makeProjectPack(tx, { projectId: project.id, pack: 'sky', enabled: true })
+        return project
+      }
+    )
+    const source = await newPublic()
+    const before = await effectCounts(foreign.id)
+    const cases = [
+      crossOrgCase('listCatalogueSources', { app: v1, as: viewer, org: OTHER, params: {} }),
+      crossOrgCase('bindSource', {
+        app: v1,
+        as: admin,
+        org: ORG,
+        params: { id: foreign.id },
+        body: { source_id: source.id }
+      }),
+      crossOrgCase('unbindSource', {
+        app: v1,
+        as: admin,
+        org: ORG,
+        params: { id: foreign.id, sourceId: source.id }
+      }),
+      crossOrgCase('updateProjectPack', {
+        app: v1,
+        as: admin,
+        org: ORG,
+        params: { id: foreign.id, pack: 'sky' },
+        body: { enabled: false }
+      })
+    ]
+    for (const item of cases) await item.run()
+    expect(await effectCounts(foreign.id)).toEqual(before)
+  })
   test.each([
     ['jps_rain', 'rain_gauge'],
     ['apims', 'api_station'],
