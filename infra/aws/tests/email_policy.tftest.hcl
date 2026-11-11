@@ -45,9 +45,55 @@ run "sends_from_notices_to_any_verified_identity" {
     condition = jsonencode(one([
       for s in data.aws_iam_policy_document.email.statement : s if s.sid == "Send"
       ]).condition) == jsonencode([
-      { test = "StringLike", values = ["*@notices.skyclause.m1ku.tech"], variable = "ses:FromAddress" },
+      {
+        test     = "StringLike"
+        values   = ["*@notices.skyclause.m1ku.tech", "*<*@notices.skyclause.m1ku.tech>"]
+        variable = "ses:FromAddress"
+      },
     ])
-    error_message = "The role sends only from an address at notices.skyclause.m1ku.tech."
+    error_message = "The role sends only from an address at notices.skyclause.m1ku.tech, bare or in a display-name form."
+  }
+
+  # StringLike, not StringLikeIfExists: a request without the key matches no pattern and is denied.
+  assert {
+    condition = alltrue([
+      for s in data.aws_iam_policy_document.email.statement : alltrue([for c in s.condition : c.test == "StringLike"]) if s.sid == "Send"
+    ])
+    error_message = "A send with no ses:FromAddress is denied."
+  }
+
+  # IAM's StringLike, emulated: `*` is any run of characters, `?` one character, the rest literal and case-sensitive.
+  assert {
+    condition = alltrue([
+      for from in [
+        "sign-in@notices.skyclause.m1ku.tech",
+        "notices@notices.skyclause.m1ku.tech",
+        "Skyclause <sign-in@notices.skyclause.m1ku.tech>",
+        "Skyclause <notices@notices.skyclause.m1ku.tech>",
+        ] : anytrue([
+          for pattern in flatten([for s in data.aws_iam_policy_document.email.statement : s.condition[*].values if s.sid == "Send"]) :
+          can(regex("^${replace(replace(replace(pattern, "/([.+()|\\[\\]{}^$\\\\])/", "\\$1"), "*", ".*"), "?", ".")}$", from))
+      ])
+    ])
+    error_message = "The bare and display-name forms of EMAIL_FROM_AUTH and EMAIL_FROM_NOTICES match."
+  }
+
+  assert {
+    condition = !anytrue([
+      for from in [
+        "x@notices.skyclause.m1ku.tech.evil.example",
+        "Skyclause <x@notices.skyclause.m1ku.tech.evil.example>",
+        "x@bounce.notices.skyclause.m1ku.tech",
+        "Skyclause <x@bounce.notices.skyclause.m1ku.tech>",
+        "Skyclause <x@in.skyclause.m1ku.tech>",
+        "Skyclause <sign-in@notices.skyclause.m1ku.tech> ",
+        "SIGN-IN@NOTICES.SKYCLAUSE.M1KU.TECH",
+        ] : anytrue([
+          for pattern in flatten([for s in data.aws_iam_policy_document.email.statement : s.condition[*].values if s.sid == "Send"]) :
+          can(regex("^${replace(replace(replace(pattern, "/([.+()|\\[\\]{}^$\\\\])/", "\\$1"), "*", ".*"), "?", ".")}$", from))
+      ])
+    ])
+    error_message = "No From that only looks like notices. matches: another domain after it, a subdomain, in., trailing text."
   }
 
   assert {

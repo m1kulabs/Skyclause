@@ -46,8 +46,9 @@ resource "aws_iam_role" "email" {
 
 data "aws_iam_policy_document" "email" {
   # SES checks a raw message as ses:SendRawEmail, and in the sandbox (D48) checks each verified recipient's identity
-  # as well as the sender's (#623). So any identity in the account's region, with the From kept to notices.
-  # ses:SendEmail stays for the API's own action name: the code sends only raw messages.
+  # as well as the sender's (#623). So any identity in the account's region, with the From kept to notices; #630
+  # narrows it once the account leaves the sandbox. ses:SendEmail stays for the API's own action name: the code
+  # sends only raw messages.
   statement {
     sid     = "Send"
     actions = ["ses:SendEmail", "ses:SendRawEmail"]
@@ -56,10 +57,12 @@ data "aws_iam_policy_document" "email" {
       aws_sesv2_configuration_set.this.arn,
     ]
 
+    # Whether SES fills the key from a raw message's From header as the bare address or as the header's
+    # `Skyclause <sign-in@…>` form isn't documented, so both match. Either pattern only fixes how the value ends.
     condition {
       test     = "StringLike"
       variable = "ses:FromAddress"
-      values   = ["*@${local.sending_domain}"]
+      values   = ["*@${local.sending_domain}", "*<*@${local.sending_domain}>"]
     }
   }
 
