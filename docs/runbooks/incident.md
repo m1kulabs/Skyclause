@@ -35,11 +35,11 @@ Keep a timeline in MYT (UTC+8) from the first page; the summary is built from it
 
 ### Page
 
-Cloud Monitoring pages the on-call primary by push and SMS ([#114](https://github.com/m1kulabs/Skyclause/issues/114)). A report from a user, a customer or a teammate counts as a page: the person who receives it pages the primary.
+Alert policies open an incident in Cloud Monitoring and send no notification ([#114](https://github.com/m1kulabs/Skyclause/issues/114)), so the on-call primary watches the incidents page during their shift. A report from a user, a customer or a teammate counts as a page: the person who receives it pages the primary.
 
 ### Acknowledge
 
-The primary acknowledges within 15 minutes in P1 (5 minutes from P2). If nobody has acknowledged by then, the secondary is paged and owns the incident once they acknowledge. Whoever acknowledges is the incident lead until they hand over by name.
+The primary acknowledges within 15 minutes in P1 (5 minutes from P2). If nobody has acknowledged by then, the secondary takes it over from the primary and owns the incident once they acknowledge. Whoever acknowledges is the incident lead until they hand over by name.
 
 Then decide:
 

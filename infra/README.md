@@ -19,7 +19,7 @@ Contents:
 - `aws/`: Amazon SES sending and receiving, their SNS topics, the inbound bucket and the role `web` and `worker` assume with Google ID tokens (#113), in AWS account `776566309118`. It has its own state in S3, and a person applies it by hand.
 - `modules/`: `service` (Cloud Run service), `job` (Cloud Run job with an optional schedule), `topic` (Pub/Sub topic with a push subscription to the worker) and `queue` (Cloud Tasks).
 - `scripts/check-region`: fails unless every located resource in a `terraform show -json` document is in Singapore. CI runs it on each plan before applying, and `scripts/check-region.test.sh` tests it.
-- `wizards/production-pilot.sh`: walks the repository owner through the human-only production pilot steps of #194, #531, #534, #536, #539, #629, #118 and #622. It only reads, through the product's API with a `read` key and through `gcloud` and `aws` lists; every write is the person's, in the browser or printed for them to run. It records evidence in the git-ignored `infra/wizards/production-pilot.evidence.md` and refuses any section that holds a credential or an email address.
+- `wizards/production-pilot.sh`: walks the repository owner through the human-only production pilot steps of #194, #531, #534, #536, #539 and #622. It only reads, through the product's API with a `read` key and through `gcloud` and `aws` lists; every write is the person's, in the browser or printed for them to run. It records evidence in the git-ignored `infra/wizards/production-pilot.evidence.md` and refuses any section that holds a credential or an email address.
 
 ## Bootstrap
 
@@ -77,8 +77,6 @@ Set these in a pull request, in `environments/production/terraform.tfvars`, whic
     --project=skyclause --limit=1 --format='value(jsonPayload.VAPID_PUBLIC_KEY)'
   ```
 
-- `oncall_contacts_ready`: set to `true` once `infra/wizards/oncall-contacts.sh` has stored `ONCALL_CONTACTS`.
-
 ## Pilot archive
 
 After 17 November a pilot team member with Sheets, Jira and Gemini Enterprise access exports the Sheets ledger, the Jira register and the run traces, uploads each to `incoming/` in the archive bucket with its `kind` (`sheets_ledger`, `jira_register` or `run_traces`) and its capture time, then runs the `pilot-archive` job once (about 1 hour, #79 §9 item 11). The job refuses the run if any object lacks a valid `kind` or `captured-at`. It copies each file to `orgs/{org_id}/pilot/{kind}/{sha256}-{name}`, records it for `PILOT_PROJECT` and writes no ledger entry (LED-8); a second run changes nothing:
@@ -91,12 +89,11 @@ gcloud run jobs execute pilot-archive --region=asia-southeast1 --project=skyclau
 
 ## Monitoring
 
-`environments/production/monitoring.tf` holds #114's uptime checks, SLOs and alert policies. Every policy notifies the platform on-call's email and SMS channels.
+`environments/production/monitoring.tf` holds #114's uptime checks, SLOs and alert policies. Every policy opens an incident in the Cloud Monitoring console and notifies nobody, since no notification channel exists; the on-call primary watches the incidents page ([on-call runbook](/docs/runbooks/on-call.md)).
 
 - **Availability:** an uptime check every minute on `/health` of each distinct app, API and MCP origin, one while `HOST_MODE=single`, with a 99.5% 30-day SLO and fast- and slow-burn pages.
 - **Jobs:** a page on any failed Cloud Run job execution.
 - **Pipeline:** a PromQL page per TRD SLI row, on the `breach` stat the worker's `sli` handler records each batch, and one per absent heartbeat (`auditor`, `minute_tick`). Each starts disabled; once its metric has flowed for a day, check its query in Metrics Explorer and set its `enabled` to `true`.
-- **On-call contacts:** a person runs `infra/wizards/oncall-contacts.sh` (10 minutes), which stores them hidden. After `oncall_contacts_ready` is applied, run it again to verify the SMS numbers, since an unverified number isn't paged.
 
 ## Custom hosts
 
