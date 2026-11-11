@@ -223,7 +223,7 @@ DNS_ZONE=m1ku.tech
 WEBHOOK_PATH=/resend/webhook
 WEBHOOK_EVENTS_JSON='["email.delivered","email.bounced","email.complained","email.suppressed","email.received"]'
 SENDING_KEY_NAME=skyclause-production-sending
-# notices.' DMARC keeps p=quarantine but loses its rua: the SES rule that caught the reports goes, and nothing read them.
+# DMARC for notices. keeps p=quarantine but loses its rua: the SES rule that caught the reports goes, and nothing read them.
 DMARC_NAME="_dmarc.$SENDING_DOMAIN"
 DMARC_VALUE='v=DMARC1; p=quarantine'
 SECRETS=(RESEND_API_KEY RESEND_RECEIVING_API_KEY RESEND_WEBHOOK_SECRET)
