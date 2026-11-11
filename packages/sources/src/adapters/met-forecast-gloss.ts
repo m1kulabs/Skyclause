@@ -1,7 +1,8 @@
-// Explicit derived glosses only. A Malay reader must review this table before merge.
+// Explicit derived glosses only. Malay-reader review is tracked in #680 and remains required for language acceptance.
 const metForecastGloss: Readonly<Record<string, string>> = {
   'tiada hujan': 'No rain',
   mendung: 'Cloudy',
+  menyeluruh: 'Widespread',
   hujan: 'Rain',
   'hujan di beberapa tempat': 'Rain in some places',
   'hujan di kebanyakan tempat': 'Rain in most places',

@@ -20,6 +20,26 @@ test('explicit phrase glosses case-fold without translating unknown or English p
     expect(glossMetForecastPhrase(phrase)).toBeUndefined()
 })
 
+test('DESIGN standalone menyeluruh gloss is case-insensitive without composing whole-phrase translations', () => {
+  for (const phrase of ['menyeluruh', 'MENYELURUH', 'Menyeluruh'])
+    expect(glossMetForecastPhrase(phrase)).toBe('Widespread')
+  for (const phrase of ['Hujan menyeluruh', 'Ribut petir menyeluruh', 'Menyeluruh di tempat baharu'])
+    expect(glossMetForecastPhrase(phrase)).toBeUndefined()
+  for (const phrase of ['MENYELURUH', 'Hujan menyeluruh']) {
+    // Isolated mutations of the archived provider body keep the raw Malay field verbatim.
+    const body = raw()
+    body[0]!.afternoon_forecast = phrase
+    const original = structuredClone(body)
+    const row = parse(body)[0]!
+    expect(row.valueText).toBe(phrase)
+    expect(row.valueJson.afternoon_forecast).toBe(phrase)
+    expect(row.value).toBe(0)
+    if (phrase === 'MENYELURUH') expect(row.valueJson.gloss_en.afternoon_forecast).toBe('Widespread')
+    else expect(row.valueJson.gloss_en).not.toHaveProperty('afternoon_forecast')
+    expect(body).toEqual(original)
+  }
+})
+
 test('forecast_filters_exact_bound_id_and_preserves_days', () => {
   const body = raw()
   const originalBody = structuredClone(body)
