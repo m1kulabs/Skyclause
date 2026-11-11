@@ -1,3 +1,5 @@
+import type { EmailTransport } from '@skyclause/contracts'
+import { SesError } from '@skyclause/delivery'
 import { createMailbox } from '@skyclause/delivery/testing'
 import { makeUser } from '@skyclause/db/test/factories/user'
 import { asLogin } from '@skyclause/db/test/harness/index'
@@ -10,7 +12,7 @@ const APP = TEST_AUTH_ENV.APP_ORIGIN
 const GOOGLE = { clientId: 'test-google-client', clientSecret: 'test-google-secret' }
 let nextClientIp = 20
 
-function setup(now: () => Date = () => new Date()) {
+function setup(now: () => Date = () => new Date(), email?: EmailTransport) {
   const mailbox = createMailbox()
   const clientIp = `198.51.100.${nextClientIp++}`
   const events: Array<{ method: string; from_guest: boolean }> = []
@@ -18,7 +20,7 @@ function setup(now: () => Date = () => new Date()) {
   const auth = createAuth(settings, {
     plugins: [
       aAuthSignInApi({
-        email: mailbox,
+        email: email ?? mailbox,
         now,
         trackSignup: async (props) => {
           events.push(props)
@@ -168,6 +170,47 @@ test('new magic-link sign-ups track once without email and preserve whether the 
   )
   expect(JSON.stringify(events)).not.toContain(signedUp.rows[0]!.email)
   expect(signedUp.rows[0]!.is_anonymous).toBe(false)
+})
+
+test('a send SES refuses is one structured ERROR line naming SES and its status, answered 502', async () => {
+  const mailbox = createMailbox()
+  let refuse = false
+  const { request } = setup(undefined, {
+    async send(message) {
+      if (!refuse) return mailbox.send(message)
+      const denied = Object.assign(
+        new Error(
+          `User 'arn:aws:sts::111122223333:assumed-role/skyclause-production-email/skyclause' is not authorized to perform 'ses:SendRawEmail' on resource 'arn:aws:ses:ap-southeast-2:111122223333:identity/${message.to}'`
+        ),
+        { name: 'AccessDeniedException', $metadata: { httpStatusCode: 403 } }
+      )
+      throw new SesError('SendEmail', denied)
+    }
+  })
+  await request('POST', '/sign-in/magic-link', { email: 'refused@example.test' })
+  const resend = linkFrom(mailbox.sent[0]!.text).searchParams.get('resend')!
+  refuse = true
+  const lines: unknown[][] = []
+  for (const level of ['error', 'warn', 'info', 'log'] as const) {
+    vi.spyOn(console, level).mockImplementation((...args: unknown[]) => void lines.push(args))
+  }
+
+  const requested = await request('POST', '/sign-in/magic-link', { email: 'refused@example.test' })
+  const resent = await request('POST', '/magic-link/resend', { resend })
+
+  expect([requested.status, resent.status]).toEqual([502, 502])
+  expect(lines).toHaveLength(2)
+  for (const args of lines) {
+    expect(args).toHaveLength(1)
+    expect(JSON.parse(String(args[0]))).toMatchObject({
+      severity: 'ERROR',
+      message: 'SES SendEmail failed: AccessDeniedException (HTTP 403)',
+      code: 'AccessDeniedException',
+      status: 403,
+      category: 'magic_link'
+    })
+    expect(String(args[0])).not.toContain('refused@example.test')
+  }
 })
 
 test('email and password endpoints stay disabled', async () => {
