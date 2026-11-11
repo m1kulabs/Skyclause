@@ -463,6 +463,45 @@ describe('POST /resend/webhook', () => {
     expect(received).toEqual([])
   })
 
+  test('a refusal answers a bare 401 and logs one WARNING with the reason and svix-id, never the signature or body', async () => {
+    const lines: Array<Record<string, unknown>> = []
+    const spies = (['log', 'error'] as const).map((level) =>
+      vi.spyOn(console, level).mockImplementation((line: unknown) => void lines.push(JSON.parse(String(line))))
+    )
+    try {
+      const body = JSON.stringify(resendEvent('email.delivered'))
+      const forged = signedHeaders(body, {
+        secret: `whsec_${Buffer.from('another-resend-webhook-secret').toString('base64')}`,
+        id: 'msg_forged'
+      })
+      for (const headers of [forged, {}]) {
+        const res = await deliver(body, headers)
+        expect(res.status).toBe(401)
+        expect(await res.text()).toBe('')
+      }
+      expect(lines).toEqual([
+        expect.objectContaining({
+          severity: 'WARNING',
+          message: 'Resend webhook refused',
+          reason: 'no signature matches',
+          svix_id: 'msg_forged'
+        }),
+        expect.objectContaining({
+          severity: 'WARNING',
+          message: 'Resend webhook refused',
+          reason: 'missing Svix headers',
+          svix_id: null
+        })
+      ])
+      const logged = JSON.stringify(lines)
+      for (const secret of [forged['svix-signature'].slice(3), webhookSecret, body]) {
+        expect(logged).not.toContain(secret)
+      }
+    } finally {
+      for (const spy of spies) spy.mockRestore()
+    }
+  })
+
   /** A streamed body without Content-Length that hands out a 64 KiB chunk only when read, counting what it handed out. */
   function streamed(chunks: number) {
     const chunk = new Uint8Array(64 * 1024).fill(0x61)

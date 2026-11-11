@@ -136,8 +136,9 @@ export interface ServerOptions {
 }
 
 /** Redacted and linked to the active trace (#114). */
-export function log(severity: 'INFO' | 'ERROR', message: string, fields: Record<string, unknown> = {}) {
+export function log(severity: 'INFO' | 'WARNING' | 'ERROR', message: string, fields: Record<string, unknown> = {}) {
   if (severity === 'ERROR') telemetryLog.error(message, fields)
+  else if (severity === 'WARNING') telemetryLog.warn(message, fields)
   else telemetryLog.info(message, fields)
 }
 
@@ -280,9 +281,12 @@ export function createServer(options: ServerOptions) {
   const resendSecret = options.resendWebhookSecret
   if (!resendSecret) app.post('/resend/webhook', (c) => c.text('Resend webhooks are not configured', 503))
   else {
+    // A refusal is a security event: its reason goes to the log with the call's `svix-id`, never the signature, the
+    // secret or the body, and the caller learns nothing from the bare 401.
     const refuse = (c: Context, error: unknown) => {
-      if (error instanceof WebhookVerificationError) return c.text(error.message, 401)
-      throw error
+      if (!(error instanceof WebhookVerificationError)) throw error
+      log('WARNING', 'Resend webhook refused', { reason: error.message, svix_id: c.req.header('svix-id') || null })
+      return c.body(null, 401)
     }
     app.post(
       '/resend/webhook',
