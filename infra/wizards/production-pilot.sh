@@ -216,7 +216,8 @@ APP_ORIGIN=https://app.skyclause.m1ku.tech
 API_ORIGIN=https://api.skyclause.m1ku.tech
 EVIDENCE_FILE="${EVIDENCE_FILE:-infra/wizards/production-pilot.evidence.md}"
 SLUG_PATTERN='^[a-z0-9]+(-[a-z0-9]+)*$'
-API_KEY_PATTERN='^skc_[A-Za-z0-9_-]{8,}$'
+# The line the creation snippet logs: the new key's id, a space, then the key.
+KEY_LINE_PATTERN='^[A-Za-z0-9_-]+ skc_[A-Za-z0-9_-]{8,}$'
 
 API_STATUS=""
 API_BODY=""
@@ -237,14 +238,15 @@ key_prefix() {
   printf '%s…' "${1:0:8}"
 }
 
-# credentials_in names each kind of credential in stdin: the shapes packages/config/src/redact.ts scrubs from logs,
-# plus signed-URL parameters. A call's ICS UID (call-…@ or night-…@skyclause.m1ku.tech) isn't an address. The
+# credentials_in names each kind of credential in stdin, percent-escapes decoded: the shapes
+# packages/config/src/redact.ts scrubs from logs, plus signed-URL parameters. A whole ICS UID (call-… or
+# night-…@skyclause.m1ku.tech, ending there) isn't an address. The
 # 8-character key prefix is the longest key or bearer text that passes; a provider sk- key is far longer than a slug.
 credentials_in() {
   python3 -c '
-import re, sys
-text = sys.stdin.read()
-text = re.sub(r"(?<![A-Za-z0-9._%+-])(?:call|night)-[^\s@]+@skyclause\.m1ku\.tech\b", "", text)
+import re, sys, urllib.parse
+text = urllib.parse.unquote(sys.stdin.read())
+text = re.sub(r"(?<![A-Za-z0-9._%+-])(?:call|night)-[^\s@]+@skyclause\.m1ku\.tech(?![A-Za-z0-9-]|\.[A-Za-z0-9])", "", text)
 kinds = [
     ("a private key", r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
     ("a signed-URL parameter", r"(?i)[?&](?:x-goog-signature|x-goog-credential|x-amz-signature|x-amz-credential|x-amz-security-token|googleaccessid|signature)="),
@@ -314,10 +316,11 @@ json_field() {
     { warn "Couldn't read $expr from the answer: $API_BODY" >&2; return 1; }
 }
 
-# revoke_snippet prints the DevTools line that revokes every API key named production-pilot in ORG_SLUG.
+# revoke_snippet prints the DevTools line that revokes only this run's API key, by the id its creation logged. A
+# name would also match a teammate's key, and the API's prefix field is skc_ for every key.
 revoke_snippet() {
-  printf "fetch('/api/orgs/%s/api-keys?limit=200').then(r=>r.json()).then(d=>Promise.all(d.data.filter(k=>k.name==='production-pilot').map(k=>fetch('/api/orgs/%s/api-keys/'+k.id,{method:'DELETE'}).then(r=>console.log('revoked',k.id,r.status)))))" \
-    "$ORG_SLUG" "$ORG_SLUG"
+  printf "fetch('/api/orgs/%s/api-keys/%s',{method:'DELETE'}).then(r=>console.log('revoked','%s',r.status))" \
+    "$ORG_SLUG" "$API_KEY_ID" "$API_KEY_ID"
 }
 
 # on_exit names the stage a run stopped in, so no early exit is silent, and says how to revoke a key it was given.
@@ -326,7 +329,7 @@ on_exit() {
   (( status == 0 )) && return
   warn "Stopped in stage $_STAGE_INDEX/$TOTAL_STAGES (exit $status): the message above says why."
   if [[ -n "${SKYCLAUSE_API_KEY:-}" ]]; then
-    note "Revoke this run's API key in the DevTools console on $APP_ORIGIN/$ORG_SLUG/settings/api-keys"
+    note "Revoke this run's API key (id $API_KEY_ID) in the DevTools console on $APP_ORIGIN/$ORG_SLUG/settings/api-keys"
     note "(it expires 1 day after you made it anyway):"
     note "  $(revoke_snippet)"
   fi
@@ -336,7 +339,7 @@ run_wizard() {
 
 TOTAL_STAGES=13
 # An exported SKYCLAUSE_API_KEY (the CLI reads one) would carry the pasted key into every child's environment.
-unset SKYCLAUSE_API_KEY
+unset SKYCLAUSE_API_KEY KEY_LINE
 trap on_exit EXIT
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 # Not the root .env, which Bun loads in local development.
@@ -420,7 +423,8 @@ if confirm "Open $APP_ORIGIN/new and $APP_ORIGIN/$ORG_SLUG/new to create them no
   open_url "$APP_ORIGIN/$ORG_SLUG/new"
   step "Create the project with slug '$PROJECT_SLUG', the Bukit Jalil site coordinates, time zone Asia/Kuala_Lumpur, and the Sky pack ticked."
   note "Creating the project with Sky ticked publishes the default Sky clause sheet (v1)."
-  note "The redirect to /$ORG_SLUG/$PROJECT_SLUG/settings/packs will show an error banner until #138 is built; the project itself is saved."
+  note "If the redirect to /$ORG_SLUG/$PROJECT_SLUG/settings/packs shows an error banner, the project is still saved;"
+  note "stage 7 checks whether production has built source binding."
   pause "Press Enter once the project is created"
 fi
 
@@ -428,13 +432,16 @@ stage "Create a read API key and verify project & Sky sheet (#194)"
 open_url "$APP_ORIGIN/$ORG_SLUG/settings/api-keys"
 say "This run's checks need a read-scope API key for '$ORG_SLUG'. It stays in memory, and the last stage"
 say "offers to revoke it. #194's @production specs need a key of their own when you run them."
-step "If the page shows an API key form (#105), create a key named production-pilot, scope read, expiring in 1 day."
-step "While the page is blank, run this in its DevTools console. Creating a key needs a sign-in"
+step "Run this in its DevTools console; it logs the new key's id, then the key. Creating a key needs a sign-in"
 note "  within the last 12 hours, so sign in again if it logs reauth-required:"
-note "  fetch('/api/orgs/$ORG_SLUG/api-keys',{method:'POST',headers:{'content-type':'application/json','idempotency-key':crypto.randomUUID()},body:JSON.stringify({name:'production-pilot',scopes:['read'],expires_in_days:1})}).then(r=>r.json()).then(d=>console.log(d.key??d))"
-note "If you still hold this wizard's key from a run in the last day, paste that one instead."
-ask_valid ask_secret SKYCLAUSE_API_KEY "Paste the read API key (hidden, never saved to disk):" "$API_KEY_PATTERN" \
-  "An API key starts with skc_."
+note "  fetch('/api/orgs/$ORG_SLUG/api-keys',{method:'POST',headers:{'content-type':'application/json','idempotency-key':crypto.randomUUID()},body:JSON.stringify({name:'production-pilot',scopes:['read'],expires_in_days:1})}).then(r=>r.json()).then(d=>console.log(d.key?d.id+' '+d.key:d))"
+note "If you still hold the line a run in the last day logged, paste that one instead."
+ask_valid ask_secret KEY_LINE "Paste the line it logged, id and key (hidden, never saved to disk):" "$KEY_LINE_PATTERN" \
+  "Paste the whole line: the key's id, a space, then the key, which starts with skc_."
+# shellcheck disable=SC2153 # ask_secret sets KEY_LINE through printf -v.
+API_KEY_ID="${KEY_LINE%% *}"
+SKYCLAUSE_API_KEY="${KEY_LINE#* }"
+unset KEY_LINE
 KEY_HINT="$(key_prefix "$SKYCLAUSE_API_KEY")"
 say "Verifying project '$PROJECT_SLUG' in '$ORG_SLUG' with key $KEY_HINT..."
 api_get "/v1/projects?slug=$PROJECT_SLUG&include=summary"
@@ -626,8 +633,9 @@ else
   SKIPPED+=("#534, #536, #539 and #194's live checks (the calls read answered HTTP $API_STATUS; re-run)")
 fi
 if [[ "$sent_calls" == "0" ]]; then
-  warn "#534 needs a feed with a sent call, and the project has none yet. A first real crossing needs bound"
-  note "sources (#138), declared windows (#139) and the evaluator that writes crossings (#133)."
+  warn "#534 needs a feed with a sent call, and the project has none yet. A first real crossing needs bound sources"
+  note "and declared windows (stages 7 and 8 checked production for both) and the evaluator that writes crossings,"
+  note "which the API can't show: #133 tracks it (open at the time of writing, 11 November 2026)."
   SKIPPED+=("#534 validate the production ICS feed, once a call is sent")
 elif [[ -n "$sent_calls" ]]; then
   feed_url="$MARKETING_ORIGIN/p/$ORG_SLUG/$PROJECT_SLUG/calendar.ics"
@@ -707,20 +715,21 @@ fi
 
 stage "Revoke this run's API key"
 say "The key $KEY_HINT isn't needed after this run; it expires 1 day after you made it."
-if confirm "Revoke every API key named production-pilot in '$ORG_SLUG' now?"; then
+say "Revoke only this run's key (id $API_KEY_ID): any other key, a teammate's named production-pilot too, stays."
+if confirm "Revoke key $API_KEY_ID in '$ORG_SLUG' now?"; then
   open_url "$APP_ORIGIN/$ORG_SLUG/settings/api-keys"
   step "Run this in the DevTools console on that page:"
   note "  $(revoke_snippet)"
-  pause "Press Enter once it has logged 'revoked' for each key"
+  pause "Press Enter once it has logged 'revoked'"
   api_get "/v1/projects?limit=1"
   if [[ "$API_STATUS" == "401" ]]; then
     printf '  %s✓ revoked%s %s: it now answers 401\n' "$GREEN" "$RESET" "$KEY_HINT"
   else
     warn "The key $KEY_HINT still answers HTTP $API_STATUS, so it isn't revoked."
-    SKIPPED+=("revoke the production-pilot API key in DevTools on $APP_ORIGIN/$ORG_SLUG/settings/api-keys: $(revoke_snippet)")
+    SKIPPED+=("revoke this run's API key (id $API_KEY_ID) in DevTools on $APP_ORIGIN/$ORG_SLUG/settings/api-keys: $(revoke_snippet)")
   fi
 else
-  SKIPPED+=("revoke the production-pilot API key in DevTools on $APP_ORIGIN/$ORG_SLUG/settings/api-keys: $(revoke_snippet)")
+  SKIPPED+=("revoke this run's API key (id $API_KEY_ID) in DevTools on $APP_ORIGIN/$ORG_SLUG/settings/api-keys: $(revoke_snippet)")
 fi
 unset SKYCLAUSE_API_KEY
 finish

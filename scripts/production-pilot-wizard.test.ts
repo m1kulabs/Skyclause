@@ -283,6 +283,9 @@ function runWizard(options: {
 }
 
 const secretKey = 'skc_live_9876543210abcdefSECRETVALUE'
+// The creation line logs the new key's id, then the key; the person pastes that line.
+const keyId = 'k7Qm2xTzR9aLpW4nVb8cYd3eFg6hJ1sU'
+const keyLine = `${keyId} ${secretKey}`
 
 // Every remote call is a read: GETs to production hosts (the key only to the API), and list or identity reads in
 // gcloud and aws. No argv carries the key, and curl's stdin config only ever adds headers.
@@ -364,7 +367,7 @@ describe('infra/wizards/production-pilot.sh only reads', () => {
     'skyclause-ops', // ORG_SLUG
     'bukit-jalil', // PROJECT_SLUG
     'n', // open /new?
-    secretKey, // read key
+    keyLine, // read key line: id and key
     '', // stage 5
     '', // stage 6
     '', // stage 7
@@ -386,7 +389,7 @@ describe('infra/wizards/production-pilot.sh only reads', () => {
     'bukit-jalil', // PROJECT_SLUG
     'y', // open /new?
     '', // created
-    secretKey, // read key
+    keyLine, // read key line: id and key
     '', // stage 5
     '', // stage 6
     '', // stage 7
@@ -459,7 +462,7 @@ describe('infra/wizards/production-pilot.sh evidence holds no credential', () =>
     'skyclause-ops', // ORG_SLUG
     'bukit-jalil', // PROJECT_SLUG
     'n', // open /new?
-    secretKey // read key
+    keyLine // read key line: id and key
   ]
   const signedUrl =
     'https://storage.googleapis.com/skyclause-production-archive/orgs/019a7000/pilot/sheets_ledger/ab12-ledger.csv' +
@@ -502,7 +505,9 @@ describe('infra/wizards/production-pilot.sh evidence holds no credential', () =>
     ['an API key', secretKey],
     ['an API key', 'skc_ab12cd34'],
     ['an email address', 'pilot-tester@example.org'],
-    ['an email address', 'owner.call-1@skyclause.m1ku.tech']
+    ['an email address', 'owner.call-1@skyclause.m1ku.tech'],
+    ['an email address', 'pilot-tester%40example.org'],
+    ['an email address', 'call-1@skyclause.m1ku.tech.gmail.com']
   ])('refuses to record a production answer that holds %s', (kind, secret) => {
     const { result, output, evidenceContent } = runWizard({
       input: answers,
@@ -527,7 +532,7 @@ describe('infra/wizards/production-pilot.sh environment', () => {
     'skyclause-ops', // ORG_SLUG
     'bukit-jalil', // PROJECT_SLUG
     'n', // open /new?
-    secretKey // read key
+    keyLine // read key line: id and key
   ]
 
   test('an API key already exported in the shell never reaches a child process', () => {
@@ -554,7 +559,7 @@ describe('infra/wizards/production-pilot.sh environment', () => {
 
   test('records evidence for a project whose slug starts with sk-', () => {
     const { result, output, evidenceContent } = runWizard({
-      input: [...answers.slice(0, 4), 'skyclause-ops', 'sk-bukit-jalil-pilot-site', 'n', secretKey]
+      input: [...answers.slice(0, 4), 'skyclause-ops', 'sk-bukit-jalil-pilot-site', 'n', keyLine]
     })
 
     expect(result.status, output).toBe(0)
@@ -571,7 +576,7 @@ describe('infra/wizards/production-pilot.sh reports what still waits, and every 
     'skyclause-ops', // ORG_SLUG
     'bukit-jalil', // PROJECT_SLUG
     'n', // open /new?
-    secretKey, // read key
+    keyLine, // read key line: id and key
     '', // stage 5
     '', // stage 6
     '', // stage 7
@@ -713,6 +718,33 @@ describe('infra/wizards/production-pilot.sh reports what still waits, and every 
     expect(evidenceContent).not.toContain('## #194 — Organisation, project and default Sky clause sheet')
   })
 
+  test('names #138 and #139 only when production answers not-built for them', () => {
+    const { result, output } = runWizard({
+      curl: production({
+        '*/v1/catalogue/sources': json(200, { data: [], next_cursor: null }),
+        '*/v1/projects/*/windows': json(200, {
+          data: [{ id: 'win-1', kind: 'storm_afternoon', date: '2026-11-12', start: '14:00', end: '19:15' }],
+          next_cursor: null
+        })
+      }),
+      input: [
+        ...answers.slice(0, 6),
+        'y', // open /new?
+        '', // created
+        keyLine, // read key line: id and key
+        '', // stage 5
+        '', // stage 6
+        '', // stage 7: sources bound
+        ...answers.slice(10)
+      ]
+    })
+
+    expect(result.status, output).toBe(0)
+    expect(output).not.toContain('#138')
+    expect(output).not.toContain('#139')
+    expect(output).toContain('#133')
+  })
+
   test('reports a 501 that is not the not-built problem as a failed read, not as waiting on a ticket', () => {
     const { result, output } = runWizard({
       input: answers,
@@ -772,7 +804,7 @@ describe('infra/wizards/production-pilot.sh reports what still waits, and every 
         '', // ORG_SLUG: Enter keeps it
         '', // PROJECT_SLUG: Enter keeps it
         'n', // open /new?
-        secretKey, // read key
+        keyLine, // read key line: id and key
         '', // stage 5
         '', // stage 6
         '', // stage 7: sources bound
@@ -803,9 +835,7 @@ describe('infra/wizards/production-pilot.sh reports what still waits, and every 
 })
 
 describe('infra/wizards/production-pilot.sh API key', () => {
-  const revokeLine =
-    "fetch('/api/orgs/skyclause-ops/api-keys?limit=200').then(r=>r.json()).then(d=>Promise.all(d.data.filter(k=>k.name==='production-pilot')" +
-    ".map(k=>fetch('/api/orgs/skyclause-ops/api-keys/'+k.id,{method:'DELETE'}).then(r=>console.log('revoked',k.id,r.status)))))"
+  const revokeLine = `fetch('/api/orgs/skyclause-ops/api-keys/${keyId}',{method:'DELETE'}).then(r=>console.log('revoked','${keyId}',r.status))`
   const throughKey = [
     '', // banner
     '', // stage 1
@@ -814,7 +844,7 @@ describe('infra/wizards/production-pilot.sh API key', () => {
     'skyclause-ops', // ORG_SLUG
     'bukit-jalil', // PROJECT_SLUG
     'n', // open /new?
-    secretKey // read key
+    keyLine // read key line: id and key
   ]
   const toRevoke = [
     ...throughKey,
@@ -836,6 +866,7 @@ describe('infra/wizards/production-pilot.sh API key', () => {
     expect(result.status, output).toBe(0)
     expect(output).toContain('within the last 12 hours')
     expect(output).toContain("name:'production-pilot',scopes:['read'],expires_in_days:1")
+    expect(output).toContain("console.log(d.key?d.id+' '+d.key:d)")
     expect(output).not.toContain('expires_in_days:90')
     expect(output).not.toContain('10 minutes')
   })
@@ -848,6 +879,31 @@ describe('infra/wizards/production-pilot.sh API key', () => {
     expect(output).toContain(revokeLine)
     expect(output).toContain('✓ revoked skc_live…')
     expect(calls.curl).toContain('/v1/projects\\?limit=1')
+  })
+
+  test("the revoke line revokes only this run's key, not a teammate's key of the same name", async () => {
+    const { result, output } = runWizard({ input: [...toRevoke, 'y', ''] })
+    expect(result.status, output).toBe(0)
+    expect(output).toContain(`Revoke only this run's key (id ${keyId})`)
+
+    // Run the line the person pastes into DevTools against an organisation whose owner sees both keys.
+    const line = output
+      .split('\n')
+      .map((text) => text.trim())
+      .find((text) => text.startsWith('fetch(') && text.includes("method:'DELETE'"))
+    expect(line).toBeDefined()
+    const keys = [
+      { id: keyId, name: 'production-pilot', created_by: 'acc-owner' },
+      { id: 'teammate0key0id00000000000000000', name: 'production-pilot', created_by: 'acc-teammate' }
+    ]
+    const deleted: string[] = []
+    const fakeFetch = async (url: string, init?: { method?: string }) => {
+      if (init?.method === 'DELETE') deleted.push(url)
+      return { status: init?.method === 'DELETE' ? 204 : 200, json: async () => ({ data: keys, next_cursor: null }) }
+    }
+    // Runs the printed line as DevTools would.
+    await new Function('fetch', 'console', `return ${line}`)(fakeFetch, { log: () => {} })
+    expect(deleted).toEqual([`/api/orgs/skyclause-ops/api-keys/${keyId}`])
   })
 
   test('answering "n" to revoking leaves the exact way to revoke it in the to-do list', () => {
