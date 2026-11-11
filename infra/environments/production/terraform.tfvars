@@ -19,7 +19,7 @@ app_config = {
   ADAPTER_USER_AGENT = "Skyclause/1.0 (+https://skyclause.m1ku.tech)"
 }
 
-# #118 gate 3: each has a version, from infra/wizards/google-sign-in.sh and staff-and-ses.sh.
+# #118 gate 3: each has a version, from infra/wizards/google-sign-in.sh and staff-emails.sh.
 supplied_secrets = ["GOOGLE_CLIENT_SECRET", "SKYCLAUSE_STAFF_EMAILS", "TURNSTILE_SECRET_KEY"]
 
 # VAPID_PRIVATE_KEY has its one version (#113), so the worker mounts it.
