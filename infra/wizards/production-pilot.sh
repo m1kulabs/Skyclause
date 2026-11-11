@@ -198,8 +198,8 @@ finish() {
 # the whole file before the first prompt, so an edit mid-run can't break it.
 # ──────────────────────────────────────────────────────────────────────────
 
-# Walks the repository owner through the human-only production steps of #194, #531, #534, #536, #539, #629, #118
-# and #622 in one sitting. It only reads: GETs to production (the product's API with a read key held in memory)
+# Walks the repository owner through the human-only production steps of #194, #531, #534, #536, #539 and #622
+# in one sitting. It only reads: GETs to production (the product's API with a read key held in memory)
 # and gcloud and aws lists. Every write is the human's, in the browser, or printed for them to run. It checks each
 # step live first, names the ticket when production answers 501 not-built, and records evidence in the git-ignored
 # infra/wizards/production-pilot.evidence.md, refusing any section that holds a credential or an email address.
@@ -345,9 +345,9 @@ cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 # Not the root .env, which Bun loads in local development.
 [[ "$ENV_FILE" == .env ]] && ENV_FILE=infra/wizards/.env
 
-banner "Production pilot checks and human steps (#194, #531, #534, #536, #539, #629, #118, #622)"
+banner "Production pilot checks and human steps (#194, #531, #534, #536, #539, #622)"
 
-stage "Check tools, hosts and on-call contacts (#118, #629)"
+stage "Check tools and hosts"
 for tool in curl python3 gcloud aws; do
   command -v "$tool" >/dev/null 2>&1 || { warn "$tool is missing: install it and re-run"; exit 1; }
 done
@@ -358,24 +358,6 @@ for origin in "$MARKETING_ORIGIN" "$APP_ORIGIN" "$API_ORIGIN"; do
   fi
 done
 say "Production hosts ($MARKETING_ORIGIN, $APP_ORIGIN, $API_ORIGIN) answer /health with 200."
-say "Checking ONCALL_CONTACTS in Secret Manager ($PROJECT) for #118 and #629..."
-if ! oncall_list="$(gcloud secrets versions list ONCALL_CONTACTS --project="$PROJECT" --filter=state=ENABLED \
-  --format='table(name,state,createTime)')"; then
-  warn "gcloud couldn't list ONCALL_CONTACTS's versions in $PROJECT: its error is above."
-  warn "Sign in as a project owner with 'gcloud auth login' and re-run."
-  exit 1
-fi
-if [[ -z "$oncall_list" ]]; then
-  warn "ONCALL_CONTACTS has no enabled version yet (#118, #629)."
-  note "Run ./infra/wizards/oncall-contacts.sh yourself (about 10 minutes): it stores the contacts, and a second"
-  note "run after oncall_contacts_ready is applied verifies the SMS numbers. Then re-run this wizard."
-  SKIPPED+=("#118 / #629 store ONCALL_CONTACTS with ./infra/wizards/oncall-contacts.sh, then re-run")
-else
-  record_evidence "#118 / #629" "ONCALL_CONTACTS has an enabled version (listed by name, never accessed; the channels and a test page are still to check)" \
-    "gcloud secrets versions list ONCALL_CONTACTS --project=$PROJECT --filter=state=ENABLED --format='table(name,state,createTime)'" \
-    "$oncall_list"
-  SKIPPED+=("#629 check the on-call notification channels exist and a test incident pages within 5 minutes, by hand")
-fi
 pause
 
 stage "Check #622's deploy criteria that still wait"
