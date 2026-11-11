@@ -1,7 +1,13 @@
-import { SpanKind, SpanStatusCode, trace } from '@opentelemetry/api'
-import { AggregationTemporality, DataPointType, InMemoryMetricExporter } from '@opentelemetry/sdk-metrics'
+import { SpanKind, SpanStatusCode, trace, type Attributes } from '@opentelemetry/api'
+import { ExportResultCode, hrTimeToMilliseconds } from '@opentelemetry/core'
+import {
+  AggregationTemporality,
+  DataPointType,
+  InMemoryMetricExporter,
+  type PushMetricExporter
+} from '@opentelemetry/sdk-metrics'
 import { InMemorySpanExporter } from '@opentelemetry/sdk-trace'
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
   log,
   recordHttpServerDuration,
@@ -223,5 +229,119 @@ describe('http.server.request.duration', () => {
     expect((await durations()).points.map(([attributes, count]) => [attributes, count])).toEqual([
       [{ 'http.request.method': 'GET', 'http.route': '/v1/projects/:id', 'http.response.status_code': 200 }, 1]
     ])
+  })
+})
+
+/**
+ * The Telemetry API's write rule, a double: Cloud Monitoring "requires that the end times of points written to a time
+ * series be at least 5 seconds apart" (https://docs.cloud.google.com/monitoring/quotas), and answers a request that
+ * breaks it with 400 (https://docs.cloud.google.com/monitoring/api/troubleshooting). One series is one scope, metric
+ * name and attribute set; the resource is the process's own.
+ */
+function cloudMonitoring(answer?: string) {
+  const ended = new Map<string, number>()
+  const written: Array<{ name: string; attributes: Attributes; value: unknown }> = []
+  let refused = 0
+  const exporter: PushMetricExporter = {
+    export: (data, done) => {
+      const points = data.scopeMetrics.flatMap((scope) =>
+        scope.metrics.flatMap((metric) =>
+          metric.dataPoints.map((point) => ({
+            key: JSON.stringify([scope.scope.name, metric.descriptor.name, point.attributes]),
+            end: hrTimeToMilliseconds(point.endTime),
+            name: metric.descriptor.name,
+            attributes: point.attributes,
+            value: point.value
+          }))
+        )
+      )
+      if (answer || points.some((point) => point.end - (ended.get(point.key) ?? -Infinity) < 5000)) {
+        refused++
+        const error = Object.assign(new Error('Bad Request'), { name: 'OTLPExporterError', code: 400, data: answer })
+        return done({ code: ExportResultCode.FAILED, error })
+      }
+      for (const { key, end, ...point } of points) {
+        ended.set(key, end)
+        written.push(point)
+      }
+      done({ code: ExportResultCode.SUCCESS })
+    },
+    forceFlush: async () => {},
+    shutdown: async () => {}
+  }
+  return { exporter, written, refused: () => refused }
+}
+
+describe('metric export to Cloud Monitoring', () => {
+  function startAgainst(api: ReturnType<typeof cloudMonitoring>) {
+    lines = []
+    telemetry = startTelemetry('job', {
+      env,
+      traceExporter: new InMemorySpanExporter(),
+      metricExporter: api.exporter,
+      write: (line) => void lines.push(line)
+    })
+    return telemetry
+  }
+  const request = (status: number) => recordHttpServerDuration({ method: 'POST', route: '/ticks/:name', status }, 0.01)
+  const failures = () => lines.filter((line) => line.includes('metrics export failed'))
+
+  afterEach(() => vi.useRealTimers())
+
+  test('flushes less than 5 seconds apart, as two requests at once, write each series once', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(Date.parse('2026-11-11T01:00:00.800Z'))
+    const api = cloudMonitoring()
+    const t = startAgainst(api)
+    // The batch and the minute tick both start at 01:00; each flushes before answering.
+    request(500)
+    await t.flush()
+    vi.setSystemTime(Date.parse('2026-11-11T01:00:01.100Z'))
+    request(204)
+    t.heartbeat('minute_tick')
+    await t.flush()
+    expect(api.refused()).toBe(0)
+    expect(failures()).toEqual([])
+    // A flush 5 seconds after each series' last point writes it again, the 500 with its count so far.
+    vi.setSystemTime(Date.parse('2026-11-11T01:00:06.200Z'))
+    request(500)
+    await t.flush()
+    expect(api.refused()).toBe(0)
+    const counts = api.written
+      .filter((point) => point.name === 'http.server.request.duration')
+      .map((point) => [point.attributes['http.response.status_code'], (point.value as { count: number }).count])
+    expect(counts).toEqual([
+      [500, 1],
+      [204, 1],
+      [500, 2],
+      [204, 1]
+    ])
+    expect(api.written.filter((point) => point.name === 'skyclause.heartbeat')).toHaveLength(1)
+  })
+
+  test('shutting down just after a flush, as on SIGTERM, writes nothing twice', async () => {
+    const api = cloudMonitoring()
+    const t = startAgainst(api)
+    request(204)
+    await t.flush()
+    await t.shutdown()
+    telemetry = undefined
+    expect(api.refused()).toBe(0)
+    expect(failures()).toEqual([])
+  })
+
+  test('a refused export logs the status and the answer, which the SDK error leaves out', async () => {
+    const api = cloudMonitoring('Metric name has an invalid character')
+    const t = startAgainst(api)
+    request(204)
+    await t.flush()
+    expect(lines.map((line) => JSON.parse(line))).toContainEqual(
+      expect.objectContaining({
+        severity: 'ERROR',
+        message: 'telemetry: metrics export refused',
+        status: 400,
+        answer: 'Metric name has an invalid character'
+      })
+    )
   })
 })
