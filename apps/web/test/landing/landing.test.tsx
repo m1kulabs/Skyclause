@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, test } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, test, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import axe from 'axe-core'
 import { LandingSections } from '../../features/landing'
+import { FaqClient } from '../../features/landing/faq-client'
 
 async function expectAxeClean() {
   const results = await axe.run(document.body, {
@@ -294,5 +295,39 @@ describe('landing sections', () => {
       (input) => (input as HTMLInputElement).checked
     )
     expect(checked.map((input) => (input as HTMLInputElement).id)).toEqual(['faq-5'])
+  })
+})
+
+describe('FAQ grades with a pilot', () => {
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+  })
+
+  test('reads as unread until the grades arrive, then prints one metric’s n with its interval', async () => {
+    let release: (() => void) | undefined
+    const body = {
+      data: [
+        { n: 8, x: 7, low: 0.53, high: 0.98, metric: 'precision' },
+        { n: 5, x: 1, low: 0.04, high: 0.62, metric: 'false_alarm_rate' }
+      ]
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        () =>
+          new Promise((resolve) => {
+            release = () => resolve({ ok: true, status: 200, json: async () => body })
+          })
+      )
+    )
+    render(<FaqClient pilot={{ org: 'x', project: 'y' }} gradesSource="/v1/public/x/y/grades" />)
+    expect(document.body.textContent).toContain('Reading live grades…')
+    expect(document.body.textContent).not.toContain('n=0')
+    await waitFor(() => expect(release).toBeDefined())
+    release!()
+    await waitFor(() =>
+      expect(document.body.textContent).toContain('Latest: n=8, 7 of 8 (Wilson 95% interval 0.53–0.98).')
+    )
   })
 })
