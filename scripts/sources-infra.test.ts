@@ -22,3 +22,19 @@ test('sources use pull-only results, worker subscriber IAM and real daily job mo
   expect(run).not.toContain('SOURCE_USER_AGENT')
   expect(run).not.toMatch(/ADAPTER_USER_AGENT\s*=/)
 })
+test('production sets every value the source runner requires, and the user agent names a contact URL', () => {
+  const names = (block: string) => [...block.matchAll(/^\s+([A-Z][A-Z0-9_]*)\s+=/gm)].map((match) => match[1]!)
+  const required = [
+    ...readFileSync(new URL('../apps/worker/src/sources/index.ts', import.meta.url), 'utf8').matchAll(
+      /required\('([A-Z][A-Z0-9_]*)'\)/g
+    )
+  ].map((match) => match[1]!)
+  const runEnv = read('run.tf')
+    .split(/\n\s+env\s+= merge\(var\.app_config, \{/)[1]!
+    .split('\n  })')[0]!
+  const appConfig = read('terraform.tfvars').split('\napp_config = {')[1]!.split('\n}\n')[0]!
+  expect(required).toContain('ADAPTER_USER_AGENT')
+  expect(required.filter((name) => ![...names(runEnv), ...names(appConfig)].includes(name))).toEqual([])
+  // A product token and a contact URL, which public data providers ask a client to send.
+  expect(appConfig).toMatch(/^\s+ADAPTER_USER_AGENT\s+= "[A-Za-z][\w.-]*\/\d[\w.-]* \(\+https:\/\/[^\s)"]+\)"$/m)
+})

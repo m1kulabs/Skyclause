@@ -19,6 +19,10 @@ app_config = {
   # #118 gate 3: printed by infra/wizards/google-sign-in.sh, 6 Nov 2026.
   GOOGLE_CLIENT_ID   = "413187272599-fgputod4kurkfmjt0ep3j46kif77ih0b.apps.googleusercontent.com"
   TURNSTILE_SITE_KEY = "0x4AAAAAAF1nsaULaL3xWos0"
+
+  # #612: the upstream identification string every source request sends (#79 §6, source-runner design),
+  # as a product token with a contact URL; chosen 11 Nov 2026, the owner's to change.
+  ADAPTER_USER_AGENT = "Skyclause/1.0 (+https://skyclause.m1ku.tech)"
 }
 
 # #118 gate 3: each has a version, from infra/wizards/google-sign-in.sh and staff-and-ses.sh.
