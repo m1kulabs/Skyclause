@@ -28,6 +28,7 @@ import { memberHandlers } from './members'
 import { rotaHandlers } from './rota'
 import { subscriberHandlers } from './subscribers'
 import { subscriberRightsHandlers } from './subscriber-rights'
+import { sourceHandlers } from './sources'
 import { dataRightsHandlers } from './data-rights'
 
 /**
@@ -52,6 +53,7 @@ export type Handlers = { [Id in OperationId]?: HandlerEntry<Operations[Id]> }
  * line; an operation without an entry answers 501 `not-built` naming its owner.
  */
 export const HANDLERS: Handlers = {
+  ...sourceHandlers, // b-source-binding
   ...apiKeyHandlers, // a-api-keys
   ...auditHandlers, // a-audit-log
   ...aiKeyHandlers, // e-byok-api

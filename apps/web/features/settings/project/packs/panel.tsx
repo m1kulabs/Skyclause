@@ -282,7 +282,10 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
                       role: t(`onboarding.role_${source.role}`)
                     })}
                   </p>
-                  {source.state.state === 'error' && (
+                  {source.state === null && (
+                    <span className={styles.helper}>{t('onboarding.source_not_evaluated')}</span>
+                  )}
+                  {source.state?.state === 'error' && (
                     <span className={styles.sourceError}>
                       {t('onboarding.source_error', {
                         status: source.state.http_status ?? t('onboarding.source_error_unknown')

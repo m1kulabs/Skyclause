@@ -21,6 +21,28 @@
             },
             "cursor": {
               "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "jps_rain",
+                "met_warning",
+                "met_forecast",
+                "apims",
+                "rapidrail_od",
+                "gtfs_static",
+                "gtfs_rt",
+                "golive",
+                "wikipedia",
+                "camera",
+                "pi"
+              ]
+            },
+            "near": {
+              "type": "string"
+            },
+            "q": {
+              "type": "string"
             }
           },
           "required": [],
@@ -91,10 +113,14 @@
                         "type": "integer"
                       },
                       "licence_id": {
-                        "type": "string"
+                        "type": ["string", "null"]
                       },
                       "licence_label": {
                         "type": "string"
+                      },
+                      "distance_km": {
+                        "type": ["number", "null"],
+                        "minimum": 0
                       },
                       "latest_reading": {
                         "type": ["object", "null"],
@@ -197,6 +223,7 @@
                       "stale_after_s",
                       "licence_id",
                       "licence_label",
+                      "distance_km",
                       "latest_reading",
                       "age_s",
                       "source_state"

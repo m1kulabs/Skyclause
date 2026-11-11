@@ -2,6 +2,7 @@ import { OrganizationHeaders, problemResponse, IdParams } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
 import { Pack, ProjectPack } from '../shared'
+import { packPrerequisitesResponse } from './sources'
 
 const PackParams = IdParams.extend({ pack: Pack })
 const PackUpdate = z
@@ -29,6 +30,7 @@ export const updateProjectPack = createRoute({
     401: problemResponse('Authentication is required.'),
     403: problemResponse('The principal lacks sources.manage permission.'),
     404: problemResponse('The project or pack is unavailable in this organization.'),
+    409: packPrerequisitesResponse,
     422: problemResponse('The pack cannot be enabled or the request is invalid.'),
     429: problemResponse('The request rate limit was exceeded.')
   },

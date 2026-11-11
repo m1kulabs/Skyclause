@@ -247,7 +247,7 @@ export const Source = z.object({
   url: z.url(),
   cadence_s: z.number().int(),
   stale_after_s: z.number().int(),
-  licence_id: z.string(),
+  licence_id: z.string().nullable(),
   licence_label: z.string()
 })
 export type Source = z.infer<typeof Source>
