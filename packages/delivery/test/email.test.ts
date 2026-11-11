@@ -1,7 +1,7 @@
 import { MessageRejected, SendEmailCommand } from '@aws-sdk/client-sesv2'
 import PostalMime from 'postal-mime'
 import { describe, expect, test } from 'vitest'
-import { createEmailTransport, SesError, type EmailMessage } from '../src/email'
+import { createEmailTransport, EmailSendError, type EmailMessage } from '../src/email'
 
 // A double of the SES v2 client: records each SendEmail input and answers like SES.
 function sesDouble(
@@ -155,7 +155,7 @@ describe('EmailTransport.send', () => {
       .send(notice)
       .catch((caught: unknown) => caught)
 
-    expect(error).toBeInstanceOf(SesError)
+    expect(error).toBeInstanceOf(EmailSendError)
     expect(error).toMatchObject({ status: 400, code: 'MessageRejected', cause: rejected })
     expect((error as Error).message).toBe('SES SendEmail failed: MessageRejected (HTTP 400)')
   })

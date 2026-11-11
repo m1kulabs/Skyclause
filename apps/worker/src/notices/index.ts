@@ -1,5 +1,5 @@
 import { loadEnv } from '@skyclause/config'
-import { BundleApprovedEventSchema, type EmailTransport, type EventEnvelope } from '@skyclause/contracts'
+import { BundleApprovedEventSchema, type EventEnvelope } from '@skyclause/contracts'
 import {
   NOTICE_KINDS,
   noticeForProviderMessage,
@@ -11,7 +11,7 @@ import {
   withSystem,
   withTenant
 } from '@skyclause/db'
-import { emailTransportForAws, sesEventsHandler, type SesEvent } from '@skyclause/delivery'
+import { emailTransportFromEnv, sesEventsHandler, type SesEvent } from '@skyclause/delivery'
 import { log, type WorkerPart } from '../server'
 import { sendCallNotices, settleCalls, type SenderConfig, type SenderDeps } from './send'
 
@@ -112,20 +112,8 @@ export function createNoticesPart(deps: NoticesDeps): WorkerPart {
   }
 }
 
-let transport: EmailTransport | undefined
-
 export const notices = createNoticesPart({
-  email: () => {
-    const env = loadEnv('worker')
-    if (!env.SES_REGION || !env.AWS_ROLE_ARN || !env.SES_CONFIGURATION_SET) return null
-    return (transport ??= emailTransportForAws({
-      region: env.SES_REGION,
-      roleArn: env.AWS_ROLE_ARN,
-      configurationSet: env.SES_CONFIGURATION_SET,
-      fromAuth: env.EMAIL_FROM_AUTH!,
-      fromNotices: env.EMAIL_FROM_NOTICES!
-    }))
-  },
+  email: () => emailTransportFromEnv('worker'),
   config: () => {
     const env = loadEnv('worker')
     return {

@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test, vi } from 'vitest'
-import { SesError } from '@skyclause/delivery'
+import { EmailSendError } from '@skyclause/delivery'
 import { authSettings, createAuth, getAuth } from '../src/instance'
 import { asLogin } from '@skyclause/db/test/harness/index'
 import { passkey as passkeyRecord } from '@skyclause/db'
@@ -151,7 +151,11 @@ test('a step-up email SES refuses is one structured ERROR line naming SES and it
   })
   const auth = createAuth(authSettings(), {
     sendStepUpEmail: async () => {
-      throw new SesError('SendEmail', denied)
+      throw new EmailSendError('SES SendEmail failed: MessageRejected (HTTP 400)', {
+        status: 400,
+        code: 'MessageRejected',
+        cause: denied
+      })
     }
   })
   const lines: unknown[][] = []

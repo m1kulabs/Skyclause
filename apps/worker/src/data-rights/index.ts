@@ -14,7 +14,7 @@ import {
   startExportJob,
   type ExportJobRow
 } from '@skyclause/db'
-import { emailTransportForAws, renderExportReadyEmail } from '@skyclause/delivery'
+import { renderExportReadyEmail, requireEmailTransport } from '@skyclause/delivery'
 import { log, type BatchHandler, type QueueHandler, type WorkerPart } from '../server'
 import { exportFiles, createZip } from './archive'
 import { cloudBucket } from './storage'
@@ -43,20 +43,7 @@ function productionDeps(): DataRightsDeps {
   return {
     exportBucket: cloudBucket(exportsBucket),
     orgBuckets: [...new Set(buckets)].map((name) => cloudBucket(name!)),
-    email: () => {
-      const { SES_REGION, AWS_ROLE_ARN, SES_CONFIGURATION_SET, EMAIL_FROM_AUTH, EMAIL_FROM_NOTICES } = loadEnv('worker')
-      if (!SES_REGION || !AWS_ROLE_ARN || !SES_CONFIGURATION_SET || !EMAIL_FROM_AUTH || !EMAIL_FROM_NOTICES) {
-        throw new Error('email is off: the SES variables are unset until gate 4B')
-      }
-      // The delivery adapter selects the `system` From address for this explicit sender kind.
-      return emailTransportForWorker({
-        SES_REGION,
-        AWS_ROLE_ARN,
-        SES_CONFIGURATION_SET,
-        EMAIL_FROM_AUTH,
-        EMAIL_FROM_NOTICES
-      })
-    },
+    email: () => requireEmailTransport('worker'),
     appOrigin: () => {
       const origin = loadEnv('worker').APP_ORIGIN
       if (!origin) throw new Error('APP_ORIGIN is not set')
@@ -64,22 +51,6 @@ function productionDeps(): DataRightsDeps {
     },
     now: () => new Date()
   }
-}
-
-function emailTransportForWorker(input: {
-  SES_REGION: string
-  AWS_ROLE_ARN: string
-  SES_CONFIGURATION_SET: string
-  EMAIL_FROM_AUTH: string
-  EMAIL_FROM_NOTICES: string
-}): EmailTransport {
-  return emailTransportForAws({
-    region: input.SES_REGION,
-    roleArn: input.AWS_ROLE_ARN,
-    configurationSet: input.SES_CONFIGURATION_SET,
-    fromAuth: input.EMAIL_FROM_AUTH,
-    fromNotices: input.EMAIL_FROM_NOTICES
-  })
 }
 
 async function prepare(job: ExportJobRow, deps: DataRightsDeps, generatedAt: Date) {
