@@ -32,6 +32,21 @@ const project = {
   warning_area_terms: [],
   packs: []
 }
+const preferences = {
+  theme: 'dark',
+  high_contrast: false,
+  density: 'comfortable',
+  reduced_motion: false,
+  language: 'en',
+  sidebar_collapsed: true
+}
+
+function answerShell(input: string | URL) {
+  const { pathname } = new URL(input)
+  if (pathname === '/api/me/memberships') return Response.json({ data: [membership], next_cursor: null })
+  if (pathname === '/api/me/preferences') return Response.json(preferences)
+  return Response.json({ data: [project], next_cursor: null })
+}
 
 test('loads only real memberships and their scoped projects, following cursors and forwarding the session', async () => {
   const fetcher = vi.fn(async (input: string | URL, init?: RequestInit) => {
@@ -62,23 +77,7 @@ test('routes /api/me reads to APP_ORIGIN and /v1/projects to API_ORIGIN in multi
   vi.stubEnv('HOST_MODE', 'multi')
   vi.stubEnv('APP_ORIGIN', 'https://app.skyclause.m1ku.tech')
   vi.stubEnv('API_ORIGIN', 'https://api.skyclause.m1ku.tech')
-  const fetcher = vi.fn(async (input: string | URL) => {
-    const url = new URL(input)
-    if (url.pathname === '/api/me/memberships') {
-      return Response.json({ data: [membership], next_cursor: null })
-    }
-    if (url.pathname === '/api/me/preferences') {
-      return Response.json({
-        theme: 'dark',
-        high_contrast: false,
-        density: 'comfortable',
-        reduced_motion: false,
-        language: 'en',
-        sidebar_collapsed: true
-      })
-    }
-    return Response.json({ data: [project], next_cursor: null })
-  })
+  const fetcher = vi.fn(async (input: string | URL) => answerShell(input))
   vi.stubGlobal('fetch', fetcher)
 
   const data = await loadShellData(new Headers({ cookie: 'session=test' }))
@@ -89,6 +88,60 @@ test('routes /api/me reads to APP_ORIGIN and /v1/projects to API_ORIGIN in multi
     'https://app.skyclause.m1ku.tech/api/me/memberships',
     'https://app.skyclause.m1ku.tech/api/me/preferences'
   ])
+})
+
+test('sends the session and a time limit to the configured origins, never to a host named by the request', async () => {
+  vi.stubEnv('HOST_MODE', 'multi')
+  vi.stubEnv('APP_ORIGIN', 'https://app.skyclause.m1ku.tech')
+  vi.stubEnv('API_ORIGIN', 'https://api.skyclause.m1ku.tech')
+  const fetcher = vi.fn(async (input: string | URL, _init?: RequestInit) => answerShell(input))
+  vi.stubGlobal('fetch', fetcher)
+
+  await loadShellData(
+    new Headers({
+      cookie: 'session=test',
+      authorization: 'Bearer test',
+      host: 'evil.example',
+      'x-forwarded-host': 'evil.example',
+      origin: 'https://evil.example'
+    })
+  )
+
+  expect(fetcher).toHaveBeenCalledTimes(3)
+  for (const [input, init] of fetcher.mock.calls) {
+    const headers = new Headers(init?.headers)
+    expect(['https://app.skyclause.m1ku.tech', 'https://api.skyclause.m1ku.tech']).toContain(new URL(input).origin)
+    expect(headers.get('cookie')).toBe('session=test')
+    expect(headers.get('authorization')).toBe('Bearer test')
+    expect(headers.get('accept')).toBe('application/json')
+    for (const name of ['host', 'x-forwarded-host', 'origin']) expect(headers.has(name)).toBe(false)
+    expect(init?.signal).toBeInstanceOf(AbortSignal)
+  }
+})
+
+test('keeps every read on API_ORIGIN in single-host mode', async () => {
+  vi.stubEnv('HOST_MODE', 'single')
+  vi.stubEnv('API_ORIGIN', 'http://localhost:3000')
+  const fetcher = vi.fn(async (input: string | URL) => answerShell(input))
+  vi.stubGlobal('fetch', fetcher)
+
+  await loadShellData(new Headers({ cookie: 'session=test' }))
+
+  expect(fetcher.mock.calls.map(([url]) => String(url)).sort()).toEqual([
+    'http://localhost:3000/api/me/memberships',
+    'http://localhost:3000/api/me/preferences',
+    'http://localhost:3000/v1/projects'
+  ])
+})
+
+test('returns empty data when the origin answers a page instead of JSON', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      async () => new Response('<!doctype html><title>Skyclause</title>', { headers: { 'Content-Type': 'text/html' } })
+    )
+  )
+  expect(await loadShellData()).toEqual({ memberships: [], projects: [], sidebarCollapsed: false })
 })
 
 test.each([501, 500, 401])('returns empty data when memberships answer %s', async (status) => {
