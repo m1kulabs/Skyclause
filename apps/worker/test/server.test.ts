@@ -9,6 +9,7 @@ import {
 } from '@skyclause/db'
 import { makeOrganization, makeProject, makeSource } from '@skyclause/db/test/factories/index'
 import { asLogin, memberOf, testDatabase } from '@skyclause/db/test/harness/index'
+import { resendEvent, signedHeaders, webhookSecret } from '@skyclause/delivery/test/resend-double'
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose'
 import { beforeAll, describe, expect, test, vi } from 'vitest'
 import { registry } from '../src/registry'
@@ -423,10 +424,151 @@ describe('worker routes', () => {
     const res = await post(app, '/internal/ai-keys/k1/test', { bearer: await token() })
     expect(await res.json()).toEqual({ id: 'k1' })
   })
+})
 
-  test('an /ses route skips Google OIDC, since its owner checks the SNS signature', async () => {
-    const app = server({ owner: 'test', ses: { '/events': async () => new Response(null, { status: 204 }) } })
-    expect((await post(app, '/ses/events')).status).toBe(204)
+describe('POST /resend/webhook', () => {
+  const received: unknown[] = []
+  const part: WorkerPart = {
+    owner: 'test',
+    resend: { 'email.delivered': async (event) => (received.push(event), new Response(null, { status: 200 })) }
+  }
+  const app = (secret: string | undefined = webhookSecret) =>
+    createServer({ registry: defineRegistry([part]), audience, invoker, jwks, resendWebhookSecret: secret })
+  const deliver = (body: string, headers: Record<string, string> = signedHeaders(body), secret?: string) =>
+    app(secret).request('/resend/webhook', { method: 'POST', headers, body })
+
+  test('skips Google OIDC, checks the signature and hands the parsed event to the part registered for its type', async () => {
+    received.length = 0
+    const event = resendEvent('email.delivered')
+    const res = await deliver(JSON.stringify(event))
+    expect(res.status).toBe(200)
+    expect(received).toEqual([event])
+  })
+
+  test('acknowledges a type no part registered with 200', async () => {
+    received.length = 0
+    expect((await deliver(JSON.stringify(resendEvent('email.failed')))).status).toBe(200)
+    expect(received).toEqual([])
+  })
+
+  test('refuses a call signed with another secret, altered or stale with 401 before any handler runs', async () => {
+    received.length = 0
+    const body = JSON.stringify(resendEvent('email.delivered'))
+    const other = `whsec_${Buffer.from('another-resend-webhook-secret').toString('base64')}`
+    expect((await deliver(body, signedHeaders(body, { secret: other }))).status).toBe(401)
+    expect((await deliver(body.replace('delivered@', 'altered@'), signedHeaders(body))).status).toBe(401)
+    const stale = Math.floor(Date.now() / 1000) - 6 * 60
+    expect((await deliver(body, signedHeaders(body, { timestamp: stale }))).status).toBe(401)
+    expect((await deliver(body, {})).status).toBe(401)
+    expect(received).toEqual([])
+  })
+
+  test('a refusal answers a bare 401 and logs one WARNING with the reason and svix-id, never the signature or body', async () => {
+    const lines: Array<Record<string, unknown>> = []
+    const spies = (['log', 'error'] as const).map((level) =>
+      vi.spyOn(console, level).mockImplementation((line: unknown) => void lines.push(JSON.parse(String(line))))
+    )
+    try {
+      const body = JSON.stringify(resendEvent('email.delivered'))
+      const forged = signedHeaders(body, {
+        secret: `whsec_${Buffer.from('another-resend-webhook-secret').toString('base64')}`,
+        id: 'msg_forged'
+      })
+      for (const headers of [forged, {}]) {
+        const res = await deliver(body, headers)
+        expect(res.status).toBe(401)
+        expect(await res.text()).toBe('')
+      }
+      expect(lines).toEqual([
+        expect.objectContaining({
+          severity: 'WARNING',
+          message: 'Resend webhook refused',
+          reason: 'no signature matches',
+          svix_id: 'msg_forged'
+        }),
+        expect.objectContaining({
+          severity: 'WARNING',
+          message: 'Resend webhook refused',
+          reason: 'missing Svix headers',
+          svix_id: null
+        })
+      ])
+      const logged = JSON.stringify(lines)
+      for (const secret of [forged['svix-signature'].slice(3), webhookSecret, body]) {
+        expect(logged).not.toContain(secret)
+      }
+    } finally {
+      for (const spy of spies) spy.mockRestore()
+    }
+  })
+
+  /** A streamed body without Content-Length that hands out a 64 KiB chunk only when read, counting what it handed out. */
+  function streamed(chunks: number) {
+    const chunk = new Uint8Array(64 * 1024).fill(0x61)
+    const counted = { bytes: 0 }
+    let left = chunks
+    const body = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          if (left-- <= 0) return controller.close()
+          counted.bytes += chunk.length
+          controller.enqueue(chunk)
+        }
+      },
+      { highWaterMark: 0 }
+    )
+    return { body, counted }
+  }
+  const post = (headers: Record<string, string>, body: string | ReadableStream<Uint8Array>) =>
+    app().request('/resend/webhook', { method: 'POST', headers, body, duplex: 'half' } as RequestInit)
+  const fresh = () => ({ ...signedHeaders(''), 'svix-signature': 'v1,c2lnbmF0dXJlLW5vdC15ZXQtY2hlY2tlZA==' })
+
+  test('refuses a call without the Svix headers or with a stale timestamp before reading any of its body', async () => {
+    const stale = String(Math.floor(Date.now() / 1000) - 6 * 60)
+    for (const headers of [{}, { ...fresh(), 'svix-id': '' }, { ...fresh(), 'svix-timestamp': stale }]) {
+      const { body, counted } = streamed(1024)
+      expect((await post(headers, body)).status, JSON.stringify(headers)).toBe(401)
+      expect(counted.bytes).toBe(0)
+    }
+  })
+
+  test('refuses a body over 256 KiB with 413, reading no more than the cap and a chunk', async () => {
+    const { body, counted } = streamed(1024)
+    expect((await post(fresh(), body)).status).toBe(413)
+    expect(counted.bytes).toBeLessThanOrEqual(256 * 1024 + 64 * 1024)
+    // A Content-Length over the cap is refused on its word.
+    const declared = { ...fresh(), 'content-length': String(256 * 1024 + 1) }
+    expect((await post(declared, 'a'.repeat(256 * 1024 + 1))).status).toBe(413)
+  })
+
+  test('reads a signed body of exactly 256 KiB, and refuses one byte more', async () => {
+    received.length = 0
+    const event = resendEvent('email.delivered')
+    const padded = (bytes: number) =>
+      JSON.stringify({
+        ...event,
+        padding: 'x'.repeat(bytes - Buffer.byteLength(JSON.stringify({ ...event, padding: '' })))
+      })
+    const atCap = padded(256 * 1024)
+    expect((await deliver(atCap)).status).toBe(200)
+    expect(received).toHaveLength(1)
+    expect((await deliver(padded(256 * 1024 + 1))).status).toBe(413)
+    expect(received).toHaveLength(1)
+  })
+
+  test('answers 400 to a validly signed body that is not a Resend event', async () => {
+    for (const body of ['not json', 'null', '"email.delivered"', '{"data":{}}']) {
+      expect((await deliver(body)).status, body).toBe(400)
+    }
+  })
+
+  test('answers 503 until RESEND_WEBHOOK_SECRET is set', async () => {
+    const body = JSON.stringify(resendEvent('email.delivered'))
+    const res = await createServer({ registry: defineRegistry([part]), audience, invoker, jwks }).request(
+      '/resend/webhook',
+      { method: 'POST', headers: signedHeaders(body), body }
+    )
+    expect(res.status).toBe(503)
   })
 })
 
@@ -447,6 +589,16 @@ describe('worker registry', () => {
         { owner: 'b-auditor', batch: { sli: async () => {} } }
       ])
     ).toThrow('batch sli is registered by a-observability and b-auditor')
+  })
+
+  test('a Resend event type registered by two owners is refused, naming both', () => {
+    const handler = async () => new Response(null, { status: 200 })
+    expect(() =>
+      defineRegistry([
+        { owner: 'c-sender-email', resend: { 'email.delivered': handler } },
+        { owner: 'a-email-transport', resend: { 'email.delivered': handler } }
+      ])
+    ).toThrow('resend email.delivered is registered by c-sender-email and a-email-transport')
   })
 
   test('collects onEvent consumers for the domain-events dispatch', () => {

@@ -2,7 +2,7 @@ import type { CallView } from '@skyclause/contracts'
 import type { EmailMessage } from './email'
 import { renderNotice, type NoticeContext } from './notices'
 
-// #158 c-sender-email: a `call` notice as the email handed to SES, with this recipient's links (D25: each opens a
+// #158 c-sender-email: a `call` notice as the email handed to Resend, with this recipient's links (D25: each opens a
 // page whose one button posts), RFC 8058 one-click unsubscribe, and for a Crowd notice a reply address (D7, CAL-17).
 
 export interface CallNoticeOptions extends NoticeContext {

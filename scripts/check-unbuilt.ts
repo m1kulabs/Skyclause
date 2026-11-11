@@ -6,7 +6,8 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { isSource, isTestFile, listFiles } from './files'
 
-const PLACEHOLDER = /notBuilt\(\s*(['"])([^'"]+)\1\s*\)|data-unbuilt=(['"])([^'"]+)\3/g
+const PLACEHOLDER =
+  /notBuilt\s*(?:<(?:[^<>]|(?<==)>|<(?:[^<>]|(?<==)>|<(?:[^<>]|(?<==)>|<[^<>]*>)*>)*>)*>)?\s*\(\s*(['"])([^'"]+)\1\s*\)|data-unbuilt=(['"])([^'"]+)\3/g
 
 const args = process.argv.slice(2)
 const ownerFlag = args.indexOf('--owner')
@@ -20,15 +21,13 @@ const byOwner = new Map<string, string[]>()
 for (const file of listFiles(process.cwd(), ['apps', 'packages']).filter(
   (file) => isSource(file) && !isTestFile(file)
 )) {
-  readFileSync(join(process.cwd(), file), 'utf8')
-    .split('\n')
-    .forEach((line, i) => {
-      for (const match of line.matchAll(PLACEHOLDER)) {
-        const owner = match[2] ?? match[4] ?? ''
-        if (ownerFilter && owner !== ownerFilter) continue
-        byOwner.set(owner, [...(byOwner.get(owner) ?? []), `${file}:${i + 1}`])
-      }
-    })
+  const source = readFileSync(join(process.cwd(), file), 'utf8')
+  for (const match of source.matchAll(PLACEHOLDER)) {
+    const owner = match[2] ?? match[4] ?? ''
+    if (ownerFilter && owner !== ownerFilter) continue
+    const line = source.slice(0, match.index).split('\n').length
+    byOwner.set(owner, [...(byOwner.get(owner) ?? []), `${file}:${line}`])
+  }
 }
 
 // packages/api's operations without a handler, read from the tree being checked.

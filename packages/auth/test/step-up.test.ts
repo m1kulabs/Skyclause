@@ -1,4 +1,5 @@
-import { expect, test, vi } from 'vitest'
+import { expect, onTestFinished, test, vi } from 'vitest'
+import { EmailSendError } from '@skyclause/delivery'
 import { authSettings, createAuth, getAuth } from '../src/instance'
 import { asLogin } from '@skyclause/db/test/harness/index'
 import { passkey as passkeyRecord } from '@skyclause/db'
@@ -139,6 +140,45 @@ test('magic-link step-up confirms the bound session once, even without that sess
   expect(usedAgain.status).toBe(303)
   expect(new URL(usedAgain.headers.get('Location')!, APP).search).toBe('?state=link-expired&for=step-up')
   expect(current?.session.reauthenticatedAt).toBeInstanceOf(Date)
+})
+
+test('a step-up email Resend refuses is one structured ERROR line naming its error and status, answered 502', async () => {
+  const account = await makeAccount()
+  const session = await signIn(account.id)
+  // Resend's 403 for an unverified sending domain (https://resend.com/docs/api-reference/errors.md).
+  const denied = new Error(
+    'The `notices.skyclause.m1ku.tech` domain is not verified. Please, add and verify your domain.'
+  )
+  const auth = createAuth(authSettings(), {
+    sendStepUpEmail: async () => {
+      throw new EmailSendError('Resend send failed: validation_error (HTTP 403)', {
+        status: 403,
+        code: 'validation_error',
+        cause: denied
+      })
+    }
+  })
+  const lines: unknown[][] = []
+  for (const level of ['error', 'warn', 'info', 'log'] as const) {
+    vi.spyOn(console, level).mockImplementation((...args: unknown[]) => void lines.push(args))
+  }
+  onTestFinished(() => {
+    vi.restoreAllMocks()
+  })
+
+  // Its own IP, so the shared 192.0.2.1 bucket the other tests count on stays as it was.
+  const response = await request('POST', '/step-up/magic-link', session.cookie, {}, auth, '198.51.100.60')
+
+  expect(response.status).toBe(502)
+  expect(lines).toHaveLength(1)
+  expect(lines[0]).toHaveLength(1)
+  expect(JSON.parse(String(lines[0]![0]))).toMatchObject({
+    severity: 'ERROR',
+    message: 'Resend send failed: validation_error (HTTP 403)',
+    code: 'validation_error',
+    status: 403,
+    category: 'step-up'
+  })
 })
 
 test('an expired step-up link redirects to the sign-in expired-link state', async () => {

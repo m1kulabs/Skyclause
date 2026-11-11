@@ -195,6 +195,44 @@ function failure(error: (Error & { code?: number; data?: string }) | undefined) 
   }
 }
 
+/**
+ * `@opentelemetry/otlp-exporter-base` (`logging-response-handler`) reports a 200 `partialSuccess` body only through
+ * `diag.warn('Received Partial Success response:', JSON.stringify(response.partialSuccess))`. The transformer keys the
+ * rejected count by signal: `rejectedDataPoints` (metrics), `rejectedSpans` (traces) or `rejectedLogRecords` (logs).
+ */
+function partialRejection(message: string, args: unknown[]) {
+  if (message !== 'Received Partial Success response:' || typeof args[0] !== 'string') return
+  let partial: {
+    rejectedDataPoints?: number | string
+    rejectedSpans?: number | string
+    rejectedLogRecords?: number | string
+    errorMessage?: string
+  }
+  try {
+    partial = JSON.parse(args[0]) as typeof partial
+  } catch {
+    return
+  }
+  if (!partial || typeof partial !== 'object') return
+  const signal =
+    partial.rejectedDataPoints !== undefined
+      ? 'metrics'
+      : partial.rejectedSpans !== undefined
+        ? 'traces'
+        : partial.rejectedLogRecords !== undefined
+          ? 'logs'
+          : undefined
+  const rawCount = partial.rejectedDataPoints ?? partial.rejectedSpans ?? partial.rejectedLogRecords ?? 0
+  const rejected = typeof rawCount === 'number' ? rawCount : Number(rawCount) || 0
+  const error = partial.errorMessage || undefined
+  if (rejected <= 0 && !error) return
+  log.warn(signal ? `telemetry: ${signal} export partially rejected` : 'telemetry: export partially rejected', {
+    ...(signal && { signal }),
+    rejected,
+    ...(error && { error })
+  })
+}
+
 function googleExporters(project: string) {
   const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' })
   const headers = async () => ({
@@ -216,12 +254,12 @@ export function startTelemetry(service: Service, options: TelemetryOptions = {})
   diag.setLogger(
     {
       error: (message) => log.error(`telemetry: ${message}`),
-      warn: () => {},
+      warn: (message, ...args) => partialRejection(message, args),
       info: () => {},
       debug: () => {},
       verbose: () => {}
     },
-    DiagLogLevel.ERROR
+    { logLevel: DiagLogLevel.WARN, suppressOverrideMessage: true }
   )
 
   const google = project && !(options.traceExporter && options.metricExporter) ? googleExporters(project) : null

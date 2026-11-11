@@ -1,7 +1,6 @@
 import { createHash, createHmac, randomBytes } from 'node:crypto'
-import { loadEnv } from '@skyclause/config'
 import type { EmailTransport } from '@skyclause/contracts'
-import { emailTransportForAws } from '@skyclause/delivery'
+import { requireEmailTransport } from '@skyclause/delivery'
 import { authDatabase, hitStepUpLimit } from '@skyclause/db/auth'
 import { passkey as passkeyRecord, session as sessionRecord, user, verification } from '@skyclause/db'
 import { passkey } from '@better-auth/passkey'
@@ -15,6 +14,7 @@ import {
 } from '@simplewebauthn/server'
 import { and, desc, eq, gt, isNull } from 'drizzle-orm'
 import { z } from 'zod'
+import { withSendRefusal } from '../send-refusal'
 
 const STEP_UP_WINDOW_S = 60 * 60
 const STEP_UP_LIMIT = 10
@@ -40,25 +40,6 @@ export interface StepUpPluginOptions {
   appOrigin: string
   ipHashKey: string
   sendEmail?: EmailTransport['send']
-}
-
-let sesTransport: EmailTransport | undefined
-
-function emailTransport(): EmailTransport {
-  if (sesTransport) return sesTransport
-  const env = loadEnv('web')
-  const { SES_REGION, AWS_ROLE_ARN, SES_CONFIGURATION_SET, EMAIL_FROM_AUTH, EMAIL_FROM_NOTICES } = env
-  if (!SES_REGION || !AWS_ROLE_ARN || !SES_CONFIGURATION_SET || !EMAIL_FROM_AUTH || !EMAIL_FROM_NOTICES) {
-    throw new Error('email is off: the SES variables are unset until gate 4B')
-  }
-  sesTransport = emailTransportForAws({
-    region: SES_REGION,
-    roleArn: AWS_ROLE_ARN,
-    configurationSet: SES_CONFIGURATION_SET,
-    fromAuth: EMAIL_FROM_AUTH,
-    fromNotices: EMAIL_FROM_NOTICES
-  })
-  return sesTransport
 }
 
 function sessionOf(context: { context: { session?: unknown } }): StepUpSession {
@@ -269,7 +250,7 @@ function stepUpEndpoints(o: StepUpPluginOptions) {
           expiresAt: new Date(Date.now() + LINK_TTL_MS)
         })
       try {
-        const send = o.sendEmail ?? emailTransport().send.bind(emailTransport())
+        const send = withSendRefusal(o.sendEmail ?? ((message) => requireEmailTransport('web').send(message)))
         await send({
           to: account.email,
           from: 'auth',

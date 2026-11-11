@@ -107,6 +107,24 @@ beforeAll(async () => {
       principal
     )
   }
+  // A whole-second row and a row 12 ms later: the wire drops `.000` from the first, so a string sort misplaces them.
+  await inOrg((tx) =>
+    tx.insert(auditEvent).values(
+      (['2026-11-01T00:00:36Z', '2026-11-01T00:00:36.012Z'] as const).map((at, i) => ({
+        orgId,
+        projectId,
+        actorType: 'account' as const,
+        actorId: gone.id,
+        client: 'app' as const,
+        action: i === 0 ? 'source.bound' : 'sla.changed',
+        targetType: 'source',
+        targetId: i === 0 ? 'source:whole' : 'source:fraction',
+        before: { seq: i + 2 },
+        after: { seq: i + 3 },
+        at: new Date(at)
+      }))
+    )
+  )
   // The second writer's account is deleted after writing: its row keeps the pseudonymous ID (AUD-4).
   await authDatabase().update(user).set({ deletedAt: new Date() }).where(eq(user.id, gone.id))
 })
@@ -120,9 +138,10 @@ describe('list', () => {
       next_cursor: string | null
     }
     expect(body.next_cursor).toBeNull()
-    expect(body.data).toHaveLength(4)
-    const created = body.data.map((row) => String(row.created_at))
-    expect([...created].sort().reverse()).toEqual(created)
+    expect(body.data).toHaveLength(6)
+    const created = body.data.map((row) => Date.parse(String(row.created_at)))
+    expect(created.every(Number.isFinite)).toBe(true)
+    expect([...created].sort((a, b) => b - a)).toEqual(created)
     expect(Object.keys(body.data[0]!).sort()).toEqual(
       [
         'id',
@@ -157,8 +176,8 @@ describe('list', () => {
       if (!body.next_cursor) break
       cursor = body.next_cursor
     }
-    expect(seen).toHaveLength(4)
-    expect(new Set(seen).size).toBe(4)
+    expect(seen).toHaveLength(6)
+    expect(new Set(seen).size).toBe(6)
   })
 
   test('filters combine and a bad cursor is 422', async () => {
