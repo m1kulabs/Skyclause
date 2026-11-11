@@ -344,7 +344,9 @@ describe('infra/wizards/production-pilot.sh static invariants', () => {
     const bashCheck = spawnSync('bash', ['-n', wizardPath], { cwd: repoRoot, encoding: 'utf8' })
     expect(bashCheck.status, bashCheck.stderr).toBe(0)
 
-    const shellcheck = spawnSync('shellcheck', ['infra/wizards/production-pilot.sh'], {
+    // CI's shellcheck 0.9.0 reports SC2317 (info, "unreachable") for the library's functions, which are
+    // called through the stage runner and traps; 0.11 doesn't. Every other code must be clean.
+    const shellcheck = spawnSync('shellcheck', ['--exclude=SC2317', 'infra/wizards/production-pilot.sh'], {
       cwd: repoRoot,
       encoding: 'utf8'
     })
