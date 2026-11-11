@@ -20,6 +20,7 @@ import { restoreDrill } from './restore-drill'
 import { runs } from './runs'
 import { retention } from './retention'
 import { defineRegistry } from './server'
+import { sliPart } from './sli'
 import { sources } from './sources'
 
 // Spec §7: each owner appends one line here, naming a `WorkerPart` exported from its own folder,
@@ -45,5 +46,6 @@ export const registry = defineRegistry([
   sources, // b-sources-core
   dataRights, // a-data-rights
   retention, // a-retention
-  outlook // c-crowd-outlook
+  outlook, // c-crowd-outlook
+  sliPart // a-observability
 ])
