@@ -52,7 +52,8 @@ module "web" {
 }
 
 # The worker admits unauthenticated calls at the invoker binding; server.ts checks Google OIDC
-# (audience WORKER_URL, email WORKER_INVOKER_SA) except on /ses/* (#79 §4 Worker).
+# (audience WORKER_URL, email WORKER_INVOKER_SA) except on /resend/webhook, which Resend calls from the
+# internet and which checks its own Svix signature (#653).
 module "worker" {
   source = "../../modules/service"
 
