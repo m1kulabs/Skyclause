@@ -17,6 +17,14 @@ import { prepareCrawl } from '../project-ui/fixtures'
 
 const PLANTED_FAILURE = '/quality-planted/unlabelled-input'
 const PLANTED_MOTION = '/quality-planted/motion'
+const PLANTED_FIELDS = '/quality-planted/form-types'
+/** NFR-6: one rule each planted field breaks. */
+const PLANTED_FIELD_RULES = [
+  'input-type: input#planted-email[name="email"] holds an email address but is type="text"; use type="email"',
+  'input-type: input#planted-postcode[name="postcode"] holds a code but is type="number"; use type="text" with inputmode="numeric"',
+  'input-type: input#planted-webhook[name="webhook"] is type="url" but inputmode="numeric"; use inputmode="url" or none',
+  'form-fields: input#planted-notes[name="_r_1_"] has a name that doesn’t say what it holds'
+]
 const ACCOUNT_MOTION = 'dark, account reduced motion'
 const PUBLIC_GROUPS = new Set(['marketing', 'public'])
 /** Pages that read in an effect: inspected once a read has landed (content, empty state or error), never loading. */
@@ -315,6 +323,14 @@ for (const discovered of builtRoutes()) {
           new RegExp(`${PLANTED_FAILURE} · ${session.role} · dark · project size · form-fields: input has no label`)
         )
         if (jsOn) expect(report(route, session, findings)).toMatch(/ · axe: label \(critical\)/)
+        return
+      }
+      if (route.path === PLANTED_FIELDS) {
+        // Each planted field must fail the crawl on its own rule, by route, role, theme and rule.
+        const lines = report(route, session, findings).split('\n')
+        for (const rule of PLANTED_FIELD_RULES) {
+          expect(lines).toContain(`${PLANTED_FIELDS} · ${session.role} · dark · project size · ${rule}`)
+        }
         return
       }
 
