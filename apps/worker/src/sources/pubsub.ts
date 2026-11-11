@@ -58,11 +58,31 @@ export function sourceSubscription(
   const call = async (method: string, body: unknown) => {
     const h = await headers()
     h.set('content-type', 'application/json')
-    const response = await http(
-      `https://pubsub.googleapis.com/v1/projects/${project}/subscriptions/${subscription}:${method}`,
-      { method: 'POST', headers: h, body: JSON.stringify(body), signal: AbortSignal.timeout(20000) }
-    )
-    const text = await response.text()
+    const signal = AbortSignal.timeout(method === 'pull' ? 5000 : 20000)
+    let response: Response | undefined, text: string
+    try {
+      response = await http(
+        `https://pubsub.googleapis.com/v1/projects/${project}/subscriptions/${subscription}:${method}`,
+        { method: 'POST', headers: h, body: JSON.stringify(body), signal }
+      )
+      text = await response.text()
+    } catch (error) {
+      if (
+        method === 'pull' &&
+        signal.aborted &&
+        (!response || response.ok) &&
+        (error === signal.reason ||
+          // Native fetch body reads use AbortError instead of the owned deadline reason.
+          (response &&
+            signal.reason instanceof DOMException &&
+            signal.reason.name === 'TimeoutError' &&
+            error instanceof DOMException &&
+            error.name === 'AbortError'))
+      )
+        // No delivery completed within this wait; this does not prove the backlog is empty.
+        return {}
+      throw error
+    }
     if (!response.ok) throw new Error(`Pub/Sub ${method} failed: ${response.status} ${text.slice(0, 200)}`)
     return text ? (JSON.parse(text) as unknown) : {}
   }
