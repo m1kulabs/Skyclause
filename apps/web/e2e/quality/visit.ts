@@ -22,6 +22,11 @@ export function expectedStatus(route: CrawlRoute, role: Role) {
     if (/^\/[^/]+\/settings\//.test(route.path)) {
       return isOwnerOrAdmin || (role === 'Approver' && route.path.endsWith('/rota')) ? route.status : 404
     }
+    // A project's settings are Owners' and Admins'; its subscribers are Approvers' too (#169).
+    if (/^\/[^/]+\/[^/]+\/settings\//.test(route.path)) return isOwnerOrAdmin ? route.status : 404
+    if (/^\/[^/]+\/[^/]+\/subscribers$/.test(route.path)) {
+      return isOwnerOrAdmin || role === 'Approver' ? route.status : 404
+    }
     // PRD routes: an organisation's pages are its members'. Its layout only checks that it exists (#596).
     if (!hasSession(role)) return 404
   }

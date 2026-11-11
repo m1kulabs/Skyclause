@@ -1,7 +1,7 @@
 // The crawl visits every route as each role (#116): signed out, and signed in as each of the others (#94).
 import type { Page } from '@playwright/test'
 import type { Role as MemberRole } from '@skyclause/contracts'
-import { makeOrg, openShareLink, signInAs } from '../harness/sign-in-as'
+import { makeOrg, openShareLink, signInAs, type TestOrg } from '../harness/sign-in-as'
 
 export const ROLES = [
   'Owner',
@@ -23,7 +23,7 @@ const member = (role: MemberRole) => async (page: Page) => {
 }
 
 /** Each role's sign-in: a real session, or a share link's `sc_share` cookie for the reviewer. */
-const SIGN_IN: Record<Exclude<Role, 'signed out'>, (page: Page) => Promise<{ slug: string }>> = {
+const SIGN_IN: Record<Exclude<Role, 'signed out'>, (page: Page) => Promise<TestOrg>> = {
   Owner: member('owner'),
   Admin: member('admin'),
   Approver: member('approver'),
@@ -39,7 +39,7 @@ const SIGN_IN: Record<Exclude<Role, 'signed out'>, (page: Page) => Promise<{ slu
 
 export interface Session {
   role: Role
-  signIn?: (page: Page) => Promise<{ slug: string }>
+  signIn?: (page: Page) => Promise<TestOrg>
 }
 
 export function sessions(): Session[] {
