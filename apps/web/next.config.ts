@@ -7,6 +7,7 @@ const config: NextConfig = {
   output: 'standalone',
   cacheComponents: true,
   partialPrefetching: true,
+  devIndicators: false,
   // Multiple root layouts need a standalone 404 document for unmatched URLs.
   experimental: { globalNotFound: true },
   // Expose pseudo copy to both server and client only in the test build.

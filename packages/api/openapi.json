@@ -45217,6 +45217,47 @@
                           "error_code"
                         ]
                       }
+                    },
+                    "probation": {
+                      "type": "object",
+                      "properties": {
+                        "source_id": {
+                          "type": "string"
+                        },
+                        "probation": {
+                          "type": "boolean"
+                        },
+                        "labeller_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "n": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "obscured_frames": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "agreement": {
+                          "type": [
+                            "number",
+                            "null"
+                          ],
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "source_id",
+                        "probation",
+                        "labeller_ids",
+                        "n",
+                        "obscured_frames",
+                        "agreement"
+                      ]
                     }
                   },
                   "required": [
@@ -45778,6 +45819,47 @@
                                 "error_code"
                               ]
                             }
+                          },
+                          "probation": {
+                            "type": "object",
+                            "properties": {
+                              "source_id": {
+                                "type": "string"
+                              },
+                              "probation": {
+                                "type": "boolean"
+                              },
+                              "labeller_ids": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "n": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "obscured_frames": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "agreement": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ],
+                                "minimum": 0,
+                                "maximum": 1
+                              }
+                            },
+                            "required": [
+                              "source_id",
+                              "probation",
+                              "labeller_ids",
+                              "n",
+                              "obscured_frames",
+                              "agreement"
+                            ]
                           }
                         },
                         "required": [

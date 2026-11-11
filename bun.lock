@@ -46,6 +46,7 @@
         "@skyclause/contracts": "workspace:*",
         "@skyclause/db": "workspace:*",
         "@skyclause/elements": "workspace:*",
+        "@skyclause/forecast": "workspace:*",
         "@skyclause/i18n": "workspace:*",
         "@tailwindcss/postcss": "4.3.4",
         "class-variance-authority": "0.7.1",
