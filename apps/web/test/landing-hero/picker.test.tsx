@@ -191,11 +191,106 @@ describe('HeroPicker', () => {
     } as DOMRect)
     // jsdom has no PointerEvent constructor with clientX, so dispatch MouseEvents under the pointer type.
     slider.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 600 }))
-    slider.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 900 }))
+    slider.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 900, buttons: 1 }))
     slider.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 900 }))
     await waitFor(() => expect(fetchMock).toHaveBeenCalled())
     const dragBody = JSON.parse((fetchMock.mock.calls.at(-1)![1] as RequestInit).body as string)
     expect(dragBody).toMatchObject({ start_time: '10:00', end_time: '15:00' })
+  })
+
+  test('a reverse drag selects back to the press point, and a release off the strip ends the drag', async () => {
+    render(
+      <HeroPicker
+        initialResult={initialResult}
+        initialStripSvg={null}
+        initialWin={{ date: '2026-11-05', startMin: 1290, endMin: 1380 }}
+        dates={dates}
+        latestCall={null}
+        pilot={null}
+        calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+      />
+    )
+    const slider = screen.getByRole('slider')
+    vi.spyOn(slider, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      width: 1440,
+      top: 0,
+      height: 120,
+      right: 1440,
+      bottom: 120,
+      x: 0,
+      y: 0,
+      toJSON: () => {}
+    } as DOMRect)
+    slider.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 600 }))
+    slider.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 540, buttons: 1 }))
+    document.body.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 540 }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    const body = JSON.parse((fetchMock.mock.calls.at(-1)![1] as RequestInit).body as string)
+    expect(body).toMatchObject({ start_time: '09:00', end_time: '10:00' })
+    // The release landed off the strip; a later hover with no button down must not move the window.
+    slider.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 900 }))
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  test('a stale calendar read neither restores its window to the URL nor beacons it', async () => {
+    let releaseFirst: (() => void) | undefined
+    let calendarCalls = 0
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes('evaluate')) return Promise.resolve(evaluateOk())
+      calendarCalls += 1
+      if (calendarCalls === 1)
+        return new Promise((resolve) => {
+          releaseFirst = () => resolve(okResponse())
+        })
+      return Promise.resolve(okResponse())
+    })
+    window.history.replaceState(null, '', '/')
+    render(
+      <HeroPicker
+        initialResult={initialResult}
+        initialStripSvg={null}
+        initialWin={{ date: '2026-11-05', startMin: 1290, endMin: 1380 }}
+        dates={dates}
+        latestCall={null}
+        pilot={{ org: 'x', project: 'y' }}
+        calendarQuery="/v1/public/x/y/calendar-entries?limit=1"
+      />
+    )
+    const start = screen.getByLabelText('Window start') as HTMLInputElement
+    fireEvent.change(start, { target: { value: '22:00' } })
+    await waitFor(() => expect(releaseFirst).toBeDefined())
+    fireEvent.change(start, { target: { value: '21:00' } })
+    await waitFor(() => expect(window.location.search).toContain('start=21%3A00'))
+    releaseFirst!()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(window.location.search).toContain('start=21%3A00')
+    expect(navigator.sendBeacon).toHaveBeenCalledTimes(1)
+  })
+
+  test('a failed calendar read shows the error, never n=0', async () => {
+    fetchMock.mockImplementation((url: string) =>
+      Promise.resolve(
+        url.includes('evaluate')
+          ? evaluateOk()
+          : { ok: false, status: 503, headers: { get: () => null }, json: () => Promise.resolve({}) }
+      )
+    )
+    render(
+      <HeroPicker
+        initialResult={initialResult}
+        initialStripSvg={null}
+        initialWin={{ date: '2026-11-05', startMin: 1290, endMin: 1380 }}
+        dates={dates}
+        latestCall={null}
+        pilot={{ org: 'x', project: 'y' }}
+        calendarQuery="/v1/public/x/y/calendar-entries?limit=1"
+      />
+    )
+    fireEvent.change(screen.getByLabelText('Window start') as HTMLInputElement, { target: { value: '22:00' } })
+    await waitFor(() => expect(screen.getByText("Couldn't reach the approved-call calendar.")).toBeTruthy())
+    expect(screen.queryByText('No approved call yet (n=0)')).toBeNull()
   })
 
   test('a 429 shows Retry-After in MYT, and gauge errors suppress rain animation', async () => {

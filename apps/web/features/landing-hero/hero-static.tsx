@@ -1,5 +1,5 @@
 import { t } from './catalogue'
-import type { EvaluateResult, LatestCall } from './evaluate'
+import type { EvaluateResult, LatestCallRead } from './evaluate'
 import { CLOCK_SOURCE, groupedVerdicts, hasGaugeError, toLocalTime, windowInstants } from './window-model'
 import { HeroReadout } from './readout'
 import styles from './hero.module.css'
@@ -19,7 +19,7 @@ export function HeroStatic({
   stripSvg: string | null
   win: { date: string; startMin: number; endMin: number }
   dates: string[]
-  latestCall: LatestCall | null
+  latestCall: LatestCallRead
   calendarQuery: string
 }) {
   const grouped = result.kind === 'ok' ? groupedVerdicts(result.data.verdicts) : []
@@ -109,6 +109,12 @@ export function HeroStatic({
           />
         </label>
       </div>
+      {/* Two text fields block implicit submission, so the no-JS form needs its own submit control. */}
+      <noscript>
+        <button type="submit" className={styles.heroRetry}>
+          {t('landing-hero.check_window', {}, 'en')}
+        </button>
+      </noscript>
       <div>
         <HeroReadout
           result={result}
