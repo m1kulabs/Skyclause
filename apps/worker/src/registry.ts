@@ -5,10 +5,16 @@ import { aiKeys } from './ai-keys'
 import { analysis } from './analysis'
 import { bundles } from './bundles'
 import { email } from './email'
+import { evaluator } from './evaluator'
 import { evidence } from './evidence'
 import { domainEvents } from './events'
 import { dataRights } from './data-rights'
-import { grades } from './grades'
+import { grades, setGradeEngine } from './grades'
+import {
+  installedIndicatorDefinitions,
+  productionEvaluatorProviders,
+  productionIndicatorProviders
+} from '@skyclause/api/evaluator'
 import { ics } from './ics'
 import { migrations } from './migrate'
 import { notices } from './notices'
@@ -22,6 +28,12 @@ import { retention } from './retention'
 import { defineRegistry } from './server'
 import { sliPart } from './sli'
 import { sources } from './sources'
+
+const definitions = installedIndicatorDefinitions(productionIndicatorProviders())
+setGradeEngine({
+  registry: definitions.length ? definitions : null,
+  history: (...args) => productionEvaluatorProviders().history(...args)
+})
 
 // Spec §7: each owner appends one line here, naming a `WorkerPart` exported from its own folder,
 // for example `evaluator, // b-evaluator`.
@@ -44,6 +56,7 @@ export const registry = defineRegistry([
   analysis, // c-analysis-api
   auditor, // b-auditor
   sources, // b-sources-core
+  evaluator, // b-evaluator
   dataRights, // a-data-rights
   retention, // a-retention
   outlook, // c-crowd-outlook

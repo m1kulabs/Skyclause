@@ -1,6 +1,6 @@
 # Skyclause infrastructure
 
-Terraform for every Google Cloud, Neon and AWS resource P1 runs on. There is one environment, `production`, in the Google Cloud project `skyclause` beside the P0 pilot, whose resources it never manages (D10 in #79). Compute and storage sit in `asia-southeast1` and the Neon database in `aws-ap-southeast-1`, both Singapore. Amazon SES sits in AWS `ap-southeast-2`, Sydney, the only region the AWS account's organisation policy allows.
+Terraform for every Google Cloud and Neon resource P1 runs on, and one unused AWS root that awaits teardown. There is one environment, `production`, in the Google Cloud project `skyclause` beside the P0 pilot, whose resources it never manages (D10 in #79). Compute and storage sit in `asia-southeast1` and the Neon database in `aws-ap-southeast-1`, both Singapore. Resend carries all email, with its sending and receiving domains in Tokyo (`ap-northeast-1`), the nearest Resend region to Malaysia.
 
 Contents:
 
@@ -10,15 +10,16 @@ Contents:
 1.  [Values set by other tickets](#values-set-by-other-tickets)
 1.  [Monitoring](#monitoring)
 1.  [Custom hosts](#custom-hosts)
-1.  [AWS email](#aws-email)
+1.  [Email on Resend](#email-on-resend)
 
 ## Layout
 
 - `bootstrap/`: the state bucket, the APIs, the `skyclause-terraform` service account that CI impersonates, the `NEON_API_KEY` secret and the project's monthly budget alert (RM40, gate 2's US$10), so CI holds no billing role. A project owner who can manage the billing account's budgets applies it by hand, and again whenever it changes.
 - `environments/production/`: everything else. CI plans and applies it from `main`.
-- `aws/`: Amazon SES sending and receiving, their SNS topics, the inbound bucket and the role `web` and `worker` assume with Google ID tokens (#113), in AWS account `776566309118`. It has its own state in S3, and a person applies it by hand.
+- `aws/`: the Amazon SES, SNS and S3 stack mail ran on before Resend, with the role `web` and `worker` assumed with Google ID tokens (#113), in AWS account `776566309118`. It has its own state in S3. Nothing reads it any more and nobody applies it; the teardown (#661) destroys it from that state and deletes the directory.
 - `modules/`: `service` (Cloud Run service), `job` (Cloud Run job with an optional schedule), `topic` (Pub/Sub topic with a push subscription to the worker) and `queue` (Cloud Tasks).
 - `scripts/check-region`: fails unless every located resource in a `terraform show -json` document is in Singapore. CI runs it on each plan before applying, and `scripts/check-region.test.sh` tests it.
+- `wizards/production-pilot.sh`: walks the repository owner through the human-only production pilot steps of #194, #531, #534, #536, #539 and #622. It only reads, through the product's API with a `read` key, `gcloud` lists and, when `RESEND_FULL_ACCESS_KEY` is exported, Resend's domain and webhook lists; every write is the person's, in the browser or printed for them to run. It records evidence in the git-ignored `infra/wizards/production-pilot.evidence.md` and refuses any section that holds a credential or an email address.
 
 ## Bootstrap
 
@@ -64,10 +65,11 @@ terraform -chdir=infra/environments/production plan
 
 Set these in a pull request, in `environments/production/terraform.tfvars`, which Terraform loads by itself. `variables.tf` describes and validates each one.
 
-- `app_config`: the #79 §6 TF values other tickets make, such as `GOOGLE_CLIENT_ID`, `TURNSTILE_SITE_KEY`, `VAPID_PUBLIC_KEY` and the SES values. Each is set on every service and job once given.
-- `supplied_secrets`: `GOOGLE_CLIENT_SECRET`, `TURNSTILE_SECRET_KEY` and `SKYCLAUSE_STAFF_EMAILS` start as empty secrets. Add a version with `gcloud secrets versions add`, then list the name here to mount it. Cloud Run fails a revision whose secret has no version. Two wizards add the versions and print the public values:
+- `app_config`: the #79 §6 TF values other tickets make, such as `GOOGLE_CLIENT_ID`, `TURNSTILE_SITE_KEY`, `VAPID_PUBLIC_KEY`, the two mail sender addresses and the inbound domain. Each is set on every service and job once given, except the mail values, which reach only the services whose Resend secrets are supplied and never a job ([Email on Resend](#email-on-resend)).
+- `supplied_secrets`: `GOOGLE_CLIENT_SECRET`, `TURNSTILE_SECRET_KEY`, `SKYCLAUSE_STAFF_EMAILS`, `RESEND_SENDING_API_KEY`, `RESEND_RECEIVING_API_KEY` and `RESEND_WEBHOOK_SECRET` start as empty secrets. Add a version with `gcloud secrets versions add`, then list the name here to mount it. Cloud Run fails a revision whose secret has no version. List the three Resend secrets together or not at all: Terraform refuses a part-set at plan time. Three wizards add the versions and print the public values:
   - `infra/wizards/google-sign-in.sh` (about 25 minutes): Google Auth Platform branding and the Web OAuth client (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`), and the app host's Turnstile widget (`TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`).
-  - `infra/wizards/staff-and-ses.sh` (about 5 minutes): `SKYCLAUSE_STAFF_EMAILS`, then, optionally, SES sandbox verification of the team addresses.
+  - `infra/wizards/staff-emails.sh` (about 2 minutes): `SKYCLAUSE_STAFF_EMAILS`.
+  - `infra/wizards/resend.sh` (about 20 minutes, see [Email on Resend](#email-on-resend)): `RESEND_SENDING_API_KEY`, `RESEND_RECEIVING_API_KEY` and `RESEND_WEBHOOK_SECRET`.
 - `vapid_private_key_ready`: set to `true` once #113's `vapid-keys` job has created `VAPID_PRIVATE_KEY`. A person runs the job once, after #90's first deploy has put the real image on it, and copies the public key it logs into `app_config` as `VAPID_PUBLIC_KEY` (5 minutes). A second run changes nothing, and the key never rotates by itself, since rotating drops every push subscription:
 
   ```shell
@@ -75,8 +77,6 @@ Set these in a pull request, in `environments/production/terraform.tfvars`, whic
   gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="vapid-keys" AND jsonPayload.message="vapid public key"' \
     --project=skyclause --limit=1 --format='value(jsonPayload.VAPID_PUBLIC_KEY)'
   ```
-
-- `oncall_contacts_ready`: set to `true` once `infra/wizards/oncall-contacts.sh` has stored `ONCALL_CONTACTS`.
 
 ## Pilot archive
 
@@ -90,12 +90,11 @@ gcloud run jobs execute pilot-archive --region=asia-southeast1 --project=skyclau
 
 ## Monitoring
 
-`environments/production/monitoring.tf` holds #114's uptime checks, SLOs and alert policies. Every policy notifies the platform on-call's email and SMS channels.
+`environments/production/monitoring.tf` holds #114's uptime checks, SLOs and alert policies. Every policy opens an incident in the Cloud Monitoring console and notifies nobody, since no notification channel exists; the on-call primary watches the incidents page ([on-call runbook](/docs/runbooks/on-call.md)).
 
 - **Availability:** an uptime check every minute on `/health` of each distinct app, API and MCP origin, one while `HOST_MODE=single`, with a 99.5% 30-day SLO and fast- and slow-burn pages.
 - **Jobs:** a page on any failed Cloud Run job execution.
 - **Pipeline:** a PromQL page per TRD SLI row, on the `breach` stat the worker's `sli` handler records each batch, and one per absent heartbeat (`auditor`, `minute_tick`). Each starts disabled; once its metric has flowed for a day, check its query in Metrics Explorer and set its `enabled` to `true`.
-- **On-call contacts:** a person runs `infra/wizards/oncall-contacts.sh` (10 minutes), which stores them hidden. After `oncall_contacts_ready` is applied, run it again to verify the SMS numbers, since an unverified number isn't paged.
 
 ## Custom hosts
 
@@ -105,59 +104,43 @@ gcloud run jobs execute pilot-archive --region=asia-southeast1 --project=skyclau
 1.  Set `map_domains = true`. After the apply, `terraform output dns_records` lists each host's records; create them in Cloudflare with `proxied: false` and the comment `owner: skyclause`. For a CNAME, TXT or MX (content `<priority> <host>`), `bun scripts/cloudflare-record.ts [--dry-run] <CNAME|TXT|MX> <name> <content>` does that with `M1KU_CLOUDFLARE_API_TOKEN`, and refuses any name outside `skyclause.m1ku.tech` and any record not commented `owner: skyclause`.
 1.  Once each certificate is active, set `host_mode = "multi"` and the six `origins`. Until then every origin is the `web` URL.
 
-## AWS email
+## Email on Resend
 
-A person with AWS access to account `776566309118` applies `aws/` after the production apply has created `skyclause-web` and `skyclause-worker` and a worker revision with `/ses/inbound` is live (about 30 minutes plus DNS propagation). Pass `--region ap-southeast-2` to every `aws` command, since the CLI's default region may differ.
+Resend sends, tracks and receives all of Skyclause's email. Its Free plan allows 100 emails a day and 3,000 a month (sent and received both count), 3 domains, 1 webhook endpoint and 10 requests a second, and an address on a verified domain needs no per-address setup. Resend has no Terraform provider, so Terraform holds only the secrets and `infra/wizards/resend.sh` does the rest.
 
-1.  Create the state bucket once. New buckets already block public access and encrypt objects:
+- **Domains**, both in Tokyo (`ap-northeast-1`) with open and click tracking off: `notices.skyclause.m1ku.tech` sends (the two senders in `app_config`) and `in.skyclause.m1ku.tech` only receives (`INBOUND_DOMAIN`).
+- **Secrets**, empty Secret Manager containers that Terraform makes and the wizard fills: `RESEND_SENDING_API_KEY` is a key that can only send, and only from `notices.` (web and worker); `RESEND_RECEIVING_API_KEY` is a full-access key of the worker's own, `skyclause-production-worker`, that it reads received mail with; `RESEND_WEBHOOK_SECRET` is the webhook's signing secret. The last two are the worker's alone. Each mounts once `supplied_secrets` lists it, and the three are listed together or not at all.
+- **Webhook**, one endpoint: the worker's public URL plus `/resend/webhook`, subscribed to `email.delivered`, `email.bounced`, `email.complained`, `email.suppressed` and `email.received`. The worker is public for this route alone, and checks Resend's Svix signature in place of Google OIDC.
 
-    ```shell
-    aws s3api create-bucket --bucket skyclause-tfstate-776566309118 --region ap-southeast-2 \
-      --create-bucket-configuration LocationConstraint=ap-southeast-2
-    aws s3api put-bucket-versioning --bucket skyclause-tfstate-776566309118 --region ap-southeast-2 \
-      --versioning-configuration Status=Enabled
-    ```
+A service refuses to start with only some of its mail settings, so Terraform gives them out by group. The two sender addresses reach web and the worker only when `RESEND_SENDING_API_KEY` is in `supplied_secrets`, and `INBOUND_DOMAIN` reaches the worker only when `RESEND_RECEIVING_API_KEY` and `RESEND_WEBHOOK_SECRET` both are. Until then no service has any mail setting or mail secret, which is valid for the old image and the new one, and mail is off. No Cloud Run job ever gets a mail setting or a mail secret, `kms-rewrap` included. The addresses and the domain stay committed in `app_config`; only their delivery is conditional (`terraform test` in `environments/production` checks it).
 
-1.  `aws/terraform.tfvars` holds `google_service_account_ids`, each account's `uniqueId`. Recreating either account changes its ID, and the role refuses it until this is updated in a pull request and applied again:
+The cutover order:
 
-    ```shell
-    gcloud iam service-accounts describe skyclause-web@skyclause.iam.gserviceaccount.com \
-      --project=skyclause --format='value(uniqueId)'
-    gcloud iam service-accounts describe skyclause-worker@skyclause.iam.gserviceaccount.com \
-      --project=skyclause --format='value(uniqueId)'
-    ```
+1.  Merge and deploy as usual. The secrets are empty, so mail is off from the deploy of this change until step 4: nothing is sent or received in between.
+1.  Run the wizard below (about 20 minutes, plus Resend's DNS check, which usually takes up to 15 minutes). The production apply must have made the three secrets and the worker. It needs `gcloud` signed in as a `skyclause` owner, `bun`, `M1KU_CLOUDFLARE_API_TOKEN` in the shell, and a full-access Resend API key, which Resend shows once when you create it at <https://resend.com/api-keys>: export it as `RESEND_FULL_ACCESS_KEY` or paste it at the hidden prompt. The wizard works with that key and never stores it, so revoking it later doesn't stop inbound mail.
+1.  Commit the `supplied_secrets` line the wizard prints in `environments/production/terraform.tfvars`, in a pull request.
+1.  The next apply turns mail on: Terraform mounts the three secrets and gives the services their sender addresses and the worker its inbound domain.
+1.  Check with a real send, a bounce and an inbound reply. Until the Free plan is upgraded, the 100-a-day limit is the known limit that replaces the old SES sandbox. Then turn on `inbound_email` with the audited `flag:set` script (#92) if it is off.
 
-1.  Apply it. This also activates the receipt rule set, the only one in the region:
+```shell
+M1KU_CLOUDFLARE_API_TOKEN=... ./infra/wizards/resend.sh
+```
 
-    ```shell
-    terraform -chdir=infra/aws init
-    terraform -chdir=infra/aws apply
-    ```
+In order, the wizard:
 
-1.  Enter the records from `terraform -chdir=infra/aws output dns_records` in Cloudflare with `bun scripts/cloudflare-record.ts`, which sets `proxied: false` and the comment `owner: skyclause` (#118). The DKIM values assume SES signs from `dkim.amazonses.com`, which Terraform can't read yet; first check that each identity prints it, and use the printed zone if it differs:
+1.  Checks its tools and the Cloudflare token, that the three secrets exist and the worker's URL, and takes the key. It refuses a key that can only send.
+1.  Creates `notices.` (sending on, receiving off) and `in.` (sending off, receiving on) in `ap-northeast-1` with tracking off, or finds them and puts any difference right. A domain in another region stops it, because Resend can't move one.
+1.  Reads the DNS records Resend returns for both domains and enters them in Cloudflare with `bun scripts/cloudflare-record.ts` (DNS only, comment `owner: skyclause`). Names, values and MX priorities are Resend's answer, since newer domains may get CNAME sending records and the receiving MX host varies. It also rewrites `_dmarc.notices.skyclause.m1ku.tech` to `v=DMARC1; p=quarantine`, without the report address. It dry-runs every record first, shows what would change and asks once. Besides that DMARC record, the only existing record it changes is the MX at `in.`, so mail to `in.` stops reaching SES from that point.
+1.  Asks Resend to verify each domain and waits (Resend allows up to 72 hours).
+1.  Creates the webhook with its five events, or finds it and puts its events and status right, and stores its signing secret as `RESEND_WEBHOOK_SECRET`.
+1.  Creates the sending-only key for `notices.` and stores it as `RESEND_SENDING_API_KEY`, then a full-access key for the worker, `skyclause-production-worker`, and stores it as `RESEND_RECEIVING_API_KEY`. A stored key Resend still accepts is kept. Resend shows a token only once, so a key whose token isn't stored is deleted and made again after a yes.
+1.  Prints the `supplied_secrets` line to commit.
 
-    ```shell
-    for identity in notices.skyclause.m1ku.tech in.skyclause.m1ku.tech; do
-      aws sesv2 get-email-identity --email-identity "$identity" --region ap-southeast-2 \
-        --query DkimAttributes.SigningHostedZone --output text
-    done
-    ```
+Every step reads before it writes, so a re-run changes nothing that is already right, and a secret whose stored value differs is replaced only after a yes. Its closing message says the same as step 1: mail stays off until the printed line is committed and applied.
 
-1.  Check that DKIM and MAIL FROM read `SUCCESS` for `notices.`, and DKIM for `in.`:
+`./infra/wizards/production-pilot.sh` later reads both Resend domains' status and the webhook's status, with `RESEND_FULL_ACCESS_KEY` exported.
 
-    ```shell
-    aws sesv2 get-email-identity --email-identity notices.skyclause.m1ku.tech --region ap-southeast-2 \
-      --query '[DkimAttributes.Status, MailFromAttributes.MailFromDomainStatus]'
-    aws sesv2 get-email-identity --email-identity in.skyclause.m1ku.tech --region ap-southeast-2 \
-      --query DkimAttributes.Status
-    ```
-
-1.  Check the subscriptions with `aws sns list-subscriptions-by-topic --region ap-southeast-2 --topic-arn <arn>` for both topic ARNs in the `app_config` output. The worker confirms each when its handler is live: `/ses/inbound` here, `/ses/events` with #158. If one still reads `PendingConfirmation` after its handler is live, send the confirmation again with `terraform -chdir=infra/aws apply -replace=aws_sns_topic_subscription.<inbound or ses_events>`.
-1.  Copy the `app_config` output into `app_config` in `environments/production/terraform.tfvars` in a pull request.
-1.  While `aws sesv2 get-account --region ap-southeast-2` shows `ProductionAccessEnabled: false`, SES delivers only to verified addresses, so live checks use team addresses verified with `infra/wizards/staff-and-ses.sh`. Mail to anyone else fails with `MessageRejected` until SES production access is granted (#118).
-1.  Turn on `inbound_email` with the audited `flag:set` script (#92).
-
-DMARC aggregate reports for `notices.` go to `rua=mailto:dmarc@in.skyclause.m1ku.tech`. Both names share the Organizational Domain `m1ku.tech`, so RFC 7489 §7.1 needs no `_report._dmarc` record. The receipt rule `dmarc-reports` runs before `inbound`, stores each report in `skyclause-production-dmarc-776566309118` for 30 days and stops, so the worker never sees them. Read them with `aws s3 ls s3://skyclause-production-dmarc-776566309118/ --region ap-southeast-2`.
+Besides the MX at `in.` and the DMARC record at `notices.`, the wizard leaves every SES record alone: Resend's records sit under other names (`resend._domainkey.…` and its own return-path name), so both providers' records coexist until the teardown (#661). That ticket destroys `aws/` from its state, then deletes the directory, its CI steps, the SES DNS records and this paragraph.
 
 ## Source jobs and buffered ingestion
 

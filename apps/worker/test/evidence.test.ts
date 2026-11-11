@@ -1,6 +1,6 @@
-// #159 c-evidence email intake at the transport seam: SES may not be provisioned (devops #113), so the `onInbound`
-// registration is captured and its handler called with messages as the delivery router hands them over. Rows come
-// from factories on the #79 §7 test database.
+// #159 c-evidence email intake at the router seam: the `onInbound` registration is captured and its handler called with
+// messages as the delivery router hands them over (`email.test.ts` posts them through `POST /resend/webhook`). Rows
+// come from factories on the #79 §7 test database.
 import { randomUUID } from 'node:crypto'
 import type { InboundMessage } from '@skyclause/delivery'
 import { withSystem, withTenant, type Tx } from '@skyclause/db'
@@ -20,7 +20,7 @@ import { evidenceSpanOf } from '../src/evidence/span'
 const DOMAIN = 'in.skyclause.m1ku.tech'
 const NOW = new Date('2026-11-05T07:00:00Z')
 const options = { inboundDomain: () => DOMAIN, now: () => NOW }
-const PASS = { spf: 'PASS', dkim: 'PASS', spam: 'PASS', virus: 'PASS' }
+const PASS = { spf: 'PASS', dkim: 'PASS', dmarc: 'PASS' } as const
 
 let org: { id: string; slug: string }
 let project: { id: string; slug: string }
@@ -43,7 +43,7 @@ function mail(overrides: Partial<InboundMessage> = {}): InboundMessage {
     from: subscriberEmail,
     subject: 'Evidence request',
     text: 'evidence for 2 Nov 14:00–16:30\n\nThanks',
-    messageId: `0100019a${randomUUID().replaceAll('-', '')}-000000`,
+    messageId: randomUUID(),
     receivedAt: '2026-11-05T06:59:30.000Z',
     verdicts: PASS,
     ...overrides
@@ -85,7 +85,7 @@ describe('with inbound_email on', () => {
     await withSystem('evidence-test', (tx) => makeFeatureFlag(tx, { key: 'inbound_email', orgId: null, enabled: true }))
   })
 
-  test('a confirmed subscriber’s mail becomes one request waiting for approval, however often SES delivers it', async () => {
+  test('a confirmed subscriber’s mail becomes one request waiting for approval, however often it is delivered', async () => {
     const message = mail()
     await handleEvidenceMail(message, options)
     await handleEvidenceMail(message, options)
@@ -111,6 +111,12 @@ describe('with inbound_email on', () => {
     expect(notices).toEqual([])
   })
 
+  test('DMARC passing is enough, whatever SPF and DKIM say', async () => {
+    const message = mail({ verdicts: { spf: 'FAIL', dkim: 'NONE', dmarc: 'PASS' } })
+    await handleEvidenceMail(message, options)
+    expect((await requests()).map((r) => r.messageId)).toContain(message.messageId)
+  })
+
   test('a member’s account address gets the reply in-app at once', async () => {
     const message = mail({ from: memberEmail.toUpperCase(), text: '', subject: 'Evidence for 2 November 14:00-16:30' })
     await handleEvidenceMail(message, options)
@@ -125,11 +131,13 @@ describe('with inbound_email on', () => {
     })
   })
 
-  test.each([
+  test.each<[string, Partial<InboundMessage>, string]>([
     ['an unknown sender', { from: 'stranger@example.test' }, 'unknown_sender'],
-    ['SPF and DKIM both failing', { verdicts: { ...PASS, spf: 'FAIL', dkim: 'GRAY' } }, 'verdicts'],
-    ['a spam verdict other than PASS', { verdicts: { ...PASS, spam: 'PROCESSING_FAILED' } }, 'verdicts'],
-    ['a virus verdict other than PASS', { verdicts: { ...PASS, virus: 'GRAY' } }, 'verdicts'],
+    // A forged From: SPF passes for the sending server's own domain, which DMARC finds unaligned.
+    ['SPF passing with DMARC failing', { verdicts: { spf: 'PASS', dkim: 'FAIL', dmarc: 'FAIL' } }, 'verdicts'],
+    // A sender domain that publishes no DMARC record.
+    ['SPF and DKIM passing with no DMARC result', { verdicts: { ...PASS, dmarc: 'NONE' } }, 'verdicts'],
+    ['no result at all', { verdicts: { spf: 'NONE', dkim: 'NONE', dmarc: 'NONE' } }, 'verdicts'],
     ['a run request, pilot-only (CAL-1)', { text: 'call for tomorrow' }, 'no_span'],
     ['a first line naming no span', { text: 'hello\nevidence for 2 Nov 14:00–16:30' }, 'no_span']
   ])('%s is dropped with one audit row and no request', async (_name, overrides, reason) => {

@@ -137,7 +137,8 @@ export async function loadStoredRequest(tx: Tx<SystemPrincipal>, requestId: stri
       httpStatus: poll.httpStatus,
       newRows: sql<number>`(SELECT count(*) FROM reading WHERE reading.poll_id = ${poll.id})`.mapWith(Number),
       purpose: sql<StoredSourcePoll['purpose']>`${poll.purpose}`,
-      startedAt: poll.startedAt
+      startedAt: poll.startedAt,
+      receivedAt: poll.receivedAt
     })
     .from(poll)
     .innerJoin(source, eq(source.id, poll.sourceId))
@@ -148,11 +149,15 @@ export async function loadStoredRequest(tx: Tx<SystemPrincipal>, requestId: stri
 /** All metadata and readings are validated before receipt/poll insertion; locks live only until commit. */
 export async function recordSourceRequest(
   tx: Tx<SystemPrincipal>,
-  input: SourceRequestWrite
+  input: SourceRequestWrite,
+  // Private trusted DB clock seam for labelled tests; request payloads cannot set poll availability.
+  now: () => Date = () => new Date()
 ): Promise<StoredSourcePoll[]> {
   const parsed = requestSchema.safeParse(input)
   if (!parsed.success) throw new Error('invalid source request', { cause: parsed.error })
   const request = parsed.data
+  const receivedAt = now()
+  if (!Number.isFinite(receivedAt.getTime())) throw new Error('invalid source receipt clock')
   await handleOnce(tx, 'sources:request', { messageId: request.requestId }, async () => {
     const entries = [...request.sources].sort((a, b) => a.sourceId.localeCompare(b.sourceId))
     for (const { sourceId } of entries)
@@ -178,6 +183,7 @@ export async function recordSourceRequest(
         sourceId: entry.sourceId,
         requestId: request.requestId,
         startedAt: request.startedAt,
+        receivedAt,
         httpStatus: request.httpStatus,
         latencyMs: request.latencyMs,
         outcome: entry.outcome === 'error' ? 'error' : newRows ? 'ok' : 'unchanged',

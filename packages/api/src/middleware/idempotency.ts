@@ -4,6 +4,7 @@ import type { MiddlewareHandler } from 'hono'
 import { routePath } from 'hono/route'
 import type { ApiEnv } from '../context'
 import { ApiError } from '../problems'
+import { readResponseBody } from '../response-body'
 import type { IdempotencyKey } from '../stores'
 import { credentialOf, ipHash } from './rate-limit'
 
@@ -17,8 +18,7 @@ export const IDEMPOTENCY_PENDING_MS = 600_000
 const keyCreateOperations = new Set(['createMyApiKey', 'createOrganisationApiKey'])
 
 /** A create replay may return metadata, but an idempotency row never holds the one-time plaintext key. */
-async function storedBody(response: Response, operationId: string): Promise<string> {
-  const body = await response.clone().text()
+function storedBody(body: string, operationId: string): string {
   if (!keyCreateOperations.has(operationId)) return body
   try {
     const parsed: unknown = JSON.parse(body)
@@ -106,13 +106,15 @@ export const requireIdempotency: MiddlewareHandler<ApiEnv> = async (c, next) => 
     return
   }
   if (c.res.status >= 200 && c.res.status < 400) {
+    const inspected = await readResponseBody(c.res)
+    c.res = inspected.response
     await idempotency.complete(
       claim,
       {
         status: c.res.status,
         contentType: c.res.headers.get('Content-Type'),
         location: c.res.headers.get('Location'),
-        body: await storedBody(c.res, c.get('operation').operationId)
+        body: storedBody(new TextDecoder().decode(inspected.bytes), c.get('operation').operationId)
       },
       new Date(at.getTime() + IDEMPOTENCY_TTL_MS)
     )

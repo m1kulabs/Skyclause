@@ -13,7 +13,8 @@ import {
   type SnapshotSource,
   type Verdict
 } from '@skyclause/contracts'
-import { bundle, call, indicatorSnapshot, run, sheetVersion, type Tx } from '@skyclause/db'
+import { bundle, call, indicatorSnapshot, run, type Tx } from '@skyclause/db'
+import type { EvaluatorProviders } from '../evaluator'
 import { and, eq } from 'drizzle-orm'
 
 // #153 CAL-9 re-check (ticket decision): a fresh snapshot of the project, the run's pinned sheet version evaluated on
@@ -23,9 +24,14 @@ import { and, eq } from 'drizzle-orm'
 export interface RecheckPorts {
   snapshots: SnapshotSource
   shadow: ShadowEvaluator
+  loadCheckedPublishedVersion: EvaluatorProviders['loadCheckedPublishedVersion']
 }
 
-let ports: RecheckPorts = { snapshots: notBuilt('b-evaluator'), shadow: notBuilt('b-evaluator') }
+let ports: RecheckPorts = {
+  snapshots: notBuilt('b-evaluator'),
+  shadow: notBuilt('b-evaluator'),
+  loadCheckedPublishedVersion: notBuilt('b-evaluator')
+}
 
 /** #133 registers its `SnapshotSource` and `ShadowEvaluator` here; tests register doubles. */
 export function setRecheckPorts(next: RecheckPorts) {
@@ -126,10 +132,14 @@ export const sameCall = (a: Verdict, b: Verdict) => same(verdictKey(a), verdictK
 /** The run's pinned sheet version as the engine's checked sheet (CAL-9: the version the bundle was drafted on). */
 async function pinnedSheet(tx: Tx, runRow: typeof run.$inferSelect, registryHash: string): Promise<CheckedSheet> {
   if (!runRow.sheetVersionId) throw new Error(`run ${runRow.id} has no pinned sheet version`)
-  const [version] = await tx.select().from(sheetVersion).where(eq(sheetVersion.id, runRow.sheetVersionId))
-  if (!version) throw new Error(`sheet version ${runRow.sheetVersionId} is not visible`)
-  const content = version.content as Pick<CheckedSheet, 'pack' | 'clauses'>
-  return { pack: content.pack, clauses: content.clauses, contentHash: version.contentHash, registryHash }
+  return (
+    await ports.loadCheckedPublishedVersion(tx, {
+      projectId: runRow.projectId,
+      pack: runRow.pack,
+      versionId: runRow.sheetVersionId,
+      registryHash
+    })
+  ).sheet
 }
 
 /**

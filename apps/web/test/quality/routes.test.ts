@@ -47,9 +47,25 @@ test('a page whose only parameter is the organisation is crawled in each role’
 
   expect(routes.map(({ path, params }) => ({ path, params }))).toEqual([
     { path: '/[org]', params: undefined },
-    { path: '/[org]/[project]/ledger', params: undefined },
+    { path: '/[org]/[project]/ledger', params: ['org', 'project'] },
     { path: '/[org]/projects', params: ['org'] },
     { path: '/[org]/settings/audit', params: ['org'] },
     { path: '/invite/[token]', params: undefined }
+  ])
+})
+
+test('a page under a project is crawled at a project in each role’s organisation, whatever else it takes', () => {
+  const routes = crawlRoutes({
+    '/(app)/[org]/[project]/page': '/[org]/[project]',
+    '/(app)/[org]/[project]/settings/channels/page': '/[org]/[project]/settings/channels',
+    '/(app)/[org]/[project]/bundles/[id]/page': '/[org]/[project]/bundles/[id]',
+    '/(camera)/[org]/[project]/camera/[sourceId]/page': '/[org]/[project]/camera/[sourceId]'
+  })
+
+  expect(routes.map(({ path, group, params }) => ({ path, group, params }))).toEqual([
+    { path: '/[org]/[project]', group: 'app', params: undefined },
+    { path: '/[org]/[project]/bundles/[id]', group: 'app', params: ['org', 'project'] },
+    { path: '/[org]/[project]/camera/[sourceId]', group: 'camera', params: ['org', 'project'] },
+    { path: '/[org]/[project]/settings/channels', group: 'app', params: ['org', 'project'] }
   ])
 })

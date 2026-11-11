@@ -1,4 +1,4 @@
-import { SpanKind, SpanStatusCode, trace, type Attributes } from '@opentelemetry/api'
+import { diag, SpanKind, SpanStatusCode, trace, type Attributes } from '@opentelemetry/api'
 import { ExportResultCode, hrTimeToMilliseconds } from '@opentelemetry/core'
 import {
   AggregationTemporality,
@@ -232,13 +232,27 @@ describe('http.server.request.duration', () => {
   })
 })
 
+interface PartialSuccess {
+  rejectedDataPoints?: number
+  rejectedSpans?: number
+  rejectedLogRecords?: number
+  errorMessage?: string
+}
+
+/** A 200 `partialSuccess` answer the way `@opentelemetry/otlp-exporter-base`'s `logging-response-handler` reports it. */
+function reportPartialSuccess(partialSuccess?: PartialSuccess) {
+  if (partialSuccess && Object.keys(partialSuccess).length > 0) {
+    diag.warn('Received Partial Success response:', JSON.stringify(partialSuccess))
+  }
+}
+
 /**
  * The Telemetry API's write rule, a double: Cloud Monitoring "requires that the end times of points written to a time
  * series be at least 5 seconds apart" (https://docs.cloud.google.com/monitoring/quotas), and answers a request that
  * breaks it with 400 (https://docs.cloud.google.com/monitoring/api/troubleshooting). One series is one scope, metric
  * name and attribute set; the resource is the process's own.
  */
-function cloudMonitoring(refusal?: Error) {
+function cloudMonitoring(refusal?: Error, partialSuccess?: PartialSuccess) {
   const ended = new Map<string, number>()
   const written: Array<{ name: string; attributes: Attributes; value: unknown }> = []
   let refused = 0
@@ -266,6 +280,7 @@ function cloudMonitoring(refusal?: Error) {
         ended.set(key, end)
         written.push(point)
       }
+      reportPartialSuccess(partialSuccess)
       done({ code: ExportResultCode.SUCCESS })
     },
     forceFlush: async () => void flushes++,
@@ -402,6 +417,72 @@ describe('metric export to Cloud Monitoring', () => {
   test('a timeout logs what went wrong, with no status or answer', async () => {
     expect(await failedWith(new Error('Request timed out'))).toEqual([
       { severity: 'ERROR', message: 'telemetry: metrics export failed', error: 'Request timed out' }
+    ])
+  })
+
+  test('a 200 partialSuccess on metrics logs one redacted warning naming the signal, count and message, while a full success logs nothing', async () => {
+    const full = startAgainst(cloudMonitoring(undefined, { rejectedDataPoints: 0, errorMessage: '' }))
+    request(204)
+    await full.flush()
+    expect(lines).toEqual([])
+    await full.shutdown()
+
+    const partial = startAgainst(
+      cloudMonitoring(undefined, {
+        rejectedDataPoints: 2,
+        errorMessage: 'Invalid label on series for skc_live_secret_token_123456'
+      })
+    )
+    request(204)
+    await partial.flush()
+    expect(lines.map((line) => JSON.parse(line))).toEqual([
+      {
+        severity: 'WARNING',
+        message: 'telemetry: metrics export partially rejected',
+        signal: 'metrics',
+        rejected: 2,
+        error: 'Invalid label on series for [redacted]'
+      }
+    ])
+  })
+
+  test('partial rejections of traces and logs are logged while other SDK diag warnings stay silent', async () => {
+    lines = []
+    telemetry = startTelemetry('job', {
+      env,
+      traceExporter: {
+        export: (_spans, done) => {
+          reportPartialSuccess({
+            rejectedSpans: 1,
+            errorMessage: 'Span attribute value too long for ops@skyclause.example.com'
+          })
+          done({ code: ExportResultCode.SUCCESS })
+        },
+        shutdown: async () => {}
+      },
+      metricExporter: cloudMonitoring().exporter,
+      write: (line) => void lines.push(line)
+    })
+    diag.warn('Dropping extra attributes.')
+    trace.getTracer('test').startSpan('tick').end()
+    await telemetry.flush()
+    reportPartialSuccess({ rejectedLogRecords: 3, errorMessage: 'Log record too large' })
+
+    expect(lines.map((line) => JSON.parse(line))).toEqual([
+      {
+        severity: 'WARNING',
+        message: 'telemetry: traces export partially rejected',
+        signal: 'traces',
+        rejected: 1,
+        error: 'Span attribute value too long for [redacted]'
+      },
+      {
+        severity: 'WARNING',
+        message: 'telemetry: logs export partially rejected',
+        signal: 'logs',
+        rejected: 3,
+        error: 'Log record too large'
+      }
     ])
   })
 })

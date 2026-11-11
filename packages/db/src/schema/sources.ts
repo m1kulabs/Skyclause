@@ -77,6 +77,7 @@ export const sourceState = pgTable('source_state', {
   since: instant('since').notNull(),
   httpStatus: integer('http_status'),
   pendingUntil: instant('pending_until'),
+  evaluatedAt: instant('evaluated_at'),
   updatedAt: instant('updated_at').notNull().defaultNow()
 })
 

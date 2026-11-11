@@ -18,7 +18,7 @@ import { callNoticeEmail } from '@skyclause/delivery'
 import { log } from '../server'
 
 // #158 c-sender-email: sending an organisation's queued `call` notices (TRD "Channels and sends"). Each notice is
-// claimed and checked in one transaction, which also takes its lease and mints its links; SES is called outside any
+// claimed and checked in one transaction, which also takes its lease and mints its links; Resend is called outside any
 // transaction; a second transaction records the answer. Then each call whose notices have settled is settled.
 
 export interface SenderConfig {
@@ -31,7 +31,7 @@ export interface SenderConfig {
 }
 
 export interface SenderDeps {
-  /** SES, or null while its variables are unset (before gate 4B). */
+  /** Resend, or null while its sending variables are unset and email is off. */
   email: () => EmailTransport | null
   config: () => SenderConfig
   now: () => Date
@@ -66,7 +66,8 @@ interface Ready {
 /** What a send can't go without, checked before its lease, so a missing setting costs no attempt. */
 function readiness(deps: SenderDeps, c: ClaimedNotice): Omit<Ready, 'tokens'> {
   const transport = deps.email()
-  if (!transport) throw new Error('email is off: the SES variables are unset (gate 4B)')
+  if (!transport)
+    throw new Error('email is off: RESEND_SENDING_API_KEY, EMAIL_FROM_AUTH and EMAIL_FROM_NOTICES are unset')
   const config = deps.config()
   const { appOrigin, marketingOrigin } = config
   if (!appOrigin || !marketingOrigin) throw new Error('APP_ORIGIN and MARKETING_ORIGIN must be set to send notices')
@@ -84,7 +85,7 @@ async function mintTokens(tx: Tx, c: ClaimedNotice): Promise<Ready['tokens']> {
   }
 }
 
-/** Renders and hands one notice to SES; any failure, an empty message ID included, is a retry. */
+/** Renders and hands one notice to Resend; any failure, an empty message ID included, is a retry. */
 async function deliver(c: ClaimedNotice, ready: Ready): Promise<CallNoticeOutcome> {
   try {
     const message = callNoticeEmail(c.call, {

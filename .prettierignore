@@ -1,5 +1,6 @@
 .agents/
 .claude/
+infra/**/.terraform/
 docs/sources/**/*.json
 pilot/fixtures/**/*.json
 packages/elements/test/fixtures/rainfall-graph-*.json

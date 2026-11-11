@@ -323,6 +323,34 @@
       "when": 1794315047237,
       "tag": "0045_b-clause-sheets-immutability",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1794319868206,
+      "tag": "0046_b-evaluator-poll-receipt",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1794322420256,
+      "tag": "0047_b-evaluator-snapshots",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1794326277725,
+      "tag": "0048_b-evaluator-transitions",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1794365714754,
+      "tag": "0049_b-evaluator-deadlines",
+      "breakpoints": true
     }
   ]
 }

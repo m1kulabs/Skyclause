@@ -1,11 +1,13 @@
 // The #116 crawl: every built page, per role, in dark, light and high contrast at the project's size, at 375 px,
 // at 320 px (200% zoom) and under reduced motion, from the OS and from the account. One failure lists route, role,
 // theme, size and rule.
+import { randomBytes } from 'node:crypto'
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { inspectPage, motionFindings, type Finding } from './checks'
 import { sortFindings } from './known-gaps'
 import { sessions, signedOut, type Role, type Session } from './roles'
 import { builtRoutes, type CrawlRoute } from './routes'
+import { crawlPath, fillable } from './rows'
 import { hasSession, redirectsToAccount, visit } from './visit'
 import { onboardingOperations } from '../../features/onboarding/operations'
 import { AUTH_REAUTH_DIALOG_SELECTOR, isAuthRoute } from '../../features/sign-in/model'
@@ -13,10 +15,19 @@ import { sourceOperations } from '../../features/sources/operations'
 import { stubCalls } from '../calls/doubles'
 import { stubDashboard } from '../dashboard/doubles'
 import { stubApi } from '../harness'
+import type { TestOrg } from '../harness/sign-in-as'
 import { prepareCrawl } from '../project-ui/fixtures'
 
 const PLANTED_FAILURE = '/quality-planted/unlabelled-input'
 const PLANTED_MOTION = '/quality-planted/motion'
+const PLANTED_FIELDS = '/quality-planted/form-types'
+/** NFR-6: one rule each planted field breaks. */
+const PLANTED_FIELD_RULES = [
+  'input-type: input#planted-email[name="email"] holds an email address but is type="text"; use type="email"',
+  'input-type: input#planted-postcode[name="postcode"] holds a code but is type="number"; use type="text" with inputmode="numeric"',
+  'input-type: input#planted-webhook[name="webhook"] is type="url" but inputmode="numeric"; use inputmode="url" or none',
+  'form-fields: input#planted-notes[name="_r_1_"] has a name that doesn’t say what it holds'
+]
 const ACCOUNT_MOTION = 'dark, account reduced motion'
 const PUBLIC_GROUPS = new Set(['marketing', 'public'])
 /** Pages that read in an effect: inspected once a read has landed (content, empty state or error), never loading. */
@@ -24,7 +35,17 @@ const READY: Record<string, string> = {
   '/[org]/projects': ':is(h1, [data-slot="empty"], [data-slot="alert"])',
   '/[org]/analysis': ':is(.analysis-muted, .analysis-error)',
   '/[org]/settings/members':
-    ':is(#members-table-heading, [data-slot="empty"], [data-slot="alert"]), h1:has-text("Page not found")'
+    ':is(#members-table-heading, [data-slot="empty"], [data-slot="alert"]), h1:has-text("Page not found")',
+  '/[org]/[project]/analysis':
+    '[data-analysis-page]:not(:has([role="status"])), .analysis-page:not([data-analysis-page]) > .analysis-error',
+  // The server renders a member's review; the run arrives with the client's refresh.
+  '/[org]/[project]/bundles/[id]': '.bundle-trace p:text-matches("^Run "), .bundle-detail[aria-busy="false"]',
+  '/[org]/[project]/camera/[sourceId]': '#device-token',
+  '/[org]/[project]/ledger': '.ledger-page:not(:has(div[role="status"]))',
+  '/[org]/[project]/settings/channels':
+    '[data-channels-panel] :is(button, [role="alert"]), h1:has-text("Page not found")',
+  '/invite/[token]': 'section[aria-labelledby="invite-heading"] :is(h2, [role="alert"])',
+  '/subscribe/[token]': '.subscribe-column :is(form, [role="alert"])'
 }
 const PROJECT_UI_ROUTES = new Set([
   '/[org]/[project]',
@@ -32,6 +53,14 @@ const PROJECT_UI_ROUTES = new Set([
   '/[org]/[project]/settings/rota',
   '/[org]/[project]/settings/share'
 ])
+/** Pages whose content comes only from an operation a teammate hasn't built: crawled once it lands. */
+const WAITING: Record<string, string> = {
+  '/[org]/[project]/windows': 'its windows come only from listWindows, which b-windows-api hasn’t built (#139)',
+  '/[org]/[project]/signals/probation/[sourceId]':
+    'its frames come only from getNextProbationFrame, which b-device-ingest hasn’t built (#128)'
+}
+/** A documentation-range address (RFC 3849): one crawl case as one visitor. */
+const visitorAddress = () => `2001:db8::${randomBytes(2).toString('hex')}:${randomBytes(2).toString('hex')}`
 
 interface Variant {
   theme: 'dark' | 'light' | 'high contrast'
@@ -102,7 +131,8 @@ async function stubDynamicPage(page: Page, route: CrawlRoute) {
   const org = route.path.split('/')[1]!
   const projectPage = route.params.includes('project')
   await stubApi(page, 'getOnboarding', onboardingFor(org, projectPage), { registry: onboardingOperations })
-  if (!projectPage) return
+  // Other project pages read the project crawlPath wrote; packs keeps its stubs.
+  if (!route.path.endsWith('/settings/packs')) return
 
   await stubApi(page, 'listProjects', { data: [CRAWL_PROJECT], next_cursor: null }, { registry: onboardingOperations })
   await stubApi(page, 'listProjectSources', { data: [], next_cursor: null }, { registry: sourceOperations })
@@ -158,19 +188,17 @@ async function crawl(
   // #174 and #166 routes sign in through the fixtures' test principal and keep the pattern path, which visit()
   // fills with the fixtures' test-org/test-project; the other routes use a real session and its organisation.
   const projectUiRoute = PROJECT_UI_ROUTES.has(route.path) || route.path.startsWith('/[org]/[project]/calls')
-  let org: { slug: string } | null = null
+  let org: TestOrg | null = null
   if (projectUiRoute) await prepareCrawl(page, session.role)
   else if (session.signIn) org = await session.signIn(page)
   else await signedOut(page)
+  // The fixtures' routes keep their pattern path and the status rules of a page without parameters.
   const concreteRoute = projectUiRoute
-    ? route
-    : {
-        ...route,
-        path: route.path
-          .replace('[org]', encodeURIComponent(org?.slug ?? 'crawl-org'))
-          .replace('[project]', 'crawl-project')
-      }
+    ? { ...route, params: undefined }
+    : { ...route, path: await crawlPath(route, org) }
   if (!projectUiRoute) await stubDynamicPage(page, concreteRoute)
+  // The API limits token and signed-out reads per client address: each case is its own visitor.
+  await page.setExtraHTTPHeaders({ 'X-Forwarded-For': visitorAddress() })
   await beforeVisit?.()
   for (const variant of jsOn ? VARIANTS : VARIANTS.slice(0, 1)) {
     await page.emulateMedia({
@@ -268,14 +296,10 @@ for (const discovered of builtRoutes()) {
       const jsOn = info.project.use.javaScriptEnabled !== false
       test.slow(jsOn, 'One case runs five complete axe audits plus the reduced-motion check')
       test.skip(!jsOn && !(route.group && PUBLIC_GROUPS.has(route.group)), 'JavaScript off covers public pages only')
+      test.fixme(route.path in WAITING, `${route.path}: ${WAITING[route.path]}`)
       test.fixme(
-        route.dynamic && !route.params && !PROJECT_UI_ROUTES.has(route.path) && route.path !== '/[org]',
-        `${route.path} needs param fixtures with stubApi bodies (#95)`
-      )
-      // Expected to fail until the page 404s for non-members; then it passes, which fails, so this line goes.
-      test.fail(
-        route.path === '/[org]/analysis' && (session.role === 'share-link reviewer' || session.role === 'signed out'),
-        'the organisation roll-up renders for non-members instead of 404 (#596)'
+        route.dynamic && !fillable(route) && !PROJECT_UI_ROUTES.has(route.path) && route.path !== '/[org]',
+        `${route.path} needs rows for its parameters (rows.ts)`
       )
       const dashboard = route.path === '/[org]'
       const visitRoute = dashboard ? { ...route, path: '/test-org', dynamic: false } : route
@@ -315,6 +339,14 @@ for (const discovered of builtRoutes()) {
           new RegExp(`${PLANTED_FAILURE} · ${session.role} · dark · project size · form-fields: input has no label`)
         )
         if (jsOn) expect(report(route, session, findings)).toMatch(/ · axe: label \(critical\)/)
+        return
+      }
+      if (route.path === PLANTED_FIELDS) {
+        // Each planted field must fail the crawl on its own rule, by route, role, theme and rule.
+        const lines = report(route, session, findings).split('\n')
+        for (const rule of PLANTED_FIELD_RULES) {
+          expect(lines).toContain(`${PLANTED_FIELDS} · ${session.role} · dark · project size · ${rule}`)
+        }
         return
       }
 

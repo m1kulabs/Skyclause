@@ -314,8 +314,8 @@ export async function approveEvidenceRequest(
 
 /**
  * Renders the approved reply from its stored pack and sends it through `EmailTransport` (`from: 'notices'`), recording
- * SES's answer on its notice: `sent`, or `failed` and logged, since the reply itself is already committed. #158's
- * `/ses/events` maps delivery from there.
+ * the provider's answer on its notice: `sent`, or `failed` and logged, since the reply itself is already committed. The
+ * worker's `/resend/webhook` maps delivery from there.
  */
 export async function sendEvidenceReply(
   deps: { email: EmailTransport; withTenant: WithTenant },
