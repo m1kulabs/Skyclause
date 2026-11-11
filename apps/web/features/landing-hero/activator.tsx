@@ -28,7 +28,8 @@ export function HeroActivator(props: HeroActivatorProps) {
       // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- passive intent listener; the static children are natively interactive.
       <div
         onPointerDown={(event) => {
-          setReplay({ k: 'ptr', x: event.clientX })
+          // Only a strip press replays as a drag; other presses finish natively and activate through onChange.
+          if ((event.target as Element).closest('[role="slider"]')) setReplay({ k: 'ptr', x: event.clientX })
         }}
         onKeyDown={(event) => {
           if (event.key[0] === 'A') setReplay({ k: 'key', key: event.key, shift: event.shiftKey })

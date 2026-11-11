@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { t } from './catalogue'
-import { fetchEvaluate, fetchLatestCall, type EvaluateResult, type LatestCall } from './evaluate'
+import { fetchEvaluate, fetchLatestCall, type EvaluateResult, type LatestCallRead } from './evaluate'
 import type { PickerReplay } from './activator'
 import { HeroReadout } from './readout'
 import { HeroStrip } from './hero-strip'
@@ -27,7 +27,7 @@ export interface HeroPickerProps {
   initialStripSvg: string | null
   initialWin: HeroWindow
   dates: string[]
-  latestCall: LatestCall | null
+  latestCall: LatestCallRead
   pilot: { org: string; project: string } | null
   calendarQuery: string
   initialReplay?: PickerReplay | null
@@ -114,7 +114,9 @@ export default function HeroPicker({
       setResult(outcome)
       if (outcome.kind === 'ok') {
         const fetchedLatest = await fetchLatestCall(pilot)
-        if (id === requestRef.current) setLatest(fetchedLatest)
+        // A newer request owns the readout, the beacon and the URL from here.
+        if (id !== requestRef.current) return
+        setLatest(fetchedLatest)
         const key = `${next.date}|${next.startMin}|${next.endMin}`
         if (beacon && beaconedRef.current !== key) {
           beaconedRef.current = key
@@ -201,6 +203,11 @@ export default function HeroPicker({
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current
     if (!drag) return
+    // A release outside the strip (or before the island mounted) ends the drag; hovering never moves the window.
+    if (event.buttons === 0) {
+      dragRef.current = null
+      return
+    }
     const minutes = minutesAt(event.clientX, event.currentTarget)
     if (minutes === null) return
     if (drag.mode === 'move') {
@@ -208,7 +215,8 @@ export default function HeroPicker({
       const start = Math.min(1425 - length, Math.max(0, minutes - drag.offset))
       setWin((current) => ({ ...current, startMin: start, endMin: start + length }))
     } else {
-      const clamped = clampWindow(drag.start, minutes)
+      // Dragging left of the press point selects back to it, so the endpoints are ordered first.
+      const clamped = clampWindow(Math.min(drag.start, minutes), Math.max(drag.start, minutes))
       setWin((current) => ({ ...current, startMin: clamped.start, endMin: clamped.end }))
     }
   }
