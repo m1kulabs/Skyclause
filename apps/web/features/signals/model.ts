@@ -43,7 +43,8 @@ export function errorsWithinLastDay<T extends Pick<Poll, 'outcome' | 'http_statu
   return polls
     .filter((poll) => {
       const at = Date.parse(poll.started_at)
-      return poll.outcome === 'error' && poll.http_status !== null && at >= from && at <= now
+      // A timeout has no HTTP status but is still an error row (SIG-2, SIG-5): listed, never hidden.
+      return poll.outcome === 'error' && at >= from && at <= now
     })
     .sort((left, right) => Date.parse(right.started_at) - Date.parse(left.started_at))
 }

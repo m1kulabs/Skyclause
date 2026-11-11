@@ -108,7 +108,7 @@ describe('securityHeaders', () => {
       "form-action 'self'",
       "frame-ancestors 'none'",
       "connect-src 'self'",
-      "img-src 'self' data: blob:",
+      "img-src 'self' data: blob: https://commons.wikimedia.org https://upload.wikimedia.org",
       "style-src 'self' 'unsafe-inline'"
     ]) {
       expect(first, directive).toContain(directive)

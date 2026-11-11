@@ -7,7 +7,8 @@ import { FaqClient } from './faq-client'
 // The grades source defaults to the Commons pilot (the P1 shared "Bukit Jalil" project) until PILOT_PROJECT names one.
 export function Faq() {
   const pilot = pilotRefFromEnv(process.env) as { org: string; project: string } | null
-  const initial: GradesState = { kind: 'empty', n: 0 }
+  // With a pilot the client reads its grades; until then the answer is unread, never n=0.
+  const initial: GradesState | undefined = pilot ? undefined : { kind: 'empty', n: 0 }
   const gradesSource = pilot
     ? `/v1/public/${encodeURIComponent(pilot.org)}/${encodeURIComponent(pilot.project)}/grades`
     : '/v1/public/commons/bukit-jalil/grades'

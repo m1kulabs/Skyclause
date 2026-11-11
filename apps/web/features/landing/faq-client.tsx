@@ -7,7 +7,15 @@ import type { GradesState } from './grades'
 const GRADES_SOURCE = '/v1/public/commons/bukit-jalil/grades'
 
 function gradesAnswer(state: GradesState | undefined, source: string) {
-  if (!state || state.kind === 'empty') {
+  // Unread is not n=0: with a pilot set, the answer waits for the read instead of claiming no grades.
+  if (!state) {
+    return (
+      <p data-source={source}>
+        Every call is graded after the fact and published with n and a 95% interval. Reading live grades…
+      </p>
+    )
+  }
+  if (state.kind === 'empty') {
     return (
       <p data-source={source}>
         Every call is graded after the fact and published with n and a 95% interval. No live grades yet (n=0).
@@ -17,7 +25,7 @@ function gradesAnswer(state: GradesState | undefined, source: string) {
   if (state.kind === 'error') {
     return <p data-source={source}>Couldn&rsquo;t load grades: {state.message}</p>
   }
-  const low = state.low === null ? '' : `, ${state.low.toFixed(2)}`
+  const low = state.low === null ? '' : state.low.toFixed(2)
   const high = state.high === null ? '' : `–${state.high.toFixed(2)}`
   return (
     <p data-source={source}>
@@ -108,7 +116,9 @@ export function FaqClient({
   useEffect(() => {
     if (!pilot) return
     let cancelled = false
-    const url = source
+    const url = process.env.NEXT_PUBLIC_API_ORIGIN
+      ? new URL(source, process.env.NEXT_PUBLIC_API_ORIGIN).toString()
+      : source
     fetch(url, { cache: 'no-store' })
       .then(async (res) => {
         if (cancelled) return
@@ -120,12 +130,15 @@ export function FaqClient({
           data?: Array<{ n?: unknown; x?: unknown; low?: unknown; high?: unknown; metric?: unknown }>
         }
         const rows = Array.isArray(body.data) ? body.data : []
-        const totalN = rows.reduce((sum, r) => sum + (typeof r.n === 'number' ? r.n : 0), 0)
-        if (totalN === 0) return
-        const first = rows.find((r) => typeof r.n === 'number' && r.n > 0) ?? rows[0]
+        // n, x and the interval all come from one metric; summing n across metrics would mislabel the interval.
+        const first = rows.find((r) => typeof r.n === 'number' && r.n > 0)
+        if (!first) {
+          setLive({ kind: 'empty', n: 0 })
+          return
+        }
         setLive({
           kind: 'grades',
-          n: totalN,
+          n: first.n as number,
           x: typeof first?.x === 'number' ? first.x : null,
           low: typeof first?.low === 'number' ? first.low : null,
           high: typeof first?.high === 'number' ? first.high : null,

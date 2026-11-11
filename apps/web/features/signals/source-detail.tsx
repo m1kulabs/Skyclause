@@ -136,7 +136,7 @@ export function SourceDetail({ project, source, strip, readings, polls, locale }
   const now = Date.now()
   const readingRows = useMemo(() => last24h(readings, now), [readings, now])
   const errors = polls
-    .filter((poll) => poll.outcome === 'error' && poll.http_status !== null)
+    .filter((poll) => poll.outcome === 'error')
     .filter((poll) => {
       const at = Date.parse(poll.started_at)
       return at >= now - DAY_MS && at <= now
@@ -278,11 +278,13 @@ export function SourceDetail({ project, source, strip, readings, polls, locale }
           <ul className="space-y-1 text-sm tabular-nums">
             {errors.map((poll) => (
               <li key={poll.id}>
-                {t(
-                  'signals.error_status',
-                  { status: poll.http_status ?? 0, time: formatDateTime(poll.started_at, locale) },
-                  locale
-                )}
+                {poll.http_status === null
+                  ? t('signals.error_no_status', { time: formatDateTime(poll.started_at, locale) }, locale)
+                  : t(
+                      'signals.error_status',
+                      { status: poll.http_status, time: formatDateTime(poll.started_at, locale) },
+                      locale
+                    )}
               </li>
             ))}
           </ul>

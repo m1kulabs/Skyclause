@@ -117,14 +117,14 @@ export function SourceHealthRow({
           </span>
         </span>
         <span className="mt-1 flex flex-wrap items-center gap-2">
-          <span
-            role="img"
-            aria-label={t('data.source.ticks_label', { count: ticks.length || 48 }, locale)}
-            className="inline-flex gap-[2px]"
-          >
-            {(ticks.length ? ticks : Array.from({ length: 48 }, () => 'received' as const))
-              .slice(0, 48)
-              .map((tick, i) => (
+          {/* Ticks are real polls only: with none passed, no strip stands in as 48 received polls. */}
+          {ticks.length ? (
+            <span
+              role="img"
+              aria-label={t('data.source.ticks_label', { count: ticks.length }, locale)}
+              className="inline-flex gap-[2px]"
+            >
+              {ticks.slice(0, 48).map((tick, i) => (
                 <span
                   key={i}
                   title={t(`data.source.tick_${tick}`, {}, locale)}
@@ -137,7 +137,8 @@ export function SourceHealthRow({
                   }
                 />
               ))}
-          </span>
+            </span>
+          ) : null}
           {licence?.licence_url ? (
             <a
               href={licence.licence_url}

@@ -46,8 +46,18 @@ test('the finding reports five inputs and the oldest age in minutes', () => {
   expect(findingLine(sources, 'en')).toBe('Sky: 5 inputs reporting; oldest 12 min')
 })
 
-test('only HTTP errors from the last 24 hours remain in the error list', () => {
+test('errors from the last 24 hours remain in the error list, a timeout with no HTTP status included', () => {
   const polls = [
+    {
+      id: 'one-hour-timeout',
+      source_id: 'source-a',
+      started_at: new Date(now - 60 * 60 * 1000).toISOString(),
+      http_status: null,
+      latency_ms: 10_000,
+      outcome: 'error',
+      request_id: 'request-one-hour-timeout',
+      error_code: 'timeout'
+    },
     {
       id: 'three-hours',
       source_id: 'source-a',
@@ -70,7 +80,10 @@ test('only HTTP errors from the last 24 hours remain in the error list', () => {
     }
   ]
 
-  expect(errorsWithinLastDay(polls, now).map((poll) => [poll.id, poll.http_status])).toEqual([['three-hours', 503]])
+  expect(errorsWithinLastDay(polls, now).map((poll) => [poll.id, poll.http_status])).toEqual([
+    ['one-hour-timeout', null],
+    ['three-hours', 503]
+  ])
 })
 
 test('source ages advance from the read time without another API response', () => {
