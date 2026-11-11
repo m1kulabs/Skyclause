@@ -25,3 +25,4 @@ packages/agent/test/fixtures/mapcaqm-*.json
 packages/sources/test/fixtures/rainfall-graph-*.json
 packages/sources/test/fixtures/rainfall-latest-data-*.html
 docs/sources/infobanjirjpskl.water.gov.my/rainfall-latest-data-*.html
+packages/db/test/fixtures/mapcaqm-20261105T1313Z.json

@@ -89,7 +89,7 @@
                   "type": "integer"
                 },
                 "licence_id": {
-                  "type": "string"
+                  "type": ["string", "null"]
                 },
                 "licence_label": {
                   "type": "string"
@@ -113,7 +113,7 @@
                   ]
                 },
                 "state": {
-                  "type": "object",
+                  "type": ["object", "null"],
                   "properties": {
                     "state": {
                       "type": "string",

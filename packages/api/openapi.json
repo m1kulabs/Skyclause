@@ -10979,6 +10979,43 @@
           {
             "schema": {
               "type": "string",
+              "enum": [
+                "jps_rain",
+                "met_warning",
+                "met_forecast",
+                "apims",
+                "rapidrail_od",
+                "gtfs_static",
+                "gtfs_rt",
+                "golive",
+                "wikipedia",
+                "camera",
+                "pi"
+              ]
+            },
+            "required": false,
+            "name": "kind",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "near",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
               "minLength": 1
             },
             "required": true,
@@ -11053,10 +11090,20 @@
                             "type": "integer"
                           },
                           "licence_id": {
-                            "type": "string"
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "licence_label": {
                             "type": "string"
+                          },
+                          "distance_km": {
+                            "type": [
+                              "number",
+                              "null"
+                            ],
+                            "minimum": 0
                           },
                           "latest_reading": {
                             "type": [
@@ -11212,6 +11259,7 @@
                           "stale_after_s",
                           "licence_id",
                           "licence_label",
+                          "distance_km",
                           "latest_reading",
                           "age_s",
                           "source_state"
@@ -11305,6 +11353,41 @@
           },
           "403": {
             "description": "The principal lacks project.view permission.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The organization is unavailable to this principal.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -20412,7 +20495,10 @@
                                     "type": "integer"
                                   },
                                   "licence_id": {
-                                    "type": "string"
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
                                   },
                                   "licence_label": {
                                     "type": "string"
@@ -32934,7 +33020,8 @@
                       "integer",
                       "null"
                     ],
-                    "exclusiveMinimum": 0
+                    "exclusiveMinimum": 0,
+                    "maximum": 2147483647
                   }
                 }
               }
@@ -33064,7 +33151,7 @@
             }
           },
           "403": {
-            "description": "The principal lacks sources.manage permission.",
+            "description": "The principal lacks sources.manage permission or Crowd is disabled by feature flag.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -33133,8 +33220,62 @@
               }
             }
           },
+          "409": {
+            "description": "The enabled Crowd pack requires these source roles.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "missing": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "rain_gauge",
+                          "api_station",
+                          "warnings",
+                          "met_forecast",
+                          "rail_station",
+                          "venue_listings",
+                          "bus_feed",
+                          "gtfs_static",
+                          "camera",
+                          "pi"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "missing"
+                  ]
+                }
+              }
+            }
+          },
           "422": {
-            "description": "The pack cannot be enabled or the request is invalid.",
+            "description": "The request is invalid.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -45027,7 +45168,10 @@
                       "type": "integer"
                     },
                     "licence_id": {
-                      "type": "string"
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "licence_label": {
                       "type": "string"
@@ -45051,7 +45195,10 @@
                       ]
                     },
                     "state": {
-                      "type": "object",
+                      "type": [
+                        "object",
+                        "null"
+                      ],
                       "properties": {
                         "state": {
                           "type": "string",
@@ -45588,7 +45735,10 @@
                             "type": "integer"
                           },
                           "licence_id": {
-                            "type": "string"
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "licence_label": {
                             "type": "string"
@@ -45612,7 +45762,10 @@
                             ]
                           },
                           "state": {
-                            "type": "object",
+                            "type": [
+                              "object",
+                              "null"
+                            ],
                             "properties": {
                               "state": {
                                 "type": "string",
@@ -46225,6 +46378,60 @@
                     "status",
                     "detail",
                     "instance"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The enabled Crowd pack requires these source roles.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    },
+                    "missing": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "rain_gauge",
+                          "api_station",
+                          "warnings",
+                          "met_forecast",
+                          "rail_station",
+                          "venue_listings",
+                          "bus_feed",
+                          "gtfs_static",
+                          "camera",
+                          "pi"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "missing"
                   ]
                 }
               }
