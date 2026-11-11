@@ -140,7 +140,7 @@ Every step reads before it writes, so a re-run changes nothing that is already r
 
 `./infra/wizards/production-pilot.sh` later reads both Resend domains' status and the webhook's status, with `RESEND_FULL_ACCESS_KEY` exported.
 
-The wizard touches no SES record: Resend's records sit under other names (`resend._domainkey.…` and its own return-path name), so both providers' records coexist until the teardown (#661). That ticket destroys `aws/` from its state, then deletes the directory, its CI steps, the SES DNS records and this paragraph.
+Besides the MX at `in.` and the DMARC record at `notices.`, the wizard leaves every SES record alone: Resend's records sit under other names (`resend._domainkey.…` and its own return-path name), so both providers' records coexist until the teardown (#661). That ticket destroys `aws/` from its state, then deletes the directory, its CI steps, the SES DNS records and this paragraph.
 
 ## Source jobs and buffered ingestion
 
