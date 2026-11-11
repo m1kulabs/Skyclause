@@ -19,15 +19,13 @@ import { sendCallNotices, settleCalls, type SenderDeps } from './send'
 // the minute tick never touches Postgres) that retries failed sends and settles calls, and Resend's delivery events
 // from `POST /resend/webhook` (#656).
 
-export type NoticesDeps = SenderDeps
-
 /** How far back the sweep looks for calls to settle: a settle that failed after a call's last send is retried. */
 const SETTLE_LOOKBACK_MS = 24 * 60 * 60_000
 
 /** How long after Resend made a notice's event its missing row is waited for; Resend retries after 5 s and 5 min. */
 const RETRY_UNMATCHED_MS = 10 * 60_000
 
-export function createNoticesPart(deps: NoticesDeps): WorkerPart {
+export function createNoticesPart(deps: SenderDeps): WorkerPart {
   const deliveryEvents = systemPrincipal('delivery-events')
   const sender = systemPrincipal('sender')
 

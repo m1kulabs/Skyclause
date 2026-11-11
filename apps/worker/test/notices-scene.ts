@@ -11,7 +11,8 @@ import { asLogin } from '@skyclause/db/test/harness/index'
 import type { EmailMessage } from '@skyclause/delivery'
 import { signedHeaders, webhookSecret } from '@skyclause/delivery/test/resend-double'
 import { createLocalJWKSet } from 'jose'
-import { createNoticesPart, type NoticesDeps } from '../src/notices'
+import { createNoticesPart } from '../src/notices'
+import type { SenderDeps } from '../src/notices/send'
 import { createServer, defineRegistry } from '../src/server'
 
 export const at = (iso: string) => new Date(iso)
@@ -137,7 +138,7 @@ export function mailbox(o: { fail?: () => boolean; delayMs?: number } = {}) {
 }
 
 /** The part on a mailbox and a clock the test moves, served by the worker with the test webhook secret. */
-export function senderPart(box: ReturnType<typeof mailbox> | null, extra: Partial<NoticesDeps> = {}) {
+export function senderPart(box: ReturnType<typeof mailbox> | null, extra: Partial<SenderDeps> = {}) {
   const clock = { now: at('2026-11-02T07:10:05Z') }
   const part = createNoticesPart({
     email: () => box?.transport ?? null,
