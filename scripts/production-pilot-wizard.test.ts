@@ -522,6 +522,27 @@ describe('infra/wizards/production-pilot.sh only reads', () => {
     expect(output).not.toContain('not verified')
   })
 
+  test('a webhook list it cannot read stops the run, naming the field and status, never printing the answer', () => {
+    // Resend's list carries each webhook's signing secret; this entry lacks the status the wizard reads.
+    const signingSecret = 'whsec_pilotListAnswer0123456789abcdefABCD'
+    const { result, output, evidenceContent } = runWizard({
+      input: allYes,
+      env: { RESEND_FULL_ACCESS_KEY: resendKey },
+      curl: production({
+        '*/webhooks?limit=100': json(
+          200,
+          resendWebhooks([{ ...resendWebhook({ signing_secret: signingSecret }), status: undefined }])
+        )
+      })
+    })
+
+    expect(result.status, output).not.toBe(0)
+    expect(output).toContain("Couldn't read")
+    expect(output).toContain('the HTTP 200 answer')
+    expect(output).not.toContain(signingSecret)
+    expect(evidenceContent).not.toContain(signingSecret)
+  })
+
   test('says so and reads nothing from Resend when no key is exported', () => {
     const { result, output, calls } = runWizard({ input: allYes })
 
@@ -582,6 +603,8 @@ describe('infra/wizards/production-pilot.sh evidence holds no credential', () =>
     ['a bearer token', 'Bearer abcdefghijklmno'],
     ['an API key', secretKey],
     ['an API key', 'skc_ab12cd34'],
+    ['an API key', 're_pilot_0123456789abcdef'], // gitleaks:allow -- a stand-in shaped like a Resend key.
+    ['a signing secret', 'whsec_pilotEvidence0123456789abcdefABCD'], // gitleaks:allow -- a stand-in secret.
     ['an email address', 'pilot-tester@example.org'],
     ['an email address', 'owner.call-1@skyclause.m1ku.tech'],
     ['an email address', 'pilot-tester%40example.org'],
@@ -704,7 +727,8 @@ describe('infra/wizards/production-pilot.sh reports what still waits, and every 
     })
 
     expect(result.status).toBe(1)
-    expect(output).toContain("Couldn't read int(data['confirmed']) from the answer: <html>maintenance</html>")
+    expect(output).toContain("Couldn't read int(data['confirmed']) from the HTTP 200 answer.")
+    expect(output).not.toContain('maintenance')
     expect(output).toContain('Stopped in stage 10/')
     expect(evidenceContent).not.toContain('Confirmed subscriber counts')
   })

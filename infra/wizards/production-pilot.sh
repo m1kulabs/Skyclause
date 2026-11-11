@@ -253,7 +253,8 @@ kinds = [
     ("a private key", r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
     ("a signed-URL parameter", r"(?i)[?&](?:x-goog-signature|x-goog-credential|x-amz-signature|x-amz-credential|x-amz-security-token|googleaccessid|signature)="),
     ("a bearer token", r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{9,}"),
-    ("an API key", r"ya29\.[A-Za-z0-9._-]+|sk[cgw]_[A-Za-z0-9_-]{5,}|AIza[0-9A-Za-z_-]{35}|(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{32,}|\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
+    ("an API key", r"ya29\.[A-Za-z0-9._-]+|sk[cgw]_[A-Za-z0-9_-]{5,}|AIza[0-9A-Za-z_-]{35}|(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{32,}|\b(?:AKIA|ASIA)[0-9A-Z]{16}\b|(?<![A-Za-z0-9_-])re_[A-Za-z0-9_-]{8,}"),
+    ("a signing secret", r"whsec_[A-Za-z0-9+/]+"),
     ("a subscriber link token", r"/subscribe/[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])"),
     ("an email address", r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"),
 ]
@@ -320,11 +321,12 @@ sys.exit(0 if body.get("type", "").endswith("/problems/not-built") and body.get(
 }
 
 # json_field EXPR prints EXPR evaluated over API_BODY's JSON as data. An answer it can't read fails with a warning
-# on stderr, which stops the wizard wherever the result is assigned.
+# on stderr naming EXPR and the HTTP status, never the answer, which can hold a secret (Resend's webhook list carries
+# each signing secret); it stops the wizard wherever the result is assigned.
 json_field() {
   local expr="$1"
   printf '%s' "$API_BODY" | python3 -c "import json, sys; data = json.load(sys.stdin); print($expr)" 2>/dev/null ||
-    { warn "Couldn't read $expr from the answer: $API_BODY" >&2; return 1; }
+    { warn "Couldn't read $expr from the HTTP $API_STATUS answer." >&2; return 1; }
 }
 
 # revoke_snippet prints the DevTools line that revokes only this run's API key, by the id its creation logged. A
