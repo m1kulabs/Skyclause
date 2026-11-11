@@ -262,7 +262,7 @@ export async function sweepHandledMessages(
   }
 }
 
-/** Every sweeper this job owns; other owners keep their own jobs. `audit_finding` (#132) has no table yet. */
+/** Every sweeper this job owns; other owners keep their own jobs. `audit_finding` (#132) rows are swept in #549. */
 export const SWEEPERS: Sweeper[] = [
   { name: 'subscribers', scope: 'org', run: sweepSubscribers },
   { name: 'frames', scope: 'org', run: sweepFrames },
