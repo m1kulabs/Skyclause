@@ -72,6 +72,7 @@ const MULTI: Array<[string, string, [string, string] | null]> = [
   ['embed.skyclause.m1ku.tech', '/favicon.ico', ['shared', '/favicon.ico']],
   ['docs.skyclause.m1ku.tech', '/manifest.webmanifest', ['shared', '/manifest.webmanifest']],
   ['mcp.skyclause.m1ku.tech', '/icons/icon-192.png', ['shared', '/icons/icon-192.png']],
+  ['skyclause.m1ku.tech', '/landing/stadium-night.jpg', ['shared', '/landing/stadium-night.jpg']],
   ['app.skyclause.m1ku.tech', '/_next/static/chunks/app.js', ['shared', '/_next/static/chunks/app.js']],
   [RUN_APP, '/', null],
   [RUN_APP, '/v1/projects', null],
