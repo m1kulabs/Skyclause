@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { expect, expectTypeOf, test } from 'vitest'
 import type { IndicatorDefinition } from '@skyclause/clauses'
+import { check } from '@skyclause/clauses'
 import { indicators, jpsRainIndicators, apimsIndicators } from '../src/indicators'
 
 const expected = [
@@ -33,14 +34,44 @@ test('installed Bun bundles the public subpath for browsers without server depen
   try {
     const entry = join(directory, 'entry.ts')
     const output = join(directory, 'browser.mjs')
-    writeFileSync(entry, "export { indicators, jpsRainIndicators } from '@skyclause/sources/indicators'\n")
+    writeFileSync(
+      entry,
+      "export { indicators, jpsRainIndicators, apimsIndicators } from '@skyclause/sources/indicators'\n"
+    )
     const code = execFileSync('bun', ['build', entry, '--target', 'browser'], { encoding: 'utf8' })
     expect(code).not.toMatch(/process|node:|worker|adapters|ADAPTER_USER_AGENT|\brequire\s*\(/)
     writeFileSync(output, code)
     const bundled = await import(/* @vite-ignore */ pathToFileURL(output).href)
     expect(bundled.indicators).toEqual([...expected, ...expectedApims])
     expect(bundled.jpsRainIndicators).toEqual(expected)
+    expect(bundled.apimsIndicators).toEqual(expectedApims)
   } finally {
     rmSync(directory, { recursive: true, force: true })
   }
+})
+
+test('the real APIMS int declarations accept integer conditions and reject mixed arithmetic', () => {
+  const sheet = (when: string) => ({
+    pack: 'sky' as const,
+    clauses: [
+      {
+        key: 'apims_type_contract',
+        name: 'APIMS type contract',
+        enabled: true,
+        scope: 'site' as const,
+        requires: apimsIndicators.map((indicator) => indicator.name),
+        when,
+        proposes: { mode: 'outdoor_limited' as const },
+        wording: { en: 'APIMS readings' }
+      }
+    ]
+  })
+  expect(check(sheet('site.api_max >= 100 && site.api_0600_min_last3_max >= 100'), apimsIndicators)).toMatchObject({
+    ok: true,
+    publishable: true,
+    issues: []
+  })
+  const invalid = check(sheet('site.api_max + 0.5 >= 100.5'), apimsIndicators)
+  expect(invalid.ok).toBe(false)
+  expect(invalid.issues.length).toBeGreaterThan(0)
 })
