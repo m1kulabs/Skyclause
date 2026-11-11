@@ -1,11 +1,16 @@
 import { expect, type Page } from '@playwright/test'
+import { pseudo, t } from '@skyclause/i18n'
 import type { CrawlRoute } from './routes'
 import type { Role } from './roles'
 import type { Finding } from './checks'
 import { expectZonedTimes } from '../harness/expect-zoned-times'
+import '../../features/public-chrome/catalogue'
 
 /** A share link is a credential but no session (#94). */
 export const hasSession = (role: Role) => role !== 'signed out' && role !== 'share-link reviewer'
+
+/** The copy as rendered: the pseudo project renders every string through `pseudo`. */
+const rendered = (value: string) => (process.env.I18N_PSEUDO === '1' ? pseudo(value) : value)
 
 /** The account gate denies everyone without a session, and guests outside Appearance (#96). */
 export function expectedStatus(route: CrawlRoute, role: Role) {
@@ -86,6 +91,25 @@ export async function visit(
     await expect(page.locator('form:has(#org-name)')).toHaveCount(0)
   }
   await expectZonedTimes(page)
+  const locale = route.path.startsWith('/ms/') ? 'ms' : 'en'
+  if (route.group === 'public') {
+    await expect(page.locator('html')).toHaveAttribute('lang', locale)
+    await expect(page.getByText(rendered(t('brand.non_affiliation', {}, locale)), { exact: true })).toBeVisible()
+    await expect(page.getByText(rendered(t('brand.not_safety_service', {}, locale)), { exact: true })).toBeVisible()
+  }
+  if (route.path === '/') {
+    // The landing carries DESIGN's copy-deck forms of both lines: the Proof footnote and the first FAQ answer, whose
+    // pane stays closed until its question is chosen.
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+    await expect(
+      page.getByText(
+        'Skyclause is not affiliated with or endorsed by APU, KPT, JPS, MET Malaysia, DOE, Prasarana or Rapid KL, or the stadium.'
+      )
+    ).toBeVisible()
+    await expect(
+      page.getByText('Skyclause is not a safety or emergency service. In an emergency, call 999.')
+    ).toBeAttached()
+  }
   const expected = expectedStatus(route, role)
   // Firefox revalidates a static page it has cached; 304 is its 200.
   const status = response?.status() === 304 ? 200 : response?.status()

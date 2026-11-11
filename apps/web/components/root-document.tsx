@@ -8,19 +8,28 @@ import { WebVitals } from '../features/quality/web-vitals'
 import { APPEARANCE_SCRIPT, DEFAULT_APPEARANCE, resolveAppearance, type Appearance } from '../lib/theme'
 import '../styles/globals.css'
 
+type Locale = 'en' | 'ms'
+
 export async function RootDocument({
   children,
   appearance = DEFAULT_APPEARANCE,
   preferences = DEFAULT_PREFERENCES,
   resolved = resolveAppearance(appearance),
+  colorScheme,
   routeGroup,
+  locale,
+  skipTarget = 'main-content',
   nonce
 }: {
   children: ReactNode
   appearance?: Appearance
   preferences?: Preferences
   resolved?: ReturnType<typeof resolveAppearance>
+  colorScheme?: 'light' | 'dark' | 'light dark'
   routeGroup?: RouteGroup
+  /** The public pages' route locale; other roots follow the stored language. */
+  locale?: Locale
+  skipTarget?: string
   /** The per-request CSP nonce for the inline appearance script. */
   nonce?: string
 }) {
@@ -29,9 +38,11 @@ export async function RootDocument({
 
   return (
     <html
-      lang={preferences.language}
+      lang={locale ?? preferences.language}
       className={resolved.className}
-      style={{ colorScheme: resolved.mode }}
+      style={{
+        colorScheme: colorScheme ?? (appearance.theme === 'system' ? 'light dark' : resolved.mode)
+      }}
       data-theme={appearance.theme}
       data-contrast={appearance.contrast}
       data-motion-preference={appearance.motion}
@@ -48,8 +59,8 @@ export async function RootDocument({
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: APPEARANCE_SCRIPT }} />
       </head>
       <body>
-        <a className="skip-link" href="#main-content">
-          {t('shell.skip_to_content')}
+        <a className="skip-link" href={`#${skipTarget}`}>
+          {t('shell.skip_to_content', {}, locale)}
         </a>
         <div id="main-content" tabIndex={-1}>
           {children}

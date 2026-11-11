@@ -10,13 +10,15 @@ import { RootDocument } from './root-document'
 interface Props {
   children: ReactNode
   routeGroup?: RouteGroup
+  locale?: 'en' | 'ms'
 }
 
-export async function RequestRootLayout({ children, routeGroup }: Props) {
+export async function RequestRootLayout({ children, routeGroup, locale }: Props) {
   // These roots set instant=false so request hints resolve before their document starts streaming.
   const requestHeaders = await headers()
   let preferences: PreferenceValues = DEFAULT_PREFERENCES
-  let appearance = DEFAULT_APPEARANCE
+  // Public pages follow the visitor's system colour scheme until stored preferences say otherwise.
+  let appearance = routeGroup === 'public' ? { ...DEFAULT_APPEARANCE, theme: 'system' as const } : DEFAULT_APPEARANCE
   const testOverride =
     process.env.APP_ENV === 'test' ? (await cookies()).get('skyclause-test-appearance')?.value : undefined
   if (testOverride) {
@@ -38,16 +40,19 @@ export async function RequestRootLayout({ children, routeGroup }: Props) {
       const stored = current?.user.preferences
       if (stored && typeof stored === 'object' && !Array.isArray(stored)) {
         const partial = Preferences.partial().safeParse(stored)
-        if (partial.success) preferences = Preferences.parse({ ...DEFAULT_PREFERENCES, ...partial.data })
+        if (partial.success) {
+          preferences = Preferences.parse({ ...DEFAULT_PREFERENCES, ...partial.data })
+          appearance = preferencesToAppearance(preferences)
+        }
       }
-      appearance = preferencesToAppearance(preferences)
     } catch {
       // Signed-out requests and unavailable sessions use the documented visitor defaults.
     }
   }
   const hint = (key: string) => requestHeaders.get(key)?.replaceAll('"', '')
+  const colorSchemeHint = hint('sec-ch-prefers-color-scheme')
   const resolved = resolveAppearance(appearance, {
-    colorScheme: hint('sec-ch-prefers-color-scheme'),
+    colorScheme: colorSchemeHint,
     contrast: hint('sec-ch-prefers-contrast'),
     motion: hint('sec-ch-prefers-reduced-motion')
   })
@@ -56,7 +61,12 @@ export async function RequestRootLayout({ children, routeGroup }: Props) {
       appearance={appearance}
       preferences={preferences}
       resolved={resolved}
+      colorScheme={
+        appearance.theme === 'system' && colorSchemeHint ? (resolved.mode === 'light' ? 'light' : 'dark') : undefined
+      }
       routeGroup={routeGroup}
+      locale={locale}
+      skipTarget={routeGroup === 'public' ? 'public-main' : 'main-content'}
       nonce={requestHeaders.get('x-nonce') ?? undefined}
     >
       {children}

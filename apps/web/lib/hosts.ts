@@ -76,8 +76,12 @@ const ROUTES: Array<{ group: string; surface: Surface | null; match: (path: stri
   // `routeRequest` answers null for it unless `planted`: with no page of its own, Next would match `/_test/x` to the
   // app's `/[org]/[project]`, whose notFound() answers 200 once the shell streams (#610). Null is the 404.
   { group: 'planted', surface: 'marketing', match: under('/_test', '/quality-planted') },
-  { group: '(marketing)', surface: 'marketing', match: (path) => path === '/' || under('/ms', '/legal')(path) },
-  { group: '(public)', surface: 'marketing', match: under('/status', '/p', '/c') },
+  {
+    group: '(marketing)',
+    surface: 'marketing',
+    match: (path) => path === '/' || (under('/ms')(path) && !under('/ms/legal')(path))
+  },
+  { group: '(public)', surface: 'marketing', match: under('/status', '/p', '/c', '/legal', '/ms/legal') },
   {
     group: '(auth)',
     surface: 'app',
@@ -124,5 +128,12 @@ export function proxyResponse(
   if (!target) return NextResponse.rewrite(new URL('/_not-found', request.url), init)
   if (target.pathname !== pathname)
     return NextResponse.rewrite(new URL(`${target.pathname}${search}`, request.url), init)
+  if (target.group === '(public)') {
+    // Keep the downstream headers `init` carries (the CSP nonce) and add the public locale and path.
+    const requestHeaders = new Headers(init?.request?.headers ?? request.headers)
+    requestHeaders.set('x-skyclause-locale', pathname.startsWith('/ms/legal') ? 'ms' : 'en')
+    requestHeaders.set('x-skyclause-public-path', pathname)
+    return NextResponse.next({ ...init, request: { ...init?.request, headers: requestHeaders } })
+  }
   return NextResponse.next(init)
 }
