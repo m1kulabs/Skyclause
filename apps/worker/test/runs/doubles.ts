@@ -1,11 +1,12 @@
 // #151 test doubles for the run orchestrator's ports (#79 §1): SnapshotSource and ShadowEvaluator (#133),
 // ModelResolver and modelFor (#206), BudgetGate (#181), and the AI SDK's own mock model, scripted per call. No test
 // calls a live model: every chain entry carries a key, which only the `modelFor` double resolves.
-import type { CheckedSheet, IndicatorSnapshot, Verdicts } from '@skyclause/clauses'
+import { canonicalHash, type CheckedSheet, type IndicatorSnapshot, type Verdicts } from '@skyclause/clauses'
 import type { BudgetGate, ModelEntry, SnapshotSource } from '@skyclause/contracts'
 import type { Tx } from '@skyclause/db'
 import { defaultSheet } from '@skyclause/db/test/bundles/scene'
-import { makeIndicatorSnapshot } from '@skyclause/db/test/factories/index'
+import { saveEvaluatorSnapshot } from '@skyclause/db'
+import { TEST_REGISTRY } from '../../../../packages/clauses/test/test-helpers'
 import { DESIGN_BODY, stormSnapshot, stormVerdicts, type RunScene } from '@skyclause/db/test/runs/scene'
 import { MockLanguageModelV4 } from 'ai/test'
 import type { RunPorts } from '../../src/runs'
@@ -94,18 +95,13 @@ export function doubles(
   const entry: ModelEntry = { provider: 'google', model: 'gemini-3.8-flash', keyId: o.keyId, declaredTier: 'paid' }
   const snapshots: SnapshotSource = {
     take: async (handle, q) => {
-      const snapshot = (o.snapshot ?? stormSnapshot)(q.projectId)
-      const row = await makeIndicatorSnapshot(handle as Tx, {
-        projectId: q.projectId,
-        pack: q.pack,
-        tEval: new Date(snapshot.tEval),
-        inputs: snapshot.inputs,
-        site: snapshot.site,
-        series: snapshot.series,
-        nights: snapshot.nights,
-        hash: snapshot.hash
-      })
-      return { snapshotId: q.persist ? row.id : null, snapshot }
+      const candidate = (o.snapshot ?? stormSnapshot)(q.projectId)
+      const registry = [...TEST_REGISTRY].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+      const { hash: _hash, ...original } = candidate
+      const body = { ...original, tEval: q.tEval, registryHash: canonicalHash(registry) }
+      const snapshot = { ...body, hash: canonicalHash(body) }
+      if (!q.persist) return { snapshotId: null, snapshot }
+      return saveEvaluatorSnapshot(handle as Tx, { snapshot, registry, windows: q.windows })
     }
   }
   const ports: RunPorts = {
