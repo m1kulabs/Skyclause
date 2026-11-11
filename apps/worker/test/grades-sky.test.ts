@@ -343,6 +343,50 @@ test('a version the call didn’t pin is never used, and a superseded call isn�
   expect(seen.checked.map((sheet) => sheet.clauses[0]!.key)).toContain('pinned')
 })
 
+test('grades a call on a sheet whose last window clause has a span in seconds and one in days', async () => {
+  const { projectId, secondsWindow, daysWindow } = await tx(async (t) => {
+    const { projectId } = await skyProject(t)
+    const inSeconds = await publishSheet(
+      t,
+      projectId,
+      'sky',
+      [{ ...STORM_CONFIRMED, span: { from: 'end-30m', to: 'end+90s' } }],
+      { live: false, n: 2 }
+    )
+    const inDays = await publishSheet(
+      t,
+      projectId,
+      'sky',
+      [{ ...STORM_CONFIRMED, span: { from: 'end-30m', to: 'end+1d' } }],
+      { live: false, n: 3 }
+    )
+    const secondsWindow = await windowAt(t, projectId, '2026-10-26 09:00', '2026-10-26 10:00')
+    const daysWindow = await windowAt(t, projectId, '2026-10-26 11:00', '2026-10-26 12:00')
+    await skyBundle(t, projectId, inSeconds, [{ windowId: secondsWindow.id, mode: 'commute_disruption' }])
+    await skyBundle(t, projectId, inDays, [{ windowId: daysWindow.id, mode: 'outdoor_limited' }])
+    return { projectId, secondsWindow, daysWindow }
+  })
+  const { engine, seen } = skyEngine(
+    new Map([
+      [secondsWindow.id, 'commute_disruption'],
+      [daysWindow.id, 'outdoor_limited']
+    ])
+  )
+
+  await gradeSky(engine, myt('2026-10-26 23:55'))
+  expect((await gradesOf(projectId)).map((g) => [g.window, g.outcome])).toEqual([[secondsWindow.id, 'hit']])
+
+  await gradeSky(engine, myt('2026-10-27 23:55'))
+  expect((await gradesOf(projectId)).map((g) => [g.window, g.outcome])).toEqual([
+    [secondsWindow.id, 'hit'],
+    [daysWindow.id, 'hit']
+  ])
+  expect(seen.evaluatedAt.filter((e) => [secondsWindow.id, daysWindow.id].includes(e.windowId))).toEqual([
+    { windowId: secondsWindow.id, tEval: '2026-10-26T02:01:30.000Z' },
+    { windowId: daysWindow.id, tEval: '2026-10-27T04:00:00.000Z' }
+  ])
+})
+
 test('without the reading history or the indicator registry the job refuses, naming what’s missing', async () => {
   const { engine } = skyEngine(new Map())
   await expect(gradeSky({ ...engine, history: null }, myt('2026-10-28 23:55'))).rejects.toThrow(/#133/)
