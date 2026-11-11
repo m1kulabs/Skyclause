@@ -81,6 +81,11 @@ variable "supplied_secrets" {
     ], name)])
     error_message = "supplied_secrets takes GOOGLE_CLIENT_SECRET, RESEND_RECEIVING_API_KEY, RESEND_SENDING_API_KEY, RESEND_WEBHOOK_SECRET, SKYCLAUSE_STAFF_EMAILS or TURNSTILE_SECRET_KEY."
   }
+
+  validation {
+    condition     = contains([0, 3], length(setintersection(var.supplied_secrets, toset(["RESEND_RECEIVING_API_KEY", "RESEND_SENDING_API_KEY", "RESEND_WEBHOOK_SECRET"]))))
+    error_message = "supplied_secrets takes the three Resend secrets together or none of them: RESEND_RECEIVING_API_KEY, RESEND_SENDING_API_KEY and RESEND_WEBHOOK_SECRET. A service given only some of its mail settings refuses to start."
+  }
 }
 
 variable "vapid_private_key_ready" {

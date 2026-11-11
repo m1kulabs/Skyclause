@@ -2,8 +2,14 @@
 # the image; adapter tickets add one `module "job"` block each below `migrate`.
 
 locals {
+  # The plain mail values: committed in app_config, delivered by group and only to a service (secrets.tf, "Mail"), never to a job.
+  sending_values   = ["EMAIL_FROM_AUTH", "EMAIL_FROM_NOTICES"]
+  receiving_values = ["INBOUND_DOMAIN"]
+  sending_env      = local.sending_ready ? { for name, value in var.app_config : name => value if contains(local.sending_values, name) } : {}
+  receiving_env    = local.receiving_ready ? { for name, value in var.app_config : name => value if contains(local.receiving_values, name) } : {}
+
   # TF rows of #79 §6; app_config never overrides them.
-  env = merge(var.app_config, {
+  env = merge({ for name, value in var.app_config : name => value if !contains(concat(local.sending_values, local.receiving_values), name) }, {
     APP_ENV                     = var.app_env
     HOST_MODE                   = var.host_mode
     MARKETING_ORIGIN            = local.origins.marketing
@@ -28,6 +34,9 @@ locals {
     VERTEX_LOCATION             = "global"
     LOG_LEVEL                   = var.log_level
   })
+
+  web_env    = merge(local.env, local.sending_env)
+  worker_env = merge(local.env, local.sending_env, local.receiving_env)
 }
 
 module "web" {
@@ -37,7 +46,7 @@ module "web" {
   region          = local.region
   name            = "web"
   service_account = local.sa.web
-  env             = merge(local.env, { OTEL_SERVICE_NAME = "web" })
+  env             = merge(local.web_env, { OTEL_SERVICE_NAME = "web" })
   secrets         = { for name in local.mounts.web : name => name }
   public          = true
   # SSE streams close after 5 minutes (#79 §5).
@@ -61,7 +70,7 @@ module "worker" {
   region          = local.region
   name            = "worker"
   service_account = local.sa.worker
-  env             = merge(local.env, { OTEL_SERVICE_NAME = "worker" })
+  env             = merge(local.worker_env, { OTEL_SERVICE_NAME = "worker" })
   secrets         = { for name in local.mounts.worker : name => name }
   public          = true
   # Matches the push subscriptions' 600 s acknowledgement deadline.

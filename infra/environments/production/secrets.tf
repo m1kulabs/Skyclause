@@ -38,6 +38,19 @@ locals {
   mounts = {
     for account, names in local.wanted_secrets : account => [for name in names : name if contains(local.ready_secrets, name)]
   }
+
+  # Mail (#653). A service has all of a mail group's settings or none (mail off), so the group's plain values
+  # (run.tf) reach a service only once the group's secrets are supplied: the sender addresses with the sending key,
+  # the inbound domain with the two receiving secrets.
+  sending_secrets   = ["RESEND_SENDING_API_KEY"]
+  receiving_secrets = ["RESEND_RECEIVING_API_KEY", "RESEND_WEBHOOK_SECRET"]
+  mail_secrets      = concat(local.sending_secrets, local.receiving_secrets)
+  sending_ready     = alltrue([for name in local.sending_secrets : contains(var.supplied_secrets, name)])
+  receiving_ready   = alltrue([for name in local.receiving_secrets : contains(var.supplied_secrets, name)])
+
+  # What a job on the worker account mounts: the worker's list without the mail secrets, since no job sends or receives
+  # mail and a mail secret without its plain values would leave the worker profile half set.
+  worker_job_mounts = [for name in local.mounts.worker : name if !contains(local.mail_secrets, name)]
 }
 
 resource "google_secret_manager_secret" "this" {
