@@ -1,6 +1,5 @@
-// #158: the email a call notice is handed to SES as (NTC-1, NTC-9, CAL-17): #152's template with the recipient's own
+// #158: the email a call notice is handed to Resend as (NTC-1, NTC-9, CAL-17): #152's template with the recipient's own
 // links, RFC 8058 one-click unsubscribe, and for a Crowd notice a Reply-To that #163's inbound route reads.
-import type { SendEmailCommand } from '@aws-sdk/client-sesv2'
 import { describe, expect, test } from 'vitest'
 import { callNoticeEmail } from '../src/call-notice'
 import { createEmailTransport } from '../src/email'
@@ -55,22 +54,27 @@ describe('callNoticeEmail', () => {
     )
   })
 
-  test('through the SES transport it keeps a plain-text part and the one-click headers', async () => {
-    const sent: SendEmailCommand[] = []
+  test('through the Resend transport it keeps its text, the one-click headers and the category tag', async () => {
+    const bodies: string[] = []
     const transport = createEmailTransport({
-      ses: { send: async (command) => (sent.push(command), { MessageId: 'ses-1' }) },
-      configurationSet: 'skyclause-production',
+      apiKey: 're_test_sending_only',
       fromAuth: 'Skyclause <sign-in@notices.skyclause.m1ku.tech>',
-      fromNotices: 'Skyclause <notices@notices.skyclause.m1ku.tech>'
+      fromNotices: 'Skyclause <notices@notices.skyclause.m1ku.tech>',
+      fetch: (async (_url: string | URL | Request, init?: RequestInit) => {
+        bodies.push(String(init?.body))
+        return Response.json({ id: '49a3999c-0ce1-4ea6-ab68-afcd6dc2e794' })
+      }) as typeof fetch
     })
-    expect(await transport.send(callNoticeEmail(callView(), base))).toEqual({ providerMessageId: 'ses-1' })
-    const raw = new TextDecoder().decode(sent[0]!.input.Content!.Raw!.Data)
-    expect(raw).toContain('From: Skyclause <notices@notices.skyclause.m1ku.tech>')
-    expect(raw).toContain(
-      'List-Unsubscribe: <https://app.skyclause.m1ku.tech/api/subscribe/unsubscribe-token/unsubscribe>'
-    )
-    expect(raw).toContain('List-Unsubscribe-Post: List-Unsubscribe=One-Click')
-    expect(raw).toContain('Content-Type: text/plain; charset=UTF-8')
-    expect(sent[0]!.input.EmailTags).toContainEqual({ Name: 'category', Value: 'call' })
+    const m = callNoticeEmail(callView(), base)
+    expect(await transport.send(m)).toEqual({ providerMessageId: '49a3999c-0ce1-4ea6-ab68-afcd6dc2e794' })
+    expect(JSON.parse(bodies[0]!)).toMatchObject({
+      from: 'Skyclause <notices@notices.skyclause.m1ku.tech>',
+      text: m.text,
+      headers: {
+        'List-Unsubscribe': '<https://app.skyclause.m1ku.tech/api/subscribe/unsubscribe-token/unsubscribe>',
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
+      },
+      tags: [{ name: 'category', value: 'call' }]
+    })
   })
 })

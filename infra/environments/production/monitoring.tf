@@ -1,6 +1,6 @@
-# Monitoring (#114): uptime checks and NFR-3's 99.5% SLOs with burn-rate pages, TRD's pipeline pages, a failed
-# job page and the platform on-call's channels. Every policy pages the on-call channels. The budget alert is
-# infra/bootstrap's, so this account needs no billing role.
+# Monitoring (#114): uptime checks and NFR-3's 99.5% SLOs with burn-rate pages, TRD's pipeline pages and a failed
+# job page. No policy has a notification channel: each opens an incident in the Cloud Monitoring console. The
+# budget alert is infra/bootstrap's, so this account needs no billing role.
 # Uptime checks hit /health, which never queries the database (D45), and run within the free 1 million
 # executions a month: three regions every minute is 129,600 per check.
 
@@ -80,8 +80,6 @@ locals {
       enabled = true
     }
   }
-
-  oncall_channel_names = [for channel in google_monitoring_notification_channel.oncall : channel.name]
 }
 
 # The address and the SLO's slo_id keep the name healthz from before #240 moved the path: renaming slo_id
@@ -146,10 +144,9 @@ resource "google_monitoring_alert_policy" "burn" {
     }
   }
 
-  display_name          = "Availability ${each.value.surface}: ${each.value.speed} burn"
-  combiner              = "OR"
-  severity              = "CRITICAL"
-  notification_channels = local.oncall_channel_names
+  display_name = "Availability ${each.value.surface}: ${each.value.speed} burn"
+  combiner     = "OR"
+  severity     = "CRITICAL"
 
   conditions {
     display_name = "SLO burn rate above ${local.burns[each.value.speed].rate}"
@@ -169,10 +166,9 @@ resource "google_monitoring_alert_policy" "burn" {
 }
 
 resource "google_monitoring_alert_policy" "job_failed" {
-  display_name          = "A Cloud Run job execution failed"
-  combiner              = "OR"
-  severity              = "ERROR"
-  notification_channels = local.oncall_channel_names
+  display_name = "A Cloud Run job execution failed"
+  combiner     = "OR"
+  severity     = "ERROR"
 
   conditions {
     display_name = "Failed executions per job"
@@ -201,11 +197,10 @@ resource "google_monitoring_alert_policy" "job_failed" {
 resource "google_monitoring_alert_policy" "pipeline" {
   for_each = local.pipeline
 
-  display_name          = each.value.title
-  enabled               = each.value.enabled
-  combiner              = "OR"
-  severity              = "CRITICAL"
-  notification_channels = local.oncall_channel_names
+  display_name = each.value.title
+  enabled      = each.value.enabled
+  combiner     = "OR"
+  severity     = "CRITICAL"
 
   conditions {
     display_name = each.value.title
@@ -222,53 +217,5 @@ resource "google_monitoring_alert_policy" "pipeline" {
   documentation {
     mime_type = "text/markdown"
     content   = each.value.enabled ? each.value.target : "${each.value.target} Starts disabled; waits on ${each.value.waits}"
-  }
-}
-
-# The platform on-call's contacts never enter git (#114): infra/wizards/oncall-contacts.sh stores them here as
-# {"primary": {"email", "sms"}, "secondary": {"email", "sms"}}. Reading the secret puts them in this state file,
-# which sits in the private state bucket. An SMS channel pages only after the wizard has verified its number.
-resource "google_secret_manager_secret" "oncall_contacts" {
-  secret_id = "ONCALL_CONTACTS"
-
-  replication {
-    user_managed {
-      replicas {
-        location = local.region
-      }
-    }
-  }
-}
-
-data "google_secret_manager_secret_version" "oncall_contacts" {
-  count = var.oncall_contacts_ready ? 1 : 0
-
-  secret = google_secret_manager_secret.oncall_contacts.id
-}
-
-locals {
-  oncall = var.oncall_contacts_ready ? jsondecode(data.google_secret_manager_secret_version.oncall_contacts[0].secret_data) : {}
-}
-
-resource "google_monitoring_notification_channel" "oncall" {
-  # Fixed keys: the contacts are sensitive, so they can't name the instances.
-  for_each = var.oncall_contacts_ready ? toset(["primary email", "primary sms", "secondary email", "secondary sms"]) : toset([])
-
-  display_name = "On-call ${each.key}"
-  type         = split(" ", each.key)[1]
-  labels = split(" ", each.key)[1] == "email" ? {
-    email_address = local.oncall[split(" ", each.key)[0]].email
-    } : {
-    number = local.oncall[split(" ", each.key)[0]].sms
-  }
-
-  lifecycle {
-    precondition {
-      condition = (
-        can(regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", local.oncall[split(" ", each.key)[0]].email)) &&
-        can(regex("^\\+[1-9][0-9]{7,14}$", local.oncall[split(" ", each.key)[0]].sms))
-      )
-      error_message = "ONCALL_CONTACTS needs an email address and an E.164 phone number for primary and secondary."
-    }
   }
 }
