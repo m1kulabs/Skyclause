@@ -224,6 +224,14 @@ describe('proxy.ts', () => {
     const terms = run('https://skyclause.m1ku.tech/legal/terms')
     expect(terms.headers.get('x-middleware-request-x-skyclause-public-path')).toBe('/legal/terms')
 
+    // The public locale is added to the downstream headers `securityHeaders` passes, never in place of its nonce.
+    const nonced = proxyResponse(new NextRequest('https://skyclause.m1ku.tech/legal/privacy'), multi, {
+      request: { headers: new Headers({ 'x-nonce': 'abc', 'content-security-policy': "script-src 'nonce-abc'" }) }
+    })
+    expect(nonced.headers.get('x-middleware-request-x-nonce')).toBe('abc')
+    expect(nonced.headers.get('x-middleware-request-content-security-policy')).toBe("script-src 'nonce-abc'")
+    expect(nonced.headers.get('x-middleware-request-x-skyclause-locale')).toBe('en')
+
     // Cookies stay host-only: the proxy never writes one, and every rewrite stays on the request's own host.
     for (const response of [embed, unknown, passed]) expect(response.headers.get('set-cookie')).toBeNull()
     for (const response of [embed, unknown]) {
