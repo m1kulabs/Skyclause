@@ -1,10 +1,24 @@
 import { type SourceAdapter, type SourceKind, type PollContext } from '@skyclause/sources'
-import { currentSlotBody, runSourceSlot } from './slots'
+import { currentSlotBody, runSourceSlot, runLatestSlot, readCurrentSlotCapture } from './slots'
 import { executeAdapter } from './execute'
+import { runGroupedBackfillOnce } from './grouped-backfill'
 import { runBackfillOnce } from './backfill'
 import { createPollContext } from './http'
-import { activePeriods, readSourcePlan, refreshSourcePlan, type SourcePlan, type PlannedSource } from './plan'
-import { reserveSourceResult, ResultReference, resultPath } from './pubsub'
+import {
+  activePeriods,
+  readSourcePlan,
+  refreshSourcePlan,
+  type SourcePlan,
+  type PlannedSource,
+  type PlannedBackfillGroup
+} from './plan'
+import {
+  reserveGroupedSourceResults,
+  reserveSourceResult,
+  reserveLatestSlotResult,
+  ResultReference,
+  resultPath
+} from './pubsub'
 import { receiptPath } from './ingest'
 import { adapterStorage, decodeObject } from './storage'
 import type { SourceClock, SourceExecutionResult, SourceObjectStore } from './types'
@@ -54,6 +68,51 @@ export function createSourceJobs(ports: SourceJobPorts) {
         clock: ports.clock,
         requestId: ports.id
       })
+  const groupedBackfill = (
+    adapter: SourceAdapter<unknown>,
+    group: PlannedBackfillGroup,
+    plan: SourcePlan,
+    scheduledAt: string | null
+  ) =>
+    runGroupedBackfillOnce(
+      adapter,
+      group,
+      plan.sources.filter((e) => group.sourceIds.includes(e.source.id)).map((e) => e.source),
+      {
+        store: ports.store,
+        clock: ports.clock,
+        id: ports.id,
+        contextFactory: contextFactory(adapter, plan),
+        publish: ports.publish,
+        scheduledAt,
+        admitGroup: (claim) => reserveGroupedSourceResults(ports.store, claim, ports.clock.now()),
+        acknowledged: async (operationId) => {
+          const saved = await ports.store.read(receiptPath(operationId))
+          if (!saved) return false
+          const ref = ResultReference.parse(decodeObject(saved.body))
+          if (
+            ref.operation_id !== operationId ||
+            ref.kind !== adapter.kind ||
+            ref.object_path !== resultPath(adapter.kind, operationId)
+          )
+            throw new Error('Invalid grouped backfill receipt')
+          return true
+        }
+      }
+    )
+  const latest = (
+    adapter: SourceAdapter<unknown>,
+    sources: PlannedSource['source'][],
+    plan: Pick<SourcePlan, 'periods'>,
+    scheduledAt: string | null
+  ) =>
+    runLatestSlot(adapter, sources, {
+      ...ports,
+      scheduledAt,
+      contextFactory: (window) => contextFactory(adapter, plan, window),
+      reserve: (operationId, recovery) =>
+        reserveLatestSlotResult(ports.store, operationId, adapter.kind, ports.clock.now(), recovery)
+    })
   const backfillWithCapture = async (
     entry: PlannedSource,
     plan: Pick<SourcePlan, 'periods'>,
@@ -61,6 +120,17 @@ export function createSourceJobs(ports: SourceJobPorts) {
     completed?: (result: SourceExecutionResult) => void
   ) => {
     const adapter = adapterFor(entry.source.kind)
+    if (adapter.groupedBackfill) {
+      // A tenant event records intent only; global membership comes from the next authoritative plan.
+      const saved = await ports.store.read('control/plan.json')
+      if (!saved) return 'running' as const
+      const authoritative = await readSourcePlan(ports.store)
+      if (authoritative.version !== 2) return 'running' as const
+      const group = authoritative.backfillGroups.find(
+        (g) => g.kind === adapter.kind && g.sourceIds.includes(entry.source.id)
+      )
+      return group ? groupedBackfill(adapter, group, authoritative, scheduledAt) : ('running' as const)
+    }
     return runBackfillOnce(adapter, entry.source, {
       store: ports.store,
       clock: ports.clock,
@@ -93,7 +163,14 @@ export function createSourceJobs(ports: SourceJobPorts) {
       const plan = await readSourcePlan(ports.store),
         entries = plan.sources.filter((s) => s.source.kind === kind)
       const ready: PlannedSource[] = []
-      for (const entry of entries) {
+      if (adapter.groupedBackfill) {
+        if (plan.version !== 2) throw new Error('Grouped backfill requires an authoritative v2 source plan')
+        for (const group of plan.backfillGroups.filter((g) => g.kind === adapter.kind))
+          await groupedBackfill(adapter, group, plan, scheduledAt)
+        // History never removes a station from normal all-bound latest polling.
+        ready.push(...entries)
+      }
+      for (const entry of adapter.groupedBackfill ? [] : entries) {
         let freshCapture = false
         const state = await backfillWithCapture(
           entry,
@@ -127,7 +204,7 @@ export function createSourceJobs(ports: SourceJobPorts) {
         })
         return
       }
-      if (adapter.latestSlot) {
+      if (adapter.latestSlot && adapter.batch === 'per_source') {
         let requests = 0
         for (const entry of ready)
           requests += await runSourceSlot(adapter, entry.source, {
@@ -141,6 +218,21 @@ export function createSourceJobs(ports: SourceJobPorts) {
           deferred_sources: entries.length - ready.length,
           requests,
           scheduled_at: scheduledAt
+        })
+        return
+      }
+      if (adapter.latestSlot) {
+        const outcome = await latest(
+          adapter,
+          ready.map((entry) => entry.source),
+          plan,
+          scheduledAt
+        )
+        ports.log('source.slot.complete', {
+          adapter: kind,
+          state: outcome.state,
+          scheduled_at: scheduledAt,
+          ...(outcome.state === 'not-covered' ? { source_ids: outcome.sourceIds.join(',') } : {})
         })
         return
       }
@@ -174,9 +266,23 @@ export function createSourceJobs(ports: SourceJobPorts) {
     async catalogueSync(): Promise<void> {
       let count = 0
       for (const adapter of ports.adapters)
-        if (adapter.discover) {
+        if (adapter.latestSlot?.discover || adapter.discover) {
           // Discovery must finish before the transaction; a provider error preserves the catalogue.
-          const entries = await adapter.discover()
+          let entries
+          if (adapter.latestSlot?.discover) {
+            const plan = await readSourcePlan(ports.store)
+            const sources = plan.sources.filter((entry) => entry.source.kind === adapter.kind)
+            if (!sources.length) await latest(adapter, [], plan, null)
+            const capture = await readCurrentSlotCapture(
+              ports.store,
+              adapter.kind,
+              adapter.latestSlot.seconds,
+              ports.clock.now()
+            )
+            if (!capture?.body)
+              throw new Error(`Catalogue unavailable: no successful current-slot capture for ${adapter.kind}`)
+            entries = adapter.latestSlot.discover(capture.body)
+          } else entries = await adapter.discover!()
           await ports.database.catalogue(adapter, entries)
           count++
         }
@@ -201,9 +307,22 @@ export function createSourceJobs(ports: SourceJobPorts) {
               ? [...entries].sort((a, b) => a.source.id.localeCompare(b.source.id)).slice(0, 1)
               : entries
           if (adapter.latestSlot) {
-            const source = probe[0]!.source
-            const body = await currentSlotBody(adapter, source, ports.store, ports.clock)
-            adapter.parse(adapter.latestSlot.decode(body), [source])
+            const body =
+              adapter.batch === 'per_source'
+                ? await currentSlotBody(adapter, probe[0]!.source, ports.store, ports.clock)
+                : (
+                    await readCurrentSlotCapture(
+                      ports.store,
+                      adapter.kind,
+                      adapter.latestSlot.seconds,
+                      ports.clock.now()
+                    )
+                  )?.body
+            if (!body) throw new Error('Contract probe unavailable: no successful current-slot capture')
+            adapter.parse(
+              adapter.latestSlot.decode(body),
+              probe.map((entry) => entry.source)
+            )
             ports.log('source.contract.passed', { adapter: adapter.kind })
             continue
           }

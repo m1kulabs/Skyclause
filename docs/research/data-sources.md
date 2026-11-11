@@ -159,7 +159,7 @@ These feeds suit "connecting devices with useful actions": thresholds and warnin
 ### DOE APIMS air pollutant index
 
 - **Offers:** the hourly official Air Pollutant Index for 68 continuous monitoring stations, published on the public [APIMS portal][apims_portal] (no login).
-- **Access:** undocumented JSON endpoints behind the portal: `https://eqms.doe.gov.my/api3/publicportalapims/mapcaqm` (all stations, latest reading) and `.../apitablehourly?stateid=<n>&datetime=<epoch>` (hourly history), as used in the open-source [aircheck][aircheck] script. No key. CORS allows only `https://eqmp.doe.gov.my`, so fetch server-side. I found no published rate limit or terms.
+- **Access:** undocumented JSON endpoints behind the portal: `https://eqms.doe.gov.my/api3/publicportalapims/mapcaqm` (all stations, latest reading) and `.../apitablehourly?stateid=<n>&datetime=YYYY-MM-DDTHH:00:00` (hourly history, offset-less MYT hour; see the [real captures](../sources/eqms.doe.gov.my/apitablehourly.md)), as used in the open-source [aircheck][aircheck] script. No key. CORS allows only `https://eqmp.doe.gov.my`, so fetch server-side. I found no published rate limit or terms.
 - **Terms:** not found. The endpoint is undocumented and could change without notice (inference).
 - **Updates and sensor:** hourly. Sensor feed: yes (DOE monitoring stations).
 - **Live, 10:00 MYT readings:** `{data: [{STATION_ID, STATION_LOCATION, STATE_NAME, LATITUDE, LONGITUDE, API, PARAM_SYMBOL, CLASS, RECORD_DT}, ...]}` with 68 stations. The nearest to APU was `CA16W` Cheras, KL (about 5.9 km), at API 62 "Moderate"; Petaling Jaya and Putrajaya were 13–16 km away.
