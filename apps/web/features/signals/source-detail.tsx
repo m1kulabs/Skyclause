@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import type { Project, ProjectSource, ProjectStrip, SourcePoll, SourceReading } from './operations'
+import type { EvaluatedSource, Project, ProjectStrip, SourcePoll, SourceReading } from './operations'
 import type { StripInput } from '@skyclause/elements'
 import { formatDateTime, formatLocalDateKey, formatNumber, formatTime } from '@skyclause/i18n/format'
 import { WindowStrip } from '../data-components/window-strip'
@@ -125,7 +125,7 @@ function latestErrorAt(polls: readonly SourcePoll[]): string | null {
 
 export interface SourceDetailProps {
   project: Project
-  source: ProjectSource
+  source: EvaluatedSource
   strip: ProjectStrip
   readings: readonly SourceReading[]
   polls: readonly SourcePoll[]

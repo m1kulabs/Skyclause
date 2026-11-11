@@ -6,7 +6,7 @@ export function StadiumDrift() {
       <input type="checkbox" id="drift-pause" name="landing-drift-pause" className="landing-drift-input" />
       <div style={{ overflow: 'hidden' }}>
         <img
-          src="https://commons.wikimedia.org/wiki/Special:FilePath/Bukit_Jalil_National_Stadium_at_night.jpg?width=800"
+          src="/landing/stadium-night.jpg"
           alt="Bukit Jalil National Stadium at night"
           width={800}
           height={1000}

@@ -20,14 +20,14 @@ import {
   type AlertSubject,
   type Tx
 } from '@skyclause/db'
-import { renderApproverAlert, SesError, type ApproverAlert, type RenderedAlert } from '@skyclause/delivery'
+import { EmailSendError, renderApproverAlert, type ApproverAlert, type RenderedAlert } from '@skyclause/delivery'
 import { eq } from 'drizzle-orm'
 import type { ScheduleTask } from '../bundles/cloud-tasks'
 import { log } from '../server'
 
 // #155: how an approver alert leaves. The caller's transaction queues `notice` rows and `prepare`s them (reads and
-// renders); after it commits, `post` calls the push service and SES with no transaction open, and `record` writes what
-// they answered: the notice's status, `bundle_alert` rows (CAL-10), gone subscriptions and `approver_alerted`.
+// renders); after it commits, `post` calls the push service and Resend with no transaction open, and `record` writes
+// what they answered: the notice's status, `bundle_alert` rows (CAL-10), gone subscriptions and `approver_alerted`.
 
 /** #103's rota lookups (names only in #79 §1): account IDs, Approver or above. */
 export type OnDuty = (tx: TxHandle, q: { projectId: string; at: Date }) => Promise<string[]>
@@ -223,15 +223,10 @@ function firstFiredInput(shadow: unknown): Extract<ApproverAlert, { kind: 'needs
   return { name: input.name, value: input.value, unit: input.unit ?? '', ageS: input.ageS ?? null }
 }
 
-/** A 4xx from SES other than throttling (a D48 sandbox rejection, say) will fail again: the notice ends `failed`. */
-const permanent = (error: unknown) =>
-  error instanceof SesError &&
-  error.status !== null &&
-  error.status >= 400 &&
-  error.status < 500 &&
-  error.status !== 429
+/** A refusal the transport says will fail again (an unverified sending domain, say): the notice ends `failed`. */
+const permanent = (error: unknown) => error instanceof EmailSendError && !error.retryable
 
-/** Calls the push service and SES; no transaction is open. */
+/** Calls the push service and the email provider; no transaction is open. */
 export async function post(deps: AlertsDeps, outgoing: Outgoing[]): Promise<Answer[]> {
   const answers: Answer[] = []
   for (const out of outgoing) {

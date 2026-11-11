@@ -17,6 +17,7 @@ import {
   subscriber
 } from '../schema'
 import type { RetentionBuckets } from './buckets'
+import { sweepEvaluatorCoordination } from '../evaluator/transitions'
 
 const DAY_MS = 24 * 60 * 60 * 1_000
 /** NFR-14's subscriber grace, camera frame ceiling and domain event window; handled message marks use one day. */
@@ -231,7 +232,11 @@ export async function sweepDomainEvents(
   }
 }
 
-/** `handled_message` marks for SES IDs more than one day old. */
+/**
+ * `handled_message` marks (Resend received-email IDs, and the sources' request and poll keys) more than one day old.
+ * Inbound mail relies on that day: `packages/delivery/src/inbound.ts` acknowledges unread any email received over 23
+ * hours ago.
+ */
 export async function sweepHandledMessages(
   tx: Tx<SystemPrincipal>,
   q: { orgId: string | null; now: Date }
@@ -264,6 +269,7 @@ export async function sweepHandledMessages(
 
 /** Every sweeper this job owns; other owners keep their own jobs. `audit_finding` (#132) has its table (migration 0025); #549 adds its sweep. */
 export const SWEEPERS: Sweeper[] = [
+  { name: 'evaluator-coordination', scope: 'global', run: (tx, q) => sweepEvaluatorCoordination(tx, q.now) },
   { name: 'subscribers', scope: 'org', run: sweepSubscribers },
   { name: 'frames', scope: 'org', run: sweepFrames },
   { name: 'export-files', scope: 'org', unscoped: true, run: sweepExportFiles },

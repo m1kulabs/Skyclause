@@ -24,7 +24,8 @@ export const poll = pgTable(
     message: text('message'),
     purpose: text('purpose').notNull().default('poll'),
     bodySha256: text('body_sha256'),
-    apiFamily: text('api_family')
+    apiFamily: text('api_family'),
+    receivedAt: instant('received_at')
   },
   (self) => [
     primaryKey({ columns: [self.id, self.startedAt] }),

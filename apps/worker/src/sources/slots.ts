@@ -1,15 +1,32 @@
 import { z } from 'zod'
-import { SchemaError, type Source, type SourceAdapter } from '@skyclause/sources'
-import { executeAdapter, type SourceContextFactory } from './execute'
+import { SchemaError, SourceKind, type Source, type SourceAdapter } from '@skyclause/sources'
+import { executeAdapter, executeSourceStep, type SourceContextFactory } from './execute'
+import { sourceError } from './http'
 import { parseSourceResult, receiptPath } from './ingest'
-import { reserveSourceResult, ResultReference, resultPath, sha256 } from './pubsub'
+import { reserveSourceResult, ResultReference, resultPath, sha256, LatestSlotRecovery } from './pubsub'
 import { decodeObject, encodeObject, hasCode, saveSourceResult } from './storage'
-import type { SourceClock, SourceExecutionResult, SourceObjectStore } from './types'
+import type { RequestCapture, SourceClock, SourceExecutionResult, SourceObjectStore } from './types'
 
 const Claim = z.strictObject({
   operationId: z.uuid(),
   scheduledAt: z.iso.datetime().nullable()
 })
+/** Both source and feed slots use permanent, create-only admission. No lease takeover may fetch. */
+async function admitSlot<T>(store: SourceObjectStore, path: string, create: () => T, parse: (body: Uint8Array) => T) {
+  let saved = await store.read(path)
+  if (!saved) {
+    const body = encodeObject(create())
+    try {
+      const generation = await store.write(path, body, '0')
+      return { claim: parse(body), generation, won: true }
+    } catch (error) {
+      if (!hasCode(error, 412)) throw error
+      saved = await store.read(path)
+    }
+  }
+  if (!saved) throw new Error('Source slot claim disappeared')
+  return { claim: parse(saved.body), generation: saved.generation, won: false }
+}
 function slotFor(adapter: SourceAdapter<unknown>, source: Source, now: Date) {
   const seconds = adapter.latestSlot?.seconds
   if (adapter.batch !== 'per_source' || !seconds || !Number.isSafeInteger(seconds) || seconds <= 0)
@@ -79,22 +96,12 @@ export async function runSourceSlot(
   }
 ): Promise<number> {
   const slot = slotFor(adapter, source, ports.clock.now())
-  let claim: z.infer<typeof Claim>,
-    won = false
-  const existing = await ports.store.read(slot.path)
-  if (existing) claim = Claim.parse(decodeObject(existing.body))
-  else {
-    claim = { operationId: ports.id(), scheduledAt: ports.scheduledAt }
-    try {
-      await ports.store.write(slot.path, encodeObject(claim), '0')
-      won = true
-    } catch (error) {
-      if (!hasCode(error, 412)) throw error
-      const saved = await ports.store.read(slot.path)
-      if (!saved) throw new Error('Source slot claim disappeared')
-      claim = Claim.parse(decodeObject(saved.body))
-    }
-  }
+  const { claim, won } = await admitSlot(
+    ports.store,
+    slot.path,
+    () => ({ operationId: ports.id(), scheduledAt: ports.scheduledAt }),
+    (body) => Claim.parse(decodeObject(body))
+  )
   if (won) {
     await reserveSourceResult(ports.store, claim.operationId, adapter.kind, ports.clock.now())
     const result = await executeAdapter(adapter, [source], ports.contextFactory(slot), {
@@ -195,4 +202,286 @@ export async function currentSlotBody(
   )
     throw new SchemaError('Contract probe unavailable: no successful current-slot capture')
   return request.body
+}
+
+export type SlotCapture =
+  { purpose: 'poll'; result: SourceExecutionResult } | { purpose: 'discovery'; request: RequestCapture }
+export type LatestSlotResult =
+  | { state: 'complete'; capture: SlotCapture }
+  | { state: 'not-covered'; sourceIds: string[] }
+  | { state: 'running' | 'lost' }
+export interface LatestSlotPorts {
+  store: SourceObjectStore
+  clock: SourceClock
+  id(): string
+  scheduledAt: string | null
+  contextFactory(window: { start: number; end: number }): SourceContextFactory
+  publish(result: SourceExecutionResult): Promise<void>
+  reserve(operationId: string, recovery: LatestSlotRecovery): Promise<void>
+}
+const LatestClaim = Claim.extend({
+  purpose: z.enum(['poll', 'discovery']),
+  sourceIds: z.array(z.uuid()),
+  captureDeadline: z.number().finite(),
+  lost: z.boolean()
+})
+type LatestClaim = z.infer<typeof LatestClaim>
+const DiscoveryCapture = z.strictObject({
+  operationId: z.uuid(),
+  kind: SourceKind,
+  purpose: z.literal('discovery'),
+  request: z.strictObject({
+    requestId: z.uuid(),
+    sourceIds: z.array(z.uuid()).length(0),
+    url: z.url().nullable(),
+    startedAt: z.iso.datetime(),
+    admissionStartedAt: z.iso.datetime(),
+    admissionMs: z.number().int().nonnegative(),
+    transportStartedAt: z.iso.datetime().nullable(),
+    httpStatus: z.number().int().min(100).max(599).nullable(),
+    latencyMs: z.number().int().nonnegative(),
+    body: z.string().nullable(),
+    bodySha256: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .nullable(),
+    error: z
+      .strictObject({ type: z.enum(['http', 'timeout', 'network', 'schema', 'rate_limited']), message: z.string() })
+      .nullable()
+  })
+})
+function latestSlotFor(kind: SourceKind, seconds: number, now: Date) {
+  SourceKind.parse(kind)
+  if (!Number.isSafeInteger(seconds) || seconds <= 0 || !Number.isFinite(now.getTime()))
+    throw new SchemaError('Source slots require a positive interval and valid clock')
+  const start = Math.floor(now.getTime() / (seconds * 1000)) * seconds * 1000
+  return { start, end: start + seconds * 1000, path: `control/latest-slots/${kind}/${start}.json` }
+}
+function parseLatestClaim(body: Uint8Array): LatestClaim {
+  const claim = LatestClaim.parse(decodeObject(body))
+  if (
+    new Set(claim.sourceIds).size !== claim.sourceIds.length ||
+    claim.sourceIds.some((id) => id !== id.toLowerCase()) ||
+    (claim.purpose === 'poll') !== claim.sourceIds.length > 0
+  )
+    throw new Error('Invalid latest slot cohort')
+  return claim
+}
+const discoveryPath = (kind: SourceKind, operationId: string) =>
+  `control/discovery-captures/${kind}/${operationId}.json`
+async function savedLatestCapture(
+  store: SourceObjectStore,
+  kind: SourceKind,
+  slot: ReturnType<typeof latestSlotFor>,
+  claim: LatestClaim
+): Promise<SlotCapture | null> {
+  let capture: SlotCapture
+  if (claim.purpose === 'poll') {
+    const saved = await store.read(resultPath(kind, claim.operationId))
+    if (!saved) return null
+    const result = parseSourceResult(decodeObject(saved.body))
+    if (
+      result.operationId !== claim.operationId ||
+      result.kind !== kind ||
+      result.purpose !== 'poll' ||
+      result.scheduledAt !== claim.scheduledAt ||
+      result.requests.length !== 1 ||
+      result.polls.length !== claim.sourceIds.length ||
+      JSON.stringify(result.requests[0]!.sourceIds) !== JSON.stringify(claim.sourceIds)
+    )
+      throw new Error('Invalid latest slot result identity')
+    const receipt = await store.read(receiptPath(claim.operationId))
+    if (receipt) {
+      const ref = ResultReference.parse(decodeObject(receipt.body))
+      if (
+        ref.operation_id !== claim.operationId ||
+        ref.kind !== kind ||
+        ref.object_path !== resultPath(kind, claim.operationId) ||
+        ref.sha256 !== sha256(saved.body)
+      )
+        throw new Error('Invalid latest slot receipt')
+    }
+    capture = { purpose: 'poll', result }
+  } else {
+    const saved = await store.read(discoveryPath(kind, claim.operationId))
+    if (!saved) return null
+    const value = DiscoveryCapture.parse(decodeObject(saved.body))
+    if (value.operationId !== claim.operationId || value.kind !== kind)
+      throw new Error('Invalid discovery capture identity')
+    const request = value.request,
+      body = request.body === null ? null : Buffer.from(request.body, 'base64')
+    if (
+      body
+        ? body.toString('base64') !== request.body ||
+          sha256(body) !== request.bodySha256 ||
+          request.httpStatus === null ||
+          request.httpStatus < 200 ||
+          request.httpStatus >= 300
+        : request.bodySha256 !== null
+    )
+      throw new Error('Invalid discovery body hash or status')
+    if (request.httpStatus !== null && (request.url === null || request.transportStartedAt === null))
+      throw new Error('Invalid discovery HTTP metadata')
+    capture = { purpose: 'discovery', request: { ...request, body } }
+  }
+  const request = capture.purpose === 'poll' ? capture.result.requests[0]! : capture.request
+  if (request.transportStartedAt) {
+    if (
+      request.startedAt !== request.transportStartedAt ||
+      Date.parse(request.transportStartedAt) < slot.start ||
+      Date.parse(request.transportStartedAt) >= slot.end ||
+      (request.admissionStartedAt && Date.parse(request.admissionStartedAt) > Date.parse(request.transportStartedAt))
+    )
+      throw new Error('Invalid latest slot transport time')
+  } else if (request.httpStatus !== null || request.body !== null || request.error === null)
+    throw new Error('Invalid latest slot transport metadata')
+  return capture
+}
+
+/** One create-only admission owns the frozen feed cohort, including discovery and ambiguous death. */
+export async function runLatestSlot<Raw>(
+  adapter: SourceAdapter<Raw>,
+  sources: Source[],
+  ports: LatestSlotPorts
+): Promise<LatestSlotResult> {
+  if (adapter.batch !== 'all_bound' || !adapter.latestSlot)
+    throw new SchemaError('Latest slots require an all-bound capability')
+  const members = [...new Map(sources.map((source) => [z.uuid().parse(source.id).toLowerCase(), source])).entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([id, source]) => ({ ...structuredClone(source), id }))
+  if (members.some((source) => source.kind !== adapter.kind)) throw new SchemaError('Source kind differs from adapter')
+  const slot = latestSlotFor(adapter.kind, adapter.latestSlot.seconds, ports.clock.now())
+  const { claim, won, generation } = await admitSlot(
+    ports.store,
+    slot.path,
+    (): LatestClaim =>
+      LatestClaim.parse({
+        operationId: ports.id(),
+        scheduledAt: ports.scheduledAt,
+        purpose: members.length ? 'poll' : 'discovery',
+        sourceIds: members.map((s) => s.id),
+        captureDeadline: ports.clock.now().getTime() + 60000,
+        lost: false
+      }),
+    parseLatestClaim
+  )
+  const uncovered = members.filter((s) => !claim.sourceIds.includes(s.id)).map((s) => s.id)
+  if (uncovered.length) return { state: 'not-covered', sourceIds: uncovered }
+  if (won) {
+    try {
+      const options = {
+        operationId: claim.operationId,
+        purpose: 'poll' as const,
+        scheduledAt: claim.scheduledAt,
+        clock: ports.clock,
+        requestId: ports.id
+      }
+      if (claim.purpose === 'poll') {
+        await ports.reserve(claim.operationId, {
+          type: 'latest',
+          slotStart: slot.start,
+          slotSeconds: adapter.latestSlot.seconds,
+          claimSha256: sha256(encodeObject({ ...claim, lost: false }))
+        })
+        const result = await executeSourceStep(
+          adapter,
+          members,
+          { key: 'latest', fetch: (ctx) => adapter.fetch(members, ctx) },
+          ports.contextFactory(slot),
+          options
+        )
+        await saveSourceResult(ports.store, resultPath(adapter.kind, claim.operationId), result)
+      } else {
+        const capture = ports.contextFactory(slot)([], options)
+        let failure: unknown
+        try {
+          await adapter.fetch([], capture.ctx)
+        } catch (error) {
+          failure = error
+        } finally {
+          await capture.closeAndDrain()
+        }
+        if (failure && sourceError(failure).type === 'internal') throw failure
+        if (capture.requests.length !== 1) throw new SchemaError('Discovery requires exactly one physical request')
+        const request = structuredClone(capture.requests[0]!)
+        if (failure) request.error ??= sourceError(failure)
+        await ports.store.write(
+          discoveryPath(adapter.kind, claim.operationId),
+          encodeObject({
+            operationId: claim.operationId,
+            kind: adapter.kind,
+            purpose: 'discovery',
+            request: { ...request, body: request.body === null ? null : Buffer.from(request.body).toString('base64') }
+          }),
+          '0'
+        )
+      }
+    } catch (error) {
+      // A failed save may be ambiguous. Neither a lost marker nor expiry ever authorizes another GET.
+      await ports.store.write(slot.path, encodeObject({ ...claim, lost: true }), generation)
+      throw error
+    }
+  }
+  const capture = await savedLatestCapture(ports.store, adapter.kind, slot, claim)
+  if (!capture)
+    return { state: claim.lost || ports.clock.now().getTime() >= claim.captureDeadline ? 'lost' : 'running' }
+  const request = capture.purpose === 'poll' ? capture.result.requests[0]! : capture.request
+  if (request.transportStartedAt && Date.parse(request.transportStartedAt) > ports.clock.now().getTime())
+    return { state: 'running' }
+  // An empty cohort requests catalogue capture only, even if this slot originally polled bindings.
+  if (capture.purpose === 'poll' && members.length) await ports.publish(capture.result)
+  return { state: 'complete', capture }
+}
+
+/** Successful physical bytes in this clock slot only; never creates admission or domain results. */
+export async function readCurrentSlotCapture(
+  store: SourceObjectStore,
+  kind: SourceKind,
+  slotSeconds: number,
+  now: Date
+): Promise<RequestCapture | null> {
+  const slot = latestSlotFor(kind, slotSeconds, now),
+    existing = await store.read(slot.path)
+  if (!existing) return null
+  const capture = await savedLatestCapture(store, kind, slot, parseLatestClaim(existing.body))
+  const request = capture?.purpose === 'poll' ? capture.result.requests[0] : capture?.request
+  if (
+    !request?.body ||
+    request.error ||
+    !request.transportStartedAt ||
+    Date.parse(request.transportStartedAt) > now.getTime() ||
+    request.httpStatus === null ||
+    request.httpStatus < 200 ||
+    request.httpStatus >= 300
+  )
+    return null
+  return request
+}
+
+export type LatestSlotRecoveryResult =
+  { state: 'captured'; result: SourceExecutionResult } | { state: 'running' | 'lost' }
+
+/** Repair validates the original immutable identity even if a delivery already exists. No HTTP or writes. */
+export async function recoverLatestSlot(ports: {
+  store: SourceObjectStore
+  recovery: LatestSlotRecovery
+  operationId: string
+  kind: SourceKind
+  now: Date
+}): Promise<LatestSlotRecoveryResult> {
+  const recovery = LatestSlotRecovery.parse(ports.recovery)
+  const slot = latestSlotFor(ports.kind, recovery.slotSeconds, new Date(recovery.slotStart))
+  if (slot.start !== recovery.slotStart) throw new Error('Invalid latest slot recovery interval')
+  const saved = await ports.store.read(slot.path)
+  if (!saved) throw new Error('Missing latest slot recovery claim')
+  const claim = parseLatestClaim(saved.body)
+  if (
+    claim.operationId !== ports.operationId ||
+    claim.purpose !== 'poll' ||
+    sha256(encodeObject({ ...claim, lost: false })) !== recovery.claimSha256
+  )
+    throw new Error('Invalid latest slot recovery claim identity')
+  const capture = await savedLatestCapture(ports.store, ports.kind, slot, claim)
+  if (capture?.purpose === 'poll') return { state: 'captured', result: capture.result }
+  return { state: claim.lost || ports.now.getTime() >= claim.captureDeadline ? 'lost' : 'running' }
 }

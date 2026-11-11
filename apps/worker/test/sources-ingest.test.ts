@@ -307,7 +307,8 @@ test.each(['unchanged', 'error'] as const)(
               httpStatus: 200,
               newRows: 0,
               purpose: 'poll',
-              startedAt: new Date(r.requests[0]!.startedAt)
+              startedAt: new Date(r.requests[0]!.startedAt),
+              receivedAt: new Date('2026-11-10T02:00:00Z')
             }
           ],
           fanout,

@@ -1,9 +1,9 @@
 import type { SourceKind } from '@skyclause/contracts'
-import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lte, or } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-orm'
 import type { SystemPrincipal, Tx } from '../client'
 import { night, project, projectSource, source } from '../schema'
-import { poll } from '../schema/partitioned'
-import type { BoundSource, CrowdPeriodDto, SourceRequestWrite } from './types'
+import { poll, reading } from '../schema/partitioned'
+import type { JsonValue, BoundSource, CrowdPeriodDto, SourceRequestWrite } from './types'
 
 /** Enumerate tenant scopes first; the caller opens each tenant after this system transaction returns. */
 export async function listSourceOrganisations(tx: Tx<SystemPrincipal>): Promise<string[]> {
@@ -105,4 +105,56 @@ export async function plannedCrowdPeriods(tx: Tx): Promise<CrowdPeriodDto[]> {
     exitStart: row.exitStart?.toISOString() ?? null,
     exitEnd: row.exitEnd?.toISOString() ?? null
   }))
+}
+
+/** Public group coverage only. Global prior attempts include unbound sources and error polls. */
+export async function sourceBackfillCoverage(
+  tx: Tx<SystemPrincipal>,
+  query: {
+    kind: SourceKind
+    groupByMeta: string
+    groupValue: JsonValue
+    sourceIds: string[]
+    required: Array<{ metric: string; observedAt: Date }>
+  }
+): Promise<{ hasBackfillPoll: boolean; missingSourceIds: string[] }> {
+  if (tx.principal?.kind !== 'system' || tx.orgId !== null)
+    throw new Error('Source coverage requires unscoped system scope')
+  if (
+    !query.groupByMeta ||
+    !query.required.length ||
+    query.required.some((r) => !r.metric || !Number.isFinite(r.observedAt.getTime()))
+  )
+    throw new Error('Invalid source coverage requirements')
+  const publicGroup = and(
+    eq(source.kind, query.kind),
+    isNull(source.ownerOrgId),
+    sql`${source.meta} -> ${query.groupByMeta} = ${JSON.stringify(query.groupValue)}::jsonb`
+  )
+  const prior = await tx
+    .select({ id: poll.id })
+    .from(poll)
+    .innerJoin(source, eq(source.id, poll.sourceId))
+    .where(and(publicGroup, eq(poll.purpose, 'backfill')))
+    .limit(1)
+  const ids = [...new Set(query.sourceIds)]
+  if (!ids.length) return { hasBackfillPoll: prior.length > 0, missingSourceIds: [] }
+  const rows = await tx
+    .selectDistinct({ sourceId: reading.sourceId, metric: reading.metric, observedAt: reading.observedAt })
+    .from(reading)
+    .innerJoin(source, eq(source.id, reading.sourceId))
+    .where(
+      and(
+        publicGroup,
+        inArray(source.id, ids),
+        or(...query.required.map((r) => and(eq(reading.metric, r.metric), eq(reading.observedAt, r.observedAt))))
+      )
+    )
+  const keys = new Set(rows.map((r) => JSON.stringify([r.sourceId, r.metric, r.observedAt.toISOString()])))
+  return {
+    hasBackfillPoll: prior.length > 0,
+    missingSourceIds: ids.filter((id) =>
+      query.required.some((r) => !keys.has(JSON.stringify([id, r.metric, r.observedAt.toISOString()])))
+    )
+  }
 }

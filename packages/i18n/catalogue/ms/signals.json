@@ -58,5 +58,7 @@
   "baseline": "Asas",
   "copied": "Arahan tail disalin",
   "copy_tail": "Salin arahan tail",
-  "announcement_error": "Ralat sumber baharu untuk {source}, HTTP {status}"
+  "announcement_error": "Ralat sumber baharu untuk {source}, HTTP {status}",
+  "announcement_error_no_status": "Ralat sumber baharu untuk {source}, tiada respons HTTP",
+  "not_evaluated": "Belum dinilai: {sources}"
 }

@@ -184,7 +184,7 @@ export function FaqClient({
       </div>
       <figure className="landing-inner">
         <img
-          src="https://commons.wikimedia.org/wiki/Special:FilePath/Bukit_Jalil_LRT_Panorama.jpg?width=800"
+          src="/landing/bukit-jalil-lrt.jpg"
           alt="Bukit Jalil LRT panorama"
           width={800}
           height={450}

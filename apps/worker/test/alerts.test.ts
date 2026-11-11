@@ -17,7 +17,7 @@ import {
   makeWindow
 } from '@skyclause/db/test/factories/index'
 import { asLogin, expectEvent, expectOneAudit } from '@skyclause/db/test/harness/index'
-import { SesError } from '@skyclause/delivery'
+import { EmailSendError } from '@skyclause/delivery'
 import { eq } from 'drizzle-orm'
 import { afterAll, describe, expect, test } from 'vitest'
 import { createAlertsPart, noApproverCheck, slaTimer, type AlertsDeps } from '../src/alerts'
@@ -58,7 +58,7 @@ function doubles(o: {
       async send(m) {
         if (o.email) return o.email(m)
         mails.push(m)
-        return { providerMessageId: `ses-${mails.length}` }
+        return { providerMessageId: `email-${mails.length}` }
       }
     }),
     schedule: async (task) => void tasks.push(task),
@@ -232,7 +232,7 @@ describe('CAL-18 and CAL-10: Needs review alerts everyone on duty', () => {
       [made.projectId]
     )
     expect(notices.map((n) => n.status)).toEqual(['sent', 'sent', 'sent'])
-    expect(notices.filter((n) => n.provider_message_id?.startsWith('ses-'))).toHaveLength(2)
+    expect(notices.filter((n) => n.provider_message_id?.startsWith('email-'))).toHaveLength(2)
     const tracked = await rows<{ props: { channel: string; seconds: number } }>(
       "SELECT props FROM analytics_event WHERE name = 'approver_alerted' AND project_id = $1",
       [made.projectId]
@@ -283,17 +283,15 @@ describe('CAL-18 and CAL-10: Needs review alerts everyone on duty', () => {
     ).toEqual(['failed'])
   })
 
-  test('an SES rejection, such as the D48 sandbox refusing an unverified address, fails the email notice', async () => {
+  test('a permanent refusal, such as Resend refusing an unverified sending domain, fails the email notice', async () => {
     const o = await org()
     const a = await account(o.id)
     const made = await reviewBundle(o.id)
-    const rejected = new SesError(
-      'SendEmail',
-      Object.assign(new Error('Email address is not verified.'), {
-        name: 'MessageRejected',
-        $metadata: { httpStatusCode: 400 }
-      })
-    )
+    const rejected = new EmailSendError('Resend send failed: validation_error (HTTP 403)', {
+      status: 403,
+      code: 'validation_error',
+      cause: new Error('The `domain.com` domain is not verified. Please, add and verify your domain.')
+    })
     const d = doubles({ clock: at('2026-11-02T07:10:01Z'), onDuty: [a], email: async () => Promise.reject(rejected) })
     await dispatchEvent(createAlertsPart(d.deps).events!, made.eventId)
     expect(
@@ -302,6 +300,24 @@ describe('CAL-18 and CAL-10: Needs review alerts everyone on duty', () => {
       )
     ).toEqual(['failed'])
     expect(await rows('SELECT 1 FROM bundle_alert WHERE bundle_id = $1', [made.bundleId])).toEqual([])
+  })
+
+  test('a refusal the transport calls retryable, a 4xx included, leaves the email notice queued', async () => {
+    const o = await org()
+    const a = await account(o.id)
+    const made = await reviewBundle(o.id)
+    const inFlight = new EmailSendError('Resend send failed: concurrent_idempotent_requests (HTTP 409)', {
+      status: 409,
+      code: 'concurrent_idempotent_requests',
+      cause: new Error('There is another request in progress with the same idempotency key.')
+    })
+    const d = doubles({ clock: at('2026-11-02T07:10:01Z'), onDuty: [a], email: async () => Promise.reject(inFlight) })
+    await dispatchEvent(createAlertsPart(d.deps).events!, made.eventId)
+    expect(
+      (await rows<{ status: string }>('SELECT status FROM notice WHERE project_id = $1', [made.projectId])).map(
+        (n) => n.status
+      )
+    ).toEqual(['queued'])
   })
 })
 

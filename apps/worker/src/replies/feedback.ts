@@ -80,7 +80,7 @@ async function queueFeedback(tx: Tx, callId: string, deps: FeedbackDeps): Promis
   return queued
 }
 
-/** Sends one queued email and records SES's answer; a refusal (D48's sandbox included) is logged, never rethrown. */
+/** Sends one queued email and records Resend's answer; a refusal, a spent quota included, is logged, never rethrown. */
 async function deliver(deps: FeedbackDeps, queued: QueuedFeedback) {
   let providerMessageId: string | null = null
   try {

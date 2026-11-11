@@ -48,6 +48,8 @@ export const signalsOperations = {
 export const apiFetch = createApiFetch(signalsOperations)
 export type Project = ReturnType<typeof signalsOperations.listProjects.response.parse>['data'][number]
 export type ProjectSource = ReturnType<typeof signalsOperations.listProjectSources.response.parse>['data'][number]
+// A bound source has no state until its first evaluation (the sources contract); health views take evaluated ones.
+export type EvaluatedSource = ProjectSource & { state: NonNullable<ProjectSource['state']> }
 export type ProjectStrip = ReturnType<typeof signalsOperations.getProjectStrip.response.parse>
 export type SourceReading = ReturnType<typeof signalsOperations.listSourceReadings.response.parse>['data'][number]
 export type SourcePoll = ReturnType<typeof signalsOperations.listSourcePolls.response.parse>['data'][number]

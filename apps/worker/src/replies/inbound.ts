@@ -1,3 +1,4 @@
+import { loadEnv } from '@skyclause/config'
 import type { InboundMessage } from '@skyclause/delivery'
 import {
   handleOnce,
@@ -17,16 +18,21 @@ import {
 import { log } from '../server'
 
 // #163 (c-recipient-replies), D7: a reply to a Crowd notice's `Reply-To: r+{token}@{INBOUND_DOMAIN}` (#158 mints the
-// `reply` token). Logs name the SES message ID only, never the address, token or text.
+// `reply` token). Logs name Resend's received-email ID only, never the address, token or text.
 
 const CONSUMER = 'crowd-replies'
 const principal = systemPrincipal(`inbound:${CONSUMER}`)
 
-const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+/**
+ * The `onInbound` pattern for `r+{token}@…`, matched against the lower-cased address; `handleCrowdReply` checks the
+ * domain, so registering it reads no mail setting.
+ */
+export const CROWD_REPLY_RECIPIENT = /^r\+[A-Za-z0-9_-]{43}@[^@\s]+$/
 
-/** The `onInbound` pattern for `r+{token}@{domain}`, matched against the lower-cased address. */
-export const crowdReplyRecipient = (domain: string) =>
-  new RegExp(`^r\\+[A-Za-z0-9_-]{43}@${escapeRegExp(domain.toLowerCase())}$`)
+export interface CrowdReplyOptions {
+  /** `INBOUND_DOMAIN`, read on each message. */
+  inboundDomain?: () => string | undefined
+}
 
 const COMMAND = /^(keep|shuttle|shift\s+to\s+(\d{1,2}):([0-5]\d))$/i
 
@@ -45,20 +51,23 @@ function parseReply(text: string): { kind: CrowdReplyKind; shiftTo: string | nul
 
 /** Why a reply whose token verified isn't logged, or null when it can be. */
 function dropReason(m: InboundMessage, sender: string, readable: boolean): ReplyDropReason | null {
-  if (m.verdicts.spam !== 'PASS' || m.verdicts.virus !== 'PASS') return 'verdict'
+  if (m.verdicts.dmarc !== 'PASS') return 'verdict'
   if (normalizeEmail(m.from) !== normalizeEmail(sender)) return 'sender'
   return readable ? null : 'unparsed'
 }
 
 /**
- * Logs the reply in the token's organisation (CAL-17), at SES's receipt time. Mail needs spam and virus `PASS`, a
- * sender equal to the token's subscriber and a readable first line; otherwise it is dropped with an audit row and the
- * token keeps its one reply. A redelivery of the SES message (`handleOnce`) does nothing; once a reply is logged, its
- * spent token also refuses a redelivery, and a second mail on a spent token. With `inbound_email` or `pack_crowd` off,
- * or a token that doesn't verify, nothing is written.
+ * Logs the reply in the token's organisation (CAL-17), at Resend's receipt time. Mail needs DMARC `PASS` (SPF or DKIM
+ * aligned with the From domain, so a sender's own domain without a DMARC record is dropped), a sender equal to the
+ * token's subscriber and a readable first line; otherwise it is dropped with an audit row and the token keeps its one
+ * reply. A redelivery of the received email (`handleOnce`) does nothing; once a reply is logged,
+ * its spent token also refuses a redelivery, and a second mail on a spent token. Mail for another domain than
+ * `INBOUND_DOMAIN`, with `inbound_email` or `pack_crowd` off, or with a token that doesn't verify writes nothing.
  */
-export async function handleCrowdReply(m: InboundMessage): Promise<void> {
+export async function handleCrowdReply(m: InboundMessage, o: CrowdReplyOptions = {}): Promise<void> {
   const notLogged = (outcome: string) => log('INFO', 'crowd reply not logged', { message_id: m.messageId, outcome })
+  const domain = (o.inboundDomain ?? (() => loadEnv('worker').INBOUND_DOMAIN))()?.toLowerCase()
+  if (!domain || m.recipient.toLowerCase().split('@')[1] !== domain) return notLogged('domain')
   if (!(await withSystem(principal.job, (tx) => isFlagEnabled(tx, 'inbound_email')))) return notLogged('inbound-off')
   const token = /^r\+([A-Za-z0-9_-]+)@/.exec(m.recipient)?.[1]
   const found = token ? await verifySubscriberToken(token, 'reply') : null
@@ -70,7 +79,7 @@ export async function handleCrowdReply(m: InboundMessage): Promise<void> {
     const sender = await replySender(tx, found.subscriberId)
     if (sender === null) return 'token'
     let outcome = 'already-handled'
-    // One SES message is handled once per consumer; the token's single use still limits a token to one reply.
+    // One received email is handled once per consumer; the token's single use still limits a token to one reply.
     await handleOnce(tx, CONSUMER, { messageId: m.messageId }, async () => {
       const reply = parseReply(m.text)
       const dropped = dropReason(m, sender, reply !== null)
