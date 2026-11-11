@@ -8,6 +8,7 @@ import { APIError, getSessionFromCtx } from 'better-auth/api'
 import type { BetterAuthPlugin } from 'better-auth'
 import { magicLink } from 'better-auth/plugins'
 import { asc, eq, sql } from 'drizzle-orm'
+import { withSesRefusal } from '../ses-refusal'
 
 const OWNER = 'a-auth-signin-api'
 const HANDLE = 'magic-link-resend:'
@@ -352,8 +353,9 @@ async function sendGoogleLink(
 }
 
 export function aAuthSignInApi(overrides: AuthSignInApiDependencies = {}): BetterAuthPlugin {
+  const email = overrides.email ?? sendEmail
   const deps: Required<AuthSignInApiDependencies> = {
-    email: overrides.email ?? sendEmail,
+    email: { send: withSesRefusal((message) => email.send(message)) },
     now: overrides.now ?? (() => new Date()),
     trackSignup: overrides.trackSignup ?? recordSignup
   }

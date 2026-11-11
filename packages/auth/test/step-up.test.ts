@@ -1,4 +1,5 @@
-import { expect, test, vi } from 'vitest'
+import { expect, onTestFinished, test, vi } from 'vitest'
+import { SesError } from '@skyclause/delivery'
 import { authSettings, createAuth, getAuth } from '../src/instance'
 import { asLogin } from '@skyclause/db/test/harness/index'
 import { passkey as passkeyRecord } from '@skyclause/db'
@@ -139,6 +140,41 @@ test('magic-link step-up confirms the bound session once, even without that sess
   expect(usedAgain.status).toBe(303)
   expect(new URL(usedAgain.headers.get('Location')!, APP).search).toBe('?state=link-expired&for=step-up')
   expect(current?.session.reauthenticatedAt).toBeInstanceOf(Date)
+})
+
+test('a step-up email SES refuses is one structured ERROR line naming SES and its status, answered 502', async () => {
+  const account = await makeAccount()
+  const session = await signIn(account.id)
+  const denied = Object.assign(new Error('Email address is not verified.'), {
+    name: 'MessageRejected',
+    $metadata: { httpStatusCode: 400 }
+  })
+  const auth = createAuth(authSettings(), {
+    sendStepUpEmail: async () => {
+      throw new SesError('SendEmail', denied)
+    }
+  })
+  const lines: unknown[][] = []
+  for (const level of ['error', 'warn', 'info', 'log'] as const) {
+    vi.spyOn(console, level).mockImplementation((...args: unknown[]) => void lines.push(args))
+  }
+  onTestFinished(() => {
+    vi.restoreAllMocks()
+  })
+
+  // Its own IP, so the shared 192.0.2.1 bucket the other tests count on stays as it was.
+  const response = await request('POST', '/step-up/magic-link', session.cookie, {}, auth, '198.51.100.60')
+
+  expect(response.status).toBe(502)
+  expect(lines).toHaveLength(1)
+  expect(lines[0]).toHaveLength(1)
+  expect(JSON.parse(String(lines[0]![0]))).toMatchObject({
+    severity: 'ERROR',
+    message: 'SES SendEmail failed: MessageRejected (HTTP 400)',
+    code: 'MessageRejected',
+    status: 400,
+    category: 'step-up'
+  })
 })
 
 test('an expired step-up link redirects to the sign-in expired-link state', async () => {
