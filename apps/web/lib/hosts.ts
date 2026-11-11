@@ -49,7 +49,7 @@ const ROUTES: Array<{ group: string; surface: Surface | null; match: (path: stri
     surface: null,
     match: (path) =>
       exact('/favicon.ico', '/icon.svg', '/apple-touch-icon.png', '/manifest.webmanifest', '/health')(path) ||
-      under('/icons', '/_next')(path)
+      under('/icons', '/landing', '/_next')(path)
   },
   { group: '/v1', surface: 'api', match: under('/v1') },
   { group: '/api', surface: 'app', match: under('/api') },
