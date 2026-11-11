@@ -301,6 +301,7 @@
       "name": "@skyclause/sources",
       "version": "0.0.0",
       "dependencies": {
+        "@skyclause/clauses": "workspace:*",
         "@skyclause/contracts": "workspace:*",
         "zod": "4.6.7",
       },

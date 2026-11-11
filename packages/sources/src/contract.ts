@@ -189,6 +189,12 @@ export interface SourceAdapter<Raw> {
   freshness: 'observed' | 'polled'
   licence: Licence
   batch: 'all_bound' | 'per_source'
+  // Opt-in physical request budget and pure decoding of the current slot's captured bytes.
+  latestSlot?: {
+    seconds: number
+    decode(body: Uint8Array): Raw
+    discover?(body: Uint8Array): DiscoveredSource[]
+  }
   // HttpError, TimeoutError, NetworkError and RateLimitedError retain failure identity.
   fetch(sources: Source[], ctx: PollContext): Promise<Raw>
   // Pure; throw SchemaError when the published payload no longer matches.

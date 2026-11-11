@@ -51,6 +51,8 @@ export interface PollContextOptions {
   periods: PollContext['openCrowdPeriods']
   log: PollContext['log']
   clock: SourceClock
+  /** Private slot admission, checked immediately before the physical transport starts. */
+  transportWindow?: { start: number; end: number }
   /** Runtime supplies UUIDv7; a test supplies a deterministic sequence. */
   requestId(): string
 }
@@ -61,7 +63,8 @@ export function createPollContext(options: PollContextOptions): CapturedPollCont
   const credits: Credit[] = []
   const pending = new Set<Promise<unknown>>()
   let accepting = true,
-    finalized = false
+    finalized = false,
+    transportUsed = false
   const track = <T>(start: () => Promise<T>): Promise<T> => {
     const operation = accepting ? start() : Promise.reject<T>(new SchemaError('Source context admission is closed'))
     pending.add(operation)
@@ -148,9 +151,18 @@ export function createPollContext(options: PollContextOptions): CapturedPollCont
             try {
               if (options.family && clock.monotonic() >= started + SOURCE_ADMISSION_MS)
                 throw new RateLimitedError(options.family)
+              const physicalStart = clock.now().getTime()
+              if (
+                options.transportWindow &&
+                (transportUsed ||
+                  physicalStart < options.transportWindow.start ||
+                  physicalStart >= options.transportWindow.end)
+              )
+                throw new SchemaError('Source slot expired or already consumed before transport')
+              transportUsed = true
               transportStarted = clock.monotonic()
               request.admissionMs = elapsed(started)
-              request.startedAt = clock.now().toISOString()
+              request.startedAt = new Date(physicalStart).toISOString()
               request.transportStartedAt = request.startedAt
               response = await options.http(url, { headers, redirect: 'manual', signal: transport.signal })
               if (transport.signal.aborted) throw new TimeoutError(url)
@@ -158,7 +170,8 @@ export function createPollContext(options: PollContextOptions): CapturedPollCont
               if (!response.ok) throw new HttpError(response.status, url)
               return new Uint8Array(await response.arrayBuffer())
             } catch (error) {
-              if (error instanceof HttpError || error instanceof RateLimitedError) throw error
+              if (error instanceof HttpError || error instanceof RateLimitedError || error instanceof SchemaError)
+                throw error
               if (transport.signal.aborted) throw new TimeoutError(url)
               throw new NetworkError(url, error)
             }

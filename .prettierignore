@@ -19,3 +19,8 @@ packages/clauses/test/fixtures/rainfall-graph-*.json
 apps/worker/test/fixtures/rapidrail-sp17-*.json
 apps/worker/test/fixtures/rainfall-graph-*.json
 packages/agent/test/fixtures/mapcaqm-*.json
+
+# Preserve JPS response captures byte-for-byte.
+packages/sources/test/fixtures/rainfall-graph-*.json
+packages/sources/test/fixtures/rainfall-latest-data-*.html
+docs/sources/infobanjirjpskl.water.gov.my/rainfall-latest-data-*.html
