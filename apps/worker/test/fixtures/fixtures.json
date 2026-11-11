@@ -5,5 +5,12 @@
     "captured_at": "2026-11-06T14:56:00Z",
     "station_id": "SP17",
     "sha256": "0e282abd604aba699d8dfb3b3d9aca8456960ad25a2805fd9035a7faddd288bd"
+  },
+  {
+    "file": "rainfall-graph-75-20261105T1312Z.json",
+    "url": "https://infobanjirjpskl.water.gov.my/Rainfall/GetRainfallGraph/75",
+    "captured_at": "2026-11-05T13:12:00Z",
+    "station_id": "0232901RF",
+    "sha256": "25cae3be496cff29b9925595d23fc63b7ddf9c1a4fb29e22b806b00d4ed3bd95"
   }
 ]

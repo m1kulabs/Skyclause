@@ -1,6 +1,6 @@
 import { canonicalHash } from './canonical-hash'
 import { evalCelCondition, indicatorValToCel, toCelDuration, toCelTimestamp } from './cel'
-import { clauseWindowSpan, effectiveWindowSpan, formatInstant, RAIN_WINDOW_SPAN, resolveWindowSpan } from './span'
+import { effectiveSpan, formatInstant, RAIN_WINDOW_SPAN, resolveWindowSpan } from './span'
 import { localCalendarAt } from './local-calendar'
 import { rainPeriod } from './rain'
 import type {
@@ -497,9 +497,10 @@ function evaluateClauseInScope(
 ): ClauseExplanation {
   let spanInfo: { from: Instant; to: Instant; complete: boolean; fromMs: number; toMs: number } | undefined
   if (window && clause.scope === 'window') {
-    if (clauseWindowSpan(clause)) {
-      const span = effectiveWindowSpan(clause, window)
-      const resolved = { ...span, fromMs: Date.parse(span.from), toMs: Date.parse(span.to) }
+    const effectiveSpanDef = effectiveSpan(clause)
+    if (effectiveSpanDef) {
+      const resolved = resolveWindowSpan(window, effectiveSpanDef)
+
       const complete = tEvalMs >= resolved.toMs
       spanInfo = {
         from: resolved.from,

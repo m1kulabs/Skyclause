@@ -15,6 +15,7 @@ import {
 } from '@simplewebauthn/server'
 import { and, desc, eq, gt, isNull } from 'drizzle-orm'
 import { z } from 'zod'
+import { withSesRefusal } from '../ses-refusal'
 
 const STEP_UP_WINDOW_S = 60 * 60
 const STEP_UP_LIMIT = 10
@@ -269,7 +270,7 @@ function stepUpEndpoints(o: StepUpPluginOptions) {
           expiresAt: new Date(Date.now() + LINK_TTL_MS)
         })
       try {
-        const send = o.sendEmail ?? emailTransport().send.bind(emailTransport())
+        const send = withSesRefusal(o.sendEmail ?? emailTransport().send.bind(emailTransport()))
         await send({
           to: account.email,
           from: 'auth',

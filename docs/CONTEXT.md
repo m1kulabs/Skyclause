@@ -1,6 +1,6 @@
 # Hackathon context
 
-What a team needs to know, beyond the rules, to compete well in the APU Cloud Innovation Hackathon 2026: what NTT DATA said it will rate, what past winners share, how to build inside Gemini Enterprise while still covering the Cloud + IoT + Network theme, and which tools and real data fit a one-week build. The event's facts (eligibility, tracks, dates, submission fields, what the briefing said) are in the [brief]; the evidence behind this page is in [docs/research](/docs/research/). Updated on 3 November 2026, after the briefing; **Inference** marks conclusions that no source states outright.
+What a team needs to know, beyond the rules, to compete well in the APU Cloud Innovation Hackathon 2026: what NTT DATA said it will rate, what past winners share, how Gemini Enterprise fits the prototype and final while still covering the Cloud + IoT + Network theme, and which tools and real data fit a one-week build. The event's facts (eligibility, tracks, dates, submission fields, what the briefing said) are in the [brief]; the evidence behind this page is in [docs/research](/docs/research/). Updated on 3 November 2026, after the briefing, and on 8 November 2026, for the organisers' deadline and Gemini Enterprise update ([brief](/docs/BRIEF.md#key-dates)); **Inference** marks conclusions that no source states outright.
 
 Contents:
 
@@ -94,7 +94,7 @@ No earlier APU Cloud Innovation Hackathon with published winners was found, nor 
 
 ## Building inside Gemini Enterprise
 
-The NTT DATA presenters called Gemini Enterprise mandatory, with agents built inside it, while the organisers' posts say "where it fits" ([brief](/docs/BRIEF.md#source-discrepancies)). **Inference:** NTT DATA rates the entries, so build the core in Gemini Enterprise; anything else, such as a sensor feeder, exists to feed it. Details are in [Gemini Enterprise] and [Gemini Enterprise data].
+The organisers' 8 November update says: "Your prototype does not need to incorporate Gemini Enterprise tools." For the 17 November final pitching: "If your team is selected as one of the Top 5 finalists, the final product presented at pitching must incorporate Gemini Enterprise tools" ([brief](/docs/BRIEF.md#key-dates)). Details are in [Gemini Enterprise] and [Gemini Enterprise data].
 
 ### Workflows and unattended runs
 
@@ -114,7 +114,7 @@ The NTT DATA presenters called Gemini Enterprise mandatory, with agents built in
 ### Reviewer access
 
 - **Each reviewer needs** a licence seat, the Gemini Enterprise User role on the team's project, and the agent shared with them; Frontline seats can only run agents shared with them. Sharing is documented only "within your organization", and organisations created since 3 May 2024 limit IAM grants to their own domain by default, so `@nttdata.com` reviewers may need an exception ([Gemini Enterprise](/docs/research/gemini-enterprise.md#reviewer-access)).
-- **The app URL isn't public:** it comes from the app's **Integration** page, like `https://vertexaisearch.cloud.google.com/home/cid/<id>`, and refuses anyone without a seat and role. The presenter described reviewers being invited for "the top use cases" ([briefing]). **Inference:** the submission's demo link should open the README's "How to review" section: the app URL, how to request access, and the video.
+- **The app URL isn't public:** it comes from the app's **Integration** page, like `https://vertexaisearch.cloud.google.com/home/cid/<id>`, and refuses anyone without a seat and role. The presenter described reviewers being invited for "the top use cases" ([briefing]). **Inference:** the submission's demo link should open the README's "How to review" section with the live prototype, access instructions, and the video; if the prototype uses Gemini Enterprise, also give the app URL and how to request access.
 - **Shared users see their own runs, not the owner's:** capture the owner's Runs tab over several days in the README and video, and give reviewers a trigger they can fire themselves, such as emailing a test inbox or dropping a file into a shared folder.
 
 ### Antigravity
@@ -125,7 +125,7 @@ The NTT DATA presenters called Gemini Enterprise mandatory, with agents built in
 
 ## Covering the theme
 
-The theme is "When Cloud, IoT, and Network Converge" ([brief](/docs/BRIEF.md#at-a-glance)). **Inference:** with asynchronous judging, each of the three parts only scores if the repo, video, and Gemini Enterprise app make it visible.
+The theme is "When Cloud, IoT, and Network Converge" ([brief](/docs/BRIEF.md#at-a-glance)). **Inference:** with asynchronous judging, each of the three parts only scores if the repo, video, and live prototype make it visible.
 
 ### Cloud
 
@@ -172,7 +172,7 @@ APU documents no data API, though APSpace's timetable is a public, undocumented 
 
 As of 3 November 2026; quotas and prices change without notice ([Google tools], [Gemini Enterprise]).
 
-- **Gemini Enterprise licence:** Google sponsors a trial licence; whether per person or per team, which edition, and when it arrives are unknown. The briefing's path: Google Cloud console → Gemini Enterprise → create an app → **Configuration** → **Feature management** → turn on chat agents and workflows ([brief](/docs/BRIEF.md#tools)). If the console offers a free trial or asks you to buy credits, the licence hasn't reached the project; don't buy credits, ask the organisers.
+- **Gemini Enterprise licence:** Google sponsors a trial licence; whether per person or per team and which edition are unknown. Licences are expected to be distributed on Tuesday, 10 November, after the Diwali holidays. This date is not guaranteed. Distribution is managed by APU and Google ([brief](/docs/BRIEF.md#key-dates)). The briefing's path: Google Cloud console → Gemini Enterprise → create an app → **Configuration** → **Feature management** → turn on chat agents and workflows ([brief](/docs/BRIEF.md#tools)). If the console offers a free trial or asks you to buy credits, the licence hasn't reached the project; don't buy credits, ask the organisers.
 - **Ask the organisers now:** whether licences sit on Workspace or consumer accounts; whether the custom MCP policy is lifted; which roles teams hold on their project; whether the seats are a free trial, which excludes Antigravity; and how reviewers get seats.
 - **A card is needed** for Pub/Sub, Cloud Functions, Agent Runtime for full-code agents, Cloud Run outside AI Studio's Starter Tier, and the $300 Free Trial; Google Cloud credits are unconfirmed. Cloud Billing rejects prepaid cards and debit cards that require two-factor authentication. The Free Trial is once per person, so pick whose card the team uses early ([Google tools]).
 - **Free without a card:** Apps Script, Google Sheets, Supabase Free, Jira Cloud Free, Salesforce Developer Edition, a ServiceNow developer instance, GitHub, and the Gemini API free tier, whose prompts may be read by human reviewers and must not contain personal information ([Google tools], [Gemini Enterprise data]).
@@ -197,7 +197,7 @@ As of 3 November 2026; quotas and prices change without notice ([Google tools], 
 There are two lists: the portal's, and what NTT DATA asked for at the briefing ([brief](/docs/BRIEF.md#submission-requirements)). Meet both.
 
 - **Portal:** project title, one track, a summary of at least 50 characters, an HTTPS repo link, a PDF deck of at most 10 MB, and a demo link. Only the leader submits, and final submission locks the entry.
-- **NTT DATA:** a README covering the existing problem, how you solve it, the research you did, how the team worked, and the impact or outcome; slides or a PDF and a high-level diagram in the repo; a 3–4 minute video of the same five points that shows the solution working; reviewer access to the Gemini Enterprise app.
+- **NTT DATA:** a README covering the existing problem, how you solve it, the research you did, how the team worked, and the impact or outcome; slides or a PDF and a high-level diagram in the repo; a 3–4 minute video of the same five points that shows the solution working; Gemini Enterprise is not required for the 13 November prototype, but a Top 5 finalist's product at the 17 November pitching must incorporate Gemini Enterprise tools ([brief](/docs/BRIEF.md#key-dates)).
 
 The quality layer ([research and impact], [judging and pitching]):
 
@@ -218,18 +218,20 @@ The quality layer ([research and impact], [judging and pitching]):
 | 5–6 Nov   | Two interview rounds and one timed observation; freeze problem and baseline; add the 3P connector and approval; start schedules |
 | 7 Nov     | Score the agent on 30–50 real items; fix what the misses show                                                                   |
 | 8 Nov     | README, deck, and diagram drafts; confirm every member has registered before registration closes that night                     |
-| 9 Nov     | Feature freeze; record the video from the live system; test reviewer access with a non-team account; compress the deck          |
-| 10 Nov    | Final submission by the leader early in the day, not at 11:59 PM                                                                |
-| 11–14 Nov | Assessment: keep the workflow, feeds, and any board running; watch quotas; leave the repo's default branch untouched            |
+| 9–12 Nov  | Feature freeze; record the video from the live system; test prototype access with a non-team account; compress the deck         |
+| 10 Nov    | Licence expected, not guaranteed; set up GE and test reviewer access for 17 November ([brief](/docs/BRIEF.md#key-dates))        |
+| 13 Nov    | Leader submits early, before 12:00 PM (noon, Malaysia time) on 13 November 2026 ([brief](/docs/BRIEF.md#key-dates))             |
+| 11–14 Nov | Assessment: after submitting, keep the workflow, feeds, and any board running; watch quotas; leave the default branch untouched |
 | 15 Nov    | Top 5 announced; if selected, cut the pitch to the announced format                                                             |
-| 16–17 Nov | Rehearse with one speaker; test the auditorium network and a phone hotspot; pitch live                                          |
+| 16 Nov    | Rehearse with one speaker; test the auditorium network and a phone hotspot                                                      |
+| 17 Nov    | If Top 5, pitch the final product incorporating Gemini Enterprise tools ([brief](/docs/BRIEF.md#key-dates))                     |
 
 ## Strategic risks
 
 The [brief's open questions](/docs/BRIEF.md#open-questions) list what the organisers haven't answered. Risks to plan around:
 
-- **The official criteria may reweight everything above,** and the organisers may relax or confirm the Gemini Enterprise requirement. Re-read this page when either changes.
-- **The licence arrives late or on the wrong terms:** consumer accounts break Workspace connectors, a free trial drops Antigravity, the custom MCP policy stays on, or reviewers' domains are blocked. Ask this week, and build the feeder and research in the meantime.
+- **The official criteria may reweight everything above.** The Gemini Enterprise requirement was resolved on 8 November: not required for the 13 November prototype, required for a Top 5 finalist's product at the 17 November pitching ([brief](/docs/BRIEF.md#key-dates)). Re-read this page when the criteria change.
+- **The licence arrives late or on the wrong terms for a Top 5 final on 17 November:** consumer accounts break Workspace connectors, a free trial drops Antigravity, the custom MCP policy stays on, or reviewers' domains are blocked. Gemini Enterprise is not required for the 13 November prototype ([brief](/docs/BRIEF.md#key-dates)). Ask this week, and build the feeder and research in the meantime.
 - **Unattended runs stall:** credentials expire 14 days after setup, actions wait in **Needs Review**, quota failures aren't retried, and a dormant ServiceNow instance fails its queries. Refresh credentials before 11 November and check runs daily.
 - **Preview features change:** Supabase, Globalping, BigQuery federated query, and custom MCP are all preview; keep GA connectors on the critical path.
 - **A public source fails during assessment:** the rule requires showing the error, so prefer documented sources. The APIMS endpoint is undocumented and could change without notice.

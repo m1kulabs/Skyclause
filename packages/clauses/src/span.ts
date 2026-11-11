@@ -82,14 +82,23 @@ export function resolveWindowSpan(
 
 export const RAIN_WINDOW_SPAN = { from: 'end-30m', to: 'end+60m' }
 
-export function clauseWindowSpan(clause: Clause): Clause['span'] {
-  const usesRainWindowIndicator = [...clause.requires, ...(clause.optional ?? [])].some(
-    (name) => name === 'w.rain_max_60m_mm' || name === 'w.rain_max_4h_mm'
+const RAIN_WINDOW_INDICATORS = ['w.rain_max_60m_mm', 'w.rain_max_4h_mm']
+
+/**
+ * The span the engine evaluates a window clause over: the one written on it, else 30 minutes before to 60 minutes
+ * after the window's end for a clause that reads a window rain maximum, else none.
+ */
+export function effectiveSpan(
+  clause: Pick<Clause, 'requires' | 'optional' | 'span'>
+): { from: SpanRef; to: SpanRef } | undefined {
+  const readsWindowRain = [...clause.requires, ...(clause.optional ?? [])].some((name) =>
+    RAIN_WINDOW_INDICATORS.includes(name)
   )
-  return clause.span ?? (usesRainWindowIndicator ? RAIN_WINDOW_SPAN : undefined)
+  return clause.span ?? (readsWindowRain ? RAIN_WINDOW_SPAN : undefined)
 }
 
+/** Concrete bounds for deadline consumers; no-span clauses keep their engine eligibility unchanged. */
 export function effectiveWindowSpan(clause: Clause, window: Window): { from: Instant; to: Instant } {
-  const { from, to } = resolveWindowSpan(window, clauseWindowSpan(clause))
+  const { from, to } = resolveWindowSpan(window, effectiveSpan(clause))
   return { from, to }
 }

@@ -59,3 +59,23 @@ test('a tree without placeholders passes', () => {
   })
   expect(result.status).toBe(0)
 })
+
+test('counts typed notBuilt calls, including multi-line generics and nested angle brackets', () => {
+  const root = plantRepo({
+    'apps/worker/src/alerts/index.ts': [
+      "import { notBuilt } from '@skyclause/contracts'",
+      "export const onDuty = notBuilt<OnDuty>('a-members-api')",
+      "export const nested = notBuilt<Record<string, Array<Map<string, number>>>>('a-members-api')",
+      'export const multi = notBuilt<{',
+      '  handler: (id: string) => Promise<Array<string>>',
+      "}>('b-signals-api')",
+      ''
+    ].join('\n')
+  })
+  const result = spawnSync('bun', [script], { cwd: root, encoding: 'utf8' })
+  expect(result.status).toBe(1)
+  expect(result.stdout).toContain(
+    'a-members-api\n  apps/worker/src/alerts/index.ts:2\n  apps/worker/src/alerts/index.ts:3\n'
+  )
+  expect(result.stdout).toContain('b-signals-api\n  apps/worker/src/alerts/index.ts:4\n')
+})

@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import type { Principal, Role } from '@skyclause/contracts'
+import type { DraftSheetVersion, Principal, PublishedSheetVersion, Role, SheetContent } from '@skyclause/contracts'
 import { analysisOperations as registry, type Analysis, type Metric } from '../../features/analysis/operations'
 import { asPage, stubApi } from '../harness'
 import en from '../../../../packages/i18n/catalogue/en/analysis.json' with { type: 'json' }
@@ -51,16 +51,32 @@ export const review = {
   grade
 }
 export const detailedGrade = { ...grade, forecast: null, actual: null, reading_ids: ['reading-live'], graded_at: at }
-const sheetContent = { pack: 'sky', clauses: [] }
-export const version = {
+const sheetContent: SheetContent = { pack: 'sky', clauses: [] }
+// Publication runs the check first, so a published version always carries a passing one.
+const check = { ok: true, publishable: true, issues: [] }
+export const version: PublishedSheetVersion = {
   id: versionId,
   status: 'published',
   n: 3,
   content: sheetContent,
   content_hash: 'test-hash',
-  published_by: 'account-one'
+  published_by: 'account-one',
+  base_n: 2,
+  published_at: at,
+  check,
+  publishable: true,
+  validation_status: 'checked'
 }
-export const draft = { ...version, id: draftId, status: 'draft', n: 4, published_by: null }
+// A saved draft has no number yet and is based on the live version.
+export const draft: DraftSheetVersion = {
+  ...version,
+  id: draftId,
+  status: 'draft',
+  n: null,
+  base_n: 3,
+  published_by: null,
+  published_at: null
+}
 export const replay = {
   label: 'replay',
   steps: [

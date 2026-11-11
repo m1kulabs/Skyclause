@@ -1,3 +1,4 @@
+import './agent-evals/retirement' // registers `model_retirement` with the auditor; it has no part of its own
 import { auditor } from './auditor'
 import { alerts } from './alerts'
 import { aiKeys } from './ai-keys'
@@ -13,12 +14,14 @@ import { ics } from './ics'
 import { migrations } from './migrate'
 import { notices } from './notices'
 import { notifications } from './notifications'
+import { outlook } from './outlook'
 import { pilotArchive } from './pilot-archive'
 import { replies } from './replies'
 import { restoreDrill } from './restore-drill'
 import { runs } from './runs'
 import { retention } from './retention'
 import { defineRegistry } from './server'
+import { sliPart } from './sli'
 import { sources } from './sources'
 
 // Spec §7: each owner appends one line here, naming a `WorkerPart` exported from its own folder,
@@ -44,5 +47,7 @@ export const registry = defineRegistry([
   sources, // b-sources-core
   evaluator, // b-evaluator
   dataRights, // a-data-rights
-  retention // a-retention
+  retention, // a-retention
+  outlook, // c-crowd-outlook
+  sliPart // a-observability
 ])

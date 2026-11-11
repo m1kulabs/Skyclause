@@ -1,4 +1,5 @@
 import { type SourceAdapter, type SourceKind, type PollContext } from '@skyclause/sources'
+import { currentSlotBody, runSourceSlot } from './slots'
 import { executeAdapter } from './execute'
 import { runBackfillOnce } from './backfill'
 import { createPollContext } from './http'
@@ -33,9 +34,15 @@ export function createSourceJobs(ports: SourceJobPorts) {
     return adapter
   }
   const contextFactory =
-    (adapter: SourceAdapter<unknown>, plan: Pick<SourcePlan, 'periods'>) => (sources: PlannedSource['source'][]) =>
+    (
+      adapter: SourceAdapter<unknown>,
+      plan: Pick<SourcePlan, 'periods'>,
+      transportWindow?: { start: number; end: number }
+    ) =>
+    (sources: PlannedSource['source'][]) =>
       createPollContext({
         kind: adapter.kind,
+        transportWindow,
         family: adapter.apiFamily,
         sources,
         storage: adapterStorage(adapter.kind, ports.store, ports.scratch),
@@ -47,7 +54,12 @@ export function createSourceJobs(ports: SourceJobPorts) {
         clock: ports.clock,
         requestId: ports.id
       })
-  const backfill = async (entry: PlannedSource, plan: Pick<SourcePlan, 'periods'>, scheduledAt: string | null) => {
+  const backfillWithCapture = async (
+    entry: PlannedSource,
+    plan: Pick<SourcePlan, 'periods'>,
+    scheduledAt: string | null,
+    completed?: (result: SourceExecutionResult) => void
+  ) => {
     const adapter = adapterFor(entry.source.kind)
     return runBackfillOnce(adapter, entry.source, {
       store: ports.store,
@@ -56,6 +68,7 @@ export function createSourceJobs(ports: SourceJobPorts) {
       contextFactory: contextFactory(adapter, plan),
       publish: ports.publish,
       scheduledAt,
+      completed,
       admit: (operationId) =>
         reserveSourceResult(ports.store, operationId, adapter.kind, ports.clock.now(), entry.source.id),
       acknowledged: async (operationId) => {
@@ -80,13 +93,53 @@ export function createSourceJobs(ports: SourceJobPorts) {
       const plan = await readSourcePlan(ports.store),
         entries = plan.sources.filter((s) => s.source.kind === kind)
       const ready: PlannedSource[] = []
-      for (const entry of entries) if ((await backfill(entry, plan, scheduledAt)) !== 'running') ready.push(entry)
+      for (const entry of entries) {
+        let freshCapture = false
+        const state = await backfillWithCapture(
+          entry,
+          plan,
+          scheduledAt,
+          adapter.batch === 'per_source'
+            ? (result) => {
+                // Reuse only a genuine, single-source transport capture within this source's cadence.
+                // Its purpose remains backfill; it cannot establish live polling freshness.
+                const request = result.requests.length === 1 ? result.requests[0] : undefined
+                const capturedAt = request?.transportStartedAt
+                const age = capturedAt ? ports.clock.now().getTime() - Date.parse(capturedAt) : NaN
+                freshCapture =
+                  result.purpose === 'backfill' &&
+                  request?.sourceIds.length === 1 &&
+                  request.sourceIds[0] === entry.source.id &&
+                  age >= 0 &&
+                  age < adapter.cadence * 1000
+              }
+            : undefined
+        )
+        if (state !== 'running' && !freshCapture) ready.push(entry)
+      }
       if (!ready.length) {
         ports.log('source.adapter.complete', {
           adapter: kind,
           sources: 0,
           deferred_sources: entries.length,
           requests: 0,
+          scheduled_at: scheduledAt
+        })
+        return
+      }
+      if (adapter.latestSlot) {
+        let requests = 0
+        for (const entry of ready)
+          requests += await runSourceSlot(adapter, entry.source, {
+            ...ports,
+            scheduledAt,
+            contextFactory: (window) => contextFactory(adapter, plan, window)
+          })
+        ports.log('source.adapter.complete', {
+          adapter: kind,
+          sources: ready.length,
+          deferred_sources: entries.length - ready.length,
+          requests,
           scheduled_at: scheduledAt
         })
         return
@@ -115,7 +168,8 @@ export function createSourceJobs(ports: SourceJobPorts) {
         scheduled_at: scheduledAt
       })
     },
-    backfill,
+    backfill: (entry: PlannedSource, plan: Pick<SourcePlan, 'periods'>, scheduledAt: string | null) =>
+      backfillWithCapture(entry, plan, scheduledAt),
     refreshSourcePlan: (now: Date) => refreshSourcePlan(now, ports.store, ports.database.snapshot),
     async catalogueSync(): Promise<void> {
       let count = 0
@@ -146,6 +200,13 @@ export function createSourceJobs(ports: SourceJobPorts) {
             adapter.batch === 'per_source'
               ? [...entries].sort((a, b) => a.source.id.localeCompare(b.source.id)).slice(0, 1)
               : entries
+          if (adapter.latestSlot) {
+            const source = probe[0]!.source
+            const body = await currentSlotBody(adapter, source, ports.store, ports.clock)
+            adapter.parse(adapter.latestSlot.decode(body), [source])
+            ports.log('source.contract.passed', { adapter: adapter.kind })
+            continue
+          }
           const result = await executeAdapter(
             adapter,
             probe.map((s) => s.source),

@@ -114,8 +114,11 @@ describe('lastSpanEnd', () => {
   const clause = (scope: 'site' | 'window', to?: string, enabled = true) => ({
     scope,
     enabled,
+    requires: [],
     ...(to ? { span: { from: 'start-30m', to } } : {})
   })
+  // Flash-flood risk as published: it reads a window rain maximum and writes no span.
+  const flashFlood = (enabled = true) => ({ scope: 'window' as const, enabled, requires: ['w.rain_max_4h_mm'] })
 
   test('is the window end when no window clause reaches past it', () => {
     expect(lastSpanEnd(window, [clause('window'), clause('window', 'end-30m'), clause('site', 'end+4h')])).toEqual(
@@ -128,7 +131,17 @@ describe('lastSpanEnd', () => {
     expect(lastSpanEnd(window, clauses)).toEqual(new Date('2026-11-02T10:00:00Z'))
   })
 
+  test('is the default span end for an enabled window clause reading a window rain maximum with no written span', () => {
+    expect(lastSpanEnd(window, [clause('window'), flashFlood()])).toEqual(new Date('2026-11-02T10:00:00Z'))
+    expect(lastSpanEnd(window, [flashFlood(false)])).toEqual(window.endsAt)
+  })
+
+  test('accepts s and d span units as the clause engine does', () => {
+    expect(lastSpanEnd(window, [clause('window', 'end+90s')])).toEqual(new Date('2026-11-02T09:01:30Z'))
+    expect(lastSpanEnd(window, [clause('window', 'end+1d')])).toEqual(new Date('2026-11-03T09:00:00Z'))
+  })
+
   test('refuses a span reference outside the TRD form', () => {
-    expect(() => lastSpanEnd(window, [clause('window', 'end+1d')])).toThrow(/span/)
+    expect(() => lastSpanEnd(window, [clause('window', 'end+1w')])).toThrow(/span/)
   })
 })

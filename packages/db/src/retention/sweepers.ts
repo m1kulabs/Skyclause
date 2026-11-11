@@ -1,7 +1,7 @@
 // #112 (a-retention): the nightly sweepers. Each returns `{ deleted, pseudonymised }`; deletes run in batches of at
 // most 1,000 rows and are idempotent, so a second run the same night deletes 0. Every comparison is strict: a row
 // exactly on its boundary stays until the next run. `now` is injected, and the subscriber erasure and the buckets come
-// through `SweepDeps`, so tests run on doubles; `eraseSubscriber` is #110's (tests use a double until it merges).
+// through `SweepDeps`, so tests run on doubles; `eraseSubscriber` is #110's (tests use a double).
 
 import type { EraseSubscriber } from '@skyclause/contracts'
 import { and, asc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from 'drizzle-orm'
@@ -263,7 +263,7 @@ export async function sweepHandledMessages(
   }
 }
 
-/** Every sweeper this job owns; other owners keep their own jobs. `audit_finding` (#132) has no table yet. */
+/** Every sweeper this job owns; other owners keep their own jobs. `audit_finding` (#132) has its table (migration 0025); #549 adds its sweep. */
 export const SWEEPERS: Sweeper[] = [
   { name: 'evaluator-coordination', scope: 'global', run: (tx, q) => sweepEvaluatorCoordination(tx, q.now) },
   { name: 'subscribers', scope: 'org', run: sweepSubscribers },
