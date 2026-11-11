@@ -8,8 +8,10 @@ locals {
   sending_env      = local.sending_ready ? { for name, value in var.app_config : name => value if contains(local.sending_values, name) } : {}
   receiving_env    = local.receiving_ready ? { for name, value in var.app_config : name => value if contains(local.receiving_values, name) } : {}
 
+  shared_config = { for name, value in var.app_config : name => value if !contains(concat(local.sending_values, local.receiving_values), name) }
+
   # TF rows of #79 §6; app_config never overrides them.
-  env = merge({ for name, value in var.app_config : name => value if !contains(concat(local.sending_values, local.receiving_values), name) }, {
+  env = merge(local.shared_config, {
     APP_ENV                     = var.app_env
     HOST_MODE                   = var.host_mode
     MARKETING_ORIGIN            = local.origins.marketing
