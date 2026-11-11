@@ -1,4 +1,4 @@
-import Link from 'next/link'
+/* eslint-disable @next/next/no-html-link-for-pages -- Plain anchor keeps next/link out of the root not-found client bundle. */
 import { t } from '@skyclause/i18n'
 
 export default function NotFound() {
@@ -6,9 +6,9 @@ export default function NotFound() {
     <main className="token-page">
       <h1 className="type-title">{t('shell.not_found')}</h1>
       <p>{t('shell.not_found_help')}</p>
-      <Link className="inline-flex min-h-8.5 items-center" href="/">
+      <a className="inline-flex min-h-8.5 items-center" href="/">
         {t('shell.go_home')}
-      </Link>
+      </a>
     </main>
   )
 }
