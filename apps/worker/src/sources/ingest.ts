@@ -206,30 +206,34 @@ export function sourceIngestionDatabase(
           if (previous.length) return previous
           if (!sources.length) return []
           const receivedAt = now()
-          return recordSourceRequest(tx, {
-            requestId: request.requestId,
-            startedAt: new Date(request.startedAt),
-            purpose: result.purpose,
-            family: adapter.apiFamily ?? null,
-            httpStatus: request.httpStatus,
-            latencyMs: request.latencyMs,
-            sources: sources.map((p) => ({
-              sourceId: p.sourceId,
-              outcome: p.outcome === 'error' ? 'error' : 'ok',
-              bodySha256:
-                result.requests.filter((r) => r.sourceIds.includes(p.sourceId)).length === 1
-                  ? request.bodySha256
-                  : null,
-              errorCode: p.error?.type ?? null,
-              message: p.error?.message ?? null,
-              readings: p.readings.map((r) => ({
-                ...r,
-                valueJson: z.json().parse(r.valueJson),
-                observedAt: new Date(r.observedAt),
-                receivedAt
+          return recordSourceRequest(
+            tx,
+            {
+              requestId: request.requestId,
+              startedAt: new Date(request.startedAt),
+              purpose: result.purpose,
+              family: adapter.apiFamily ?? null,
+              httpStatus: request.httpStatus,
+              latencyMs: request.latencyMs,
+              sources: sources.map((p) => ({
+                sourceId: p.sourceId,
+                outcome: p.outcome === 'error' ? 'error' : 'ok',
+                bodySha256:
+                  result.requests.filter((r) => r.sourceIds.includes(p.sourceId)).length === 1
+                    ? request.bodySha256
+                    : null,
+                errorCode: p.error?.type ?? null,
+                message: p.error?.message ?? null,
+                readings: p.readings.map((r) => ({
+                  ...r,
+                  valueJson: z.json().parse(r.valueJson),
+                  observedAt: new Date(r.observedAt),
+                  receivedAt
+                }))
               }))
-            }))
-          })
+            },
+            () => receivedAt
+          )
         })
         if (rows.some((p) => p.kind !== result.kind || !request.sourceIds.includes(p.sourceId)))
           throw new Error('Stored request identity mismatch')

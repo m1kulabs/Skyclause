@@ -19,6 +19,7 @@ const APPEND_ONLY = [
   'crossing',
   'crowd_reply',
   'forecast',
+  'evaluator_source_transition',
   'grade',
   'incident_update',
   'indicator_snapshot',

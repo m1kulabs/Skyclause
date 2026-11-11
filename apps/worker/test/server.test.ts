@@ -374,6 +374,7 @@ describe('worker 15-minute batch connection', () => {
         'approver-alert-resend',
         'auditor',
         'sources-ingest',
+        'evaluator-repair',
         'exports:timeout',
         'crowd-outlook',
         'sli'
@@ -621,4 +622,45 @@ describe('worker jobs', () => {
   test('an unknown job is refused, naming it', async () => {
     await expect(runJob(defineRegistry([]), 'no-such-job', [])).rejects.toThrow(/no-such-job/)
   })
+})
+
+import * as database from '@skyclause/db'
+import { createEvaluatorProviders } from '@skyclause/api'
+import { createEvaluatorPart, evaluator } from '../src/evaluator'
+
+test('evaluator health and minute routes never initialize providers, tasks or database', async () => {
+  const system = vi.spyOn(database, 'withSystem').mockRejectedValue(new Error('must stay asleep'))
+  const tenant = vi.spyOn(database, 'withTenant').mockRejectedValue(new Error('must stay asleep'))
+  const send = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('must stay offline'))
+  try {
+    const app = server(evaluator)
+    expect((await app.request('/health')).status).toBe(200)
+    expect((await post(app, '/ticks/minute', { bearer: await token() })).status).toBe(204)
+    expect(system).not.toHaveBeenCalled()
+    expect(tenant).not.toHaveBeenCalled()
+    expect(send).not.toHaveBeenCalled()
+  } finally {
+    vi.restoreAllMocks()
+  }
+})
+test('evaluator task route enforces OIDC and retries an early generation instead of acknowledging its future deadline', async () => {
+  const orgId = (await makeOrganization()).id,
+    principal = database.systemPrincipal('test-evaluator-http')
+  const projectId = (await withTenant({ orgId, principal }, (tx) => makeProject(tx))).id
+  const intent = (await withTenant({ orgId, principal }, (tx) =>
+    database.replaceEvaluatorDeadline(tx, { projectId, dueAt: '2026-11-10T05:00:00Z' })
+  ))!
+  const part = createEvaluatorPart({
+    providers: createEvaluatorProviders({ adapters: [], forecast: null }),
+    clock: () => new Date('2026-11-10T04:00:00Z'),
+    tasks: { create: async () => {}, remove: async () => {} }
+  })
+  const app = server(part),
+    path = '/tasks/evaluator-deadlines'
+  const body = JSON.stringify({ org: orgId, project: projectId, generation: intent.generation, dueAt: intent.dueAt })
+  expect((await post(app, path, { body })).status).toBe(401)
+  expect((await post(app, path, { body, bearer: await token({ aud: 'https://elsewhere.test' }) })).status).toBe(401)
+  expect((await post(app, path, { body, bearer: await token({ email: 'stranger@test' }) })).status).toBe(403)
+  expect((await post(app, path, { body, bearer: await token() })).status).toBe(500)
+  expect(await withTenant({ orgId, principal }, (tx) => database.loadEvaluatorDeadline(tx, projectId))).toEqual(intent)
 })

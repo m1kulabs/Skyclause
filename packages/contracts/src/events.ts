@@ -38,7 +38,7 @@ export const SourceErrorEventSchema = eventEnvelope(
     source_id: idSchema,
     state: z.literal('error'),
     since: z.iso.datetime(),
-    http_status: z.number().int()
+    http_status: z.number().int().nullable()
   })
 )
 
@@ -48,7 +48,7 @@ export const SourceStaleEventSchema = eventEnvelope(
     source_id: idSchema,
     state: z.literal('stale'),
     since: z.iso.datetime(),
-    http_status: z.number().int()
+    http_status: z.number().int().nullable()
   })
 )
 
@@ -58,7 +58,7 @@ export const SourceRecoveredEventSchema = eventEnvelope(
     source_id: idSchema,
     state: z.literal('recovered'),
     since: z.iso.datetime(),
-    http_status: z.number().int()
+    http_status: z.number().int().nullable()
   })
 )
 
