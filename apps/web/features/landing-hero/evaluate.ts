@@ -21,6 +21,9 @@ export interface LatestCall {
   at: string
 }
 
+/** `null` is no public approved call; `'error'` is a calendar read that failed, never shown as n=0. */
+export type LatestCallRead = LatestCall | null | 'error'
+
 export const EVALUATE_PATH = '/v1/public/commons/bukit-jalil/evaluate'
 
 export function evaluateBody(win: HeroWindow) {
@@ -101,26 +104,30 @@ interface CalendarEntry {
   starts_at: string
 }
 
-/** The pilot project's public calendar (LND-3): latest by start, or null when unset, private or empty. */
+/** The pilot project's public calendar (LND-3): latest by start, null when unset, private or empty, else 'error'. */
 export async function fetchLatestCall(
   pilot: { org: string; project: string } | null,
-  baseUrl?: string
-): Promise<LatestCall | null> {
+  baseUrl?: string,
+  signal?: AbortSignal
+): Promise<LatestCallRead> {
   if (!pilot) return null
   let response: Response
   try {
     response = await fetch(withBase(baseUrl, calendarPath(pilot)), {
       headers: { Accept: 'application/json' },
+      signal,
       ...(typeof window === 'undefined' ? { cache: 'no-store' as const } : {})
     })
   } catch {
-    return null
+    return 'error'
   }
-  if (!response.ok) return null
+  if (response.status === 404) return null
+  if (!response.ok) return 'error'
   const body: unknown = await response.json().catch(() => null)
-  if (typeof body !== 'object' || body === null) return null
+  if (typeof body !== 'object' || body === null) return 'error'
   const data = (body as { data?: unknown }).data
-  if (!Array.isArray(data) || data.length === 0) return null
+  if (!Array.isArray(data)) return 'error'
+  if (data.length === 0) return null
   const entries = data.filter(
     (entry): entry is CalendarEntry =>
       typeof entry === 'object' &&
@@ -129,7 +136,7 @@ export async function fetchLatestCall(
       typeof (entry as CalendarEntry).permalink === 'string' &&
       typeof (entry as CalendarEntry).starts_at === 'string'
   )
-  if (!entries.length) return null
+  if (!entries.length) return 'error'
   const latest = [...entries].sort((a, b) => b.starts_at.localeCompare(a.starts_at))[0]!
   return { callId: latest.call_id, permalink: latest.permalink, at: latest.starts_at }
 }
@@ -143,6 +150,6 @@ export function fetchEvaluateServer(win: HeroWindow): Promise<EvaluateResult> {
   return postEvaluate(win, serverBaseUrl(), AbortSignal.timeout(2000))
 }
 
-export function fetchLatestCallServer(pilot: { org: string; project: string } | null): Promise<LatestCall | null> {
-  return fetchLatestCall(pilot, serverBaseUrl())
+export function fetchLatestCallServer(pilot: { org: string; project: string } | null): Promise<LatestCallRead> {
+  return fetchLatestCall(pilot, serverBaseUrl(), AbortSignal.timeout(2000))
 }

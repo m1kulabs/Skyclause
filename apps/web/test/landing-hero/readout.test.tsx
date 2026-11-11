@@ -214,4 +214,18 @@ describe('HeroReadout', () => {
     expect(link.closest('[data-source]')?.getAttribute('data-source')).toBe('/v1/public/x/y/calendar-entries?limit=1')
     await expectAxeClean()
   })
+
+  test('a failed calendar read says so and never reads n=0', () => {
+    render(
+      <HeroReadout
+        result={response()}
+        win={{ date: '2026-11-05', startMin: 1290, endMin: 1380 }}
+        latestCall="error"
+        calendarQuery="/v1/public/x/y/calendar-entries?limit=1"
+        rainAnimated
+      />
+    )
+    expect(screen.getByText("Couldn't reach the approved-call calendar.")).toBeTruthy()
+    expect(screen.queryByText('No approved call yet (n=0)')).toBeNull()
+  })
 })

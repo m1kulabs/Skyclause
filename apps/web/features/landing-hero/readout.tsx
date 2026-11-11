@@ -2,7 +2,7 @@ import { brandStates } from '@skyclause/elements'
 import { formatDate, formatTime } from '@skyclause/i18n/format'
 import { Glyph } from '../brand/glyph'
 import { t } from './catalogue'
-import type { EvaluateResult, LatestCall } from './evaluate'
+import type { EvaluateResult, LatestCallRead } from './evaluate'
 import {
   ageMinutesOf,
   blockedLineOf,
@@ -19,7 +19,7 @@ import styles from './hero.module.css'
 export interface HeroReadoutProps {
   result: EvaluateResult
   win: HeroWindow
-  latestCall: LatestCall | null
+  latestCall: LatestCallRead
   calendarQuery: string
   rainAnimated: boolean
 }
@@ -140,7 +140,11 @@ export function HeroReadout({ result, win: _win, latestCall, calendarQuery, rain
       <p data-source={CLOCK_SOURCE}>
         <span>{t('landing-hero.evaluated', { time: formatTime(data.evaluated_at, 'en') }, 'en')}</span>
       </p>
-      {latestCall ? (
+      {latestCall === 'error' ? (
+        <p data-source={calendarQuery}>
+          <span>{t('landing-hero.latest_call_error', {}, 'en')}</span>
+        </p>
+      ) : latestCall ? (
         <p data-source={calendarQuery}>
           <a href={latestCall.permalink}>
             <span>{t('landing-hero.latest_call', {}, 'en')}</span>
