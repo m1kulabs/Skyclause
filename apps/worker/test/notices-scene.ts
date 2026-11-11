@@ -128,7 +128,7 @@ export function mailbox(o: { fail?: () => boolean; delayMs?: number } = {}) {
     async send(m) {
       box.started++
       if (o.delayMs) await new Promise((resolve) => setTimeout(resolve, o.delayMs))
-      if (o.fail?.()) throw new Error('SES SendEmail failed: MessageRejected (HTTP 400)')
+      if (o.fail?.()) throw new Error('Resend send failed: application_error (HTTP 500)')
       sent.push(m)
       return { providerMessageId: randomUUID() }
     }

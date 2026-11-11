@@ -250,14 +250,14 @@ describe('plan-feedback: after a graded Sky window, one email to each subscriber
   const APP = 'https://app.skyclause.m1ku.tech'
   type Sent = Parameters<EmailTransport['send']>[0]
 
-  /** A mailbox double; `failFor` addresses answer as SES does outside its sandbox's verified list (D48). */
+  /** A mailbox double; `failFor` addresses are refused, as Resend refuses an invalid address. */
   function mailbox(failFor: string[] = []) {
     const sent: Sent[] = []
     const transport: EmailTransport = {
       async send(message) {
-        if (failFor.includes(message.to)) throw new Error('MessageRejected: Email address is not verified.')
+        if (failFor.includes(message.to)) throw new Error('Resend send failed: validation_error (HTTP 422)')
         sent.push(message)
-        return { providerMessageId: `ses-${sent.length}` }
+        return { providerMessageId: `email-${sent.length}` }
       }
     }
     return { sent, transport }
@@ -335,8 +335,8 @@ describe('plan-feedback: after a graded Sky window, one email to each subscriber
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
     })
     expect(await feedbackNotices(night.projectId)).toEqual([
-      { status: 'sent', provider_message_id: 'ses-1', call_id: null },
-      { status: 'sent', provider_message_id: 'ses-2', call_id: null }
+      { status: 'sent', provider_message_id: 'email-1', call_id: null },
+      { status: 'sent', provider_message_id: 'email-2', call_id: null }
     ])
   })
 
@@ -374,7 +374,7 @@ describe('plan-feedback: after a graded Sky window, one email to each subscriber
     expect(box.sent).toEqual([])
   })
 
-  test('an SES refusal marks that notice failed; the others still send and the event completes', async () => {
+  test('a refused send marks that notice failed; the others still send and the event completes', async () => {
     const night = await graded()
     await recipient(night, 'ana@example.edu.my', 'sent')
     await recipient(night, 'unverified@example.com', 'sent')

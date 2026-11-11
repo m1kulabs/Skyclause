@@ -74,8 +74,8 @@ export async function queueSubscriberEmail(
 
 /**
  * Sends a queued email and records `sent` with the provider's message ID, or `failed`. A failure is logged with the
- * notice ID and SES's error (never the address or token) and, when `rethrow`, answers the request as an error; the
- * public join keeps its one response whatever SES says, so it can't be used to probe addresses.
+ * notice ID and Resend's error (never the address or token) and, when `rethrow`, answers the request as an error; the
+ * public join keeps its one response whatever Resend says, so it can't be used to probe addresses.
  */
 export async function deliverSubscriberEmail(
   deps: { email: EmailTransport; withTenant: WithTenant },

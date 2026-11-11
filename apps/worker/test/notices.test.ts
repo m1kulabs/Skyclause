@@ -186,7 +186,7 @@ describe('the sender on bundle.approved', () => {
     })
   })
 
-  test('before gate 4B (no SES values) the send fails loudly and spends no attempt', async () => {
+  test('with mail off (no sending settings) the send fails loudly and spends no attempt', async () => {
     const made = await approvedCall(orgId, { recipients: [{}] })
     await expect(senderPart(null).approve(made.event)).rejects.toThrow(/email is off/)
     expect(await noticeRow(made.subscribers[0]!.noticeId)).toMatchObject({ status: 'queued', attempts: 0 })
@@ -239,7 +239,7 @@ describe('retries on the batch sweep (D45)', () => {
     })
   })
 
-  test('the sweep sends what the consumer couldn’t, once SES answers', async () => {
+  test('the sweep sends what the consumer couldn’t, once Resend answers', async () => {
     const made = await approvedCall(orgId, { recipients: [{}] })
     let down = true
     const box = mailbox({ fail: () => down })

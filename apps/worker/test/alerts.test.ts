@@ -58,7 +58,7 @@ function doubles(o: {
       async send(m) {
         if (o.email) return o.email(m)
         mails.push(m)
-        return { providerMessageId: `ses-${mails.length}` }
+        return { providerMessageId: `email-${mails.length}` }
       }
     }),
     schedule: async (task) => void tasks.push(task),
@@ -232,7 +232,7 @@ describe('CAL-18 and CAL-10: Needs review alerts everyone on duty', () => {
       [made.projectId]
     )
     expect(notices.map((n) => n.status)).toEqual(['sent', 'sent', 'sent'])
-    expect(notices.filter((n) => n.provider_message_id?.startsWith('ses-'))).toHaveLength(2)
+    expect(notices.filter((n) => n.provider_message_id?.startsWith('email-'))).toHaveLength(2)
     const tracked = await rows<{ props: { channel: string; seconds: number } }>(
       "SELECT props FROM analytics_event WHERE name = 'approver_alerted' AND project_id = $1",
       [made.projectId]

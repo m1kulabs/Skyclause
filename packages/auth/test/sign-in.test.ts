@@ -172,21 +172,17 @@ test('new magic-link sign-ups track once without email and preserve whether the 
   expect(signedUp.rows[0]!.is_anonymous).toBe(false)
 })
 
-test('a send SES refuses is one structured ERROR line naming SES and its status, answered 502', async () => {
+test('a send Resend refuses is one structured ERROR line naming its error and status, answered 502', async () => {
   const mailbox = createMailbox()
   let refuse = false
   const { request } = setup(undefined, {
     async send(message) {
       if (!refuse) return mailbox.send(message)
-      const denied = Object.assign(
-        new Error(
-          `User 'arn:aws:sts::111122223333:assumed-role/skyclause-production-email/skyclause' is not authorized to perform 'ses:SendRawEmail' on resource 'arn:aws:ses:ap-southeast-2:111122223333:identity/${message.to}'`
-        ),
-        { name: 'AccessDeniedException', $metadata: { httpStatusCode: 403 } }
-      )
-      throw new EmailSendError('SES SendEmail failed: AccessDeniedException (HTTP 403)', {
+      // Resend's 403 message (https://resend.com/docs/api-reference/errors.md) can name an address: it stays unlogged.
+      const denied = new Error(`You can only send testing emails to your own email address (${message.to}).`)
+      throw new EmailSendError('Resend send failed: validation_error (HTTP 403)', {
         status: 403,
-        code: 'AccessDeniedException',
+        code: 'validation_error',
         cause: denied
       })
     }
@@ -208,8 +204,8 @@ test('a send SES refuses is one structured ERROR line naming SES and its status,
     expect(args).toHaveLength(1)
     expect(JSON.parse(String(args[0]))).toMatchObject({
       severity: 'ERROR',
-      message: 'SES SendEmail failed: AccessDeniedException (HTTP 403)',
-      code: 'AccessDeniedException',
+      message: 'Resend send failed: validation_error (HTTP 403)',
+      code: 'validation_error',
       status: 403,
       category: 'magic_link'
     })
