@@ -9,7 +9,9 @@ import { evaluator } from './evaluator'
 import { evidence } from './evidence'
 import { domainEvents } from './events'
 import { dataRights } from './data-rights'
-import { grades } from './grades'
+import { grades, setGradeEngine } from './grades'
+import { installedIndicatorDefinitions, productionEvaluatorProviders } from '@skyclause/api/evaluator'
+import { adapters } from '@skyclause/sources'
 import { ics } from './ics'
 import { migrations } from './migrate'
 import { notices } from './notices'
@@ -23,6 +25,12 @@ import { retention } from './retention'
 import { defineRegistry } from './server'
 import { sliPart } from './sli'
 import { sources } from './sources'
+
+const definitions = installedIndicatorDefinitions(adapters)
+setGradeEngine({
+  registry: definitions.length ? definitions : null,
+  history: (...args) => productionEvaluatorProviders().history(...args)
+})
 
 // Spec §7: each owner appends one line here, naming a `WorkerPart` exported from its own folder,
 // for example `evaluator, // b-evaluator`.

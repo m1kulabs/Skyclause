@@ -7,7 +7,8 @@
     ".": "./src/index.ts",
     "./members": "./src/services/members/index.ts",
     "./rota": "./src/services/rota/index.ts",
-    "./testing": "./test/harness/index.ts"
+    "./testing": "./test/harness/index.ts",
+    "./evaluator": "./src/services/evaluator/index.ts"
   },
   "dependencies": {
     "@google-cloud/storage": "8.4.0",

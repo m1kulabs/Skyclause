@@ -124,7 +124,7 @@ test('checked publication helper uses the exact verified archive registry when e
     (await run((tx) => providers.loadCheckedPublishedVersion(tx, { ...q, versionId: publication!.id }))).sheet
       .registryHash
   ).toBe(saved.snapshot.registryHash)
-  const noCurrentDefinitions = createEvaluatorProviders({ adapters, forecast: null })
+  const noCurrentDefinitions = createEvaluatorProviders({ adapters: [], forecast: null })
   await expect(run((tx) => noCurrentDefinitions.loadCheckedPublishedVersion(tx, q))).rejects.toMatchObject({
     owner: 'b-evaluator:indicator-registry'
   })
@@ -276,9 +276,7 @@ test('snapshot composition uses validated eligible API history and range tempora
   )
   await run((tx) => makeProjectSource(tx, { projectId: created.project.id, sourceId: source.id, role: 'rain_gauge' }))
   const q = { projectId: created.project.id, pack: 'sky' as const, tEval, windows: [], persist: false }
-  await expect(run((tx) => providers.snapshots.take(tx, q))).rejects.toMatchObject({
-    owner: 'b-evaluator:rapidrail-metadata-history'
-  })
+  expect((await run((tx) => providers.snapshots.take(tx, q))).snapshot.nights).toEqual([])
   await expect(
     run((tx) => providers.history(tx, { projectId: q.projectId, from: tEval, to: tEval }))
   ).rejects.toMatchObject({ owner: 'b-evaluator:temporal-context-history' })
@@ -296,8 +294,13 @@ const definition: IndicatorDefinition = {
 const adapter = (indicators: IndicatorDefinition[]) => ({ kind: 'jps_rain', indicators }) as SourceAdapter<unknown>
 const q = { projectId: 'project', pack: 'sky' as const }
 test('installed real adapters define readiness; empty actual registry is unavailable', async () => {
-  expect(adapters).toEqual([])
-  await expect(createRuntimeRegistry(adapters).load(tx, q)).rejects.toMatchObject({ name: 'NotBuiltError' })
+  const installed = await createRuntimeRegistry(adapters).load(tx, q)
+  expect(installed).toEqual(
+    expect.arrayContaining([
+      { name: 'site.rain_60m_mm', celType: 'double', unit: 'mm', scope: 'site', sourceKind: 'jps_rain' }
+    ])
+  )
+  await expect(createRuntimeRegistry([]).load(tx, q)).rejects.toMatchObject({ name: 'NotBuiltError' })
 })
 test('deterministic declarations collapse identical duplicates and reject conflicts', async () => {
   const second = { ...definition, name: 'w.rain_max_60m_mm' }
@@ -406,4 +409,18 @@ test('actual tenant provider selects newest eligible metadata/feed payload throu
       loadEvaluatorHistory(tx, { projectId: p.id, pack: 'crowd', tEval: '2026-11-10T03:00:00Z' })
     )
   ).rejects.toMatchObject({ name: 'NotBuiltError', owner: 'b-evaluator:rapidrail-metadata-history' })
+})
+
+test('Sky history does not depend on unavailable bound Crowd metadata', async () => {
+  const s = await projectScene()
+  for (const kind of ['rapidrail_od', 'gtfs_static'] as const) {
+    const source = await withSystem('unavailable-crowd', (tx) => makeSource(tx, { kind }))
+    await s.run((tx) => makeProjectSource(tx, { projectId: s.created.project.id, sourceId: source.id }))
+  }
+  expect(
+    await s.run((tx) => loadEvaluatorHistory(tx, { projectId: s.created.project.id, pack: 'sky', tEval }))
+  ).toEqual({ sources: [], readings: [], polls: [] })
+  await expect(
+    s.run((tx) => loadEvaluatorHistory(tx, { projectId: s.created.project.id, pack: 'crowd', tEval }))
+  ).rejects.toMatchObject({ name: 'NotBuiltError' })
 })

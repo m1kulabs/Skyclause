@@ -5,6 +5,9 @@
 // (test/fixtures/fixtures.json); every time below is MYT (UTC+8) on 2 November 2026.
 import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
+import { TEST_REGISTRY } from '../../clauses/test/test-helpers'
+import { createEvaluatorProviders } from '../src/services/evaluator'
+import type { SourceAdapter } from '@skyclause/sources'
 import { canonicalHash, type IndicatorSnapshot, type IndicatorValue, type Verdict } from '@skyclause/clauses'
 import type { Principal, ShadowEvaluator, SnapshotSource } from '@skyclause/contracts'
 import {
@@ -64,9 +67,7 @@ const capture: { stationId: string; data: Array<{ timestamp: string; rf: number 
 )
 const myt = (local: string) => new Date(`2026-11-02T${local}:00+08:00`)
 const GAUGE = 'site.rain_60m_mm'
-const gaugeRegistry = [
-  { name: GAUGE, celType: 'double' as const, unit: 'mm', scope: 'site' as const, sourceKind: 'jps_rain' as const }
-]
+const gaugeRegistry = [...TEST_REGISTRY].sort((a, b) => a.name.localeCompare(b.name, 'en'))
 
 const A = 'approvals-a'
 const B = 'approvals-b'
@@ -157,7 +158,14 @@ const shadow: ShadowEvaluator = {
     return { verdicts, verdictHash: canonicalHash(verdicts.windows), explanations: [] }
   }
 }
-setRecheckPorts({ snapshots, shadow })
+setRecheckPorts({
+  snapshots,
+  shadow,
+  loadCheckedPublishedVersion: createEvaluatorProviders({
+    adapters: [{ indicators: gaugeRegistry } as SourceAdapter<unknown>],
+    forecast: null
+  }).loadCheckedPublishedVersion
+})
 
 /** The engine's verdict as `call.shadow` holds it on the wire (#150's `Verdict`), with the gauge's URL. */
 function wire(v: Verdict, url: string) {

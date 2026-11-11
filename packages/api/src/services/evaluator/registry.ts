@@ -4,19 +4,24 @@ import { SOURCE_METRICS, type SourceAdapter } from '@skyclause/sources'
 import { loadEvaluatorRegistry } from '@skyclause/db'
 import type { RuntimeIndicatorRegistry } from '../clause-sheets/ports'
 
+/** Pure declarations from installed providers; no network or database at startup. */
+export function installedIndicatorDefinitions(adapters: readonly SourceAdapter<unknown>[]) {
+  const byName = new Map<string, IndicatorDefinition>()
+  for (const adapter of adapters)
+    for (const definition of adapter.indicators) {
+      const prior = byName.get(definition.name)
+      if (prior && canonicalHash(prior) !== canonicalHash(definition))
+        throw new Error(`Conflicting registered indicator definition: ${definition.name}`)
+      byName.set(definition.name, { ...definition })
+    }
+  const definitions = [...byName.values()].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+  return definitions
+}
 /** Real installed adapter declarations are the only current registry authority. */
 export function createRuntimeRegistry(adapters: readonly SourceAdapter<unknown>[]): RuntimeIndicatorRegistry {
   return {
     async load(_tx, q) {
-      const byName = new Map<string, IndicatorDefinition>()
-      for (const adapter of adapters)
-        for (const definition of adapter.indicators) {
-          const prior = byName.get(definition.name)
-          if (prior && canonicalHash(prior) !== canonicalHash(definition))
-            throw new Error(`Conflicting registered indicator definition: ${definition.name}`)
-          byName.set(definition.name, { ...definition })
-        }
-      const definitions = [...byName.values()].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+      const definitions = installedIndicatorDefinitions(adapters)
       if (q.registryHash !== undefined && q.registryHash !== canonicalHash(definitions))
         return loadEvaluatorRegistry(_tx, { projectId: q.projectId, pack: q.pack, registryHash: q.registryHash })
       if (!definitions.length) throw new NotBuiltError('b-evaluator:indicator-registry')

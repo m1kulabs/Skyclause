@@ -4,7 +4,7 @@ import {
   nextEvaluationAt,
   semanticVerdictKey,
   type EvaluatorProviders
-} from '@skyclause/api'
+} from '@skyclause/api/evaluator'
 import { recordUsedReadingLatency } from './measurement'
 import type { ReadingHistory } from '@skyclause/clauses'
 import type { Instant, Pack, TxHandle } from '@skyclause/contracts'

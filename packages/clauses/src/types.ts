@@ -235,6 +235,7 @@ export interface ReadingHistory {
   }>
   readings: Array<{
     id: string
+    pollId?: string | null
     sourceId: string
     metric: string
     observedAt: Instant

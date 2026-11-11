@@ -26,6 +26,7 @@ function compareIds(a: string, b: string): number {
 
 export interface NormalizedReading {
   id: string
+  pollId?: string | null
   sourceId: string
   metric: string
   observedAt: Instant
@@ -137,6 +138,7 @@ export function dedupeReadingsAt(h: ReadingHistory, tEvalMs: number): Normalized
     const existing = byKey.get(identityKey)
     const candidate: NormalizedReading = {
       id: r.id,
+      pollId: r.pollId,
       sourceId: r.sourceId,
       metric: r.metric,
       observedAt: formatInstant(observedMs),
@@ -360,15 +362,23 @@ export function resolveSourceAt(
       }
     }
     const latestObservation = observations.get(latestReading!.observedMs)!
+    // A catch-up response can contain many missed frames but is one capture. Physical
+    // poll time keeps normal 15-minute ingestion batches distinct from a provider outage.
+    const captures = new Map(polls.map((poll) => [poll.id, poll.startedMs]))
+    const captureClock = (reading: NormalizedReading) =>
+      (reading.pollId ? captures.get(reading.pollId) : undefined) ?? reading.receivedMs
+    const latestCapture = captureClock(latestObservation)
     const priorObservations = Array.from(observations.values()).filter(
       (reading) =>
-        reading.observedMs < latestObservation.observedMs && reading.receivedMs <= latestObservation.receivedMs
+        reading.observedMs < latestObservation.observedMs &&
+        reading.receivedMs <= latestObservation.receivedMs &&
+        captureClock(reading) < latestCapture
     )
     const prevReading =
       priorObservations.sort((a, b) => a.observedMs - b.observedMs || a.receivedMs - b.receivedMs).at(-1) ?? null
     const gapMs = prevReading !== null ? latestObservation.observedMs - prevReading.observedMs : 0
-    const receiptGapMs = prevReading !== null ? latestObservation.receivedMs - prevReading.receivedMs : 0
-    const hadStaleGapBeforeLatest = prevReading !== null && (gapMs > staleLimitMs || receiptGapMs > staleLimitMs)
+    const captureGapMs = prevReading !== null ? latestCapture - captureClock(prevReading) : 0
+    const hadStaleGapBeforeLatest = prevReading !== null && (gapMs > staleLimitMs || captureGapMs > staleLimitMs)
     const errorPolls = polls.filter((p) => p.outcome === 'error')
     const lastErrorPoll = errorPolls.length > 0 ? errorPolls[errorPolls.length - 1]! : null
     const hadErrorBeforeLatest =

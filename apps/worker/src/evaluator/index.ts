@@ -1,4 +1,4 @@
-import { createEvaluatorProviders, type EvaluatorProviders } from '@skyclause/api'
+import { createEvaluatorProviders, type EvaluatorProviders } from '@skyclause/api/evaluator'
 import { PollRecordedEventSchema, type EventType } from '@skyclause/contracts'
 import {
   lockEvaluatorProject,

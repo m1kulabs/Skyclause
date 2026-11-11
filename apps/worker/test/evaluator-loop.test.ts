@@ -711,3 +711,24 @@ test('real delivery records receipt latency once and due-time reuse records no h
     await provider.shutdown()
   }
 })
+
+test('different poll deliveries at the same instant cannot cancel an already planned future deadline', async () => {
+  const x = await pollScene('ok')
+  await x.part.topics!['readings-updated']!({
+    data: { source_id: x.s.id, poll_id: x.p.id, kind: x.s.kind, new_rows: 1 },
+    messageId: 'first',
+    publishTime: at,
+    attributes: {}
+  })
+  const first = await x.run((tx) => database.loadEvaluatorDeadline(tx, x.q.projectId))
+  expect(first).not.toBeNull()
+  const second = await withSystem('test', (tx) =>
+    makePoll(tx, { sourceId: x.s.id, startedAt: new Date(at), receivedAt: new Date(at), outcome: 'unchanged' })
+  )
+  await x.run((tx) =>
+    database.emitSourcePoll(tx, x.q.projectId, { ...x.stored, id: second.id, outcome: 'unchanged', newRows: 0 })
+  )
+  const events = await x.run((tx) => tx.select().from(domainEvent).where(eq(domainEvent.type, 'poll.recorded')))
+  await dispatchEvent(x.part.events!, events.at(-1)!.id)
+  expect(await x.run((tx) => database.loadEvaluatorDeadline(tx, x.q.projectId))).toEqual(first)
+})

@@ -1,17 +1,23 @@
-import type { ReadingHistory } from '@skyclause/clauses'
-import { NotBuiltError, type TxHandle } from '@skyclause/contracts'
+import type { ReadingHistory, SourceKind } from '@skyclause/clauses'
+import { NotBuiltError, type Pack, type TxHandle } from '@skyclause/contracts'
 import { and, asc, desc, eq, inArray, isNull, lte, or, sql } from 'drizzle-orm'
 import type { Tx } from '../client'
 import { project, projectSource, source } from '../schema'
 import { poll, reading } from '../schema/partitioned'
 import type { EvaluatorQuery } from './types'
 
+const packKinds: Record<Pack, SourceKind[]> = {
+  sky: ['jps_rain', 'apims', 'met_warning', 'met_forecast', 'camera'],
+  crowd: ['rapidrail_od', 'gtfs_static', 'gtfs_rt', 'golive', 'wikipedia', 'pi']
+}
+
 /** All retained history is needed for recovery, pre-window warnings, rain and exact local mornings. */
 async function history(
   handle: TxHandle,
   projectId: string,
   cutoff: string,
-  latestOnly: boolean
+  latestOnly: boolean,
+  pack?: Pack
 ): Promise<ReadingHistory> {
   const tx = handle as Tx
   if (!tx.orgId) throw new Error('evaluator history requires a tenant transaction')
@@ -22,7 +28,13 @@ async function history(
     .from(projectSource)
     .innerJoin(project, eq(project.id, projectSource.projectId))
     .innerJoin(source, eq(source.id, projectSource.sourceId))
-    .where(and(eq(project.id, projectId), isNull(project.archivedAt)))
+    .where(
+      and(
+        eq(project.id, projectId),
+        isNull(project.archivedAt),
+        pack ? inArray(source.kind, packKinds[pack]) : undefined
+      )
+    )
     .orderBy(asc(source.id))
   const sources = bindings.map(({ source: row }) => ({
     id: row.id,
@@ -80,6 +92,7 @@ async function history(
     })),
     readings: rows.map((row) => ({
       id: row.id,
+      pollId: row.pollId,
       sourceId: row.sourceId,
       metric: row.metric,
       observedAt: row.observedAt.toISOString(),
@@ -98,7 +111,7 @@ async function history(
  * Current bindings/settings do not establish arbitrary recorded-at-time context.
  */
 export function loadEvaluatorHistory(tx: TxHandle, q: EvaluatorQuery): Promise<ReadingHistory> {
-  return history(tx, q.projectId, q.tEval, true)
+  return history(tx, q.projectId, q.tEval, true, q.pack)
 }
 /** Replay: retain every revision through `to`, including observations before `from`. */
 export function loadReadingHistory(

@@ -31,3 +31,8 @@ export function createEvaluatorProviders(q: {
 }
 
 export { semanticVerdictKey } from './scope'
+
+export { createRuntimeRegistry, installedIndicatorDefinitions } from './registry'
+export { loadEvaluatorHistory } from './history'
+export { nextEvaluationAt, evaluatorWindows } from './deadline'
+export { productionEvaluatorProviders, configureProductionEvaluator } from './production'
