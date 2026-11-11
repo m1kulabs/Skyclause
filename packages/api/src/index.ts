@@ -76,6 +76,8 @@ export { calendarFeed, serveCalendarFeed, type CalendarFeed, type CalendarFeedDe
 export { getAccountPreferences } from './services/account'
 export { inTenant, type ServiceContext, type WithTenant } from './tenancy'
 export {
+  bindSource,
+  unbindSource,
   listCatalogueSources,
   type CatalogueQuery,
   type SourcesAccess,

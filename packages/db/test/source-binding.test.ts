@@ -1,14 +1,67 @@
+import { sql } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
 import { beforeAll, describe, expect, test } from 'vitest'
 import * as db from '../src'
 import { makeOrganization, makePoll, makeProject, makeReading, makeSource, makeSourceState } from './factories'
-import { memberOf } from './harness'
+import { asLogin, memberOf } from './harness'
 import { capturedCa16w } from './source-binding-capture'
 
 let orgId: string
 const tenant = <T>(fn: (tx: db.Tx) => Promise<T>) => db.withTenant({ orgId, principal: memberOf(orgId) }, fn)
 beforeAll(async () => {
   orgId = (await makeOrganization()).id
+})
+
+describe('binding', () => {
+  test('public binding through native app role and active_project_fanout', async () => {
+    const src = await db.withSystem('binding-test', (tx) => makeSource(tx, { kind: 'apims' }))
+    const [a, b, archived] = await tenant(async (tx) => [
+      await makeProject(tx),
+      await makeProject(tx),
+      await makeProject(tx, { archivedAt: new Date() })
+    ])
+    await tenant(async (tx) => {
+      const role = await tx.execute<{ current_user: string }>(sql`SELECT current_user`)
+      expect(role.rows[0]?.current_user).toBe('app')
+      expect((await db.lockSourceProject(tx, a.id))?.id).toBe(a.id)
+      expect((await db.visibleBindingSource(tx, src.id))?.id).toBe(src.id)
+      // This helper is device-only even when a caller accidentally passes a public source.
+      expect(await db.lockBindingSource(tx, src.id)).toBeNull()
+      for (const project of [a, b, archived]) {
+        const first = await db.insertSourceBinding(
+          tx,
+          { projectId: project.id, sourceId: src.id, role: 'api_station' },
+          new Date()
+        )
+        expect(first.created).toBe(true)
+        const again = await db.insertSourceBinding(
+          tx,
+          { projectId: project.id, sourceId: src.id, role: 'api_station' },
+          new Date()
+        )
+        expect(again).toMatchObject({ created: false, binding: { id: first.binding.id } })
+      }
+      // Preserve the runner's historical multiple-role deduplication contract.
+      await db.insertSourceBinding(tx, { projectId: a.id, sourceId: src.id, role: 'warnings' }, new Date())
+    })
+    const found = await tenant((tx) => db.boundSources(tx, 'apims'))
+    expect(
+      found
+        .find((s) => s.id === src.id)
+        ?.bindings.map((b) => b.projectId)
+        .sort()
+    ).toEqual([a.id, b.id].sort())
+    expect(await tenant((tx) => db.sourceBindings(tx, src.id))).toHaveLength(4)
+    const bindings = await tenant((tx) => db.projectBindings(tx, b.id))
+    await tenant(async (tx) => {
+      expect(await db.deleteSourceBinding(tx, bindings[0]!.id)).toBe(true)
+      expect(await db.deleteSourceBinding(tx, bindings[0]!.id)).toBe(false)
+    })
+    const state = await asLogin('postgres', (client) =>
+      client.query('SELECT * FROM source_state WHERE source_id=$1', [src.id])
+    )
+    expect(state.rows).toEqual([])
+  })
 })
 
 describe('catalogue', () => {

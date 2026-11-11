@@ -1,6 +1,6 @@
 import '@skyclause/auth/test/harness/database'
 import { can } from '@skyclause/auth/can'
-import { listCatalogueSources } from '@skyclause/api'
+import { bindSource, listCatalogueSources, unbindSource } from '@skyclause/api'
 import {
   apiRequest,
   asApiKey,
@@ -25,6 +25,93 @@ const { v1 } = createTestApi({ deps: testDeps({ can, withTenant }) })
 
 beforeAll(async () => {
   await makeOrganization({ id: orgId, slug: ORG })
+})
+
+describe('binding', () => {
+  test('service_permissions uses production Can for direct calls and HTTP', async () => {
+    const [a, b] = await tenant(async (tx) => [await makeProject(tx), await makeProject(tx)])
+    const source = await withSystem('binding-real-can', (tx) => makeSource(tx))
+    const session = (role: 'admin' | 'owner' | 'editor' | 'viewer') => ({
+      ...asSession({ org: ORG, role }),
+      orgId,
+      role
+    })
+    const allowed = [
+      session('admin'),
+      session('owner'),
+      asApiKey({ org: ORG, role: 'admin', scopes: ['admin'] }),
+      asApiKey({ org: ORG, role: 'owner', scopes: ['admin'] })
+    ]
+    const denied = [
+      session('editor'),
+      session('viewer'),
+      { ...asSession({ org: ORG, role: 'guest', guest: true }), orgId, role: 'guest' as const },
+      asApiKey({ org: ORG, role: 'editor', scopes: ['admin'] }),
+      asApiKey({ org: ORG, role: 'admin', scopes: ['read'] }),
+      asOAuth({ org: ORG, role: 'admin', projectIds: [a.id] }),
+      asShareLink({ org: ORG, projectId: a.id, access: 'reviewer' }),
+      asDevice({ org: ORG })
+    ]
+    for (const principal of allowed) {
+      // Use the actual app login, including public-source reads, rather than system setup privilege.
+      const result = await withTenant({ orgId, principal }, (tx) =>
+        bindSource({ tx, principal }, { projectId: a.id, sourceId: source.id }, { now: new Date(), can })
+      )
+      expect(result.role).toBe('rain_gauge')
+      const response = await apiRequest(v1, {
+        as: principal,
+        method: 'POST',
+        path: `/v1/projects/${a.id}/sources`,
+        org: ORG,
+        body: { source_id: source.id },
+        idempotencyKey: randomUUID()
+      })
+      expect(response.status).toBe(201)
+      await withTenant({ orgId, principal }, (tx) =>
+        unbindSource({ tx, principal }, { projectId: a.id, sourceId: source.id }, { now: new Date(), can })
+      )
+    }
+    for (const principal of denied) {
+      for (const service of [bindSource, unbindSource])
+        await expect(
+          withTenant({ orgId, principal }, async (tx) => {
+            await service({ tx, principal }, { projectId: a.id, sourceId: source.id }, { now: new Date(), can })
+          })
+        ).rejects.toMatchObject({ status: 403 })
+      for (const method of ['POST', 'DELETE']) {
+        const response = await apiRequest(v1, {
+          as: principal,
+          method,
+          path: `/v1/projects/${a.id}/sources${method === 'DELETE' ? `/${source.id}` : ''}`,
+          org: ORG,
+          ...(method === 'POST' ? { body: { source_id: source.id }, idempotencyKey: randomUUID() } : {})
+        })
+        expect(response.status).toBe(403)
+      }
+    }
+    for (const principal of [
+      asOAuth({ org: ORG, role: 'admin', projectIds: [a.id] }),
+      asShareLink({ org: ORG, projectId: a.id })
+    ]) {
+      for (const service of [bindSource, unbindSource])
+        await expect(
+          withTenant({ orgId, principal }, async (tx) => {
+            await service({ tx, principal }, { projectId: b.id, sourceId: source.id }, { now: new Date(), can })
+          })
+        ).rejects.toMatchObject({ status: 404 })
+      for (const method of ['POST', 'DELETE']) {
+        const response = await apiRequest(v1, {
+          as: principal,
+          method,
+          path: `/v1/projects/${b.id}/sources${method === 'DELETE' ? `/${source.id}` : ''}`,
+          org: ORG,
+          ...(method === 'POST' ? { body: { source_id: source.id }, idempotencyKey: randomUUID() } : {})
+        })
+        // Uniform denial precedes HTTP resource lookup for principals prohibited from binding.
+        expect(response.status).toBe(403)
+      }
+    }
+  })
 })
 
 describe('catalogue', () => {
