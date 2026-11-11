@@ -100,8 +100,8 @@ function evaluateDouble() {
       }
     ],
     strip: (() => {
-      // 10:00 and 11:00 MYT today, so the picked day always carries the 60-minute lane.
-      const myt = new Date(Date.now() + 8 * 3600_000)
+      // 10:00 and 11:00 MYT on the next hour's day, which the default window picks (tomorrow from 23:00 MYT).
+      const myt = new Date(Date.now() + 9 * 3600_000)
       const noon = (hour: number) =>
         new Date(Date.UTC(myt.getUTCFullYear(), myt.getUTCMonth(), myt.getUTCDate(), hour - 8)).toISOString()
       return [inputValue({ observed_at: noon(10), value: 10 }), inputValue({ observed_at: noon(11), value: 12 })]
