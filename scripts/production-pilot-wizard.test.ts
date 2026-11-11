@@ -405,3 +405,68 @@ describe('infra/wizards/production-pilot.sh only reads', () => {
     expect(output).not.toContain("isn't confirmed")
   })
 })
+
+describe('infra/wizards/production-pilot.sh evidence holds no credential', () => {
+  const answers = [
+    '', // banner
+    '', // stage 1
+    '', // stage 2
+    '', // stage 3: signed in
+    'skyclause-ops', // ORG_SLUG
+    'bukit-jalil', // PROJECT_SLUG
+    'n', // open /new?
+    secretKey // read key
+  ]
+  const signedUrl =
+    'https://storage.googleapis.com/skyclause-production-archive/orgs/019a7000/pilot/sheets_ledger/ab12-ledger.csv' +
+    '?X-Goog-Algorithm=GOOG4-RSA-SHA256' +
+    '&X-Goog-Credential=skyclause-web%40skyclause.iam.gserviceaccount.com%2F20261117%2Fauto%2Fstorage%2Fgoog4_request' +
+    '&X-Goog-Date=20261117T100000Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host' +
+    '&X-Goog-Signature=5f2b0c1d9e8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8'
+
+  test('records each pilot-archive object by kind, sha256 and capture time, never its signed URL', () => {
+    const sha256 = 'ab12cd34ef56ab12cd34ef56ab12cd34ef56ab12cd34ef56ab12cd34ef56ab12'
+    const { result, output, evidenceContent } = runWizard({
+      input: answers,
+      curl: production({
+        '*/v1/projects/*/pilot-archive': json(200, {
+          data: [
+            {
+              project_id: PROJECT_ID,
+              kind: 'sheets_ledger',
+              url: signedUrl,
+              sha256,
+              captured_at: '2026-11-17T10:00:00Z'
+            }
+          ],
+          next_cursor: null,
+          label: 'Pilot archive (Gemini Enterprise, November 2026)'
+        })
+      })
+    })
+
+    expect(result.status, output).toBe(0)
+    expect(evidenceContent).toContain(`kind=sheets_ledger sha256=${sha256} captured_at=2026-11-17T10:00:00Z`)
+    expect(evidenceContent).not.toContain('X-Goog-')
+    expect(evidenceContent).not.toContain('storage.googleapis.com')
+  })
+
+  test.each([
+    ['a signed-URL parameter', signedUrl],
+    ['a bearer token', 'Authorization: Bearer stand-in-access-token-0123456789'],
+    ['an API key', secretKey],
+    ['an email address', 'pilot-tester@example.org']
+  ])('refuses to record a production answer that holds %s', (kind, secret) => {
+    const { result, output, evidenceContent } = runWizard({
+      input: answers,
+      curl: production({ '*/v1/projects/*/ledger/verify': json(200, { ...ledgerVerify, note: secret }) })
+    })
+
+    expect(result.status, output).toBe(0)
+    expect(output).toContain(`Refused to record #531 evidence: it holds ${kind}`)
+    expect(evidenceContent).not.toContain(secret)
+    expect(evidenceContent).not.toContain('/ledger/verify')
+    // The rest of the run still records what holds no credential.
+    expect(evidenceContent).toContain('## #194 — Organisation, project and default Sky clause sheet')
+  })
+})

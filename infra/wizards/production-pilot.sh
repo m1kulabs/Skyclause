@@ -236,23 +236,23 @@ key_prefix() {
   printf '%s…' "${1:0:8}"
 }
 
-# redact_text strips full skc_ API keys and personal email addresses from stdin before writing evidence.
-redact_text() {
+# credentials_in names each kind of credential in stdin: the shapes packages/config/src/redact.ts scrubs from logs,
+# plus signed-URL parameters. A call's ICS UID (call-…@ or night-…@skyclause.m1ku.tech) isn't an address. A key
+# prefix (8 characters) is too short to match.
+credentials_in() {
   python3 -c '
 import re, sys
 text = sys.stdin.read()
-text = re.sub(r"\bskc_[A-Za-z0-9_-]{8,}\b", lambda m: m.group(0)[:8] + "…", text)
-def redact_email(m):
-    addr = m.group(0)
-    if (
-        addr.endswith("@skyclause.iam.gserviceaccount.com")
-        or addr.endswith("@skyclause.m1ku.tech")
-        or addr.endswith(".skyclause.m1ku.tech")
-    ):
-        return addr
-    return "<redacted-email>"
-text = re.sub(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", redact_email, text)
-sys.stdout.write(text)
+text = re.sub(r"\b(?:call|night)-[^\s@]+@skyclause\.m1ku\.tech\b", "", text)
+kinds = [
+    ("a private key", r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
+    ("a signed-URL parameter", r"(?i)[?&](?:x-goog-signature|x-goog-credential|x-amz-signature|x-amz-credential|x-amz-security-token|googleaccessid|signature)="),
+    ("a bearer token", r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{16,}"),
+    ("an API key", r"ya29\.[A-Za-z0-9._-]+|sk[cgw]_[A-Za-z0-9_-]{16,}|AIza[0-9A-Za-z_-]{35}|(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{16,}|\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
+    ("a subscriber link token", r"/subscribe/[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])"),
+    ("an email address", r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"),
+]
+print(" and ".join(kind for kind, pattern in kinds if re.search(pattern, text)))
 '
 }
 
@@ -260,17 +260,21 @@ init_evidence() {
   [[ -e "$EVIDENCE_FILE" ]] || (umask 077 && printf '# Production pilot verification evidence\n' > "$EVIDENCE_FILE")
 }
 
-# record_evidence ISSUE TITLE COMMAND OUTPUT appends one redacted markdown section to EVIDENCE_FILE.
+# record_evidence ISSUE TITLE COMMAND OUTPUT appends one markdown section to EVIDENCE_FILE, or refuses the whole
+# section, writing nothing, if it holds a credential or an email address.
 record_evidence() {
-  local issue="$1" title="$2" cmd="$3" out="$4" fence='```' safe_cmd safe_out
+  local issue="$1" title="$2" cmd="$3" out="$4" fence='```' section found
+  section="$(printf '\n## %s — %s (%s)\n\n%sshell\n$ %s\n%s\n\n%stext\n%s\n%s' \
+    "$issue" "$title" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$fence" "$cmd" "$fence" "$fence" "$out" "$fence")"
+  found="$(printf '%s' "$section" | credentials_in)" ||
+    { warn "Couldn't check $issue evidence for credentials, so nothing was written."; return 1; }
+  if [[ -n "$found" ]]; then
+    warn "Refused to record $issue evidence: it holds $found. Nothing was written."
+    SKIPPED+=("$issue $title: record it by hand, without $found")
+    return 0
+  fi
   init_evidence
-  safe_cmd="$(printf '%s' "$cmd" | redact_text)"
-  safe_out="$(printf '%s' "$out" | redact_text)"
-  {
-    printf '\n## %s — %s (%s)\n\n' "$issue" "$title" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    printf '%sshell\n$ %s\n%s\n\n' "$fence" "$safe_cmd" "$fence"
-    printf '%stext\n%s\n%s\n' "$fence" "$safe_out" "$fence"
-  } >> "$EVIDENCE_FILE"
+  printf '%s\n' "$section" >> "$EVIDENCE_FILE"
   printf '  %s✓ recorded%s evidence for %s → %s\n' "$GREEN" "$RESET" "$issue" "$EVIDENCE_FILE"
 }
 
@@ -412,11 +416,12 @@ else
   SKIPPED+=("#531 verify ledger chain")
 fi
 api_get "/v1/projects/$PROJECT_ID/pilot-archive"
-archive_count="$(json_field "len(data.get('data', []))")"
-if [[ "$API_STATUS" == "200" ]] && (( ${archive_count:-0} > 0 )); then
-  record_evidence "#531" "Pilot archive objects" \
+# Each object's url is a signed download link, a credential for 15 minutes, so only these fields are kept.
+archive_objects="$(json_field "'\n'.join('kind=%s sha256=%s captured_at=%s' % (o['kind'], o['sha256'], o['captured_at']) for o in data.get('data', []))")"
+if [[ "$API_STATUS" == "200" ]] && [[ -n "$archive_objects" ]]; then
+  record_evidence "#531" "Pilot archive objects (kind, sha256 and capture time; download links left out)" \
     "curl -fsS -H 'Authorization: Bearer $KEY_HINT' -H 'Skyclause-Organization: $ORG_SLUG' '$API_ORIGIN/v1/projects/$PROJECT_ID/pilot-archive'" \
-    "$API_BODY"
+    "$archive_objects"
 else
   note "Pilot archive (#531 criterion 2) has 0 objects: the pilot-archive job runs after 17 November 2026 (infra/README.md 'Pilot archive')."
   SKIPPED+=("#531 upload and run pilot-archive job (after 17 November 2026)")
