@@ -104,9 +104,3 @@ variable "map_domains" {
   type        = bool
   default     = false
 }
-
-variable "oncall_contacts_ready" {
-  description = "Create the on-call notification channels from ONCALL_CONTACTS once infra/wizards/oncall-contacts.sh has stored it (#114)."
-  type        = bool
-  default     = false
-}
