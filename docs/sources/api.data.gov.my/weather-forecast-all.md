@@ -1,6 +1,8 @@
 # Unfiltered MET forecast capture
 
-## Contents
+This capture records one unfiltered MET forecast response and the limits of the evidence it provides.
+
+Contents:
 
 - [Capture](#capture)
 - [Published response and limits](#published-response-and-limits)
