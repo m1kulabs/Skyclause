@@ -238,12 +238,15 @@ describe('http.server.request.duration', () => {
  * breaks it with 400 (https://docs.cloud.google.com/monitoring/api/troubleshooting). One series is one scope, metric
  * name and attribute set; the resource is the process's own.
  */
-function cloudMonitoring(answer?: string) {
+function cloudMonitoring(refusal?: Error) {
   const ended = new Map<string, number>()
   const written: Array<{ name: string; attributes: Attributes; value: unknown }> = []
   let refused = 0
+  let exports = 0
+  let flushes = 0
   const exporter: PushMetricExporter = {
     export: (data, done) => {
+      exports++
       const points = data.scopeMetrics.flatMap((scope) =>
         scope.metrics.flatMap((metric) =>
           metric.dataPoints.map((point) => ({
@@ -255,10 +258,9 @@ function cloudMonitoring(answer?: string) {
           }))
         )
       )
-      if (answer || points.some((point) => point.end - (ended.get(point.key) ?? -Infinity) < 5000)) {
+      if (refusal || points.some((point) => point.end - (ended.get(point.key) ?? -Infinity) < 5000)) {
         refused++
-        const error = Object.assign(new Error('Bad Request'), { name: 'OTLPExporterError', code: 400, data: answer })
-        return done({ code: ExportResultCode.FAILED, error })
+        return done({ code: ExportResultCode.FAILED, error: refusal ?? answered(400, 'points written too often') })
       }
       for (const { key, end, ...point } of points) {
         ended.set(key, end)
@@ -266,11 +268,15 @@ function cloudMonitoring(answer?: string) {
       }
       done({ code: ExportResultCode.SUCCESS })
     },
-    forceFlush: async () => {},
+    forceFlush: async () => void flushes++,
     shutdown: async () => {}
   }
-  return { exporter, written, refused: () => refused }
+  return { exporter, written, refused: () => refused, exports: () => exports, flushes: () => flushes }
 }
+
+/** An HTTP answer the way the SDK's OTLPExporterError carries it: the status text, the code and the body as text. */
+const answered = (code: number, body: string) =>
+  Object.assign(new Error('Bad Request'), { name: 'OTLPExporterError', code, data: body })
 
 describe('metric export to Cloud Monitoring', () => {
   function startAgainst(api: ReturnType<typeof cloudMonitoring>) {
@@ -330,18 +336,72 @@ describe('metric export to Cloud Monitoring', () => {
     expect(failures()).toEqual([])
   })
 
-  test('a refused export logs the status and the answer, which the SDK error leaves out', async () => {
-    const api = cloudMonitoring('Metric name has an invalid character')
+  test('shutting down collects and exports the metrics once', async () => {
+    const api = cloudMonitoring()
     const t = startAgainst(api)
     request(204)
+    await t.shutdown()
+    telemetry = undefined
+    expect([api.exports(), api.flushes()]).toEqual([1, 1])
+  })
+
+  test('a failed span export on shutdown is logged, so a job still ends cleanly', async () => {
+    lines = []
+    const t = startTelemetry('job', {
+      env,
+      traceExporter: {
+        export: (_spans, done) => done({ code: ExportResultCode.FAILED, error: new Error('Service Unavailable') }),
+        shutdown: async () => {}
+      },
+      metricExporter: cloudMonitoring().exporter,
+      write: (line) => void lines.push(line)
+    })
+    trace.getTracer('test').startSpan('job vapid-keys').end()
+    await expect(t.shutdown()).resolves.toBeUndefined()
+    expect(lines.map((line) => JSON.parse(line).message)).toContain('telemetry flush failed')
+  })
+
+  /** The line the exporter logs for a failed export, which the SDK's own line leaves without its answer. */
+  async function failedWith(refusal: Error) {
+    const t = startAgainst(cloudMonitoring(refusal))
+    request(204)
     await t.flush()
-    expect(lines.map((line) => JSON.parse(line))).toContainEqual(
-      expect.objectContaining({
+    return lines.map((line) => JSON.parse(line)).filter((line) => line.message === 'telemetry: metrics export failed')
+  }
+
+  test('a refused export logs its status and the answer the API sent as text', async () => {
+    const body = '{"error":{"code":400,"message":"Points must be written in order."}}'
+    expect(await failedWith(answered(400, body))).toEqual([
+      {
         severity: 'ERROR',
-        message: 'telemetry: metrics export refused',
+        message: 'telemetry: metrics export failed',
+        error: 'Bad Request',
         status: 400,
-        answer: 'Metric name has an invalid character'
-      })
-    )
+        answer: body
+      }
+    ])
+  })
+
+  test('a protobuf answer logs its length and readable text, never its bytes', async () => {
+    // A google.rpc.Status: code 9 (FAILED_PRECONDITION), then the message, decoded as text the way the SDK does.
+    const message = 'One or more points were written more frequently than the maximum sampling period'
+    const body = Buffer.concat([Buffer.from([0x08, 0x09, 0x12, message.length]), Buffer.from(message)]).toString()
+    expect(await failedWith(answered(400, body))).toEqual([
+      {
+        severity: 'ERROR',
+        message: 'telemetry: metrics export failed',
+        error: 'Bad Request',
+        status: 400,
+        answer_length: body.length,
+        // Printable runs, so a framing byte that happens to be printable (the length, 80, is "P") can lead it.
+        answer_text: expect.stringContaining(message)
+      }
+    ])
+  })
+
+  test('a timeout logs what went wrong, with no status or answer', async () => {
+    expect(await failedWith(new Error('Request timed out'))).toEqual([
+      { severity: 'ERROR', message: 'telemetry: metrics export failed', error: 'Request timed out' }
+    ])
   })
 })

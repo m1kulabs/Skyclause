@@ -168,16 +168,30 @@ function spacedSeries(exporter: PushMetricExporter): PushMetricExporter {
       if (!scopeMetrics.length) return done({ code: ExportResultCode.SUCCESS })
       exporter.export({ ...data, scopeMetrics }, (result) => {
         if (result.code === ExportResultCode.SUCCESS) for (const [series, end] of ends) written.set(series, end)
-        else {
-          // The SDK's own error line keeps only the status text; the API's answer says what it refused.
-          const { code, data: answer } = (result.error ?? {}) as { code?: number; data?: string }
-          log.error('telemetry: metrics export refused', { status: code, answer })
-        }
+        else log.error('telemetry: metrics export failed', failure(result.error))
         done(result)
       })
     },
     forceFlush: () => exporter.forceFlush(),
     shutdown: () => exporter.shutdown()
+  }
+}
+
+/**
+ * What a failed export says: the SDK's own error line keeps only the status text, while the API's answer says what it
+ * refused. A protobuf answer (`google.rpc.Status`), which the SDK decodes as text, is logged as its length and its runs
+ * of printable characters, which hold the status message, instead of its bytes.
+ */
+function failure(error: (Error & { code?: number; data?: string }) | undefined) {
+  const answer = error?.data
+  // eslint-disable-next-line no-control-regex
+  const binary = answer !== undefined && /[\u0000-\u0008\u000e-\u001f\ufffd]/.test(answer)
+  return {
+    error: error?.message,
+    ...(error?.code !== undefined && { status: error.code }),
+    ...(answer && !binary && { answer }),
+    ...(answer &&
+      binary && { answer_length: answer.length, answer_text: answer.match(/[\x20-\x7e]{8,}/g)?.join(' ') ?? '' })
   }
 }
 
@@ -262,9 +276,13 @@ export function startTelemetry(service: Service, options: TelemetryOptions = {})
   return {
     heartbeat: (name) => heartbeats.record(1, { name }),
     flush,
+    // Each provider flushes as it shuts down; a flush first would collect the metrics twice within milliseconds.
     shutdown: async () => {
-      await flush()
-      await Promise.all([tracerProvider.shutdown(), meterProvider.shutdown()])
+      try {
+        await Promise.all([tracerProvider.shutdown(), meterProvider.shutdown()])
+      } catch (error) {
+        log.error('telemetry flush failed', { error })
+      }
       stopHttpServerDuration()
       stopWebVitals()
       trace.disable()
