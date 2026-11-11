@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { expect, test } from 'vitest'
+import { createJpsRainAdapter } from '../../../packages/sources/src/adapters/jps'
 import { createApimsAdapter } from '../../../packages/sources/src/adapters/apims'
 import type { Source } from '@skyclause/sources'
-import { runGroupedBackfillOnce } from '../src/sources/grouped-backfill'
+import { runGroupedBackfillOnce, type GroupedBackfillClaim } from '../src/sources/grouped-backfill'
 import { executeSourceStep } from '../src/sources/execute'
 import { backfillGroupKey, type PlannedBackfillGroup } from '../src/sources/plan'
 import { createSourceJobs } from '../src/sources/jobs'
@@ -752,3 +753,318 @@ test('duplicate initial membership is rejected before any physical request', asy
   ).rejects.toThrow(/identity/)
   expect(t.urls).toHaveLength(0)
 })
+
+// Removing resumable reservation handling stalls the scheduled entry point before either adapter runs.
+test('expired unfinished group reservations let scheduled recovery, latest and unrelated adapters progress', async () => {
+  const t = setup(),
+    refs: ResultReference[] = [],
+    results: SourceExecutionResult[] = [],
+    urls: string[] = []
+  const jps: Source = { ...sources[0]!, id: randomUUID(), kind: 'jps_rain', externalId: '75', meta: { jps_id: 75 } }
+  const plan = {
+    version: 2,
+    generatedAt: t.group.anchor,
+    periods: [],
+    backfillGroups: [t.group],
+    sources: [...t.members, jps].map((source) => ({
+      source,
+      bindings: [{ orgId: randomUUID(), projectId: randomUUID() }],
+      previousPollDigest: null,
+      previousBackfillDigest: null
+    }))
+  }
+  await t.store.write('control/plan.json', encodeObject(plan), '0')
+  const publish = async (ref: ResultReference) => {
+    refs.push(ref)
+  }
+  let fail = true
+  const jobs = createSourceJobs({
+    store: t.store,
+    scratch: new MemoryStore(),
+    clock: t.clock,
+    id: randomUUID,
+    adapters: [t.a, createJpsRainAdapter()],
+    userAgent: 'test',
+    log: () => {},
+    database: {
+      snapshot: async () => {
+        throw new Error('scheduled DB forbidden')
+      },
+      catalogue: async () => {}
+    },
+    repair: () =>
+      repairSourceResults({
+        store: t.store,
+        now: t.clock.now,
+        publish,
+        recoverGroup: (recovery, operationId, kind, now) =>
+          recoverSavedGroupedBackfill({ store: t.store, recovery, operationId, kind, now, validate: parseSourceResult })
+      }),
+    publish: async (result) => {
+      results.push(result)
+      await publishSourceResult(result, {
+        store: t.store,
+        publish: async (ref) => {
+          if (fail) {
+            fail = false
+            throw new Error('publication crash')
+          }
+          await publish(ref)
+        }
+      })
+    },
+    http: async (url) => {
+      urls.push(String(url))
+      const u = new URL(String(url))
+      if (u.pathname.includes('GetRainfallGraph')) return new Response(fixture('rainfall-graph-75-20261105T1312Z.json'))
+      if (!u.pathname.endsWith('/apitablehourly')) return new Response(fixture('mapcaqm-20261105T1313Z.json'))
+      const day = u.searchParams.get('datetime')!.slice(0, 10).replaceAll('-', '')
+      return new Response(fixture(`apitablehourly-state14-${day}T230000-20261107T080610Z.json`))
+    }
+  })
+  await expect(jobs.runAdapter('apims', null)).rejects.toThrow('publication crash')
+  const claimPath = `control/grouped-backfills/${t.group.key}.json`
+  const original = decodeObject<GroupedBackfillClaim>((await t.store.read(claimPath))!.body)
+  const savedChild = (await t.store.read(original.children[0]!.resultPath))!
+  await t.clock.advance(20 * 60 * 1000 + 1)
+  // Global repair must not let APIMS's unattempted children starve this adapter.
+  await jobs.runAdapter('jps_rain', null)
+  const pending = decodeObject<Array<{ operation_id: string }>>(
+    (await t.store.read('control/pending-results.json'))!.body
+  )
+  expect(original.children.every((child) => pending.some((entry) => entry.operation_id === child.operationId))).toBe(
+    true
+  )
+  await jobs.runAdapter('apims', null)
+  await jobs.runAdapter('apims', null)
+  const final = decodeObject<GroupedBackfillClaim>((await t.store.read(claimPath))!.body)
+  expect(final.state).toBe('complete')
+  expect(final.group).toEqual(original.group)
+  expect(final.sources).toEqual(original.sources)
+  expect(final.children.map((c) => c.operationId)).toEqual(original.children.map((c) => c.operationId))
+  expect((await t.store.read(original.children[0]!.resultPath))!.body).toEqual(savedChild.body)
+  expect(urls.filter((url) => url.includes('/apitablehourly'))).toHaveLength(3)
+  expect(urls.filter((url) => url.includes('/mapcaqm'))).toHaveLength(2)
+  expect(urls.filter((url) => url.includes('GetRainfallGraph'))).toHaveLength(1)
+  expect(results.filter((result) => result.kind === 'apims' && result.purpose === 'poll')).toHaveLength(2)
+  for (const child of original.children) {
+    const deliveries = refs.filter((ref) => ref.operation_id === child.operationId)
+    expect(deliveries.length).toBeGreaterThan(0)
+    expect(new Set(deliveries.map((ref) => ref.sha256)).size).toBe(1)
+  }
+})
+
+function deferred() {
+  let resolve!: () => void
+  const promise = new Promise<void>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
+}
+// Removing the partial recovery CAS lets a late old-owner save claim the stable public operation.
+test('partial recovery follows a replacement claim instead of publishing late superseded bytes', async () => {
+  const t = setup(),
+    refs: ResultReference[] = [],
+    write = t.store.write.bind(t.store),
+    read = t.store.read.bind(t.store)
+  const saveEntered = deferred(),
+    saveRelease = deferred()
+  let oldPath = ''
+  t.ports.admitGroup = (claim) => reserveGroupedSourceResults(t.store, claim, t.clock.now())
+  t.ports.publish = (result) =>
+    publishSourceResult(result, {
+      store: t.store,
+      publish: async (ref) => {
+        refs.push(ref)
+      }
+    })
+  t.store.write = async (path, body, generation) => {
+    if (path.startsWith('control/results/grouped-backfills/') && !oldPath) {
+      oldPath = path
+      saveEntered.resolve()
+      await saveRelease.promise
+    }
+    return write(path, body, generation)
+  }
+  const oldRun = runGroupedBackfillOnce(t.a, t.group, t.members, t.ports)
+  await saveEntered.promise
+  t.clock.time += 60001
+  t.clock.elapsed += 60001
+  const claimPath = `control/grouped-backfills/${t.group.key}.json`
+  const oldClaim = decodeObject<GroupedBackfillClaim>((await read(claimPath))!.body)
+  const readEntered = deferred(),
+    readRelease = deferred()
+  let heldRead = false
+  t.store.read = async (path) => {
+    if (path === oldPath && !heldRead) {
+      heldRead = true
+      readEntered.resolve()
+      await readRelease.promise
+    }
+    return read(path)
+  }
+  const recovering = recoverSavedGroupedBackfill({
+    store: t.store,
+    recovery: { type: 'group', key: t.group.key, anchor: t.group.anchor, sourceIds: t.group.sourceIds, step: 0 },
+    operationId: oldClaim.children[0]!.operationId,
+    kind: 'apims',
+    now: t.clock.now(),
+    validate: parseSourceResult
+  })
+  await readEntered.promise
+  const transportEntered = deferred(),
+    transportRelease = deferred(),
+    factory = t.ports.contextFactory
+  const nextRun = runGroupedBackfillOnce(t.a, t.group, t.members, {
+    ...t.ports,
+    contextFactory: (ss, opts) => {
+      const c = factory(ss, opts),
+        http = c.ctx.http
+      c.ctx.http = async (...args) => {
+        transportEntered.resolve()
+        await transportRelease.promise
+        return http(...args)
+      }
+      return c
+    }
+  })
+  await transportEntered.promise
+  const replacement = decodeObject<GroupedBackfillClaim>((await read(claimPath))!.body)
+  expect(replacement.children[0]!.resultPath).not.toBe(oldPath)
+  saveRelease.resolve()
+  expect(await oldRun).toBe('running')
+  readRelease.resolve()
+  const recovered = await recovering
+  // Exercise real publication before takeover's transport is released, as repair would.
+  if (recovered && typeof recovered !== 'string') await t.ports.publish(recovered)
+  transportRelease.resolve()
+  const completion = await nextRun.then(
+    (value) => ({ value }),
+    (error) => ({ error: String(error) })
+  )
+  expect(completion).toEqual({ value: 'complete' })
+  expect(recovered === null || typeof recovered === 'string').toBe(true)
+  expect(refs).toHaveLength(3)
+  expect(new Set(refs.map((ref) => ref.operation_id)).size).toBe(3)
+  const final = decodeObject<GroupedBackfillClaim>((await read(claimPath))!.body)
+  expect(final.state).toBe('complete')
+  expect(final.children.map((c) => c.operationId)).toEqual(oldClaim.children.map((c) => c.operationId))
+  const stale = parseSourceResult(decodeObject((await read(oldPath))!.body))
+  for (const child of final.children) {
+    const delivered = parseSourceResult(decodeObject((await read(resultPath('apims', child.operationId)))!.body))
+    const authoritative = parseSourceResult(decodeObject((await read(child.resultPath))!.body))
+    expect(delivered).toEqual(authoritative)
+    expect(delivered.requests[0]!.requestId).not.toBe(stale.requests[0]!.requestId)
+  }
+  // Only the accepted pre-save ambiguous history GET is repeated.
+  expect(t.urls).toHaveLength(4)
+})
+
+// If recovery does not fence a durable child, an already-prepared takeover can replace its path.
+test('a successful partial recovery fence makes an already prepared takeover adopt the saved child', async () => {
+  const t = setup(),
+    refs: ResultReference[] = [],
+    write = t.store.write.bind(t.store)
+  const saveEntered = deferred(),
+    saveRelease = deferred(),
+    takeoverEntered = deferred(),
+    takeoverRelease = deferred()
+  let oldPath = '',
+    holdTakeover = false,
+    heldTakeover = false
+  const claimPath = `control/grouped-backfills/${t.group.key}.json`
+  t.ports.admitGroup = (claim) => reserveGroupedSourceResults(t.store, claim, t.clock.now())
+  t.ports.publish = (result) =>
+    publishSourceResult(result, {
+      store: t.store,
+      publish: async (ref) => {
+        refs.push(ref)
+      }
+    })
+  t.store.write = async (path, body, generation) => {
+    if (path.startsWith('control/results/grouped-backfills/') && !oldPath) {
+      oldPath = path
+      saveEntered.resolve()
+      await saveRelease.promise
+    }
+    if (path === claimPath && holdTakeover && !heldTakeover) {
+      heldTakeover = true
+      takeoverEntered.resolve()
+      await takeoverRelease.promise
+    }
+    return write(path, body, generation)
+  }
+  const oldRun = runGroupedBackfillOnce(t.a, t.group, t.members, t.ports)
+  await saveEntered.promise
+  t.clock.time += 60001
+  t.clock.elapsed += 60001
+  const original = decodeObject<GroupedBackfillClaim>((await t.store.read(claimPath))!.body)
+  holdTakeover = true
+  const nextRun = runGroupedBackfillOnce(t.a, t.group, t.members, t.ports)
+  await takeoverEntered.promise
+  saveRelease.resolve()
+  expect(await oldRun).toBe('running')
+  const recovered = await recoverSavedGroupedBackfill({
+    store: t.store,
+    recovery: { type: 'group', key: t.group.key, anchor: t.group.anchor, sourceIds: t.group.sourceIds, step: 0 },
+    operationId: original.children[0]!.operationId,
+    kind: 'apims',
+    now: t.clock.now(),
+    validate: parseSourceResult
+  })
+  if (recovered && typeof recovered !== 'string') await t.ports.publish(recovered)
+  takeoverRelease.resolve()
+  const completion = await nextRun.then(
+    (value) => ({ value }),
+    (error) => ({ error: String(error) })
+  )
+  expect(completion).toEqual({ value: 'complete' })
+  const final = decodeObject<GroupedBackfillClaim>((await t.store.read(claimPath))!.body)
+  expect(final.children[0]!.resultPath).toBe(oldPath)
+  expect(t.urls).toHaveLength(3)
+  expect(new Set(refs.map((ref) => ref.operation_id)).size).toBe(3)
+  for (const child of final.children)
+    expect(new Set(refs.filter((ref) => ref.operation_id === child.operationId).map((ref) => ref.sha256)).size).toBe(1)
+})
+
+test.each(['absent', 'complete', 'corrupt', 'path'] as const)(
+  'expired %s group reservations still report genuine repair errors',
+  async (state) => {
+    const t = setup()
+    t.ports.admitGroup = (claim) => reserveGroupedSourceResults(t.store, claim, t.clock.now())
+    t.ports.publish = async () => {
+      throw new Error('publication crash')
+    }
+    await expect(runGroupedBackfillOnce(t.a, t.group, t.members, t.ports)).rejects.toThrow('publication crash')
+    const path = `control/grouped-backfills/${t.group.key}.json`,
+      saved = (await t.store.read(path))!
+    const claim = decodeObject<GroupedBackfillClaim>(saved.body)
+    if (state === 'absent') t.store.objects.delete(path)
+    if (state === 'complete') await t.store.write(path, encodeObject({ ...claim, state: 'complete' }), saved.generation)
+    if (state === 'corrupt') {
+      claim.sources[0]!.meta.state_id = 10
+      await t.store.write(path, encodeObject(claim), saved.generation)
+    }
+    if (state === 'path') {
+      const pendingPath = 'control/pending-results.json',
+        saved = (await t.store.read(pendingPath))!
+      const pending = decodeObject<Array<{ object_path: string }>>(saved.body)
+      pending[1]!.object_path = 'control/deliveries/forged.json'
+      await t.store.write(pendingPath, encodeObject(pending), saved.generation)
+    }
+    await t.clock.advance(20 * 60 * 1000 + 1)
+    await expect(
+      repairSourceResults({
+        store: t.store,
+        now: t.clock.now,
+        publish: async () => {},
+        recoverGroup: (recovery, operationId, kind, now) =>
+          recoverSavedGroupedBackfill({ store: t.store, recovery, operationId, kind, now, validate: parseSourceResult })
+      })
+    ).rejects.toThrow(
+      state === 'corrupt' ? /identity/ : state === 'path' ? /reserved result path/ : /expired before durable result/
+    )
+    expect(t.urls).toHaveLength(1)
+    expect(decodeObject<unknown[]>((await t.store.read('control/pending-results.json'))!.body)).toHaveLength(3)
+  }
+)

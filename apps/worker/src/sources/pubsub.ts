@@ -1,4 +1,4 @@
-import type { GroupedBackfillClaim, GroupRecovery } from './grouped-backfill'
+import type { GroupedBackfillClaim, GroupRecovery, GroupRecoveryResult } from './grouped-backfill'
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { SourceKind } from '@skyclause/sources'
@@ -119,7 +119,8 @@ const Pending = z.array(z.union([PendingDelivery, ResultReservation]))
 type PendingEntry = z.infer<typeof Pending>[number]
 export const MAX_PENDING_RESULTS = 1000
 // Longer than the current 600-second Cloud Run source execution limit. Expiry reports a stalled
-// reservation; it never releases capacity, creates another operation ID, or refetches captured bytes.
+// reservation unless a valid unfinished group can resume; it never releases capacity,
+// creates another operation ID, or refetches captured bytes.
 export const SOURCE_RESERVATION_MS = 20 * 60 * 1000
 async function updatePending(
   store: SourceObjectStore,
@@ -227,7 +228,7 @@ export async function repairSourceResults(ports: {
     operationId: string,
     kind: SourceExecutionResult['kind'],
     now: Date
-  ): Promise<SourceExecutionResult | null>
+  ): Promise<GroupRecoveryResult>
   recoverBackfill?(
     sourceId: string,
     operationId: string,
@@ -244,7 +245,7 @@ export async function repairSourceResults(ports: {
           entry.recovery ??
           (entry.backfill_source_id ? { type: 'source' as const, sourceId: entry.backfill_source_id } : undefined)
         if (!recovery) return false
-        let result: SourceExecutionResult | null
+        let result: GroupRecoveryResult
         if (recovery.type === 'group') {
           if (!ports.recoverGroup) throw new Error('Grouped backfill recovery is not configured')
           result = await ports.recoverGroup(recovery, entry.operation_id, entry.kind, ports.now?.() ?? new Date())
@@ -260,15 +261,18 @@ export async function repairSourceResults(ports: {
           )
         }
         if (!result) return false
+        if (result === 'resumable') return result
         await publishSourceResult(result, ports)
         return true
       }
       if ('reserved_until' in entry) {
-        if (await recover()) continue
+        if (entry.object_path !== resultPath(entry.kind, entry.operation_id))
+          throw new Error('Invalid reserved result path')
+        // A validated unfinished group keeps its capacity and stable operations while
+        // the scheduled runner resumes its remaining children, even after expiry.
+        if ((await recover()) !== false) continue
         // Normal slot execution may save immutable delivery bytes before starting publication.
         if (!entry.backfill_source_id && !entry.recovery) {
-          if (entry.object_path !== resultPath(entry.kind, entry.operation_id))
-            throw new Error('Invalid reserved result path')
           const saved = await ports.store.read(entry.object_path)
           if (saved) {
             const { parseSourceResult } = await import('./ingest')
@@ -293,7 +297,7 @@ export async function repairSourceResults(ports: {
       } else {
         if (ref.object_path !== resultPath(ref.kind, ref.operation_id)) throw new Error('Invalid pending result path')
         const result = await ports.store.read(ref.object_path)
-        if (!result && (await recover())) continue
+        if (!result && (await recover()) === true) continue
         if (!result || sha256(result.body) !== ref.sha256)
           throw new Error(`Pending source result missing or corrupt: ${ref.operation_id}`)
         await ports.publish(ref)

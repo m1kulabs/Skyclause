@@ -19,6 +19,7 @@ const Claim = z.strictObject({
   children: z.array(Child).min(1)
 })
 export type GroupedBackfillClaim = z.infer<typeof Claim>
+export type GroupRecoveryResult = SourceExecutionResult | 'resumable' | null
 export interface GroupRecovery {
   type: 'group'
   key: string
@@ -251,7 +252,7 @@ export async function recoverSavedGroupedBackfill(options: {
   kind: SourceExecutionResult['kind']
   now: Date
   validate(value: unknown): unknown
-}): Promise<SourceExecutionResult | null> {
+}): Promise<GroupRecoveryResult> {
   const { store, recovery } = options
   for (;;) {
     const path = pathFor(recovery.key),
@@ -267,18 +268,23 @@ export async function recoverSavedGroupedBackfill(options: {
       !sameIds(claim.group.sourceIds, recovery.sourceIds)
     )
       throw new Error('Invalid grouped recovery identity')
-    if (claim.state === 'running' && claim.leaseExpiresAt > options.now.getTime()) return null
+    if (claim.state === 'running' && claim.leaseExpiresAt > options.now.getTime()) return 'resumable'
     const result = await loadChild(store, claim, recovery.step, options.validate)
-    if (!result) return null
+    if (!result) return claim.state === 'running' ? 'resumable' : null
     if (claim.state === 'running') {
       const children = await Promise.all(claim.children.map((_, i) => loadChild(store, claim, i, options.validate)))
-      if (children.every(Boolean))
-        try {
-          await store.write(path, encodeObject({ ...claim, state: 'complete' }), saved.generation)
-        } catch (error) {
-          if (hasCode(error, 412)) continue
-          throw error
-        }
+      // Fence every adopted child, even when siblings still need transport. A takeover
+      // that selected another candidate must win this generation before we can publish.
+      try {
+        await store.write(
+          path,
+          encodeObject({ ...claim, state: children.every(Boolean) ? 'complete' : 'running' }),
+          saved.generation
+        )
+      } catch (error) {
+        if (hasCode(error, 412)) continue
+        throw error
+      }
     }
     return result
   }
