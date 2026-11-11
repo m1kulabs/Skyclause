@@ -586,15 +586,17 @@ if not set(sys.argv[2:]) <= listed:
     print("supplied_secrets = [%s]" % ", ".join("\"%s\"" % n for n in sorted(listed | set(sys.argv[2:]))))
 ' "$TFVARS_FILE" "${SECRETS[@]}")"; then
   if [[ -z "$listed" ]]; then
-    note "supplied_secrets in $TFVARS_FILE already lists all three."
+    note "supplied_secrets in $TFVARS_FILE already lists all three, so the next Terraform apply turns mail on."
   else
-    say "Commit this line in $TFVARS_FILE, so Terraform mounts them on the next apply:"
+    say "Commit this line in $TFVARS_FILE in a pull request:"
     say "  $listed"
+    warn "Mail stays off until that line is committed and Terraform has applied it: until then no service gets a sender address,"
+    warn "the inbound domain or a Resend secret, so nothing is sent or received. That includes the time since this change deployed."
   fi
 else
-  say "Add ${SECRETS[*]} to supplied_secrets in $TFVARS_FILE."
+  say "Add ${SECRETS[*]} to supplied_secrets in $TFVARS_FILE. Mail stays off until Terraform has applied it."
 fi
-note "Then apply Terraform, deploy the worker and web images, and check a real send, a bounce and an inbound reply."
+note "After the apply, check a real send, a bounce and an inbound reply."
 
 finish
 }

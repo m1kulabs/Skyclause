@@ -389,6 +389,8 @@ describe('infra/wizards/resend.sh on an account with nothing set up', () => {
     expect(box.secret('RESEND_RECEIVING_API_KEY')).toEqual([FULL_KEY])
     expect(box.secret('SKYCLAUSE_STAFF_EMAILS')).toEqual(['unrelated'])
     expect(first.output).toContain(ALL_SUPPLIED)
+    // Mail is off until that line is committed and applied, and the wizard says so.
+    expect(first.output).toContain('Mail stays off until that line is committed and Terraform has applied it')
   })
 
   test('hands the key to curl over stdin only, never on a command line', () => {
