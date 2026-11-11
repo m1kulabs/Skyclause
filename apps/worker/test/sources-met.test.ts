@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { and, eq, inArray } from 'drizzle-orm'
-import { check, evaluate, resolveSourceAt, snapshotAt, type SheetInput } from '@skyclause/clauses'
+import { CAMERA_INDICATORS, check, evaluate, resolveSourceAt, snapshotAt, type SheetInput } from '@skyclause/clauses'
 import {
   domainEvent,
   loadEvaluatorHistory,
@@ -433,12 +433,13 @@ async function metFixture(kind: 'met_warning' | 'met_forecast' = 'met_warning') 
   }
 }
 
-test('actual metadata checks unchanged default storm_watch without fabricated APIMS declarations', () => {
+test('actual source and camera metadata check the unchanged full default Sky sheet', () => {
   const storm = { ...defaultSky, clauses: defaultSky.clauses.filter((c) => c.key === 'storm_watch') }
   expect(check(storm, indicators).ok).toBe(true)
-  const full = check(defaultSky, indicators)
+  const full = check(defaultSky, [...indicators, ...CAMERA_INDICATORS])
   expect(full.issues.filter((d) => d.message.includes('met_'))).toEqual([])
-  // APIMS metadata may land separately. No test definitions are added to hide its absence.
+  expect(full.publishable, JSON.stringify(full.issues)).toBe(true)
+  expect(full.ok).toBe(true)
 })
 
 test.each(['met_warning', 'met_forecast'] as const)(
