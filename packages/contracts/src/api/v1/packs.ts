@@ -8,7 +8,7 @@ const PackParams = IdParams.extend({ pack: Pack })
 const PackUpdate = z
   .object({
     enabled: z.boolean().optional(),
-    sla_s: z.number().int().positive().nullable().optional()
+    sla_s: z.number().int().positive().max(2147483647).nullable().optional()
   })
   .refine((input) => input.enabled !== undefined || input.sla_s !== undefined, {
     message: 'At least one pack setting must be supplied.'

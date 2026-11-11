@@ -33011,7 +33011,8 @@
                       "integer",
                       "null"
                     ],
-                    "exclusiveMinimum": 0
+                    "exclusiveMinimum": 0,
+                    "maximum": 2147483647
                   }
                 }
               }
@@ -33141,7 +33142,7 @@
             }
           },
           "403": {
-            "description": "The principal lacks sources.manage permission.",
+            "description": "The principal lacks sources.manage permission or Crowd is disabled by feature flag.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -33265,7 +33266,7 @@
             }
           },
           "422": {
-            "description": "The pack cannot be enabled or the request is invalid.",
+            "description": "The request is invalid.",
             "content": {
               "application/problem+json": {
                 "schema": {

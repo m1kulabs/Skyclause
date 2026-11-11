@@ -86,6 +86,57 @@ beforeAll(async () => {
 })
 
 describe('pack settings', () => {
+  test.each(['HTTP', 'direct'] as const)(
+    'sla_storage_range %s rejects overflow without effects and persists int32 max',
+    async (via) => {
+      const project = await scene()
+      const packs = () =>
+        asLogin('postgres', async (client) => {
+          const { rows } = await client.query(
+            'SELECT id,pack,enabled,sla_s,updated_at FROM project_pack WHERE project_id=$1 ORDER BY pack',
+            [project.id]
+          )
+          return rows
+        })
+      const beforePacks = await packs()
+      const beforeCounts = await counts(project.id)
+      const settings = { enabled: true, sla_s: 2147483648 }
+      if (via === 'HTTP') {
+        const response = await patch(project.id, settings, 'sky')
+        expect(response.status).toBe(422)
+        expect(await response.json()).toMatchObject({ type: expect.stringContaining('validation-failed') })
+      } else {
+        await expect(
+          tenant((tx) =>
+            api.updateProjectPack({ tx, principal }, { projectId: project.id, pack: 'sky', ...settings }, access)
+          )
+        ).rejects.toMatchObject({ status: 422, slug: 'validation-failed' })
+      }
+      expect(await packs()).toEqual(beforePacks)
+      expect(await counts(project.id)).toEqual(beforeCounts)
+      const maximum = { enabled: true, sla_s: 2147483647 }
+      if (via === 'HTTP') {
+        const response = await patch(project.id, maximum, 'sky')
+        expect(response.status).toBe(200)
+        expect(await response.json()).toMatchObject({ pack: 'sky', ...maximum })
+      } else {
+        expect(
+          await tenant((tx) =>
+            api.updateProjectPack({ tx, principal }, { projectId: project.id, pack: 'sky', ...maximum }, access)
+          )
+        ).toMatchObject({ pack: 'sky', ...maximum })
+      }
+      expect((await packs()).find((p) => p.pack === 'sky')).toMatchObject(maximum)
+      expect(await counts(project.id)).toEqual([
+        beforeCounts[0],
+        beforeCounts[1]! + 1,
+        beforeCounts[2],
+        beforeCounts[3],
+        beforeCounts[4]
+      ])
+    }
+  )
+
   test('crowd_missing_roles is ordered and erroring-but-bound roles permit enabling', async () => {
     const project = await scene()
     const missing = async (roles: string[]) => {
