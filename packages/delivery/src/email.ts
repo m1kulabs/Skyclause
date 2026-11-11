@@ -56,6 +56,8 @@ export function createEmailTransport(options: EmailTransportOptions): EmailTrans
       const from = m.from === 'auth' ? options.fromAuth : options.fromNotices
       const raw = buildMime(m, from)
       const command = new SendEmailCommand({
+        // The bare address, so SES authorises the sender (ses:FromAddress, #623) without reading the MIME header.
+        FromEmailAddress: /<([^<>]+)>$/.exec(from)?.[1] ?? from,
         Content: { Raw: { Data: raw } },
         ConfigurationSetName: options.configurationSet,
         EmailTags: [
