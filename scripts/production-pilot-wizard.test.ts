@@ -114,6 +114,13 @@ function production(overrides: Record<string, Reply> = {}): Record<string, Reply
   return {
     '*/health': { status: 200, body: 'ok' },
     '*/v1/projects?slug=*include=summary': json(200, { data: [project], next_cursor: null }),
+    // The last stage's check that the key is revoked.
+    '*/v1/projects?limit=1': json(401, {
+      type: 'https://docs.skyclause.m1ku.tech/problems/unauthorized',
+      title: 'Unauthorized',
+      status: 401,
+      detail: 'The API key is revoked.'
+    }),
     '*/v1/projects/*/clause-sheets': json(200, {
       data: [{ id: '019a7000-0000-7000-8000-000000000002', pack: 'sky', live_version: { n: 1, status: 'published' } }]
     }),
@@ -643,5 +650,73 @@ describe('infra/wizards/production-pilot.sh reports what still waits, and every 
     expect(evidenceContent).toContain('UID:call-1@skyclause.m1ku.tech')
     expect(evidenceContent).toContain('## #539 — Production crowd_reply ledger entries')
     expect(output).toContain('#534 run a strict RFC 5545 validator on the recorded feed')
+  })
+})
+
+describe('infra/wizards/production-pilot.sh API key', () => {
+  const revokeLine =
+    "fetch('/api/orgs/skyclause-ops/api-keys?limit=200').then(r=>r.json()).then(d=>Promise.all(d.data.filter(k=>k.name==='production-pilot')" +
+    ".map(k=>fetch('/api/orgs/skyclause-ops/api-keys/'+k.id,{method:'DELETE'}).then(r=>console.log('revoked',k.id,r.status)))))"
+  const throughKey = [
+    '', // banner
+    '', // stage 1
+    '', // stage 2
+    '', // stage 3: signed in
+    'skyclause-ops', // ORG_SLUG
+    'bukit-jalil', // PROJECT_SLUG
+    'n', // open /new?
+    secretKey // read key
+  ]
+  const toRevoke = [
+    ...throughKey,
+    '', // stage 5
+    '', // stage 6
+    '', // stage 7
+    '', // stage 8
+    'n', // rota saved?
+    '', // stage 9
+    '', // stage 10
+    'n', // webhook registered?
+    '', // stage 11
+    'n' // Malay sign-off?
+  ]
+
+  test('asks for a 1-day read key, says creating one needs a sign-in within 12 hours', () => {
+    const { result, output } = runWizard({ input: [...toRevoke, 'n'] })
+
+    expect(result.status, output).toBe(0)
+    expect(output).toContain('within the last 12 hours')
+    expect(output).toContain("name:'production-pilot',scopes:['read'],expires_in_days:1")
+    expect(output).not.toContain('expires_in_days:90')
+    expect(output).not.toContain('10 minutes')
+  })
+
+  test('offers revoking the key as the last stage, and checks it then answers 401', () => {
+    const { result, output, calls } = runWizard({ input: [...toRevoke, 'y', ''] })
+
+    expect(result.status, output).toBe(0)
+    expect(output).toMatch(/Stage 13\/13 · Revoke this run's API key/)
+    expect(output).toContain(revokeLine)
+    expect(output).toContain('✓ revoked skc_live…')
+    expect(calls.curl).toContain('/v1/projects\\?limit=1')
+  })
+
+  test('answering "n" to revoking leaves the exact way to revoke it in the to-do list', () => {
+    const { result, output, calls } = runWizard({ input: [...toRevoke, 'n'] })
+
+    expect(result.status, output).toBe(0)
+    expect(output.slice(output.indexOf('still to do by hand'))).toContain(revokeLine)
+    expect(calls.curl).not.toContain('/v1/projects\\?limit=1')
+  })
+
+  test('a run that stops after the key is pasted says how to revoke it', () => {
+    const { result, output } = runWizard({
+      input: throughKey,
+      curl: production({ '*/v1/projects?slug=*include=summary': json(200, { data: [], next_cursor: null }) })
+    })
+
+    expect(result.status).toBe(1)
+    expect(output).toContain('Stopped in stage 5/')
+    expect(output).toContain(revokeLine)
   })
 })

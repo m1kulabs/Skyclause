@@ -313,15 +313,27 @@ json_field() {
     { warn "Couldn't read $expr from the answer: $API_BODY" >&2; return 1; }
 }
 
-# on_exit names the stage a run stopped in, so no early exit is silent.
+# revoke_snippet prints the DevTools line that revokes every API key named production-pilot in ORG_SLUG.
+revoke_snippet() {
+  printf "fetch('/api/orgs/%s/api-keys?limit=200').then(r=>r.json()).then(d=>Promise.all(d.data.filter(k=>k.name==='production-pilot').map(k=>fetch('/api/orgs/%s/api-keys/'+k.id,{method:'DELETE'}).then(r=>console.log('revoked',k.id,r.status)))))" \
+    "$ORG_SLUG" "$ORG_SLUG"
+}
+
+# on_exit names the stage a run stopped in, so no early exit is silent, and says how to revoke a key it was given.
 on_exit() {
   local status=$?
-  (( status == 0 )) || warn "Stopped in stage $_STAGE_INDEX/$TOTAL_STAGES (exit $status): the message above says why."
+  (( status == 0 )) && return
+  warn "Stopped in stage $_STAGE_INDEX/$TOTAL_STAGES (exit $status): the message above says why."
+  if [[ -n "${SKYCLAUSE_API_KEY:-}" ]]; then
+    note "Revoke this run's API key in the DevTools console on $APP_ORIGIN/$ORG_SLUG/settings/api-keys"
+    note "(it expires 1 day after you made it anyway):"
+    note "  $(revoke_snippet)"
+  fi
 }
 
 run_wizard() {
 
-TOTAL_STAGES=12
+TOTAL_STAGES=13
 trap on_exit EXIT
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 # Not the root .env, which Bun loads in local development.
@@ -408,11 +420,13 @@ fi
 
 stage "Create a read API key and verify project & Sky sheet (#194)"
 open_url "$APP_ORIGIN/$ORG_SLUG/settings/api-keys"
-say "We need a read-scope API key for '$ORG_SLUG' to run live read checks and #194's @production suite."
-step "If #105 (a-keys-ui) is live on that page, create a key with scope 'read' and copy it."
-step "While the settings panel is still a placeholder (#105), #106's backend route is live; run this in the"
-note "  browser DevTools console on $APP_ORIGIN/$ORG_SLUG/settings/api-keys (requires sign-in within the last 10 minutes):"
-note "  fetch('/api/orgs/$ORG_SLUG/api-keys',{method:'POST',headers:{'content-type':'application/json','idempotency-key':crypto.randomUUID()},body:JSON.stringify({name:'production-pilot',scopes:['read'],expires_in_days:90})}).then(r=>r.json()).then(d=>console.log(d.key))"
+say "This run's checks need a read-scope API key for '$ORG_SLUG'. It stays in memory, and the last stage"
+say "offers to revoke it. #194's @production specs need a key of their own when you run them."
+step "If the page shows an API key form (#105), create a key named production-pilot, scope read, expiring in 1 day."
+step "While the page is blank, run this in its DevTools console. Creating a key needs a sign-in"
+note "  within the last 12 hours, so sign in again if it logs reauth-required:"
+note "  fetch('/api/orgs/$ORG_SLUG/api-keys',{method:'POST',headers:{'content-type':'application/json','idempotency-key':crypto.randomUUID()},body:JSON.stringify({name:'production-pilot',scopes:['read'],expires_in_days:1})}).then(r=>r.json()).then(d=>console.log(d.key??d))"
+note "If you still hold this wizard's key from a run in the last day, paste that one instead."
 ask_valid ask_secret SKYCLAUSE_API_KEY "Paste the read API key (hidden, never saved to disk):" "$API_KEY_PATTERN" \
   "An API key starts with skc_."
 KEY_HINT="$(key_prefix "$SKYCLAUSE_API_KEY")"
@@ -675,6 +689,24 @@ else
   SKIPPED+=("#539 Malay reader sign-off on packages/i18n/catalogue/ms/replies.json")
 fi
 
+
+stage "Revoke this run's API key"
+say "The key $KEY_HINT isn't needed after this run; it expires 1 day after you made it."
+if confirm "Revoke every API key named production-pilot in '$ORG_SLUG' now?"; then
+  open_url "$APP_ORIGIN/$ORG_SLUG/settings/api-keys"
+  step "Run this in the DevTools console on that page:"
+  note "  $(revoke_snippet)"
+  pause "Press Enter once it has logged 'revoked' for each key"
+  api_get "/v1/projects?limit=1"
+  if [[ "$API_STATUS" == "401" ]]; then
+    printf '  %s✓ revoked%s %s: it now answers 401\n' "$GREEN" "$RESET" "$KEY_HINT"
+  else
+    warn "The key $KEY_HINT still answers HTTP $API_STATUS, so it isn't revoked."
+    SKIPPED+=("revoke the production-pilot API key in DevTools on $APP_ORIGIN/$ORG_SLUG/settings/api-keys: $(revoke_snippet)")
+  fi
+else
+  SKIPPED+=("revoke the production-pilot API key in DevTools on $APP_ORIGIN/$ORG_SLUG/settings/api-keys: $(revoke_snippet)")
+fi
 unset SKYCLAUSE_API_KEY
 finish
 }
