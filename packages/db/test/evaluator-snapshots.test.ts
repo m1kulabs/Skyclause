@@ -18,6 +18,7 @@ async function scene() {
   const p = await run((tx) => makeProject(tx))
   const snapshot = snapshotAt(
     {
+      warningAreaTerms: ['Kuala Lumpur'],
       sources: [
         {
           id: 'warning',
@@ -39,7 +40,13 @@ async function scene() {
           receivedAt: '2026-11-10T03:02:00Z',
           value: 1,
           valueText: null,
-          valueJson: { valid_from_utc: '2026-11-10T02:00:00Z', valid_to_utc: '2026-11-10T08:00:00Z' },
+          valueJson: {
+            text_en: 'Kuala Lumpur',
+            warning_issue: { title_en: 'Thunderstorms Warning' },
+            excluded: false,
+            valid_from_utc: '2026-11-10T02:00:00Z',
+            valid_to_utc: '2026-11-10T08:00:00Z'
+          },
           itemKey: '',
           revision: 1
         }

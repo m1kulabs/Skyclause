@@ -1,3 +1,5 @@
+import { eq } from 'drizzle-orm'
+import { project } from '../src/schema'
 import { randomUUID } from 'node:crypto'
 import { expect, test } from 'vitest'
 import { resolveSourceAt, deriveInputState, snapshotAt } from '@skyclause/clauses'
@@ -276,4 +278,43 @@ test('prior observations across a long recovery gap survive loading', async () =
   const h = await read()
   expect(h.readings).toHaveLength(2)
   expect(resolveSourceAt(h, s.id, cutoff).state).toBe('recovered')
+})
+
+test('current warning terms belong to the tenant project, including unbound projects, and fail closed for foreign context', async () => {
+  const a = await scene('met_warning'),
+    b = await scene('met_warning')
+  await withTenant({ orgId: a.orgId, principal: memberOf(a.orgId) }, (tx) =>
+    tx
+      .update(project)
+      .set({ warningAreaTerms: ['Kedah'] })
+      .where(eq(project.id, a.p.id))
+  )
+  await withTenant({ orgId: b.orgId, principal: memberOf(b.orgId) }, (tx) =>
+    tx
+      .update(project)
+      .set({ warningAreaTerms: ['Kuala Lumpur'] })
+      .where(eq(project.id, b.p.id))
+  )
+  expect(await a.read()).toMatchObject({ warningAreaTerms: ['Kedah'] })
+  expect(await b.read()).toMatchObject({ warningAreaTerms: ['Kuala Lumpur'] })
+  await withTenant({ orgId: a.orgId, principal: memberOf(a.orgId) }, async (tx) => {
+    const unbound = await makeProject(tx, { warningAreaTerms: ['Perlis'] })
+    expect(await loadEvaluatorHistory(tx, { projectId: unbound.id, pack: 'sky', tEval: cutoff })).toMatchObject({
+      warningAreaTerms: ['Perlis'],
+      sources: []
+    })
+    expect(await loadEvaluatorHistory(tx, { projectId: b.p.id, pack: 'sky', tEval: cutoff })).toEqual({
+      sources: [],
+      readings: [],
+      polls: []
+    })
+    await tx
+      .update(project)
+      .set({ warningAreaTerms: ['Sabah'] })
+      .where(eq(project.id, a.p.id))
+    expect(await loadEvaluatorHistory(tx, { projectId: a.p.id, pack: 'sky', tEval: cutoff })).toMatchObject({
+      warningAreaTerms: ['Sabah']
+    })
+  })
+  expect((await a.read()).sources[0]!.meta).toEqual({ retained: 'original' })
 })

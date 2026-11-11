@@ -215,7 +215,7 @@ export const finalReviewCases: Array<{ name: string; run: () => void }> = [
     }
   },
   ...[true, false].map((normalized) => ({
-    name: `MET validity ${normalized ? 'normalized UTC wins' : 'raw MYT fallback is explicit'}`,
+    name: `MET validity ${normalized ? 'normalized UTC wins' : 'raw MYT alone is insufficient'}`,
     run() {
       const wr = reading('met', 'warning', iso('06:30'), null)
       wr.valueJson = {
@@ -225,12 +225,17 @@ export const finalReviewCases: Array<{ name: string; run: () => void }> = [
         ...(normalized ? { valid_from_utc: iso('06:00'), valid_to_utc: iso('08:00') } : {})
       }
       const h: ReadingHistory = {
+        warningAreaTerms: ['Kuala Lumpur'],
         sources: [{ ...rainSource, id: 'met', kind: 'met_warning', freshness: 'polled', staleAfterS: 1200 }],
         polls: [{ id: 'poll', sourceId: 'met', startedAt: at, outcome: 'ok', httpStatus: 200 }],
         readings: [wr]
       }
       const s = snapshotAt(h, TEST_REGISTRY, 'p', 'sky', at)
-      equal(s.site['site.met_warning_in_force']?.value, true)
+      equal(s.site['site.met_warning_in_force']?.value, normalized)
+      if (!normalized) {
+        equal(s.warningObservations, {})
+        return
+      }
       const meta = JSON.parse(JSON.stringify(s)).warningObservations[wr.id]
       equal([meta.validFrom, meta.validTo, meta.observedAt], [iso('06:00'), iso('08:00'), iso('06:30')])
     }

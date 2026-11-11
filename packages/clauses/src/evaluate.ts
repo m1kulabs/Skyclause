@@ -298,7 +298,7 @@ function computeWindowWarningIndicator(
   let latestObsIso: Instant | null = null
   let latestObsMs: number | null = null
 
-  for (const [observedIso, toVal, id] of warnSeries) {
+  for (const [observedIso, , id] of warnSeries) {
     const observation = observations?.[id]
     const observedAt = observation?.observedAt ?? observedIso
     const observedMs = Date.parse(observedAt)
@@ -307,16 +307,12 @@ function computeWindowWarningIndicator(
     // Warnings are active intervals: an unchanged pre-span observation can carry
     // in, but observations after the completed/evaluated span cannot affect it.
     if (span && observedMs > Math.min(span.toMs, tEvalMs)) continue
-    const validFromMs = observation ? Date.parse(observation.validFrom) : observedMs
-    const validToMs = observation
-      ? observation.validTo === null
-        ? Infinity
-        : Date.parse(observation.validTo)
-      : typeof toVal === 'number' && toVal > 1
-        ? toVal
-        : toVal === 1
-          ? Infinity
-          : -Infinity
+    // Frozen snapshots carry both normalized bounds. A legacy series/site value
+    // alone cannot prove validity or project-area eligibility.
+    if (!observation || observation.validTo === null) continue
+    const validFromMs = Date.parse(observation.validFrom)
+    const validToMs = Date.parse(observation.validTo)
+    if (!Number.isFinite(validFromMs) || !Number.isFinite(validToMs) || validFromMs > validToMs) continue
     if (validFromMs <= endMs && validToMs >= startMs) {
       matchingIds.push(id)
       if (observation) matchingSourceIds.add(observation.sourceId)
@@ -327,16 +323,9 @@ function computeWindowWarningIndicator(
     }
   }
 
-  const fallbackSite = snapshot.site['site.met_warning_in_force']
-  const useSiteFallback =
-    !span &&
-    warnSeries.length === 0 &&
-    fallbackSite?.value === true &&
-    fallbackSite.observedAt !== null &&
-    Date.parse(fallbackSite.observedAt) <= tEvalMs
-  const inForce = matchingIds.length > 0 || useSiteFallback
-  const obsIso = latestObsIso ?? (useSiteFallback ? fallbackSite.observedAt : null)
-  const obsMs = obsIso ? Date.parse(obsIso) : null
+  const inForce = matchingIds.length > 0
+  const obsIso = latestObsIso
+  const obsMs = latestObsMs
   const ageS = obsMs !== null && Number.isFinite(obsMs) ? Math.max(0, Math.floor((tEvalMs - obsMs) / 1_000)) : null
 
   return {
