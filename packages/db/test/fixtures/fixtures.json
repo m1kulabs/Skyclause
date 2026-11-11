@@ -12,5 +12,12 @@
     "captured_at": "2026-11-05T13:13:00Z",
     "station_id": "none (MET Malaysia national warning feed)",
     "sha256": "4217dfb611b09e1ad421fbe5c00277a4b170aa78089d6e3452d39193a2903415"
+  },
+  {
+    "file": "mapcaqm-20261105T1313Z.json",
+    "url": "https://eqms.doe.gov.my/api3/publicportalapims/mapcaqm",
+    "captured_at": "2026-11-05T13:13:00Z",
+    "station_id": "CA16W (68-station map capture)",
+    "sha256": "f530883dc9ca9dcc7fe798efb613e710d0a9ec7e8bf0d694e4526d8b9d4d9a56"
   }
 ]

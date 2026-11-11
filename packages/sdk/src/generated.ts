@@ -1,4 +1,4 @@
-export const OPENAPI_SHA256 = 'd9af64836ba902c17a6e808d274250adfa31c43e964aba8c5f6b9259ad3767bf' as const // gitleaks:allow -- a SHA-256 of openapi.json, not a secret.
+export const OPENAPI_SHA256 = '0b06981f7cfb79daf4f90146216c99f88ccaf7756cfb998dac1600c0d6898998' as const // gitleaks:allow -- a SHA-256 of openapi.json, not a secret.
 
 export const OPERATION_IDS = [
   'getProjectAnalysis',
@@ -271,6 +271,20 @@ export type OperationRequests = {
     query?: {
       limit?: number
       cursor?: string
+      kind?:
+        | 'jps_rain'
+        | 'met_warning'
+        | 'met_forecast'
+        | 'apims'
+        | 'rapidrail_od'
+        | 'gtfs_static'
+        | 'gtfs_rt'
+        | 'golive'
+        | 'wikipedia'
+        | 'camera'
+        | 'pi'
+      near?: string
+      q?: string
     }
     idempotencyKey?: string
     signal?: AbortSignal
@@ -2560,8 +2574,9 @@ export type OperationResponses = {
       url: string
       cadence_s: number
       stale_after_s: number
-      licence_id: string
+      licence_id: string | null
       licence_label: string
+      distance_km: number | null
       latest_reading: {
         id: string
         source_id: string
@@ -3491,7 +3506,7 @@ export type OperationResponses = {
           url: string
           cadence_s: number
           stale_after_s: number
-          licence_id: string
+          licence_id: string | null
           licence_label: string
         }
         state: {
@@ -5537,7 +5552,7 @@ export type OperationResponses = {
     url: string
     cadence_s: number
     stale_after_s: number
-    licence_id: string
+    licence_id: string | null
     licence_label: string
     project_id: string
     role:
@@ -5556,7 +5571,7 @@ export type OperationResponses = {
       since: string
       http_status: number | null
       pending_until: string | null
-    }
+    } | null
     latest_reading: {
       id: string
       source_id: string
@@ -5607,7 +5622,7 @@ export type OperationResponses = {
       url: string
       cadence_s: number
       stale_after_s: number
-      licence_id: string
+      licence_id: string | null
       licence_label: string
       project_id: string
       role:
@@ -5626,7 +5641,7 @@ export type OperationResponses = {
         since: string
         http_status: number | null
         pending_until: string | null
-      }
+      } | null
       latest_reading: {
         id: string
         source_id: string

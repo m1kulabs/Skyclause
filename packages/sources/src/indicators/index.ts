@@ -1,4 +1,6 @@
 import type { IndicatorDefinition } from '@skyclause/clauses'
+import { apimsIndicators } from './apims'
+export { apimsIndicators } from './apims'
 
 export const jpsRainIndicators: IndicatorDefinition[] = [
   { name: 'site.rain_60m_mm', celType: 'double', unit: 'mm', scope: 'site', sourceKind: 'jps_rain' },
@@ -17,6 +19,7 @@ export const metForecastIndicators: IndicatorDefinition[] = [
 
 export const indicators: IndicatorDefinition[] = [
   ...jpsRainIndicators,
+  ...apimsIndicators,
   ...metWarningIndicators,
   ...metForecastIndicators
 ]

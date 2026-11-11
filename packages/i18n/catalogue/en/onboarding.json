@@ -42,6 +42,7 @@
   "sources_title": "Bind sources",
   "source_search": "Search sources",
   "source_error": "Error · HTTP {status}",
+  "source_not_evaluated": "Not evaluated",
   "source_error_unknown": "Error",
   "bind": "Bind {source}",
   "binding": "Binding…",
