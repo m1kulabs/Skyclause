@@ -211,7 +211,12 @@ export function SignalsPage({ org, project: projectSlug, locale }: { org: string
       return
     }
     const controller = new AbortController()
-    setDetailState({ status: 'loading', sourceId: selectedSource.id })
+    // A data refresh (every poll.recorded) re-reads the open source; keep its history on screen meanwhile.
+    setDetailState((current) =>
+      current?.status === 'ready' && current.sourceId === selectedSource.id
+        ? current
+        : { status: 'loading', sourceId: selectedSource.id }
+    )
     void Promise.all([
       readSourceReadings(org, selectedSource.id, controller.signal, selectedSource.kind === 'rapidrail_od' ? 64 : 1),
       readSourcePolls(org, selectedSource.id, controller.signal)
@@ -398,11 +403,17 @@ export function SignalsPage({ org, project: projectSlug, locale }: { org: string
                       >
                         {error && (
                           <span className="text-muted-foreground">
-                            {t(
-                              'signals.last_error',
-                              { status: error.http_status ?? 0, time: formatTime(error.started_at, locale) },
-                              locale
-                            )}
+                            {error.http_status === null
+                              ? t(
+                                  'signals.last_error_no_status',
+                                  { time: formatTime(error.started_at, locale) },
+                                  locale
+                                )
+                              : t(
+                                  'signals.last_error',
+                                  { status: error.http_status, time: formatTime(error.started_at, locale) },
+                                  locale
+                                )}
                           </span>
                         )}
                       </SourceHealthRow>
@@ -426,11 +437,13 @@ export function SignalsPage({ org, project: projectSlug, locale }: { org: string
                 {errors.map(({ poll, source }) => (
                   <li key={poll.id} className="flex flex-wrap gap-x-1 rounded-md border border-border p-3">
                     <span translate="no">{source?.external_id ?? poll.source_id}</span>
-                    {t(
-                      'signals.error_status',
-                      { status: poll.http_status ?? 0, time: formatDateTime(poll.started_at, locale) },
-                      locale
-                    )}
+                    {poll.http_status === null
+                      ? t('signals.error_no_status', { time: formatDateTime(poll.started_at, locale) }, locale)
+                      : t(
+                          'signals.error_status',
+                          { status: poll.http_status, time: formatDateTime(poll.started_at, locale) },
+                          locale
+                        )}
                   </li>
                 ))}
               </ul>
