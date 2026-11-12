@@ -66,7 +66,7 @@ export function WindowStrip({ windows, strip, list, locale = 'en' }: WindowStrip
   const layout = useMemo(() => {
     const at = Date.parse(input.now)
     const nowInSpan = at >= Date.parse(input.from) && at <= Date.parse(input.to)
-    return layoutStrip({ ...input, windows: [], locale }, { header: (nowInSpan ? 28 : 8) + 20, laneGap: 30 })
+    return layoutStrip({ ...input, windows: [], locale }, { header: (nowInSpan ? 28 : 8) + 20, laneGap: 46 })
   }, [input, locale])
   const dayRow = dayWindows.length ? (
     <DayStrip
