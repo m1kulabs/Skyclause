@@ -25,8 +25,6 @@
   "link_pending": "This Google account isn’t linked to Skyclause. Use email sign-in for this account.",
   "resend": "Resend",
   "resend_failed": "We couldn’t send a new link. Check the original tab and try again.",
-  "guest_title": "Continue as guest",
-  "guest_copy": "Explore the Commons and draft windows. Guests can’t approve or send calls.",
   "privacy": "PDPA privacy notice",
   "sign_in_instead": "Sign in instead"
 }

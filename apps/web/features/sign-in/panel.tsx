@@ -1,15 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
+import { CircleAlertIcon } from 'lucide-react'
 import { authClient } from '@skyclause/auth/client'
 import { Button } from '#ui/button'
 import { Input } from '#ui/input'
 import { Label } from '#ui/label'
+import { AuthHeader, AuthMessage } from '../public-chrome/auth'
 import { accountPath, continuePath, type AuthState } from './model'
-import { t } from './i18n'
-import './sign-in.css'
+import { t, type Locale } from './i18n'
 
 type Mode = 'sign-in' | 'sign-up'
 
@@ -19,10 +19,21 @@ function urlStateAlert(state: AuthState): string | null {
   return null
 }
 
-export function SignInPanel({ mode, next, state }: { mode: Mode; next: string | null; state: AuthState }) {
+export function SignInPanel({
+  mode,
+  next,
+  state,
+  locale = 'en'
+}: {
+  mode: Mode
+  next: string | null
+  state: AuthState
+  locale?: Locale
+}) {
+  const text = (key: string, vars: Record<string, string> = {}) => t(key, vars, locale)
   const emailRef = useRef<HTMLInputElement>(null)
-  const alertRef = useRef<HTMLParagraphElement>(null)
-  const expiredRef = useRef<HTMLParagraphElement>(null)
+  const alertRef = useRef<HTMLDivElement>(null)
+  const expiredRef = useRef<HTMLDivElement>(null)
   const conditionalStarted = useRef(false)
   const [email, setEmail] = useState('')
   const [sentEmail, setSentEmail] = useState<string | null>(null)
@@ -185,7 +196,7 @@ export function SignInPanel({ mode, next, state }: { mode: Mode; next: string | 
       if (!response.ok) throw new Error('Link confirmation failed')
       if (state.stepUp) {
         setStepUpConfirmed(true)
-        setStatus(t('sign-in.confirm_done'))
+        setStatus(text('sign-in.confirm_done'))
       } else {
         window.location.assign(continueHref)
       }
@@ -209,7 +220,7 @@ export function SignInPanel({ mode, next, state }: { mode: Mode; next: string | 
       })
       if (!response.ok) throw new Error('Resend failed')
       setResendSent(true)
-      setStatus(t('sign-in.sent_resend'))
+      setStatus(text('sign-in.sent_resend'))
     } catch {
       setActionAlert('resend_failed')
     } finally {
@@ -228,87 +239,82 @@ export function SignInPanel({ mode, next, state }: { mode: Mode; next: string | 
   }
 
   return (
-    <main className="sign-in-page" data-auth-page>
-      <section className="sign-in-primary" aria-labelledby="sign-in-title">
-        <header className="sign-in-header">
-          <Link className="sign-in-brand" href="/" aria-label={t('sign-in.brand')}>
-            <Image src="/icon.svg" alt="" width={32} height={32} priority />
-            <span translate="no">{t('sign-in.brand')}</span>
-          </Link>
-          <h1 id="sign-in-title">{t(mode === 'sign-in' ? 'sign-in.title' : 'sign-in.sign_up_title')}</h1>
-        </header>
+    <main className="auth-page" lang={locale} data-auth-page>
+      <section className="auth-page" aria-labelledby="sign-in-title">
+        <AuthHeader
+          title={text(mode === 'sign-in' ? 'sign-in.title' : 'sign-in.sign_up_title')}
+          titleId="sign-in-title"
+          locale={locale}
+        />
 
         {visibleAlert && (
-          <p className="sign-in-alert" role="alert" tabIndex={-1} ref={alertRef}>
-            {t(`sign-in.${visibleAlert}`)}
-          </p>
+          <AuthMessage tabIndex={-1} ref={alertRef}>
+            {text(`sign-in.${visibleAlert}`)}
+          </AuthMessage>
         )}
 
         {expiredCopy && (
-          <p className="sign-in-alert" role="alert" tabIndex={-1} ref={expiredRef}>
-            {t(`sign-in.${expiredCopy}`)}
-          </p>
+          <AuthMessage tabIndex={-1} ref={expiredRef}>
+            {text(`sign-in.${expiredCopy}`)}
+          </AuthMessage>
         )}
 
         {state.kind === 'confirm' && (
-          <div className="sign-in-actions">
+          <div className="auth-stack">
             {stepUpConfirmed ? (
-              <p className="sign-in-status" role="status" aria-live="polite">
-                {status}
-              </p>
+              <AuthMessage tone="result">{status}</AuthMessage>
             ) : (
-              <Button className="sign-in-action" onClick={() => void confirmLink()} disabled={busy}>
-                {busy ? t('sign-in.confirming') : t(state.stepUp ? 'sign-in.confirm_step_up' : 'sign-in.confirm')}
+              <Button size="lg" className="w-full" onClick={() => void confirmLink()} disabled={busy}>
+                {busy ? text('sign-in.confirming') : text(state.stepUp ? 'sign-in.confirm_step_up' : 'sign-in.confirm')}
               </Button>
             )}
           </div>
         )}
 
         {resendOnly && (
-          <div className="sign-in-actions">
+          <div className="auth-stack">
             {resendSent ? (
               <>
-                <p className="sign-in-status" role="status" aria-live="polite">
-                  {status}
-                </p>
-                <Button variant="outline" className="sign-in-action" onClick={useDifferentEmail}>
-                  {t('sign-in.use_different_email')}
+                <AuthMessage tone="result">{status}</AuthMessage>
+                <Button variant="outline" size="lg" className="w-full" onClick={useDifferentEmail}>
+                  {text('sign-in.use_different_email')}
                 </Button>
               </>
             ) : (
-              <Button className="sign-in-action" onClick={() => void resendLink()} disabled={busy}>
-                {busy ? t('sign-in.sending') : t('sign-in.resend')}
+              <Button size="lg" className="w-full" onClick={() => void resendLink()} disabled={busy}>
+                {busy ? text('sign-in.sending') : text('sign-in.resend')}
               </Button>
             )}
           </div>
         )}
 
         {showOptions && (
-          <div className="sign-in-actions">
+          <div className="auth-stack">
             {mode === 'sign-in' && !sentEmail && (
               <Button
                 variant="outline"
-                className="sign-in-action"
+                size="lg"
+                className="w-full"
                 onClick={() => void startPasskeySignIn()}
                 disabled={busy}
               >
-                {t('sign-in.passkey')}
+                {text('sign-in.passkey')}
               </Button>
             )}
 
             {sentEmail ? (
-              <div className="sign-in-sent">
-                <p className="sign-in-status" role="status" aria-live="polite">
-                  {t('sign-in.sent', { email: sentEmail })}
-                </p>
-                <Button variant="outline" className="sign-in-action" onClick={useDifferentEmail}>
-                  {t('sign-in.use_different_email')}
+              <div className="auth-stack">
+                <AuthMessage tone="result">{text('sign-in.sent', { email: sentEmail })}</AuthMessage>
+                <Button variant="outline" size="lg" className="w-full" onClick={useDifferentEmail}>
+                  {text('sign-in.use_different_email')}
                 </Button>
               </div>
             ) : showEmailForm ? (
-              <form className="sign-in-email-form" onSubmit={(event) => void sendEmailLink(event)}>
-                <div className="sign-in-field">
-                  <Label htmlFor="sign-in-email">{t('sign-in.email_label')}</Label>
+              <form className="auth-form" onSubmit={(event) => void sendEmailLink(event)}>
+                <div className="auth-field">
+                  <Label htmlFor="sign-in-email" className="text-base">
+                    {text('sign-in.email_label')}
+                  </Label>
                   <Input
                     ref={emailRef}
                     id="sign-in-email"
@@ -319,6 +325,7 @@ export function SignInPanel({ mode, next, state }: { mode: Mode; next: string | 
                     spellCheck={false}
                     autoCapitalize="none"
                     required
+                    className="h-12 text-base md:text-base"
                     value={email}
                     onChange={(event) => {
                       setEmail(event.target.value)
@@ -328,18 +335,19 @@ export function SignInPanel({ mode, next, state }: { mode: Mode; next: string | 
                     aria-describedby={fieldError ? 'sign-in-email-error' : undefined}
                   />
                   {fieldError && (
-                    <p className="sign-in-field-error" id="sign-in-email-error" role="alert">
-                      {t(`sign-in.${fieldError}`)}
+                    <p className="auth-error" id="sign-in-email-error" role="alert">
+                      <CircleAlertIcon aria-hidden="true" />
+                      {text(`sign-in.${fieldError}`)}
                     </p>
                   )}
                 </div>
                 {busy && (
-                  <p className="sign-in-visually-hidden" role="status" aria-live="polite">
-                    {t('sign-in.sending')}
+                  <p className="sr-only" role="status" aria-live="polite">
+                    {text('sign-in.sending')}
                   </p>
                 )}
-                <Button className="sign-in-action" type="submit" disabled={busy}>
-                  {busy ? t('sign-in.sending') : t('sign-in.email_submit')}
+                <Button size="lg" className="w-full" type="submit" disabled={busy}>
+                  {busy ? text('sign-in.sending') : text('sign-in.email_submit')}
                 </Button>
               </form>
             ) : null}
@@ -347,32 +355,30 @@ export function SignInPanel({ mode, next, state }: { mode: Mode; next: string | 
             {!sentEmail && (
               <Button
                 variant="outline"
-                className="sign-in-action"
+                size="lg"
+                className="w-full"
                 onClick={() => void startGoogleSignIn()}
                 disabled={busy}
               >
-                {t('sign-in.google')}
+                {text('sign-in.google')}
               </Button>
             )}
           </div>
         )}
 
         {mode === 'sign-up' && (
-          <p className="sign-in-switch">
-            <Link href={accountPath('/sign-in', next)}>{t('sign-in.sign_in_instead')}</Link>
+          <p className="m-0">
+            <Link className="auth-link" href={accountPath('/sign-in', next)}>
+              {text('sign-in.sign_in_instead')}
+            </Link>
           </p>
         )}
       </section>
 
-      <section className="sign-in-guest" aria-labelledby="sign-in-guest-title">
-        <h2 id="sign-in-guest-title">
-          <Link href="/guest">{t('sign-in.guest_title')}</Link>
-        </h2>
-        <p>{t('sign-in.guest_copy')}</p>
-      </section>
-
-      <footer className="sign-in-footer">
-        <Link href="/legal/privacy">{t('sign-in.privacy')}</Link>
+      <footer className="auth-footer">
+        <Link className="auth-link" href="/legal/privacy">
+          {text('sign-in.privacy')}
+        </Link>
       </footer>
     </main>
   )

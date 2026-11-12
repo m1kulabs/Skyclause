@@ -2,12 +2,14 @@
   "frame": {
     "navigation": "Pautan awam",
     "home": "Laman utama Skyclause",
-    "docs": "Dokumen",
-    "status": "Status",
     "terms": "Terma",
     "privacy": "Privasi",
-    "malay": "Bahasa Melayu"
+    "signIn": "Log masuk",
+    "footerNavigation": "Undang-undang dan bahasa",
+    "language": "English",
+    "languageLabel": "Baca halaman ini dalam bahasa Inggeris"
   },
+  "contents": "Dalam halaman ini",
   "attribution": {
     "view": "Lihat atribusi sumber untuk {source}, stesen {station}",
     "heading": "Atribusi sumber",
@@ -20,21 +22,17 @@
     "close": "Tutup atribusi"
   },
   "notFound": {
-    "label": "404 · TIDAK DITEMUI",
+    "label": "Halaman tidak ditemui",
     "sentence": "Halaman ini mungkin tiada atau bersifat peribadi.",
-    "home": "Laman utama",
-    "status": "Status",
-    "privacy": "Privasi"
+    "home": "Pergi ke laman utama Skyclause"
   },
   "error": {
-    "label": "RALAT PERKHIDMATAN",
+    "label": "Sesuatu tidak kena",
     "sentence": "Halaman ini tidak dapat dimuatkan.",
-    "home": "Laman utama",
-    "status": "Status",
-    "privacy": "Privasi"
+    "retry": "Cuba lagi",
+    "home": "Pergi ke laman utama Skyclause"
   },
   "privacy": {
-    "label": "UNDANG-UNDANG · PRIVASI",
     "metadataTitle": "Notis privasi · Skyclause",
     "title": "Notis privasi",
     "intro": "Notis ini menerangkan data peribadi yang disimpan Skyclause, tempat data diproses dan tempoh penyimpanannya.",
@@ -54,28 +52,42 @@
     "retentionHeading": "Tempoh penyimpanan data",
     "retentionIntro": "Kami memadam atau menyahkenal pasti data apabila tempoh di bawah tamat.",
     "retention": {
+      "columnData": "Data",
+      "columnKept": "Disimpan selama",
+      "columnAfter": "Selepas itu",
       "readingsLabel": "Bacaan sumber awam dan rekod ralat",
-      "readingsPeriod": "Sepanjang hayat projek; dipadam apabila projek dipadam.",
+      "readingsKept": "Sepanjang hayat projek",
+      "readingsAfter": "Dipadam apabila projek dipadam.",
       "cameraLabel": "Bingkai kamera",
-      "cameraPeriod": "Satu semester, paling lama 183 hari; kemudian dipadam. Rekod kontras dikekalkan.",
+      "cameraKept": "Paling lama 183 hari (satu semester)",
+      "cameraAfter": "Kemudian dipadam. Rekod kontras dikekalkan.",
       "busLabel": "Kedudukan bas mentah",
-      "busPeriod": "Sehingga masa segmen dikira, paling lama 24 jam; kemudian dipadam. Masa segmen dikekalkan.",
+      "busKept": "Paling lama 24 jam",
+      "busAfter": "Disimpan sehingga masa segmen dikira, kemudian dipadam. Masa segmen dikekalkan.",
       "guestWindowsLabel": "Tetingkap tetamu",
-      "guestWindowsPeriod": "14 hari selepas dicipta; kemudian dipadam.",
+      "guestWindowsKept": "14 hari selepas dicipta",
+      "guestWindowsAfter": "Kemudian dipadam.",
       "guestAccountsLabel": "Akaun tetamu",
-      "guestAccountsPeriod": "Selepas 30 hari tanpa aktiviti; akaun dan datanya dipadam.",
+      "guestAccountsKept": "30 hari tanpa aktiviti",
+      "guestAccountsAfter": "Kemudian akaun dan datanya dipadam.",
       "subscribersLabel": "Rekod pelanggan",
-      "subscribersPeriod": "Sehingga 30 hari selepas berhenti melanggan; kemudian dipadam. Rekod sekatan bercincang dikekalkan.",
+      "subscribersKept": "Sehingga 30 hari selepas berhenti melanggan",
+      "subscribersAfter": "Kemudian dipadam. Rekod sekatan bercincang dikekalkan.",
       "ledgerLabel": "Lejar dan log audit",
-      "ledgerPeriod": "Sepanjang hayat organisasi; medan peribadi dinyahkenal pasti apabila akaun atau pelanggan dipadam.",
+      "ledgerKept": "Sepanjang hayat organisasi",
+      "ledgerAfter": "Medan peribadi dinyahkenal pasti apabila akaun atau pelanggan dipadam.",
       "organisationsLabel": "Organisasi yang dipadam",
-      "organisationsPeriod": "Tempoh ihsan 30 hari, kemudian dilupuskan. Rekod pangkalan data yang dipadam keluar daripada tempoh pemulihan enam jam.",
+      "organisationsKept": "Tempoh ihsan 30 hari",
+      "organisationsAfter": "Kemudian dilupuskan. Rekod pangkalan data yang dipadam keluar daripada tempoh pemulihan enam jam.",
       "exportsLabel": "Fail eksport",
-      "exportsPeriod": "Tujuh hari; kemudian dipadam.",
+      "exportsKept": "Tujuh hari",
+      "exportsAfter": "Kemudian dipadam.",
       "timetableLabel": "Medan peribadi jadual waktu APU",
-      "timetablePeriod": "NAME, SAMACCOUNTNAME dan LECTID digugurkan semasa ingest dan tidak pernah disimpan.",
+      "timetableKept": "Tidak pernah disimpan",
+      "timetableAfter": "NAME, SAMACCOUNTNAME dan LECTID digugurkan semasa ingest dan tidak pernah disimpan.",
       "backupsLabel": "Salinan pemulihan pangkalan data",
-      "backupsPeriod": "Tiada sandaran. Pangkalan data mempunyai tempoh pemulihan enam jam."
+      "backupsKept": "Tiada sandaran",
+      "backupsAfter": "Pangkalan data mempunyai tempoh pemulihan enam jam."
     },
     "breachHeading": "Pelanggaran data peribadi",
     "breach": "Kami memaklumkan Pesuruhjaya Perlindungan Data Peribadi secepat yang praktik dan selewat-lewatnya 72 jam selepas pelanggaran berlaku. Jika pelanggaran menyebabkan atau berkemungkinan menyebabkan kemudaratan besar, kami memaklumkan orang yang terjejas tanpa kelewatan yang tidak perlu dan selewat-lewatnya 7 hari selepas laporan awal kepada Pesuruhjaya."

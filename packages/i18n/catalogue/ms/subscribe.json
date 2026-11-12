@@ -21,6 +21,7 @@
   "safety": "Skyclause bukan perkhidmatan keselamatan atau kecemasan. Dalam kecemasan, hubungi 999.",
   "data": "Akses, eksport atau padam data anda",
   "loading": "Sedang dimuatkan…",
+  "error_title": "Pautan ini tidak berfungsi",
   "saving": "Sedang disimpan…",
   "saved": "{field} disimpan. Berkuat kuasa sebelum notis seterusnya.",
   "error": "Permintaan gagal ({status}): {reason}. Cuba lagi.",
@@ -46,5 +47,6 @@
   "no": "Tidak",
   "send_feedback": "Hantar maklum balas",
   "feedback_saved": "Maklum balas direkodkan.",
-  "window_label": "{title}: {start} – {end}"
+  "window_span": "{day}, {start} hingga {end}",
+  "window_span_days": "{startDay}, {start} hingga {endDay}, {end}"
 }

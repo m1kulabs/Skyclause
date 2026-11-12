@@ -21,6 +21,7 @@
   "safety": "Skyclause is not a safety or emergency service. In an emergency, call 999.",
   "data": "Access, export or erase your data",
   "loading": "Loading…",
+  "error_title": "This link did not work",
   "saving": "Saving…",
   "saved": "{field} saved. Applies before the next notice.",
   "error": "Request failed ({status}): {reason}. Try again.",
@@ -46,5 +47,6 @@
   "no": "No",
   "send_feedback": "Send feedback",
   "feedback_saved": "Feedback recorded.",
-  "window_label": "{title}: {start} – {end}"
+  "window_span": "{day}, {start} to {end}",
+  "window_span_days": "{startDay}, {start} to {endDay}, {end}"
 }
