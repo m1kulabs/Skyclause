@@ -1,6 +1,7 @@
 'use client'
 
 import { useLayoutEffect, useRef, useState } from 'react'
+import { formatInputDateTime } from '@skyclause/i18n/format'
 import { Field, FieldLabel, FieldGroup, FieldError, FieldDescription } from '#ui/field'
 import { Input } from '#ui/input'
 import { Button } from '#ui/button'
@@ -18,7 +19,7 @@ import { selectClass } from './recurrence-fields'
 const describedBy = (id: string, error: string | undefined) => `${id}-hint${error ? ` ${id}-error` : ''}`
 
 function timeInput(instant: string) {
-  return new Date(Date.parse(instant) + 8 * 3_600_000).toISOString().slice(11, 16)
+  return formatInputDateTime(instant).slice(11)
 }
 function initialDraft(window?: WindowView): WindowDraft {
   const recurrence = window?.recurrence

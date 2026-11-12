@@ -8,10 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { apiFetch, type Evidence } from '../ledger/operations'
 import { t } from '../ledger/i18n'
 import { problemMessage } from '../ledger/problem'
+import { formatInputDateTime } from '@skyclause/i18n/format'
 
 export type EvidenceTarget = { call_id?: string; span?: { from: string; to: string } }
-const localTime = (instant?: string) =>
-  instant ? new Date(Date.parse(instant) + 8 * 3600000).toISOString().slice(0, 16) : ''
+const localTime = (instant?: string) => (instant ? formatInputDateTime(instant) : '')
 
 export function RequestEvidence({
   projectId,
