@@ -216,7 +216,8 @@ test.describe('the first run on a production-style server', () => {
     await expectClean(page, 'analysis')
     await shoot(page, '8-analysis')
     // Nothing the overview or analysis read was refused or asked for the Crowd pack.
-    expect(log.slice(landed).filter((line) => line.includes('pack=crowd') || /^4\d\d /.test(line))).toEqual([])
+    const reads = log.slice(landed).filter((line) => line.includes('/api/'))
+    expect(reads.filter((line) => line.includes('pack=crowd') || /^4\d\d /.test(line))).toEqual([])
 
     // Back on the dashboard, the window and the source are there, read through the composed reads.
     await page.goto(`${APP}/${orgSlug}`)

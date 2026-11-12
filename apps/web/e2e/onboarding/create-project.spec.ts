@@ -82,9 +82,16 @@ function skipFlowState(skipped: Set<string>) {
 }
 
 async function tabTo(page: import('@playwright/test').Page, locator: import('@playwright/test').Locator) {
+  // Backwards when focus sits after the target: finishing the first run moves focus on to its Continue, past the steps.
+  const back = await locator.evaluate(
+    (element) =>
+      !!document.activeElement &&
+      document.activeElement !== document.body &&
+      !!(element.compareDocumentPosition(document.activeElement) & Node.DOCUMENT_POSITION_FOLLOWING)
+  )
   for (let attempt = 0; attempt < 120; attempt++) {
     if (await locator.evaluate((element) => element === document.activeElement)) return
-    await page.keyboard.press('Tab')
+    await page.keyboard.press(back ? 'Shift+Tab' : 'Tab')
   }
   throw new Error('Keyboard traversal did not reach the onboarding action')
 }
