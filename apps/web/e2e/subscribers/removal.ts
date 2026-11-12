@@ -14,10 +14,11 @@ export async function subscriberRemoval(page: Page) {
   await page.goto(projectPath)
   // Wait for the table data first: the trigger only exists once rows render.
   await expect(page.getByRole('table')).toContainText(row.email)
-  const trigger = page.getByRole('button', { name: t('subscribers.remove', { name: row.email }), exact: true })
+  const trigger = page.getByRole('button', { name: t('subscribers.more_actions', { email: row.email }), exact: true })
   async function queue() {
     // press() focuses then sends Enter atomically: split focus/keyboard steps flake under load.
     await trigger.press('Enter')
+    await page.getByRole('menuitem', { name: t('subscribers.remove_item'), exact: true }).press('Enter')
     const dialog = page.getByRole('alertdialog')
     const button = dialog.getByRole('button', { name: t('subscribers.remove_title', { name: row.email }), exact: true })
     await expect(button).toBeDisabled()

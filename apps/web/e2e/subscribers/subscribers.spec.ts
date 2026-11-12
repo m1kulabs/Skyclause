@@ -31,12 +31,22 @@ test('NTC-13 Admin sees consent, suppression and bounce records and can copy a r
   await page.goto(projectPath)
   const table = page.getByRole('table')
   await expect(table).toContainText(row.email)
-  await expect(table).toContainText(
+  await expect(table).toContainText(t('subscribers.status_bounced'))
+  await expect(table.locator('time').first()).toContainText('MYT')
+  // One line a subscriber: the consent record waits behind the email, on demand.
+  await expect(table).not.toContainText(t('subscribers.consent'))
+  await table.getByRole('button', { name: row.email }).click()
+  await expect(page.getByRole('dialog')).toContainText(
     t('subscribers.consent_detail', { form: 'subscribe', version: '2026-11-06', language: t('subscribe.english') })
   )
-  await expect(table).toContainText(t('subscribers.status_bounced'))
-  await expect(table).toContainText(t('subscribers.no_consent'))
-  await expect(table.locator('time').first()).toContainText('MYT')
+  await page.keyboard.press('Escape')
+  await table.getByRole('button', { name: 'bounced@example.test' }).click()
+  await expect(page.getByRole('dialog')).toContainText(t('subscribers.no_consent'))
+  await page.keyboard.press('Escape')
+  // Counts by window carry the window's name and time, never a fragment of its identifier.
+  const byWindow = page.getByRole('region', { name: t('subscribers.by_window') })
+  await expect(byWindow).toContainText('Test window')
+  await expect(byWindow).not.toContainText('window-id')
   const copy = page.waitForRequest(
     (request) => request.method() === 'POST' && request.url().endsWith('/subscribe-link')
   )
@@ -78,7 +88,10 @@ test('NTC-13 import validates addresses and requests confirmations only', async 
   const addresses = page.getByLabel(t('subscribers.addresses'))
   await addresses.fill('invalid')
   await page.getByRole('button', { name: t('subscribers.import'), exact: true }).click()
-  await expect(page.locator('main').getByRole('alert')).toHaveText(t('subscribers.invalid_addresses'))
+  await expect(page.locator('main').getByRole('alert')).toHaveText(
+    t('subscribers.invalid_address', { address: 'invalid' })
+  )
+  await expect(addresses).toBeFocused()
   await addresses.fill('recipient@example.test\nrecipient@example.test')
   const request = page.waitForRequest(
     (request) => request.method() === 'POST' && request.url().endsWith('/subscribers')
@@ -96,7 +109,7 @@ test('NTC-13 import validates addresses and requests confirmations only', async 
     page
       .locator('main')
       .getByRole('status')
-      .filter({ hasText: t('subscribers.import_result', { count: 1 }) })
+      .filter({ hasText: t('subscribers.import_result_one') })
   ).toBeVisible()
 })
 
@@ -120,15 +133,17 @@ test('subscriber pagination uses the returned cursor and preserves earlier conse
   // Pages replace each other, so at most 50 rows are ever rendered; the earlier page comes back from memory.
   await expect(page.getByRole('table')).toContainText('next@example.test')
   await expect(page.getByRole('table')).not.toContainText(row.email)
-  await expect(page.getByRole('button', { name: t('subscribers.next') })).toBeDisabled()
+  // The last page draws no Next: a control that cannot go anywhere is not offered.
+  await expect(page.getByRole('button', { name: t('subscribers.next') })).toHaveCount(0)
   await page.getByRole('button', { name: t('subscribers.previous') }).click()
   await expect(page.getByRole('table')).toContainText(row.email)
-  await expect(page.getByRole('table')).toContainText(
+  await page.getByRole('table').getByRole('button', { name: row.email }).click()
+  await expect(page.getByRole('dialog')).toContainText(
     t('subscribers.consent_detail', { form: 'subscribe', version: '2026-11-06', language: t('subscribe.english') })
   )
 })
 
-test('empty subscriber data says n=0 with the next action', async ({ page }) => {
+test('empty subscriber data says there are none, with the next action', async ({ page }) => {
   await setupProject(page)
   await stubApi(
     page,
