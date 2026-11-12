@@ -471,3 +471,120 @@ describe('look-alike punctuation, letter-digits and small capitals', () => {
     for (const set of Object.values(where)) expect(failing((b) => set(b, 'Gauge 5, then 60 mm; 39.0 mm.'))).toEqual([])
   })
 })
+
+describe('more exotic look-alikes (#512)', () => {
+  const failing = (change: (bundle: ReturnType<typeof replayBundle>) => void) => {
+    const bundle = replayBundle()
+    change(bundle)
+    const result = validate(bundle, replayInput())
+    return result.ok ? [] : result.reasons
+  }
+  const where = {
+    body: (b: ReturnType<typeof replayBundle>, text: string) => (b.calls[0]!.notices[0]!.body = text),
+    subject: (b: ReturnType<typeof replayBundle>, text: string) => (b.calls[0]!.notices[0]!.subject = text),
+    reason: (b: ReturnType<typeof replayBundle>, text: string) => (b.calls[0]!.reason = text)
+  }
+  // In a body, a subject and the reason, and inside the path of an allowed Skyclause link (spaces written as %20).
+  const refused = (text: string, expected: string) => {
+    for (const [name, set] of Object.entries(where)) {
+      expect(
+        failing((b) => set(b, text)),
+        name
+      ).toContainEqual(expect.stringContaining(expected))
+    }
+    const link = `See https://skyclause.m1ku.tech/r/${encodeURIComponent(text)} now.`
+    expect(
+      failing((b) => where.body(b, link)),
+      link
+    ).toContainEqual(expect.stringContaining(expected))
+  }
+
+  test.each(['|5 mm', '।5', '︱5'])('refuses %j, punctuation read as the digit 1', (text) => {
+    refused(`Gauge ${text}.`, 'look-alike punctuation')
+  })
+
+  test.each(['5S mm', '5B mm', '5б mm', 'Ƽ60 mm'])('refuses %j, letters read as digits', (text) => {
+    refused(`Gauge ${text}.`, 'letters read as digits')
+  })
+
+  test.each(['2 060 mm', '2_060 mm', '2  060 mm'])(
+    'refuses %j, a figure grouped with a space or underscore',
+    (text) => {
+      refused(`Gauge ${text}.`, 'grouped with a space or underscore')
+    }
+  )
+
+  test('refuses a look-alike separator after a space', () => {
+    refused('Gauge 5 ·60 mm.', 'look-alike punctuation U+00B7')
+  })
+
+  test.each(['\u{E000}', '\u{F8FF}', '\u{378}'])('refuses the private-use or unassigned character %j', (char) => {
+    refused(`Gauge 5${char}60 mm.`, 'private-use, unassigned or surrogate character')
+    refused(`Gauge ${char} mm.`, 'private-use, unassigned or surrogate character')
+  })
+
+  test('refuses U+12562, newer than the Unicode tables of Node 22 and Bun', () => {
+    // Node 26 (Unicode 18) reads it as a digit outside 0-9; Node 22 and Bun see an unassigned character. Either refuses.
+    refused('Gauge 5\u{12562}60 mm.', '')
+  })
+
+  test('refuses a lone surrogate', () => {
+    // encodeURIComponent throws on it, so no link case; decodeURIComponent of its escape throws, which refuses the link.
+    for (const set of Object.values(where)) {
+      expect(failing((b) => set(b, 'Gauge 5\uD83D60 mm.'))).toContainEqual(expect.stringContaining('U+D83D'))
+    }
+  })
+
+  test.each(['ŧwenŧy', 'thøusand', 'milłion', 'ħundred', 'seraŧus'])(
+    'refuses %j, letters with a stroke in a spelled-out number',
+    (text) => {
+      refused(`Rain reached ${text} mm.`, 'spelled-out number')
+    }
+  )
+
+  test.each(['мillion', 'ʜᴜɴᴅʀᴇᴆ', 'ᴍᵻʟʟᵻᴏɴ', 'ᴍɪᴌᴌɪᴏɴ'])(
+    'refuses %j, letters UTS #39 maps onto characters with no ASCII skeleton',
+    (text) => {
+      refused(`Rain reached ${text} mm.`, 'spelled-out number')
+    }
+  )
+
+  test.each(['🆃🆆🅴🅽🆃🆈', '🅣🅦🅔🅝🅣🅨'])('refuses %j, enclosed letters NFKC leaves alone', (text) => {
+    refused(`Rain reached ${text} mm.`, 'spelled-out number')
+  })
+
+  test.each(['|hundred|', '｜hundred｜', '🅰hundred'])(
+    'still refuses %j: a symbol that folds to a letter keeps word edges',
+    (text) => {
+      refused(`Rain reached ${text} mm.`, 'spelled-out number hundred')
+    }
+  )
+
+  test('refuses enclosed letters read as digits', () => {
+    refused('Gauge 5🅾🅾 mm.', 'letters read as digits')
+  })
+
+  test('accepts an arrow or a minus sign between figures, list separators and a date before a time', () => {
+    const text =
+      'Gauge 5→60 mm, 5−60 mm; 15:30 · 5 min old; Monday 2 November 2026 15:30 MYT; café, naïve, Zürich; 5 mm.'
+    for (const set of Object.values(where)) expect(failing((b) => set(b, text))).toEqual([])
+    const crowd = { ...replayInput(), quotable: ['120 people', '2026-11-02'] }
+    for (const text of [
+      'At 15:30 120 people.',
+      'On 2026-11-02 120 people.',
+      'Gauge 39.0 120 people.',
+      'Gauge 5_60 mm.'
+    ]) {
+      const result = validate(replayBundle(text), crowd)
+      expect(result.ok ? [] : result.reasons, text).toEqual([])
+    }
+  })
+
+  test.each(['O2', '5lb', '5oz'])('keeps refusing %j: notices quote "{value} {unit}" with a space', (text) => {
+    refused(`Gauge ${text}.`, 'letters read as digits')
+  })
+
+  test.each(['五十', '廿', '壹佰'])('refuses the CJK numerals %j', (text) => {
+    refused(`Rain reached ${text} mm.`, `${text} uses CJK ideographs`)
+  })
+})

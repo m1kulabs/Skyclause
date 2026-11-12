@@ -17,9 +17,14 @@ const LETTER = /[\p{L}_]/u
 const NUMBER = /(\d{4}-\d{2}-\d{2})|(\d{1,2}:\d{2})(?![\d:])|(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)/g
 // After NFKC (which folds fullwidth and superscript digits to 0-9), any other digit is refused outright.
 const OTHER_DIGIT = /[^\P{N}0-9]+/gu
+// CJK numerals are letters to Unicode (五十 is 50); notices are English or Malay, so any ideograph is refused, not a list.
+const IDEOGRAPHS = /\p{Ideographic}+/gu
 // Invisible to a reader: a zero-width space inside a figure (12, U+200B, 0) makes a person read 120 where the checks see 12 and 0.
 // Unicode's Default_Ignorable_Code_Point plus category Cf (format characters); nothing legitimate in a notice needs them.
 const INVISIBLE = /[\p{Default_Ignorable_Code_Point}\p{Cf}]/gu
+// A private-use character draws as whatever the font puts there, one newer than this runtime's Unicode tables
+// (U+12562 under Node 22) may draw as a digit on a newer phone, and a lone surrogate has no glyph. No notice needs them.
+const UNKNOWN = /[\p{Co}\p{Cn}\p{Cs}]/gu
 // Other ways a figure reads whole while the checks see two pieces: a combining mark on a digit, a control character
 // (C0 and C1 draw at zero width in some renderers; tab and line breaks are ordinary text), a thin or no-break space
 // between digits (NFKC folds them to a plain space), and a right-to-left letter beside digits, which reorders them.
@@ -37,10 +42,14 @@ const CONFUSABLE = new Map(
   Object.entries(CONFUSABLE_LETTERS).flatMap(([letters, chars]) => [...chars].map((char) => [char, letters] as const))
 )
 // UTS #39 skeletons fold capital I and l together and write m as rn, so the checks read each of those spellings too.
+// Symbols that fold to letters (🆃 is T, | is l) are read folded and as written, so |hundred| keeps its word edges.
 const skeletons = (text: string): string[] => {
-  const base = [...text.normalize('NFD').replace(/\p{M}/gu, '')].map((char) => CONFUSABLE.get(char) ?? char).join('')
-  const asI = base.replaceAll('l', 'i')
-  return [base, asI, base.replaceAll('rn', 'm'), asI.replaceAll('rn', 'm')]
+  const chars = [...text.normalize('NFD').replace(/\p{M}/gu, '')]
+  return [true, false].flatMap((symbols) => {
+    const base = chars.map((char) => (symbols || /\p{L}/u.test(char) ? (CONFUSABLE.get(char) ?? char) : char)).join('')
+    const asI = base.replaceAll('l', 'i')
+    return [base, asI, base.replaceAll('rn', 'm'), asI.replaceAll('rn', 'm')]
+  })
 }
 // Small capitals that UTS #39 leaves out of confusables.txt (Latin phonetic letters that draw as A-Z).
 const SMALL_CAPITALS: Record<string, string> = {
@@ -86,24 +95,52 @@ for (const [letter, char] of Object.entries(SMALL_CAPITALS)) {
   // m is written rn in the table, so the existing rn fold reads it too.
   if (!CONFUSABLE.has(char)) CONFUSABLE.set(char, letter === 'm' ? 'rn' : letter)
 }
+// UTS #39 reads the vertical line as l too; the generated table leaves ASCII sources out.
+CONFUSABLE.set('|', 'l')
+// Negative circled and negative squared letters, symbols NFKC leaves alone: 🅣 and 🆃 read as T.
+for (const first of [0x1f150, 0x1f170]) {
+  for (let i = 0; i < 26; i++) CONFUSABLE.set(String.fromCodePoint(first + i), String.fromCharCode(0x41 + i))
+}
 // Spelled-out numbers from eleven up, English and Malay; "one window" stays fine.
 const NUMBER_WORDS =
   'eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety hundred thousand million sebelas belas puluh ratus seratus ribu seribu juta sejuta'
 const NUMBER_WORD = new RegExp(String.raw`\b(?:${NUMBER_WORDS.replaceAll(' ', '|')})\b`, 'gi')
+// A letter the folds leave outside ASCII (ŧ, ᴆ, м) may draw as any letter, so a word with one is a spelled-out number
+// if it is one once each such letter is read as some letter: ŧwenŧy is twenty.
+const UNREAD_WORD = /\p{L}*[^\P{L}\p{ASCII}\p{Ideographic}]\p{L}*/gu
+const unreadNumber = (word: string): string[] => {
+  const shape = new RegExp(String.raw`\b${word.replace(/[^\p{ASCII}]/gu, '[a-z]')}\b`, 'i')
+  const found = shape.exec(NUMBER_WORDS)?.[0]
+  return found ? [found] : []
+}
 
 // Punctuation a reader takes for a separator inside a figure: any non-ASCII punctuation or symbol (a comma look-alike,
-// U+2800, a Tibetan tsheg, an ideographic comma) directly between digits. The en and em dash stay: they write ranges.
-const PUNCTUATION_BETWEEN_DIGITS = /\p{N}([\p{P}\p{S}\p{Lm}\uA4F8-\uA4FD\uA78F\u1427]+)(?=\p{N})/gu
+// U+2800, a Tibetan tsheg, an ideographic comma) between digits, directly or after a space: 5, space, U+00B7, 60 reads as
+// one figure, while a space on both sides separates, as DESIGN's lists do. The en and em dash and the minus sign (it draws
+// as the en dash) stay: they write ranges; so does the right arrow, which writes a change. None hides a figure.
+const PUNCTUATION_BETWEEN_DIGITS = /\p{N}( *[\p{P}\p{S}\p{Lm}\uA4F8-\uA4FD\uA78F\u1427]+)(?=\p{N})/gu
+// Punctuation UTS #39 reads as l, O or o on one side of a digit reads as a digit: |5 is 15, and so is a danda (U+0964)
+// before a 5. Checked before NFKC, which turns the vertical U+FE31 into an em dash.
+const PUNCTUATION_BESIDE_DIGIT = /(?<!\p{N})[\p{P}\p{S}](?=\p{N})|(?<=\p{N})[\p{P}\p{S}](?!\p{N})/gu
 // A comma between digits reads as a decimal mark (5,60) unless it is a thousands group (2,060).
 const THOUSANDS = /(?<!\d|\d,)\d{1,3}(?:,\d{3})+(?!\d|,\d)/g
-// A token of 0-9 and the letters O, o, l, I (plus up to three unit letters) with a letter beside a digit: 5OO, 5l, l5.
-const LETTER_DIGITS = /^([0-9OolI]+)[a-zA-Z]{0,8}$/
-const LETTER_BESIDE_DIGIT = /\d[OolI]|[OolI]\d/
-const LETTER_ACROSS_SEPARATOR = /\d[.,:][OolI]+(?!\p{L})|(?<!\p{L})[OolI]+[.,:]\d/u
+// Spaces (HTML collapses a run to one) or underscores before three digits group a figure: 2 060 and 2_060 read as
+// 2,060. Not after a separator or another figure: "15:30 120 people", "39.0 120" and "2026-11-02 120" stay apart.
+const GROUPED = /(?<![\d_.,:-])\d{1,3}[ \t_]+\d{3}(?!\d)/
+// A token of 0-9 and the letters O, o, l, I, S, B (plus up to three unit letters) with a letter beside a digit: 5OO, 5l,
+// l5, 5S. Lower-case s and b stay out: s is a unit.
+const LETTER_DIGITS = /^([0-9OolISB]+)[a-zA-Z]{0,8}$/
+const LETTER_BESIDE_DIGIT = /\d[OolISB]|[OolISB]\d/
+const LETTER_ACROSS_SEPARATOR = /\d[.,:][OolISB]+(?!\p{L})|(?<!\p{L})[OolISB]+[.,:]\d/u
+// Any letter left outside ASCII after the fold, glued to a digit: UTS #39 reads Ƽ as 5 and б as 6, and no notice
+// glues such a letter to a figure. Invisible fillers are refused on their own.
+const OTHER_LETTER_BESIDE_DIGIT =
+  /\d[^\P{L}\p{ASCII}\p{Default_Ignorable_Code_Point}]|[^\P{L}\p{ASCII}\p{Default_Ignorable_Code_Point}]\d/u
+// Letters and letter-like symbols (🅾 is O) fold to ASCII.
 const asciiLetters = (text: string): string =>
   [...text.normalize('NFD').replace(/\p{M}/gu, '')]
     .map((char) => {
-      const mapped = /\p{L}/u.test(char) ? CONFUSABLE.get(char) : undefined
+      const mapped = /[\p{L}\p{So}]/u.test(char) ? CONFUSABLE.get(char) : undefined
       return mapped && /^\p{ASCII}+$/u.test(mapped) ? mapped : char
     })
     .join('')
@@ -274,6 +311,10 @@ export function validate(p: ProposedBundle, input: AgentInput): Validation {
         const code = char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')
         reasons.push(`${where}: contains the invisible character U+${code}; remove it`)
       }
+      for (const char of new Set(text.match(UNKNOWN) ?? [])) {
+        const code = char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')
+        reasons.push(`${where}: contains the private-use, unassigned or surrogate character U+${code}; remove it`)
+      }
     }
     const refuseSeparators = (where: string, text: string) => {
       if (MARK_ON_DIGIT.test(text)) reasons.push(`${where}: a combining mark follows a digit; remove it`)
@@ -285,11 +326,16 @@ export function validate(p: ProposedBundle, input: AgentInput): Validation {
         reasons.push(`${where}: a thin or no-break space between digits; remove it`)
       for (const [, run] of text.matchAll(PUNCTUATION_BETWEEN_DIGITS)) {
         for (const char of new Set(
-          [...run!].filter((c) => (c > '\x7F' || c === "'" || c === '`') && c !== '\u2013' && c !== '\u2014')
+          [...run!].filter((c) => (c > '\x7F' || c === "'" || c === '`') && !'\u2013\u2014\u2212\u2192'.includes(c))
         )) {
           const code = char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')
           reasons.push(`${where}: look-alike punctuation U+${code} between digits; remove it`)
         }
+      }
+      for (const char of new Set(text.match(PUNCTUATION_BESIDE_DIGIT) ?? [])) {
+        if (!/^[OolI]+$/.test(CONFUSABLE.get(char) ?? '')) continue
+        const code = char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')
+        reasons.push(`${where}: look-alike punctuation U+${code} beside a digit; remove it`)
       }
       if (RTL_BESIDE_DIGIT.test(text))
         reasons.push(`${where}: a right-to-left character beside a digit reorders it; remove it`)
@@ -332,13 +378,25 @@ export function validate(p: ProposedBundle, input: AgentInput): Validation {
       for (const token of folded.match(/[\p{L}\p{N}_]+/gu) ?? []) {
         if (names.has(token)) continue
         const run = LETTER_DIGITS.exec(token)?.[1]
-        if (run && LETTER_BESIDE_DIGIT.test(run))
+        if ((run && LETTER_BESIDE_DIGIT.test(run)) || OTHER_LETTER_BESIDE_DIGIT.test(token))
           reasons.push(`${where}: ${token} has letters read as digits; quote the figure from the quotable block`)
       }
+      if (GROUPED.test(rest))
+        reasons.push(
+          `${where}: digits grouped with a space or underscore read as one figure; write the figure as quoted`
+        )
       for (const [digits] of rest.matchAll(OTHER_DIGIT)) {
         reasons.push(`${where}: ${digits} uses digits outside 0-9; quote the figure from the quotable block`)
       }
-      const spelled = new Set(skeletons(rest).flatMap((text) => [...text.matchAll(NUMBER_WORD)].map(([word]) => word)))
+      for (const [run] of rest.matchAll(IDEOGRAPHS)) {
+        reasons.push(`${where}: ${run} uses CJK ideographs, which write numbers; write English or Malay`)
+      }
+      const spelled = new Set(
+        skeletons(rest).flatMap((text) => [
+          ...[...text.matchAll(NUMBER_WORD)].map(([word]) => word),
+          ...(text.match(UNREAD_WORD) ?? []).flatMap(unreadNumber)
+        ])
+      )
       for (const word of spelled) {
         reasons.push(`${where}: spelled-out number ${word}; quote the figure from the quotable block`)
       }
