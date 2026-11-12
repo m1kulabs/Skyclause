@@ -55,14 +55,14 @@ export function Pricing({ signInHref }: { signInHref: string }) {
           <p>
             <strong>Campus,</strong> for a university office sending lecturer notices:{' '}
             <span className="plan-campus">
-              RM&nbsp;900 a month per campus, billed yearly, after May 2027, proposal, untested
+              RM&nbsp;1,900 a month per campus, billed yearly, after May 2027, proposal, untested
             </span>
             .
           </p>
         </div>
         <div className="plan-foot" data-reveal>
           <p className="plan-price" data-source={PLANS_SOURCE}>
-            <span className="plan-figure">RM&nbsp;49</span>{' '}
+            <span className="plan-figure">RM&nbsp;299</span>{' '}
             <span className="plan-period">a month per organisation, from May 2027, proposal, untested</span>
           </p>
           <a href={PLANS_SOURCE} className="landing-button plan-action">

@@ -118,8 +118,8 @@ describe('landing sections', () => {
     const text = document.body.textContent ?? ''
     for (const price of [
       'Free',
-      'RM 49 a month per organisation, from May 2027',
-      'RM 900 a month per campus, billed yearly, after May 2027'
+      'RM 299 a month per organisation, from May 2027',
+      'RM 1,900 a month per campus, billed yearly, after May 2027'
     ]) {
       expect(text.replace(/\u00a0/g, ' ')).toContain(price)
     }

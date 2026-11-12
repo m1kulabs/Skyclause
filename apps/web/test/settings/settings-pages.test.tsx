@@ -32,13 +32,13 @@ test('billing reads the active plan and labels every proposal without payment co
   expect(markup).toContain('data-current-plan="team"')
   expect(markup).toContain('Community')
   // The prices are ringgit in the reader's own format, with a no-break space so "RM" never parts from the amount.
-  expect(markup).toContain('RM\u00a049 a month per organisation from May 2027')
-  expect(markup).toContain('RM\u00a0900 a month per campus, billed yearly after May 2027')
+  expect(markup).toContain('RM\u00a0299 a month per organisation from May 2027')
+  expect(markup).toContain('RM\u00a01,900 a month per campus, billed yearly after May 2027')
   expect(markup).toContain('The beta collects no payment.')
   expect(prices).toHaveLength(4)
   expect(prices).toContain('Free · proposal, untested')
-  expect(prices).toContain('RM\u00a049 a month per organisation from May 2027 · proposal, untested')
-  expect(prices).toContain('RM\u00a0900 a month per campus, billed yearly after May 2027 · proposal, untested')
+  expect(prices).toContain('RM\u00a0299 a month per organisation from May 2027 · proposal, untested')
+  expect(prices).toContain('RM\u00a01,900 a month per campus, billed yearly after May 2027 · proposal, untested')
   expect(prices.every((price) => price?.includes('proposal, untested'))).toBe(true)
   expect(markup).not.toMatch(/<(?:form|input|iframe)\b|autocomplete="cc-/i)
 })
@@ -53,7 +53,7 @@ test('billing in Malay keeps no English proposal label and prices the plans in r
   expect(prices).toHaveLength(4)
   expect(prices.every((price) => price?.includes('cadangan, belum diuji'))).toBe(true)
   expect(markup).not.toContain('proposal, untested')
-  expect(prices).toContain('RM\u00a049 sebulan bagi setiap organisasi mulai Mei 2027 · cadangan, belum diuji')
+  expect(prices).toContain('RM\u00a0299 sebulan bagi setiap organisasi mulai Mei 2027 · cadangan, belum diuji')
 })
 
 test('audit filter controls have names and autocomplete settings', () => {
