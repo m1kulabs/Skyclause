@@ -13,21 +13,25 @@ export const RUNS_REQUESTED = 'runs-requested'
 /** Publishes one `{run_id, org_id}` message to `runs-requested`; the composition root injects the real one. */
 export type RunPublisher = (message: { run_id: string; org_id: string }) => Promise<void>
 
-let publisher: RunPublisher | null = null
+// On globalThis, not in a module variable, as the event publisher is: Next.js may instantiate this module once for
+// instrumentation.ts, where the composition root sets the publisher, and again for the route handlers that request runs.
+const slot = Symbol.for('skyclause.db.runPublisher')
+const store = globalThis as { [slot]?: RunPublisher | null }
 
-/** Sets the publisher requestRun, finishing runs and the republish use; `null` unsets it (tests). */
+/** Sets the publisher requestRun, finishing runs and the republish use, process-wide; `null` unsets it (tests). */
 export function setRunPublisher(next: RunPublisher | null) {
-  publisher = next
+  store[slot] = next
 }
 
 export function runPublisher(): RunPublisher | null {
-  return publisher
+  return store[slot] ?? null
 }
 
 /** After `tx` commits, publishes the run; a failed publish is left to the batch's republish of queued runs. */
 export function publishRun(tx: Tx, runId: string) {
   const orgId = tx.orgId!
   afterCommit(tx, async () => {
+    const publisher = runPublisher()
     if (!publisher) return
     try {
       await publisher({ run_id: runId, org_id: orgId })
