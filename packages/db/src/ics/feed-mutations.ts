@@ -248,6 +248,18 @@ function validatePlan(
     } else {
       const row = memberById.get(id)
       if (!row || row.projectId !== feed.projectId) throw new Error('calendar window update escapes feed scope')
+      if (row.seriesId) {
+        const parent = seriesById.get(row.seriesId)
+        const legacyDeletion = Boolean(patch.deletedAt && row.icsUid === null && row.icsRecurrenceId === null)
+        if (
+          !parent ||
+          parent.orgId !== feed.orgId ||
+          parent.projectId !== feed.projectId ||
+          parent.icsFeedId !== feed.id ||
+          (!legacyDeletion && parent.icsUid !== row.icsUid)
+        )
+          throw new Error('calendar window parent escapes locked scope')
+      }
       if (!patch.deletedAt && (row.icsUid === null || row.icsRecurrenceId === null))
         throw new Error('calendar source identity is unavailable')
       if (change.kind === 'cancel' && change.origin !== 'source')
@@ -266,7 +278,12 @@ function hasEffect(
 ): boolean {
   if (change.kind === 'create') return true
   const row = members.get(change.id)!
-  if (row.localOverride || row.startsAt < now || (row.seriesId && series.get(row.seriesId)?.cancelledAt)) return false
+  if (row.seriesId) {
+    const parent = series.get(row.seriesId)
+    if (!parent) throw new Error('calendar window parent escapes locked scope')
+    if (parent.cancelledAt) return false
+  }
+  if (row.localOverride || row.startsAt < now) return false
   if (change.kind === 'cancel') return row.cancelledAt === null
   if (change.kind === 'restore-source') return row.cancelledAt !== null && row.cancellationOrigin === 'source'
   return row.cancelledAt === null && Object.keys(windowPatchDifference(row, change.patch, true)).length > 0

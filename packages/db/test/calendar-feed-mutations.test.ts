@@ -2,6 +2,7 @@ import { eq, sql } from 'drizzle-orm'
 import { expect, test } from 'vitest'
 import {
   allocateCalendarIds,
+  budgetGate,
   claimDueIcsFeeds,
   getIcsFeedRecord,
   insertIcsFeedRecord,
@@ -478,4 +479,200 @@ test('planner and budget callbacks use the actual child context and allocation r
   expect(await c.run((tx) => tx.select().from(window))).toHaveLength(1)
   expect(await c.run((tx) => tx.select().from(domainEvent))).toHaveLength(1)
   expect((await c.run((tx) => getIcsFeedRecord(tx, c.feed.id)))!.etag).toBeNull()
+})
+
+async function mismatchedParent(
+  c: Awaited<ReturnType<typeof context>>,
+  mismatch: 'project' | 'feed' | 'uid',
+  stopped = false
+) {
+  const projectId = mismatch === 'project' ? (await c.run(makeProject)).id : c.project.id
+  const feedId =
+    mismatch === 'feed'
+      ? (await c.run((tx) => insertIcsFeedRecord(tx, { projectId: c.project.id, filename: 'other.ics' }))).id
+      : c.feed.id
+  return c.run((tx) =>
+    makeWindowSeries(tx, {
+      projectId,
+      icsFeedId: feedId,
+      icsUid: mismatch === 'uid' ? 'other-uid' : c.values.icsUid,
+      cancelledAt: stopped ? now : null
+    })
+  )
+}
+
+test.each([
+  ['project', 'update'],
+  ['feed', 'update'],
+  ['uid', 'update'],
+  ['project', 'cancel'],
+  ['feed', 'cancel'],
+  ['uid', 'cancel']
+] as const)(
+  'existing member %s parent mismatch rejects %s before budget or any partial writes',
+  async (mismatch, action) => {
+    const c = await context()
+    const parent = await mismatchedParent(c, mismatch)
+    const row = await c.run((tx) => makeWindow(tx, { ...c.values, seriesId: parent.id }))
+    await c.run((tx) => makeCall(tx, { windowId: row.id, state: 'sent', projectId: c.project.id }))
+    let budgetCalls = 0
+    await expect(
+      c.run((outer) =>
+        mutateIcsFeed(
+          outer,
+          {
+            feedId: c.feed.id,
+            now,
+            beforeApply: async (creates, child) => {
+              budgetCalls++
+              for (const _row of creates) await budgetGate.consume(child, child.principal, 'window')
+            }
+          },
+          async (_state, child) => {
+            const { ids } = await allocateCalendarIds(child, 1)
+            return {
+              changes: [
+                { kind: 'create', values: { ...c.values, id: ids[0]!, icsUid: 'new' }, now },
+                action === 'update'
+                  ? { kind: 'update', id: row.id, patch: { title: 'Escaped edit' }, now }
+                  : { kind: 'cancel', id: row.id, origin: 'source', now }
+              ],
+              feedPatch: { etag: 'must-not-persist' }
+            }
+          }
+        )
+      )
+    ).rejects.toThrow(/parent.*scope/)
+    expect(budgetCalls).toBe(0)
+    expect(await c.run((tx) => tx.select().from(window))).toEqual([row])
+    expect(await c.run((tx) => tx.select().from(domainEvent))).toEqual([])
+    expect(await c.run((tx) => tx.select().from(ledgerEntry))).toEqual([])
+    expect(await c.run((tx) => getIcsFeedRecord(tx, c.feed.id))).toEqual(c.feed)
+  }
+)
+
+test.each(['project', 'feed'] as const)(
+  'a stopped foreign %s parent cannot produce a phantom restoration representative',
+  async (mismatch) => {
+    const c = await context()
+    const parent = await mismatchedParent(c, mismatch, true)
+    const ids = await c.run(async (tx) => (await allocateCalendarIds(tx, 2)).ids.sort())
+    const rows = await c.run(async (tx) => [
+      await makeWindow(tx, {
+        ...c.values,
+        id: ids[0]!,
+        seriesId: parent.id,
+        cancelledAt: now,
+        cancellationOrigin: 'source'
+      }),
+      await makeWindow(tx, { ...c.values, id: ids[1]!, icsUid: 'valid' })
+    ])
+    let budgetCalls = 0
+    await expect(
+      c.run((tx) =>
+        mutateIcsFeed(
+          tx,
+          {
+            feedId: c.feed.id,
+            now,
+            beforeApply: async () => {
+              budgetCalls++
+            }
+          },
+          async () => ({
+            changes: [
+              { kind: 'restore-source', id: rows[0]!.id, patch: { title: 'Restored' }, now },
+              { kind: 'update', id: rows[1]!.id, patch: { title: 'Valid but rolled back' }, now }
+            ]
+          })
+        )
+      )
+    ).rejects.toThrow(/parent.*scope/)
+    expect(budgetCalls).toBe(0)
+    expect(await c.run((tx) => tx.select().from(window).orderBy(window.id))).toEqual(rows)
+    expect(await c.run((tx) => tx.select().from(domainEvent))).toEqual([])
+    expect(await c.run((tx) => tx.select().from(ledgerEntry))).toEqual([])
+  }
+)
+
+test.each(['project', 'feed'] as const)(
+  'legacy null identity deletion still rejects a foreign %s parent',
+  async (mismatch) => {
+    const c = await context()
+    const parent = await mismatchedParent(c, mismatch)
+    const row = await c.run((tx) =>
+      makeWindow(tx, { ...c.values, seriesId: parent.id, icsUid: null, icsRecurrenceId: null })
+    )
+    let budgetCalls = 0
+    await expect(
+      c.run((tx) =>
+        mutateIcsFeed(
+          tx,
+          {
+            feedId: c.feed.id,
+            now,
+            beforeApply: async () => {
+              budgetCalls++
+            }
+          },
+          async () => ({
+            changes: [{ kind: 'cancel', id: row.id, origin: 'source', now }],
+            feedPatch: { deletedAt: now, refreshClaim: null, nextRefreshAt: null }
+          })
+        )
+      )
+    ).rejects.toThrow(/parent.*scope/)
+    expect(budgetCalls).toBe(0)
+    expect(await c.run((tx) => tx.select().from(window))).toEqual([row])
+    expect(await c.run((tx) => getIcsFeedRecord(tx, c.feed.id))).toEqual(c.feed)
+    expect(await c.run((tx) => tx.select().from(domainEvent))).toEqual([])
+  }
+)
+
+test('explicit legacy null identity deletion permits a proved owned series without inventing its UID', async () => {
+  const c = await context()
+  const parent = await c.run((tx) =>
+    makeWindowSeries(tx, { projectId: c.project.id, icsFeedId: c.feed.id, icsUid: 'proved-parent' })
+  )
+  const row = await c.run((tx) =>
+    makeWindow(tx, { ...c.values, seriesId: parent.id, icsUid: null, icsRecurrenceId: null })
+  )
+  const result = await c.run((tx) =>
+    mutateIcsFeed(tx, { feedId: c.feed.id, now }, async () => ({
+      changes: [{ kind: 'cancel', id: row.id, origin: 'source', now }],
+      feedPatch: { deletedAt: now, refreshClaim: null, nextRefreshAt: null }
+    }))
+  )
+  expect(result).toMatchObject({ status: 'applied', changedIds: [row.id] })
+  expect((await c.run((tx) => tx.select().from(window)))[0]).toMatchObject({
+    icsUid: null,
+    icsRecurrenceId: null,
+    cancelledAt: now
+  })
+  expect(await c.run((tx) => tx.select().from(domainEvent))).toHaveLength(1)
+})
+
+test('a proved stopped parent is an actual no-op and leaves the full representative set to eligible members', async () => {
+  const c = await context()
+  const parent = await c.run((tx) =>
+    makeWindowSeries(tx, { projectId: c.project.id, icsFeedId: c.feed.id, icsUid: 'uid', cancelledAt: now })
+  )
+  const ids = await c.run(async (tx) => (await allocateCalendarIds(tx, 2)).ids.sort())
+  const stopped = await c.run((tx) =>
+    makeWindow(tx, { ...c.values, id: ids[0]!, seriesId: parent.id, cancelledAt: now, cancellationOrigin: 'source' })
+  )
+  const valid = await c.run((tx) => makeWindow(tx, { ...c.values, id: ids[1]!, icsUid: 'valid' }))
+  const result = await c.run((tx) =>
+    mutateIcsFeed(tx, { feedId: c.feed.id, now }, async () => ({
+      changes: [
+        { kind: 'restore-source', id: stopped.id, now },
+        { kind: 'update', id: valid.id, patch: { title: 'Changed' }, now }
+      ]
+    }))
+  )
+  expect(result).toMatchObject({ status: 'applied', changedIds: [valid.id] })
+  const events = await c.run((tx) => tx.select().from(domainEvent))
+  expect(events).toHaveLength(1)
+  expect(events[0]!.data).toMatchObject({ window_id: valid.id, calendar: { window_ids: [valid.id] } })
+  expect((await c.run((tx) => tx.select().from(window).where(eq(window.id, stopped.id))))[0]).toEqual(stopped)
 })
