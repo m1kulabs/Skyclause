@@ -486,4 +486,14 @@ describe('what the proxy adds for the route', () => {
     expect(routeRequest({ ...multi, host: 'skyclause.m1ku.tech', pathname: '/og.png' })?.group).toBe('/og.png')
     expect(routeRequest({ ...multi, host: 'app.skyclause.m1ku.tech', pathname: '/og.png' })).toBeNull()
   })
+
+  it('answers robots.txt on every host and the sitemap on the marketing host', () => {
+    for (const host of [...Object.values(ORIGINS).map((origin) => new URL(origin).host), RUN_APP]) {
+      expect(routeRequest({ ...multi, host, pathname: '/robots.txt' })?.group, host).toBe('/robots.txt')
+    }
+    expect(routeRequest({ ...multi, host: 'skyclause.m1ku.tech', pathname: '/sitemap.xml' })?.group).toBe(
+      '/sitemap.xml'
+    )
+    expect(routeRequest({ ...multi, host: 'app.skyclause.m1ku.tech', pathname: '/sitemap.xml' })).toBeNull()
+  })
 })
