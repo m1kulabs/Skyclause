@@ -329,6 +329,15 @@
 .pause:has(.pauseInput:checked) .playWord {
   display: inline;
 }
+/* Under reduced motion, from the system or the account, the photographs never move, so there is nothing to pause. */
+@media (prefers-reduced-motion: reduce) {
+  .pause {
+    display: none;
+  }
+}
+html[data-motion='reduce'] .pause {
+  display: none;
+}
 
 /* The window form and the verdict, on a solid panel. */
 .panel {
@@ -632,6 +641,11 @@
 }
 .age {
   color: var(--ink-muted);
+}
+/* A reading's value and unit, and its age, each stay on one line: "39.0 mm", "5 min old". */
+.input [data-numeric],
+.age {
+  white-space: nowrap;
 }
 .meta {
   display: flex;
