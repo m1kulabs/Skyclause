@@ -63,3 +63,22 @@ test('the steps are written in the language they are given', async () => {
   render(<FirstRunProgress org="test-org" locale="ms" />)
   expect(await screen.findByRole('button', { name: /^Langkau langkah ini/ })).toBeTruthy()
 })
+
+test('in Malay a done step reads when it was done, never the English result the API words', async () => {
+  vi.mocked(onboardingApi).mockResolvedValue(view(2) as never)
+  render(<FirstRunProgress org="test-org" locale="ms" />)
+  const list = await screen.findByRole('list')
+  expect(within(list).queryByText('organisation done')).toBeNull()
+  expect(within(list).getAllByText('Selesai pada 09:00 MYT')).toHaveLength(2)
+})
+
+test('in English a done step keeps its result, unless it would print a status code', async () => {
+  const answer = view(3)
+  answer.steps[2]!.result = 'CA16W bound · error · HTTP 404'
+  vi.mocked(onboardingApi).mockResolvedValue(answer as never)
+  render(<FirstRunProgress org="test-org" />)
+  const list = await screen.findByRole('list')
+  expect(within(list).getByText('organisation done')).toBeTruthy()
+  expect(within(list).queryByText(/HTTP/)).toBeNull()
+  expect(within(list).getByText('Done at 09:00 MYT')).toBeTruthy()
+})

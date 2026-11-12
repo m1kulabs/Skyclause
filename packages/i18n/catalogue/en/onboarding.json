@@ -24,6 +24,7 @@
   "resume": "Resume",
   "skipped": "Skipped",
   "done": "Done",
+  "done_at": "Done at {time}",
   "progress": "{completed} of {total} steps complete",
   "step_organisation": "Create an organisation",
   "step_project": "Create a project",

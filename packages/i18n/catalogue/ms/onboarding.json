@@ -24,6 +24,7 @@
   "resume": "Sambung semula",
   "skipped": "Dilangkau",
   "done": "Selesai",
+  "done_at": "Selesai pada {time}",
   "progress": "{completed} daripada {total} langkah selesai",
   "step_organisation": "Cipta organisasi",
   "step_project": "Cipta projek",
