@@ -14,7 +14,7 @@
   "open_project": "Open project {name}",
   "declare_window": "Declare a window",
   "declare_window_for": "Declare a window · {name}",
-  "search_ledger": "Search ledger",
+  "open_ledger": "Open the ledger",
   "light": "Light",
   "dark": "Dark",
   "system": "System",

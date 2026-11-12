@@ -12,7 +12,6 @@ function context(overrides: Partial<PaletteContext> & { role?: Role } = {}): Pal
     memberships: [{ account_id: 'account', org_id: 'org', org_name: 'Test organisation', org_slug: 'test-org', role }],
     projects: [],
     query: '',
-    projectQuery: '',
     projectChoice: null,
     changeTheme: vi.fn(),
     chooseProject: vi.fn(),

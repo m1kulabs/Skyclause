@@ -25,7 +25,6 @@ function context(overrides: Partial<PaletteContext> = {}): PaletteContext {
     ],
     projects: [project],
     query: '',
-    projectQuery: '',
     projectChoice: null,
     changeTheme: vi.fn(),
     chooseProject: vi.fn(),
@@ -42,16 +41,30 @@ test('sets the group of every item instead of leaving it to the ID', () => {
     'organisation:org': 'places',
     'project:project': 'places',
     'declare-window': 'actions',
-    'search-ledger': 'actions',
+    'open-ledger': 'actions',
     'theme:light': 'appearance',
     'theme:dark': 'appearance',
     'theme:system': 'appearance'
   })
 })
 
-test('offers Declare a window and Search ledger under Suggestions', () => {
+test('offers Declare a window and Open the ledger under Suggestions', () => {
   const suggested = items(context()).filter((item) => item.suggested)
-  expect(suggested.map((item) => item.id)).toEqual(['declare-window', 'search-ledger'])
+  expect(suggested.map((item) => item.id)).toEqual(['declare-window', 'open-ledger'])
+})
+
+test('the ledger action opens the ledger with nothing it does not read, and says so', () => {
+  const navigate = vi.fn()
+  const ledger = items(context({ query: 'flood', navigate })).find((item) => item.id === 'open-ledger')!
+  expect(ledger.label).toBe('Open the ledger')
+  ledger.onSelect()
+  expect(navigate).toHaveBeenCalledWith('/test-org/test-project/ledger')
+
+  const chosen = items(context({ query: 'flood', projectChoice: 'ledger', navigate })).find(
+    (item) => item.id === 'choose-ledger:project'
+  )!
+  chosen.onSelect()
+  expect(navigate).toHaveBeenLastCalledWith('/test-org/test-project/ledger')
 })
 
 test('the choose-a-project rows are places', () => {

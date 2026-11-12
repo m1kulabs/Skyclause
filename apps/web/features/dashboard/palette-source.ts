@@ -54,9 +54,9 @@ function allowedProjects(context: PaletteContext, purpose: 'window' | 'ledger') 
   })
 }
 
-function ledgerHref(project: PaletteProject, query: string) {
-  const root = `/${encodeURIComponent(project.org_slug)}/${encodeURIComponent(project.slug)}/ledger`
-  return query ? `${root}?q=${encodeURIComponent(query)}` : root
+/** The ledger reads only its own filters (dates, pack, mode, state), so the palette opens it with none of them. */
+function ledgerHref(project: PaletteProject) {
+  return `/${encodeURIComponent(project.org_slug)}/${encodeURIComponent(project.slug)}/ledger`
 }
 
 function actionItems(context: PaletteContext): PaletteItem[] {
@@ -74,7 +74,7 @@ function actionItems(context: PaletteContext): PaletteItem[] {
         context.navigate(
           purpose === 'window'
             ? `/${encodeURIComponent(project.org_slug)}/${encodeURIComponent(project.slug)}/windows?declare=window`
-            : ledgerHref(project, context.projectQuery)
+            : ledgerHref(project)
         )
     }))
   }
@@ -133,17 +133,17 @@ function actionItems(context: PaletteContext): PaletteItem[] {
 
   if (current.project && current.membership && membershipCan(current.membership, 'ledger.view', current.project.id)) {
     items.push({
-      id: 'search-ledger',
-      label: t('palette.search_ledger'),
+      id: 'open-ledger',
+      label: t('palette.open_ledger'),
       kind: 'actions',
       suggested: true,
       keywords: ['ledger', current.project.id, current.project.slug],
-      onSelect: () => context.navigate(ledgerHref(current.project!, context.query))
+      onSelect: () => context.navigate(ledgerHref(current.project!))
     })
   } else if (allowedProjects(context, 'ledger').length) {
     items.push({
-      id: 'search-ledger',
-      label: t('palette.search_ledger'),
+      id: 'open-ledger',
+      label: t('palette.open_ledger'),
       kind: 'actions',
       suggested: true,
       keywords: ['ledger', 'project'],
