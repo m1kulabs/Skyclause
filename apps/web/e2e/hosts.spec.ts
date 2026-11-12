@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process'
+import { randomBytes } from 'node:crypto'
 import { once } from 'node:events'
 import { writeFile } from 'node:fs/promises'
 import http from 'node:http'
@@ -14,6 +15,11 @@ const origin = `http://localhost:${port}`
 const RUN_APP = 'web-413187272599.asia-southeast1.run.app'
 const APP_HOST = 'app.skyclause.m1ku.tech'
 const APP = `https://${APP_HOST}`
+/**
+ * A documentation-range address (RFC 3849) as the rightmost `X-Forwarded-For` entry, as Cloud Run appends it: the API
+ * limits signed-out reads per client address, so each test is its own client, not the whole suite's unknown one.
+ */
+const visitorAddress = () => `2001:db8::${randomBytes(2).toString('hex')}:${randomBytes(2).toString('hex')}`
 
 /**
  * An organisation with one project and its sky pack, an Owner and a Viewer in it, and another organisation with a
@@ -151,8 +157,9 @@ test.describe('HOST_MODE=multi', () => {
   // #737: the browser's `/v1` operations reach the API through the app host's own `/api/v1`, where its host-only
   // session cookie goes. No other host serves that bridge, and `/v1` itself stays on the API host.
   test('only the app host serves /v1 at /api/v1; an unknown operation there is a 404 problem', async ({ request }) => {
+    const visitor = visitorAddress()
     const get = (host: string, pathname: string) =>
-      request.get(`${origin}${pathname}`, { headers: { host }, maxRedirects: 0 })
+      request.get(`${origin}${pathname}`, { headers: { host, 'x-forwarded-for': visitor }, maxRedirects: 0 })
 
     const unknown = await get(APP_HOST, '/api/v1/no-such-operation')
     expect(unknown.status()).toBe(404)
@@ -227,6 +234,7 @@ test.describe('HOST_MODE=multi', () => {
 
   test('the bridge keeps the organisation, role, origin and credential checks', async ({ request }) => {
     const seed = await seedBridge()
+    const visitor = visitorAddress()
     const call = (
       method: string,
       pathname: string,
@@ -237,6 +245,7 @@ test.describe('HOST_MODE=multi', () => {
         maxRedirects: 0,
         headers: {
           host: o.host ?? APP_HOST,
+          'x-forwarded-for': visitor,
           accept: 'application/json',
           ...(o.cookie ? { cookie: o.cookie } : {}),
           ...(o.org ? { 'skyclause-organization': o.org } : {}),
