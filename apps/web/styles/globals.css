@@ -10,8 +10,10 @@
 /*
  * Skyclause Figures: Roundo's digits at one width (fonts/skyclause-figures/build.py), for the characters numbers are
  * printed with. Roundo has no tabular figures; [data-numeric], the figures utility and type-figure list this family
- * ahead of Roundo, so their figures line up and their letters stay Roundo. Its 1 sits centred in a 0-wide cell, so
- * keep it to columns and figures that update, not running text.
+ * ahead of Roundo, so their figures line up and their letters stay Roundo. The cell is the median digit's, the widest
+ * digits are condensed a little to fit, the 1 has a foot and sits centred in it, and the colon, full stop, comma and
+ * space keep their narrow widths, so a time reads as a time. Keep it to columns and figures that update, not running
+ * text.
  */
 @font-face {
   font-family: 'Skyclause Figures';
