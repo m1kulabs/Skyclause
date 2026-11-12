@@ -14,7 +14,8 @@ import { Table, TableBody } from '#ui/table'
 import { DayStrip, GradeCard, SignalHealthHead, SourceError, SourceHealthRow, WindowStrip } from '../data-components'
 import { ModeBadge } from '../brand/mode-badge'
 import { readDashboard, type DashboardRead } from './operations'
-import { daySpan, slaLeft, stripInput, verdictState } from './model'
+import type { BlockRead, ReviewEntry, UpcomingEntry } from './compose'
+import { daySpan, slaLeft, stripInput } from './model'
 import { t as bundleText } from '../bundles/i18n'
 import { t } from './catalogue'
 import styles from './dashboard.module.css'
@@ -74,18 +75,19 @@ function blockHref(key: DashboardBlockKey, org: string, data: DashboardRead) {
   if (!project) return `${root(org)}/new`
   const base = projectRoot(org, project.slug)
   if (key === 'needs_review') {
-    const first = data.bundles[0]?.summary
+    const first = data.needs_review.ok ? data.needs_review.data[0]?.summary : undefined
     return first ? `${projectRoot(org, first.project.slug)}/bundles/${encodeURIComponent(first.id)}` : `${base}/calls`
   }
   if (key === 'windows_at_risk' || key === 'upcoming_risks') return `${base}/windows`
-  if (key === 'signal_health') return data.dashboard.signal_health.n ? `${base}/signals` : `${base}/settings/packs`
+  if (key === 'signal_health')
+    return data.signal_health.ok && data.signal_health.n ? `${base}/signals` : `${base}/settings/packs`
   return `${root(org)}/analysis`
 }
 
 function nextAction(key: DashboardBlockKey, data: DashboardRead, locale: Locale) {
-  const block = data.dashboard[key]
-  if (key === 'needs_review' && block.n === 0) return t('dashboard.view_calls', {}, locale)
-  if (block.next_action) return block.next_action
+  const block = data[key]
+  if (key === 'needs_review' && (!block.ok || block.n === 0)) return t('dashboard.view_calls', {}, locale)
+  if (block.ok && block.next_action) return block.next_action
   const fallback: Record<DashboardBlockKey, string> = {
     needs_review: t('dashboard.view_calls', {}, locale),
     windows_at_risk: t('dashboard.declare_window', {}, locale),
@@ -137,6 +139,50 @@ function Capped({ shown, total, locale }: { shown: number; total: number; locale
     <p className="type-small text-muted-foreground" data-numeric>
       {t('dashboard.capped', { shown: formatNumber(shown, locale), total: formatNumber(total, locale) }, locale)}
     </p>
+  )
+}
+
+/** Said once under the title when the blocks cover only the most recently active projects. */
+function CoveredProjects({ data, locale }: { data: DashboardRead; locale: Locale }) {
+  if (data.covered >= data.projects.length) return null
+  return (
+    <p className="type-small text-muted-foreground" data-dashboard-covered data-numeric>
+      {t(
+        'dashboard.covered_projects',
+        { shown: formatNumber(data.covered, locale), total: formatNumber(data.projects.length, locale) },
+        locale
+      )}
+    </p>
+  )
+}
+
+/**
+ * One block's read that failed (Retry reads the dashboard again) or is not available yet (said plainly, no Retry);
+ * the other blocks still render.
+ */
+function BlockError({
+  read,
+  source,
+  retry,
+  locale
+}: {
+  read: Extract<BlockRead<unknown>, { ok: false }>
+  source: string
+  retry: () => void
+  locale: Locale
+}) {
+  return (
+    <SourceError
+      source={source}
+      status={read.status}
+      at={read.at}
+      locale={locale}
+      retry={
+        <Button type="button" variant="outline" onClick={retry}>
+          {t('dashboard.retry', {}, locale)}
+        </Button>
+      }
+    />
   )
 }
 
@@ -211,7 +257,7 @@ function DashboardSkeleton({ locale = 'en' }: { locale?: Locale }) {
   )
 }
 
-/** The read failed or is not built (501 in production today): a named error in the first block, never an empty day. */
+/** The page's own reads (the dashboard or the projects list) failed: a named error in the first block, never an empty day. */
 function DashboardFailure({
   httpStatus,
   at,
@@ -260,7 +306,7 @@ function ReviewRow({
   locale
 }: {
   org: string
-  item: DashboardRead['bundles'][number]
+  item: ReviewEntry
   index: number
   data: DashboardRead
   minutesSinceRead: number
@@ -367,19 +413,21 @@ function Finding({
   minutesSinceRead: number
   locale: Locale
 }) {
-  const { dashboard, bundles, firstCall } = data
-  const first = bundles[0]
-  if (dashboard.needs_review.n === 0 || !first)
-    return <p className="type-text">{t('dashboard.nothing_to_approve', {}, locale)}</p>
+  const { needs_review: review, windows_at_risk: atRisk, firstCall } = data
+  // A failed review read says so in its block; the line under the title says nothing it cannot know.
+  if (!review.ok) return null
+  const first = review.data[0]
+  if (review.n === 0 || !first) return <p className="type-text">{t('dashboard.nothing_to_approve', {}, locale)}</p>
+  const today = atRisk.ok ? atRisk.data : []
   const window =
     firstCall?.window ??
     // The call's window, else today's at-risk row for it or for the bundle's project.
     (
-      dashboard.windows_at_risk.data.find((item) => item.window.id === firstCall?.window_id) ??
-      dashboard.windows_at_risk.data.find((item) => item.project.id === first.summary.project.id)
+      today.find((item) => item.window.id === firstCall?.window_id) ??
+      today.find((item) => item.project.id === first.summary.project.id)
     )?.window
   const sla = slaLeft(first.detail, first.summary.seconds_remaining, minutesSinceRead)
-  const count = dashboard.needs_review.n
+  const count = review.n
   return (
     <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 type-text">
       <span>
@@ -406,18 +454,18 @@ function Finding({
   )
 }
 
-/** Today's windows at risk across projects on the day strip; each verdict is the engine's, not an approved call. */
+/** Today's windows at risk across projects on the day strip, each in the state its verdict or latest call gives it. */
 function todayStrip(org: string, data: DashboardRead, now: string, locale: Locale) {
-  const items = data.dashboard.windows_at_risk.data
+  const items = data.windows_at_risk.ok ? data.windows_at_risk.data : []
   const several = data.projects.length > 1
-  const windows: StripWindow[] = items.map(({ project, window, verdict }) => {
+  const windows: StripWindow[] = items.map(({ project, window, state, draft }) => {
     const name = data.projects.find((entry) => entry.id === project.id)?.name ?? project.slug
     return {
       id: window.id,
       from: window.starts_at,
       to: window.ends_at,
-      state: verdictState(verdict),
-      draft: true,
+      state,
+      draft,
       title: several ? t('dashboard.window_in_project', { project: name, window: window.title }, locale) : window.title
     }
   })
@@ -430,21 +478,100 @@ function todayStrip(org: string, data: DashboardRead, now: string, locale: Local
   return { windows, hrefs, span: daySpan(windows, now) }
 }
 
-function DashboardContent({ org, data, locale }: { org: string; data: DashboardRead; locale: Locale }) {
-  const { dashboard } = data
+function UpcomingRow({ item, data, locale }: { item: UpcomingEntry; data: DashboardRead; locale: Locale }) {
+  const projectName = data.projects.find((project) => project.id === item.project.id)?.name ?? item.project.slug
+  return (
+    <li className={styles.upcoming}>
+      <time dateTime={item.starts_at ?? item.date} className="type-body text-muted-foreground" data-numeric>
+        {item.starts_at
+          ? t(
+              'dashboard.show_date',
+              { date: formatDate(item.date, locale), time: formatTime(item.starts_at, locale) },
+              locale
+            )
+          : formatDate(item.date, locale)}
+      </time>
+      <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="type-card-title" translate={item.show_name ? 'no' : undefined}>
+          {item.show_name ?? (item.storm ? t('dashboard.storm', { wording: item.storm.wording }, locale) : projectName)}
+        </span>
+        {/* A show night's mode is never guessed: unknown until a verdict gives it. A storm afternoon is its wording. */}
+        {item.mode ? (
+          <ModeBadge mode={item.mode} pack={item.pack} locale={locale} />
+        ) : item.storm ? null : (
+          <span className="type-body text-muted-foreground">{t('dashboard.unknown', {}, locale)}</span>
+        )}
+      </p>
+      {item.storm ? (
+        <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 type-body text-muted-foreground">
+          {item.show_name || data.projects.length > 1 ? <span translate="no">{projectName}</span> : null}
+          <a href={item.storm.source_url} target="_blank" rel="noreferrer" className={linkClass}>
+            {t('dashboard.storm_source', {}, locale)}
+          </a>
+        </p>
+      ) : null}
+      {item.warning ? (
+        <p className="type-body">
+          <span lang="ms">{item.warning.text}</span>
+          {item.warning.gloss ? (
+            <span className="text-muted-foreground">
+              {t('dashboard.warning_separator', {}, locale)}
+              {t('dashboard.warning_gloss', { gloss: item.warning.gloss }, locale)}
+            </span>
+          ) : null}
+          <span className="ml-1 type-small text-muted-foreground" data-numeric>
+            <time dateTime={item.warning.valid_from}>{formatTime(item.warning.valid_from, locale)}</time>
+            {t('dashboard.time_range_separator', {}, locale)}
+            <time dateTime={item.warning.valid_to}>{formatTime(item.warning.valid_to, locale)}</time>
+          </span>
+        </p>
+      ) : null}
+    </li>
+  )
+}
+
+function DashboardContent({
+  org,
+  data,
+  retry,
+  locale
+}: {
+  org: string
+  data: DashboardRead
+  retry: () => void
+  locale: Locale
+}) {
   const minutesSinceRead = useMinutesSinceRead(data)
   const now = new Date(Date.parse(data.readAt) + minutesSinceRead * 60_000).toISOString()
   const today = useMemo(() => todayStrip(org, data, now, locale), [org, data, now, locale])
   const noProjects = data.projects.length === 0
-  const headAction = (key: DashboardBlockKey) =>
-    dashboard[key].n > 0 ? (
+  const headAction = (key: DashboardBlockKey) => {
+    const block = data[key]
+    return block.ok && block.n > 0 ? (
       <Link href={blockHref(key, org, data)} className={linkClass}>
         {nextAction(key, data, locale)}
       </Link>
     ) : undefined
+  }
   /** An empty block's action: none before the first project (every one would open Create a project). */
   const emptyAction = (key: DashboardBlockKey, href = blockHref(key, org, data), action?: string) =>
     noProjects ? {} : { href, action: action ?? nextAction(key, data, locale) }
+  const failure = (key: DashboardBlockKey) => {
+    const block = data[key]
+    return block.ok ? null : (
+      <BlockError read={block} source={t(`dashboard.sources.${key}`, {}, locale)} retry={retry} locale={locale} />
+    )
+  }
+  const { needs_review: review, windows_at_risk: atRisk, signal_health: signals } = data
+  const { upcoming_risks: upcoming, yesterday_grades: grades } = data
+  const gradeCards = grades.ok ? grades.data.slice(0, LIST_CAP) : []
+  const twoPacks = (projectId: string) => gradeCards.filter((item) => item.project.id === projectId).length > 1
+  const windowsNote =
+    data.windowsBasis === 'engine_verdict'
+      ? t('dashboard.today_at_risk_note', {}, locale)
+      : today.windows.some((window) => window.draft)
+        ? t('dashboard.today_drafts_note', {}, locale)
+        : null
 
   return (
     <section className={styles.page} aria-labelledby="dashboard-title">
@@ -455,18 +582,23 @@ function DashboardContent({ org, data, locale }: { org: string; data: DashboardR
         {noProjects ? (
           <NoProjects org={org} locale={locale} />
         ) : (
-          <Finding data={data} minutesSinceRead={minutesSinceRead} locale={locale} />
+          <>
+            <Finding data={data} minutesSinceRead={minutesSinceRead} locale={locale} />
+            <CoveredProjects data={data} locale={locale} />
+          </>
         )}
       </header>
 
       <Block block="needs_review">
         <BlockHead id={BLOCK_IDS.needs_review} title={t('dashboard.needs_review', {}, locale)} />
-        {dashboard.needs_review.n === 0 ? (
+        {!review.ok ? (
+          failure('needs_review')
+        ) : review.n === 0 ? (
           <EmptyBlock sentence={t('dashboard.no_review', {}, locale)} {...emptyAction('needs_review')} />
         ) : (
           <>
             <ol className="flex flex-col gap-2">
-              {data.bundles.slice(0, LIST_CAP).map((item, index) => (
+              {review.data.slice(0, LIST_CAP).map((item, index) => (
                 <ReviewRow
                   key={item.summary.id}
                   org={org}
@@ -478,7 +610,7 @@ function DashboardContent({ org, data, locale }: { org: string; data: DashboardR
                 />
               ))}
             </ol>
-            <Capped shown={LIST_CAP} total={data.bundles.length} locale={locale} />
+            <Capped shown={LIST_CAP} total={review.data.length} locale={locale} />
           </>
         )}
       </Block>
@@ -489,7 +621,9 @@ function DashboardContent({ org, data, locale }: { org: string; data: DashboardR
           title={t('dashboard.windows_at_risk', {}, locale)}
           action={headAction('windows_at_risk')}
         />
-        {dashboard.windows_at_risk.n === 0 ? (
+        {!atRisk.ok ? (
+          failure('windows_at_risk')
+        ) : atRisk.n === 0 ? (
           <EmptyBlock
             sentence={t('dashboard.no_at_risk', {}, locale)}
             {...emptyAction(
@@ -507,7 +641,7 @@ function DashboardContent({ org, data, locale }: { org: string; data: DashboardR
               hrefs={today.hrefs}
               locale={locale}
             />
-            <p className="type-small text-muted-foreground">{t('dashboard.today_at_risk_note', {}, locale)}</p>
+            {windowsNote ? <p className="type-small text-muted-foreground">{windowsNote}</p> : null}
           </>
         )}
       </Block>
@@ -519,25 +653,29 @@ function DashboardContent({ org, data, locale }: { org: string; data: DashboardR
             title={t('dashboard.signal_health', {}, locale)}
             action={headAction('signal_health')}
           />
-          {dashboard.signal_health.n === 0 ? (
+          {!signals.ok ? (
+            failure('signal_health')
+          ) : signals.n === 0 ? (
             <EmptyBlock sentence={t('dashboard.no_signals', {}, locale)} {...emptyAction('signal_health')} />
           ) : (
-            <Table aria-label={t('dashboard.signal_health', {}, locale)}>
-              <SignalHealthHead locale={locale} />
-              <TableBody>
-                {dashboard.signal_health.data.slice(0, LIST_CAP).map((item) => (
-                  <SourceHealthRow
-                    key={item.source.id}
-                    source={item.source}
-                    state={item.state}
-                    ageS={item.age_s}
-                    locale={locale}
-                  />
-                ))}
-              </TableBody>
-            </Table>
+            <>
+              <Table aria-label={t('dashboard.signal_health', {}, locale)}>
+                <SignalHealthHead locale={locale} />
+                <TableBody>
+                  {signals.data.slice(0, LIST_CAP).map((item) => (
+                    <SourceHealthRow
+                      key={`${item.project.id}:${item.source.id}`}
+                      source={item.source}
+                      state={item.state}
+                      ageS={item.age_s}
+                      locale={locale}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+              <Capped shown={LIST_CAP} total={signals.data.length} locale={locale} />
+            </>
           )}
-          <Capped shown={LIST_CAP} total={dashboard.signal_health.data.length} locale={locale} />
         </Block>
 
         <div className={styles.side}>
@@ -547,7 +685,9 @@ function DashboardContent({ org, data, locale }: { org: string; data: DashboardR
               title={t('dashboard.upcoming_risks', {}, locale)}
               action={headAction('upcoming_risks')}
             />
-            {dashboard.upcoming_risks.n === 0 ? (
+            {!upcoming.ok ? (
+              failure('upcoming_risks')
+            ) : upcoming.n === 0 ? (
               <EmptyBlock
                 sentence={t('dashboard.no_upcoming', {}, locale)}
                 // Shows come from a bound venue listing and storm afternoons from a bound forecast: nothing lists a
@@ -559,52 +699,20 @@ function DashboardContent({ org, data, locale }: { org: string; data: DashboardR
                 )}
               />
             ) : (
-              <ul className="flex flex-col">
-                {dashboard.upcoming_risks.data.slice(0, LIST_CAP).map((item, index) => (
-                  <li key={`${item.project.id}:${item.date}:${item.pack}:${index}`} className={styles.upcoming}>
-                    <time dateTime={item.starts_at} className="type-body text-muted-foreground" data-numeric>
-                      {t(
-                        'dashboard.show_date',
-                        {
-                          date: formatDate(item.date, locale),
-                          time: formatTime(item.starts_at, locale)
-                        },
-                        locale
-                      )}
-                    </time>
-                    <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="type-card-title" translate={item.show_name ? 'no' : undefined}>
-                        {item.show_name ??
-                          data.projects.find((project) => project.id === item.project.id)?.name ??
-                          item.project.slug}
-                      </span>
-                      {item.mode ? (
-                        <ModeBadge mode={item.mode} pack={item.pack} locale={locale} />
-                      ) : (
-                        <span className="type-body text-muted-foreground">{t('dashboard.unknown', {}, locale)}</span>
-                      )}
-                    </p>
-                    {item.warning ? (
-                      <p className="type-body">
-                        <span lang="ms">{item.warning.text}</span>
-                        {item.warning.gloss ? (
-                          <span className="text-muted-foreground">
-                            {t('dashboard.warning_separator', {}, locale)}
-                            {t('dashboard.warning_gloss', { gloss: item.warning.gloss }, locale)}
-                          </span>
-                        ) : null}
-                        <span className="ml-1 type-small text-muted-foreground" data-numeric>
-                          <time dateTime={item.warning.valid_from}>{formatTime(item.warning.valid_from, locale)}</time>
-                          {t('dashboard.time_range_separator', {}, locale)}
-                          <time dateTime={item.warning.valid_to}>{formatTime(item.warning.valid_to, locale)}</time>
-                        </span>
-                      </p>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
+              <>
+                <ul className="flex flex-col">
+                  {upcoming.data.slice(0, LIST_CAP).map((item, index) => (
+                    <UpcomingRow
+                      key={`${item.project.id}:${item.date}:${item.pack}:${index}`}
+                      item={item}
+                      data={data}
+                      locale={locale}
+                    />
+                  ))}
+                </ul>
+                <Capped shown={LIST_CAP} total={upcoming.data.length} locale={locale} />
+              </>
             )}
-            <Capped shown={LIST_CAP} total={dashboard.upcoming_risks.data.length} locale={locale} />
           </Block>
 
           <Block block="yesterday_grades">
@@ -613,18 +721,29 @@ function DashboardContent({ org, data, locale }: { org: string; data: DashboardR
               title={t('dashboard.yesterday_grades', {}, locale)}
               action={headAction('yesterday_grades')}
             />
-            {dashboard.yesterday_grades.n === 0 ? (
+            {!grades.ok ? (
+              failure('yesterday_grades')
+            ) : grades.n === 0 ? (
               <EmptyBlock sentence={t('dashboard.no_grades', {}, locale)} {...emptyAction('yesterday_grades')} />
             ) : (
               <div className={styles.grades}>
-                {dashboard.yesterday_grades.data.slice(0, LIST_CAP).map(({ project, grade, metric }) => (
-                  <article key={grade.id} className="flex min-w-0 flex-col gap-2">
-                    <h3 className="type-card-title" translate="no">
-                      {data.projects.find((item) => item.id === project.id)?.name ?? project.slug}
-                    </h3>
-                    <GradeCard grade={grade} metric={metric} locale={locale} />
-                  </article>
-                ))}
+                {gradeCards.map(({ project, grade, metric }) => {
+                  const name = data.projects.find((item) => item.id === project.id)?.name ?? project.slug
+                  return (
+                    <article key={grade.id} className="flex min-w-0 flex-col gap-2">
+                      <h3 className="type-card-title" translate="no">
+                        {twoPacks(project.id)
+                          ? t(
+                              'dashboard.window_in_project',
+                              { project: name, window: t(`brand.packs.${grade.pack}`, {}, locale) },
+                              locale
+                            )
+                          : name}
+                      </h3>
+                      <GradeCard grade={grade} metric={metric} locale={locale} />
+                    </article>
+                  )
+                })}
               </div>
             )}
           </Block>
@@ -645,17 +764,19 @@ export function DashboardPage({
   const [state, setState] = useState<ReadState>(() =>
     initialData
       ? { status: 'ready', value: initialData }
-      : initialError
+      : initialError !== null
         ? { status: 'error', httpStatus: initialError, at: initialErrorAt }
         : { status: 'loading' }
   )
+  const retry = () => setAttempt((value) => value + 1)
 
   useEffect(() => {
-    if (initialData) {
+    // The server's own read stands until Retry asks for another.
+    if (attempt === 0 && initialData) {
       setState({ status: 'ready', value: initialData })
       return
     }
-    if (initialError !== null && attempt === 0) {
+    if (attempt === 0 && initialError !== null) {
       setState({ status: 'error', httpStatus: initialError, at: initialErrorAt })
       return
     }
@@ -676,18 +797,10 @@ export function DashboardPage({
     return () => controller.abort()
   }, [attempt, initialData, initialError, initialErrorAt, org])
 
-  if (initialData) return <DashboardContent org={org} data={initialData} locale={locale} />
   if (state.status === 'loading') return <DashboardSkeleton locale={locale} />
   if (state.status === 'error')
-    return (
-      <DashboardFailure
-        httpStatus={state.httpStatus}
-        at={state.at}
-        retry={() => setAttempt((value) => value + 1)}
-        locale={locale}
-      />
-    )
-  return <DashboardContent org={org} data={state.value} locale={locale} />
+    return <DashboardFailure httpStatus={state.httpStatus} at={state.at} retry={retry} locale={locale} />
+  return <DashboardContent org={org} data={state.value} retry={retry} locale={locale} />
 }
 
 export { DashboardSkeleton }

@@ -2,7 +2,16 @@ import type { Page } from '@playwright/test'
 import { expect, test } from '../fixtures'
 import { dashboardOperations } from '../../features/dashboard/operations'
 import { stubApi } from '../harness'
-import { emptyDashboard, filledDashboard, healthyDashboard, ids, org, project, stubDashboard } from './doubles'
+import {
+  emptyDashboard,
+  filledDashboard,
+  healthyDashboard,
+  ids,
+  org,
+  project,
+  stubComposedReads,
+  stubDashboard
+} from './doubles'
 
 async function openPalette(page: Page) {
   await expect(page.locator('[data-palette-ready="true"]')).toBeAttached()
@@ -90,7 +99,8 @@ test('dashboard renders a source error without a stale value and labels unknown 
   await stubDashboard(page, { filled: true })
   await page.goto(`/${org.slug}`)
   const signal = page.locator('[data-dashboard-block="signal_health"]')
-  await expect(signal).toContainText('Sg. Kuyoh error since 14:40 MYT · HTTP 503')
+  await expect(signal).toContainText('Sg. Kuyoh error since 14:40 MYT')
+  await expect(signal).not.toContainText('HTTP')
   await expect(signal).not.toContainText('39.0 mm')
   const risk = page.locator('[data-dashboard-block="upcoming_risks"]')
   await expect(risk.locator('li')).toContainText('Unknown')
@@ -287,22 +297,48 @@ test('today’s windows at risk lie on the day strip, each listed with a link to
   )
 })
 
-test('a dashboard read that is not built names the error under Needs review, never an empty day', async ({
+test('while getDashboard is not built, the dashboard is composed from the reads that are built', async ({
   page,
   expectAxeClean
 }) => {
   await stubDashboard(page)
-  await stubApi(page, 'getDashboard', { title: 'Not built' }, { registry: dashboardOperations, status: 501 })
+  await stubComposedReads(page)
   await page.goto(`/${org.slug}`)
   const review = page.locator('[data-dashboard-block="needs_review"]')
   // The bar's Review control lands on this heading in every state.
   await expect(review.locator('h2#dashboard-needs-review')).toHaveText('Needs review')
-  await expect(review.locator('[data-source-error="501"]')).toContainText('Couldn’t read the dashboard.')
-  await expect(page.locator('[data-empty-day]')).toHaveCount(0)
-  await expect(page.getByText('Nothing to approve right now.')).toHaveCount(0)
-  // Reading again cannot change a "not built" answer, so it offers no Try again.
-  await expect(review.getByRole('button', { name: 'Try again' })).toHaveCount(0)
+  await expect(review.locator('[data-bundle]')).toHaveCount(1)
+  await expect(review.getByRole('link', { name: 'Review bundle' })).toBeVisible()
+  // Today's window above Normal, from its latest call (a draft, so said to be unreviewed).
+  const risk = page.locator('[data-dashboard-block="windows_at_risk"]')
+  await expect(risk.locator('.day-strip [data-window]')).toHaveCount(1)
+  await expect(risk).toContainText('A draft is not reviewed yet.')
+  await expect(page.locator('[data-dashboard-block="signal_health"]')).toContainText('Sg. Kuyoh')
+  await expect(page.locator('[data-dashboard-block="upcoming_risks"] li')).toHaveCount(1)
+  await expect(page.locator('[data-dashboard-block="yesterday_grades"] [data-grade]')).toHaveCount(1)
+  await expect(page.locator('[data-source-error]')).toHaveCount(0)
+  await expect(page.locator('main')).not.toContainText(/not built|answered|501/i)
   await expectAxeClean(page)
+})
+
+test('a composed block whose read fails says so for that block only; one not available yet offers no Retry', async ({
+  page
+}) => {
+  await stubDashboard(page)
+  await stubComposedReads(page, { listProjectSources: 503, listGrades: 501 })
+  await page.goto(`/${org.slug}`)
+  const signals = page.locator('[data-dashboard-block="signal_health"]')
+  await expect(signals.locator('[data-source-error="503"]')).toContainText('Couldn’t read the sources just now.')
+  await expect(signals.getByRole('button', { name: 'Try again' })).toBeVisible()
+  const grades = page.locator('[data-dashboard-block="yesterday_grades"]')
+  await expect(grades.locator('[data-source-error="501"]')).toContainText(
+    'Skyclause can’t show yesterday’s grades yet.'
+  )
+  await expect(grades.getByRole('button', { name: 'Try again' })).toHaveCount(0)
+  // The other blocks still render from their own reads.
+  await expect(page.locator('[data-dashboard-block="needs_review"] [data-bundle]')).toHaveCount(1)
+  await expect(page.locator('[data-dashboard-block="upcoming_risks"] li')).toHaveCount(1)
+  await expect(page.locator('main')).not.toContainText(/not built|answered|50[13]/i)
 })
 
 test('a dashboard read that failed offers Try again', async ({ page }) => {
