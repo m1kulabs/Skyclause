@@ -24,6 +24,14 @@ type Mode = 'sign-in' | 'sign-up'
 type Busy = 'email' | 'passkey' | 'google' | 'confirm' | 'resend' | null
 type FieldProblem = 'email_empty' | 'email_invalid'
 type SendProblem = { key: 'send_failed' | 'send_unreachable' } | { key: 'send_limited'; retryAt: number | null }
+/** A resend or a Google start the auth limits refused, and when it may be tried again (null when not said). */
+type Limited = { key: 'send_rate_limited' | 'google_rate_limited'; retryAt: number | null }
+
+/** When a refused auth request may be tried again: Retry-After (the sign-in plugin's) or X-Retry-After (Better Auth's). */
+function retryAtFrom(headers: Headers | null, startedAt: number): number | null {
+  const seconds = Number(headers?.get('Retry-After') ?? headers?.get('X-Retry-After'))
+  return seconds > 0 ? startedAt + seconds * 1000 : null
+}
 /** A link out: to whom (unknown when the no-script form sent it), until when, and whether it was a second send. */
 interface SentLink {
   email: string | null
@@ -107,6 +115,7 @@ export function SignInPanel({
       : null
   )
   const [actionAlert, setActionAlert] = useState<string | null>(null)
+  const [limited, setLimited] = useState<Limited | null>(null)
   const [passkeyNote, setPasskeyNote] = useState<'passkey_unsupported' | null>(null)
   const [status, setStatus] = useState('')
   const [busy, setBusy] = useState<Busy>(null)
@@ -198,6 +207,7 @@ export function SignInPanel({
     setFieldError(null)
     setSendProblem(null)
     setActionAlert(null)
+    setLimited(null)
     setExpiredAt(null)
   }
 
@@ -296,9 +306,21 @@ export function SignInPanel({
     if (busy) return
     setBusy('google')
     clearProblems()
+    const startedAt = Date.now()
+    let refused: Headers | null = null
     try {
-      const result = await authClient.signIn.social({ provider: 'google', callbackURL: continueHref })
-      if (result.error) setActionAlert('google_start_failed')
+      const result = await authClient.signIn.social(
+        { provider: 'google', callbackURL: continueHref },
+        {
+          onError: (context: { response: Response }) => {
+            refused = context.response.headers
+          }
+        }
+      )
+      // A refusal by the sign-in limits says when to try again, as the email link's does.
+      if (result.error?.status === 429)
+        setLimited({ key: 'google_rate_limited', retryAt: retryAtFrom(refused, startedAt) })
+      else if (result.error) setActionAlert('google_start_failed')
     } catch {
       setActionAlert('google_start_failed')
     } finally {
@@ -350,6 +372,7 @@ export function SignInPanel({
     if (state.kind !== 'expired' || !state.resend || busy || resendSent) return
     setBusy('resend')
     setActionAlert(null)
+    setLimited(null)
     setStatus('')
     const startedAt = Date.now()
     try {
@@ -358,6 +381,11 @@ export function SignInPanel({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ resend: state.resend })
       })
+      // A refusal by the sign-in limits is the first send's sentence and clock time, not a failure.
+      if (response.status === 429) {
+        setLimited({ key: 'send_rate_limited', retryAt: retryAtFrom(response.headers, startedAt) })
+        return
+      }
       if (!response.ok) throw new Error('Resend failed')
       setResendSent(true)
       setSent({ email: null, until: startedAt + LINK_LIFETIME_MS, resent: true })
@@ -430,6 +458,14 @@ export function SignInPanel({
           {visibleAlert && (
             <AuthMessage tabIndex={-1} ref={alertRef}>
               {text(`sign-in.${visibleAlert}`)}
+            </AuthMessage>
+          )}
+
+          {limited && (
+            <AuthMessage>
+              {limited.retryAt
+                ? withParts(text(`sign-in.${limited.key}_until`), { time: clock(limited.retryAt) })
+                : text(`sign-in.${limited.key}`)}
             </AuthMessage>
           )}
 
