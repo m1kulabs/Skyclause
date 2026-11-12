@@ -169,7 +169,7 @@ test('reports network and malformed HTML failures visibly without retry', async 
   expect(http).toHaveBeenCalledTimes(1)
 })
 
-test.each(['headers', 'body'])('enforces the whole 20-second deadline while waiting for %s', async (phase) => {
+test.each(['headers', 'body'])('enforces the whole 60-second deadline while waiting for %s', async (phase) => {
   vi.useFakeTimers()
   let signal: AbortSignal | null | undefined
   const http = transport().mockImplementation(async (_, options) => {
@@ -179,7 +179,7 @@ test.each(['headers', 'body'])('enforces the whole 20-second deadline while wait
   })
   const pending = createJpsRainAdapter({ discoveryHttp: http, userAgent: 'test-agent' }).discover!()
   const rejected = expect(pending).rejects.toBeInstanceOf(TimeoutError)
-  await vi.advanceTimersByTimeAsync(19999)
+  await vi.advanceTimersByTimeAsync(59999)
   expect(signal!.aborted).toBe(false)
   await vi.advanceTimersByTimeAsync(1)
   await rejected

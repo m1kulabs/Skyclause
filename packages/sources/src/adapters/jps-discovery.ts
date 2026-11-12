@@ -2,6 +2,8 @@ import type { DiscoveredSource } from '../contract'
 import { HttpError, NetworkError, SchemaError, TimeoutError } from '../errors'
 
 const LIST_URL = 'https://infobanjirjpskl.water.gov.my/Rainfall/LatestData/All'
+// The whole station list (about 240 KB of HTML) took 31 s to arrive on 13 Nov 2026, so 20 s never finished.
+const DISCOVERY_DEADLINE_MS = 60_000
 export interface JpsDiscoveryOptions {
   discoveryHttp?: typeof fetch
   userAgent?: string
@@ -113,7 +115,7 @@ export async function discoverJpsStations(options: JpsDiscoveryOptions = {}): Pr
     timer = setTimeout(() => {
       controller.abort()
       reject(new TimeoutError(LIST_URL))
-    }, 20000)
+    }, DISCOVERY_DEADLINE_MS)
   })
   try {
     const body = await Promise.race([
