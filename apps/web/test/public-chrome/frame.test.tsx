@@ -64,6 +64,36 @@ test('the link to the page being read says so', () => {
   expect(page).toMatch(/<a href="\/legal\/privacy"[^>]*aria-current="page"/)
 })
 
+test('the language link names the page it opens: this page on the privacy notice, the notice anywhere else', () => {
+  const language = (page: string) =>
+    page.match(/<a href="\/(?:ms\/)?legal\/privacy" hrefLang="(?:ms|en)"[^>]*>[^<]*<\/a>/g)!.at(-1)!
+  const privacy = language(
+    renderToStaticMarkup(
+      <PublicChrome locale="en" path="/legal/privacy">
+        {null}
+      </PublicChrome>
+    )
+  )
+  expect(privacy).toContain('title="Read this page in Bahasa Melayu"')
+  expect(privacy).toContain('>Bahasa Melayu</a>')
+  // The Terms are English only, and a not-found page has no Malay twin: the link opens the Malay privacy notice.
+  for (const path of ['/legal/terms', undefined]) {
+    const other = language(
+      renderToStaticMarkup(
+        <PublicChrome locale="en" path={path}>
+          {null}
+        </PublicChrome>
+      )
+    )
+    expect(other, String(path)).toMatch(/^<a href="\/ms\/legal\/privacy" hrefLang="ms" lang="ms"/)
+    expect(other, String(path)).toContain('title="Read the privacy notice in Bahasa Melayu"')
+    expect(other, String(path)).toContain('>Privasi dalam Bahasa Melayu</a>')
+  }
+  const malay = language(renderToStaticMarkup(<PublicChrome locale="ms">{null}</PublicChrome>))
+  expect(malay).toContain('title="Baca notis privasi dalam bahasa Inggeris"')
+  expect(malay).toContain('>Privacy notice in English</a>')
+})
+
 test('brand lines render their catalogue copy', () => {
   const page = renderToStaticMarkup(<BrandLines locale="en" />)
   expect(page).toContain(t('brand.non_affiliation'))
