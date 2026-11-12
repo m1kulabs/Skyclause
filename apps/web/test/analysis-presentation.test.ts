@@ -13,7 +13,7 @@ const dates = { from: '2026-11-01', to: '2026-11-04', locale: 'en' as const }
 describe('ANL-5 rendered figures', () => {
   it('renders the server Wilson interval, 2px tick, numerator, denominator and period', () => {
     const html = renderToStaticMarkup(createElement(MetricFigure, { metric: figure, ...dates, source: 'test-capture' }))
-    for (const text of ['Wilson 95%: 0.53–0.98', 'stroke-width="2"', '7 of 8', 'n=8', '2026', 'test-capture'])
+    for (const text of ['Wilson 95% interval 53% to 98%', 'stroke-width="2"', '7 of 8', 'n=8', '2026', 'test-capture'])
       expect(html).toContain(text)
   })
   it('n=0 omits even a supplied interval and explains the next action', () => {
@@ -47,7 +47,7 @@ describe('ANL-5 rendered figures', () => {
         series: { kind: 'live', points: [{ kind: 'live', at: '2026-11-04T00:00:00Z', value: 0.875, metric: figure }] }
       })
     )
-    expect(html).toContain('Wilson 95%: 0.53–0.98')
+    expect(html).toContain('Wilson 95% interval 53% to 98%')
     expect(html).toContain('data-point-tick')
   })
 })

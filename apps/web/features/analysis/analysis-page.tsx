@@ -4,13 +4,14 @@ import { useCallback } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '#ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '#ui/toggle-group'
-import { formatDate, formatDateTime, formatNumber } from '@skyclause/i18n/format'
+import { formatDateTime, formatNumber } from '@skyclause/i18n/format'
 import { ApiProblem } from '../../lib/api-fetch'
 import { t } from './catalogue'
 import { apiFetch, allPages, type Analysis, type Project } from './operations'
 import {
   analysisQuery,
   analysisState,
+  leadAndRows,
   metricForTab,
   metricValue,
   periods,
@@ -19,7 +20,7 @@ import {
   type LiveSeries,
   type Locale
 } from './model'
-import { EmptyBlock, Failure, MetricFigure, featureOff, rangeText } from './presentation'
+import { EmptyBlock, Failure, Loading, MetricFigure, MetricRow, featureOff, rangeText } from './presentation'
 import { useRead } from './use-read'
 import { LiveChart } from './live-chart'
 import { GradedTable } from './graded-table'
@@ -54,89 +55,102 @@ async function readAnalysis(
   return { ...result, grades: { data: grades, next_cursor: null } }
 }
 
+/** The answer to "were the calls right?": the lead figure, the rows that measure, its chart and the ranked clauses. */
 function LiveFigures({ analysis, state, locale }: { analysis: Analysis; state: AnalysisState; locale: Locale }) {
-  const metrics = analysis.metrics.filter(
-    (metric) => metric.pack === state.pack && metricForTab(state.tab, metric.metric)
+  const main = analysis.metrics.filter(
+    (metric) => metric.pack === state.pack && metric.clause_key === null && metricForTab(state.tab, metric.metric)
   )
   const ranked = analysis.metrics
     .filter((metric) => metric.pack === state.pack && metric.clause_key !== null && metric.metric === 'precision')
     .sort((a, b) => b.n - a.n)
-  const main = metrics.filter((metric) => metric.clause_key === null)
-  const charts = [...new Set(main.map((metric) => metric.metric))]
+  const { lead, rows } = leadAndRows(state.tab, main)
+  // The review tab leads with its list when the period has no no-call count; it never claims there are no grades.
+  const showLead = !!lead || state.tab !== 'review'
   const source = t('analysis.updated', { at: formatDateTime(analysis.updated_at, locale) }, locale)
+  const max = Math.max(0, ...rows.map((metric) => metricValue(metric) ?? 0))
+  const series: LiveSeries | null = lead
+    ? {
+        kind: 'live',
+        points: analysis.series.map((point) => {
+          const figure = point.metrics.find(
+            (candidate) =>
+              candidate.pack === state.pack && candidate.clause_key === null && candidate.metric === lead.metric
+          )
+          return {
+            kind: 'live',
+            at: point.at,
+            value: figure ? metricValue(figure) : null,
+            metric: figure ?? { metric: lead.metric, n: 0, x: null, low: null, high: null }
+          }
+        })
+      }
+    : null
   return (
     <>
-      <div className="analysis-research-row">
+      {state.tab === 'agreement' && analysis.kill_line_exceeded && (
+        <p className="analysis-kill" role="alert">
+          {t('analysis.killExceeded', {}, locale)}
+        </p>
+      )}
+      {showLead && (
+        <section className="analysis-lead" aria-labelledby="analysis-answer-title">
+          <h2 id="analysis-answer-title" className="sr-only">
+            {t('analysis.question', {}, locale)}
+          </h2>
+          {lead ? (
+            <div className="analysis-lead-grid">
+              <MetricFigure metric={lead} from={analysis.from} to={analysis.to} source={source} locale={locale} />
+              {rows.length > 0 && (
+                <ul className="analysis-rows" aria-label={t('analysis.metricsTitle', {}, locale)}>
+                  {rows.map((metric) => (
+                    <MetricRow key={metric.metric} metric={metric} max={max || undefined} locale={locale} />
+                  ))}
+                </ul>
+              )}
+              {series && lead.n > 0 && (
+                <LiveChart
+                  series={series}
+                  metric={lead.metric}
+                  from={analysis.from}
+                  to={analysis.to}
+                  locale={locale}
+                  n={lead.n}
+                  columns={state.tab === 'delays'}
+                  agreement={state.tab === 'agreement'}
+                />
+              )}
+            </div>
+          ) : (
+            <div className="analysis-answer" data-metric="none">
+              <p className="analysis-answer-figure analysis-answer-empty">{t('analysis.emptyFinding', {}, locale)}</p>
+              <p className="analysis-answer-words">{t('analysis.next', {}, locale)}</p>
+            </div>
+          )}
+        </section>
+      )}
+      {state.tab !== 'delays' && state.tab !== 'review' && (
         <section className="analysis-ranked" aria-labelledby="analysis-ranked-title">
-          <h2 id="analysis-ranked-title">{t('analysis.ranked', {}, locale)}</h2>
-          <p className="analysis-muted">{t('analysis.rankSummary', {}, locale)}</p>
+          <div className="analysis-section-head">
+            <h2 id="analysis-ranked-title">{t('analysis.ranked', {}, locale)}</h2>
+            <p className="analysis-muted">{t('analysis.rankSummary', {}, locale)}</p>
+          </div>
           {!ranked.length ? (
             <EmptyBlock message="noClauses" locale={locale} />
           ) : (
-            <ol>
+            <ol className="analysis-rows">
               {ranked.map((metric) => (
-                <li key={`${metric.pack}-${metric.clause_key}`}>
-                  <h3>{metric.clause_key}</h3>
-                  <p>{t('analysis.fired', { n: formatNumber(metric.n, locale) }, locale)}</p>
-                  <MetricFigure metric={metric} from={analysis.from} to={analysis.to} source={source} locale={locale} />
-                </li>
+                <MetricRow
+                  key={`${metric.pack}-${metric.clause_key}`}
+                  metric={metric}
+                  name={metric.clause_key!}
+                  extra={t('analysis.fired', { n: formatNumber(metric.n, locale) }, locale)}
+                  locale={locale}
+                />
               ))}
             </ol>
           )}
         </section>
-        <section className="analysis-charts" aria-label={t('analysis.chart', {}, locale)}>
-          {!charts.length ? (
-            <EmptyBlock message="emptyFinding" locale={locale} />
-          ) : (
-            charts.map((metric) => {
-              const series: LiveSeries = {
-                kind: 'live',
-                points: analysis.series.map((point) => {
-                  const figure = point.metrics.find(
-                    (candidate) =>
-                      candidate.pack === state.pack && candidate.clause_key === null && candidate.metric === metric
-                  )
-                  return {
-                    kind: 'live',
-                    at: point.at,
-                    value: figure ? metricValue(figure) : null,
-                    metric: figure ?? { metric, n: 0, x: null, low: null, high: null }
-                  }
-                })
-              }
-              return (
-                <LiveChart
-                  key={metric}
-                  series={series}
-                  metric={metric}
-                  from={analysis.from}
-                  to={analysis.to}
-                  locale={locale}
-                  n={main.find((item) => item.metric === metric)!.n}
-                  columns={state.tab === 'delays'}
-                  agreement={state.tab === 'agreement'}
-                />
-              )
-            })
-          )}
-        </section>
-      </div>
-      <section aria-labelledby="analysis-metrics-title">
-        <h2 id="analysis-metrics-title">{t('analysis.metricsTitle', {}, locale)}</h2>
-        <div className="analysis-figures">
-          {main.map((metric) => (
-            <MetricFigure
-              key={`${metric.pack}-${metric.metric}`}
-              metric={metric}
-              from={analysis.from}
-              to={analysis.to}
-              source={source}
-              locale={locale}
-            />
-          ))}
-        </div>
-        {!main.length && <EmptyBlock locale={locale} />}
-      </section>
+      )}
     </>
   )
 }
@@ -186,44 +200,74 @@ function Workspace({
     [org, slug, projectId, state.period]
   )
   const crowd = useRead(crowdRead)
+  const liveRange = live.status === 'ready' ? { from: live.value.from, to: live.value.to } : null
+  const rangeFrom = liveRange?.from
+  const rangeTo = liveRange?.to
   const gradesRead = useCallback(
     async (signal: AbortSignal) => {
-      if (!projectId || live.status !== 'ready') return null
+      if (!projectId || !rangeFrom || !rangeTo) return null
       return allPages((cursor) =>
         apiFetch('listGrades', {
           org,
           params: { id: projectId },
-          query: { pack: state.pack, from: live.value.from, to: live.value.to, cursor },
+          query: { pack: state.pack, from: rangeFrom, to: rangeTo, cursor },
           signal
         })
       )
     },
-    [org, projectId, state.pack, live]
+    [org, projectId, state.pack, rangeFrom, rangeTo]
   )
   const grades = useRead(gradesRead)
   const canEdit = ['approver', 'admin', 'owner'].includes(role)
   const canDraft = canEdit || role === 'editor'
   const crowdEnabled = crowd.status === 'ready' && crowd.value
   const visibleTabs = tabs.filter((tab) => tab !== 'crowd' || crowdEnabled)
-  const finding =
-    live.status === 'ready' && live.value.metrics.some((metric) => metric.n > 0)
-      ? t(
-          'analysis.finding',
-          { from: formatDate(live.value.from, locale), to: formatDate(live.value.to, locale) },
-          locale
-        )
-      : live.status === 'ready'
-        ? t('analysis.emptyFinding', {}, locale)
-        : undefined
   if (slug && !project)
-    return <Failure operation={t('analysis.title', {}, locale)} error={new ApiProblem(404, {})} locale={locale} />
+    return (
+      <div className="analysis-page">
+        <h1>{t('analysis.title', {}, locale)}</h1>
+        <Failure source={t('analysis.sources.project', {}, locale)} error={new ApiProblem(404, {})} locale={locale} />
+      </div>
+    )
   return (
     <div className="analysis-page" data-analysis-page>
-      <h1>{t('analysis.title', {}, locale)}</h1>
-      {finding && <p className="analysis-finding">{finding}</p>}
-      {live.status === 'ready' && <p className="analysis-muted">{rangeText(live.value.from, live.value.to, locale)}</p>}
+      <header className="analysis-title">
+        <div className="analysis-title-text">
+          <h1>{t('analysis.title', {}, locale)}</h1>
+          {live.status === 'ready' && (
+            <p className="analysis-muted">
+              {t(
+                'analysis.scope',
+                {
+                  scope: project && slug ? project.name : t('analysis.allProjects', {}, locale),
+                  period: rangeText(live.value.from, live.value.to, locale)
+                },
+                locale
+              )}
+            </p>
+          )}
+        </div>
+        <ToggleGroup
+          className="analysis-period"
+          value={[state.period]}
+          onValueChange={(values) => values[0] && change({ period: String(values[0]) })}
+          aria-label={t('analysis.rangeLabel', {}, locale)}
+        >
+          {periods.map((period) => (
+            <ToggleGroupItem key={period} value={period}>
+              {t(`analysis.ranges.${period}`, {}, locale)}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </header>
       {crowd.status === 'error' && live.status === 'ready' && (
-        <Failure operation={t('analysis.tabs.crowd', {}, locale)} error={crowd.error} locale={locale} />
+        <Failure
+          source={t('analysis.sources.crowd', {}, locale)}
+          error={crowd.error}
+          at={crowd.at}
+          retry={crowd.retry}
+          locale={locale}
+        />
       )}
       <Tabs
         value={visibleTabs.includes(state.tab) ? state.tab : null}
@@ -232,58 +276,56 @@ function Workspace({
           change({ tab: String(value), pack: value === 'sky' || value === 'crowd' ? String(value) : state.pack })
         }
       >
-        <div className="analysis-tabs-scroll">
-          <TabsList variant="line" aria-label={t('analysis.title', {}, locale)}>
-            {visibleTabs.map((tab) => (
-              <TabsTrigger key={tab} value={tab}>
-                {t(`analysis.tabs.${tab}`, {}, locale)}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
-        <div className="analysis-toolbar analysis-controls">
-          <ToggleGroup
-            value={[state.period]}
-            onValueChange={(values) => values[0] && change({ period: String(values[0]) })}
-            aria-label={t('analysis.rangeLabel', {}, locale)}
-          >
-            {periods.map((period) => (
-              <ToggleGroupItem key={period} value={period}>
-                {t(`analysis.ranges.${period}`, {}, locale)}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+        <div className="analysis-toolbar">
+          <div className="analysis-tabs-scroll">
+            <TabsList aria-label={t('analysis.title', {}, locale)}>
+              {visibleTabs.map((tab) => (
+                <TabsTrigger key={tab} value={tab}>
+                  {t(`analysis.tabs.${tab}`, {}, locale)}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
           {!['sky', 'crowd'].includes(state.tab) && (
-            <label>
-              {t('analysis.pack', {}, locale)}
-              <select value={state.pack} onChange={(event) => change({ pack: event.target.value })}>
+            <label className="analysis-inline-field">
+              <span>{t('analysis.pack', {}, locale)}</span>
+              <select
+                name="pack"
+                className="native-select"
+                autoComplete="off"
+                value={state.pack}
+                onChange={(event) => change({ pack: event.target.value })}
+              >
                 <option value="sky">{t('analysis.tabs.sky', {}, locale)}</option>
                 {crowdEnabled && <option value="crowd">{t('analysis.tabs.crowd', {}, locale)}</option>}
               </select>
             </label>
           )}
         </div>
-        {live.status === 'loading' && <p role="status">{t('analysis.loading', {}, locale)}</p>}
+        {live.status === 'loading' && <Loading locale={locale} />}
         {live.status === 'error' && (
-          <Failure operation={t('analysis.title', {}, locale)} error={live.error} locale={locale} />
+          <Failure
+            source={t('analysis.sources.live', {}, locale)}
+            error={live.error}
+            at={live.at}
+            retry={live.retry}
+            locale={locale}
+          />
         )}
         {live.status === 'ready' && (
           <>
-            <p className="analysis-muted">
-              {t('analysis.updated', { at: formatDateTime(live.value.updated_at, locale) }, locale)}
-            </p>
-            {state.tab === 'agreement' && live.value.kill_line_exceeded && (
-              <p role="status">{t('analysis.killExceeded', {}, locale)}</p>
-            )}
             {tabs.map((tab) => (
-              <TabsContent key={tab} value={tab}>
+              <TabsContent key={tab} value={tab} className="analysis-panel">
                 {tab === state.tab && <LiveFigures analysis={live.value} state={state} locale={locale} />}
               </TabsContent>
             ))}
             {!slug && (
               <label className="analysis-project-choice">
-                {t('analysis.project', {}, locale)}
+                <span>{t('analysis.project', {}, locale)}</span>
                 <select
+                  name="project"
+                  className="native-select"
+                  autoComplete="off"
                   value={projectId ?? ''}
                   onChange={(event) => change({ project: event.target.value, sheet: '', version: '' })}
                 >
@@ -297,14 +339,20 @@ function Workspace({
               </label>
             )}
             {grades.status === 'error' && (
-              <Failure operation={t('analysis.fullTable', {}, locale)} error={grades.error} locale={locale} />
+              <Failure
+                source={t('analysis.sources.grades', {}, locale)}
+                error={grades.error}
+                at={grades.at}
+                retry={grades.retry}
+                locale={locale}
+              />
             )}
             {state.tab === 'review' &&
               (projectId ? (
                 grades.status === 'ready' &&
                 grades.value && (
                   <ReviewPanel
-                    key={projectId}
+                    key={`review-${projectId}`}
                     projectId={projectId}
                     org={org}
                     grades={grades.value}
@@ -313,11 +361,11 @@ function Workspace({
                   />
                 )
               ) : (
-                <p>{t('analysis.chooseProject', {}, locale)}</p>
+                <EmptyBlock message="chooseProjectReview" locale={locale} />
               ))}
             {state.tab === 'crowd' && projectId && grades.status === 'ready' && grades.value && (
               <NightLanes
-                key={projectId}
+                key={`nights-${projectId}`}
                 projectId={projectId}
                 org={org}
                 from={live.value.from}
@@ -333,7 +381,7 @@ function Workspace({
             )}
             {projectId ? (
               <ReplayPane
-                key={projectId}
+                key={`replay-${projectId}`}
                 projectId={projectId}
                 org={org}
                 state={state}
@@ -385,9 +433,15 @@ export function AnalysisPage({ org, project, locale }: Scope) {
       <div className="analysis-page">
         <h1>{t('analysis.title', {}, locale)}</h1>
         {data.status === 'loading' ? (
-          <p role="status">{t('analysis.loading', {}, locale)}</p>
+          <Loading locale={locale} />
         ) : (
-          <Failure operation={t('analysis.title', {}, locale)} error={data.error} locale={locale} />
+          <Failure
+            source={t('analysis.sources.projects', {}, locale)}
+            error={data.error}
+            at={data.at}
+            retry={data.retry}
+            locale={locale}
+          />
         )}
       </div>
     )

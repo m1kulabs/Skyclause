@@ -86,6 +86,21 @@ export function axisTicks(max: number): number[] {
   return [0, step, step * 2, step * 3]
 }
 
+/** The figure that answers each tab's "were the calls right?", in order of preference. */
+const LEADS: Record<Tab, readonly string[]> = {
+  sky: ['precision'],
+  crowd: ['band_coverage', 'precision'],
+  agreement: ['agreement', 'agent_shadow_agreement'],
+  delays: ['crossing_to_approved_p50'],
+  review: ['no_call']
+}
+
+/** Splits a tab's figures into the one that leads and the rows that follow it. */
+export function leadAndRows<Item extends { metric: string }>(tab: Tab, figures: readonly Item[]) {
+  const lead = LEADS[tab].map((name) => figures.find((item) => item.metric === name)).find(Boolean) ?? figures[0]
+  return { lead, rows: figures.filter((item) => item !== lead) }
+}
+
 export function metricForTab(tab: Tab, metric: string): boolean {
   if (tab === 'agreement') return ['agreement', 'agent_shadow_agreement'].includes(metric)
   const delay = /(?:minutes|delay|approval|evidence|sent|crossing|p50|p95)/.test(metric)
