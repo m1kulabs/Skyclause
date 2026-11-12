@@ -32,8 +32,8 @@ test('the frame sets the scope title as the h1, lists its sections quietly and m
   expect(markup).toContain('data-settings-label')
   expect(markup).toContain('data-settings-panel')
   expect(markup).toContain('data-settings-aside')
-  // Ten sections for an admin, one of them current: by aria-current and the capsule mark, not by colour alone.
-  expect(markup.match(/<li>/g)).toHaveLength(10)
+  // Seven sections for an admin, one of them current: by aria-current and the capsule mark, not by colour alone.
+  expect(markup.match(/<li>/g)).toHaveLength(7)
   expect(markup.match(/aria-current="page"/g)).toHaveLength(1)
   expect(markup).toMatch(/aria-current="page"[^>]*>|class="[^"]*current-mark[^"]*"[^>]*aria-current="page"/)
   // No rules between sections: the frame draws none.
@@ -77,4 +77,31 @@ test('a wide section leaves the two columns: its title above it and the panel ac
   // The label, the aside and the panel are still all there, in the same order: only the layout changes.
   expect(wide.indexOf('data-settings-label')).toBeLessThan(wide.indexOf('data-settings-panel'))
   expect(wide.match(/<h2\b/g)).toHaveLength(1)
+})
+
+test('the navigation lists no section that can only say it is not available; reached by URL, one is still titled', () => {
+  const unlisted = {
+    account: ['ai-keys', 'api-keys'],
+    organisation: ['ai-keys', 'api-keys', 'webhooks'],
+    project: ['public', 'share']
+  } as const
+  for (const [scope, sections] of Object.entries(unlisted) as [keyof typeof unlisted, readonly string[]][]) {
+    for (const section of sections) {
+      const markup = renderToStaticMarkup(
+        <SettingsFrame
+          scope={scope}
+          section={section}
+          principal={session('owner', scope === 'account' ? null : 'org-test')}
+          org="org-test"
+          project="site"
+        >
+          <p />
+        </SettingsFrame>
+      )
+      const nav = markup.slice(markup.indexOf('data-settings-nav'), markup.indexOf('</nav>'))
+      for (const hidden of sections) expect(nav, `${scope} ${section}`).not.toMatch(new RegExp(`/${hidden}"`))
+      expect(nav).not.toContain('aria-current')
+      expect(markup.match(/<h2\b/g)).toHaveLength(1)
+    }
+  }
 })
