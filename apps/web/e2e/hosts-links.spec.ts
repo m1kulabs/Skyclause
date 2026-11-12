@@ -340,6 +340,15 @@ test.describe('HOST_MODE=multi, as a visitor meets it', () => {
       body: '/sign-in?next={path}'
     })
     expect(await visit(unknownSlug)).toEqual(existing)
+    // A credential that resolves to no one (an expired session) is the layout's to send to sign in, which Next streams
+    // in an uncacheable page, whether the organisation exists or not.
+    const expired = `__Secure-better-auth.session_token=${randomBytes(16).toString('hex')}`
+    const stale = await visit(org.slug, expired)
+    expect(stale.cacheControl).toContain('no-store')
+    expect(stale.body).toContain('/sign-in?next={path}')
+    const staleUnknown = await visit(unknownSlug, expired)
+    expect([staleUnknown.status, staleUnknown.cacheControl]).toEqual([stale.status, stale.cacheControl])
+    expect(staleUnknown.body).toContain('/sign-in?next={path}')
     // Signed in, an organisation nobody has is the not-found page, as before.
     const account = await makeAccount()
     const { cookie } = await signIn(account.id)
