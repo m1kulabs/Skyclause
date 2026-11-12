@@ -14,9 +14,6 @@
 html:has(.app-shell) {
   scroll-padding-top: calc(var(--shell-bar-height, 56px) + 8px);
 }
-.app-shell [id] {
-  scroll-margin-top: 0;
-}
 /* RootDocument also serves public pages. The app owns a skip target after its bar. */
 body:has(.app-shell) > .skip-link {
   display: none;
