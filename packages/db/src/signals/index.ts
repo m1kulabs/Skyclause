@@ -6,6 +6,7 @@ import { projectSource, source, sourceState } from '../schema/sources'
 import type { SourceProjection } from '../sources/picker'
 
 export * from './history'
+export * from './strip'
 
 export type ProjectSourceHealthRecord = SourceProjection & {
   bindingId: string

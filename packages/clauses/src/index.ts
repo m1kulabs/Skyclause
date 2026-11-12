@@ -14,4 +14,4 @@ export {
   latestMytMorning,
   toMytDateString
 } from './snapshot'
-export { RAIN_STEP_MS } from './rain'
+export { RAIN_STEP_MS, rainPeriod } from './rain'
