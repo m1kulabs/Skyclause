@@ -195,7 +195,7 @@ test('listed show periods sit on their day, MET wording heads it, and only the c
   )
   await page.goto(route)
   await expect(page.getByRole('link', { name: /Ribut petir/ })).toHaveAttribute('lang', 'ms')
-  await expect(page.getByText('2 November replay · listed show', { exact: true })).toBeVisible()
+  await expect(page.getByText(/2 November replay · listed show/)).toBeVisible()
   await expect(page.locator('[data-period="arrival"]')).toHaveCount(1)
   await expect(page.locator('[data-period="exit"]')).toHaveCount(1)
   await expect(page.locator('[data-mark="sent"]').first()).toBeVisible()

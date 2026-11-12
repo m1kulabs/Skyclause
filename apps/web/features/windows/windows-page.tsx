@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { formatDate } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
 import { EmptyDay, SourceError } from '../data-components'
@@ -20,7 +20,6 @@ function viewOf(value: string | null): WindowsView {
 
 export function WindowsPage({ org, project }: { org: string; project: string }) {
   const search = useSearchParams()
-  const router = useRouter()
   const view = viewOf(search.get('view'))
   const from = validDate(search.get('from') ?? '') ? search.get('from')! : localDate()
   const dates =
@@ -37,7 +36,8 @@ export function WindowsPage({ org, project }: { org: string; project: string }) 
       if (value === null) next.delete(key)
       else next.set(key, value)
     }
-    router.replace(`?${next}`, { scroll: false })
+    // The query holds the view; the native call syncs with useSearchParams without refetching the route.
+    window.history.replaceState(null, '', `?${next}`)
   }
   function period(direction: -1 | 1) {
     if (view === 'timeline') return addDays(from, direction * 14)
