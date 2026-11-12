@@ -142,3 +142,23 @@ test('sending the link says Sending on the email button and in the live line, wh
   expect(live.textContent).toBe('Sending…')
   expect(screen.getByRole('button', { name: 'Sign in with a passkey' })).toBeTruthy()
 })
+
+test('a link that cannot be confirmed names the button on this tab and the one on the first', async () => {
+  const fetchMock = vi.fn().mockRejectedValue(new Error('offline'))
+  vi.stubGlobal('fetch', fetchMock)
+  try {
+    renderPanel('sign-in', { kind: 'confirm', link: 'token', stepUp: false })
+    fireEvent.submit(screen.getByRole('button', { name: 'Sign in' }).closest('form')!)
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'This link couldn’t be confirmed. Try Sign in again, or return to the first tab and choose Send the link again.'
+    )
+    cleanup()
+    renderPanel('sign-in', { kind: 'confirm', link: 'token', stepUp: true })
+    fireEvent.submit(screen.getByRole('button', { name: 'Confirm it’s you' }).closest('form')!)
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'This link couldn’t be confirmed. Try Confirm it’s you again, or return to the first tab and choose Send me a sign-in link.'
+    )
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})

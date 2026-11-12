@@ -340,7 +340,7 @@ export function SignInPanel({
         window.location.replace(continueHref)
       }
     } catch {
-      setActionAlert('confirm_failed')
+      setActionAlert(state.stepUp ? 'confirm_failed_step_up' : 'confirm_failed')
     } finally {
       setBusy(null)
     }
