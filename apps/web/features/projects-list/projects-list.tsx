@@ -9,7 +9,9 @@ import { SourceError } from '../data-components/states'
 import { formatAge, formatNumber, formatTime } from '@skyclause/i18n/format'
 import { PackStateNote } from '../data-components/pack-state-note'
 import { VirtualRows } from '../windows/virtual-rows'
-import { t } from '../organisations/catalogue'
+import { brandStates } from '@skyclause/elements'
+import { t as brandText } from '@skyclause/i18n/brand'
+import { t, type Locale } from '../organisations/catalogue'
 import { apiFetch, type ProjectListItem } from '../organisations/operations'
 import styles from './projects-list.module.css'
 
@@ -41,13 +43,17 @@ function useMinuteTick(): void {
   }, [])
 }
 
-function NoCall({ packState }: { packState: PackState }) {
+function NoCall({ packState, locale }: { packState: PackState; locale: Locale }) {
   const first = packState.no_call?.inputs[0]
   if (!first) return null
-  return <span>{t('organisations.projects.noCall', { input: first.name, time: formatTime(first.since, 'en') })}</span>
+  return (
+    <span>
+      {t('organisations.projects.noCall', { input: first.name, time: formatTime(first.since, locale) }, locale)}
+    </span>
+  )
 }
 
-function ProjectMeta({ item, fetchedAt }: { item: ProjectListItem; fetchedAt: number }) {
+function ProjectMeta({ item, fetchedAt, locale }: { item: ProjectListItem; fetchedAt: number; locale: Locale }) {
   useMinuteTick()
   const summary = item.summary
   if (!summary) return null
@@ -57,27 +63,45 @@ function ProjectMeta({ item, fetchedAt }: { item: ProjectListItem; fetchedAt: nu
     health.oldest_age_s !== null && health.oldest_age_s !== undefined
       ? health.oldest_age_s + Math.max(0, Math.floor((Date.now() - fetchedAt) / 1000))
       : null
-  const age = ageS !== null ? formatAge(new Date(Date.now() - ageS * 1000).toISOString(), 'en') : null
+  const age = ageS !== null ? formatAge(new Date(Date.now() - ageS * 1000).toISOString(), locale) : null
   return (
     <div className={styles.meta}>
       {/* A zero is printed as a zero, quietly: only a count that needs someone is set in the card title. */}
       <p className={summary.windows_at_risk > 0 ? 'type-card-title' : 'type-body text-muted-foreground'} data-numeric>
-        {t('organisations.projects.needsReview', { count: formatNumber(summary.windows_at_risk, 'en') })}
+        {t('organisations.projects.needsReview', { count: formatNumber(summary.windows_at_risk, locale) }, locale)}
       </p>
       <p className="type-small text-muted-foreground">
-        {t('organisations.projects.signal', {
-          state: health.state,
-          reporting: t('organisations.projects.inputsReporting', {
-            count: formatNumber(health.inputs_reporting, 'en')
-          }),
-          oldest: age ? ` ${t('organisations.projects.oldestAge', { age })}` : ''
-        })}
+        {t(
+          'organisations.projects.signal',
+          {
+            state: brandText(brandStates[health.state].word, {}, locale),
+            reporting: t(
+              health.inputs_reporting === 1
+                ? 'organisations.projects.inputsReporting_one'
+                : 'organisations.projects.inputsReporting',
+              { count: formatNumber(health.inputs_reporting, locale) },
+              locale
+            ),
+            oldest: age ? ` ${t('organisations.projects.oldestAge', { age }, locale)}` : ''
+          },
+          locale
+        )}
       </p>
     </div>
   )
 }
 
-function ProjectRow({ item, org, fetchedAt }: { item: ProjectListItem; org: string; fetchedAt: number }) {
+function ProjectRow({
+  item,
+  org,
+  fetchedAt,
+  locale
+}: {
+  item: ProjectListItem
+  org: string
+  fetchedAt: number
+  locale: Locale
+}) {
   const summary = item.summary
   return (
     <div className={styles.rowWrap}>
@@ -90,18 +114,18 @@ function ProjectRow({ item, org, fetchedAt }: { item: ProjectListItem; org: stri
           </h2>
           {item.site_name ? <p className="type-small text-muted-foreground">{item.site_name}</p> : null}
           {item.archived_at && (
-            <p className="type-small text-muted-foreground">{t('organisations.projects.archived')}</p>
+            <p className="type-small text-muted-foreground">{t('organisations.projects.archived', {}, locale)}</p>
           )}
         </div>
         <ul className={styles.packs}>
           {(summary?.pack_states ?? []).map((packState) => (
             <li key={packState.pack}>
-              <PackStateNote pack={packState} />
-              <NoCall packState={packState} />
+              <PackStateNote pack={packState} locale={locale} />
+              <NoCall packState={packState} locale={locale} />
             </li>
           ))}
         </ul>
-        {summary ? <ProjectMeta item={item} fetchedAt={fetchedAt} /> : null}
+        {summary ? <ProjectMeta item={item} fetchedAt={fetchedAt} locale={locale} /> : null}
       </article>
     </div>
   )
@@ -109,7 +133,17 @@ function ProjectRow({ item, org, fetchedAt }: { item: ProjectListItem; org: stri
 
 /** `/{org}/projects` from `GET /v1/projects?include=summary`: names, per-pack modes with basis, review counts
  * and signal health. Archived projects sit behind `?archived=1`; the list virtualises above 50 rows. */
-export function ProjectsList({ org, canCreate, archived }: { org: string; canCreate: boolean; archived: boolean }) {
+export function ProjectsList({
+  org,
+  canCreate,
+  archived,
+  locale = 'en'
+}: {
+  org: string
+  canCreate: boolean
+  archived: boolean
+  locale?: Locale
+}) {
   const [items, setItems] = useState<ProjectListItem[] | null>(null)
   const [fetchedAt, setFetchedAt] = useState<number | null>(null)
   const [failure, setFailure] = useState<{ status: number | null; at: string } | null>(null)
@@ -136,14 +170,23 @@ export function ProjectsList({ org, canCreate, archived }: { org: string; canCre
 
   const loading = items === null && !failure
   const visible = (items ?? []).filter((item) => archived === (item.archived_at !== null))
+  const hasArchived = (items ?? []).some((item) => item.archived_at !== null)
+  const ready = !loading && !failure
   const createHref = `/${encodeURIComponent(org)}/new`
   const nextAction = canCreate ? (
     <a href={createHref} className={buttonVariants()}>
-      {t('organisations.projects.create')}
+      {t('organisations.projects.create', {}, locale)}
     </a>
   ) : (
-    <p className="type-text">{t('organisations.projects.askAdmin')}</p>
+    <p className="type-text">{t('organisations.projects.askAdmin', {}, locale)}</p>
   )
+  // Archived projects are one click away whenever there are any (or while looking at them), whatever the active list holds.
+  const toggle =
+    ready && (hasArchived || archived) ? (
+      <a className={styles.toggle} href={archived ? '?' : '?archived=1'}>
+        {t(archived ? 'organisations.projects.hideArchived' : 'organisations.projects.showArchived', {}, locale)}
+      </a>
+    ) : null
 
   return (
     <section
@@ -155,27 +198,29 @@ export function ProjectsList({ org, canCreate, archived }: { org: string; canCre
       <header className={styles.head}>
         <div className={styles.title}>
           <h1 id="projects-title" className="type-title">
-            {t('organisations.projects.title')}
+            {t('organisations.projects.title', {}, locale)}
           </h1>
-          {!loading && !failure && visible.length > 0 ? (
+          {ready && visible.length > 0 ? (
             <span className="type-small text-muted-foreground" data-numeric>
-              {t('organisations.projects.count', { count: visible.length })}
+              {t(
+                visible.length === 1 ? 'organisations.projects.count_one' : 'organisations.projects.count',
+                { count: formatNumber(visible.length, locale) },
+                locale
+              )}
             </span>
           ) : null}
         </div>
-        {!loading && !failure && visible.length > 0 ? (
+        {ready && (visible.length > 0 || toggle) ? (
           <div className={styles.actions}>
-            <a className={styles.toggle} href={archived ? '?' : '?archived=1'}>
-              {t(archived ? 'organisations.projects.hideArchived' : 'organisations.projects.showArchived')}
-            </a>
-            {nextAction}
+            {toggle}
+            {visible.length > 0 ? nextAction : null}
           </div>
         ) : null}
       </header>
       {loading ? (
         <div className={styles.rows}>
           <p className="sr-only" role="status">
-            {t('organisations.projects.loading')}
+            {t('organisations.projects.loading', {}, locale)}
           </p>
           {[0, 1, 2].map((row) => (
             <Skeleton key={row} aria-hidden="true" className="h-[88px] w-full rounded-xl" />
@@ -183,26 +228,40 @@ export function ProjectsList({ org, canCreate, archived }: { org: string; canCre
         </div>
       ) : failure ? (
         <SourceError
-          source={t('organisations.projects.source')}
+          source={t('organisations.projects.source', {}, locale)}
           status={failure.status}
           at={failure.at}
+          locale={locale}
+          // A 501 is "not built": reading again cannot change the answer.
           retry={
-            <Button type="button" variant="outline" onClick={() => void load()}>
-              {t('organisations.projects.retry')}
-            </Button>
+            failure.status === 501 ? undefined : (
+              <Button type="button" variant="outline" onClick={() => void load()}>
+                {t('organisations.projects.retry', {}, locale)}
+              </Button>
+            )
           }
         />
       ) : visible.length === 0 ? (
         <div className={styles.empty} data-slot="empty">
-          <p className="type-text">{t('organisations.projects.empty')}</p>
-          {nextAction}
+          <p className="type-text">
+            {t(
+              archived
+                ? 'organisations.projects.emptyArchived'
+                : hasArchived
+                  ? 'organisations.projects.emptyActive'
+                  : 'organisations.projects.empty',
+              {},
+              locale
+            )}
+          </p>
+          {archived ? null : nextAction}
         </div>
       ) : (
         <VirtualRows
           className={styles.rows}
           items={visible.map((item) => ({ item, fetchedAt: fetchedAt ?? Date.now() }))}
-          label={t('organisations.projects.title')}
-          render={({ item, fetchedAt: at }) => <ProjectRow item={item} org={org} fetchedAt={at} />}
+          label={t('organisations.projects.title', {}, locale)}
+          render={({ item, fetchedAt: at }) => <ProjectRow item={item} org={org} fetchedAt={at} locale={locale} />}
         />
       )}
     </section>

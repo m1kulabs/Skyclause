@@ -27,13 +27,15 @@
   },
   "projects": {
     "title": "Projects",
-    "count": "n={count}",
     "empty": "No projects yet (n=0).",
+    "emptyActive": "No active projects. Archived ones are one click away.",
+    "emptyArchived": "No archived projects.",
     "create": "Create a project",
     "askAdmin": "Ask an Admin to create a project",
     "needsReview": "{count} need review",
     "signal": "Signal health: {state} · {reporting}{oldest}",
     "inputsReporting": "{count} inputs reporting",
+    "inputsReporting_one": "{count} input reporting",
     "oldestAge": "· oldest {age}",
     "noCall": "No call: {input} since {time}",
     "archived": "Archived",
@@ -41,6 +43,8 @@
     "hideArchived": "Hide archived",
     "retry": "Try again",
     "loading": "Loading projects…",
-    "source": "the projects list"
+    "source": "the projects list",
+    "count": "{count} projects",
+    "count_one": "1 project"
   }
 }
