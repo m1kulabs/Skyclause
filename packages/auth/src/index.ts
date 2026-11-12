@@ -5,3 +5,4 @@ export { authHandler, getSessionForRequest, type AuthSettings, type RequestAuthS
 export { deviceAuthorizationPageData, pageAccountEmail, pagePrincipal, type DeviceAuthorizationPageData } from './pages'
 export { resolvePrincipal } from './principal'
 export { completeOAuthConsent, getOAuthConsentDetails, oauthManagement } from './oauth'
+export { LANGUAGE_COOKIE } from './plugins/a-auth-signin-api'

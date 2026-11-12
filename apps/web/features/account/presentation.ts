@@ -20,7 +20,8 @@ export function applyAccountPreferences(preferences: Preferences): void {
   root.dataset.motionPreference = appearance.motion
   root.dataset.density = preferences.density
   root.dataset.shortcuts = String(preferences.shortcuts)
-  root.lang = preferences.language
+  // `lang` stays the server's: it names the language the page was rendered in, which the saved one becomes on the
+  // next render (lib/preferred-language.ts).
 }
 
 export function presentSessionAgent(

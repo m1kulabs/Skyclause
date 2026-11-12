@@ -54,7 +54,7 @@ describe('account settings presentation', () => {
     expect(presentSessionAgent(null)).toEqual({ device: 'Unknown device', browser: 'Unknown browser' })
   })
 
-  test('applies saved display choices to the current document', () => {
+  test('applies saved display choices to the current document, leaving lang to the rendered page', () => {
     const root = { dataset: {} as Record<string, string>, lang: '' }
     vi.stubGlobal('document', { documentElement: root })
     applyAccountPreferences({
@@ -68,7 +68,7 @@ describe('account settings presentation', () => {
     })
 
     expect(root).toMatchObject({
-      lang: 'ms',
+      lang: '',
       dataset: {
         theme: 'system',
         contrast: 'more',

@@ -2,6 +2,7 @@ import { readdirSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import { NextRequest } from 'next/server'
 import { describe, expect, it } from 'vitest'
+import { LANGUAGE_COOKIE as AUTH_LANGUAGE_COOKIE } from '@skyclause/auth'
 import {
   APP_PATH_HEADER,
   hostConfig,
@@ -11,6 +12,7 @@ import {
   routeRequest,
   type HostConfig
 } from '../lib/hosts'
+import { LANGUAGE_COOKIE } from '../lib/preferred-language'
 
 const ORIGINS = {
   MARKETING_ORIGIN: 'https://skyclause.m1ku.tech',
@@ -432,6 +434,28 @@ describe('what the proxy adds for the route', () => {
     const response = proxyResponse(new NextRequest(url, { headers }), multi)
     return (name: string) => response.headers.get(`x-middleware-request-${name}`)
   }
+
+  it('puts the saved language in place of Accept-Language (LOC-1)', () => {
+    const malay = forwarded('https://app.skyclause.m1ku.tech/account/appearance', {
+      cookie: `__Secure-better-auth.session_token=abc; ${LANGUAGE_COOKIE}=ms`,
+      'accept-language': 'en-GB,en;q=0.9'
+    })
+    expect(malay('accept-language')).toBe('ms')
+    const english = forwarded('https://app.skyclause.m1ku.tech/sign-in', {
+      cookie: `other=1; ${LANGUAGE_COOKIE}=en`,
+      'accept-language': 'ms-MY'
+    })
+    expect(english('accept-language')).toBe('en')
+    // No saved language, or one Skyclause doesn't write: the browser's own stands.
+    for (const cookie of ['', `${LANGUAGE_COOKIE}=fr`]) {
+      const browser = forwarded('https://app.skyclause.m1ku.tech/sign-in', { cookie, 'accept-language': 'ms-MY' })
+      expect(browser('accept-language'), cookie).toBeNull()
+    }
+  })
+
+  it('writes the cookie name sign-in sets', () => {
+    expect(LANGUAGE_COOKIE).toBe(AUTH_LANGUAGE_COOKIE)
+  })
 
   it('tells an (app) page its own path and query for sign-in’s return path, which a request cannot set', () => {
     const own = forwarded('https://app.skyclause.m1ku.tech/apu/site/windows?view=month&_rsc=abc', {

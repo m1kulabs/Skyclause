@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { LANGUAGE_COOKIE } from './preferred-language'
 
 // Spec §4 Hosts and PRD "Information architecture": which host serves which route group under HOST_MODE=multi.
 // HOST_MODE=single (production before the domain mappings, D46) serves everything on one origin, with the embed
@@ -318,6 +319,12 @@ export function proxyResponse(
     })
   }
   let added = false
+  const language = request.cookies.get(LANGUAGE_COOKIE)?.value
+  if (language === 'en' || language === 'ms') {
+    // Every page picks its language from Accept-Language, so the saved one takes its place.
+    requestHeaders.set('accept-language', language)
+    added = true
+  }
   if (target.group === '(public)') {
     requestHeaders.set('x-skyclause-locale', pathname.startsWith('/ms/legal') ? 'ms' : 'en')
     requestHeaders.set('x-skyclause-public-path', pathname)

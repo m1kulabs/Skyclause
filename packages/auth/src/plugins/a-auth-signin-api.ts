@@ -560,11 +560,34 @@ function validRelativeNext(value: string | null, appOrigin: string) {
   }
 }
 
+/** apps/web's LANGUAGE_COOKIE: the saved language, which the web proxy puts in place of Accept-Language (LOC-1). */
+export const LANGUAGE_COOKIE = 'skyclause-language'
+
+/**
+ * The account's saved language as the cookie this browser keeps, so pages render in it from the first one. An account
+ * that never chose one clears it, so the browser's own language applies rather than the last account's.
+ */
+function languageCookie(preferences: unknown, appOrigin: string): string {
+  const language = (preferences as { language?: unknown } | null | undefined)?.language
+  const secure = new URL(appOrigin).protocol === 'https:' ? '; Secure' : ''
+  return language === 'en' || language === 'ms'
+    ? `${LANGUAGE_COOKIE}=${language}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`
+    : `${LANGUAGE_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax${secure}`
+}
+
 async function continueSignIn(auth: AuthApiRuntime, request: Request, appOrigin: string) {
   const session = await auth.api.getSession({ headers: request.headers })
   if (!session) return redirectToPath('/sign-in')
+  const signedIn = (path: string) => {
+    const response = redirectToPath(path)
+    response.headers.append(
+      'Set-Cookie',
+      languageCookie((session.user as { preferences?: unknown }).preferences, appOrigin)
+    )
+    return response
+  }
   const next = validRelativeNext(new URL(request.url).searchParams.get('next'), appOrigin)
-  if (next) return redirectToPath(next)
+  if (next) return signedIn(next)
   const memberships = await authDatabase()
     .select({ slug: organization.slug })
     .from(member)
@@ -572,7 +595,7 @@ async function continueSignIn(auth: AuthApiRuntime, request: Request, appOrigin:
     .where(eq(member.userId, session.user.id))
     .orderBy(asc(member.createdAt))
     .limit(1)
-  return redirectToPath(memberships[0] ? `/${memberships[0].slug}` : '/new')
+  return signedIn(memberships[0] ? `/${memberships[0].slug}` : '/new')
 }
 
 function googleCallbackRedirect(response: Response, appOrigin: string) {

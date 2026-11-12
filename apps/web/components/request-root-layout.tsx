@@ -5,6 +5,7 @@ import { DEFAULT_PREFERENCES, Preferences, type Preferences as PreferenceValues 
 import { getSessionForRequest } from '@skyclause/auth'
 import { DEFAULT_APPEARANCE, resolveAppearance, type Appearance } from '../lib/theme'
 import { preferencesToAppearance } from '../features/account/presentation'
+import { prefersMalay } from '../lib/preferred-language'
 import { RootDocument } from './root-document'
 
 interface Props {
@@ -65,7 +66,9 @@ export async function RequestRootLayout({ children, routeGroup, locale }: Props)
         appearance.theme === 'system' && colorSchemeHint ? (resolved.mode === 'light' ? 'light' : 'dark') : undefined
       }
       routeGroup={routeGroup}
-      locale={locale}
+      // `lang` names what is rendered: the route's locale, or the language every page reads from Accept-Language,
+      // which proxy.ts sets from the saved one.
+      locale={locale ?? (prefersMalay(requestHeaders.get('accept-language')) ? 'ms' : 'en')}
       skipTarget={routeGroup === 'public' ? 'public-main' : 'main-content'}
       nonce={requestHeaders.get('x-nonce') ?? undefined}
     >

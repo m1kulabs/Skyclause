@@ -1,3 +1,16 @@
+/**
+ * The account's saved language (LOC-1: an account preference, not a path), written in the browser when it is saved
+ * and by sign-in's continue from the account. `proxy.ts` puts it in place of the request's Accept-Language, so every
+ * page that reads that header follows it.
+ */
+export const LANGUAGE_COOKIE = 'skyclause-language'
+
+/** Remembers a language the account just saved, for every request this browser makes. Browser only. */
+export function rememberLanguage(language: 'en' | 'ms'): void {
+  const secure = location.protocol === 'https:' ? '; secure' : ''
+  document.cookie = `${LANGUAGE_COOKIE}=${language}; path=/; max-age=31536000; samesite=lax${secure}`
+}
+
 /** LOC-7: suggest Malay only when its best accepted range outranks English. Ties keep English. */
 export function prefersMalay(acceptLanguage: string | null): boolean {
   let malay = 0
