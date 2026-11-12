@@ -12,8 +12,9 @@ const read: HeroRead = {
   now: new Date('2026-11-12T06:00:00.000Z'),
   win: { date: '2026-11-12', startMin: 900, endMin: 960 },
   // Production today: the public verdict answers 501, not built.
-  result: { kind: 'error', status: 501 },
-  latestCall: null
+  result: { kind: 'error', status: 501, at: '2026-11-12T06:00:00.000Z' },
+  latestCall: null,
+  status: { kind: 'not_built' }
 }
 const GRADES = '/v1/public/commons/bukit-jalil/grades'
 
@@ -117,11 +118,13 @@ describe('landing sections', () => {
     const text = document.body.textContent ?? ''
     for (const price of [
       'Free',
-      'RM 49 a month per organisation, from P2',
-      'RM 900 a month per campus, billed yearly'
+      'RM 49 a month per organisation, from May 2027',
+      'RM 900 a month per campus, billed yearly, after May 2027'
     ]) {
       expect(text.replace(/\u00a0/g, ' ')).toContain(price)
     }
+    // The roadmap's own names (P1, P2, GA) mean nothing to a visitor: the plans say it in words and dates.
+    expect(document.querySelector('#prices')?.textContent).not.toMatch(/\bP[0-3]\b|\bGA\b/)
   })
 
   test('replays are labelled, never live: every replay fragment says Replay and links its capture', () => {
@@ -146,8 +149,10 @@ describe('landing sections', () => {
     expect(document.body.textContent).toContain('No live grades yet (n=0)')
     expect(document.body.textContent).toContain('No approved call yet (n=0)')
     cleanup()
-    renderPage({ kind: 'error', message: 'Grades request failed (501)' })
-    expect(document.body.textContent).toContain('Couldn’t load live grades: Grades request failed (501)')
+    renderPage({ kind: 'error', message: 'Grades request failed (503)' })
+    expect(document.body.textContent).toContain(
+      'Couldn’t load live grades: Grades request failed (503). Reload the page to try again.'
+    )
     expect(document.body.textContent).not.toContain('No live grades yet')
     cleanup()
     renderPage({ kind: 'grades', n: 8, x: 7, low: 0.53, high: 0.98, metric: 'precision' })
@@ -187,9 +192,44 @@ describe('landing sections', () => {
     const start = form.querySelector<HTMLInputElement>('input[name="start"]')!
     expect(start.labels?.[0]?.textContent).toBe('What’s the call for')
     expect(start.getAttribute('autocomplete')).toBe('off')
-    expect(start.getAttribute('inputmode')).toBe('numeric')
+    // A phone's number pad has no colon: the field opens the text keyboard and takes any common form.
+    expect(start.getAttribute('inputmode')).toBe('text')
+    const pattern = new RegExp(`^(?:${start.getAttribute('pattern')})$`)
+    for (const typed of ['15:30', '1530', '3.30pm']) expect(pattern.test(typed), typed).toBe(true)
+    expect(pattern.test('15:20')).toBe(false)
     expect(form.querySelector('input[type="email"], input[autocomplete="email"]')).toBeNull()
     expect(form.querySelector('button[type="submit"]')?.textContent).toBe('today?')
+  })
+
+  test('the statement carries fragments of the product at text size, never a mode hue or glyph without its name', () => {
+    renderPage()
+    const slots = [...document.querySelectorAll('.features-statement .slot')]
+    expect(slots.map((slot) => slot.textContent?.replace(/\u00a0/g, ' '))).toEqual([
+      'Replay39.0 mm',
+      'No call',
+      'Approve'
+    ])
+    // The figure is the replay's, and says so; No call is the mark, glyph and word; Approve is a picture of the button.
+    expect(slots[0]!.getAttribute('data-source')).toBeTruthy()
+    expect(slots[1]!.getAttribute('data-tone')).toBe('no-call')
+    expect(slots[1]!.querySelector('svg')).toBeTruthy()
+    expect(slots[2]!.getAttribute('aria-hidden')).toBe('true')
+    expect(slots[2]!.closest('button, a, [tabindex]')).toBeNull()
+    expect(document.querySelectorAll('.features-statement img')).toHaveLength(0)
+    expect(document.querySelectorAll('.features-statement [data-tone]:not([data-tone="no-call"])')).toHaveLength(0)
+  })
+
+  test('Lebat is a rain class, not a mode: a neutral capsule with its word, never a mode hue or glyph', () => {
+    renderPage()
+    const lebat = [...document.querySelectorAll('.frag-class')]
+    expect(lebat.length).toBeGreaterThanOrEqual(3)
+    for (const mark of lebat) {
+      expect(mark.textContent).toMatch(/^Lebat/)
+      expect(mark.closest('[data-tone]')).toBeNull()
+      expect(mark.querySelector('svg')).toBeNull()
+    }
+    expect(document.querySelector('.frag-state')?.textContent).toBe('Fired')
+    expect(document.querySelector('.frag-state [data-tone], .frag-state svg')).toBeNull()
   })
 
   test('how it works: five stages, a range and named radios that work without script', () => {
@@ -226,8 +266,9 @@ describe('landing sections', () => {
 
   test('pictures are sized, described where they carry meaning, and every one is credited in the footer', () => {
     renderPage()
+    // The record's four (the hero holds three more); the statement's slots are the product's own capsules now.
     const images = [...document.querySelectorAll('img')]
-    expect(images.length).toBeGreaterThanOrEqual(6)
+    expect(images.length).toBeGreaterThanOrEqual(4)
     for (const img of images) {
       expect(img.getAttribute('width')).toBeTruthy()
       expect(img.getAttribute('height')).toBeTruthy()

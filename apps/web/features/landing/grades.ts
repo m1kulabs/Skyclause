@@ -6,6 +6,7 @@ import { serverBaseUrl } from '../landing-hero/evaluate'
 export type GradesState =
   | { kind: 'empty'; n: 0 }
   | { kind: 'grades'; n: number; x: number | null; low: number | null; high: number | null; metric: string }
+  | { kind: 'not_built' }
   | { kind: 'error'; message: string }
 
 export function pilotRefFromEnv(env: Record<string, string | undefined>): { org: string; project: string } | null {
@@ -58,6 +59,8 @@ export async function readGrades(
   const url = new URL(gradesPath(ref), env.API_ORIGIN ?? serverBaseUrl()).toString()
   try {
     const res = await fetcher(url, { cache: 'no-store', signal })
+    // 501: the public grades are not built yet, which no reload changes.
+    if (res.status === 501) return { kind: 'not_built' }
     if (!res.ok) return { kind: 'error', message: `Grades request failed (${res.status})` }
     const body = (await res.json()) as { data?: unknown }
     const metrics = parseMetrics(body.data)
