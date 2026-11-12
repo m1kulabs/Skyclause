@@ -1,86 +1,15 @@
 // The built server as production runs it (HOST_MODE=multi with production's origins, test-only routes off), for
 // specs that walk signed-in pages with a real session and the real API behind the app host's `/api/v1` bridge. The
 // browser asks for https://app.skyclause.m1ku.tech; every such request is answered by this server under its own Host.
-import { spawn } from 'node:child_process'
-import { once } from 'node:events'
-import http from 'node:http'
-import path from 'node:path'
-import { expect, type APIRequestContext, type Browser, type BrowserContext } from '@playwright/test'
+import { type APIRequestContext, type Browser } from '@playwright/test'
+import { serveProductionHosts, startMultiHost } from './multi-host'
 
 export const APP_HOST = 'app.skyclause.m1ku.tech'
 export const APP = `https://${APP_HOST}`
 
 /** Starts the multi-host server on `port` (one per spec file, so parallel workers never share one); returns its stop. */
-export async function startProductionServer(port: number, request: APIRequestContext): Promise<() => Promise<void>> {
-  const server = spawn(
-    process.execPath,
-    [path.resolve(import.meta.dirname, '../../.next/standalone/apps/web/server.js')],
-    {
-      env: {
-        ...process.env,
-        APP_ENV: 'test',
-        IP_HASH_KEY: 'test-only-ip-hash-key-for-playwright-runs',
-        EMAIL_HASH_KEY: 'test-only-email-hash-key-for-playwright-runs',
-        PLANTED_ROUTES: '',
-        HOST_MODE: 'multi',
-        MARKETING_ORIGIN: 'https://skyclause.m1ku.tech',
-        APP_ORIGIN: APP,
-        API_ORIGIN: 'https://api.skyclause.m1ku.tech',
-        MCP_ORIGIN: 'https://mcp.skyclause.m1ku.tech',
-        EMBED_ORIGIN: 'https://embed.skyclause.m1ku.tech',
-        DOCS_ORIGIN: 'https://docs.skyclause.m1ku.tech',
-        HOSTNAME: 'localhost',
-        PORT: String(port)
-      },
-      stdio: 'ignore'
-    }
-  )
-  await expect
-    .poll(
-      async () => {
-        if (server.exitCode !== null) throw new Error(`Multi-host server exited: ${server.exitCode}`)
-        return request
-          .get(`http://localhost:${port}/health`, { headers: { host: APP_HOST } })
-          .then((response) => response.status())
-          .catch(() => 0)
-      },
-      { timeout: 30_000 }
-    )
-    .toBe(200)
-  return async () => {
-    if (server.exitCode !== null) return
-    const closed = once(server, 'exit')
-    server.kill('SIGTERM')
-    await closed
-  }
-}
-
-/** Every request to the production hosts answered by the server on `port`; event streams by their status only. */
-async function serveProductionHosts(context: BrowserContext, request: APIRequestContext, port: number) {
-  await context.route(/^https:\/\/([a-z]+\.)?skyclause\.m1ku\.tech\//, async (route) => {
-    const sent = route.request()
-    const url = new URL(sent.url())
-    const headers: Record<string, string> = { ...(await sent.allHeaders()), host: url.host }
-    if (headers.accept === 'text/event-stream') {
-      const status = await new Promise<number>((resolve, reject) => {
-        const head = http.get({ port, path: `${url.pathname}${url.search}`, headers }, (response) => {
-          resolve(response.statusCode ?? 0)
-          response.destroy()
-        })
-        head.on('error', reject)
-      })
-      await route.fulfill({ status, body: '' })
-      return
-    }
-    const response = await request.fetch(`http://localhost:${port}${url.pathname}${url.search}`, {
-      method: sent.method(),
-      headers,
-      data: sent.postDataBuffer() ?? undefined,
-      maxRedirects: 0
-    })
-    await route.fulfill({ response })
-  })
-}
+export const startProductionServer = (port: number, request: APIRequestContext): Promise<() => Promise<void>> =>
+  startMultiHost(request, port)
 
 /** A signed-in session cookie (`name=value`) as the https app origin names it (Better Auth's `__Secure-` prefix). */
 export const secureCookie = (cookie: string) => (cookie.startsWith('__Secure-') ? cookie : `__Secure-${cookie}`)
