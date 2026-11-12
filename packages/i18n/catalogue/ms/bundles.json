@@ -3,7 +3,7 @@
   "loading": "Memuatkan berkas…",
   "load_error": "Berkas tidak dapat dimuatkan. Cuba lagi.",
   "retry": "Cuba lagi",
-  "empty": "Panggilan: n=0. Buka projek untuk meminta penilaian.",
+  "empty": "Belum ada panggilan dalam berkas ini. Buka projek untuk meminta penilaian.",
   "project": "Buka projek",
   "trigger": "{trigger} pada {time} · {pack}",
   "triggers": {
@@ -192,7 +192,7 @@
   "list_empty": "Berkas: n=0. Penilaian yang mendraf panggilan akan menambahnya di sini.",
   "list_more": "{count} berkas terbaharu. Berkas lebih lama ada dalam lejar.",
   "row_title": "{pack} · {trigger}",
-  "row_no_calls": "Panggilan: n=0",
+  "row_no_calls": "Belum ada panggilan",
   "bundle_states": {
     "drafted": "Didraf",
     "closed": "Ditutup",

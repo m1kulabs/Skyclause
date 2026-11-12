@@ -3,7 +3,7 @@
   "loading": "Loading bundle…",
   "load_error": "Couldn’t load the bundle. Try again.",
   "retry": "Try again",
-  "empty": "Calls: n=0. Open the project to request a run.",
+  "empty": "No calls in this bundle yet. Open the project to request a run.",
   "project": "Open project",
   "trigger": "{trigger} at {time} · {pack}",
   "triggers": {
@@ -192,7 +192,7 @@
   "list_empty": "Bundles: n=0. A run that drafts calls adds one here.",
   "list_more": "The newest {count} bundles. Older ones are in the ledger.",
   "row_title": "{pack} · {trigger}",
-  "row_no_calls": "Calls: n=0",
+  "row_no_calls": "No calls yet",
   "bundle_states": {
     "drafted": "Drafted",
     "closed": "Closed",
