@@ -120,6 +120,35 @@ test('throws ApiProblem with the RFC 9457 body on a 4xx response', async () => {
   expect(error).toMatchObject({ status: 422, body: problem })
 })
 
+test('a 429 keeps when to try again, from Retry-After in seconds or as an HTTP date', async () => {
+  vi.useFakeTimers({ now: new Date('2026-11-13T04:00:00.000Z'), toFake: ['Date'] })
+  try {
+    const limited = (retryAfter: string | null) =>
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ ...validProblem, status: 429 }), {
+            status: 429,
+            headers: {
+              'Content-Type': 'application/problem+json',
+              ...(retryAfter ? { 'Retry-After': retryAfter } : {})
+            }
+          })
+      )
+    const read = async (retryAfter: string | null) => {
+      vi.stubGlobal('fetch', limited(retryAfter))
+      return (await apiFetch('getProjects', { params: { instance: 'acme' } }).catch(
+        (caught: unknown) => caught
+      )) as ApiProblem
+    }
+    expect((await read('30')).retryAt).toBe('2026-11-13T04:00:30.000Z')
+    expect((await read('Fri, 13 Nov 2026 04:02:00 GMT')).retryAt).toBe('2026-11-13T04:02:00.000Z')
+    expect((await read(null)).retryAt).toBeNull()
+    expect((await read('soon')).retryAt).toBeNull()
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
 test('SET-7 deferred writes forward keepalive only when requested', async () => {
   const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse(validProblem))
   vi.stubGlobal('fetch', fetchMock)
