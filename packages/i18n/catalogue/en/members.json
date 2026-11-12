@@ -11,7 +11,7 @@
   "email": "Email",
   "role": "Role",
   "role_for": "Role for {name}",
-  "last_active": "Last active (MYT)",
+  "last_active": "Last active",
   "sign_in_methods": "Sign-in methods",
   "never_active": "Never",
   "no_methods": "Not provided",
@@ -114,5 +114,8 @@
   "active_hours": "{value} h ago",
   "active_days": "{value} days ago",
   "name_email": "{name} · {email}",
-  "remove": "Remove"
+  "remove": "Remove",
+  "revoke": "Revoke",
+  "revoke_named": "Revoke invite: {email}",
+  "resend_named": "Resend invite: {email}"
 }

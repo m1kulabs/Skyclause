@@ -85,8 +85,13 @@
 .switchCell {
   display: inline-flex;
   min-width: 0;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 4px 8px;
+}
+
+.switchCell .meta {
+  white-space: nowrap;
 }
 
 .actions {
@@ -133,6 +138,11 @@
   .row {
     grid-template-columns: minmax(0, 1fr) 132px 88px 88px 76px;
     gap: 8px 12px;
+  }
+
+  .inviteHead,
+  .inviteRow {
+    grid-template-columns: minmax(0, 1fr) 124px 96px auto;
   }
 
   .head {

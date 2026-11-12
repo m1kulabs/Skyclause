@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
-import { formatDate, formatDateTime } from '@skyclause/i18n/format'
+import { formatDate, formatDateCompact, formatDateTime } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '#ui/empty'
 import { Input } from '#ui/input'
@@ -463,45 +463,62 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
             {invites.length === 0 ? (
               <p className="type-body text-muted-foreground">{t('members.invites_empty', {}, locale)}</p>
             ) : (
-              <ul className={styles.list} aria-label={t('members.invites', { count: invites.length }, locale)}>
-                {invites.map((invite) => {
-                  const rowBusy = activeAction === `invite:${invite.id}`
-                  return (
-                    <li key={invite.id} className={styles.row} data-invite-row>
-                      <div className={styles.identity}>
-                        <strong>{invite.email}</strong>
-                        <span>{t('members.invited_as', { role: roleName(invite.role, locale) }, locale)}</span>
-                      </div>
-                      <div className={styles.roleCell}>
-                        <span className={styles.cellLabel}>{t('members.sent', {}, locale)}</span>
-                        <span className={styles.roleWord}>
-                          {invite.sent_at ? (
-                            <time dateTime={invite.sent_at}>{formatDateTime(invite.sent_at, locale)}</time>
-                          ) : (
-                            t('members.sent_unavailable', {}, locale)
-                          )}
-                        </span>
-                      </div>
-                      <div className={styles.active} data-numeric>
-                        <span className={styles.cellLabel}>{t('members.expires', {}, locale)}</span>
-                        <time dateTime={invite.expires_at}>{formatDate(invite.expires_at, locale)}</time>
-                      </div>
-                      <div />
-                      <div className={styles.actions}>
-                        <Button variant="outline" disabled={rowBusy} onClick={() => void resendInvite(invite)}>
-                          {rowBusy ? t('members.resending', {}, locale) : t('members.resend', {}, locale)}
-                        </Button>
-                        <Button variant="outline" disabled={rowBusy} onClick={() => setRevokeTarget(invite)}>
-                          {t('members.revoke_invite', {}, locale)}
-                        </Button>
-                      </div>
-                      {rowProblems[invite.id] ? (
-                        <SettingsError className={styles.problem}>{rowProblems[invite.id]}</SettingsError>
-                      ) : null}
-                    </li>
-                  )
-                })}
-              </ul>
+              <>
+                <div className={`${styles.head} ${styles.inviteHead}`} aria-hidden="true">
+                  <span>{t('members.email', {}, locale)}</span>
+                  <span>{t('members.sent', {}, locale)}</span>
+                  <span className={styles.headEnd}>{t('members.expires', {}, locale)}</span>
+                  <span />
+                </div>
+                <ul className={styles.list} aria-label={t('members.invites', { count: invites.length }, locale)}>
+                  {invites.map((invite) => {
+                    const rowBusy = activeAction === `invite:${invite.id}`
+                    return (
+                      <li key={invite.id} className={`${styles.row} ${styles.inviteRow}`} data-invite-row>
+                        <div className={styles.identity}>
+                          <strong>{invite.email}</strong>
+                          <span>{t('members.invited_as', { role: roleName(invite.role, locale) }, locale)}</span>
+                        </div>
+                        <div className={styles.roleCell}>
+                          <span className={styles.cellLabel}>{t('members.sent', {}, locale)}</span>
+                          <span className={styles.roleWord}>
+                            {invite.sent_at ? (
+                              <time dateTime={invite.sent_at}>{formatDateTime(invite.sent_at, locale)}</time>
+                            ) : (
+                              t('members.sent_unavailable', {}, locale)
+                            )}
+                          </span>
+                        </div>
+                        <div className={styles.active} data-numeric>
+                          <span className={styles.cellLabel}>{t('members.expires', {}, locale)}</span>
+                          <time dateTime={invite.expires_at}>{formatDateCompact(invite.expires_at, locale)}</time>
+                        </div>
+                        <div className={styles.actions}>
+                          <Button
+                            variant="outline"
+                            disabled={rowBusy}
+                            aria-label={t('members.resend_named', { email: invite.email }, locale)}
+                            onClick={() => void resendInvite(invite)}
+                          >
+                            {rowBusy ? t('members.resending', {}, locale) : t('members.resend', {}, locale)}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            disabled={rowBusy}
+                            aria-label={t('members.revoke_named', { email: invite.email }, locale)}
+                            onClick={() => setRevokeTarget(invite)}
+                          >
+                            {t('members.revoke', {}, locale)}
+                          </Button>
+                        </div>
+                        {rowProblems[invite.id] ? (
+                          <SettingsError className={styles.problem}>{rowProblems[invite.id]}</SettingsError>
+                        ) : null}
+                      </li>
+                    )
+                  })}
+                </ul>
+              </>
             )}
           </SettingsPart>
         ) : null}

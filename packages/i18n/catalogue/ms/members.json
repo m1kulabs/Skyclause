@@ -11,7 +11,7 @@
   "email": "E-mel",
   "role": "Peranan",
   "role_for": "Peranan untuk {name}",
-  "last_active": "Aktif kali terakhir (MYT)",
+  "last_active": "Aktif kali terakhir",
   "sign_in_methods": "Kaedah log masuk",
   "never_active": "Tidak pernah",
   "no_methods": "Tidak diberikan",
@@ -114,5 +114,8 @@
   "active_hours": "{value} j lalu",
   "active_days": "{value} hari lalu",
   "name_email": "{name} · {email}",
-  "remove": "Buang"
+  "remove": "Buang",
+  "revoke": "Tarik balik",
+  "revoke_named": "Tarik balik jemputan: {email}",
+  "resend_named": "Hantar semula jemputan: {email}"
 }
