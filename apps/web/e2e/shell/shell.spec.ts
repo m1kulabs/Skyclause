@@ -168,7 +168,10 @@ test('390px keeps the wordmark, Review and Menu; the sheet holds every destinati
   for (const name of ['Dashboard', 'Projects', 'Organisation analysis', 'Webhooks', 'Organisation settings', 'Account'])
     await expect(sheet.getByRole('link', { name: copy(name), exact: true })).toBeAttached()
   await expect(sheet.getByRole('link', { name: copy('Windows'), exact: true })).toHaveAttribute('aria-current', 'page')
-  await expect(sheet.getByRole('link', { name: membership('Test organisation one', 'Owner') })).toBeAttached()
+  await expect(sheet.getByRole('link', { name: membership('Test organisation one', 'Owner') })).toHaveAttribute(
+    'aria-current',
+    'true'
+  )
   await expect(sheet.getByRole('link', { name: membership('Test organisation two', 'Viewer') })).toBeAttached()
   for (const link of await sheet.locator('[data-slot="phone-sheet-item"]').all())
     expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44)
@@ -264,6 +267,11 @@ test('a guest account sees only Appearance for its account', async ({ page }) =>
     '/commons/analysis',
     '/account/appearance'
   ])
+  await closeMenu(page)
+  await bar(page)
+    .getByRole('button', { name: /Switch organisation:/ })
+    .click()
+  expect((await menuLinks(page)).map((item) => item.href)).toEqual(['/commons'])
 })
 
 test('Review opens the dashboard at its needs-review block and prints no count without the live stream', async ({
@@ -273,7 +281,12 @@ test('Review opens the dashboard at its needs-review block and prints no count w
   const review = bar(page).getByRole('link', { name: copy('Review'), exact: true })
   await expect(review).toHaveAttribute('href', '/test-one#dashboard-needs-review')
   await expect(review).toHaveText(copy('Review'))
+  await expect(review).toHaveAttribute('data-waiting', 'unknown')
   await expect(bar(page).locator('[data-count]')).toHaveCount(0)
+  // An organisation the person isn't in (its page is a 404) gets neither Review nor project links.
+  await openShell(page, data, '?org=not-a-member&project=test-project')
+  await expect(bar(page).getByRole('link', { name: copy('Review'), exact: true })).toHaveCount(0)
+  await expect(bar(page).locator('.shell-destinations')).toHaveCount(0)
 })
 
 test('empty data shows the no-organisation state and its next action, never sample organisations', async ({ page }) => {
@@ -302,6 +315,13 @@ test('a failed memberships read names itself as an error, not as no organisation
   await expect(bar(page).getByRole('button', { name: /Switch organisation:/ })).toContainText(
     copy('Organisations unavailable')
   )
+  // On an organisation's page the project list is unknown too: an error, never "Projects: n=0".
+  await openShell(
+    page,
+    { memberships: [], projects: [], membershipsError: { status: 503, at: '2026-11-12T03:04:00.000Z' } },
+    '?org=test-one'
+  )
+  await expect(bar(page).getByRole('button', { name: /Switch project:/ })).toContainText(copy('Projects unavailable'))
 })
 
 test('a membership without projects shows n=0 and its role-appropriate next action', async ({ page }) => {

@@ -148,16 +148,19 @@ export function AppShell({ data, children, palette, now, scope: explicit }: AppS
         <div className="shell-bar-row shell-column">
           <div className="shell-start">
             <Wordmark org={scope.org} />
-            <div className="shell-scope">
-              <OrganisationSwitcher scope={scope} />
-              {/* Without an organisation there is no project to switch to: its next step is in the page's state. */}
-              {scope.org && (
-                <>
-                  <span className="shell-scope-divider" aria-hidden="true" />
-                  <ProjectSwitcher scope={scope} />
-                </>
-              )}
-            </div>
+            {/* A visitor without a session has no organisations to switch between. */}
+            {!data.signedOut && (
+              <div className="shell-scope">
+                <OrganisationSwitcher scope={scope} />
+                {/* Without an organisation there is no project to switch to: its next step is in the page's state. */}
+                {scope.org && (
+                  <>
+                    <span className="shell-scope-divider" aria-hidden="true" />
+                    <ProjectSwitcher scope={scope} />
+                  </>
+                )}
+              </div>
+            )}
           </div>
           {scope.core.length > 0 && <Destinations scope={scope} />}
           <p className="shell-live">
@@ -168,7 +171,7 @@ export function AppShell({ data, children, palette, now, scope: explicit }: AppS
             <Button
               variant="secondary"
               className="shell-search"
-              onClick={() => openPalette()}
+              onClick={(event) => openPalette(event.currentTarget)}
               aria-label={t('app-shell.paletteShortcut', { hint: t('app-shell.paletteHint') })}
               aria-keyshortcuts="Meta+K Control+K"
             >

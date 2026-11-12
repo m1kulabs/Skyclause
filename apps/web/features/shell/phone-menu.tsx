@@ -95,6 +95,7 @@ export function PhoneMenu({ scope, now }: { scope: ShellScope; now: string }) {
           <PhoneSheetItem
             key={item.org_id}
             href={`/${encodeURIComponent(item.org_slug)}`}
+            aria-current={item.org_id === scope.membership?.org_id ? 'true' : undefined}
             aria-label={t('app-shell.membershipLabel', {
               name: item.org_name,
               role: t(`app-shell.roles.${item.role}`)
@@ -104,7 +105,7 @@ export function PhoneMenu({ scope, now }: { scope: ShellScope; now: string }) {
             <span className="shell-menu-meta" aria-hidden="true" data-role={t(`app-shell.roles.${item.role}`)} />
           </PhoneSheetItem>
         ))}
-        <PhoneSheetItem href="/new">{t('app-shell.createOrganisation')}</PhoneSheetItem>
+        {!scope.guestAccount && <PhoneSheetItem href="/new">{t('app-shell.createOrganisation')}</PhoneSheetItem>}
       </Section>
       {org && (
         <Section id="shell-sheet-projects" title={t('app-shell.switchProject')}>
@@ -114,7 +115,11 @@ export function PhoneMenu({ scope, now }: { scope: ShellScope; now: string }) {
             !projects.length && <p className="shell-sheet-note">{t('app-shell.noProjects')}</p>
           )}
           {projects.map((item) => (
-            <PhoneSheetItem key={item.id} href={`/${encodeURIComponent(org)}/${encodeURIComponent(item.slug)}`}>
+            <PhoneSheetItem
+              key={item.id}
+              href={`/${encodeURIComponent(org)}/${encodeURIComponent(item.slug)}`}
+              aria-current={item.id === scope.project?.id ? 'true' : undefined}
+            >
               {item.name}
             </PhoneSheetItem>
           ))}

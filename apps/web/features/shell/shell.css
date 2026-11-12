@@ -288,6 +288,19 @@ body:has(.app-shell) > .skip-link {
 .shell-sheet [data-slot='phone-sheet-item'] {
   overflow-wrap: anywhere;
 }
+/* The current organisation and project in the switch lists: marked like the current page, with aria-current="true". */
+.shell-sheet [data-slot='phone-sheet-item'][aria-current='true'] {
+  background: var(--raised);
+  color: var(--foreground);
+}
+.shell-sheet [data-slot='phone-sheet-item'][aria-current='true']::after {
+  content: '';
+  flex-shrink: 0;
+  width: 16px;
+  height: 4px;
+  border-radius: 9999px;
+  background: currentColor;
+}
 
 /* Wide: one row. The four links sit after the switchers and the live facts and tools close the row. */
 @media (min-width: 1360px) {

@@ -87,8 +87,12 @@ export function OrganisationSwitcher({ scope }: { scope: ShellScope }) {
             </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <MenuLink href="/new" label={t('app-shell.createOrganisation')} />
+        {!scope.guestAccount && (
+          <>
+            <DropdownMenuSeparator />
+            <MenuLink href="/new" label={t('app-shell.createOrganisation')} />
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )
