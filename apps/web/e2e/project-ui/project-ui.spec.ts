@@ -72,6 +72,25 @@ test('overview uses the 5 November captures, declares from the primary action an
   await expect(page).toHaveURL(/\?pack=crowd&declare=window$/)
 })
 
+test('without the verdicts read the pack card leaves out Fired clauses instead of saying none fired', async ({
+  page
+}) => {
+  await page.clock.install({ time: new Date(projectFixtureData.capturedAt) })
+  await prepareOverview(page, 'admin', { empty: false })
+  await stubApi(
+    page,
+    'getProjectVerdicts',
+    { type: 'https://skyclause.test/problems/not-built', title: 'Not built', status: 501 },
+    { registry: overviewOperations, status: 501 }
+  )
+  await page.goto(emptyRoute)
+  const sky = page.locator('[data-project-overview] [data-pack="sky"]')
+  await expect(sky.locator('[data-state="normal"]')).toHaveText(copy('Normal'))
+  await expect(sky.locator('[data-fired-clauses]')).toHaveCount(0)
+  await expect(sky).not.toContainText('No clause has fired')
+  await expect(sky).not.toContainText('Fired clauses')
+})
+
 test('a 2 November strip replay stays labelled as replay when it has no rain series', async ({ page }) => {
   await page.clock.install({ time: new Date(projectFixtureData.capturedAt) })
   await prepareOverview(page, 'admin', { empty: false, replay: true })
