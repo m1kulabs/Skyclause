@@ -94,6 +94,12 @@ export async function setup(page: Page, hooks: unknown[] = [endpoint], role: Rol
   await stubApi(page, 'getWebhook', hooks[0] ?? endpoint, { registry: webhookOperations })
   await stubApi(page, 'listWebhookDeliveries', { data: [], next_cursor: null }, { registry: webhookOperations })
 }
+/** Opens an endpoint's row menu in the settings list and chooses Delete, which opens the typed confirmation. */
+export async function openDeleteDialog(page: Page, url: string = endpoint.url) {
+  await page.getByRole('button', { name: t('webhooks.more_actions', { url }), exact: true }).click()
+  await page.getByRole('menuitem', { name: t('webhooks.delete'), exact: true }).click()
+}
+
 export async function tabTo(page: Page, selector: ReturnType<Page['getByRole']>) {
   for (let step = 0; step < 160; step++) {
     if (await selector.evaluate((node) => node === document.activeElement)) return

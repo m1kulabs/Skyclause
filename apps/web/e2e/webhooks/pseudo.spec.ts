@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures'
-import { setup, endpoint, verified, delivery, secret, t, stubAction } from './fixtures'
+import { setup, endpoint, verified, delivery, secret, t, stubAction, openDeleteDialog } from './fixtures'
 import { stubApi, expectZonedTimes } from '../harness'
 import { webhookOperations } from '../../features/webhooks/operations'
 import { expectUnclippedText } from '../harness/expect-unclipped-text'
@@ -43,7 +43,7 @@ for (const theme of ['dark', 'light', 'high-contrast'] as const) {
       }
       await expectZonedTimes(page)
       if (route.includes('settings')) {
-        await page.getByRole('button', { name: t('webhooks.delete'), exact: true }).click()
+        await openDeleteDialog(page, longUrl)
         await expect(page.getByRole('alertdialog')).toBeVisible()
         await expectUnclippedText(page)
         await page.screenshot({ path: testInfo.outputPath('expanded-confirm.png'), fullPage: true })

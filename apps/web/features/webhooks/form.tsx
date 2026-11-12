@@ -1,12 +1,13 @@
 'use client'
 
-import { useId, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { WEBHOOK_EVENT_TYPES, type WebhookEventType } from '@skyclause/contracts'
 import { Button } from '#ui/button'
 import { Input } from '#ui/input'
 import { Checkbox } from '#ui/checkbox'
 import { Field, FieldLabel, FieldGroup, FieldSet, FieldLegend, FieldError } from '#ui/field'
 import { ApiProblem } from '../../lib/api-fetch'
+import { RowPager, pageOf } from '../settings/project/row-pager'
 import { apiFetch, type Endpoint, type WebhookProject } from './operations'
 import { t } from './catalogue'
 
@@ -27,17 +28,24 @@ export function RegisterForm({
   org,
   projects,
   onCreated,
-  onCancel
+  onCancel,
+  locale = 'en',
+  focusOnMount = false
 }: {
   org: string
   projects: WebhookProject[]
   onCreated: (endpoint: Endpoint, secret: string) => void
   onCancel?: () => void
+  locale?: 'en' | 'ms'
+  /** Move focus to the URL field when the form appears (a form revealed by a button). */
+  focusOnMount?: boolean
 }) {
   const id = useId()
   const urlRef = useRef<HTMLInputElement>(null)
   const eventsRef = useRef<HTMLButtonElement>(null)
   const projectRef = useRef<HTMLInputElement>(null)
+  const firstProjectRef = useRef<HTMLButtonElement>(null)
+  const [projectPage, setProjectPage] = useState(0)
   const [url, setUrl] = useState('')
   const [events, setEvents] = useState<WebhookEventType[]>([])
   const [allProjects, setAllProjects] = useState(true)
@@ -45,6 +53,9 @@ export function RegisterForm({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
   const inFlight = useRef(false)
+  useEffect(() => {
+    if (focusOnMount) urlRef.current?.focus()
+  }, [focusOnMount])
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -61,7 +72,8 @@ export function RegisterForm({
     }
     if (!allProjects && !projectIds.length) {
       setError('projects_required')
-      projectRef.current?.focus()
+      // The first project's checkbox, or the "All projects" choice when no project is listed.
+      ;(firstProjectRef.current ?? projectRef.current)?.focus()
       return
     }
     inFlight.current = true
@@ -88,17 +100,17 @@ export function RegisterForm({
   const urlError = error && !['events_required', 'projects_required'].includes(error)
 
   return (
-    <form onSubmit={submit} aria-label={t('webhooks.register')} className="webhook-form">
+    <form onSubmit={submit} aria-label={t('webhooks.register', {}, locale)} className="webhook-form">
       <FieldGroup>
         <Field data-invalid={!!urlError}>
-          <FieldLabel htmlFor={`${id}-url`}>{t('webhooks.url')}</FieldLabel>
+          <FieldLabel htmlFor={`${id}-url`}>{t('webhooks.url', {}, locale)}</FieldLabel>
           <Input
             ref={urlRef}
             id={`${id}-url`}
             name="webhook-url"
             type="url"
             inputMode="url"
-            autoComplete="url"
+            autoComplete="off"
             spellCheck={false}
             autoCapitalize="none"
             translate="no"
@@ -108,10 +120,10 @@ export function RegisterForm({
             aria-invalid={!!urlError}
             aria-describedby={urlError ? `${id}-url-error` : undefined}
           />
-          {urlError && <FieldError id={`${id}-url-error`}>{t(`webhooks.${error}`)}</FieldError>}
+          {urlError && <FieldError id={`${id}-url-error`}>{t(`webhooks.${error}`, {}, locale)}</FieldError>}
         </Field>
         <FieldSet data-webhook-events aria-describedby={error === 'events_required' ? `${id}-events-error` : undefined}>
-          <FieldLegend>{t('webhooks.events')}</FieldLegend>
+          <FieldLegend>{t('webhooks.events', {}, locale)}</FieldLegend>
           <div className="webhook-event-choices">
             {WEBHOOK_EVENT_TYPES.map((type, index) => (
               <Field key={type} orientation="horizontal">
@@ -129,17 +141,17 @@ export function RegisterForm({
                   aria-invalid={error === 'events_required'}
                 />
                 <FieldLabel htmlFor={`${id}-${type}`} translate="no">
-                  {t('webhooks.event_type', { type })}
+                  {t('webhooks.event_type', { type }, locale)}
                 </FieldLabel>
               </Field>
             ))}
           </div>
           {error === 'events_required' && (
-            <FieldError id={`${id}-events-error`}>{t('webhooks.events_required')}</FieldError>
+            <FieldError id={`${id}-events-error`}>{t('webhooks.events_required', {}, locale)}</FieldError>
           )}
         </FieldSet>
-        <FieldSet>
-          <FieldLegend>{t('webhooks.projects')}</FieldLegend>
+        <FieldSet aria-describedby={error === 'projects_required' ? `${id}-projects-error` : undefined}>
+          <FieldLegend>{t('webhooks.projects', {}, locale)}</FieldLegend>
           <Field orientation="horizontal">
             <input
               ref={projectRef}
@@ -151,7 +163,7 @@ export function RegisterForm({
               checked={allProjects}
               onChange={() => setAllProjects(true)}
             />
-            <FieldLabel htmlFor={`${id}-all`}>{t('webhooks.all_projects')}</FieldLabel>
+            <FieldLabel htmlFor={`${id}-all`}>{t('webhooks.all_projects', {}, locale)}</FieldLabel>
           </Field>
           <Field orientation="horizontal">
             <input
@@ -163,12 +175,13 @@ export function RegisterForm({
               checked={!allProjects}
               onChange={() => setAllProjects(false)}
             />
-            <FieldLabel htmlFor={`${id}-chosen`}>{t('webhooks.chosen_projects')}</FieldLabel>
+            <FieldLabel htmlFor={`${id}-chosen`}>{t('webhooks.chosen_projects', {}, locale)}</FieldLabel>
           </Field>
           {!allProjects &&
-            projects.map((project) => (
+            pageOf(projects, projectPage).map((project, index) => (
               <Field orientation="horizontal" key={project.id}>
                 <Checkbox
+                  ref={index === 0 ? firstProjectRef : undefined}
                   id={`${id}-${project.id}`}
                   name="webhook-projects"
                   value={project.id}
@@ -182,16 +195,21 @@ export function RegisterForm({
                 <FieldLabel htmlFor={`${id}-${project.id}`}>{project.name}</FieldLabel>
               </Field>
             ))}
-          {!allProjects && !projects.length && <p>{t('webhooks.no_projects')}</p>}
-          {error === 'projects_required' && <FieldError>{t('webhooks.projects_required')}</FieldError>}
+          {!allProjects && (
+            <RowPager total={projects.length} page={projectPage} onPage={setProjectPage} locale={locale} />
+          )}
+          {!allProjects && !projects.length && <p>{t('webhooks.no_projects', {}, locale)}</p>}
+          {error === 'projects_required' && (
+            <FieldError id={`${id}-projects-error`}>{t('webhooks.projects_required', {}, locale)}</FieldError>
+          )}
         </FieldSet>
         <div className="webhook-actions">
           <Button type="submit" disabled={busy} aria-busy={busy}>
-            {t(busy ? 'webhooks.saving' : 'webhooks.save')}
+            {t(busy ? 'webhooks.saving' : 'webhooks.save', {}, locale)}
           </Button>
           {onCancel && (
             <Button type="button" variant="ghost" onClick={onCancel}>
-              {t('webhooks.cancel')}
+              {t('webhooks.cancel', {}, locale)}
             </Button>
           )}
         </div>
