@@ -49,6 +49,9 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+.details a:hover {
+  text-decoration-thickness: 2px;
+}
 .details time {
   display: block;
   color: var(--muted-foreground);

@@ -39,6 +39,8 @@ test('inbox sorts newest first, marks read by keyboard and receives a live item 
   await row.getByRole('button', { name: t('markRead') }).focus()
   await page.keyboard.press('Enter')
   await expect(row.getByText(t('read'), { exact: true })).toBeVisible()
+  // The button that was pressed is gone with the unread state: the row holds focus.
+  await expect(row).toBeFocused()
   await expect(page.getByText(t('unreadCount', { count: 1 }), { exact: true })).toBeVisible()
   const live = { ...item('live', 'escalated'), created_at: '2026-11-06T04:00:00Z' }
   await stubApi(page, 'streamNotifications', live, {
@@ -49,7 +51,7 @@ test('inbox sorts newest first, marks read by keyboard and receives a live item 
   await expect(page.locator('[data-notification="live"]')).toBeVisible({ timeout: 10_000 })
   expect(Date.now() - start).toBeLessThan(10_000)
   await expect(page.locator('[data-alerts-panel] [aria-live="polite"]')).toHaveText(
-    t('newItem', { kind: t('kinds.escalated'), ref: 'ref-live' })
+    t('newItem', { label: t('item', { kind: t('kinds.escalated'), project: 'project-a' }) })
   )
   await expectZonedTimes(page)
 })
@@ -68,7 +70,7 @@ test('recovered auditor copy and project/reference destinations match the inbox 
   )
   await page.goto('/account/notifications')
   await expect(page.locator('[data-notification="source"] a')).toHaveText(
-    t('item', { kind: t('recovery', { kind: t('kinds.auditor') }), ref: 'ref-source' })
+    t('item', { kind: t('recovery', { kind: t('kinds.auditor') }), project: 'project-a' })
   )
   for (const [id, href] of [
     ['bundle', '/org-a/project-a/bundles/ref-bundle'],
