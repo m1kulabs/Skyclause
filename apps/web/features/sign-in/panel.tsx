@@ -499,7 +499,8 @@ export function SignInPanel({
             </AuthMessage>
           )}
 
-          {expiredCopy && (
+          {/* A new link sent from here replaces the expiry with "Check your email". */}
+          {expiredCopy && !sentView && (
             <AuthMessage tone="result" glyph="clock" tabIndex={-1} ref={expiredRef}>
               {text(`sign-in.${expiredCopy}`)}
             </AuthMessage>

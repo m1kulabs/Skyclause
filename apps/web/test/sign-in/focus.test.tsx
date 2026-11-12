@@ -250,3 +250,20 @@ test('a refused Google start says when to try Google again, from either retry he
   )
   expect(document.body.textContent).not.toMatch(/Google sign-in couldn’t start|429/)
 })
+
+test('a new link sent from an expired one replaces the expiry with “Check your email”', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response(null, { status: 200 }))
+  )
+  try {
+    renderPanel('sign-in', { kind: 'expired', resend: 'handle-1' })
+    expect(screen.getByText('This sign-in link has expired or was already used.')).toBeTruthy()
+    fireEvent.submit(screen.getByRole('button', { name: 'Send a new link' }).closest('form')!)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Check your email' })).toBeTruthy()
+    expect(screen.queryByText('This sign-in link has expired or was already used.')).toBeNull()
+    expect(screen.getAllByRole('status')).toHaveLength(1)
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
