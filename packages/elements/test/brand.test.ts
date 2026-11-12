@@ -48,17 +48,37 @@ test('every domain mode and input state has exactly one glyph, word, status leve
   }
 })
 
-test('mark and wordmark follow the window geometry and protected Work Sans identity', () => {
+test('the mark is a capsule lying on its strip, in navy on light chrome and pink on dark', () => {
   expect(markSvg).toContain('viewBox="0 0 16 16"')
-  expect(markSvg).toContain('stroke-width="2"')
-  expect(markSvg).toContain('stroke-width="1"')
-  expect(markSvg).toContain('prefers-color-scheme:dark')
+  const rects = [
+    ...markSvg.matchAll(/<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)" rx="([\d.]+)"\/>/g)
+  ]
+  expect(rects).toHaveLength(2)
+  for (const [, , , width, height, rx] of rects) {
+    // Fully round ends: the radius is half the height, and each is longer than it is tall.
+    expect(Number(rx)).toBe(Number(height) / 2)
+    expect(Number(width)).toBeGreaterThan(Number(height))
+  }
+  const [strip, capsule] = rects.map(([, x, y, width, height]) => ({
+    x: +x!,
+    y: +y!,
+    width: +width!,
+    height: +height!
+  }))
+  expect(strip!.width).toBeGreaterThan(capsule!.width)
+  expect(capsule!.y + capsule!.height).toBeLessThan(strip!.y)
+  expect(markSvg).toContain(`:root{color:${modeColours.light.ink}}`)
+  expect(markSvg).toContain(`@media(prefers-color-scheme:dark){:root{color:${modeColours.dark.ink}}}`)
+  expect(markSvg).not.toContain('stroke')
+})
+
+test('the wordmark is Skyclause outlined in Roundo, named for assistive technology and never translated', () => {
   expect(wordmarkSvg).toContain('translate="no"')
-  expect(wordmarkSvg).toContain('Work Sans')
-  expect(wordmarkSvg).toContain('font-weight="500"')
-  expect(wordmarkSvg).toContain('letter-spacing="-0.02em"')
-  expect(wordmarkSvg).toContain('>Skyclause</text>')
-  expect(wordmarkSvg).not.toContain('crimson')
+  expect(wordmarkSvg).toContain('role="img" aria-label="Skyclause"')
+  expect(wordmarkSvg).toContain('viewBox="0 0 72 16"')
+  expect(wordmarkSvg).toMatch(/<path fill="currentColor" d="M[\d .MLCZHV-]+"\/>/)
+  expect(wordmarkSvg).not.toContain('<text')
+  expect(wordmarkSvg).not.toContain('font-family')
 })
 
 test('standalone SVG colours are exactly the Dusk and Day tokens of the same names', () => {
@@ -105,8 +125,9 @@ describe('tabBadgeSvg', () => {
     expect(new Set(assets).size).toBe(11)
     for (let count = 1; count <= 9; count++) {
       expect(tabBadgeSvg(count)).toContain(`>${count}</text>`)
-      expect(tabBadgeSvg(count)).toContain('<circle')
-      expect(tabBadgeSvg(count)).toContain('fill="#ffffff"')
+      // The count sits in an ink capsule, in the ground colour, clear of the mark's own capsule.
+      expect(tabBadgeSvg(count)).toContain('<rect x="12" y="0" width="12" height="12" rx="6" fill="currentColor"/>')
+      expect(tabBadgeSvg(count)).toContain(`.count{color:${modeColours.light.ground}}`)
     }
     expect(tabBadgeSvg('9+')).toContain('>9+</text>')
     expect(tabBadgeSvg(10)).toBe(tabBadgeSvg('9+'))
@@ -118,13 +139,16 @@ describe('tabBadgeSvg', () => {
 })
 
 describe('projectFaviconSvg', () => {
-  test.each(Mode.options)('approved %s uses its own glyph and status colour', (mode) => {
+  test.each(Mode.options)('approved %s fills the mark’s capsule with its mode and keeps its glyph inside', (mode) => {
     const svg = projectFaviconSvg({ mode })
     const mapping = brandStates[mode]
     expect(svg).toContain(glyphPaths[mapping.glyph])
-    expect(svg).toContain(statusColours.dark[mapping.level])
-    expect(svg).toContain(statusColours.light[mapping.level])
-    expect(svg).toContain('translate(4 4) scale(0.666667)')
+    expect(svg).toContain('translate(8.05 3.3) scale(0.45)')
+    for (const scheme of [modeColours.light, modeColours.dark]) {
+      // A tab bar is not our ground, so Normal's quiet tone step becomes the ink there.
+      const fill = mode === 'normal' ? scheme.ink : toneColours(mapping.tone, scheme).fill
+      expect(svg).toContain(`.cap{fill:${fill};stroke:none}`)
+    }
   })
   test('error overrides an approved mode; no approved call is the plain mark (D3)', () => {
     expect(projectFaviconSvg()).toBe(markSvg)
