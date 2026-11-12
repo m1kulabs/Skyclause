@@ -779,9 +779,6 @@ svg [data-tone][data-ink] * {
 .hc [data-surface='auth'] {
   color-scheme: dark;
 }
-[data-surface='marketing'] {
-  padding: 40px;
-}
 [data-surface='auth'] {
   padding: 40px 20px;
 }
@@ -825,11 +822,6 @@ svg [data-tone][data-ink] * {
   display: none;
 }
 
-@media (max-width: 640px) {
-  [data-surface='marketing'] {
-    padding: 20px;
-  }
-}
 @media (pointer: coarse) {
   .language-suggestion button,
   .language-suggestion a,
