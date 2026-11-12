@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { formatList, formatTimeZoneName } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
 import { Input } from '#ui/input'
+import { Field, FieldGroup, FieldLegend, FieldSet } from '#ui/field'
 import { Label } from '#ui/label'
 import { Skeleton } from '#ui/skeleton'
 import { useRead } from '../../../analysis/use-read'
@@ -33,7 +34,6 @@ import {
   type Rota,
   type RotaShift
 } from '../../../project-settings/operations'
-import { cn } from '#lib/utils'
 
 type Locale = 'en' | 'ms'
 type Template = RotaShift['template']
@@ -358,172 +358,177 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
 
       {status ? <SettingsStatus>{status}</SettingsStatus> : null}
       {formOpen ? (
-        <form className="grid min-w-0 gap-5 rounded-md bg-raised p-4" onSubmit={save} noValidate data-rota-editor>
-          <div className="grid gap-1">
-            <h3 ref={editorHeading} tabIndex={-1} className="type-card-title">
-              {t(`project-settings.${editingId ? 'edit_shift' : 'add_shift'}`, {}, locale)}
-            </h3>
-            <p className="type-body text-muted-foreground">
-              {t(
-                'project-settings.local_time_zone',
-                { zone: formatTimeZoneName(pageData.project.time_zone, locale) },
-                locale
-              )}
-            </p>
-          </div>
-          {eligible.length ? (
-            <div className="grid gap-2">
-              <Label htmlFor="rota-approver">{t('project-settings.approver', {}, locale)}</Label>
-              <select
-                id="rota-approver"
-                name="account_id"
-                autoComplete="off"
-                value={form.accountId}
-                onChange={(event) => change({ accountId: event.target.value }, 'approver')}
-                className="native-select"
-                aria-invalid={fieldErrors.approver ? true : undefined}
-                aria-describedby={fieldErrors.approver ? 'rota-approver-error' : undefined}
-              >
-                <option value="">{t('project-settings.choose_approver', {}, locale)}</option>
-                {eligible.map((member) => (
-                  <option key={member.account_id} value={member.account_id}>
-                    {t('project-settings.member_name', { name: member.name, email: member.email }, locale)}
-                  </option>
-                ))}
-              </select>
-              {fieldErrors.approver ? (
-                <SettingsError id="rota-approver-error">{fieldErrors.approver}</SettingsError>
+        <form className="min-w-0 rounded-md bg-raised p-4" onSubmit={save} noValidate data-rota-editor>
+          <FieldGroup>
+            <div className="grid gap-1">
+              <h3 ref={editorHeading} tabIndex={-1} className="type-card-title">
+                {t(`project-settings.${editingId ? 'edit_shift' : 'add_shift'}`, {}, locale)}
+              </h3>
+              <p className="type-body text-muted-foreground">
+                {t(
+                  'project-settings.local_time_zone',
+                  { zone: formatTimeZoneName(pageData.project.time_zone, locale) },
+                  locale
+                )}
+              </p>
+            </div>
+            {eligible.length ? (
+              <Field data-invalid={fieldErrors.approver ? true : undefined}>
+                <Label htmlFor="rota-approver">{t('project-settings.approver', {}, locale)}</Label>
+                <select
+                  id="rota-approver"
+                  name="account_id"
+                  autoComplete="off"
+                  value={form.accountId}
+                  onChange={(event) => change({ accountId: event.target.value }, 'approver')}
+                  className="native-select"
+                  aria-invalid={fieldErrors.approver ? true : undefined}
+                  aria-describedby={fieldErrors.approver ? 'rota-approver-error' : undefined}
+                >
+                  <option value="">{t('project-settings.choose_approver', {}, locale)}</option>
+                  {eligible.map((member) => (
+                    <option key={member.account_id} value={member.account_id}>
+                      {t('project-settings.member_name', { name: member.name, email: member.email }, locale)}
+                    </option>
+                  ))}
+                </select>
+                {fieldErrors.approver ? (
+                  <SettingsError id="rota-approver-error">{fieldErrors.approver}</SettingsError>
+                ) : null}
+              </Field>
+            ) : (
+              <p role="status" className="type-body text-muted-foreground">
+                {t('project-settings.no_approvers', {}, locale)}
+              </p>
+            )}
+
+            <FieldSet
+              className="grid min-w-0 gap-2 sm:grid-cols-2"
+              data-invalid={fieldErrors.days ? true : undefined}
+              aria-describedby={fieldErrors.days ? 'rota-days-error' : undefined}
+            >
+              <FieldLegend variant="label" className="type-body mb-2 font-medium">
+                {t('project-settings.days', {}, locale)}
+              </FieldLegend>
+              {weekdays.map((name, index) => {
+                const day = index + 1
+                const id = `rota-day-${name}`
+                return (
+                  <label key={name} htmlFor={id} className="type-body flex min-h-11 items-center gap-3">
+                    <input
+                      id={id}
+                      name="days"
+                      autoComplete="off"
+                      type="checkbox"
+                      className="native-check"
+                      value={day}
+                      checked={form.days.includes(day)}
+                      aria-invalid={fieldErrors.days ? true : undefined}
+                      onChange={() => toggleDay(day)}
+                    />
+                    {t(`project-settings.weekdays.${name}`, {}, locale)}
+                  </label>
+                )
+              })}
+              {fieldErrors.days ? (
+                <SettingsError id="rota-days-error" className="sm:col-span-2">
+                  {fieldErrors.days}
+                </SettingsError>
               ) : null}
-            </div>
-          ) : (
-            <p role="status" className="type-body text-muted-foreground">
-              {t('project-settings.no_approvers', {}, locale)}
-            </p>
-          )}
+            </FieldSet>
 
-          <fieldset
-            className="grid min-w-0 gap-2 sm:grid-cols-2"
-            aria-describedby={fieldErrors.days ? 'rota-days-error' : undefined}
-          >
-            <legend className="type-body mb-2 font-medium">{t('project-settings.days', {}, locale)}</legend>
-            {weekdays.map((name, index) => {
-              const day = index + 1
-              const id = `rota-day-${name}`
-              return (
-                <label key={name} htmlFor={id} className="type-body flex min-h-11 items-center gap-3">
-                  <input
-                    id={id}
-                    name="days"
-                    autoComplete="off"
-                    type="checkbox"
-                    className="native-check"
-                    value={day}
-                    checked={form.days.includes(day)}
-                    aria-invalid={fieldErrors.days ? true : undefined}
-                    onChange={() => toggleDay(day)}
-                  />
-                  {t(`project-settings.weekdays.${name}`, {}, locale)}
-                </label>
-              )
-            })}
-            {fieldErrors.days ? (
-              <SettingsError id="rota-days-error" className="sm:col-span-2">
-                {fieldErrors.days}
-              </SettingsError>
-            ) : null}
-          </fieldset>
+            <FieldGroup className="grid gap-4 sm:grid-cols-2">
+              <Field data-invalid={fieldErrors.start ? true : undefined} className={dateFieldRing} data-focus-ring>
+                <Label htmlFor="rota-start">{t('project-settings.start', {}, locale)}</Label>
+                <Input
+                  id="rota-start"
+                  name="local_start"
+                  autoComplete="off"
+                  type="time"
+                  value={form.localStart}
+                  onChange={(event) => change({ localStart: event.target.value }, 'start')}
+                  aria-invalid={fieldErrors.start ? true : undefined}
+                  aria-describedby={fieldErrors.start ? 'rota-start-error' : undefined}
+                />
+                {fieldErrors.start ? <SettingsError id="rota-start-error">{fieldErrors.start}</SettingsError> : null}
+              </Field>
+              <Field data-invalid={fieldErrors.end ? true : undefined} className={dateFieldRing} data-focus-ring>
+                <Label htmlFor="rota-end">{t('project-settings.end', {}, locale)}</Label>
+                <Input
+                  id="rota-end"
+                  name="local_end"
+                  autoComplete="off"
+                  type="time"
+                  value={form.localEnd}
+                  onChange={(event) => change({ localEnd: event.target.value }, 'end')}
+                  aria-invalid={fieldErrors.end ? true : undefined}
+                  aria-describedby={fieldErrors.end ? 'rota-end-error' : undefined}
+                />
+                {fieldErrors.end ? <SettingsError id="rota-end-error">{fieldErrors.end}</SettingsError> : null}
+              </Field>
+            </FieldGroup>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className={cn('grid gap-2', dateFieldRing)} data-focus-ring>
-              <Label htmlFor="rota-start">{t('project-settings.start', {}, locale)}</Label>
-              <Input
-                id="rota-start"
-                name="local_start"
-                autoComplete="off"
-                type="time"
-                value={form.localStart}
-                onChange={(event) => change({ localStart: event.target.value }, 'start')}
-                aria-invalid={fieldErrors.start ? true : undefined}
-                aria-describedby={fieldErrors.start ? 'rota-start-error' : undefined}
-              />
-              {fieldErrors.start ? <SettingsError id="rota-start-error">{fieldErrors.start}</SettingsError> : null}
+            <FieldGroup className="grid gap-4 sm:grid-cols-2">
+              <Field>
+                <Label htmlFor="rota-template">{t('project-settings.template', {}, locale)}</Label>
+                <select
+                  id="rota-template"
+                  name="template"
+                  autoComplete="off"
+                  value={form.template}
+                  onChange={(event) => {
+                    const template = event.target.value as Template
+                    setForm((current) => ({
+                      ...current,
+                      template,
+                      condition: template === 'custom' ? null : template,
+                      ...(template === 'storm_afternoon' ? { localStart: '14:00', localEnd: '19:15' } : {}),
+                      ...(template === 'surge_night' ? { localStart: '08:00', localEnd: '22:00' } : {})
+                    }))
+                  }}
+                  className="native-select"
+                >
+                  {(['custom', 'storm_afternoon', 'surge_night'] as const).map((template) => (
+                    <option key={template} value={template}>
+                      {t(`project-settings.${template === 'custom' ? 'template_custom' : template}`, {}, locale)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field>
+                <Label htmlFor="rota-condition">{t('project-settings.condition', {}, locale)}</Label>
+                <select
+                  id="rota-condition"
+                  name="condition"
+                  autoComplete="off"
+                  value={form.condition ?? ''}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      condition:
+                        event.target.value === 'storm_afternoon' || event.target.value === 'surge_night'
+                          ? event.target.value
+                          : null
+                    }))
+                  }
+                  className="native-select"
+                >
+                  <option value="">{t('project-settings.condition_none', {}, locale)}</option>
+                  <option value="storm_afternoon">{t('project-settings.storm_afternoon', {}, locale)}</option>
+                  <option value="surge_night">{t('project-settings.surge_night', {}, locale)}</option>
+                </select>
+              </Field>
+            </FieldGroup>
+            {error ? <SettingsError>{error}</SettingsError> : null}
+            <div className="flex flex-wrap gap-3">
+              <Button type="submit" disabled={busy || !eligible.length} aria-busy={busy}>
+                {busy ? t('project-settings.saving', {}, locale) : t('project-settings.save_shift', {}, locale)}
+              </Button>
+              <Button type="button" variant="outline" disabled={busy} onClick={closeEditor}>
+                {t('project-settings.cancel_edit', {}, locale)}
+              </Button>
             </div>
-            <div className={cn('grid gap-2', dateFieldRing)} data-focus-ring>
-              <Label htmlFor="rota-end">{t('project-settings.end', {}, locale)}</Label>
-              <Input
-                id="rota-end"
-                name="local_end"
-                autoComplete="off"
-                type="time"
-                value={form.localEnd}
-                onChange={(event) => change({ localEnd: event.target.value }, 'end')}
-                aria-invalid={fieldErrors.end ? true : undefined}
-                aria-describedby={fieldErrors.end ? 'rota-end-error' : undefined}
-              />
-              {fieldErrors.end ? <SettingsError id="rota-end-error">{fieldErrors.end}</SettingsError> : null}
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="rota-template">{t('project-settings.template', {}, locale)}</Label>
-              <select
-                id="rota-template"
-                name="template"
-                autoComplete="off"
-                value={form.template}
-                onChange={(event) => {
-                  const template = event.target.value as Template
-                  setForm((current) => ({
-                    ...current,
-                    template,
-                    condition: template === 'custom' ? null : template,
-                    ...(template === 'storm_afternoon' ? { localStart: '14:00', localEnd: '19:15' } : {}),
-                    ...(template === 'surge_night' ? { localStart: '08:00', localEnd: '22:00' } : {})
-                  }))
-                }}
-                className="native-select"
-              >
-                {(['custom', 'storm_afternoon', 'surge_night'] as const).map((template) => (
-                  <option key={template} value={template}>
-                    {t(`project-settings.${template === 'custom' ? 'template_custom' : template}`, {}, locale)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="rota-condition">{t('project-settings.condition', {}, locale)}</Label>
-              <select
-                id="rota-condition"
-                name="condition"
-                autoComplete="off"
-                value={form.condition ?? ''}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    condition:
-                      event.target.value === 'storm_afternoon' || event.target.value === 'surge_night'
-                        ? event.target.value
-                        : null
-                  }))
-                }
-                className="native-select"
-              >
-                <option value="">{t('project-settings.condition_none', {}, locale)}</option>
-                <option value="storm_afternoon">{t('project-settings.storm_afternoon', {}, locale)}</option>
-                <option value="surge_night">{t('project-settings.surge_night', {}, locale)}</option>
-              </select>
-            </div>
-          </div>
-          {error ? <SettingsError>{error}</SettingsError> : null}
-          <div className="flex flex-wrap gap-3">
-            <Button type="submit" disabled={busy || !eligible.length} aria-busy={busy}>
-              {busy ? t('project-settings.saving', {}, locale) : t('project-settings.save_shift', {}, locale)}
-            </Button>
-            <Button type="button" variant="outline" disabled={busy} onClick={closeEditor}>
-              {t('project-settings.cancel_edit', {}, locale)}
-            </Button>
-          </div>
+          </FieldGroup>
         </form>
       ) : null}
     </SettingsParts>

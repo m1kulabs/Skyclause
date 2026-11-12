@@ -7,6 +7,7 @@ import { formatDateTime, formatNumber } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
 import { Card, CardContent } from '#ui/card'
 import { Input } from '#ui/input'
+import { Field, FieldGroup } from '#ui/field'
 import { Label } from '#ui/label'
 import { Skeleton } from '#ui/skeleton'
 import { ConfirmDialog } from '../../set-7'
@@ -200,41 +201,43 @@ export function ProjectSharePanel({ locale = 'en' }: { locale?: Locale }) {
         description={t('project-settings.share_description', {}, locale)}
         id="project-share-create-title"
       >
-        <form className="grid min-w-0 gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end" onSubmit={create}>
-          <div className="grid gap-2">
-            <Label htmlFor="share-access">{t('project-settings.access', {}, locale)}</Label>
-            <select
-              id="share-access"
-              name="access"
-              autoComplete="off"
-              value={access}
-              onChange={(event) => setAccess(event.target.value as 'view' | 'reviewer')}
-              className="native-select"
-            >
-              <option value="view">{t('project-settings.view', {}, locale)}</option>
-              <option value="reviewer">{t('project-settings.reviewer', {}, locale)}</option>
-            </select>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="share-expiry">{t('project-settings.expiry', {}, locale)}</Label>
-            <select
-              id="share-expiry"
-              name="expires_in_days"
-              autoComplete="off"
-              value={expiry}
-              onChange={(event) => setExpiry(Number(event.target.value))}
-              className="native-select"
-            >
-              {Array.from({ length: 30 }, (_, index) => index + 1).map((day) => (
-                <option value={day} key={day}>
-                  {day}
-                </option>
-              ))}
-            </select>
-          </div>
-          <Button type="submit" disabled={creating} aria-busy={creating}>
-            {creating ? t('project-settings.creating', {}, locale) : t('project-settings.create_link', {}, locale)}
-          </Button>
+        <form onSubmit={create}>
+          <FieldGroup className="grid min-w-0 gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+            <Field>
+              <Label htmlFor="share-access">{t('project-settings.access', {}, locale)}</Label>
+              <select
+                id="share-access"
+                name="access"
+                autoComplete="off"
+                value={access}
+                onChange={(event) => setAccess(event.target.value as 'view' | 'reviewer')}
+                className="native-select"
+              >
+                <option value="view">{t('project-settings.view', {}, locale)}</option>
+                <option value="reviewer">{t('project-settings.reviewer', {}, locale)}</option>
+              </select>
+            </Field>
+            <Field>
+              <Label htmlFor="share-expiry">{t('project-settings.expiry', {}, locale)}</Label>
+              <select
+                id="share-expiry"
+                name="expires_in_days"
+                autoComplete="off"
+                value={expiry}
+                onChange={(event) => setExpiry(Number(event.target.value))}
+                className="native-select"
+              >
+                {Array.from({ length: 30 }, (_, index) => index + 1).map((day) => (
+                  <option value={day} key={day}>
+                    {day}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Button type="submit" disabled={creating} aria-busy={creating}>
+              {creating ? t('project-settings.creating', {}, locale) : t('project-settings.create_link', {}, locale)}
+            </Button>
+          </FieldGroup>
         </form>
         {created ? (
           <Card data-created-share-link>
@@ -244,7 +247,7 @@ export function ProjectSharePanel({ locale = 'en' }: { locale?: Locale }) {
                 {t('project-settings.link_created', {}, locale)}
               </p>
               <div className="grid min-w-0 gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-                <div className="grid min-w-0 gap-2">
+                <Field className="min-w-0">
                   <Label htmlFor="share-link-url">{t('project-settings.link_url', {}, locale)}</Label>
                   <Input
                     id="share-link-url"
@@ -255,7 +258,7 @@ export function ProjectSharePanel({ locale = 'en' }: { locale?: Locale }) {
                     value={created.url}
                     onFocus={(event) => event.currentTarget.select()}
                   />
-                </div>
+                </Field>
                 <Button type="button" variant="outline" onClick={() => void copy()}>
                   <CopyIcon data-icon="inline-start" />
                   {copyState === 'copied'
