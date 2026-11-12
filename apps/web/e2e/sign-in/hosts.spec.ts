@@ -6,7 +6,8 @@ import { makeAccount, signIn } from '@skyclause/auth/testing'
 
 // The sign-in page through the built server's proxy.ts in HOST_MODE=multi, with production's six origins: the app host
 // serves it, and every link on it to the landing or the legal pages must reach the marketing host, which serves them.
-const port = Number(process.env.E2E_PORT ?? 3100) + 2
+// Its own port: hosts.spec.ts takes E2E_PORT + 2 and may run beside this file.
+const port = Number(process.env.E2E_PORT ?? 3100) + 6
 const origin = `http://localhost:${port}`
 const APP_HOST = 'app.skyclause.m1ku.tech'
 const MARKETING_HOST = 'skyclause.m1ku.tech'

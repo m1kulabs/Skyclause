@@ -10,7 +10,8 @@ import { addMember, inOrg, makeAccount, makeOrg, makeShareLinkFor, signIn } from
 import { makeProject } from '@skyclause/db/test/factories/index'
 import { serveProductionHosts, startMultiHost } from './harness/multi-host'
 
-const port = Number(process.env.E2E_PORT ?? 3100) + 4
+// Its own port: landing-hero.spec.ts takes E2E_PORT + 4 and may run beside this file.
+const port = Number(process.env.E2E_PORT ?? 3100) + 8
 const origin = `http://localhost:${port}`
 const MARKETING = 'https://skyclause.m1ku.tech'
 const APP = 'https://app.skyclause.m1ku.tech'
