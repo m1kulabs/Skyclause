@@ -20,6 +20,10 @@ const OTHER_DIGIT = /[^\P{N}0-9]+/gu
 // CJK numerals are letters to Unicode (五十 is 50); notices are English or Malay, so any ideograph is refused, not a
 // list.
 const IDEOGRAPHS = /\p{Ideographic}+/gu
+// A word as written, combining marks included, so a Tamil or Devanagari word stays whole.
+const VERBATIM_WORD = /[\p{L}\p{M}\p{N}_]+/gu
+// A word as a reader sees it: no spaces, and punctuation only inside (mi|łion, kata-kata).
+const WRITTEN_WORD = /[^\s\p{P}]+(?:\p{P}+[^\s\p{P}]+)*/gu
 // Invisible to a reader: a zero-width space inside a figure (12, U+200B, 0) makes a person read 120 where the checks see 12 and 0.
 // Unicode's Default_Ignorable_Code_Point plus category Cf (format characters); nothing legitimate in a notice needs them.
 const INVISIBLE = /[\p{Default_Ignorable_Code_Point}\p{Cf}]/gu
@@ -116,14 +120,11 @@ for (const first of [0x1f150, 0x1f170]) {
 const NUMBER_WORDS =
   'eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety hundred thousand million sebelas belas puluh ratus seratus ribu seribu juta sejuta'
 const NUMBER_WORD = new RegExp(String.raw`\b(?:${NUMBER_WORDS.replaceAll(' ', '|')})\b`, 'gi')
-// A letter the folds leave outside ASCII (ŧ, ᴆ, м) may draw as any letter, so a word with one is a spelled-out number
-// if it is one once each such letter is read as some letter: ŧwenŧy is twenty.
-const UNREAD_WORD = /\p{L}*[^\P{L}\p{ASCII}\p{Ideographic}]\p{L}*/gu
-const unreadNumber = (word: string): string[] => {
-  const shape = new RegExp(String.raw`\b${word.replace(/[^\p{ASCII}]/gu, '[a-z]')}\b`, 'i')
-  const found = shape.exec(NUMBER_WORDS)?.[0]
-  return found ? [found] : []
-}
+// A letter the folds leave outside ASCII (ŧ, ᴆ, м) may draw as any letter, so a word with one may spell a number
+// once each such letter is read as some letter: ŧwenŧy may be twenty. Ideographs have their own check.
+const UNREADABLE = /[^\P{L}\p{ASCII}\p{Ideographic}]/u
+const unreadNumber = (word: string): string | undefined =>
+  new RegExp(String.raw`\b${word.replace(/[^\p{ASCII}]/gu, '[a-z]')}\b`, 'i').exec(NUMBER_WORDS)?.[0]
 
 // Punctuation a reader takes for a separator inside a figure: any non-ASCII punctuation or symbol (a comma look-alike,
 // U+2800, a Tibetan tsheg, an ideographic comma) between digits, directly or after any space or tab: 5, space, U+00B7,
@@ -300,12 +301,14 @@ export function validate(p: ProposedBundle, input: AgentInput): Validation {
   const allowsLink = linkPolicy(input)
   const quoted = quotable(input)
   const allowed = new Set(quoted.flatMap((item) => numbersIn(item, new Set()).map((found) => found.key)))
-  // Tokens the trusted text and the quotable strings carry, folded as the letter checks fold: a place label the sheet or
-  // the caller names (Gate B2) may be printed as written.
+  // Words the trusted text and the quotable strings carry, which a notice may print as written: a place label the sheet
+  // or the caller names (Gate B2), folded as the letter checks fold, and a venue's name in Chinese, Tamil or Jawi, whole
+  // with its marks.
   const verbatim = new Set(
-    [...trustedTexts(input), ...quoted].flatMap(
-      (text) => asciiLetters(text.normalize('NFKC')).match(/[\p{L}\p{N}_]+/gu) ?? []
-    )
+    [...trustedTexts(input), ...quoted].flatMap((text) => {
+      const nfkc = text.normalize('NFKC')
+      return [...(asciiLetters(nfkc).match(/[\p{L}\p{N}_]+/gu) ?? []), ...(nfkc.match(VERBATIM_WORD) ?? [])]
+    })
   )
 
   bundle.calls.forEach((call, i) => {
@@ -409,17 +412,24 @@ export function validate(p: ProposedBundle, input: AgentInput): Validation {
       for (const [digits] of rest.matchAll(OTHER_DIGIT)) {
         reasons.push(`${where}: ${digits} uses digits outside 0-9; quote the figure from the quotable block`)
       }
-      for (const [run] of rest.matchAll(IDEOGRAPHS)) {
+      // A word trusted input carries isn't read as ideographs or as letters that can't be read as Latin.
+      const untrusted = rest.replace(VERBATIM_WORD, (word) => (verbatim.has(word) ? ' ' : word))
+      for (const [run] of untrusted.matchAll(IDEOGRAPHS)) {
         reasons.push(`${where}: ${run} uses CJK ideographs, which write numbers; write English or Malay`)
       }
-      const spelled = new Set(
-        skeletons(rest).flatMap((text) => [
-          ...[...text.matchAll(NUMBER_WORD)].map(([word]) => word),
-          ...(text.match(UNREAD_WORD) ?? []).flatMap(unreadNumber)
-        ])
-      )
+      const spelled = new Set(skeletons(rest).flatMap((text) => [...text.matchAll(NUMBER_WORD)].map(([word]) => word)))
       for (const word of spelled) {
         reasons.push(`${where}: spelled-out number ${word}; quote the figure from the quotable block`)
+      }
+      // Word by word as written (letter runs never cross a space), so the reason names what the notice wrote.
+      for (const [written] of untrusted.matchAll(WRITTEN_WORD)) {
+        if (/^\p{ASCII}*$/u.test(written)) continue
+        const words = skeletons(written).flatMap((text) => text.match(/\p{L}+/gu) ?? [])
+        const number = words.map((word) => (UNREADABLE.test(word) ? unreadNumber(word) : undefined)).find(Boolean)
+        if (number)
+          reasons.push(
+            `${where}: ${written} has letters that can't be read as Latin and may spell ${number}; quote the figure from the quotable block`
+          )
       }
     }
     call.notices.forEach((notice, j) => {

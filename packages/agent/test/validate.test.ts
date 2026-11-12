@@ -551,23 +551,25 @@ describe('more exotic look-alikes (#512)', () => {
   test.each(['ŧwenŧy', 'thøusand', 'milłion', 'ħundred', 'seraŧus'])(
     'refuses %j, letters with a stroke in a spelled-out number',
     (text) => {
-      refused(`Rain reached ${text} mm.`, 'spelled-out number')
+      refused(`Rain reached ${text} mm.`, "can't be read as Latin and may spell")
     }
   )
 
   test.each(['мillion', 'ʜᴜɴᴅʀᴇᴆ', 'ᴍᵻʟʟᵻᴏɴ', 'ᴍɪᴌᴌɪᴏɴ'])(
     'refuses %j, letters UTS #39 maps onto characters with no ASCII skeleton',
     (text) => {
-      refused(`Rain reached ${text} mm.`, 'spelled-out number')
+      refused(`Rain reached ${text} mm.`, "can't be read as Latin and may spell")
     }
   )
 
-  test.each(['tWenŧy', 'hUndred', 'mIllion', 'rainTwentyMm'])(
-    'refuses %j, a spelled-out number in odd case or camelCase, in a link path too',
-    (text) => {
-      refused(`Rain reached ${text}.`, 'spelled-out number')
-    }
-  )
+  test.each([
+    ['tWenŧy', "can't be read as Latin and may spell twenty"],
+    ['hUndred', 'spelled-out number hUndred'],
+    ['mIllion', 'spelled-out number mIllion'],
+    ['rainTwentyMm', 'spelled-out number Twenty']
+  ])('refuses %j, a spelled-out number in odd case or camelCase, in a link path too', (text, expected) => {
+    refused(`Rain reached ${text}.`, expected)
+  })
 
   test.each(['🆃🆆🅴🅽🆃🆈', '🅣🅦🅔🅝🅣🅨'])('refuses %j, enclosed letters NFKC leaves alone', (text) => {
     refused(`Rain reached ${text} mm.`, 'spelled-out number')
@@ -617,6 +619,24 @@ describe('more exotic look-alikes (#512)', () => {
     (label) => {
       refused(`Rain near ${label} at 15:30 MYT.`, 'letters read as digits')
       for (const input of trusted(label)) expect(reasonsWith(`Rain near ${label} at 15:30 MYT.`, input)).toEqual([])
+    }
+  )
+
+  test.each(['吉隆坡', '茨厂街', '十八丁'])('refuses the ideographs %j unless trusted input names them', (name) => {
+    refused(`Rain near ${name} at 15:30 MYT.`, `${name} uses CJK ideographs`)
+    for (const input of trusted(name)) {
+      expect(reasonsWith(`Rain near ${name} at 15:30 MYT.`, input)).toEqual([])
+      expect(reasonsWith(`Rain near ${name}五十 at 15:30 MYT.`, input)).toContainEqual(
+        expect.stringContaining(`${name}五十 uses CJK ideographs`)
+      )
+    }
+  })
+
+  test.each(['கோலாலம்பூர்', 'كوالا لومڤور', 'クアラルンプール', 'कुआलालंपुर'])(
+    'refuses %j, letters that cannot be read as Latin, unless trusted input names it',
+    (name) => {
+      refused(`Rain near ${name} at 15:30 MYT.`, "can't be read as Latin")
+      for (const input of trusted(name)) expect(reasonsWith(`Rain near ${name} at 15:30 MYT.`, input)).toEqual([])
     }
   )
 
