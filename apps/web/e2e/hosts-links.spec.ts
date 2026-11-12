@@ -363,6 +363,7 @@ test.describe('HOST_MODE=multi, as a visitor meets it', () => {
       // The PNG's IHDR: width and height, big-endian, at bytes 16 and 20.
       expect([png.readUInt32BE(16), png.readUInt32BE(20)], image!).toEqual([1200, 630])
     }
+    await context.unrouteAll({ behavior: 'ignoreErrors' })
     await context.close()
   })
 
@@ -418,6 +419,7 @@ test.describe('HOST_MODE=multi, as a visitor meets it', () => {
     // Every later page is in it too, ahead of the browser's English.
     await page.goto(`${APP}/account/profile`)
     await expect(page.locator('html')).toHaveAttribute('lang', 'ms')
+    await context.unrouteAll({ behavior: 'ignoreErrors' })
     await context.close()
   })
 
@@ -433,6 +435,7 @@ test.describe('HOST_MODE=multi, as a visitor meets it', () => {
       await expect(page.locator('html'), url).toHaveClass(/(^| )dark( |$)/)
       await expect(page.locator('html'), url).toHaveAttribute('data-theme', 'dark')
     }
+    await context.unrouteAll({ behavior: 'ignoreErrors' })
     await context.close()
   })
 })
