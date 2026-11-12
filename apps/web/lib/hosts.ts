@@ -341,8 +341,10 @@ export function proxyResponse(
   }
   let added = false
   const language = request.cookies.get(LANGUAGE_COOKIE)?.value
-  if (language === 'en' || language === 'ms') {
-    // Every page picks its language from Accept-Language, so the saved one takes its place.
+  // Every page picks its language from Accept-Language, so the saved one takes its place on the account's own pages.
+  // Never on public or marketing routes: a share card varies by Accept-Language only, and a shared cache would hand
+  // one visitor's saved language to the next.
+  if ((language === 'en' || language === 'ms') && (target.group === '(app)' || target.group === '(auth)')) {
     requestHeaders.set('accept-language', language)
     added = true
   }

@@ -474,6 +474,21 @@ describe('what the proxy adds for the route', () => {
     }
   })
 
+  it('keeps the saved language off public and marketing routes, whose answers a shared cache may keep', () => {
+    // A share card varies by Accept-Language only: the cookie must not change what that header says.
+    for (const url of [
+      'https://skyclause.m1ku.tech/c/abc/og.png',
+      'https://skyclause.m1ku.tech/p/apu/site/og.png',
+      'https://skyclause.m1ku.tech/legal/privacy',
+      'https://skyclause.m1ku.tech/og.png?page=landing&lang=en',
+      'https://skyclause.m1ku.tech/'
+    ]) {
+      const card = forwarded(url, { cookie: `${LANGUAGE_COOKIE}=ms`, 'accept-language': 'en-GB' })
+      // Untouched, or passed on as the browser sent it with the route's other headers: never the cookie's.
+      expect(card('accept-language') ?? 'en-GB', url).toBe('en-GB')
+    }
+  })
+
   it('writes the cookie name sign-in sets', () => {
     expect(LANGUAGE_COOKIE).toBe(AUTH_LANGUAGE_COOKIE)
   })
