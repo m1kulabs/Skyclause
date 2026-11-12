@@ -22,7 +22,6 @@ import {
   type PaletteSource
 } from './sources'
 import { palettePreferencesApi } from './operations'
-import './palette.css'
 
 interface CommandPaletteProps {
   memberRole?: Role | null
