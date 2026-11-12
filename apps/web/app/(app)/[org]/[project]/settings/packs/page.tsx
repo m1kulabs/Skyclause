@@ -1,4 +1,5 @@
 import Panel from '../../../../../../features/settings/project/packs/panel'
+import { devicesBuilt } from '../../../../../../features/settings/project/packs/controls'
 import { SettingsFrame } from '../../../../../../features/settings/frame'
 import { requireSettings } from '../../../../../../features/settings/gate'
 import { settingsLocale } from '../../../../../../features/settings/locale'
@@ -16,7 +17,7 @@ export default async function Page({
   const locale = await settingsLocale()
   return (
     <SettingsFrame scope="project" section="packs" principal={principal} org={org} project={project} locale={locale}>
-      <Panel org={org} project={project} initialPack={pack} locale={locale} />
+      <Panel org={org} project={project} initialPack={pack} devices={devicesBuilt()} locale={locale} />
     </SettingsFrame>
   )
 }

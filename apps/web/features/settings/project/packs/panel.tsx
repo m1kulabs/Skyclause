@@ -76,10 +76,18 @@ export interface ProjectPacksPanelProps {
   org: string
   project: string
   initialPack?: string
+  /** Whether Add device can work (`createDevice` has a handler); without it the Devices part is not offered. */
+  devices?: boolean
   locale?: 'en' | 'ms'
 }
 
-export default function Panel({ org, project: projectSlug, initialPack, locale = 'en' }: ProjectPacksPanelProps) {
+export default function Panel({
+  org,
+  project: projectSlug,
+  initialPack,
+  devices = false,
+  locale = 'en'
+}: ProjectPacksPanelProps) {
   const t = (key: string, vars: Record<string, string | number> = {}) => baseT(key, vars, locale)
   const ts = (key: string, vars: Record<string, string | number> = {}) => baseTs(key, vars, locale)
   const [project, setProject] = useState<ProjectView | null>(null)
@@ -411,25 +419,27 @@ export default function Panel({ org, project: projectSlug, initialPack, locale =
         />
       </SettingsPart>
 
-      <SettingsPart
-        title={t('onboarding.devices')}
-        id="devices-title"
-        actions={
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setDevice(null)
-              setDeviceError(false)
-              setTokenCopied('idle')
-              setDeviceNameError(false)
-              setDeviceOpen(true)
-            }}
-          >
-            {t('onboarding.add_device')}
-          </Button>
-        }
-      />
+      {devices && (
+        <SettingsPart
+          title={t('onboarding.devices')}
+          id="devices-title"
+          actions={
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setDevice(null)
+                setDeviceError(false)
+                setTokenCopied('idle')
+                setDeviceNameError(false)
+                setDeviceOpen(true)
+              }}
+            >
+              {t('onboarding.add_device')}
+            </Button>
+          }
+        />
+      )}
 
       <SourcePicker
         open={pickerOpen}
@@ -479,7 +489,7 @@ export default function Panel({ org, project: projectSlug, initialPack, locale =
         />
       ) : null}
       <Dialog
-        open={deviceOpen}
+        open={devices && deviceOpen}
         onOpenChange={(open) => {
           setDeviceOpen(open)
           if (!open) {
