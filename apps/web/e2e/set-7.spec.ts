@@ -488,19 +488,26 @@ test('archive project can be undone within 10 seconds — #174 b-project-ui', as
   await page.goto(`${projectPath}/settings`)
   await page.clock.pauseAt(new Date('2026-11-05T13:12:30.000Z'))
   const panel = page.locator('[data-project-settings-general]')
-  await panel.getByRole('button', { name: 'Archive project' }).click()
-  await expect(panel.getByRole('status').filter({ hasText: 'Project will be archived' })).toBeVisible()
+  // Archiving asks first in a dialog that names the project; the confirmation starts the 10 second undo window.
+  const confirmArchive = async () => {
+    await panel.getByRole('button', { name: 'Archive project', exact: true }).click()
+    const dialog = page.getByRole('alertdialog')
+    await expect(dialog.getByRole('heading')).toHaveText('Archive project “Bukit Jalil campus”')
+    await dialog.getByRole('button', { name: 'Archive project “Bukit Jalil campus”', exact: true }).click()
+  }
+  await confirmArchive()
+  await expect(panel.getByRole('status').filter({ hasText: 'will be archived' })).toBeVisible()
   await page.clock.runFor(9_000)
   await panel.getByRole('button', { name: 'Undo' }).click()
   await page.clock.runFor(10_001)
   expect(archiveRequests).toBe(0)
 
-  await panel.getByRole('button', { name: 'Archive project' }).click()
+  await confirmArchive()
   await page.clock.runFor(10_001)
   await expect(panel.getByRole('button', { name: 'Restore project' })).toBeVisible()
   expect(archiveRequests).toBe(1)
   await panel.getByRole('button', { name: 'Restore project' }).click()
-  await expect(panel.getByRole('button', { name: 'Archive project' })).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'Archive project', exact: true })).toBeVisible()
 })
 
 test('revoking a share link asks for confirmation and names the link — #174 b-project-ui', async ({ page }) => {
