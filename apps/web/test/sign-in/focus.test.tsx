@@ -13,7 +13,6 @@ beforeEach(() => {
   magicLink.mockReset()
   passkey.mockReset()
   magicLink.mockResolvedValue({ data: {}, error: null })
-  window.matchMedia = vi.fn().mockReturnValue({ matches: false }) as unknown as typeof window.matchMedia
 })
 afterEach(() => {
   cleanup()

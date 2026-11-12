@@ -133,13 +133,6 @@ export function SignInPanel({
     if (expiredCopy) expiredRef.current?.focus()
   }, [expiredCopy, fieldError, state, visibleAlert])
 
-  // The email field takes focus on load where a keyboard is at hand; on touch it would raise the keyboard over the page.
-  useEffect(() => {
-    if (document.activeElement !== document.body && document.activeElement !== null) return
-    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return
-    emailRef.current?.focus({ preventScroll: true })
-  }, [])
-
   useEffect(() => {
     if (formReturned) emailRef.current?.focus()
   }, [formReturned])

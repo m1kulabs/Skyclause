@@ -52,13 +52,11 @@ test('sign-in shows the email link, passkey, Google, the legal links and the roo
     '/#picture-credits'
   )
   await expect(page.locator('[data-sign-in-strip="day"]')).toContainText(/Now \d\d:\d\d MYT/)
-  // Desktop: the field is ready to type into.
-  await expect(email).toBeFocused()
   await expectNoPasswordControls(page)
   await expectAuthAxe(page)
 })
 
-test('on touch the field waits to be tapped, so the keyboard does not cover the page', async ({ browser }) => {
+test('on a phone the field is on the first screen with 44px targets, and waits to be tapped', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
   const page = await context.newPage()
   await signedOut(page)
@@ -109,6 +107,12 @@ test('keyboard-only email sign-in reaches and submits the labelled form', async 
   await page.route('**/api/auth/sign-in/magic-link', (route) => route.fulfill({ json: { status: true } }))
   await page.goto('/sign-in')
 
+  // The skip link is the first stop, then the wordmark, then the field.
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('link', { name: 'Skip to content' })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('link', { name: 'Skyclause home' })).toBeFocused()
+  await page.keyboard.press('Tab')
   const email = page.getByLabel('Email address')
   await expect(email).toBeFocused()
   await page.keyboard.insertText('keyboard@example.org')

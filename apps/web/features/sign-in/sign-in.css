@@ -43,7 +43,7 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
-  width: min(100%, 26.5rem);
+  width: min(100%, 34rem);
   min-width: 0;
   margin-inline: auto;
   padding-top: 20px;
@@ -211,6 +211,8 @@
 .sign-in-photo {
   grid-area: photo;
   position: relative;
+  justify-self: center;
+  width: min(100%, 34rem);
   height: clamp(7.5rem, 4rem + 14vw, 12rem);
   overflow: clip;
 }
@@ -235,7 +237,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: min(100%, 26.5rem);
+  width: min(100%, 34rem);
   min-width: 0;
   margin: 56px auto 0;
 }
@@ -281,7 +283,7 @@
 }
 .sign-in-credit {
   grid-area: credit;
-  width: min(100%, 26.5rem);
+  width: min(100%, 34rem);
   margin: 16px auto 0;
 }
 
@@ -297,6 +299,7 @@
     padding: 32px;
   }
   .sign-in-stack {
+    width: min(100%, 26.5rem);
     margin-inline: 0;
     padding-top: 0;
   }
@@ -315,6 +318,7 @@
   }
   .sign-in-photo {
     flex: 1 1 auto;
+    width: auto;
     height: auto;
     min-height: 240px;
     margin-right: -32px;
