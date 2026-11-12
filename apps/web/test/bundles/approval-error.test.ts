@@ -21,7 +21,7 @@ test('a refused approval says what happened in a catalogue sentence, never the A
   )
   expect(message).toBe('This call did not pass validation. Edit it before retrying.')
   expect(approvalErrorMessage(refused('redraft-required', 422, 'The engine’s call for w1 changed'), 'ms')).toBe(
-    'Panggilan ini memerlukan draf baharu. Buka projek untuk meminta penilaian.'
+    'Keputusan ini memerlukan draf baharu. Buka projek untuk meminta larian.'
   )
   expect(approvalErrorMessage(refused('something-new', 500, 'internal detail'), 'en')).not.toContain('internal detail')
 })
