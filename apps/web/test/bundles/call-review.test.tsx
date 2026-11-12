@@ -96,5 +96,5 @@ test('a call review renders project strip readings when provided', () => {
 
   expect(html).not.toContain('No readings yet (n=0)')
   expect(html).toContain('2 readings.')
-  expect(html).toContain('viewBox="0 0 640')
+  expect(html).toContain('data-strip-plot')
 })

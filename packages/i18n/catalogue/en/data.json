@@ -16,7 +16,10 @@
     "window": "Window",
     "now": "Now",
     "ages_title": "Input ages",
-    "lebat_line": "Lebat 31 mm"
+    "lebat_line": "Lebat 31 mm",
+    "chart_date": "{date} · MYT",
+    "now_label": "Now MYT",
+    "table_peaks": "Highest reading in each {minutes} minutes, from {count} readings."
   },
   "age": {
     "label": "{name} {age}",
@@ -107,6 +110,10 @@
   "no_call": {
     "reason": "{inputs} failing since {time}.",
     "reason_plain": "A required input is failing, so this window gets no call."
+  },
+  "not_built": {
+    "title": "{thing} is not built yet.",
+    "detail": "There is nothing to show here yet."
   },
   "source_error": {
     "title": "Couldn’t read {source}.",

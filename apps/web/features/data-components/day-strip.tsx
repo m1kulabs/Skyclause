@@ -1,11 +1,10 @@
-'use client'
-
-import { useMemo, type ReactNode } from 'react'
-import { layoutStrip, type StripWindow } from '@skyclause/elements'
+import type { ReactNode } from 'react'
+import { layoutStrip, stripShare, type StripWindow } from '@skyclause/elements'
 import { formatClock, formatDate, formatTime } from '@skyclause/i18n/format'
 import { Glyph } from '../brand/glyph'
 import { StatusMark } from '../brand/status-mark'
 import { t } from './catalogue'
+import { ClockTicks } from './clock-ticks'
 
 export interface DayStripProps {
   /** The span the strip shows, usually one MYT day or one afternoon. */
@@ -26,46 +25,12 @@ export interface DayStripProps {
 }
 
 const MAX_ROWS = 50
-const HOUR = 3_600_000
-
-/** Ticks on the hour across the span: every hour up to six hours, every two up to twelve, else every three. */
-function hourTicks(from: string, to: string): string[] {
-  const start = Date.parse(from)
-  const end = Date.parse(to)
-  const hours = (end - start) / HOUR
-  const step = (hours <= 6 ? 1 : hours <= 12 ? 2 : 3) * HOUR
-  const ticks: string[] = []
-  for (let at = Math.ceil(start / step) * step; at <= end; at += step) ticks.push(new Date(at).toISOString())
-  return ticks
-}
-
-function Ticks({ from, to, locale }: { from: string; to: string; locale: 'en' | 'ms' }) {
-  const span = Math.max(1, Date.parse(to) - Date.parse(from))
-  return (
-    <div className="relative h-5 type-small text-muted-foreground">
-      {hourTicks(from, to).map((at) => {
-        const share = (Date.parse(at) - Date.parse(from)) / span
-        return (
-          <time
-            key={at}
-            dateTime={at}
-            className="absolute top-0 whitespace-nowrap"
-            style={{
-              left: `${(share * 100).toFixed(3)}%`,
-              transform: share < 0.04 ? 'none' : share > 0.96 ? 'translateX(-100%)' : 'translateX(-50%)'
-            }}
-          >
-            {formatClock(at, locale)}
-          </time>
-        )
-      })}
-    </div>
-  )
-}
 
 /**
  * The day strip: one capsule per window on a track one day long, filled by its call's mode, with "now" marked. The
- * capsules are a picture of the day; the list under them carries every time, word and link.
+ * capsules are a picture of the day; the list under them carries every time, word and link. It has no hooks and no
+ * client code: a server component (a public page) can render it without shipping script. Import it from
+ * `data-components/day-strip`, not the index, which also loads the client components.
  */
 export function DayStrip({
   from,
@@ -78,12 +43,8 @@ export function DayStrip({
   embedded = false,
   locale = 'en'
 }: DayStripProps) {
-  const layout = useMemo(
-    () => layoutStrip({ from, to, now, windows, rain5: [], rain60: [], locale }),
-    [from, to, now, windows, locale]
-  )
-  const span = layout.plotRight - layout.plotLeft
-  const at = (x: number) => `${(((x - layout.plotLeft) / span) * 100).toFixed(3)}%`
+  const layout = layoutStrip({ from, to, now, windows, rain5: [], rain60: [], locale })
+  const at = (x: number) => `${(stripShare(layout, x) * 100).toFixed(3)}%`
   const date = formatDate(from, locale)
   const marks = layout.windowMarks
 
@@ -107,7 +68,7 @@ export function DayStrip({
           <time dateTime={now}>{t('data.day.now', { time: formatTime(now, locale) }, locale)}</time>
         ) : null}
       </Caption>
-      <div className="relative h-10 rounded-full bg-surface" aria-hidden="true">
+      <div className="relative h-10 rounded-full bg-surface in-data-[slot=card]:bg-raised" aria-hidden="true">
         {marks.map((mark) => {
           const tone = mark.tone === 'pending' ? 'no-call' : mark.tone
           return (
@@ -135,7 +96,7 @@ export function DayStrip({
           />
         ) : null}
       </div>
-      <Ticks from={from} to={to} locale={locale} />
+      <ClockTicks from={from} to={to} locale={locale} />
       {list ? (
         <ol className="flex flex-col" aria-label={t('data.day.list', {}, locale)}>
           {marks.slice(0, MAX_ROWS).map((mark) => {
@@ -193,17 +154,21 @@ export interface EmptyDayProps {
   now: string
   /** The one next action, such as declaring a window. */
   action?: ReactNode
+  /** Replaces the sentence under the track ("No windows on 12 November 2026."), for an empty read that spans more than that day. */
+  caption?: ReactNode
   locale?: 'en' | 'ms'
 }
 
-/** A successful read with no windows: the empty track, the day's hours, one sentence and the next action. */
-export function EmptyDay({ from, to, now, action = null, locale = 'en' }: EmptyDayProps) {
-  const layout = useMemo(() => layoutStrip({ from, to, now, rain5: [], rain60: [], locale }), [from, to, now, locale])
-  const span = layout.plotRight - layout.plotLeft
-  const at = (x: number) => `${(((x - layout.plotLeft) / span) * 100).toFixed(3)}%`
+/**
+ * A successful read with no windows: the empty track, the day's hours, one sentence and the next action. Free of hooks
+ * and client code, like DayStrip: a server component can render both without shipping script.
+ */
+export function EmptyDay({ from, to, now, action = null, caption, locale = 'en' }: EmptyDayProps) {
+  const layout = layoutStrip({ from, to, now, rain5: [], rain60: [], locale })
+  const at = (x: number) => `${(stripShare(layout, x) * 100).toFixed(3)}%`
   return (
     <figure data-empty-day className="flex w-full flex-col gap-2">
-      <div className="relative h-10 rounded-full bg-surface" aria-hidden="true">
+      <div className="relative h-10 rounded-full bg-surface in-data-[slot=card]:bg-raised" aria-hidden="true">
         {layout.nowInSpan ? (
           <span
             data-now
@@ -212,9 +177,9 @@ export function EmptyDay({ from, to, now, action = null, locale = 'en' }: EmptyD
           />
         ) : null}
       </div>
-      <Ticks from={from} to={to} locale={locale} />
+      <ClockTicks from={from} to={to} locale={locale} />
       <figcaption className="flex flex-wrap items-center gap-3">
-        <span>{t('data.day.empty', { date: formatDate(from, locale) }, locale)}</span>
+        <span>{caption ?? t('data.day.empty', { date: formatDate(from, locale) }, locale)}</span>
         {action}
       </figcaption>
     </figure>

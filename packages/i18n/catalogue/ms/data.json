@@ -16,7 +16,10 @@
     "window": "Tetingkap",
     "now": "Kini",
     "ages_title": "Umur input",
-    "lebat_line": "Lebat 31 mm"
+    "lebat_line": "Lebat 31 mm",
+    "chart_date": "{date} · MYT",
+    "now_label": "Kini MYT",
+    "table_peaks": "Bacaan tertinggi dalam setiap {minutes} minit, daripada {count} bacaan."
   },
   "age": {
     "label": "{name} {age}",
@@ -107,6 +110,10 @@
   "no_call": {
     "reason": "{inputs} gagal sejak {time}.",
     "reason_plain": "Input wajib gagal, jadi tetingkap ini tiada keputusan."
+  },
+  "not_built": {
+    "title": "{thing} belum dibina.",
+    "detail": "Belum ada apa untuk ditunjukkan di sini."
   },
   "source_error": {
     "title": "Tidak dapat membaca {source}.",
