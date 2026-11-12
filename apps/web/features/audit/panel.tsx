@@ -41,6 +41,7 @@ import {
 } from './model'
 import { apiFetch, type AuditEntry } from './operations'
 import styles from './panel.module.css'
+import { FieldGroup } from '#ui/field'
 import '../settings/catalogue'
 
 type Page<T> = { data: T[]; next_cursor: string | null }
@@ -297,7 +298,7 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
               onRetry={() => setDirectoryAttempt((value) => value + 1)}
             />
           ) : null}
-          <div role="group" aria-labelledby="audit-filters-title" className={styles.filters}>
+          <FieldGroup role="group" aria-labelledby="audit-filters-title" className={styles.filters}>
             <SettingsField label={copy('actor')}>
               {(aria) => (
                 <NativeSelect
@@ -409,7 +410,7 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
                 />
               )}
             </SettingsField>
-          </div>
+          </FieldGroup>
           <div className="flex flex-wrap items-center gap-3">
             <Button type="button" variant="outline" onClick={exportCsv} disabled={!hydrated || exporting}>
               {exporting ? copy('exporting') : copy('export')}

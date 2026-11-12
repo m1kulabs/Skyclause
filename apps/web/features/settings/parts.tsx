@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '#ui/dropdown-menu'
+import { Field, FieldDescription } from '#ui/field'
 import { Label } from '#ui/label'
 import { Switch } from '#ui/switch'
 import { cn } from '#lib/utils'
@@ -102,16 +103,16 @@ export function SettingsField({
   const errorId = `${id}-error`
   const describedBy = [hint ? hintId : null, error ? errorId : null].filter(Boolean).join(' ') || undefined
   return (
-    <div className={cn('grid min-w-0 content-start gap-2', className)}>
+    <Field data-invalid={error ? true : undefined} className={cn('min-w-0 content-start', className)}>
       <Label htmlFor={id}>{label}</Label>
       {children({ id, 'aria-describedby': describedBy, 'aria-invalid': error ? true : undefined })}
       {hint ? (
-        <p id={hintId} className="type-small text-muted-foreground [overflow-wrap:anywhere]">
+        <FieldDescription id={hintId} className="[overflow-wrap:anywhere]">
           {hint}
-        </p>
+        </FieldDescription>
       ) : null}
       {error ? <SettingsError id={errorId}>{error}</SettingsError> : null}
-    </div>
+    </Field>
   )
 }
 

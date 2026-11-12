@@ -17,6 +17,7 @@ import {
   SettingsStatus,
   SettingsSummaryLine
 } from '../../parts'
+import { FieldGroup } from '#ui/field'
 import '../../catalogue'
 
 interface AccountSession {
@@ -117,7 +118,7 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
       )}
       <form onSubmit={save} aria-label={copy('title')} noValidate>
         <SettingsParts className="gap-6">
-          <div className="grid gap-5">
+          <FieldGroup>
             <SettingsField label={copy('name')} hint={copy('nameHint', { limit: NAME_LIMIT })} error={error}>
               {(aria) =>
                 loading ? (
@@ -162,7 +163,7 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
                 )
               }
             </SettingsField>
-          </div>
+          </FieldGroup>
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" disabled={loading || saving} aria-busy={saving}>
               {saving ? copy('saving') : copy('save')}
