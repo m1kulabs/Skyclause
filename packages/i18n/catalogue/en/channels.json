@@ -7,7 +7,7 @@
   "empty": "0 channels (n=0). Reload after channels have been configured.",
   "preview": "Preview the latest notice",
   "no_preview": "0 calls (n=0). Approve a real call to preview a notice.",
-  "source": "the channels",
+  "source": "Latest real call: {id}",
   "preview_label": "{channel} · {language}",
   "no_renderings": "0 previews (n=0). Configure a channel template, then try again.",
   "description": "Where approved calls go",
@@ -16,5 +16,6 @@
   "about_webhook": "Signed events posted to the endpoints set in organisation settings.",
   "about_in_app": "Approved calls appear inside the app.",
   "preview_title": "Latest notice",
-  "preview_description": "See how the newest real call reads on each channel."
+  "preview_description": "See how the newest real call reads on each channel.",
+  "source_read": "the channels"
 }

@@ -91,7 +91,7 @@ export function Channels() {
   return (
     <Parts data-channels-panel>
       {readError ? (
-        <ReadFailed source={t('channels.source', {}, locale)} error={readError} onRetry={retry} locale={locale} />
+        <ReadFailed source={t('channels.source_read', {}, locale)} error={readError} onRetry={retry} locale={locale} />
       ) : null}
       {missing && (
         <div className="grid justify-items-start gap-3">
