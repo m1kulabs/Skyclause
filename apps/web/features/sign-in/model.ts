@@ -54,7 +54,7 @@ export function isAuthRoute(path: string): boolean {
 
 export type AuthState =
   | { kind: 'confirm'; link: string; resend?: string; stepUp: boolean }
-  | { kind: 'expired'; resend?: string; stepUp?: boolean }
+  | { kind: 'expired'; resend?: string; stepUp?: boolean; resendFailed?: boolean }
   | { kind: 'link-pending' }
   | { kind: 'google-failed' }
   // The form posted without JavaScript (form-post.ts) says what happened through these.
@@ -62,6 +62,7 @@ export type AuthState =
   | { kind: 'email-invalid' }
   | { kind: 'send-failed' }
   | { kind: 'send-limited'; retryAt?: string }
+  | { kind: 'step-up-confirmed' }
   | { kind: 'form' }
 
 /** An address with one @, something on both sides and a dot in the domain; the server checks it again. */
@@ -99,7 +100,8 @@ export function resolveAuthState(params: AuthSearchParams, now: Date = new Date(
     return {
       kind: 'expired',
       ...(resend ? { resend } : {}),
-      ...(stepUp ? { stepUp: true } : {})
+      ...(stepUp ? { stepUp: true } : {}),
+      ...(first(params.failed) === 'resend' ? { resendFailed: true } : {})
     }
   }
   if (state === 'link-pending') return { kind: 'link-pending' }
@@ -109,6 +111,7 @@ export function resolveAuthState(params: AuthSearchParams, now: Date = new Date(
     return until ? { kind: 'link-sent', until } : { kind: 'form' }
   }
   if (state === 'email-invalid') return { kind: 'email-invalid' }
+  if (state === 'step-up-confirmed') return { kind: 'step-up-confirmed' }
   if (state === 'send-failed') return { kind: 'send-failed' }
   if (state === 'send-limited') {
     const retryAt = instant(first(params.retry))?.toISOString()

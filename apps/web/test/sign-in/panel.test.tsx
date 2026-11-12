@@ -133,7 +133,7 @@ test('the room shows one credited photograph of Bukit Jalil and today’s strip 
   expect(html).toContain('alt="Bukit Jalil LRT station under a blue afternoon sky with tall white clouds"')
   expect(html).toMatch(/<img[^>]*width="1400"[^>]*height="1050"/)
   expect(html).toContain('href="/#picture-credits"')
-  expect(html).toContain('Photo: “Bukit Jalil LRT Station outview (230527) 01” by *angys*, CC BY-SA 4.0')
+  expect(html).toContain('Photo by *angys*, CC BY-SA 4.0')
   expect(html).toContain('Bukit Jalil, Friday 13 November 2026')
   expect(html).toMatch(/Now <time datetime="2026-11-13T02:10:00.000Z">10:10<\/time> MYT/i)
 })

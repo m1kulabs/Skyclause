@@ -55,7 +55,7 @@
   "terms": "Terma",
   "privacy": "Notis privasi PDPA",
   "sign_in_instead": "Log masuk sebaliknya",
-  "photo_credit": "Foto: “{title}” oleh {creator}, {licence}",
+  "photo_credit": "Foto oleh {creator}, {licence}",
   "strip_today": "Bukit Jalil, {date}",
   "strip_now": "Kini {time} MYT",
   "strip_until": "Pautan anda sah sehingga {time} MYT",

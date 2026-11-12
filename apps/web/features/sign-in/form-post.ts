@@ -100,3 +100,46 @@ export async function startGoogleFromForm(request: Request, deps: FormPostDepend
     return back({ state: 'google-failed' }, next)
   }
 }
+
+/**
+ * POST /sign-in/confirm: the emailed link's "Sign in" (or a step-up's "Confirm it's you") without script. Better Auth's
+ * answer, a 303 with the session cookie or back to an expired link, goes to the browser as it is.
+ */
+export async function confirmLinkFromForm(request: Request, deps: FormPostDependencies = defaults): Promise<Response> {
+  if (crossSite(request, deps.appOrigin())) return new Response(null, { status: 403 })
+  const form = await request.formData().catch(() => null)
+  const field = (name: string) => {
+    const value = form?.get(name)
+    return typeof value === 'string' && value.length <= 512 ? value : ''
+  }
+  const stepUp = field('for') === 'step-up'
+  const resend = field('resend')
+  const body = { link: field('link'), ...(!stepUp && resend ? { resend } : {}) }
+  try {
+    const response = await callAuth(deps, request, stepUp ? '/step-up/magic-link/confirm' : '/magic-link/confirm', body)
+    if (!stepUp) return response
+    return response.ok
+      ? back({ state: 'step-up-confirmed' }, null)
+      : back({ state: 'link-expired', for: 'step-up' }, null)
+  } catch {
+    return back({ state: 'link-expired', ...(stepUp ? { for: 'step-up' } : resend ? { resend } : {}) }, null)
+  }
+}
+
+/** POST /sign-in/resend: a new link for an expired one's address, then the sent page with the new link's end. */
+export async function resendLinkFromForm(request: Request, deps: FormPostDependencies = defaults): Promise<Response> {
+  if (crossSite(request, deps.appOrigin())) return new Response(null, { status: 403 })
+  const form = await request.formData().catch(() => null)
+  const value = form?.get('resend')
+  const resend = typeof value === 'string' && value.length <= 128 ? value : ''
+  const sentAt = deps.now().getTime()
+  try {
+    const response = await callAuth(deps, request, '/magic-link/resend', { resend })
+    if (response.ok) {
+      return back({ state: 'link-sent', until: new Date(sentAt + SIGN_IN_LINK_EXPIRY_S * 1000).toISOString() }, null)
+    }
+  } catch {
+    // Said below, as any other refusal.
+  }
+  return back({ state: 'link-expired', ...(resend ? { resend } : {}), failed: 'resend' }, null)
+}

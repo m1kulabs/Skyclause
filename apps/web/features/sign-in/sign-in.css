@@ -180,11 +180,15 @@
   min-height: 44px;
   align-items: center;
 }
+/* The credit stands alone, so it is a target of its own; the legal links are inside a sentence (WCAG 2.5.8). */
+.sign-in-credit a {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+}
 @media (pointer: coarse) {
-  .sign-in-legal a,
   .sign-in-credit a {
-    display: inline-block;
-    padding-block: 10px;
+    min-height: 44px;
   }
 }
 @media (hover: hover) {
@@ -208,24 +212,22 @@
   grid-area: photo;
   position: relative;
   height: clamp(7.5rem, 4rem + 14vw, 12rem);
-  margin-right: calc(-1 * var(--m));
   overflow: clip;
 }
-/* The capsule runs past the edge that crops it, as the landing's room does; the picture fills what shows. */
+/* On a phone the whole capsule shows inside the margins; on a desktop it runs past the room's edge, as the landing's. */
 .sign-in-capsule {
   position: absolute;
-  inset: 0 auto 0 0;
-  width: 160%;
+  inset: 0;
   overflow: clip;
   border-radius: 9999px;
   background: var(--raised);
 }
 .sign-in-capsule img {
   display: block;
-  width: calc(100% / 1.6);
+  width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 50% 52%;
+  object-position: 50% 55%;
 }
 
 .sign-in-strip {
@@ -284,16 +286,18 @@
 }
 
 @media (min-width: 1024px) {
+  /* The form keeps its column; the room takes the rest. Both sit 32px inside the page margin, so the text edges match. */
   .sign-in {
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    grid-template-columns: minmax(0, 33rem) minmax(0, 1fr);
     grid-template-areas: 'column room';
     column-gap: var(--m);
   }
   .sign-in-column {
     justify-content: center;
-    padding-block: 32px;
+    padding: 32px;
   }
   .sign-in-stack {
+    margin-inline: 0;
     padding-top: 0;
   }
   .sign-in-room {
@@ -315,6 +319,14 @@
     min-height: 240px;
     margin-right: -32px;
   }
+  .sign-in-capsule {
+    right: auto;
+    width: 160%;
+  }
+  .sign-in-capsule img {
+    width: calc(100% / 1.6);
+    object-position: 50% 52%;
+  }
   .sign-in-strip,
   .sign-in-credit {
     width: auto;
@@ -323,8 +335,14 @@
   .sign-in-strip {
     margin-top: 12px;
   }
+  /* In the room the strip is the landing band's size: a 56px track on the raised step. */
   .sign-in-track {
+    height: 56px;
     background: var(--raised);
+  }
+  .sign-in-window {
+    top: 7px;
+    bottom: 7px;
   }
 }
 

@@ -7,7 +7,7 @@ import { Loader2Icon } from 'lucide-react'
 import type { SignInMethods } from '@skyclause/auth'
 import { authClient } from '@skyclause/auth/client'
 import { formatClock } from '@skyclause/i18n/format'
-import { Button } from '#ui/button'
+import { Button, buttonVariants } from '#ui/button'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '#ui/field'
 import { Input } from '#ui/input'
 import { photo, srcSetOf } from '../landing/photos'
@@ -38,6 +38,7 @@ const NO_SCRIPT_STYLE = '<style>[data-sign-in-script]{display:none!important}</s
 const PASSKEY_CANCELLED = new Set(['ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY', 'ERROR_CEREMONY_ABORTED'])
 
 function urlAlert(state: AuthState): string | null {
+  if (state.kind === 'expired' && state.resendFailed) return 'resend_failed'
   if (state.kind === 'link-pending') return 'link_pending'
   if (state.kind === 'google-failed') return 'google_failed'
   if (state.kind === 'send-failed') return 'send_failed'
@@ -109,7 +110,7 @@ export function SignInPanel({
   const continueHref = continuePath(next)
   const expiredStepUp = state.kind === 'expired' && state.stepUp
   const resendOnly = state.kind === 'expired' && Boolean(state.resend) && !forceEmailForm
-  const showOptions = state.kind !== 'confirm' && !expiredStepUp && !resendOnly
+  const showOptions = state.kind !== 'confirm' && state.kind !== 'step-up-confirmed' && !expiredStepUp && !resendOnly
   const showSent = showOptions && sent !== null
   /** "Check your email" replaces the form, and the lead, so it is the first thing under the title. */
   const sentView = sent !== null && (showSent || (resendOnly && resendSent))
@@ -381,6 +382,20 @@ export function SignInPanel({
         ? withParts(text('sign-in.send_rate_limited_until'), { time: clock(problem.retryAt) })
         : text('sign-in.send_rate_limited')
 
+  // A link, so it works without script too: it opens the empty form, and the script does the same in place.
+  const differentEmail = (
+    <a
+      className={buttonVariants({ variant: 'outline', size: 'lg', className: 'w-full' })}
+      href={accountPath('/sign-in', next)}
+      onClick={(event) => {
+        event.preventDefault()
+        useDifferentEmail()
+      }}
+    >
+      {text('sign-in.use_different_email')}
+    </a>
+  )
+
   const legal = withParts(text('sign-in.legal'), {
     terms: <a href={links.terms}>{text('sign-in.terms')}</a>,
     privacy: <a href={links.privacy}>{text('sign-in.privacy')}</a>
@@ -425,6 +440,10 @@ export function SignInPanel({
             </AuthMessage>
           )}
 
+          {state.kind === 'step-up-confirmed' && (
+            <AuthMessage tone="result">{text('sign-in.confirm_done')}</AuthMessage>
+          )}
+
           {state.kind === 'confirm' && (
             <div className="sign-in-actions">
               {stepUpConfirmed ? (
@@ -432,20 +451,43 @@ export function SignInPanel({
                   {status}
                 </AuthMessage>
               ) : (
-                <Button size="lg" className="w-full" onClick={() => void confirmLink()} disabled={busy}>
-                  {busy
-                    ? text('sign-in.confirming')
-                    : text(state.stepUp ? 'sign-in.confirm_step_up' : 'sign-in.confirm')}
-                </Button>
+                <form
+                  method="post"
+                  action="/sign-in/confirm"
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    void confirmLink()
+                  }}
+                >
+                  <input type="hidden" name="link" value={state.link} />
+                  {state.resend ? <input type="hidden" name="resend" value={state.resend} /> : null}
+                  {state.stepUp ? <input type="hidden" name="for" value="step-up" /> : null}
+                  <Button size="lg" className="w-full" type="submit" disabled={busy}>
+                    {busy
+                      ? text('sign-in.confirming')
+                      : text(state.stepUp ? 'sign-in.confirm_step_up' : 'sign-in.confirm')}
+                  </Button>
+                </form>
               )}
             </div>
           )}
 
-          {resendOnly && !resendSent && (
+          {resendOnly && !resendSent && state.kind === 'expired' && (
             <div className="sign-in-actions">
-              <Button size="lg" className="w-full" onClick={() => void resendLink()} disabled={busy}>
-                {busy ? text('sign-in.sending') : text('sign-in.resend')}
-              </Button>
+              <form
+                method="post"
+                action="/sign-in/resend"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void resendLink()
+                }}
+              >
+                <input type="hidden" name="resend" value={state.resend} />
+                <Button size="lg" className="w-full" type="submit" disabled={busy}>
+                  {busy ? text('sign-in.sending') : text('sign-in.resend')}
+                </Button>
+              </form>
+              {differentEmail}
             </div>
           )}
 
@@ -477,9 +519,7 @@ export function SignInPanel({
                     {busy ? text('sign-in.sending') : text('sign-in.resend_again')}
                   </Button>
                 )}
-                <Button variant="outline" size="lg" className="w-full" onClick={useDifferentEmail}>
-                  {text('sign-in.use_different_email')}
-                </Button>
+                {differentEmail}
               </div>
             </div>
           )}
@@ -617,9 +657,7 @@ export function SignInPanel({
         </div>
         <SignInStrip initialNow={now} until={sent?.until ?? null} locale={locale} />
         <p className="sign-in-credit">
-          <a href={links.credits}>
-            {text('sign-in.photo_credit', { title: ROOM.title, creator: ROOM.creator, licence: ROOM.licence })}
-          </a>
+          <a href={links.credits}>{text('sign-in.photo_credit', { creator: ROOM.creator, licence: ROOM.licence })}</a>
         </p>
       </div>
     </main>

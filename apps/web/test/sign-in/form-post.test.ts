@@ -1,5 +1,11 @@
 import { expect, test } from 'vitest'
-import { sendLinkFromForm, startGoogleFromForm, type FormPostDependencies } from '../../features/sign-in/form-post'
+import {
+  confirmLinkFromForm,
+  resendLinkFromForm,
+  sendLinkFromForm,
+  startGoogleFromForm,
+  type FormPostDependencies
+} from '../../features/sign-in/form-post'
 
 const APP = 'https://app.skyclause.m1ku.tech'
 const NOW = new Date('2026-11-13T02:10:00.000Z')
@@ -96,4 +102,36 @@ test('Google without script hands the browser to Google with Better Auth’s sta
   const failed = fake(() => Response.json({ message: 'Provider not found' }, { status: 404 }))
   const refused = await startGoogleFromForm(post('/sign-in/google', {}), failed.deps)
   expect(refused.headers.get('location')).toBe('/sign-in?state=google-failed')
+})
+
+test('the emailed link’s Sign in posts its token as JSON and passes Better Auth’s redirect and cookie through', async () => {
+  const { deps, calls } = fake(
+    () =>
+      new Response(null, {
+        status: 303,
+        headers: { Location: '/api/auth/continue?next=%2Fnew', 'Set-Cookie': '__Secure-session=s; Path=/; HttpOnly' }
+      })
+  )
+  const response = await confirmLinkFromForm(post('/sign-in/confirm', { link: 'token', resend: 'handle' }), deps)
+  expect(response.status).toBe(303)
+  expect(response.headers.get('location')).toBe('/api/auth/continue?next=%2Fnew')
+  expect(response.headers.getSetCookie()).toEqual(['__Secure-session=s; Path=/; HttpOnly'])
+  expect(calls[0]!.url).toBe(`${APP}/api/auth/magic-link/confirm`)
+  expect(calls[0]!.body).toEqual({ link: 'token', resend: 'handle' })
+
+  const stepUp = fake(() => Response.json({ status: true }))
+  const confirmed = await confirmLinkFromForm(post('/sign-in/confirm', { link: 't', for: 'step-up' }), stepUp.deps)
+  expect(stepUp.calls[0]!.url).toBe(`${APP}/api/auth/step-up/magic-link/confirm`)
+  expect(confirmed.headers.get('location')).toBe('/sign-in?state=step-up-confirmed')
+})
+
+test('a resend lands on the sent page with the new link’s end, or back on the expired one saying it failed', async () => {
+  const { deps, calls } = fake(() => Response.json({ status: true }))
+  const sent = await resendLinkFromForm(post('/sign-in/resend', { resend: 'handle' }), deps)
+  expect(sent.headers.get('location')).toBe('/sign-in?state=link-sent&until=2026-11-13T02%3A25%3A00.000Z')
+  expect(calls[0]!.body).toEqual({ resend: 'handle' })
+
+  const failing = fake(() => new Response(null, { status: 500 }))
+  const failed = await resendLinkFromForm(post('/sign-in/resend', { resend: 'handle' }), failing.deps)
+  expect(failed.headers.get('location')).toBe('/sign-in?state=link-expired&resend=handle&failed=resend')
 })

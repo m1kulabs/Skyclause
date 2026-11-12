@@ -55,7 +55,7 @@
   "terms": "Terms",
   "privacy": "PDPA privacy notice",
   "sign_in_instead": "Sign in instead",
-  "photo_credit": "Photo: “{title}” by {creator}, {licence}",
+  "photo_credit": "Photo by {creator}, {licence}",
   "strip_today": "Bukit Jalil, {date}",
   "strip_now": "Now {time} MYT",
   "strip_until": "Your link works until {time} MYT",

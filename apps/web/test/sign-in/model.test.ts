@@ -55,6 +55,12 @@ test('the no-script form’s answers select their states, and a sent link’s en
     retryAt: '2026-11-13T03:10:00.000Z'
   })
   expect(resolveAuthState({ state: 'send-limited' })).toEqual({ kind: 'send-limited' })
+  expect(resolveAuthState({ state: 'step-up-confirmed' })).toEqual({ kind: 'step-up-confirmed' })
+  expect(resolveAuthState({ state: 'link-expired', resend: 'handle', failed: 'resend' })).toEqual({
+    kind: 'expired',
+    resend: 'handle',
+    resendFailed: true
+  })
 })
 
 test('an email address needs one @ with something either side and a dotted domain', () => {

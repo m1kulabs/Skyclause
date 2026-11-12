@@ -47,7 +47,10 @@ test('sign-in shows the email link, passkey, Google, the legal links and the roo
   await expect(page.getByRole('link', { name: 'Terms', exact: true })).toHaveAttribute('href', '/legal/terms')
   await expect(page.getByRole('link', { name: 'Skyclause home' })).toHaveAttribute('href', '/')
   await expect(page.getByRole('img', { name: /Bukit Jalil LRT station/ })).toBeVisible()
-  await expect(page.getByRole('link', { name: /^Photo: / })).toHaveAttribute('href', '/#picture-credits')
+  await expect(page.getByRole('link', { name: 'Photo by *angys*, CC BY-SA 4.0' })).toHaveAttribute(
+    'href',
+    '/#picture-credits'
+  )
   await expect(page.locator('[data-sign-in-strip="day"]')).toContainText(/Now \d\d:\d\d MYT/)
   // Desktop: the field is ready to type into.
   await expect(email).toBeFocused()
@@ -92,7 +95,7 @@ test('email sign-in preserves next, announces Sending, names the address, and al
   await expect(sending).toBeVisible()
   await expect(signInRegion(page).getByRole('status')).toContainText(address)
   await expect(page.getByRole('heading', { level: 2, name: 'Check your email' })).toBeFocused()
-  await expect(page.getByRole('button', { name: 'Use a different email' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Use a different email' })).toBeVisible()
   // The strip draws the link's window and says until when it works.
   await expect(page.locator('[data-sign-in-strip="link"]')).toContainText(/Your link works until \d\d:\d\d MYT/)
   await expect(page.locator('[data-sign-in-window]')).toBeVisible()
@@ -500,6 +503,15 @@ test('without JavaScript the email form posts and the page says what happened', 
   await expect(page.getByRole('heading', { level: 2, name: 'Check your email' })).toBeVisible()
   await expect(page.getByText(/It works until \d\d:\d\d MYT\./)).toBeVisible()
   await expect(page.locator('[data-sign-in-strip="link"]')).toContainText(/Your link works until \d\d:\d\d MYT/)
+  await page.getByRole('link', { name: 'Use a different email' }).click()
+  await expect(page).toHaveURL(/\/sign-in$/)
+  await expect(page.getByLabel('Email address')).toBeVisible()
+
+  // The emailed link's own page: its "Sign in" posts as a form too, and an unknown link says it has expired.
+  await page.goto('/sign-in?link=unknown-token&resend=unknown-handle')
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(page).toHaveURL(/\/sign-in\?state=link-expired&resend=unknown-handle$/)
+  await expect(page.getByText('This link has expired. Request a new one.')).toBeVisible()
   await expectNoPasswordControls(page)
   await context.close()
 })
