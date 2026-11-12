@@ -2,6 +2,8 @@
   "strip": {
     "summary_live": "Live strip to {to}. {crossing}. {count} readings.",
     "summary_live_one": "Live strip to {to}. {crossing}. 1 reading.",
+    "summary_ahead": "Live strip to {to}. The window starts at {start}. {count} readings.",
+    "summary_ahead_one": "Live strip to {to}. The window starts at {start}. 1 reading.",
     "summary_replay": "Replay of {source}, captured {captured}. {crossing}. {count} readings.",
     "summary_replay_one": "Replay of {source}, captured {captured}. {crossing}. 1 reading.",
     "crossing": "Lebat crossed at {time} ({value} mm in 60 min)",
