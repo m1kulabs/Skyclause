@@ -32,6 +32,7 @@ const SURFACE_OF: Record<string, Surface | null> = {
   '/sw.js': 'app',
   '/openapi.json': 'marketing',
   '/oembed': 'marketing',
+  '/og.png': 'marketing',
   '/skills': 'marketing',
   '/elements': 'embed',
   '(embed)': 'embed',

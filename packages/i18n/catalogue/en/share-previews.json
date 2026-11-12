@@ -42,5 +42,27 @@
     "reading": "{state}. Deciding reading: {reading}.",
     "full": "{state}. {window}. Deciding reading: {reading}.",
     "noCall": "{alt} {noCall}."
+  },
+  "pages": {
+    "site": "Skyclause",
+    "landing": {
+      "title": "Skyclause · The call for every window",
+      "heading": "The call for every window",
+      "description": "Skyclause reads the rain gauge, the haze index and the stadium listings around Bukit Jalil, and makes one approved, graded call for each class, event or commute window."
+    },
+    "signIn": {
+      "title": "Sign in to Skyclause",
+      "heading": "Sign in",
+      "description": "Sign in to Skyclause to declare your windows, review each call and keep the record."
+    },
+    "signUp": {
+      "title": "Create an account · Skyclause",
+      "heading": "Create an account",
+      "description": "Create a Skyclause account to get one approved, graded call for each class, event or commute window."
+    },
+    "notFound": {
+      "title": "Page not found · Skyclause"
+    },
+    "imageAlt": "{heading}. {description}"
   }
 }

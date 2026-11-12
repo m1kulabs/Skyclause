@@ -481,4 +481,9 @@ describe('what the proxy adds for the route', () => {
       expect(routeRequest({ ...multi, host, pathname: '/e' }), host).toEqual({ group: '/e', pathname: '/e' })
     }
   })
+
+  it('serves the share cards on the marketing host', () => {
+    expect(routeRequest({ ...multi, host: 'skyclause.m1ku.tech', pathname: '/og.png' })?.group).toBe('/og.png')
+    expect(routeRequest({ ...multi, host: 'app.skyclause.m1ku.tech', pathname: '/og.png' })).toBeNull()
+  })
 })

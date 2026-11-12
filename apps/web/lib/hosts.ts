@@ -76,6 +76,7 @@ const ROUTES: Array<{ group: string; surface: Surface | null; match: (path: stri
   { group: '/sw.js', surface: 'app', match: exact('/sw.js') },
   { group: '/openapi.json', surface: 'marketing', match: exact('/openapi.json') },
   { group: '/oembed', surface: 'marketing', match: exact('/oembed') },
+  { group: '/og.png', surface: 'marketing', match: exact('/og.png') },
   { group: '/skills', surface: 'marketing', match: under('/skills') },
   { group: '/elements', surface: 'embed', match: under('/elements') },
   { group: '(embed)', surface: 'embed', match: under('/embed') },

@@ -193,6 +193,72 @@ export function CardView({ card, locale = 'en' }: { card: Card; locale?: Locale 
   )
 }
 
+/**
+ * A page's card (the landing, the legal pages, sign-in): the same frame as a call's, with the page's name in the
+ * state word's place and its sentence under it, and the host the page is on in the band.
+ */
+export function PageCardView({ heading, line, host }: { heading: string; line: string; host: string }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        padding: `44px ${PAD}px 0`,
+        background: GROUND,
+        color: INK,
+        fontFamily: 'Roundo',
+        fontWeight: 400
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 30, fontWeight: 500 }}>
+        <img src={dataUri(inked(markSvg, INK))} width={36} height={36} alt="" />
+        <span>{t('brand.name', {}, 'en')}</span>
+      </div>
+      <span
+        style={{
+          marginTop: 36,
+          maxWidth: 1000,
+          fontSize: heading.length > 28 ? 76 : 92,
+          fontWeight: 500,
+          letterSpacing: '-0.02em',
+          lineHeight: 1.05
+        }}
+      >
+        {heading}
+      </span>
+      <span style={{ marginTop: 24, maxWidth: 1000, fontSize: 32, lineHeight: 1.35, color: MUTED }}>{line}</span>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-end',
+          position: 'absolute',
+          left: PAD,
+          right: PAD,
+          bottom: 0,
+          height: 96,
+          paddingBottom: 36,
+          fontSize: 28,
+          color: MUTED
+        }}
+      >
+        {host}
+      </div>
+    </div>
+  )
+}
+
+/** A page's card as a 1200×630 PNG. */
+export function pageCardImage(card: { heading: string; line: string; host: string }, locale: Locale): Response {
+  return new ImageResponse(<PageCardView {...card} />, {
+    ...CARD_SIZE,
+    fonts,
+    headers: { 'cache-control': 'public, max-age=86400', 'content-language': locale }
+  })
+}
+
 /** The card as a 1200×630 PNG, with the route's caching. */
 export function cardImage(card: Card, cacheControl: string, locale: Locale = 'en'): Response {
   // Lower case, so it replaces `next/og`'s own default rather than joining it.
