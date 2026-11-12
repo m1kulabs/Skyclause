@@ -20,11 +20,7 @@ export function applyAccountPreferences(preferences: Preferences): void {
   root.dataset.motionPreference = appearance.motion
   root.dataset.density = preferences.density
   root.dataset.shortcuts = String(preferences.shortcuts)
-  root.dataset.sidebarCollapsed = String(preferences.sidebar_collapsed)
   root.lang = preferences.language
-  window.dispatchEvent(
-    new CustomEvent('skyclause:account-preferences', { detail: { sidebarCollapsed: preferences.sidebar_collapsed } })
-  )
 }
 
 export function presentSessionAgent(userAgent: string | null | undefined): { device: string; browser: string } {

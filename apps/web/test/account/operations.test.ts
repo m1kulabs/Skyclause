@@ -11,8 +11,7 @@ test('preference updates call the app-origin contract route with only changed fi
       density: 'comfortable',
       reduced_motion: false,
       language: 'en',
-      shortcuts: false,
-      sidebar_collapsed: false
+      shortcuts: false
     })
   )
   vi.stubGlobal('fetch', fetcher)
