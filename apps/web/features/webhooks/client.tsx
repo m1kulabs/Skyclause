@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#
 import { cn } from '#lib/utils'
 import { TypedConfirmDialog } from '../settings/set-7/confirm-dialog'
 import { StatusMark } from '../brand/status-mark'
-import { SourceError } from '../data-components/states'
+import { NotBuilt, SourceError } from '../data-components/states'
 import {
   SettingsAside,
   SettingsRowMenu,
@@ -209,6 +209,13 @@ export function Webhooks({
     )
   })
 
+  // No webhook operation has a handler yet (e-webhooks): a 501 is a plain "not available yet", never an error to retry.
+  if (failed && statusOf(failed) === 501)
+    return (
+      <div className="webhooks">
+        <NotBuilt title={t('webhooks.unavailable', {}, locale)} />
+      </div>
+    )
   if (failed)
     return (
       <div className="webhooks">

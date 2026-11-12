@@ -14,6 +14,7 @@ import {
   openDeleteDialog
 } from './fixtures'
 import { stubApi, expectZonedTimes } from '../harness'
+import { makeOrg, signInAs } from '../harness/sign-in-as'
 import { webhookOperations } from '../../features/webhooks/operations'
 import { expectUnclippedText } from '../harness/expect-unclipped-text'
 
@@ -65,6 +66,27 @@ for (const role of ['owner', 'admin', 'approver', 'editor', 'viewer', 'guest'] a
     }
   })
 }
+
+// A real session (signInAs), not the test principal: its role is filled in only for the URL's organisation (#647).
+test('a real Owner reaching webhooks by URL is told they are not available yet, not that they need an Admin', async ({
+  page
+}) => {
+  const org = await makeOrg()
+  await signInAs(page, 'owner', org)
+  const answers: number[] = []
+  page.on('response', (response) => {
+    if (new URL(response.url()).pathname.endsWith('/v1/webhooks')) answers.push(response.status())
+  })
+  for (const path of [`/${org.slug}/settings/webhooks`, inspector]) {
+    await page.goto(path)
+    await expect(page.locator('[data-not-built]')).toHaveText(t('webhooks.unavailable'))
+    await expect(page.getByText(t('webhooks.member'), { exact: true })).toHaveCount(0)
+    await expect(page.locator('[data-source-error]')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: t('webhooks.retry'), exact: true })).toHaveCount(0)
+  }
+  // The organisation's page asked the API, which has no webhook handler yet; the inspector names no organisation.
+  expect(answers).toEqual([501])
+})
 
 test('signed-out inspector explains sign-up without making webhook requests', async ({ page }) => {
   await page.context().addCookies([

@@ -9,7 +9,7 @@ export default async function Page({ params }: { params: Promise<{ org: string }
   const locale = await settingsLocale()
   return (
     <SettingsFrame scope="organisation" section="webhooks" principal={principal} org={org} locale={locale}>
-      <Panel locale={locale} />
+      <Panel principal={principal} locale={locale} />
     </SettingsFrame>
   )
 }
