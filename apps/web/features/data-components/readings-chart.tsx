@@ -5,6 +5,7 @@ import { formatDate } from '@skyclause/i18n/format'
 import { Tooltip, TooltipContent, TooltipTrigger } from '#ui/tooltip'
 import { t } from './catalogue'
 import { ClockTicks } from './clock-ticks'
+import { cn } from '#lib/utils'
 
 /**
  * The readings, drawn at real size: the lines are an SVG whose width follows the column while its height stays in
@@ -99,7 +100,10 @@ export function ReadingsChart({ layout, locale }: { layout: StripLayout; locale:
           {layout.nowInSpan ? (
             <span
               data-now-label
-              className={`absolute top-2 type-small whitespace-nowrap text-foreground ${nowNearEnd ? '-translate-x-full pr-1.5' : 'pl-1.5'}`}
+              className={cn(
+                'absolute top-2 type-small whitespace-nowrap text-foreground',
+                nowNearEnd ? '-translate-x-full pr-1.5' : 'pl-1.5'
+              )}
               style={{ left: pct(layout.nowX) }}
             >
               {t('data.strip.now_label', {}, locale)}
@@ -108,7 +112,10 @@ export function ReadingsChart({ layout, locale }: { layout: StripLayout; locale:
           {crossing ? (
             <span
               data-crossing-label
-              className={`absolute type-small whitespace-nowrap text-foreground ${crossing.labelBeside ? 'pl-2' : '-translate-x-full pr-3'}`}
+              className={cn(
+                'absolute type-small whitespace-nowrap text-foreground',
+                crossing.labelBeside ? 'pl-2' : '-translate-x-full pr-3'
+              )}
               style={
                 crossing.labelBeside
                   ? // Under the Lebat line as well as the mark: with sparse readings the mark sits above the line.

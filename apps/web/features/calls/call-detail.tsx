@@ -34,6 +34,7 @@ import {
 } from './operations'
 import { t } from './i18n'
 import styles from './calls.module.css'
+import { cn } from '#lib/utils'
 
 type DetailState =
   | { status: 'loading' }
@@ -455,7 +456,7 @@ export function CallDetailPage({
                     </section>
                   ) : null}
 
-                  <section className={`${styles.panel} ${styles.traceSection}`}>
+                  <section className={cn(styles.panel, styles.traceSection)}>
                     <h2>{t('calls.agent_trace', {}, locale)}</h2>
                     <Trace aria-label={t('calls.agent_trace', {}, locale)}>
                       {call.trace.map((step, index) => (

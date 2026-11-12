@@ -33,6 +33,7 @@ import {
   type Rota,
   type RotaShift
 } from '../../../project-settings/operations'
+import { cn } from '#lib/utils'
 
 type Locale = 'en' | 'ms'
 type Template = RotaShift['template']
@@ -433,7 +434,7 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
           </fieldset>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className={`grid gap-2 ${dateFieldRing}`} data-focus-ring>
+            <div className={cn('grid gap-2', dateFieldRing)} data-focus-ring>
               <Label htmlFor="rota-start">{t('project-settings.start', {}, locale)}</Label>
               <Input
                 id="rota-start"
@@ -447,7 +448,7 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
               />
               {fieldErrors.start ? <SettingsError id="rota-start-error">{fieldErrors.start}</SettingsError> : null}
             </div>
-            <div className={`grid gap-2 ${dateFieldRing}`} data-focus-ring>
+            <div className={cn('grid gap-2', dateFieldRing)} data-focus-ring>
               <Label htmlFor="rota-end">{t('project-settings.end', {}, locale)}</Label>
               <Input
                 id="rota-end"

@@ -5,6 +5,7 @@ import { ProjectForm } from '../../../../features/onboarding/project-form'
 import '../../../../features/onboarding/catalogue'
 import { t } from '@skyclause/i18n'
 import styles from '../../../../features/onboarding/onboarding.module.css'
+import { cn } from '#lib/utils'
 
 export default async function Page({ params }: { params: Promise<{ org: string }> }) {
   const { org } = await params
@@ -22,7 +23,7 @@ export default async function Page({ params }: { params: Promise<{ org: string }
       </header>
       <div className={styles.firstRunMain}>
         <ProjectForm org={org} locale={locale} />
-        <p className={`${styles.helper} type-small`}>{t('onboarding.no_sample_data', {}, locale)}</p>
+        <p className={cn(styles.helper, 'type-small')}>{t('onboarding.no_sample_data', {}, locale)}</p>
       </div>
       <div className={styles.firstRunSteps}>
         <FirstRunProgress org={org} locale={locale} redirectFromProject />

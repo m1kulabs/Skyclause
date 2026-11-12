@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { maySeeSettings, type SettingsScope } from './access'
 import { settingsHref, settingsSections } from './sections'
 import styles from './frame.module.css'
+import { cn } from '#lib/utils'
 
 export interface SettingsFrameProps {
   scope: SettingsScope
@@ -38,7 +39,7 @@ export function SettingsFrame({
   const orgId = principal?.kind === 'session' ? (principal.orgId ?? undefined) : org
   return (
     <div className={styles.frame} data-settings-frame>
-      <h1 className={`${styles.title} type-title`} tabIndex={-1}>
+      <h1 className={cn(styles.title, 'type-title')} tabIndex={-1}>
         {t(`settings.scopes.${scope}`, {}, locale)}
       </h1>
       <nav aria-label={t(`settings.scopes.${scope}`, {}, locale)} data-settings-nav>
@@ -48,7 +49,7 @@ export function SettingsFrame({
             .map((item) => (
               <li key={item}>
                 <Link
-                  className={`${styles.link} type-body current-mark`}
+                  className={cn(styles.link, 'type-body current-mark')}
                   href={settingsHref(scope, item, org, project)}
                   aria-current={item === section ? 'page' : undefined}
                 >

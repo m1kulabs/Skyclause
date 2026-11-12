@@ -3,15 +3,16 @@ import { buttonVariants } from '#ui/button-variants'
 import './catalogue'
 import type { PublicLocale } from './attribution'
 import styles from './public-chrome.module.css'
+import { cn } from '#lib/utils'
 
 export function NotFoundContent({ locale = 'en' }: { locale?: PublicLocale }) {
   return (
     <main className={styles.errorPage} data-status-code="404">
       <h1 className="type-head">{t('legal.notFound.label', {}, locale)}</h1>
-      <p className={`type-page-body ${styles.errorSentence}`}>{t('legal.notFound.sentence', {}, locale)}</p>
+      <p className={cn('type-page-body', styles.errorSentence)}>{t('legal.notFound.sentence', {}, locale)}</p>
       <div className={styles.exits}>
         {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Error exits must work without JavaScript. */}
-        <a className={`${buttonVariants({ size: 'lg' })} ${styles.action}`} href="/">
+        <a className={cn(buttonVariants({ size: 'lg' }), styles.action)} href="/">
           {t('legal.notFound.home', {}, locale)}
         </a>
       </div>
@@ -23,16 +24,16 @@ export function PublicErrorContent({ locale = 'en', reset }: { locale?: PublicLo
   return (
     <main className={styles.errorPage}>
       <h1 className="type-head">{t('legal.error.label', {}, locale)}</h1>
-      <p className={`type-page-body ${styles.errorSentence}`}>{t('legal.error.sentence', {}, locale)}</p>
+      <p className={cn('type-page-body', styles.errorSentence)}>{t('legal.error.sentence', {}, locale)}</p>
       <div className={styles.exits}>
         {reset ? (
-          <button className={`${buttonVariants({ size: 'lg' })} ${styles.action}`} type="button" onClick={reset}>
+          <button className={cn(buttonVariants({ size: 'lg' }), styles.action)} type="button" onClick={reset}>
             {t('legal.error.retry', {}, locale)}
           </button>
         ) : null}
         {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Error exits must work without JavaScript. */}
         <a
-          className={`${buttonVariants({ size: 'lg', variant: reset ? 'outline' : 'default' })} ${styles.action}`}
+          className={cn(buttonVariants({ size: 'lg', variant: reset ? 'outline' : 'default' }), styles.action)}
           href="/"
         >
           {t('legal.error.home', {}, locale)}
