@@ -100,11 +100,11 @@ test('SET-3 another organisation gets not-found on every route, including rota',
   for (const section of organisation) await expectPage(page, `/${another.slug}/settings/${section}`, false)
 })
 
-test('SET-4 keyboard navigation reaches all panels and clause sheet versions', async ({ page }) => {
+test('SET-4 keyboard navigation reaches all panels', async ({ page }) => {
   await asPage(page, principal())
-  for (const section of [...project, 'clauses']) {
+  for (const section of project) {
     await page.goto('/test-org/test-project/settings')
-    const href = section === 'clauses' ? '/test-org/test-project/clauses' : `/test-org/test-project/settings/${section}`
+    const href = `/test-org/test-project/settings/${section}`
     const link = page.locator(`[data-settings-nav] a[href="${href}"]`)
     // Start before the section nav, then use only Tab and Enter to follow its links.
     await page.locator('[data-settings-frame] h1').focus()
@@ -115,7 +115,7 @@ test('SET-4 keyboard navigation reaches all panels and clause sheet versions', a
     await expect(link).toBeFocused()
     await page.keyboard.press('Enter')
     await expect(page).toHaveURL(href)
-    if (section !== 'clauses') await expect(page.locator('[data-settings-frame]:visible')).toBeVisible()
+    await expect(page.locator('[data-settings-frame]:visible')).toBeVisible()
   }
 })
 

@@ -14,7 +14,7 @@ export const settingsSections = {
     'integrations',
     'data'
   ],
-  project: ['general', 'packs', 'channels', 'rota', 'public', 'share', 'clauses']
+  project: ['general', 'packs', 'channels', 'rota', 'public', 'share']
 } as const satisfies Record<SettingsScope, readonly string[]>
 
 export function settingsHref(scope: SettingsScope, section: string, org?: string, project?: string) {
@@ -22,6 +22,5 @@ export function settingsHref(scope: SettingsScope, section: string, org?: string
   const organisation = encodeURIComponent(org ?? '')
   if (scope === 'organisation') return `/${organisation}/settings/${section}`
   const base = `/${organisation}/${encodeURIComponent(project ?? '')}`
-  if (section === 'clauses') return `${base}/clauses`
   return section === 'general' ? `${base}/settings` : `${base}/settings/${section}`
 }

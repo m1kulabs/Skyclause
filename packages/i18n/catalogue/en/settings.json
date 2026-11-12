@@ -101,10 +101,6 @@
       "share": {
         "title": "Share links",
         "description": "Manage links that give others access to this project."
-      },
-      "clauses": {
-        "title": "Clause sheet versions",
-        "description": "Review clause sheet versions."
       }
     }
   },
