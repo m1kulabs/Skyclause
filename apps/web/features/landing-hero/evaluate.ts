@@ -1,4 +1,5 @@
 import type { InputValue, Verdicts } from '@skyclause/contracts/api/shared'
+import { serverApiOrigin } from '../../lib/api-origin'
 import { toLocalTime, type HeroWindow } from './window-model'
 
 // #88's committed shape (owner d-commons #179 fills it next): verdicts, derived-only strip, the label.
@@ -141,15 +142,12 @@ export async function fetchLatestCall(
   return { callId: latest.call_id, permalink: latest.permalink, at: latest.starts_at }
 }
 
-// Server reads call the same endpoint from the web server (Conventions first-party pattern).
-export function serverBaseUrl(): string {
-  return process.env.API_ORIGIN ?? 'https://api.skyclause.m1ku.tech'
+// Server reads call the same endpoint from the web server (Conventions first-party pattern). With no API origin they
+// reject with ApiOriginError and send nothing; a read with no pilot needs no origin.
+export async function fetchEvaluateServer(win: HeroWindow): Promise<EvaluateResult> {
+  return postEvaluate(win, serverApiOrigin(), AbortSignal.timeout(2000))
 }
 
-export function fetchEvaluateServer(win: HeroWindow): Promise<EvaluateResult> {
-  return postEvaluate(win, serverBaseUrl(), AbortSignal.timeout(2000))
-}
-
-export function fetchLatestCallServer(pilot: { org: string; project: string } | null): Promise<LatestCallRead> {
-  return fetchLatestCall(pilot, serverBaseUrl(), AbortSignal.timeout(2000))
+export async function fetchLatestCallServer(pilot: { org: string; project: string } | null): Promise<LatestCallRead> {
+  return fetchLatestCall(pilot, pilot ? serverApiOrigin() : undefined, AbortSignal.timeout(2000))
 }
