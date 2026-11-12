@@ -163,8 +163,8 @@
     "dateHint": "Dari dan Hingga ialah hari penuh dalam MYT.",
     "actions": {
       "bundle_approved": "Meluluskan satu berkas",
-      "call_edited": "Menyunting satu panggilan",
-      "call_rejected": "Menolak satu panggilan",
+      "call_edited": "Menyunting satu keputusan",
+      "call_rejected": "Menolak satu keputusan",
       "api_key_created": "Mencipta kunci API",
       "api_key_revoked": "Membatalkan kunci API",
       "ai_key_created": "Menambah kunci AI",
@@ -181,8 +181,8 @@
       "clause_sheet_published": "Menerbitkan satu helaian klausa",
       "share_link_created": "Mencipta pautan perkongsian",
       "share_link_revoked": "Membatalkan pautan perkongsian",
-      "source_bound": "Mengikat satu sumber pada projek",
-      "source_unbound": "Meleraikan satu sumber daripada projek",
+      "source_bound": "Memautkan satu sumber pada projek",
+      "source_unbound": "Menyahpaut satu sumber daripada projek",
       "sla_changed": "Menukar SLA satu pek",
       "pack_updated": "Mengemas kini satu pek",
       "export_requested": "Meminta eksport data",
@@ -196,7 +196,7 @@
       "mcp_consent_revoked": "Menarik balik akses satu klien AI",
       "mcp_client_created": "Mendaftarkan satu klien AI",
       "mcp_client_revoked": "Membuang satu klien AI",
-      "bundle_escalated": "Menaikkan satu berkas kepada pelulus seterusnya",
+      "bundle_escalated": "Mengeskalasi satu berkas kepada pelulus seterusnya",
       "listing_proposed": "Mencadangkan satu penyenaraian",
       "listing_listed": "Menyenaraikan satu acara",
       "listing_changed": "Menukar satu penyenaraian",
@@ -220,7 +220,7 @@
       "ownership_transfer": "Pemindahan pemilikan",
       "window": "Jendela masa",
       "night": "Malam",
-      "call": "Panggilan",
+      "call": "Keputusan",
       "bundle": "Berkas",
       "source": "Sumber",
       "project_pack": "Pek",
@@ -326,7 +326,7 @@
         "after": "Dipadam; masa segmen dikekalkan"
       },
       "guestWindows": {
-        "item": "Tetingkap tetamu",
+        "item": "Jendela masa tetamu",
         "period": "14 hari",
         "after": "Dipadam"
       },
@@ -337,13 +337,13 @@
       },
       "subscribers": {
         "item": "Rekod pelanggan",
-        "period": "Sehingga berhenti langgan, kemudian 30 hari",
+        "period": "Sehingga berhenti melanggan, kemudian 30 hari",
         "after": "Dipadam; penindasan cincangan dikekalkan"
       },
       "ledger": {
         "item": "Lejar dan audit",
         "period": "Sepanjang hayat organisasi",
-        "after": "Medan peribadi dipseudonimkan apabila akaun atau pelanggan dipadam"
+        "after": "Medan peribadi disamarkan apabila akaun atau pelanggan dipadam"
       },
       "deletedOrg": {
         "item": "Organisasi dipadam",
@@ -358,7 +358,7 @@
       "apu": {
         "item": "NAME, SAMACCOUNTNAME dan LECTID jadual APU",
         "period": "Tidak pernah disimpan",
-        "after": "Digugurkan semasa ingest"
+        "after": "Digugurkan semasa pengingesan"
       }
     },
     "deleteOrgTitle": "Padam organisasi",
@@ -390,7 +390,7 @@
     "summaryDeletion": "Pemadaman",
     "deleteAccountConsequence": "Memadam akaun anda membuang profil, kunci laluan dan sesi anda. Rekod lejar dan audit yang memaparkan anda kekal, dengan medan peribadi anda disamarkan.",
     "deleteAccountDialog": "Ini membuang profil, kunci laluan dan sesi anda serta menyamarkan medan peribadi anda dalam rekod lejar dan audit. Taip e-mel log masuk anda untuk menjadualkannya.",
-    "deleteOrgConsequence": "Apabila tempoh bertenang tamat, organisasi dan datanya dihapuskan. Eksport yang telah dimuat turun tidak terjejas.",
+    "deleteOrgConsequence": "Apabila tempoh ihsan tamat, organisasi dan datanya dihapuskan. Eksport yang telah dimuat turun tidak terjejas.",
     "cancelFailed": "Pemadaman tidak dapat dibatalkan. Cuba lagi.",
     "exportRequested": "Eksport diminta. Ia akan siap dalam masa 24 jam.",
     "colStatus": "Status",
@@ -418,13 +418,13 @@
     "unchanged": "Itu sudah nama organisasi."
   },
   "integrations": {
-    "source": "klien dan geran OAuth",
+    "source": "klien dan kebenaran akses OAuth",
     "summaryClients": "{count} dicipta",
     "summaryGrants": "{count} aktif",
     "nameHint": "Sehingga {limit} aksara. Alamat ubah hala ialah {redirect}.",
     "created": "Klien {name} dicipta. Rahsianya dipaparkan di bawah, sekali sahaja.",
-    "deleted": "Klien {name} dipadam. Setiap geran yang dicipta olehnya dibatalkan.",
-    "revoked": "Geran untuk {name} dibatalkan. Ia berhenti berfungsi serta-merta.",
+    "deleted": "Klien {name} dipadam. Setiap kebenaran akses yang dicipta olehnya dibatalkan.",
+    "revoked": "Kebenaran akses untuk {name} dibatalkan. Ia berhenti berfungsi serta-merta.",
     "revokedOn": "Dibatalkan {date}",
     "createdOn": "Dicipta {date}",
     "deleteNamed": "Padam klien OAuth: {name}",
