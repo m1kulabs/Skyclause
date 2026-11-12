@@ -168,15 +168,20 @@
   align-items: center;
   justify-content: center;
   container-type: inline-size;
-  border: var(--edge-width, 0px) solid var(--edge, transparent);
+  border: 2px solid var(--ink);
   border-radius: 9999px;
-  background: var(--ink);
-  color: var(--ground);
+  background: transparent;
+  color: var(--ink);
   font-size: 13px;
   font-weight: 500;
   line-height: 16px;
   white-space: nowrap;
   overflow: hidden;
+}
+
+.capsule[data-own] {
+  background: var(--ink);
+  color: var(--ground);
 }
 
 .capsule[data-gap] {

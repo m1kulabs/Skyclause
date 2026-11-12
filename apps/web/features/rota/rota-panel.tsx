@@ -473,10 +473,13 @@ export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
                               .map((shift) => (
                                 <span
                                   className={styles.capsule}
+                                  data-own={person.id === viewer.accountId || undefined}
                                   key={shift.clientKey}
                                   style={placement(minutesOfDay(shift.local_start), minutesOfDay(shift.local_end))}
                                 >
-                                  <span className={styles.initials}>{person.initials}</span>
+                                  <span className={styles.initials}>
+                                    {person.id === viewer.accountId ? t('rota.you', {}, locale) : person.initials}
+                                  </span>
                                   <span className={styles.name}>{person.name}</span>
                                 </span>
                               ))}
