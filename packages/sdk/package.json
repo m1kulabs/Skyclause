@@ -27,10 +27,10 @@
   "devDependencies": {
     "@playwright/test": "1.65.0",
     "@types/bun": "1.4.4",
-    "@types/node": "22.20.5",
+    "@types/node": "26.6.6",
     "bun": "1.4.4",
     "deno": "2.9.6",
-    "node": "22.15.0",
+    "node": "26.13.0",
     "prettier": "3.9.10",
     "typescript": "6.0.3",
     "workerd": "1.20261109.1"
