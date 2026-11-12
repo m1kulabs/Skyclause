@@ -6,6 +6,7 @@ import { t } from '@skyclause/i18n'
 import { formatDate } from '@skyclause/i18n/format'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Button } from '#ui/button'
+import { Checkbox } from '#ui/checkbox'
 import { Input } from '#ui/input'
 import { Skeleton } from '#ui/skeleton'
 import { ConfirmDialog } from '../../set-7'
@@ -200,17 +201,20 @@ export default function Panel({ org, locale = 'en' }: { org: string; locale?: 'e
               </legend>
               {(['read', 'draft'] as const).map((scope) => (
                 <label key={scope} className="flex min-h-9 items-center gap-3 text-[14px]">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     name="scopes"
                     value={scope}
+                    aria-label={
+                      scope === 'read'
+                        ? t('oauth.settings.scopeRead', {}, locale)
+                        : t('oauth.settings.scopeDraft', {}, locale)
+                    }
                     checked={scopes.includes(scope)}
-                    onChange={() =>
+                    onCheckedChange={() =>
                       setScopes((current) =>
                         current.includes(scope) ? current.filter((item) => item !== scope) : [...current, scope]
                       )
                     }
-                    className="size-5 accent-primary"
                   />
                   {scope === 'read'
                     ? t('oauth.settings.scopeRead', {}, locale)
