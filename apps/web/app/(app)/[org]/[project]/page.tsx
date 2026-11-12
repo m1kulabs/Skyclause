@@ -13,9 +13,9 @@ export default async function Page({ params }: { params: Promise<{ org: string; 
   return (
     <Suspense
       fallback={
-        <main className="overview-page" data-project-overview aria-busy="true">
-          <h1>{t('overview.title', {}, locale)}</h1>
-        </main>
+        <div className="overview-page" data-project-overview aria-busy="true">
+          <h1 className="type-title">{t('overview.title', {}, locale)}</h1>
+        </div>
       }
     >
       <ProjectOverview org={org} project={project} locale={locale} />

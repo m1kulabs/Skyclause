@@ -1,31 +1,45 @@
+/*
+ * The first run in the shell's 1200px column: the heading and the steps in a 486px column (5 of 12) beside the form's
+ * 690px panel (7 of 12): 486 + 24 + 690 = 1200. The form comes second in the source, so on a narrow screen (and from
+ * the keyboard) it follows the heading straight away and the steps come after it.
+ */
 .firstRunPage {
-  width: min(100%, 920px);
-  margin-inline: auto;
   display: grid;
-  gap: 28px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: auto 1fr;
+  align-items: start;
+  gap: 32px 24px;
+  min-width: 0;
 }
 
 .pageHeading {
   display: grid;
-  gap: 6px;
+  gap: 8px;
+  grid-column: 1 / span 5;
+  grid-row: 1;
 }
 
-.pageHeading h1 {
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1.2;
+.firstRunSteps {
+  grid-column: 1 / span 5;
+  grid-row: 2;
+  min-width: 0;
 }
 
-.pageHeading p,
-.progressHeader p,
+.firstRunMain {
+  grid-column: 6 / -1;
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
 .status,
 .helper {
   color: var(--muted-foreground);
   line-height: 1.55;
 }
 
-.projectForm,
-.progressCard,
 .packsPanel,
 .deviceSection {
   display: grid;
@@ -55,25 +69,40 @@
   gap: 12px;
 }
 
+.projectForm {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+  padding: 20px;
+  border-radius: var(--radius-surface, 16px);
+  background: var(--surface);
+}
+
+/* A pack choice is a capsule control: the native checkbox and its word inside a 2px edge, inked when chosen. */
 .checkLabel {
   display: inline-flex;
-  align-items: flex-start;
-  gap: 9px;
+  align-items: center;
+  gap: 10px;
   min-height: 36px;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  padding: 4px 16px 4px 6px;
+  border: 2px solid var(--input);
+  border-radius: 9999px;
+  background: var(--field);
   cursor: pointer;
 }
 
-.checkLabel input {
-  margin-top: 2px;
-  accent-color: var(--primary);
+.checkLabel:has(input:checked) {
+  border-color: var(--ink);
 }
 
-.formActions,
-.progressHeader,
-.stepActions,
+.formActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
 .panelHeader,
 .deviceHeader {
   display: flex;
@@ -96,64 +125,153 @@
   margin: 0;
 }
 
-.progressHeader h2,
 .panelHeader h1,
 .deviceHeader h2 {
   font-size: 17px;
   font-weight: 650;
 }
 
-.stepList {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+/* First-run progress: six capsules for the six steps, then each step with its one action. */
+.progress {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.progressHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.strip {
+  display: flex;
+  gap: 6px;
+}
+
+.capsule {
+  flex: 1 1 0;
+  height: 12px;
+  border: 2px solid var(--input);
+  border-radius: 9999px;
+  background: var(--raised);
+}
+
+.capsule[data-state='done'] {
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+.capsule[data-state='skipped'] {
+  border-style: dashed;
+  background: transparent;
+}
+
+.capsule[data-state='todo'] {
+  background: transparent;
+}
+
+/* The next step: inked edge, half-toned fill, so it reads apart from done (filled) and to do (empty). */
+.capsule[data-state='current'] {
+  border-color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 35%, transparent);
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
 }
 
 .step {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
-  padding: 12px 0;
-  border-top: 1px solid var(--border);
+  gap: 4px 12px;
+  min-height: 56px;
+  padding-block: 8px;
+  border-bottom: 1px solid var(--rule);
 }
 
-.step[data-complete='true'] h3::before {
-  content: '✓';
-  display: inline-block;
-  margin-right: 8px;
-  color: var(--primary);
+.step:last-child {
+  border-bottom: 0;
+}
+
+/* The step's mark at text size: the same capsule as the strip, so done, skipped and next read alike. */
+.mark {
+  width: 24px;
+  height: 12px;
+  border: 2px solid var(--input);
+  border-radius: 9999px;
+}
+
+.mark[data-state='done'] {
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+.mark[data-state='skipped'] {
+  border-style: dashed;
+}
+
+.mark[data-state='current'] {
+  border-color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 35%, transparent);
+}
+
+.stepText {
+  min-width: 0;
 }
 
 .step h3 {
   font-size: 14px;
   font-weight: 600;
+  line-height: 20px;
+}
+
+.step[data-state='todo'] h3 {
+  font-weight: 400;
 }
 
 .stepResult {
-  margin-top: 4px;
   color: var(--muted-foreground);
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: 13px;
+  line-height: 18px;
 }
 
 .stepActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
+  gap: 4px 8px;
 }
 
 .stepLink {
-  min-height: 34px;
   display: inline-flex;
+  min-height: 24px;
   align-items: center;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  text-decoration: none;
+  padding-inline: 4px;
+  text-decoration: underline;
+  text-decoration-color: var(--ink-muted);
+  text-underline-offset: 4px;
 }
 
 .stepLink:hover {
-  background: var(--muted);
+  text-decoration-color: currentColor;
+}
+
+@container (max-width: 330px) {
+  .step {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .stepActions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
 }
 
 .packsPanel {
@@ -297,17 +415,21 @@
   }
 
   .projectForm,
-  .progressCard,
   .packsPanel,
   .deviceSection {
     padding: 16px;
   }
+}
 
-  .step {
-    grid-template-columns: minmax(0, 1fr);
+@media (max-width: 1023px) {
+  .firstRunPage {
+    grid-template-rows: none;
   }
 
-  .stepActions {
-    justify-content: flex-start;
+  .pageHeading,
+  .firstRunSteps,
+  .firstRunMain {
+    grid-column: 1 / -1;
+    grid-row: auto;
   }
 }
