@@ -21,6 +21,7 @@ jobs:
       code: ${{ steps.paths.outputs.code }}
       web: ${{ steps.paths.outputs.web }}
       apps-packages: ${{ steps.paths.outputs.apps-packages }}
+      flow: ${{ steps.paths.outputs.flow }}
     steps:
       - if: github.event_name == 'pull_request'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -31,12 +32,13 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
         run: |
-          # Outside a pull request (a workflow_call from a push), everything runs.
+          # Outside a pull request (a workflow_call from a push), everything runs but the approval flow, which runs
+          # nightly on main from flow.yml itself (#194).
           if [ "$EVENT" != pull_request ]; then
-            printf 'code=true\nweb=true\napps-packages=true\n' >> "$GITHUB_OUTPUT"
+            printf 'code=true\nweb=true\napps-packages=true\nflow=false\n' >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          code=false web=false apps_packages=false
+          code=false web=false apps_packages=false flow=false
           # The checkout is the PR's merge commit, so HEAD^1 is the base it merges into.
           while IFS= read -r file; do
             case "$file" in
@@ -47,8 +49,17 @@ jobs:
             esac
             case "$file" in apps/web/* | packages/*) web=true ;; esac
             case "$file" in apps/* | packages/*) apps_packages=true ;; esac
+            # #194: the approval-flow suite, its stack, and the backend and pages of the owners it exercises.
+            case "$file" in
+              apps/web/e2e/flow/* | apps/web/e2e/harness/* | apps/web/e2e/global-setup.ts | apps/web/playwright.config.ts) flow=true ;;
+              apps/worker/src/* | apps/worker/test/flow/* | .github/workflows/flow.yml | bun.lock | package.json) flow=true ;;
+              apps/web/package.json) flow=true ;;
+              packages/api/src/* | packages/auth/src/* | packages/contracts/src/* | packages/db/src/* | packages/db/migrations/*) flow=true ;;
+              packages/agent/src/* | packages/clauses/* | packages/delivery/src/*) flow=true ;;
+              apps/web/features/bundles/* | "apps/web/app/(public)/p/"*) flow=true ;;
+            esac
           done < <(git diff --name-only HEAD^1 HEAD)
-          printf 'code=%s\nweb=%s\napps-packages=%s\n' "$code" "$web" "$apps_packages" | tee -a "$GITHUB_OUTPUT"
+          printf 'code=%s\nweb=%s\napps-packages=%s\nflow=%s\n' "$code" "$web" "$apps_packages" "$flow" | tee -a "$GITHUB_OUTPUT"
 
   lint:
     runs-on: ubuntu-24.04
@@ -109,6 +120,12 @@ jobs:
       # signInAs (#94) mints sessions in Playwright's own database on the local container.
       - run: bun run db:up
       - run: bun run test:e2e
+
+  # #194: the approval-flow suite on its ephemeral stack, for pull requests that touch its owners' paths.
+  flow:
+    needs: changes
+    if: needs.changes.outputs.flow == 'true'
+    uses: ./.github/workflows/flow.yml
 
   build:
     needs: changes
