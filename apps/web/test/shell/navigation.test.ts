@@ -60,11 +60,15 @@ test('the organisation and account menu follows each role, and a guest account s
 test('nothing links to a page that is not built', () => {
   const app = path.resolve(import.meta.dirname, '../../app/(app)')
   const pages: RegExp[] = []
+  // The shell's links below use test-org and test-project, so those parameters must match exactly: a link to
+  // /test-org/approvals must not pass as the project page /[org]/[project].
+  const segment = (name: string) =>
+    name === '[org]' ? 'test-org' : name === '[project]' ? 'test-project' : /^\[.+\]$/.test(name) ? '[^/]+' : name
   const walk = (directory: string, route: string) => {
     for (const name of readdirSync(directory)) {
       const full = path.join(directory, name)
       if (statSync(full).isDirectory()) {
-        walk(full, /^\(.+\)$/.test(name) ? route : `${route}/${/^\[.+\]$/.test(name) ? '[^/]+' : name}`)
+        walk(full, /^\(.+\)$/.test(name) ? route : `${route}/${segment(name)}`)
       } else if (name === 'page.tsx') {
         pages.push(new RegExp(`^${route || '/'}$`))
       }
