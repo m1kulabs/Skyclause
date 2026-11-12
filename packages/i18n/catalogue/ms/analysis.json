@@ -93,7 +93,7 @@
   "replaySummary_one": "Sebanyak 1 langkah yang direkodkan diulang tayang untuk helaian dan julat tarikh yang dinyatakan.",
   "replayThinned": "{n} langkah, dilukis sebagai kiraan tertinggi dalam setiap {size} langkah.",
   "replayEmpty": "Langkah ulang tayang: n=0. Pilih julat tarikh lain yang direkodkan.",
-  "subjectsEmpty": "Bahan tersimpan: n=0. Simpan versi helaian atau draf dalam Klausa dahulu.",
+  "subjectsEmpty": "Versi helaian tersimpan: n=0. Ulang tayang memerlukan versi tersimpan helaian klausa pek ini, dan belum ada. Penilaian langsung di atas tersedia sekarang.",
   "replayFailed": "Ulang tayang gagal. Semak bahan dan tarikh yang dipilih, kemudian cuba semula.",
   "replayUnavailable": "Ulang tayang andaian belum tersedia.",
   "replayUnavailableDetail": "Penilaian langsung dan tempoh yang dinilai di halaman ini tersedia sekarang.",
