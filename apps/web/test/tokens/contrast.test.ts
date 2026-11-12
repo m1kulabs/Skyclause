@@ -20,7 +20,7 @@ function block(...selectors: string[]): Record<string, string> {
 }
 
 const dusk = block(':root', '.dark', "[data-surface='marketing']", "[data-surface='auth']")
-const aliases = block(':root', "[data-surface='marketing']", "[data-surface='auth']")
+const aliases = block(':root', '.dark', '.light', "[data-surface='marketing']", "[data-surface='auth']")
 const themes = {
   dusk: { ...dusk },
   day: { ...dusk, ...block('.light') },
@@ -134,4 +134,11 @@ test("the browser chrome colour is each theme's ground", () => {
     darkHc: colour('high-contrast dusk', 'ground'),
     lightHc: colour('high-contrast day', 'ground')
   })
+})
+
+test('a nested .dark or .light resolves the aliases itself, so a preview of another theme reads its own roles', () => {
+  const scoped = rules.find((rule) => rule.selectors.includes('.light') && 'card' in rule.vars)
+  expect(scoped?.selectors).toEqual(expect.arrayContaining([':root', '.dark', '.light']))
+  expect(scoped?.vars['card']).toBe('var(--surface)')
+  expect(scoped?.vars['foreground']).toBe('var(--ink)')
 })

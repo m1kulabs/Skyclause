@@ -82,3 +82,25 @@ export function SourceError({ source, status = null, at = null, retry = null, lo
     </div>
   )
 }
+
+export interface NotBuiltProps {
+  /** What is not built, as it starts a sentence ("The key panel", "Webhooks"). */
+  thing: string
+  locale?: 'en' | 'ms'
+}
+
+/**
+ * A part of the product that does not exist yet, said plainly. No read was attempted, so it is not a SourceError; it
+ * is not an empty state either, since nothing could ever fill it.
+ */
+export function NotBuilt({ thing, locale = 'en' }: NotBuiltProps) {
+  return (
+    <div role="status" data-not-built className="flex flex-col items-start gap-2 rounded-xl bg-card p-5">
+      <p className="flex items-center gap-2 font-medium">
+        <Glyph state="off_hours" width={14} height={14} />
+        <span>{t('data.not_built.title', { thing }, locale)}</span>
+      </p>
+      <p className="text-muted-foreground">{t('data.not_built.detail', {}, locale)}</p>
+    </div>
+  )
+}

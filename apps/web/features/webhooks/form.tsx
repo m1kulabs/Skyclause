@@ -145,6 +145,7 @@ export function RegisterForm({
               ref={projectRef}
               id={`${id}-all`}
               type="radio"
+              className="native-check"
               name="webhook-project-scope"
               value="all"
               checked={allProjects}
@@ -156,6 +157,7 @@ export function RegisterForm({
             <input
               id={`${id}-chosen`}
               type="radio"
+              className="native-check"
               name="webhook-project-scope"
               value="chosen"
               checked={!allProjects}

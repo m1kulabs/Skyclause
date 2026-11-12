@@ -85,6 +85,9 @@ export interface StripLane {
   yMax: number
   ticks: StripTick[]
   empty: boolean
+  /** The lane's top and bottom edges in the layout's y units (pixels when drawn at scale 1). */
+  top: number
+  bottom: number
 }
 
 export interface StripCrossing {
@@ -93,6 +96,8 @@ export interface StripCrossing {
   x: number
   y: number
   label: string
+  /** The label has no room above its mark (the band above holds another label), so it is set beside it. */
+  labelBeside: boolean
 }
 
 /** A window's capsule: its place on the strip, the tone that fills it, its glyph and its word. */
@@ -115,6 +120,10 @@ export interface StripWindowMark {
 export interface StripLayout {
   width: number
   height: number
+  /** The top of the first lane: the band above holds the now label and the warning and crowd bars. */
+  header: number
+  /** The bottom of the last lane, where the x axis row begins when the labels are laid out as HTML. */
+  plotHeight: number
   /** The plot's left and right edges in the same units as every x, for laying HTML over the strip. */
   plotLeft: number
   plotRight: number
@@ -141,6 +150,13 @@ export interface StripLayout {
   /** Whether now falls inside the strip's span (the now line is drawn only then). */
   nowInSpan: boolean
   lebatY: number | null
+}
+
+export interface StripLayoutOptions {
+  /** Height of the band above the first lane (default 28). */
+  header?: number
+  /** Space between lanes (default 8). A page that sets each lane's labels in HTML at 13px needs 24 so they clear. */
+  laneGap?: number
 }
 
 const WIDTH = 640
@@ -188,7 +204,9 @@ function escapeXml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-export function layoutStrip(input: StripInput): StripLayout {
+export function layoutStrip(input: StripInput, options: StripLayoutOptions = {}): StripLayout {
+  const header = options.header ?? HEADER
+  const gap = options.laneGap ?? 8
   const locale = input.locale ?? 'en'
   const fromMs = ms(input.from)
   const toMs = ms(input.to)
@@ -205,7 +223,7 @@ export function layoutStrip(input: StripInput): StripLayout {
   const rain60Max = rain60Values.length ? Math.max(...rain60Values) : 0
 
   const lanes: StripLane[] = []
-  let yCursor = HEADER
+  let yCursor = header
 
   // Windows first: every declared window of the span as a capsule, then the readings under them.
   const windowInputs: StripWindow[] = input.windows
@@ -234,7 +252,7 @@ export function layoutStrip(input: StripInput): StripLayout {
       }
     })
   const windowsY = windowMarks.length ? yCursor : null
-  if (windowMarks.length) yCursor += WINDOWS_H + 8
+  if (windowMarks.length) yCursor += WINDOWS_H + gap
 
   const rain5Top = niceTop(rain5Max, [5, 10, 20, 40])
   const rain5Offset = yCursor
@@ -243,11 +261,13 @@ export function layoutStrip(input: StripInput): StripLayout {
     key: 'rain5',
     yMax: rain5Top,
     ticks: laneTicks(rain5Top, 2, rain5Y),
-    empty: rain5.length === 0
+    empty: rain5.length === 0,
+    top: rain5Offset,
+    bottom: rain5Offset + RAIN5_H
   }
   if (!rain5Lane.empty) {
     lanes.push(rain5Lane)
-    yCursor += RAIN5_H + 8
+    yCursor += RAIN5_H + gap
   }
 
   const rain60Top = niceTop(Math.max(rain60Max, LEBAT_MM), [20, 40, 60, 80, 100])
@@ -256,33 +276,36 @@ export function layoutStrip(input: StripInput): StripLayout {
   const rain60Lane: StripLane = {
     key: 'rain60',
     yMax: rain60Top,
-    ticks: laneTicks(rain60Top, rain60Top <= 20 ? 2 : 3, rain60Y),
-    empty: rain60.length === 0
+    ticks: laneTicks(rain60Top, rain60Top % 3 === 0 ? 3 : 2, rain60Y),
+    empty: rain60.length === 0,
+    top: rain60Offset,
+    bottom: rain60Offset + RAIN60_H
   }
   if (!rain60Lane.empty) {
     lanes.push(rain60Lane)
-    yCursor += RAIN60_H + 8
+    yCursor += RAIN60_H + gap
   }
 
   const warnings = [...(input.warnings ?? [])].sort((a, b) => ms(a.from) - ms(b.from))
   if (warnings.length) {
-    lanes.push({ key: 'warnings', yMax: 1, ticks: [], empty: false })
-    yCursor += WARN_H + 8
+    lanes.push({ key: 'warnings', yMax: 1, ticks: [], empty: false, top: yCursor, bottom: yCursor + WARN_H })
+    yCursor += WARN_H + gap
   }
 
   const crowd = [...(input.crowdPeriods ?? [])].sort((a, b) => ms(a.arrivalStart) - ms(b.arrivalStart))
   if (crowd.length) {
-    lanes.push({ key: 'crowd', yMax: 1, ticks: [], empty: false })
-    yCursor += CROWD_H + 8
+    lanes.push({ key: 'crowd', yMax: 1, ticks: [], empty: false, top: yCursor, bottom: yCursor + CROWD_H })
+    yCursor += CROWD_H + gap
   }
 
   const ages = [...(input.ages ?? [])]
   if (ages.length) {
-    lanes.push({ key: 'ages', yMax: 1, ticks: [], empty: false })
-    yCursor += AGES_H + 8
+    lanes.push({ key: 'ages', yMax: 1, ticks: [], empty: false, top: yCursor, bottom: yCursor + AGES_H })
+    yCursor += AGES_H + gap
   }
 
   const height = yCursor + X_AXIS + 8
+  const plotHeight = lanes.length ? yCursor - gap : header
 
   const tickCount = 6
   const xTicks = Array.from({ length: tickCount }, (_, i) => {
@@ -319,6 +342,10 @@ export function layoutStrip(input: StripInput): StripLayout {
     pen60 = true
   }
 
+  // A crossing's label sits above its mark unless the band above (the header, or the lane over this one) is too close:
+  // then it sits beside it.
+  const laneAbove = windowMarks.length > 0 || !rain5Lane.empty
+  const labelCeiling = laneAbove ? rain60Offset - gap : header - 4
   const crossings: StripCrossing[] = []
   let wasBelow = true
   for (const p of rain60) {
@@ -330,7 +357,8 @@ export function layoutStrip(input: StripInput): StripLayout {
         value: p.value,
         x: xFor(p.at),
         y: rain60Y(p.value),
-        label: `Lebat at ${timeLabel}`
+        label: `Lebat at ${timeLabel}`,
+        labelBeside: rain60Y(p.value) - 26 < labelCeiling
       })
       wasBelow = false
     } else if ((p.value ?? 0) < LEBAT_MM) {
@@ -362,6 +390,8 @@ export function layoutStrip(input: StripInput): StripLayout {
   return {
     width: WIDTH,
     height,
+    header,
+    plotHeight,
     plotLeft: GUTTER,
     plotRight: WIDTH - RIGHT,
     from: input.from,
@@ -471,7 +501,7 @@ export function stripSvg(layout: StripLayout, options: StripSvgOptions = {}): st
   // The window's span, as a tone band behind the readings (no line, no hue).
   if (layout.windowX1 !== null && layout.windowX2 !== null) {
     parts.push(
-      `<rect x="${layout.windowX1.toFixed(1)}" y="${HEADER}" width="${Math.max(1, layout.windowX2 - layout.windowX1).toFixed(1)}" height="${(layout.height - HEADER - X_AXIS).toFixed(1)}" fill="currentColor" opacity="0.08" data-window-span="true"/>`
+      `<rect x="${layout.windowX1.toFixed(1)}" y="${layout.header}" width="${Math.max(1, layout.windowX2 - layout.windowX1).toFixed(1)}" height="${(layout.height - layout.header - X_AXIS).toFixed(1)}" fill="currentColor" opacity="0.08" data-window-span="true"/>`
     )
   }
 
@@ -538,15 +568,110 @@ export function stripSvg(layout: StripLayout, options: StripSvgOptions = {}): st
 
   if (layout.nowInSpan) {
     parts.push(
-      `<line x1="${layout.nowX.toFixed(1)}" y1="${HEADER}" x2="${layout.nowX.toFixed(1)}" y2="${(layout.height - X_AXIS).toFixed(1)}" stroke="currentColor" stroke-width="2" stroke-linecap="round" data-now="true"/>`
+      `<line x1="${layout.nowX.toFixed(1)}" y1="${layout.header}" x2="${layout.nowX.toFixed(1)}" y2="${(layout.height - X_AXIS).toFixed(1)}" stroke="currentColor" stroke-width="2" stroke-linecap="round" data-now="true"/>`
     )
     // Near the right edge the label sits left of the line, so it stays inside the strip.
     const nearEnd = layout.nowX > layout.width - RIGHT - 60
     parts.push(
-      `<text x="${(layout.nowX + (nearEnd ? -4 : 4)).toFixed(1)}" y="${HEADER - 4}" font-size="10"${nearEnd ? ' text-anchor="end"' : ''} fill="currentColor">Now MYT</text>`
+      `<text x="${(layout.nowX + (nearEnd ? -4 : 4)).toFixed(1)}" y="${layout.header - 4}" font-size="10"${nearEnd ? ' text-anchor="end"' : ''} fill="currentColor">Now MYT</text>`
     )
   }
 
+  parts.push('</svg>')
+  return parts.join('')
+}
+
+/** Where an x of the layout falls across the plot, 0 to 1: the position of its label when the labels are HTML. */
+export function stripShare(layout: StripLayout, x: number): number {
+  return (x - layout.plotLeft) / (layout.plotRight - layout.plotLeft)
+}
+
+export interface StripClockTick {
+  at: Instant
+  /** Where the tick falls across the span, 0 to 1. */
+  share: number
+  /** 0 is always labelled, 1 from a medium width, 2 only when wide: the labels thin out as the strip narrows. */
+  level: 0 | 1 | 2
+}
+
+// The strip's clock is Malaysia time (UTC+8, no daylight saving): ticks fall on its whole hours, half hours and so on.
+const MYT_OFFSET_MS = 8 * 3_600_000
+const TICK_STEPS_MS = [5, 10, 15, 30, 60, 120, 180, 360, 720, 1440].map((minutes) => minutes * 60_000)
+
+/**
+ * Clock ticks across a span: on the whole MYT hour, half hour or quarter hour, at the finest step that gives nine
+ * ticks or fewer. Each carries the level at which its label is shown, nested so that the labels thin out as the strip
+ * narrows (every fourth tick, every second, all) and never touch.
+ */
+export function stripTicks(from: Instant, to: Instant): StripClockTick[] {
+  const start = ms(from)
+  const end = ms(to)
+  const span = end - start
+  if (!(span > 0)) return []
+  const step = TICK_STEPS_MS.find((candidate) => Math.floor(span / candidate) + 1 <= 9) ?? TICK_STEPS_MS.at(-1)!
+  const first = Math.ceil((start + MYT_OFFSET_MS) / step) * step - MYT_OFFSET_MS
+  const times: number[] = []
+  for (let at = first; at <= end; at += step) times.push(at)
+  const last = times.length - 1
+  return times.map((at, index) => ({
+    at: new Date(at).toISOString(),
+    share: (at - start) / span,
+    level: index % 4 === 0 || (index === last && (index % 4 >= 2 || last < 2)) ? 0 : index % 2 === 0 ? 1 : 2
+  }))
+}
+
+/**
+ * The readings alone, with no text: the plot's units stretch across whatever width the page gives it and its height
+ * stays in pixels, so a page lays the labels out around it as HTML at their real size. Strokes keep their width.
+ */
+export function stripPlotSvg(layout: StripLayout): string {
+  const width = layout.plotRight - layout.plotLeft
+  const stroke = 'vector-effect="non-scaling-stroke"'
+  const parts = [
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${layout.plotLeft} 0 ${width} ${layout.plotHeight}" preserveAspectRatio="none" width="100%" height="${layout.plotHeight}" aria-hidden="true" focusable="false" style="display:block;overflow:visible;clip-path:inset(-2px -3px)" data-strip-plot="true">`
+  ]
+  if (layout.windowX1 !== null && layout.windowX2 !== null) {
+    // A window that runs past the span is cut at the plot's edges.
+    const x1 = Math.max(layout.plotLeft, layout.windowX1)
+    const x2 = Math.min(layout.plotRight, layout.windowX2)
+    if (x2 > x1) {
+      parts.push(
+        `<rect x="${x1.toFixed(1)}" y="${layout.header}" width="${Math.max(1, x2 - x1).toFixed(1)}" height="${layout.plotHeight - layout.header}" fill="currentColor" opacity="0.08" data-window-span="true"/>`
+      )
+    }
+  }
+  // A line at each tick but the lane's top, so a label set against the lane's top edge is not struck through.
+  for (const lane of layout.lanes) {
+    for (const tick of lane.ticks.filter((item) => item.value < lane.yMax)) {
+      parts.push(
+        `<line x1="${layout.plotLeft}" y1="${tick.y.toFixed(1)}" x2="${layout.plotRight}" y2="${tick.y.toFixed(1)}" stroke="currentColor" stroke-width="1" opacity="0.16" ${stroke} data-grid="true"/>`
+      )
+    }
+  }
+  if (layout.lanes.some((lane) => lane.key === 'rain5' && !lane.empty) && layout.rain5Path) {
+    const dash = layout.isReplay ? ' stroke-dasharray="4 2"' : ''
+    parts.push(
+      `<path d="${layout.rain5Path}" fill="none" stroke="currentColor" stroke-width="2" opacity="0.6"${dash} stroke-linecap="round" stroke-linejoin="round" ${stroke}/>`
+    )
+  }
+  if (layout.lanes.some((lane) => lane.key === 'rain60' && !lane.empty)) {
+    if (layout.lebatY !== null) {
+      parts.push(
+        `<line x1="${layout.plotLeft}" y1="${layout.lebatY.toFixed(1)}" x2="${layout.plotRight}" y2="${layout.lebatY.toFixed(1)}" stroke="currentColor" stroke-width="1" stroke-dasharray="4 3" opacity="0.7" ${stroke} data-lebat="true"/>`
+      )
+    }
+    if (layout.rain60Path) {
+      const dash = layout.isReplay ? ' stroke-dasharray="4 2"' : ''
+      parts.push(
+        `<path d="${layout.rain60Path}" fill="none" stroke="currentColor" stroke-width="2.5"${dash} stroke-linecap="round" ${stroke}/>`
+      )
+    }
+  }
+  if (layout.nowInSpan) {
+    parts.push(
+      `<line x1="${layout.nowX.toFixed(1)}" y1="${layout.header >= 24 ? 6 : 0}" x2="${layout.nowX.toFixed(1)}" y2="${layout.plotHeight}" stroke="currentColor" stroke-width="2" stroke-linecap="round" ${stroke} data-now="true"/>`
+    )
+  }
   parts.push('</svg>')
   return parts.join('')
 }

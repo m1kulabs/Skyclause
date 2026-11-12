@@ -1,14 +1,20 @@
 'use client'
 
 import { useState } from 'react'
+import { CopyIcon } from 'lucide-react'
 import { Button } from '#ui/button'
 import { t } from './i18n'
 
 export function CopyButton({ value, label }: { value: string; label: 'copy_config' | 'copy_secret' }) {
   const [status, setStatus] = useState<'copied' | 'copy_error' | undefined>()
   return (
-    <div className="connect-copy">
+    <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">
+      <span role="status" className="type-small text-muted-foreground">
+        {status && t(`connect.${status}`)}
+      </span>
       <Button
+        variant="outline"
+        size="sm"
         onClick={async () => {
           try {
             await navigator.clipboard.writeText(value)
@@ -18,9 +24,9 @@ export function CopyButton({ value, label }: { value: string; label: 'copy_confi
           }
         }}
       >
+        <CopyIcon data-icon="inline-start" />
         {t(`connect.${label}`)}
       </Button>
-      <span role="status">{status && t(`connect.${status}`)}</span>
     </div>
   )
 }

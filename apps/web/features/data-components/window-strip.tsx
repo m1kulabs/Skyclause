@@ -2,17 +2,23 @@
 
 import { useMemo, useState } from 'react'
 import type { Window } from '@skyclause/contracts'
-import { layoutStrip, stripSvg, type StripInput, type StripWindow } from '@skyclause/elements'
+import { layoutStrip, type StripInput, type StripWindow } from '@skyclause/elements'
 import { formatTime } from '@skyclause/i18n/format'
 import { Badge } from '#ui/badge'
 import { Button } from '#ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '#ui/tooltip'
 import { t } from './catalogue'
 import { DayStrip } from './day-strip'
+import { ReadingsChart } from './readings-chart'
+import { readingRows } from './readings-table'
 
 export interface WindowStripProps {
   windows: readonly Window[]
   strip?: StripInput
+  /**
+   * List the windows under the day row with their times and calls. Defaults to listing them when the strip carries its
+   * own `windows`; pass false when the page already names the window, its times and its mode.
+   */
+  list?: boolean
   locale?: 'en' | 'ms'
 }
 
@@ -31,7 +37,7 @@ function emptyStrip(windows: readonly Window[]): StripInput {
 const HOUR = 3_600_000
 const hourFloor = (at: number) => Math.floor(at / HOUR) * HOUR
 
-export function WindowStrip({ windows, strip, locale = 'en' }: WindowStripProps) {
+export function WindowStrip({ windows, strip, list, locale = 'en' }: WindowStripProps) {
   const [showTable, setShowTable] = useState(false)
   const input = useMemo(() => strip ?? emptyStrip(windows), [strip, windows])
   // The day row: the strip's own windows with their calls, else the windows passed in (their calls unknown here).
@@ -52,28 +58,27 @@ export function WindowStrip({ windows, strip, locale = 'en' }: WindowStripProps)
       to: new Date(hourFloor(Math.max(...ends)) + 2 * HOUR).toISOString()
     }
   }, [input.from, input.to, dayWindows])
-  // The readings under the day row: the window's span stays as a tone band, its capsule is the row above.
-  const layout = useMemo(
-    () => layoutStrip({ ...input, windows: dayWindows.length ? [] : input.windows, locale }),
-    [input, dayWindows.length, locale]
-  )
-  const svg = useMemo(
-    () => stripSvg(layout, { locale, windowLane: false }).replace('role="img"', 'aria-hidden="true"'),
-    [layout, locale]
-  )
+  // The readings under the day row: the window's span stays as a tone band, its capsule is the row above. Lanes sit
+  // 24 apart so their 13px y labels clear each other; the header band holds the now label.
+  const layout = useMemo(() => {
+    const at = Date.parse(input.now)
+    const nowInSpan = at >= Date.parse(input.from) && at <= Date.parse(input.to)
+    return layoutStrip({ ...input, windows: [], locale }, { header: nowInSpan ? 28 : 8, laneGap: 24 })
+  }, [input, locale])
   const dayRow = dayWindows.length ? (
     <DayStrip
       from={daySpan.from}
       to={daySpan.to}
       now={input.now}
       windows={dayWindows}
-      list={Boolean(input.windows)}
+      list={list ?? Boolean(input.windows)}
       embedded
       locale={locale}
     />
   ) : null
 
   const count = input.rain5.length + input.rain60.length
+  const table = useMemo(() => readingRows(input.rain5, input.rain60), [input.rain5, input.rain60])
   const firstCrossing = layout.crossings[0]
   const crossingText = firstCrossing
     ? t('data.strip.crossing', { time: formatTime(firstCrossing.at, locale), value: firstCrossing.value }, locale)
@@ -120,27 +125,7 @@ export function WindowStrip({ windows, strip, locale = 'en' }: WindowStripProps)
           </span>
         ) : null}
       </div>
-      <div className="relative w-full">
-        <div
-          className="w-full overflow-hidden [&>svg]:h-auto [&>svg]:w-full"
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: stripSvg is deterministic geometry from readings.
-          dangerouslySetInnerHTML={{ __html: svg }}
-        />
-        {layout.crossings.map((crossing) => (
-          <Tooltip key={crossing.at}>
-            <TooltipTrigger
-              className="absolute top-1/3 min-h-[34px] min-w-[34px] -translate-x-1/2 rounded-full motion-reduce:transition-none [@media(pointer:coarse)]:min-h-[44px] [@media(pointer:coarse)]:min-w-[44px]"
-              style={{ left: `${(crossing.x / layout.width) * 100}%` }}
-              aria-label={crossing.label}
-            >
-              <span className="block h-[34px] w-[34px] [@media(pointer:coarse)]:h-[44px] [@media(pointer:coarse)]:w-[44px]" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <span className="tabular-nums">{crossing.label}</span>
-            </TooltipContent>
-          </Tooltip>
-        ))}
-      </div>
+      <ReadingsChart layout={layout} locale={locale} />
       <figcaption className="type-small text-muted-foreground">{summary}</figcaption>
       <div>
         <Button
@@ -156,7 +141,14 @@ export function WindowStrip({ windows, strip, locale = 'en' }: WindowStripProps)
         {showTable ? (
           <div className="mt-2 overflow-x-auto">
             <table className="w-full border-collapse text-sm">
-              <caption className="text-left text-muted-foreground">{t('data.strip.table_caption', {}, locale)}</caption>
+              <caption className="text-left text-muted-foreground">
+                {t('data.strip.table_caption', {}, locale)}
+                {table.bucketMinutes ? (
+                  <span className="block">
+                    {t('data.strip.table_peaks', { minutes: table.bucketMinutes, count }, locale)}
+                  </span>
+                ) : null}
+              </caption>
               <thead>
                 <tr>
                   <th
@@ -180,24 +172,19 @@ export function WindowStrip({ windows, strip, locale = 'en' }: WindowStripProps)
                 </tr>
               </thead>
               <tbody>
-                {input.rain5.map((point) => {
-                  const sixty = input.rain60.find((s) => s.at === point.at)
-                  return (
-                    <tr key={point.at}>
-                      <th scope="row" className="h-11 border-b border-rule px-2 text-left font-normal">
-                        <time dateTime={point.at}>{formatTime(point.at, locale)}</time>
-                      </th>
-                      <td className="h-11 border-b border-rule px-2 text-right tabular-nums">
-                        {point.value === null ? t('data.strip.missing', {}, locale) : point.value}
-                      </td>
-                      <td className="h-11 border-b border-rule px-2 text-right tabular-nums">
-                        {sixty?.value === null || sixty?.value === undefined
-                          ? t('data.strip.missing', {}, locale)
-                          : sixty.value}
-                      </td>
-                    </tr>
-                  )
-                })}
+                {table.rows.map((row) => (
+                  <tr key={row.at}>
+                    <th scope="row" className="h-11 border-b border-rule px-2 text-left font-normal">
+                      <time dateTime={row.at}>{formatTime(row.at, locale)}</time>
+                    </th>
+                    <td className="h-11 border-b border-rule px-2 text-right tabular-nums">
+                      {row.rain5 === null ? t('data.strip.missing', {}, locale) : row.rain5}
+                    </td>
+                    <td className="h-11 border-b border-rule px-2 text-right tabular-nums">
+                      {row.rain60 === null ? t('data.strip.missing', {}, locale) : row.rain60}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

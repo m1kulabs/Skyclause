@@ -338,8 +338,11 @@ test('source picker sorts captured APIMS rows, finds CA16W, allows an erroring s
   expect(writes).toEqual([])
   await picker.getByRole('button', { name: 'Close' }).click()
   await expect(picker).toHaveCount(0)
+  // Unbinding asks first in a dialog that names the source, and says what it did afterwards.
   await panel.getByRole('button', { name: 'Unbind CA16W' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Unbind source “CA16W”', exact: true }).click()
   await expect(panel.getByRole('button', { name: 'Unbind CA16W' })).toHaveCount(0)
+  await expect(panel.getByRole('status').filter({ hasText: 'Unbound CA16W.' })).toBeVisible()
   await expect(panel.getByText('No sources are bound yet.')).toBeVisible()
   expect(boundSourceCount).toBe(0)
 })
@@ -521,7 +524,11 @@ test('Crowd prerequisite errors name the missing venue and rail station beside t
 
   await page.goto(`/${org}/apu-air-quality/settings/packs`)
   const panel = page.locator('[data-settings-panel]')
+  // Turning a pack on asks first, naming the project; the confirmation sends the change.
   await panel.getByLabel('Crowd').click()
+  const confirm = page.getByRole('alertdialog')
+  await expect(confirm.getByRole('heading')).toContainText('Turn on Crowd for')
+  await confirm.getByRole('button', { name: /^Turn on Crowd for/ }).click()
   await expect(panel.getByText(prerequisites.detail)).toBeVisible()
   await expect(page.getByRole('dialog', { name: 'Bind sources' })).toBeVisible()
 })

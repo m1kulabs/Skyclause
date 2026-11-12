@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { Webhooks } from '../../features/webhooks/client'
 import type { WebhookEventType } from '@skyclause/contracts'
 
@@ -101,7 +101,7 @@ afterEach(() => {
 
 test('inspector auto-selects the first endpoint with replace', async () => {
   render(<Webhooks org="test-org" />)
-  await screen.findByRole('combobox', { name: 'Inspect endpoint' })
+  await screen.findByRole('list', { name: 'Inspect endpoint' })
   await waitFor(() =>
     expect(navigation.replace).toHaveBeenCalledWith('/developers/webhooks?webhook=endpoint-1', { scroll: false })
   )
@@ -109,12 +109,17 @@ test('inspector auto-selects the first endpoint with replace', async () => {
 
 test('endpoint switch pushes the URL and swaps the inspected endpoint', async () => {
   const { container, rerender } = render(<Webhooks org="test-org" />)
-  const select = await screen.findByRole('combobox', { name: 'Inspect endpoint' })
+  const rows = await screen.findByRole('list', { name: 'Inspect endpoint' })
   navigation.search = 'webhook=endpoint-1'
   rerender(<Webhooks org="test-org" />)
   await waitFor(() => expect(container.querySelector('p.webhook-url')?.textContent).toBe(endpoint1.url))
+  expect(
+    within(rows)
+      .getByRole('button', { name: /hooks-1/ })
+      .getAttribute('aria-current')
+  ).toBe('true')
 
-  fireEvent.change(select, { target: { value: 'endpoint-2' } })
+  fireEvent.click(within(rows).getByRole('button', { name: /hooks-2/ }))
   expect(navigation.push).toHaveBeenCalledWith('/developers/webhooks?webhook=endpoint-2', { scroll: false })
 
   navigation.search = 'webhook=endpoint-2'
