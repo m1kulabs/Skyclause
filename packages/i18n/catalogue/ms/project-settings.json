@@ -122,6 +122,7 @@
   "copy_token": "Salin token",
   "source_rota": "rota projek",
   "public_page": "Halaman projek awam belum tersedia.",
+  "share_unavailable": "Pautan perkongsian belum tersedia.",
   "missing": "Belum ditetapkan",
   "value_unit": "{value} {unit}",
   "deadline_of": "Tarikh akhir semakan {pack}",

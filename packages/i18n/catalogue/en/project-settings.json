@@ -122,6 +122,7 @@
   "copy_token": "Copy token",
   "source_rota": "the project rota",
   "public_page": "The public project page is not available yet.",
+  "share_unavailable": "Share links are not available yet.",
   "missing": "Not set",
   "value_unit": "{value} {unit}",
   "deadline_of": "{pack} review deadline",
