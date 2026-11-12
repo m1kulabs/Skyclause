@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { useParams } from 'next/navigation'
-import { formatList, formatTimeZoneName } from '@skyclause/i18n/format'
+import { formatList, formatTime, formatTimeZoneName } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
 import { Input } from '#ui/input'
 import { Field, FieldGroup, FieldLegend, FieldSet } from '#ui/field'
@@ -115,7 +115,8 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
     async (signal: AbortSignal): Promise<RotaPageData> => {
       const project = await resolveProject(params.org, params.project, signal)
       const [rota, members] = await Promise.all([
-        projectSettingsApi('getRota', { params: { org: params.org }, signal }),
+        // Without project_id the rota answers with organisation shifts only, so project shifts would never show.
+        projectSettingsApi('getRota', { params: { org: params.org }, query: { project_id: project.id }, signal }),
         allPages((cursor) =>
           projectSettingsApi('listMembers', { params: { org: params.org }, query: { limit: 200, cursor }, signal })
         )
@@ -302,10 +303,20 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
   )
   const shifts = (count: number) =>
     t(count === 1 ? 'project-settings.shift_count_one' : 'project-settings.shift_count_other', { count }, locale)
+  const onDuty = pageData.rota.on_duty[0]
 
   return (
     <SettingsParts data-project-settings-rota>
       <SettingsAside>
+        <SettingsSummaryLine label={t('project-settings.on_duty', {}, locale)}>
+          {onDuty
+            ? t(
+                'project-settings.on_duty_summary',
+                { name: shortName(onDuty.account_id), time: formatTime(onDuty.until, locale) },
+                locale
+              )
+            : t('project-settings.on_duty_none', {}, locale)}
+        </SettingsSummaryLine>
         <SettingsSummaryLine label={t('project-settings.override', {}, locale)}>
           <span data-numeric>{shifts(overrides.length)}</span>
         </SettingsSummaryLine>
