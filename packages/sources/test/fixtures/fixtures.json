@@ -193,5 +193,27 @@
     "station_id": "all",
     "captured_at": "2026-11-10T14:19:22.760894+00:00",
     "capture_time_precision": "HTTP completion instant from recorded ended_at"
+  },
+  {
+    "file": "weather-warning-20261105T1313Z.json",
+    "url": "https://api.data.gov.my/weather/warning/",
+    "captured_at": "2026-11-05T13:13:00Z",
+    "capture_time_precision": "minute precision recorded by source archive",
+    "sha256": "4217dfb611b09e1ad421fbe5c00277a4b170aa78089d6e3452d39193a2903415",
+    "station_id": "met-warnings"
+  },
+  {
+    "file": "weather-forecast-kl-20261108T014413Z.json",
+    "url": "https://api.data.gov.my/weather/forecast/?contains=Kuala%20Lumpur@location__location_name",
+    "captured_at": "2026-11-08T01:44:13.158881Z",
+    "sha256": "1a4ec347805b28a3a5492513e922bd91fc177b3b8715c2efcab355d766487877",
+    "station_id": "Ds058,St009,Tn079"
+  },
+  {
+    "file": "weather-forecast-all-20261111T140148Z.json",
+    "url": "https://api.data.gov.my/weather/forecast/",
+    "captured_at": "2026-11-11T14:01:48.607Z",
+    "station_id": "all",
+    "sha256": "4cfd224c629aaf6f4655d613b8624f5543251659da8c414146b492b2dfeec5f1"
   }
 ]

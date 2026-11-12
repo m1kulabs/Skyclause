@@ -10,7 +10,7 @@ export {
   metForecastDateBoundaries,
   nextSourceChangeAt,
   dedupeReadingsAt,
-  isKlMetWarningReading,
+  metWarningValidity,
   latestMytMorning,
   toMytDateString
 } from './snapshot'

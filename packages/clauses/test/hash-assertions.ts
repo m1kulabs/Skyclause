@@ -141,6 +141,7 @@ export function runHashAssertions(): {
     tz: 'Asia/Kuala_Lumpur'
   }
   const history: ReadingHistory = {
+    warningAreaTerms: ['Kuala Lumpur'],
     sources: [
       {
         id: 'jps-75',
@@ -273,12 +274,18 @@ export function runHashAssertions(): {
       {
         id: 'r-warn-1',
         sourceId: 'met-warn',
-        metric: 'warning_in_force',
+        metric: 'warning',
         observedAt: '2026-11-02T06:30:00Z',
         receivedAt: '2026-11-02T06:31:00Z',
         value: true,
         valueText: null,
-        valueJson: { validFrom: '2026-11-02T06:30:00Z', validTo: '2026-11-02T09:00:00Z' },
+        valueJson: {
+          text_en: 'Kuala Lumpur',
+          warning_issue: { title_en: 'Thunderstorms Warning' },
+          excluded: false,
+          valid_from_utc: '2026-11-02T06:30:00Z',
+          valid_to_utc: '2026-11-02T09:00:00Z'
+        },
         itemKey: 'warn-1',
         revision: 1
       },

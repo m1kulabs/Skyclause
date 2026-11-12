@@ -18,7 +18,7 @@ import {
 import { makeOrganization } from '@skyclause/db/test/factories/index'
 import { asLogin } from '@skyclause/db/test/harness/index'
 import { and, asc, eq } from 'drizzle-orm'
-import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import { setAiKeyPorts } from '../src/services/ai-keys/ports'
 import { apiRequest, asApiKey, asSession, createTestApi, crossOrgCase, testDeps, testOrg } from './harness'
 
@@ -81,6 +81,7 @@ beforeEach(async () => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   resetKmsPort()
   setKmsPort(kms())
   delete process.env.GCP_PROJECT
@@ -629,10 +630,11 @@ describe('personal keys', () => {
     await allowMembers(api)
     const me = admin()
     const key = (await (await meCreate(api, me, `sk-mu-${randomUUID()}`)).json()) as { id: string }
+    const createdAt = new Date()
     await inOrg(acme.id, (tx) =>
       tx
         .insert(aiUsage)
-        .values({ orgId: acme.id, runId: null, aiKeyId: key.id, model: 'x', tokensIn: 500, tokensOut: 50 })
+        .values({ orgId: acme.id, runId: null, aiKeyId: key.id, model: 'x', tokensIn: 500, tokensOut: 50, createdAt })
     )
     const usage = (await (
       await apiRequest(api, { as: me, org: acme.slug, method: 'GET', path: `${mePath}/usage` })
@@ -644,12 +646,24 @@ describe('personal keys', () => {
 
 describe('v1 usage', () => {
   test('returns the organisation’s month-to-date hosted-model runs', async () => {
+    // Only the application clock lags; database defaults still use database time.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(Date.now() - 60_000)
     const { api, v1 } = setup()
     const key = (await (await create(api, owner(), createBody(`sk-v-${randomUUID()}`))).json()) as { id: string }
+    const createdAt = new Date()
     await inOrg(acme.id, (tx) =>
       tx.insert(aiUsage).values([
-        { orgId: acme.id, runId: null, aiKeyId: null, model: 'gemini-3.8-flash', tokensIn: 1200, tokensOut: 300 },
-        { orgId: acme.id, runId: null, aiKeyId: key.id, model: 'gpt-5', tokensIn: 5, tokensOut: 5 }
+        {
+          orgId: acme.id,
+          runId: null,
+          aiKeyId: null,
+          model: 'gemini-3.8-flash',
+          tokensIn: 1200,
+          tokensOut: 300,
+          createdAt
+        },
+        { orgId: acme.id, runId: null, aiKeyId: key.id, model: 'gpt-5', tokensIn: 5, tokensOut: 5, createdAt }
       ])
     )
     const response = await apiRequest(v1, { as: owner(), org: acme.slug, method: 'GET', path: '/v1/usage' })

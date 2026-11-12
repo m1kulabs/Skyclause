@@ -3,3 +3,9 @@
 # Preserve the original JPS HTTP response bytes, including CRLF.
 /docs/sources/infobanjirjpskl.water.gov.my/rainfall-latest-data-all-20261110T1215Z.html -text
 /packages/sources/test/fixtures/rainfall-latest-data-all-20261110T1215Z.html -text
+
+# Preserve MET HTTP response bytes.
+/docs/sources/api.data.gov.my/weather-warning-20261105T1313Z.json -text
+/docs/sources/api.data.gov.my/weather-forecast-kl-20261108T014413Z.json -text
+/packages/sources/test/fixtures/weather-warning-20261105T1313Z.json -text
+/packages/sources/test/fixtures/weather-forecast-kl-20261108T014413Z.json -text

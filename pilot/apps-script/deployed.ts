@@ -58,7 +58,7 @@ export async function scopeGuard({ health, manifestAt, nextManifest }: ScopeGuar
 }
 
 // The canary's rule: a source with a threshold is stale past it, or when it has never had a successful poll.
-// `off_hours` (the camera after dusk) isn't silence.
+// `off_hours` (the camera outside CAMERA_DAY_START–CAMERA_DAY_END, 07:15–19:00 MYT by default) isn't silence.
 export function staleSources(health: Health): SourceHealth[] {
   return health.sources.filter(
     (source) =>

@@ -1,9 +1,11 @@
-import { expect, test, vi } from 'vitest'
+import { afterEach, expect, test, vi } from 'vitest'
 import { ingestSourceResult, drainSourceResults } from '../src/sources/ingest'
 import { publishSourceResult } from '../src/sources/pubsub'
 import { MemoryStore } from './support/source-adapter'
 import type { SourceExecutionResult } from '../src/sources/types'
 import { createHash } from 'node:crypto'
+import { createServer } from 'node:http'
+import { once } from 'node:events'
 const id = (n: number) => `00000000-0000-7000-8000-${String(n).padStart(12, '0')}`
 const body = Buffer.from('{}')
 function result(): SourceExecutionResult {
@@ -131,12 +133,161 @@ test('REST pull preserves malformed messages for isolated failure and acknowledg
     body: { ackIds: ['good'] }
   })
 })
-test('REST failures propagate without pretending an empty pull succeeded', async () => {
+test.each([403, 500])('REST %s failures propagate without pretending an empty pull succeeded', async (status) => {
   const subscription = sourceSubscription('project', 'subscription', {
     headers: async () => new Headers(),
-    http: async () => new Response('denied', { status: 403 })
+    http: async () => new Response('denied', { status })
   })
-  await expect(subscription.pullSourceResults()).rejects.toThrow('403')
+  await expect(subscription.pullSourceResults()).rejects.toThrow(String(status))
+})
+
+afterEach(() => vi.restoreAllMocks())
+function controlledDeadline() {
+  const controller = new AbortController()
+  const timeout = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal)
+  const expire = () => controller.abort(new DOMException('Owned wait expired', 'TimeoutError'))
+  return { controller, timeout, expire }
+}
+test('REST pull bounds its wait and an owned expiry drains no messages or acknowledgements', async () => {
+  const deadline = controlledDeadline(),
+    ingest = vi.fn(async () => {}),
+    http = vi.fn<typeof fetch>(async (_url, init) => {
+      expect(init?.signal).toBe(deadline.controller.signal)
+      return new Promise<Response>((_resolve, reject) => {
+        init!.signal!.addEventListener('abort', () => reject(init!.signal!.reason), { once: true })
+        deadline.expire()
+      })
+    })
+  const subscription = sourceSubscription('project', 'subscription', {
+    headers: async () => new Headers(),
+    http
+  })
+  await expect(
+    drainSourceResults({ pull: subscription.pullSourceResults, ack: subscription.ackSourceResults, ingest })
+  ).resolves.toBeUndefined()
+  expect(deadline.timeout).toHaveBeenCalledExactlyOnceWith(5000)
+  expect(ingest).not.toHaveBeenCalled()
+  expect(http).toHaveBeenCalledTimes(1)
+  expect(JSON.parse(String(http.mock.calls[0]![1]?.body))).toEqual({ maxMessages: 100 })
+})
+test('REST pull native body expiry does not deliver or acknowledge unseen messages', async () => {
+  const deadline = controlledDeadline(),
+    server = createServer((_request, response) => {
+      response.writeHead(200, { 'content-type': 'application/json' })
+      response.write('{"receivedMessages":[')
+    }),
+    ingest = vi.fn(async () => {})
+  server.listen(0, '127.0.0.1')
+  await once(server, 'listening')
+  const address = server.address()
+  if (!address || typeof address === 'string') throw new Error('Expected local HTTP address')
+  const http = vi.fn<typeof fetch>(async (_url, init) => {
+    const response = await fetch(`http://127.0.0.1:${address.port}`, init)
+    deadline.expire()
+    return response
+  })
+  const subscription = sourceSubscription('project', 'subscription', {
+    headers: async () => new Headers(),
+    http
+  })
+  try {
+    await expect(
+      drainSourceResults({ pull: subscription.pullSourceResults, ack: subscription.ackSourceResults, ingest })
+    ).resolves.toBeUndefined()
+    expect(http).toHaveBeenCalledTimes(1)
+    expect(ingest).not.toHaveBeenCalled()
+  } finally {
+    server.closeAllConnections()
+    await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())))
+  }
+})
+test.each(['abort', 'network', 'http'])(
+  'REST body %s failure remains visible without an attributable successful-response expiry',
+  async (kind) => {
+    const deadline = controlledDeadline(),
+      error = kind === 'network' ? new TypeError('body failed') : new DOMException('Body aborted', 'AbortError')
+    const subscription = sourceSubscription('project', 'subscription', {
+      headers: async () => new Headers(),
+      http: async () => {
+        const response = new Response(null, { status: kind === 'http' ? 403 : 200 })
+        vi.spyOn(response, 'text').mockImplementation(async () => {
+          if (kind !== 'abort') deadline.expire()
+          throw error
+        })
+        return response
+      }
+    })
+    await expect(subscription.pullSourceResults()).rejects.toBe(error)
+  }
+)
+test.each(['timeout', 'abort', 'network', 'expired-wrong-reason'])(
+  'REST pull preserves a foreign %s failure',
+  async (kind) => {
+    const deadline = controlledDeadline(),
+      error = new DOMException('Foreign failure', kind === 'abort' ? 'AbortError' : 'TimeoutError')
+    const subscription = sourceSubscription('project', 'subscription', {
+      headers: async () => new Headers(),
+      http: async () => {
+        if (kind === 'expired-wrong-reason') deadline.expire()
+        if (kind === 'network') throw new TypeError('network failed')
+        throw error
+      }
+    })
+    if (kind === 'network') await expect(subscription.pullSourceResults()).rejects.toThrow('network failed')
+    else await expect(subscription.pullSourceResults()).rejects.toBe(error)
+  }
+)
+test('REST pull preserves credential failures before HTTP', async () => {
+  const error = new Error('credentials failed'),
+    http = vi.fn<typeof fetch>()
+  const subscription = sourceSubscription('project', 'subscription', {
+    headers: async () => {
+      throw error
+    },
+    http
+  })
+  await expect(subscription.pullSourceResults()).rejects.toBe(error)
+  expect(http).not.toHaveBeenCalled()
+})
+test.each(['{}', '{"receivedMessages":[]}'])('REST successful empty response %s delivers no messages', async (body) => {
+  const subscription = sourceSubscription('project', 'subscription', {
+    headers: async () => new Headers(),
+    http: async () => new Response(body)
+  })
+  expect(await subscription.pullSourceResults()).toEqual([])
+})
+test.each(['invalid', 'null', '{"receivedMessages":{}}', '{"receivedMessages":[{"ackId":""}]}'])(
+  'REST invalid response %s remains a failure',
+  async (body) => {
+    const subscription = sourceSubscription('project', 'subscription', {
+      headers: async () => new Headers(),
+      http: async () => new Response(body)
+    })
+    await expect(subscription.pullSourceResults()).rejects.toThrow()
+  }
+)
+test.each(['timeout', 'http'])('REST acknowledgement %s failure remains visible', async (kind) => {
+  const deadline = controlledDeadline()
+  const subscription = sourceSubscription('project', 'subscription', {
+    headers: async () => new Headers(),
+    http: async () => {
+      if (kind === 'http') return new Response('failed', { status: 500 })
+      deadline.expire()
+      throw deadline.controller.signal.reason
+    }
+  })
+  if (kind === 'http') await expect(subscription.ackSourceResults(['delivered'])).rejects.toThrow('500')
+  else await expect(subscription.ackSourceResults(['delivered'])).rejects.toThrow('Owned wait expired')
+  expect(deadline.timeout).toHaveBeenCalledExactlyOnceWith(20000)
+})
+test('REST empty acknowledgements perform no HTTP', async () => {
+  const http = vi.fn<typeof fetch>()
+  const subscription = sourceSubscription('project', 'subscription', {
+    headers: async () => new Headers(),
+    http
+  })
+  await subscription.ackSourceResults([])
+  expect(http).not.toHaveBeenCalled()
 })
 
 import { repairSourceResults, MAX_PENDING_RESULTS, reserveSourceResult, pendingResult } from '../src/sources/pubsub'

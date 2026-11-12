@@ -2,7 +2,7 @@ import {
   metForecastDateBoundaries,
   dedupeReadingsAt,
   effectiveWindowSpan,
-  isKlMetWarningReading,
+  metWarningValidity,
   latestMytMorning,
   nextSourceChangeAt,
   RAIN_STEP_MS,
@@ -34,10 +34,10 @@ export function nextEvaluationAt(q: {
   if (names.has('site.met_warning_in_force') || names.has('w.met_warning_in_force')) {
     const sources = new Set(q.history.sources.filter((s) => s.kind === 'met_warning').map((s) => s.id))
     for (const reading of readings.filter((r) => sources.has(r.sourceId))) {
-      const validity = isKlMetWarningReading(reading)
-      if (!validity.isKlWarning || !validity.completeValidity || validity.validToMs === null) continue
-      add(validity.validFromMs)
-      add(validity.validToMs + 1)
+      const validity = metWarningValidity(reading, q.history.warningAreaTerms)
+      if (!validity) continue
+      add(validity.fromMs)
+      add(validity.toMs + 1)
     }
   }
   if (names.has('site.met_afternoon_thunderstorm')) {
