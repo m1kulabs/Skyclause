@@ -11,7 +11,6 @@
   "role": "Role",
   "role_for": "Role for {name}",
   "last_active": "Last active",
-  "sign_in_methods": "Sign-in methods",
   "never_active": "Never",
   "no_methods": "Not provided",
   "malay_reader": "Reads Malay",
@@ -123,5 +122,6 @@
   "range": "{from}–{to} of {total}",
   "previous_page": "Previous page",
   "next_page": "Next page",
-  "actions": "Actions"
+  "actions": "Actions",
+  "signs_in_with": "Signs in with {methods}"
 }

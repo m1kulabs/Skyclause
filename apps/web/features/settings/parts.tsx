@@ -13,6 +13,7 @@ import { ApiProblem } from '../../lib/api-fetch'
 import { Glyph } from '../brand/glyph'
 import { SourceError } from '../data-components/states'
 import './catalogue'
+import './table-phone.css'
 import { focusHeadingWhenFree } from './focus'
 
 /**

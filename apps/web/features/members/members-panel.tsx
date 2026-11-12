@@ -388,9 +388,9 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
           </Empty>
         ) : null}
 
-        {loaded ? (
+        {/* The outcome of a row action, beside the list it came from. */}
+        {loaded && (notice || problems.length > 0) ? (
           <div className="grid min-w-0 gap-2">
-            {/* The outcome of a row action, beside the list it came from. */}
             {notice ? <SettingsStatus>{notice}</SettingsStatus> : null}
             {problems.map((entry) => (
               <SettingsError key={entry.id}>{`${entry.who}: ${rowProblems[entry.id]}`}</SettingsError>
@@ -405,13 +405,12 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t('members.name', {}, locale)}</TableHead>
-                    <TableHead className="w-60 max-lg:hidden">{t('members.email', {}, locale)}</TableHead>
-                    <TableHead className="w-40">{t('members.role', {}, locale)}</TableHead>
-                    <TableHead numeric className="w-36">
+                    <TableHead className="w-52 max-lg:hidden">{t('members.email', {}, locale)}</TableHead>
+                    <TableHead className="w-36">{t('members.role', {}, locale)}</TableHead>
+                    <TableHead numeric className="w-32">
                       {t('members.last_active', {}, locale)}
                     </TableHead>
-                    <TableHead className="w-36">{t('members.malay_reader', {}, locale)}</TableHead>
-                    <TableHead className="w-44 max-xl:hidden">{t('members.sign_in_methods', {}, locale)}</TableHead>
+                    <TableHead className="w-28">{t('members.malay_reader', {}, locale)}</TableHead>
                     <TableHead className="w-14">
                       <span className="sr-only">{t('members.actions', {}, locale)}</span>
                     </TableHead>
@@ -426,7 +425,12 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
                         <TableCell truncate="26ch" phone="primary">
                           <strong className="font-semibold">{member.name}</strong>
                         </TableCell>
-                        <TableCell truncate="32ch" phone="meta" className="max-lg:hidden">
+                        <TableCell
+                          truncate="26ch"
+                          phone="meta"
+                          className="max-lg:hidden"
+                          title={`${member.email} · ${t('members.signs_in_with', { methods: signInText(member, locale) }, locale)}`}
+                        >
                           {member.email}
                         </TableCell>
                         <TableCell phone="meta" label={t('members.role', {}, locale)}>
@@ -492,14 +496,6 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
                               {member.reads_malay ? t('members.on', {}, locale) : t('members.off', {}, locale)}
                             </span>
                           </span>
-                        </TableCell>
-                        <TableCell
-                          truncate="24ch"
-                          phone="hide"
-                          className="max-xl:hidden"
-                          title={signInText(member, locale)}
-                        >
-                          {signInText(member, locale)}
                         </TableCell>
                         <TableCell phone="end" className="text-right">
                           {editable ? (

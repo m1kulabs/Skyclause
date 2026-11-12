@@ -60,7 +60,8 @@ test('members panel uses API rows and hides Owner as an Admin grant option', asy
   // A count is written as a count, not as n=.
   expect(screen.getByText('2 members')).toBeDefined()
   expect(screen.queryByText(/n=/)).toBeNull()
-  expect(screen.getAllByText(/Google/)).toHaveLength(2)
+  // How a member signs in rides on their email cell: it is secondary, and the table is only 660px wide.
+  expect(screen.getByTitle('aisha@example.test · Signs in with Email and Google')).toBeDefined()
   expect(screen.getAllByText('Owners change by transfer').length).toBeGreaterThan(0)
   const inviteEmail = screen.getByLabelText('Email address') as HTMLInputElement
   expect(inviteEmail.type).toBe('email')

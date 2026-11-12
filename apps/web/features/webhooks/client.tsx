@@ -313,8 +313,9 @@ export function Webhooks({
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('webhooks.col_endpoint', {}, locale)}</TableHead>
-                  <TableHead>{t('webhooks.events', {}, locale)}</TableHead>
-                  <TableHead>{t('webhooks.projects', {}, locale)}</TableHead>
+                  {/* The panel is 660px wide: the counts of events and projects show on a phone and in the title. */}
+                  <TableHead className="hidden">{t('webhooks.events', {}, locale)}</TableHead>
+                  <TableHead className="hidden">{t('webhooks.projects', {}, locale)}</TableHead>
                   <TableHead>{t('webhooks.status', {}, locale)}</TableHead>
                   <TableHead>{t('webhooks.last_delivery', {}, locale)}</TableHead>
                   <TableHead>
@@ -335,6 +336,7 @@ export function Webhooks({
                       </TableCell>
                       <TableCell
                         phone="meta"
+                        className="hidden"
                         label={t('webhooks.events', {}, locale)}
                         title={formatList(endpoint.events, locale)}
                       >
@@ -346,6 +348,7 @@ export function Webhooks({
                       </TableCell>
                       <TableCell
                         phone="meta"
+                        className="hidden"
                         label={t('webhooks.projects', {}, locale)}
                         title={names.length ? formatList(names, locale) : undefined}
                       >

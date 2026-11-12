@@ -11,7 +11,6 @@
   "role": "Peranan",
   "role_for": "Peranan untuk {name}",
   "last_active": "Aktif kali terakhir",
-  "sign_in_methods": "Kaedah log masuk",
   "never_active": "Tidak pernah",
   "no_methods": "Tidak diberikan",
   "malay_reader": "Membaca dalam Bahasa Melayu",
@@ -123,5 +122,6 @@
   "range": "{from}–{to} daripada {total}",
   "previous_page": "Halaman sebelumnya",
   "next_page": "Halaman seterusnya",
-  "actions": "Tindakan"
+  "actions": "Tindakan",
+  "signs_in_with": "Log masuk dengan {methods}"
 }

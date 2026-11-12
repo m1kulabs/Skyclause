@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { formatDateTime, formatNumber } from '@skyclause/i18n/format'
+import { formatDateTime, formatList, formatNumber } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '#ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
@@ -71,7 +71,10 @@ function SubscriberDetails({ row, onClose, locale }: { row: Row; onClose: () => 
           <Detail label={t('subscribe.language', {}, locale)}>{language(row.language)}</Detail>
           <Detail label={t('subscribers.channels', {}, locale)}>
             {row.channels.length
-              ? row.channels.map((channel) => t(`subscribe.${channel}_channel`, {}, locale)).join(', ')
+              ? formatList(
+                  row.channels.map((channel) => t(`subscribe.${channel}_channel`, {}, locale)),
+                  locale
+                )
               : t('subscribers.no_channels', {}, locale)}
           </Detail>
           <Detail label={t('subscribers.windows_count', {}, locale)}>
@@ -167,7 +170,7 @@ export function SubscriberTable({
           }}
         >
           {filters.map((item) => (
-            <ToggleGroupItem key={item} value={item} className="pointer-coarse:h-11">
+            <ToggleGroupItem key={item} value={item} className="pointer-coarse:h-11 max-[420px]:px-2.5">
               {t(
                 item === 'all' || item === 'suppressed' ? `subscribers.filter_${item}` : `subscribers.status_${item}`,
                 {},
