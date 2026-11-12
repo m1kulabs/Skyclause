@@ -108,11 +108,8 @@ test('gauge detail uses a no-window strip with a table and the copied CLI tail c
   await expect(detail).toContainText('no declared window')
   await expect(detail.locator('[data-readings-table] table')).toBeVisible()
   expect(await detail.locator('[data-readings-table] tbody tr').count()).toBeLessThanOrEqual(50)
-  const copy = page.getByRole('button', { name: 'Copy tail command' })
-  await copy.press('Enter')
-  await expect
-    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
-    .toBe('skyclause signals tail test-org/test-project')
+  // No command to copy while the CLI is not built.
+  await expect(page.getByRole('button', { name: 'Copy tail command' })).toHaveCount(0)
 })
 
 test('Signals rows reflow at 320px without horizontal overflow', async ({ page }) => {

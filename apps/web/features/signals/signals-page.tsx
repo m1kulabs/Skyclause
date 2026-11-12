@@ -24,7 +24,7 @@ import {
   type SourcePoll,
   type SourceReading
 } from './operations'
-import { ageAt, errorsWithinLastDay, findingLine, markEventSeen, orderSources, tailCommand } from './model'
+import { ageAt, errorsWithinLastDay, findingLine, markEventSeen, orderSources } from './model'
 import { SourceDetail } from './source-detail'
 import { SourceTable } from './source-table'
 import { t } from './catalogue'
@@ -77,7 +77,6 @@ export function SignalsPage({
   const [pageError, setPageError] = useState<{ status: number | null; at: string } | null>(null)
   const [detailState, setDetailState] = useState<DetailState | null>(null)
   const [announcement, setAnnouncement] = useState('')
-  const [copyStatus, setCopyStatus] = useState<'copied' | 'failed' | null>(null)
   const [clockNow, setClockNow] = useState(() => Date.now())
   const [refresh, setRefresh] = useState(0)
   const [resolveAttempt, setResolveAttempt] = useState(0)
@@ -248,24 +247,6 @@ export function SignalsPage({
     return () => controller.abort()
   }, [locale, org, project])
 
-  async function copyTailCommand() {
-    if (!project) return
-    // Clear the last result first, so copying twice announces twice.
-    setCopyStatus(null)
-    try {
-      await navigator.clipboard.writeText(tailCommand(org, project.slug))
-      setCopyStatus('copied')
-    } catch {
-      setCopyStatus('failed')
-    }
-  }
-  // The visible "Copied" goes after a few seconds, so the button offers copying again.
-  useEffect(() => {
-    if (copyStatus !== 'copied') return
-    const timer = window.setTimeout(() => setCopyStatus(null), 4000)
-    return () => window.clearTimeout(timer)
-  }, [copyStatus])
-
   // Opening a source brings its detail into view and puts focus on its heading; closing it returns focus to the row
   // that opened it, which would otherwise be lost with the detail that held it.
   const openedFor = useRef<string | null>(null)
@@ -321,12 +302,8 @@ export function SignalsPage({
   return (
     <section data-signals-page className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* No "Copy tail command": the CLI it names is not built, so the command could only fail. */}
         <h1 className="type-title">{t('signals.title', {}, locale)}</h1>
-        {data && (
-          <Button type="button" variant="outline" onClick={() => void copyTailCommand()}>
-            {t(copyStatus === 'copied' ? 'signals.copied' : 'signals.copy_tail', {}, locale)}
-          </Button>
-        )}
       </div>
 
       {data && (
@@ -496,10 +473,6 @@ export function SignalsPage({
 
       <p data-signal-announcement role="status" aria-live="polite" className="sr-only">
         {announcement}
-      </p>
-      <p role="status" aria-live="polite" className={copyStatus === 'failed' ? 'type-small' : 'sr-only'}>
-        {copyStatus === 'copied' ? t('signals.copied', {}, locale) : null}
-        {copyStatus === 'failed' ? t('signals.copy_failed', {}, locale) : null}
       </p>
     </section>
   )
