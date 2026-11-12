@@ -37,32 +37,3 @@
   padding-inline: 0;
   gap: 4px;
 }
-
-/*
- * The capsule wordmark (CapsuleWordmark): it is its own size container, so the letters, the gap and the type are all a
- * share of the width its parent gives it. The gap is a margin because a container cannot measure itself in cqw.
- */
-.capsule-wordmark {
-  display: flex;
-  container-type: inline-size;
-  user-select: none;
-}
-.capsule-wordmark > span {
-  flex: 1 1 auto;
-  display: grid;
-  place-items: center;
-  height: 1.5em;
-  padding-inline: 0.2em;
-  padding-bottom: 0.06em;
-  border: 2px solid var(--ink);
-  border-radius: 9999px;
-  background: var(--ink);
-  color: var(--ground);
-  font-size: 8.4cqw;
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: -0.02em;
-}
-.capsule-wordmark > span + span {
-  margin-inline-start: 1.1cqw;
-}
