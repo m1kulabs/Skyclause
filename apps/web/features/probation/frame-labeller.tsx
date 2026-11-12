@@ -227,9 +227,9 @@ export function FrameLabeller({ sourceId, mode, locale = 'en', onStatus, onDisag
             // A fetched object URL: next/image cannot optimise a blob, and the frame must render at true aspect.
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              className="probation-frame block aspect-[4/3] h-auto w-full rounded-xl bg-card"
+              className="probation-frame block h-auto w-full rounded-xl bg-card"
               src={view.url}
-              // The masked canvas is 640 by 480: the frame keeps its space whatever the file's own size says.
+              // The masked canvas is 640 by 480: the frame holds that space until its own size is known, then keeps its true aspect.
               width={640}
               height={480}
               alt={t(

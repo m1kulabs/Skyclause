@@ -50,7 +50,13 @@
   grid-column: 1 / -1;
 }
 
-.packChoices,
+.packChoices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+}
+
 .projectForm {
   display: grid;
   gap: 24px;

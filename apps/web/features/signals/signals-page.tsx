@@ -451,16 +451,20 @@ export function SignalsPage({
                     <TableHeader>
                       <TableRow>
                         <TableHead>{t('signals.col_source', {}, locale)}</TableHead>
-                        <TableHead>{t('signals.errors_status', {}, locale)}</TableHead>
+                        <TableHead numeric>{t('signals.errors_status', {}, locale)}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {errors.slice(0, ERROR_ROWS).map(({ poll, source }) => (
                         <TableRow key={poll.id}>
-                          <TableCell phone="primary" translate={source ? 'no' : undefined} className="font-medium">
+                          <TableCell
+                            phone="primary"
+                            translate={source ? 'no' : undefined}
+                            className="font-medium whitespace-normal [overflow-wrap:anywhere]"
+                          >
                             {source?.external_id ?? t('signals.source_unknown', {}, locale)}
                           </TableCell>
-                          <TableCell data-numeric phone="end">
+                          <TableCell data-numeric phone="end" className="whitespace-normal">
                             {poll.http_status === null
                               ? t('signals.error_no_status', { time: formatDateTime(poll.started_at, locale) }, locale)
                               : t(

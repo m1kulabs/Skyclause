@@ -79,7 +79,7 @@ function CameraForm({ camera, locale }: { camera: Controller; locale: Locale }) 
   useEffect(() => {
     if (!errorTick) return
     const invalid = document.querySelector<HTMLElement>(
-      '#camera-setup [aria-invalid="true"], #camera-setup [data-invalid="true"]'
+      '#camera-setup input[aria-invalid="true"], #camera-setup button[data-invalid="true"]'
     )
     ;(invalid ?? errorRef.current)?.focus()
   }, [errorTick])
