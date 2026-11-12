@@ -206,8 +206,8 @@ test('SET-2 applies system theme live, saves shortcuts, and enforces reduced mot
   await page.emulateMedia({ colorScheme: 'dark' })
   await expect(page.locator('html')).toHaveClass('dark')
 
-  await page.getByRole('switch', { name: 'Collapse sidebar' }).click()
-  await expect(page.locator('.app-shell')).toHaveAttribute('data-collapsed', 'true')
+  // The sidebar and its collapse preference are gone with the sidebar.
+  await expect(page.getByRole('switch', { name: 'Collapse sidebar' })).toHaveCount(0)
 
   const shortcuts = page.getByRole('switch', { name: 'Keyboard shortcuts' })
   await shortcuts.click()
@@ -217,7 +217,7 @@ test('SET-2 applies system theme live, saves shortcuts, and enforces reduced mot
   await page.reload()
   await expect(page.getByRole('switch', { name: 'Keyboard shortcuts' })).not.toBeChecked()
 
-  await page.getByRole('switch', { name: 'Reduced motion' }).click()
+  await page.getByRole('radio', { name: /^Reduced motion/ }).check()
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await expect
     .poll(() =>
