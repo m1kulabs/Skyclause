@@ -46,12 +46,17 @@ const CONFUSABLE = new Map(
 )
 // UTS #39 skeletons fold capital I and l together and write m as rn, so the checks read each of those spellings too.
 // Symbols that fold to letters (🆃 is T, | is l) are read folded and as written, so |hundred| keeps its word edges.
+// camelCase is read split (rainTwenty, as a link path writes words) and whole (tWenty).
 const skeletons = (text: string): string[] => {
   const chars = [...text.normalize('NFD').replace(/\p{M}/gu, '')]
   return [true, false].flatMap((symbols) => {
-    const base = chars.map((char) => (symbols || /\p{L}/u.test(char) ? (CONFUSABLE.get(char) ?? char) : char)).join('')
-    const asI = base.replaceAll('l', 'i')
-    return [base, asI, base.replaceAll('rn', 'm'), asI.replaceAll('rn', 'm')]
+    const folded = chars
+      .map((char) => (symbols || /\p{L}/u.test(char) ? (CONFUSABLE.get(char) ?? char) : char))
+      .join('')
+    return [folded, folded.replace(/([a-z])([A-Z])/g, '$1 $2')].flatMap((base) => {
+      const asI = base.replaceAll('l', 'i')
+      return [base, asI, base.replaceAll('rn', 'm'), asI.replaceAll('rn', 'm')]
+    })
   })
 }
 // Small capitals that UTS #39 leaves out of confusables.txt (Latin phonetic letters that draw as A-Z).
@@ -246,10 +251,7 @@ function linkPolicy(input: AgentInput): (link: string) => string | null {
     const rest = link.replace(SCHEME, '')
     const host = rest.match(/^[^/?#\\:]*/)![0]
     try {
-      return decodeURIComponent(rest.slice(host.length))
-        .normalize('NFKC')
-        .replaceAll('_', ' ')
-        .replace(/([a-z])([A-Z])/g, '$1 $2')
+      return decodeURIComponent(rest.slice(host.length)).normalize('NFKC').replaceAll('_', ' ')
     } catch {
       return null
     }

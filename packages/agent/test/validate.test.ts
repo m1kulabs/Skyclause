@@ -562,6 +562,13 @@ describe('more exotic look-alikes (#512)', () => {
     }
   )
 
+  test.each(['tWenŧy', 'hUndred', 'mIllion', 'rainTwentyMm'])(
+    'refuses %j, a spelled-out number in odd case or camelCase, in a link path too',
+    (text) => {
+      refused(`Rain reached ${text}.`, 'spelled-out number')
+    }
+  )
+
   test.each(['🆃🆆🅴🅽🆃🆈', '🅣🅦🅔🅝🅣🅨'])('refuses %j, enclosed letters NFKC leaves alone', (text) => {
     refused(`Rain reached ${text} mm.`, 'spelled-out number')
   })
