@@ -4,12 +4,10 @@ import { source } from '../schema'
 import type { CatalogueMetadata, DiscoveredSourceDto } from './types'
 
 /**
- * D45: polled results reach Postgres only in the 15-minute batch. Between batches, a healthy source's newest stored
- * reading ages by up to one batch, on top of the poll's phase and the provider's own publishing lag (JPS posts a slot
- * about 5 minutes late), which together stay under another batch: about 29 minutes for JPS, measured 13 November 2026.
- * "Stale after two missed intervals" (TRD freshness) counts the source's intervals, so the default adds two batches:
- * JPS (300 s) goes stale after 40 minutes. Device sources ingest directly and keep their own thresholds; a discovery's
- * explicit `staleAfterS` (APIMS) stands.
+ * D45: polled results reach Postgres only in the 15-minute batch. Catalogued observed and polled sources default to two
+ * source cadences plus two batches; JPS (300 s) therefore goes stale after 2400 s. Device sources ingest directly and
+ * keep their own thresholds; an explicit `staleAfterS` (APIMS) overrides the default. This is a tolerance around the
+ * stored freshness clock, not a bound on provider publication lag.
  */
 export const SOURCE_INGEST_BATCH_S = 900
 
