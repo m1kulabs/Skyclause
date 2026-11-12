@@ -763,9 +763,10 @@ html[data-motion='reduce'] .pause {
   .facts {
     padding: 40px 40px 0;
   }
+  /* The words sit under the time, so the action stays on the first screen however tall the panel beside them is. */
   .copy {
-    align-self: end;
-    padding: 40px;
+    align-self: start;
+    padding: 48px 40px 40px;
   }
   .room {
     height: clamp(280px, 42svh, 480px);
