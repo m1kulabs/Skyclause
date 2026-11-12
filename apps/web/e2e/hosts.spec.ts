@@ -5,7 +5,7 @@ import http from 'node:http'
 import path from 'node:path'
 import { expect, test, type APIRequestContext, type BrowserContext } from '@playwright/test'
 import type { Role } from '@skyclause/contracts'
-import { addMember, inOrg, makeAccount, makeApiKey, makeOrg, signIn } from '@skyclause/auth/testing'
+import { addMember, inOrg, makeAccount, makeApiKey, makeOrg, makeShareLinkFor, signIn } from '@skyclause/auth/testing'
 import { makeProject, makeProjectPack } from '@skyclause/db/test/factories/index'
 
 // Spec §4 Hosts through the built server's proxy.ts in HOST_MODE=multi, with production's six origins.
@@ -169,6 +169,23 @@ test.describe('HOST_MODE=multi', () => {
       expect(response.status(), host).toBe(404)
       expect(response.headers()['content-type'], host).toMatch(/^text\/html/)
     }
+
+    // A raw dot-segment path on another host never reaches the bridge either.
+    const raw = (host: string, rawPath: string) =>
+      new Promise<number>((resolve, reject) => {
+        http
+          .get({ port, path: rawPath, headers: { host } }, (response) => {
+            resolve(response.statusCode ?? 0)
+            response.resume()
+          })
+          .on('error', reject)
+      })
+    for (const [host, rawPath] of [
+      ['mcp.skyclause.m1ku.tech', '/api/v1/../../mcp/v1/projects'],
+      ['skyclause.m1ku.tech', '/api/v1/../../ms/v1/projects']
+    ] as const) {
+      expect(await raw(host, rawPath), `${host}${rawPath}`).toBe(404)
+    }
   })
 
   test('a signed-in browser on the app host reads its project by slug and by id there', async ({
@@ -282,6 +299,15 @@ test.describe('HOST_MODE=multi', () => {
       authorization: `Bearer ${key}`
     })
     expect(keyedOnApi.status()).toBe(200)
+
+    // A share link's cookie is refused as /api refuses it; a session bearer is taken as /api takes it.
+    const link = await makeShareLinkFor({ orgId: seed.org.id, access: 'reviewer' })
+    const shared = await call('GET', `/api/v1/projects/${link.projectId}`, { cookie: `sc_share=${link.token}` })
+    expect(shared.status()).toBe(403)
+    expect(await problem(shared)).toBe('insufficient-scope: /api admits only signed-in sessions, never keys or tokens.')
+    const { token } = await signIn(seed.owner.accountId)
+    const bearer = await call('GET', detail, { org: seed.org.slug, authorization: `Bearer ${token}` })
+    expect(bearer.status()).toBe(200)
 
     // The organisation event stream takes the same path: the API's own answer (not built yet), never the 404 page.
     const stream = await call('GET', '/api/v1/events/stream', owner)
