@@ -1,10 +1,10 @@
 import { t } from '@skyclause/i18n'
 import type { ReactNode } from 'react'
 import { buttonVariants } from '#ui/button'
+import { CapsuleWordmark } from '../brand'
 import type { PublicLocale } from './attribution'
 import { BrandLines } from './brand-lines'
 import './catalogue'
-import { FooterWordmark } from './footer-wordmark'
 import styles from './public-chrome.module.css'
 
 export { BrandLines } from './brand-lines'
@@ -77,7 +77,7 @@ export function PublicChrome({
           </nav>
         </div>
         <div className={styles.wordmarkBand}>
-          <FooterWordmark locale={locale} />
+          <CapsuleWordmark locale={locale} />
         </div>
       </footer>
     </div>

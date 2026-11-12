@@ -9,7 +9,7 @@ export const instant = false
 export default function Layout({ children }: { children: ReactNode }) {
   return (
     <RootDocument routeGroup="marketing">
-      <div data-surface="marketing" className="dark">
+      <div data-surface="marketing" className="dark landing-surface">
         <Suspense fallback={null}>
           <MarketingLanguageSuggestion />
         </Suspense>

@@ -1,4 +1,4 @@
-/* eslint-disable skyclause-i18n/no-literal-jsx -- Landing copy is the DESIGN copy deck verbatim (English P1; Malay LND-7 P2). */
+/* eslint-disable skyclause-i18n/no-literal-jsx -- Landing copy is English in the component (no Malay landing route; LND-7 is P2). */
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -24,10 +24,10 @@ export function FooterClock({ initial }: { initial?: string }) {
   }, [])
   return (
     <span data-source="clock:Asia/Kuala_Lumpur">
-      Skyclause · Kuala Lumpur
+      Now in Kuala Lumpur
       {now ? (
         <>
-          , <time dateTime={iso || undefined}>{now}</time>
+          : <time dateTime={iso || undefined}>{now}</time>
         </>
       ) : null}
     </span>
