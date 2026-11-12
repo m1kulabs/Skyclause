@@ -63,7 +63,8 @@ export function LandingFooter() {
         <p data-source="https://www.malaysia.gov.my/">{t('brand.not_safety_service', {}, 'en')}</p>
         <p>{t('brand.non_affiliation', {}, 'en')}</p>
       </div>
-      <div className="footer-credits">
+      {/* The sign-in page credits its photograph with a link to /#picture-credits. */}
+      <div id="picture-credits" className="footer-credits">
         <p className="footer-credits-title">Pictures, from Wikimedia Commons</p>
         <ul>
           {PHOTO_KEYS.map((key) => {

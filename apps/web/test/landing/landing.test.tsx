@@ -276,6 +276,8 @@ describe('landing sections', () => {
       expect(img.getAttribute('loading')).toBe('lazy')
     }
     const credits = document.querySelector('.footer-credits')!
+    // Other pages link their own picture's credit here.
+    expect(credits.id).toBe('picture-credits')
     for (const key of PHOTO_KEYS) {
       const entry = photo(key)
       const credit = [...credits.querySelectorAll('li')].find((li) => li.textContent?.includes(entry.title))
