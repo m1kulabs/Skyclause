@@ -83,18 +83,6 @@
       "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
       "page": "https://commons.wikimedia.org/wiki/File:Rain,_Kuala_Lumpur_(Unsplash).jpg",
       "alt": "Heavy rain splashing on a flat surface in Kuala Lumpur, in black and white"
-    },
-    "haze": {
-      "files": ["haze-kuala-lumpur.jpg"],
-      "width": 960,
-      "height": 540,
-      "title": "Haze in Kuala Lumpur (September 2026, AQI 200)",
-      "creator": "Renek78",
-      "date": "2026-09-18",
-      "licence": "CC0",
-      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
-      "page": "https://commons.wikimedia.org/wiki/File:Haze_in_Kuala_Lumpur_(September_2026,_AQI_200).jpg",
-      "alt": "Kuala Lumpur tower blocks blurred by grey haze"
     }
   }
 }

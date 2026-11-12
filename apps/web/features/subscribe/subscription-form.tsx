@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { CircleAlertIcon } from 'lucide-react'
 import type { Subscriber } from '@skyclause/contracts'
 import { Button } from '#ui/button'
 import { useUnsavedChangesGuard } from '../settings/set-7/use-unsaved-changes-guard'
@@ -26,16 +27,33 @@ export function SubscriptionForm({ token, locale }: { token: string; locale: 'en
   })
   const [error, setError] = useState<unknown>(null)
   const [consent, setConsent] = useState(false)
+  const [consentMissing, setConsentMissing] = useState(false)
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState(false)
   const [saved, setSaved] = useState('')
   const [blocked, setBlocked] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const inFlight = useRef(false)
+  // Preference saves run one after another, so a change made while one saves waits instead of being dropped.
+  const queue = useRef<Promise<void>>(Promise.resolve())
   const current = useRef<Subscriber | null>(null)
+  const resultRef = useRef<HTMLDivElement>(null)
+  const consentRef = useRef<HTMLInputElement>(null)
+  const consentErrorId = useId()
   const preferences = !!data?.subscriber
-  const dirty = preferences && !!current.current && JSON.stringify(value) !== JSON.stringify(fieldsOf(current.current))
+  const dirty =
+    sent || blocked
+      ? false
+      : preferences
+        ? !!current.current && JSON.stringify(value) !== JSON.stringify(fieldsOf(current.current))
+        : !!(value.email || value.role || value.window_ids.length)
+  // The join form is guarded too, so following the privacy notice link never drops what was typed.
   useUnsavedChangesGuard(dirty, locale)
+
+  // The form a result replaces held focus; it moves to the result, which says what happened.
+  useEffect(() => {
+    if (sent) resultRef.current?.focus()
+  }, [sent])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -56,10 +74,13 @@ export function SubscriptionForm({ token, locale }: { token: string; locale: 'en
     return () => controller.abort()
   }, [token, attempt])
 
-  async function save(patch: Partial<SubscriberFields>) {
+  function save(patch: Partial<SubscriberFields>) {
+    queue.current = queue.current.then(() => saveNow(patch))
+  }
+
+  async function saveNow(patch: Partial<SubscriberFields>) {
     const field = Object.keys(patch)[0] as keyof SubscriberFields
-    if (!current.current || inFlight.current || JSON.stringify(patch[field]) === JSON.stringify(current.current[field]))
-      return
+    if (!current.current || JSON.stringify(patch[field]) === JSON.stringify(current.current[field])) return
     inFlight.current = true
     setBusy(true)
     setSaved('')
@@ -67,7 +88,8 @@ export function SubscriptionForm({ token, locale }: { token: string; locale: 'en
     try {
       const subscriber = await apiFetch('updateSubscription', { params: { token }, body: patch })
       current.current = subscriber
-      setValue(fieldsOf(subscriber))
+      // Only the saved field takes the server's answer: another field may hold an edit made while this one saved.
+      setValue((previous) => ({ ...previous, [field]: fieldsOf(subscriber)[field] }))
       setSaved(
         t(
           'subscribe.saved',
@@ -83,7 +105,8 @@ export function SubscriptionForm({ token, locale }: { token: string; locale: 'en
         JSON.stringify(reason.body).includes('privacy-notice-unpublished')
       )
         setBlocked(true)
-      setValue(fieldsOf(current.current))
+      const kept = fieldsOf(current.current!)
+      setValue((previous) => ({ ...previous, [field]: kept[field] }))
     } finally {
       setBusy(false)
       inFlight.current = false
@@ -91,7 +114,12 @@ export function SubscriptionForm({ token, locale }: { token: string; locale: 'en
   }
 
   async function join() {
-    if (!consent || !data?.privacy_notice_version || inFlight.current) return
+    if (!consent) {
+      setConsentMissing(true)
+      consentRef.current?.focus()
+      return
+    }
+    if (!data?.privacy_notice_version || inFlight.current) return
     inFlight.current = true
     setBusy(true)
     setError(null)
@@ -115,8 +143,12 @@ export function SubscriptionForm({ token, locale }: { token: string; locale: 'en
     }
   }
 
-  async function unsubscribe() {
-    if (inFlight.current) return
+  // Unsubscribing waits for any preference still saving, so the press is never dropped.
+  function unsubscribe() {
+    queue.current = queue.current.then(unsubscribeNow)
+  }
+
+  async function unsubscribeNow() {
     inFlight.current = true
     setBusy(true)
     setError(null)
@@ -148,7 +180,13 @@ export function SubscriptionForm({ token, locale }: { token: string; locale: 'en
         </Button>
       )}
       {sent ? (
-        <AuthMessage tone="result">{preferences ? saved : t('subscribe.check_email', {}, locale)}</AuthMessage>
+        <>
+          <AuthMessage tone="result" ref={resultRef} tabIndex={-1}>
+            {preferences ? saved : t('subscribe.check_email', {}, locale)}
+          </AuthMessage>
+          {/* No operation re-joins from this token: the way back is the project's subscribe link and a new opt-in. */}
+          {preferences ? <p className="auth-hint">{t('subscribe.resubscribe', {}, locale)}</p> : null}
+        </>
       ) : (
         data &&
         !blocked && (
@@ -165,7 +203,6 @@ export function SubscriptionForm({ token, locale }: { token: string; locale: 'en
                 windows={data.windows}
                 preferences={preferences}
                 locale={locale}
-                disabled={busy}
                 onChange={(patch) => {
                   setSaved('')
                   setValue((previous) => ({ ...previous, ...patch }))
@@ -186,14 +223,25 @@ export function SubscriptionForm({ token, locale }: { token: string; locale: 'en
                         className="native-check"
                         type="checkbox"
                         name="consent"
+                        ref={consentRef}
                         checked={consent}
-                        onChange={(event) => setConsent(event.target.checked)}
-                        disabled={busy}
+                        aria-invalid={consentMissing || undefined}
+                        aria-describedby={consentMissing ? consentErrorId : undefined}
+                        onChange={(event) => {
+                          setConsent(event.target.checked)
+                          if (event.target.checked) setConsentMissing(false)
+                        }}
                       />
                       <span>{t('subscribe.consent', {}, locale)}</span>
                     </label>
+                    {consentMissing ? (
+                      <p className="auth-error" id={consentErrorId} role="alert">
+                        <CircleAlertIcon aria-hidden="true" />
+                        {t('subscribe.consent_required', {}, locale)}
+                      </p>
+                    ) : null}
                   </div>
-                  <Button type="submit" size="lg" className="w-full" disabled={!consent || busy}>
+                  <Button type="submit" size="lg" className="w-full" aria-busy={busy || undefined}>
                     {t(busy ? 'subscribe.saving' : 'subscribe.subscribe', {}, locale)}
                   </Button>
                 </>
@@ -204,13 +252,7 @@ export function SubscriptionForm({ token, locale }: { token: string; locale: 'en
                 <p role="status" className="auth-hint m-0">
                   {busy ? t('subscribe.saving', {}, locale) : saved}
                 </p>
-                <Button
-                  size="lg"
-                  className="w-full"
-                  variant="destructive"
-                  disabled={busy}
-                  onClick={() => void unsubscribe()}
-                >
+                <Button size="lg" className="w-full" variant="destructive" onClick={unsubscribe}>
                   {t('subscribe.unsubscribe', {}, locale)}
                 </Button>
               </>

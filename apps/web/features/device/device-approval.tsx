@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { InfoIcon } from 'lucide-react'
 import { Button } from '../../components/ui/button'
 import { AuthHeader, AuthMessage } from '../public-chrome/auth'
@@ -23,6 +23,22 @@ interface DeviceApprovalProps {
 }
 
 type Verification = { status?: string; client_id?: string }
+
+const COMMAND = 'skyclause login'
+const ROLES = ['owner', 'admin', 'approver', 'editor', 'viewer', 'guest']
+const SLOT = '\u0001'
+
+/** A message naming the CLI command, with the command set as code the browser never translates. */
+function withCommand(message: string): ReactNode {
+  const [before, after] = message.split(SLOT)
+  return (
+    <>
+      {before}
+      <code translate="no">{COMMAND}</code>
+      {after}
+    </>
+  )
+}
 
 async function requestDevice<T>(path: string, options: { method: 'GET' | 'POST'; body?: unknown }): Promise<T> {
   const response = await fetch(`/api/auth${path}`, {
@@ -48,11 +64,12 @@ function errorCode(error: unknown) {
 
 export function DeviceApproval({ code, initialState, device, memberships, locale = 'en' }: DeviceApprovalProps) {
   const t = (key: string) => translate(key, {}, locale)
+  const command = (key: string) => withCommand(translate(key, { command: SLOT }, locale))
   const [enteredCode, setEnteredCode] = useState(code)
   const [state, setState] = useState<DevicePageState>(initialState)
   const [verified, setVerified] = useState(false)
   const [loading, setLoading] = useState(initialState === 'ready')
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState<'approve' | 'deny' | null>(null)
   const [actionError, setActionError] = useState(false)
 
   useEffect(() => {
@@ -94,7 +111,7 @@ export function DeviceApproval({ code, initialState, device, memberships, locale
   }, [code, initialState])
 
   async function decide(decision: 'approve' | 'deny') {
-    setBusy(true)
+    setBusy(decision)
     setActionError(false)
     try {
       const result = await requestDevice<{ success: boolean }>(`/device/${decision}`, {
@@ -106,13 +123,13 @@ export function DeviceApproval({ code, initialState, device, memberships, locale
     } catch {
       setActionError(true)
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
 
-  const statusMessage =
+  const statusMessage: ReactNode =
     state === 'expired'
-      ? t('device.expired')
+      ? command('device.expired')
       : state === 'unknown'
         ? t('device.unknown')
         : state === 'done'
@@ -172,7 +189,7 @@ export function DeviceApproval({ code, initialState, device, memberships, locale
                 {memberships.map(({ organization, role }) => (
                   <li key={`${organization}:${role}`}>
                     <span>{organization}</span>
-                    <span>{role}</span>
+                    <span>{ROLES.includes(role) ? t(`device.role_${role}`) : role}</span>
                   </li>
                 ))}
               </ul>
@@ -183,13 +200,13 @@ export function DeviceApproval({ code, initialState, device, memberships, locale
 
           {verified && (
             <>
-              <p className="auth-hint">{t('device.warning')}</p>
+              <p className="auth-hint">{command('device.warning')}</p>
               <div className="auth-pair">
-                <Button type="button" size="lg" disabled={busy} onClick={() => void decide('approve')}>
-                  {t('device.confirm')}
+                <Button type="button" size="lg" disabled={busy !== null} onClick={() => void decide('approve')}>
+                  {t(busy === 'approve' ? 'device.connecting' : 'device.confirm')}
                 </Button>
-                <Button type="button" size="lg" disabled={busy} onClick={() => void decide('deny')}>
-                  {t('device.deny')}
+                <Button type="button" size="lg" disabled={busy !== null} onClick={() => void decide('deny')}>
+                  {t(busy === 'deny' ? 'device.denying' : 'device.deny')}
                 </Button>
               </div>
             </>

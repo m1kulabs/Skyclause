@@ -31,12 +31,20 @@ test('the public frame carries a plain header, both brand lines and a footer tha
   expect(page).toContain('Bahasa Melayu')
 })
 
-test('the footer returns the wordmark as one capsule per letter, named once', () => {
+test('the footer returns the wordmark as the landing builds it: a capsule block per letter, named once', () => {
   const page = renderToStaticMarkup(<PublicChrome locale="en">{null}</PublicChrome>)
   const wordmark = page.match(/<div[^>]*role="img"[^>]*aria-label="Skyclause"[^>]*>(.*?)<\/div>/)
 
   expect(wordmark).not.toBeNull()
-  expect(wordmark![1]!.match(/<span aria-hidden="true">/g)).toHaveLength('Skyclause'.length)
+  // One row wide; two rows ("Sky", "clause") on a phone. Each spells the name, block by block.
+  const [wide, narrow] = wordmark![1]!.split('</svg>')
+  for (const svg of [wide!, narrow!]) {
+    expect(svg).toContain('aria-hidden="true"')
+    expect([...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]).join('')).toBe('Skyclause')
+  }
+  // Each row stands on its own strip: one under the wide row, one under each of the narrow rows.
+  expect(wide!.match(/width="1000"/g)).toHaveLength(1)
+  expect(narrow!.match(/width="400"/g)).toHaveLength(2)
 })
 
 test('the frame links only pages that exist', () => {

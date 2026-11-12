@@ -2,9 +2,10 @@ import type { CSSProperties } from 'react'
 import { wordmarkSvg } from '@skyclause/elements'
 import { t } from './catalogue'
 import { HeroActivator } from './activator'
+import { HeroFacts } from './hero-facts'
 import { HeroRoom } from './hero-room'
 import { HeroStatic } from './hero-static'
-import type { EvaluateResult, LatestCallRead } from './evaluate'
+import type { EvaluateResult, LatestCallRead, StatusRead } from './evaluate'
 import { calendarPath, pilotRefOf } from './evaluate'
 import { heroStripSvg } from './strip-html'
 import { datesTodayPlusSeven, stripOf, type HeroWindow } from './window-model'
@@ -15,6 +16,7 @@ export interface HeroRead {
   win: HeroWindow
   result: EvaluateResult
   latestCall: LatestCallRead
+  status: StatusRead
 }
 
 /** The h1's words, each in its own span for the CSS reveal, with the spaces kept as text so the name reads whole. */
@@ -38,7 +40,7 @@ function HeadingLine({ text, offset }: { text: string; offset: number }) {
 // the one action; the room holds Bukit Jalil's sky inside the enormous capsule, and the window form with the clause
 // engine's verdict on a solid panel beside it. Server-rendered per request, readable without JavaScript.
 export function LandingHero({ read }: { read: HeroRead }) {
-  const { now, win, result, latestCall } = read
+  const { now, win, result, latestCall, status } = read
   const strip = result.kind === 'ok' ? stripOf(result.data.strip, win, result.data.evaluated_at) : null
   const stripSvg = heroStripSvg(strip)
   const appOrigin = process.env.APP_ORIGIN
@@ -49,6 +51,7 @@ export function LandingHero({ read }: { read: HeroRead }) {
   return (
     <section className={styles.hero} aria-labelledby="hero-title">
       <div className={styles.card} aria-hidden="true" />
+      <HeroFacts now={now} status={status} />
       <div className={styles.copy}>
         <span
           className={styles.wordmark}
@@ -89,6 +92,7 @@ export function LandingHero({ read }: { read: HeroRead }) {
           dates={dates}
           latestCall={latestCall}
           calendarQuery={calendarPath(pilot)}
+          now={now.toISOString()}
         />
       </HeroActivator>
     </section>

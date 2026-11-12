@@ -1,61 +1,12 @@
 /*
- * The data page: what is held about one subscriber, as real tables. Rows step in tone instead of ruled lines; on a phone
- * each row stacks under its first cell and every value keeps its column's name, so nothing scrolls sideways.
+ * The data page: what is held about one subscriber, in the shared tables (components/ui/table.tsx), which separate rows
+ * by tone and turn each row into a two-line item on a phone, so nothing scrolls sideways.
  */
 .section {
   display: grid;
   gap: 16px;
   min-width: 0;
   margin-top: 16px;
-}
-
-.table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0 4px;
-  font-size: 1rem;
-  line-height: 1.5;
-  text-align: left;
-}
-
-.table caption {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-.table th,
-.table td {
-  padding: 12px 16px;
-  vertical-align: top;
-  text-align: left;
-  overflow-wrap: anywhere;
-}
-
-.table thead th {
-  padding-block: 4px;
-  color: var(--muted-foreground);
-  font-weight: 400;
-}
-
-.table tbody > tr > * {
-  background: var(--surface);
-}
-
-.table tbody > tr > :first-child {
-  border-radius: 10px 0 0 10px;
-}
-
-.table tbody > tr > :last-child {
-  border-radius: 0 10px 10px 0;
-}
-
-.summary th {
-  width: 34%;
-  font-weight: 600;
 }
 
 .form {
@@ -74,73 +25,6 @@
 }
 
 @media (max-width: 720px) {
-  .table:not(.summary),
-  .table:not(.summary) tbody,
-  .table:not(.summary) tr,
-  .table:not(.summary) th,
-  .table:not(.summary) td {
-    display: block;
-  }
-
-  .table:not(.summary) thead {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
-  .table:not(.summary) tbody tr {
-    margin-bottom: 8px;
-    padding: 16px;
-    border-radius: 16px;
-    background: var(--surface);
-  }
-
-  .table:not(.summary) tbody tr > * {
-    padding: 0;
-    border-radius: 0;
-    background: none;
-  }
-
-  .table:not(.summary) tbody td + td {
-    margin-top: 8px;
-  }
-
-  .table:not(.summary) td::before {
-    content: attr(data-label);
-    display: block;
-    color: var(--muted-foreground);
-  }
-
-  .summary,
-  .summary tbody,
-  .summary tr,
-  .summary th,
-  .summary td {
-    display: block;
-  }
-
-  .summary tr {
-    margin-bottom: 8px;
-    padding: 12px 16px;
-    border-radius: 16px;
-    background: var(--surface);
-  }
-
-  .summary tr > * {
-    width: auto;
-    padding: 0;
-    border-radius: 0;
-    background: none;
-  }
-
-  .summary th {
-    color: var(--muted-foreground);
-    font-weight: 400;
-  }
-
   .actions > * {
     flex: 1 1 100%;
   }

@@ -34,6 +34,7 @@ export function SignInPanel({
   const emailRef = useRef<HTMLInputElement>(null)
   const alertRef = useRef<HTMLDivElement>(null)
   const expiredRef = useRef<HTMLDivElement>(null)
+  const resultRef = useRef<HTMLDivElement>(null)
   const conditionalStarted = useRef(false)
   const [email, setEmail] = useState('')
   const [sentEmail, setSentEmail] = useState<string | null>(null)
@@ -68,6 +69,11 @@ export function SignInPanel({
   useEffect(() => {
     if (forceEmailForm) emailRef.current?.focus()
   }, [forceEmailForm])
+
+  // The control that was pressed is gone once a link is sent or confirmed; focus moves to the result that replaced it.
+  useEffect(() => {
+    if (sentEmail || resendSent || stepUpConfirmed) resultRef.current?.focus()
+  }, [sentEmail, resendSent, stepUpConfirmed])
 
   const completePasskeySignIn = useCallback(
     async (autoFill = false) => {
@@ -262,7 +268,9 @@ export function SignInPanel({
         {state.kind === 'confirm' && (
           <div className="auth-stack">
             {stepUpConfirmed ? (
-              <AuthMessage tone="result">{status}</AuthMessage>
+              <AuthMessage tone="result" tabIndex={-1} ref={resultRef}>
+                {status}
+              </AuthMessage>
             ) : (
               <Button size="lg" className="w-full" onClick={() => void confirmLink()} disabled={busy}>
                 {busy ? text('sign-in.confirming') : text(state.stepUp ? 'sign-in.confirm_step_up' : 'sign-in.confirm')}
@@ -275,7 +283,9 @@ export function SignInPanel({
           <div className="auth-stack">
             {resendSent ? (
               <>
-                <AuthMessage tone="result">{status}</AuthMessage>
+                <AuthMessage tone="result" tabIndex={-1} ref={resultRef}>
+                  {status}
+                </AuthMessage>
                 <Button variant="outline" size="lg" className="w-full" onClick={useDifferentEmail}>
                   {text('sign-in.use_different_email')}
                 </Button>
@@ -304,7 +314,9 @@ export function SignInPanel({
 
             {sentEmail ? (
               <div className="auth-stack">
-                <AuthMessage tone="result">{text('sign-in.sent', { email: sentEmail })}</AuthMessage>
+                <AuthMessage tone="result" tabIndex={-1} ref={resultRef}>
+                  {text('sign-in.sent', { email: sentEmail })}
+                </AuthMessage>
                 <Button variant="outline" size="lg" className="w-full" onClick={useDifferentEmail}>
                   {text('sign-in.use_different_email')}
                 </Button>
