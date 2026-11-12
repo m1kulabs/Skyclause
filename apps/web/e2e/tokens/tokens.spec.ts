@@ -426,6 +426,8 @@ const systemColour = (page: Page, keyword: string) =>
 test('forced colours keep the label of filled and selected controls and the edge of outline ones', async ({ page }) => {
   await page.emulateMedia({ forcedColors: 'active', colorScheme: 'dark' })
   await page.goto('/sign-in')
+  // The sign-in form rises in over 700 ms: its label is measured once it has settled, not mid-fade.
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'))
   const primary = page.getByRole('button', { name: 'Send sign-in link' })
   const colours = await primary.evaluate((button) => {
     const style = getComputedStyle(button)
