@@ -74,8 +74,8 @@ test('owner owns every table, view, type, function and schema the migrations cre
 
 // #608: a login's temporary table or view replaces a table that a SECURITY DEFINER function reads without a schema, such
 // as next_event_seq() reading `project`, and runs the login's code as `owner`; pg_partman 5.1.0 also puts pg_temp in its
-// functions' search path. A database's TEMPORARY privilege is granted to PUBLIC, and CREATE DATABASE ... TEMPLATE drops
-// it, so this needs a database `migrate()` built itself, not the harness's clone.
+// functions' search path. A database's TEMPORARY privilege is granted to PUBLIC by default, and the harness's clone of
+// the template has that default ACL again, not the template's, so this needs a database `migrate()` built itself.
 test('only owner can create temporary objects, and partition_maintenance() still runs as system', async () => {
   const database = await emptyDatabase()
   await migrate(localUrl('migrator', database), migrationsFolder)

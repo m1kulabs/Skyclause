@@ -10,18 +10,20 @@
 --
 -- The grant is the database's own, which `owner` doesn't hold, so this runs as `migrator`, as 0004 does for partman's
 -- schema; the database's name differs per environment (local, CI, Neon). A REVOKE by a role that doesn't own the database
--- only warns, so the last statement fails the migration if any login still has the privilege.
+-- only warns, and migrate() shows no warnings, so the migration fails, naming the roles, if any of them keeps the privilege.
 RESET ROLE;
 DO $$
+DECLARE
+  holders text;
 BEGIN
   EXECUTE format('REVOKE TEMPORARY ON DATABASE %I FROM PUBLIC', current_database());
   EXECUTE format('GRANT TEMPORARY ON DATABASE %I TO "owner"', current_database());
-  IF EXISTS (
-    SELECT FROM pg_roles
+  SELECT string_agg(rolname, ', ' ORDER BY rolname) INTO holders FROM pg_roles
     WHERE rolname IN ('system', 'app', 'auth_app', 'retention', 'public_reader')
-      AND has_database_privilege(rolname, current_database(), 'TEMPORARY')
-  ) THEN
-    RAISE EXCEPTION 'a role other than owner still has TEMPORARY on database %', current_database();
+      AND has_database_privilege(rolname, current_database(), 'TEMPORARY');
+  IF holders IS NOT NULL THEN
+    RAISE EXCEPTION 'TEMPORARY on database "%" is still held by %: the REVOKE takes effect only if the migrating role owns the database',
+      current_database(), holders;
   END IF;
 END
 $$;
