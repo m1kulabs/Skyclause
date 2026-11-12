@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test'
 import { pseudo } from '../../../../packages/i18n/src/pseudo'
 import { test, expect } from '../fixtures'
 import { expectUnclippedText } from '../harness/expect-unclipped-text'
+import { org, project, stubDashboard } from '../dashboard/doubles'
 import type { ShellData } from '../../features/shell/types'
 
 const data: ShellData = {
@@ -387,4 +388,46 @@ test('long organisation and project names wrap without hiding controls', async (
     const tool = width > 640 ? /^Open command palette/ : copy('Menu')
     await expect(bar(page).getByRole('button', { name: tool })).toBeInViewport()
   }
+})
+
+test('on a real route the palette opens from the bar and offers every destination, grouped', async ({ page }) => {
+  await stubDashboard(page, { role: 'owner' })
+  await setShell(page, {
+    memberships: [{ org_id: org.id, org_name: org.name, org_slug: org.slug, role: 'owner' }],
+    projects: [{ id: project.id, org_id: org.id, name: project.name, slug: project.slug }]
+  })
+  await page.goto(`/${org.slug}/${project.slug}/windows`)
+  await expect(page.locator('[data-palette-ready="true"]')).toBeAttached()
+  await bar(page)
+    .getByRole('button', { name: /^Open command palette/ })
+    .click()
+  const dialog = page.getByRole('dialog', { name: copy('Command palette') })
+  await expect(dialog).toBeVisible()
+  await expect(page.getByRole('combobox', { name: copy('Search commands') })).toBeFocused()
+  await expect(dialog.getByRole('group', { name: copy('Suggestions') })).toBeVisible()
+  for (const name of [
+    'Review',
+    'Windows',
+    'Signals',
+    'Calls',
+    'Ledger',
+    'Overview',
+    'Analysis',
+    'Subscribers',
+    'Project settings',
+    'Dashboard',
+    'Projects',
+    'Organisation analysis',
+    'Webhooks',
+    'Organisation settings',
+    'Connect your AI',
+    'Account'
+  ])
+    await expect(dialog.getByRole('option', { name: copy(name), exact: true })).toBeAttached()
+  await page.getByRole('combobox', { name: copy('Search commands') }).fill('ledger')
+  await expect(dialog.getByRole('option').first()).toHaveAttribute('aria-selected', 'true')
+  await expect(dialog.getByRole('option', { name: copy('Ledger'), exact: true })).toBeVisible()
+  const navigation = page.waitForURL(`**/${org.slug}/${project.slug}/ledger`)
+  await dialog.getByRole('option', { name: copy('Ledger'), exact: true }).click()
+  await navigation
 })

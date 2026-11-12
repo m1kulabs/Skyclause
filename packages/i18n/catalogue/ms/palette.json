@@ -1,6 +1,6 @@
 {
   "title": "Palet arahan",
-  "description": "Cari arahan yang tersedia untuk peranan anda. Tekan Escape untuk tutup.",
+  "description": "Cari halaman dan arahan yang tersedia untuk peranan anda. Gunakan kekunci anak panah untuk bergerak, Enter untuk memilih dan Escape untuk tutup.",
   "search": "Cari arahan",
   "placeholder": "Cari arahan…",
   "results": "Arahan yang tersedia",
@@ -19,5 +19,29 @@
   "dark": "Gelap",
   "system": "Sistem",
   "theme_saved": "Keutamaan tema disimpan.",
-  "theme_failed": "Tema tidak dapat disimpan. Cuba lagi."
+  "theme_failed": "Tema tidak dapat disimpan. Cuba lagi.",
+  "groups": {
+    "suggestions": "Cadangan",
+    "actions": "Tindakan",
+    "pages": "Pergi ke",
+    "places": "Organisasi dan projek",
+    "appearance": "Tema",
+    "choose": "Pilih projek",
+    "project": "Projek",
+    "source": "Sumber",
+    "window": "Tetingkap",
+    "bundle": "Berkas",
+    "call": "Keputusan",
+    "ledger": "Entri lejar"
+  },
+  "load_source": "organisasi dan projek anda",
+  "search_source": "carian organisasi",
+  "retry": "Cuba lagi",
+  "footer": {
+    "move": "untuk bergerak",
+    "choose": "untuk memilih",
+    "close": "untuk tutup",
+    "enter": "Enter",
+    "escape": "Esc"
+  }
 }
