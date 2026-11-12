@@ -17,12 +17,13 @@ import { Kbd } from '#ui/kbd'
 import { Label } from '#ui/label'
 import { Progress } from '#ui/progress'
 import { Skeleton } from '#ui/skeleton'
+import { Spinner } from '#ui/spinner'
 import { Switch } from '#ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableMeasure, TableRow } from '#ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#ui/tabs'
 import { Textarea } from '#ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '#ui/toggle-group'
-import { ModeBadge, StatusMark } from '../../../features/brand'
+import { ModeBadge, ReplayMark, StatusMark } from '../../../features/brand'
 import {
   BundleCard,
   CallRow,
@@ -34,6 +35,7 @@ import {
   NotBuilt,
   PackStateNote,
   SourceError,
+  SignalHealthHead,
   SourceHealthRow,
   WindowStrip
 } from '../../../features/data-components'
@@ -710,6 +712,7 @@ export function Gallery() {
             <Skeleton className="h-6 w-40 rounded-full" />
             <Skeleton className="h-10 w-full rounded-full" />
             <Skeleton className="h-4 w-56" />
+            <Spinner />
           </div>
           <div className="flex flex-col gap-3">
             <Progress value={67} aria-label="Setup" />
@@ -769,7 +772,7 @@ export function Gallery() {
           <BundleCard bundle={bundle} triggeredAt="2026-11-12T07:05:00Z" now={now} projectName="Bukit Jalil" />
           <GradeCard
             grade={grade}
-            metric={{ metric: 'precision', x: 0.88, n: 8, low: 0.53, high: 0.98 }}
+            metric={{ metric: 'precision', x: 7, n: 8, low: 0.53, high: 0.98 }}
             period={{ from: '2026-10-01', to: '2026-11-11' }}
           />
         </div>
@@ -777,10 +780,12 @@ export function Gallery() {
           <InputAgeChip input={input} ageSeconds={240} />
           <InputAgeChip input={{ ...input, state: 'stale' }} ageSeconds={1500} />
           <PackStateNote pack={pack} />
+          <ReplayMark />
+          <ModeBadge mode="no_call" />
         </div>
-        <table className="w-full">
-          <tbody>
-            <CallRow call={call} />
+        <Table>
+          <SignalHealthHead />
+          <TableBody>
             <SourceHealthRow
               source={source}
               latest={{ value: 0.5, observed_at: '2026-11-12T07:36:00Z', unit: 'mm' }}
@@ -790,6 +795,11 @@ export function Gallery() {
                 i === 20 ? 'error' : i % 7 === 3 ? 'missed' : 'received'
               )}
             />
+          </TableBody>
+        </Table>
+        <table className="w-full">
+          <tbody>
+            <CallRow call={call} />
           </tbody>
         </table>
       </Section>

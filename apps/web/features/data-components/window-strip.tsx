@@ -3,10 +3,12 @@
 import { useMemo, useState } from 'react'
 import type { Window } from '@skyclause/contracts'
 import { layoutStrip, type StripInput, type StripWindow } from '@skyclause/elements'
-import { formatTime } from '@skyclause/i18n/format'
-import { Badge } from '#ui/badge'
+import { formatNumber, formatTime } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
+import { ReplayMark } from '../brand/replay-mark'
 import { t } from './catalogue'
+import { indicatorName } from './indicator-names'
 import { DayStrip } from './day-strip'
 import { ReadingsChart } from './readings-chart'
 import { readingRows } from './readings-table'
@@ -59,11 +61,12 @@ export function WindowStrip({ windows, strip, list, locale = 'en' }: WindowStrip
     }
   }, [input.from, input.to, dayWindows])
   // The readings under the day row: the window's span stays as a tone band, its capsule is the row above. Lanes sit
-  // 24 apart so their 13px y labels clear each other; the header band holds the now label.
+  // 30 apart so each holds its 13px title above it and clears the y label of the lane over it; the header band holds
+  // the now label and the first lane's title (20 more).
   const layout = useMemo(() => {
     const at = Date.parse(input.now)
     const nowInSpan = at >= Date.parse(input.from) && at <= Date.parse(input.to)
-    return layoutStrip({ ...input, windows: [], locale }, { header: nowInSpan ? 28 : 8, laneGap: 24 })
+    return layoutStrip({ ...input, windows: [], locale }, { header: (nowInSpan ? 28 : 8) + 20, laneGap: 30 })
   }, [input, locale])
   const dayRow = dayWindows.length ? (
     <DayStrip
@@ -81,7 +84,14 @@ export function WindowStrip({ windows, strip, list, locale = 'en' }: WindowStrip
   const table = useMemo(() => readingRows(input.rain5, input.rain60), [input.rain5, input.rain60])
   const firstCrossing = layout.crossings[0]
   const crossingText = firstCrossing
-    ? t('data.strip.crossing', { time: formatTime(firstCrossing.at, locale), value: firstCrossing.value }, locale)
+    ? t(
+        'data.strip.crossing',
+        {
+          time: formatTime(firstCrossing.at, locale),
+          value: formatNumber(firstCrossing.value, locale, { maximumFractionDigits: 1 })
+        },
+        locale
+      )
     : t('data.strip.no_crossing', {}, locale)
   const summary = input.replay
     ? t(
@@ -104,8 +114,8 @@ export function WindowStrip({ windows, strip, list, locale = 'en' }: WindowStrip
       <div className="flex w-full flex-col gap-3">
         {dayRow}
         <figure className="w-full">
-          {input.replay ? <Badge variant="outline">{t('data.strip.replay_badge', {}, locale)}</Badge> : null}
-          <figcaption className="text-sm text-muted-foreground">
+          {input.replay ? <ReplayMark locale={locale} /> : null}
+          <figcaption className="type-small text-muted-foreground">
             {input.replay ? summary : t('data.strip.empty', {}, locale)}
           </figcaption>
         </figure>
@@ -117,7 +127,7 @@ export function WindowStrip({ windows, strip, list, locale = 'en' }: WindowStrip
     <figure className="flex w-full flex-col gap-2">
       {dayRow}
       <div className="flex flex-wrap items-center gap-2">
-        {layout.isReplay ? <Badge variant="outline">{t('data.strip.replay_badge', {}, locale)}</Badge> : null}
+        {layout.isReplay ? <ReplayMark locale={locale} /> : null}
         {win ? (
           <span className="inline-flex flex-wrap items-center gap-1 type-small text-muted-foreground">
             <span>{t('data.strip.window', {}, locale)}</span>
@@ -139,64 +149,53 @@ export function WindowStrip({ windows, strip, list, locale = 'en' }: WindowStrip
           {toggleLabel}
         </Button>
         {showTable ? (
-          <div className="mt-2 overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
-              <caption className="text-left text-muted-foreground">
+          <div className="mt-2">
+            <Table compact>
+              <TableCaption className="mt-0 mb-2 text-left">
                 {t('data.strip.table_caption', {}, locale)}
                 {table.bucketMinutes ? (
                   <span className="block">
                     {t('data.strip.table_peaks', { minutes: table.bucketMinutes, count }, locale)}
                   </span>
                 ) : null}
-              </caption>
-              <thead>
-                <tr>
-                  <th
-                    scope="col"
-                    className="h-10 border-b border-rule px-2 text-left text-[13px] font-medium text-muted-foreground"
-                  >
-                    {t('data.strip.table_time', {}, locale)}
-                  </th>
-                  <th
-                    scope="col"
-                    className="h-10 border-b border-rule px-2 text-right text-[13px] font-medium text-muted-foreground"
-                  >
-                    {t('data.strip.table_rain5', {}, locale)}
-                  </th>
-                  <th
-                    scope="col"
-                    className="h-10 border-b border-rule px-2 text-right text-[13px] font-medium text-muted-foreground"
-                  >
-                    {t('data.strip.table_rain60', {}, locale)}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
+              </TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('data.strip.table_time', {}, locale)}</TableHead>
+                  <TableHead numeric>{t('data.strip.table_rain5', {}, locale)}</TableHead>
+                  <TableHead numeric>{t('data.strip.table_rain60', {}, locale)}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {table.rows.map((row) => (
-                  <tr key={row.at}>
-                    <th scope="row" className="h-11 border-b border-rule px-2 text-left font-normal">
+                  <TableRow key={row.at}>
+                    <TableCell>
                       <time dateTime={row.at}>{formatTime(row.at, locale)}</time>
-                    </th>
-                    <td className="h-11 border-b border-rule px-2 text-right tabular-nums">
-                      {row.rain5 === null ? t('data.strip.missing', {}, locale) : row.rain5}
-                    </td>
-                    <td className="h-11 border-b border-rule px-2 text-right tabular-nums">
-                      {row.rain60 === null ? t('data.strip.missing', {}, locale) : row.rain60}
-                    </td>
-                  </tr>
+                    </TableCell>
+                    <TableCell numeric phone="meta" label={t('data.strip.table_rain5', {}, locale)}>
+                      {row.rain5 === null
+                        ? t('data.strip.missing', {}, locale)
+                        : formatNumber(row.rain5, locale, { maximumFractionDigits: 1 })}
+                    </TableCell>
+                    <TableCell numeric phone="meta" label={t('data.strip.table_rain60', {}, locale)}>
+                      {row.rain60 === null
+                        ? t('data.strip.missing', {}, locale)
+                        : formatNumber(row.rain60, locale, { maximumFractionDigits: 1 })}
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         ) : null}
       </div>
       {input.ages && input.ages.length ? (
         <div className="md:hidden">
-          <h4 className="type-small font-medium">{t('data.strip.ages_title', {}, locale)}</h4>
+          <p className="type-small font-medium">{t('data.strip.ages_title', {}, locale)}</p>
           <ul className="mt-1 space-y-1 type-small tabular-nums">
             {input.ages.map((age) => (
               <li key={age.name} className="flex flex-wrap items-center gap-1">
-                <span>{age.name}</span>
+                <span>{indicatorName(age.name, locale)}</span>
                 <span>{age.observedAt ? formatTime(age.observedAt, locale) : t('data.strip.missing', {}, locale)}</span>
               </li>
             ))}

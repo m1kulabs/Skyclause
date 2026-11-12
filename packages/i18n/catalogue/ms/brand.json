@@ -20,5 +20,7 @@
     "probation": "Input dalam tempoh percubaan",
     "off_hours": "Di luar waktu input"
   },
-  "test": { "title": "Aset jenama", "back": "Kembali ke token", "after": "Selepas lencana" }
+  "test": { "title": "Aset jenama", "back": "Kembali ke token", "after": "Selepas lencana" },
+  "replay": "Ulangan",
+  "strip": { "crossing": "Lebat pada {time}", "replay": "Ulangan · {source} · {date}" }
 }

@@ -57,5 +57,7 @@
     "camera": { "licence_name": null, "licence_url": null, "derived_only": true },
     "pi": { "licence_name": null, "licence_url": null, "derived_only": true }
   },
-  "test": { "title": "Brand assets", "back": "Back to tokens", "after": "After badges" }
+  "test": { "title": "Brand assets", "back": "Back to tokens", "after": "After badges" },
+  "replay": "Replay",
+  "strip": { "crossing": "Lebat at {time}", "replay": "Replay · {source} · {date}" }
 }

@@ -16,10 +16,13 @@
     "window": "Window",
     "now": "Now",
     "ages_title": "Input ages",
-    "lebat_line": "Lebat 31 mm",
-    "chart_date": "{date} · MYT",
-    "now_label": "Now MYT",
-    "table_peaks": "Highest reading in each {minutes} minutes, from {count} readings."
+    "lebat_line": "Lebat 31 mm",
+    "chart_date": "{date} · MYT",
+    "now_label": "Now MYT",
+    "table_peaks": "Highest reading in each {minutes} minutes, from {count} readings.",
+    "lane_rain5": "Rain, mm per 5 min",
+    "lane_rain60": "Rain, mm in 60 min",
+    "ticks_received": "{received} received, {missed} missed, {errors} failed"
   },
   "age": {
     "label": "{name} {age}",
@@ -31,12 +34,13 @@
     "received_time": "Received time",
     "status": "Status",
     "latency": "Latency",
-    "latency_value": "{value} ms"
+    "latency_value": "{value} ms",
+    "latency_unknown": "–"
   },
   "source": {
     "cadence": "every {value}",
     "minute": "{value} min",
-    "value": "{value} {unit}",
+    "value": "{value} {unit}",
     "latest_empty": "No readings yet (n=0).",
     "error_since": "{source} error since {time} · HTTP {status}",
     "unknown_status": "unknown",
@@ -46,6 +50,7 @@
     "tick_error": "error",
     "licence": "Licence",
     "licence_derived": "Derived only",
+    "new_tab": "(opens in a new tab)",
     "open_source": "Open source"
   },
   "call": {
@@ -69,7 +74,7 @@
   },
   "bundle": {
     "trigger": "{trigger} at {time}",
-    "title": "{triggerText} {project}",
+    "title": "{project} · {triggerText}",
     "sla": "{count} min of SLA left",
     "sla_over": "SLA passed",
     "agrees": "Agrees",
@@ -81,14 +86,16 @@
     "actions": "Bundle actions"
   },
   "grade": {
-    "value_label": "{metric} {value}",
+    "value_label": "{metric}",
     "n": "n={count}",
     "n_zero": "n=0",
     "period": "{from} to {to}",
     "replay": "Replay",
     "empty": "No graded windows yet (n=0).",
     "interval_label": "Wilson 95% interval {low} to {high}",
-    "wilson_95": "Wilson 95%: {low}–{high}"
+    "wilson_95": "Wilson 95%: {low}–{high}",
+    "count": "{x} of {n}",
+    "no_interval": "No interval yet."
   },
   "pack": {
     "clause_engine": "Clause engine verdict: not reviewed, not sent",
@@ -101,11 +108,12 @@
     "summary_one": "1 window on {date}. Times in MYT.",
     "empty": "No windows on {date}.",
     "now": "Now {time}",
-    "range": "{from}–{to} MYT",
+    "range": "{from}–{to} MYT",
     "pending": "No call yet",
     "draft": "Draft, not approved",
     "more": "{count} more windows are not listed.",
-    "list": "Windows and their calls"
+    "list": "Windows and their calls",
+    "more_one": "1 more window is not listed."
   },
   "no_call": {
     "reason": "{inputs} failing since {time}.",
@@ -122,5 +130,49 @@
     "status_untimed": "It answered {status}.",
     "unreachable": "No answer at {time}.",
     "retry": "Try again"
+  },
+  "indicators": {
+    "site": {
+      "rain_60m_mm": "Rain in the last 60 minutes (site)",
+      "api_max": "Air pollution index, highest across stations",
+      "api_0600_min_last3_max": "Air pollution index at 06:00, lowest of the last three mornings",
+      "met_warning_in_force": "MET warning in force (site)",
+      "met_afternoon_thunderstorm": "MET forecast: afternoon thunderstorm",
+      "camera_far_low_frames": "Sky camera: low-contrast far frames, of the last 3",
+      "night": {
+        "baseline": "Night exits, usual level",
+        "uplift": "Night exits, uplift from the event",
+        "forecast": "Night exits, forecast",
+        "band_low": "Night exits, forecast band (low)",
+        "band_high": "Night exits, forecast band (high)",
+        "doors": "Doors open",
+        "show": "Show starts",
+        "arrival_start": "Arrival period starts",
+        "arrival_end": "Arrival period ends",
+        "exit_start": "Exit period starts",
+        "exit_end": "Exit period ends",
+        "single_source": "Night forecast from a single source"
+      }
+    },
+    "w": {
+      "rain_max_60m_mm": "Heaviest 60-minute rain in the window",
+      "rain_max_4h_mm": "Heaviest 4-hour rain in the window",
+      "met_warning_in_force": "MET warning in force during the window",
+      "start": "Window start",
+      "end": "Window end",
+      "start_local_min": "Window start, minutes after midnight",
+      "end_local_min": "Window end, minutes after midnight",
+      "kind": "Window kind",
+      "duration": "Window length"
+    },
+    "other": "Other input"
+  },
+  "signal": {
+    "source": "Source",
+    "value": "Newest value",
+    "age": "Age",
+    "health": "Health",
+    "no_value": "No reading yet",
+    "updated": "Read {time}"
   }
 }
