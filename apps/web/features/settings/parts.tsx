@@ -19,7 +19,7 @@ import { SourceError } from '../data-components/states'
 
 /** The panel's parts, in one column with the space between them. */
 export function SettingsParts({ className, ...props }: React.ComponentProps<'div'>) {
-  return <div className={cn('grid min-w-0 gap-10', className)} {...props} />
+  return <div className={cn('grid min-w-0 gap-8', className)} {...props} />
 }
 
 export function SettingsPart({

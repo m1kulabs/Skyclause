@@ -142,7 +142,7 @@
 
   .inviteHead,
   .inviteRow {
-    grid-template-columns: minmax(0, 1fr) 124px 96px auto;
+    grid-template-columns: minmax(0, 1fr) 124px 96px 176px;
   }
 
   .head {

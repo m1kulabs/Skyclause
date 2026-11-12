@@ -27,6 +27,10 @@
   margin: 16px 0;
   list-style: none;
 }
+.panel ul:empty,
+.controls:empty {
+  display: none;
+}
 .row {
   display: flex;
   flex-wrap: wrap;

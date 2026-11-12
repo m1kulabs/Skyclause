@@ -27,7 +27,7 @@ export default function BillingPanel({
   const cell = (key: string): string => t(`settings.billing.${key}`, {}, locale)
 
   return (
-    <SettingsParts>
+    <SettingsParts className="gap-6">
       <section aria-labelledby="billing-plan-title" className="grid gap-1">
         <h3 id="billing-plan-title" className="type-small font-normal text-muted-foreground">
           {cell('currentPlan')}
