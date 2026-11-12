@@ -78,11 +78,13 @@ export function parseWindowFromSearch(query: string, now: Date): HeroWindow | nu
   const date = params.get('date')
   const start = params.get('start')
   const end = params.get('end')
-  if (!date || !start || !end) return null
+  if (!date || !start) return null
   if (!datesTodayPlusSeven(now).includes(date)) return null
   const startMin = parseLocalTime(start)
-  const endMin = parseLocalTime(end)
-  if (startMin === null || endMin === null) return null
+  if (startMin === null) return null
+  // The closing sentence asks for one time: without an end, the window is the hour from its start.
+  const endMin = end ? parseLocalTime(end) : startMin + 60
+  if (endMin === null) return null
   const clamped = clampWindow(startMin, endMin)
   return { date, startMin: clamped.start, endMin: clamped.end }
 }
@@ -180,6 +182,14 @@ export function groupedVerdicts(verdicts: readonly Verdicts[]): GroupedVerdict[]
       errorCount: inputs.filter((input) => input.state === 'error').length
     }
   })
+}
+
+/** The Sky pack's state for the band's capsule: its mode, No call when a clause is blocked, null with no Sky verdict. */
+export function skyStateOf(grouped: readonly GroupedVerdict[]): Mode | 'no_call' | null {
+  const sky = grouped.find((group) => group.pack === 'sky')
+  if (!sky) return null
+  if (sky.mode) return sky.mode
+  return sky.blocked.length ? 'no_call' : null
 }
 
 export function blockedLineOf(input: { clause: string; blocked: BlockedInput }): string {

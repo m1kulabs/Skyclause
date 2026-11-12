@@ -26,9 +26,9 @@ export function HeroStrip({
 
   if (!svg) return null
   return (
-    <figure className={styles.heroStrip} data-rain-animated={rainAnimated ? 'yes' : 'no'}>
+    <figure className={styles.rain} data-rain-animated={rainAnimated ? 'yes' : 'no'}>
       <div
-        className={styles.heroStripSvg}
+        className={styles.rainSvg}
         // biome-ignore lint/security/noDangerouslySetInnerHtml: stripSvg is geometry from derived readings.
         dangerouslySetInnerHTML={{ __html: svg }}
       />

@@ -49,8 +49,29 @@ test('a GET query gives a window only when every part validates inside today plu
     startMin: 1290,
     endMin: 1380
   })
-  expect(parseWindowFromSearch('date=2026-11-06&start=21%3A30', now)).toBeNull()
   expect(parseWindowFromSearch('date=2026-11-13&start=21%3A30&end=23%3A00', now)).toBeNull()
   expect(parseWindowFromSearch('date=2026-11-06&start=21%3A31&end=23%3A00', now)).toBeNull()
   expect(parseWindowFromSearch('', now)).toBeNull()
+  expect(parseWindowFromSearch('date=2026-11-06&end=23%3A00', now)).toBeNull()
+})
+
+test('a query without an end (the closing sentence asks for one time) reads the hour from its start', () => {
+  const now = new Date('2026-11-05T13:12:00Z')
+  expect(parseWindowFromSearch('date=2026-11-06&start=15%3A30', now)).toEqual({
+    date: '2026-11-06',
+    startMin: 930,
+    endMin: 990
+  })
+  expect(parseWindowFromSearch('date=2026-11-06&start=15%3A30&end=', now)).toEqual({
+    date: '2026-11-06',
+    startMin: 930,
+    endMin: 990
+  })
+  // Late starts keep the day's last step.
+  expect(parseWindowFromSearch('date=2026-11-06&start=23%3A30', now)).toEqual({
+    date: '2026-11-06',
+    startMin: 1410,
+    endMin: 1425
+  })
+  expect(parseWindowFromSearch('date=2026-11-06&start=15%3A20', now)).toBeNull()
 })

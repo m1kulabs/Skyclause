@@ -1,74 +1,96 @@
-/* eslint-disable @next/next/no-img-element -- the mark is a 40px inline brand SVG; plain <img> keeps the landing island light. */
+import type { CSSProperties } from 'react'
+import { wordmarkSvg } from '@skyclause/elements'
 import { t } from './catalogue'
 import { HeroActivator } from './activator'
+import { HeroRoom } from './hero-room'
 import { HeroStatic } from './hero-static'
-import { calendarPath, fetchEvaluateServer, fetchLatestCallServer, pilotRefOf } from './evaluate'
+import type { EvaluateResult, LatestCallRead } from './evaluate'
+import { calendarPath, pilotRefOf } from './evaluate'
 import { heroStripSvg } from './strip-html'
-import { datesTodayPlusSeven, nextHourWindow, parseWindowFromSearch, stripOf } from './window-model'
+import { datesTodayPlusSeven, stripOf, type HeroWindow } from './window-model'
 import styles from './hero.module.css'
 
-type Search = Readonly<Record<string, string | string[] | undefined>>
+export interface HeroRead {
+  now: Date
+  win: HeroWindow
+  result: EvaluateResult
+  latestCall: LatestCallRead
+}
 
-export async function LandingHero({ searchParams }: { searchParams: Promise<Search> }) {
-  const query = await searchParams
-  const now = new Date()
-  const serialized = new URLSearchParams({
-    date: typeof query.date === 'string' ? query.date : '',
-    start: typeof query.start === 'string' ? query.start : '',
-    end: typeof query.end === 'string' ? query.end : ''
-  }).toString()
-  const win = parseWindowFromSearch(serialized, now) ?? nextHourWindow(now)
-  const pilot = pilotRefOf(process.env.PILOT_PROJECT)
-  const [result, latestCall] = await Promise.all([fetchEvaluateServer(win), fetchLatestCallServer(pilot)])
+/** The h1's words, each in its own span for the CSS reveal, with the spaces kept as text so the name reads whole. */
+function HeadingLine({ text, offset }: { text: string; offset: number }) {
+  const words = text.split(' ')
+  return (
+    <span className={styles.line}>
+      {words.map((word, index) => (
+        <span key={`${word}-${index}`}>
+          <span className={styles.word} style={{ '--i': offset + index } as CSSProperties}>
+            {word}
+          </span>
+          {index < words.length - 1 ? ' ' : null}
+        </span>
+      ))}
+    </span>
+  )
+}
+
+// Striped card beside the room: the card holds the day strip (the stripe band), the name, the h1, one sentence and
+// the one action; the room holds Bukit Jalil's sky inside the enormous capsule, and the window form with the clause
+// engine's verdict on a solid panel beside it. Server-rendered per request, readable without JavaScript.
+export function LandingHero({ read }: { read: HeroRead }) {
+  const { now, win, result, latestCall } = read
   const strip = result.kind === 'ok' ? stripOf(result.data.strip, win, result.data.evaluated_at) : null
   const stripSvg = heroStripSvg(strip)
   const appOrigin = process.env.APP_ORIGIN
-  const guestHref = appOrigin ? new URL('/guest', appOrigin).toString() : '/guest'
   const signInHref = appOrigin ? new URL('/sign-in', appOrigin).toString() : '/sign-in'
+  const pilot = pilotRefOf(process.env.PILOT_PROJECT)
+  const line1 = t('landing-hero.heading_line_1', {}, 'en')
+  const dates = datesTodayPlusSeven(now)
   return (
-    <section className={styles.hero} aria-label={t('landing-hero.picker_label', {}, 'en')}>
-      <div className={styles.left}>
-        <div className={styles.topRow}>
-          <img src="/icon.svg" width={40} height={40} alt="" aria-hidden="true" className={styles.mark} />
-          <a href={signInHref} className={styles.signIn}>
+    <section className={styles.hero} aria-labelledby="hero-title">
+      <div className={styles.card} aria-hidden="true" />
+      <div className={styles.copy}>
+        <span
+          className={styles.wordmark}
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: the brand builder's own outlined wordmark.
+          dangerouslySetInnerHTML={{ __html: wordmarkSvg }}
+        />
+        <h1 id="hero-title" className={styles.title}>
+          <HeadingLine text={line1} offset={0} />
+          {t('landing-hero.h1_join', {}, 'en')}
+          <HeadingLine text={t('landing-hero.heading_line_2', {}, 'en')} offset={line1.split(' ').length} />
+        </h1>
+        <p className={styles.lead}>{t('landing-hero.lead_sentence', {}, 'en')}</p>
+        <div className={styles.actions}>
+          <a href={signInHref} className="landing-button">
             {t('landing-hero.sign_in', {}, 'en')}
           </a>
+          <nav aria-label={t('landing-hero.links_label', {}, 'en')} className={styles.links}>
+            <a href="#how">{t('landing-hero.link_how', {}, 'en')}</a>
+            <a href="#record">{t('landing-hero.link_record', {}, 'en')}</a>
+            <a href="#prices">{t('landing-hero.link_prices', {}, 'en')}</a>
+          </nav>
         </div>
-        <div className={styles.spacer} aria-hidden="true" />
-        <h1 className={`type-landing-head ${styles.h1}`}>
-          <span className={styles.hline}>
-            <span className={`${styles.hlineInner} ${styles.line1}`}>{t('landing-hero.heading_line_1', {}, 'en')}</span>
-          </span>
-          {t('landing-hero.h1_join', {}, 'en')}
-          <span className={styles.hline}>
-            <span className={`${styles.hlineInner} ${styles.line2}`}>{t('landing-hero.heading_line_2', {}, 'en')}</span>
-          </span>
-        </h1>
-        <p className={`type-landing-body ${styles.lead}`}>{t('landing-hero.lead_sentence', {}, 'en')}</p>
-        <a href={guestHref} className={styles.cta}>
-          {t('landing-hero.open_commons', {}, 'en')}
-        </a>
       </div>
-      <div className={styles.right}>
-        <HeroActivator
-          initialResult={result}
-          initialStripSvg={stripSvg}
-          initialWin={win}
-          dates={datesTodayPlusSeven(now)}
+      <HeroRoom />
+      <HeroActivator
+        initialResult={result}
+        initialStripSvg={stripSvg}
+        initialWin={win}
+        dates={dates}
+        latestCall={latestCall}
+        pilot={pilot}
+        calendarQuery={calendarPath(pilot)}
+      >
+        <HeroStatic
+          result={result}
+          stripSvg={stripSvg}
+          win={win}
+          dates={dates}
           latestCall={latestCall}
-          pilot={pilot}
           calendarQuery={calendarPath(pilot)}
-        >
-          <HeroStatic
-            result={result}
-            stripSvg={stripSvg}
-            win={win}
-            dates={datesTodayPlusSeven(now)}
-            latestCall={latestCall}
-            calendarQuery={calendarPath(pilot)}
-          />
-        </HeroActivator>
-      </div>
+        />
+      </HeroActivator>
     </section>
   )
 }
