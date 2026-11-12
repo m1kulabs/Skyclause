@@ -1,56 +1,58 @@
 'use client'
 
 import type { SheetVersion } from '@skyclause/contracts'
-import { useCallback, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip } from '#ui/chart'
-import { Card, CardContent } from '#ui/card'
 import { Badge } from '#ui/badge'
 import { Button } from '#ui/button'
 import { Input } from '#ui/input'
-import { formatDate, formatNumber } from '@skyclause/i18n/format'
+import { formatDate, formatDateCompact, formatNumber } from '@skyclause/i18n/format'
+import { RotateCcwIcon } from 'lucide-react'
 import { t } from './catalogue'
 import { apiFetch, allPages, type Replay } from './operations'
 import { axisTicks, type AnalysisState, type Locale, type ReplaySeries } from './model'
-import { EmptyBlock, Failure, MetricFigure, Time } from './presentation'
+import { EmptyBlock, Failure, MetricRow, Time } from './presentation'
 import { useRead } from './use-read'
 
 function ReplayChart({ series, locale }: { series: ReplaySeries; locale: Locale }) {
   const [table, setTable] = useState(false)
-  const ticks = axisTicks(Math.max(0, ...series.points.map((point) => point.value ?? 0)))
+  // Fired clauses are counts: whole-number steps, at least 0–3.
+  const ticks = axisTicks(Math.max(2, ...series.points.map((point) => point.value ?? 0)))
   return (
     <div data-replay-chart>
-      <div className="analysis-toolbar">
-        <p>{t('analysis.replaySummary', { n: series.points.length }, locale)}</p>
-        <Button variant="ghost" aria-expanded={table} onClick={() => setTable(!table)}>
+      <div className="analysis-chart-head">
+        <h3>{t('analysis.replaySummary', { n: series.points.length }, locale)}</h3>
+        <Button variant="ghost" size="sm" aria-expanded={table} onClick={() => setTable(!table)}>
           {t(table ? 'analysis.view' : 'analysis.table', {}, locale)}
         </Button>
       </div>
-      <p>{t('analysis.n', { n: series.points.length }, locale)}</p>
+      <p className="analysis-sub">{t('analysis.n', { n: series.points.length }, locale)}</p>
       {!series.points.length ? (
         <EmptyBlock message="replayEmpty" locale={locale} />
       ) : (
         <>
           {!table && (
             <ChartContainer
-              config={{ value: { label: t('analysis.replayAxis', {}, locale), color: 'var(--chart-2)' } }}
+              config={{ value: { label: t('analysis.replayAxis', {}, locale), color: 'var(--chart-ink)' } }}
               className="analysis-chart"
             >
               <LineChart data={series.points} accessibilityLayer margin={{ left: 0, right: 16, top: 16, bottom: 8 }}>
-                <CartesianGrid vertical={false} stroke="var(--border)" />
+                <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="at"
                   axisLine={false}
                   tickLine={false}
-                  minTickGap={50}
-                  tickFormatter={(value: string) => formatDate(value, locale)}
+                  minTickGap={40}
+                  tickMargin={8}
+                  tickFormatter={(value: string) => formatDateCompact(value, locale)}
                 />
                 <YAxis
                   ticks={ticks}
                   domain={[0, ticks.at(-1)!]}
                   axisLine={false}
                   tickLine={false}
-                  width={40}
+                  width={52}
                   tickFormatter={(value: number) => formatNumber(value, locale)}
                 />
                 <ChartTooltip
@@ -67,10 +69,10 @@ function ReplayChart({ series, locale }: { series: ReplaySeries; locale: Locale 
                   dataKey="value"
                   name={t('analysis.replayAxis', {}, locale)}
                   type="linear"
-                  stroke="var(--chart-2)"
+                  stroke="var(--chart-ink)"
                   strokeWidth={2}
                   strokeDasharray="5 4"
-                  dot={{ r: 3, fill: 'var(--card)', stroke: 'var(--chart-2)' }}
+                  dot={{ r: 3, fill: 'var(--card)', stroke: 'var(--chart-ink)' }}
                   isAnimationActive={false}
                 />
               </LineChart>
@@ -79,7 +81,7 @@ function ReplayChart({ series, locale }: { series: ReplaySeries; locale: Locale 
           {table && (
             <div className="analysis-table-frame">
               <table>
-                <caption>{t('analysis.replayAxis', {}, locale)}</caption>
+                <caption className="sr-only">{t('analysis.replayAxis', {}, locale)}</caption>
                 <thead>
                   <tr>
                     {['at', 'value', 'origin'].map((key) => (
@@ -95,7 +97,9 @@ function ReplayChart({ series, locale }: { series: ReplaySeries; locale: Locale 
                       <td>
                         <Time at={point.at} locale={locale} />
                       </td>
-                      <td>{formatNumber(point.value ?? 0, locale)}</td>
+                      <td data-figure="" data-numeric>
+                        {formatNumber(point.value ?? 0, locale)}
+                      </td>
                       <td>{t('analysis.replay', {}, locale)}</td>
                     </tr>
                   ))}
@@ -211,19 +215,43 @@ export function ReplayPane({
         verdict: step.verdicts.hash
       })) ?? []
   }
+  const field = (key: string, label: string, control: ReactNode) => (
+    <label className="analysis-field" key={key}>
+      <span>{label}</span>
+      {control}
+    </label>
+  )
   return (
-    <Card className="analysis-replay" data-replay-pane>
-      <CardContent>
-        <h2>{t('analysis.whatIf', {}, locale)}</h2>
+    <section className="analysis-replay" data-replay-pane aria-labelledby="analysis-replay-title">
+      <div className="analysis-section-head">
+        <h2 id="analysis-replay-title">
+          {t('analysis.whatIf', {}, locale)}
+          <span className="analysis-replay-mark">
+            <RotateCcwIcon aria-hidden="true" focusable="false" />
+            {t('analysis.replay', {}, locale)}
+          </span>
+        </h2>
         <p className="analysis-muted">{t('analysis.replayHelp', {}, locale)}</p>
+      </div>
+      <div className="analysis-replay-body">
         {sheets.status === 'error' ? (
-          <Failure operation={t('analysis.sheet', {}, locale)} error={sheets.error} locale={locale} />
+          <Failure
+            source={t('analysis.sources.sheets', {}, locale)}
+            error={sheets.error}
+            at={sheets.at}
+            retry={sheets.retry}
+            locale={locale}
+          />
         ) : (
-          <form onSubmit={(event) => void submit(event)}>
+          <form onSubmit={(event) => void submit(event)} className="analysis-replay-form">
             <div className="analysis-form-grid">
-              <label>
-                {t('analysis.sheet', {}, locale)}
+              {field(
+                'sheet',
+                t('analysis.sheet', {}, locale),
                 <select
+                  name="sheet"
+                  className="native-select"
+                  autoComplete="off"
                   value={sheet?.id ?? ''}
                   onChange={(event) => change({ sheet: event.target.value, version: '' })}
                 >
@@ -237,20 +265,28 @@ export function ReplayPane({
                         </option>
                       ))}
                 </select>
-              </label>
-              <label>
-                {t('analysis.subject', {}, locale)}
+              )}
+              {field(
+                'subject',
+                t('analysis.subject', {}, locale),
                 <select
+                  name="subject"
+                  className="native-select"
+                  autoComplete="off"
                   value={state.subject}
                   onChange={(event) => change({ subject: event.target.value, version: '' })}
                 >
                   <option value="version">{t('analysis.version', {}, locale)}</option>
                   {canDraft && <option value="draft">{t('analysis.draft', {}, locale)}</option>}
                 </select>
-              </label>
-              <label>
-                {t(state.subject === 'draft' ? 'analysis.draft' : 'analysis.version', {}, locale)}
+              )}
+              {field(
+                'version',
+                t(state.subject === 'draft' ? 'analysis.draft' : 'analysis.version', {}, locale),
                 <select
+                  name="version"
+                  className="native-select"
+                  autoComplete="off"
                   value={version?.id ?? ''}
                   disabled={!sheet || versions.status !== 'ready'}
                   onChange={(event) => change({ version: event.target.value })}
@@ -262,7 +298,7 @@ export function ReplayPane({
                       .map((item) => (
                         <option key={item.id} value={item.id}>
                           {item.status === 'draft'
-                            ? `${t('analysis.draft', {}, locale)} · ${item.id}`
+                            ? t('analysis.draftLabel', { id: item.id }, locale)
                             : t(
                                 'analysis.versionLabel',
                                 { subject: t(`analysis.${state.subject}`, {}, locale), n: item.n, id: item.id },
@@ -271,23 +307,33 @@ export function ReplayPane({
                         </option>
                       ))}
                 </select>
-              </label>
-              <label>
-                {t('analysis.from', {}, locale)}
-                <Input
-                  type="date"
-                  value={state.from}
-                  onChange={(event) => change({ from: event.target.value })}
-                  required
-                />
-              </label>
-              <label>
-                {t('analysis.to', {}, locale)}
-                <Input type="date" value={state.to} onChange={(event) => change({ to: event.target.value })} required />
-              </label>
-              <label>
-                {t('analysis.step', {}, locale)}
-                <select value={state.step} onChange={(event) => change({ step: event.target.value })}>
+              )}
+              {(['from', 'to'] as const).map((key) =>
+                field(
+                  key,
+                  t(`analysis.${key}`, {}, locale),
+                  <span className="analysis-field-ring" data-focus-ring>
+                    <Input
+                      type="date"
+                      name={key}
+                      autoComplete="off"
+                      value={state[key]}
+                      onChange={(event) => change({ [key]: event.target.value })}
+                      required
+                    />
+                  </span>
+                )
+              )}
+              {field(
+                'step',
+                t('analysis.step', {}, locale),
+                <select
+                  name="step"
+                  className="native-select"
+                  autoComplete="off"
+                  value={state.step}
+                  onChange={(event) => change({ step: event.target.value })}
+                >
                   {[...new Set(['reading', 'PT5M', 'PT60M', state.step])].map((step) => (
                     <option key={step} value={step}>
                       {step === 'reading'
@@ -296,24 +342,36 @@ export function ReplayPane({
                     </option>
                   ))}
                 </select>
-              </label>
+              )}
             </div>
             {versions.status === 'error' && (
-              <Failure operation={t('analysis.subject', {}, locale)} error={versions.error} locale={locale} />
+              <Failure
+                source={t('analysis.sources.versions', {}, locale)}
+                error={versions.error}
+                at={versions.at}
+                retry={versions.retry}
+                locale={locale}
+              />
             )}
             {((sheets.status === 'ready' && sheets.value.length === 0) ||
               (sheet && versions.status === 'ready' && versions.value.length === 0)) && (
               <EmptyBlock message="subjectsEmpty" locale={locale} />
             )}
-            {state.from && state.to && !validRange && <p role="alert">{t('analysis.invalidRange', {}, locale)}</p>}
-            <Button type="submit" variant="outline" disabled={!version || !validRange || visible?.status === 'loading'}>
-              {t(visible?.status === 'loading' ? 'analysis.running' : 'analysis.run', {}, locale)}
-            </Button>
-            {visible?.status === 'error' && <p role="alert">{t('analysis.replayFailed', {}, locale)}</p>}
+            <div className="analysis-replay-run">
+              <Button
+                type="submit"
+                variant="outline"
+                disabled={!version || !validRange || visible?.status === 'loading'}
+              >
+                {t(visible?.status === 'loading' ? 'analysis.running' : 'analysis.run', {}, locale)}
+              </Button>
+              {state.from && state.to && !validRange && <p role="alert">{t('analysis.invalidRange', {}, locale)}</p>}
+              {visible?.status === 'error' && <p role="alert">{t('analysis.replayFailed', {}, locale)}</p>}
+            </div>
           </form>
         )}
         {value && version && (
-          <section aria-label={t('analysis.replay', {}, locale)}>
+          <section aria-label={t('analysis.replay', {}, locale)} className="analysis-replay-result">
             <Badge variant="outline">
               {t(
                 'analysis.replayLabel',
@@ -328,21 +386,16 @@ export function ReplayPane({
               )}
             </Badge>
             <ReplayChart series={series} locale={locale} />
-            <div className="analysis-figures">
-              {value.metrics?.map((metric, index) => (
-                <MetricFigure
-                  key={index}
-                  metric={metric}
-                  from={state.from}
-                  to={state.to}
-                  source={state.sheet}
-                  locale={locale}
-                />
-              ))}
-            </div>
+            {!!value.metrics?.length && (
+              <ul className="analysis-rows" aria-label={t('analysis.replayFigures', {}, locale)}>
+                {value.metrics.map((metric, index) => (
+                  <MetricRow key={index} metric={metric} locale={locale} />
+                ))}
+              </ul>
+            )}
           </section>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   )
 }

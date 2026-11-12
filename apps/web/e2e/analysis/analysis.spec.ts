@@ -28,7 +28,7 @@ for (const path of [projectRoute, orgRoute]) {
     const root = page.locator('[data-analysis-page]')
     await expect(root.locator('[data-metric=precision]').first()).toContainText('n=8')
     await expect(root.locator('[data-point-tick]').first()).toHaveAttribute('stroke-width', '2')
-    await expect(root.locator('[data-metric=precision]').first()).toContainText('0.53')
+    await expect(root.locator('[data-metric=precision]').first()).toContainText('53%')
     await expect(root.locator('[data-metric=precision]').first()).toContainText('2026')
     await expect(root.getByRole('heading', { name: copy('fullTable') })).toBeVisible()
     await expectZonedTimes(page)
@@ -264,7 +264,7 @@ test('operation failures render errors instead of inventing zero counts', async 
     route.fulfill({ status: 503, json: { title: 'Unavailable' } })
   )
   await page.goto(projectRoute)
-  await expect(page.locator('[data-analysis-page]').getByRole('alert')).toBeVisible()
+  await expect(page.locator('[data-analysis-page] [data-source-error="503"]')).toBeVisible()
   await expect(page.locator('[data-live-chart], [data-metric]')).toHaveCount(0)
   await expect(page.locator('[data-analysis-page]')).not.toContainText(copy('emptyFinding'))
 })
@@ -277,7 +277,7 @@ test('a Crowd availability failure is reported while live Sky figures remain ava
       : route.fallback()
   )
   await page.goto(projectRoute)
-  await expect(page.locator('[data-analysis-page]').getByRole('alert')).toContainText('Crowd')
+  await expect(page.locator('[data-analysis-page] [data-source-error="503"]')).toContainText('Crowd')
   await expect(page.locator('[data-metric=precision]').first()).toBeVisible()
 })
 
@@ -306,13 +306,18 @@ for (const theme of ['dark', 'light', 'high-contrast'] as const) {
     await expect(page.getByRole('tab', { name: tabName('delays'), exact: true })).toBeFocused()
     await page.keyboard.press('Enter')
     await expect(page).toHaveURL(/tab=delays/)
-    const line = await page
-      .getByRole('tab', { name: tabName('delays'), exact: true })
-      .evaluate((el) => getComputedStyle(el, '::after').height)
-    expect(line).toBe(theme === 'high-contrast' ? '2px' : '1px')
-    const selectedRange = page.locator('.analysis-controls [data-slot=toggle-group-item][aria-pressed=true]')
-    await expect(selectedRange).toHaveCSS('border-bottom-width', theme === 'high-contrast' ? '2px' : '1px')
-    await expect(selectedRange).toHaveCSS('border-bottom-style', 'solid')
+    // The selected tab and period are inverted capsules, not a colour alone.
+    await expect(page.getByRole('tab', { name: tabName('delays'), exact: true })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
+    await expect(page.getByRole('tab', { name: tabName('delays'), exact: true })).not.toHaveCSS(
+      'background-color',
+      'rgba(0, 0, 0, 0)'
+    )
+    const selectedRange = page.locator('.analysis-period [data-slot=toggle-group-item][aria-pressed=true]')
+    await expect(selectedRange).toHaveCount(1)
+    await expect(selectedRange).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
     for (const width of [1280, 375, 320]) {
       await page.setViewportSize({ width, height: 900 })
       await expectUnclippedText(page)

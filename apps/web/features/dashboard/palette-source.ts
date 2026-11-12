@@ -31,10 +31,13 @@ function membershipForProject(context: PaletteContext, project: PaletteProject):
   return context.memberships.find((membership) => membership.org_id === project.org_id)
 }
 
+/** The route's organisation and project; `/new`, `/connect` and `/account/*` have neither, whatever their path. */
 function scope(context: PaletteContext) {
-  const [orgSlug, projectSlug] = context.pathname.split('/').filter(Boolean)
-  const membership = context.memberships.find((item) => item.org_slug === orgSlug)
-  const project = context.projects.find((item) => item.org_slug === orgSlug && item.slug === projectSlug)
+  const { org: orgSlug, project: projectSlug } = context
+  const membership = orgSlug ? context.memberships.find((item) => item.org_slug === orgSlug) : undefined
+  const project = projectSlug
+    ? context.projects.find((item) => item.org_slug === orgSlug && item.slug === projectSlug)
+    : undefined
   return { orgSlug: membership ? orgSlug : undefined, membership, project }
 }
 
@@ -65,6 +68,7 @@ function actionItems(context: PaletteContext): PaletteItem[] {
           ? t('palette.declare_window_for', { name: project.name })
           : t('palette.open_project', { name: project.name }),
       keywords: [project.id, project.slug, project.org_slug],
+      kind: 'places',
       onSelect: () =>
         context.navigate(
           purpose === 'window'
@@ -82,6 +86,7 @@ function actionItems(context: PaletteContext): PaletteItem[] {
       id: `organisation:${membership.org_id}`,
       label: t('palette.open_organisation', { name: membership.org_name }),
       keywords: [membership.org_id, membership.org_slug, membership.org_name],
+      kind: 'places',
       onSelect: () => context.navigate(`/${encodeURIComponent(membership.org_slug)}`)
     })
   }
@@ -92,6 +97,7 @@ function actionItems(context: PaletteContext): PaletteItem[] {
       id: `project:${project.id}`,
       label: t('palette.open_project', { name: project.name }),
       keywords: [project.id, project.slug, project.org_slug],
+      kind: 'places',
       onSelect: () => context.navigate(`/${encodeURIComponent(project.org_slug)}/${encodeURIComponent(project.slug)}`)
     })
   }
@@ -104,6 +110,8 @@ function actionItems(context: PaletteContext): PaletteItem[] {
     items.push({
       id: 'declare-window',
       label: t('palette.declare_window'),
+      kind: 'actions',
+      suggested: true,
       keywords: ['window', current.project.id, current.project.slug],
       onSelect: () =>
         context.navigate(
@@ -114,6 +122,8 @@ function actionItems(context: PaletteContext): PaletteItem[] {
     items.push({
       id: 'declare-window',
       label: t('palette.declare_window'),
+      kind: 'actions',
+      suggested: true,
       keywords: ['window', 'project'],
       keepOpen: true,
       onSelect: () => context.chooseProject('window')
@@ -124,6 +134,8 @@ function actionItems(context: PaletteContext): PaletteItem[] {
     items.push({
       id: 'search-ledger',
       label: t('palette.search_ledger'),
+      kind: 'actions',
+      suggested: true,
       keywords: ['ledger', current.project.id, current.project.slug],
       onSelect: () => context.navigate(ledgerHref(current.project!, context.query))
     })
@@ -131,6 +143,8 @@ function actionItems(context: PaletteContext): PaletteItem[] {
     items.push({
       id: 'search-ledger',
       label: t('palette.search_ledger'),
+      kind: 'actions',
+      suggested: true,
       keywords: ['ledger', 'project'],
       keepOpen: true,
       onSelect: () => context.chooseProject('ledger')
@@ -212,6 +226,7 @@ async function search(query: string, context: PaletteContext, signal: AbortSigna
         id: `search:${membership.org_id}:${item.kind}:${item.id}`,
         label: item.label,
         keywords: [item.id, item.external_id ?? '', item.kind],
+        kind: 'results' as const,
         translateNo: item.kind === 'source' && !!item.external_id,
         onSelect: () => context.navigate(item.href)
       }))
@@ -227,6 +242,7 @@ export const dashboardPaletteSource: PaletteSource = {
       id: `theme:${theme}`,
       label: t(`palette.${theme}`),
       keywords: ['theme', 'appearance'],
+      kind: 'appearance',
       onSelect: () => context.changeTheme(theme)
     }))
     return [...actionItems(context), ...themeItems]
