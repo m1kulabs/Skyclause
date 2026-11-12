@@ -6,7 +6,6 @@ import { TypedConfirmDialog } from '../settings/set-7/confirm-dialog'
 import { useUndoableAction } from '../settings/set-7/use-undoable-action'
 import { OperationError } from '../subscribe/error'
 import { apiFetch } from '../subscribe/operations'
-import { actionClass } from '../subscribe/fields'
 import { t } from './catalogue'
 
 export function RemoveSubscriber({
@@ -26,14 +25,16 @@ export function RemoveSubscriber({
     onRemoved()
   })
   return (
-    <div className="grid gap-2">
+    <div className="grid justify-items-start gap-2">
       <Button
-        className={`${actionClass} text-destructive`}
         variant="outline"
+        size="sm"
+        className="pointer-coarse:h-11"
+        aria-label={t('subscribers.remove', { name: email }, locale)}
         disabled={removal.pending || removal.committing}
         onClick={() => setOpen(true)}
       >
-        {t('subscribers.remove', { name: email }, locale)}
+        {t('subscribers.remove_short', {}, locale)}
       </Button>
       <TypedConfirmDialog
         open={open}
@@ -48,9 +49,9 @@ export function RemoveSubscriber({
         }}
       />
       {removal.pending && (
-        <div role="status">
+        <div role="status" className="type-small grid justify-items-start gap-2">
           <p>{t('subscribers.pending', { name: email }, locale)}</p>
-          <Button className={actionClass} onClick={removal.undo}>
+          <Button variant="outline" size="sm" onClick={removal.undo}>
             {t('subscribers.undo', {}, locale)}
           </Button>
         </div>
