@@ -116,9 +116,7 @@ test('consent write 503 replaces the form with privacy-notice-unpublished', asyn
 test('failed subscription read shows the operation error and Retry', async ({ page }) => {
   await failOperation(page, '**/api/subscribe/test-token', 'GET', 410, 'token-expired')
   await page.goto('/subscribe/test-token')
-  await expect(page.locator('main').getByRole('alert')).toHaveText(
-    t('subscribe.error', { status: 410, reason: 'token-expired' })
-  )
+  await expect(page.locator('main').getByRole('alert')).toHaveText(t('subscribe.link_expired'))
   await expect(page.locator('form')).toHaveCount(0)
   await expect(page.getByRole('button', { name: t('subscribe.retry') })).toBeVisible()
 })

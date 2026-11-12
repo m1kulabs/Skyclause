@@ -25,10 +25,10 @@
   "saving": "Saving…",
   "saved": "{field} saved. Applies before the next notice.",
   "error": "Request failed ({status}): {reason}. Try again.",
-  "unavailable": "Cannot reach this operation. Try again.",
-  "unpublished": "503 privacy-notice-unpublished: the PDPA notice is not published. Consent changes are unavailable.",
+  "unavailable": "Skyclause could not be reached. Check your connection and try again.",
+  "unpublished": "Subscribing and changes to notices are paused until Skyclause publishes its privacy notice. Try again later.",
   "retry": "Try again",
-  "no_windows": "0 windows (n=0). Ask the project Admin to add a window.",
+  "no_windows": "No windows to subscribe to yet. Ask the project’s Admin to add one.",
   "confirm_title": "Confirm your subscription",
   "confirm": "Confirm subscription",
   "confirmed": "Subscription confirmed.",
@@ -48,5 +48,12 @@
   "send_feedback": "Send feedback",
   "feedback_saved": "Feedback recorded.",
   "window_span": "{day}, {start} to {end}",
-  "window_span_days": "{startDay}, {start} to {endDay}, {end}"
+  "window_span_days": "{startDay}, {start} to {endDay}, {end}",
+  "link_expired": "This link has expired or was already used. Open the newest link in your email.",
+  "email_required": "Enter your email address.",
+  "email_invalid": "Enter an email address such as name@example.com.",
+  "role_required": "Enter your role, such as Lecturer or Student.",
+  "consent_required": "Tick the box to confirm you have read the PDPA notice.",
+  "resubscribe": "To subscribe again, open the project’s subscribe link and confirm by email.",
+  "failed": "Something went wrong and nothing was changed. Try again."
 }
