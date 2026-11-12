@@ -6,15 +6,19 @@ import { expectUnclippedText } from '../harness/expect-unclipped-text'
 import { expectZonedTimes } from '../harness/expect-zoned-times'
 import { wilson } from '../../features/probation/model'
 import { probationOperations } from '../../features/probation/operations'
+import { makeOrg, signInAs } from '../harness/sign-in-as'
 import {
   frameFixture,
   framesBase,
   labellerOne,
   labellerTwo,
   member,
+  members,
   orgId,
   prepare,
   probationUrl,
+  projectId,
+  sourceId,
   statusFixture,
   stubNextSequence
 } from './setup'
@@ -139,6 +143,19 @@ test('a Viewer sees no picker; a labeller sees the pair read-only', async ({ pag
   await expect(page.getByRole('combobox')).toHaveCount(0)
   await expect(page.getByRole('button', { name: t('picker_save'), exact: true })).toHaveCount(0)
 })
+
+// #647: the page reads the role from the URL organisation's membership. Through a real session (signInAs, no test
+// principal) the role was always null, so Owners and Admins got the read-only picker.
+for (const role of ['owner', 'admin'] as const) {
+  test(`a real ${role} session names labellers with the editable picker`, async ({ page }) => {
+    const org = await makeOrg()
+    await signInAs(page, role, org)
+    await stubApi(page, 'listMembers', { data: members, next_cursor: null }, { registry: probationOperations })
+    await page.goto(`/${org.slug}/${projectId}/signals/probation/${sourceId}?view=progress`)
+    await expect(page.getByRole('heading', { name: t('title'), exact: true })).toBeVisible()
+    await expect(page.getByRole('combobox', { name: t('picker_search'), exact: true })).toBeVisible()
+  })
+}
 
 test('a labeller labels three frames by keyboard with visible focus and no shortcuts', async ({ page }) => {
   await prepare(page, { ...member, role: 'editor', accountId: labellerOne })
