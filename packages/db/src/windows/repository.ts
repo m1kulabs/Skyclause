@@ -1,5 +1,5 @@
 import { and, asc, eq, inArray } from 'drizzle-orm'
-import type { Tx } from '../client'
+import { withSavepoint, type Tx } from '../client'
 import { icsFeed, window, windowSeries } from '../schema'
 import type { WindowRow } from './index'
 import type { WindowMutationInsert } from './types'
@@ -12,6 +12,23 @@ export function windowTenant(tx: Tx): string {
 // Repeated mutation calls reuse the batch's locks rather than acquiring parents after windows.
 const locked = new WeakMap<Tx, Set<string>>()
 const mutationStarted = new WeakSet<Tx>()
+
+/** Savepoint lock state follows SQL ownership: inherit, merge on success, discard on rollback. */
+export async function withWindowLockSavepoint<T>(tx: Tx, fn: (child: Tx) => Promise<T>): Promise<T> {
+  let committed: Tx | undefined
+  const result = await withSavepoint(tx, async (child) => {
+    locked.set(child, new Set(locked.get(tx)))
+    if (mutationStarted.has(tx)) mutationStarted.add(child)
+    const value = await fn(child)
+    committed = child
+    return value
+  })
+  if (committed) {
+    locked.set(tx, new Set(locked.get(committed)))
+    if (mutationStarted.has(committed)) mutationStarted.add(tx)
+  }
+  return result
+}
 
 /** Freeze the complete planned parent and existing-window set before the first write or event. */
 export function startWindowMutation(tx: Tx) {
@@ -26,37 +43,19 @@ export function registerWindowInsert(tx: Tx, id: string) {
 
 const keys = (kind: string, ids: readonly string[]) => ids.map((id) => `${kind}:${id}`)
 
-/**
- * Lock the complete planned batch before mutation: all feeds, then series, then windows in UUID order.
- * `creates` includes parents of new rows, whose window IDs need no row lock yet. Returns existing tenant rows.
- */
-export async function lockWindowParents(
-  tx: Tx,
-  ids: readonly string[],
-  creates: readonly WindowMutationInsert[] = []
-): Promise<WindowRow[]> {
+export interface WindowParentSet {
+  feedIds?: readonly string[]
+  seriesIds?: readonly string[]
+  windowIds?: readonly string[]
+}
+
+/** Explicit parent sets share the lifecycle lock order and phase tracking. No fabricated window values. */
+export async function lockWindowParentSet(tx: Tx, parents: WindowParentSet): Promise<void> {
   const orgId = windowTenant(tx)
   const held = locked.get(tx) ?? new Set<string>()
-  const rows = ids.length
-    ? await tx
-        .select()
-        .from(window)
-        .where(and(eq(window.orgId, orgId), inArray(window.id, [...ids])))
-    : []
-  const parents = [...rows, ...creates]
-  const seriesIds = [...new Set(parents.flatMap((row) => (row.seriesId ? [row.seriesId] : [])))].sort()
-  const series = seriesIds.length
-    ? await tx
-        .select()
-        .from(windowSeries)
-        .where(and(eq(windowSeries.orgId, orgId), inArray(windowSeries.id, seriesIds)))
-    : []
-  const feedIds = [
-    ...new Set([
-      ...parents.flatMap((row) => (row.icsFeedId ? [row.icsFeedId] : [])),
-      ...series.flatMap((row) => (row.icsFeedId ? [row.icsFeedId] : []))
-    ])
-  ].sort()
+  const feedIds = [...new Set(parents.feedIds ?? [])].sort()
+  const seriesIds = [...new Set(parents.seriesIds ?? [])].sort()
+  const ids = parents.windowIds ?? []
   const parentKeys = [...keys('feed', feedIds), ...keys('series', seriesIds)]
   if (
     (mutationStarted.has(tx) || [...held].some((key) => key.startsWith('window:'))) &&
@@ -104,6 +103,46 @@ export async function lockWindowParents(
       .for('update')
   for (const key of [...parentKeys, ...keys('window', newIds)]) held.add(key)
   locked.set(tx, held)
+}
+
+/** A freshly inserted series is owned by this transaction, including when existing members are already locked. */
+export function registerWindowSeriesInsert(tx: Tx, id: string) {
+  const held = locked.get(tx) ?? new Set<string>()
+  held.add(`series:${id}`)
+  locked.set(tx, held)
+}
+
+/**
+ * Lock the complete planned batch before mutation: all feeds, then series, then windows in UUID order.
+ * `creates` includes parents of new rows, whose window IDs need no row lock yet. Returns existing tenant rows.
+ */
+export async function lockWindowParents(
+  tx: Tx,
+  ids: readonly string[],
+  creates: readonly WindowMutationInsert[] = []
+): Promise<WindowRow[]> {
+  const orgId = windowTenant(tx)
+  const rows = ids.length
+    ? await tx
+        .select()
+        .from(window)
+        .where(and(eq(window.orgId, orgId), inArray(window.id, [...ids])))
+    : []
+  const parents = [...rows, ...creates]
+  const seriesIds = [...new Set(parents.flatMap((row) => (row.seriesId ? [row.seriesId] : [])))].sort()
+  const series = seriesIds.length
+    ? await tx
+        .select()
+        .from(windowSeries)
+        .where(and(eq(windowSeries.orgId, orgId), inArray(windowSeries.id, seriesIds)))
+    : []
+  const feedIds = [
+    ...new Set([
+      ...parents.flatMap((row) => (row.icsFeedId ? [row.icsFeedId] : [])),
+      ...series.flatMap((row) => (row.icsFeedId ? [row.icsFeedId] : []))
+    ])
+  ].sort()
+  await lockWindowParentSet(tx, { feedIds, seriesIds, windowIds: ids })
   return ids.length
     ? tx
         .select()

@@ -42,17 +42,19 @@ const nativeDefinition = z
       .strict()
   })
   .strict()
-const importedDefinition = z.object({ version: z.literal(1), source: z.literal('ics'), manualDefaults }).strict()
+export const importedWindowDefinitionSchema = z
+  .object({ version: z.literal(1), source: z.literal('ics'), manualDefaults })
+  .strict()
 export type NativeWindowDefinition = z.infer<typeof nativeDefinition>
 /** Manual defaults are applied after source expansion; source identity and membership remain authoritative. */
-export type ImportedWindowDefinition = z.infer<typeof importedDefinition>
+export type ImportedWindowDefinition = z.infer<typeof importedWindowDefinitionSchema>
 export type WindowSeriesDefinition = NativeWindowDefinition | ImportedWindowDefinition
 
 export class WindowStateConflict extends Error {}
 
 /** Legacy definitions have no trustworthy anchor or override intent. Never infer one from a selected member. */
 export function readWindowSeriesDefinition(row: WindowSeriesRow): WindowSeriesDefinition {
-  const parsed = (row.icsFeedId ? importedDefinition : nativeDefinition).safeParse(row.definition)
+  const parsed = (row.icsFeedId ? importedWindowDefinitionSchema : nativeDefinition).safeParse(row.definition)
   if (!parsed.success)
     throw new WindowStateConflict('The series definition is unavailable. Reconcile its original declaration first.')
   return parsed.data

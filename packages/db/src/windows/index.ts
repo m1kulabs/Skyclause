@@ -98,7 +98,7 @@ export async function latestWindowCalls(tx: Tx, windowIds: string[]): Promise<Wi
 
 export { resolveWindowLocalSpan, windowLocalSpan, windowZoneExists, WindowLocalTimeError } from './calendar-time'
 export { writeWindowChange } from './mutations'
-export { lockWindowParent, lockWindowParents } from './repository'
+export { lockWindowParent, lockWindowParents, lockWindowParentSet } from './repository'
 export type { CalendarBatch, LocalSpan, WindowChange, WindowMutationInsert } from './types'
 export {
   createNativeWindowSeries,

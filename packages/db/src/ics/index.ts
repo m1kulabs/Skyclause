@@ -278,3 +278,6 @@ export async function listProjectIcsFeedRecords(
 }
 
 export { getIcsFeedRecord, insertIcsFeedRecord, type IcsFeedInsert, type IcsFeedRow } from './feeds'
+
+export * from './feed-types'
+export { allocateCalendarIds, claimDueIcsFeeds, mutateIcsFeed, recordIcsFeedError } from './feed-mutations'

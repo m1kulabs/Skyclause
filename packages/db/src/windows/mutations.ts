@@ -84,6 +84,27 @@ async function canRestore(tx: Tx, row: WindowRow): Promise<boolean> {
   return true
 }
 
+/** The same actual-difference calculation is used by batch planning before representative selection. */
+export function windowPatchDifference(
+  row: WindowRow,
+  patch: Extract<WindowChange, { kind: 'update' }>['patch'],
+  sourceFieldsOnly = false
+): Partial<typeof window.$inferInsert> {
+  const fields = ['title', 'kind', 'startsAt', 'endsAt', 'tz', 'localOverride'] as const
+  return Object.fromEntries(
+    fields
+      .filter((key) => !sourceFieldsOnly || key !== 'localOverride')
+      .map((key) => [key, patch[key]] as const)
+      .filter(([key, value]) => {
+        if (value === undefined) return false
+        const previous = row[key as keyof typeof patch]
+        return value instanceof Date && previous instanceof Date
+          ? value.getTime() !== previous.getTime()
+          : value !== previous
+      })
+  )
+}
+
 /** Authorized, service-validated mutations; all rows, outbox events and ledger history share the caller's Tx. */
 export async function writeWindowChange(tx: Tx, change: WindowChange): Promise<WindowRow> {
   const orgId = windowTenant(tx)
@@ -107,18 +128,7 @@ export async function writeWindowChange(tx: Tx, change: WindowChange): Promise<W
   let hasSentCall = false
   if (change.kind === 'update') {
     if (row.cancelledAt) throw new Error('cannot update a cancelled window')
-    const fields = ['title', 'kind', 'startsAt', 'endsAt', 'tz', 'localOverride'] as const
-    patch = Object.fromEntries(
-      fields
-        .map((key) => [key, change.patch[key]] as const)
-        .filter(([key, value]) => {
-          if (value === undefined) return false
-          const previous = row[key as keyof typeof change.patch]
-          return value instanceof Date && previous instanceof Date
-            ? value.getTime() !== previous.getTime()
-            : value !== previous
-        })
-    )
+    patch = windowPatchDifference(row, change.patch)
     if (!Object.keys(patch).length) return row
     timesChanged = patch.startsAt !== undefined || patch.endsAt !== undefined
   } else if (change.kind === 'cancel') {
@@ -138,7 +148,9 @@ export async function writeWindowChange(tx: Tx, change: WindowChange): Promise<W
     type = 'window.cancelled'
   } else {
     if (!(await canRestore(tx, row))) return row
-    patch = { cancelledAt: null, cancellationOrigin: null }
+    const finalFields = windowPatchDifference(row, change.patch ?? {}, true)
+    patch = { ...finalFields, cancelledAt: null, cancellationOrigin: null }
+    timesChanged = finalFields.startsAt !== undefined || finalFields.endsAt !== undefined
   }
   const [updated] = await tx
     .update(window)

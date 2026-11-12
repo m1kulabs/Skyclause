@@ -26,4 +26,10 @@ export type WindowChange =
   | { kind: 'create'; values: WindowMutationInsert; now: Date; calendar?: CalendarBatch }
   | { kind: 'update'; id: string; patch: WindowPatch; now: Date; calendar?: CalendarBatch }
   | { kind: 'cancel'; id: string; origin: 'manual' | 'series' | 'source'; now: Date; calendar?: CalendarBatch }
-  | { kind: 'restore-source'; id: string; now: Date; calendar: CalendarBatch }
+  | {
+      kind: 'restore-source'
+      id: string
+      now: Date
+      calendar: CalendarBatch
+      patch?: Partial<Pick<WindowMutationInsert, 'title' | 'kind' | 'startsAt' | 'endsAt' | 'tz'>>
+    }
