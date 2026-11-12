@@ -15,6 +15,7 @@ import { DayStrip, GradeCard, SignalHealthHead, SourceError, SourceHealthRow, Wi
 import { ModeBadge } from '../brand/mode-badge'
 import { readDashboard, type DashboardRead } from './operations'
 import { daySpan, slaLeft, stripInput, verdictState } from './model'
+import { t as bundleText } from '../bundles/i18n'
 import { t } from './catalogue'
 import styles from './dashboard.module.css'
 
@@ -304,7 +305,14 @@ function ReviewRow({
           </span>
           <span className="type-body text-muted-foreground">
             {detail.trigger
-              ? t('dashboard.bundle_trigger', { trigger: detail.trigger, time: formatTime(triggered, locale) }, locale)
+              ? t(
+                  'dashboard.bundle_trigger',
+                  {
+                    trigger: bundleText(`bundles.triggers.${detail.trigger}`, {}, locale),
+                    time: formatTime(triggered, locale)
+                  },
+                  locale
+                )
               : formatTime(triggered, locale)}
           </span>
         </p>

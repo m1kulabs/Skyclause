@@ -8,6 +8,7 @@ import { ApiProblem } from '../../lib/api-fetch'
 import { SourceError } from '../data-components/states'
 import { formatAge, formatNumber, formatTime } from '@skyclause/i18n/format'
 import { PackStateNote } from '../data-components/pack-state-note'
+import { indicatorName } from '../data-components/indicator-names'
 import { VirtualRows } from '../windows/virtual-rows'
 import { brandStates } from '@skyclause/elements'
 import { t as brandText } from '@skyclause/i18n/brand'
@@ -48,7 +49,11 @@ function NoCall({ packState, locale }: { packState: PackState; locale: Locale })
   if (!first) return null
   return (
     <span>
-      {t('organisations.projects.noCall', { input: first.name, time: formatTime(first.since, locale) }, locale)}
+      {t(
+        'organisations.projects.noCall',
+        { input: indicatorName(first.name, locale), time: formatTime(first.since, locale) },
+        locale
+      )}
     </span>
   )
 }

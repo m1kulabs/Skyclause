@@ -18,6 +18,7 @@ import { ModeBadge } from '../brand/mode-badge'
 import { Glyph } from '../brand/glyph'
 import {
   DayStrip,
+  indicatorName,
   InputAgeChip,
   NoCallState,
   SignalHealthHead,
@@ -43,6 +44,7 @@ import {
   type ProjectWindow
 } from './operations'
 import { localDateAt, overviewFilterState, selectTodayAtRisk, type OverviewPackFilter } from './model'
+import { t as bundleText } from '../bundles/i18n'
 import { t } from './catalogue'
 import './overview.css'
 
@@ -333,7 +335,11 @@ function PackAnswer({ pack, data, locale }: { pack: PackState; data: OverviewDat
           </p>
           <p className="type-small text-muted-foreground">{basis}</p>
           {pack.no_call ? (
-            <NoCallState inputs={blocked.map((input) => input.name)} since={since} locale={locale} />
+            <NoCallState
+              inputs={blocked.map((input) => indicatorName(input.name, locale))}
+              since={since}
+              locale={locale}
+            />
           ) : null}
         </div>
         <div className="overview-answer-detail">
@@ -845,7 +851,7 @@ export function ProjectOverview({
                     <span className="overview-bundle-what">
                       <span className="type-card-title">
                         {hasBundleDetails(bundle) && bundle.trigger
-                          ? bundle.trigger
+                          ? bundleText(`bundles.triggers.${bundle.trigger}`, {}, locale)
                           : t(`brand.packs.${bundle.pack}`, {}, locale)}
                       </span>
                       <span className="flex flex-wrap items-center gap-2">
