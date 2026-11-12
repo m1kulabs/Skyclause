@@ -114,6 +114,13 @@ export { nextEvaluationAt, evaluatorWindows } from './services/evaluator/deadlin
 export {
   listProjectSources,
   serializeProjectSourceHealth,
+  listSourceReadings,
+  listSourcePolls,
+  serializeSourceReading,
+  serializeSourcePoll,
+  type SourceReadingsQuery,
+  type SourcePollsQuery,
+  type SourcePollView,
   type ProjectSourcesQuery,
   type ProjectSourceHealthView
 } from './services/signals'
