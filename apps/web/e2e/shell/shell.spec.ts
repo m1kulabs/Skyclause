@@ -205,7 +205,7 @@ test('switchers list only supplied memberships with roles, and projects in that 
     .click()
   expect(await menuLinks(page)).toEqual([
     { name: 'Test project one', href: '/test-one/test-project' },
-    { name: copy('Create a project'), href: '/test-one/new' }
+    { name: copy('Create a project'), href: '/test-one/new?another=1' }
   ])
 })
 
@@ -366,7 +366,10 @@ test('a membership without projects says so and offers its role-appropriate next
     .getByRole('button', { name: /Switch project:/ })
     .press('Enter')
   await expect(page.getByRole('menu')).toContainText(copy('No projects'))
-  await expect(page.getByRole('menuitem', { name: copy('Create a project') })).toHaveAttribute('href', '/test-one/new')
+  await expect(page.getByRole('menuitem', { name: copy('Create a project') })).toHaveAttribute(
+    'href',
+    '/test-one/new?another=1'
+  )
   await closeMenu(page)
   await openShell(page, { ...data, projects: [] }, '?org=test-two')
   await bar(page)

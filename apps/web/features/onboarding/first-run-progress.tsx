@@ -33,7 +33,10 @@ function DoneLine({ item, locale }: { item: OnboardingView['steps'][number]; loc
 export interface FirstRunProgressProps {
   org: string
   locale?: Locale
-  /** The first project route resumes at its first outstanding owner route after a reload. */
+  /**
+   * The first project route resumes at its first outstanding owner route after a reload. Off when a link asked for
+   * another project, and never while the project form holds a draft.
+   */
   redirectFromProject?: boolean
 }
 
@@ -115,7 +118,10 @@ export function FirstRunProgress({ org, locale = 'en', redirectFromProject = fal
     const project = onboarding.steps.find((item) => item.step === 'project')
     if (!project?.completed_at || pathname !== `/${encodeURIComponent(org)}/new`) return
     const next = onboarding.steps.find((item) => !item.completed_at && !item.skipped)
-    if (next && next.step !== 'project' && next.href !== pathname) router.replace(next.href)
+    if (!next || next.step === 'project' || next.href === pathname) return
+    // A form someone has started typing in stays: replacing it would drop the draft and the focus.
+    if (document.querySelector('[data-project-create][data-dirty]')) return
+    router.replace(next.href)
   }, [failure, loading, onboarding, org, pathname, redirectFromProject, router])
 
   async function changeSkipped(step: Step, skipped: boolean) {

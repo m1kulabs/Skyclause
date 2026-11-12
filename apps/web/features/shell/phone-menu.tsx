@@ -159,7 +159,7 @@ export function PhoneMenu({ scope, now }: { scope: ShellScope; now: string }) {
             </PhoneSheetItem>
           ))}
           {canCreateProject(scope) ? (
-            <PhoneSheetItem href={`/${encodeURIComponent(org)}/new`}>
+            <PhoneSheetItem href={`/${encodeURIComponent(org)}/new?another=1`}>
               {t('app-shell.createProject', {}, locale)}
             </PhoneSheetItem>
           ) : (

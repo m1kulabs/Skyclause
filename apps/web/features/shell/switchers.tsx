@@ -149,7 +149,10 @@ export function ProjectSwitcher({ scope }: { scope: ShellScope }) {
           <>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <MenuLink href={`/${encodeURIComponent(org)}/new`} label={t('app-shell.createProject', {}, locale)} />
+              <MenuLink
+                href={`/${encodeURIComponent(org)}/new?another=1`}
+                label={t('app-shell.createProject', {}, locale)}
+              />
             </DropdownMenuGroup>
           </>
         ) : (

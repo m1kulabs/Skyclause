@@ -177,7 +177,7 @@ export function ProjectsList({
   const visible = (items ?? []).filter((item) => archived === (item.archived_at !== null))
   const hasArchived = (items ?? []).some((item) => item.archived_at !== null)
   const ready = !loading && !failure
-  const createHref = `/${encodeURIComponent(org)}/new`
+  const createHref = `/${encodeURIComponent(org)}/new?another=1`
   const nextAction = canCreate ? (
     <a href={createHref} className={buttonVariants()}>
       {t('organisations.projects.create', {}, locale)}
