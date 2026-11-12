@@ -891,6 +891,223 @@ svg [data-tone][data-ink] * {
   display: none;
 }
 
+/*
+ * Tables (components/ui/table.tsx): the one table. Unlayered, so a utility class on a cell cannot undo the phone list.
+ * Rows are told apart by space and tone, never by rules: the header is one raised capsule strip, the body rows rest on
+ * the page and take the raised tone on hover, the overlay tone and a 4x20 capsule mark when selected, muted ink when
+ * dimmed. Fills sit on the cells so the first and last cell can round the row's ends.
+ */
+[data-slot='table-header'] th {
+  background-color: var(--raised);
+}
+[data-slot='table-header'] th:first-child {
+  border-top-left-radius: 9999px;
+  border-bottom-left-radius: 9999px;
+}
+[data-slot='table-header'] th:last-child {
+  border-top-right-radius: 9999px;
+  border-bottom-right-radius: 9999px;
+}
+[data-slot='table'][data-sticky] > [data-slot='table-header'] th {
+  position: sticky;
+  top: var(--shell-bar-height, 0px);
+  z-index: 1;
+}
+tbody > tr[data-slot='table-row'] > :is(td, th):first-child {
+  border-top-left-radius: var(--radius-nested, 10px);
+  border-bottom-left-radius: var(--radius-nested, 10px);
+}
+tbody > tr[data-slot='table-row'] > :is(td, th):last-child {
+  border-top-right-radius: var(--radius-nested, 10px);
+  border-bottom-right-radius: var(--radius-nested, 10px);
+}
+@media (hover: hover) {
+  tbody > tr[data-slot='table-row']:hover > :is(td, th) {
+    background-color: var(--raised);
+  }
+}
+tbody > tr[data-slot='table-row']:has([aria-expanded='true']) > :is(td, th) {
+  background-color: var(--raised);
+}
+tbody > tr[data-slot='table-row'][data-state='selected'] {
+  /* Muted holds 4.5:1 on the raised tone and not on the overlay tone, so a selected row reads in ink throughout. */
+  --muted-foreground: var(--ink);
+}
+tbody > tr[data-slot='table-row'][data-state='selected'] > :is(td, th) {
+  background-color: var(--overlay);
+}
+tbody > tr[data-slot='table-row'][data-state='selected'] > :is(td, th):first-child {
+  position: relative;
+}
+tbody > tr[data-slot='table-row'][data-state='selected'] > :is(td, th):first-child::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 4px;
+  height: 20px;
+  margin-top: -10px;
+  border-radius: 9999px;
+  background: var(--ink);
+}
+tbody > tr[data-slot='table-row'][data-state='dimmed'] {
+  color: var(--muted-foreground);
+}
+/*
+ * A figure that measures: a capsule-ended fill behind it, one tone step off the row's own, so the figure stays ink on a
+ * tone it is known to hold (ink is the only text on the overlay tone): raised at rest, overlay on a hovered row, the
+ * ground on a selected one.
+ */
+tbody > tr[data-slot='table-row'] {
+  --measure-fill: var(--raised);
+}
+@media (hover: hover) {
+  tbody > tr[data-slot='table-row']:hover {
+    --measure-fill: var(--overlay);
+  }
+}
+tbody > tr[data-slot='table-row']:has([aria-expanded='true']) {
+  --measure-fill: var(--overlay);
+}
+tbody > tr[data-slot='table-row'][data-state='selected'] {
+  --measure-fill: var(--ground);
+}
+[data-slot='table-measure-fill'] {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: max(calc(var(--measure, 0) * 100%), 28px);
+  border-radius: 9999px;
+  background: var(--measure-fill, var(--raised));
+}
+[data-slot='table-measure'][data-align='end'] > [data-slot='table-measure-fill'] {
+  right: 0;
+}
+[data-slot='table-measure'][data-align='start'] > [data-slot='table-measure-fill'] {
+  left: 0;
+}
+[data-slot='table-measure-fill'][data-empty] {
+  display: none;
+}
+
+/*
+ * The phone list: at 640px and below a table with data-phone="list" (the default) turns each row into a two-line item.
+ * Line one is the cell with phone="primary" (the first cell unless another says so) and the one with phone="end"; line
+ * two is every other cell, 13px muted, each led by its `label` when it has one. phone="hide" drops a cell. The header
+ * stays in the document for assistive technology and leaves the screen. The empty ::after is a full-width item that
+ * breaks line one from line two without adding height.
+ */
+@media (max-width: 640px) {
+  [data-slot='table'][data-phone='list'],
+  [data-slot='table'][data-phone='list'] > tbody,
+  [data-slot='table'][data-phone='list'] > tfoot {
+    display: block;
+  }
+  [data-slot='table'][data-phone='list'] > thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  [data-slot='table'][data-phone='list'] > :is(tbody, tfoot) > tr {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 0;
+    height: auto;
+    min-height: 56px;
+    padding: 8px 12px;
+    border-radius: var(--radius-nested, 10px);
+  }
+  [data-slot='table'][data-phone='list'] > :is(tbody, tfoot) > tr::after {
+    content: '';
+    order: 1;
+    flex: 0 0 100%;
+    height: 0;
+  }
+  [data-slot='table'][data-phone='list'] > :is(tbody, tfoot) > tr > :is(td, th) {
+    display: block;
+    order: 2;
+    min-width: 0;
+    height: auto;
+    margin-top: 2px;
+    padding: 0;
+    border-radius: 0;
+    background-color: transparent;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--muted-foreground);
+    text-align: left;
+  }
+  [data-slot='table'][data-phone='list'] [data-slot='table-measure'] {
+    display: inline-flex;
+    width: 6rem;
+    justify-content: flex-start;
+    vertical-align: middle;
+  }
+  [data-slot='table'][data-phone='list'] > :is(tbody, tfoot) > tr > :is(td, th)[data-label]::before {
+    content: attr(data-label) ' ';
+  }
+  [data-slot='table'][data-phone='list'] > :is(tbody, tfoot) > tr > :is(td, th):first-child:not([data-phone]),
+  [data-slot='table'][data-phone='list'] > :is(tbody, tfoot) > tr > :is(td, th)[data-phone='primary'] {
+    order: 0;
+    flex: 1 1 0;
+    margin-top: 0;
+    font-size: 14px;
+    line-height: 20px;
+    color: inherit;
+  }
+  [data-slot='table'][data-phone='list'] > :is(tbody, tfoot) > tr > :is(td, th)[data-phone='end'] {
+    order: 1;
+    flex: 0 0 auto;
+    margin-top: 0;
+    margin-inline-start: auto;
+    font-size: 14px;
+    line-height: 20px;
+    color: inherit;
+    text-align: right;
+  }
+  [data-slot='table'][data-phone='list'] > :is(tbody, tfoot) > tr > :is(td, th)[data-phone='hide'] {
+    display: none;
+  }
+  /* The fill moves from the cells to the row, and the selected mark from the first cell to the row's start. */
+  [data-slot='table'][data-phone='list'] > tbody > tr[data-state='selected'] {
+    background-color: var(--overlay);
+  }
+  [data-slot='table'][data-phone='list'] > tbody > tr:has([aria-expanded='true']) {
+    background-color: var(--raised);
+  }
+  [data-slot='table'][data-phone='list'] > tbody > tr[data-state='selected']::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 4px;
+    width: 4px;
+    height: 20px;
+    margin-top: -10px;
+    border-radius: 9999px;
+    background: var(--ink);
+  }
+  [data-slot='table'][data-phone='list']
+    > tbody
+    > tr[data-slot='table-row'][data-state='selected']
+    > :is(td, th):first-child::before {
+    content: none;
+  }
+  [data-slot='table'][data-phone='list'] > tbody > tr[data-state='dimmed'] > :is(td, th) {
+    color: var(--muted-foreground);
+  }
+}
+@media (max-width: 640px) and (hover: hover) {
+  [data-slot='table'][data-phone='list'] > tbody > tr:hover {
+    background-color: var(--raised);
+  }
+}
+
 @media (pointer: coarse) {
   .language-suggestion button,
   .language-suggestion a,
@@ -975,6 +1192,12 @@ html[data-motion='reduce'] *::after {
     --landing-foreground: CanvasText;
     --landing-field: ButtonText;
     --landing-field-foreground: ButtonFace;
+  }
+  /* A selected table row keeps its capsule mark, since fills vanish. */
+  tbody > tr[data-slot='table-row'][data-state='selected'] > :is(td, th):first-child::before,
+  [data-slot='table'][data-phone='list'] > tbody > tr[data-state='selected']::before {
+    forced-color-adjust: none;
+    background: CanvasText;
   }
   /* Fills vanish here: every capsule keeps a system-coloured edge and its glyph and word. */
   [data-status],
