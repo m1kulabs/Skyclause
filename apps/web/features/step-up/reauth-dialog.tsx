@@ -38,6 +38,7 @@ export function ReauthDialog({ open, onOpenChange }: ReauthDialogProps) {
   const [verifying, setVerifying] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
   const [error, setError] = useState<string>()
+  const continueButton = useRef<HTMLButtonElement>(null)
   const locale = typeof navigator !== 'undefined' && prefersMalay(navigator.languages.join(',')) ? 'ms' : 'en'
 
   useEffect(() => {
@@ -96,6 +97,11 @@ export function ReauthDialog({ open, onOpenChange }: ReauthDialogProps) {
     }
   }
 
+  // The button that sent the email is gone once it is sent: the way on takes focus, so it does not fall to the page.
+  useEffect(() => {
+    if (emailSent) continueButton.current?.focus()
+  }, [emailSent])
+
   async function sendMagicLink() {
     setSending(true)
     setError(undefined)
@@ -103,7 +109,8 @@ export function ReauthDialog({ open, onOpenChange }: ReauthDialogProps) {
       await authRequest('/magic-link', 'POST', {})
       setEmailSent(true)
     } catch {
-      setError(t('step-up.error', {}, locale))
+      // The email itself failed: say so, and do not point at the email link that just failed.
+      setError(t('step-up.email_error', {}, locale))
     } finally {
       setSending(false)
     }
@@ -142,7 +149,12 @@ export function ReauthDialog({ open, onOpenChange }: ReauthDialogProps) {
             <p role="status">{t('step-up.check_email', {}, locale)}</p>
             {error && <p role="alert">{error}</p>}
             <DialogFooter className="flex-col sm:flex-row">
-              <Button variant="outline" disabled={loading} onClick={() => void continueAfterEmail()}>
+              <Button
+                ref={continueButton}
+                variant="outline"
+                disabled={loading}
+                onClick={() => void continueAfterEmail()}
+              >
                 {t('step-up.continue', {}, locale)}
               </Button>
               <Button variant="ghost" disabled={sending || verifying} onClick={() => changeOpen(false)}>

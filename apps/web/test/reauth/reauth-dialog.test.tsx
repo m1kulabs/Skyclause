@@ -88,3 +88,30 @@ test('an expired or unconfirmed link does not close the dialog when Continue is 
   expect(await screen.findByText(/has not been confirmed yet/i)).toBeVisible()
   expect(onOpenChange).not.toHaveBeenCalledWith(false)
 })
+
+test('a failed email send says the email failed, and does not send the person to the email link again', async () => {
+  stubFetch((url) => {
+    if (url.endsWith('/step-up')) return Response.json({ fresh_until: '2000-01-01T00:00:00.000Z', passkey: false })
+    if (url.endsWith('/magic-link')) return new Response(null, { status: 503 })
+    throw new Error(`Unexpected request ${url}`)
+  })
+  render(<ReauthDialog open onOpenChange={vi.fn()} />)
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Send me a sign-in link' }))
+  const alert = await screen.findByRole('alert')
+  expect(alert).toHaveTextContent('The email link could not be sent')
+  expect(alert).not.toHaveTextContent(/confirm your identity/i)
+})
+
+test('once the email is sent, focus moves to the button that goes on instead of falling to the page', async () => {
+  stubFetch((url) => {
+    if (url.endsWith('/step-up')) return Response.json({ fresh_until: '2000-01-01T00:00:00.000Z', passkey: false })
+    if (url.endsWith('/magic-link')) return Response.json({ sent: true })
+    throw new Error(`Unexpected request ${url}`)
+  })
+  render(<ReauthDialog open onOpenChange={vi.fn()} />)
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Send me a sign-in link' }))
+  const next = await screen.findByRole('button', { name: 'Continue' })
+  await waitFor(() => expect(next).toHaveFocus())
+})
