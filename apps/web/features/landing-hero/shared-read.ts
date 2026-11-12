@@ -67,11 +67,16 @@ export function sharedReads(now: () => number = Date.now, limit = 256): SharedRe
 
 const stores = new WeakMap<object, SharedReads>()
 
+/** Every read asks: for a server whose upstream answers a test changes between page loads. */
+const unshared: SharedReads = { read: (_key, load) => load(), hold() {}, holds: () => false }
+
 /**
  * The store for answers read through `transport`. The server's `fetch` is patched once at start, so every visitor's
- * page shares one store; a test's stand-in for `fetch` gets its own.
+ * page shares one store; a test's stand-in for `fetch` gets its own. LANDING_SHARED_READS=off (the hero's e2e
+ * harness, whose stand-in API changes its answer from one page load to the next) shares nothing.
  */
 export function sharedReadsFor(transport: object): SharedReads {
+  if (process.env.LANDING_SHARED_READS === 'off') return unshared
   let store = stores.get(transport)
   if (!store) {
     store = sharedReads()

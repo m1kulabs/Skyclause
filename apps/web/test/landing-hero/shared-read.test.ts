@@ -74,6 +74,15 @@ describe('shared reads', () => {
 })
 
 describe('the landing’s server reads', () => {
+  test('LANDING_SHARED_READS=off asks every time, for a stand-in API whose answers change between page loads', async () => {
+    vi.stubEnv('LANDING_SHARED_READS', 'off')
+    const { fetcher, count } = api({ '/status': () => reply(501) })
+    vi.stubGlobal('fetch', fetcher)
+    await readHero({})
+    await readHero({})
+    expect([count('/evaluate'), count('/status')]).toEqual([2, 2])
+  })
+
   test('50 page views at once send one request per distinct read, with no credential or cookie', async () => {
     vi.stubEnv('PILOT_PROJECT', 'commons/bukit-jalil')
     const verdict = {
