@@ -66,6 +66,31 @@ describe('/v1 bridge on the app host', () => {
     expect(await bridged.json()).toEqual(await (await apiRequest(v1, read)).json())
   })
 
+  it('serves a session bearer, as /api does', async () => {
+    const { v1Bridge } = createTestApi()
+    const cli = asSession({ org: 'bridge-bearer', role: 'viewer', via: 'bearer' })
+    const response = await apiRequest(v1Bridge, { as: cli, method: 'GET', path: '/v1/projects', org: 'bridge-bearer' })
+    expect(response.status).toBe(200)
+  })
+
+  it('resolves the request’s principal as /api does, even on a public read, so a key gets 403', async () => {
+    const key = asApiKey({ org: 'bridge-public', role: 'owner', scopes: ['read'] })
+    const resolvePrincipal = vi.fn(async () => key)
+    const { v1, v1Bridge } = createTestApi({ deps: testDeps({ resolvePrincipal }) })
+    const read = { method: 'GET', path: '/v1/public/no-org/no-project/status' }
+
+    expect((await apiRequest(v1, read)).status).not.toBe(403)
+    expect(resolvePrincipal).not.toHaveBeenCalled()
+
+    const bridged = await apiRequest(v1Bridge, read)
+    expect(resolvePrincipal).toHaveBeenCalledWith(expect.any(Request), { surface: 'api' })
+    expect(bridged.status).toBe(403)
+    expect(slug(await problem(bridged))).toBe('insufficient-scope')
+
+    resolvePrincipal.mockResolvedValue(null as never)
+    expect((await apiRequest(v1Bridge, read)).status).toBe((await apiRequest(v1, read)).status)
+  })
+
   it('answers 401 to a request with no credential, and 404 to an unknown operation', async () => {
     const { v1Bridge } = createTestApi()
     const anonymous = await apiRequest(v1Bridge, { method: 'GET', path: '/v1/projects' })
