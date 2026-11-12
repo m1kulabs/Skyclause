@@ -53,46 +53,44 @@ function Config({ target, transport }: { target: Target; transport: Transport })
   )
   const [config, retry] = useResource(read)
   return (
-    <Card aria-labelledby="config-title" role="region" data-connect-config>
-      <CardContent className="grid min-w-0 gap-4">
-        <h2 id="config-title" className="type-card-title">
-          {t('connect.config')}
-        </h2>
-        {config.kind === 'loading' ? (
-          <div className="grid gap-2">
-            <Skeleton className="h-5 w-full rounded-full" />
-            <Skeleton className="h-5 w-4/5 rounded-full" />
-            <Skeleton className="h-5 w-3/5 rounded-full" />
-            <p role="status" className="sr-only">
-              {t('connect.loading_config')}
+    <section aria-labelledby="config-title" className="grid min-w-0 gap-4" data-connect-config>
+      <h2 id="config-title" className="type-card-title">
+        {t('connect.config')}
+      </h2>
+      {config.kind === 'loading' ? (
+        <div className="grid gap-2">
+          <Skeleton className="h-5 w-full rounded-full" />
+          <Skeleton className="h-5 w-4/5 rounded-full" />
+          <Skeleton className="h-5 w-3/5 rounded-full" />
+          <p role="status" className="sr-only">
+            {t('connect.loading_config')}
+          </p>
+        </div>
+      ) : config.kind === 'error' ? (
+        config.error instanceof UnsafeConfigError ? (
+          <div className="grid justify-items-start gap-3">
+            <p role="alert" className="flex items-start gap-2 font-medium">
+              <Glyph state="error" className="mt-1.5" />
+              <span>{t('connect.config_error')}</span>
             </p>
+            <Button variant="outline" onClick={retry}>
+              {t('connect.retry')}
+            </Button>
           </div>
-        ) : config.kind === 'error' ? (
-          config.error instanceof UnsafeConfigError ? (
-            <div className="grid justify-items-start gap-3">
-              <p role="alert" className="flex items-start gap-2 font-medium">
-                <Glyph state="error" className="mt-1.5" />
-                <span>{t('connect.config_error')}</span>
-              </p>
-              <Button variant="outline" onClick={retry}>
-                {t('connect.retry')}
-              </Button>
-            </div>
-          ) : (
-            <Failure source={t('connect.source_config')} error={config.error} at={config.at} retry={retry} />
-          )
         ) : (
-          <CodeBlock>
-            <CodeBlockHeader className="justify-end">
-              <CopyButton key={config.value} value={config.value} label="copy_config" />
-            </CodeBlockHeader>
-            <CodeBlockContent wrap translate="no">
-              {config.value}
-            </CodeBlockContent>
-          </CodeBlock>
-        )}
-      </CardContent>
-    </Card>
+          <Failure source={t('connect.source_config')} error={config.error} at={config.at} retry={retry} />
+        )
+      ) : (
+        <CodeBlock>
+          <CodeBlockHeader className="justify-end">
+            <CopyButton key={config.value} value={config.value} label="copy_config" />
+          </CodeBlockHeader>
+          <CodeBlockContent wrap translate="no">
+            {config.value}
+          </CodeBlockContent>
+        </CodeBlock>
+      )}
+    </section>
   )
 }
 
@@ -109,41 +107,39 @@ function Listener() {
     })
   }, [attempt])
   return (
-    <Card aria-labelledby="activity-title" role="region">
-      <CardContent className="grid min-w-0 gap-3">
-        <h2 id="activity-title" className="type-card-title">
-          {t('connect.activity')}
-        </h2>
-        <p
-          role="status"
-          data-connect-activity
-          translate={state.kind === 'received' ? 'no' : undefined}
-          className="type-body flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1"
-        >
-          {state.kind === 'received' ? (
-            <>
-              <time dateTime={state.request.at} data-numeric className="font-semibold">
-                {formatTime(state.request.at, 'en')}
-              </time>
-              <span className="[overflow-wrap:anywhere]">{state.request.tool}</span>
-              <span className="text-muted-foreground [overflow-wrap:anywhere]">
-                {state.request.client_name ?? t('connect.unknown_client')}
-              </span>
-            </>
-          ) : (
-            <>
-              {state.kind === 'error' ? <Glyph state="error" /> : <Glyph state="pending" />}
-              <span>{t(`connect.${state.kind === 'error' ? 'activity_error' : state.kind}`)}</span>
-            </>
-          )}
-        </p>
-        {(state.kind === 'timeout' || state.kind === 'error') && (
-          <Button variant="outline" className="justify-self-start" onClick={() => setAttempt((value) => value + 1)}>
-            {t('connect.retry')}
-          </Button>
+    <section aria-labelledby="activity-title" className="grid min-w-0 gap-3">
+      <h2 id="activity-title" className="type-card-title">
+        {t('connect.activity')}
+      </h2>
+      <p
+        role="status"
+        data-connect-activity
+        translate={state.kind === 'received' ? 'no' : undefined}
+        className="type-body flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1"
+      >
+        {state.kind === 'received' ? (
+          <>
+            <time dateTime={state.request.at} data-numeric className="font-semibold">
+              {formatTime(state.request.at, 'en')}
+            </time>
+            <span className="[overflow-wrap:anywhere]">{state.request.tool}</span>
+            <span className="text-muted-foreground [overflow-wrap:anywhere]">
+              {state.request.client_name ?? t('connect.unknown_client')}
+            </span>
+          </>
+        ) : (
+          <>
+            {state.kind === 'error' ? <Glyph state="error" /> : <Glyph state="pending" />}
+            <span>{t(`connect.${state.kind === 'error' ? 'activity_error' : state.kind}`)}</span>
+          </>
         )}
-      </CardContent>
-    </Card>
+      </p>
+      {(state.kind === 'timeout' || state.kind === 'error') && (
+        <Button variant="outline" className="justify-self-start" onClick={() => setAttempt((value) => value + 1)}>
+          {t('connect.retry')}
+        </Button>
+      )}
+    </section>
   )
 }
 
@@ -320,10 +316,12 @@ export function ConnectPanel({
           </fieldset>
         </div>
       </div>
-      <div className="connect-main">
-        <Config key={`${target}-${transport}`} target={target} transport={transport} />
-        <Listener />
-      </div>
+      <Card>
+        <CardContent className="grid min-w-0 gap-8">
+          <Config key={`${target}-${transport}`} target={target} transport={transport} />
+          <Listener />
+        </CardContent>
+      </Card>
       {target === 'gemini_enterprise' && <Enterprise orgId={orgId} />}
       <ToolList origin={mcpOrigin} />
     </div>

@@ -3,14 +3,6 @@
   overflow-wrap: anywhere;
 }
 
-/* The answer (how) beside the proof (is it working): config wide, activity narrow, stacked on a narrow screen. */
-.connect-main {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: var(--spacing-gap);
-  align-items: start;
-}
-
 .connect-tools {
   width: 100%;
   border-collapse: separate;
@@ -38,12 +30,6 @@
 .connect-tools tbody td:last-child {
   width: 20%;
   border-radius: 0 16px 16px 0;
-}
-
-@media (max-width: 900px) {
-  .connect-main {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 @media (max-width: 640px) {
