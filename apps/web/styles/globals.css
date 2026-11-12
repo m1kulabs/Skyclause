@@ -1139,9 +1139,10 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
     > tr
     > :is(td, th)[data-phone='end'] {
     order: 1;
-    /* A capsule never wraps or shrinks; a longer locale's mark takes its own width, on a line of its own if need be. */
-    flex: 0 0 auto;
-    max-width: 100%;
+    flex: 0 1 auto;
+    /* Text wraps inside 60%; a capsule never shrinks below its own width, and moves under the name if need be. */
+    min-width: min-content;
+    max-width: 60%;
     margin-top: 0;
     margin-inline-start: auto;
     font-size: 14px;
