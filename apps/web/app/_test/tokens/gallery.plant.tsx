@@ -524,6 +524,27 @@ export function Gallery() {
               <Label htmlFor="native-off">Native checkbox, disabled</Label>
             </div>
             <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                role="switch"
+                id="native-pack"
+                name="native-pack-switch"
+                className="native-switch"
+                defaultChecked
+              />
+              <Label htmlFor="native-pack">Native switch, on</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                role="switch"
+                id="native-pack-off"
+                name="native-pack-off-switch"
+                className="native-switch"
+              />
+              <Label htmlFor="native-pack-off">Native switch</Label>
+            </div>
+            <div className="flex items-center gap-2">
               <Switch id="send-push" name="send-push" defaultChecked />
               <Label htmlFor="send-push">Send push notices</Label>
             </div>
