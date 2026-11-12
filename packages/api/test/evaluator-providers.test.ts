@@ -1,3 +1,6 @@
+import { project } from '@skyclause/db'
+import { makePoll } from '../../db/test/factories'
+import { metWarningHistory } from '../../clauses/test/met-warning-history'
 import { expect, test } from 'vitest'
 import { canonicalHash, resolveSourceAt, type IndicatorDefinition } from '@skyclause/clauses'
 import type { TxHandle } from '@skyclause/contracts'
@@ -420,7 +423,7 @@ test('Sky history does not depend on unavailable bound Crowd metadata', async ()
   }
   expect(
     await s.run((tx) => loadEvaluatorHistory(tx, { projectId: s.created.project.id, pack: 'sky', tEval }))
-  ).toEqual({ sources: [], readings: [], polls: [] })
+  ).toEqual({ warningAreaTerms: [], sources: [], readings: [], polls: [] })
   await expect(
     s.run((tx) => loadEvaluatorHistory(tx, { projectId: s.created.project.id, pack: 'crowd', tEval }))
   ).rejects.toMatchObject({ name: 'NotBuiltError' })
@@ -546,4 +549,72 @@ test('historical registry lookup preserves all archived definitions but rejects 
       empty.loadCheckedPublishedVersion(tx, { ...q, versionId: version.id, registryHash: snapshot.registryHash })
     )
   ).rejects.toMatchObject({ owner: 'b-evaluator:unsupported-pack-input' })
+})
+
+test('API current history carries tenant warning terms while authoritative frozen snapshots retain their original decision', async () => {
+  const s = await projectScene(),
+    other = await projectScene()
+  const h = metWarningHistory(),
+    at = '2026-11-05T13:13:01Z'
+  const warningSource = await withSystem('api-met-context', async (tx) => {
+    const source = await makeSource(tx, { kind: 'met_warning', freshness: 'polled', cadenceS: 600, staleAfterS: 1200 })
+    const poll = await makePoll(tx, {
+      sourceId: source.id,
+      startedAt: new Date('2026-11-05T13:13:00Z'),
+      receivedAt: new Date(at),
+      outcome: 'ok',
+      purpose: 'poll'
+    })
+    for (const r of h.readings)
+      await makeReading(tx, {
+        sourceId: source.id,
+        pollId: poll.id,
+        metric: r.metric,
+        observedAt: new Date(r.observedAt),
+        receivedAt: new Date(r.receivedAt),
+        value: null,
+        valueText: r.valueText,
+        valueJson: r.valueJson,
+        itemKey: r.itemKey,
+        unit: null
+      })
+    return source
+  })
+  for (const [scene, warningAreaTerms] of [
+    [s, ['Kedah']],
+    [other, ['Kuala Lumpur']]
+  ] as const)
+    await scene.run(async (tx) => {
+      await tx
+        .update(project)
+        .set({ warningAreaTerms: [...warningAreaTerms] })
+        .where(eq(project.id, scene.created.project.id))
+      await makeProjectSource(tx, { projectId: scene.created.project.id, sourceId: warningSource.id, role: 'warnings' })
+    })
+  const providers = createEvaluatorProviders({ adapters, forecast: null })
+  const query = { projectId: s.created.project.id, pack: 'sky' as const, tEval: at, windows: [], persist: true }
+  const saved = await s.run((tx) => providers.snapshots.take(tx, query))
+  expect(saved.snapshot.site['site.met_warning_in_force']?.value).toBe(true)
+  expect(await s.run((tx) => loadEvaluatorHistory(tx, query))).toMatchObject({ warningAreaTerms: ['Kedah'] })
+  expect(
+    await other.run((tx) => loadEvaluatorHistory(tx, { ...query, projectId: other.created.project.id }))
+  ).toMatchObject({ warningAreaTerms: ['Kuala Lumpur'] })
+  expect(await s.run((tx) => loadEvaluatorHistory(tx, { ...query, projectId: other.created.project.id }))).toEqual({
+    sources: [],
+    readings: [],
+    polls: []
+  })
+  await s.run((tx) =>
+    tx
+      .update(project)
+      .set({ warningAreaTerms: ['Kuala Lumpur'] })
+      .where(eq(project.id, query.projectId))
+  )
+  expect(await s.run((tx) => providers.snapshots.take(tx, query))).toEqual(saved)
+  const current = await s.run((tx) =>
+    providers.snapshots.take(tx, { ...query, tEval: '2026-11-05T13:14:00Z', persist: false })
+  )
+  expect(current.snapshot.site['site.met_warning_in_force']?.value).toBe(false)
+  expect(current.snapshot.hash).not.toBe(saved.snapshot.hash)
+  expect(providers.recordedAt).toBeNull()
 })

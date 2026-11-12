@@ -508,57 +508,26 @@ function aggregateSourcesForKind(
   return worst
 }
 
-export function isKlMetWarningReading(r: NormalizedReading): {
-  isKlWarning: boolean
-  completeValidity: boolean
-  validFromIso: Instant
-  validFromMs: number
-  validToMs: number | null
-} {
+export function metWarningValidity(
+  r: NormalizedReading,
+  areaTerms: readonly string[] = []
+): { fromMs: number; toMs: number } | null {
   const json = r.valueJson ?? {}
-  const titleEn = typeof json.title_en === 'string' ? json.title_en : ''
-  const titleBm = typeof json.title_bm === 'string' ? json.title_bm : ''
-  const textEn = typeof json.text_en === 'string' ? json.text_en : (r.valueText ?? '')
-  const textBm = typeof json.text_bm === 'string' ? json.text_bm : ''
-  const combined = `${titleEn} ${titleBm} ${textEn} ${textBm}`.toLowerCase()
-
-  const validityMs = (normalized: unknown, raw: unknown): number | null => {
-    // Source contract provides UTC normalization; raw MET local timestamps are MYT.
-    for (const candidate of [normalized, raw]) {
-      if (typeof candidate !== 'string') continue
-      const explicit = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(candidate)
-      const localMyt = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(candidate)
-      if (!explicit && !localMyt) continue
-      const ms = Date.parse(explicit ? candidate : `${candidate}+08:00`)
-      if (Number.isFinite(ms)) return ms
-    }
-    return null
-  }
-  const actualFromMs = validityMs(json.valid_from_utc, json.valid_from)
-  const validFromMs = actualFromMs ?? r.observedMs
-  const validToMs = validityMs(json.valid_to_utc, json.valid_to)
-  const completeValidity = actualFromMs !== null && validToMs !== null && actualFromMs <= validToMs
-
-  if (r.value === false || r.value === 0) {
-    return { isKlWarning: false, completeValidity, validFromIso: formatInstant(validFromMs), validFromMs, validToMs }
-  }
-
-  if (combined.includes('no advisory') || combined.includes('tiada nasihat') || combined.includes('marine')) {
-    return { isKlWarning: false, completeValidity, validFromIso: formatInstant(validFromMs), validFromMs, validToMs }
-  }
-
-  const mentionsKl =
-    combined.includes('kuala lumpur') ||
-    combined.includes('w.p. kuala lumpur') ||
-    (combined.trim().length === 0 && (r.value === true || r.value === 1))
-
-  return {
-    isKlWarning: mentionsKl,
-    completeValidity,
-    validFromIso: formatInstant(validFromMs),
-    validFromMs,
-    validToMs
-  }
+  const issue = json.warning_issue as Record<string, unknown> | undefined
+  const title = typeof issue?.title_en === 'string' ? issue.title_en.toLowerCase() : ''
+  if (json.excluded === true || title === 'no advisory' || title.includes('rough seas')) return null
+  // Eligibility uses normalized provider bounds only. Missing validity is never infinite.
+  if (typeof json.valid_from_utc !== 'string' || typeof json.valid_to_utc !== 'string') return null
+  const fromMs = Date.parse(json.valid_from_utc),
+    toMs = Date.parse(json.valid_to_utc)
+  if (!Number.isFinite(fromMs) || !Number.isFinite(toMs) || fromMs > toMs) return null
+  const texts = [json.text_en, json.text_bm]
+    .filter((text): text is string => typeof text === 'string')
+    .map((text) => text.toLowerCase())
+  const matches = areaTerms.some(
+    (term) => term.trim().length > 0 && texts.some((text) => text.includes(term.trim().toLowerCase()))
+  )
+  return matches ? { fromMs, toMs } : null
 }
 
 export const snapshotAt: SnapshotAt = (
@@ -646,15 +615,15 @@ export const snapshotAt: SnapshotAt = (
       const warnReadings = readings.filter((rd) => warnSourceIds.has(rd.sourceId))
       const warnSeries: Array<[Instant, number | null, string]> = []
       for (const wr of warnReadings) {
-        const parsed = isKlMetWarningReading(wr)
-        if (parsed.isKlWarning) {
-          warnSeries.push([wr.observedAt, parsed.validToMs ?? 1, wr.id])
+        const validity = metWarningValidity(wr, h.warningAreaTerms)
+        if (validity) {
+          warnSeries.push([wr.observedAt, validity.toMs, wr.id])
           warningObservations[wr.id] = {
             sourceId: wr.sourceId,
             observedAt: wr.observedAt,
             receivedAt: wr.receivedAt,
-            validFrom: parsed.validFromIso,
-            validTo: parsed.validToMs === null ? null : formatInstant(parsed.validToMs)
+            validFrom: formatInstant(validity.fromMs),
+            validTo: formatInstant(validity.toMs)
           }
         }
       }
@@ -805,9 +774,8 @@ export const snapshotAt: SnapshotAt = (
     if (def.name === 'site.met_warning_in_force') {
       const warnReadings = readings.filter((rd) => boundSourceIds.includes(rd.sourceId))
       const activeWarnings = warnReadings.filter((wr) => {
-        const parsed = isKlMetWarningReading(wr)
-        if (!parsed.isKlWarning) return false
-        return parsed.validFromMs <= tEvalMs && (parsed.validToMs === null || parsed.validToMs >= tEvalMs)
+        const validity = metWarningValidity(wr, h.warningAreaTerms)
+        return validity !== null && validity.fromMs <= tEvalMs && validity.toMs >= tEvalMs
       })
       const newest = activeWarnings.length > 0 ? activeWarnings[activeWarnings.length - 1]! : null
       site[def.name] = makeSiteIndicator(

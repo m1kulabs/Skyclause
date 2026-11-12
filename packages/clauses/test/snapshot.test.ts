@@ -1,3 +1,4 @@
+import { metWarningHistory } from './met-warning-history'
 import { describe, expect, test } from 'vitest'
 import { deriveInputState, resolveSourceAt, snapshotAt } from '../src'
 import { dedupeReadingsAt } from '../src/snapshot'
@@ -6,6 +7,7 @@ import { TEST_REGISTRY } from './test-helpers'
 
 function baseHistory(): ReadingHistory {
   return {
+    warningAreaTerms: ['Kuala Lumpur'],
     sources: [
       {
         id: '0232901RF',
@@ -480,10 +482,11 @@ describe('deriveInputState and snapshotAt', () => {
       value: 1,
       valueText: 'Thunderstorm warning for W.P. Kuala Lumpur',
       valueJson: {
-        title_en: 'Thunderstorms Warning',
+        warning_issue: { title_en: 'Thunderstorms Warning' },
+        excluded: false,
         text_en: 'Thunderstorms expected over W.P. Kuala Lumpur',
-        valid_from: '2026-11-02T06:00:00Z',
-        valid_to: '2026-11-02T09:00:00Z'
+        valid_from_utc: '2026-11-02T06:00:00Z',
+        valid_to_utc: '2026-11-02T09:00:00Z'
       },
       itemKey: 'mw-1',
       revision: 1
@@ -748,5 +751,73 @@ describe('isolated history identity and GTFS calendar boundaries', () => {
     h.readings = [warning({ sourceId: '0232901RF', metric: 'rain_5m_mm' })]
     expect(deriveInputState(h, '0232901RF', '2026-11-02T07:10:00Z')).toBe('fresh')
     expect(deriveInputState(h, '0232901RF', '2026-11-02T07:10:01Z')).toBe('stale')
+  })
+})
+
+describe('MET project area and strict validity', () => {
+  const registry = TEST_REGISTRY.filter((def) => def.sourceKind === 'met_warning')
+  const value = (h: ReturnType<typeof metWarningHistory>, at = '2026-11-05T13:13:01Z') =>
+    snapshotAt(h, registry, 'project', 'sky', at).site['site.met_warning_in_force']?.value
+  test('same singleton uses explicit current project terms and matches raw English or Malay text only', () => {
+    const h = metWarningHistory()
+    expect(value(h)).toBe(true)
+    h.warningAreaTerms = ['Kuala Lumpur']
+    expect(value(h)).toBe(false)
+    h.warningAreaTerms = []
+    expect(value(h)).toBe(false)
+    delete h.warningAreaTerms
+    expect(value(h)).toBe(false)
+    h.warningAreaTerms = ['   ']
+    expect(value(h)).toBe(false)
+    h.warningAreaTerms = ['Ribut Petir']
+    expect(value(h)).toBe(true)
+    h.warningAreaTerms = ['Thunderstorms Warning']
+    expect(value(h)).toBe(false)
+  })
+  test.each(['valid_from_utc', 'valid_to_utc'])('either null normalized bound is false: %s', (field) => {
+    const h = metWarningHistory()
+    const thunder = h.readings.find((r) => r.valueJson?.excluded === false)!
+    thunder.valueJson![field] = null
+    expect(value(h)).toBe(false)
+  })
+  test('excluded local nested warning and titles cannot override area eligibility', () => {
+    const h = metWarningHistory()
+    h.warningAreaTerms = ['Kuala Lumpur']
+    for (const r of h.readings) {
+      r.valueJson!.text_en = 'Kuala Lumpur'
+      r.valueJson!.excluded = true
+    }
+    expect(value(h)).toBe(false)
+    const thunder = h.readings.find((r) => String(r.valueJson?.text_bm).includes('Kedah'))!
+    thunder.valueJson!.excluded = false
+    thunder.valueJson!.text_en = 'Elsewhere'
+    thunder.valueJson!.text_bm = 'Tempat lain'
+    thunder.valueJson!.warning_issue = { title_en: 'Kuala Lumpur', title_bm: 'Kuala Lumpur' }
+    thunder.valueText = 'Kuala Lumpur'
+    expect(value(h)).toBe(false)
+  })
+  test.each(['No Advisory', 'Strong Winds and Rough Seas Warning'])(
+    'nested provider exclusion title remains ineligible: %s',
+    (title) => {
+      const h = metWarningHistory()
+      const thunder = h.readings.find((r) => r.valueJson?.excluded === false)!
+      thunder.valueJson!.warning_issue = { title_en: title }
+      expect(value(h)).toBe(false)
+    }
+  )
+  test('inclusive endpoints, expiry and empty successful poll retain original validity', () => {
+    const h = metWarningHistory()
+    const thunder = h.readings.find((r) => r.valueJson?.excluded === false)!
+    const from = String(thunder.valueJson!.valid_from_utc),
+      to = String(thunder.valueJson!.valid_to_utc)
+    thunder.observedAt = from
+    thunder.receivedAt = from
+    h.polls = [{ id: 'empty', sourceId: 'met', startedAt: from, outcome: 'unchanged', httpStatus: 200 }]
+    expect(value(h, from)).toBe(true)
+    h.polls[0]!.startedAt = to
+    expect(value(h, to)).toBe(true)
+    const expired = new Date(Date.parse(to) + 1).toISOString()
+    expect(value(h, expired)).toBe(false)
+    expect(value(h, '2026-11-05T17:05:00Z')).toBe(false)
   })
 })
