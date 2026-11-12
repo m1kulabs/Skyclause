@@ -10,8 +10,10 @@
 /*
  * Skyclause Figures: Roundo's digits at one width (fonts/skyclause-figures/build.py), for the characters numbers are
  * printed with. Roundo has no tabular figures; [data-numeric], the figures utility and type-figure list this family
- * ahead of Roundo, so their figures line up and their letters stay Roundo. Its 1 sits centred in a 0-wide cell, so
- * keep it to columns and figures that update, not running text.
+ * ahead of Roundo, so their figures line up and their letters stay Roundo. The cell is the median digit's, the widest
+ * digits are condensed a little to fit, the 1 has a foot and sits centred in it, and the colon, full stop, comma and
+ * space keep their narrow widths, so a time reads as a time. Keep it to columns and figures that update, not running
+ * text.
  */
 @font-face {
   font-family: 'Skyclause Figures';
@@ -220,14 +222,6 @@
   --selection: var(--ink);
   --destructive: var(--ink);
   --warning: var(--ink);
-  --sidebar: var(--ground);
-  --sidebar-foreground: var(--ink);
-  --sidebar-primary: var(--ink);
-  --sidebar-primary-foreground: var(--ground);
-  --sidebar-accent: var(--surface);
-  --sidebar-accent-foreground: var(--ink);
-  --sidebar-border: var(--rule);
-  --sidebar-ring: var(--focus);
   --chart-1: var(--chart-emphasis);
   --chart-2: var(--chart-ink);
   --chart-3: var(--chart-ink);
@@ -296,9 +290,6 @@
   --color-selection: var(--selection);
   --color-destructive: var(--destructive);
   --color-warning: var(--warning);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -307,11 +298,6 @@
   --color-grid: var(--grid);
   --color-card-foreground: var(--card-foreground);
   --color-popover-foreground: var(--popover-foreground);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
   --color-landing-background: var(--landing-background);
   --color-landing-surface: var(--landing-surface);
   --color-landing-foreground: var(--landing-foreground);
@@ -506,6 +492,117 @@
   }
 }
 
+/*
+ * Native form controls, for a plain form that has to post without a client component and where a Base UI primitive
+ * cannot stand in: `native-check` on <input type="checkbox"> or <input type="radio">, `native-select` on <select>.
+ * They match <Input> and <Checkbox>: the filled field with its 2px control edge (one tone up inside a card, down to the
+ * ground inside anything that floats), an ink fill with a ground tick or dot when checked, an ink edge when invalid.
+ * Opt-in by class, so no existing native control changes. Put the control and its <label> in a row of at least 44px on
+ * touch screens; the box is 24px. The ring is the page-wide :focus-visible outline.
+ */
+@utility native-check {
+  appearance: none;
+  flex: none;
+  display: inline-grid;
+  place-content: center;
+  inline-size: 24px;
+  block-size: 24px;
+  margin: 0;
+  border: 2px solid var(--input);
+  border-radius: 4px;
+  background: var(--field);
+  cursor: pointer;
+  :where([data-slot='card']) & {
+    background: var(--raised);
+  }
+  :where(
+      [data-slot='dialog-content'],
+      [data-slot='alert-dialog-content'],
+      [data-slot='sheet-content'],
+      [data-slot='drawer-popup'],
+      [data-slot='popover-content']
+    )
+    & {
+    background: var(--background);
+  }
+  &[type='radio'] {
+    border-radius: 9999px;
+  }
+  &::before {
+    content: '';
+    inline-size: 12px;
+    block-size: 12px;
+    background: var(--ground);
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+    transform: scale(0);
+  }
+  &[type='radio']::before {
+    inline-size: 10px;
+    block-size: 10px;
+    border-radius: 9999px;
+    clip-path: none;
+  }
+  &:checked {
+    border-color: var(--ink);
+    background: var(--ink);
+  }
+  &:checked::before {
+    transform: scale(1);
+  }
+  &[aria-invalid='true'] {
+    border-color: var(--foreground);
+  }
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  @media (forced-colors: active) {
+    &:checked {
+      border-color: Highlight;
+      background: Highlight;
+    }
+    &:checked::before {
+      background: HighlightText;
+    }
+  }
+}
+
+@utility native-select {
+  inline-size: 100%;
+  min-inline-size: 0;
+  block-size: 40px;
+  padding-inline: 12px;
+  border: 2px solid var(--input);
+  border-radius: 10px;
+  background-color: var(--field);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 16px;
+  @media (min-width: 768px) {
+    font-size: 14px;
+  }
+  :where([data-slot='card']) & {
+    background-color: var(--raised);
+  }
+  :where(
+      [data-slot='dialog-content'],
+      [data-slot='alert-dialog-content'],
+      [data-slot='sheet-content'],
+      [data-slot='drawer-popup'],
+      [data-slot='popover-content']
+    )
+    & {
+    background-color: var(--background);
+  }
+  &[aria-invalid='true'] {
+    border-color: var(--foreground);
+  }
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
 @layer base {
   * {
     border-color: var(--border);
@@ -516,6 +613,7 @@
     caret-color: var(--ink);
     accent-color: var(--ink);
     scrollbar-color: var(--overlay) var(--ground);
+    /* The one anchor offset: html reserves it, ids add none (a margin on top of it doubled every jump). */
     scroll-padding-top: 64px;
     --density-row-height: 44px;
     --density-body-size: 14px;
@@ -544,9 +642,6 @@
   h5,
   h6 {
     text-wrap: balance;
-  }
-  [id] {
-    scroll-margin-top: 64px;
   }
   table,
   time,
@@ -719,11 +814,6 @@ svg [data-tone][data-ink] * {
 .auth-column {
   width: min(100%, 520px);
   margin-inline: auto;
-}
-
-[data-slot='sidebar-menu-button'][data-active] > span:last-child,
-[data-slot='sidebar-menu-sub-button'][data-active] > span:last-child {
-  color: var(--ink);
 }
 
 /* High contrast: every capsule, chip and field carries a 2px ink edge; surfaces keep their tone step and add one. */
