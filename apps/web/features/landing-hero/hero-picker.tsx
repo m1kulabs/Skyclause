@@ -50,6 +50,12 @@ function beaconEndpoint(): string {
     : '/e'
 }
 
+/** The window in the page's URL, as the no-JS form's GET writes it, so a reload or a shared link opens it again. */
+function keepWindowInUrl(win: HeroWindow) {
+  const params = new URLSearchParams({ date: win.date, start: toLocalTime(win.startMin), end: toLocalTime(win.endMin) })
+  window.history.replaceState(null, '', `/?${params.toString()}`)
+}
+
 /** Sideways travel before a touch or pen press moves the window: a scroll that starts on the strip stays a scroll. */
 const DRAG_THRESHOLD_PX = 8
 
@@ -135,7 +141,8 @@ export default function HeroPicker({
   }, [])
 
   // While live verdicts are not open (the server's read answered 501), no window can be read: the picker draws the
-  // chosen window on the strip, keeps the replay as the answer, and asks the API nothing until the next page load.
+  // chosen window on the strip, keeps it in the URL, keeps the replay as the answer, and asks the API nothing until the
+  // next page load.
   const open = result.kind !== 'unavailable'
   // After a 429 the picker asks nothing until the time the API gave (a minute when it gave none): the minute's refresh
   // and window changes wait, and when the time comes the window then shown is read once.
@@ -169,12 +176,7 @@ export default function HeroPicker({
             // Beacons are best-effort; the verdict already rendered.
           }
         }
-        const params = new URLSearchParams({
-          date: next.date,
-          start: toLocalTime(next.startMin),
-          end: toLocalTime(next.endMin)
-        })
-        window.history.replaceState(null, '', `/?${params.toString()}`)
+        keepWindowInUrl(next)
       }
     },
     [pilot, apiOrigin]
@@ -185,12 +187,18 @@ export default function HeroPicker({
       firstWindowRef.current = false
       return
     }
-    if (!open) return
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (!open) {
+      // The URL settles with the window, as a read would; a drag writes it once, not on every step.
+      debounceRef.current = setTimeout(() => keepWindowInUrl(win), 300)
+      return () => {
+        if (debounceRef.current) clearTimeout(debounceRef.current)
+      }
+    }
     if (paused()) {
       heldRef.current = true
       return
     }
-    if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => void evaluate(win, true), 300)
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
