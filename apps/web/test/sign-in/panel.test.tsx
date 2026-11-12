@@ -1,15 +1,19 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, test } from 'vitest'
 import { SignInPanel } from '../../features/sign-in/panel'
+import { signInLinks } from '../../features/sign-in/links'
 import type { AuthState } from '../../features/sign-in/model'
 
 function render(
   mode: 'sign-in' | 'sign-up',
   state: AuthState = { kind: 'form' },
   next: string | null = null,
-  locale: 'en' | 'ms' = 'en'
+  locale: 'en' | 'ms' = 'en',
+  env: Record<string, string | undefined> = {}
 ) {
-  return renderToStaticMarkup(<SignInPanel mode={mode} next={next} state={state} locale={locale} />)
+  return renderToStaticMarkup(
+    <SignInPanel mode={mode} next={next} state={state} links={signInLinks(locale, env)} locale={locale} />
+  )
 }
 
 test('sign-in renders a passkey-first email form, Google and the PDPA notice, and no guest entry', () => {
@@ -83,4 +87,15 @@ test('Malay visitors get the Malay form and a Malay lang', () => {
   expect(html).toContain('Alamat e-mel')
   expect(html).toContain('Teruskan dengan Google')
   expect(html).not.toContain('Sign in to Skyclause')
+})
+
+test('on the app host of a multi-host deploy, the wordmark and the privacy notice go to the marketing host', () => {
+  const env = { HOST_MODE: 'multi', MARKETING_ORIGIN: 'https://skyclause.m1ku.tech' }
+  for (const mode of ['sign-in', 'sign-up'] as const) {
+    const html = render(mode, { kind: 'form' }, null, 'en', env)
+    expect(html).toContain('href="https://skyclause.m1ku.tech/"')
+    expect(html).toContain('href="https://skyclause.m1ku.tech/legal/privacy"')
+    expect(html).not.toContain('href="/"')
+    expect(html).not.toContain('href="/legal/privacy"')
+  }
 })

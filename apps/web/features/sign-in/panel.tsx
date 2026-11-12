@@ -8,6 +8,7 @@ import { Button } from '#ui/button'
 import { Input } from '#ui/input'
 import { Label } from '#ui/label'
 import { AuthHeader, AuthMessage } from '../public-chrome/auth'
+import type { SignInLinks } from './links'
 import { accountPath, continuePath, type AuthState } from './model'
 import { t, type Locale } from './i18n'
 
@@ -23,11 +24,14 @@ export function SignInPanel({
   mode,
   next,
   state,
+  links,
   locale = 'en'
 }: {
   mode: Mode
   next: string | null
   state: AuthState
+  /** The marketing host's pages, absolute under HOST_MODE=multi (links.ts). */
+  links: SignInLinks
   locale?: Locale
 }) {
   const text = (key: string, vars: Record<string, string> = {}) => t(key, vars, locale)
@@ -250,6 +254,7 @@ export function SignInPanel({
         <AuthHeader
           title={text(mode === 'sign-in' ? 'sign-in.title' : 'sign-in.sign_up_title')}
           titleId="sign-in-title"
+          homeHref={links.home}
           locale={locale}
         />
 
@@ -388,9 +393,9 @@ export function SignInPanel({
       </section>
 
       <footer className="auth-footer">
-        <Link className="auth-link" href="/legal/privacy">
+        <a className="auth-link" href={links.privacy}>
           {text('sign-in.privacy')}
-        </Link>
+        </a>
       </footer>
     </main>
   )

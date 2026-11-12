@@ -7,11 +7,12 @@ vi.mock('@skyclause/auth/client', () => ({
 }))
 
 const { SignInPanel } = await import('../../features/sign-in/panel')
+const { signInLinks } = await import('../../features/sign-in/links')
 
 afterEach(cleanup)
 
 test('after the link is sent, focus moves from the vanished button to the result that replaced it', async () => {
-  render(<SignInPanel mode="sign-up" next={null} state={{ kind: 'form' }} />)
+  render(<SignInPanel mode="sign-up" next={null} state={{ kind: 'form' }} links={signInLinks('en', {})} />)
   const email = screen.getByRole('textbox', { name: 'Email address' })
   fireEvent.change(email, { target: { value: 'reader@example.test' } })
   const submit = screen.getByRole('button', { name: 'Send sign-in link' })

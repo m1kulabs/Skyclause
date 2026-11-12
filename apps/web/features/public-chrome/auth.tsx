@@ -13,6 +13,7 @@ export function AuthHeader({
   titleRef,
   statement = false,
   lead,
+  homeHref = '/',
   locale = 'en'
 }: {
   title: ReactNode
@@ -22,12 +23,14 @@ export function AuthHeader({
   /** A title that is a whole sentence (a result, a refusal) is set as a statement, not as a headline. */
   statement?: boolean
   lead?: ReactNode
+  /** The wordmark's target: the landing, which another host may serve (the sign-in page passes it absolute). */
+  homeHref?: string
   locale?: 'en' | 'ms'
 }) {
   return (
     <header className="auth-header">
-      {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- The way home must work without JavaScript. */}
-      <a className="auth-brand" href="/" aria-label={t('legal.frame.home', {}, locale)}>
+      {/* A plain link: the way home must work without JavaScript, and the landing may be on another host. */}
+      <a className="auth-brand" href={homeHref} aria-label={t('legal.frame.home', {}, locale)}>
         {/* eslint-disable-next-line @next/next/no-img-element -- The fixed SVG mark needs no optimization or client code. */}
         <img src="/icon.svg" width={28} height={28} alt="" />
         <span translate="no">{t('brand.name', {}, locale)}</span>
