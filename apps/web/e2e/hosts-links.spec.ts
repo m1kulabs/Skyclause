@@ -93,6 +93,27 @@ async function follow(request: APIRequestContext, url: string) {
   throw new Error(`${url} redirects more than five times`)
 }
 
+/**
+ * Posts a plain form to `url` from its own origin, as a browser without JavaScript does, then follows the answer as
+ * `follow` does. The address is never a real one, so no form here sends mail.
+ */
+async function submit(request: APIRequestContext, url: string) {
+  const at = new URL(url)
+  const response = await request.post(`${origin}${at.pathname}${at.search}`, {
+    headers: { host: at.host, origin: at.origin, 'x-forwarded-for': visitorAddress() },
+    form: { email: 'not-an-address' },
+    maxRedirects: 0
+  })
+  const status = response.status()
+  const location = response.headers().location
+  if (status >= 300 && status < 400 && location) {
+    const next = new URL(location, at)
+    return OURS.test(next.origin) ? follow(request, next.href) : { status, at: next.href, notFound: false }
+  }
+  const html = (response.headers()['content-type'] ?? '').startsWith('text/html') ? await response.text() : ''
+  return { status, at: at.href, notFound: html.includes('data-status-code="404"') }
+}
+
 test.describe('HOST_MODE=multi, as a visitor meets it', () => {
   test.describe.configure({ mode: 'serial' })
   let stop: (() => Promise<void>) | undefined
@@ -136,12 +157,12 @@ test.describe('HOST_MODE=multi, as a visitor meets it', () => {
           if (url.protocol !== 'https:') problems.push(`${where}: an external link must be absolute https`)
           continue
         }
-        if (item.method !== 'GET') {
-          // A form that posts is never sent here; the CSP's form-action 'self' needs it on the page's own origin.
-          if (url.origin !== new URL(page.url()).origin) problems.push(`${where}: posts to another origin`)
+        if (item.method !== 'GET' && url.origin !== new URL(page.url()).origin) {
+          // The CSP's form-action 'self' needs a form that posts on the page's own origin.
+          problems.push(`${where}: posts to another origin`)
           continue
         }
-        const end = await follow(request, item.url)
+        const end = item.method === 'GET' ? await follow(request, item.url) : await submit(request, item.url)
         if (end.notFound) problems.push(`${where}: ends on "Page not found" at ${end.at}`)
         else if (end.status >= 400) problems.push(`${where}: ends on ${end.status} at ${end.at}`)
       }
@@ -159,7 +180,7 @@ test.describe('HOST_MODE=multi, as a visitor meets it', () => {
     })
   }
 
-  test('a link the router follows to the other host’s page loads it as a document, which is redirected there', async ({
+  test('sign-in’s privacy link opens the marketing host’s page as a document, with no redirect on the way', async ({
     browser,
     request
   }) => {
@@ -172,20 +193,29 @@ test.describe('HOST_MODE=multi, as a visitor meets it', () => {
     })
     await page.goto(`${APP}/sign-in`)
     await page.waitForLoadState('networkidle')
-    // The router's prefetch and its fetch get no payload, so it loads the page as a document instead of drawing
-    // the app host's not-found page; that document is the redirect. (A browser follows it; Playwright's routing
-    // can't follow a redirect it fulfils for a navigation, so the test reads the answer.)
+    // The link is absolute to the marketing origin, so it never depends on the app host's redirect (which the next
+    // test pins) and the router never fetches the other host's page as its own.
     const document = page.waitForResponse(
       (response) => response.request().isNavigationRequest() && new URL(response.url()).pathname === '/legal/privacy'
     )
     await page.locator('a[href*="/legal/privacy"]').first().click()
     const answered = await document
-    expect(`${answered.status()} ${answered.url()} → ${answered.headers().location}`).toBe(
-      `308 ${APP}/legal/privacy → ${MARKETING}/legal/privacy`
-    )
+    expect(`${answered.status()} ${answered.url()}`).toBe(`200 ${MARKETING}/legal/privacy`)
+    await expect(page.locator('h1')).toBeVisible()
     expect(blocked.filter((text) => /Content Security Policy|Failed to fetch RSC/.test(text))).toEqual([])
     await context.unrouteAll({ behavior: 'ignoreErrors' })
     await context.close()
+  })
+
+  test('each of sign-in’s no-JavaScript form routes answers back to a page on the app host', async ({ request }) => {
+    // The email, Google, confirm and resend forms; the last two render only once a link was sent.
+    for (const path of ['/sign-in/link', '/sign-in/google', '/sign-in/confirm', '/sign-in/resend']) {
+      const end = await submit(request, `${APP}${path}`)
+      expect(end.notFound, `${path} ends on "Page not found" at ${end.at}`).toBe(false)
+      expect(end.status, `${path} ends at ${end.at}`).toBe(200)
+      expect(new URL(end.at).origin, path).toBe(APP)
+      expect(new URL(end.at).pathname, path).toBe('/sign-in')
+    }
   })
 
   test('a page path on the other host is redirected there, with its query; the app host’s home is sign-in’s continue', async ({
