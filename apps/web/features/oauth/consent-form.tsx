@@ -2,6 +2,7 @@
 
 import './catalogue'
 import { t } from '@skyclause/i18n'
+import { formatList } from '@skyclause/i18n/format'
 import { useMemo, useState } from 'react'
 import type { getOAuthConsentDetails } from '@skyclause/auth'
 import { Button } from '#ui/button'
@@ -66,11 +67,11 @@ export function OAuthConsentForm({
         <dl className="auth-facts">
           <div>
             <dt>{t('oauth.consent.client', {}, locale)}</dt>
-            <dd>{details.clientName}</dd>
+            <dd translate="no">{details.clientName}</dd>
           </div>
           <div>
             <dt>{t('oauth.consent.redirect', {}, locale)}</dt>
-            <dd>{details.redirectHost}</dd>
+            <dd translate="no">{details.redirectHost}</dd>
           </div>
           <div>
             <dt>{t('oauth.consent.resource', {}, locale)}</dt>
@@ -114,17 +115,11 @@ export function OAuthConsentForm({
         <legend className="auth-legend">{t('oauth.consent.projects', {}, locale)}</legend>
         <p className="auth-hint">{t('oauth.consent.projectChoice', {}, locale)}</p>
         {details.link ? (
-          <label className="auth-check">
-            <input
-              className="native-check"
-              type="checkbox"
-              name="project_ids"
-              value={details.link.projectId}
-              checked
-              readOnly
-            />
-            <span>{details.link.projectName}</span>
-          </label>
+          // The link fixes its project: it is stated, not offered as a box that cannot be unticked.
+          <>
+            <input type="hidden" name="project_ids" value={details.link.projectId} />
+            <p className="m-0">{details.link.projectName}</p>
+          </>
         ) : (
           <>
             <label className="auth-check">
@@ -167,7 +162,8 @@ export function OAuthConsentForm({
             'oauth.consent.scopeSummary',
             {
               label: t('oauth.consent.scopeRequested', {}, locale),
-              values: details.requestedScopes.map(scopeLabel).join(', ') || t('oauth.consent.scopeNone', {}, locale)
+              values:
+                formatList(details.requestedScopes.map(scopeLabel), locale) || t('oauth.consent.scopeNone', {}, locale)
             },
             locale
           )}

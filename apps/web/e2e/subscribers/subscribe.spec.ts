@@ -10,7 +10,8 @@ test('NTC-8 join requires PDPA consent and requests email confirmation by keyboa
   await stubApi(page, 'createSubscription', { ...subscriber, confirmed_at: null }, { registry })
   await page.goto('/subscribe/test-token')
   const submit = page.getByRole('button', { name: t('subscribe.subscribe'), exact: true })
-  await expect(submit).toBeDisabled()
+  // The button stays pressable and names the missing consent instead of greying out with no reason.
+  await expect(submit).toBeEnabled()
   await page.getByLabel(t('subscribe.email'), { exact: true }).fill(subscriber.email)
   await page.getByLabel(t('subscribe.role'), { exact: true }).fill(subscriber.role)
   await page.getByRole('combobox').selectOption('ms')
@@ -116,9 +117,7 @@ test('consent write 503 replaces the form with privacy-notice-unpublished', asyn
 test('failed subscription read shows the operation error and Retry', async ({ page }) => {
   await failOperation(page, '**/api/subscribe/test-token', 'GET', 410, 'token-expired')
   await page.goto('/subscribe/test-token')
-  await expect(page.locator('main').getByRole('alert')).toHaveText(
-    t('subscribe.error', { status: 410, reason: 'token-expired' })
-  )
+  await expect(page.locator('main').getByRole('alert')).toHaveText(t('subscribe.link_expired'))
   await expect(page.locator('form')).toHaveCount(0)
   await expect(page.getByRole('button', { name: t('subscribe.retry') })).toBeVisible()
 })

@@ -48,6 +48,19 @@
   line-height: 1;
 }
 
+@media (hover: hover) {
+  .home:hover .wordmark {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 6px;
+  }
+
+  .attributionTrigger:hover,
+  .sourceDetails a:hover {
+    text-decoration-thickness: 3px;
+  }
+}
+
 .headerEnd {
   display: flex;
   align-items: center;
@@ -187,6 +200,7 @@
   max-width: calc(100vw - 32px);
   max-height: min(80svh, 720px);
   overflow: auto;
+  overscroll-behavior: contain;
   padding: 24px;
   border: 0;
   border-radius: 16px;

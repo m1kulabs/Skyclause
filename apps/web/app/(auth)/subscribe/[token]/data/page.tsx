@@ -1,6 +1,7 @@
 import type { SubscriberData } from '@skyclause/contracts'
 import { headers } from 'next/headers'
 import { api } from '../../../../../lib/api'
+import { prefersMalay } from '../../../../../lib/preferred-language'
 import {
   SubscriberRights,
   SubscriberRightsLinkError
@@ -17,8 +18,10 @@ export default async function Page({ params }: { params: Promise<{ token: string
   const response = await api.fetch(
     new Request(`${protocol}://${host}/api/subscribe/${encodeURIComponent(token)}/data`, { headers: requestHeaders })
   )
-  if (response.status === 410) return <SubscriberRightsLinkError expired />
-  if (!response.ok) return <SubscriberRightsLinkError expired={false} />
+  // A link that fails has no subscriber to read a language from, so it speaks the browser's (LOC-7).
+  const locale = prefersMalay(incoming.get('accept-language')) ? 'ms' : 'en'
+  if (response.status === 410) return <SubscriberRightsLinkError expired locale={locale} />
+  if (!response.ok) return <SubscriberRightsLinkError expired={false} locale={locale} />
   const data = (await response.json()) as SubscriberData
   return <SubscriberRights initialData={data} token={token} />
 }

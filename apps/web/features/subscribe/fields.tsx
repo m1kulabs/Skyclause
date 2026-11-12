@@ -1,4 +1,5 @@
-import { useId } from 'react'
+import { useId, useState, type FocusEvent } from 'react'
+import { CircleAlertIcon } from 'lucide-react'
 import type { Subscriber, Window } from '@skyclause/contracts'
 import { formatDateCompact, formatDateKey, formatTime } from '@skyclause/i18n/format'
 import { Input } from '#ui/input'
@@ -35,11 +36,23 @@ function windowSpan(window: Window, locale: 'en' | 'ms') {
       )
 }
 
+type TextField = 'email' | 'role'
+
+/** Why a typed email or role cannot be saved, or null when it can. */
+function problemOf(field: TextField, input: HTMLInputElement): string | null {
+  if (!input.value.trim()) return field === 'email' ? 'subscribe.email_required' : 'subscribe.role_required'
+  if (field === 'email' && input.validity.typeMismatch) return 'subscribe.email_invalid'
+  return null
+}
+
+/**
+ * The subscriber's fields. Nothing here is disabled while a change saves, so focus stays where the reader left it; an
+ * email or role that cannot be saved says why beside its field instead of being dropped.
+ */
 export function Fields({
   value,
   windows,
   preferences,
-  disabled,
   locale,
   onChange,
   onCommit
@@ -47,12 +60,45 @@ export function Fields({
   value: SubscriberFields
   windows: Window[]
   preferences: boolean
-  disabled: boolean
   locale: 'en' | 'ms'
   onChange: (patch: Partial<SubscriberFields>) => void
   onCommit?: (patch: Partial<SubscriberFields>) => void
 }) {
   const id = useId()
+  const [problems, setProblems] = useState<Partial<Record<TextField, string>>>({})
+  const check = (field: TextField, input: HTMLInputElement) => {
+    const problem = problemOf(field, input)
+    setProblems((current) => ({ ...current, [field]: problem ?? undefined }))
+    return problem
+  }
+  const textField = (field: TextField) => {
+    const errorId = `${id}-${field}-error`
+    const problem = problems[field]
+    return {
+      id: `${id}-${field}`,
+      name: field,
+      required: true,
+      className: 'h-12 text-base md:text-base',
+      value: value[field],
+      'aria-invalid': problem ? true : undefined,
+      'aria-describedby': problem ? errorId : undefined,
+      onChange: (event: { target: HTMLInputElement }) => {
+        onChange({ [field]: event.target.value })
+        // A shown problem clears as soon as the value is fixed; a new one waits for the reader to leave the field.
+        if (problem) check(field, event.target)
+      },
+      onBlur: (event: FocusEvent<HTMLInputElement>) => {
+        if (!check(field, event.target)) onCommit?.({ [field]: event.target.value })
+      }
+    }
+  }
+  const problemLine = (field: TextField) =>
+    problems[field] ? (
+      <p className="auth-error" id={`${id}-${field}-error`} role="alert">
+        <CircleAlertIcon aria-hidden="true" />
+        {t(problems[field]!, {}, locale)}
+      </p>
+    ) : null
   const toggle = <T extends string>(values: T[], item: T) =>
     values.includes(item) ? values.filter((v) => v !== item) : [...values, item]
   const change = (patch: Partial<SubscriberFields>) => {
@@ -60,40 +106,23 @@ export function Fields({
     onCommit?.(patch)
   }
   return (
-    <fieldset disabled={disabled} className="auth-fields">
+    <fieldset className="auth-fields">
       <div className="auth-field">
         <label htmlFor={`${id}-email`}>{t('subscribe.email', {}, locale)}</label>
         <Input
-          id={`${id}-email`}
-          name="email"
           type="email"
           inputMode="email"
           autoComplete="email"
           autoCapitalize="none"
           spellCheck={false}
-          required
-          className="h-12 text-base md:text-base"
-          value={value.email}
-          onChange={(event) => onChange({ email: event.target.value })}
-          onBlur={(event) => {
-            if (event.target.validity.valid) onCommit?.({ email: event.target.value })
-          }}
+          {...textField('email')}
         />
+        {problemLine('email')}
       </div>
       <div className="auth-field">
         <label htmlFor={`${id}-role`}>{t('subscribe.role', {}, locale)}</label>
-        <Input
-          id={`${id}-role`}
-          name="role"
-          autoComplete="organization-title"
-          required
-          className="h-12 text-base md:text-base"
-          value={value.role}
-          onChange={(event) => onChange({ role: event.target.value })}
-          onBlur={(event) => {
-            if (event.target.validity.valid) onCommit?.({ role: event.target.value })
-          }}
-        />
+        <Input autoComplete="organization-title" {...textField('role')} />
+        {problemLine('role')}
       </div>
       <fieldset className="auth-fieldset">
         <legend className="auth-legend">{t('subscribe.windows', {}, locale)}</legend>
