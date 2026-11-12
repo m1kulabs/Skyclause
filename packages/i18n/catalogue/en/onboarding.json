@@ -109,6 +109,7 @@
   "loading_sources": "Loading sources…",
   "nearest_shown": "Showing the nearest {count}. Search to narrow the catalogue.",
   "source_bound": "Source bound.",
+  "step_needs_attention": "Needs attention: the source’s last poll failed.",
   "device_added": "Device added.",
   "no_sample_data": "Only the records you create are added to this project.",
   "loading_project": "Loading project settings…",

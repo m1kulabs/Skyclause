@@ -340,7 +340,10 @@ test('source picker sorts captured APIMS rows, finds CA16W, allows an erroring s
   await expect(picker.getByText('CA01R')).toHaveCount(0)
   await picker.getByRole('button', { name: 'Bind CA16W' }).click()
   await expect(picker.getByRole('status')).toHaveText('Source bound.')
-  await expect(page.locator('[data-first-run-progress]').getByText('CA16W bound · API 67, 13 min old')).toBeVisible()
+  // The step says the source is bound, never its ID or the API's raw sentence.
+  const progress = page.locator('[data-first-run-progress]')
+  await expect(progress.getByText('Source bound.')).toBeVisible()
+  await expect(progress).not.toContainText('CA16W bound')
   await expectAxeClean(page)
   expect(binds).toBe(1)
   expect(boundSourceCount).toBe(1)

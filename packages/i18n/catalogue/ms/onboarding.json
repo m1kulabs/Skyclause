@@ -109,6 +109,7 @@
   "loading_sources": "Memuatkan sumber…",
   "nearest_shown": "Menunjukkan {count} terdekat. Cari untuk mengecilkan katalog.",
   "source_bound": "Sumber dipautkan.",
+  "step_needs_attention": "Perlu perhatian: tinjauan terakhir sumber gagal.",
   "device_added": "Peranti ditambah.",
   "no_sample_data": "Hanya rekod yang anda cipta akan ditambah kepada projek ini.",
   "loading_project": "Memuatkan tetapan projek…",
