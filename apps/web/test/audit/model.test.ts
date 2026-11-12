@@ -8,6 +8,7 @@ import {
   auditActionKey,
   describeActor,
   entryMatchesFilters,
+  formatAuditTime,
   readAuditFilters,
   targetName,
   targetTypeKey,
@@ -135,4 +136,9 @@ test('an object is named from the members read, or from a name its record kept, 
 test('an identifier is cut to its tail for the eye and kept whole for the clipboard', () => {
   expect(truncatedId('018f47a3-b2c1-7c00-8000-000000000193')).toBe('…00000193')
   expect(truncatedId('short')).toBe('short')
+})
+
+test('a record’s time is short enough for a column, keeps its year and its zone, and follows the locale', () => {
+  expect(formatAuditTime('2026-11-10T02:00:00Z', 'en')).toBe('Tue, 10 Nov 2026, 10:00 MYT')
+  expect(formatAuditTime('2026-11-10T02:00:00Z', 'ms')).toMatch(/10 Nov 2026, 10:00 /)
 })

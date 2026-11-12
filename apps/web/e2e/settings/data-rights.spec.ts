@@ -221,7 +221,7 @@ test('audit pages by cursor, never rendering more than 50 records, as two-line r
   await expect(entries).toContainText('Approved a bundle')
   await expect(entries).not.toContainText(auditAction)
   await expect(entries).not.toContainText(uuidV7(350))
-  await expect(entries).toContainText('10 November 2026, 10:00 MYT')
+  await expect(entries).toContainText('Tue, 10 Nov 2026, 10:00 MYT')
   // On a phone each record is a list item of two short lines.
   await expect.poll(() => rows.first().evaluate((row) => getComputedStyle(row).display)).toBe('flex')
   await expect.poll(() => rows.first().evaluate((row) => row.getBoundingClientRect().height)).toBeLessThan(96)

@@ -69,6 +69,13 @@ function SubscriberDetails({ row, onClose, locale }: { row: Row; onClose: () => 
           </Detail>
           <Detail label={t('subscribe.role', {}, locale)}>{row.role || t('subscribers.no_role', {}, locale)}</Detail>
           <Detail label={t('subscribe.language', {}, locale)}>{language(row.language)}</Detail>
+          <Detail label={t('subscribers.since', {}, locale)}>
+            {row.confirmed_at ? (
+              <time dateTime={row.confirmed_at}>{formatDateTime(row.confirmed_at, locale)}</time>
+            ) : (
+              t('subscribers.not_confirmed', {}, locale)
+            )}
+          </Detail>
           <Detail label={t('subscribers.channels', {}, locale)}>
             {row.channels.length
               ? formatList(
@@ -205,7 +212,7 @@ export function SubscriberTable({
                 {t('subscribe.windows', {}, locale)}
               </TableHead>
               <TableHead className="lg:w-28 max-lg:hidden">{t('subscribe.language', {}, locale)}</TableHead>
-              <TableHead className="lg:w-52">{t('subscribers.since', {}, locale)}</TableHead>
+              <TableHead className="max-lg:hidden">{t('subscribers.since', {}, locale)}</TableHead>
               <TableHead className="lg:w-48">{t('subscribers.status', {}, locale)}</TableHead>
               <TableHead className="lg:w-14">
                 <span className="sr-only">{t('subscribers.actions', {}, locale)}</span>
@@ -241,7 +248,7 @@ export function SubscriberTable({
                 <TableCell phone="hide" className="max-lg:hidden">
                   {t(row.language === 'ms' ? 'subscribe.malay' : 'subscribe.english', {}, locale)}
                 </TableCell>
-                <TableCell phone="meta" label={t('subscribers.since', {}, locale)}>
+                <TableCell phone="meta" label={t('subscribers.since', {}, locale)} className="max-lg:hidden">
                   {row.confirmed_at ? (
                     <time dateTime={row.confirmed_at}>{formatDateTime(row.confirmed_at, locale)}</time>
                   ) : (

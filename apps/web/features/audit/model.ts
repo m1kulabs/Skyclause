@@ -1,5 +1,5 @@
 import { AUDIT_ACTIONS, type AuditAction } from '@skyclause/contracts'
-import { formatDateKey, formatDateTime } from '@skyclause/i18n/format'
+import { formatDateCompact, formatDateKey, formatTime } from '@skyclause/i18n/format'
 import type { AuditEntry } from './operations'
 
 export interface AuditFilterState {
@@ -51,8 +51,12 @@ export function toApiAuditFilters(filters: AuditFilterState) {
   }
 }
 
+/**
+ * When a record was made, short enough for a column: "Tue, 10 Nov 2026, 10:00 MYT". The year stays, since a log runs
+ * back past this year; the time keeps its zone.
+ */
 export function formatAuditTime(instant: string, locale: 'en' | 'ms' = 'en'): string {
-  return formatDateTime(instant, locale)
+  return `${formatDateCompact(instant, locale)} ${formatDateKey(instant).slice(0, 4)}, ${formatTime(instant, locale)}`
 }
 
 /** The most records a page of the ledger renders; the API's own page size. */

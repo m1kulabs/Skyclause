@@ -272,7 +272,8 @@
     "pageOf": "A page of {count} records",
     "directorySource": "the people and projects to filter by",
     "formerPerson": "Former member",
-    "otherProject": "Another project"
+    "otherProject": "Another project",
+    "actorWithRole": "{name} · {role}"
   },
   "data": {
     "exportsTitle": "Data exports",

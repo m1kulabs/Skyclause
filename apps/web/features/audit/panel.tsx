@@ -252,11 +252,18 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
   const projects = directory?.projects ?? []
   const settled = directory !== null || directoryFailure !== null
 
+  // The actor by name; with their role where the column has room (from desktop up), by name alone below that.
   const actorCell = (entry: AuditEntry) => {
     const actor = describeActor(entry)
-    if (actor.kind === 'deleted') return copy('deletedAccount')
-    if (actor.kind === 'other') return copy(`actorTypes.${actor.type}`)
-    return actor.role ? `${actor.name} · ${roleName(actor.role)}` : actor.name
+    if (actor.kind === 'deleted') return { short: copy('deletedAccount'), full: copy('deletedAccount') }
+    if (actor.kind === 'other') {
+      const word = copy(`actorTypes.${actor.type}`)
+      return { short: word, full: word }
+    }
+    return {
+      short: actor.name,
+      full: actor.role ? copy('actorWithRole', { name: actor.name, role: roleName(actor.role) }) : actor.name
+    }
   }
   const objectCell = (entry: AuditEntry) => {
     const name = targetName(entry, names)
@@ -449,10 +456,10 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
               <Table sticky>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="lg:w-52">{copy('time')}</TableHead>
-                    <TableHead className="lg:w-52">{copy('actorColumn')}</TableHead>
+                    <TableHead>{copy('time')}</TableHead>
+                    <TableHead className="w-[20%] lg:w-52">{copy('actorColumn')}</TableHead>
                     <TableHead>{copy('what')}</TableHead>
-                    <TableHead className="lg:w-56">{copy('object')}</TableHead>
+                    <TableHead className="w-[26%] lg:w-56">{copy('object')}</TableHead>
                     <TableHead className="lg:w-40 max-lg:hidden">{copy('project')}</TableHead>
                     <TableHead className="lg:w-14">
                       <span className="sr-only">{copy('copyColumn')}</span>
@@ -468,8 +475,14 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
                         <TableCell phone="meta" label={copy('time')}>
                           <time dateTime={entry.created_at}>{time}</time>
                         </TableCell>
-                        <TableCell truncate="30ch" phone="meta" label={copy('actorColumn')}>
-                          {actorCell(entry)}
+                        <TableCell
+                          truncate="30ch"
+                          phone="meta"
+                          label={copy('actorColumn')}
+                          title={actorCell(entry).full}
+                        >
+                          <span className="lg:hidden">{actorCell(entry).short}</span>
+                          <span className="max-lg:hidden">{actorCell(entry).full}</span>
                         </TableCell>
                         <TableCell phone="primary" className="whitespace-normal">
                           {sentence}

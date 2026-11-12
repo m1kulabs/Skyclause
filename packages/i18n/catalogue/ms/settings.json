@@ -272,7 +272,8 @@
     "pageOf": "Satu halaman, {count} rekod",
     "directorySource": "orang dan projek untuk ditapis",
     "formerPerson": "Bekas ahli",
-    "otherProject": "Projek lain"
+    "otherProject": "Projek lain",
+    "actorWithRole": "{name} · {role}"
   },
   "data": {
     "exportsTitle": "Eksport data",
