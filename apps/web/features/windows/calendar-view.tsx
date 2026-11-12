@@ -50,7 +50,7 @@ export function CalendarView({
           const cap = CAPS[span]
           const number = formatNumber(new Date(date).getUTCDate(), 'en')
           const label =
-            index === 0 || date.endsWith('-01')
+            (index === 0 && span === 'month') || date.endsWith('-01')
               ? formatDateCompact(`${date}T12:00:00+08:00`, 'en')
               : t('windows.day', { date: number })
           return (

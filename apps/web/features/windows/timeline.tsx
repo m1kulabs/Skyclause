@@ -149,17 +149,17 @@ export function Night({ night }: { night: NightView }) {
         {night.show_name ? t('windows.show_name', { name: night.show_name }) : t('windows.night', { date: night.date })}
       </span>
       {arrival && (
-        <span className="flex gap-1.5 type-small text-muted-foreground">
+        <span className="type-small text-muted-foreground">
           {t('windows.arrival')}
-          <time dateTime={night.arrival_start} data-numeric>
+          <time dateTime={night.arrival_start} data-numeric className="ml-1.5">
             {arrival}
           </time>
         </span>
       )}
       {exit ? (
-        <span className="flex gap-1.5 type-small text-muted-foreground">
+        <span className="type-small text-muted-foreground">
           {t('windows.exit')}
-          <time dateTime={night.exit_start!} data-numeric>
+          <time dateTime={night.exit_start!} data-numeric className="ml-1.5">
             {exit}
           </time>
         </span>
