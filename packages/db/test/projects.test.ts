@@ -1,4 +1,4 @@
-import { canonicalHash } from '@skyclause/clauses'
+import { canonicalHash, type Verdict as EngineVerdict } from '@skyclause/clauses'
 import crowdDefault from '@skyclause/clauses/defaults/crowd.json'
 import skyDefault from '@skyclause/clauses/defaults/sky.json'
 import {
@@ -1121,6 +1121,70 @@ describe('getProjectSummaryRecord (D3 precedence and counts)', () => {
         return getProjectSummaryRecord(tx, created.id)
       })
     ).rejects.toThrow('Invalid persisted shadow verdict')
+  })
+
+  test('reads shadow verdicts in the engine form the evaluator stores (commitEvaluatorVerdict)', async () => {
+    await inOrg(async (tx) => {
+      const { project: created } = await createProjectRecord(tx, {
+        name: 'Engine Shadow',
+        slug: 'engine-shadow',
+        siteName: 'APU',
+        siteLat: 3.05,
+        siteLon: 101.7,
+        packs: ['sky']
+      })
+      const gauge = await makeSource(tx)
+      await makeProjectSource(tx, { projectId: created.id, sourceId: gauge.id, role: 'rain_gauge' })
+      await makeSourceState(tx, { sourceId: gauge.id, state: 'stale', since: new Date('2026-11-08T05:40:00Z') })
+      const blocked = {
+        name: 'site.rain_60m_mm',
+        sourceId: gauge.id,
+        state: 'stale' as const,
+        since: '2026-11-08T05:40:00Z'
+      }
+      // The `@skyclause/clauses` Verdict, camelCase, as the evaluator writes it to shadow_state.verdict.
+      const engine: EngineVerdict = {
+        scope: { kind: 'site', id: null },
+        pack: 'sky',
+        mode: null,
+        watch: false,
+        noCall: { inputs: [blocked] },
+        recommendations: [],
+        clauses: [
+          {
+            key: 'lebat',
+            result: 'blocked',
+            blockedBy: [blocked],
+            inputs: [
+              {
+                name: 'site.rain_60m_mm',
+                value: null,
+                unit: 'mm',
+                state: 'stale',
+                since: '2026-11-08T05:40:00Z',
+                ageS: 1200.4,
+                sourceIds: [gauge.id],
+                readingIds: [],
+                observedAt: null
+              }
+            ]
+          }
+        ],
+        openFrom: null
+      }
+      await makeShadowState(tx, { projectId: created.id, pack: 'sky', scopeKind: 'site', verdict: engine })
+      const summary = await getProjectSummaryRecord(tx, created.id, new Date('2026-11-08T06:00:00Z'))
+      expect(summary.pack_states[0]).toEqual({
+        pack: 'sky',
+        basis: 'engine_verdict',
+        call_id: null,
+        mode: null,
+        watch: false,
+        no_call: {
+          inputs: [{ name: 'site.rain_60m_mm', source_id: gauge.id, state: 'stale', since: '2026-11-08T05:40:00Z' }]
+        }
+      })
+    })
   })
 
   test('populates next_storm_date from a fresh bound met_forecast source with an upcoming storm forecast_day reading', async () => {

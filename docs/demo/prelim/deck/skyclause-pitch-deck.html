@@ -1,0 +1,2460 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Skyclause Pitch Deck</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Work+Sans:wght@300;400;500;600;700&display=swap"
+    />
+    <style>
+      /* Tokens from docs/DESIGN.md: the landing palette for the ground, the dark app palette inside data fragments. */
+      :root {
+        --ground: #0a0a0a;
+        --surface: #131217;
+        --surface-2: #151515;
+        --popover: #212023;
+        --ink: #efefef;
+        --ink-2: #bdbdc0;
+        --soft: #8c8c8c;
+        --muted: #8a8c92;
+        --border: #222224;
+        --rule: #1b1a1f;
+        --control: #3a3a3e;
+        --grid: #2a292e;
+        --crimson: #b11226;
+        --crimson-lift: #f0566c;
+        --warning-bg: #2a2416;
+        --warning: #d9a441;
+        --critical-bg: #2c1a20;
+        --sans: 'Work Sans', system-ui, sans-serif;
+        --mono: 'JetBrains Mono', ui-monospace, monospace;
+        --ease: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      @page {
+        size: 1920px 1080px;
+        margin: 0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: #000;
+        color: var(--ink);
+        font-family: var(--sans);
+        font-variant-numeric: tabular-nums;
+        -webkit-font-smoothing: antialiased;
+      }
+      .deck {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+      }
+      .slide {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 1920px;
+        height: 1080px;
+        margin: -540px 0 0 -960px;
+        transform: scale(var(--fit, 1));
+        background: var(--ground);
+        padding: 56px 96px 32px;
+        display: none;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .slide.on {
+        display: flex;
+      }
+      /* Ambient light: a soft neutral glow so no slide sits on flat black. Slides with their own .glow keep it. */
+      .slide:not(:has(.glow))::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(
+            1100px 760px at var(--gx, 88%) var(--gy, 8%),
+            rgba(239, 239, 239, 0.055),
+            rgba(239, 239, 239, 0) 70%
+          ),
+          radial-gradient(
+            900px 620px at var(--hx, 4%) var(--hy, 104%),
+            rgba(239, 239, 239, 0.03),
+            rgba(239, 239, 239, 0) 70%
+          );
+      }
+      .s-problem {
+        --gx: 78%;
+        --gy: 62%;
+      }
+      .s-how {
+        --gx: 58%;
+        --gy: 64%;
+      }
+      .s-arch,
+      .s-business {
+        --gx: 50%;
+        --gy: 70%;
+        --hx: 96%;
+        --hy: 0%;
+      }
+      .slide > * {
+        position: relative;
+        z-index: 1;
+      }
+      .notes {
+        display: none;
+      }
+
+      /* Frame: header and footer on every slide */
+      .hd {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 40px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 26px;
+        font-weight: 500;
+        letter-spacing: -0.02em;
+      }
+      .brand svg {
+        width: 32px;
+        height: 32px;
+      }
+      .brand svg.wm {
+        width: 126px;
+        height: 28px;
+        margin-left: -4px;
+        color: var(--ink);
+      }
+      .chip {
+        margin-left: 22px;
+        padding: 7px 14px;
+        border: 1px solid var(--control);
+        border-radius: 999px;
+        font-size: 17px;
+        font-weight: 500;
+        color: var(--ink-2);
+        letter-spacing: 0;
+      }
+      .event {
+        font-size: 17px;
+        color: var(--soft);
+        text-align: right;
+        line-height: 1.35;
+      }
+      .event b {
+        color: var(--ink-2);
+        font-weight: 500;
+      }
+      .ft {
+        margin-top: auto;
+        flex: none;
+        height: 56px;
+        padding-top: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-top: 1px solid var(--border);
+        font-size: 17px;
+        color: var(--soft);
+      }
+      .band + .ft,
+      .team + .ft {
+        margin-top: 0;
+      }
+      .ft .pg {
+        color: var(--ink-2);
+      }
+
+      /* Type */
+      .eyebrow {
+        margin-top: 48px;
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--soft);
+      }
+      h1,
+      h2 {
+        margin: 0;
+        letter-spacing: -0.035em;
+        line-height: 1.02;
+      }
+      h2 {
+        margin-top: 18px;
+        font-size: 80px;
+        font-weight: 600;
+        max-width: 1450px;
+      }
+      h2 .lt,
+      h1 .lt {
+        display: block;
+        font-weight: 300;
+        color: var(--ink-2);
+      }
+      .lede {
+        margin-top: 28px;
+        font-size: 30px;
+        line-height: 1.4;
+        color: var(--ink-2);
+        max-width: 1050px;
+      }
+      .lede b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .mono {
+        font-family: var(--mono);
+      }
+      .replay {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-family: var(--mono);
+        font-size: 18px;
+        color: var(--warning);
+        background: var(--warning-bg);
+        padding: 7px 14px;
+        border-radius: 6px;
+        white-space: nowrap;
+      }
+      .replay::before {
+        content: '';
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--warning);
+      }
+
+      /* Art */
+      .art {
+        position: absolute;
+        z-index: 0;
+        pointer-events: none;
+      }
+
+      /* Cards and bands */
+      .cards {
+        display: grid;
+        gap: 24px;
+        margin-top: 56px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 32px 32px 30px;
+        position: relative;
+      }
+      .card.mark {
+        border-top: 1px solid var(--crimson-lift);
+      }
+      .k {
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--soft);
+      }
+      .card h3 {
+        margin: 14px 0 0;
+        font-size: 36px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1.12;
+      }
+      .card p {
+        margin: 14px 0 0;
+        font-size: 23px;
+        line-height: 1.45;
+        color: var(--ink-2);
+      }
+      .card .src {
+        margin-top: 18px;
+        font-size: 16px;
+        color: var(--soft);
+      }
+      .ico {
+        width: 36px;
+        height: 36px;
+        stroke: var(--ink);
+        fill: none;
+        stroke-width: 1.75;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .band {
+        margin-top: auto;
+        margin-bottom: 28px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 26px 36px;
+        display: flex;
+        align-items: baseline;
+        gap: 28px;
+        font-size: 28px;
+        font-weight: 500;
+        line-height: 1.35;
+      }
+      .band .k {
+        color: var(--ink-2);
+        white-space: nowrap;
+      }
+      .band.split {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 56px;
+        align-items: start;
+      }
+      .band.split > div > div:last-child {
+        margin-top: 10px;
+        font-size: 26px;
+      }
+      .stat b {
+        display: block;
+        font-size: 120px;
+        font-weight: 300;
+        letter-spacing: -0.045em;
+        line-height: 0.95;
+      }
+      .stat b small {
+        font-size: 0.42em;
+        letter-spacing: -0.02em;
+        margin-left: 6px;
+        color: var(--ink-2);
+      }
+
+      /* 01 · Team */
+      .glow {
+        position: absolute;
+        z-index: 0;
+        right: -260px;
+        top: -220px;
+        width: 1300px;
+        height: 1100px;
+        background:
+          radial-gradient(closest-side, rgba(239, 239, 239, 0.06), rgba(239, 239, 239, 0) 70%),
+          radial-gradient(closest-side at 40% 60%, rgba(239, 239, 239, 0.05), rgba(239, 239, 239, 0) 80%);
+        pointer-events: none;
+      }
+      .hero1 {
+        margin-top: 92px;
+        max-width: 1000px;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        padding: 9px 18px 9px 14px;
+        border: 1px solid var(--control);
+        border-radius: 999px;
+        background: rgba(19, 18, 23, 0.7);
+        font-size: 18px;
+        font-weight: 500;
+        color: var(--ink-2);
+      }
+      .pill i {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--ink-2);
+      }
+      .s-team h1 {
+        margin-top: 34px;
+        font-size: 150px;
+        font-weight: 600;
+        letter-spacing: -0.05em;
+        line-height: 0.94;
+      }
+      .s-team .lede {
+        max-width: 880px;
+      }
+      .callcard {
+        position: absolute;
+        z-index: 2;
+        right: 96px;
+        top: 500px;
+        width: 560px;
+        padding: 24px 28px 22px;
+        background: var(--surface);
+        border: 1px solid var(--control);
+        border-top: 1px solid var(--control);
+        border-radius: 10px;
+        box-shadow:
+          0 40px 90px rgba(0, 0, 0, 0.65),
+          0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+      }
+      .cc-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 17px;
+        color: var(--soft);
+      }
+      .cc-win {
+        margin-top: 18px;
+        font-size: 19px;
+        color: var(--ink-2);
+      }
+      .cc-mode {
+        margin-top: 6px;
+        font-size: 44px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        line-height: 1.05;
+      }
+      .cc-mode::before {
+        content: '▲';
+        font-size: 24px;
+        margin-right: 12px;
+        vertical-align: 8px;
+      }
+      .cc-why {
+        margin-top: 12px;
+        font-size: 18px;
+        line-height: 1.5;
+        color: var(--soft);
+      }
+      .cc-act {
+        margin-top: 20px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        font-size: 17px;
+        color: var(--soft);
+      }
+      .cc-act .btn {
+        margin: 0;
+        height: 42px;
+        font-size: 18px;
+      }
+      .team {
+        margin-top: auto;
+        margin-bottom: 30px;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 20px;
+        border-top: 1px solid var(--border);
+        padding-top: 30px;
+      }
+      .member {
+        display: flex;
+        gap: 18px;
+        align-items: center;
+      }
+      .portrait {
+        width: 84px;
+        height: 84px;
+        flex: none;
+        border-radius: 50%;
+        object-fit: cover;
+        background: var(--popover);
+        border: 1px solid var(--control);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      }
+      .portrait.anon {
+        display: grid;
+        place-items: center;
+      }
+      .portrait.anon svg {
+        width: 46px;
+        height: 46px;
+        fill: none;
+        stroke: var(--soft);
+        stroke-width: 1.5;
+        stroke-linecap: round;
+      }
+      .member.lead .portrait {
+        outline: 2px solid var(--ink-2);
+        outline-offset: 4px;
+      }
+      .member b {
+        display: block;
+        font-size: 24px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      .member span {
+        display: block;
+        margin-top: 4px;
+        font-family: var(--mono);
+        font-size: 16px;
+        color: var(--soft);
+      }
+      .member em {
+        display: inline-block;
+        margin-top: 8px;
+        font-style: normal;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--ink);
+        border-bottom: 1px solid var(--soft);
+        padding-bottom: 2px;
+      }
+
+      /* 01 · Team: logo strip and window hero */
+      .orgs {
+        display: flex;
+        align-items: center;
+        gap: 30px;
+      }
+      .orgs img {
+        display: block;
+      }
+      .orgs .o-apu {
+        height: 46px;
+      }
+      .orgs .o-gdg {
+        height: 26px;
+      }
+      .orgs .o-mono {
+        opacity: 0.92;
+      }
+      .orgs .o-ntt {
+        height: 36px;
+      }
+      .orgs .o-gc {
+        height: 30px;
+      }
+      .orgs .o-sdg {
+        height: 64px;
+        border-radius: 4px;
+      }
+      .orgs i {
+        width: 1px;
+        height: 44px;
+        background: var(--control);
+      }
+      .hero-art {
+        right: -44px;
+        top: 200px;
+        width: 680px;
+      }
+
+      /* 02 · Problem Statement */
+      .s-problem {
+        background:
+          linear-gradient(90deg, rgba(10, 10, 10, 0.9) 0%, rgba(10, 10, 10, 0.74) 46%, rgba(10, 10, 10, 0.42) 100%),
+          linear-gradient(
+            180deg,
+            rgba(10, 10, 10, 0.55) 0%,
+            rgba(10, 10, 10, 0) 30%,
+            rgba(10, 10, 10, 0) 62%,
+            rgba(10, 10, 10, 0.9) 100%
+          ),
+          url('assets/art/problem-bg.jpg') center / cover no-repeat,
+          var(--ground);
+      }
+      .s-problem::before {
+        display: none;
+      }
+      .s-problem .grid {
+        display: grid;
+        grid-template-columns: 960px 1fr;
+        gap: 40px;
+        margin-top: 28px;
+        align-items: end;
+      }
+      .tiles {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+      }
+      .tile {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 20px 22px 18px;
+      }
+      .tile .k {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .tile .ico {
+        width: 24px;
+        height: 24px;
+      }
+      .tile b {
+        display: block;
+        margin-top: 12px;
+        font-size: 60px;
+        font-weight: 300;
+        letter-spacing: -0.04em;
+        line-height: 1;
+        white-space: nowrap;
+      }
+      .tile b small {
+        margin-left: 8px;
+        font-size: 22px;
+        letter-spacing: 0;
+        color: var(--ink-2);
+      }
+      .tile p {
+        margin: 10px 0 0;
+        font-size: 20px;
+        line-height: 1.4;
+        color: var(--ink-2);
+      }
+      .fact {
+        padding: 12px 0 12px 24px;
+        border-left: 1px solid var(--control);
+      }
+      .fact.mark {
+        border-left-color: var(--crimson-lift);
+      }
+      .fact b {
+        display: block;
+        font-size: 48px;
+        font-weight: 300;
+        letter-spacing: -0.04em;
+        line-height: 1;
+      }
+      .fact p {
+        margin: 6px 0 0;
+        font-size: 20px;
+        line-height: 1.4;
+        color: var(--ink-2);
+      }
+      .fact span {
+        display: block;
+        margin-top: 6px;
+        font-size: 15px;
+        color: var(--soft);
+      }
+      .chartbox svg,
+      .crux svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      /* 05 · How It Works */
+      .flow3 {
+        display: grid;
+        grid-template-columns: 1fr 64px 1fr 64px 1fr;
+        align-items: stretch;
+        margin-top: 44px;
+      }
+      .arrow {
+        display: grid;
+        place-items: center;
+        color: var(--soft);
+        font-size: 34px;
+      }
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 30px 30px 28px;
+        display: flex;
+        flex-direction: column;
+      }
+      .panel.mark {
+        border-top: 1px solid var(--crimson-lift);
+      }
+      .panel h3 {
+        margin: 10px 0 0;
+        font-size: 46px;
+        font-weight: 600;
+        letter-spacing: -0.025em;
+      }
+      .panel .sub {
+        font-size: 22px;
+        color: var(--ink-2);
+        margin-top: 6px;
+        padding-bottom: 22px;
+        border-bottom: 1px solid var(--border);
+      }
+      .field {
+        margin-top: 18px;
+      }
+      .field label {
+        display: block;
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--soft);
+      }
+      .field div {
+        margin-top: 8px;
+        height: 48px;
+        border: 1px solid var(--input, #6a6c72);
+        border-radius: 6px;
+        padding: 0 16px;
+        display: flex;
+        align-items: center;
+        font-size: 22px;
+      }
+      .tick {
+        margin-top: 20px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        font-size: 20px;
+        color: var(--ink-2);
+      }
+      .tick i {
+        width: 22px;
+        height: 22px;
+        border: 1px solid #6a6c72;
+        border-radius: 4px;
+        display: grid;
+        place-items: center;
+        font-style: normal;
+        font-size: 15px;
+      }
+      .clause {
+        margin-top: 22px;
+        font-family: var(--mono);
+        font-size: 19px;
+        line-height: 1.75;
+        background: var(--ground);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 18px 20px;
+        color: var(--ink-2);
+      }
+      .clause .kw {
+        color: var(--soft);
+      }
+      .clause .v {
+        color: var(--ink);
+      }
+      .rows {
+        margin-top: 20px;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 20px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--rule);
+        color: var(--ink-2);
+      }
+      .row b {
+        font-weight: 500;
+        color: var(--ink);
+      }
+      .notice {
+        margin-top: 22px;
+        font-size: 22px;
+        line-height: 1.5;
+      }
+      .notice .mode {
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      .notice .mode::before {
+        content: '▲';
+        font-size: 20px;
+        margin-right: 10px;
+        vertical-align: 4px;
+      }
+      .notice p {
+        margin: 12px 0 0;
+        color: var(--ink-2);
+      }
+      .btn {
+        margin-top: auto;
+        align-self: flex-start;
+        height: 46px;
+        padding: 0 22px;
+        border-radius: 999px;
+        background: var(--ink);
+        color: var(--ground);
+        display: inline-flex;
+        align-items: center;
+        font-size: 20px;
+        font-weight: 600;
+      }
+      .fine {
+        margin-top: 16px;
+        font-size: 16px;
+        line-height: 1.45;
+        color: var(--soft);
+      }
+
+      /* 06 · Live Demo */
+      .crux {
+        display: grid;
+        grid-template-columns: 1fr 470px;
+        gap: 48px;
+        margin-top: 36px;
+        align-items: start;
+      }
+      .verdict {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 30px;
+      }
+      .verdict .was {
+        display: flex;
+        justify-content: space-between;
+        font-size: 20px;
+        color: var(--soft);
+        padding-bottom: 18px;
+        border-bottom: 1px solid var(--border);
+      }
+      .verdict .was s {
+        color: var(--ink-2);
+        text-decoration-color: var(--soft);
+      }
+      .verdict .at {
+        margin-top: 20px;
+        font-family: var(--mono);
+        font-size: 18px;
+        color: var(--soft);
+      }
+      .verdict .mode {
+        margin-top: 8px;
+        font-size: 54px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        line-height: 1.02;
+      }
+      .verdict .mode::before {
+        content: '▲';
+        font-size: 30px;
+        margin-right: 12px;
+        vertical-align: 10px;
+      }
+      .verdict .why {
+        margin-top: 20px;
+        font-size: 21px;
+        line-height: 1.55;
+        color: var(--ink-2);
+      }
+
+      .demo-hero {
+        margin-top: 150px;
+      }
+      .s-demo h1 {
+        margin-top: 34px;
+        font-size: 150px;
+        font-weight: 600;
+        letter-spacing: -0.05em;
+        line-height: 0.94;
+      }
+      .s-demo h1 .lt {
+        font-size: 64px;
+        letter-spacing: -0.035em;
+        margin-top: 18px;
+      }
+      ol.steps {
+        margin: 72px 0 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        max-width: 1100px;
+        border-top: 1px solid var(--border);
+      }
+      .steps li {
+        padding: 22px 18px 0 0;
+        font-size: 30px;
+        font-weight: 600;
+        border-top: 2px solid transparent;
+        margin-top: -1px;
+      }
+      .steps li span {
+        display: block;
+        margin-bottom: 8px;
+        font-family: var(--mono);
+        font-size: 18px;
+        font-weight: 400;
+        color: var(--soft);
+      }
+      .steps li.on {
+        border-top-color: var(--ink);
+      }
+      .s-demo .band .replay {
+        margin-right: 6px;
+      }
+
+      /* 07 · Innovation */
+      table.cmp {
+        margin-top: 44px;
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .cmp th {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--soft);
+        text-align: center;
+        padding: 0 10px 18px;
+        line-height: 1.4;
+      }
+      .cmp th:first-child {
+        text-align: left;
+      }
+      .cmp td {
+        border-top: 1px solid var(--border);
+        padding: 15px 10px;
+        text-align: center;
+        font-size: 28px;
+        color: var(--soft);
+      }
+      .cmp td:first-child {
+        text-align: left;
+        color: var(--ink);
+        font-size: 28px;
+        font-weight: 600;
+      }
+      .cmp td:first-child span {
+        display: block;
+        margin-top: 2px;
+        font-size: 17px;
+        font-weight: 400;
+        color: var(--soft);
+      }
+      .cmp .yes {
+        display: inline-grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: var(--ink);
+        color: var(--ground);
+        font-size: 22px;
+        font-weight: 700;
+      }
+      .cmp .maybe {
+        display: inline-grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        border: 1px dashed var(--soft);
+        font-size: 20px;
+      }
+      .cmp tr.us td {
+        background: var(--surface);
+        border-top: 1px solid var(--crimson-lift);
+      }
+
+      /* 09 · Architecture (inline SVG, archify style) */
+      svg.arch {
+        flex: none;
+        display: block;
+        width: 1460px;
+        align-self: center;
+        height: auto;
+        margin-top: 30px;
+      }
+      .arch .zone {
+        fill: none;
+        stroke: var(--control);
+        stroke-width: 1.5;
+        stroke-dasharray: 7 6;
+      }
+      .arch .zone.wait {
+        stroke: var(--warning);
+        stroke-opacity: 0.55;
+      }
+      .arch .zl {
+        font: 600 15px/1 var(--sans);
+        letter-spacing: 0.14em;
+        fill: var(--soft);
+      }
+      .arch .zl.wait {
+        fill: var(--warning);
+      }
+      .arch .box {
+        fill: var(--surface);
+        stroke: var(--control);
+        stroke-width: 1.5;
+      }
+      .arch .box.hot {
+        stroke: var(--crimson-lift);
+        stroke-width: 2;
+      }
+      .arch .t1 {
+        font: 600 25px/1 var(--sans);
+        fill: var(--ink);
+        letter-spacing: -0.01em;
+      }
+      .arch .t2 {
+        font: 400 16px/1 var(--mono);
+        fill: var(--soft);
+      }
+      .arch .edge {
+        fill: none;
+        stroke: var(--ink-2);
+        stroke-width: 1.75;
+      }
+      .arch .edge.dash {
+        stroke-dasharray: 6 6;
+      }
+      .arch .el {
+        font: 500 16px/1 var(--mono);
+        fill: var(--ink-2);
+      }
+      .arch .elbg {
+        fill: var(--ground);
+      }
+      .arch .ln {
+        fill: none;
+        stroke: var(--ink);
+        stroke-width: 1.75;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      /* 08 · Impact */
+      .s-impact .cards {
+        grid-template-columns: repeat(4, 1fr);
+      }
+      .s-impact .card .stat b {
+        font-size: 84px;
+        white-space: nowrap;
+      }
+      .s-impact .cards {
+        margin-bottom: 24px;
+      }
+      .tally {
+        margin-top: 16px;
+        display: flex;
+        gap: 6px;
+      }
+      .tally i {
+        flex: 1;
+        height: 10px;
+        border-radius: 2px;
+        background: var(--control);
+      }
+      .tally i.h {
+        background: var(--ink);
+      }
+      .tally i.o {
+        background: var(--ink-2);
+      }
+      .tally i.n {
+        background: var(--muted);
+        opacity: 0.55;
+      }
+      .tally i.x {
+        background: transparent;
+        border: 1px dashed var(--soft);
+      }
+
+      /* 04 · Solution */
+      table.ask {
+        margin-top: 40px;
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .ask th {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--soft);
+        text-align: left;
+        padding: 0 24px 16px 0;
+      }
+      .ask td {
+        border-top: 1px solid var(--border);
+        padding: 19px 24px 19px 0;
+        font-size: 25px;
+        line-height: 1.4;
+        color: var(--ink-2);
+        vertical-align: top;
+      }
+      .ask td:first-child {
+        position: relative;
+        padding-left: 56px;
+        color: var(--ink);
+        font-size: 28px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      .ask td i {
+        position: absolute;
+        left: 0;
+        top: 25px;
+        font-style: normal;
+        font-family: var(--mono);
+        font-size: 18px;
+        font-weight: 400;
+        color: var(--soft);
+      }
+      .ask tr.us td {
+        background: var(--surface);
+        border-top: 1px solid var(--crimson-lift);
+      }
+      .ask tr.us td:first-child {
+        padding-left: 56px;
+      }
+      .ask tr.us td i {
+        left: 18px;
+      }
+
+      /* 10 · Business Model: money flow over a roadmap */
+      svg.biz {
+        width: 1728px;
+        margin-top: 34px;
+      }
+      .biz .t2.big {
+        font: 500 20px/1 var(--mono);
+        fill: var(--ink-2);
+      }
+      .biz .road {
+        fill: none;
+        stroke: var(--control);
+        stroke-width: 2;
+      }
+      .biz .mdot {
+        fill: var(--ground);
+        stroke: var(--ink-2);
+        stroke-width: 2.5;
+      }
+      .biz .mdot.now {
+        fill: var(--ink);
+        stroke: var(--ink);
+      }
+      .biz .tag {
+        font: 600 15px/1 var(--sans);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        fill: var(--soft);
+      }
+
+      /* 11 · Conclusion */
+      .s-close .ft {
+        margin-top: 0;
+      }
+      .closegrid {
+        margin-top: auto;
+        margin-bottom: auto;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 80px;
+        align-items: center;
+      }
+      .s-close h1 {
+        margin: 0;
+        font-size: 140px;
+        font-weight: 600;
+        letter-spacing: -0.05em;
+        line-height: 0.94;
+      }
+      .s-close .ask {
+        margin-top: 28px;
+        display: inline-block;
+        padding: 14px 22px;
+        border: 1px solid var(--control);
+        border-radius: 999px;
+        background: var(--surface);
+        font-size: 24px;
+        color: var(--ink);
+        white-space: nowrap;
+      }
+      .qrs {
+        display: grid;
+        grid-template-columns: repeat(2, 360px);
+        gap: 28px;
+      }
+      .qrcard {
+        background: var(--surface);
+        border: 1px solid var(--control);
+        border-radius: 14px;
+        padding: 22px 22px 24px;
+        box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
+      }
+      .qrcard img {
+        display: block;
+        width: 100%;
+        border-radius: 8px;
+      }
+      .qrcard b {
+        display: block;
+        margin-top: 20px;
+        font-size: 26px;
+        font-weight: 600;
+      }
+      .qrcard span {
+        display: block;
+        margin-top: 6px;
+        font-family: var(--mono);
+        font-size: 16px;
+        color: var(--soft);
+      }
+
+      /* QA: wrapping and minimum legible sizes */
+      .card h3,
+      .tier .for,
+      .panel .sub,
+      .verdict .mode,
+      h2 {
+        text-wrap: balance;
+      }
+      p,
+      td,
+      li,
+      .band,
+      .fine,
+      .why,
+      .notice p {
+        text-wrap: pretty;
+      }
+      .src,
+      .fine,
+      .fact span {
+        font-size: 18px;
+      }
+      .k,
+      .cmp th,
+      .ask th,
+      .field label {
+        font-size: 17px;
+      }
+      .member {
+        align-items: flex-start;
+      }
+      .member > div {
+        padding-top: 14px;
+      }
+
+      /* 05 · How It Works: the journey line */
+      /* 05 · How It Works: one line, six stations */
+      .s-how .journey {
+        display: block;
+        width: 1728px;
+        height: 580px;
+        margin-top: 28px;
+        overflow: visible;
+        font-family: var(--sans);
+      }
+      .s-how .journey .line {
+        fill: none;
+        stroke: var(--ink);
+        stroke-width: 4;
+        stroke-linecap: round;
+      }
+      .s-how .journey .line.pre {
+        stroke: var(--soft);
+      }
+      .s-how .journey .feed {
+        fill: none;
+        stroke: var(--ink-2);
+        stroke-width: 4;
+        stroke-linecap: round;
+        stroke-dasharray: 0.1 12;
+      }
+      .s-how .journey .out {
+        fill: none;
+        stroke: var(--ink);
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .s-how .journey .tick {
+        fill: none;
+        stroke: var(--soft);
+        stroke-width: 2;
+        stroke-linecap: round;
+      }
+      .s-how .journey .node {
+        fill: var(--surface);
+        stroke: var(--control);
+        stroke-width: 2;
+      }
+      .s-how .journey .node.hi {
+        stroke: var(--ink);
+        stroke-width: 3;
+      }
+      .s-how .journey .node.dim {
+        stroke: var(--soft);
+        fill: var(--ground);
+      }
+      .s-how .journey .ic {
+        fill: none;
+        stroke: var(--ink);
+        stroke-width: 1.7;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .s-how .journey .ic.solid {
+        fill: var(--ink);
+        stroke: none;
+      }
+      .s-how .journey .approve .ring {
+        fill: var(--critical-bg);
+        stroke: var(--crimson-lift);
+        stroke-width: 4;
+      }
+      .s-how .journey .approve .halo {
+        fill: none;
+        stroke: var(--crimson-lift);
+        stroke-width: 1.5;
+        opacity: 0.35;
+      }
+      .s-how .journey .approve .ic {
+        stroke: var(--ink);
+      }
+      .s-how .journey .approve .badge {
+        fill: var(--crimson-lift);
+      }
+      .s-how .journey .approve .badge-ic {
+        fill: none;
+        stroke: var(--ground);
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .s-how .journey .sect {
+        font-size: 46px;
+        font-weight: 500;
+        fill: var(--ink);
+        text-anchor: middle;
+      }
+      .s-how .journey .cad {
+        font-family: var(--mono);
+        font-size: 20px;
+        fill: var(--ink-2);
+        text-anchor: middle;
+      }
+      .s-how .journey .tag {
+        font-size: 23px;
+        font-weight: 500;
+      }
+      .s-how .journey .tag.was {
+        fill: var(--soft);
+      }
+      .s-how .journey .tag.now {
+        fill: var(--ink);
+        font-weight: 600;
+      }
+      .s-how .journey .pill {
+        fill: var(--surface);
+        stroke: var(--control);
+        stroke-width: 2;
+      }
+      .s-how .journey .stem,
+      .s-how .journey .strike,
+      .s-how .journey .arr {
+        fill: none;
+        stroke: var(--soft);
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .s-how .journey .grip {
+        stroke: var(--soft);
+        stroke-width: 3;
+        stroke-linecap: round;
+      }
+      .s-how .journey .num {
+        font-family: var(--mono);
+        font-size: 19px;
+        fill: var(--soft);
+        text-anchor: middle;
+        letter-spacing: 0.08em;
+      }
+      .s-how .journey .step {
+        font-size: 40px;
+        font-weight: 600;
+        letter-spacing: -0.025em;
+        fill: var(--ink);
+        text-anchor: middle;
+      }
+      .s-how .journey .sub {
+        font-size: 23px;
+        fill: var(--ink-2);
+        text-anchor: middle;
+      }
+      .s-how .journey .chev {
+        fill: none;
+        stroke: var(--ink);
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      @media print {
+        html,
+        body {
+          background: var(--ground);
+        }
+        .deck {
+          position: static;
+          overflow: visible;
+        }
+        .slide {
+          position: relative;
+          left: auto;
+          top: auto;
+          margin: 0;
+          transform: none;
+          display: flex;
+          break-after: page;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <symbol id="mark" viewBox="0 0 16 16">
+        <rect x="0.5" y="10.25" width="15" height="2.5" rx="1.25" fill="#f9a3c0" />
+        <rect x="6" y="3.25" width="9.5" height="5.5" rx="2.75" fill="#f9a3c0" />
+      </symbol>
+      <symbol id="wordmark" viewBox="0 0 72 16">
+        <path
+          fill="currentColor"
+          d="M7.38 9.23C7.38 10.11 6.72 10.7 5.17 10.7C3.63 10.7 1.92 10.05 0.9 9.33V10.98C1.76 11.57 3.31 12.16 5.1 12.16C7.33 12.16 8.99 11.12 8.99 9.15C8.99 7.12 7.6 6.53 5.76 5.97L4.56 5.6C3.28 5.18 2.35 4.86 2.35 3.81C2.35 2.93 3.12 2.32 4.53 2.32C6 2.32 7.5 2.96 8.37 3.55V1.84C7.7 1.38 6.38 0.82 4.58 0.82C2.45 0.82 0.69 1.9 0.69 3.94C0.69 5.9 2.21 6.54 3.79 7.01L5.23 7.44C6.59 7.87 7.38 8.24 7.38 9.23ZM10.34 0.99V12H11.84V8.06H13.33L16.02 12H17.74L14.45 7.31L17.74 3.52H16L13.39 6.66H11.84V0.75ZM19.98 14.69C21.1 14.69 22.02 14.1 22.66 12.61L26.66 3.52H24.99L22.3 10.08L19.54 3.52H17.86L21.6 11.76L21.31 12.38C21.04 12.96 20.54 13.31 19.9 13.31C19.02 13.31 18.34 12.8 18.03 12.48V13.97C18.37 14.27 19.07 14.69 19.98 14.69ZM34.1 4C33.46 3.57 32.54 3.34 31.57 3.34C28.98 3.34 26.99 5.1 26.99 7.76C26.99 10.34 28.96 12.16 31.55 12.16C32.54 12.16 33.46 11.92 34.1 11.49V9.98C33.46 10.45 32.56 10.74 31.6 10.74C29.81 10.74 28.5 9.55 28.5 7.76C28.5 5.92 29.81 4.77 31.62 4.77C32.56 4.77 33.46 5.04 34.1 5.5ZM35.46 0.99V12H36.96V0.75ZM43.79 6.85V7.62C43.41 7.47 42.75 7.31 41.92 7.31C39.74 7.31 38.34 8.4 38.34 9.89C38.34 11.3 39.31 12.16 41.02 12.16C42.29 12.16 43.28 11.54 43.89 10.88V12H45.3V6.83C45.3 4.3 43.7 3.36 41.86 3.36C40.29 3.36 38.99 4.1 38.43 4.67V6.22C39.15 5.49 40.34 4.85 41.66 4.85C42.8 4.85 43.79 5.41 43.79 6.85ZM39.74 9.82C39.74 8.94 40.61 8.35 42.29 8.35C42.83 8.35 43.41 8.45 43.79 8.56V10C43.14 10.54 42.22 10.99 41.26 10.99C40.42 10.99 39.74 10.66 39.74 9.82ZM50.5 10.72C49.25 10.72 48.5 10.02 48.5 8.62V3.52H46.99V8.96C46.99 11.04 48.06 12.16 49.92 12.16C51.33 12.16 52.42 11.52 53.14 10.93V12H54.54V3.52H53.04V9.94C52.43 10.3 51.49 10.72 50.5 10.72ZM60.18 7.41 59.14 7.1C58.05 6.78 57.34 6.53 57.34 5.76C57.34 5.04 58.06 4.69 58.96 4.69C60.16 4.69 61.46 5.17 62.06 5.63V4.13C61.47 3.73 60.26 3.34 59.04 3.34C57.07 3.34 55.89 4.4 55.89 5.81C55.89 7.28 56.96 7.9 58.22 8.22L59.3 8.54C60.38 8.83 61.02 9.07 61.02 9.81C61.02 10.61 60.4 10.9 59.39 10.9C58.08 10.9 56.75 10.38 55.97 9.89V11.36C56.61 11.76 57.97 12.22 59.33 12.22C61.23 12.22 62.45 11.38 62.45 9.78C62.45 8.46 61.54 7.79 60.18 7.41ZM70.8 11.41V10.08C70.18 10.43 69.01 10.74 67.87 10.74C66.1 10.74 64.94 9.92 64.83 8.22H70.98V7.52C70.98 4.88 69.65 3.34 67.33 3.34C64.96 3.34 63.31 4.99 63.31 7.76C63.31 10.64 65.14 12.16 67.73 12.16C68.9 12.16 70.19 11.86 70.8 11.41ZM67.25 4.64C68.74 4.64 69.47 5.6 69.5 7.2H64.82C64.9 5.58 65.84 4.64 67.25 4.64Z"
+        />
+      </symbol>
+      <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z" /></symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24">
+        <path d="M12 4 2.5 20h19L12 4z" />
+        <path d="M12 10v4" />
+        <path d="M12 17h.01" />
+      </symbol>
+      <symbol id="i-haze" viewBox="0 0 24 24">
+        <path d="M3 8h13a3 3 0 1 0-3-3" />
+        <path d="M3 12h17" />
+        <path d="M3 16h11a3 3 0 1 1-3 3" />
+      </symbol>
+      <symbol id="i-cam" viewBox="0 0 24 24">
+        <rect x="6" y="2.5" width="12" height="19" rx="2.5" />
+        <circle cx="12" cy="8" r="2.5" />
+      </symbol>
+      <symbol id="i-train" viewBox="0 0 24 24">
+        <rect x="5" y="3" width="14" height="14" rx="3" />
+        <path d="M5 11h14" />
+        <path d="M8 21l2-4M16 21l-2-4" />
+      </symbol>
+      <symbol id="i-user" viewBox="0 0 24 24">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" />
+      </symbol>
+      <symbol id="i-users" viewBox="0 0 24 24">
+        <circle cx="9" cy="8" r="3.5" />
+        <path d="M2.5 20c1-3.5 3.5-5.5 6.5-5.5s5.5 2 6.5 5.5" />
+        <path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.5.8 2.5 2.6 3 5.2" />
+      </symbol>
+      <symbol id="i-calendar" viewBox="0 0 24 24">
+        <rect x="3" y="5" width="18" height="16" rx="2" />
+        <path d="M3 10h18M8 3v4M16 3v4" />
+      </symbol>
+      <symbol id="i-stadium" viewBox="0 0 24 24">
+        <ellipse cx="12" cy="9" rx="9" ry="4" />
+        <path d="M3 9v6c0 2.2 4 4 9 4s9-1.8 9-4V9" />
+      </symbol>
+      <symbol id="i-mail" viewBox="0 0 24 24">
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="m3.5 6.5 8.5 6.5 8.5-6.5" />
+      </symbol>
+      <symbol id="i-gemini" viewBox="0 0 24 24">
+        <path
+          d="M11.04 19.32Q12 21.51 12 24q0-2.49.93-4.68.96-2.19 2.58-3.81t3.81-2.55Q21.51 12 24 12q-2.49 0-4.68-.93a12.3 12.3 0 0 1-3.81-2.58 12.3 12.3 0 0 1-2.58-3.81Q12 2.49 12 0q0 2.49-.96 4.68-.93 2.19-2.55 3.81a12.3 12.3 0 0 1-3.81 2.58Q2.49 12 0 12q2.49 0 4.68.96 2.19.93 3.81 2.55t2.55 3.81"
+        />
+      </symbol>
+      <symbol id="i-building" viewBox="0 0 24 24">
+        <rect x="5" y="3" width="14" height="18" rx="1.5" />
+        <path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2M10.5 21v-3h3v3" />
+      </symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" /></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24">
+        <path d="M12 3 4 6v6c0 4.5 3.3 8 8 9 4.7-1 8-4.5 8-9V6l-8-3z" />
+        <path d="m8.5 12 2.5 2.5 4.5-5" />
+      </symbol>
+    </svg>
+
+    <main class="deck">
+      <!-- 01 · Team -->
+      <section class="slide s-team" data-label="01 Team">
+        <div class="glow" aria-hidden="true"></div>
+        <img class="art hero-art" src="assets/art/window.webp" alt="" />
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg
+            ><svg class="wm" role="img" aria-label="Skyclause"><use href="#wordmark" /></svg
+            ><span class="chip">Team</span>
+          </div>
+          <div class="orgs">
+            <img src="assets/logos/apu-white.webp" alt="Asia Pacific University" class="o-apu" />
+            <img src="assets/logos/gdg-white.webp" alt="Google Developer Groups on Campus APU" class="o-gdg" />
+            <i></i>
+            <img src="assets/logos/ntt-data-white.svg" alt="NTT DATA" class="o-mono o-ntt" />
+            <img src="assets/logos/google-cloud-white.svg" alt="Google Cloud" class="o-mono o-gc" />
+            <i></i>
+            <img src="assets/logos/sdg-11.jpg" alt="SDG 11: Sustainable Cities and Communities" class="o-sdg" />
+          </div>
+        </header>
+        <div class="hero1">
+          <div>
+            <div class="pill">
+              <i></i>APU Cloud Innovation Hackathon 2026 · Intelligent Automation &amp; Digital Transformation
+            </div>
+            <h1>The Call for<span class="lt">Every Window.</span></h1>
+            <p class="lede">
+              When rain, haze or a stadium crowd meets a class, event or commute, Skyclause makes
+              <b>one approved call</b> and puts it <b>on the record</b>.
+            </p>
+          </div>
+        </div>
+        <div class="team">
+          <div class="member lead">
+            <img class="portrait" src="assets/team/kymil4.jpg" alt="Lim Yuh Kang" />
+            <div><b>Lim Yuh Kang</b><span>@kymil4</span><em>Team Leader</em></div>
+          </div>
+          <div class="member">
+            <img class="portrait" src="assets/team/AlaskanTuna.jpg" alt="Hee Zi Jie" />
+            <div><b>Hee Zi Jie</b><span>@AlaskanTuna</span></div>
+          </div>
+          <div class="member">
+            <img class="portrait" src="assets/team/WhiteAvocad0.jpg" alt="Jeremy Woon" />
+            <div><b>Jeremy Woon</b><span>@WhiteAvocad0</span></div>
+          </div>
+          <div class="member">
+            <img class="portrait" src="assets/team/chaosiris.jpg" alt="Yow Li Hao" />
+            <div><b>Yow Li Hao</b><span>@chaosiris</span></div>
+          </div>
+          <div class="member">
+            <img class="portrait" src="assets/team/DrxgClanPC.jpg" alt="Liau Jin Siang" />
+            <div><b>Liau Jin Siang</b><span>@DrxgClanPC</span></div>
+          </div>
+        </div>
+        <footer class="ft">
+          <span class="pg">01 / 11 · Team</span><span>skyclause.m1ku.tech · github.com/m1kulabs/Skyclause</span>
+        </footer>
+        <aside class="notes">
+          This is Skyclause. It makes one approved call for every class, event or commute window when the sky turns
+          against it. And it writes every call down.
+        </aside>
+      </section>
+
+      <!-- 02 · Problem Statement -->
+      <section class="slide s-problem" data-label="02 Problem Statement">
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg
+            ><svg class="wm" role="img" aria-label="Skyclause"><use href="#wordmark" /></svg
+            ><span class="chip">Problem Statement</span>
+          </div>
+        </header>
+        <div class="eyebrow">Bukit Jalil · Storms and Haze, October–November 2026</div>
+        <h2>63 mm of Rain in Two Hours.<span class="lt">89 Sessions Let Out into It.</span></h2>
+        <div class="grid">
+          <div class="chartbox">
+            <!-- chart:bars-2nov --><svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 1200 480"
+              role="img"
+              aria-label="Replay of 2 November 2026: 63.0 mm of rain fell between 14:00 and 16:00 at gauge 0232901RF, across the 15:30 release wave."
+            >
+              <line x1="64" x2="1152" y1="390" y2="390" stroke="#2a292e" stroke-width="1" />
+              <text
+                x="52"
+                y="396"
+                text-anchor="end"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                0
+              </text>
+              <line x1="64" x2="1152" y1="270" y2="270" stroke="#2a292e" stroke-width="1" />
+              <text
+                x="52"
+                y="276"
+                text-anchor="end"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                5
+              </text>
+              <line x1="64" x2="1152" y1="150" y2="150" stroke="#2a292e" stroke-width="1" />
+              <text
+                x="52"
+                y="156"
+                text-anchor="end"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                10
+              </text>
+              <line x1="64" x2="1152" y1="30" y2="30" stroke="#2a292e" stroke-width="1" />
+              <text
+                x="52"
+                y="36"
+                text-anchor="end"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                15
+              </text>
+              <rect x="348.7" y="378.0" width="32.6" height="12.0" fill="#bdbdc0" />
+              <rect x="394.0" y="330.0" width="32.6" height="60.0" fill="#bdbdc0" />
+              <rect x="439.4" y="174.0" width="32.6" height="216.0" fill="#bdbdc0" />
+              <rect x="484.7" y="174.0" width="32.6" height="216.0" fill="#bdbdc0" />
+              <rect x="530.0" y="186.0" width="32.6" height="204.0" fill="#bdbdc0" />
+              <rect x="575.4" y="162.0" width="32.6" height="228.0" fill="#bdbdc0" />
+              <rect x="620.7" y="258.0" width="32.6" height="132.0" fill="#bdbdc0" />
+              <rect x="666.0" y="270.0" width="32.6" height="120.0" fill="#bdbdc0" />
+              <rect x="711.4" y="282.0" width="32.6" height="108.0" fill="#bdbdc0" />
+              <rect x="756.7" y="342.0" width="32.6" height="48.0" fill="#bdbdc0" />
+              <rect x="802.0" y="354.0" width="32.6" height="36.0" fill="#bdbdc0" />
+              <rect x="847.4" y="366.0" width="32.6" height="24.0" fill="#bdbdc0" />
+              <rect x="892.7" y="354.0" width="32.6" height="36.0" fill="#bdbdc0" />
+              <rect x="938.0" y="378.0" width="32.6" height="12.0" fill="#bdbdc0" />
+              <rect x="983.4" y="366.0" width="32.6" height="24.0" fill="#bdbdc0" />
+              <rect x="1028.7" y="378.0" width="32.6" height="12.0" fill="#bdbdc0" />
+              <rect x="1074.0" y="378.0" width="32.6" height="12.0" fill="#bdbdc0" />
+              <rect x="1119.4" y="378.0" width="32.6" height="12.0" fill="#bdbdc0" />
+              <text
+                x="64"
+                y="422"
+                text-anchor="middle"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                14:00
+              </text>
+              <text
+                x="336"
+                y="422"
+                text-anchor="middle"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                14:30
+              </text>
+              <text
+                x="608"
+                y="422"
+                text-anchor="middle"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                15:00
+              </text>
+              <text
+                x="880"
+                y="422"
+                text-anchor="middle"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                15:30
+              </text>
+              <text
+                x="1152"
+                y="422"
+                text-anchor="middle"
+                fill="#8c8c8c"
+                font-size="18"
+                font-family="JetBrains Mono, monospace"
+              >
+                16:00
+              </text>
+              <line x1="880" x2="880" y1="30" y2="390" stroke="#f0566c" stroke-width="2" />
+              <text x="892" y="50" fill="#f0566c" font-size="20" font-family="Work Sans, sans-serif">
+                15:30 release wave
+              </text>
+              <text x="64" y="472" fill="#8c8c8c" font-size="16" font-family="Work Sans, sans-serif">
+                Rain per 5 min, mm. JPS gauge 0232901RF, Sg. Kuyoh di LRT Bukit Jalil.
+              </text></svg
+            ><!-- /chart:bars-2nov -->
+          </div>
+          <div class="tiles">
+            <div class="tile">
+              <div class="k">
+                <svg class="ico"><use href="#i-drop" /></svg>Storm · 30 Oct
+              </div>
+              <b>77.5<small>mm</small></b>
+              <p>in two hours at the same gauge. LRT Bukit Jalil flooded on 6 May.</p>
+            </div>
+            <div class="tile">
+              <div class="k">
+                <svg class="ico"><use href="#i-haze" /></svg>Haze · 3 Oct–3 Nov
+              </div>
+              <b>20<small>of 31 days</small></b>
+              <p>of unhealthy air (API over 100) at the station nearest APU.</p>
+            </div>
+            <div class="tile">
+              <div class="k">
+                <svg class="ico"><use href="#i-alert" /></svg>Haze Peak
+              </div>
+              <b>190</b>
+              <p>API at Cheras. Schools must close above 180.</p>
+            </div>
+            <div class="tile">
+              <div class="k">
+                <svg class="ico"><use href="#i-shield" /></svg>Written Rules
+              </div>
+              <b>0</b>
+              <p>university thresholds, and no APU page on haze or storms.</p>
+            </div>
+          </div>
+        </div>
+        <div class="band">
+          <span class="k">Nobody Made the Call</span>KPT told universities to watch local readings, with no threshold.
+          Each lecturer decides alone. Nobody writes it down.
+        </div>
+        <footer class="ft">
+          <span class="pg">02 / 11 · Problem Statement</span
+          ><span
+            >JPS gauge 0232901RF · DOE APIMS Cheras CA16W · The Star, 8 Oct 2026 · KPT · APU timetable and knowledge
+            base</span
+          >
+        </footer>
+        <aside class="notes">
+          On the second of November, 63 millimetres of rain fell on Bukit Jalil in two hours, and 89 sessions ended at
+          15:30, straight into it. Three days earlier, 77.5 millimetres fell in two hours. In October the air was
+          unhealthy on 20 of 31 days at the nearest station, peaking at 190. Schools got a closing threshold.
+          Universities got none. Nobody made the call, and nobody wrote it down.
+        </aside>
+      </section>
+
+      <!-- 03 · Target Users -->
+      <section class="slide s-users" data-label="03 Target Users">
+        <img class="art" src="assets/art/commute.webp" alt="" style="right: 0; top: 70px; width: 620px" />
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg
+            ><svg class="wm" role="img" aria-label="Skyclause"><use href="#wordmark" /></svg
+            ><span class="chip">Target Users</span>
+          </div>
+        </header>
+        <div class="eyebrow">Who Declares · Who Hears · Who Approves</div>
+        <h2>For Anyone with a Window<span class="lt">to Protect.</span></h2>
+        <div class="cards" style="grid-template-columns: repeat(4, 1fr); margin-top: 120px">
+          <div class="card">
+            <svg class="ico"><use href="#i-users" /></svg>
+            <div class="k" style="margin-top: 22px">Declares Windows</div>
+            <h3>Club and Event Organisers</h3>
+            <p>Outdoor and evening events around Bukit Jalil.</p>
+          </div>
+          <div class="card">
+            <svg class="ico"><use href="#i-train" /></svg>
+            <div class="k" style="margin-top: 22px">Gets Notices</div>
+            <h3>Commuting Students</h3>
+            <p>The 15:30 release wave onto LRT Bukit Jalil.</p>
+          </div>
+          <div class="card">
+            <svg class="ico"><use href="#i-building" /></svg>
+            <div class="k" style="margin-top: 22px">First Pilot</div>
+            <h3>One Office, One Window</h3>
+            <p>The weekday 15:30 release at LRT Bukit Jalil. A campus office names who approves.</p>
+          </div>
+          <div class="card">
+            <svg class="ico"><use href="#i-shield" /></svg>
+            <div class="k" style="margin-top: 22px">Approves</div>
+            <h3>One Person on the Rota</h3>
+            <p>Every notice, first. Lecturers and campus offices next.</p>
+          </div>
+        </div>
+        <div class="band">
+          <span class="k">The Moment</span>The 15:05 poll sees Lebat rain. 89 sessions end at 15:30. 25 minutes to make
+          the call.
+        </div>
+        <footer class="ft">
+          <span class="pg">03 / 11 · Target Users</span
+          ><span>Opt-in subscribers only · pilot window: weekday 15:30 release</span>
+        </footer>
+        <aside class="notes">
+          It starts with a window. A club, a class or a commuter declares one: a title, a day, a start and an end.
+          Opt-in, with consent.
+        </aside>
+      </section>
+
+      <!-- 04 · Solution -->
+      <section class="slide s-solution" data-label="04 Solution">
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg
+            ><svg class="wm" role="img" aria-label="Skyclause"><use href="#wordmark" /></svg
+            ><span class="chip">Solution</span>
+          </div>
+        </header>
+        <div class="eyebrow">What a Campus Solution Needs · What Skyclause Delivers</div>
+        <h2>Public Signals In.<span class="lt">One Approved Call Out.</span></h2>
+        <table class="ask">
+          <thead>
+            <tr>
+              <th style="width: 560px">What It Takes</th>
+              <th>Skyclause Delivers</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><i>01</i>Impact on Students and Operations</td>
+              <td>One approved call per class, event or commute window, before the release wave.</td>
+            </tr>
+            <tr>
+              <td><i>02</i>Connectors</td>
+              <td>
+                3P in: JPS gauge, MET warnings, DOE APIMS. 1P: Gemini on Vertex AI, Cloud Run. Out: email, ICS calendar.
+              </td>
+            </tr>
+            <tr>
+              <td><i>03</i>Research</td>
+              <td>2,269 gauge readings stored, a month of haze replayed, every exit wave counted.</td>
+            </tr>
+            <tr>
+              <td><i>04</i>Time to Impact</td>
+              <td>3 months: calls through the monsoon. 6 months: measured outcomes.</td>
+            </tr>
+            <tr>
+              <td><i>05</i>Day-to-Day Workflows</td>
+              <td>Feeds polled every 5 to 60 min. One person approves. A stale feed means "No call".</td>
+            </tr>
+            <tr class="us">
+              <td><i>+</i>Beyond the Brief</td>
+              <td>Gemini drafts, the clause engine checks, every call is sealed in a ledger.</td>
+            </tr>
+          </tbody>
+        </table>
+        <footer class="ft">
+          <span class="pg">04 / 11 · Solution</span><span>Prototype live at skyclause.m1ku.tech</span>
+        </footer>
+        <aside class="notes">
+          NTT DATA rates impact, connectors, research, time to impact and the daily workflow. Skyclause answers each one
+          on the same loop: signals in, one approved call out, graded the next morning.
+        </aside>
+      </section>
+
+      <!-- 05 · How It Works -->
+      <section class="slide s-how" data-label="05 How It Works">
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg
+            ><svg class="wm" role="img" aria-label="Skyclause"><use href="#wordmark" /></svg
+            ><span class="chip">How It Works</span>
+          </div>
+        </header>
+        <div class="eyebrow">Window · Clause · Call</div>
+        <h2>The Clause Watches.<span class="lt">A Person Approves.</span></h2>
+        <svg
+          class="journey"
+          viewBox="0 0 1728 580"
+          role="img"
+          aria-label="Declare a window, watch public signals, decide by clause, one person approves, notify by email and calendar, record in a sealed ledger"
+        >
+          <!-- the line: grey while readings come in, bright once there is a verdict -->
+          <path class="line pre" d="M0 290H664" />
+          <path class="line" d="M776 290H1695" />
+          <path class="chev" d="M878 280l10 10-10 10M1408 280l10 10-10 10" />
+          <path
+            class="tick"
+            d="M9 290v14M27 290v14M45 290v14M63 290v14M81 290v14M99 290v14M117 290v14M135 290v14M153 290v14M171 290v14M189 290v14M207 290v14M225 290v14M243 290v14M261 290v14M279 290v14"
+          />
+
+          <!-- 01 declare: a person puts a window on the day -->
+          <path class="out" d="M144 142V250M135 239l9 11 9-11" />
+          <circle class="node" cx="144" cy="100" r="40" />
+          <use class="ic" href="#i-user" x="125" y="81" width="38" height="38" />
+          <rect class="node hi" x="72" y="258" width="144" height="64" rx="32" />
+          <use class="ic" href="#i-calendar" x="127" y="273" width="34" height="34" />
+          <path class="grip" d="M94 279v22M194 279v22" />
+
+          <!-- 02 watch: three public feeds, each on its own cadence -->
+          <path class="feed" d="M328 142V230Q328 290 388 290" />
+          <path class="feed" d="M432 142V230Q432 290 492 290" />
+          <path class="feed" d="M536 142V230Q536 290 596 290" />
+          <text class="cad" x="328" y="36">5 Min</text>
+          <text class="cad" x="432" y="36">10 Min</text>
+          <text class="cad" x="536" y="36">60 Min</text>
+          <circle class="node" cx="328" cy="100" r="40" />
+          <use class="ic" href="#i-drop" x="309" y="81" width="38" height="38" />
+          <circle class="node" cx="432" cy="100" r="40" />
+          <use class="ic" href="#i-alert" x="413" y="80" width="38" height="38" />
+          <circle class="node" cx="536" cy="100" r="40" />
+          <use class="ic" href="#i-haze" x="517" y="81" width="38" height="38" />
+
+          <!-- 03 decide: the clause turns readings into a verdict, Gemini drafts -->
+          <path class="feed" d="M720 142V228" />
+          <text class="cad" x="720" y="36">Gemini Drafts</text>
+          <circle class="node" cx="720" cy="100" r="40" />
+          <use class="ic solid" href="#i-gemini" x="702" y="82" width="36" height="36" />
+          <rect class="node hi" x="680" y="250" width="80" height="80" rx="8" transform="rotate(45 720 290)" />
+          <text class="sect" x="720" y="307">§</text>
+          <path class="stem" d="M720 347V378" />
+          <rect class="pill" x="494" y="378" width="452" height="52" rx="26" />
+          <text class="tag was" x="520" y="412">Normal</text>
+          <path class="strike" d="M516 405h84" />
+          <path class="arr" d="M616 404h28M635 396l9 8-9 8" />
+          <text class="tag now" x="662" y="412">▲ Commute Disruption</text>
+
+          <!-- 04 approve: the one crimson thing -->
+          <g class="approve">
+            <circle class="halo" cx="1008" cy="290" r="80" />
+            <circle class="ring" cx="1008" cy="290" r="64" />
+            <use class="ic" href="#i-user" x="980" y="262" width="56" height="56" />
+            <circle class="badge" cx="1057" cy="241" r="22" />
+            <path class="badge-ic" d="M1047 242l7 7 13-14" />
+          </g>
+
+          <!-- 05 notify -->
+          <path class="out" d="M1188 290Q1248 290 1248 230V148M1239 159l9-11 9 11" />
+          <path class="out" d="M1284 290Q1344 290 1344 230V148M1335 159l9-11 9 11" />
+          <circle class="node" cx="1248" cy="100" r="40" />
+          <use class="ic" href="#i-mail" x="1229" y="81" width="38" height="38" />
+          <circle class="node" cx="1344" cy="100" r="40" />
+          <use class="ic" href="#i-calendar" x="1325" y="81" width="38" height="38" />
+
+          <!-- 06 record: each call chained to the last -->
+          <rect class="node dim" x="1473" y="259" width="62" height="62" rx="10" />
+          <rect class="node dim" x="1553" y="259" width="62" height="62" rx="10" />
+          <rect class="node hi" x="1633" y="259" width="62" height="62" rx="10" />
+          <path class="tick" d="M1490 281h28M1490 299h18M1570 281h28M1570 299h18" />
+          <use class="ic" href="#i-shield" x="1646" y="272" width="36" height="36" />
+
+          <!-- labels -->
+          <text class="num" x="144" y="474">01</text>
+          <text class="step" x="144" y="522">Declare</text>
+          <text class="sub" x="144" y="560">Opt-In Window</text>
+          <text class="num" x="432" y="474">02</text>
+          <text class="step" x="432" y="522">Watch</text>
+          <text class="sub" x="432" y="560">Public Signals</text>
+          <text class="num" x="720" y="474">03</text>
+          <text class="step" x="720" y="522">Decide</text>
+          <text class="sub" x="720" y="560">Clause Engine</text>
+          <text class="num" x="1008" y="474">04</text>
+          <text class="step" x="1008" y="522">Approve</text>
+          <text class="sub" x="1008" y="560">One Person</text>
+          <text class="num" x="1296" y="474">05</text>
+          <text class="step" x="1296" y="522">Notify</text>
+          <text class="sub" x="1296" y="560">Email, Calendar</text>
+          <text class="num" x="1584" y="474">06</text>
+          <text class="step" x="1584" y="522">Record</text>
+          <text class="sub" x="1584" y="560">Sealed Ledger</text>
+        </svg>
+        <footer class="ft">
+          <span class="pg">05 / 11 · How It Works</span><span>A stale feed gives “No call”, never an old number</span>
+        </footer>
+        <aside class="notes">
+          Then Skyclause watches the public signals for it. The JPS rain gauge every 5 minutes. MET warnings every 10.
+          The DOE haze index every hour. Every reading carries its age. A silent feed is a No call, never an old number.
+        </aside>
+      </section>
+
+      <!-- 06 · Live Demo -->
+      <section class="slide s-demo" data-label="06 Live Demo">
+        <div class="glow" aria-hidden="true"></div>
+        <img class="art" src="assets/art/gauge.webp" alt="" style="right: 80px; top: 150px; width: 600px" />
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg
+            ><svg class="wm" role="img" aria-label="Skyclause"><use href="#wordmark" /></svg
+            ><span class="chip">Live Demo</span>
+          </div>
+        </header>
+        <div class="demo-hero">
+          <div class="pill"><i></i>skyclause.m1ku.tech</div>
+          <h1>Live Demo<span class="lt">One Window, Gauge to Record.</span></h1>
+        </div>
+        <ol class="steps">
+          <li><span>01</span>Declare</li>
+          <li><span>02</span>Watch</li>
+          <li><span>03</span>Decide</li>
+          <li class="on"><span>04</span>Approve</li>
+          <li><span>05</span>Notify</li>
+          <li><span>06</span>Record</li>
+        </ol>
+        <div class="band">
+          <span class="replay">Replay (2 Nov 2026)</span>The storm moment replays the real JPS gauge record of 2
+          November, when 63 mm fell in two hours. The rest is recorded from the live system.
+        </div>
+        <footer class="ft">
+          <span class="pg">06 / 11 · Live Demo</span><span>skyclause.m1ku.tech · github.com/m1kulabs/Skyclause</span>
+        </footer>
+        <aside class="notes">Let's watch one window, from the gauge to the record.</aside>
+      </section>
+
+      <!-- 07 · Innovation -->
+      <section class="slide s-innovation" data-label="07 Innovation">
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg
+            ><svg class="wm" role="img" aria-label="Skyclause"><use href="#wordmark" /></svg
+            ><span class="chip">Innovation</span>
+          </div>
+        </header>
+        <div class="eyebrow">What People Use Today</div>
+        <h2>Others Show the Weather.<span class="lt">Skyclause Makes the Call.</span></h2>
+        <table class="cmp">
+          <thead>
+            <tr>
+              <th style="width: 30%">What Exists</th>
+              <th>Knows Your<br />Window</th>
+              <th>A Person<br />Approves</th>
+              <th>Says "No Call"<br />When a Feed Is Stale</th>
+              <th>Written<br />Record</th>
+              <th>Graded<br />Next Day</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Weather and Air Apps<span>MET warnings, AirVisual, aqicn</span></td>
+              <td>×</td>
+              <td>×</td>
+              <td>×</td>
+              <td>×</td>
+              <td>×</td>
+            </tr>
+            <tr>
+              <td>PredictHQ<span>paid event-demand forecasts</span></td>
+              <td>×</td>
+              <td>×</td>
+              <td>×</td>
+              <td>×</td>
+              <td><span class="maybe">?</span></td>
+            </tr>
+            <tr>
+              <td>A Group Chat<span>someone posts "class online?"</span></td>
+              <td><span class="maybe">?</span></td>
+              <td><span class="maybe">?</span></td>
+              <td>×</td>
+              <td>×</td>
+              <td>×</td>
+            </tr>
+            <tr class="us">
+              <td>Skyclause<span>one approved call per window</span></td>
+              <td><span class="yes">✓</span></td>
+              <td><span class="yes">✓</span></td>
+              <td><span class="yes">✓</span></td>
+              <td><span class="yes">✓</span></td>
+              <td><span class="yes">✓</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <footer class="ft">
+          <span class="pg">07 / 11 · Innovation</span
+          ><span>? = sometimes, not by design · desk research, Nov 2026 · predicthq.com</span>
+        </footer>
+        <aside class="notes">
+          A weather app has no declared window. A crowd forecaster has no approved call. Skyclause writes the call down
+          and grades it.
+        </aside>
+      </section>
+
+      <!-- 08 · Impact -->
+      <section class="slide s-impact" data-label="08 Impact">
+        <img class="art" src="assets/art/ledger.webp" alt="" style="right: -10px; top: 24px; width: 520px" />
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg
+            ><svg class="wm" role="img" aria-label="Skyclause"><use href="#wordmark" /></svg
+            ><span class="chip">Impact</span>
+          </div>
+        </header>
+        <div class="eyebrow">What a Campus Walks Away With</div>
+        <h2>Every Call on the Record.<span class="lt">Every Grade Published with n.</span></h2>
+        <div class="cards">
+          <div class="card">
+            <div class="stat">
+              <b>25<small>min</small></b>
+            </div>
+            <p>from the crossing to the 15:30 wave on 2 November, enough to approve one call.</p>
+            <div class="src">2 Nov 2026, replayed on the JPS gauge record</div>
+          </div>
+          <div class="card">
+            <div class="stat"><b>22</b></div>
+            <p>weekdays of haze, 5 Oct–3 Nov, replayed through the same clauses.</p>
+            <div class="tally" aria-label="9 Hybrid recommended, 5 Outdoor-limited, 7 Normal, 1 no data">
+              <i class="h"></i><i class="h"></i><i class="h"></i><i class="h"></i><i class="h"></i><i class="h"></i
+              ><i class="h"></i><i class="h"></i><i class="h"></i><i class="o"></i><i class="o"></i><i class="o"></i
+              ><i class="o"></i><i class="o"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i
+              ><i class="n"></i><i class="n"></i><i class="n"></i><i class="x"></i>
+            </div>
+            <div class="src">9 Hybrid · 5 Outdoor-limited<br />7 Normal · 1 no data</div>
+          </div>
+          <div class="card">
+            <div class="stat"><b>139–174</b></div>
+            <p>sessions end between 16:30 and 19:15 each weekday, by LRT Bukit Jalil.</p>
+            <div class="src">APU timetable, 2–6 Nov 2026</div>
+          </div>
+          <div class="card">
+            <div class="stat"><b>0</b></div>
+            <p>
+              new apps to install. Email, a calendar feed, and next, right inside <b>APSpace</b>, beside the timetable.
+            </p>
+            <div class="src">Outlook · Google Calendar · APSpace next</div>
+          </div>
+        </div>
+        <div class="band split">
+          <div>
+            <span class="k">3 Months · Feb 2027</span>
+            <div>Calls through the monsoon for subscribed organisers and students.</div>
+          </div>
+          <div>
+            <span class="k">6 Months · May 2027</span>
+            <div>Every call graded against the gauge, every morning, in public.</div>
+          </div>
+        </div>
+        <footer class="ft">
+          <span class="pg">08 / 11 · Impact</span
+          ><span>Haze clauses run on Cheras CA16W readings at 06:00, 5 Oct–3 Nov 2026</span>
+        </footer>
+        <aside class="notes">
+          We replayed October's haze through the same clauses. 22 weekdays: 9 Hybrid recommended, 5 Outdoor-limited, 7
+          Normal, and 1 day with no data. Every live call is graded the next morning against the gauge, and published
+          with its count. Today that count is zero. We'll say so until it isn't.
+        </aside>
+      </section>
+
+      <!-- 09 · Technical Architecture -->
+      <section class="slide s-arch" data-label="09 Technical Architecture">
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg
+            ><svg class="wm" role="img" aria-label="Skyclause"><use href="#wordmark" /></svg
+            ><span class="chip">Technical Architecture</span>
+          </div>
+        </header>
+        <div class="eyebrow">Signals · Google Cloud · Decide · Act</div>
+        <h2 style="font-size: 72px">Code Watches the Sky.<span class="lt">Gemini Drafts. A Person Sends.</span></h2>
+        <svg
+          class="arch"
+          viewBox="0 0 1728 560"
+          role="img"
+          aria-label="Skyclause architecture: edge devices (a Raspberry Pi 5 agent and a phone camera) join the public signals; Cloud Scheduler runs source adapters on Cloud Run for the JPS gauge, MET warnings and DOE APIMS; the worker's clause engine checks each window and Vertex AI Gemini drafts a call; one person approves in the web app; notices go out by email and an ICS calendar, every call is sealed in the ledger, and every call is graded the next morning."
+        >
+          <defs>
+            <marker id="ar" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+              <path d="M0 0 L10 4 L0 8 z" fill="#bdbdc0" />
+            </marker>
+          </defs>
+          <rect class="zone" x="2" y="2" width="372" height="556" rx="12" />
+          <text class="zl" x="22" y="32">SIGNALS · 3P + EDGE IoT</text>
+          <rect class="zone" x="410" y="2" width="420" height="556" rx="12" />
+          <text class="zl" x="430" y="32">GOOGLE CLOUD · 1P</text>
+          <rect class="zone" x="866" y="2" width="420" height="556" rx="12" />
+          <text class="zl" x="886" y="32">DECIDE · AI DRAFTS, A PERSON APPROVES</text>
+          <rect class="zone" x="1322" y="2" width="404" height="556" rx="12" />
+          <text class="zl" x="1342" y="32">ACT · ON THE RECORD</text>
+
+          <!-- Signals -->
+          <g>
+            <rect class="box" x="22" y="48" width="332" height="86" rx="6" />
+            <use class="ln" href="#i-drop" x="40" y="64" width="28" height="28" />
+            <text class="t1" x="80" y="84">JPS Rain Gauge</text>
+            <text class="t2" x="40" y="114">0232901RF · every 5 min</text>
+          </g>
+          <g>
+            <rect class="box" x="22" y="144" width="332" height="86" rx="6" />
+            <use class="ln" href="#i-alert" x="40" y="160" width="28" height="28" />
+            <text class="t1" x="80" y="180">MET Warnings</text>
+            <text class="t2" x="40" y="210">data.gov.my · every 10 min</text>
+          </g>
+          <g>
+            <rect class="box" x="22" y="240" width="332" height="86" rx="6" />
+            <use class="ln" href="#i-haze" x="40" y="256" width="28" height="28" />
+            <text class="t1" x="80" y="276">DOE APIMS</text>
+            <text class="t2" x="40" y="306">haze index · hourly</text>
+          </g>
+          <g>
+            <rect class="box" x="22" y="336" width="332" height="108" rx="6" style="stroke-dasharray: 6 5" />
+            <image href="assets/icons/raspberrypi.svg" x="40" y="352" width="28" height="28" />
+            <text class="t1" x="80" y="372">Edge Devices</text>
+            <text class="t2" x="40" y="402">Raspberry Pi 5 · phone camera</text>
+            <text class="t2" x="40" y="423">local readings, buffered offline</text>
+          </g>
+          <g>
+            <rect class="box" x="22" y="454" width="332" height="86" rx="6" />
+            <use class="ln" href="#i-calendar" x="40" y="470" width="28" height="28" />
+            <text class="t1" x="80" y="490">Windows</text>
+            <text class="t2" x="40" y="520">declared with consent</text>
+          </g>
+
+          <!-- Google Cloud -->
+          <g>
+            <rect class="box" x="430" y="56" width="380" height="110" rx="6" />
+            <image href="assets/icons/googlecloud.svg" x="448" y="74" width="28" height="28" />
+            <text class="t1" x="488" y="96">Source Adapters</text>
+            <text class="t2" x="448" y="132">Cloud Scheduler · Cloud Run jobs</text>
+            <text class="t2" x="448" y="152">every reading keeps its age</text>
+          </g>
+          <g>
+            <rect class="box" x="430" y="196" width="380" height="110" rx="6" />
+            <image href="assets/icons/googlecloud.svg" x="448" y="214" width="28" height="28" />
+            <text class="t1" x="488" y="236">Pub/Sub · Cloud Tasks</text>
+            <text class="t2" x="448" y="272">poll results · retried runs</text>
+          </g>
+          <g>
+            <rect class="box hot" x="430" y="336" width="380" height="96" rx="6" />
+            <use class="ln" href="#i-check" x="448" y="354" width="28" height="28" />
+            <text class="t1" x="488" y="376">Clause Engine</text>
+            <text class="t2" x="448" y="412">per window · stale feed = "No call"</text>
+          </g>
+          <g>
+            <rect class="box" x="430" y="448" width="380" height="90" rx="6" />
+            <use class="ln" href="#i-shield" x="448" y="466" width="28" height="28" />
+            <text class="t1" x="488" y="488">Postgres · KMS</text>
+            <text class="t2" x="448" y="522">tenant-isolated store</text>
+          </g>
+
+          <!-- Decide -->
+          <g>
+            <rect class="box" x="886" y="96" width="380" height="140" rx="6" />
+            <image href="assets/icons/googlegemini.svg" x="904" y="114" width="28" height="28" />
+            <text class="t1" x="944" y="136">Decision Agent</text>
+            <text class="t2" x="904" y="172">Vertex AI Gemini</text>
+            <text class="t2" x="904" y="194">drafts a call per window</text>
+            <text class="t2" x="904" y="216">engine verdict beside it</text>
+          </g>
+          <g>
+            <rect class="box" x="886" y="300" width="380" height="140" rx="6" />
+            <use class="ln" href="#i-user" x="904" y="318" width="28" height="28" />
+            <text class="t1" x="944" y="340">Approval</text>
+            <text class="t2" x="904" y="376">web app · one person on the rota</text>
+            <text class="t2" x="904" y="398">approve · edit · reject</text>
+            <text class="t2" x="904" y="420">disagreement shows first</text>
+          </g>
+
+          <!-- Act -->
+          <g>
+            <rect class="box" x="1342" y="56" width="364" height="96" rx="6" />
+            <use class="ln" href="#i-mail" x="1360" y="74" width="28" height="28" />
+            <text class="t1" x="1400" y="96">Email Notices</text>
+            <text class="t2" x="1360" y="132">Resend (3P) · subscribers</text>
+          </g>
+          <g>
+            <rect class="box" x="1342" y="168" width="364" height="96" rx="6" />
+            <use class="ln" href="#i-calendar" x="1360" y="186" width="28" height="28" />
+            <text class="t1" x="1400" y="208">ICS Calendar</text>
+            <text class="t2" x="1360" y="244">Outlook · Google Calendar</text>
+          </g>
+          <g>
+            <rect class="box" x="1342" y="280" width="364" height="96" rx="6" />
+            <use class="ln" href="#i-shield" x="1360" y="298" width="28" height="28" />
+            <text class="t1" x="1400" y="320">Sealed Ledger</text>
+            <text class="t2" x="1360" y="356">each row hashed to the last</text>
+          </g>
+          <g>
+            <rect class="box" x="1342" y="392" width="364" height="146" rx="6" style="stroke-dasharray: 6 5" />
+            <use class="ln" href="#i-check" x="1360" y="410" width="28" height="28" />
+            <text class="t1" x="1400" y="432">Next-Day Grade</text>
+            <text class="t2" x="1360" y="468">against the gauge, with n</text>
+            <text class="t2" x="1360" y="490">every call, every morning</text>
+          </g>
+
+          <!-- Edges -->
+          <path class="edge" d="M354 91 H392 V111 H426" marker-end="url(#ar)" />
+          <path class="edge" d="M354 187 H392 V111" />
+          <path class="edge" d="M354 283 H392 V187" />
+          <path class="edge dash" d="M354 390 H392 V283" />
+          <path class="edge" d="M354 497 H408 V384 H426" marker-end="url(#ar)" />
+          <path class="edge" d="M620 166 V192" marker-end="url(#ar)" />
+          <path class="edge" d="M620 306 V332" marker-end="url(#ar)" />
+          <path class="edge" d="M620 432 V444" marker-end="url(#ar)" />
+          <path class="edge" d="M810 384 H848 V166 H882" marker-end="url(#ar)" />
+          <path class="edge" d="M1076 236 V296" marker-end="url(#ar)" />
+          <path class="edge" d="M1266 370 H1304 V104 H1338" marker-end="url(#ar)" />
+          <path class="edge" d="M1304 216 H1338" marker-end="url(#ar)" />
+          <path class="edge" d="M1304 328 H1338" marker-end="url(#ar)" />
+          <path class="edge dash" d="M1524 376 V388" marker-end="url(#ar)" />
+        </svg>
+        <div class="band">
+          <span class="k">Built, Not Mocked</span>3,859 automated tests pass on stored captures of the public feeds.
+        </div>
+        <footer class="ft">
+          <span class="pg">09 / 11 · Technical Architecture</span
+          ><span>Cloud Run · Cloud Scheduler · Pub/Sub · Cloud Tasks · Vertex AI · Secret Manager · KMS · Resend</span>
+        </footer>
+        <aside class="notes">
+          Cloud Scheduler runs the source adapters on Cloud Run. A Raspberry Pi 5 and a phone camera can add local
+          readings: their agents are built, and platform ingest is next. The clause engine checks every window, and
+          Gemini on Vertex AI drafts the call. One person approves in the web app, and the notice goes out by email and
+          calendar. Every call is sealed in the ledger.
+        </aside>
+      </section>
+
+      <!-- 10 · Business Model -->
+      <section class="slide s-business" data-label="10 Business Model">
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg
+            ><svg class="wm" role="img" aria-label="Skyclause"><use href="#wordmark" /></svg
+            ><span class="chip">Business Model</span>
+          </div>
+        </header>
+        <div class="eyebrow">Prices in MYR · Students Never Pay</div>
+        <h2>Students Free. Offices Pay.<span class="lt">Campuses Scale What Works.</span></h2>
+        <svg
+          class="arch biz"
+          viewBox="0 0 1728 580"
+          role="img"
+          aria-label="Business model: an office buyer pays RM99 a month and a campus buyer RM990 a month to Skyclause, which sends notices free to clubs and students and pays cloud and delivery costs. Roadmap: buyer proof in November 2026, measured savings by February 2027, a paid renewal by May 2027 and a campus contract by August 2027. All prices are proposals, untested."
+        >
+          <defs>
+            <marker id="arb" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+              <path d="M0 0 L10 4 L0 8 z" fill="#bdbdc0" />
+            </marker>
+          </defs>
+          <text class="zl" x="0" y="18">01 · WHO PAYS</text>
+          <text class="zl" x="674" y="18">02 · SKYCLAUSE</text>
+          <text class="zl" x="1348" y="18">03 · WHO GAINS · WHAT IT COSTS</text>
+          <g>
+            <rect class="box" x="0" y="40" width="380" height="120" rx="6" />
+            <use class="ln" href="#i-building" x="22" y="62" width="30" height="30" />
+            <text class="t1" x="64" y="85">Office Buyer</text>
+            <text class="t2 big" x="22" y="122">RM 99 a month</text>
+            <text class="t2" x="22" y="148">5 projects · 2,000 subscribers</text>
+          </g>
+          <g>
+            <rect class="box" x="0" y="190" width="380" height="120" rx="6" />
+            <use class="ln" href="#i-stadium" x="22" y="212" width="30" height="30" />
+            <text class="t1" x="64" y="235">Campus Buyer</text>
+            <text class="t2 big" x="22" y="272">RM 990 a month</text>
+            <text class="t2" x="22" y="298">50 projects · 25,000 subscribers</text>
+          </g>
+          <g>
+            <rect class="box hot" x="674" y="100" width="380" height="150" rx="6" />
+            <use href="#mark" x="696" y="122" width="30" height="30" />
+            <text class="t1" x="738" y="145">Skyclause</text>
+            <text class="t2 big" x="696" y="182">one approved call</text>
+            <text class="t2" x="696" y="208">drafts · approval · ledger</text>
+          </g>
+          <g>
+            <rect class="box" x="1348" y="40" width="380" height="120" rx="6" />
+            <use class="ln" href="#i-users" x="1370" y="62" width="30" height="30" />
+            <text class="t1" x="1412" y="85">Clubs and Students</text>
+            <text class="t2 big" x="1370" y="122">always free</text>
+            <text class="t2" x="1370" y="148">notices and a calendar feed</text>
+          </g>
+          <g>
+            <rect class="box" x="1348" y="190" width="380" height="120" rx="6" />
+            <image href="assets/icons/googlecloud.svg" x="1370" y="212" width="30" height="30" />
+            <text class="t1" x="1412" y="235">Cloud and Delivery</text>
+            <text class="t2 big" x="1370" y="272">≈ RM 45 per office</text>
+            <text class="t2" x="1370" y="298">≈ RM 490 per campus, list prices</text>
+          </g>
+          <path class="edge" d="M380 100 H527 V150 H670" marker-end="url(#arb)" />
+          <path class="edge" d="M380 250 H527 V200 H670" marker-end="url(#arb)" />
+          <path class="edge" d="M1054 150 H1201 V100 H1344" marker-end="url(#arb)" />
+          <path class="edge dash" d="M1054 200 H1201 V250 H1344" marker-end="url(#arb)" />
+          <text class="el" x="453" y="86" text-anchor="middle">pays monthly</text>
+          <text class="el" x="453" y="236" text-anchor="middle">pays monthly</text>
+          <text class="el" x="1272" y="86" text-anchor="middle">free notices</text>
+          <text class="el" x="1272" y="236" text-anchor="middle">running cost</text>
+          <path class="road" d="M40 432 H1688" />
+          <text class="zl" x="216" y="400" text-anchor="middle">P0 · NOV 2026</text>
+          <circle cx="216" cy="432" r="10" class="mdot now" />
+          <text class="t1" x="216" y="482" text-anchor="middle">Buyer Proof</text>
+          <text class="t2 big" x="216" y="514" text-anchor="middle">one office signs a pilot</text>
+          <text class="tag" x="216" y="552" text-anchor="middle">Now</text>
+          <text class="zl" x="648" y="400" text-anchor="middle">P1 · FEB 2027</text>
+          <circle cx="648" cy="432" r="10" class="mdot" />
+          <text class="t1" x="648" y="482" text-anchor="middle">Measured Savings</text>
+          <text class="t2 big" x="648" y="514" text-anchor="middle">admin time cut, 20 real tasks</text>
+          <text class="tag" x="648" y="552" text-anchor="middle">3 Months</text>
+          <text class="zl" x="1080" y="400" text-anchor="middle">P2 · MAY 2027</text>
+          <circle cx="1080" cy="432" r="10" class="mdot" />
+          <text class="t1" x="1080" y="482" text-anchor="middle">Paid Renewal</text>
+          <text class="t2 big" x="1080" y="514" text-anchor="middle">office renews at RM 99</text>
+          <text class="tag" x="1080" y="552" text-anchor="middle">6 Months</text>
+          <text class="zl" x="1512" y="400" text-anchor="middle">GA · AUG 2027</text>
+          <circle cx="1512" cy="432" r="10" class="mdot" />
+          <text class="t1" x="1512" y="482" text-anchor="middle">Campus Contract</text>
+          <text class="t2 big" x="1512" y="514" text-anchor="middle">first campus at RM 990</text>
+        </svg>
+        <footer class="ft">
+          <span class="pg">10 / 11 · Business Model</span
+          ><span>Running cost estimated at Google Cloud, Resend and Neon list prices</span>
+        </footer>
+        <aside class="notes">
+          Students and clubs never pay. The office that owns the call pays 99 ringgit a month; a campus pays 990. First
+          we prove one office will sign a pilot. In three months we measure the admin time saved; in six, we test a paid
+          renewal.
+        </aside>
+      </section>
+
+      <!-- 11 · Conclusion -->
+      <section class="slide s-close" data-label="11 Conclusion">
+        <div class="glow" aria-hidden="true"></div>
+        <header class="hd">
+          <div class="brand">
+            <svg><use href="#mark" /></svg
+            ><svg class="wm" role="img" aria-label="Skyclause"><use href="#wordmark" /></svg
+            ><span class="chip">Conclusion</span>
+          </div>
+          <div class="event">
+            <b>APU Cloud Innovation Hackathon 2026</b><br />Intelligent Automation &amp; Digital Transformation
+          </div>
+        </header>
+        <div class="closegrid">
+          <div>
+            <h1>The Call for<span class="lt">Every Window.</span></h1>
+            <p class="lede">Signals in. One person approves. Every call on the record.</p>
+            <p class="ask">Next: one APU office owns a pilot.</p>
+          </div>
+          <div class="qrs">
+            <div class="qrcard">
+              <img src="assets/qr/app.svg" alt="QR code for skyclause.m1ku.tech" />
+              <b>Prototype</b><span>skyclause.m1ku.tech</span>
+            </div>
+            <div class="qrcard">
+              <img src="assets/qr/repo.svg" alt="QR code for github.com/m1kulabs/Skyclause" />
+              <b>Source Code</b><span>github.com/m1kulabs/Skyclause</span>
+            </div>
+          </div>
+        </div>
+        <footer class="ft">
+          <span class="pg">11 / 11 · Conclusion</span
+          ><span>Skyclause is not a safety or emergency service. In an emergency, call 999.</span>
+        </footer>
+        <aside class="notes">
+          Skyclause. The call for every window. Signals in. One person approves. The gauge grades it. Scan for the
+          prototype and the code.
+        </aside>
+      </section>
+    </main>
+    <script>
+      ;(() => {
+        const slides = [...document.querySelectorAll('.slide')]
+        let i = Math.max(0, Math.min(slides.length - 1, Number(location.hash.slice(1)) - 1 || 0))
+        const fit = () =>
+          document.documentElement.style.setProperty('--fit', Math.min(innerWidth / 1920, innerHeight / 1080))
+        const show = (n) => {
+          i = Math.max(0, Math.min(slides.length - 1, n))
+          slides.forEach((s, k) => s.classList.toggle('on', k === i))
+          history.replaceState(null, '', `#${i + 1}`)
+        }
+        addEventListener('resize', fit)
+        addEventListener('keydown', (e) => {
+          if (['ArrowRight', 'PageDown', ' '].includes(e.key)) show(i + 1)
+          if (['ArrowLeft', 'PageUp'].includes(e.key)) show(i - 1)
+          if (e.key === 'Home') show(0)
+          if (e.key === 'End') show(slides.length - 1)
+        })
+        addEventListener('click', (e) => show(e.clientX > innerWidth / 2 ? i + 1 : i - 1))
+        fit()
+        show(i)
+      })()
+    </script>
+  </body>
+</html>
