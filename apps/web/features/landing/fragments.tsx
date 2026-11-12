@@ -1,7 +1,7 @@
 /* eslint-disable skyclause-i18n/no-literal-jsx -- Landing copy is English in the component (no Malay landing route; LND-7 is P2). Notice lines come from the real notice catalogue. */
 import type { ReactNode } from 'react'
 import { formatDateShort, t as notice } from '@skyclause/i18n/notices'
-import { formatDate } from '@skyclause/i18n/format'
+import { formatDate, formatDateLong, formatNumber } from '@skyclause/i18n/format'
 import { Glyph } from '../brand/glyph'
 import { StatusMark } from '../brand/status-mark'
 import type { LatestCallRead } from '../landing-hero/evaluate'
@@ -19,22 +19,39 @@ const at = (clock: string) => `${DAY}T${clock}:00+08:00`
 const RELEASE = at('15:30')
 const SPAN_FROM = at('15:00')
 const SPAN_TO = at('16:30')
+const NB = '\u00a0'
+/** The replay day and the morning after, by the date formatter ("Monday 2 November 2026"). */
+const REPLAY_DAY = formatDateLong(at('12:00'), 'en')
+const GRADE_DAY = formatDateLong('2026-11-03T12:00:00+08:00', 'en')
 
-/** A time of the replay day, printed with its zone. */
+/** A time of the replay day, printed with its zone, never split from it. */
 function Myt({ clock }: { clock: string }) {
-  return <time dateTime={at(clock)}>{clock} MYT</time>
+  return (
+    <time dateTime={at(clock)}>
+      {clock}
+      {NB}MYT
+    </time>
+  )
+}
+
+/** Lebat is MET's word for heavy rain, a rain class, not a mode: a neutral edged capsule, never a mode's hue or glyph. */
+function Lebat({ children = 'Lebat' }: { children?: string }) {
+  return <span className="frag-class">{children}</span>
 }
 
 /** The replay's 60-minute totals as bars, ink on the panel, the last one emphasised, with the Lebat line at 31 mm. */
 function ReplayBars({ from, to }: { from: string; to: string }) {
   const points = replaySlice(at(from), at(to))
   const top = 60
+  const first = points[0]!
   const last = points.at(-1)!
+  const mm = (value: number) =>
+    `${formatNumber(value, 'en', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}${NB}mm`
   return (
     <figure className="frag-bars" data-source={JPS_SOURCE_URL}>
       <div className="frag-bars-plot" aria-hidden="true">
         <span className="frag-bars-lebat" style={{ bottom: `${(31 / top) * 100}%` }}>
-          <span>Lebat 31 mm</span>
+          <Lebat>{`Lebat 31${NB}mm`}</Lebat>
         </span>
         {points.map((point) => (
           <span
@@ -49,6 +66,9 @@ function ReplayBars({ from, to }: { from: string; to: string }) {
         <Myt clock={from} />
         <span>60-minute totals, every 5 minutes</span>
         <Myt clock={to} />
+        <span className="sr-only">
+          {`The 60-minute total rose from ${mm(first.value)} at ${from}${NB}MYT to ${mm(last.value)} at ${to}${NB}MYT, past the Lebat line at 31${NB}mm.`}
+        </span>
       </figcaption>
     </figure>
   )
@@ -80,6 +100,9 @@ function ReplayDay() {
             {clock}
           </time>
         ))}
+        <span className="sr-only">
+          {`The 15:30${NB}MYT window lies inside the clause span, from 15:00${NB}MYT to 16:30${NB}MYT.`}
+        </span>
       </figcaption>
     </figure>
   )
@@ -89,7 +112,13 @@ function ReplayTag({ children }: { children?: ReactNode }) {
   return (
     <p className="frag-tag" data-source={JPS_SOURCE_URL}>
       <span className="frag-badge">Replay</span>
-      <span>{children ?? 'JPS gauge 0232901RF, Monday 2 November 2026'}</span>
+      <span>
+        {children ?? (
+          <>
+            JPS gauge <span translate="no">{JPS_STATION}</span>, {REPLAY_DAY}
+          </>
+        )}
+      </span>
     </p>
   )
 }
@@ -104,7 +133,7 @@ export function ReadingsFragment() {
       <p className="frag-figure" data-source={JPS_SOURCE_URL}>
         <span data-numeric>39.0</span>
         <span className="frag-unit">mm</span>
-        <StatusMark state="commute_disruption" label="Lebat" />
+        <Lebat />
       </p>
       <p className="frag-meta" data-source={JPS_SOURCE_URL}>
         Gauge <span translate="no">{JPS_STATION}</span>, read <Myt clock="15:00" />, 5 min old at the{' '}
@@ -121,10 +150,7 @@ export function ClauseFragment() {
       <ReplayTag>Sky pack clause sheet, evaluated on the replay</ReplayTag>
       <div className="frag-row frag-row--head">
         <p className="frag-title">Storm confirmed</p>
-        <span className="frag-state">
-          <Glyph state="commute_disruption" width={14} height={14} />
-          Fired
-        </span>
+        <span className="frag-state">Fired</span>
       </div>
       <dl className="frag-fields" data-source={TERMS_SERVICE}>
         <div>
@@ -135,18 +161,21 @@ export function ClauseFragment() {
         </div>
         <div>
           <dt>Fires when</dt>
-          <dd>At least 31 mm in 60 minutes (Lebat), from 30 minutes before to 60 minutes after the window ends</dd>
+          <dd>
+            At least 31{NB}mm in 60{NB}minutes, <Lebat />, from 30{NB}minutes before to 60{NB}minutes after the window
+            ends
+          </dd>
         </div>
         <div>
           <dt>Span</dt>
           <dd data-source={CLOCK_SOURCE}>
-            <time dateTime={SPAN_FROM}>15:00 MYT</time> to <time dateTime={SPAN_TO}>16:30 MYT</time>, for the 15:30 MYT
-            release wave
+            <time dateTime={SPAN_FROM}>15:00{NB}MYT</time> to <time dateTime={SPAN_TO}>16:30{NB}MYT</time>, for the{' '}
+            <Myt clock="15:30" /> release wave
           </dd>
         </div>
         <div>
           <dt>Input</dt>
-          <dd data-source={JPS_SOURCE_URL}>39.0 mm in 60 min, 5 min old</dd>
+          <dd data-source={JPS_SOURCE_URL}>{`39.0${NB}mm in 60${NB}min, 5${NB}min old`}</dd>
         </div>
         <div>
           <dt>Proposes</dt>
@@ -162,7 +191,9 @@ export function ClauseFragment() {
 export function VerdictFragment() {
   return (
     <div className="frag" data-ui="verdict">
-      <ReplayTag>Bukit Jalil, Monday 2 November 2026, from 14:00 MYT to 17:00 MYT</ReplayTag>
+      <ReplayTag>
+        Bukit Jalil, {REPLAY_DAY}, from <Myt clock="14:00" /> to <Myt clock="17:00" />
+      </ReplayTag>
       <ReplayDay />
       <p className="frag-title" data-source={CLOCK_SOURCE}>
         The <Myt clock="15:30" /> release wave
@@ -192,7 +223,7 @@ export function ApprovalFragment() {
         </li>
         <li data-source={JPS_SOURCE_URL}>
           <span>Fired</span>
-          <span>Storm confirmed, gauge 39.0 mm, 5 min old</span>
+          <span>{`Storm confirmed, gauge 39.0${NB}mm, 5${NB}min old`}</span>
         </li>
         <li data-source={TERMS_SERVICE}>
           <span>Approval</span>
@@ -212,15 +243,15 @@ export function GradeFragment({ grades, source }: { grades: GradesState; source:
     <div className="frag" data-ui="grade">
       <ReplayTag>What the grade reads: the same gauge, the next morning</ReplayTag>
       <p className="frag-title" data-source={TERMS_SERVICE}>
-        Graded by <time dateTime="2026-11-03T06:45:00+08:00">06:45 MYT</time> on Tuesday 3 November
+        Graded by <time dateTime="2026-11-03T06:45:00+08:00">06:45{NB}MYT</time> on {GRADE_DAY}
       </p>
       <p className="frag-figure" data-source={JPS_SOURCE_URL}>
         <span data-numeric>59.5</span>
         <span className="frag-unit">mm peak</span>
       </p>
       <p className="frag-meta" data-source={JPS_SOURCE_URL}>
-        The span&rsquo;s highest 60-minute total, at <Myt clock="15:35" />: Lebat. A Sky grade is a hit, a miss, a false
-        alarm or a correct Normal.
+        The span&rsquo;s highest 60-minute total, at <Myt clock="15:35" />: <Lebat />. A Sky grade is a hit, a miss, a
+        false alarm or a correct Normal.
       </p>
       <LiveGrades grades={grades} source={source} />
     </div>
@@ -233,7 +264,14 @@ export function LiveGrades({ grades, source }: { grades: GradesState; source: st
     return (
       <p className="frag-live" data-source={source}>
         <Glyph state="error" width={14} height={14} />
-        <span>Couldn&rsquo;t load live grades: {grades.message}</span>
+        <span>Couldn&rsquo;t load live grades: {grades.message}. Reload the page to try again.</span>
+      </p>
+    )
+  }
+  if (grades.kind === 'not_built') {
+    return (
+      <p className="frag-live" data-source={source}>
+        <span>Live grades are not built yet.</span>
       </p>
     )
   }
@@ -245,13 +283,15 @@ export function LiveGrades({ grades, source }: { grades: GradesState; source: st
       </p>
     )
   }
-  const low = grades.low === null ? '' : grades.low.toFixed(2)
-  const high = grades.high === null ? '' : `–${grades.high.toFixed(2)}`
+  const share = (value: number) => formatNumber(value, 'en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const n = formatNumber(grades.n, 'en')
+  const low = grades.low === null ? '' : share(grades.low)
+  const high = grades.high === null ? '' : `–${share(grades.high)}`
   return (
     <p className="frag-live" data-source={source}>
       <span>
-        Latest: n={grades.n}
-        {grades.x !== null ? `, ${grades.x} of ${grades.n}` : ''} (Wilson 95% interval {low}
+        Latest: n={n}
+        {grades.x !== null ? `, ${formatNumber(grades.x, 'en')} of ${n}` : ''} (Wilson 95% interval {low}
         {high})
       </span>
     </p>
@@ -261,18 +301,18 @@ export function LiveGrades({ grades, source }: { grades: GradesState; source: st
 export function LedgerFragment() {
   return (
     <div className="frag" data-ui="ledger">
-      <ReplayTag>Ledger, Bukit Jalil, replay of Monday 2 November 2026</ReplayTag>
+      <ReplayTag>Ledger, Bukit Jalil, replay of {REPLAY_DAY}</ReplayTag>
       <ol className="frag-ledger">
         <li data-source={JPS_SOURCE_URL}>
           <Myt clock="15:05" />
           <span className="frag-ledger-what">Crossing</span>
-          <span>Storm confirmed fired: gauge 39.0 mm in 60 min, read 15:00 MYT, 5 min old</span>
+          <span>{`Storm confirmed fired: gauge 39.0${NB}mm in 60${NB}min, read 15:00${NB}MYT, 5${NB}min old`}</span>
         </li>
         <li data-source={CLOCK_SOURCE}>
           <Myt clock="15:05" />
           <span className="frag-ledger-what">Shadow verdict</span>
           <span>
-            <StatusMark state="commute_disruption" variant="plain" /> for the 15:30 MYT release wave
+            <StatusMark state="commute_disruption" variant="plain" /> for the <Myt clock="15:30" /> release wave
           </span>
         </li>
         <li>
@@ -281,9 +321,9 @@ export function LedgerFragment() {
           <span>Empty: no call was made that day</span>
         </li>
         <li data-source={JPS_SOURCE_URL}>
-          <time dateTime="2026-11-03T06:45:00+08:00">06:45 MYT</time>
+          <time dateTime="2026-11-03T06:45:00+08:00">06:45{NB}MYT</time>
           <span className="frag-ledger-what">Grade input</span>
-          <span>Span peak 59.5 mm at 15:35 MYT</span>
+          <span>{`Span peak 59.5${NB}mm at 15:35${NB}MYT`}</span>
         </li>
       </ol>
     </div>
@@ -363,7 +403,11 @@ export function CalendarFragment({
       {latestCall === 'error' ? (
         <p className="frag-live" data-source={source}>
           <Glyph state="error" width={14} height={14} />
-          <span>Couldn&rsquo;t reach the approved-call calendar.</span>
+          <span>Couldn&rsquo;t reach the approved-call calendar. Reload the page to try again.</span>
+        </p>
+      ) : latestCall === 'not_built' ? (
+        <p className="frag-live" data-source={source}>
+          <span>The approved-call calendar is not built yet.</span>
         </p>
       ) : latestCall ? (
         // The permalink's page (/c/{callId}, PUB-3) is not built yet: the date stands alone until it is.

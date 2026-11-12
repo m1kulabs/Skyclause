@@ -48,6 +48,13 @@ describe('grades read', () => {
     })
   })
 
+  test('a read that answers 501 is a part not built yet, never a failure to retry', async () => {
+    const fetcher = vi.fn(async () => ({ ok: false, status: 501, json: async () => ({}) })) as never
+    expect(await readGrades(fetcher, { ...baseEnv, PILOT_PROJECT: 'commons/bukit-jalil' })).toEqual({
+      kind: 'not_built'
+    })
+  })
+
   test('pilot ref parses {org}/{project}', () => {
     expect(pilotRefFromEnv({ ...baseEnv, PILOT_PROJECT: 'commons/bukit-jalil' })).toEqual({
       org: 'commons',

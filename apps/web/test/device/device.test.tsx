@@ -51,15 +51,15 @@ test('the code field supports paste and the approval actions have equal weight a
   expect(screen.getByText('macOS')).toBeInTheDocument()
   expect(screen.getByText('Signs in as you, with your roles in each organisation')).toBeInTheDocument()
   expect(screen.getByText('Northstar')).toBeInTheDocument()
-  expect(screen.getByText('admin')).toBeInTheDocument()
-  const confirm = screen.getByRole('button', { name: 'Confirm' })
+  expect(screen.getByText('Admin')).toBeInTheDocument()
+  const confirm = screen.getByRole('button', { name: 'Connect this device' })
   const deny = screen.getByRole('button', { name: 'Deny' })
   expect(confirm.className).toBe(deny.className)
   expect(
     [...container.querySelectorAll('input, button')].map(
       (control) => control.getAttribute('name') ?? control.textContent
     )
-  ).toEqual(['user_code', 'Continue', 'Confirm', 'Deny'])
+  ).toEqual(['user_code', 'Check code', 'Connect this device', 'Deny'])
 
   const result = await axe.run(container)
   expect(result.violations).toEqual([])
@@ -84,7 +84,7 @@ test('confirmation and denial each produce their named terminal state', async ()
       memberships={[]}
     />
   )
-  fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Connect this device' }))
   await waitFor(() =>
     expect(screen.getByRole('status')).toHaveTextContent('Device connected. You can close this page.')
   )
@@ -128,7 +128,8 @@ test('expired and unknown code messages match the login recovery instructions', 
       memberships={[]}
     />
   )
-  expect(screen.getByRole('status')).toHaveTextContent('This code has expired. Run `skyclause login` again.')
+  expect(screen.getByRole('status')).toHaveTextContent('This code has expired. Run skyclause login again.')
+  expect(screen.getByText('skyclause login', { selector: 'code' })).toHaveAttribute('translate', 'no')
   expired.unmount()
   render(
     <DeviceApproval
@@ -159,7 +160,27 @@ test('the approval says what is granted and to whom before it asks, in the visit
   })
   expect(grant).toHaveTextContent('Work laptop')
   expect(grant).toHaveTextContent('Linux')
-  expect(grant).toHaveTextContent('Northstarapprover')
-  expect(grant).toHaveTextContent('Sahkan hanya jika anda baru sahaja menjalankan skyclause login')
+  expect(grant).toHaveTextContent('NorthstarPelulus')
+  expect(grant).toHaveTextContent('Sambungkan hanya jika anda baru sahaja menjalankan skyclause login')
   expect(document.querySelector('main')).toHaveAttribute('lang', 'ms')
+})
+
+test('while a decision is sent, its button says so and neither can be pressed twice', async () => {
+  let finish!: (value: unknown) => void
+  request
+    .mockResolvedValueOnce(response({ status: 'pending', client_id: 'skyclause-cli', scope: '' }))
+    .mockReturnValueOnce(new Promise((resolve) => (finish = resolve)))
+  render(
+    <DeviceApproval
+      code="ABCD2345"
+      initialState="ready"
+      device={{ name: 'Work laptop', os: 'macos' }}
+      memberships={[]}
+    />
+  )
+  fireEvent.click(await screen.findByRole('button', { name: 'Connect this device' }))
+  expect(screen.getByRole('button', { name: 'Connecting…' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Deny' })).toBeDisabled()
+  finish(response({ success: true }))
+  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Device connected.'))
 })

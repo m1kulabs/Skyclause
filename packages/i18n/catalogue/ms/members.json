@@ -117,5 +117,8 @@
   "remove": "Buang",
   "revoke": "Tarik balik",
   "revoke_named": "Tarik balik jemputan: {email}",
-  "resend_named": "Hantar semula jemputan: {email}"
+  "resend_named": "Hantar semula jemputan: {email}",
+  "your_organisation": "organisasi anda",
+  "invite_ask_again": "Minta jemputan baharu daripada Pentadbir {org}.",
+  "transfer_ask_again": "Minta yang baharu daripada Pemilik."
 }

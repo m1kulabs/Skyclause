@@ -25,18 +25,18 @@ export function CalendarView({
   onMore: (date: string) => void
 }) {
   const wide = useMedia('(min-width: 768px)')
-  const { windows, dates, root, feeds, bundles, nights, onEdit, added } = props
+  const { windows, dates, root, feeds, bundles, nights, onEdit, added, locale, seriesNames } = props
   if (!wide) return <Timeline {...props} hideEmpty />
   return (
     <div
       role="region"
-      aria-label={t(span === 'week' ? 'windows.view_week' : 'windows.view_month')}
+      aria-label={t(span === 'week' ? 'windows.view_week' : 'windows.view_month', {}, locale)}
       data-calendar={span}
     >
       <div aria-hidden="true" className="mb-2 grid grid-cols-7 gap-2 type-small text-muted-foreground">
         {WEEKDAYS.map((day) => (
           <span key={day} className="px-2.5">
-            {t(`windows.${day}`)}
+            {t(`windows.${day}`, {}, locale)}
           </span>
         ))}
       </div>
@@ -48,11 +48,11 @@ export function CalendarView({
           const today = date === localDate()
           const outside = span === 'month' && date.slice(0, 7) !== month.slice(0, 7)
           const cap = CAPS[span]
-          const number = formatNumber(new Date(date).getUTCDate(), 'en')
+          const number = formatNumber(new Date(date).getUTCDate(), locale)
           const label =
             (index === 0 && span === 'month') || date.endsWith('-01')
-              ? formatDateCompact(`${date}T12:00:00+08:00`, 'en')
-              : t('windows.day', { date: number })
+              ? formatDateCompact(`${date}T12:00:00+08:00`, locale)
+              : t('windows.day', { date: number }, locale)
           return (
             <section
               key={date}
@@ -64,7 +64,7 @@ export function CalendarView({
               <h2
                 aria-current={today ? 'date' : undefined}
                 className="type-body relative w-fit pb-2 font-medium current-mark"
-                aria-label={formatDate(`${date}T12:00:00+08:00`, 'en')}
+                aria-label={formatDate(`${date}T12:00:00+08:00`, locale)}
               >
                 <time dateTime={date} aria-hidden="true">
                   {label}
@@ -74,7 +74,7 @@ export function CalendarView({
                 .filter((night) => night.date === date)
                 .map((night) => (
                   <ul key={night.id}>
-                    <Night night={night} />
+                    <Night night={night} locale={locale} />
                   </ul>
                 ))}
               {dayWindows.slice(0, cap).map((window) => (
@@ -85,6 +85,8 @@ export function CalendarView({
                     feeds={feeds}
                     bundles={bundles}
                     onEdit={onEdit}
+                    locale={locale}
+                    seriesName={window.series_id ? seriesNames?.[window.series_id] : undefined}
                     added={window.id === added}
                     compact
                   />
@@ -96,10 +98,17 @@ export function CalendarView({
                   variant="ghost"
                   size="sm"
                   className="w-fit"
-                  aria-label={t('windows.show_all', { date: formatDate(`${date}T12:00:00+08:00`, 'en') })}
+                  aria-label={t(
+                    'windows.show_all',
+                    {
+                      more: t('windows.more', { count: dayWindows.length - cap }, locale),
+                      date: formatDate(`${date}T12:00:00+08:00`, locale)
+                    },
+                    locale
+                  )}
                   onClick={() => onMore(date)}
                 >
-                  {t('windows.more', { count: dayWindows.length - cap })}
+                  {t('windows.more', { count: dayWindows.length - cap }, locale)}
                 </Button>
               )}
             </section>

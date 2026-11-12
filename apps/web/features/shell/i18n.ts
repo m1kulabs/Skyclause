@@ -7,3 +7,4 @@ catalogueFiles['../catalogue/en/app-shell.json'] = { default: english }
 catalogueFiles['../catalogue/ms/app-shell.json'] = { default: malay }
 
 export { t } from '@skyclause/i18n'
+export type Locale = 'en' | 'ms'

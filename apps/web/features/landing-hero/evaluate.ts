@@ -1,4 +1,4 @@
-import type { InputValue, Verdicts } from '@skyclause/contracts/api/shared'
+import type { InputValue, Mode, PackState, Verdicts } from '@skyclause/contracts/api/shared'
 import { toLocalTime, type HeroWindow } from './window-model'
 
 // #88's committed shape (owner d-commons #179 fills it next): verdicts, derived-only strip, the label.
@@ -13,7 +13,7 @@ export interface EvaluateData {
 export type EvaluateResult =
   | { kind: 'ok'; data: EvaluateData }
   | { kind: 'rate_limited'; retryAfter: string }
-  | { kind: 'error'; status: number | null }
+  | { kind: 'error'; status: number | null; at: string }
 
 export interface LatestCall {
   callId: string
@@ -21,8 +21,11 @@ export interface LatestCall {
   at: string
 }
 
-/** `null` is no public approved call; `'error'` is a calendar read that failed, never shown as n=0. */
-export type LatestCallRead = LatestCall | null | 'error'
+/**
+ * `null` is no public approved call; `'error'` is a calendar read that failed and `'not_built'` one that answered 501,
+ * neither ever shown as n=0.
+ */
+export type LatestCallRead = LatestCall | null | 'error' | 'not_built'
 
 export const EVALUATE_PATH = '/v1/public/commons/bukit-jalil/evaluate'
 
@@ -82,13 +85,13 @@ async function postEvaluate(
       ...(typeof window === 'undefined' ? { cache: 'no-store' as const } : {})
     })
   } catch {
-    return { kind: 'error', status: null }
+    return { kind: 'error', status: null, at: new Date().toISOString() }
   }
   if (response.status === 429)
     return { kind: 'rate_limited', retryAfter: retryAfterInstant(response.headers.get('Retry-After'), new Date()) }
-  if (!response.ok) return { kind: 'error', status: response.status }
+  if (!response.ok) return { kind: 'error', status: response.status, at: new Date().toISOString() }
   const body: unknown = await response.json().catch(() => null)
-  if (!isEvaluateData(body)) return { kind: 'error', status: response.status }
+  if (!isEvaluateData(body)) return { kind: 'error', status: response.status, at: new Date().toISOString() }
   return { kind: 'ok', data: body }
 }
 
@@ -122,6 +125,7 @@ export async function fetchLatestCall(
     return 'error'
   }
   if (response.status === 404) return null
+  if (response.status === 501) return 'not_built'
   if (!response.ok) return 'error'
   const body: unknown = await response.json().catch(() => null)
   if (typeof body !== 'object' || body === null) return 'error'
@@ -152,4 +156,45 @@ export function fetchEvaluateServer(win: HeroWindow): Promise<EvaluateResult> {
 
 export function fetchLatestCallServer(pilot: { org: string; project: string } | null): Promise<LatestCallRead> {
   return fetchLatestCall(pilot, serverBaseUrl(), AbortSignal.timeout(2000))
+}
+
+export const STATUS_PATH = '/v1/public/commons/bukit-jalil/status'
+
+/**
+ * Bukit Jalil's published state for the hero's live facts: the Sky pack's mode (No call when its inputs are silent)
+ * and when the gauge was last read. A 501 is a part not built yet, shown as nothing; a failure is said.
+ */
+export type StatusRead =
+  | { kind: 'ok'; mode: Mode | 'no_call' | null; gaugeAt: string | null }
+  | { kind: 'not_built' }
+  | { kind: 'error'; status: number | null }
+
+function statusOf(body: unknown): StatusRead | null {
+  if (typeof body !== 'object' || body === null) return null
+  const { packs, strip } = body as { packs?: unknown; strip?: unknown }
+  if (!Array.isArray(packs) || !Array.isArray(strip)) return null
+  const sky = (packs as PackState[]).find((pack) => pack?.pack === 'sky')
+  const mode = sky ? (sky.mode ?? (sky.no_call ? 'no_call' : null)) : null
+  const gaugeAt = (strip as InputValue[])
+    .filter((value) => typeof value?.name === 'string' && value.name.includes('rain') && value.observed_at)
+    .map((value) => value.observed_at!)
+    .sort()
+    .at(-1)
+  return { kind: 'ok', mode, gaugeAt: gaugeAt ?? null }
+}
+
+export async function fetchStatusServer(): Promise<StatusRead> {
+  let response: Response
+  try {
+    response = await fetch(withBase(serverBaseUrl(), STATUS_PATH), {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(2000),
+      cache: 'no-store'
+    })
+  } catch {
+    return { kind: 'error', status: null }
+  }
+  if (response.status === 501) return { kind: 'not_built' }
+  if (!response.ok) return { kind: 'error', status: response.status }
+  return statusOf(await response.json().catch(() => null)) ?? { kind: 'error', status: response.status }
 }

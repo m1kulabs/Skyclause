@@ -4,7 +4,9 @@ import { Words } from './words'
 export const PLANS_SOURCE = '/legal/terms#plans'
 
 // "Two plans, two fields": what anyone can use now (Commons and Community, free) on the wider pink field, and the
-// paid plans that come later on the narrower navy one. Each price itself carries "proposal, untested".
+// paid plans that come later on the narrower navy one. Each price itself carries "proposal, untested". Dates are
+// PRODUCT's roadmap in plain words: the beta to February 2027, general availability (Team billing, Microsoft 365 and
+// Jira) by May 2027, Campus after it.
 export function Pricing({ signInHref }: { signInHref: string }) {
   return (
     <section id="prices" className="pricing" aria-labelledby="pricing-heading" data-reveal-section>
@@ -18,11 +20,16 @@ export function Pricing({ signInHref }: { signInHref: string }) {
         <p className="plan-for" data-reveal>
           For guests, reviewers and one club or student group.
         </p>
-        <p className="plan-includes" data-source={PLANS_SOURCE} data-reveal>
-          Commons: the shared, live &ldquo;Bukit Jalil&rdquo; project for guests and reviewers; guest windows last 14
-          days, and guests can&rsquo;t approve. Community: one project of your own with 3 approvers, 150 hosted-model
-          runs a month, 200 subscribers, and email, the ICS calendar, in-app and one webhook.
-        </p>
+        <div className="plan-includes" data-source={PLANS_SOURCE} data-reveal>
+          <p>
+            <strong>Commons:</strong> the shared, live &ldquo;Bukit Jalil&rdquo; project for guests and reviewers; guest
+            windows last 14&nbsp;days, and guests can&rsquo;t approve.
+          </p>
+          <p>
+            <strong>Community:</strong> 1&nbsp;project of your own with 3&nbsp;approvers, 150 hosted-model runs a month,
+            200&nbsp;subscribers, and email, the ICS calendar, in-app and 1&nbsp;webhook.
+          </p>
+        </div>
         <div className="plan-foot" data-reveal>
           <p className="plan-price" data-source={PLANS_SOURCE}>
             <span className="plan-figure">Free</span> <span className="plan-period">proposal, untested</span>
@@ -39,15 +46,24 @@ export function Pricing({ signInHref }: { signInHref: string }) {
         <p className="plan-for" data-reveal>
           For clubs and offices with several sites or both packs.
         </p>
-        <p className="plan-includes" data-source={PLANS_SOURCE} data-reveal>
-          Team: 5 projects, 15 approvers, 1,500 hosted-model runs a month and 2,000 subscribers, on all P1 channels,
-          with Microsoft 365 and Jira from P2. Campus, for a university office sending lecturer notices:{' '}
-          <span className="plan-campus">RM 900 a month per campus, billed yearly, after GA, proposal, untested</span>.
-        </p>
+        <div className="plan-includes" data-source={PLANS_SOURCE} data-reveal>
+          <p>
+            <strong>Team:</strong> 5&nbsp;projects, 15&nbsp;approvers, 1,500 hosted-model runs a month and
+            2,000&nbsp;subscribers, with email, the ICS calendar, webhooks and in-app, and Microsoft 365 and Jira from
+            May 2027.
+          </p>
+          <p>
+            <strong>Campus,</strong> for a university office sending lecturer notices:{' '}
+            <span className="plan-campus">
+              RM&nbsp;900 a month per campus, billed yearly, after May 2027, proposal, untested
+            </span>
+            .
+          </p>
+        </div>
         <div className="plan-foot" data-reveal>
           <p className="plan-price" data-source={PLANS_SOURCE}>
             <span className="plan-figure">RM&nbsp;49</span>{' '}
-            <span className="plan-period">a month per organisation, from P2, proposal, untested</span>
+            <span className="plan-period">a month per organisation, from May 2027, proposal, untested</span>
           </p>
           <a href={PLANS_SOURCE} className="landing-button plan-action">
             Plan terms

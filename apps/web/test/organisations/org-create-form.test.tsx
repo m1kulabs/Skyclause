@@ -77,3 +77,42 @@ test('success continues to the first run next step', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }))
   await waitFor(() => expect(push).toHaveBeenCalledWith('/river-watch/new'))
 })
+
+test('an empty form can be submitted: it says what is missing and focuses it, instead of a dead button', async () => {
+  render(<OrgCreateForm />)
+  const button = screen.getByRole('button', { name: 'Create organisation' }) as HTMLButtonElement
+  expect(button.disabled).toBe(false)
+  fireEvent.click(button)
+  expect(await screen.findByText('Enter a name for the organisation.')).toBeTruthy()
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Organisation name')))
+  expect(apiFetch).not.toHaveBeenCalled()
+})
+
+test('a failed create says it was not created and moves focus to that message', async () => {
+  vi.mocked(apiFetch).mockRejectedValue(new ApiProblem(503, { title: 'Unavailable', status: 503 }))
+  render(<OrgCreateForm />)
+  fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'River Watch' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }))
+  const alert = await screen.findByText('The organisation was not created. Try again.')
+  expect(screen.queryByText('Could not load this organisation.')).toBeNull()
+  await waitFor(() => expect(document.activeElement).toBe(alert.closest('[role="alert"]')))
+  // The fields keep focus while a request runs: they are read-only, never disabled.
+  expect((screen.getByLabelText('Slug') as HTMLInputElement).disabled).toBe(false)
+})
+
+test('the button stays busy after success until the next page takes over, so a second click cannot create it twice', async () => {
+  vi.mocked(apiFetch).mockResolvedValue({ id: 'org-id', slug: 'river-watch' } as never)
+  render(<OrgCreateForm />)
+  fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'River Watch' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }))
+  await waitFor(() => expect(push).toHaveBeenCalledTimes(1))
+  const busy = screen.getByRole('button', { name: 'Creating…' }) as HTMLButtonElement
+  expect(busy.disabled).toBe(true)
+  fireEvent.click(busy)
+  expect(apiFetch).toHaveBeenCalledTimes(1)
+})
+
+test('the form is written in the language it is given', () => {
+  render(<OrgCreateForm locale="ms" />)
+  expect(screen.getByRole('button', { name: 'Cipta organisasi' })).toBeTruthy()
+})

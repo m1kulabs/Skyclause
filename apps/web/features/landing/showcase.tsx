@@ -70,17 +70,42 @@ export function Showcase({
           </p>
           <p className="frag-figure" data-source={JPS_SOURCE_URL}>
             <span data-numeric>59.5</span>
-            <span className="frag-unit">mm at 15:35 MYT</span>
+            <span className="frag-unit">mm at 15:35&nbsp;MYT</span>
           </p>
           <p className="frag-meta" data-source={TERMS_SERVICE}>
-            Sky windows are graded nightly at 23:55 MYT against the gauge and APIMS, with a grade by 06:45 MYT.
+            Sky windows are graded nightly at 23:55&nbsp;MYT against the gauge and APIMS, with a grade by
+            06:45&nbsp;MYT.
           </p>
         </div>
       )
     }
   ]
+  // The left column reads in order: what the section is, the chosen part's fact, then the parts to choose. The
+  // capsule with the chosen part's photograph and object follows; the photographs are atmosphere (alt=""), the object
+  // and the fact carry the content.
   return (
     <section id="record" className="record" aria-labelledby="record-heading" data-reveal-section>
+      <fieldset className="record-index">
+        <legend className="sr-only">Parts of the record</legend>
+        <h2 id="record-heading" className="record-heading" data-words>
+          <Words text="What the record keeps" />
+        </h2>
+        <div className="record-facts" data-reveal>
+          {items.map((item) => (
+            <div key={item.id} className="record-fact record-item" data-item={item.id} data-source={TERMS_SERVICE}>
+              {item.fact}
+            </div>
+          ))}
+        </div>
+        <div className="record-names">
+          {items.map((item, index) => (
+            <label key={item.id} className="record-name" data-reveal>
+              <input type="radio" name="record" value={item.id} defaultChecked={index === 0} className="record-radio" />
+              <span>{item.name}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <div className="record-stage">
         <div className="record-capsule" data-reveal>
           {items.map((item) => {
@@ -95,7 +120,7 @@ export function Showcase({
                 sizes="(min-width: 1024px) 64vw, 100vw"
                 width={entry.width}
                 height={entry.height}
-                alt={entry.alt}
+                alt=""
                 loading="lazy"
                 decoding="async"
               />
@@ -109,26 +134,7 @@ export function Showcase({
             </div>
           ))}
         </div>
-        <div className="record-facts" data-reveal>
-          {items.map((item) => (
-            <div key={item.id} className="record-fact record-item" data-item={item.id} data-source={TERMS_SERVICE}>
-              {item.fact}
-            </div>
-          ))}
-        </div>
       </div>
-      <fieldset className="record-index">
-        <legend className="sr-only">Parts of the record</legend>
-        <h2 id="record-heading" className="record-heading" data-words>
-          <Words text="What the record keeps" />
-        </h2>
-        {items.map((item, index) => (
-          <label key={item.id} className="record-name" data-reveal>
-            <input type="radio" name="record" value={item.id} defaultChecked={index === 0} className="record-radio" />
-            <span>{item.name}</span>
-          </label>
-        ))}
-      </fieldset>
     </section>
   )
 }

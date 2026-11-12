@@ -10,13 +10,14 @@ import { ApiProblem } from '../../lib/api-fetch'
 import { SourceError } from '../data-components/states'
 import { onboardingApi, type OnboardingView } from './operations'
 import { progressForSteps, stepStates, type StepState } from './model'
-import { t } from './catalogue'
+import { t, type Locale } from './catalogue'
 import styles from './onboarding.module.css'
 
 type Step = OnboardingView['steps'][number]['step']
 
 export interface FirstRunProgressProps {
   org: string
+  locale?: Locale
   /** The first project route resumes at its first outstanding owner route after a reload. */
   redirectFromProject?: boolean
 }
@@ -40,14 +41,14 @@ function ProgressStrip({ states, label, done }: { states: readonly StepState[]; 
   )
 }
 
-function ProgressSkeleton() {
+function ProgressSkeleton({ locale }: { locale: Locale }) {
   return (
     <section className={styles.progress} aria-busy="true" data-first-run-progress>
       <header className={styles.progressHead}>
-        <h2 className="type-section">{t('onboarding.first_run')}</h2>
+        <h2 className="type-section">{t('onboarding.first_run', {}, locale)}</h2>
       </header>
       <p className="sr-only" role="status">
-        {t('onboarding.loading_steps')}
+        {t('onboarding.loading_steps', {}, locale)}
       </p>
       <div className={styles.strip} aria-hidden="true">
         {Array.from({ length: 6 }, (_, index) => (
@@ -63,7 +64,7 @@ function ProgressSkeleton() {
   )
 }
 
-export function FirstRunProgress({ org, redirectFromProject = false }: FirstRunProgressProps) {
+export function FirstRunProgress({ org, locale = 'en', redirectFromProject = false }: FirstRunProgressProps) {
   const router = useRouter()
   const pathname = usePathname()
   const [onboarding, setOnboarding] = useState<OnboardingView | null>(null)
@@ -111,6 +112,10 @@ export function FirstRunProgress({ org, redirectFromProject = false }: FirstRunP
         params: { org, step }
       })
       setOnboarding(result)
+      // The button that was pressed is replaced by the next step's: keep focus in the list, on its action.
+      requestAnimationFrame(() =>
+        document.querySelector<HTMLElement>('[data-first-run-progress] [data-step-action]')?.focus()
+      )
     } catch (error) {
       fail(error)
     } finally {
@@ -118,21 +123,25 @@ export function FirstRunProgress({ org, redirectFromProject = false }: FirstRunP
     }
   }
 
-  if (loading && !onboarding) return <ProgressSkeleton />
+  if (loading && !onboarding) return <ProgressSkeleton locale={locale} />
   if (failure || !onboarding) {
     return (
       <section className={styles.progress} data-first-run-progress>
         <header className={styles.progressHead}>
-          <h2 className="type-section">{t('onboarding.first_run')}</h2>
+          <h2 className="type-section">{t('onboarding.first_run', {}, locale)}</h2>
         </header>
         <SourceError
-          source={t('onboarding.steps_source')}
+          source={t('onboarding.steps_source', {}, locale)}
           status={failure?.status ?? null}
           at={failure?.at ?? null}
+          locale={locale}
+          // A 501 is "not built": reading again cannot change the answer.
           retry={
-            <Button type="button" variant="outline" onClick={() => void reload()}>
-              {t('onboarding.retry')}
-            </Button>
+            failure?.status === 501 ? undefined : (
+              <Button type="button" variant="outline" onClick={() => void reload()}>
+                {t('onboarding.retry', {}, locale)}
+              </Button>
+            )
           }
         />
       </section>
@@ -143,13 +152,13 @@ export function FirstRunProgress({ org, redirectFromProject = false }: FirstRunP
   const allActuallyDone = onboarding.steps.every((step) => !!step.completed_at)
   if (allActuallyDone) return null
   const states = stepStates(onboarding.steps)
-  const label = t('onboarding.progress', { completed: progress.completed, total: progress.total })
+  const label = t('onboarding.progress', { completed: progress.completed, total: progress.total }, locale)
 
   return (
     <section className={styles.progress} aria-labelledby="first-run-title" data-first-run-progress>
       <header className={styles.progressHead}>
         <h2 id="first-run-title" className="type-section">
-          {t('onboarding.first_run')}
+          {t('onboarding.first_run', {}, locale)}
         </h2>
         <p className="type-small text-muted-foreground" data-numeric>
           {label}
@@ -170,39 +179,49 @@ export function FirstRunProgress({ org, redirectFromProject = false }: FirstRunP
             >
               <span className={styles.mark} data-state={state} aria-hidden="true" />
               <div className={styles.stepText}>
-                <h3>{t(`onboarding.step_${step}`)}</h3>
+                <h3 id={`first-run-step-${step}`}>{t(`onboarding.step_${step}`, {}, locale)}</h3>
                 {state === 'skipped' ? (
-                  <p className={styles.stepResult}>{t('onboarding.skipped')}</p>
+                  <p className={styles.stepResult}>{t('onboarding.skipped', {}, locale)}</p>
                 ) : state === 'done' ? (
-                  <p className={styles.stepResult}>{item.result ?? t('onboarding.done')}</p>
+                  <p className={styles.stepResult}>{item.result ?? t('onboarding.done', {}, locale)}</p>
                 ) : state === 'current' ? (
-                  <p className={styles.stepResult}>{here ? t('onboarding.here') : t('onboarding.next_step')}</p>
+                  <p className={styles.stepResult}>
+                    {here ? t('onboarding.here', {}, locale) : t('onboarding.next_step', {}, locale)}
+                  </p>
                 ) : null}
               </div>
               <div className={styles.stepActions}>
                 {state === 'skipped' ? (
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     disabled={working !== null}
+                    aria-describedby={`first-run-step-${step}`}
                     onClick={() => void changeSkipped(step, false)}
                   >
-                    {working === step ? t('onboarding.saving') : t('onboarding.resume')}
+                    {working === step ? t('onboarding.saving', {}, locale) : t('onboarding.resume', {}, locale)}
                   </Button>
-                ) : state !== 'done' ? (
+                ) : state === 'current' ? (
                   <>
                     {here ? null : (
-                      <Link className={state === 'current' ? buttonVariants() : styles.stepLink} href={item.href}>
-                        {t('onboarding.continue')}
+                      <Link
+                        className={buttonVariants()}
+                        href={item.href}
+                        aria-describedby={`first-run-step-${step}`}
+                        data-step-action
+                      >
+                        {t('onboarding.continue', {}, locale)}
                       </Link>
                     )}
                     <Button
                       type="button"
                       variant="ghost"
                       disabled={working !== null}
+                      aria-describedby={`first-run-step-${step}`}
+                      data-step-action={here ? '' : undefined}
                       onClick={() => void changeSkipped(step, true)}
                     >
-                      {working === step ? t('onboarding.saving') : t('onboarding.skip')}
+                      {working === step ? t('onboarding.saving', {}, locale) : t('onboarding.skip', {}, locale)}
                     </Button>
                   </>
                 ) : null}
@@ -219,15 +238,15 @@ export function FirstRunProgress({ org, redirectFromProject = false }: FirstRunP
  * `/new`, before an organisation exists: the six first-run steps (ORG-6) with the first one open and no actions, so the
  * form beside it stays the one thing to do. Nothing is read: there is no organisation to read them for yet.
  */
-export function FirstRunOutline() {
+export function FirstRunOutline({ locale = 'en' }: { locale?: Locale }) {
   const steps = ['organisation', 'project', 'sources', 'window', 'rota', 'channel'] as const
   const states: StepState[] = steps.map((_, index) => (index === 0 ? 'current' : 'todo'))
-  const label = t('onboarding.step_of', { current: 1, total: steps.length })
+  const label = t('onboarding.step_of', { current: 1, total: steps.length }, locale)
   return (
     <section className={styles.progress} aria-labelledby="first-run-title" data-first-run-outline>
       <header className={styles.progressHead}>
         <h2 id="first-run-title" className="type-section">
-          {t('onboarding.first_run')}
+          {t('onboarding.first_run', {}, locale)}
         </h2>
         <p className="type-small text-muted-foreground" data-numeric>
           {label}
@@ -239,8 +258,8 @@ export function FirstRunOutline() {
           <li className={styles.step} key={step} data-state={states[index]}>
             <span className={styles.mark} data-state={states[index]} aria-hidden="true" />
             <div className={styles.stepText}>
-              <h3>{t(`onboarding.step_${step}`)}</h3>
-              {index === 0 ? <p className={styles.stepResult}>{t('onboarding.here')}</p> : null}
+              <h3>{t(`onboarding.step_${step}`, {}, locale)}</h3>
+              {index === 0 ? <p className={styles.stepResult}>{t('onboarding.here', {}, locale)}</p> : null}
             </div>
           </li>
         ))}

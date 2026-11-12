@@ -16,7 +16,9 @@
   --step-statement: clamp(1.5rem, 1rem + 1.6vw, 2.25rem);
   --step-head: clamp(2rem, 1.3rem + 3.2vw, 4rem);
   --step-display: clamp(2.75rem, 6.5vw, 6rem);
-  --section-gap: clamp(4.5rem, 2rem + 9vw, 10rem);
+  /* One gap between sections: 56px on a phone (a capsule link must not sit close enough above the next heading to read
+     as its label), 64px at 768, 96px at 1440. */
+  --section-gap: clamp(3.5rem, 1.714rem + 4.762vw, 6rem);
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --t-press: 140ms;
   --t-hover: 200ms;
@@ -79,6 +81,19 @@ html.lenis body {
 .landing-button:active {
   transform: scale(0.97);
 }
+@media (hover: hover) and (pointer: fine) {
+  .landing-button:hover,
+  .cta-submit:hover {
+    background: color-mix(in srgb, var(--ink) 86%, var(--ground));
+  }
+  .plan--free .plan-action:hover {
+    background: color-mix(in srgb, var(--ground) 86%, var(--ink));
+  }
+  .footer-top:hover,
+  .faq-tile:not([open]) > .faq-question:hover {
+    background: var(--raised);
+  }
+}
 
 /* On an ink field, the focus ring takes the ground so it stays visible. */
 .how-clause,
@@ -86,6 +101,12 @@ html.lenis body {
 .faq-tile[open],
 .proof-tile--head {
   --focus: var(--ground);
+}
+/* The stage names sit on the ink field below 1024px (on the ground box above it). */
+@media (max-width: 1023.98px) {
+  .how-names {
+    --focus: var(--ground);
+  }
 }
 
 /* ---------- How it works: drag through the stages ---------- */
@@ -119,7 +140,6 @@ html.lenis body {
   grid-area: field;
   display: grid;
   place-items: center;
-  min-height: 46svh;
   padding: 24px 16px;
   border-radius: var(--r) var(--r) 0 0;
   background: var(--raised);
@@ -250,17 +270,26 @@ html.lenis body {
   outline-offset: 2px;
 }
 .how-note {
-  max-width: 52ch;
-  font-size: var(--step-small);
+  max-width: 46ch;
+  font-size: var(--step-body);
+  line-height: 1.45;
 }
 .how-fragment {
   width: min(100%, 440px);
 }
 
-/* Without :has() every stage shows, one under the other; with it, the checked stage alone. */
+/*
+ * Without :has() every stage shows, one under the other; with it, the checked stage alone. The fragments share one
+ * grid cell, so the field holds the tallest of them and the page never jumps when the stage changes.
+ */
 @supports selector(:has(*)) {
   .how-step {
     display: none;
+  }
+  .how-field > .how-step {
+    display: block;
+    grid-area: 1 / 1;
+    visibility: hidden;
   }
   .how:has(.how-radio[value='0']:checked) .how-step[data-stage='0'],
   .how:has(.how-radio[value='1']:checked) .how-step[data-stage='1'],
@@ -268,6 +297,7 @@ html.lenis body {
   .how:has(.how-radio[value='3']:checked) .how-step[data-stage='3'],
   .how:has(.how-radio[value='4']:checked) .how-step[data-stage='4'] {
     display: block;
+    visibility: visible;
   }
   .how:has(.how-radio[value='1']:checked) .how-fill {
     transform: scaleX(0.25);
@@ -295,6 +325,7 @@ html.lenis body {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  margin-top: 32px;
 }
 .record-capsule {
   position: relative;
@@ -325,31 +356,45 @@ html.lenis body {
   width: min(100%, 440px);
 }
 .record-facts {
-  margin-top: 20px;
-  max-width: 40ch;
+  max-width: 34ch;
+  font-size: var(--step-lead);
+  line-height: 1.35;
 }
 .record-fact {
   display: grid;
-  gap: 8px;
+  gap: 12px;
 }
+.record-fact .frag-live {
+  font-size: var(--step-body);
+  font-weight: 600;
+}
+/* The left column reads in order: the heading, the chosen part's fact, then the parts to choose. */
 .record-index {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   min-width: 0;
-  margin: 32px 0 0;
+  margin: 0;
   padding: 0;
   border: 0;
 }
-.record-heading,
+.record-heading {
+  margin: 0;
+  font-size: var(--step-head);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+.record-names {
+  display: grid;
+  gap: 2px;
+}
 .record-name {
   font-size: var(--step-statement);
   font-weight: 500;
   line-height: 1.15;
   letter-spacing: -0.015em;
-}
-.record-heading {
-  margin: 0 0 8px;
-  color: var(--ink-muted);
 }
 .record-name {
   position: relative;
@@ -437,33 +482,50 @@ html.lenis body {
   letter-spacing: -0.01em;
   text-wrap: pretty;
 }
+/*
+ * The statement's slots: fragments of the product at the size of the text they sit in. A capsule one line tall holding
+ * the product's own words at body size: the replayed figure, the No call mark, and the Approve button (a picture).
+ */
 .slot {
-  display: inline-block;
-  width: 1.5em;
-  height: 1em;
-  vertical-align: -0.14em;
-  overflow: clip;
-  border-radius: 9999px;
-  background: var(--raised);
-}
-.slot img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.slot[data-which='rain'] img {
-  object-position: 50% 62%;
-}
-.slot[data-which='haze'] img {
-  object-position: 78% 58%;
-}
-.slot--capsule {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.45em;
+  box-sizing: border-box;
+  /* Its own type is body size (about half the statement's), its height one line of the statement. */
+  font-size: max(0.875rem, 0.52em);
+  height: 2.1em;
+  padding: 0 0.7em;
+  vertical-align: middle;
+  border-radius: 9999px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1;
+  white-space: nowrap;
+}
+.slot svg {
+  width: 1.1em;
+  height: 1.1em;
+  flex: none;
+}
+.slot--figure {
+  border: 2px solid var(--ink-muted);
+  background: var(--raised);
+  color: var(--ink);
+}
+.slot-note {
+  color: var(--ink-muted);
+  font-weight: 500;
+}
+.slot--mark {
   background: var(--tone);
   color: var(--tone-ink);
+  border: 2px var(--tone-edge-style) var(--tone-edge);
+}
+.slot--approve {
+  border: 2px solid var(--edge);
+  background: var(--ink);
+  color: var(--ground);
+  cursor: default;
 }
 .features-statement .nowrap {
   white-space: nowrap;
@@ -504,7 +566,6 @@ html.lenis body {
 }
 .proof-tile--head {
   grid-column: 1 / -1;
-  min-height: 120px;
   justify-content: flex-end;
   background: var(--ink);
   color: var(--ground);
@@ -554,7 +615,6 @@ html.lenis body {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  min-height: 70svh;
   padding: 28px max(20px, var(--m)) 20px;
 }
 .plan--free {
@@ -578,7 +638,19 @@ html.lenis body {
   line-height: 1.3;
 }
 .plan-includes {
-  max-width: 54ch;
+  display: grid;
+  gap: 12px;
+  max-width: 40ch;
+  font-size: var(--step-lead);
+  line-height: 1.35;
+}
+.plan-includes strong {
+  font-weight: 600;
+}
+/* The plan anyone can use now reads at the larger size; the paid plans that come later at body size. */
+.plan--paid .plan-includes {
+  font-size: var(--step-body);
+  line-height: 1.45;
 }
 .plan-foot {
   display: grid;
@@ -657,6 +729,10 @@ html.lenis body {
 }
 .faq-question::-webkit-details-marker {
   display: none;
+}
+/* The open tile is ink to its edge: its ring is drawn inside it, in the ground colour, so all four sides show. */
+.faq-tile[open] > .faq-question:focus-visible {
+  outline-offset: -6px;
 }
 .faq-sign {
   position: relative;
@@ -752,33 +828,11 @@ html.lenis body {
   color: var(--ink-muted);
 }
 
-/* ---------- Footer: the name built of capsules ---------- */
+/* ---------- Footer: the name built of capsules (BlockWordmark, shared with the public pages) ---------- */
 
 .footer {
   margin-top: var(--section-gap);
   padding: 0 var(--m) var(--m);
-}
-.footer-mark {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-.footer-mark--wide {
-  display: none;
-}
-.footer-block {
-  fill: var(--ink);
-}
-.footer-letter {
-  fill: var(--ground);
-  font-family: inherit;
-  font-weight: 500;
-}
-.footer-strip {
-  height: 8px;
-  margin-top: 4px;
-  border-radius: 9999px;
-  background: var(--ink);
 }
 .footer-grid {
   display: grid;
@@ -960,15 +1014,26 @@ html.lenis body {
   right: 10px;
   border-top: 2px dashed var(--ink);
 }
-[data-ui] .frag-bars-lebat span {
+[data-ui] .frag-bars-lebat .frag-class {
   position: absolute;
   right: 0;
-  bottom: 4px;
-  padding: 0 6px;
-  border-radius: 9999px;
+  bottom: 6px;
   background: var(--raised);
+}
+/* Lebat (a rain class) and a clause's Fired state: neutral edged capsules, the word alone, no mode hue or glyph. */
+[data-ui] .frag-class,
+[data-ui] .frag-state {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 9px;
+  border: 2px solid var(--ink);
+  border-radius: 9999px;
+  color: var(--ink);
   font-size: 13px;
   font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
 }
 [data-ui] .frag-bars-axis {
   display: flex;
@@ -1031,18 +1096,6 @@ html.lenis body {
 }
 [data-ui] .frag-row--head {
   justify-content: space-between;
-}
-[data-ui] .frag-state {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 24px;
-  padding: 0 10px 0 8px;
-  border-radius: 9999px;
-  background: var(--mode-commute-disruption);
-  color: var(--mode-commute-disruption-ink);
-  font-size: 13px;
-  font-weight: 600;
 }
 [data-ui] .frag-fields {
   display: grid;
@@ -1145,13 +1198,6 @@ html.lenis body {
   }
   .proof-tile--head {
     aspect-ratio: auto;
-    min-height: 160px;
-  }
-  .footer-mark--wide {
-    display: block;
-  }
-  .footer-mark--narrow {
-    display: none;
   }
   .proof-tile--note {
     aspect-ratio: auto;
@@ -1167,20 +1213,26 @@ html.lenis body {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr) auto auto;
     grid-template-areas: none;
-    min-height: 88svh;
   }
+  /* Both fields are as tall as their content (the tallest fragment); the track box lies across their feet. */
   .how-clause {
     grid-area: 1 / 1 / 4 / 2;
-    padding: 40px 40px 196px;
+    gap: 24px;
+    padding: 40px 40px 188px;
     border-radius: var(--r) 0 0 var(--r);
   }
   .how-heading {
     max-width: 12ch;
   }
+  /* Beside the fragment the replay's provenance reads at the lead size, filling its field to the fragment's height. */
+  .how-note {
+    max-width: 40ch;
+    font-size: var(--step-lead);
+    line-height: 1.35;
+  }
   .how-field {
     grid-area: 1 / 2 / 4 / 3;
-    min-height: 0;
-    padding: 40px 40px 196px;
+    padding: 40px 40px 188px;
     border-radius: 0 var(--r) var(--r) 0;
   }
   .how-trackbox {
@@ -1213,9 +1265,6 @@ html.lenis body {
     color: var(--ink);
     font-weight: 500;
   }
-  .how-note {
-    margin-top: auto;
-  }
   .how-fragment {
     width: min(100%, 480px);
   }
@@ -1226,24 +1275,22 @@ html.lenis body {
   .record {
     grid-template-columns: repeat(12, minmax(0, 1fr));
     column-gap: var(--gap);
-    min-height: 100svh;
-  }
-  .record {
-    min-height: 0;
-    padding-bottom: 120px;
   }
   .record-stage {
     grid-column: 1 / -1;
     grid-row: 1;
     display: block;
-    height: calc(64px + 64svh);
+    height: calc(64px + 56svh);
+    min-height: 560px;
+    margin: 0;
   }
   .record-capsule {
     position: absolute;
     top: 64px;
     left: 36%;
     right: calc(-1 * var(--m));
-    height: 64svh;
+    bottom: 0;
+    height: auto;
     max-height: none;
     margin: 0;
   }
@@ -1254,19 +1301,16 @@ html.lenis body {
     width: 440px;
     margin: 0;
   }
-  .record-facts {
-    position: absolute;
-    top: calc(100% + 24px);
-    right: 0;
-    width: min(44ch, 34vw);
-    margin: 0;
-  }
+  /* Beside the capsule, as tall as it: the heading at its top, the names ending level with its lower edge. */
   .record-index {
     grid-column: 1 / 5;
     grid-row: 1;
-    align-self: end;
+    align-self: stretch;
     z-index: 2;
-    margin: 0;
+    gap: 32px;
+  }
+  .record-names {
+    margin-top: auto;
   }
 
   .features {
@@ -1276,9 +1320,6 @@ html.lenis body {
   .features-statement {
     grid-column: 1 / 12;
     line-height: 1.18;
-  }
-  .slot {
-    width: 1.9em;
   }
   .features-line {
     display: block;
@@ -1294,8 +1335,11 @@ html.lenis body {
     grid-template-columns: 7fr 5fr;
   }
   .plan {
-    min-height: 90svh;
+    gap: 24px;
     padding: 40px;
+  }
+  .plan-includes {
+    max-width: 44ch;
   }
   .plan-foot {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -1362,7 +1406,12 @@ html.lenis body {
 /* ---------- Motion: the stage swap, and press feedback. Scroll entrances are GSAP's, after interaction. ---------- */
 
 @media (prefers-reduced-motion: no-preference) {
-  html:not([data-motion='reduce']) .how-step {
+  /* The checked stage alone takes the animation, so it starts afresh each time a stage is chosen. */
+  html:not([data-motion='reduce']) .how:has(.how-radio[value='0']:checked) .how-step[data-stage='0'],
+  html:not([data-motion='reduce']) .how:has(.how-radio[value='1']:checked) .how-step[data-stage='1'],
+  html:not([data-motion='reduce']) .how:has(.how-radio[value='2']:checked) .how-step[data-stage='2'],
+  html:not([data-motion='reduce']) .how:has(.how-radio[value='3']:checked) .how-step[data-stage='3'],
+  html:not([data-motion='reduce']) .how:has(.how-radio[value='4']:checked) .how-step[data-stage='4'] {
     animation: stage-in 200ms ease both;
   }
   html:not([data-motion='reduce']) .record-object,

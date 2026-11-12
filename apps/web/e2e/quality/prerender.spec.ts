@@ -46,5 +46,5 @@ test('the landing page renders its full shell per request for the CSP nonce', as
   expect(html).toContain('name="date"')
   expect(html).toContain('name="start"')
   expect(html).toContain('name="end"')
-  expect(html).toMatch(/Clause engine verdict|Couldn't reach the live verdict/)
+  expect(html).toMatch(/Clause engine verdict|Couldn’t reach the live verdict|The live verdict is not built yet/)
 })

@@ -15,6 +15,7 @@ import {
 } from '#ui/combobox'
 import { SourceError } from '../data-components'
 import { ApiProblem } from '../../lib/api-fetch'
+import { useUnsavedChangesGuard } from '../settings/set-7'
 import { t } from './i18n'
 import { apiFetch, type Member, type ProbationStatus } from './operations'
 
@@ -45,7 +46,10 @@ async function readMembers(org: string, signal: AbortSignal): Promise<Member[]> 
   return members
 }
 
-type MembersState = { kind: 'loading' } | { kind: 'error' } | { kind: 'ready'; members: Member[] }
+type MembersState = { kind: 'loading' } | { kind: 'error'; at: string } | { kind: 'ready'; members: Member[] }
+
+/** The picker draws at most this many members; typing narrows the rest. */
+const MEMBER_ROWS = 50
 
 export function LabellerPicker({ org, sourceId, status, editable, locale = 'en', onStatus }: PickerProps) {
   const [members, setMembers] = useState<MembersState>({ kind: 'loading' })
@@ -55,6 +59,9 @@ export function LabellerPicker({ org, sourceId, status, editable, locale = 'en',
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState(false)
   const [announcement, setAnnouncement] = useState('')
+  const [saved, setSaved] = useState<string[]>(status?.labeller_ids ?? [])
+  // Picked labellers are not saved until Save: warn before leaving with a different pair.
+  useUnsavedChangesGuard(editable && [...selected].sort().join() !== [...saved].sort().join(), locale)
   const anchor = useComboboxAnchor()
   const actions = useRef<{ unmount(): void; close(): void } | null>(null)
   const [filter, setFilter] = useState('')
@@ -67,7 +74,7 @@ export function LabellerPicker({ org, sourceId, status, editable, locale = 'en',
           if (!signal.aborted) setMembers({ kind: 'ready', members: list })
         },
         () => {
-          if (!signal.aborted) setMembers({ kind: 'error' })
+          if (!signal.aborted) setMembers({ kind: 'error', at: new Date().toISOString() })
         }
       )
     },
@@ -82,6 +89,11 @@ export function LabellerPicker({ org, sourceId, status, editable, locale = 'en',
 
   const byId = new Map(members.kind === 'ready' ? members.members.map((member) => [member.account_id, member]) : [])
   const readyMembers = members.kind === 'ready' ? members.members : []
+  const matching = readyMembers.filter((member) => {
+    const q = filter.trim().toLowerCase()
+    if (!q) return true
+    return member.name.toLowerCase().includes(q) || member.email.toLowerCase().includes(q)
+  })
   const names = (ids: string[]) => ids.map((id) => byId.get(id)).filter((m) => m !== undefined)
 
   const save = useCallback(async () => {
@@ -98,6 +110,7 @@ export function LabellerPicker({ org, sourceId, status, editable, locale = 'en',
         body: { labeller_ids: [selected[0]!, selected[1]!] }
       })
       onStatus(next)
+      setSaved(selected)
       setAnnouncement(t('probation.picker_saved', {}, locale))
     } catch (error) {
       if (error instanceof ApiProblem && error.status === 403) {
@@ -130,15 +143,16 @@ export function LabellerPicker({ org, sourceId, status, editable, locale = 'en',
             {t('probation.picker_current', { names: names(status.labeller_ids).map(displayName).join(', ') }, locale)}
           </p>
         )}
-        {status && names(status.labeller_ids).length === 0 && (
-          <p>{t('probation.picker_current', { names: status.labeller_ids.join(', ') }, locale)}</p>
+        {/* Until the members are read the pair is only account ids: say so, never print them. */}
+        {status && status.labeller_ids.length > 0 && names(status.labeller_ids).length === 0 && (
+          <p className="text-muted-foreground">{t('probation.picker_current_unknown', {}, locale)}</p>
         )}
-        {members.kind === 'loading' && <p>{t('probation.picker_loading', {}, locale)}</p>}
+        {members.kind === 'loading' && <p role="status">{t('probation.picker_loading', {}, locale)}</p>}
         {members.kind === 'error' && editable && (
           <div className="probation-failure">
             <SourceError
               source={t('probation.source_members', {}, locale)}
-              at={new Date().toISOString()}
+              at={members.at}
               locale={locale}
               retry={
                 <Button
@@ -181,33 +195,34 @@ export function LabellerPicker({ org, sourceId, status, editable, locale = 'en',
               <div ref={anchor}>
                 <ComboboxChips>
                   {selected.map((id) => (
-                    <ComboboxChip key={id}>{byId.get(id) ? displayName(byId.get(id)!) : id}</ComboboxChip>
+                    <ComboboxChip key={id}>
+                      {byId.get(id) ? displayName(byId.get(id)!) : t('probation.picker_unknown_member', {}, locale)}
+                    </ComboboxChip>
                   ))}
                   <ComboboxChipsInput
                     name="labeller_search"
                     autoComplete="off"
                     aria-label={t('probation.picker_search', {}, locale)}
-                    placeholder={t('probation.picker_search', {}, locale)}
+                    placeholder={t('probation.picker_search_placeholder', {}, locale)}
                   />
                 </ComboboxChips>
               </div>
               <ComboboxContent anchor={anchor}>
                 <ComboboxList>
-                  {readyMembers
-                    .filter((member) => {
-                      const q = filter.trim().toLowerCase()
-                      if (!q) return true
-                      return member.name.toLowerCase().includes(q) || member.email.toLowerCase().includes(q)
-                    })
-                    .map((member) => (
-                      <ComboboxItem key={member.account_id} value={member.account_id}>
-                        {displayName(member)}
-                      </ComboboxItem>
-                    ))}
+                  {matching.slice(0, MEMBER_ROWS).map((member) => (
+                    <ComboboxItem key={member.account_id} value={member.account_id}>
+                      {displayName(member)}
+                    </ComboboxItem>
+                  ))}
                   <ComboboxEmpty>{t('probation.picker_none', {}, locale)}</ComboboxEmpty>
                 </ComboboxList>
               </ComboboxContent>
             </Combobox>
+            {matching.length > MEMBER_ROWS && (
+              <p className="type-small text-muted-foreground" data-numeric>
+                {t('probation.picker_more', { count: MEMBER_ROWS }, locale)}
+              </p>
+            )}
             {limitRefused && (
               <p role="alert" className="font-medium">
                 {t('probation.picker_limit', {}, locale)}

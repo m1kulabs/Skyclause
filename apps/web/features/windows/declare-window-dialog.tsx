@@ -16,10 +16,11 @@ import { WindowForm } from './window-form'
 import { ImportForm } from './import-form'
 import { useMedia } from './use-media'
 import { localDate } from './model'
-import { t } from './catalogue'
+import { t, type Locale } from './catalogue'
 
 export interface DeclareWindowDialogProps {
   org: string
+  locale?: Locale
   project: string
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -50,7 +51,7 @@ function Frame({
         <SheetContent
           side="bottom"
           data-window-sheet
-          className="max-h-[calc(100svh-16px)] overflow-y-auto pb-[max(20px,env(safe-area-inset-bottom))]"
+          className="max-h-[calc(100svh-16px)] overflow-y-auto overscroll-contain pb-[max(20px,env(safe-area-inset-bottom))]"
         >
           <SheetHeader>
             <SheetTitle>{title}</SheetTitle>
@@ -62,7 +63,10 @@ function Frame({
     )
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent data-window-dialog className="max-h-[calc(100svh-3rem)] overflow-y-auto sm:max-w-xl">
+      <DialogContent
+        data-window-dialog
+        className="max-h-[calc(100svh-3rem)] overflow-y-auto overscroll-contain sm:max-w-xl"
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -73,7 +77,7 @@ function Frame({
   )
 }
 
-export function DeclareWindowDialog({ org, project, open, onOpenChange }: DeclareWindowDialogProps) {
+export function DeclareWindowDialog({ org, project, locale = 'en', open, onOpenChange }: DeclareWindowDialogProps) {
   const search = useSearchParams()
   const router = useRouter()
   const editId = search.get('edit')
@@ -154,8 +158,8 @@ export function DeclareWindowDialog({ org, project, open, onOpenChange }: Declar
         phone={phone}
         open={visible}
         onClose={() => close()}
-        title={t(editId ? 'windows.edit' : 'windows.declare')}
-        description={t('windows.description')}
+        title={t(editId ? 'windows.edit' : 'windows.declare', {}, locale)}
+        description={t('windows.description', {}, locale)}
       >
         {!editId && (
           <ToggleGroup
@@ -168,33 +172,37 @@ export function DeclareWindowDialog({ org, project, open, onOpenChange }: Declar
               router.replace(`?${next}`, { scroll: false })
               guard.current = () => true
             }}
-            aria-label={t('windows.details')}
+            aria-label={t('windows.details', {}, locale)}
           >
-            <ToggleGroupItem value="manual">{t('windows.manual')}</ToggleGroupItem>
-            <ToggleGroupItem value="ics">{t('windows.import')}</ToggleGroupItem>
+            <ToggleGroupItem value="manual">{t('windows.manual', {}, locale)}</ToggleGroupItem>
+            <ToggleGroupItem value="ics">{t('windows.import', {}, locale)}</ToggleGroupItem>
           </ToggleGroup>
         )}
         {loadError ? (
           <SourceError
-            source={t('windows.source_window')}
+            source={t('windows.source_window', {}, locale)}
             status={loadError.status}
             at={loadError.at}
+            locale={locale}
             retry={
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setLoadError(null)
-                  setAttempt((value) => value + 1)
-                }}
-              >
-                {t('windows.retry')}
-              </Button>
+              loadError.status === 501 ? undefined : (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setLoadError(null)
+                    setAttempt((value) => value + 1)
+                  }}
+                >
+                  {t('windows.retry', {}, locale)}
+                </Button>
+              )
             }
           />
         ) : loaded?.key === key ? (
           importing ? (
             <ImportForm
               key={`${key}-import`}
+              locale={locale}
               projectId={loaded.projectId}
               onSaved={() => saved()}
               registerClose={(check) => {
@@ -204,6 +212,7 @@ export function DeclareWindowDialog({ org, project, open, onOpenChange }: Declar
           ) : (
             <WindowForm
               key={key}
+              locale={locale}
               projectId={loaded.projectId}
               window={loaded.window}
               root={root}
@@ -223,7 +232,7 @@ export function DeclareWindowDialog({ org, project, open, onOpenChange }: Declar
         ) : (
           <div className="flex flex-col gap-4" aria-busy="true">
             <p role="status" className="sr-only">
-              {t('windows.loading')}
+              {t('windows.loading', {}, locale)}
             </p>
             <Skeleton className="h-10 w-full rounded-md" />
             <Skeleton className="h-10 w-full rounded-md" />
@@ -231,31 +240,33 @@ export function DeclareWindowDialog({ org, project, open, onOpenChange }: Declar
           </div>
         )}
       </Frame>
-      {(status || action.error) && status !== 'dismissed' && (
-        <div
-          role="status"
-          className="fixed inset-x-4 bottom-[max(16px,env(safe-area-inset-bottom))] z-50 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-popover p-4 text-popover-foreground shadow-lg sm:left-auto sm:w-96"
-        >
-          <p className="min-w-0 flex-1">{t(action.error ? 'windows.cancel_error' : `windows.${status}`)}</p>
-          {action.pending && (
-            <Button
-              data-window-undo
-              variant="outline"
-              onClick={() => {
-                action.undo()
-                setStatus('undone')
-              }}
-            >
-              {t('windows.undo')}
-            </Button>
-          )}
-          {!action.pending && !action.committing && (
-            <Button variant="ghost" onClick={() => setStatus('dismissed')}>
-              {t('windows.close')}
-            </Button>
-          )}
-        </div>
-      )}
+      {/* Mounted before its message arrives, so a screen reader announces the saved or cancelled line. */}
+      <div role="status">
+        {Boolean(status || action.error) && status !== 'dismissed' && (
+          <div className="fixed inset-x-4 bottom-[max(16px,env(safe-area-inset-bottom))] z-50 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-popover p-4 text-popover-foreground shadow-lg sm:left-auto sm:w-96">
+            <p className="min-w-0 flex-1">
+              {t(action.error ? 'windows.cancel_error' : `windows.${status}`, {}, locale)}
+            </p>
+            {action.pending && (
+              <Button
+                data-window-undo
+                variant="outline"
+                onClick={() => {
+                  action.undo()
+                  setStatus('undone')
+                }}
+              >
+                {t('windows.undo', {}, locale)}
+              </Button>
+            )}
+            {!action.pending && !action.committing && (
+              <Button variant="ghost" onClick={() => setStatus('dismissed')}>
+                {t('windows.close', {}, locale)}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
     </>
   )
 }

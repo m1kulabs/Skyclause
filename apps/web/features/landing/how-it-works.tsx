@@ -1,5 +1,5 @@
 /* eslint-disable skyclause-i18n/no-literal-jsx -- Landing copy is English in the component (no Malay landing route; LND-7 is P2). */
-import { JPS_SOURCE_URL } from './data'
+import { JPS_SOURCE_URL, JPS_STATION } from './data'
 import {
   ApprovalFragment,
   ClauseFragment,
@@ -43,8 +43,9 @@ export function HowItWorks({ grades, gradesSource }: { grades: GradesState; grad
           ))}
         </h2>
         <p className="how-note" data-source={TERMS_SERVICE}>
-          Replay of 2 November 2026 from JPS gauge 0232901RF; the 60-minute totals are our arithmetic. Times after 15:05
-          MYT are inferred from the documented delays, and no call was made that day.
+          A replay of 2&nbsp;November 2026 from JPS gauge <span translate="no">{JPS_STATION}</span>: Skyclause sums its
+          5-minute readings into 60-minute totals and infers the times after 15:05&nbsp;MYT from the documented delays.
+          No call was made that day.
         </p>
       </div>
       <div className="how-field" data-reveal>

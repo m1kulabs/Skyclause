@@ -141,7 +141,7 @@ function hero(page: Page) {
 
 /** The day strip in the card's stripe band: the window's capsule on 24 hours, the picker's drag and key target. */
 function band(page: Page) {
-  return page.getByRole('slider', { name: /^Drag to select a window/ })
+  return page.getByRole('slider', { name: 'Your window on the day' })
 }
 
 test('LND-1 hero renders the live verdict with at least five inputs, ages and sources', async ({
@@ -174,9 +174,16 @@ test('no-JS GET form returns a new window and renders the server verdict', async
   await expect(form.getByLabel('Window start')).toHaveValue('22:00')
   await expect(form.getByLabel('Window end')).toHaveValue('23:00')
   await expect(form.locator('input[name="date"][value="' + tomorrow + '"]')).toBeChecked()
-  // The server read targets the unreachable API in this harness, so it renders the honest error, never a value.
-  await expect(form.getByText(/Couldn't reach the live verdict at .* MYT/)).toBeVisible()
-  await expect(form.getByRole('button', { name: 'Retry' })).toBeVisible()
+  // The server read targets an API this harness does not stub, so it renders the honest state, never a value: a
+  // failed read offers Retry; a verdict not built yet (501) offers the labelled replay instead, since Retry cannot help.
+  const error = form.getByText(/Couldn’t reach the live verdict at .* MYT|The live verdict is not built yet/)
+  await expect(error).toBeVisible()
+  if (/not built/.test((await error.textContent()) ?? '')) {
+    await expect(form.getByRole('link', { name: 'See 2 November, replayed' })).toHaveAttribute('href', '#how')
+    await expect(form.getByRole('button', { name: 'Retry' })).toHaveCount(0)
+  } else await expect(form.getByRole('button', { name: 'Retry' })).toBeVisible()
+  // LND-3: the latest approved call's line stands in the error state too.
+  await expect(form.getByText(/approved call|approved-call calendar/)).toBeVisible()
   await context.close()
 })
 

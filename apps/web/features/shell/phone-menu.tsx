@@ -27,7 +27,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
 function Links({ destinations, scope }: { destinations: Destination[]; scope: ShellScope }) {
   return destinations.map((destination) => (
     <PhoneSheetItem key={destination.key} href={destination.href} current={scope.current === destination.key}>
-      {t(`app-shell.${destination.key}`)}
+      {t(`app-shell.${destination.key}`, {}, scope.locale)}
     </PhoneSheetItem>
   ))
 }
@@ -39,7 +39,7 @@ function Links({ destinations, scope }: { destinations: Destination[]; scope: Sh
 export function PhoneMenu({ scope, now }: { scope: ShellScope; now: string }) {
   const [open, setOpen] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
-  const { data, org, projects } = scope
+  const { data, org, projects, locale } = scope
 
   // Two modals can't hold focus at once: close the sheet, wait for it to leave the page, then open the palette.
   function searchFromSheet() {
@@ -58,22 +58,22 @@ export function PhoneMenu({ scope, now }: { scope: ShellScope; now: string }) {
     <PhoneSheet
       open={open}
       onOpenChange={setOpen}
-      title={t('app-shell.menuTitle')}
+      title={t('app-shell.menuTitle', {}, locale)}
       className="shell-sheet"
       trigger={
         <Button ref={trigger} variant="secondary" className="shell-phone-menu">
           <MenuIcon aria-hidden="true" />
-          <span>{t('app-shell.menu')}</span>
+          <span>{t('app-shell.menu', {}, locale)}</span>
         </Button>
       }
     >
       <div className="shell-sheet-tools">
         <Button variant="secondary" onClick={searchFromSheet}>
           <SearchIcon aria-hidden="true" />
-          <span>{t('app-shell.palette')}</span>
+          <span>{t('app-shell.palette', {}, locale)}</span>
         </Button>
         <p className="shell-live">
-          <ShellClock now={now} />
+          <ShellClock now={now} locale={locale} />
         </p>
       </div>
       {scope.core.length > 0 && (
@@ -86,33 +86,42 @@ export function PhoneMenu({ scope, now }: { scope: ShellScope; now: string }) {
           <Links destinations={organisation} scope={scope} />
         </Section>
       )}
-      <Section id="shell-sheet-account" title={t('app-shell.accountGroup')}>
+      <Section id="shell-sheet-account" title={t('app-shell.accountGroup', {}, locale)}>
         <Links destinations={account} scope={scope} />
       </Section>
-      <Section id="shell-sheet-organisations" title={t('app-shell.switchOrganisation')}>
-        {data.membershipsError && <p className="shell-sheet-note">{t('app-shell.organisationsUnavailable')}</p>}
+      <Section id="shell-sheet-organisations" title={t('app-shell.switchOrganisation', {}, locale)}>
+        {data.membershipsError && (
+          <p className="shell-sheet-note">{t('app-shell.organisationsUnavailable', {}, locale)}</p>
+        )}
         {data.memberships.map((item) => (
           <PhoneSheetItem
             key={item.org_id}
             href={`/${encodeURIComponent(item.org_slug)}`}
             aria-current={item.org_id === scope.membership?.org_id ? 'true' : undefined}
-            aria-label={t('app-shell.membershipLabel', {
-              name: item.org_name,
-              role: t(`app-shell.roles.${item.role}`)
-            })}
+            aria-label={t(
+              'app-shell.membershipLabel',
+              { name: item.org_name, role: t(`app-shell.roles.${item.role}`, {}, locale) },
+              locale
+            )}
           >
             <span>{item.org_name}</span>
-            <span className="shell-menu-meta" aria-hidden="true" data-role={t(`app-shell.roles.${item.role}`)} />
+            <span
+              className="shell-menu-meta"
+              aria-hidden="true"
+              data-role={t(`app-shell.roles.${item.role}`, {}, locale)}
+            />
           </PhoneSheetItem>
         ))}
-        {!scope.guestAccount && <PhoneSheetItem href="/new">{t('app-shell.createOrganisation')}</PhoneSheetItem>}
+        {!scope.guestAccount && (
+          <PhoneSheetItem href="/new">{t('app-shell.createOrganisation', {}, locale)}</PhoneSheetItem>
+        )}
       </Section>
       {org && (
-        <Section id="shell-sheet-projects" title={t('app-shell.switchProject')}>
+        <Section id="shell-sheet-projects" title={t('app-shell.switchProject', {}, locale)}>
           {scope.projectsError ? (
-            <p className="shell-sheet-note">{t('app-shell.projectsUnavailable')}</p>
+            <p className="shell-sheet-note">{t('app-shell.projectsUnavailable', {}, locale)}</p>
           ) : (
-            !projects.length && <p className="shell-sheet-note">{t('app-shell.noProjects')}</p>
+            !projects.length && <p className="shell-sheet-note">{t('app-shell.noProjects', {}, locale)}</p>
           )}
           {projects.map((item) => (
             <PhoneSheetItem
@@ -124,9 +133,12 @@ export function PhoneMenu({ scope, now }: { scope: ShellScope; now: string }) {
             </PhoneSheetItem>
           ))}
           {canCreateProject(scope) ? (
-            <PhoneSheetItem href={`/${encodeURIComponent(org)}/new`}>{t('app-shell.createProject')}</PhoneSheetItem>
+            <PhoneSheetItem href={`/${encodeURIComponent(org)}/new`}>
+              {t('app-shell.createProject', {}, locale)}
+            </PhoneSheetItem>
           ) : (
-            !projects.length && !scope.projectsError && <p className="shell-sheet-note">{t('app-shell.askProject')}</p>
+            !projects.length &&
+            !scope.projectsError && <p className="shell-sheet-note">{t('app-shell.askProject', {}, locale)}</p>
           )}
         </Section>
       )}

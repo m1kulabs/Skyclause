@@ -88,12 +88,23 @@ test('over 50 rows virtualise and the last window is reachable by keyboard scrol
   await expect(page.getByRole('button', { name: /release wave 99$/ })).toBeAttached()
 })
 
-test('a 501 read is a named source error with retry and never the empty day', async ({ page }) => {
+test('a 501 read is a named source error with no Try again, and never the empty day', async ({ page }) => {
   await prepareWindows(page)
   await page.route('**/v1/projects/*/windows*', (route) => route.fulfill({ status: 501, json: { title: 'Not built' } }))
   await page.goto(route)
   await expect(page.locator('[data-source-error="501"]')).toContainText(w('source_load'))
   await expect(page.locator('[data-empty-day]')).toHaveCount(0)
+  // Reading again cannot change a "not built" answer.
+  await expect(page.getByRole('button', { name: w('retry'), exact: true })).toHaveCount(0)
+})
+
+test('a failed read names its error and retry reads again', async ({ page }) => {
+  await prepareWindows(page)
+  await page.route('**/v1/projects/*/windows*', (route) =>
+    route.fulfill({ status: 503, json: { title: 'Unavailable' } })
+  )
+  await page.goto(route)
+  await expect(page.locator('[data-source-error="503"]')).toContainText(w('source_load'))
   await stubApi(page, 'listWindows', { data: [replayWindow], next_cursor: null }, { registry: windowsOperations })
   await page
     .getByRole('button', { name: w('retry'), exact: true })
@@ -229,10 +240,34 @@ test('imported occurrences show their series and original feed and guest windows
   )
   await page.goto(route)
   await expect(page.locator('[data-window-row]').getByText(w('guest'), { exact: true })).toBeVisible()
-  await expect(page.getByText(w('series', { id: '2-November-replay-series' }), { exact: true })).toBeVisible()
+  // A series is named by its first window's title, never by its id (here the title is the window's own).
+  await expect(page.getByText(w('repeats'), { exact: true })).toBeVisible()
+  await expect(page.getByText('2-November-replay-series')).toHaveCount(0)
   await expect(
-    page.getByText(w('feed', { url: 'https://calendar.example.org/2-november-replay.ics' }), { exact: true })
+    page.getByText(`${w('feed')} https://calendar.example.org/2-november-replay.ics`, { exact: true })
   ).toBeVisible()
+  await expect(page.getByText('2-November-replay-feed')).toHaveCount(0)
+})
+
+test('a window of a series whose first occurrence has another title names that series, not its id', async ({
+  page
+}) => {
+  const first = { ...replayWindow, id: 'series-first', title: 'Morning lecture', series_id: 'series-7' }
+  const later = {
+    ...replayWindow,
+    id: 'series-later',
+    title: 'Morning lecture (room moved)',
+    series_id: 'series-7',
+    starts_at: '2026-11-02T08:30:00Z',
+    ends_at: '2026-11-02T09:00:00Z',
+    latest_calls: { sky: null, crowd: null }
+  }
+  await prepareWindows(page, [first, later])
+  await page.goto(route)
+  const row = page.locator('[data-window-row]').filter({ hasText: 'room moved' })
+  await expect(row.getByText(w('series'))).toBeVisible()
+  await expect(row.getByText('Morning lecture', { exact: true })).toBeVisible()
+  await expect(page.getByText('series-7')).toHaveCount(0)
 })
 
 test('needs-review and sent marks use bundle state and the typed ModeBadge seam', async ({ page }) => {
@@ -279,4 +314,81 @@ test('needs-review and sent marks use bundle state and the typed ModeBadge seam'
   await expect(page.locator('span[data-mark="needs_review"]')).toBeVisible()
   // #171 owns the glyphs. Until it merges, the mode word remains visible beside its typed placeholder.
   await expect(page.locator('a[data-call-mark="needs_review"]')).toContainText(w('normal'))
+})
+
+test('a month cell keeps each mode on one line: glyph and a short word, the full name in its title', async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 1024, height: 900 })
+  await prepareWindows(page)
+  await page.goto(`${route}&view=month`)
+  const sky = page.locator('[data-calendar-window] a[data-call-mark]').filter({ hasText: w('sent') })
+  const badge = sky.locator('.mode-badge')
+  await expect(badge).toHaveAttribute('title', /Sky.*Commute disruption/)
+  await expect(badge).toContainText(w('short_commute_disruption'))
+  // One line: the capsule is no taller than a line of text with its padding.
+  expect((await badge.boundingBox())!.height).toBeLessThan(32)
+  // The accessible name is still the full one.
+  await expect(sky).toHaveAccessibleName(/Sky.*Commute disruption.*Sent/)
+})
+
+test('the timeline labels its now mark and the arrival and exit bars in words, and keeps the hour axis in view', async ({
+  page
+}) => {
+  await page.clock.install({ time: new Date('2026-11-02T06:30:00Z') })
+  await page.setViewportSize({ width: 390, height: 800 })
+  await prepareWindows(page)
+  await stubApi(
+    page,
+    'listNights',
+    {
+      data: [
+        {
+          id: '2-november-replay-night',
+          project_id: projectId,
+          date: '2026-11-02',
+          state: 'upcoming',
+          doors: '2026-11-02T08:00:00Z',
+          show: '2026-11-02T09:00:00Z',
+          arrival_start: '2026-11-02T07:00:00Z',
+          arrival_end: '2026-11-02T08:00:00Z',
+          exit_start: '2026-11-02T10:00:00Z',
+          exit_end: '2026-11-02T11:00:00Z',
+          forecast: null,
+          show_name: '2 November replay · listed show'
+        }
+      ],
+      next_cursor: null
+    },
+    { registry: windowsOperations }
+  )
+  await page.goto(route)
+  const today = page.locator('[data-day="2026-11-02"]')
+  await expect(today.locator('[data-now-label]')).toHaveText(w('now'))
+  // The list row names each bar, with a swatch that looks like it.
+  await expect(today.locator('[data-night-row]')).toContainText(w('arrival'))
+  await expect(today.locator('[data-night-row]')).toContainText(w('exit'))
+  // The hour axis stays under the bar while the days scroll.
+  const axis = page.locator('[data-timeline] > div').first()
+  await page.evaluate(() => window.scrollTo(0, 900))
+  const bar = await page.locator('.shell-bar').boundingBox()
+  const axisBox = await axis.boundingBox()
+  expect(Math.abs(axisBox!.y - (bar!.y + bar!.height))).toBeLessThan(2)
+})
+
+test('a link with ?window= opens the period holding that window and marks it', async ({ page }) => {
+  const far = {
+    ...replayWindow,
+    id: 'window-far',
+    title: 'Far window',
+    starts_at: '2026-12-20T07:30:00Z',
+    ends_at: '2026-12-20T08:00:00Z',
+    latest_calls: { sky: null, crowd: null }
+  }
+  await prepareWindows(page, [replayWindow, far])
+  await page.goto(`${route}&window=window-far`)
+  const row = page.locator('[data-window-id="window-far"]')
+  await expect(row).toBeVisible()
+  await expect(row).toHaveAttribute('data-added', 'true')
+  await expect(page.getByLabel(w('from'), { exact: true })).toHaveValue('2026-12-20')
 })

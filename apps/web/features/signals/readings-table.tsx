@@ -3,6 +3,7 @@
 import { useId, useState } from 'react'
 import { formatDateTime, formatNumber } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
 import type { SourceReading } from './operations'
 import { t } from './catalogue'
 
@@ -52,44 +53,40 @@ export function ReadingsTable({
         )}
       </p>
       {shown.length > 0 && (
-        <table id={tableId} className="w-full text-left type-body">
-          <caption className="sr-only">{t('signals.readings_title', {}, locale)}</caption>
-          <thead>
-            <tr className="type-small text-muted-foreground">
-              <th scope="col" className="pr-3 pb-1 font-normal">
-                {t('signals.table_time', {}, locale)}
-              </th>
-              <th scope="col" className="px-3 pb-1 text-right font-normal">
-                {t('signals.table_value', {}, locale)}
-              </th>
-              <th scope="col" className="pb-1 pl-3 font-normal">
-                {t('signals.table_state', {}, locale)}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table id={tableId}>
+          <TableCaption className="sr-only">{t('signals.readings_title', {}, locale)}</TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t('signals.table_time', {}, locale)}</TableHead>
+              <TableHead numeric>{t('signals.table_value', {}, locale)}</TableHead>
+              <TableHead>{t('signals.table_state', {}, locale)}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {shown.map((reading) => (
-              <tr key={reading.id} className="h-11">
-                <th scope="row" className="pr-3 font-normal">
+              <TableRow key={reading.id}>
+                <TableCell phone="primary">
                   <time dateTime={reading.observed_at} data-numeric>
                     {formatDateTime(reading.observed_at, locale)}
                   </time>
-                </th>
-                <td data-numeric className="px-3 text-right">
+                </TableCell>
+                <TableCell numeric phone="end">
                   {reading.value === null ? (
                     <span className="text-muted-foreground">{t('signals.value_missing', {}, locale)}</span>
                   ) : (
                     <>
                       {formatNumber(reading.value, locale)}
-                      {reading.unit ? <span className="text-muted-foreground"> {reading.unit}</span> : null}
+                      {reading.unit ? <span className="text-muted-foreground">{`\u00a0${reading.unit}`}</span> : null}
                     </>
                   )}
-                </td>
-                <td className="pl-3">{recordOf(reading, locale)}</td>
-              </tr>
+                </TableCell>
+                <TableCell phone="meta" label={t('signals.table_state', {}, locale)}>
+                  {recordOf(reading, locale)}
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       )}
       {capped.length > READING_PREVIEW && (
         <Button

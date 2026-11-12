@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { formatDate } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
@@ -11,14 +11,14 @@ import { useWindows } from './use-windows'
 import { Timeline, TimelineSkeleton } from './timeline'
 import { CalendarView } from './calendar-view'
 import { WindowsToolbar, type WindowsView } from './windows-toolbar'
-import { t } from './catalogue'
+import { t, type Locale } from './catalogue'
 
 function viewOf(value: string | null): WindowsView {
   // `calendar` is the old name of the month view.
   return value === 'week' ? 'week' : value === 'month' || value === 'calendar' ? 'month' : 'timeline'
 }
 
-export function WindowsPage({ org, project }: { org: string; project: string }) {
+export function WindowsPage({ org, project, locale = 'en' }: { org: string; project: string; locale?: Locale }) {
   const search = useSearchParams()
   const view = viewOf(search.get('view'))
   const from = validDate(search.get('from') ?? '') ? search.get('from')! : localDate()
@@ -53,8 +53,31 @@ export function WindowsPage({ org, project }: { org: string; project: string }) 
     if (outside && addedDate) update({ from: addedDate })
     // `update` only reads the current query.
   }, [outside, addedDate])
-  const added = changed?.id
+  // A link from the dashboard or the overview (`?window=`) opens the period that holds that window, once, and marks it
+  // as a saved window is marked.
+  const linked = search.get('window') ?? undefined
+  const linkedWindow = data?.windows.find((window) => window.id === linked)
+  const opened = useRef<string>(null)
+  useEffect(() => {
+    if (!linkedWindow || opened.current === linkedWindow.id) return
+    opened.current = linkedWindow.id
+    const date = localDate(linkedWindow.starts_at)
+    if (date < dates[0]! || date > dates.at(-1)!) update({ from: date })
+    // `update` only reads the current query.
+  }, [linkedWindow])
+  const added = changed?.id ?? linked
   const visible = !!data && data.windows.some((window) => window.id === added) && !outside
+  // The API names a series by an id alone: its name is its first occurrence's title.
+  const seriesNames = useMemo(() => {
+    const names: Record<string, string> = {}
+    const first: Record<string, string> = {}
+    for (const window of data?.windows ?? []) {
+      if (!window.series_id || (first[window.series_id] && first[window.series_id]! <= window.starts_at)) continue
+      first[window.series_id] = window.starts_at
+      names[window.series_id] = window.title
+    }
+    return names
+  }, [data])
   useEffect(() => {
     if (visible) document.querySelector('[data-added]')?.scrollIntoView({ block: 'center' })
   }, [visible, data])
@@ -76,7 +99,7 @@ export function WindowsPage({ org, project }: { org: string; project: string }) 
   const empty = !!data && !data.windows.length
   const declare = (
     <Button data-declare-window onClick={() => update({ declare: 'window', edit: null })}>
-      {t('windows.declare')}
+      {t('windows.declare', {}, locale)}
     </Button>
   )
   const today = dayStart(localDate())
@@ -90,12 +113,14 @@ export function WindowsPage({ org, project }: { org: string; project: string }) 
     nights: data.nights,
     days: data.days,
     onEdit: edit,
+    locale,
+    seriesNames,
     added
   }
   return (
     <section data-windows-page className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="type-title">{t('windows.title')}</h1>
+        <h1 className="type-title">{t('windows.title', {}, locale)}</h1>
         {!empty && declare}
       </div>
       {data && !empty && (
@@ -109,12 +134,15 @@ export function WindowsPage({ org, project }: { org: string; project: string }) 
                   : 'windows.summary_none',
               {
                 count: windows.length,
-                from: formatDate(`${dates[0]}T12:00:00+08:00`, 'en'),
-                to: formatDate(`${dates.at(-1)}T12:00:00+08:00`, 'en')
-              }
+                from: formatDate(`${dates[0]}T12:00:00+08:00`, locale),
+                to: formatDate(`${dates.at(-1)}T12:00:00+08:00`, locale)
+              },
+              locale
             )}
           </span>
-          {review > 0 && <span>{t(review === 1 ? 'windows.review_one' : 'windows.review', { count: review })}</span>}
+          {review > 0 && (
+            <span>{t(review === 1 ? 'windows.review_one' : 'windows.review', { count: review }, locale)}</span>
+          )}
         </p>
       )}
       {(loading || (data && !empty)) && (
@@ -125,17 +153,22 @@ export function WindowsPage({ org, project }: { org: string; project: string }) 
           onFrom={(date) => update({ from: date })}
           onStep={(direction) => update({ from: period(direction) })}
           onToday={() => update({ from: localDate() })}
+          locale={locale}
         />
       )}
       {failed && (
         <SourceError
-          source={t('windows.source_load')}
+          source={t('windows.source_load', {}, locale)}
           status={failed.status}
           at={failed.at}
+          locale={locale}
+          // A 501 is "not built": reading again cannot change the answer.
           retry={
-            <Button variant="outline" onClick={reload}>
-              {t('windows.retry')}
-            </Button>
+            failed.status === 501 ? undefined : (
+              <Button variant="outline" onClick={reload}>
+                {t('windows.retry', {}, locale)}
+              </Button>
+            )
           }
         />
       )}
@@ -144,20 +177,23 @@ export function WindowsPage({ org, project }: { org: string; project: string }) 
         .map((error) => (
           <SourceError
             key={error.key}
-            source={t(`windows.source_${error.key}`)}
+            source={t(`windows.source_${error.key}`, {}, locale)}
             status={error.status}
             at={error.at}
+            locale={locale}
             retry={
-              <Button variant="outline" onClick={reload}>
-                {t('windows.retry')}
-              </Button>
+              error.status === 501 ? undefined : (
+                <Button variant="outline" onClick={reload}>
+                  {t('windows.retry', {}, locale)}
+                </Button>
+              )
             }
           />
         ))}
       {loading && (
         <>
           <p role="status" className="sr-only">
-            {t('windows.loading')}
+            {t('windows.loading', {}, locale)}
           </p>
           <TimelineSkeleton />
         </>
@@ -168,6 +204,7 @@ export function WindowsPage({ org, project }: { org: string; project: string }) 
           to={new Date(today + DAY_MS).toISOString()}
           now={new Date().toISOString()}
           action={declare}
+          locale={locale}
         />
       )}
       {props &&

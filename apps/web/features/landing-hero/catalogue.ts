@@ -7,3 +7,4 @@ import '@skyclause/i18n/format'
 catalogueFiles['../catalogue/en/landing-hero.json'] = { default: en }
 
 export { t } from '@skyclause/i18n'
+export const heroCatalogue: Record<string, unknown> = en
