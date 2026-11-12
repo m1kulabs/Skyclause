@@ -17,18 +17,21 @@ const LETTER = /[\p{L}_]/u
 const NUMBER = /(\d{4}-\d{2}-\d{2})|(\d{1,2}:\d{2})(?![\d:])|(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)/g
 // After NFKC (which folds fullwidth and superscript digits to 0-9), any other digit is refused outright.
 const OTHER_DIGIT = /[^\P{N}0-9]+/gu
-// CJK numerals are letters to Unicode (五十 is 50); notices are English or Malay, so any ideograph is refused, not a list.
+// CJK numerals are letters to Unicode (五十 is 50); notices are English or Malay, so any ideograph is refused, not a
+// list.
 const IDEOGRAPHS = /\p{Ideographic}+/gu
 // Invisible to a reader: a zero-width space inside a figure (12, U+200B, 0) makes a person read 120 where the checks see 12 and 0.
 // Unicode's Default_Ignorable_Code_Point plus category Cf (format characters); nothing legitimate in a notice needs them.
 const INVISIBLE = /[\p{Default_Ignorable_Code_Point}\p{Cf}]/gu
 // A private-use character draws as whatever the font puts there, one newer than this runtime's Unicode tables
-// (U+12562 under Node 22) may draw as a digit on a newer phone, and a lone surrogate has no glyph. No notice needs them.
+// (U+12562 under Node 22 and Bun, both Unicode 17) may draw as a digit on a newer phone, and a lone surrogate has no
+// glyph. No notice needs them.
 const UNKNOWN = /[\p{Co}\p{Cn}\p{Cs}]/gu
 // Other ways a figure reads whole while the checks see two pieces: a combining mark on a digit, a control character
 // (C0 and C1 draw at zero width in some renderers; tab and line breaks are ordinary text), a thin or no-break space
 // between digits (NFKC folds them to a plain space), and a right-to-left letter beside digits, which reorders them.
-const MARK_ON_DIGIT = /\p{N}[.,:]?(?!\p{Default_Ignorable_Code_Point})\p{M}/u
+// A mark on a space between digits draws as a separator too (5, space, U+0307, 60).
+const MARK_ON_DIGIT = /\p{N}[\p{Zs}\t]*[.,:]?(?!\p{Default_Ignorable_Code_Point})\p{M}/u
 // Vertical tab and form feed are what Word and PowerPoint paste for a soft line break.
 const CONTROL = /[^\P{Cc}\t\n\r\v\f]/gu
 // A separator or space run beside a thin space still reads as one figure: 2, 060 is 2,060.
@@ -115,10 +118,11 @@ const unreadNumber = (word: string): string[] => {
 }
 
 // Punctuation a reader takes for a separator inside a figure: any non-ASCII punctuation or symbol (a comma look-alike,
-// U+2800, a Tibetan tsheg, an ideographic comma) between digits, directly or after a space: 5, space, U+00B7, 60 reads as
-// one figure, while a space on both sides separates, as DESIGN's lists do. The en and em dash and the minus sign (it draws
-// as the en dash) stay: they write ranges; so does the right arrow, which writes a change. None hides a figure.
-const PUNCTUATION_BETWEEN_DIGITS = /\p{N}( *[\p{P}\p{S}\p{Lm}\uA4F8-\uA4FD\uA78F\u1427]+)(?=\p{N})/gu
+// U+2800, a Tibetan tsheg, an ideographic comma) between digits, directly or after any space or tab: 5, space, U+00B7,
+// 60 reads as one figure, while a space on both sides separates, as DESIGN's lists do. The en and em dash and the minus
+// sign (it draws as the en dash) stay: they write ranges; so does the right arrow, which writes a change. None hides a
+// figure.
+const PUNCTUATION_BETWEEN_DIGITS = /\p{N}([\p{Zs}\t]*[\p{P}\p{S}\p{Lm}\uA4F8-\uA4FD\uA78F\u1427]+)(?=\p{N})/gu
 // Punctuation UTS #39 reads as l, O or o on one side of a digit reads as a digit: |5 is 15, and so is a danda (U+0964)
 // before a 5. Checked before NFKC, which turns the vertical U+FE31 into an em dash.
 const PUNCTUATION_BESIDE_DIGIT = /(?<!\p{N})[\p{P}\p{S}](?=\p{N})|(?<=\p{N})[\p{P}\p{S}](?!\p{N})/gu
@@ -127,8 +131,8 @@ const THOUSANDS = /(?<!\d|\d,)\d{1,3}(?:,\d{3})+(?!\d|,\d)/g
 // Spaces (HTML collapses a run to one) or underscores before three digits group a figure: 2 060 and 2_060 read as
 // 2,060. Not after a separator or another figure: "15:30 120 people", "39.0 120" and "2026-11-02 120" stay apart.
 const GROUPED = /(?<![\d_.,:-])\d{1,3}[ \t_]+\d{3}(?!\d)/
-// A token of 0-9 and the letters O, o, l, I, S, B (plus up to three unit letters) with a letter beside a digit: 5OO, 5l,
-// l5, 5S. Lower-case s and b stay out: s is a unit.
+// A token of 0-9 and the letters O, o, l, I, S, B (plus up to three unit letters) with a letter beside a digit: 5OO,
+// 5l, l5, 5S. Lower-case s and b stay out: s is a unit.
 const LETTER_DIGITS = /^([0-9OolISB]+)[a-zA-Z]{0,8}$/
 const LETTER_BESIDE_DIGIT = /\d[OolISB]|[OolISB]\d/
 const LETTER_ACROSS_SEPARATOR = /\d[.,:][OolISB]+(?!\p{L})|(?<!\p{L})[OolISB]+[.,:]\d/u

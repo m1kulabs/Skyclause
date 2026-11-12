@@ -518,6 +518,15 @@ describe('more exotic look-alikes (#512)', () => {
     refused('Gauge 5 ·60 mm.', 'look-alike punctuation U+00B7')
   })
 
+  test.each(['\u{A0}', '\u{2003}', '\u{2009}', '\t'])('refuses a look-alike separator after the space %j', (space) => {
+    refused(`Gauge 5${space}·60 mm.`, 'look-alike punctuation U+00B7')
+    refused(`Gauge 5${space}\u{2024}60 mm.`, 'look-alike punctuation U+2024')
+  })
+
+  test('refuses a combining mark on a space between digits', () => {
+    refused('Gauge 5 \u{307}60 mm.', 'combining mark')
+  })
+
   test.each(['\u{E000}', '\u{F8FF}', '\u{378}'])('refuses the private-use or unassigned character %j', (char) => {
     refused(`Gauge 5${char}60 mm.`, 'private-use, unassigned or surrogate character')
     refused(`Gauge ${char} mm.`, 'private-use, unassigned or surrogate character')
