@@ -258,20 +258,23 @@ export function GradeFragment({ grades, source }: { grades: GradesState; source:
   )
 }
 
-/** The live grades read: n=0 before any grade, the read's error, or n with the Wilson 95% interval. */
+/**
+ * The live grades read: n=0 before any grade, said in a sentence (LND-4); a failed read, said plainly; a read the API
+ * does not serve yet, said as what will show; or n with the Wilson 95% interval.
+ */
 export function LiveGrades({ grades, source }: { grades: GradesState; source: string }) {
   if (grades.kind === 'error') {
     return (
       <p className="frag-live" data-source={source}>
         <Glyph state="error" width={14} height={14} />
-        <span>Couldn&rsquo;t load live grades: {grades.message}. Reload the page to try again.</span>
+        <span>Couldn&rsquo;t load live grades just now. Reload the page to try again.</span>
       </p>
     )
   }
   if (grades.kind === 'not_built') {
     return (
       <p className="frag-live" data-source={source}>
-        <span>Live grades are not built yet.</span>
+        <span>Live grades show here, each with its n and 95% interval, once they are published.</span>
       </p>
     )
   }
@@ -279,7 +282,7 @@ export function LiveGrades({ grades, source }: { grades: GradesState; source: st
     return (
       <p className="frag-live" data-source={source}>
         <Glyph state="no_call" width={14} height={14} />
-        <span>No live grades yet (n=0)</span>
+        <span>No live grades yet (n=0): the first appears once a call has been graded.</span>
       </p>
     )
   }
@@ -407,7 +410,7 @@ export function CalendarFragment({
         </p>
       ) : latestCall === 'not_built' ? (
         <p className="frag-live" data-source={source}>
-          <span>The approved-call calendar is not built yet.</span>
+          <span>Approved calls show on this calendar once it opens.</span>
         </p>
       ) : latestCall ? (
         // The permalink's page (/c/{callId}, PUB-3) is not built yet: the date stands alone until it is.
@@ -417,7 +420,7 @@ export function CalendarFragment({
       ) : (
         <p className="frag-live" data-source={source}>
           <Glyph state="no_call" width={14} height={14} />
-          <span>No approved call yet (n=0)</span>
+          <span>No approved call yet (n=0): each call a person approves appears here.</span>
         </p>
       )}
     </div>

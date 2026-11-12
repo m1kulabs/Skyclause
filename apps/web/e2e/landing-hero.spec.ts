@@ -1,10 +1,28 @@
-import { expect, test, blockingViolations } from './fixtures'
+import { randomBytes } from 'node:crypto'
+import { writeFile } from 'node:fs/promises'
 import type { Page } from '@playwright/test'
-import { landingHeroOperations } from '../features/landing-hero/operations'
-import { stubApi } from './harness/stub-api'
+import { expect, test, blockingViolations } from './fixtures'
 import { expectZonedTimes } from './harness/expect-zoned-times'
+import {
+  API,
+  EVALUATE,
+  MARKETING,
+  NOT_BUILT,
+  routeProductionHosts,
+  startMultiHostServer,
+  startStandInApi,
+  type Answer,
+  type StandInApi
+} from './harness/hero-hosts'
 
-const callId = '019a45b0-0000-7000-8000-0000000000aa'
+// The hero on a production-style build (harness/hero-hosts.ts): the built server in HOST_MODE=multi with production's
+// origins, the page on the marketing host, and a stand-in for the public API whose answers each test sets. The
+// server's first read and the browser's later ones are told apart, so each state is proven at the boundary.
+
+const port = Number(process.env.E2E_PORT ?? 3100) + 4
+const JPS = 'https://infobanjirjpskl.water.gov.my/Rainfall/GetRainfallGraph/75'
+const REPLAY_LEAD =
+  'Live verdicts for the window you pick are not open yet, so this is 2 November, replayed from the JPS gauge’s readings.'
 
 const inputValue = (over: Record<string, unknown> = {}) => ({
   name: 'site.rain_60m_mm',
@@ -20,7 +38,7 @@ const inputValue = (over: Record<string, unknown> = {}) => ({
   ...over
 })
 
-function evaluateDouble() {
+function evaluateDouble(rain = 39) {
   return {
     label: 'Clause engine verdict: not reviewed, not sent',
     evaluated_at: '2026-11-05T13:05:00.000Z',
@@ -41,8 +59,8 @@ function evaluateDouble() {
             no_call: null,
             recommendations: [],
             clauses: [
-              { key: 'Storm confirmed', result: 'fired', blocked_by: [], inputs: [inputValue()] },
-              { key: 'Flash-flood risk', result: 'not_fired', blocked_by: [], inputs: [inputValue()] },
+              { key: 'Storm confirmed', result: 'fired', blocked_by: [], inputs: [inputValue({ value: rain })] },
+              { key: 'Flash-flood risk', result: 'not_fired', blocked_by: [], inputs: [inputValue({ value: rain })] },
               {
                 key: 'Api max',
                 result: 'fired',
@@ -109,31 +127,47 @@ function evaluateDouble() {
   }
 }
 
-function calendarDouble(call: boolean) {
+const verdict = (rain = 39): Answer => ({ status: 200, body: evaluateDouble(rain) })
+
+/** Storm confirmed blocked by a stale gauge: No call for it, and no rain value anywhere. */
+function blockedVerdict(): Answer {
+  const double = evaluateDouble()
+  const sky = double.verdicts[0]!
+  const blocked = {
+    key: 'Storm confirmed',
+    result: 'blocked',
+    blocked_by: [{ name: 'gauge', source_id: '0232901RF', state: 'stale', since: '2026-11-05T07:00:00.000Z' }],
+    inputs: []
+  }
   return {
-    data: call
-      ? [
-          {
-            id: '019a45b0-0000-7000-8000-0000000000bb',
-            call_id: callId,
-            pack: 'crowd',
-            kind: 'event',
-            starts_at: '2026-11-04T14:00:00.000Z',
-            ends_at: '2026-11-04T16:00:00.000Z',
-            mode: 'surge_night',
-            watch: false,
-            permalink: `/c/${callId}`
-          }
-        ]
-      : [],
-    next_cursor: null
+    status: 200,
+    body: { ...double, verdicts: [{ ...sky, windows: [{ ...sky.windows[0]!, clauses: [blocked] }] }] }
   }
 }
 
-async function stubLanding(page: Page, calendarCall: boolean) {
-  await stubApi(page, 'evaluatePublicProject', evaluateDouble(), { registry: landingHeroOperations })
-  await stubApi(page, 'listPublicCalendarEntries', calendarDouble(calendarCall), { registry: landingHeroOperations })
-}
+let standIn: StandInApi
+let server: Awaited<ReturnType<typeof startMultiHostServer>>
+
+test.beforeAll(async ({ request }) => {
+  standIn = await startStandInApi()
+  server = await startMultiHostServer(request, port, standIn.origin)
+})
+
+test.afterAll(async () => {
+  await server?.stop()
+  await standIn?.close()
+})
+
+test.beforeEach(async ({ page, request }) => {
+  standIn.evaluate = { server: NOT_BUILT, browser: NOT_BUILT }
+  standIn.log.length = 0
+  await routeProductionHosts(page.context(), request, { server: server.origin, standIn: standIn.origin })
+})
+
+// A beacon still in flight when a test ends has nowhere to go: let it drop.
+test.afterEach(async ({ page }) => {
+  await page.context().unrouteAll({ behavior: 'ignoreErrors' })
+})
 
 function hero(page: Page) {
   return page.locator('form#window[data-ui]')
@@ -144,57 +178,235 @@ function band(page: Page) {
   return page.getByRole('slider', { name: 'Your window on the day' })
 }
 
+/** The photograph's bottom edge in page coordinates: it moves when anything under it in the hero changes height. */
+function photoBottom(page: Page) {
+  return page.evaluate(() =>
+    Math.round(document.querySelector('[data-room-capsule]')!.getBoundingClientRect().bottom + window.scrollY)
+  )
+}
+
+/** Every request the page sends, in order, for the record and for asserting which host was asked. */
+function requestLog(page: Page) {
+  const log: string[] = []
+  page.on('request', (sent) => log.push(`${new Date().toISOString()} ${sent.method()} ${sent.url()}`))
+  return log
+}
+
+async function keepLog(name: string, lines: string[]) {
+  const body = `${lines.join('\n')}\n`
+  await writeFile(test.info().outputPath(name), body)
+  await test.info().attach(name, { body, contentType: 'text/plain' })
+}
+
+test('while live verdicts are not open, the hero answers with the 2 November replay and the browser never asks', async ({
+  page,
+  expectAxeClean
+}) => {
+  test.setTimeout(150_000)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  const log = requestLog(page)
+  await page.goto(`${MARKETING}/`)
+  const form = hero(page)
+
+  // One plain sentence says what this is, then the replay's window, its verdict and its input, labelled and sourced.
+  await expect(form.getByText(REPLAY_LEAD)).toBeVisible()
+  await expect(form.locator('[data-replay-mark]')).toHaveText('Replay')
+  await expect(form.locator('[data-replay-mark]')).toHaveAttribute('data-source', JPS)
+  await expect(form.getByText('Monday 2 November 2026, 15:30 MYT to 15:45 MYT')).toBeVisible()
+  await expect(form.getByText('Clause engine verdict: not reviewed, not sent')).toBeVisible()
+  await expect(form.locator('[data-pack="sky"] .status-mark')).toHaveText('Commute disruption')
+  await expect(form.locator('[data-pack="sky"] .status-mark svg')).toHaveCount(1)
+  await expect(form.getByText('Storm confirmed fired')).toBeVisible()
+  const gauge = form.locator(`li[data-source="${JPS}"]`)
+  await expect(gauge).toContainText('39 mm')
+  await expect(gauge).toContainText('0232901RF')
+  await expect(gauge).toContainText('5 min old')
+  await expect(form.getByText(/^No approved call yet \(n=0\): /)).toBeVisible()
+  // Nothing a visitor would read as a fault: no status code, no "not built", no API, nothing to retry.
+  expect(await form.innerText()).not.toMatch(/\b(?:4\d\d|50\d)\b|not built|\bAPI\b|Couldn’t/i)
+  await expect(form.getByRole('button', { name: 'Retry' })).toHaveCount(0)
+  // The first screen holds the name, the h1 and the whole answer at 1440x900.
+  await expect(page.getByRole('heading', { level: 1 })).toBeInViewport()
+  expect((await form.boundingBox())!.y + (await form.boundingBox())!.height).toBeLessThanOrEqual(900)
+  await expectAxeClean(page)
+
+  // Every control still describes a window: the strip draws it, and no verdict is asked for.
+  const verdictCalls = () => log.filter((line) => line.includes(EVALUATE))
+  const settled = async () => {
+    await page.waitForTimeout(700)
+    expect(verdictCalls()).toEqual([])
+  }
+  const edge = await photoBottom(page)
+  const dates = form.locator('label:has(input[name="date"])')
+  await dates.nth(1).click()
+  await expect(dates.nth(1).locator('input')).toBeChecked()
+  await settled()
+  await form.getByLabel('Window start').fill('17:30')
+  await form.getByLabel('Window start').press('Tab')
+  await settled()
+  await form.getByLabel('Window end').fill('19:00')
+  await form.getByLabel('Window end').press('Tab')
+  await expect(band(page)).toHaveAttribute('aria-valuetext', '17:30 MYT to 19:00 MYT')
+  await settled()
+  await band(page).press('ArrowRight')
+  await expect(band(page)).toHaveAttribute('aria-valuetext', '17:45 MYT to 19:15 MYT')
+  await settled()
+  const capsule = (await band(page).locator('[data-state]').boundingBox())!
+  await page.mouse.move(capsule.x + capsule.width / 2, capsule.y + capsule.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(capsule.x + capsule.width / 2 + 60, capsule.y + capsule.height / 2, { steps: 6 })
+  await page.mouse.up()
+  await expect(band(page)).not.toHaveAttribute('aria-valuetext', '17:45 MYT to 19:15 MYT')
+  await settled()
+  await form.getByLabel('Window end').press('Enter')
+  await settled()
+  await expect(form.getByText(REPLAY_LEAD)).toBeVisible()
+  expect(await photoBottom(page)).toBe(edge)
+
+  // A minute of idling runs no refresh either.
+  await page.waitForTimeout(61_000)
+  expect(verdictCalls()).toEqual([])
+  expect(log.filter((line) => line.includes(`${MARKETING}/v1/`))).toEqual([])
+  expect(standIn.log.filter((entry) => entry.caller === 'browser')).toEqual([])
+  // The server asked once, on first paint, and drew the replay from its 501.
+  expect(standIn.log.filter((entry) => entry.caller === 'server' && entry.path === EVALUATE)).toHaveLength(1)
+  await keepLog('requests-unavailable.log', [
+    ...log,
+    '--- stand-in API',
+    ...standIn.log.map((entry) => `${entry.caller} ${entry.method} ${entry.path}`)
+  ])
+})
+
+test('when live verdicts are open, the browser asks the API host itself and the verdict renders', async ({ page }) => {
+  standIn.evaluate = { server: verdict(39), browser: verdict(42.5) }
+  const log = requestLog(page)
+  await page.goto(`${MARKETING}/`)
+  const form = hero(page)
+  const gauge = form.locator('li[data-source="https://example.com/gauge"]')
+  await expect(gauge).toContainText('39 mm')
+  const asked = page.waitForRequest((sent) => sent.url().endsWith(EVALUATE) && sent.method() === 'POST')
+  await band(page).press('ArrowRight')
+  const sent = await asked
+  // Straight to the API origin the server handed down (CORS *), never the marketing host.
+  expect(sent.url()).toBe(`${API}${EVALUATE}`)
+  expect(sent.postDataJSON()).toMatchObject({ start_time: expect.stringMatching(/^\d{2}:\d{2}$/) })
+  await expect(gauge).toContainText('42.5 mm')
+  await expect(form.getByText('Clause engine verdict: not reviewed, not sent')).toBeVisible()
+  expect(log.filter((line) => line.includes(`${MARKETING}/v1/`))).toEqual([])
+  expect(standIn.log.filter((entry) => entry.caller === 'browser' && entry.method === 'POST')).toHaveLength(1)
+  await expectZonedTimes(page)
+  await keepLog('requests-open.log', log)
+})
+
+test('the API host answers a cross-origin verdict read with CORS *, and the landing’s CSP lets the browser connect', async ({
+  request
+}) => {
+  const visitor = `2001:db8::${randomBytes(2).toString('hex')}:${randomBytes(2).toString('hex')}`
+  const preflight = await request.fetch(`${server.origin}${EVALUATE}`, {
+    method: 'OPTIONS',
+    headers: {
+      host: 'api.skyclause.m1ku.tech',
+      origin: MARKETING,
+      'access-control-request-method': 'POST',
+      'access-control-request-headers': 'accept,content-type',
+      'x-forwarded-for': visitor
+    }
+  })
+  expect(preflight.status()).toBe(204)
+  expect(preflight.headers()['access-control-allow-origin']).toBe('*')
+  const answer = await request.post(`${server.origin}${EVALUATE}`, {
+    headers: { host: 'api.skyclause.m1ku.tech', origin: MARKETING, 'x-forwarded-for': visitor },
+    data: { date: '2026-11-14', start_time: '17:30', end_time: '19:00' }
+  })
+  expect(answer.headers()['access-control-allow-origin']).toBe('*')
+  const landing = await request.get(`${server.origin}/`, { headers: { host: 'skyclause.m1ku.tech' } })
+  expect(landing.headers()['content-security-policy']).toMatch(
+    /connect-src 'self'[^;]* https:\/\/api\.skyclause\.m1ku\.tech/
+  )
+})
+
+test('a real failure says so in words with Retry, a rate limit says when to try again, and the hero holds still', async ({
+  page
+}) => {
+  standIn.evaluate = { server: verdict(), browser: { status: 503, body: { title: 'Unavailable', status: 503 } } }
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(`${MARKETING}/`)
+  const form = hero(page)
+  await expect(form.getByText('Clause engine verdict: not reviewed, not sent')).toBeVisible()
+  const edge = await photoBottom(page)
+  await band(page).press('ArrowRight')
+  await expect(form.getByText('Couldn’t reach the live verdict just now.')).toBeVisible()
+  await expect(form.getByText(/^Last tried at \d\d:\d\d MYT\.$/)).toBeVisible()
+  expect(await form.innerText()).not.toMatch(/\b503\b/)
+  expect(await photoBottom(page)).toBe(edge)
+  standIn.evaluate.browser = {
+    status: 429,
+    headers: { 'retry-after': '120' },
+    body: { title: 'Too many', status: 429 }
+  }
+  await form.getByRole('button', { name: 'Retry' }).click()
+  await expect(form.getByText('Live verdicts are busy just now.')).toBeVisible()
+  await expect(form.getByText(/^Try again after \d\d:\d\d MYT\.$/)).toBeVisible()
+  await expect(form.getByRole('button', { name: 'Retry' })).toBeVisible()
+  expect(await form.innerText()).not.toMatch(/\b429\b/)
+  expect(await photoBottom(page)).toBe(edge)
+})
+
+test('without JavaScript the window form draws the chosen window and answers with the same replay', async ({
+  browser,
+  request
+}) => {
+  const context = await browser.newContext({ javaScriptEnabled: false })
+  await routeProductionHosts(context, request, { server: server.origin, standIn: standIn.origin })
+  const page = await context.newPage()
+  await page.goto(`${MARKETING}/`)
+  const form = hero(page)
+  await expect(form.getByText(REPLAY_LEAD)).toBeVisible()
+  const date = form.locator('label:has(input[name="date"])').nth(1)
+  await date.click()
+  await form.getByLabel('Window start').fill('17:30')
+  await form.getByLabel('Window end').fill('19:00')
+  await form.getByRole('button', { name: 'Check this window' }).click()
+  await expect(page).toHaveURL(/[?&]start=17%3A30/)
+  await expect(form.getByLabel('Window start')).toHaveValue('17:30')
+  await expect(form.getByLabel('Window end')).toHaveValue('19:00')
+  await expect(band(page)).toHaveAttribute('aria-valuetext', '17:30 MYT to 19:00 MYT')
+  await expect(form.getByText(REPLAY_LEAD)).toBeVisible()
+  await expect(form.getByText('Clause engine verdict: not reviewed, not sent')).toBeVisible()
+  expect(await form.innerText()).not.toMatch(/\b(?:4\d\d|50\d)\b|not built|\bAPI\b|Couldn’t/i)
+  expect(standIn.log.filter((entry) => entry.caller === 'browser')).toEqual([])
+  await context.unrouteAll({ behavior: 'ignoreErrors' })
+  await context.close()
+})
+
 test('LND-1 hero renders the live verdict with at least five inputs, ages and sources', async ({
   page,
   expectAxeClean
 }) => {
-  await stubLanding(page, true)
-  await page.goto('/')
+  standIn.evaluate = { server: verdict(), browser: verdict() }
+  await page.goto(`${MARKETING}/`)
   const picker = hero(page)
-  // The default window is the next hour; moving the start triggers the stubbed evaluate.
   await band(page).press('ArrowRight')
   await expect(picker.getByText('Clause engine verdict: not reviewed, not sent')).toBeVisible()
   await expect(picker.getByText('5 min old').first()).toBeVisible()
-  // PILOT_PROJECT is unset in this harness, so the hero reads n=0; the latest call's date is covered in unit tests.
-  await expect(picker.getByText('No approved call yet (n=0)')).toBeVisible()
+  // PILOT_PROJECT is unset here, so the hero reads n=0 in its sentence; the latest call's date is a unit test.
+  await expect(picker.getByText(/^No approved call yet \(n=0\): /)).toBeVisible()
   const station = picker.locator('li[data-source="https://example.com/gauge"]')
   await expect(station).toContainText('0232901RF')
-  expect((await picker.locator('li, p, span').all()).length).toBeGreaterThan(5)
+  expect(await picker.locator('li[data-source]').count()).toBeGreaterThanOrEqual(5)
   await expectZonedTimes(page)
   await expectAxeClean(page)
-})
-
-test('no-JS GET form returns a new window and renders the server verdict', async ({ page }) => {
-  const tomorrow = new Date(Date.now() + 32 * 3600_000).toISOString().slice(0, 10)
-  const context = await page.context().browser()!.newContext({ javaScriptEnabled: false })
-  const noJs = await context.newPage()
-  await noJs.goto(`/?date=${tomorrow}&start=22%3A00&end=23%3A00`)
-  const form = noJs.locator('form[data-ui]')
-  await expect(form).toBeVisible()
-  await expect(form.getByLabel('Window start')).toHaveValue('22:00')
-  await expect(form.getByLabel('Window end')).toHaveValue('23:00')
-  await expect(form.locator('input[name="date"][value="' + tomorrow + '"]')).toBeChecked()
-  // The server read targets an API this harness does not stub, so it renders the honest state, never a value: a
-  // failed read offers Retry; a verdict not built yet (501) offers the labelled replay instead, since Retry cannot help.
-  const error = form.getByText(/Couldn’t reach the live verdict at .* MYT|The live verdict is not built yet/)
-  await expect(error).toBeVisible()
-  if (/not built/.test((await error.textContent()) ?? '')) {
-    await expect(form.getByRole('link', { name: 'See 2 November, replayed' })).toHaveAttribute('href', '#how')
-    await expect(form.getByRole('button', { name: 'Retry' })).toHaveCount(0)
-  } else await expect(form.getByRole('button', { name: 'Retry' })).toBeVisible()
-  // LND-3: the latest approved call's line stands in the error state too.
-  await expect(form.getByText(/approved call|approved-call calendar/)).toBeVisible()
-  await context.close()
 })
 
 test('the band’s capsule takes the verdict’s mode and the readings strip draws the window as its capsule', async ({
   page
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
-  await stubLanding(page, false)
-  await page.goto('/')
-  // Before any read answers, the capsule is the selection's ink, with no mode of its own.
+  // With no verdict to read, the capsule is the selection's ink, with no mode of its own.
+  await page.goto(`${MARKETING}/`)
   await expect(page.locator('[role="slider"] [data-state="selection"]')).toHaveCount(1)
+  standIn.evaluate = { server: verdict(), browser: verdict() }
+  await page.reload()
   await band(page).press('ArrowRight')
   await expect(hero(page).getByText('Clause engine verdict: not reviewed, not sent')).toBeVisible()
   const capsule = page.locator('[role="slider"] [data-state="normal"]')
@@ -213,61 +425,36 @@ test('the band’s capsule takes the verdict’s mode and the readings strip dra
 })
 
 test('reduced motion leaves nothing animating and gauge errors suppress rain growth', async ({ page }) => {
-  await stubLanding(page, false)
+  standIn.evaluate = { server: verdict(), browser: verdict() }
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.goto('/')
+  await page.goto(`${MARKETING}/`)
   await band(page).press('ArrowRight')
   await expect(hero(page).getByText('Clause engine verdict: not reviewed, not sent')).toBeVisible()
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
   expect(await page.evaluate(() => document.getAnimations().filter((a) => a.playState === 'running').length)).toBe(0)
   // With the gauge erroring, paths carry no growth animation.
-  await page.unroute('**/evaluate')
-  await stubApi(
-    page,
-    'evaluatePublicProject',
-    {
-      ...evaluateDouble(),
-      verdicts: [
-        {
-          ...evaluateDouble().verdicts[0]!,
-          windows: [
-            {
-              ...evaluateDouble().verdicts[0]!.windows[0]!,
-              clauses: [
-                {
-                  key: 'Storm confirmed',
-                  result: 'blocked',
-                  blocked_by: [
-                    { name: 'gauge', source_id: '0232901RF', state: 'stale', since: '2026-11-05T07:00:00.000Z' }
-                  ],
-                  inputs: []
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    { registry: landingHeroOperations }
-  )
+  standIn.evaluate.browser = blockedVerdict()
   await band(page).press('ArrowLeft')
   await expect(
     hero(page).getByText('No call for Storm confirmed: gauge 0232901RF silent since 15:00 MYT')
   ).toBeVisible()
-  const animated = await hero(page).evaluate((el: Element) => el.querySelectorAll('.hero-strip-path').length)
   const blockedAnimated = await page.evaluate(() =>
     [...document.querySelectorAll('[data-rain-animated]')].map((el) => el.getAttribute('data-rain-animated'))
   )
-  expect(animated).toBeGreaterThanOrEqual(0)
   expect(blockedAnimated).toContain('no')
 })
 
-test('expectAxeClean covers normal, no-call, error and no-JS at both widths', async ({ page, expectAxeClean }) => {
-  await stubLanding(page, false)
+test('expectAxeClean covers the replay, a verdict and a failure at both widths', async ({ page, expectAxeClean }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.goto('/')
-  await band(page).press('ArrowRight')
+  await page.goto(`${MARKETING}/`)
+  await expect(hero(page).getByText(REPLAY_LEAD)).toBeVisible()
+  expect((await blockingViolations(page)).length).toBe(0)
+  standIn.evaluate = { server: verdict(), browser: { status: 503, body: { status: 503 } } }
+  await page.reload()
   await expect(hero(page).getByText('Clause engine verdict: not reviewed, not sent')).toBeVisible()
+  expect((await blockingViolations(page)).length).toBe(0)
+  await band(page).press('ArrowRight')
+  await expect(hero(page).getByText('Couldn’t reach the live verdict just now.')).toBeVisible()
   expect((await blockingViolations(page)).length).toBe(0)
   await page.setViewportSize({ width: 375, height: 812 })
   expect((await blockingViolations(page)).length).toBe(0)
@@ -278,24 +465,10 @@ test('expectAxeClean covers normal, no-call, error and no-JS at both widths', as
   await expectAxeClean(page)
 })
 
-test('the picker keyboard path fires the same evaluate request', async ({ page }) => {
-  const requests: unknown[] = []
-  page.on('request', (request) => {
-    if (request.url().includes('/evaluate') && request.method() === 'POST') requests.push(request.postDataJSON())
-  })
-  await stubLanding(page, false)
-  await page.goto('/')
-  await band(page).focus()
-  await band(page).press('ArrowRight')
-  await expect.poll(() => requests.length).toBeGreaterThan(0)
-  const body = requests.at(-1) as { date: string; start_time: string; end_time: string }
-  expect(body.start_time).toMatch(/^\d{2}:\d{2}$/)
-  await expectZonedTimes(page)
-})
-
 // The day strip under touch at 390px, with gestures synthesized through CDP (Chromium's touch emulation): a scroll
 // that starts on the strip changes nothing, a cancelled drag puts the window back, and the capsule as drawn (28px at
-// least, wider than a short window's span) is what a press moves.
+// least, wider than a short window's span) is what a press moves. Live verdicts are not open here, as in production
+// today: the strip works the same either way.
 test.describe('the day strip under touch', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 })
 
@@ -321,8 +494,7 @@ test.describe('the day strip under touch', () => {
 
   /** Loads the picker island by keyboard and sets the window to 06:00–07:00, an hour drawn narrower than 28px. */
   async function windowAtSix(page: Page) {
-    await stubLanding(page, false)
-    await page.goto('/')
+    await page.goto(`${MARKETING}/`)
     const strip = band(page)
     await strip.scrollIntoViewIfNeeded()
     await strip.press('End')

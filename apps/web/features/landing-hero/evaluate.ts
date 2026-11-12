@@ -10,8 +10,13 @@ export interface EvaluateData {
   strip: InputValue[]
 }
 
+/**
+ * `unavailable` is a verdict read the API does not serve yet (501): no read can change it, so the hero answers with the
+ * labelled replay and asks again only on the next page load. `error` is a real failure, which Retry can mend.
+ */
 export type EvaluateResult =
   | { kind: 'ok'; data: EvaluateData }
+  | { kind: 'unavailable' }
   | { kind: 'rate_limited'; retryAfter: string }
   | { kind: 'error'; status: number | null; at: string }
 
@@ -87,6 +92,7 @@ async function postEvaluate(
   } catch {
     return { kind: 'error', status: null, at: new Date().toISOString() }
   }
+  if (response.status === 501) return { kind: 'unavailable' }
   if (response.status === 429)
     return { kind: 'rate_limited', retryAfter: retryAfterInstant(response.headers.get('Retry-After'), new Date()) }
   if (!response.ok) return { kind: 'error', status: response.status, at: new Date().toISOString() }
@@ -95,10 +101,12 @@ async function postEvaluate(
   return { kind: 'ok', data: body }
 }
 
-/** Browser read: same origin, or NEXT_PUBLIC_API_ORIGIN where the deploy splits hosts. */
-export function fetchEvaluate(win: HeroWindow, signal?: AbortSignal): Promise<EvaluateResult> {
-  const baseUrl = typeof window !== 'undefined' ? process.env.NEXT_PUBLIC_API_ORIGIN : undefined
-  return postEvaluate(win, baseUrl, signal)
+/**
+ * Browser read: straight to the API host whose origin the server passed down (its `API_ORIGIN`; `/v1/public` answers
+ * CORS `*` and the page's CSP allows that origin), or the page's own origin when one host serves everything.
+ */
+export function fetchEvaluate(win: HeroWindow, apiOrigin: string | undefined, signal?: AbortSignal) {
+  return postEvaluate(win, apiOrigin, signal)
 }
 
 interface CalendarEntry {

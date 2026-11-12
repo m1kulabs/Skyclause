@@ -96,7 +96,7 @@ export function Faq({ grades, gradesSource }: { grades: GradesState; gradesSourc
       </h2>
       <div className="faq-list">
         {questions.map((item, index) => (
-          <details key={item.q} name="faq" className="faq-tile" open={index === 5} data-reveal>
+          <details key={item.q} name="faq" className="faq-tile" open={index === 0} data-reveal>
             <summary className="faq-question">
               <span>{item.q}</span>
               <span className="faq-sign" aria-hidden="true" />

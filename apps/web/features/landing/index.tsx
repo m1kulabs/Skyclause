@@ -1,5 +1,6 @@
 import './landing.css'
 import type { HeroRead } from '../landing-hero/landing-hero'
+import { appHref } from './app-links'
 import { calendarPath, pilotRefOf } from '../landing-hero/evaluate'
 import { localDateOf } from '../landing-hero/window-model'
 import { Cta } from './cta'
@@ -16,8 +17,7 @@ export { LandingFooter } from './footer'
 
 /** Where the primary action, Sign in, lives (APP_ORIGIN splits hosts in multi-host mode). */
 export function signInHref(): string {
-  const appOrigin = process.env.APP_ORIGIN
-  return appOrigin ? new URL('/sign-in', appOrigin).toString() : '/sign-in'
+  return appHref('/sign-in')
 }
 
 // The sections after the hero, in the order of the page's argument: how one window gets its call, what the record
