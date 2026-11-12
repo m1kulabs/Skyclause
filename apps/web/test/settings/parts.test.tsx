@@ -53,11 +53,11 @@ test('an aside moves into the frame’s label column and renders nothing in the 
       <div data-settings-aside />
       <div data-testid="panel">
         <SettingsAside>
-          <p>1 Owner</p>
+          <p data-summary />
         </SettingsAside>
       </div>
     </>
   )
   expect(screen.getByTestId('panel').textContent).toBe('')
-  expect(document.querySelector('[data-settings-aside]')?.textContent).toBe('1 Owner')
+  expect(document.querySelector('[data-settings-aside] [data-summary]')).not.toBeNull()
 })

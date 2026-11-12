@@ -22,7 +22,7 @@ function session(role: Role, orgId: string | null = 'org-test'): Principal {
 test('the frame sets the scope title as the h1, lists its sections quietly and marks the current one twice', () => {
   const markup = renderToStaticMarkup(
     <SettingsFrame scope="organisation" section="members" principal={session('admin')} org="org-test">
-      <p>panel</p>
+      <p />
     </SettingsFrame>
   )
   expect(markup.match(/<h1\b/g)).toHaveLength(1)
@@ -43,7 +43,7 @@ test('the frame sets the scope title as the h1, lists its sections quietly and m
 test('the frame keeps role filtering: an Approver is offered only the rota', () => {
   const markup = renderToStaticMarkup(
     <SettingsFrame scope="organisation" section="rota" principal={session('approver')} org="org-test">
-      <p>panel</p>
+      <p />
     </SettingsFrame>
   )
   expect(markup.match(/<li>/g)).toHaveLength(1)
@@ -54,7 +54,7 @@ test('the frame keeps role filtering: an Approver is offered only the rota', () 
 test('the frame is written in Malay on request', () => {
   const markup = renderToStaticMarkup(
     <SettingsFrame scope="account" section="profile" principal={session('viewer', null)} locale="ms">
-      <p>panel</p>
+      <p />
     </SettingsFrame>
   )
   expect(markup).toContain('Tetapan akaun')
