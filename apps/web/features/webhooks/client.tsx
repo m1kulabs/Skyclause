@@ -210,9 +210,10 @@ export function Webhooks({
   })
 
   // No webhook operation has a handler yet (e-webhooks): a 501 is a plain "not available yet", never an error to retry.
+  // In settings it replaces the panel's own card, as the other not-available sections do, rather than nest in it.
   if (failed && statusOf(failed) === 501)
     return (
-      <div className="webhooks">
+      <div className={cn('webhooks', settings && '-m-5')}>
         <NotBuilt title={t('webhooks.unavailable', {}, locale)} />
       </div>
     )
