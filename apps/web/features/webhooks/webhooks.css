@@ -2,178 +2,223 @@
   min-width: 0;
   display: grid;
   gap: 24px;
-  margin-top: 24px;
   overflow-wrap: anywhere;
 }
-.webhooks h2 {
-  font-size: 20px;
-  font-weight: 400;
-  margin-bottom: 16px;
-}
-.webhooks h3 {
-  font-size: 16px;
-  font-weight: 600;
-}
 .webhooks h4 {
+  margin-top: 12px;
   font-size: 13px;
   font-weight: 600;
-  margin-top: 16px;
 }
 .webhooks p,
 .webhooks dd,
 .webhooks dt {
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 20px;
 }
+
+/* The inspector: endpoints and the registration beside the delivery record; one column on a narrow screen. */
 .webhook-panes {
-  align-items: stretch;
-  min-height: 640px;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 24px;
+  align-items: start;
 }
-.webhook-register-pane,
-.webhook-delivery-pane {
+.webhook-side,
+.webhook-main {
+  display: grid;
   min-width: 0;
-  padding: 4px;
-  overflow: auto;
+  gap: 24px;
+  align-content: start;
 }
-.webhook-delivery-pane {
-  display: flex;
-  flex-direction: column;
+.webhook-main {
   gap: 16px;
 }
+
 .webhook-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
 }
-.webhooks button {
+.webhooks [data-slot='button'],
+.webhooks a[data-slot='button'] {
   height: auto;
-  min-height: 44px;
+  min-height: 36px;
+  max-width: 100%;
   white-space: normal;
   overflow-wrap: anywhere;
 }
 .webhooks [data-slot='field-label'] {
   min-width: 0;
   overflow-wrap: anywhere;
-  line-height: 1.5;
+  line-height: 20px;
 }
 .webhook-event-choices {
   display: grid;
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(min(13rem, 100%), 1fr));
+  gap: 4px 16px;
 }
 .webhook-event-choices [data-slot='field'] {
   min-height: 34px;
 }
-.webhook-event-choices button {
-  min-height: 24px;
-  min-width: 24px;
+
+/* An endpoint as a row: its url, then its state and its last delivery. The chosen row carries the capsule mark. */
+.webhook-rows {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-.webhook-form input[type='radio'] {
-  accent-color: var(--primary);
-  min-width: 24px;
-  min-height: 24px;
-}
-.webhooks input {
-  height: 40px;
-}
-.webhooks select {
-  border: 1px solid var(--input);
-  border-radius: 6px;
-  background: var(--background);
-  color: var(--foreground);
+.webhook-row {
+  position: relative;
+  display: grid;
   width: 100%;
   min-width: 0;
-  min-height: 44px;
-}
-.webhooks pre {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.6;
-  padding: 12px;
-  background: var(--muted);
-  border-radius: 6px;
-}
-.webhooks dl {
-  display: grid;
   gap: 4px;
-  font-variant-numeric: tabular-nums;
+  padding: 12px 16px 16px;
+  border-radius: 16px;
+  background: var(--card);
+  color: var(--foreground);
+  text-align: left;
 }
-.webhooks dd {
-  margin-bottom: 8px;
+.webhook-row[aria-current='true'] {
+  background: var(--raised);
 }
-.webhooks dt {
+.webhook-row-url {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.webhook-row-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
   color: var(--muted-foreground);
 }
-.webhook-log,
-.webhook-event {
-  display: grid;
-  gap: 16px;
-  min-width: 0;
-}
-.webhook-event {
-  border-top: 1px solid var(--border);
-  padding-top: 20px;
-}
-.webhooks summary {
-  cursor: pointer;
-  min-height: 44px;
-  font-variant-numeric: tabular-nums;
-}
-.webhooks summary span {
-  display: block;
-}
-.webhook-secret {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 16px;
-  display: grid;
-  gap: 12px;
-}
-.webhook-endpoints {
-  display: grid;
-  gap: 32px;
-  list-style: none;
-  padding: 0;
-}
-.webhook-endpoints li {
-  display: grid;
-  gap: 12px;
-  min-width: 0;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 24px;
-}
+
 .webhook-verification {
-  display: grid;
-  justify-items: start;
-  gap: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
 }
 .webhook-url {
   overflow-wrap: anywhere;
 }
-.webhooks a {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
+
+/* A delivery log is a record: each attempt reads time first, then its outcome as a mark with its word, then its duration. */
+.webhook-log,
+.webhook-event {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
 }
-@media (max-width: 767px) {
+.webhook-log {
+  gap: 24px;
+}
+.webhook-attempt {
+  min-width: 0;
+  border-radius: 16px;
+  background: var(--card);
+}
+.webhook-attempt > summary {
+  display: grid;
+  grid-template-columns: minmax(12rem, 14rem) 6rem minmax(0, 1fr) 6.5rem;
+  align-items: center;
+  gap: 4px 16px;
+  min-height: 44px;
+  padding: 8px 16px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 14px;
+}
+.webhook-attempt > summary::-webkit-details-marker {
+  display: none;
+}
+.webhook-outcome {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+.webhook-duration {
+  text-align: right;
+}
+.webhook-evidence {
+  display: grid;
+  gap: 4px;
+  padding: 4px 16px 16px;
+}
+.webhook-evidence dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 2px 16px;
+  margin: 0;
+}
+.webhook-evidence dl > div {
+  display: contents;
+}
+.webhook-evidence dt {
+  color: var(--muted-foreground);
+}
+.webhook-evidence dd {
+  margin: 0 0 6px;
+}
+
+.webhook-endpoints {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.webhook-endpoints li {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 10px;
+  background: var(--raised);
+}
+.webhook-last {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin: 0;
+  color: var(--muted-foreground);
+}
+.webhook-last dd {
+  margin: 0;
+}
+
+@media (max-width: 1023px) {
   .webhook-panes {
-    display: flex;
-    /* The panel library's inline row direction stays until useIsMobile re-renders the group as vertical. */
-    flex-direction: column !important;
-    height: auto;
+    grid-template-columns: minmax(0, 1fr);
   }
-  .webhook-panes > [data-slot='resizable-panel'] {
-    flex: none !important;
-    height: auto;
-    overflow: visible;
+  /* The record outranks the registration form on a narrow screen: endpoints, then deliveries, then the form. */
+  .webhook-side {
+    display: contents;
   }
-  .webhook-panes > [data-slot='resizable-handle'] {
-    display: none;
+  .webhook-endpoints-section {
+    order: 1;
+  }
+  .webhook-main {
+    order: 2;
+  }
+  .webhook-register-section {
+    order: 3;
+  }
+}
+@media (max-width: 640px) {
+  .webhook-attempt > summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .webhook-outcome {
+    grid-column: 1;
+  }
+  .webhook-duration {
+    grid-column: 2;
+    grid-row: 2 / span 2;
   }
 }

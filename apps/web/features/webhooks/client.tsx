@@ -2,15 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Button } from '#ui/button'
-import { Field, FieldLabel } from '#ui/field'
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '#ui/resizable'
-import { Empty, EmptyHeader, EmptyDescription } from '#ui/empty'
+import { Button, buttonVariants } from '#ui/button'
+import { Card, CardContent } from '#ui/card'
+import { Skeleton } from '#ui/skeleton'
+import { cn } from '#lib/utils'
 import { TypedConfirmDialog } from '../settings/set-7/confirm-dialog'
-import { useIsMobile } from '../../components/hooks/use-mobile'
+import { StatusMark } from '../brand/status-mark'
+import { SourceError } from '../data-components/states'
+import { ApiProblem } from '../../lib/api-fetch'
 import { apiFetch, type Endpoint, type WebhookProject } from './operations'
 import { RegisterForm, problemKey } from './form'
-import { EndpointState, Secret } from './endpoint'
+import { EndpointState, Secret, endpointMark } from './endpoint'
 import { DeliveryLog, ZonedTime } from './deliveries'
 import { t } from './catalogue'
 import './webhooks.css'
@@ -35,18 +37,23 @@ function useChangeQuery() {
   )
 }
 
+type Failed = { error: unknown; at: string }
+const failedAt = (error: unknown): Failed => ({ error, at: new Date().toISOString() })
+const statusOf = (failure: Failed) => (failure.error instanceof ApiProblem ? failure.error.status : null)
+
 export function Webhooks({ org, settings = false }: { org: string; settings?: boolean }) {
   const search = useSearchParams()
   const changeQuery = useChangeQuery()
   const selectedId = search.get('webhook')
   const cursor = search.get('webhooks_cursor')
   const [data, setData] = useState<{ endpoints: Endpoint[]; projects: WebhookProject[]; next: string | null }>()
-  const [failed, setFailed] = useState(false)
+  const [failed, setFailed] = useState<Failed>()
   const [reload, setReload] = useState(0)
   const [formOpen, setFormOpen] = useState(false)
   const [secret, setSecret] = useState<{ id: string; value: string } | null>(null)
   const [deleting, setDeleting] = useState<Endpoint | null>(null)
   const [deleteError, setDeleteError] = useState(false)
+  const [deleted, setDeleted] = useState<string | null>(null)
 
   useEffect(() => {
     const hide = () => setSecret(null)
@@ -59,7 +66,7 @@ export function Webhooks({ org, settings = false }: { org: string; settings?: bo
   useEffect(() => {
     const controller = new AbortController()
     setData(undefined)
-    setFailed(false)
+    setFailed(undefined)
     async function load() {
       const [endpoints, projects] = await Promise.all([
         apiFetch('listWebhooks', {
@@ -87,14 +94,15 @@ export function Webhooks({ org, settings = false }: { org: string; settings?: bo
       ])
       if (!controller.signal.aborted) setData({ endpoints: endpoints.data, projects, next: endpoints.next_cursor })
     }
-    void load().catch(() => {
-      if (!controller.signal.aborted) setFailed(true)
+    void load().catch((error: unknown) => {
+      if (!controller.signal.aborted) setFailed(failedAt(error))
     })
     return () => controller.abort()
   }, [org, cursor, reload])
 
   function created(endpoint: Endpoint, value: string) {
     setSecret({ id: endpoint.id, value })
+    setDeleted(null)
     setData((previous) =>
       previous
         ? {
@@ -115,6 +123,7 @@ export function Webhooks({ org, settings = false }: { org: string; settings?: bo
         previous ? { ...previous, endpoints: previous.endpoints.filter((item) => item.id !== deleting.id) } : previous
       )
       if (secret?.id === deleting.id) setSecret(null)
+      setDeleted(deleting.url)
       if (selectedId === deleting.id) changeQuery({ webhook: null, delivery: null, delivery_cursor: null })
     } catch (error) {
       setDeleteError(true)
@@ -132,13 +141,28 @@ export function Webhooks({ org, settings = false }: { org: string; settings?: bo
   if (failed)
     return (
       <div className="webhooks">
-        <p role="alert">{t('webhooks.load_failed')}</p>
-        <Button variant="outline" onClick={() => setReload((value) => value + 1)}>
-          {t('webhooks.retry')}
-        </Button>
+        <SourceError
+          source={t('webhooks.source_list')}
+          status={statusOf(failed)}
+          at={failed.at}
+          retry={
+            <Button variant="outline" onClick={() => setReload((value) => value + 1)}>
+              {t('webhooks.retry')}
+            </Button>
+          }
+        />
       </div>
     )
-  if (!data) return <p role="status">{t('webhooks.loading')}</p>
+  if (!data)
+    return (
+      <div className="grid gap-2">
+        <Skeleton className="h-10 w-full rounded-full" />
+        <Skeleton className="h-10 w-3/4 rounded-full" />
+        <p role="status" className="sr-only">
+          {t('webhooks.loading')}
+        </p>
+      </div>
+    )
   const form = (
     <RegisterForm
       org={org}
@@ -151,25 +175,32 @@ export function Webhooks({ org, settings = false }: { org: string; settings?: bo
   return (
     <div className="webhooks" data-webhooks>
       {secret && <Secret key={secret.value} value={secret.value} dismiss={() => setSecret(null)} />}
+      {deleted && (
+        <p role="status" className="type-body" translate="no">
+          {t('webhooks.deleted', { url: deleted })}
+        </p>
+      )}
       {settings ? (
         <>
-          <Button onClick={() => setFormOpen(true)}>{t('webhooks.add')}</Button>
-          {formOpen && form}
-          {!data.endpoints.length && (
-            <Empty>
-              <EmptyHeader>
-                <EmptyDescription>{t('webhooks.empty')}</EmptyDescription>
-              </EmptyHeader>
-            </Empty>
+          <div>
+            <Button onClick={() => setFormOpen(true)}>{t('webhooks.add')}</Button>
+          </div>
+          {formOpen && (
+            <Card>
+              <CardContent>{form}</CardContent>
+            </Card>
           )}
+          {!data.endpoints.length && <p className="type-body text-muted-foreground">{t('webhooks.empty')}</p>}
           <ul className="webhook-endpoints" aria-label={t('webhooks.endpoints')}>
             {data.endpoints.map((endpoint) => (
               <li key={endpoint.id}>
-                <p translate="no" className="webhook-url">
+                <p translate="no" className="webhook-url type-card-title">
                   {endpoint.url}
                 </p>
-                <p translate="no">{t('webhooks.all_events', { events: endpoint.events.join(', ') })}</p>
-                <p>
+                <p translate="no" className="type-small text-muted-foreground">
+                  {t('webhooks.all_events', { events: endpoint.events.join(', ') })}
+                </p>
+                <p className="type-small text-muted-foreground">
                   {t('webhooks.project_list', {
                     projects: endpoint.project_ids.length
                       ? endpoint.project_ids
@@ -183,14 +214,19 @@ export function Webhooks({ org, settings = false }: { org: string; settings?: bo
                   })}
                 </p>
                 <EndpointState endpoint={endpoint} org={org} update={updated} />
-                <dl>
+                <dl className="webhook-last">
                   <dt>{t('webhooks.last_delivery')}</dt>
                   <dd>
                     <ZonedTime value={endpoint.last_delivery_at} />
                   </dd>
                 </dl>
                 <div className="webhook-actions">
-                  <a href={`/developers/webhooks?webhook=${encodeURIComponent(endpoint.id)}`}>{t('webhooks.open')}</a>
+                  <a
+                    className={cn(buttonVariants({ variant: 'outline' }))}
+                    href={`/developers/webhooks?webhook=${encodeURIComponent(endpoint.id)}`}
+                  >
+                    {t('webhooks.open')}
+                  </a>
                   <Button
                     variant="destructive"
                     onClick={() => {
@@ -204,7 +240,11 @@ export function Webhooks({ org, settings = false }: { org: string; settings?: bo
               </li>
             ))}
           </ul>
-          {deleteError && <p role="alert">{t('webhooks.action_failed')}</p>}
+          {deleteError && (
+            <p role="alert" className="type-body font-medium">
+              {t('webhooks.action_failed')}
+            </p>
+          )}
           <TypedConfirmDialog
             open={!!deleting}
             onOpenChange={(open) => {
@@ -236,6 +276,7 @@ export function Webhooks({ org, settings = false }: { org: string; settings?: bo
   )
 }
 
+/** Endpoints as rows with their state and last delivery; the chosen one is inspected beside them. */
 function Inspector({
   org,
   endpoints,
@@ -247,50 +288,66 @@ function Inspector({
   selectedId: string | null
   form: React.ReactNode
 }) {
-  const mobile = useIsMobile()
   const changeQuery = useChangeQuery()
   const id = selectedId ?? endpoints[0]?.id
   useEffect(() => {
     if (!selectedId && endpoints[0]) changeQuery({ webhook: endpoints[0].id }, true)
   }, [selectedId, endpoints, changeQuery])
   return (
-    <ResizablePanelGroup orientation={mobile ? 'vertical' : 'horizontal'} className="webhook-panes">
-      <ResizablePanel defaultSize="43%" minSize={mobile ? '0%' : '25%'} className="webhook-register-pane">
-        <h2>{t('webhooks.register')}</h2>
-        {form}
-      </ResizablePanel>
-      <ResizableHandle withHandle aria-label={t('webhooks.resize')} />
-      <ResizablePanel defaultSize="57%" minSize={mobile ? '0%' : '25%'} className="webhook-delivery-pane">
-        <h2>{t('webhooks.delivery_log')}</h2>
+    <div className="webhook-panes">
+      <div className="webhook-side">
         {!!endpoints.length && (
-          <Field>
-            <FieldLabel htmlFor="webhook-selection">{t('webhooks.select_endpoint')}</FieldLabel>
-            <select
-              id="webhook-selection"
-              name="webhook-selection"
-              translate="no"
-              value={id ?? ''}
-              onChange={(event) => changeQuery({ webhook: event.target.value, delivery: null, delivery_cursor: null })}
-            >
-              {endpoints.map((endpoint) => (
-                <option key={endpoint.id} value={endpoint.id}>
-                  {endpoint.url}
-                </option>
-              ))}
-            </select>
-          </Field>
+          <section className="webhook-endpoints-section grid gap-3" aria-labelledby="webhook-endpoints-title">
+            <h2 id="webhook-endpoints-title" className="type-section">
+              {t('webhooks.endpoints')}
+            </h2>
+            <ul className="webhook-rows" aria-label={t('webhooks.select_endpoint')}>
+              {endpoints.map((endpoint) => {
+                const mark = endpointMark(endpoint)
+                return (
+                  <li key={endpoint.id}>
+                    <button
+                      type="button"
+                      className="webhook-row current-mark"
+                      aria-current={endpoint.id === id ? 'true' : undefined}
+                      onClick={() => changeQuery({ webhook: endpoint.id, delivery: null, delivery_cursor: null })}
+                    >
+                      <span className="webhook-row-url" translate="no">
+                        {endpoint.url}
+                      </span>
+                      <span className="webhook-row-state">
+                        <StatusMark state={mark.state} variant="plain" label={mark.word} />
+                        <span className="type-small">
+                          {t('webhooks.last_delivery')} <ZonedTime value={endpoint.last_delivery_at} />
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
         )}
+        <section className="webhook-register-section grid gap-3" aria-labelledby="webhook-register-title">
+          <h2 id="webhook-register-title" className="type-section">
+            {t('webhooks.register')}
+          </h2>
+          <Card>
+            <CardContent>{form}</CardContent>
+          </Card>
+        </section>
+      </div>
+      <section className="webhook-main" aria-labelledby="webhook-log-title">
+        <h2 id="webhook-log-title" className="type-section">
+          {t('webhooks.delivery_log')}
+        </h2>
         {id ? (
           <InspectedEndpoint key={id} org={org} id={id} />
         ) : (
-          <Empty>
-            <EmptyHeader>
-              <EmptyDescription>{t('webhooks.empty_inspector')}</EmptyDescription>
-            </EmptyHeader>
-          </Empty>
+          <p className="type-text text-muted-foreground">{t('webhooks.empty_inspector')}</p>
         )}
-      </ResizablePanel>
-    </ResizablePanelGroup>
+      </section>
+    </div>
   )
 }
 
@@ -298,7 +355,7 @@ function InspectedEndpoint({ org, id }: { org: string; id: string }) {
   const search = useSearchParams()
   const changeQuery = useChangeQuery()
   const [endpoint, setEndpoint] = useState<Endpoint>()
-  const [failed, setFailed] = useState(false)
+  const [failed, setFailed] = useState<Failed>()
   const [reload, setReload] = useState(0)
   const [refresh, setRefresh] = useState(0)
   const [busy, setBusy] = useState(false)
@@ -307,13 +364,13 @@ function InspectedEndpoint({ org, id }: { org: string; id: string }) {
   useEffect(() => {
     const controller = new AbortController()
     setEndpoint(undefined)
-    setFailed(false)
+    setFailed(undefined)
     void apiFetch('getWebhook', { org, params: { id }, signal: controller.signal })
       .then((value) => {
         if (!controller.signal.aborted) setEndpoint(value)
       })
-      .catch(() => {
-        if (!controller.signal.aborted) setFailed(true)
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) setFailed(failedAt(error))
       })
     return () => controller.abort()
   }, [id, org, reload])
@@ -335,27 +392,48 @@ function InspectedEndpoint({ org, id }: { org: string; id: string }) {
   }
   if (failed)
     return (
-      <div>
-        <p role="alert">{t('webhooks.endpoint_failed')}</p>
-        <Button onClick={() => setReload((value) => value + 1)}>{t('webhooks.retry')}</Button>
+      <SourceError
+        source={t('webhooks.source_endpoint')}
+        status={statusOf(failed)}
+        at={failed.at}
+        retry={
+          <Button variant="outline" onClick={() => setReload((value) => value + 1)}>
+            {t('webhooks.retry')}
+          </Button>
+        }
+      />
+    )
+  if (!endpoint)
+    return (
+      <div className="grid gap-2">
+        <Skeleton className="h-6 w-2/3 rounded-full" />
+        <Skeleton className="h-5 w-1/2 rounded-full" />
+        <p role="status" className="sr-only">
+          {t('webhooks.loading_endpoint')}
+        </p>
       </div>
     )
-  if (!endpoint) return <p role="status">{t('webhooks.loading_endpoint')}</p>
   return (
     <>
-      <p translate="no" className="webhook-url">
-        {endpoint.url}
-      </p>
-      <EndpointState endpoint={endpoint} org={org} update={setEndpoint} />
-      <div className="webhook-actions">
-        <Button onClick={() => void redeliver()} disabled={busy} aria-busy={busy}>
-          {t(busy ? 'webhooks.redelivering' : 'webhooks.redeliver')}
-        </Button>
-        <Button variant="outline" onClick={() => setRefresh((value) => value + 1)}>
-          {t('webhooks.refresh')}
-        </Button>
-      </div>
-      <div role="status">{message && <p>{t(`webhooks.${message}`)}</p>}</div>
+      <Card>
+        <CardContent className="grid min-w-0 gap-3">
+          <p translate="no" className="webhook-url type-card-title">
+            {endpoint.url}
+          </p>
+          <EndpointState endpoint={endpoint} org={org} update={setEndpoint} />
+          <div className="webhook-actions">
+            <Button onClick={() => void redeliver()} disabled={busy} aria-busy={busy}>
+              {t(busy ? 'webhooks.redelivering' : 'webhooks.redeliver')}
+            </Button>
+            <Button variant="outline" onClick={() => setRefresh((value) => value + 1)}>
+              {t('webhooks.refresh')}
+            </Button>
+          </div>
+          <div role="status" className="type-body">
+            {message && <p>{t(`webhooks.${message}`)}</p>}
+          </div>
+        </CardContent>
+      </Card>
       <DeliveryLog
         org={org}
         webhookId={id}

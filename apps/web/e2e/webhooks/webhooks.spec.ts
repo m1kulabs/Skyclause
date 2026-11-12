@@ -170,7 +170,10 @@ test('deliveries group retries by event newest first and preserve evidence and U
   ])
     await expect(attempt.getByText(value, { exact: true })).toBeVisible()
   await expect(attempt.locator('pre').first()).toHaveText(delivery.raw_request_body)
+  // The record reads time first, then the outcome as a mark with its word and the status code, then the duration.
+  await expect(attempt.locator('summary time')).toHaveAttribute('datetime', retry.attempted_at)
   await expect(attempt.locator('summary')).toContainText('503')
+  await expect(attempt.locator('summary')).toContainText(t('webhooks.failed_attempt'))
   await expect(attempt.locator('summary')).toContainText('120 ms')
   await expect(attempt.locator('dt[translate=no]')).toHaveCount(3)
   await page.locator('[data-delivery-id=delivery-1] summary').click()
@@ -228,7 +231,7 @@ test('API wait renders loading only, then failure with retry; no fabricated endp
   await expect(page.getByText(t('webhooks.loading'), { exact: true })).toBeVisible()
   await expect(page.locator('[data-webhooks]')).toHaveCount(0)
   release()
-  await expect(page.getByText(t('webhooks.load_failed'), { exact: true })).toBeVisible()
+  await expect(page.locator('[data-source-error="503"]')).toBeVisible()
   await expect(page.locator('[data-webhook-secret]')).toHaveCount(0)
 })
 
