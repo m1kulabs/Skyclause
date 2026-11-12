@@ -151,15 +151,17 @@
   font-weight: 400;
   vertical-align: middle;
 }
-.callsTable th[scope='col']:nth-child(1) {
-  width: 24%;
-}
-.callsTable th[scope='col']:nth-child(2) {
-  width: 22%;
-}
-.callsTable th[scope='col']:nth-child(3),
-.callsTable th[scope='col']:nth-child(4) {
-  width: 13%;
+@media (min-width: 1024px) {
+  .callsTable th[scope='col']:nth-child(1) {
+    width: 24%;
+  }
+  .callsTable th[scope='col']:nth-child(2) {
+    width: 22%;
+  }
+  .callsTable th[scope='col']:nth-child(3),
+  .callsTable th[scope='col']:nth-child(4) {
+    width: 13%;
+  }
 }
 .rowLink {
   display: inline-flex;
@@ -425,6 +427,14 @@
   .recordGrid {
     grid-template-columns: minmax(0, 1fr);
   }
+  /* The tablet keeps five columns sized by their content; the time and the mark stay on one line. */
+  .callsTable {
+    table-layout: auto;
+  }
+  .rowLink,
+  .callsTable td:nth-of-type(1) {
+    white-space: nowrap;
+  }
 }
 
 /* Phone: the table becomes two-line rows (time and mode, then state, grade and delay); the record follows the evidence. */
@@ -485,8 +495,9 @@
   .rowLink {
     min-height: 44px;
   }
-  .callsTable {
-    table-layout: auto;
+  .rowLink,
+  .callsTable td:nth-of-type(1) {
+    white-space: normal;
   }
   .delay {
     width: 120px;
