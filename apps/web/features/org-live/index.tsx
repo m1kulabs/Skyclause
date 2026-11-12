@@ -5,6 +5,7 @@ import { DomainEventSchema } from '@skyclause/contracts'
 import { formatTime } from '@skyclause/i18n/format'
 import { usePathname, useRouter } from 'next/navigation'
 import { announce } from '../../lib/announce'
+import { browserPath } from '../../lib/api-fetch'
 import { readSse, type SseEvent } from '../../lib/read-sse'
 import { apiFetch, orgEventStream } from './operations'
 import { getApprovalsCount, setApprovalsCount, startOrgLive, stopOrgLive, subscribeToApprovalsCount } from './store'
@@ -311,10 +312,7 @@ export function OrgLive({ org }: OrgLiveProps) {
       }
     }
 
-    const path = process.env.NEXT_PUBLIC_API_ORIGIN
-      ? new URL(orgEventStream.path, process.env.NEXT_PUBLIC_API_ORIGIN)
-      : orgEventStream.path
-    void readSse(path, {
+    void readSse(browserPath(orgEventStream.path), {
       headers: { 'Skyclause-Organization': org },
       resume: false,
       signal,
