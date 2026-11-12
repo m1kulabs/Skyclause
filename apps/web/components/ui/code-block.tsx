@@ -10,13 +10,12 @@ import { Button } from '#ui/button'
 import { CheckIcon, CopyIcon } from 'lucide-react'
 
 const codeBlockVariants = cva(
-  'group/code-block relative flex w-full min-w-0 flex-col overflow-hidden rounded-lg text-[13px]   data-[size=sm]:text-xs',
+  'group/code-block relative flex w-full min-w-0 flex-col overflow-hidden rounded-md border-(length:--edge-width) border-(--edge) text-[13px] leading-5 data-[size=sm]:text-[13px]',
   {
     variants: {
       variant: {
-        default:
-          'border border-input text-foreground has-[>[data-slot=code-block-content]:focus-visible]:border-ring dark:bg-input/30',
-        destructive: 'border border-destructive/30 text-destructive dark:border-destructive/40'
+        default: 'bg-muted text-foreground in-data-[slot=card]:bg-raised',
+        destructive: 'bg-raised text-destructive in-data-[slot=card]:bg-overlay'
       }
     },
     defaultVariants: {
@@ -60,7 +59,7 @@ function CodeBlockTitle({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot="code-block-title"
       className={cn(
-        "min-w-0 truncate font-sans text-[13px] font-medium text-foreground group-data-[size=sm]/code-block:text-xs group-data-[variant=destructive]/code-block:text-destructive [&_svg]:pointer-events-none [&_svg]:inline-block [&_svg]:align-middle [&_svg:not([class*='size-'])]:size-3.5 *:[svg]:me-1.5",
+        "min-w-0 truncate font-sans text-[13px] font-medium text-foreground group-data-[size=sm]/code-block:text-[13px] group-data-[variant=destructive]/code-block:text-destructive [&_svg]:pointer-events-none [&_svg]:inline-block [&_svg]:align-middle [&_svg:not([class*='size-'])]:size-3.5 *:[svg]:me-1.5",
         className
       )}
       {...props}
@@ -176,9 +175,9 @@ const codeBlockLineVariants = cva(
     variants: {
       variant: {
         default: '',
-        added: "bg-muted after:content-['+']",
-        removed: "bg-destructive/10 after:text-destructive after:content-['−']",
-        highlighted: 'bg-muted'
+        added: "bg-raised after:content-['+']",
+        removed: "bg-overlay after:text-destructive after:content-['−']",
+        highlighted: 'bg-raised'
       }
     },
     defaultVariants: {

@@ -37,7 +37,7 @@ function Toast({ className, ...props }: ToastPrimitive.Root.Props) {
     <ToastPrimitive.Root
       data-slot="toast"
       className={cn(
-        'group/toast pointer-events-auto absolute right-0 bottom-0 z-[calc(1000-var(--toast-index))] w-full origin-bottom rounded-2xl bg-popover text-popover-foreground shadow-lg will-change-transform outline-none select-none focus-visible:border-ring  ',
+        'group/toast pointer-events-auto absolute right-0 bottom-0 z-[calc(1000-var(--toast-index))] w-full origin-bottom rounded-xl border-(length:--edge-width) border-(--edge) bg-popover text-popover-foreground shadow-lg will-change-transform outline-none select-none',
         '[--gap:0.75rem] [--height:var(--toast-frontmost-height,var(--toast-height))] [--offset-y:calc(var(--toast-offset-y)*-1+calc(var(--toast-index)*var(--gap)*-1)+var(--toast-swipe-movement-y))] [--peek:0.75rem] [--scale:calc(max(0,1-(var(--toast-index)*0.1)))] [--shrink:calc(1-var(--scale))]',
         'h-(--height) [transform:translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-swipe-movement-y)-(var(--toast-index)*var(--peek))-(var(--shrink)*var(--height))))_scale(var(--scale))] [transition:transform_150ms_cubic-bezier(0.22,1,0.36,1),opacity_150ms]',
         "after:absolute after:top-full after:left-0 after:h-[calc(var(--gap)+1px)] after:w-full after:content-['']",
@@ -74,7 +74,11 @@ function ToastContent({ className, ...props }: ToastPrimitive.Content.Props) {
 
 function ToastTitle({ className, ...props }: ToastPrimitive.Title.Props) {
   return (
-    <ToastPrimitive.Title data-slot="toast-title" className={cn('text-[13px] font-medium', className)} {...props} />
+    <ToastPrimitive.Title
+      data-slot="toast-title"
+      className={cn('text-[14px] leading-5 font-medium', className)}
+      {...props}
+    />
   )
 }
 
@@ -82,7 +86,7 @@ function ToastDescription({ className, ...props }: ToastPrimitive.Description.Pr
   return (
     <ToastPrimitive.Description
       data-slot="toast-description"
-      className={cn('text-[13px] text-muted-foreground', className)}
+      className={cn('text-[14px] leading-5 text-muted-foreground', className)}
       {...props}
     />
   )

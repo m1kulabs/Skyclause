@@ -13,7 +13,7 @@ function BreadcrumbList({ className, ...props }: React.ComponentProps<'ol'>) {
   return (
     <ol
       data-slot="breadcrumb-list"
-      className={cn('flex flex-wrap items-center gap-1.5 text-[13px] wrap-break-word text-muted-foreground', className)}
+      className={cn('flex flex-wrap items-center gap-1.5 text-[14px] wrap-break-word text-muted-foreground', className)}
       {...props}
     />
   )
@@ -28,7 +28,10 @@ function BreadcrumbLink({ className, render, ...props }: useRender.ComponentProp
     defaultTagName: 'a',
     props: mergeProps<'a'>(
       {
-        className: cn('transition-none hover:text-foreground', className)
+        className: cn(
+          'inline-flex min-h-6 items-center transition-none hover:text-foreground [@media(pointer:coarse)]:min-h-11',
+          className
+        )
       },
       props
     ),
@@ -72,7 +75,7 @@ function BreadcrumbEllipsis({ className, ...props }: React.ComponentProps<'span'
       data-slot="breadcrumb-ellipsis"
       role="presentation"
       aria-hidden="true"
-      className={cn('flex size-5 items-center justify-center [&>svg]:size-4', className)}
+      className={cn('flex size-6 items-center justify-center [&>svg]:size-4', className)}
       {...props}
     >
       <MoreHorizontalIcon />

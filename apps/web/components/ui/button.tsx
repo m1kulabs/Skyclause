@@ -3,30 +3,29 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '#lib/utils'
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-full border border-transparent bg-clip-padding text-[13px] font-medium whitespace-nowrap transition-[transform,opacity] outline-none select-none focus-visible:border-ring   active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  // A capsule: 36px in the app, 48px (`lg`) on public pages. Primary by inversion; secondary is a filled control with a
+  // 2px muted edge (3:1). Every capsule keeps a 2px border so forced colours draw it, and high contrast inks it. The
+  // global :focus-visible outline is the ring.
+  "group/button inline-flex shrink-0 items-center justify-center rounded-full border-2 border-transparent [.hc_&]:border-(--edge) bg-clip-padding text-[14px] leading-5 font-medium whitespace-nowrap transition-[transform,opacity] outline-none select-none active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-60 aria-invalid:border-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/80',
-        outline:
-          'border-control bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground',
-        secondary:
-          'bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground',
-        ghost:
-          'hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50',
-        destructive: 'bg-primary text-primary-foreground hover:bg-primary/80',
-        link: 'text-primary underline-offset-4 hover:underline'
+        default: 'bg-primary text-primary-foreground hover:opacity-90',
+        outline: 'border-input bg-control text-foreground hover:bg-accent aria-expanded:bg-accent',
+        secondary: 'border-input bg-control text-foreground hover:bg-accent aria-expanded:bg-accent',
+        ghost: 'bg-transparent text-foreground hover:bg-muted aria-expanded:bg-muted',
+        destructive: 'border-foreground bg-transparent text-foreground hover:bg-muted',
+        link: 'rounded-none border-0 text-foreground underline underline-offset-3 hover:decoration-2 [.hc_&]:border-0'
       },
       size: {
-        default: 'h-8.5 gap-1.5 px-3.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2',
-        xs: "h-8.5 gap-1 rounded-full px-2 text-xs in-data-[slot=button-group]:rounded-full has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8.5 gap-1 rounded-full px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-full has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
-        lg: 'h-10 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2',
-        icon: 'size-8.5',
-        'icon-xs':
-          "size-8.5 rounded-full in-data-[slot=button-group]:rounded-full [&_svg:not([class*='size-'])]:size-3",
-        'icon-sm': 'size-8.5 rounded-full in-data-[slot=button-group]:rounded-full',
-        'icon-lg': 'size-10'
+        default: 'h-9 gap-1.5 px-4 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3',
+        xs: "h-9 gap-1 px-3 has-data-[icon=inline-end]:pr-2.5 has-data-[icon=inline-start]:pl-2.5 [&_svg:not([class*='size-'])]:size-3.5",
+        sm: "h-9 gap-1 px-3.5 has-data-[icon=inline-end]:pr-2.5 has-data-[icon=inline-start]:pl-2.5 [&_svg:not([class*='size-'])]:size-3.5",
+        lg: 'h-12 gap-2 px-6 text-[16px] leading-6 has-data-[icon=inline-end]:pr-5 has-data-[icon=inline-start]:pl-5',
+        icon: 'size-9',
+        'icon-xs': "size-9 [&_svg:not([class*='size-'])]:size-3.5",
+        'icon-sm': 'size-9',
+        'icon-lg': 'size-12'
       }
     },
     defaultVariants: {

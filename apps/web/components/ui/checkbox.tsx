@@ -9,14 +9,16 @@ function Checkbox({ className, ...props }: CheckboxPrimitive.Root.Props) {
     <CheckboxPrimitive.Root
       data-slot="checkbox"
       className={cn(
-        'peer relative flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-input transition-none outline-none group-has-disabled/field:opacity-50  group-has-[:focus-visible]/field-label:not-data-checked:border-input after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring   disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 aria-invalid:aria-checked:border-primary dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:border-primary data-checked:bg-primary data-checked:text-primary-foreground group-has-[:focus-visible]/field-label:data-checked:border-primary dark:data-checked:bg-primary',
+        // A 24px target around the 18px box (the 4px text-size square): the box is drawn by ::before so the hit area and
+        // the focus ring stay 24px; a 2px muted edge (3:1) unchecked, an ink fill checked.
+        'peer relative flex size-6 shrink-0 items-center justify-center rounded-sm transition-none outline-none group-has-disabled/field:opacity-60 before:absolute before:inset-[3px] before:rounded-sm before:border-2 before:border-input before:bg-field after:absolute after:-inset-x-2.5 after:-inset-y-1.5 [@media(pointer:coarse)]:after:-inset-2.5 disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:before:border-foreground data-checked:text-primary-foreground data-checked:before:border-primary data-checked:before:bg-primary',
         className
       )}
       {...props}
     >
       <CheckboxPrimitive.Indicator
         data-slot="checkbox-indicator"
-        className="grid place-content-center text-current transition-none [&>svg]:size-3.5"
+        className="relative grid place-content-center text-current transition-none [&>svg]:size-3.5 [&>svg]:stroke-3"
       >
         <CheckIcon />
       </CheckboxPrimitive.Indicator>

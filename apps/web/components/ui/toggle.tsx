@@ -5,17 +5,17 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '#lib/utils'
 
 const toggleVariants = cva(
-  'group/toggle relative inline-flex items-center justify-center gap-1 rounded-full text-[13px] font-medium whitespace-nowrap outline-none hover:text-foreground disabled:pointer-events-none disabled:opacity-50 after:absolute after:bottom-0 after:left-3.5 after:right-3.5 after:h-(--selection-width) after:bg-selection after:opacity-0 aria-pressed:after:opacity-100 data-[state=on]:after:opacity-100 [&_svg]:size-4',
+  'group/toggle relative inline-flex items-center justify-center gap-1.5 rounded-full border-2 border-input in-data-[slot=toggle-group]:border-transparent text-[14px] leading-5 font-medium whitespace-nowrap text-muted-foreground transition-[transform,opacity] outline-none hover:text-foreground disabled:pointer-events-none disabled:opacity-60 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground data-pressed:border-primary data-pressed:bg-primary data-pressed:text-primary-foreground [&_svg]:size-4',
   {
     variants: {
       variant: {
         default: 'bg-transparent',
-        outline: 'border border-input bg-transparent hover:bg-muted'
+        outline: 'bg-control hover:bg-accent'
       },
       size: {
-        default: 'h-8.5 min-w-8.5 px-3.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2',
-        sm: "h-8.5 min-w-8.5 rounded-full px-2.5 text-[0.8rem] has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
-        lg: 'h-10 min-w-10 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2'
+        default: 'h-9 min-w-9 px-3.5 has-data-[icon=inline-end]:pr-2.5 has-data-[icon=inline-start]:pl-2.5',
+        sm: "h-9 min-w-9 rounded-full px-3 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 [&_svg:not([class*='size-'])]:size-3.5",
+        lg: 'h-12 min-w-12 px-5 text-[16px] has-data-[icon=inline-end]:pr-4 has-data-[icon=inline-start]:pl-4'
       }
     },
     defaultVariants: {
