@@ -10,6 +10,7 @@ import { databaseReads } from '../src/sli/reads'
 
 interface Plan {
   'Node Type': string
+  'Relation Name'?: string
   Alias?: string
   'Index Cond'?: string
   Plans?: Plan[]
@@ -44,7 +45,7 @@ async function indexConditions(read: () => Promise<unknown>) {
     return explained.plans.map((plan) =>
       Object.fromEntries(
         nodes(plan)
-          .filter((node) => node.Alias)
+          .filter((node) => node['Relation Name'])
           .map((scan) => [
             scan.Alias,
             nodes(scan)
@@ -139,5 +140,14 @@ test('approval SLA finds bundles by sla_due_at, their approvals by bundle and su
       bundle: expect.stringContaining('sla_due_at'),
       approval: expect.stringContaining('bundle_id = bundle.id'),
       successor: expect.stringContaining('id = bundle.superseded_by')
+    })
+})
+
+test('crossing to needs review finds bundles by needs_review_at and the crossings their runs serve by ID', async () => {
+  for (const plan of await indexConditions(() => reads.reviews(hour)))
+    expect(plan).toEqual({
+      bundle: expect.stringContaining('needs_review_at'),
+      run: expect.stringContaining('id = bundle.run_id'),
+      crossing: expect.stringMatching(/^\(id = /)
     })
 })

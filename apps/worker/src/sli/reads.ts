@@ -78,6 +78,9 @@ export function databaseReads(): SliReads {
       ),
 
     // A run serves a crossing through its own dedupe key or one coalesced into it (`runsServing`); the earliest counts.
+    // Each key that is `crossing:` and a canonical UUID, the text of a crossing's ID, is cast to that ID (no other key
+    // is, so none fails the cast), for the primary key to find. OFFSET 0 keeps the cast in its own subquery: inlined
+    // into the join, it is a leaky function of the key, which RLS won't let an index condition on `crossing` use.
     reviews: (window) =>
       eachOrganisation((tx) =>
         tx
@@ -87,10 +90,12 @@ export function databaseReads(): SliReads {
           })
           .from(bundle)
           .innerJoin(run, eq(run.id, bundle.runId))
-          .innerJoin(
-            crossing,
-            sql`'crossing:' || ${crossing.id} = ANY (array_append(${run.coalescedKeys}, ${run.dedupeKey}))`
+          .innerJoinLateral(
+            sql`(SELECT substr(k, 10)::uuid AS id FROM unnest(array_append(${run.coalescedKeys}, ${run.dedupeKey})) AS k
+              WHERE k ~ '^crossing:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' OFFSET 0) AS served`,
+            sql`true`
           )
+          .innerJoin(crossing, sql`${crossing.id} = served.id`)
           .where(within(bundle.needsReviewAt, window))
           .groupBy(bundle.id)
       ),
