@@ -444,7 +444,7 @@ The landing (`/`) is one page on the Dusk ground, full-bleed (the marketing surf
 - **Sections, in order**, each with a heading, each a composition of one idea:
   1. **How it works** (`#how`): the heading is the current stage's clause and exactly one shows: "First, the gauge reads 39 mm", "Then Storm confirmed fires", "The window gets its verdict", "A person approves the call", "Next morning, it is graded". A real range input with five stops (Readings, Clause, Verdict and call, Approval and notice, Grade) drives one interface fragment built in real markup with `data-ui`, each labelled "Replay" with its caption. Without script every stage shows stacked, and the radios still switch.
   2. **The record** (`#record`, "What the record keeps"): four names (The ledger entry, The notice, The conditions calendar, The grade) over a capsule photograph that bleeds off the right edge; choosing one swaps the photograph, a fragment and a fact line. The ledger and notice fragments are replays; the calendar fragment is live (the current week, today marked, and the latest approved call or "No approved call yet (n=0)").
-  3. **Features**: one statement with inline slots ("Every reading keeps its age, from the rain gauge [photo]. When the haze index [photo] fails, the call says No call. A person approves each call [capsule]; the next morning grades it.") and a "Sign in" capsule. The `h2` is screen-reader only ("What it does").
+  3. **Features**: one statement whose key nouns are each followed by a fragment of the product at text size ("Every reading keeps its age, from the rain gauge [Replay 39.0 mm]. When the haze index fails, the call says [No call]. A person approves each call [Approve]; the next morning grades it."): the replayed gauge figure with its "Replay" label, the No call mark with its glyph and word, and an inert "Approve" capsule (a picture of the button, not a button). Below it one line ("Readings come from JPS, APIMS, MET and Rapid Rail on their own schedules, and a source that fails is never filled in with an old value.") and a "Sign in" capsule. The `h2` is screen-reader only ("What it does").
   4. **Sources** (`#sources`, "Read from public sources"): six tiles of plain names (JPS Infobanjir, DOE APIMS, MET Malaysia, Rapid Rail, GoLive, Wikipedia), each with what is read and its licence from the brand catalogue, or "No open licence: only derived values are shown." Never a drawn logo or an implied partnership; the last tile carries the non-affiliation sentence.
   5. **Prices** (`#prices`, "Prices, in MYR"): two fields, "Commons and Community" (Free, ink-filled) and "Team and Campus" (the raised tone; RM 49 a month per organisation and RM 900 a month per campus). Every price carries "proposal, untested" ([LND-6](/docs/PRD.md#landing-page-lnd)).
   6. **Questions** (`#questions`, "Common questions"): nine native `<details name="faq">` tiles, so one opens at a time with no script, "Is it right?" open at first: "Is this an emergency warning service?", "Who makes the call?", "Can my AI approve a call?", "What happens when a source fails?", "Where does the data come from?", "Is it right?", "Do I need an account to get notices?", "Does it work outside Bukit Jalil?", "Does it excuse attendance?".
@@ -477,21 +477,20 @@ The landing's English copy is written in its components under `apps/web/features
 
 ### Landing imagery and credits
 
-Real photographs of the subject's world carry the page: eight pictures from Wikimedia Commons, downloaded on 12 November 2026, resized and re-encoded as JPEG with no other change, in `apps/web/public/landing/`. Provenance lives in [provenance.json](/apps/web/public/landing/provenance.json) beside them and in `features/landing/photos.ts`; `test/landing/photos.test.ts` fails when the two differ or a picture is uncredited. Interface fragments built in real markup (`data-ui`) with replay or live data carry the rest; there are no model-drawn illustrations, stock people, avatars or logo wall.
+Real photographs of the subject's world carry the page: seven pictures from Wikimedia Commons, downloaded on 12 November 2026, resized and re-encoded as JPEG with no other change, in `apps/web/public/landing/`. Provenance lives in [provenance.json](/apps/web/public/landing/provenance.json) beside them and in `features/landing/photos.ts`; `test/landing/photos.test.ts` fails when the two differ or a picture is uncredited. Interface fragments built in real markup (`data-ui`) with replay or live data carry the rest; there are no model-drawn illustrations, stock people, avatars or logo wall.
 
-| Picture                                                         | Creator         | Date          | Licence      | Use                                             |
-| --------------------------------------------------------------- | --------------- | ------------- | ------------ | ----------------------------------------------- |
-| [Bukit Jalil LRT Station outview (230527) 01][lrt-day]          | \*angys\*       | 2023-05-27    | CC BY-SA 4.0 | Hero room, first photograph                     |
-| [Bukit Jalil National Stadium (220713)][clouds]                 | \*angys\*       | 2022-07-13    | CC BY-SA 4.0 | Hero room, second photograph                    |
-| [Bukit Jalil National Stadium at night][night]                  | Pak Misai       | 2021-08-17    | CC BY-SA 4.0 | Hero room, third photograph                     |
-| [Kuala Lumpur skyline thunderstorm 03][storm]                   | Pradana Aumars  | 2016-07-17    | CC BY-SA 4.0 | The record: "The ledger entry"                  |
-| [Bukit Jalil LRT Panorama][platform]                            | Pixdoet         | 2025-07-31    | CC BY 4.0    | The record: "The notice"                        |
-| [Persiaran Jalil Utama, Bukit Jalil 20231118 112053][persiaran] | Wiki Farazi     | 2023-11-18    | CC0          | The record: "The conditions calendar"           |
-| [Rain, Kuala Lumpur (Unsplash)][rain]                           | Eutah Mizushima | none recorded | CC0          | The record: "The grade"; the slot after "gauge" |
-| [Haze in Kuala Lumpur (September 2026, AQI 200)][haze]          | Renek78         | 2026-09-18    | CC0          | The slot after "index"                          |
+| Picture                                                         | Creator         | Date          | Licence      | Use                                   |
+| --------------------------------------------------------------- | --------------- | ------------- | ------------ | ------------------------------------- |
+| [Bukit Jalil LRT Station outview (230527) 01][lrt-day]          | \*angys\*       | 2023-05-27    | CC BY-SA 4.0 | Hero room, first photograph           |
+| [Bukit Jalil National Stadium (220713)][clouds]                 | \*angys\*       | 2022-07-13    | CC BY-SA 4.0 | Hero room, second photograph          |
+| [Bukit Jalil National Stadium at night][night]                  | Pak Misai       | 2021-08-17    | CC BY-SA 4.0 | Hero room, third photograph           |
+| [Kuala Lumpur skyline thunderstorm 03][storm]                   | Pradana Aumars  | 2016-07-17    | CC BY-SA 4.0 | The record: "The ledger entry"        |
+| [Bukit Jalil LRT Panorama][platform]                            | Pixdoet         | 2025-07-31    | CC BY 4.0    | The record: "The notice"              |
+| [Persiaran Jalil Utama, Bukit Jalil 20231118 112053][persiaran] | Wiki Farazi     | 2023-11-18    | CC0          | The record: "The conditions calendar" |
+| [Rain, Kuala Lumpur (Unsplash)][rain]                           | Eutah Mizushima | none recorded | CC0          | The record: "The grade"               |
 
-- **Masks.** The hero room is one capsule (`border-radius: 9999px`, 160% of its column, cropped by the viewport); the record's picture is a capsule that bleeds off the right edge (`9999px 0 0 9999px`); inline slots are fully round, 1.5em by 1em (1.9em wide from 1024px). Each crop is `object-fit: cover`; the pictures are resized and re-encoded and otherwise unaltered, so a mask only crops (CC BY-SA binds share-alike on altered versions).
-- **Alt text.** The hero room is one image with the label "Bukit Jalil under its sky: the LRT station by day, the National Stadium under cloud and at night"; its photographs and the inline slots are decorative (`alt=""`); the four record pictures carry the alt text recorded in the provenance file.
+- **Masks.** The hero room is one capsule (`border-radius: 9999px`, 160% of its column, cropped by the viewport); the record's picture is a capsule that bleeds off the right edge (`9999px 0 0 9999px`). Each crop is `object-fit: cover`; the pictures are resized and re-encoded and otherwise unaltered, so a mask only crops (CC BY-SA binds share-alike on altered versions).
+- **Alt text.** The hero room is one image with the label "Bukit Jalil under its sky: the LRT station by day, the National Stadium under cloud and at night"; its photographs are decorative (`alt=""`); the four record pictures carry the alt text recorded in the provenance file.
 - **Credits** print in the landing footer under "Pictures, from Wikimedia Commons": "“{title}” by {creator}, {licence}", the title linking to its Commons page and the licence to its licence text. The hero's storm-free set (clear sky, cloud, night) means the crossfade never shows a storm; the storm picture appears only in the record, beside a replay. No honest clip of rain at Bukit Jalil exists in the open collections, so the moving picture is the slow crossfade.
 
 [lrt-day]: https://commons.wikimedia.org/wiki/File:Bukit_Jalil_LRT_Station_outview_(230527)_01.jpg
@@ -501,7 +500,6 @@ Real photographs of the subject's world carry the page: eight pictures from Wiki
 [platform]: https://commons.wikimedia.org/wiki/File:Bukit_Jalil_LRT_Panorama.jpg
 [persiaran]: https://commons.wikimedia.org/wiki/File:Persiaran_Jalil_Utama,_Bukit_Jalil_20231118_112053.jpg
 [rain]: https://commons.wikimedia.org/wiki/File:Rain,_Kuala_Lumpur_(Unsplash).jpg
-[haze]: https://commons.wikimedia.org/wiki/File:Haze_in_Kuala_Lumpur_(September_2026,_AQI_200).jpg
 
 ### Landing motion
 
