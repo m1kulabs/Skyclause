@@ -335,7 +335,8 @@ test('marketing follows OS contrast and motion while keeping a dark document', a
 
 test('unmatched routes keep request-time appearance in their own document', async ({ page, baseURL }) => {
   await appearance(page, baseURL!, { theme: 'system' })
-  const response = await page.request.get('/no-such-route-95s', {
+  // Deeper than any page: a one-segment path is organisation-shaped, which a signed-out visit takes to sign-in.
+  const response = await page.request.get('/no-such-route-95s/b/c/d', {
     headers: {
       'sec-ch-prefers-color-scheme': '"light"',
       'sec-ch-prefers-contrast': '"more"',
