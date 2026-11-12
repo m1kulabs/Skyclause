@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { updateWindow, cancelWindow, listWindows } from '../../src/api/v1/windows'
+import { createWindow, updateWindow, cancelWindow, listWindows } from '../../src/api/v1/windows'
 import { createIcsFeed } from '../../src/api/v1/ics-feeds'
 
 test('#139 series scope survives request parsing and rejects unknown scopes', () => {
@@ -8,6 +8,29 @@ test('#139 series scope survives request parsing and rejects unknown scopes', ()
     expect(operation.request.query.parse({ scope: 'occurrence' })).toEqual({ scope: 'occurrence' })
     expect(operation.request.query.safeParse({ scope: 'all_projects' }).success).toBe(false)
   }
+})
+
+test('window writes reject undeclared root and recurrence fields instead of stripping provenance', () => {
+  const fields = {
+    title: 'Lecture',
+    kind: 'class',
+    starts_at: '2026-11-16T01:00:00Z',
+    ends_at: '2026-11-16T02:00:00Z',
+    tz: 'UTC'
+  }
+  for (const operation of [createWindow, updateWindow]) {
+    const schema = operation.request.body.content['application/json'].schema
+    expect(schema.safeParse({ ...fields, declared_by: 'spoof' }).success).toBe(false)
+    expect(
+      schema.safeParse({
+        ...fields,
+        recurrence: { frequency: 'weekly', days_of_week: ['monday'], count: 1, skip_dates: [], org_id: 'spoof' }
+      }).success
+    ).toBe(false)
+  }
+  expect(updateWindow.request.body.content['application/json'].schema.safeParse({}).success).toBe(false)
+  for (const operation of [updateWindow, cancelWindow])
+    expect(operation.request.query.safeParse({ scope: 'series', org_id: 'spoof' }).success).toBe(false)
 })
 
 test('#143 list filters include calls and dates without changing pagination', () => {

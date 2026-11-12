@@ -221,7 +221,7 @@ describe('POST /v1/projects/{id}/windows', () => {
     })
   })
 
-  test('a recurrence answers 501 not-built for b-windows-api and stores nothing', async () => {
+  test('a recurrence declares its materialized series', async () => {
     const response = await declare(
       editor(),
       projectId,
@@ -230,9 +230,9 @@ describe('POST /v1/projects/{id}/windows', () => {
         recurrence: { frequency: 'weekly', days_of_week: ['monday'], count: 3, skip_dates: [] }
       })
     )
-    expect(response.status).toBe(501)
-    expect(await response.json()).toMatchObject({ owner: 'b-windows-api' })
-    expect(await inOrg(ORG, (tx) => tx.select().from(window).where(eq(window.title, 'Weekly')))).toHaveLength(0)
+    expect(response.status).toBe(201)
+    expect(await response.json()).toMatchObject({ series_id: expect.any(String) })
+    expect(await inOrg(ORG, (tx) => tx.select().from(window).where(eq(window.title, 'Weekly')))).toHaveLength(3)
   })
 
   test('a Viewer is denied with 403, and an API key without the draft scope too', async () => {

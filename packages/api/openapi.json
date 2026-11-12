@@ -23288,6 +23288,33 @@
                                 "null"
                               ],
                               "format": "uuid"
+                            },
+                            "calendar": {
+                              "type": "object",
+                              "properties": {
+                                "feed_id": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "revision": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "window_ids": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "minItems": 1,
+                                  "maxItems": 20000
+                                }
+                              },
+                              "required": [
+                                "feed_id",
+                                "revision"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -23361,6 +23388,33 @@
                                 "null"
                               ],
                               "format": "uuid"
+                            },
+                            "calendar": {
+                              "type": "object",
+                              "properties": {
+                                "feed_id": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "revision": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "window_ids": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "minItems": 1,
+                                  "maxItems": 20000
+                                }
+                              },
+                              "required": [
+                                "feed_id",
+                                "revision"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -23434,6 +23488,33 @@
                                 "null"
                               ],
                               "format": "uuid"
+                            },
+                            "calendar": {
+                              "type": "object",
+                              "properties": {
+                                "feed_id": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "revision": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "window_ids": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "minItems": 1,
+                                  "maxItems": 20000
+                                }
+                              },
+                              "required": [
+                                "feed_id",
+                                "revision"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -56688,6 +56769,33 @@
                                           "null"
                                         ],
                                         "format": "uuid"
+                                      },
+                                      "calendar": {
+                                        "type": "object",
+                                        "properties": {
+                                          "feed_id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                          },
+                                          "revision": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                          },
+                                          "window_ids": {
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string",
+                                              "format": "uuid"
+                                            },
+                                            "minItems": 1,
+                                            "maxItems": 20000
+                                          }
+                                        },
+                                        "required": [
+                                          "feed_id",
+                                          "revision"
+                                        ],
+                                        "additionalProperties": false
                                       }
                                     },
                                     "required": [
@@ -56761,6 +56869,33 @@
                                           "null"
                                         ],
                                         "format": "uuid"
+                                      },
+                                      "calendar": {
+                                        "type": "object",
+                                        "properties": {
+                                          "feed_id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                          },
+                                          "revision": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                          },
+                                          "window_ids": {
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string",
+                                              "format": "uuid"
+                                            },
+                                            "minItems": 1,
+                                            "maxItems": 20000
+                                          }
+                                        },
+                                        "required": [
+                                          "feed_id",
+                                          "revision"
+                                        ],
+                                        "additionalProperties": false
                                       }
                                     },
                                     "required": [
@@ -56834,6 +56969,33 @@
                                           "null"
                                         ],
                                         "format": "uuid"
+                                      },
+                                      "calendar": {
+                                        "type": "object",
+                                        "properties": {
+                                          "feed_id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                          },
+                                          "revision": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                          },
+                                          "window_ids": {
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string",
+                                              "format": "uuid"
+                                            },
+                                            "minItems": 1,
+                                            "maxItems": 20000
+                                          }
+                                        },
+                                        "required": [
+                                          "feed_id",
+                                          "revision"
+                                        ],
+                                        "additionalProperties": false
                                       }
                                     },
                                     "required": [
@@ -57587,7 +57749,8 @@
                               "frequency",
                               "days_of_week",
                               "skip_dates"
-                            ]
+                            ],
+                            "additionalProperties": false
                           },
                           "latest_calls": {
                             "type": "object",
@@ -58027,7 +58190,8 @@
                       "frequency",
                       "days_of_week",
                       "skip_dates"
-                    ]
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -58036,7 +58200,8 @@
                   "starts_at",
                   "ends_at",
                   "tz"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -58187,7 +58352,8 @@
                         "frequency",
                         "days_of_week",
                         "skip_dates"
-                      ]
+                      ],
+                      "additionalProperties": false
                     },
                     "latest_calls": {
                       "type": "object",
@@ -58429,6 +58595,41 @@
           },
           "404": {
             "description": "Resource not found in this organisation",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A declaration with this key is pending or the window state conflicts",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -58655,16 +58856,18 @@
                       "frequency",
                       "days_of_week",
                       "skip_dates"
-                    ]
+                    ],
+                    "additionalProperties": false
                   }
-                }
+                },
+                "additionalProperties": false
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "The updated window",
+            "description": "The selected window with current calls. Series edits preserve started rows and return this ID even if it is unchanged or removed from the rule.",
             "content": {
               "application/json": {
                 "schema": {
@@ -58808,7 +59011,8 @@
                         "frequency",
                         "days_of_week",
                         "skip_dates"
-                      ]
+                      ],
+                      "additionalProperties": false
                     },
                     "latest_calls": {
                       "type": "object",
@@ -59050,6 +59254,41 @@
           },
           "404": {
             "description": "Resource not found in this organisation",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The window or series state conflicts with this edit",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -59200,7 +59439,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The cancelled window and its retained call state",
+            "description": "The selected window and its retained calls. Series cancellation preserves started rows, including the selected row.",
             "content": {
               "application/json": {
                 "schema": {
@@ -59344,7 +59583,8 @@
                         "frequency",
                         "days_of_week",
                         "skip_dates"
-                      ]
+                      ],
+                      "additionalProperties": false
                     },
                     "latest_calls": {
                       "type": "object",
@@ -59586,6 +59826,76 @@
           },
           "404": {
             "description": "Resource not found in this organisation",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The window or series state conflicts with cancellation",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The cancellation scope is invalid",
             "content": {
               "application/problem+json": {
                 "schema": {

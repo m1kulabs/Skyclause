@@ -3,7 +3,11 @@ import type { z } from 'zod'
 
 type WindowInput = z.infer<Operations['createWindow']['request']['body']['content']['application/json']['schema']>
 
-export type FieldIssue = { pointer: string; detail: string }
+export type FieldIssue = {
+  pointer: string
+  detail: string
+  code?: 'invalid_instant' | 'end_before_start' | 'too_long' | 'too_far' | 'past' | 'invalid_tz'
+}
 export type LocalDate = string // validated YYYY-MM-DD
 export type NativeRule = NonNullable<WindowInput['recurrence']>
 export type WindowKind = WindowInput['kind']

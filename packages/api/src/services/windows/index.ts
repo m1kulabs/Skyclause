@@ -1,4 +1,4 @@
-import { NotBuiltError, type Page } from '@skyclause/contracts'
+import { type Page } from '@skyclause/contracts'
 import { emitEvent, insertWindow, latestWindowCalls, listWindowRecords, track } from '@skyclause/db'
 import {
   declarer,
@@ -14,11 +14,15 @@ import { z } from 'zod'
 import { decodeCursor, page } from '../../pagination'
 import { ApiError } from '../../problems'
 import type { ServiceContext } from '../../tenancy'
+import { validateFields } from './fields'
+import { createWindowSeries } from './series'
+import { createOperation, parseInput, consumeWindowBudget } from './shared'
+export { windowViolations } from './fields'
+export { createWindowSeries } from './series'
+export { updateWindow, cancelWindow } from './lifecycle'
+export type { UpdateWindowBody, WindowScope } from './shared'
 import { isMember, windowFor } from '../bundles'
 
-const HOUR = 3_600_000
-const MAX_LENGTH = 12 * HOUR
-const MAX_AHEAD = 90 * 24 * HOUR
 const Cursor = z
   .object({ v: z.literal(1), org_id: z.uuid(), project_id: z.uuid(), starts_at: z.iso.datetime(), id: z.uuid() })
   .strict()
@@ -77,46 +81,22 @@ export async function listWindows(
   }
 }
 
-const invalid = (errors: Array<{ pointer: string; code: string; detail: string }>) =>
-  new ApiError(422, 'validation-failed', 'The request is invalid.', {
-    errors: errors.map((error) => ({ in: 'body', ...error }))
-  })
-
-/** WIN-8, server side. Each violation is its own field error; `code` is what the web form reads. */
-export function windowViolations(body: Pick<WindowBody, 'kind' | 'starts_at' | 'ends_at' | 'tz'>, now: Date) {
-  const errors: Array<{ pointer: string; code: string; detail: string }> = []
-  const start = Date.parse(body.starts_at)
-  const end = Date.parse(body.ends_at)
-  if (!isValidZone(body.tz)) errors.push({ pointer: '/tz', code: 'invalid_tz', detail: 'Not an IANA time zone' })
-  if (end < start || (end === start && body.kind !== 'commute_wave'))
-    errors.push({ pointer: '/ends_at', code: 'end_before_start', detail: 'The window must end after it starts' })
-  else if (end - start > MAX_LENGTH)
-    errors.push({ pointer: '/ends_at', code: 'too_long', detail: 'A window is at most 12 hours long' })
-  if (start > now.getTime() + MAX_AHEAD)
-    errors.push({ pointer: '/starts_at', code: 'too_far', detail: 'A window starts at most 90 days ahead' })
-  else if (start < now.getTime())
-    errors.push({ pointer: '/starts_at', code: 'past', detail: 'A window cannot start in the past' })
-  return errors
-}
-
-const ZONES = new Set([...Intl.supportedValuesOf('timeZone'), 'UTC'])
-const isValidZone = (tz: string) => ZONES.has(tz)
-
 /** The event and analytics catalogues call a browser declaration `form`. */
 const CATALOGUE_VIA = { app: 'form', api: 'api', cli: 'cli', mcp: 'mcp' } as const
 
-/** `POST /v1/projects/{id}/windows`: one single window. A series is not built, so `recurrence` answers 501. */
+/** Existing declaration path and idempotency middleware; recurrence branches into the series planner. */
 export async function createWindow(
   ctx: ServiceContext,
   input: { projectId: string; body: WindowBody },
   access: WindowsAccess
 ): Promise<WindowView> {
-  const { projectId, body } = input
+  const { projectId } = input
   await openProject(ctx, projectId, 'window.declare', access)
   const { via, declaredBy } = declarer(ctx.principal)
-  const violations = windowViolations(body, access.now)
-  if (violations.length) throw invalid(violations)
-  if (body.recurrence) throw new NotBuiltError('b-windows-api')
+  const body = parseInput(createOperation.request.body.content['application/json'].schema, input.body)
+  await validateFields(ctx, body, access.now)
+  if (body.recurrence) return createWindowSeries(ctx, { projectId, body }, access)
+  await consumeWindowBudget(ctx, access)
   const row = await insertWindow(ctx.tx, {
     projectId,
     title: body.title,

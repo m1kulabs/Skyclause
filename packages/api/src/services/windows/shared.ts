@@ -1,7 +1,22 @@
-import { SCOPE_STATEMENTS, type Can, type Operations, type Principal, type Statement } from '@skyclause/contracts'
-import { getProjectRecord, type WindowCallRecord, type WindowRow } from '@skyclause/db'
+import {
+  SCOPE_STATEMENTS,
+  V1_ROUTES,
+  type BudgetGate,
+  type Can,
+  type Operations,
+  type Principal,
+  type Statement
+} from '@skyclause/contracts'
+import {
+  budgetGate,
+  getProjectRecord,
+  getWindowRecord,
+  latestWindowCalls,
+  type WindowCallRecord,
+  type WindowRow
+} from '@skyclause/db'
 import { z } from 'zod'
-import { ApiError } from '../../problems'
+import { ApiError, validationFailed } from '../../problems'
 import { instant } from '../../serialize'
 import type { ServiceContext } from '../../tenancy'
 
@@ -13,10 +28,27 @@ type Ok<Id extends keyof Operations, S extends number> = Operations[Id] extends 
 export type WindowView = Ok<'createWindow', 201>
 export type WindowsQuery = z.infer<Operations['listWindows']['request']['query']>
 export type WindowBody = z.infer<Operations['createWindow']['request']['body']['content']['application/json']['schema']>
+export type UpdateWindowBody = z.infer<
+  Operations['updateWindow']['request']['body']['content']['application/json']['schema']
+>
+export type WindowScope = z.infer<Operations['updateWindow']['request']['query']>['scope']
+
+export const createOperation = V1_ROUTES.find(
+  (route) => route.operationId === 'createWindow'
+) as Operations['createWindow']
+export const updateOperation = V1_ROUTES.find(
+  (route) => route.operationId === 'updateWindow'
+) as Operations['updateWindow']
+export function parseInput<T>(schema: z.ZodType<T>, value: unknown, target = 'body'): T {
+  const result = schema.safeParse(value)
+  if (!result.success) throw validationFailed(target, result.error)
+  return result.data
+}
 
 export interface WindowsAccess {
   can: Can
   now: Date
+  budget?: BudgetGate
 }
 
 const unavailable = () => new ApiError(404, 'not-found', 'The project is unavailable.')
@@ -29,6 +61,22 @@ const denied = (statement: Statement) =>
  */
 export async function openProject(ctx: ServiceContext, projectId: string, statement: Statement, access: WindowsAccess) {
   const { principal, tx } = ctx
+  assertWindowsStatement(ctx, statement, access)
+  if (
+    !tx.orgId ||
+    principal.kind === 'system' ||
+    principal.orgId !== tx.orgId ||
+    !z.uuid().safeParse(projectId).success ||
+    (principal.kind === 'share_link' && principal.projectId !== projectId) ||
+    (principal.kind === 'oauth' && principal.projectIds !== 'all' && !principal.projectIds.includes(projectId))
+  )
+    throw unavailable()
+  if (!access.can(principal, statement, { projectId })) throw denied(statement)
+  if (!(await getProjectRecord(tx, projectId))) throw unavailable()
+}
+
+export function assertWindowsStatement(ctx: ServiceContext, statement: Statement, access: WindowsAccess) {
+  const { principal } = ctx
   const scopes =
     principal.kind === 'api_key' || principal.kind === 'oauth' || principal.kind === 'guest_token'
       ? principal.scopes
@@ -40,16 +88,39 @@ export async function openProject(ctx: ServiceContext, projectId: string, statem
     !access.can(principal, statement)
   )
     throw denied(statement)
+}
+
+export async function openWindow(ctx: ServiceContext, id: string, access: WindowsAccess): Promise<WindowRow> {
+  assertWindowsStatement(ctx, 'window.declare', access)
+  declarer(ctx.principal)
   if (
-    !tx.orgId ||
-    principal.orgId !== tx.orgId ||
-    !z.uuid().safeParse(projectId).success ||
-    (principal.kind === 'share_link' && principal.projectId !== projectId) ||
-    (principal.kind === 'oauth' && principal.projectIds !== 'all' && !principal.projectIds.includes(projectId))
+    !ctx.tx.orgId ||
+    ctx.principal.kind === 'system' ||
+    ctx.principal.orgId !== ctx.tx.orgId ||
+    !z.uuid().safeParse(id).success
   )
     throw unavailable()
-  if (!access.can(principal, statement, { projectId })) throw denied(statement)
-  if (!(await getProjectRecord(tx, projectId))) throw unavailable()
+  const row = await getWindowRecord(ctx.tx, id)
+  if (!row) throw unavailable()
+  await openProject(ctx, row.projectId, 'window.declare', access)
+  if (row.guest || row.shareLinkId) throw denied('window.declare')
+  return row
+}
+
+export async function consumeWindowBudget(ctx: ServiceContext, access: WindowsAccess) {
+  const budget = await (access.budget ?? budgetGate).consume(ctx.tx, ctx.principal, 'window')
+  if (!budget.ok)
+    throw new ApiError(
+      429,
+      'budget-exhausted',
+      'The window budget is exhausted.',
+      { resets_at: budget.resetsAt },
+      { 'Retry-After': String(Math.max(1, Math.ceil((Date.parse(budget.resetsAt) - access.now.getTime()) / 1000))) }
+    )
+}
+
+export async function currentWindowView(ctx: ServiceContext, row: WindowRow): Promise<WindowView> {
+  return windowView(row, await latestWindowCalls(ctx.tx, [row.id]))
 }
 
 type CallSummary = NonNullable<WindowView['latest_calls']['sky']>

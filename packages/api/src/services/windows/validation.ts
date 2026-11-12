@@ -22,14 +22,20 @@ export function validateWindowFields(fields: WindowFields, now: Date): FieldIssu
   if (start === null) {
     issues.push({
       pointer: '/starts_at',
+      code: 'invalid_instant',
       detail: 'Use a valid UTC instant with a positive four-digit year and at most millisecond precision.'
     })
   } else if (start < now.getTime() || start > now.getTime() + 90 * 86400000) {
-    issues.push({ pointer: '/starts_at', detail: 'Start must be between now and 90 elapsed days ahead, inclusive.' })
+    issues.push({
+      pointer: '/starts_at',
+      code: start < now.getTime() ? 'past' : 'too_far',
+      detail: 'Start must be between now and 90 elapsed days ahead, inclusive.'
+    })
   }
   if (end === null) {
     issues.push({
       pointer: '/ends_at',
+      code: 'invalid_instant',
       detail: 'Use a valid UTC instant with a positive four-digit year and at most millisecond precision.'
     })
   } else if (
@@ -38,6 +44,7 @@ export function validateWindowFields(fields: WindowFields, now: Date): FieldIssu
   ) {
     issues.push({
       pointer: '/ends_at',
+      code: end - start > 12 * 3600000 ? 'too_long' : 'end_before_start',
       detail: 'End must follow start by at most 12 hours; only commute waves may have zero duration.'
     })
   }
