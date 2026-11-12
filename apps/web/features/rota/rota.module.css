@@ -1,281 +1,287 @@
+/*
+ * The rota as a week of day strips. Each day is a row: its date at the left, then one lane per person on a track one
+ * day long (00 to 24, MYT) with their shifts as capsules lying on it; a gap in cover is a dashed capsule. The capsules
+ * are a picture of the week, so the list under each day carries every time and every control. The hour axis is
+ * sticky under the shell's bar while the week scrolls.
+ */
 .panel {
   min-width: 0;
   overflow-wrap: anywhere;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.panel section + section {
-  margin-top: 28px;
-  border-top: 1px solid var(--border);
-  padding-top: 24px;
-}
-
-.panel h3 {
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.5;
-  font-weight: 500;
-}
-
-.panel p {
-  margin: 8px 0 0;
 }
 
 .coverage {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.coverage > div {
   min-width: 0;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--muted);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px 24px;
 }
 
-.coverage p {
-  margin-bottom: 0;
+.fact {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
 }
 
-.finding {
-  padding: 16px;
-  border-inline-start: 3px solid var(--primary);
-  background: var(--muted);
+.fact h3 {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
 }
 
-.finding h3 {
-  font-size: 14px;
-}
-
-.finding p {
-  margin-bottom: 0;
+.fact p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
 }
 
 .templates {
   display: grid;
-  gap: 8px;
-}
-
-.templates h3 {
-  margin-bottom: 4px;
+  min-width: 0;
+  gap: 2px;
 }
 
 .templateRow {
-  display: grid;
-  grid-template-columns: minmax(120px, 1.2fr) minmax(120px, 1fr) minmax(120px, 1fr);
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-
-.templateRow span:last-child {
-  color: var(--muted-foreground);
-}
-
-.sectionHeader {
   display: flex;
+  min-width: 0;
   flex-wrap: wrap;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 4px 16px;
+  border-radius: 10px;
+  background: var(--raised);
+  padding: 10px 16px;
+  font-size: 14px;
+  line-height: 20px;
 }
 
-.sectionHeader > span {
-  color: var(--muted-foreground);
-}
-
-.timelineFrame {
-  max-width: 100%;
-  overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overscroll-behavior-inline: contain;
-}
-
-.timelineFrame:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-
-.timeline {
-  min-width: 900px;
-}
-
-.timelineHeader,
-.timelineRow {
-  display: grid;
-  grid-template-columns: 176px repeat(7, minmax(103px, 1fr));
-}
-
-.timelineHeader {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
-}
-
-.personHeader,
-.dayHeader,
-.personCell,
-.dayCell,
-.unstaffedCell {
-  min-width: 0;
-  border-inline-end: 1px solid var(--border);
-  padding: 8px;
-}
-
-.personHeader,
-.dayHeader {
-  min-height: 74px;
-}
-
-.personHeader {
-  display: flex;
-  align-items: end;
+.templateRow strong {
   font-weight: 600;
 }
 
-.dayHeader {
-  display: flex;
-  flex-direction: column;
-  align-items: start;
-  gap: 4px;
-  font-size: 12px;
+.templateRow span {
+  color: var(--muted-foreground);
 }
 
-.dayHeader > strong {
+.week {
+  min-width: 0;
+}
+
+.axis {
+  position: sticky;
+  z-index: 2;
+  top: var(--shell-bar-height, 0px);
+  background: var(--card);
+  padding-block: 8px 4px;
+}
+
+.axisRow {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px 16px;
+}
+
+.zone {
+  display: none;
+  color: var(--muted-foreground);
   font-size: 13px;
+  line-height: 18px;
 }
 
-.dayHeader > span {
+.ticks {
+  position: relative;
+  height: 18px;
   color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 18px;
 }
 
-.dayHeader :global([data-slot='badge']) {
-  max-width: 100%;
-  white-space: normal;
-  line-height: 1.25;
+.tick {
+  position: absolute;
+  top: 0;
+  white-space: nowrap;
+  transform: translateX(-50%);
 }
 
-.timelineRow {
-  min-height: 76px;
-  border-bottom: 1px solid var(--border);
+.tick:first-child {
+  transform: none;
 }
 
-.timelineRow:last-child {
-  border-bottom: 0;
+.tick:last-child {
+  transform: translateX(-100%);
 }
 
-.personCell {
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  background: var(--card);
-}
-
-.personCell strong {
-  overflow-wrap: anywhere;
-}
-
-.avatar {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--secondary);
-  color: var(--secondary-foreground);
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.dayCell,
-.unstaffedCell {
-  display: grid;
-  align-content: start;
-  gap: 6px;
-  background: var(--card);
-}
-
-.shiftCard,
-.unstaffedCard {
+.day {
   display: grid;
   min-width: 0;
-  gap: 4px;
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  background: var(--background);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px 16px;
+  padding-block: 12px;
 }
 
-.shiftCard > span:first-child {
+.dayHead {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.dayHead strong {
   font-weight: 600;
+}
+
+.today {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.lanes {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 4px;
+}
+
+.lane {
+  position: relative;
+  height: 28px;
+  border-radius: 9999px;
+  background: var(--raised);
+}
+
+.laneEmpty {
+  background: var(--raised);
+}
+
+.capsule {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  display: flex;
+  min-width: 24px;
+  align-items: center;
+  justify-content: center;
+  container-type: inline-size;
+  border: var(--edge-width, 0px) solid var(--edge, transparent);
+  border-radius: 9999px;
+  background: var(--ink);
+  color: var(--ground);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.capsule[data-gap] {
+  border: 2px dashed var(--ink-muted);
+  background: transparent;
+  color: var(--ink);
+}
+
+.initials {
+  display: none;
+}
+
+.name {
+  display: none;
+}
+
+@container (width >= 40px) {
+  .initials {
+    display: inline;
+  }
+}
+
+@container (width >= 120px) {
+  .initials {
+    display: none;
+  }
+
+  .name {
+    display: inline;
+  }
+}
+
+.shifts {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shift {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  border-radius: 10px;
+  background: var(--raised);
+  padding: 4px 8px 4px 16px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.shift[data-gap] {
+  min-height: 36px;
+}
+
+.shift[data-gap] .shiftWho span {
+  display: inline;
+  margin-inline-start: 8px;
+}
+
+.shiftWhen {
+  min-width: 108px;
+  font-weight: 500;
+}
+
+.shiftWho {
+  min-width: 0;
+  flex: 1 1 140px;
+}
+
+.shiftWho span {
+  display: block;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 18px;
 }
 
 .shiftActions {
-  display: grid;
-  gap: 4px;
-  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.shiftActions button {
-  min-height: 32px;
-  width: 100%;
-  padding-inline: 6px;
-  white-space: normal;
-  text-align: left;
-  overflow-wrap: anywhere;
-}
-
-.unstaffedCell {
-  background-image: repeating-linear-gradient(
-    135deg,
-    transparent 0 6px,
-    color-mix(in srgb, var(--muted-foreground) 15%, transparent) 6px 8px
-  );
-}
-
-.unstaffedCard {
-  border-style: dashed;
-  background: color-mix(in srgb, var(--card) 86%, transparent);
-}
-
-.editorSection > h3 {
-  margin-bottom: 12px;
+.empty {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 20px;
 }
 
 .editor {
   display: grid;
-  gap: 16px;
-  margin-top: 12px;
+  min-width: 0;
+  gap: 20px;
 }
 
 .editorFields {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
-}
-
-.editorFields :global([data-slot='select-trigger']) {
-  width: 100%;
-  min-height: 40px;
-}
-
-.editorFields :global([data-slot='input']) {
-  min-height: 40px;
 }
 
 .dayChoices {
@@ -287,29 +293,24 @@
 
 .dayChoices legend {
   margin-bottom: 8px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 20px;
   font-weight: 500;
 }
 
 .dayOptions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 4px 16px;
 }
 
 .dayChoice {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 36px;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.dayChoice :global([data-slot='checkbox']) {
-  min-width: 24px;
-  min-height: 24px;
+  font-size: 14px;
 }
 
 .editorActions,
@@ -317,53 +318,29 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 
-.saveRow {
-  margin-top: 24px;
-}
-
-.saveRow > span,
-.problem {
-  color: var(--muted-foreground);
-}
-
-.problem {
-  color: var(--destructive);
-}
-
-.inlineButton {
-  min-height: 32px;
-  border: 0;
-  background: none;
-  color: var(--primary);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-
-.retryRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-@media (max-width: 640px) {
-  .coverage {
-    grid-template-columns: minmax(0, 1fr);
+@media (width >= 640px) {
+  .axisRow,
+  .day {
+    grid-template-columns: 124px minmax(0, 1fr);
   }
 
-  .templateRow {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .zone {
+    display: block;
   }
 
-  .templateRow strong {
-    grid-column: 1 / -1;
+  .dayHead {
+    display: grid;
+    grid-row: 1 / span 2;
+    align-content: start;
+    gap: 2px;
   }
 
-  .editorFields {
-    grid-template-columns: minmax(0, 1fr);
+  .lanes,
+  .shifts,
+  .empty {
+    grid-column: 2;
   }
 }

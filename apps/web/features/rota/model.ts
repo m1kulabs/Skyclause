@@ -45,3 +45,10 @@ export function initials(name: string): string {
     ? `${parts[0]![0]}${parts.at(-1)![0]}`.toUpperCase()
     : (parts[0]?.slice(0, 2) ?? 'A').toUpperCase()
 }
+
+/** Minutes after midnight, MYT, of a shift's local "HH:MM" or of an instant. */
+export function minutesOfDay(value: string): number {
+  const clock = formatMytClock(value, 'en')
+  const [hours, minutes] = clock.split(':').map(Number)
+  return (hours ?? 0) * 60 + (minutes ?? 0)
+}

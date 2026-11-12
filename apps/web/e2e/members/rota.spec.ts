@@ -61,7 +61,7 @@ test('rota shifts can be added, changed and removed with keyboard input alone', 
   await expect.poll(() => currentShifts.length).toBe(1)
   expect(currentShifts[0]?.account_id).toBe(ownerId)
   await expect(page.getByText('Rota saved.')).toBeVisible()
-  const edit = page.getByRole('button', { name: /^Shift for You,/ })
+  const edit = page.getByRole('button', { name: /^Edit shift for You,/ })
   await edit.focus()
   await page.keyboard.press('Enter')
 

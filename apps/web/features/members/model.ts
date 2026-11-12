@@ -54,3 +54,20 @@ export function errorMessageKey(error: unknown, fallback: string): string {
       return fallback
   }
 }
+
+/**
+ * How long ago a member was last active, in words, as a key and a count the catalogue can phrase: under a minute, then
+ * minutes up to 90, hours up to 36, days up to 30, and after that a date (the caller prints it).
+ */
+export function activityAge(
+  instant: string,
+  now: number = Date.now()
+): { unit: 'now' | 'minutes' | 'hours' | 'days' | 'date'; value: number } {
+  const minutes = Math.max(0, Math.floor((now - new Date(instant).getTime()) / 60_000))
+  if (minutes < 1) return { unit: 'now', value: 0 }
+  if (minutes <= 90) return { unit: 'minutes', value: minutes }
+  const hours = Math.round(minutes / 60)
+  if (hours <= 36) return { unit: 'hours', value: hours }
+  const days = Math.round(hours / 24)
+  return days <= 30 ? { unit: 'days', value: days } : { unit: 'date', value: days }
+}

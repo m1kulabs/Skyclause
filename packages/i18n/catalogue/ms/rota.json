@@ -54,10 +54,20 @@
   "editor_required": "Pilih seseorang dan sekurang-kurangnya satu hari.",
   "time_order": "Masa tamat mestilah selepas masa mula.",
   "no_approvers": "Tiada pelulus yang layak tersedia.",
-  "edit_shift": "Syif untuk {name}, {date}",
+  "edit_shift": "Sunting syif untuk {name}, {date}",
   "remove_shift": "Buang syif untuk {name}",
   "shift_count": "Syif jadual (n={count})",
   "storm": "Petang ribut",
   "surge": "Acara tersenarai",
-  "unknown_person": "Ahli {id}"
+  "unknown_person": "Ahli {id}",
+  "source": "jadual pelulus",
+  "timeline_short": "Syif",
+  "summary_gaps": "{count} dalam 7 hari akan datang",
+  "unstaffed_short": "Kosong",
+  "no_shifts": "Tiada syif pada hari ini.",
+  "edit": "Sunting",
+  "remove": "Buang",
+  "time_hint": "Waktu tempatan, MYT.",
+  "summary_shifts": "{count} dalam 7 hari akan datang",
+  "axis_zone": "Jam, MYT"
 }
