@@ -98,8 +98,11 @@ for (const [letter, char] of Object.entries(SMALL_CAPITALS)) {
   // m is written rn in the table, so the existing rn fold reads it too.
   if (!CONFUSABLE.has(char)) CONFUSABLE.set(char, letter === 'm' ? 'rn' : letter)
 }
-// UTS #39 reads the vertical line as l too; the generated table leaves ASCII sources out.
-CONFUSABLE.set('|', 'l')
+// UTS #39 reads the vertical line as l too (the generated table leaves ASCII sources out). Other vertical bars draw the
+// same though its table lacks them: the broken bar, light to heavy bars, box and bracket lines, one-eighth blocks.
+for (const char of '|\u00A6\u2758\u2759\u275A\u23D0\u23B8\u23B9\u239C\u239F\u23A2\u23A5\u23AA\u258F\u2595\u254E\u254F\u2506\u2507\u250A\u250B') {
+  if (!CONFUSABLE.has(char)) CONFUSABLE.set(char, 'l')
+}
 // Negative circled and negative squared letters, symbols NFKC leaves alone: 🅣 and 🆃 read as T.
 for (const first of [0x1f150, 0x1f170]) {
   for (let i = 0; i < 26; i++) CONFUSABLE.set(String.fromCodePoint(first + i), String.fromCharCode(0x41 + i))

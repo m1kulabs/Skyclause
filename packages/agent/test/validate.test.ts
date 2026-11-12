@@ -503,6 +503,10 @@ describe('more exotic look-alikes (#512)', () => {
     refused(`Gauge ${text}.`, 'look-alike punctuation')
   })
 
+  test.each(['¦5', '❘5', '⏐5', '⎸5', '⎹5', '▏5', '5❘'])('refuses %j, a vertical bar UTS #39 leaves out', (text) => {
+    refused(`Gauge ${text} mm.`, 'look-alike punctuation')
+  })
+
   test.each(['5S mm', '5B mm', '5б mm', 'Ƽ60 mm'])('refuses %j, letters read as digits', (text) => {
     refused(`Gauge ${text}.`, 'letters read as digits')
   })
