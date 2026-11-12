@@ -303,6 +303,91 @@ describe('HeroPicker', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
+  // The strip at a phone's width: 318px for 24 hours, so an hour's span is 13px and its capsule is drawn at 28px.
+  const phoneTrack = { left: 0, width: 318, top: 0, height: 40, right: 318, bottom: 40, x: 0, y: 0, toJSON: () => {} }
+  /** 06:00 to 07:00: the capsule's drawn centre, 14px past its start, lies beyond the hour's span. */
+  const capsuleCentre = (360 / 1440) * 318 + 14
+  // jsdom has no PointerEvent constructor, so MouseEvents carry the pointer type the picker reads.
+  const pointer = (type: string, pointerType: string, init: MouseEventInit) => {
+    const event = new MouseEvent(type, { bubbles: true, ...init })
+    Object.defineProperty(event, 'pointerType', { value: pointerType })
+    return event
+  }
+  const renderAtSix = () => {
+    render(
+      <HeroPicker
+        initialResult={initialResult}
+        initialStripSvg={null}
+        initialWin={{ date: '2026-11-05', startMin: 360, endMin: 420 }}
+        dates={dates}
+        latestCall={null}
+        pilot={null}
+        calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+      />
+    )
+    const slider = screen.getByRole('slider')
+    vi.spyOn(slider, 'getBoundingClientRect').mockReturnValue(phoneTrack as DOMRect)
+    fetchMock.mockClear()
+    return slider
+  }
+
+  test('under touch, nothing changes until the press moves 8px sideways', async () => {
+    const slider = renderAtSix()
+    // A scroll that starts at 18:00, outside the window: the thumb travels up and barely sideways, then the browser
+    // takes the scroll and cancels the pointer.
+    slider.dispatchEvent(pointer('pointerdown', 'touch', { clientX: 238, clientY: 20 }))
+    slider.dispatchEvent(pointer('pointermove', 'touch', { clientX: 241, clientY: -60, buttons: 1 }))
+    slider.dispatchEvent(pointer('pointercancel', 'touch', { clientX: 241, clientY: -60 }))
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    expect(slider.getAttribute('aria-valuenow')).toBe('360')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  test('a cancelled touch drag puts back the window held at the press', async () => {
+    const slider = renderAtSix()
+    slider.dispatchEvent(pointer('pointerdown', 'touch', { clientX: capsuleCentre }))
+    slider.dispatchEvent(pointer('pointermove', 'touch', { clientX: capsuleCentre - 50, buttons: 1 }))
+    await waitFor(() => expect(slider.getAttribute('aria-valuenow')).not.toBe('360'))
+    slider.dispatchEvent(pointer('pointercancel', 'touch', { clientX: capsuleCentre - 50 }))
+    await waitFor(() => expect(slider.getAttribute('aria-valuenow')).toBe('360'))
+    expect(slider.getAttribute('aria-valuetext')).toMatch(/06:00.*07:00/)
+  })
+
+  test('a press on the capsule as drawn moves the window, by mouse and by a replayed first press', async () => {
+    const slider = renderAtSix()
+    slider.dispatchEvent(pointer('pointerdown', 'mouse', { clientX: capsuleCentre }))
+    slider.dispatchEvent(pointer('pointermove', 'mouse', { clientX: capsuleCentre + 80, buttons: 1 }))
+    slider.dispatchEvent(pointer('pointerup', 'mouse', { clientX: capsuleCentre + 80 }))
+    await waitFor(() => expect(slider.getAttribute('aria-valuenow')).not.toBe('360'))
+    const length = (text: string) => {
+      const [start, end] = text
+        .match(/\d\d:\d\d/g)!
+        .map((time) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3)))
+      return end! - start!
+    }
+    expect(length(slider.getAttribute('aria-valuetext')!)).toBe(60)
+    cleanup()
+
+    // The island's first press arrives as a replay, before its own handlers exist.
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(phoneTrack as DOMRect)
+    render(
+      <HeroPicker
+        initialResult={initialResult}
+        initialStripSvg={null}
+        initialWin={{ date: '2026-11-05', startMin: 360, endMin: 420 }}
+        dates={dates}
+        latestCall={null}
+        pilot={null}
+        calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+        initialReplay={{ k: 'ptr', x: capsuleCentre }}
+      />
+    )
+    const replayed = screen.getByRole('slider')
+    replayed.dispatchEvent(pointer('pointermove', 'touch', { clientX: capsuleCentre + 80, buttons: 1 }))
+    await waitFor(() => expect(replayed.getAttribute('aria-valuenow')).not.toBe('360'))
+    expect(length(replayed.getAttribute('aria-valuetext')!)).toBe(60)
+  })
+
   test('a stale calendar read neither restores its window to the URL nor beacons it', async () => {
     let releaseFirst: (() => void) | undefined
     let calendarCalls = 0

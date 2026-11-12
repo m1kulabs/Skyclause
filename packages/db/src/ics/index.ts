@@ -1,10 +1,11 @@
 import { log } from '@skyclause/config'
-import { and, asc, eq, getViewSelectedFields, inArray, isNotNull, or, type SQL } from 'drizzle-orm'
+import { and, asc, eq, getViewSelectedFields, inArray, isNotNull, or, sql, type SQL } from 'drizzle-orm'
 import type { Tx } from '../client'
 import { citedSourceIds } from '../channels'
 import {
   bundle,
   call,
+  icsFeed,
   publicBundle,
   publicCall,
   publicListing,
@@ -249,4 +250,28 @@ export async function loadIcsEntries(tx: Tx<null>, projectId: string): Promise<I
     })
   }
   return entries
+}
+
+/**
+ * The project's imported calendars oldest first (`created_at, id`), after `afterId` when paging. The caller authorizes
+ * the project first; RLS keeps other organisations' feeds out.
+ */
+export async function listProjectIcsFeedRecords(
+  tx: Tx,
+  query: { projectId: string; limit: number; afterId?: string }
+): Promise<Array<typeof icsFeed.$inferSelect>> {
+  return tx
+    .select()
+    .from(icsFeed)
+    .where(
+      and(
+        eq(icsFeed.orgId, tx.orgId!),
+        eq(icsFeed.projectId, query.projectId),
+        query.afterId
+          ? sql`(${icsFeed.createdAt}, ${icsFeed.id}) > (SELECT created_at, id FROM ics_feed WHERE id = ${query.afterId}::uuid)`
+          : undefined
+      )
+    )
+    .orderBy(asc(icsFeed.createdAt), asc(icsFeed.id))
+    .limit(query.limit + 1)
 }

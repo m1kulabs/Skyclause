@@ -36,8 +36,15 @@ export const ReviewTrace = memo(function ReviewTrace({
           ))}
         </>
       )}
+      {/* The run's ID is a database key: its last eight characters say which run, the title keeps the whole of it. */}
       {run && (
-        <p>{t('bundles.run', { id: run.id, status: t(`bundles.run_states.${run.status}`, {}, locale) }, locale)}</p>
+        <p title={run.id}>
+          {t(
+            'bundles.run',
+            { id: `…${run.id.slice(-8)}`, status: t(`bundles.run_states.${run.status}`, {}, locale) },
+            locale
+          )}
+        </p>
       )}
       {run?.reason && <p className="bundle-quiet">{run.reason}</p>}
       {!steps.length && <p className="bundle-quiet">{t('bundles.no_trace', {}, locale)}</p>}

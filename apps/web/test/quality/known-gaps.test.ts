@@ -44,8 +44,7 @@ test.each(reported)('the %s gap in %s covers its reported %s finding', (route, p
 
 // Copied from the Chromium crawl, 11 November 2026, with the role that saw each.
 const reportedTo = [
-  ['/[org]/[project]/camera/[sourceId]', 'signed out', 'focus-visible', 'input shows no :focus-visible ring'],
-  ['/[org]/[project]/subscribers', 'Approver', 'status', 'answered 200 with "Page not found", expected the page']
+  ['/[org]/[project]/camera/[sourceId]', 'signed out', 'focus-visible', 'input shows no :focus-visible ring']
 ] as const
 
 test('a ring gap leaves out Firefox, which rings a focused date or time field itself', () => {

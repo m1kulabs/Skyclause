@@ -30,7 +30,10 @@ import { subscriberHandlers } from './subscribers'
 import { subscriberRightsHandlers } from './subscriber-rights'
 import { sourceHandlers } from './sources'
 import { signalHandlers } from './signals'
+import { icsFeedHandlers } from './ics-feeds'
+import { nightHandlers } from './nights'
 import { dataRightsHandlers } from './data-rights'
+import { windowHandlers } from './windows'
 
 /**
  * One operation's handler, typed by its registry route, plus middleware the route's metadata can't express, such as
@@ -56,6 +59,9 @@ export type Handlers = { [Id in OperationId]?: HandlerEntry<Operations[Id]> }
 export const HANDLERS: Handlers = {
   ...sourceHandlers, // b-source-binding
   ...signalHandlers, // b-signals-api
+  ...windowHandlers, // b-windows-api
+  ...icsFeedHandlers, // b-windows-api
+  ...nightHandlers, // b-forecast
   ...apiKeyHandlers, // a-api-keys
   ...auditHandlers, // a-audit-log
   ...aiKeyHandlers, // e-byok-api

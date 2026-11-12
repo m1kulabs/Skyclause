@@ -1,5 +1,5 @@
 import { expect, test } from '../fixtures'
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import type { Appearance } from '../../lib/theme'
 
 async function appearance(page: Page, baseURL: string, preferences: Partial<Appearance>) {
@@ -362,4 +362,86 @@ test('forced colours retain system surfaces and a visible focus outline', async 
   await page.keyboard.press('Tab')
   await expect(page.locator('.skip-link')).toBeFocused()
   await expect(page.locator('.skip-link')).toHaveCSS('outline-style', 'solid')
+})
+
+/**
+ * The pixels inside a control's label box that stand apart from the box's commonest colour. Forced colours paint a
+ * Canvas backplate behind text, so a label in Canvas's own colour (ButtonFace or HighlightText in most palettes) counts 0.
+ */
+async function labelInk(page: Page, control: Locator) {
+  await control.scrollIntoViewIfNeeded()
+  const box = await control.evaluate((element) => {
+    const range = document.createRange()
+    range.selectNodeContents(element)
+    const rect = range.getBoundingClientRect()
+    return { x: rect.x + 2, y: rect.y + 2, width: rect.width - 4, height: rect.height - 4 }
+  })
+  const png = (await page.screenshot({ clip: box })).toString('base64')
+  // A blank page decodes the picture: the app's CSP keeps data: images out of its own pages.
+  const blank = await page.context().newPage()
+  try {
+    return await blank.evaluate(async (data) => {
+      const image = new Image()
+      image.src = `data:image/png;base64,${data}`
+      await image.decode()
+      const canvas = document.createElement('canvas')
+      canvas.width = image.width
+      canvas.height = image.height
+      const context = canvas.getContext('2d')!
+      context.drawImage(image, 0, 0)
+      const pixels = context.getImageData(0, 0, image.width, image.height).data
+      const counts = new Map<string, number>()
+      for (let i = 0; i < pixels.length; i += 4) {
+        const key = `${pixels[i]},${pixels[i + 1]},${pixels[i + 2]}`
+        counts.set(key, (counts.get(key) ?? 0) + 1)
+      }
+      const ground = [...counts]
+        .sort((a, b) => b[1] - a[1])[0]![0]
+        .split(',')
+        .map(Number)
+      let ink = 0
+      for (let i = 0; i < pixels.length; i += 4) {
+        const distance = Math.max(...[0, 1, 2].map((channel) => Math.abs(pixels[i + channel]! - ground[channel]!)))
+        if (distance > 96) ink++
+      }
+      return ink
+    }, png)
+  } finally {
+    await blank.close()
+  }
+}
+
+/** A system colour as this page's forced palette resolves it. */
+const systemColour = (page: Page, keyword: string) =>
+  page.evaluate((colour) => {
+    const probe = document.createElement('span')
+    probe.style.color = colour
+    document.body.append(probe)
+    const value = getComputedStyle(probe).color
+    probe.remove()
+    return value
+  }, keyword)
+
+test('forced colours keep the label of filled and selected controls and the edge of outline ones', async ({ page }) => {
+  await page.emulateMedia({ forcedColors: 'active', colorScheme: 'dark' })
+  await page.goto('/sign-in')
+  const primary = page.getByRole('button', { name: 'Send sign-in link' })
+  const colours = await primary.evaluate((button) => {
+    const style = getComputedStyle(button)
+    return { text: style.color, background: style.backgroundColor }
+  })
+  expect(colours.text).not.toBe(colours.background)
+  expect(await labelInk(page, primary), 'the primary label is drawn').toBeGreaterThan(20)
+  const outline = page.getByRole('button', { name: 'Continue with Google' })
+  expect(await outline.evaluate((button) => getComputedStyle(button).borderTopColor)).not.toBe(
+    await systemColour(page, 'Canvas')
+  )
+
+  await page.goto('/_test/tokens')
+  const pressed = page.getByRole('group', { name: 'Pack' }).locator('[data-pressed]')
+  await expect(pressed).toHaveText('Sky')
+  expect(await labelInk(page, pressed), 'the pressed segment’s label is drawn').toBeGreaterThan(20)
+  const tab = page.getByRole('tab', { name: 'Today' })
+  await expect(tab).toHaveAttribute('aria-selected', 'true')
+  expect(await labelInk(page, tab), 'the selected tab’s label is drawn').toBeGreaterThan(20)
 })

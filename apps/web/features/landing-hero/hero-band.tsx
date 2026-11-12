@@ -3,7 +3,7 @@ import { brandStates, type BrandState } from '@skyclause/elements'
 import { formatClock, formatTime } from '@skyclause/i18n/format'
 import { Glyph } from '../brand/glyph'
 import { t } from './catalogue'
-import { CLOCK_SOURCE, DAY_MIN, localDateOf, windowInstants, type HeroWindow } from './window-model'
+import { CAPSULE_MIN_PX, CLOCK_SOURCE, DAY_MIN, localDateOf, windowInstants, type HeroWindow } from './window-model'
 import styles from './hero.module.css'
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
@@ -61,7 +61,7 @@ export function HeroBand({ win, state, sliderProps, sliderRef, now }: HeroBandPr
           data-tone={tone ?? undefined}
           data-state={state ?? 'selection'}
           aria-hidden="true"
-          style={{ left: `${left.toFixed(3)}%`, width: `max(28px, ${width.toFixed(3)}%)` }}
+          style={{ left: `${left.toFixed(3)}%`, width: `max(${CAPSULE_MIN_PX}px, ${width.toFixed(3)}%)` }}
         >
           {state ? <Glyph state={state} width={14} height={14} /> : null}
         </span>

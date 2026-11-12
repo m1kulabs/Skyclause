@@ -183,8 +183,90 @@ function extractShadowSpanEnd(shadow: unknown): Date | null {
   return maxEnd
 }
 
+// The engine's form of a verdict, as `commitEvaluatorVerdict` stores `shadow_state.verdict` (`@skyclause/clauses`'s
+// `Verdict`, camelCase). Only its shape is checked here; the wire `Verdict` below validates the values.
+const EngineBlocked = z.object({
+  name: z.string(),
+  sourceId: z.string().nullable(),
+  state: z.string(),
+  since: z.string()
+})
+const EngineVerdict = z.object({
+  scope: z.object({ kind: z.string(), id: z.string().nullable() }),
+  pack: z.string(),
+  mode: z.string().nullable(),
+  watch: z.boolean(),
+  noCall: z.object({ inputs: z.array(EngineBlocked) }).nullable(),
+  recommendations: z.array(z.string()),
+  clauses: z.array(
+    z.object({
+      key: z.string(),
+      result: z.string(),
+      blockedBy: z.array(EngineBlocked),
+      span: z.unknown().optional(),
+      inputs: z.array(
+        z.object({
+          name: z.string(),
+          value: z.unknown(),
+          unit: z.string(),
+          state: z.string(),
+          since: z.string().nullable(),
+          ageS: z.number().nullable(),
+          sourceIds: z.array(z.string()),
+          readingIds: z.array(z.string()),
+          observedAt: z.string().nullable()
+        })
+      )
+    })
+  ),
+  openFrom: z.string().nullable()
+})
+const wireBlocked = (b: z.infer<typeof EngineBlocked>) => ({
+  name: b.name,
+  source_id: b.sourceId,
+  state: b.state,
+  since: b.since
+})
+
+/**
+ * A stored verdict in the wire form: `call.shadow` is stored that way, `shadow_state.verdict` in the engine's form, so
+ * the latter is mapped as `wireVerdict` maps it. Inputs carry no source URL here; the summary never shows them.
+ */
+function wireForm(value: unknown): unknown {
+  const engine = EngineVerdict.safeParse(value)
+  if (!engine.success) return value
+  const v = engine.data
+  return {
+    scope: v.scope,
+    pack: v.pack,
+    mode: v.mode,
+    watch: v.watch,
+    no_call: v.noCall ? { inputs: v.noCall.inputs.map(wireBlocked) } : null,
+    recommendations: v.recommendations,
+    clauses: v.clauses.map((c) => ({
+      key: c.key,
+      result: c.result,
+      blocked_by: c.blockedBy.map(wireBlocked),
+      ...(c.span === undefined ? {} : { span: c.span }),
+      inputs: c.inputs.map((i) => ({
+        name: i.name,
+        value: i.value,
+        unit: i.unit,
+        state: i.state,
+        since: i.since,
+        age_s: i.ageS === null ? null : Math.round(i.ageS),
+        source_ids: i.sourceIds,
+        source_url: null,
+        reading_ids: i.readingIds,
+        observed_at: i.observedAt
+      }))
+    })),
+    open_from: v.openFrom
+  }
+}
+
 function persistedVerdict(value: unknown, pack: Pack, kind: string, scopeId: string | null, label: string): Verdict {
-  const parsed = Verdict.safeParse(value)
+  const parsed = Verdict.safeParse(wireForm(value))
   if (
     !parsed.success ||
     parsed.data.pack !== pack ||
