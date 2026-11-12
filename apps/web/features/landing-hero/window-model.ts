@@ -2,6 +2,7 @@ import { t } from '@skyclause/i18n'
 import { formatNumber, formatTime } from '@skyclause/i18n/format'
 import type { BlockedInput, ClauseResult, InputValue, Mode, Pack, Verdicts } from '@skyclause/contracts/api/shared'
 import type { StripInput } from '@skyclause/elements'
+import { indicatorName } from '../data-components/indicator-names'
 import { heroCatalogue } from './catalogue'
 
 export interface HeroWindow {
@@ -261,15 +262,9 @@ export function clauseNameOf(key: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1)
 }
 
-/**
- * An indicator by its catalogue name, in the words the product's data components use ("Rain in the last 60 minutes
- * (site)"). A name that is already words (a source's own "gauge") stays; an unknown identifier is never printed: it
- * reads as an input from its source.
- */
-export function inputNameOf(name: string, source?: string | null): string {
-  if (catalogued(['inputs', ...name.split('.')])) return t(`landing-hero.inputs.${name}`, {}, 'en')
-  if (!/[._]/.test(name)) return name
-  return source ? t('landing-hero.input_from', { source }, 'en') : t('landing-hero.an_input', {}, 'en')
+/** An indicator by the product's one name for it (data components' `indicatorName`), never its registry key. */
+export function inputNameOf(name: string): string {
+  return indicatorName(name, 'en')
 }
 
 /** A name inside a sentence: its first letter lowered unless it opens an acronym ("MET warning in force"). */
@@ -282,7 +277,7 @@ export function blockedLineOf(input: { clause: string; blocked: BlockedInput }):
     'landing-hero.no_call_for',
     {
       clause: clauseNameOf(input.clause),
-      input: inSentence(inputNameOf(input.blocked.name, input.blocked.source_id)),
+      input: inSentence(inputNameOf(input.blocked.name)),
       station: input.blocked.source_id ?? '',
       time: formatTime(input.blocked.since, 'en')
     },
@@ -294,7 +289,7 @@ export function errorLineOf(input: Pick<InputValue, 'name' | 'since' | 'observed
   const at = input.since ?? input.observed_at
   return t(
     'landing-hero.couldnt_reach',
-    { input: inSentence(inputNameOf(input.name, input.source_ids[0])), time: at ? formatTime(at, 'en') : '' },
+    { input: inSentence(inputNameOf(input.name)), time: at ? formatTime(at, 'en') : '' },
     'en'
   )
 }

@@ -31,7 +31,7 @@ function InputRow({ input, evaluatedAt }: { input: InputValue; evaluatedAt: stri
   const station = input.source_ids[0]
   const value = valueOf(input)
   const age = ageMinutesOf(input, evaluatedAt)
-  const name = inputNameOf(input.name, station)
+  const name = inputNameOf(input.name)
   return (
     <li data-source={input.source_url ?? CLOCK_SOURCE} className={styles.input}>
       <span className={styles.inputName}>{name}</span>
