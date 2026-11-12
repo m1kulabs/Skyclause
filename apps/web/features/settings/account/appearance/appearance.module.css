@@ -1,0 +1,287 @@
+/*
+ * Each choice is previewed as a small piece of the real interface drawn in that choice: real markup, set inside the
+ * theme's own class, which resolves its roles and aliases there. Nothing here is a picture: the capsule is the status
+ * mark, the buttons are capsules, the rows keep their real pitch.
+ */
+.choices {
+  container-type: inline-size;
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  align-items: start;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.tile {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 8px;
+  padding-bottom: 14px;
+  cursor: pointer;
+}
+
+.tile input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.name {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.tile[data-current] .name {
+  font-weight: 600;
+}
+
+.note {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+
+/* The selected tile: an ink edge round the preview, the name in 600 and the capsule mark (current-mark) under it. */
+.tile[data-current] .preview {
+  border-color: var(--foreground);
+}
+
+.tile:hover .preview {
+  border-color: var(--foreground);
+}
+
+/* The mark on the chosen card: an ink disc with a check, set on the preview's top corner. */
+.check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 9999px;
+  background: var(--foreground);
+  color: var(--background);
+  pointer-events: none;
+}
+
+.check svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* The high-contrast preview is drawn in the scheme the page is in, chosen here by the page's own class. */
+.whenDark,
+.whenLight {
+  display: contents;
+}
+
+.whenLight,
+:global(html.light) .whenDark {
+  display: none;
+}
+
+:global(html.light) .whenLight {
+  display: contents;
+}
+
+.tile:has(input:focus-visible) .preview {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* The preview carries its theme class (dark, light, hc), which resolves the roles and their aliases on it. */
+.preview {
+  display: grid;
+  min-width: 0;
+  min-height: 120px;
+  align-content: center;
+  gap: 8px;
+  padding: 12px;
+  border: 2px solid var(--ink-muted);
+  border-radius: 10px;
+  background: var(--ground);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 18px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.pair {
+  display: grid;
+  min-width: 0;
+  min-height: 120px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  border: 2px solid var(--ink-muted);
+  border-radius: 10px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.tile[data-current] .pair,
+.tile:hover .pair {
+  border-color: var(--foreground);
+}
+
+.tile:has(input:focus-visible) .pair {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: 2px;
+}
+
+.pair .preview {
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 10px;
+}
+
+.marks {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.capsule {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 12px;
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background: var(--ink);
+  color: var(--ground);
+  font-weight: 500;
+}
+
+:global(.hc) .capsule {
+  border-color: var(--edge);
+}
+
+.quiet {
+  border-color: var(--ink-muted);
+  background: var(--raised);
+  color: var(--ink);
+}
+
+.line {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Density: the real row pitch and text size of each setting (comfortable 44px and 14px, compact 40px and 13px). */
+.rows {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-inline: 8px;
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.rows[data-density='comfortable'] .row {
+  min-height: 44px;
+  font-size: 14px;
+}
+
+.rows[data-density='compact'] .row {
+  min-height: 40px;
+  font-size: 13px;
+}
+
+/* Motion: a capsule that travels along a track, twice, then rests. Under reduced motion it never starts. */
+.track {
+  position: relative;
+  height: 24px;
+  border-radius: 9999px;
+  background: var(--surface);
+}
+
+.traveller {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 40%;
+  height: 20px;
+  border-radius: 9999px;
+  background: var(--ink);
+}
+
+.track[data-motion='full'] .traveller {
+  animation: travel 1.2s cubic-bezier(0.16, 1, 0.3, 1) 2 alternate both;
+}
+
+.track[data-motion='reduce'] .traveller {
+  transform: translateX(75%);
+}
+
+/* The preview of full motion rests too while the page itself is calm: the OS asks for less (and the account has not
+   said full motion), or the account says reduced motion. This is the global `calm` variant, written out because a CSS
+   module cannot use it. */
+@media (prefers-reduced-motion: reduce) {
+  :global(html:not([data-motion='full'])) .track[data-motion='full'] .traveller {
+    animation: none;
+    transform: translateX(75%);
+  }
+}
+
+:global(html[data-motion='reduce']) .track[data-motion='full'] .traveller {
+  animation: none;
+  transform: translateX(75%);
+}
+
+@keyframes travel {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(145%);
+  }
+}
+
+.field {
+  display: grid;
+  max-width: 320px;
+  gap: 8px;
+}
+
+/* A narrow panel (a phone, or a tablet with the label column beside it) gives the System pair a row of its own. */
+@container (width < 520px) {
+  .tile[data-wide] {
+    grid-column: 1 / -1;
+  }
+}
+
+/* The second mode capsule is long; it appears only where the preview is wide enough to hold it on one line. */
+.preview {
+  container-type: inline-size;
+}
+
+.optional {
+  display: none;
+}
+
+@container (width >= 200px) {
+  .optional {
+    display: inline-flex;
+  }
+}

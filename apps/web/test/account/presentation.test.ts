@@ -6,6 +6,7 @@ import {
   formatSessionDate
 } from '../../features/account/presentation'
 import { DEFAULT_PREFERENCES } from '@skyclause/contracts'
+import '../../features/settings/catalogue'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -43,11 +44,19 @@ describe('account settings presentation', () => {
     expect(formatSessionDate('2026-11-10T13:30:00.000Z')).toBe('10 November 2026, 21:30 MYT')
   })
 
-  test('applies saved display choices to the current document and shell', () => {
+  test('writes session dates and unknown devices in the reader’s language', () => {
+    expect(formatSessionDate('2026-11-10T13:30:00.000Z', 'ms')).toBe('10 November 2026, 21:30 MYT')
+    expect(formatSessionDate('not a date', 'ms')).toBe('Masa tidak diketahui · MYT')
+    expect(presentSessionAgent('curl/8.0', 'ms')).toEqual({
+      device: 'Peranti tidak diketahui',
+      browser: 'Pelayar tidak diketahui'
+    })
+    expect(presentSessionAgent(null)).toEqual({ device: 'Unknown device', browser: 'Unknown browser' })
+  })
+
+  test('applies saved display choices to the current document', () => {
     const root = { dataset: {} as Record<string, string>, lang: '' }
-    const dispatchEvent = vi.fn()
     vi.stubGlobal('document', { documentElement: root })
-    vi.stubGlobal('window', { dispatchEvent })
     applyAccountPreferences({
       ...DEFAULT_PREFERENCES,
       theme: 'system',
@@ -55,8 +64,7 @@ describe('account settings presentation', () => {
       density: 'compact',
       reduced_motion: true,
       language: 'ms',
-      shortcuts: false,
-      sidebar_collapsed: true
+      shortcuts: false
     })
 
     expect(root).toMatchObject({
@@ -66,10 +74,9 @@ describe('account settings presentation', () => {
         contrast: 'more',
         motionPreference: 'reduce',
         density: 'compact',
-        shortcuts: 'false',
-        sidebarCollapsed: 'true'
+        shortcuts: 'false'
       }
     })
-    expect(dispatchEvent).toHaveBeenCalledOnce()
+    expect(root.dataset).not.toHaveProperty('sidebarCollapsed')
   })
 })

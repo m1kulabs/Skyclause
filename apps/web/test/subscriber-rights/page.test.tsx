@@ -4,7 +4,7 @@ import axe from 'axe-core'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { SubscriberData } from '@skyclause/contracts'
 import { afterEach, expect, test, vi } from 'vitest'
-import { SubscriberRights } from '../../features/subscriber-rights/subscriber-rights'
+import { SubscriberRights, SubscriberRightsLinkError } from '../../features/subscriber-rights/subscriber-rights'
 import { t } from '../../features/subscriber-rights/i18n'
 
 const data: SubscriberData = {
@@ -64,8 +64,8 @@ afterEach(() => {
 
 test('English catalogue contains subscriber data rights copy', () => {
   expect(t('subscriber-rights.title')).toContain('your data')
-  expect(t('subscriber-rights.download')).toBe('Download my data')
-  expect(t('subscriber-rights.delete')).toBe('Delete my data')
+  expect(t('subscriber-rights.download')).toBe('Download your data')
+  expect(t('subscriber-rights.delete')).toBe('Delete your data')
 })
 
 test('renders real tables with all subscriber data before client interaction', () => {
@@ -74,9 +74,10 @@ test('renders real tables with all subscriber data before client interaction', (
   expect(html).toContain('Bukit Jalil')
   expect(html).toContain('reader@example.test')
   expect(html).toContain('Release wave')
-  expect(html).toContain('/c/call-id')
-  expect(html).toContain('Download my data')
-  expect(html).not.toContain('Deleted. We keep only a one-way hash')
+  // The permalink page is not built, so nothing links to it.
+  expect(html).not.toContain('/c/call-id')
+  expect(html).toContain('Download your data')
+  expect(html).not.toContain('Deleted. Only a one-way hash')
 })
 
 test('the delete confirm names the project, shows pending state, then focuses the deletion result', async () => {
@@ -85,14 +86,14 @@ test('the delete confirm names the project, shows pending state, then focuses th
   vi.stubGlobal('fetch', send)
   render(<SubscriberRights initialData={data} token="manage-token" />)
 
-  fireEvent.click(screen.getByRole('button', { name: 'Delete my data' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Delete your data' }))
   fireEvent.click(screen.getByRole('button', { name: 'Delete data for Bukit Jalil' }))
   expect(screen.getByRole('button', { name: 'Deleting…' })).toBeTruthy()
   expect(send).toHaveBeenCalledWith('/api/subscribe/manage-token/data', { method: 'DELETE' })
 
   finish(new Response(null, { status: 204 }))
   const result = await screen.findByRole('heading', {
-    name: 'Deleted. We keep only a one-way hash of your address so we never email it again.'
+    name: 'Deleted. Only a one-way hash of your address is kept, so it is never emailed again.'
   })
   await waitFor(() => expect(document.activeElement).toBe(result))
 })
@@ -108,4 +109,99 @@ test('subscriber page has no axe violations', async () => {
   } finally {
     canvas.mockRestore()
   }
+})
+
+test('the correction form names its fields and keeps the email literal (#691)', () => {
+  const html = renderToStaticMarkup(<SubscriberRights initialData={data} token="manage-token" />)
+  const input = (name: string) => html.match(new RegExp(`<input[^>]*name="${name}"[^>]*>`))![0]
+
+  expect(input('email')).toMatch(/type="email"/)
+  expect(input('email')).toMatch(/autoComplete="email"/i)
+  expect(input('email')).toMatch(/spellCheck="false"/i)
+  expect(input('role')).toMatch(/autoComplete="organization-title"/i)
+  expect(html.match(/<main/g)).toHaveLength(1)
+})
+
+test('a Malay subscriber reads the page in Malay, in a Malay main landmark', () => {
+  const html = renderToStaticMarkup(
+    <SubscriberRights
+      initialData={{ ...data, subscriber: { ...data.subscriber, language: 'ms' } }}
+      token="manage-token"
+    />
+  )
+
+  expect(html).toContain('lang="ms"')
+  expect(html).toContain('Urus data anda')
+  expect(html).toContain('Muat turun data anda')
+  expect(html).not.toContain('Manage your data')
+})
+
+test('codes and identifiers read as words: channels, languages, forms, kinds and statuses, never IDs', () => {
+  const html = renderToStaticMarkup(
+    <SubscriberRights
+      initialData={{
+        ...data,
+        subscriber: { ...data.subscriber, channels: ['email', 'in_app'] },
+        consent_records: [{ ...data.consent_records[0]!, form: 'subscribe_link', language: 'ms' }]
+      }}
+      token="manage-token"
+    />
+  )
+  for (const raw of [
+    'in_app',
+    'subscribe_link',
+    '>ms<',
+    'subscriber-id',
+    'window-id',
+    'notice-id',
+    'reply-id',
+    '>sent<',
+    '>keep<',
+    'Asia/Kuala_Lumpur'
+  ]) {
+    expect(html).not.toContain(raw)
+  }
+  for (const word of [
+    'Email and In-app',
+    'Subscribe link',
+    'Bahasa Melayu',
+    'Call notice',
+    'Sent',
+    'Keep the plan',
+    'MYT'
+  ]) {
+    expect(html).toContain(word)
+  }
+})
+
+test('a long history renders 50 rows at most and says how many it holds', () => {
+  const many = Array.from({ length: 73 }, (_, index) => ({
+    ...data.delivery_history[0]!,
+    id: `notice-${index}`,
+    at: new Date(Date.UTC(2026, 10, 1, 0, index)).toISOString()
+  }))
+  render(<SubscriberRights initialData={{ ...data, delivery_history: many }} token="manage-token" />)
+  const table = screen.getByRole('table', { name: t('subscriber-rights.delivery') })
+  expect(table.querySelectorAll('tbody tr')).toHaveLength(50)
+  expect(screen.getByText(t('subscriber-rights.showing_latest', { shown: '50', count: '73' }))).toBeTruthy()
+})
+
+test('a refused correction says so beside the email field and returns focus to it', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() => Promise.resolve(new Response('{}', { status: 422 })))
+  )
+  render(<SubscriberRights initialData={data} token="manage-token" />)
+  fireEvent.click(screen.getByRole('button', { name: t('subscriber-rights.save') }))
+  const email = screen.getByRole('textbox', { name: t('subscriber-rights.email') })
+  const message = await screen.findByText(t('subscriber-rights.email_rejected'))
+  expect(email.getAttribute('aria-invalid')).toBe('true')
+  expect(email.getAttribute('aria-describedby')).toBe(message.closest('p')!.id)
+  await waitFor(() => expect(document.activeElement).toBe(email))
+})
+
+test('a failed link speaks the reader’s language', () => {
+  const html = renderToStaticMarkup(<SubscriberRightsLinkError expired={false} locale="ms" />)
+  expect(html).toContain('lang="ms"')
+  expect(html).toContain(t('subscriber-rights.unavailable', {}, 'ms'))
 })

@@ -1,13 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { InputState, InputValue, SourceState } from '@skyclause/contracts'
-import { formatDateTime, formatNumber, formatTime } from '@skyclause/i18n/format'
+import type { InputState, SourceState } from '@skyclause/contracts'
+import { formatDateTime, formatNumber } from '@skyclause/i18n/format'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Button } from '#ui/button'
-import { InputAgeChip } from '../data-components/input-age-chip'
-import { SourceHealthRow } from '../data-components/source-health-row'
-import { browserPath } from '../../lib/api-fetch'
+import { Button, buttonVariants } from '#ui/button'
+import { Skeleton } from '#ui/skeleton'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
+import { SourceError } from '../data-components'
+import { ApiProblem, browserPath } from '../../lib/api-fetch'
 import { readSse } from '../../lib/read-sse'
 import {
   apiFetch,
@@ -23,24 +24,24 @@ import {
   type SourcePoll,
   type SourceReading
 } from './operations'
-import {
-  ageAt,
-  errorsWithinLastDay,
-  findingLine,
-  markEventSeen,
-  orderSources,
-  tailCommand,
-  wilsonInterval
-} from './model'
+import { ageAt, errorsWithinLastDay, findingLine, markEventSeen, orderSources, tailCommand } from './model'
 import { SourceDetail } from './source-detail'
+import { SourceTable } from './source-table'
 import { t } from './catalogue'
 
 type Locale = 'en' | 'ms'
+/** A table never draws more than this many rows (NFR-9). */
+const ERROR_ROWS = 50
 type PageData = { project: Project; sources: ProjectSource[]; strip: ProjectStrip; readAt: number }
 type DetailState =
   | { status: 'loading'; sourceId: string }
   | { status: 'error'; sourceId: string }
   | { status: 'ready'; sourceId: string; readings: SourceReading[]; polls: SourcePoll[] }
+/** A failed read: the HTTP status it answered (null when it did not answer) and when. */
+const failure = (error: unknown) => ({
+  status: error instanceof ApiProblem ? error.status : null,
+  at: new Date().toISOString()
+})
 // A timeout has no HTTP status; say so instead of printing "HTTP null".
 const errorAnnouncement = (source: string, status: number | null, locale: Parameters<typeof t>[2]) =>
   status === null
@@ -55,93 +56,28 @@ type PendingSourceEvent = {
   announce: boolean
 }
 
-function inputFor(source: EvaluatedSource): InputValue {
-  const latest = source.latest_reading
-  return {
-    name: source.name,
-    value: latest?.value ?? latest?.value_text ?? null,
-    unit: latest?.unit ?? '',
-    state: source.state.state,
-    since: source.state.since,
-    age_s: source.age_s,
-    source_ids: [source.id],
-    source_url: source.url,
-    reading_ids: latest ? [latest.id] : [],
-    observed_at: latest?.observed_at ?? null
-  }
-}
-
-function stateLabel(source: EvaluatedSource, locale: Locale): string {
-  if (source.state.state === 'pending' && source.state.pending_until) {
-    return t('signals.pending_until', { time: formatTime(source.state.pending_until, locale) }, locale)
-  }
-  if (source.kind === 'pi' && (source.state.state === 'stale' || source.state.state === 'error')) {
-    return t('signals.pi_offline', { time: formatTime(source.state.since, locale) }, locale)
-  }
-  if (source.kind === 'camera' && source.state.state === 'probation' && source.probation?.probation) {
-    const { n, agreement } = source.probation
-    if (agreement === null) return t('signals.probation_unknown', { n }, locale)
-    const interval = wilsonInterval(Math.round(n * agreement), n)
-    if (!interval) return t('signals.probation_unknown', { n }, locale)
-    const percent = (value: number) => formatNumber(value, locale, { maximumFractionDigits: 1 })
-    return t(
-      'signals.probation',
-      {
-        n,
-        agreement: percent(agreement * 100),
-        low: percent(interval.low * 100),
-        high: percent(interval.high * 100)
-      },
-      locale
-    )
-  }
-  return t(`brand.states.${source.state.state}`, {}, locale)
-}
-
-function latestLabel(source: EvaluatedSource, strip: ProjectStrip, locale: Locale): string | undefined {
-  const reading = source.latest_reading
-  if (source.kind === 'jps_rain') {
-    const input = strip.inputs.find(
-      (value) => value.source_ids.includes(source.id) && value.name.includes('rain_60m_mm')
-    )
-    const series = strip.series['site.rain_60m_mm']
-    const seriesValue = series?.at(-1)?.[1]
-    const value = typeof input?.value === 'number' ? input.value : seriesValue
-    if (value !== null && value !== undefined)
-      return t('signals.rain_latest', { value: formatNumber(value, locale) }, locale)
-  }
-  if (!reading) return undefined
-  if (source.kind === 'met_warning') return reading.value_text ?? undefined
-  const value = reading.value === null ? null : formatNumber(reading.value, locale)
-  if (value === null) return reading.value_text ?? undefined
-  const unit = reading.unit ?? ''
-  const classification =
-    typeof reading.value_json === 'object' &&
-    reading.value_json !== null &&
-    !Array.isArray(reading.value_json) &&
-    typeof reading.value_json.class === 'string'
-      ? reading.value_json.class
-      : null
-  return classification
-    ? t('signals.latest_value_class', { value, unit, class: classification }, locale)
-    : t('signals.latest_value', { value, unit }, locale)
-}
-
-function lastSourceError(source: ProjectSource, now: number): ProjectSource['recent_errors'][number] | undefined {
-  return errorsWithinLastDay(source.recent_errors, now).at(0)
-}
-
-export function SignalsPage({ org, project: projectSlug, locale }: { org: string; project: string; locale: Locale }) {
+export function SignalsPage({
+  org,
+  project: projectSlug,
+  locale,
+  canBind = false
+}: {
+  org: string
+  project: string
+  locale: Locale
+  /** Owners and admins can bind sources in the project's settings; others are not offered the link. */
+  canBind?: boolean
+}) {
   const router = useRouter()
   const pathname = usePathname()
   const search = useSearchParams()
   const selectedExternalId = search.get('source')
   const [project, setProject] = useState<Project | null>(null)
   const [data, setData] = useState<PageData | null>(null)
-  const [pageError, setPageError] = useState(false)
+  const [pageError, setPageError] = useState<{ status: number | null; at: string } | null>(null)
   const [detailState, setDetailState] = useState<DetailState | null>(null)
   const [announcement, setAnnouncement] = useState('')
-  const [copyStatus, setCopyStatus] = useState('')
+  const [copyStatus, setCopyStatus] = useState<'copied' | 'failed' | null>(null)
   const [clockNow, setClockNow] = useState(() => Date.now())
   const [refresh, setRefresh] = useState(0)
   const [resolveAttempt, setResolveAttempt] = useState(0)
@@ -158,15 +94,15 @@ export function SignalsPage({ org, project: projectSlug, locale }: { org: string
     const controller = new AbortController()
     setData(null)
     setProject(null)
-    setPageError(false)
+    setPageError(null)
     void readProjects(org, projectSlug, controller.signal)
       .then((projects) => {
         const found = projects.find((item) => item.slug === projectSlug)
         if (!found) throw new Error('Project unavailable')
         if (!controller.signal.aborted) setProject(found)
       })
-      .catch(() => {
-        if (!controller.signal.aborted) setPageError(true)
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) setPageError(failure(error))
       })
     return () => controller.abort()
   }, [org, projectSlug, resolveAttempt])
@@ -186,8 +122,8 @@ export function SignalsPage({ org, project: projectSlug, locale }: { org: string
   useEffect(() => {
     if (!project) return
     const controller = new AbortController()
-    void reloadProjectData(controller.signal).catch(() => {
-      if (!controller.signal.aborted) setPageError(true)
+    void reloadProjectData(controller.signal).catch((error: unknown) => {
+      if (!controller.signal.aborted) setPageError(failure(error))
     })
     return () => controller.abort()
   }, [project, refresh, reloadProjectData])
@@ -314,18 +250,38 @@ export function SignalsPage({ org, project: projectSlug, locale }: { org: string
 
   async function copyTailCommand() {
     if (!project) return
+    // Clear the last result first, so copying twice announces twice.
+    setCopyStatus(null)
     try {
       await navigator.clipboard.writeText(tailCommand(org, project.slug))
-      setCopyStatus(t('signals.copied', {}, locale))
+      setCopyStatus('copied')
     } catch {
-      setCopyStatus('')
+      setCopyStatus('failed')
     }
   }
+  // The visible "Copied" goes after a few seconds, so the button offers copying again.
+  useEffect(() => {
+    if (copyStatus !== 'copied') return
+    const timer = window.setTimeout(() => setCopyStatus(null), 4000)
+    return () => window.clearTimeout(timer)
+  }, [copyStatus])
 
+  // Opening a source brings its detail into view and puts focus on its heading; closing it returns focus to the row
+  // that opened it, which would otherwise be lost with the detail that held it.
+  const openedFor = useRef<string | null>(null)
+  const detailReady = !!selectedSource && detailState?.status === 'ready' && detailState.sourceId === selectedSource.id
+  useEffect(() => {
+    if (!detailReady || openedFor.current === selectedExternalId) return
+    openedFor.current = selectedExternalId
+    document.querySelector<HTMLElement>('[data-source-detail] h2')?.focus()
+  }, [detailReady, selectedExternalId])
   function closeDetail() {
+    const row = selectedSource?.id
     const params = new URLSearchParams(search.toString())
     params.delete('source')
     router.replace(`${pathname}${params.size ? `?${params}` : ''}`, { scroll: false })
+    openedFor.current = null
+    requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-source="${row}"] a`)?.focus())
   }
 
   const agedSources = useMemo(
@@ -348,145 +304,127 @@ export function SignalsPage({ org, project: projectSlug, locale }: { org: string
     return [...unique.values()].map((poll) => ({ poll, source: byId.get(poll.source_id) }))
   }, [clockNow, data])
 
+  const root = `/${encodeURIComponent(org)}/${encodeURIComponent(projectSlug)}`
+  const retry = (
+    <Button
+      variant="outline"
+      onClick={() => {
+        setPageError(null)
+        if (!project) setResolveAttempt((n) => n + 1)
+        else setRefresh((n) => n + 1)
+      }}
+    >
+      {t('signals.retry', {}, locale)}
+    </Button>
+  )
+
   return (
-    <main data-signals-page className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{t('signals.title', {}, locale)}</h1>
-        {data && <p className="text-sm text-muted-foreground tabular-nums">{findingLine(agedSources, locale)}</p>}
-      </header>
+    <section data-signals-page className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="type-title">{t('signals.title', {}, locale)}</h1>
+        {data && (
+          <Button type="button" variant="outline" onClick={() => void copyTailCommand()}>
+            {t(copyStatus === 'copied' ? 'signals.copied' : 'signals.copy_tail', {}, locale)}
+          </Button>
+        )}
+      </div>
+
+      {data && (
+        <div>
+          <p data-numeric className="type-section">
+            {findingLine(agedSources, locale)}
+          </p>
+          <p className="type-small text-muted-foreground">{data.project.name}</p>
+        </div>
+      )}
 
       {pageError && (
-        <div role="alert" className="space-y-2 rounded-md border border-destructive/40 p-4">
-          <p>{t('signals.load_error', {}, locale)}</p>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setPageError(false)
-              if (!project) setResolveAttempt((n) => n + 1)
-              else setRefresh((n) => n + 1)
-            }}
-          >
-            {t('signals.retry', {}, locale)}
-          </Button>
+        <SourceError
+          source={t('signals.source_sources', {}, locale)}
+          status={pageError.status}
+          at={pageError.at}
+          // A 501 is "not built": reading again cannot change the answer.
+          retry={pageError.status === 501 ? undefined : retry}
+          locale={locale}
+        />
+      )}
+      {!pageError && !data && (
+        <div aria-hidden="true" data-signals-skeleton className="flex flex-col gap-3 rounded-xl bg-card p-5">
+          {Array.from({ length: 5 }, (_, index) => (
+            <div key={index} className="flex items-center gap-4">
+              <Skeleton className="h-6 w-1/3 rounded-full" />
+              <Skeleton className="ml-auto h-6 w-24 rounded-full" />
+              <Skeleton className="h-6 w-20 rounded-full" />
+              <Skeleton className="h-6 w-28 rounded-full" />
+            </div>
+          ))}
         </div>
       )}
       {!pageError && !data && (
-        <p role="status">{project ? t('signals.loading', {}, locale) : t('signals.loading', {}, locale)}</p>
+        <p role="status" className="sr-only">
+          {t('signals.loading', {}, locale)}
+        </p>
       )}
 
       {data && (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground">{data.project.name}</p>
-            <Button type="button" variant="outline" onClick={() => void copyTailCommand()}>
-              {t('signals.copy_tail', {}, locale)}
-            </Button>
-          </div>
-
           {data.sources.length ? (
-            <div className="min-w-0 overflow-x-auto">
-              <table className="w-full border-collapse text-left text-sm">
-                <caption className="mb-2 text-left text-muted-foreground">
-                  {t('signals.sources_caption', {}, locale)}
-                </caption>
-                <thead className="sr-only">
-                  <tr>
-                    <th scope="col">{t('signals.source_name', {}, locale)}</th>
-                    <th scope="col">{t('signals.health', {}, locale)}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orderedSources.map((source) => {
-                    const error = lastSourceError(source, clockNow)
-                    const latest = source.latest_reading
-                    return (
-                      <SourceHealthRow
-                        key={source.id}
-                        source={source}
-                        latest={
-                          latest
-                            ? { value: latest.value, observed_at: latest.observed_at, unit: latest.unit ?? undefined }
-                            : null
-                        }
-                        latestLabel={latestLabel(source, data.strip, locale)}
-                        state={source.state}
-                        stateLabel={stateLabel(source, locale)}
-                        ageS={source.age_s}
-                        ageChip={
-                          <InputAgeChip
-                            input={inputFor(source)}
-                            receiptAt={latest?.received_at ?? null}
-                            locale={locale}
-                          />
-                        }
-                      >
-                        {error && (
-                          <span className="text-muted-foreground">
-                            {error.http_status === null
-                              ? t(
-                                  'signals.last_error_no_status',
-                                  { time: formatTime(error.started_at, locale) },
-                                  locale
-                                )
-                              : t(
-                                  'signals.last_error',
-                                  { status: error.http_status, time: formatTime(error.started_at, locale) },
-                                  locale
-                                )}
-                          </span>
-                        )}
-                      </SourceHealthRow>
-                    )
-                  })}
-                </tbody>
-              </table>
+            <div className="min-w-0 rounded-xl bg-card px-2 py-4 md:p-5">
+              <SourceTable
+                sources={orderedSources}
+                strip={data.strip}
+                now={clockNow}
+                root={root}
+                selected={selectedExternalId}
+                locale={locale}
+              />
               {unevaluated.length > 0 && (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {t('signals.not_evaluated', { sources: unevaluated.map((source) => source.name).join(', ') }, locale)}
+                <p className="mt-3 px-3 type-small text-muted-foreground">
+                  {t(
+                    'signals.not_evaluated',
+                    {
+                      sources: new Intl.ListFormat(locale === 'ms' ? 'ms-MY' : 'en-MY', {
+                        style: 'long',
+                        type: 'conjunction'
+                      }).format(unevaluated.map((source) => source.name))
+                    },
+                    locale
+                  )}
                 </p>
               )}
             </div>
           ) : (
-            <p className="rounded-md border border-border p-4 text-sm text-muted-foreground">
-              {t('signals.empty', {}, locale)}
-            </p>
+            <div className="flex flex-col items-start gap-3 rounded-xl bg-card p-5">
+              <p className="type-text">{t('signals.empty', {}, locale)}</p>
+              {canBind && (
+                <a href={`${root}/settings/packs`} className={buttonVariants({ variant: 'default' })}>
+                  {t('signals.bind_sources', {}, locale)}
+                </a>
+              )}
+            </div>
           )}
-
-          <section data-signal-errors aria-labelledby="signals-errors-title" className="space-y-2">
-            <h2 id="signals-errors-title" className="font-semibold">
-              {t('signals.recent_errors', {}, locale)}
-            </h2>
-            {errors.length ? (
-              <ul className="space-y-2 text-sm tabular-nums">
-                {errors.map(({ poll, source }) => (
-                  <li key={poll.id} className="flex flex-wrap gap-x-1 rounded-md border border-border p-3">
-                    <span translate="no">{source?.external_id ?? poll.source_id}</span>
-                    {poll.http_status === null
-                      ? t('signals.error_no_status', { time: formatDateTime(poll.started_at, locale) }, locale)
-                      : t(
-                          'signals.error_status',
-                          { status: poll.http_status, time: formatDateTime(poll.started_at, locale) },
-                          locale
-                        )}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">{t('signals.no_errors', {}, locale)}</p>
-            )}
-          </section>
 
           {selectedSource && (
             <>
-              <div className="flex justify-end">
-                <Button type="button" variant="outline" onClick={closeDetail}>
-                  {t('signals.close_detail', {}, locale)}
-                </Button>
-              </div>
               {!detailState || detailState.sourceId !== selectedSource.id || detailState.status === 'loading' ? (
-                <p role="status">{t('signals.detail_loading', {}, locale)}</p>
+                <div aria-busy="true" className="flex flex-col gap-3 rounded-xl bg-card p-5">
+                  <p role="status" className="sr-only">
+                    {t('signals.detail_loading', {}, locale)}
+                  </p>
+                  <Skeleton className="h-7 w-1/3 rounded-full" />
+                  <Skeleton className="h-64 w-full rounded-xl bg-raised" />
+                </div>
               ) : detailState.status === 'error' ? (
-                <p role="alert">{t('signals.detail_error', {}, locale)}</p>
+                <SourceError
+                  source={t('signals.source_readings', { source: selectedSource.external_id }, locale)}
+                  at={new Date(clockNow).toISOString()}
+                  locale={locale}
+                  retry={
+                    <Button type="button" variant="outline" onClick={closeDetail}>
+                      {t('signals.close_detail', {}, locale)}
+                    </Button>
+                  }
+                />
               ) : (
                 <SourceDetail
                   project={data.project}
@@ -495,9 +433,63 @@ export function SignalsPage({ org, project: projectSlug, locale }: { org: string
                   readings={detailState.readings}
                   polls={detailState.polls}
                   locale={locale}
+                  onClose={closeDetail}
                 />
               )}
             </>
+          )}
+
+          {data.sources.length > 0 && (
+            <section data-signal-errors aria-labelledby="signals-errors-title" className="flex flex-col gap-2">
+              <h2 id="signals-errors-title" className="type-section">
+                {t('signals.recent_errors', {}, locale)}
+              </h2>
+              {errors.length ? (
+                <>
+                  <Table compact>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t('signals.col_source', {}, locale)}</TableHead>
+                        <TableHead numeric>{t('signals.errors_status', {}, locale)}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {errors.slice(0, ERROR_ROWS).map(({ poll, source }) => (
+                        <TableRow key={poll.id}>
+                          <TableCell
+                            phone="primary"
+                            translate={source ? 'no' : undefined}
+                            className="font-medium whitespace-normal [overflow-wrap:anywhere]"
+                          >
+                            {source?.external_id ?? t('signals.source_unknown', {}, locale)}
+                          </TableCell>
+                          <TableCell data-numeric phone="end" className="whitespace-normal">
+                            {poll.http_status === null
+                              ? t('signals.error_no_status', { time: formatDateTime(poll.started_at, locale) }, locale)
+                              : t(
+                                  'signals.error_status',
+                                  { status: poll.http_status, time: formatDateTime(poll.started_at, locale) },
+                                  locale
+                                )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {errors.length > ERROR_ROWS ? (
+                    <p className="type-small text-muted-foreground" data-numeric>
+                      {t(
+                        'signals.sources_capped',
+                        { shown: formatNumber(ERROR_ROWS, locale), total: formatNumber(errors.length, locale) },
+                        locale
+                      )}
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <p className="type-body text-muted-foreground">{t('signals.no_errors', {}, locale)}</p>
+              )}
+            </section>
           )}
         </>
       )}
@@ -505,9 +497,10 @@ export function SignalsPage({ org, project: projectSlug, locale }: { org: string
       <p data-signal-announcement role="status" aria-live="polite" className="sr-only">
         {announcement}
       </p>
-      <p role="status" aria-live="polite" className="sr-only">
-        {copyStatus}
+      <p role="status" aria-live="polite" className={copyStatus === 'failed' ? 'type-small' : 'sr-only'}>
+        {copyStatus === 'copied' ? t('signals.copied', {}, locale) : null}
+        {copyStatus === 'failed' ? t('signals.copy_failed', {}, locale) : null}
       </p>
-    </main>
+    </section>
   )
 }

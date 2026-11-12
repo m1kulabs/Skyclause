@@ -3,6 +3,7 @@
     "brand": "Skyclause",
     "title": "Connect {client}",
     "intro": "This client is asking to access your Skyclause account.",
+    "who": "Who is asking",
     "client": "Client",
     "redirect": "Redirect host",
     "resource": "Resource",
@@ -29,7 +30,7 @@
   "settings": {
     "clients": "OAuth clients",
     "clientName": "Client name",
-    "namePlaceholder": "Gemini Enterprise",
+    "namePlaceholder": "Gemini Enterprise…",
     "create": "Create Gemini Enterprise client",
     "geminiRedirect": "https://vertexaisearch.cloud.google.com/oauth-redirect",
     "authorizationUrl": "Authorisation URL",
@@ -63,12 +64,17 @@
     "close": "Close",
     "loading": "Loading OAuth settings…",
     "failed": "OAuth settings could not be loaded.",
-    "saveFailed": "The OAuth change could not be saved.",
+    "saveFailed": "The OAuth change could not be saved. Try again.",
     "emptyClients": "No Gemini Enterprise clients yet.",
     "emptyGrants": "No connected grants yet.",
     "allProjects": "All projects",
     "projectCount": "{count} projects",
     "read": "Read",
-    "draft": "Draft"
+    "draft": "Draft",
+    "copyFailed": "Could not copy. Select the secret and copy it with your keyboard.",
+    "copiedNotice": "Client secret copied.",
+    "projectCount_one": "1 project",
+    "nameRequired": "Enter a client name.",
+    "scopeRequired": "Choose at least one kind of access."
   }
 }

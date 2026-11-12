@@ -52,28 +52,38 @@ test('DSH-1 keeps every dashboard block in DOM and visual order at desktop and p
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320)
 })
 
-test('DSH-2 renders empty counts and actions without charts, strips or Wilson bars', async ({
+test('DSH-2 a new organisation offers one action and prints n=0 once per block, without charts', async ({
   page,
   expectAxeClean
 }) => {
   await stubDashboard(page, { noProjects: true })
   await page.goto(`/${org.slug}`)
-  await expect(page.getByText('Nothing to approve (n=0)')).toBeVisible()
+  await expect(page.getByText(/No projects yet \(n=0\)/)).toBeVisible()
+  // Create a project once, as the page's one primary action; no other block has a button or a link.
+  await expect(page.getByRole('link', { name: 'Create a project' })).toHaveCount(1)
+  await expect(page.getByRole('link', { name: 'Create a project' })).toHaveAttribute('href', `/${org.slug}/new`)
   const blocks = page.locator('[data-dashboard-block]')
-  await expect(blocks).toContainText([
-    'Create a project',
-    'Declare a window',
-    'Bind a source',
-    'List a show',
-    'View analysis'
-  ])
-  await expect(blocks).toContainText(['n=0', 'n=0', 'n=0', 'n=0', 'n=0'])
-  await expect(page.locator('[data-dashboard-block="needs_review"]')).toContainText('Create a project')
+  await expect(blocks).toHaveCount(5)
+  await expect(blocks.locator('a, button')).toHaveCount(0)
+  for (const block of await blocks.all()) {
+    expect(((await block.innerText()).match(/n=0/g) ?? []).length).toBe(1)
+  }
   await expect(
-    page.getByText(/No graded windows yet \(n=0\)\. Grades arrive by 06:45 MYT the morning after a window\./)
+    page.getByText(/No graded windows yet \(n=0\)\. Grades arrive by 06:45\u00a0MYT the morning after a window\./)
   ).toBeVisible()
   await expect(page.locator('[data-chart], [data-window-strip], [data-wilson-interval]')).toHaveCount(0)
   await expectAxeClean(page)
+})
+
+test('an organisation with projects keeps one action per empty block and prints n=0 once', async ({ page }) => {
+  await stubDashboard(page)
+  await page.goto(`/${org.slug}`)
+  const blocks = page.locator('[data-dashboard-block]')
+  await expect(blocks).toContainText(['No bundles need review', 'No windows at risk', 'No sources connected'])
+  for (const block of await blocks.all()) {
+    expect(((await block.innerText()).match(/n=0/g) ?? []).length).toBe(1)
+    await expect(block.getByRole('link')).toHaveCount(1)
+  }
 })
 
 test('dashboard renders a source error without a stale value and labels unknown risk as unknown', async ({ page }) => {
@@ -202,13 +212,15 @@ test('dashboard states and the open palette are axe-clean in dark, light and hig
   }
 })
 
-test('the new bundle appears before the next block', async ({ page }) => {
+test('the new bundle appears before the next block and opens its own review', async ({ page }) => {
   await stubDashboard(page, { filled: true })
   await page.goto(`/${org.slug}`)
-  await expect(page.getByRole('link', { name: 'Review 1 bundles' })).toHaveAttribute(
+  await expect(page.getByRole('link', { name: 'Review bundle' })).toHaveAttribute(
     'href',
-    `/${org.slug}/approvals?item=${ids.bundle}`
+    `/${org.slug}/${project.slug}/bundles/${ids.bundle}`
   )
+  // The approvals queue is not built (DSH-4): nothing on the dashboard links to it.
+  await expect(page.locator('main a[href*="/approvals"]')).toHaveCount(0)
   await expect(page.locator('[data-dashboard-block="needs_review"] [data-bundle]')).toHaveCount(1)
   await expect(page.locator('[data-dashboard-block="needs_review"] [data-window-strip]')).toHaveCount(1)
   await expect(page.locator('[data-dashboard-block="yesterday_grades"]')).toContainText('Wilson 95%')
@@ -238,13 +250,13 @@ test('loading uses static bars with every dashboard header', async ({ page, expe
   await expect(page.locator('[aria-busy="true"]')).toBeVisible()
   await expect(page.locator('[data-dashboard-block]')).toHaveCount(5)
   await expect(page.locator('[data-dashboard-block] h2')).toHaveCount(5)
-  await expect(page.locator('[data-slot="skeleton"]')).toHaveCount(13)
+  await expect(page.locator('[data-slot="skeleton"]')).toHaveCount(9)
   await expect(page.locator('[data-slot="skeleton"]').first()).not.toHaveClass(/animate/)
   await expectAxeClean(page)
-  await expect(page.getByText('Nothing to approve (n=0)')).toBeVisible({ timeout: 5000 })
+  await expect(page.getByText(/No projects yet \(n=0\)/)).toBeVisible({ timeout: 5000 })
 })
 
-test('at-risk windows show six rows and a View all link', async ({ page }) => {
+test('today’s windows at risk lie on the day strip, each listed with a link to its window', async ({ page }) => {
   await stubDashboard(page)
   const atRisk = filledDashboard.windows_at_risk.data[0]!
   const data = Array.from({ length: 8 }, (_, index) => ({
@@ -263,11 +275,43 @@ test('at-risk windows show six rows and a View all link', async ({ page }) => {
   )
   await page.goto(`/${org.slug}`)
   const risk = page.locator('[data-dashboard-block="windows_at_risk"]')
-  await expect(risk.locator('[data-dashboard-call-row]')).toHaveCount(6)
-  await expect(risk.getByRole('link', { name: 'View all' })).toHaveAttribute(
+  await expect(risk.locator('.day-strip [data-window]')).toHaveCount(8)
+  await expect(risk.locator('[data-window-row]')).toHaveCount(8)
+  await expect(risk.getByRole('link', { name: 'Window 1', exact: true })).toHaveAttribute(
+    'href',
+    `/${org.slug}/${project.slug}/windows?window=${data[0]!.window.id}`
+  )
+  await expect(risk.getByRole('link', { name: 'Open the calendar' })).toHaveAttribute(
     'href',
     `/${org.slug}/${project.slug}/windows`
   )
+})
+
+test('a dashboard read that is not built names the error under Needs review, never an empty day', async ({
+  page,
+  expectAxeClean
+}) => {
+  await stubDashboard(page)
+  await stubApi(page, 'getDashboard', { title: 'Not built' }, { registry: dashboardOperations, status: 501 })
+  await page.goto(`/${org.slug}`)
+  const review = page.locator('[data-dashboard-block="needs_review"]')
+  // The bar's Review control lands on this heading in every state.
+  await expect(review.locator('h2#dashboard-needs-review')).toHaveText('Needs review')
+  await expect(review.locator('[data-source-error="501"]')).toContainText('Couldn’t read the dashboard.')
+  await expect(page.locator('[data-empty-day]')).toHaveCount(0)
+  await expect(page.getByText('Nothing to approve right now.')).toHaveCount(0)
+  // Reading again cannot change a "not built" answer, so it offers no Try again.
+  await expect(review.getByRole('button', { name: 'Try again' })).toHaveCount(0)
+  await expectAxeClean(page)
+})
+
+test('a dashboard read that failed offers Try again', async ({ page }) => {
+  await stubDashboard(page)
+  await stubApi(page, 'getDashboard', { title: 'Unavailable' }, { registry: dashboardOperations, status: 503 })
+  await page.goto(`/${org.slug}`)
+  const review = page.locator('[data-dashboard-block="needs_review"]')
+  await expect(review.locator('[data-source-error="503"]')).toBeVisible()
+  await expect(review.getByRole('button', { name: 'Try again' })).toBeVisible()
 })
 
 test('palette finds each resource ID and all three station IDs through GET /v1/search', async ({ page }) => {
@@ -347,7 +391,7 @@ test('a healthy filled dashboard renders from its read and stays axe-clean', asy
   await stubDashboard(page, { filled: true, dashboard: healthyDashboard })
   await page.emulateMedia({ colorScheme: 'light', contrast: 'more' })
   await page.goto(`/${org.slug}`)
-  await expect(page.getByRole('link', { name: 'Review 1 bundles' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Review bundle' })).toBeVisible()
   await waitForBundleFade(page)
   await expectAxeClean(page)
 })

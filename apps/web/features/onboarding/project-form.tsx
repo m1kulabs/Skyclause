@@ -1,13 +1,14 @@
 'use client'
 
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Field, FieldError, FieldGroup, FieldLabel } from '#ui/field'
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '#ui/field'
 import { Input } from '#ui/input'
 import { Button } from '#ui/button'
 import { ApiProblem } from '../../lib/api-fetch'
 import { onboardingApi } from './operations'
-import { t } from './catalogue'
+import { t, type Locale } from './catalogue'
+import { useUnsavedChangesGuard } from '../settings/set-7'
 import styles from './onboarding.module.css'
 
 type Draft = {
@@ -32,6 +33,9 @@ const INITIAL: Draft = {
   packs: ['sky']
 }
 
+/** A coordinate as typed: a comma is accepted for the decimal point. */
+const coordinate = (value: string) => Number(value.trim().replace(',', '.'))
+
 function slugify(value: string) {
   return value
     .normalize('NFKD')
@@ -47,12 +51,12 @@ function validate(draft: Draft): Errors {
     if (!draft[field].trim()) errors[field] = 'required'
   }
   if (draft.slug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(draft.slug)) errors.slug = 'invalid_slug'
-  const latitude = Number(draft.site_lat)
-  const longitude = Number(draft.site_lon)
+  const latitude = coordinate(draft.site_lat)
+  const longitude = coordinate(draft.site_lon)
   if (draft.site_lat && (!Number.isFinite(latitude) || latitude < -90 || latitude > 90))
-    errors.site_lat = 'invalid_coordinates'
+    errors.site_lat = 'invalid_latitude'
   if (draft.site_lon && (!Number.isFinite(longitude) || longitude < -180 || longitude > 180))
-    errors.site_lon = 'invalid_coordinates'
+    errors.site_lon = 'invalid_longitude'
   if (draft.packs.length === 0) errors.packs = 'required'
   return errors
 }
@@ -71,17 +75,26 @@ function apiSlugError(error: unknown): string | null {
   return null
 }
 
-export function ProjectForm({ org }: { org: string }) {
+export function ProjectForm({ org, locale = 'en' }: { org: string; locale?: Locale }) {
   const router = useRouter()
   const [draft, setDraft] = useState(INITIAL)
   const [slugEdited, setSlugEdited] = useState(false)
   const [errors, setErrors] = useState<Errors>({})
   const [saving, setSaving] = useState(false)
+  const [created, setCreated] = useState(false)
   const focusRequested = useRef(false)
+  const [zones, setZones] = useState<string[]>([])
+  // The browser's own list of IANA zones, read after mounting so the server and the first render agree.
+  useEffect(() => setZones(Intl.supportedValuesOf?.('timeZone') ?? []), [])
+  // The draft is lost on navigating away: warn while it differs from what the form started with.
+  useUnsavedChangesGuard(!created && JSON.stringify(draft) !== JSON.stringify(INITIAL), locale)
 
   useLayoutEffect(() => {
     if (!focusRequested.current) return
-    document.querySelector<HTMLElement>('[data-project-create] [aria-invalid="true"]')?.focus()
+    // A field with an error, else the form's own alert (a failed save has no field to blame).
+    document
+      .querySelector<HTMLElement>('[data-project-create] [aria-invalid="true"], [data-project-create] [role="alert"]')
+      ?.focus()
     focusRequested.current = false
   }, [errors])
 
@@ -123,19 +136,20 @@ export function ProjectForm({ org }: { org: string }) {
               name: draft.name.trim(),
               slug: draft.slug.trim(),
               site_name: draft.site_name.trim(),
-              site_lat: Number(draft.site_lat),
-              site_lon: Number(draft.site_lon),
+              site_lat: coordinate(draft.site_lat),
+              site_lon: coordinate(draft.site_lon),
               time_zone: draft.time_zone.trim(),
               packs: draft.packs
             }
           })
           const prefix = `/${encodeURIComponent(org)}/${encodeURIComponent(project.slug)}/settings/packs`
+          // The button stays busy until the next page takes over, so a second click cannot create it twice.
+          setCreated(true)
           router.push(draft.packs.includes('crowd') ? `${prefix}?pack=crowd` : prefix)
         } catch (error) {
           const slugError = apiSlugError(error)
           if (slugError) fail({ slug: slugError })
           else fail({ form: 'save_error' })
-        } finally {
           setSaving(false)
         }
       }}
@@ -143,43 +157,49 @@ export function ProjectForm({ org }: { org: string }) {
       <FieldGroup inert={saving}>
         <div className={styles.fieldsGrid}>
           <Field data-invalid={!!errors.name}>
-            <FieldLabel htmlFor="project-name">{t('onboarding.project_name')}</FieldLabel>
+            <FieldLabel htmlFor="project-name">{t('onboarding.project_name', {}, locale)}</FieldLabel>
             <Input
               id="project-name"
               name="name"
-              autoComplete="organization"
+              autoComplete="off"
               maxLength={200}
               value={draft.name}
               onChange={(event) => change('name', event.target.value)}
               aria-invalid={!!errors.name}
               aria-describedby={errors.name ? 'project-name-error' : undefined}
             />
-            {errors.name && <FieldError id="project-name-error">{t(`onboarding.${errors.name}`)}</FieldError>}
+            {errors.name && (
+              <FieldError id="project-name-error">{t(`onboarding.${errors.name}`, {}, locale)}</FieldError>
+            )}
           </Field>
           <Field data-invalid={!!errors.slug}>
-            <FieldLabel htmlFor="project-slug">{t('onboarding.project_slug')}</FieldLabel>
+            <FieldLabel htmlFor="project-slug">{t('onboarding.project_slug', {}, locale)}</FieldLabel>
             <Input
               id="project-slug"
               name="slug"
               autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
               spellCheck={false}
               maxLength={80}
               value={draft.slug}
               onChange={(event) => {
                 setSlugEdited(true)
-                change('slug', event.target.value)
+                change('slug', event.target.value.toLowerCase())
               }}
               aria-invalid={!!errors.slug}
               aria-describedby={errors.slug ? 'project-slug-error' : undefined}
             />
-            {errors.slug && <FieldError id="project-slug-error">{t(`onboarding.${errors.slug}`)}</FieldError>}
+            {errors.slug && (
+              <FieldError id="project-slug-error">{t(`onboarding.${errors.slug}`, {}, locale)}</FieldError>
+            )}
           </Field>
           <Field className={styles.wideField} data-invalid={!!errors.site_name}>
-            <FieldLabel htmlFor="project-site-name">{t('onboarding.site_name')}</FieldLabel>
+            <FieldLabel htmlFor="project-site-name">{t('onboarding.site_name', {}, locale)}</FieldLabel>
             <Input
               id="project-site-name"
               name="site_name"
-              autoComplete="organization-title"
+              autoComplete="off"
               maxLength={200}
               value={draft.site_name}
               onChange={(event) => change('site_name', event.target.value)}
@@ -187,68 +207,79 @@ export function ProjectForm({ org }: { org: string }) {
               aria-describedby={errors.site_name ? 'project-site-name-error' : undefined}
             />
             {errors.site_name && (
-              <FieldError id="project-site-name-error">{t(`onboarding.${errors.site_name}`)}</FieldError>
+              <FieldError id="project-site-name-error">{t(`onboarding.${errors.site_name}`, {}, locale)}</FieldError>
             )}
           </Field>
           <Field data-invalid={!!errors.site_lat}>
-            <FieldLabel htmlFor="project-latitude">{t('onboarding.latitude')}</FieldLabel>
+            <FieldLabel htmlFor="project-latitude">{t('onboarding.latitude', {}, locale)}</FieldLabel>
             <Input
               id="project-latitude"
               name="site_lat"
-              type="number"
-              inputMode="decimal"
+              inputMode="text"
+              pattern="-?[0-9]*[.,]?[0-9]*"
               autoComplete="off"
-              step="any"
+              spellCheck={false}
               value={draft.site_lat}
               onChange={(event) => change('site_lat', event.target.value)}
               aria-invalid={!!errors.site_lat}
               aria-describedby={errors.site_lat ? 'project-latitude-error' : undefined}
             />
             {errors.site_lat && (
-              <FieldError id="project-latitude-error">{t(`onboarding.${errors.site_lat}`)}</FieldError>
+              <FieldError id="project-latitude-error">{t(`onboarding.${errors.site_lat}`, {}, locale)}</FieldError>
             )}
           </Field>
           <Field data-invalid={!!errors.site_lon}>
-            <FieldLabel htmlFor="project-longitude">{t('onboarding.longitude')}</FieldLabel>
+            <FieldLabel htmlFor="project-longitude">{t('onboarding.longitude', {}, locale)}</FieldLabel>
             <Input
               id="project-longitude"
               name="site_lon"
-              type="number"
-              inputMode="decimal"
+              inputMode="text"
+              pattern="-?[0-9]*[.,]?[0-9]*"
               autoComplete="off"
-              step="any"
+              spellCheck={false}
               value={draft.site_lon}
               onChange={(event) => change('site_lon', event.target.value)}
               aria-invalid={!!errors.site_lon}
               aria-describedby={errors.site_lon ? 'project-longitude-error' : undefined}
             />
             {errors.site_lon && (
-              <FieldError id="project-longitude-error">{t(`onboarding.${errors.site_lon}`)}</FieldError>
+              <FieldError id="project-longitude-error">{t(`onboarding.${errors.site_lon}`, {}, locale)}</FieldError>
             )}
           </Field>
           <Field className={styles.wideField} data-invalid={!!errors.time_zone}>
-            <FieldLabel htmlFor="project-time-zone">{t('onboarding.time_zone')}</FieldLabel>
+            <FieldLabel htmlFor="project-time-zone">{t('onboarding.time_zone', {}, locale)}</FieldLabel>
             <Input
               id="project-time-zone"
               name="time_zone"
               autoComplete="off"
+              spellCheck={false}
+              list="project-time-zones"
               value={draft.time_zone}
               onChange={(event) => change('time_zone', event.target.value)}
               aria-invalid={!!errors.time_zone}
-              aria-describedby={errors.time_zone ? 'project-time-zone-error' : undefined}
+              aria-describedby={`project-time-zone-hint${errors.time_zone ? ' project-time-zone-error' : ''}`}
             />
+            <datalist id="project-time-zones">
+              {zones.map((zone) => (
+                <option key={zone} value={zone} />
+              ))}
+            </datalist>
+            <FieldDescription id="project-time-zone-hint">
+              {t('onboarding.time_zone_hint', {}, locale)}
+            </FieldDescription>
             {errors.time_zone && (
-              <FieldError id="project-time-zone-error">{t(`onboarding.${errors.time_zone}`)}</FieldError>
+              <FieldError id="project-time-zone-error">{t(`onboarding.${errors.time_zone}`, {}, locale)}</FieldError>
             )}
           </Field>
         </div>
-        <Field data-invalid={!!errors.packs}>
-          <FieldLabel>{t('onboarding.packs')}</FieldLabel>
+        <FieldSet data-invalid={!!errors.packs} aria-describedby={errors.packs ? 'project-packs-error' : undefined}>
+          <FieldLegend variant="label">{t('onboarding.packs', {}, locale)}</FieldLegend>
           <div className={styles.packChoices}>
             {(['sky', 'crowd'] as const).map((pack) => (
               <label className={styles.checkLabel} key={pack}>
                 <input
                   type="checkbox"
+                  className="native-check"
                   name="packs"
                   value={pack}
                   checked={draft.packs.includes(pack)}
@@ -260,21 +291,23 @@ export function ProjectForm({ org }: { org: string }) {
                   }}
                   aria-invalid={!!errors.packs}
                 />
-                <span>{t(`onboarding.${pack}`)}</span>
+                <span>{t(`onboarding.${pack}`, {}, locale)}</span>
               </label>
             ))}
           </div>
-          {errors.packs && <FieldError>{t(`onboarding.${errors.packs}`)}</FieldError>}
-        </Field>
+          {errors.packs && (
+            <FieldError id="project-packs-error">{t(`onboarding.${errors.packs}`, {}, locale)}</FieldError>
+          )}
+        </FieldSet>
       </FieldGroup>
       <div className={styles.formActions}>
         {errors.form && (
-          <p className={styles.error} role="alert">
-            {t(`onboarding.${errors.form}`)}
+          <p className={styles.error} role="alert" tabIndex={-1}>
+            {t(`onboarding.${errors.form}`, {}, locale)}
           </p>
         )}
         <Button type="submit" disabled={saving}>
-          {saving ? t('onboarding.saving') : t('onboarding.create_project')}
+          {saving ? t('onboarding.saving', {}, locale) : t('onboarding.create_project', {}, locale)}
         </Button>
       </div>
     </form>

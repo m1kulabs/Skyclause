@@ -2,24 +2,82 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import type { ReactNode } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '#ui/dialog'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '#ui/sheet'
+import { Skeleton } from '#ui/skeleton'
 import { Button } from '#ui/button'
 import { ToggleGroup, ToggleGroupItem } from '#ui/toggle-group'
 import { useUndoableAction } from '../settings/set-7'
+import { ApiProblem } from '../../lib/api-fetch'
+import { SourceError } from '../data-components'
 import { allPages, resolveProject, windowsApi, type WindowView } from './operations'
 import { WindowForm } from './window-form'
 import { ImportForm } from './import-form'
-import { t } from './catalogue'
-import styles from './windows.module.css'
+import { useMedia } from './use-media'
+import { localDate } from './model'
+import { t, type Locale } from './catalogue'
 
 export interface DeclareWindowDialogProps {
   org: string
+  locale?: Locale
   project: string
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
 
-export function DeclareWindowDialog({ org, project, open, onOpenChange }: DeclareWindowDialogProps) {
+/** A dialog on a desktop, and on a phone a sheet that rises from the bottom edge (both are one Base UI dialog). */
+function Frame({
+  phone,
+  open,
+  onClose,
+  title,
+  description,
+  children
+}: {
+  phone: boolean
+  open: boolean
+  onClose: () => void
+  title: string
+  description: string
+  children: ReactNode
+}) {
+  const onOpenChange = (next: boolean) => {
+    if (!next) onClose()
+  }
+  if (phone)
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent
+          side="bottom"
+          data-window-sheet
+          className="max-h-[calc(100svh-16px)] overflow-y-auto overscroll-contain pb-[max(20px,env(safe-area-inset-bottom))]"
+        >
+          <SheetHeader>
+            <SheetTitle>{title}</SheetTitle>
+            <SheetDescription>{description}</SheetDescription>
+          </SheetHeader>
+          <div className="flex flex-col gap-5 px-5">{children}</div>
+        </SheetContent>
+      </Sheet>
+    )
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        data-window-dialog
+        className="max-h-[calc(100svh-3rem)] overflow-y-auto overscroll-contain sm:max-w-xl"
+      >
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        {children}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+export function DeclareWindowDialog({ org, project, locale = 'en', open, onOpenChange }: DeclareWindowDialogProps) {
   const search = useSearchParams()
   const router = useRouter()
   const editId = search.get('edit')
@@ -30,8 +88,9 @@ export function DeclareWindowDialog({ org, project, open, onOpenChange }: Declar
   const queued = useRef<{ id: string; scope: 'occurrence' | 'series' } | null>(null)
   const [status, setStatus] = useState('')
   const [loaded, setLoaded] = useState<{ projectId: string; window?: WindowView; key: string }>()
-  const [loadError, setLoadError] = useState(false)
+  const [loadError, setLoadError] = useState<{ status: number | null; at: string } | null>(null)
   const [attempt, setAttempt] = useState(0)
+  const phone = useMedia('(max-width: 640px)')
   const key = `${org}/${project}/${editId ?? 'new'}`
   const action = useUndoableAction(async ({ keepalive }) => {
     if (!queued.current) return
@@ -63,10 +122,11 @@ export function DeclareWindowDialog({ org, project, open, onOpenChange }: Declar
         }
         if (!controller.signal.aborted) {
           setLoaded({ projectId: resolved.id, window: edited, key })
-          setLoadError(false)
+          setLoadError(null)
         }
-      } catch {
-        if (!controller.signal.aborted) setLoadError(true)
+      } catch (error) {
+        if (!controller.signal.aborted)
+          setLoadError({ status: error instanceof ApiProblem ? error.status : null, at: new Date().toISOString() })
       }
     }
     void load()
@@ -83,113 +143,130 @@ export function DeclareWindowDialog({ org, project, open, onOpenChange }: Declar
     guard.current = () => true
     requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('[data-declare-window]')?.focus())
   }
-  function saved() {
+  function saved(created?: WindowView) {
     setStatus(importing ? 'imported' : 'saved')
     close(true)
-    window.dispatchEvent(new Event('windows:changed'))
+    window.dispatchEvent(
+      new CustomEvent('windows:changed', {
+        detail: created ? { id: created.id, date: localDate(created.starts_at) } : undefined
+      })
+    )
   }
   return (
     <>
-      <Dialog
+      <Frame
+        phone={phone}
         open={visible}
-        onOpenChange={(next) => {
-          if (!next) close()
-        }}
+        onClose={() => close()}
+        title={t(editId ? 'windows.edit' : 'windows.declare', {}, locale)}
+        description={t('windows.description', {}, locale)}
       >
-        <DialogContent className={styles.dialog} showCloseButton={false}>
-          <DialogHeader>
-            <DialogTitle>{t(editId ? 'windows.edit' : 'windows.declare')}</DialogTitle>
-            <DialogDescription>{t('windows.description')}</DialogDescription>
-          </DialogHeader>
-          {!editId && (
-            <ToggleGroup
-              value={[importing ? 'ics' : 'manual']}
-              onValueChange={(values) => {
-                if (!values[0] || !guard.current()) return
-                const next = new URLSearchParams(search)
-                if (values[0] === 'ics') next.set('import', 'ics')
-                else next.delete('import')
-                router.replace(`?${next}`, { scroll: false })
-                guard.current = () => true
+        {!editId && (
+          <ToggleGroup
+            value={[importing ? 'ics' : 'manual']}
+            onValueChange={(values) => {
+              if (!values[0] || !guard.current()) return
+              const next = new URLSearchParams(search)
+              if (values[0] === 'ics') next.set('import', 'ics')
+              else next.delete('import')
+              router.replace(`?${next}`, { scroll: false })
+              guard.current = () => true
+            }}
+            aria-label={t('windows.details', {}, locale)}
+          >
+            <ToggleGroupItem value="manual">{t('windows.manual', {}, locale)}</ToggleGroupItem>
+            <ToggleGroupItem value="ics">{t('windows.import', {}, locale)}</ToggleGroupItem>
+          </ToggleGroup>
+        )}
+        {loadError ? (
+          <SourceError
+            source={t('windows.source_window', {}, locale)}
+            status={loadError.status}
+            at={loadError.at}
+            locale={locale}
+            retry={
+              loadError.status === 501 ? undefined : (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setLoadError(null)
+                    setAttempt((value) => value + 1)
+                  }}
+                >
+                  {t('windows.retry', {}, locale)}
+                </Button>
+              )
+            }
+          />
+        ) : loaded?.key === key ? (
+          importing ? (
+            <ImportForm
+              key={`${key}-import`}
+              locale={locale}
+              projectId={loaded.projectId}
+              onSaved={() => saved()}
+              registerClose={(check) => {
+                guard.current = check
               }}
-              aria-label={t('windows.details')}
-            >
-              <ToggleGroupItem value="manual">{t('windows.manual')}</ToggleGroupItem>
-              <ToggleGroupItem value="ics">{t('windows.import')}</ToggleGroupItem>
-            </ToggleGroup>
-          )}
-          {loadError ? (
-            <div role="alert">
-              <p>{t('windows.load_error')}</p>
+            />
+          ) : (
+            <WindowForm
+              key={key}
+              locale={locale}
+              projectId={loaded.projectId}
+              window={loaded.window}
+              root={root}
+              onSaved={saved}
+              registerClose={(check) => {
+                guard.current = check
+              }}
+              onCancel={(scope) => {
+                if (action.pending || action.committing || !loaded.window) return
+                queued.current = { id: loaded.window.id, scope }
+                action.start()
+                setStatus('cancelled')
+                close(true)
+              }}
+            />
+          )
+        ) : (
+          <div className="flex flex-col gap-4" aria-busy="true">
+            <p role="status" className="sr-only">
+              {t('windows.loading', {}, locale)}
+            </p>
+            <Skeleton className="h-10 w-full rounded-md" />
+            <Skeleton className="h-10 w-full rounded-md" />
+            <Skeleton className="h-10 w-2/3 rounded-md" />
+          </div>
+        )}
+      </Frame>
+      {/* Mounted before its message arrives, so a screen reader announces the saved or cancelled line. */}
+      <div role="status">
+        {Boolean(status || action.error) && status !== 'dismissed' && (
+          <div className="fixed inset-x-4 bottom-[max(16px,env(safe-area-inset-bottom))] z-50 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-popover p-4 text-popover-foreground shadow-lg sm:left-auto sm:w-96">
+            <p className="min-w-0 flex-1">
+              {t(action.error ? 'windows.cancel_error' : `windows.${status}`, {}, locale)}
+            </p>
+            {action.pending && (
               <Button
+                data-window-undo
                 variant="outline"
                 onClick={() => {
-                  setLoadError(false)
-                  setAttempt((value) => value + 1)
+                  action.undo()
+                  setStatus('undone')
                 }}
               >
-                {t('windows.retry')}
+                {t('windows.undo', {}, locale)}
               </Button>
-            </div>
-          ) : loaded?.key === key ? (
-            importing ? (
-              <ImportForm
-                key={`${key}-import`}
-                projectId={loaded.projectId}
-                onSaved={saved}
-                registerClose={(check) => {
-                  guard.current = check
-                }}
-              />
-            ) : (
-              <WindowForm
-                key={key}
-                projectId={loaded.projectId}
-                window={loaded.window}
-                root={root}
-                onSaved={saved}
-                registerClose={(check) => {
-                  guard.current = check
-                }}
-                onCancel={(scope) => {
-                  if (action.pending || action.committing || !loaded.window) return
-                  queued.current = { id: loaded.window.id, scope }
-                  action.start()
-                  setStatus('cancelled')
-                  close(true)
-                }}
-              />
-            )
-          ) : (
-            <p role="status">{t('windows.loading')}</p>
-          )}
-          <Button variant="ghost" type="button" onClick={() => close()}>
-            {t('windows.close')}
-          </Button>
-        </DialogContent>
-      </Dialog>
-      {(status || action.error) && status !== 'dismissed' && (
-        <div className={styles.status} role="status">
-          <p>{t(action.error ? 'windows.cancel_error' : `windows.${status}`)}</p>
-          {action.pending && (
-            <Button
-              data-window-undo
-              variant="outline"
-              onClick={() => {
-                action.undo()
-                setStatus('undone')
-              }}
-            >
-              {t('windows.undo')}
-            </Button>
-          )}
-          {!action.pending && !action.committing && (
-            <Button variant="ghost" onClick={() => setStatus('dismissed')}>
-              {t('windows.close')}
-            </Button>
-          )}
-        </div>
-      )}
+            )}
+            {!action.pending && !action.committing && (
+              <Button variant="ghost" onClick={() => setStatus('dismissed')}>
+                {t('windows.close', {}, locale)}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
     </>
   )
 }

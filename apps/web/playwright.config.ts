@@ -34,7 +34,7 @@ export default defineConfig({
         {
           name: 'pseudo',
           testMatch:
-            /(?:quality\/pseudo|connect\/connect|camera\/pseudo|brand\/badge|bundles\/bundle|alerts\/pseudo|windows\/(?:windows|form)|probation\/probation)\.spec\.ts$/,
+            /(?:quality\/pseudo|connect\/connect|camera\/pseudo|brand\/badge|bundles\/bundle|alerts\/pseudo|settings\/pseudo|windows\/(?:windows|form)|probation\/probation|project-ui\/project-ui|webhooks\/pseudo|subscribers\/(?:subscribers|channels))\.spec\.ts$/,
           use: { ...devices['Desktop Chrome'] }
         }
       ]

@@ -1,13 +1,28 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { useParams, usePathname } from 'next/navigation'
+import { ArrowDownIcon, ArrowUpIcon } from 'lucide-react'
 import type { Role } from '@skyclause/contracts'
 import { t } from './catalogue'
-import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '#ui/command'
+import { Button } from '#ui/button'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '#ui/command'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '#ui/dialog'
-import { paletteSources, sourcesForRole, type PaletteContext, type PaletteItem, type PaletteSource } from './sources'
+import { Kbd } from '#ui/kbd'
+import { Skeleton } from '#ui/skeleton'
+import { ApiProblem } from '../../lib/api-fetch'
+import { SourceError } from '../data-components/states'
+import { OPEN_PALETTE_EVENT, type OpenPaletteDetail } from './open'
+import {
+  paletteSources,
+  sourcesForRole,
+  type PaletteContext,
+  type PaletteItem,
+  type PaletteKind,
+  type PaletteSource
+} from './sources'
 import { palettePreferencesApi } from './operations'
+import { useMedia } from '../windows/use-media'
 
 interface CommandPaletteProps {
   memberRole?: Role | null
@@ -17,36 +32,75 @@ interface CommandPaletteProps {
 
 type LoadedData = Pick<PaletteContext, 'memberships' | 'projects'>
 type SearchItems = Record<string, readonly PaletteItem[]>
+interface ReadFailure {
+  status: number | null
+  at: string
+}
+interface Group {
+  id: string
+  heading: string
+  items: PaletteItem[]
+}
 
+/** Groups in reading order. Search results come first while searching: the server matched them to the words typed. */
+const KIND_ORDER: readonly PaletteKind[] = ['results', 'actions', 'pages', 'places', 'appearance']
+/** Search results are grouped by what they are; their IDs read `search:<org>:<kind>:<id>`. */
+const RESULT_KINDS = ['project', 'source', 'window', 'bundle', 'call', 'ledger']
+
+/** The BCP 47 tag the palette lowercases and matches its labels by. */
+const localeTag = (locale: 'en' | 'ms') => (locale === 'ms' ? 'ms-MY' : 'en-MY')
+
+/**
+ * A palette destination is a document navigation, on purpose: it can sit in another root layout (the account, Connect,
+ * Create an organisation), and DSH-5 pins it as one.
+ */
 function navigate(href: string) {
   const target = new URL(href, window.location.origin)
   if (target.origin !== window.location.origin) return
   window.location.assign(`${target.pathname}${target.search}${target.hash}`)
 }
 
-function matchesItem(item: PaletteItem, term: string, locale: 'en' | 'ms') {
-  return [item.id, item.label, ...(item.keywords ?? [])].some((value) =>
-    value.toLocaleLowerCase(locale === 'ms' ? 'ms-MY' : 'en-MY').includes(term)
-  )
+function failure(error: unknown): ReadFailure {
+  return { status: error instanceof ApiProblem ? error.status : null, at: new Date().toISOString() }
+}
+
+function resultKind(item: PaletteItem) {
+  const kind = item.id.split(':')[2] ?? ''
+  return RESULT_KINDS.includes(kind) ? kind : 'project'
+}
+
+/** Every word typed appears in the item's label or keywords (not its ID: "go" would match every destination). */
+function matchesItem(item: PaletteItem, words: readonly string[], locale: 'en' | 'ms') {
+  const fields = [item.label, ...(item.keywords ?? [])].map((value) => value.toLocaleLowerCase(localeTag(locale)))
+  return words.every((word) => fields.some((field) => field.includes(word)))
 }
 
 export function CommandPalette({ memberRole, locale = 'en', sources = paletteSources }: CommandPaletteProps) {
   const pathname = usePathname() ?? '/'
+  const params = useParams<{ org?: string; project?: string }>()
+  // A touch screen has no Escape key: it gets a close button and no key hints.
+  const touch = useMedia('(pointer: coarse)')
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [commandValue, setCommandValue] = useState('')
   const [loaded, setLoaded] = useState(false)
+  const [loadFailure, setLoadFailure] = useState<ReadFailure | null>(null)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [data, setData] = useState<LoadedData>({ memberships: [], projects: [] })
   const [searchItems, setSearchItems] = useState<SearchItems>({})
   const [searching, setSearching] = useState(false)
+  const [searchFailure, setSearchFailure] = useState<ReadFailure | null>(null)
+  const [searchAttempt, setSearchAttempt] = useState(0)
   const [projectChoice, setProjectChoice] = useState<PaletteContext['projectChoice']>(null)
   const [projectQuery, setProjectQuery] = useState('')
   const [themeStatus, setThemeStatus] = useState<'saved' | 'failed' | null>(null)
   const paletteReadyMarker = useRef<HTMLSpanElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
 
-  const activeOrg = pathname.split('/').filter(Boolean)[0]
-  const activeMembership = data.memberships.find((membership) => membership.org_slug === activeOrg)
+  const org = params?.org
+  const activeMembership = data.memberships.find(
+    (membership) => membership.org_slug === (org ?? pathname.split('/')[1])
+  )
   const role = memberRole ?? activeMembership?.role ?? null
   const visibleSources = useMemo(() => sourcesForRole(sources, role), [role, sources])
 
@@ -55,6 +109,7 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
       setProjectChoice(purpose)
       setProjectQuery(purpose === 'ledger' ? query.trim() : '')
       setQuery('')
+      setCommandValue('')
     },
     [query]
   )
@@ -77,6 +132,8 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
   const context = useMemo<PaletteContext>(
     () => ({
       pathname,
+      org,
+      project: params?.project,
       memberships: data.memberships,
       projects: data.projects,
       query,
@@ -86,8 +143,18 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
       chooseProject,
       navigate
     }),
-    [changeTheme, chooseProject, data.memberships, data.projects, pathname, projectChoice, projectQuery, query]
+    [changeTheme, chooseProject, data, org, params?.project, pathname, projectChoice, projectQuery, query]
   )
+
+  const show = useCallback((returnTo?: HTMLElement | null) => {
+    if (returnTo) previousFocus.current = returnTo
+    else if (document.activeElement instanceof HTMLElement) previousFocus.current = document.activeElement
+    setQuery('')
+    setCommandValue('')
+    setProjectChoice(null)
+    setProjectQuery('')
+    setOpen(true)
+  }, [])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -101,16 +168,18 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
         return
       event.preventDefault()
       if (event.repeat || open) return
-      if (document.activeElement instanceof HTMLElement) previousFocus.current = document.activeElement
-      setQuery('')
-      setCommandValue('')
-      setProjectChoice(null)
-      setProjectQuery('')
-      setOpen(true)
+      show()
+    }
+    const onOpen = (event: Event) => {
+      if (!open) show((event as CustomEvent<OpenPaletteDetail>).detail?.returnTo)
     }
     document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [open])
+    document.addEventListener(OPEN_PALETTE_EVENT, onOpen)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener(OPEN_PALETTE_EVENT, onOpen)
+    }
+  }, [open, show])
 
   useEffect(() => {
     const marker = paletteReadyMarker.current
@@ -122,6 +191,7 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
     if (!open) return
     const controller = new AbortController()
     setLoaded(false)
+    setLoadFailure(null)
     setData({ memberships: [], projects: [] })
     const readers = sources.flatMap((source) => (source.load ? [source.load(controller.signal)] : []))
     void Promise.all(readers)
@@ -132,17 +202,18 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
           projects: loadedSources.flatMap((loadedSource) => loadedSource.projects)
         })
       })
-      .catch(() => {
-        if (!controller.signal.aborted) setData({ memberships: [], projects: [] })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) setLoadFailure(failure(error))
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoaded(true)
       })
     return () => controller.abort()
-  }, [open, sources])
+  }, [open, sources, loadAttempt])
 
   useEffect(() => {
     const term = query.trim()
+    setSearchFailure(null)
     if (!open || !loaded || !term || projectChoice) {
       setSearchItems({})
       setSearching(false)
@@ -161,8 +232,8 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
         .then((results) => {
           if (!controller.signal.aborted) setSearchItems(Object.fromEntries(results))
         })
-        .catch(() => {
-          if (!controller.signal.aborted) setSearchItems({})
+        .catch((error: unknown) => {
+          if (!controller.signal.aborted) setSearchFailure(failure(error))
         })
         .finally(() => {
           if (!controller.signal.aborted) setSearching(false)
@@ -172,35 +243,42 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
       clearTimeout(timer)
       controller.abort()
     }
-  }, [context, loaded, open, projectChoice, query, visibleSources])
+  }, [context, loaded, open, projectChoice, query, visibleSources, searchAttempt])
 
-  const items = useMemo(() => {
-    const available = visibleSources.flatMap((source) => [
-      ...(source.items ?? []),
-      ...(source.itemsFor?.(context) ?? []),
-      ...(searchItems[source.id] ?? [])
-    ])
-    if (!projectChoice) return available
-    return available.filter((item) => item.id.startsWith(`choose-${projectChoice}:`))
-  }, [context, projectChoice, searchItems, visibleSources])
-  const defaultCommandValue = useMemo(() => {
-    const term = query.trim().toLocaleLowerCase(locale === 'ms' ? 'ms-MY' : 'en-MY')
-    if (!term) return items[0]?.id ?? ''
-    const searchResult = visibleSources
-      .flatMap((source) => searchItems[source.id] ?? [])
-      .find((item) => matchesItem(item, term, locale))
-    return (
-      searchResult?.id ??
-      items.find((item) => !item.id.startsWith('search:') && matchesItem(item, term, locale))?.id ??
-      ''
-    )
-  }, [items, locale, query, searchItems, visibleSources])
-  const term = query.trim().toLocaleLowerCase(locale === 'ms' ? 'ms-MY' : 'en-MY')
-  const currentCommand = items.find((item) => item.id === commandValue)
-  const selectedCommandValue =
-    currentCommand && (projectChoice || (term && matchesItem(currentCommand, term, locale)))
-      ? commandValue
-      : defaultCommandValue
+  const groups = useMemo<Group[]>(() => {
+    const words = query.trim().toLocaleLowerCase(localeTag(locale)).split(/\s+/).filter(Boolean)
+    const results = visibleSources.flatMap((source) => searchItems[source.id] ?? [])
+    const available = visibleSources
+      .flatMap((source) => [...(source.items ?? []), ...(source.itemsFor?.(context) ?? [])])
+      .filter((item) => !projectChoice || item.id.startsWith(`choose-${projectChoice}:`))
+      .filter((item) => matchesItem(item, words, locale))
+    if (projectChoice) return [{ id: 'choose', heading: t('palette.groups.choose', {}, locale), items: available }]
+
+    const suggested = words.length === 0 ? available.filter((item) => item.suggested) : []
+    const rest = available.filter((item) => !suggested.includes(item))
+    const grouped: Group[] = [
+      { id: 'suggestions', heading: t('palette.groups.suggestions', {}, locale), items: suggested }
+    ]
+    for (const kind of RESULT_KINDS) {
+      grouped.push({
+        id: `results-${kind}`,
+        heading: t(`palette.groups.${kind}`, {}, locale),
+        items: results.filter((item) => resultKind(item) === kind)
+      })
+    }
+    for (const kind of KIND_ORDER) {
+      if (kind === 'results') continue
+      grouped.push({
+        id: kind,
+        heading: t(`palette.groups.${kind}`, {}, locale),
+        items: rest.filter((item) => item.kind === kind)
+      })
+    }
+    return grouped.filter((group) => group.items.length > 0)
+  }, [context, locale, projectChoice, query, searchItems, visibleSources])
+
+  const visible = groups.flatMap((group) => group.items)
+  const selectedCommandValue = visible.some((item) => item.id === commandValue) ? commandValue : (visible[0]?.id ?? '')
 
   return (
     <>
@@ -217,8 +295,8 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
         }}
       >
         <DialogContent
-          className="max-h-[80svh] gap-0 overflow-y-auto p-0 sm:max-w-lg"
-          showCloseButton={false}
+          className="palette top-[12svh] flex max-h-[76svh] translate-y-0 flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
+          showCloseButton={touch}
           finalFocus={previousFocus}
         >
           <DialogHeader className="sr-only">
@@ -229,7 +307,8 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
             label={t('palette.search', {}, locale)}
             value={selectedCommandValue}
             onValueChange={setCommandValue}
-            className="rounded-md! [&_[cmdk-label]]:hidden"
+            shouldFilter={false}
+            className="min-h-0 flex-1 rounded-none! [&_[cmdk-label]]:hidden"
           >
             <CommandInput
               aria-label={t('palette.search', {}, locale)}
@@ -238,36 +317,104 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
               spellCheck={false}
               inputMode="search"
               value={query}
-              onValueChange={setQuery}
+              onValueChange={(next) => {
+                setQuery(next)
+                setCommandValue('')
+              }}
               placeholder={t(projectChoice ? 'palette.choose_project' : 'palette.placeholder', {}, locale)}
               className="h-10 min-w-0"
             />
-            <CommandList label={t('palette.results', {}, locale)}>
-              {items.map((item) => (
-                <CommandItem
-                  key={item.id}
-                  value={item.id}
-                  keywords={[item.label, ...(item.keywords ?? [])]}
-                  className="min-h-11 whitespace-normal break-words"
-                  onSelect={() => {
-                    if (!item.keepOpen) setOpen(false)
-                    item.onSelect()
-                  }}
-                >
-                  <span translate={item.translateNo ? 'no' : undefined}>{item.label}</span>
-                </CommandItem>
-              ))}
-              <CommandEmpty className="px-4 py-6 text-sm break-words" aria-live="polite">
-                {searching
-                  ? t('palette.searching', {}, locale)
-                  : !loaded
-                    ? t('palette.loading', {}, locale)
-                    : projectChoice && items.length === 0
+            {/* One scroll area: the listbox holds only options; loading and failed reads sit after it, outside. */}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              <CommandList label={t('palette.results', {}, locale)} className="max-h-none overflow-visible">
+                {groups.map((group) => (
+                  <CommandGroup key={group.id} heading={group.heading}>
+                    {group.items.map((item) => (
+                      <CommandItem
+                        key={item.id}
+                        value={item.id}
+                        className="min-h-11 whitespace-normal break-words"
+                        onSelect={() => {
+                          if (!item.keepOpen) setOpen(false)
+                          item.onSelect()
+                        }}
+                      >
+                        <span translate={item.translateNo ? 'no' : undefined}>{item.label}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                ))}
+                {loaded && !searching && !searchFailure && (
+                  <CommandEmpty className="px-4 py-6 text-[14px] break-words" aria-live="polite">
+                    {projectChoice
                       ? t('palette.choose_project_empty', {}, locale)
-                      : t(items.length === 0 ? 'palette.empty' : 'palette.no_matches', {}, locale)}
-              </CommandEmpty>
-            </CommandList>
+                      : t(query.trim() ? 'palette.no_matches' : 'palette.empty', {}, locale)}
+                  </CommandEmpty>
+                )}
+              </CommandList>
+              {(!loaded || searching) && (
+                <div className="flex flex-col gap-3 px-3 py-3" role="status" aria-live="polite">
+                  <span className="sr-only">{t(searching ? 'palette.searching' : 'palette.loading', {}, locale)}</span>
+                  <Skeleton className="h-5 w-56 max-w-full rounded-full" />
+                  <Skeleton className="h-5 w-40 max-w-full rounded-full" />
+                  <Skeleton className="h-5 w-48 max-w-full rounded-full" />
+                </div>
+              )}
+              {loadFailure && (
+                <div className="px-1.5 py-1.5">
+                  <SourceError
+                    source={t('palette.load_source', {}, locale)}
+                    status={loadFailure.status}
+                    at={loadFailure.at}
+                    locale={locale}
+                    retry={
+                      <Button variant="secondary" onClick={() => setLoadAttempt((attempt) => attempt + 1)}>
+                        {t('palette.retry', {}, locale)}
+                      </Button>
+                    }
+                  />
+                </div>
+              )}
+              {searchFailure && (
+                <div className="px-1.5 py-1.5">
+                  <SourceError
+                    source={t('palette.search_source', {}, locale)}
+                    status={searchFailure.status}
+                    at={searchFailure.at}
+                    locale={locale}
+                    retry={
+                      <Button variant="secondary" onClick={() => setSearchAttempt((attempt) => attempt + 1)}>
+                        {t('palette.retry', {}, locale)}
+                      </Button>
+                    }
+                  />
+                </div>
+              )}
+            </div>
           </Command>
+          <div
+            className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 text-[13px] leading-[18px] text-muted-foreground *:inline-flex *:items-center *:gap-1.5"
+            aria-hidden="true"
+            hidden={touch}
+          >
+            <span>
+              <Kbd>
+                <ArrowUpIcon />
+              </Kbd>
+              <Kbd>
+                <ArrowDownIcon />
+              </Kbd>
+              {t('palette.footer.move', {}, locale)}
+            </span>
+            <span>
+              <Kbd>{t('palette.footer.enter', {}, locale)}</Kbd>
+              {t('palette.footer.choose', {}, locale)}
+            </span>
+            <span>
+              <Kbd>{t('palette.footer.escape', {}, locale)}</Kbd>
+              {t('palette.footer.close', {}, locale)}
+            </span>
+          </div>
         </DialogContent>
       </Dialog>
       <p className="sr-only" role="status" aria-live="polite">
@@ -283,4 +430,11 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
 }
 
 export { paletteSources, sourcesForRole } from './sources'
-export type { PaletteContext, PaletteItem, PaletteProject, PaletteMembership, PaletteSource } from './sources'
+export type {
+  PaletteContext,
+  PaletteItem,
+  PaletteKind,
+  PaletteProject,
+  PaletteMembership,
+  PaletteSource
+} from './sources'

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Notification, type Notification as Item } from '@skyclause/contracts'
 import { formatDateTime, formatNumber } from '@skyclause/i18n/format'
@@ -12,6 +12,18 @@ import { notificationHref } from './notification-link'
 import { newestNotifications } from './notification-order'
 import { t, type Locale } from './i18n'
 import styles from './alerts.module.css'
+
+/** What a notification is about, in words: its kind and the project it concerns, never an internal identifier. */
+function describe(item: Item, locale: Locale): string {
+  const kind = t(
+    item.recovered ? 'alerts.recovery' : `alerts.kinds.${item.kind}`,
+    { kind: t(`alerts.kinds.${item.kind}`, {}, locale) },
+    locale
+  )
+  return item.project
+    ? t('alerts.item', { kind, project: item.project.slug }, locale)
+    : t('alerts.itemNoProject', { kind }, locale)
+}
 
 export function Inbox({ locale }: { locale: Locale }) {
   const router = useRouter()
@@ -26,6 +38,7 @@ export function Inbox({ locale }: { locale: Locale }) {
   const [pending, setPending] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [announcement, setAnnouncement] = useState('')
+  const focusRow = useRef<string | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -123,10 +136,7 @@ export function Inbox({ locale }: { locale: Locale }) {
               if (!controller.signal.aborted) setStreamError(true)
             }
           }
-          if (isNew)
-            setAnnouncement(
-              t('alerts.newItem', { kind: t(`alerts.kinds.${item.kind}`, {}, locale), ref: item.ref.id }, locale)
-            )
+          if (isNew) setAnnouncement(t('alerts.newItem', { label: describe(item, locale) }, locale))
         }
       })
     }
@@ -145,12 +155,24 @@ export function Inbox({ locale }: { locale: Locale }) {
         if (result.read_at) ids.delete(result.id)
         return ids
       })
+      // The button that was pressed is gone with the unread state: the row itself takes focus and says what happened.
+      focusRow.current = item.id
+      setAnnouncement(t('alerts.markedRead', { label: describe(item, locale) }, locale))
     } catch {
       setReadError(item.id)
     } finally {
       setPending(null)
     }
   }
+
+  useEffect(() => {
+    if (!focusRow.current) return
+    const id = focusRow.current
+    focusRow.current = null
+    Array.from(document.querySelectorAll<HTMLElement>('[data-notification]'))
+      .find((row) => row.dataset.notification === id)
+      ?.focus()
+  }, [data])
 
   function navigate(value?: string) {
     const params = new URLSearchParams(search)
@@ -179,14 +201,9 @@ export function Inbox({ locale }: { locale: Locale }) {
       <ul>
         {data?.map((item) => {
           const href = notificationHref(item)
-          const kind = t(
-            item.recovered ? 'alerts.recovery' : `alerts.kinds.${item.kind}`,
-            { kind: t(`alerts.kinds.${item.kind}`, {}, locale) },
-            locale
-          )
-          const label = t('alerts.item', { kind, ref: item.ref.id }, locale)
+          const label = describe(item, locale)
           return (
-            <li key={item.id} className={styles.row} data-notification={item.id}>
+            <li key={item.id} className={styles.row} data-notification={item.id} tabIndex={-1}>
               <div className={styles.details}>
                 {href ? <a href={href}>{label}</a> : <p>{label}</p>}
                 <time dateTime={item.created_at}>{formatDateTime(item.created_at, locale)}</time>
@@ -198,6 +215,7 @@ export function Inbox({ locale }: { locale: Locale }) {
                   variant="outline"
                   className={styles.action}
                   disabled={pending !== null}
+                  aria-label={t('alerts.markReadNamed', { label }, locale)}
                   onClick={() => void markRead(item)}
                 >
                   {t(pending === item.id ? 'alerts.saving' : 'alerts.markRead', {}, locale)}

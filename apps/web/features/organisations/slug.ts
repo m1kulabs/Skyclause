@@ -24,8 +24,8 @@ export function suggestSlug(name: string): string {
     .replace(/-+$/, '')
 }
 
-export function slugErrorMessage(error: Exclude<SlugError, null>, slug: string): string {
-  if (error === 'format') return t('organisations.create.format')
-  if (error === 'reserved') return t('organisations.create.reserved', { slug })
-  return t('organisations.create.taken', { slug })
+export function slugErrorMessage(error: Exclude<SlugError, null>, slug: string, locale: 'en' | 'ms' = 'en'): string {
+  if (error === 'format') return t('organisations.create.format', {}, locale)
+  if (error === 'reserved') return t('organisations.create.reserved', { slug }, locale)
+  return t('organisations.create.taken', { slug }, locale)
 }

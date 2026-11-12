@@ -1,3 +1,5 @@
+import { formatNumber } from '@skyclause/i18n/format'
+
 export interface PickerSource {
   id: string
   kind: string
@@ -48,8 +50,8 @@ export function distanceKm(site: SitePoint, source: Pick<PickerSource, 'lat' | '
 }
 
 /** Keep the compact picker label from rounding a distance up to the next tenth. */
-export function formatDistanceKm(distance: number): string {
-  return (Math.floor(distance * 10) / 10).toFixed(1)
+export function formatDistanceKm(distance: number, locale: 'en' | 'ms' = 'en'): string {
+  return formatNumber(Math.floor(distance * 10) / 10, locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 }
 
 export function sortSources<Source extends PickerSource>(sources: Source[], site: SitePoint): Source[] {
@@ -73,6 +75,16 @@ export function progressForSteps(steps: Array<{ completed_at: string | null; ski
   const completed = steps.filter((step) => !!step.completed_at || step.skipped).length
   const total = steps.length
   return { completed, total, percentage: total === 0 ? 0 : (completed / total) * 100 }
+}
+
+export type StepState = 'done' | 'skipped' | 'current' | 'todo'
+
+/** Each first-run step's place: done, skipped, the next one (the first still open) or still to do. */
+export function stepStates(steps: ReadonlyArray<{ completed_at: string | null; skipped: boolean }>): StepState[] {
+  const next = steps.findIndex((step) => !step.completed_at && !step.skipped)
+  return steps.map((step, index) =>
+    step.completed_at ? 'done' : step.skipped ? 'skipped' : index === next ? 'current' : 'todo'
+  )
 }
 
 export function cadenceLabel(seconds: number): 'minute' | 'hour' | 'day' | 'interval' {

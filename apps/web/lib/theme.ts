@@ -10,11 +10,12 @@ export interface Appearance {
 
 export const DEFAULT_APPEARANCE: Appearance = { theme: 'dark', contrast: 'system', motion: 'system' }
 
-// Keep these grounds equal to DESIGN's CSS tokens; the server sends the matching browser chrome colour.
+// The --ground of each theme in styles/globals.css (Dusk, Day and their high-contrast sets); the server sends the
+// matching browser chrome colour. test/tokens/contrast.test.ts fails when the two drift apart.
 export const THEME_COLORS = {
-  dark: '#171719',
-  light: '#f6f6f7',
-  darkHc: '#000000',
+  dark: '#1a2039',
+  light: '#fdeef3',
+  darkHc: '#0b0e1f',
   lightHc: '#ffffff'
 }
 

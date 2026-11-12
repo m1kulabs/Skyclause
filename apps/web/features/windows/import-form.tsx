@@ -8,14 +8,15 @@ import { Alert, AlertDescription } from '#ui/alert'
 import { useUnsavedChangesGuard } from '../settings/set-7'
 import { windowsApi } from './operations'
 import { ApiProblem } from '../../lib/api-fetch'
-import { t } from './catalogue'
-import styles from './windows.module.css'
+import { t, type Locale } from './catalogue'
 
 export function ImportForm({
   projectId,
   onSaved,
-  registerClose
+  registerClose,
+  locale
 }: {
+  locale: Locale
   projectId: string
   onSaved: () => void
   registerClose: (guard: () => boolean) => void
@@ -30,7 +31,7 @@ export function ImportForm({
   registerClose(() => !saving && guardNavigation(() => {}))
   return (
     <form
-      className={styles.form}
+      className="flex flex-col gap-5"
       noValidate
       onSubmit={async (event) => {
         event.preventDefault()
@@ -76,12 +77,12 @@ export function ImportForm({
     >
       <FieldGroup>
         <Field data-invalid={!!error && errorField === 'url'}>
-          <FieldLabel htmlFor="window-url">{t('windows.import_url')}</FieldLabel>
+          <FieldLabel htmlFor="window-url">{t('windows.import_url', {}, locale)}</FieldLabel>
           <Input
             id="window-url"
             name="url"
             type="url"
-            autoComplete="url"
+            autoComplete="off"
             spellCheck={false}
             disabled={saving}
             value={url}
@@ -92,11 +93,13 @@ export function ImportForm({
             aria-invalid={!!error && errorField === 'url'}
             aria-describedby={`window-import-help${error && errorField === 'url' ? ' window-url-error' : ''}`}
           />
-          <FieldDescription id="window-import-help">{t('windows.import_help')}</FieldDescription>
-          {error && errorField === 'url' && <FieldError id="window-url-error">{t(`windows.${error}`)}</FieldError>}
+          <FieldDescription id="window-import-help">{t('windows.import_help', {}, locale)}</FieldDescription>
+          {error && errorField === 'url' && (
+            <FieldError id="window-url-error">{t(`windows.${error}`, {}, locale)}</FieldError>
+          )}
         </Field>
         <Field data-invalid={!!error && errorField === 'file'}>
-          <FieldLabel htmlFor="window-file">{t('windows.import_file')}</FieldLabel>
+          <FieldLabel htmlFor="window-file">{t('windows.import_file', {}, locale)}</FieldLabel>
           <Input
             id="window-file"
             name="file"
@@ -110,18 +113,20 @@ export function ImportForm({
             aria-invalid={!!error && errorField === 'file'}
             aria-describedby={error && errorField === 'file' ? 'window-file-error' : 'window-import-help'}
           />
-          {error && errorField === 'file' && <FieldError id="window-file-error">{t(`windows.${error}`)}</FieldError>}
+          {error && errorField === 'file' && (
+            <FieldError id="window-file-error">{t(`windows.${error}`, {}, locale)}</FieldError>
+          )}
         </Field>
       </FieldGroup>
       {failed && (
         <Alert variant="destructive">
-          <AlertDescription>{t('windows.save_error')}</AlertDescription>
+          <AlertDescription>{t('windows.save_error', {}, locale)}</AlertDescription>
         </Alert>
       )}
       <Button type="submit" disabled={saving}>
-        {t(saving ? 'windows.saving' : 'windows.import_save')}
+        {t(saving ? 'windows.saving' : 'windows.import_save', {}, locale)}
       </Button>
-      <p role="status">{saving ? t('windows.saving') : ''}</p>
+      <p role="status">{saving ? t('windows.saving', {}, locale) : ''}</p>
     </form>
   )
 }

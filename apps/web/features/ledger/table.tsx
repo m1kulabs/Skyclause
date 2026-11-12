@@ -1,14 +1,112 @@
 'use client'
 
-/* eslint-disable jsx-a11y/no-noninteractive-tabindex -- The overflow region needs keyboard focus for native arrow and PageDown scrolling. */
-
 import { memo, startTransition, useEffect, useMemo, useRef, useState } from 'react'
-import { formatDateTime, formatNumber, formatTime } from '@skyclause/i18n/format'
+import type { LedgerKind } from '@skyclause/contracts'
+import { formatClock, formatDate, formatDateCompact, formatNumber, formatTime } from '@skyclause/i18n/format'
+import {
+  CalendarXIcon,
+  CheckIcon,
+  FileSearchIcon,
+  HourglassIcon,
+  ListPlusIcon,
+  ListRestartIcon,
+  ListXIcon,
+  type LucideIcon,
+  MailCheckIcon,
+  MessageSquareReplyIcon,
+  MoonIcon,
+  PencilIcon,
+  ScaleIcon,
+  ScrollTextIcon,
+  SendIcon,
+  Undo2Icon,
+  XIcon
+} from 'lucide-react'
 import { Button } from '#ui/button'
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
 import { ModeBadge } from '../brand/mode-badge'
-import { measuredWindow, rowOffsets } from './model'
+import { actorOf, matchesKind, measuredWindow, minutesBetween, rowOffsets, type KindGroup } from './model'
 import type { LedgerRow } from './operations'
 import { t } from './i18n'
+
+type Locale = 'en' | 'ms'
+type Target = { call_id?: string; span?: { from: string; to: string } }
+
+const KIND_GLYPHS: Record<LedgerKind, LucideIcon> = {
+  call_approved: CheckIcon,
+  call_edited: PencilIcon,
+  call_rejected: XIcon,
+  call_expired: HourglassIcon,
+  call_sent: SendIcon,
+  grade: ScaleIcon,
+  night_graded: MoonIcon,
+  listing_listed: ListPlusIcon,
+  listing_changed: ListRestartIcon,
+  listing_cancelled: ListXIcon,
+  clause_version: ScrollTextIcon,
+  window_cancelled: CalendarXIcon,
+  evidence_replied: MailCheckIcon,
+  crowd_reply: MessageSquareReplyIcon,
+  correction: Undo2Icon
+}
+
+/** The kind of entry as a status mark: its glyph and its word, in the ink; never a colour. */
+export function EntryMark({ kind, locale }: { kind: LedgerKind; locale: Locale }) {
+  const Glyph = KIND_GLYPHS[kind]
+  return (
+    <span className="ledger-kind" data-kind={kind}>
+      <Glyph aria-hidden="true" focusable="false" />
+      <span>{t(`ledger.entryKinds.${kind}`, {}, locale)}</span>
+    </span>
+  )
+}
+
+/** A missing value: a quiet dash on screen, the words for a screen reader. */
+export function Missing({ locale }: { locale: Locale }) {
+  return (
+    <span className="ledger-missing">
+      <span aria-hidden="true">{t('ledger.dash', {}, locale)}</span>
+      <span className="sr-only">{t('ledger.noValue', {}, locale)}</span>
+    </span>
+  )
+}
+
+/**
+ * A span in MYT: one date and two times when it stays within a day, both instants when it does not. Beside an entry
+ * on the same day (`day`), the date is already printed, so only the times are.
+ */
+export function SpanTimes({ from, to, day, locale }: { from: string; to: string; day?: string; locale: Locale }) {
+  const sameDay = formatDate(from, locale) === formatDate(to, locale)
+  const at = (value: string, clock: string) =>
+    t('format.dateTime', { date: formatDate(value, locale), time: clock }, locale)
+  const start = sameDay ? formatClock(from, locale) : formatTime(from, locale)
+  return (
+    <span className="ledger-span">
+      <time dateTime={from}>{sameDay && day === formatDate(from, locale) ? start : at(from, start)}</time>
+      <span aria-hidden="true">{t('ledger.rangeDash', {}, locale)}</span>
+      <span className="sr-only">{t('ledger.rangeTo', {}, locale)}</span>
+      <time dateTime={to}>{sameDay ? formatTime(to, locale) : at(to, formatTime(to, locale))}</time>
+    </span>
+  )
+}
+
+/** The record's columns; `wide` ones step out between a phone and 1200px, where the rest still fit on one line. */
+const COLUMNS = [
+  { key: 'time' },
+  { key: 'entry' },
+  { key: 'concerns' },
+  { key: 'actor', wide: true },
+  { key: 'detail' },
+  { key: 'toApproval', wide: true, figure: true },
+  { key: 'toNotice', wide: true, figure: true },
+  { key: 'seq', wide: true, figure: true },
+  { key: 'evidence', hidden: true }
+] as const
+
+/** The shell's sticky bar height, which the header sticks under and a jump to an entry clears. */
+function barHeight() {
+  return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--shell-bar-height')) || 0
+}
 
 export function LedgerTable({
   rows,
@@ -17,25 +115,60 @@ export function LedgerTable({
   locale,
   onRequest,
   correctionHref,
+  callHref,
   selectedEntry,
+  kindGroup,
   busy
 }: {
   rows: LedgerRow[]
   total: number
   offset: number
-  locale: 'en' | 'ms'
-  onRequest: (target: { call_id?: string; span?: { from: string; to: string } }) => void
+  locale: Locale
+  onRequest: (target: Target) => void
   correctionHref: (id: string) => string
+  callHref: (id: string) => string
   selectedEntry: string | null
+  kindGroup: KindGroup | null
   busy: boolean
 }) {
-  const frame = useRef<HTMLDivElement>(null)
+  const body = useRef<HTMLTableSectionElement>(null)
+  const head = useRef<HTMLTableSectionElement>(null)
   const scrolledEntry = useRef<string | null>(null)
-  const [scroll, setScroll] = useState(0)
+  // The page scrolls, so the header can stick under the shell bar; the window follows the rows' place in it.
+  const [view, setView] = useState({ top: 0, height: 900 })
   const [heights, setHeights] = useState(new Map<number, number>())
   const offsets = useMemo(() => rowOffsets(rows.length, heights), [rows.length, heights])
-  const window = measuredWindow(offsets, scroll, 600)
+  // A page of 50 renders whole (readable, searchable); only a longer run, such as a jump to an older entry, windows.
+  const windowed = rows.length > 50
+  const window_ = windowed
+    ? measuredWindow(offsets, view.top, view.height)
+    : { start: 0, end: rows.length, before: 0, after: 0 }
   useEffect(() => {
+    if (!windowed) return
+    let frame = 0
+    const update = () => {
+      frame = 0
+      const box = body.current?.getBoundingClientRect()
+      if (!box) return
+      const next = { top: Math.max(0, -box.top), height: window.innerHeight }
+      startTransition(() =>
+        setView((previous) => (previous.top === next.top && previous.height === next.height ? previous : next))
+      )
+    }
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update)
+    }
+    update()
+    window.addEventListener('scroll', schedule, { passive: true })
+    window.addEventListener('resize', schedule)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', schedule)
+      window.removeEventListener('resize', schedule)
+    }
+  }, [windowed])
+  useEffect(() => {
+    if (!windowed) return
     const observer = new ResizeObserver((entries) => {
       setHeights((previous) => {
         const next = new Map(previous)
@@ -43,7 +176,7 @@ export function LedgerTable({
         for (const entry of entries) {
           const index = Number((entry.target as HTMLElement).dataset.index)
           const height = entry.target.getBoundingClientRect().height
-          if (Math.abs((next.get(index) ?? 144) - height) > 1) {
+          if (Math.abs((next.get(index) ?? 0) - height) > 1) {
             next.set(index, height)
             changed = true
           }
@@ -51,66 +184,82 @@ export function LedgerTable({
         return changed ? next : previous
       })
     })
-    frame.current?.querySelectorAll('tr[data-index]').forEach((row) => observer.observe(row))
+    body.current?.querySelectorAll('tr[data-index]').forEach((row) => observer.observe(row))
     return () => observer.disconnect()
-  }, [window.start, window.end])
+  }, [windowed, window_.start, window_.end])
   useEffect(() => {
     if (!selectedEntry || scrolledEntry.current === selectedEntry) return
     const index = rows.findIndex((row) => row.id === selectedEntry)
-    if (index >= 0 && frame.current) {
-      frame.current.scrollTop = window.offsets[index]!
-      scrolledEntry.current = selectedEntry
-    }
-  }, [selectedEntry, rows, window.offsets])
+    if (index < 0 || !body.current) return
+    const header = head.current?.getBoundingClientRect().height ?? 0
+    // A rendered row is measured where it is; a windowed one is reached by its estimated offset.
+    const rendered = document.getElementById(`ledger-${selectedEntry}`)
+    const top = rendered
+      ? rendered.getBoundingClientRect().top
+      : body.current.getBoundingClientRect().top + offsets[index]!
+    window.scrollTo({ top: window.scrollY + top - barHeight() - header })
+    // The jump moves the keyboard too: focus lands on the entry, not at the top of the page.
+    rendered?.focus({ preventScroll: true })
+    scrolledEntry.current = selectedEntry
+  }, [selectedEntry, rows, offsets])
   return (
     <div
-      ref={frame}
       className="ledger-table-frame"
       data-ledger-frame
-      tabIndex={0}
+      data-filtering={kindGroup ? '' : undefined}
       role="region"
       aria-label={t('ledger.frame', {}, locale)}
       aria-busy={busy}
-      onScroll={(event) => {
-        const top = event.currentTarget.scrollTop
-        startTransition(() => setScroll(top))
-      }}
     >
-      <table data-ledger-table aria-rowcount={total + 1}>
-        <caption className="sr-only">{t('ledger.title', {}, locale)}</caption>
-        <thead>
-          <tr aria-rowindex={1}>
-            {['date', 'window', 'mode', 'role', 'delay', 'grade', 'actions'].map((key) => (
-              <th key={key} scope="col">
-                {t(`ledger.${key}`, {}, locale)}
-              </th>
+      <Table sticky data-ledger-table aria-rowcount={total + 1}>
+        <TableCaption className="sr-only">{t('ledger.title', {}, locale)}</TableCaption>
+        <TableHeader ref={head}>
+          <TableRow aria-rowindex={1}>
+            {COLUMNS.map((column) => (
+              <TableHead
+                key={column.key}
+                scope="col"
+                numeric={'figure' in column}
+                className={`ledger-col-${column.key}`}
+                data-wide={'wide' in column ? '' : undefined}
+                data-detail={column.key === 'detail' ? '' : undefined}
+              >
+                {'hidden' in column ? (
+                  <span className="sr-only">{t(`ledger.columns.${column.key}`, {}, locale)}</span>
+                ) : (
+                  t(`ledger.columns.${column.key}`, {}, locale)
+                )}
+              </TableHead>
             ))}
-          </tr>
-        </thead>
-        <tbody>
-          {window.before > 0 && (
-            <tr aria-hidden="true">
-              <td colSpan={7} style={{ height: window.before, padding: 0, border: 0 }} />
+          </TableRow>
+        </TableHeader>
+        <TableBody ref={body}>
+          {window_.before > 0 && (
+            <tr aria-hidden="true" className="ledger-spacer">
+              <td colSpan={COLUMNS.length} style={{ height: window_.before }} />
             </tr>
           )}
-          {rows.slice(window.start, window.end).map((row, index) => (
+          {rows.slice(window_.start, window_.end).map((row, index) => (
             <EntryRow
               key={row.id}
               row={row}
-              index={window.start + index}
+              index={window_.start + index}
               offset={offset}
               locale={locale}
               onRequest={onRequest}
               correctionHref={correctionHref}
+              callHref={callHref}
+              dimmed={!matchesKind(row.kind, kindGroup)}
+              selected={row.id === selectedEntry}
             />
           ))}
-          {window.after > 0 && (
-            <tr aria-hidden="true">
-              <td colSpan={7} style={{ height: window.after, padding: 0, border: 0 }} />
+          {window_.after > 0 && (
+            <tr aria-hidden="true" className="ledger-spacer">
+              <td colSpan={COLUMNS.length} style={{ height: window_.after }} />
             </tr>
           )}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   )
 }
@@ -122,74 +271,122 @@ const EntryRow = memo(function EntryRow({
   offset,
   locale,
   onRequest,
-  correctionHref
+  correctionHref,
+  callHref,
+  dimmed,
+  selected
 }: {
   row: LedgerRow
   index: number
   offset: number
-  locale: 'en' | 'ms'
-  onRequest: (target: { call_id?: string; span?: { from: string; to: string } }) => void
+  locale: Locale
+  onRequest: (target: Target) => void
   correctionHref: (id: string) => string
+  callHref: (id: string) => string
+  dimmed: boolean
+  selected: boolean
 }) {
   const call = row.call
-  const mode = call?.mode
   const target = call?.id ?? row.refs.call_id
-  const missing = t('ledger.noValue', {}, locale)
-  const minutes = (from?: string | null, to?: string | null) =>
-    from && to
-      ? t(
-          'ledger.minutes',
-          { value: formatNumber(Math.round((Date.parse(to) - Date.parse(from)) / 60000), locale) },
-          locale
-        )
-      : missing
+  const actor = actorOf(row)
+  const actorText = actor
+    ? 'role' in actor
+      ? t(`ledger.roles.${actor.role}`, {}, locale)
+      : t('ledger.platform', {}, locale)
+    : null
+  const toApproval = minutesBetween(call?.triggered_at, call?.approved_at)
+  const toNotice = minutesBetween(call?.approved_at, call?.sent_at)
+  const minutes = (value: number | null) =>
+    value === null ? <Missing locale={locale} /> : t('ledger.minutes', { value: formatNumber(value, locale) }, locale)
+  const outcome = row.grade?.outcome
+  const at = t('ledger.at', { date: formatDateCompact(row.at, locale), time: formatTime(row.at, locale) }, locale)
+  const span = row.window
+    ? `${row.window.title} · ${formatDate(row.window.starts_at, locale)}, ${formatClock(row.window.starts_at, locale)}${t('ledger.rangeDash', {}, locale)}${formatTime(row.window.ends_at, locale)}`
+    : undefined
   return (
-    <tr id={`ledger-${row.id}`} data-index={index} aria-rowindex={offset + index + 2}>
-      <td>
-        <time dateTime={row.at}>{formatDateTime(row.at, locale)}</time>
-        <span className="ledger-entry-id" translate="no">
-          {t('ledger.entry', { id: row.id }, locale)}
+    <TableRow
+      id={`ledger-${row.id}`}
+      data-index={index}
+      aria-rowindex={offset + index + 2}
+      data-dimmed={dimmed ? '' : undefined}
+      selected={selected}
+      dimmed={dimmed}
+      // A deep link focuses its entry; the row is not a tab stop otherwise.
+      tabIndex={selected ? -1 : undefined}
+    >
+      <TableCell className="ledger-col-time" phone="meta">
+        <time dateTime={row.at} data-numeric>
+          {at}
+        </time>
+      </TableCell>
+      <TableCell className="ledger-col-entry" phone="primary">
+        <span className="ledger-entry-line">
+          <EntryMark kind={row.kind} locale={locale} />
+          {row.corrects && (
+            <a
+              className="ledger-link"
+              href={correctionHref(row.corrects)}
+              aria-label={t('ledger.corrects', { id: row.corrects }, locale)}
+            >
+              {t('ledger.correctsShort', {}, locale)}
+            </a>
+          )}
         </span>
-        {row.corrects && (
-          <a href={correctionHref(row.corrects)}>{t('ledger.corrects', { id: row.corrects }, locale)}</a>
-        )}
-      </td>
-      <td>
+      </TableCell>
+      <TableCell
+        className="ledger-col-concerns"
+        truncate={row.window ? '100%' : undefined}
+        title={span}
+        label={t('ledger.columns.concerns', {}, locale)}
+      >
         {row.window ? (
-          <>
-            <span>{row.window.title}</span>
-            <time dateTime={row.window.starts_at}>{formatTime(row.window.starts_at, locale)}</time>
-            <time dateTime={row.window.ends_at}>{formatTime(row.window.ends_at, locale)}</time>
-          </>
+          row.window.title
+        ) : target ? (
+          <a className="ledger-link" href={callHref(target)}>
+            {t('ledger.openCall', {}, locale)}
+          </a>
         ) : (
-          missing
+          <Missing locale={locale} />
         )}
-      </td>
-      <td>
-        {mode ? (
-          <>
-            <ModeBadge mode={mode} pack={row.pack ?? undefined} />
-            <span>{t(`ledger.modes.${mode}`, {}, locale)}</span>
-          </>
+      </TableCell>
+      <TableCell className="ledger-col-actor" data-wide="" label={t('ledger.columns.actor', {}, locale)}>
+        {actorText ?? <Missing locale={locale} />}
+      </TableCell>
+      <TableCell className="ledger-col-detail" data-detail="">
+        {call?.mode || outcome ? (
+          <span className="ledger-detail">
+            {call?.mode && <ModeBadge mode={call.mode} pack={row.pack ?? undefined} locale={locale} />}
+            {outcome && (
+              <span>
+                {outcome in OUTCOMES
+                  ? t(`ledger.outcomes.${outcome}`, {}, locale)
+                  : t('ledger.outcomeOther', {}, locale)}
+              </span>
+            )}
+          </span>
         ) : (
-          missing
+          <Missing locale={locale} />
         )}
-      </td>
-      <td>{row.approver_role ? t(`ledger.roles.${row.approver_role}`, {}, locale) : missing}</td>
-      <td>
-        {t(
-          'ledger.delays',
-          {
-            approved: minutes(call?.triggered_at, call?.approved_at),
-            sent: minutes(call?.approved_at, call?.sent_at)
-          },
-          locale
-        )}
-      </td>
-      <td>{row.grade?.outcome ?? missing}</td>
-      <td>
+      </TableCell>
+      <TableCell
+        className="ledger-col-toApproval"
+        data-wide=""
+        numeric
+        label={t('ledger.columns.toApproval', {}, locale)}
+      >
+        {minutes(toApproval)}
+      </TableCell>
+      <TableCell className="ledger-col-toNotice" data-wide="" numeric label={t('ledger.columns.toNotice', {}, locale)}>
+        {minutes(toNotice)}
+      </TableCell>
+      <TableCell className="ledger-col-seq" data-wide="" numeric phone="hide">
+        {formatNumber(row.seq, locale)}
+      </TableCell>
+      <TableCell className="ledger-col-evidence" phone="end">
         <Button
-          variant="outline"
+          variant="ghost"
+          size="icon-sm"
+          aria-label={t('evidence.request', {}, locale)}
           onClick={() =>
             onRequest(
               target
@@ -200,9 +397,21 @@ const EntryRow = memo(function EntryRow({
             )
           }
         >
-          {t('evidence.request', {}, locale)}
+          <FileSearchIcon aria-hidden="true" />
         </Button>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   )
 })
+
+const OUTCOMES = {
+  hit: true,
+  miss: true,
+  false_alarm: true,
+  correct_normal: true,
+  in_band: true,
+  out_of_band: true,
+  unlisted_surge: true,
+  no_call: true,
+  pending: true
+}

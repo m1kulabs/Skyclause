@@ -3,36 +3,24 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { DomainEventSchema } from '@skyclause/contracts'
 import { formatTime } from '@skyclause/i18n/format'
+import { brandStates, type BrandState } from '@skyclause/elements'
+import { t as brandText } from '@skyclause/i18n/brand'
 import { usePathname, useRouter } from 'next/navigation'
 import { announce } from '../../lib/announce'
+import { t, type Locale } from '../shell/i18n'
 import { browserPath } from '../../lib/api-fetch'
 import { readSse, type SseEvent } from '../../lib/read-sse'
 import { apiFetch, orgEventStream } from './operations'
-import { getApprovalsCount, setApprovalsCount, startOrgLive, stopOrgLive, subscribeToApprovalsCount } from './store'
-import styles from './org-live.module.css'
+import { getWaitingCount, setWaitingCount, startOrgLive, stopOrgLive, subscribeToWaitingCount } from './store'
 
 export interface OrgLiveProps {
   org: string
-}
-
-export interface ApprovalsCountProps {
-  org?: string
-}
-
-const MODE_LABELS: Record<string, string> = {
-  normal: 'Normal',
-  outdoor_limited: 'Outdoor-limited',
-  commute_disruption: 'Commute disruption',
-  hybrid_recommended: 'Hybrid recommended',
-  surge_night: 'Surge night'
+  /** The request's language: what the live region says is in it. */
+  locale?: Locale
 }
 
 const ANNOUNCEMENT_GAP_MS = 50
 const REFRESH_DELAY_MS = 1_000
-
-function pathOrg(pathname: string | null) {
-  return pathname?.split('/').filter(Boolean)[0]
-}
 
 function shouldRefresh(pathname: string | null) {
   const segments = pathname?.split('/').filter(Boolean) ?? []
@@ -127,8 +115,9 @@ function minutesPast(instant: string) {
   return Number.isFinite(difference) ? Math.max(0, Math.floor(difference / 60_000)) : undefined
 }
 
-function modeLabel(mode: string | null | undefined) {
-  return mode ? (MODE_LABELS[mode] ?? mode.replaceAll('_', ' ')) : 'No call'
+/** The brand's word for a call's mode, in the request's language. */
+function modeLabel(mode: BrandState | null | undefined, locale: Locale) {
+  return brandText(brandStates[mode ?? 'no_call'].word, {}, locale)
 }
 
 function waitForAnnouncement(signal: AbortSignal) {
@@ -148,7 +137,8 @@ async function announceBundle(
   bundleId: string,
   kind: 'needs_review' | 'escalated',
   fallbackSla: string | null,
-  signal: AbortSignal
+  signal: AbortSignal,
+  locale: Locale
 ) {
   try {
     const bundle = await apiFetch('getBundle', { params: { id: bundleId }, org, signal })
@@ -156,14 +146,16 @@ async function announceBundle(
     const sla = bundle.sla_due_at ?? fallbackSla
     if (!sla || !project.name.trim() || signal.aborted) return
 
-    const mode = modeLabel(bundle.calls.find((call) => call.mode)?.mode)
+    const mode = modeLabel(bundle.calls.find((call) => call.mode)?.mode, locale)
     const minutes = kind === 'needs_review' ? minutesUntil(sla) : minutesPast(sla)
     if (minutes === undefined) return
 
     announce(
-      kind === 'needs_review'
-        ? `New bundle needs review: ${mode}, ${project.name}, ${minutes} min SLA`
-        : `Bundle escalated: ${mode}, ${project.name}, ${minutes} min past SLA`
+      t(
+        kind === 'needs_review' ? 'app-shell.liveNeedsReview' : 'app-shell.liveEscalated',
+        { mode, project: project.name, minutes },
+        locale
+      )
     )
     await waitForAnnouncement(signal)
   } catch {
@@ -171,24 +163,24 @@ async function announceBundle(
   }
 }
 
-function sourceTime(instant: string) {
+function sourceTime(instant: string, locale: Locale) {
   const date = new Date(instant)
   if (!Number.isFinite(date.getTime())) return undefined
-  return formatTime(date, 'en')
+  return formatTime(date, locale)
 }
 
-export function OrgLive({ org }: OrgLiveProps) {
+export function OrgLive({ org, locale = 'en' }: OrgLiveProps) {
   const pathname = usePathname()
   const pathnameRef = useRef(pathname)
   const router = useRouter()
   pathnameRef.current = pathname
 
   useEffect(() => {
-    updateTab(getApprovalsCount(org))
+    updateTab(getWaitingCount(org) ?? 0)
   }, [org, pathname])
 
   useEffect(() => {
-    const observer = new MutationObserver(() => updateTab(getApprovalsCount(org)))
+    const observer = new MutationObserver(() => updateTab(getWaitingCount(org) ?? 0))
     observer.observe(document.head, {
       attributes: true,
       attributeFilter: ['href'],
@@ -205,6 +197,8 @@ export function OrgLive({ org }: OrgLiveProps) {
     const sourceErrors = new Set<string>()
     const seenEventIds = new Set<string>()
     const sourceNames = new Map<string, string>()
+    // Events before the first snapshot change the set, but only a snapshot makes its size the waiting count.
+    let known = false
     let refreshTimer: ReturnType<typeof setTimeout> | undefined
 
     startOrgLive(org)
@@ -220,7 +214,8 @@ export function OrgLive({ org }: OrgLiveProps) {
     }
 
     const publishCount = () => {
-      setApprovalsCount(org, bundleIds.size)
+      if (!known) return
+      setWaitingCount(org, bundleIds.size)
       updateTab(bundleIds.size)
     }
 
@@ -258,6 +253,7 @@ export function OrgLive({ org }: OrgLiveProps) {
         snapshot.bundleIds.forEach((id) => bundleIds.add(id))
         sourceErrors.clear()
         snapshot.sourceErrors.forEach((id) => sourceErrors.add(id))
+        known = true
         publishCount()
         return
       }
@@ -279,10 +275,10 @@ export function OrgLive({ org }: OrgLiveProps) {
         case 'bundle.needs_review':
           bundleIds.add(event.data.bundle_id)
           publishCount()
-          await announceBundle(org, event.data.bundle_id, 'needs_review', event.data.sla_due_at, signal)
+          await announceBundle(org, event.data.bundle_id, 'needs_review', event.data.sla_due_at, signal, locale)
           break
         case 'bundle.escalated':
-          await announceBundle(org, event.data.bundle_id, 'escalated', event.data.sla_due_at, signal)
+          await announceBundle(org, event.data.bundle_id, 'escalated', event.data.sla_due_at, signal, locale)
           break
         case 'bundle.approved':
         case 'bundle.superseded':
@@ -299,9 +295,9 @@ export function OrgLive({ org }: OrgLiveProps) {
           } catch {
             // A failed source detail read must not close the organisation stream.
           }
-          const since = sourceTime(event.data.since)
+          const since = sourceTime(event.data.since, locale)
           if (name && since && !signal.aborted) {
-            announce(`${name} error since ${since}`)
+            announce(t('app-shell.liveSourceError', { name, since }, locale))
             await waitForAnnouncement(signal)
           }
           break
@@ -316,7 +312,12 @@ export function OrgLive({ org }: OrgLiveProps) {
       headers: { 'Skyclause-Organization': org },
       resume: false,
       signal,
-      onEvent: handleEvent
+      onEvent: handleEvent,
+      onError: () => {
+        known = false
+        setWaitingCount(org, null)
+        updateTab(0)
+      }
     })
 
     return () => {
@@ -325,35 +326,16 @@ export function OrgLive({ org }: OrgLiveProps) {
       stopOrgLive(org)
       updateTab(0)
     }
-  }, [org, router])
+  }, [org, router, locale])
 
   return null
 }
 
-export function ApprovalsCount({ org }: ApprovalsCountProps) {
-  const pathname = usePathname()
-  const badge = useRef<HTMLSpanElement>(null)
-  const currentOrg = org ?? pathOrg(pathname)
-  const count = useSyncExternalStore(
-    subscribeToApprovalsCount,
-    () => getApprovalsCount(currentOrg),
-    () => 0
+/** How many bundles wait for review in the organisation, or null until the live stream has said. */
+export function useWaitingCount(org: string | undefined): number | null {
+  return useSyncExternalStore(
+    subscribeToWaitingCount,
+    () => getWaitingCount(org),
+    () => null
   )
-
-  useEffect(() => {
-    const link = badge.current?.closest('a')
-    if (!link) return
-
-    const originalLabel = link.getAttribute('aria-label')
-    const label = `Approvals, ${count} need review`
-    link.setAttribute('aria-label', label)
-    return () => {
-      if (link.getAttribute('aria-label') !== label) return
-      if (originalLabel === null) link.removeAttribute('aria-label')
-      else link.setAttribute('aria-label', originalLabel)
-    }
-  }, [count])
-
-  if (count === 0) return null
-  return <span ref={badge} aria-hidden="true" className={styles.count} data-count={count > 9 ? '9+' : count} />
 }

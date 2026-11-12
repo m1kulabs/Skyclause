@@ -92,7 +92,7 @@ test('consent identifies the request and exposes equal, keyboard-focusable nativ
   await expectNoSeriousAxeIssues()
 })
 
-test('the integrations table names the client in its confirmation dialog', async () => {
+test('the integrations list names the client on its button and in its confirmation dialog', async () => {
   const client = {
     id: 'client-row',
     client_id: 'client-1',
@@ -114,7 +114,42 @@ test('the integrations table names the client in its confirmation dialog', async
   render(<IntegrationsPanel org="org-1" locale="en" />)
   await screen.findByText('Gemini tenant 42')
   await expectNoSeriousAxeIssues()
-  fireEvent.click(screen.getByRole('button', { name: 'Delete OAuth client' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Delete OAuth client: Gemini tenant 42' }))
   expect(screen.getByRole('alertdialog').textContent).toContain('Gemini tenant 42')
   await expectNoSeriousAxeIssues()
+})
+
+test('consent names who is asking before it lists what is granted', () => {
+  render(<OAuthConsentForm details={details} oauthQuery="client_id=public-test-client" locale="en" />)
+
+  const who = screen.getByRole('region', { name: 'Who is asking' })
+  expect(who.textContent).toContain('Claude Desktop')
+  expect(who.textContent).toContain('claude.example')
+  expect(who.textContent).toContain('MCP server')
+  expect(screen.getByRole('group', { name: 'Access' }).textContent).toContain('Read project information')
+})
+
+test('a link-fixed project is stated and submitted, never shown as a box that cannot be unticked', () => {
+  const { container } = render(
+    <OAuthConsentForm
+      details={{
+        ...details,
+        link: {
+          id: 'link-1',
+          orgId: 'org-1',
+          organizationName: 'Bukit Jalil',
+          projectId: 'project-1',
+          projectName: 'Community centre',
+          access: 'view'
+        }
+      }}
+      oauthQuery="client_id=public-test-client"
+      locale="en"
+    />
+  )
+  expect(screen.queryByRole('checkbox', { name: 'Community centre' })).toBeNull()
+  expect(screen.getByText('Community centre')).toBeTruthy()
+  expect(container.querySelector('input[type="hidden"][name="project_ids"]')).toHaveProperty('value', 'project-1')
+  expect(screen.getByText('Claude Desktop').getAttribute('translate')).toBe('no')
+  expect(screen.getByText('claude.example').getAttribute('translate')).toBe('no')
 })

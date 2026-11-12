@@ -20,7 +20,7 @@ export function PackStateNote({ pack, locale = 'en' }: PackStateNoteProps) {
   return (
     <span className="inline-flex min-h-[34px] flex-wrap items-center gap-2 [@media(pointer:coarse)]:min-h-[44px]">
       <ModeBadge mode={pack.mode ?? 'no_call'} pack={pack.pack} locale={locale} />
-      <span className="text-sm text-muted-foreground">{note}</span>
+      <span className="text-[13px] text-muted-foreground">{note}</span>
     </span>
   )
 }

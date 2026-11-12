@@ -1,45 +1,21 @@
-.scrollRegion {
-  max-height: 560px;
-  overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overscroll-behavior: contain;
+/* The audit log's filters in one wrapping row of fields, and the pager under its table. The records themselves are the
+   shared table; a record that does not match the filters now set is dimmed by the table (muted ink, never faded). */
+.filters {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 16px;
 }
 
-.row {
-  display: grid;
-  grid-template-columns: minmax(130px, 1fr) minmax(130px, 1fr) minmax(120px, 1fr) minmax(120px, 1fr);
+.pager {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
-  height: 76px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-  overflow: hidden;
 }
 
-.cell {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  line-height: 1.35;
-}
-
-.label {
-  display: block;
-  margin-bottom: 3px;
+.range {
+  margin-inline-end: auto;
   color: var(--muted-foreground);
-  font-size: 11px;
-}
-
-.spacer {
-  pointer-events: none;
-}
-
-@media (width < 640px) {
-  .row {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: repeat(2, minmax(0, 1fr));
-    height: 104px;
-    gap: 4px 12px;
-    padding: 8px 10px;
-  }
+  font-size: 13px;
 }

@@ -9,10 +9,10 @@ async function appearance(page: Page, baseURL: string, preferences: Partial<Appe
 }
 
 const modes = [
-  { theme: 'dark', contrast: 'standard', className: 'dark', ground: '#171719' },
-  { theme: 'light', contrast: 'standard', className: 'light', ground: '#f6f6f7' },
-  { theme: 'dark', contrast: 'more', className: 'dark hc', ground: '#000000' },
-  { theme: 'light', contrast: 'more', className: 'light hc', ground: '#ffffff' }
+  { theme: 'dark', contrast: 'standard', className: 'dark', ground: '#1a2039', ink: 'rgb(249, 163, 192)' },
+  { theme: 'light', contrast: 'standard', className: 'light', ground: '#fdeef3', ink: 'rgb(26, 32, 57)' },
+  { theme: 'dark', contrast: 'more', className: 'dark hc', ground: '#0b0e1f', ink: 'rgb(255, 255, 255)' },
+  { theme: 'light', contrast: 'more', className: 'light hc', ground: '#ffffff', ink: 'rgb(11, 14, 31)' }
 ] as const
 
 for (const mode of modes) {
@@ -41,11 +41,11 @@ for (const mode of modes) {
         type: style.outlineStyle
       }
     })
+    // The ring is the theme's ink, 2px (3px in high contrast) with a 2px offset.
     expect(ring).toEqual({
       width: mode.contrast === 'more' ? '3px' : '2px',
       offset: '2px',
-      color:
-        mode.theme === 'dark' ? 'rgb(255, 255, 255)' : mode.contrast === 'more' ? 'rgb(0, 0, 0)' : 'rgb(17, 17, 19)',
+      color: mode.ink,
       type: 'solid'
     })
     await page.keyboard.press('Enter')
@@ -69,7 +69,7 @@ test('system follows colour, contrast and motion changes without reloading', asy
   await expect(page.locator('html')).toHaveClass('dark')
   await page.emulateMedia({ colorScheme: 'light' })
   await expect(page.locator('html')).toHaveClass('light')
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#f6f6f7')
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#fdeef3')
   await page.emulateMedia({ contrast: 'more' })
   await expect(page.locator('html')).toHaveClass('light hc')
   await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#ffffff')
@@ -99,8 +99,41 @@ test('SSR uses available OS client hints for system preferences', async ({ page,
   expect(html).toContain('<meta name="theme-color" content="#ffffff"')
 })
 
+// Reduced motion takes the movement out (no spin, no slide or zoom) and leaves the state changes (a 120ms fade); there
+// is no blanket rule, so a transition on a colour is untouched.
+const motionProbe = () => {
+  const style = document.createElement('style')
+  style.textContent =
+    '.motion-probe { transition: transform 1s, color 1s; transform: translateY(10px) } .motion-spin { animation: motion-spin 1s linear infinite } @keyframes motion-spin { to { opacity: .5 } }'
+  document.head.append(style)
+  const read = (attrs: Record<string, string>, className: string) => {
+    const node = document.createElement('div')
+    node.className = className
+    for (const [name, value] of Object.entries(attrs)) node.setAttribute(name, value)
+    document.body.append(node)
+    const computed = getComputedStyle(node)
+    const result = {
+      animation: computed.animationName,
+      transition: computed.transitionProperty,
+      duration: computed.transitionDuration,
+      transform: computed.transform,
+      opacity: computed.opacity
+    }
+    node.remove()
+    return result
+  }
+  const result = {
+    spinner: read({}, 'animate-spin'),
+    popup: read({ 'data-open': '' }, 'motion-probe'),
+    entering: read({ 'data-starting-style': '' }, 'motion-probe'),
+    colour: read({}, 'motion-probe')
+  }
+  style.remove()
+  return result
+}
+
 for (const source of ['OS', 'attribute'] as const) {
-  test(`${source} reduced motion removes every transition and animation`, async ({ page }) => {
+  test(`${source} reduced motion stops the movement and keeps a short fade`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: source === 'OS' ? 'reduce' : 'no-preference' })
     await page.goto('/_test/tokens')
     if (source === 'attribute')
@@ -108,26 +141,158 @@ for (const source of ['OS', 'attribute'] as const) {
         root.dataset.motion = 'reduce'
       })
     await expect(page.locator('html')).toHaveAttribute('data-motion', 'reduce')
-    const result = await page.evaluate(() => {
-      const style = document.createElement('style')
-      style.textContent =
-        '.motion-probe { transition: transform 1s, opacity 1s; animation: probe 1s infinite } @keyframes probe { to { opacity: .5 } }'
-      document.head.append(style)
-      const probe = document.createElement('div')
-      probe.className = 'motion-probe'
-      document.body.append(probe)
-      const styles = [getComputedStyle(probe), getComputedStyle(probe, '::before')]
-      const result = styles.map((item) => ({ transition: item.transitionProperty, animation: item.animationName }))
-      probe.remove()
-      style.remove()
-      return result
-    })
-    expect(result).toEqual([
-      { transition: 'none', animation: 'none' },
-      { transition: 'none', animation: 'none' }
-    ])
+    const result = await page.evaluate(motionProbe)
+    expect(result.spinner.animation).toBe('none')
+    // A popup fades in 120ms and loses its slide while it enters or leaves.
+    expect(result.popup).toMatchObject({ transition: 'opacity', duration: '0.12s' })
+    expect(result.entering).toMatchObject({ transform: 'none', opacity: '0' })
+    // Nothing else is switched off: the probe's own transform and colour transition stay as the page wrote them.
+    expect(result.colour.transition).toBe('transform, color')
+    expect(result.colour.transform).not.toBe('none')
   })
 }
+
+test('the spinner stops and says Loading… in words under reduced motion', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/_test/tokens')
+  await expect(page.locator('html')).toHaveAttribute('data-motion', 'reduce')
+  const spinner = page.locator('[data-slot="spinner"]')
+  await expect(spinner.locator('[data-slot="spinner-label"]')).toBeVisible()
+  await expect(spinner.locator('[data-slot="spinner-label"]')).toHaveText('Loading…')
+  await expect(spinner.locator('svg')).toHaveCSS('animation-name', 'none')
+})
+
+test('the spinner spins with its word hidden from sight under full motion', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/_test/tokens')
+  const spinner = page.locator('[data-slot="spinner"]')
+  await expect(spinner.locator('svg')).not.toHaveCSS('animation-name', 'none')
+  await expect(spinner).toContainText('Loading…')
+  await expect(spinner.locator('[data-slot="spinner-label"]')).toHaveCSS('position', 'absolute')
+})
+
+test('full motion in the account wins over a reduced OS setting', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/_test/tokens')
+  await page.locator('html').evaluate((root) => {
+    root.dataset.motion = 'full'
+  })
+  const result = await page.evaluate(motionProbe)
+  expect(result.spinner.animation).not.toBe('none')
+  expect(result.popup.transition).toBe('transform, color')
+})
+
+test('the page runs edge to edge so the safe-area insets take effect', async ({ page }) => {
+  const response = await page.goto('/_test/tokens')
+  expect(await response!.text()).toMatch(/<meta name="viewport" content="[^"]*viewport-fit=cover/)
+})
+
+test('the figures face is preloaded with Roundo and sets figures', async ({ page, request }) => {
+  // The static shell announces its fonts in the Link header (a streamed page keeps them out of the head).
+  const preload = (await request.get('/')).headers().link ?? ''
+  expect(preload).toMatch(/Roundo_Variable[^>]*\.woff2>; rel=preload; as="font"/)
+  for (const face of ['Regular', 'Medium', 'SemiBold'])
+    expect(preload).toMatch(new RegExp(`SkyclauseFigures_${face}[^>]*\\.woff2>; rel=preload; as="font"`))
+  await page.goto('/_test/tokens')
+  const loaded = await page.evaluate(async () => {
+    await document.fonts.ready
+    return document.fonts.check('14px "Skyclause Figures"', '12:30')
+  })
+  expect(loaded).toBe(true)
+})
+
+test('buttons, links and fields take no double-tap zoom, and dialogs and menus keep their scroll', async ({ page }) => {
+  await page.goto('/_test/tokens')
+  await expect(page.locator('button').first()).toHaveCSS('touch-action', 'manipulation')
+  await expect(page.locator('a').first()).toHaveCSS('touch-action', 'manipulation')
+  await expect(page.locator('input').first()).toHaveCSS('touch-action', 'manipulation')
+  const contained = await page.evaluate(() => {
+    const dialog = document.createElement('div')
+    dialog.setAttribute('role', 'dialog')
+    document.body.append(dialog)
+    const value = getComputedStyle(dialog).overscrollBehaviorY
+    dialog.remove()
+    return value
+  })
+  expect(contained).toBe('contain')
+})
+
+test.describe('the shared table', () => {
+  test('rows sit on a 44px pitch (40px compact), the header is a quiet strip, names truncate with a title', async ({
+    page
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto('/_test/tokens')
+    const tables = page.locator('section[aria-labelledby="tables"] [data-slot="table"]')
+    const rows = tables.first().locator('tbody tr')
+    await expect(rows.first()).toHaveCSS('height', '44px')
+    await expect(tables.nth(1).locator('tbody tr').first()).toHaveCSS('height', '40px')
+    const head = tables.first().locator('th').first()
+    await expect(head).toHaveCSS('font-size', '13px')
+    await expect(head).toHaveCSS('text-transform', 'none')
+    // No rule between rows: tone and space only.
+    await expect(rows.first().locator('td').first()).toHaveCSS('border-bottom-width', '0px')
+    const name = page.locator('section[aria-labelledby="tables"] [data-truncate]').nth(2)
+    await expect(name).toHaveAttribute('title', /Release wave at the stadium gate/)
+    expect(await name.locator('[data-slot="table-truncate"]').evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(
+      true
+    )
+    // Numeric columns align right in figures; the selected row is current with a mark and a tone.
+    await expect(tables.first().locator('td[data-numeric]').first()).toHaveCSS('text-align', 'right')
+    const selected = tables.first().locator('tbody tr[data-state="selected"]')
+    await expect(selected).toHaveAttribute('aria-current', 'true')
+    expect(
+      await selected
+        .locator('td')
+        .first()
+        .evaluate((el) => getComputedStyle(el, '::before').content)
+    ).toBe('""')
+    // The measure's fill is a capsule at least as wide as it is tall.
+    const fill = tables.first().locator('[data-slot="table-measure-fill"]').first()
+    const box = (await fill.boundingBox())!
+    expect(box.width).toBeGreaterThanOrEqual(box.height)
+    await expect(fill).toHaveCSS('border-top-left-radius', '9999px')
+  })
+
+  test('the sticky header stays under the bar while the page scrolls', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 500 })
+    await page.goto('/_test/tokens')
+    const head = page.locator('section[aria-labelledby="tables"] [data-slot="table"][data-sticky] th').first()
+    await head.scrollIntoViewIfNeeded()
+    await page.evaluate(() => {
+      document.documentElement.style.setProperty('--shell-bar-height', '48px')
+      const table = document.querySelector('section[aria-labelledby="tables"] [data-slot="table"][data-sticky]')!
+      window.scrollTo(0, table.getBoundingClientRect().top + window.scrollY + 120)
+    })
+    await expect.poll(async () => Math.round((await head.boundingBox())!.y)).toBe(48)
+  })
+
+  test('below 640px every row is a two-line item with the header kept for assistive technology', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 })
+    await page.goto('/_test/tokens')
+    const table = page.locator('section[aria-labelledby="tables"] [data-slot="table"]').first()
+    const row = table.locator('tbody tr').first()
+    await expect(row).toHaveCSS('display', 'flex')
+    // The header is out of sight but still in the accessibility tree.
+    const header = table.locator('thead')
+    expect((await header.boundingBox())!.width).toBeLessThanOrEqual(1)
+    await expect(table.getByRole('columnheader', { name: 'Window' })).toHaveCount(1)
+    // Line one: the name and the call; line two: the figures, each led by its label.
+    const [name, crossed, call] = await row
+      .locator('td')
+      .evaluateAll((cells) => cells.map((cell) => Math.round(cell.getBoundingClientRect().top)))
+    expect(Math.abs(call! - name!)).toBeLessThan(12)
+    expect(crossed!).toBeGreaterThan(name!)
+    expect(
+      await row
+        .locator('td')
+        .nth(1)
+        .evaluate((el) => getComputedStyle(el, '::before').content)
+    ).toContain('Crossed')
+    // No horizontal scroll at the phone width.
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  })
+})
 
 test('marketing stays dark when the viewer selects light', async ({ page, baseURL }) => {
   await appearance(page, baseURL!, { theme: 'light' })
@@ -135,27 +300,29 @@ test('marketing stays dark when the viewer selects light', async ({ page, baseUR
   const response = await page.goto('/')
   const html = await response!.text()
   expect(html).toContain('class="dark" style="color-scheme:dark"')
-  expect(html).toContain('<meta name="theme-color" content="#171719"')
+  expect(html).toContain('<meta name="theme-color" content="#1a2039"')
   await expect(page.locator('html')).toHaveClass('dark')
-  await expect(page.locator('body')).toHaveCSS('font-family', /Work Sans/)
-  await expect(page.locator('[data-surface="marketing"]')).toHaveCSS('background-color', 'rgb(10, 10, 10)')
+  // next/font names the face in lower case; CSS family names match without regard to case.
+  await expect(page.locator('body')).toHaveCSS('font-family', /^roundo, "roundo Fallback"/i)
+  await expect(page.locator('[data-surface="marketing"]')).toHaveCSS('background-color', 'rgb(26, 32, 57)')
   await expect(page.locator('[data-surface="marketing"]')).toHaveCSS('color-scheme', 'dark')
   expect(
     await page
       .locator('[data-surface="marketing"]')
       .evaluate((element) => getComputedStyle(element).getPropertyValue('--card').trim())
-  ).toBe('#131217')
+  ).toBe('#212846')
 })
 
 test('marketing follows OS contrast and motion while keeping a dark document', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light', contrast: 'more', reducedMotion: 'reduce' })
   const response = await page.goto('/')
   const html = await response!.text()
-  expect(html.indexOf('prefers-contrast: more')).toBeLessThan(html.indexOf('<body>'))
-  expect(html.indexOf('prefers-reduced-motion: reduce')).toBeLessThan(html.indexOf('<body>'))
+  // The body carries the font's class, so find the tag by its opening.
+  expect(html.indexOf('prefers-contrast: more')).toBeLessThan(html.indexOf('<body'))
+  expect(html.indexOf('prefers-reduced-motion: reduce')).toBeLessThan(html.indexOf('<body'))
   await expect(page.locator('html')).toHaveClass('dark hc')
   await expect(page.locator('html')).toHaveAttribute('data-motion', 'reduce')
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#000000')
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#0b0e1f')
   await page.keyboard.press('Tab')
   await expect(page.locator('.skip-link')).toBeFocused()
   await page.keyboard.press('Enter')

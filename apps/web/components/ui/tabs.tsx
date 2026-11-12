@@ -9,19 +9,19 @@ function Tabs({ className, orientation = 'horizontal', ...props }: TabsPrimitive
     <TabsPrimitive.Root
       data-slot="tabs"
       data-orientation={orientation}
-      className={cn('group/tabs flex gap-2 data-horizontal:flex-col', className)}
+      className={cn('group/tabs flex gap-2 data-[orientation=horizontal]:flex-col', className)}
       {...props}
     />
   )
 }
 
 const tabsListVariants = cva(
-  'group/tabs-list inline-flex w-fit items-center justify-center rounded-lg p-[3px] text-muted-foreground group-data-horizontal/tabs:h-8.5 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none',
+  'group/tabs-list inline-flex w-fit max-w-full items-center justify-start gap-1 rounded-full border-2 border-input bg-muted p-1 text-muted-foreground group-data-[orientation=horizontal]/tabs:h-auto in-data-[slot=card]:bg-raised group-data-[orientation=vertical]/tabs:h-fit group-data-[orientation=vertical]/tabs:flex-col group-data-[orientation=vertical]/tabs:rounded-xl',
   {
     variants: {
       variant: {
-        default: 'gap-1 bg-transparent',
-        line: 'gap-1 bg-transparent'
+        default: '',
+        line: ''
       }
     },
     defaultVariants: {
@@ -50,7 +50,7 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
     <TabsPrimitive.Tab
       data-slot="tabs-trigger"
       className={cn(
-        'relative inline-flex h-full flex-none items-center justify-center gap-1.5 rounded-full border-0 px-0 py-0.5 text-[13px] font-medium whitespace-nowrap text-muted-foreground hover:text-foreground outline-none disabled:pointer-events-none disabled:opacity-50 data-active:text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-(--selection-width) after:bg-selection after:opacity-0 data-active:after:opacity-100 [&_svg]:size-4',
+        'relative inline-flex h-9 min-w-9 flex-none items-center justify-center gap-1.5 rounded-full border-2 border-transparent px-3.5 text-[14px] leading-5 font-medium whitespace-nowrap text-muted-foreground transition-[transform,opacity] outline-none hover:text-foreground disabled:pointer-events-none disabled:opacity-60 data-active:bg-primary data-active:text-primary-foreground group-data-[orientation=vertical]/tabs:w-full group-data-[orientation=vertical]/tabs:justify-start [&_svg]:size-4',
         className
       )}
       {...props}
@@ -62,7 +62,7 @@ function TabsContent({ className, ...props }: TabsPrimitive.Panel.Props) {
   return (
     <TabsPrimitive.Panel
       data-slot="tabs-content"
-      className={cn('flex-1 text-[13px] outline-none', className)}
+      className={cn('flex-1 text-[14px] leading-5 outline-none', className)}
       {...props}
     />
   )

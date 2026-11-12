@@ -1,26 +1,33 @@
 'use client'
 
-import { useMemo, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { Reading, Source, SourceState } from '@skyclause/contracts'
 import { attribution } from '@skyclause/elements'
-import { formatAge, formatNumber, formatTime } from '@skyclause/i18n/format'
+import { formatNumber, formatTime } from '@skyclause/i18n/format'
 import { Glyph } from '../brand/glyph'
-import { InputAgeChip } from './input-age-chip'
 import { t } from './catalogue'
+import { SignalHealthRow } from './signal-health-row'
 
 export interface SourceHealthRowProps {
   source: Source
   latest?: (Pick<Reading, 'value' | 'observed_at'> & { unit?: string }) | null
   state?: SourceState | null
   ageS?: number | null
+  /** The last polls, newest last: only real polls (none passed draws no strip, never a strip of received polls). */
   ticks?: ReadonlyArray<'received' | 'missed' | 'error'>
   latestLabel?: string
   stateLabel?: string
-  ageChip?: ReactNode
   children?: ReactNode
   locale?: 'en' | 'ms'
 }
 
+const link = 'inline-flex min-h-6 items-center underline underline-offset-3 hover:decoration-2'
+
+/**
+ * A source's health from the API's own source, state and latest reading: the shared `SignalHealthRow` with the value
+ * read from the latest reading and the cadence, licence and source link under the ID. Put it in
+ * `<Table><SignalHealthHead />…`.
+ */
 export function SourceHealthRow({
   source,
   latest = null,
@@ -29,38 +36,21 @@ export function SourceHealthRow({
   ticks = [],
   latestLabel,
   stateLabel,
-  ageChip,
   children,
   locale = 'en'
 }: SourceHealthRowProps) {
   const current = state?.state ?? 'pending'
   const observed = latest?.observed_at ?? state?.since ?? null
-  const ageInput = useMemo(
-    () => ({
-      name: source.name,
-      value: latest?.value ?? null,
-      unit: latest?.unit ?? '',
-      state: current,
-      since: state?.since ?? null,
-      age_s: ageS,
-      source_ids: [source.id],
-      source_url: source.url,
-      reading_ids: [],
-      observed_at:
-        latest?.observed_at ??
-        (ageS !== null && ageS !== undefined ? new Date(Date.now() - ageS * 1000).toISOString() : null)
-    }),
-    [ageS, current, latest?.observed_at, latest?.unit, latest?.value, source.id, source.name, source.url, state?.since]
-  )
-  const ageText =
-    ageS !== null && ageS !== undefined && observed
-      ? formatAge(new Date(Date.now() - ageS * 1000).toISOString(), locale)
-      : observed
-        ? formatAge(observed, locale)
-        : t('data.source.latest_empty', {}, locale)
   const cadenceMin = Math.max(1, Math.round(source.cadence_s / 60))
   const cadence = t('data.source.cadence', { value: t('data.source.minute', { value: cadenceMin }, locale) }, locale)
   const licence = attribution[source.kind]
+  const licenceLabel = source.licence_label || t('data.source.licence_derived', {}, locale)
+  const valueText =
+    latestLabel ??
+    (current === 'error' || latest?.value === null || latest?.value === undefined
+      ? null
+      : t('data.source.value', { value: formatNumber(latest.value, locale), unit: latest.unit ?? '' }, locale))
+  const figure = !latestLabel && latest?.value !== null && latest?.value !== undefined && current !== 'error'
   const error =
     current === 'error' && state
       ? t(
@@ -73,56 +63,59 @@ export function SourceHealthRow({
           locale
         )
       : null
-  const valueText =
-    latestLabel ??
-    (current === 'error'
-      ? null
-      : latest?.value === null || latest?.value === undefined
-        ? t('data.source.latest_empty', {}, locale)
-        : t('data.source.value', { value: formatNumber(latest.value, locale), unit: latest.unit ?? '' }, locale))
-  const currentState = stateLabel ?? t(`brand.states.${current}`, {}, locale)
-  const chip =
-    ageChip ??
-    (current !== 'error' && (latest?.observed_at || ageS !== null) ? (
-      <InputAgeChip input={ageInput} locale={locale} />
-    ) : null)
+  const received = ticks.filter((tick) => tick === 'received').length
+  const missed = ticks.filter((tick) => tick === 'missed').length
+  const failed = ticks.length - received - missed
 
   return (
-    <tr data-source={source.id} className="block border-b md:table-row">
-      <td className="block p-2 md:table-cell">
-        <span className="flex min-h-[34px] flex-wrap items-center gap-2 [@media(pointer:coarse)]:min-h-[44px]">
-          <Glyph state={current} />
-          <span className="font-medium break-words">{source.name}</span>
-          <span translate="no" className="break-all text-xs text-muted-foreground tabular-nums">
-            {source.external_id}
-          </span>
-          {valueText && (
-            <span className="max-w-full break-words text-xs text-muted-foreground tabular-nums">{valueText}</span>
+    <SignalHealthRow
+      source={source}
+      state={current}
+      stateLabel={stateLabel}
+      value={
+        valueText
+          ? figure
+            ? { figure: formatNumber(latest!.value as number, locale), rest: latest!.unit ?? '' }
+            : { figure: null, rest: valueText }
+          : null
+      }
+      observedAt={observed}
+      ageS={ageS}
+      meta={
+        <>
+          <span>{cadence}</span>
+          {licence?.licence_url ? (
+            <a href={licence.licence_url} target="_blank" rel="noreferrer" className={link}>
+              {licenceLabel}
+              <span className="sr-only"> {t('data.source.new_tab', {}, locale)}</span>
+            </a>
+          ) : (
+            <span>{licenceLabel}</span>
           )}
-        </span>
-        {error && <span className="mt-1 block text-xs text-destructive tabular-nums">{error}</span>}
-        <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground tabular-nums md:hidden">
-          <span>{ageText}</span>
-          <span>{cadence}</span>
-          <span>{currentState}</span>
-        </span>
-      </td>
-      <td className="block p-2 text-xs tabular-nums md:table-cell">
-        <span className="hidden flex-wrap items-center gap-3 text-muted-foreground md:flex">
-          <span>{ageText}</span>
-          <span>{cadence}</span>
-          <span className="inline-flex items-center gap-1">
-            <Glyph state={current} />
-            <span>{currentState}</span>
-          </span>
-        </span>
-        <span className="mt-1 flex flex-wrap items-center gap-2">
-          {/* Ticks are real polls only: with none passed, no strip stands in as 48 received polls. */}
+          <a href={source.url} target="_blank" rel="noreferrer" className={link}>
+            {t('data.source.open_source', {}, locale)}
+            <span className="sr-only"> {t('data.source.new_tab', {}, locale)}</span>
+          </a>
+        </>
+      }
+      detail={children}
+      problem={
+        <>
+          {error ? (
+            <p className="mt-1 flex items-center gap-1.5 type-small text-foreground">
+              <Glyph state="error" />
+              <span>{error}</span>
+            </p>
+          ) : null}
           {ticks.length ? (
             <span
               role="img"
-              aria-label={t('data.source.ticks_label', { count: ticks.length }, locale)}
-              className="inline-flex gap-[2px]"
+              aria-label={
+                t('data.source.ticks_label', { count: ticks.length }, locale) +
+                ': ' +
+                t('data.strip.ticks_received', { received, missed, errors: failed }, locale)
+              }
+              className="mt-1 flex w-fit gap-[2px]"
             >
               {ticks.slice(0, 48).map((tick, i) => (
                 <span
@@ -130,48 +123,18 @@ export function SourceHealthRow({
                   title={t(`data.source.tick_${tick}`, {}, locale)}
                   className={
                     tick === 'received'
-                      ? 'inline-block h-3 w-1 bg-foreground/70'
+                      ? 'inline-block h-3 w-1 rounded-full bg-foreground'
                       : tick === 'missed'
-                        ? 'inline-block h-3 w-1 bg-foreground/20'
-                        : 'inline-block h-3 w-1 bg-destructive'
+                        ? 'inline-block h-3 w-1 rounded-full bg-overlay'
+                        : 'inline-block h-1 w-1 self-end rounded-full bg-foreground'
                   }
                 />
               ))}
             </span>
           ) : null}
-          {licence?.licence_url ? (
-            <a
-              href={licence.licence_url}
-              target="_blank"
-              rel="noreferrer"
-              className="min-h-[34px] inline-flex items-center underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:transition-none [@media(pointer:coarse)]:min-h-[44px]"
-            >
-              {source.licence_label || t('data.source.licence', {}, locale)}
-            </a>
-          ) : (
-            <span className="text-muted-foreground">
-              {source.licence_label || t('data.source.licence_derived', {}, locale)}
-            </span>
-          )}
-        </span>
-        <span className="mt-1 flex flex-wrap items-center gap-2">
-          {observed && (
-            <time className="text-muted-foreground" dateTime={observed}>
-              {formatTime(observed, locale)}
-            </time>
-          )}
-          {chip}
-          {children}
-          <a
-            href={source.url}
-            target="_blank"
-            rel="noreferrer"
-            className="min-h-[34px] inline-flex items-center underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:transition-none [@media(pointer:coarse)]:min-h-[44px]"
-          >
-            {t('data.source.open_source', {}, locale)}
-          </a>
-        </span>
-      </td>
-    </tr>
+        </>
+      }
+      locale={locale}
+    />
   )
 }

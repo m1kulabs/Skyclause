@@ -8,7 +8,14 @@ export function useRead<Value>(
   poll = false,
   { keepPreviousData = false } = {}
 ) {
-  const [state, setState] = useState<{ read: typeof read; data?: Value; error?: unknown; loading: boolean }>({
+  const [state, setState] = useState<{
+    read: typeof read
+    data?: Value
+    error?: unknown
+    /** When the read failed, for the error's "no answer at" line. */
+    failedAt?: string
+    loading: boolean
+  }>({
     read,
     loading: true
   })
@@ -24,7 +31,8 @@ export function useRead<Value>(
         const data = await read(controller.signal)
         if (!controller.signal.aborted) startTransition(() => setState({ read, data, loading: false }))
       } catch (error) {
-        if (!controller.signal.aborted) startTransition(() => setState({ read, error, loading: false }))
+        const failedAt = new Date().toISOString()
+        if (!controller.signal.aborted) startTransition(() => setState({ read, error, failedAt, loading: false }))
       }
       if (!controller.signal.aborted && poll)
         timer = setTimeout(() => {
@@ -42,7 +50,7 @@ export function useRead<Value>(
   return {
     ...(state.read === read
       ? state
-      : { data: keepPreviousData ? state.data : undefined, error: undefined, loading: true }),
+      : { data: keepPreviousData ? state.data : undefined, error: undefined, failedAt: undefined, loading: true }),
     retry: () => setRevision((value) => value + 1)
   }
 }

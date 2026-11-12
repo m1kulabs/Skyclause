@@ -6,8 +6,10 @@ import {
   localDateOf,
   nextHourWindow,
   parseLocalTime,
+  parseTimeInput,
   parseWindowFromSearch,
-  snapToStep
+  snapToStep,
+  TIME_INPUT_PATTERN
 } from '../../features/landing-hero/window-model'
 
 test('dates today plus seven run eight days in MYT, today first', () => {
@@ -49,8 +51,70 @@ test('a GET query gives a window only when every part validates inside today plu
     startMin: 1290,
     endMin: 1380
   })
-  expect(parseWindowFromSearch('date=2026-11-06&start=21%3A30', now)).toBeNull()
   expect(parseWindowFromSearch('date=2026-11-13&start=21%3A30&end=23%3A00', now)).toBeNull()
   expect(parseWindowFromSearch('date=2026-11-06&start=21%3A31&end=23%3A00', now)).toBeNull()
   expect(parseWindowFromSearch('', now)).toBeNull()
+  expect(parseWindowFromSearch('date=2026-11-06&end=23%3A00', now)).toBeNull()
+})
+
+test('a query without an end (the closing sentence asks for one time) reads the hour from its start', () => {
+  const now = new Date('2026-11-05T13:12:00Z')
+  expect(parseWindowFromSearch('date=2026-11-06&start=15%3A30', now)).toEqual({
+    date: '2026-11-06',
+    startMin: 930,
+    endMin: 990
+  })
+  expect(parseWindowFromSearch('date=2026-11-06&start=15%3A30&end=', now)).toEqual({
+    date: '2026-11-06',
+    startMin: 930,
+    endMin: 990
+  })
+  // Late starts keep the day's last step.
+  expect(parseWindowFromSearch('date=2026-11-06&start=23%3A30', now)).toEqual({
+    date: '2026-11-06',
+    startMin: 1410,
+    endMin: 1425
+  })
+  expect(parseWindowFromSearch('date=2026-11-06&start=15%3A20', now)).toBeNull()
+})
+
+test('a typed time takes any common form on the quarter hour, so a phone number pad is never needed', () => {
+  for (const [typed, minutes] of [
+    ['15:30', 930],
+    ['1530', 930],
+    ['15.30', 930],
+    ['15h30', 930],
+    ['930', 570],
+    ['9:30', 570],
+    ['09:30', 570],
+    ['3.30pm', 930],
+    ['3:30 pm', 930],
+    ['3:30 P.M.', 930],
+    ['3pm', 900],
+    ['12am', 0],
+    ['12:15pm', 735],
+    ['15', 900],
+    [' 15:30 ', 930]
+  ] as const)
+    expect(parseTimeInput(typed), typed).toBe(minutes)
+  for (const typed of ['15:20', '24:00', '1560', '13pm', '0pm', '', 'soon', '15:30:00'])
+    expect(parseTimeInput(typed), typed).toBeNull()
+  // The pattern the no-JS fields carry accepts exactly the forms the parser reads.
+  const pattern = new RegExp(`^(?:${TIME_INPUT_PATTERN})$`)
+  for (const typed of ['15:30', '1530', '3.30pm', '3pm', '12am', '15']) expect(pattern.test(typed), typed).toBe(true)
+  for (const typed of ['15:20', '24:00', '13pm', 'soon']) expect(pattern.test(typed), typed).toBe(false)
+})
+
+test('the window query reads the same common forms', () => {
+  const now = new Date('2026-11-05T13:12:00Z')
+  expect(parseWindowFromSearch('date=2026-11-06&start=1530', now)).toEqual({
+    date: '2026-11-06',
+    startMin: 930,
+    endMin: 990
+  })
+  expect(parseWindowFromSearch('date=2026-11-06&start=3.30pm&end=5pm', now)).toEqual({
+    date: '2026-11-06',
+    startMin: 930,
+    endMin: 1020
+  })
 })

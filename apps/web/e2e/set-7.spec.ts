@@ -333,8 +333,8 @@ test('delete account stays disabled until the exact email is typed — #108 a-se
   })
   await page.goto('/account/data')
   const panel = page.locator('[data-settings-panel]')
-  await expect(panel.getByText('Loading exports…', { exact: true })).toBeHidden()
   const trigger = panel.getByRole('button', { name: 'Delete account' })
+  await expect(trigger).toBeEnabled()
   await trigger.focus()
   await page.keyboard.press('Enter')
   const dialog = page.getByRole('alertdialog')
@@ -364,7 +364,9 @@ test('remove member — #104: confirmation names the member', async ({ page }) =
   await prepareMemberSettings(page, 'members')
   await page.goto('/test-org/settings/members')
 
-  await page.getByRole('button', { name: 'Remove member: Aisha Rahman' }).click()
+  // One quiet menu per row holds Remove; the confirmation then names the member.
+  await page.getByRole('button', { name: 'More actions for Aisha Rahman' }).click()
+  await page.getByRole('menuitem', { name: 'Remove member' }).click()
   const dialog = page.getByRole('alertdialog')
   await expect(dialog.getByRole('heading', { name: 'Remove “Aisha Rahman”?' })).toBeVisible()
   await expect(dialog).toContainText('Aisha Rahman')
@@ -406,8 +408,10 @@ test('last-owner — #104: the refusal reason appears next to the role control',
   const dialog = page.getByRole('alertdialog')
   await expect(dialog.getByRole('heading', { name: 'Change “Morgan Owner” to Admin?' })).toBeVisible()
   await dialog.getByRole('button', { name: /Change role to Admin/ }).click()
-  const ownerRow = page.getByRole('row', { name: /Morgan Owner/ })
-  await expect(ownerRow.getByRole('alert')).toHaveText('The organisation must retain at least one Owner.')
+  // The failure is named by whose row it is, in the list's own part of the panel.
+  await expect(page.getByRole('alert').filter({ hasText: 'Morgan Owner' })).toHaveText(
+    'Morgan Owner: The organisation must retain at least one Owner.'
+  )
 })
 
 test('unsaved rota — #104: closing the tab prompts before the shift is saved', async ({ page }) => {
@@ -416,7 +420,7 @@ test('unsaved rota — #104: closing the tab prompts before the shift is saved',
   await page.getByRole('button', { name: 'Add an approver' }).click()
   await page.getByRole('checkbox', { name: 'Monday' }).click()
   await page.getByRole('button', { name: 'Add shift' }).click()
-  await expect(page.getByText('Rota shifts (n=1)')).toBeVisible()
+  await expect(page.getByText('1 shift', { exact: true })).toBeVisible()
 
   const prompt = page.waitForEvent('dialog')
   const reload = page.evaluate(() => window.location.reload())
@@ -435,22 +439,24 @@ test('ORG-4: a new organisation shows both empty rota templates and Add an appro
   await expect(templates.getByText('Surge nights')).toBeVisible()
   await expect(templates.getByText('No one assigned')).toHaveCount(2)
   await expect(page.getByRole('button', { name: 'Add an approver' })).toBeVisible()
-  await expect(page.getByText('Rota shifts (n=0)')).toBeVisible()
+  await expect(page.getByText('0 shifts', { exact: true })).toBeVisible()
 })
 
-test('ORG settings tables and timeline fit the 375px viewport', async ({ page }) => {
+test('ORG settings lists and the week fit the 375px viewport', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await prepareMemberSettings(page, 'members')
   await page.goto('/test-org/settings/members')
-  await expect(page.getByRole('table', { name: 'Organisation members' })).toBeVisible()
-  await expect(page.getByRole('cell', { name: /^Name Aisha Rahman/ })).toBeVisible()
+  // Members are the shared table, and on a phone each row is a two-line item that does not scroll sideways.
+  await expect(page.getByRole('region', { name: 'Organisation members' })).toBeVisible()
+  await expect(page.getByRole('row').filter({ hasText: 'Aisha Rahman' })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375)
 
   await prepareMemberSettings(page, 'rota')
   await page.goto('/test-org/settings/rota')
-  const timeline = page.locator('[role="region"][aria-label="Approver rota for the next 7 days"]')
-  await expect(timeline).toBeVisible()
-  await expect(timeline).toHaveCSS('overflow-x', 'auto')
+  const week = page.getByRole('region', { name: 'Approver rota for the next 7 days' })
+  await expect(week).toBeVisible()
+  // The week reflows into stacked day strips: nothing scrolls sideways, in the region or the page.
+  expect(await week.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375)
 })
 
@@ -471,7 +477,7 @@ for (const mode of [
   })
 }
 
-test('notifications panel removes a registered device immediately by keyboard — #170', async ({ page }) => {
+test('notifications panel asks first, then removes a registered device by keyboard — #170', async ({ page }) => {
   await removeDeviceScenario(page)
 })
 test('cancel window — #143 b-windows-ui', async ({ page }) => windowUndoCase(page))
@@ -488,19 +494,26 @@ test('archive project can be undone within 10 seconds — #174 b-project-ui', as
   await page.goto(`${projectPath}/settings`)
   await page.clock.pauseAt(new Date('2026-11-05T13:12:30.000Z'))
   const panel = page.locator('[data-project-settings-general]')
-  await panel.getByRole('button', { name: 'Archive project' }).click()
-  await expect(panel.getByRole('status').filter({ hasText: 'Project will be archived' })).toBeVisible()
+  // Archiving asks first in a dialog that names the project; the confirmation starts the 10 second undo window.
+  const confirmArchive = async () => {
+    await panel.getByRole('button', { name: 'Archive project', exact: true }).click()
+    const dialog = page.getByRole('alertdialog')
+    await expect(dialog.getByRole('heading')).toHaveText('Archive project “Bukit Jalil campus”')
+    await dialog.getByRole('button', { name: 'Archive project “Bukit Jalil campus”', exact: true }).click()
+  }
+  await confirmArchive()
+  await expect(panel.getByRole('status').filter({ hasText: 'will be archived' })).toBeVisible()
   await page.clock.runFor(9_000)
   await panel.getByRole('button', { name: 'Undo' }).click()
   await page.clock.runFor(10_001)
   expect(archiveRequests).toBe(0)
 
-  await panel.getByRole('button', { name: 'Archive project' }).click()
+  await confirmArchive()
   await page.clock.runFor(10_001)
   await expect(panel.getByRole('button', { name: 'Restore project' })).toBeVisible()
   expect(archiveRequests).toBe(1)
   await panel.getByRole('button', { name: 'Restore project' }).click()
-  await expect(panel.getByRole('button', { name: 'Archive project' })).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'Archive project', exact: true })).toBeVisible()
 })
 
 test('revoking a share link asks for confirmation and names the link — #174 b-project-ui', async ({ page }) => {
@@ -509,7 +522,9 @@ test('revoking a share link asks for confirmation and names the link — #174 b-
   const share = page.locator('[data-project-settings-share]')
   await share.getByRole('button', { name: 'Revoke' }).click()
   const dialog = page.getByRole('alertdialog')
-  await expect(dialog.getByRole('heading')).toContainText('share-link-one')
+  // The link is named by its access and expiry, never by its ID.
+  await expect(dialog.getByRole('heading')).toContainText('Reviewer link, expires 12 November 2026')
+  await expect(dialog.getByRole('heading')).not.toContainText('share-link-one')
   await expect(dialog.getByRole('button', { name: 'Revoke link' })).toBeVisible()
   await dialog.getByRole('button', { name: 'Revoke link' }).click()
   await expect(share).toContainText('Revoked')

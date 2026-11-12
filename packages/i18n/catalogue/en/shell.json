@@ -8,10 +8,7 @@
   "close": "Close",
   "copy": "Copy",
   "copied": "Copied",
-  "toggle_sidebar": "Toggle sidebar",
-  "sidebar": "Sidebar",
-  "mobile_sidebar_description": "Displays the mobile sidebar.",
-  "close_toast": "Close toast",
+  "close_toast": "Dismiss notification",
   "more_pages": "More pages",
   "pagination": "Pagination",
   "previous_page": "Go to previous page",
@@ -29,5 +26,8 @@
   "command_description": "Search for a command to run.",
   "show_options": "Show options",
   "clear": "Clear selection",
-  "remove": "Remove selection"
+  "remove": "Remove selection",
+  "notifications": "Notifications",
+  "suggestions": "Suggestions",
+  "remove_named": "Remove {name}"
 }

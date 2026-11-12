@@ -16,7 +16,13 @@
     "window": "Tetingkap",
     "now": "Kini",
     "ages_title": "Umur input",
-    "lebat_line": "Lebat 31 mm"
+    "lebat_line": "Lebat 31 mm",
+    "chart_date": "{date} · MYT",
+    "now_label": "Kini MYT",
+    "table_peaks": "Bacaan tertinggi dalam setiap {minutes} minit, daripada {count} bacaan.",
+    "lane_rain5": "Hujan, mm setiap 5 min",
+    "lane_rain60": "Hujan, mm dalam 60 min",
+    "ticks_received": "{received} diterima, {missed} tiada, {errors} gagal"
   },
   "age": {
     "label": "{name} {age}",
@@ -28,12 +34,13 @@
     "received_time": "Waktu diterima",
     "status": "Status",
     "latency": "Kependaman",
-    "latency_value": "{value} ms"
+    "latency_value": "{value} ms",
+    "latency_unknown": "–"
   },
   "source": {
     "cadence": "setiap {value}",
     "minute": "{value} min",
-    "value": "{value} {unit}",
+    "value": "{value} {unit}",
     "latest_empty": "Tiada bacaan lagi (n=0).",
     "error_since": "Ralat {source} sejak {time} · HTTP {status}",
     "unknown_status": "tidak diketahui",
@@ -43,6 +50,7 @@
     "tick_error": "ralat",
     "licence": "Lesen",
     "licence_derived": "Terbitan sahaja",
+    "new_tab": "(dibuka dalam tab baharu)",
     "open_source": "Buka sumber"
   },
   "call": {
@@ -66,7 +74,7 @@
   },
   "bundle": {
     "trigger": "{trigger} pada {time}",
-    "title": "{triggerText} {project}",
+    "title": "{project} · {triggerText}",
     "sla": "{count} minit SLA berbaki",
     "sla_over": "SLA telah lepas",
     "agrees": "Setuju",
@@ -78,18 +86,93 @@
     "actions": "Tindakan berkas"
   },
   "grade": {
-    "value_label": "{metric} {value}",
+    "value_label": "{metric}",
     "n": "n={count}",
     "n_zero": "n=0",
     "period": "{from} hingga {to}",
     "replay": "Ulangan",
     "empty": "Tiada tetingkap dinilai lagi (n=0).",
     "interval_label": "Selang Wilson 95% {low} hingga {high}",
-    "wilson_95": "Wilson 95%: {low}–{high}"
+    "wilson_95": "Wilson 95%: {low}–{high}",
+    "count": "{x} daripada {n}",
+    "no_interval": "Belum ada selang."
   },
   "pack": {
     "clause_engine": "Keputusan enjin klausa: belum disemak, belum dihantar",
     "approved_call": "Panggilan diluluskan",
     "no_basis": "Tiada keputusan lagi"
+  },
+  "day": {
+    "label": "Tetingkap pada {date}",
+    "summary": "{count} tetingkap pada {date}. Masa dalam MYT.",
+    "summary_one": "1 tetingkap pada {date}. Masa dalam MYT.",
+    "empty": "Tiada tetingkap pada {date}.",
+    "now": "Kini {time}",
+    "range": "{from}–{to} MYT",
+    "pending": "Belum ada keputusan",
+    "draft": "Draf, belum diluluskan",
+    "more": "{count} lagi tetingkap tidak disenaraikan.",
+    "list": "Tetingkap dan keputusannya",
+    "more_one": "1 lagi tetingkap tidak disenaraikan."
+  },
+  "no_call": {
+    "reason": "{inputs} gagal sejak {time}.",
+    "reason_plain": "Input wajib gagal, jadi tetingkap ini tiada keputusan."
+  },
+  "not_built": {
+    "title": "{thing} belum dibina.",
+    "detail": "Belum ada apa untuk ditunjukkan di sini."
+  },
+  "source_error": {
+    "title": "Tidak dapat membaca {source}.",
+    "not_built": "Belum dibina, jadi tiada apa untuk ditunjukkan di sini.",
+    "status": "Ia menjawab {status} pada {time}.",
+    "status_untimed": "Ia menjawab {status}.",
+    "unreachable": "Tiada jawapan pada {time}.",
+    "retry": "Cuba lagi"
+  },
+  "indicators": {
+    "site": {
+      "rain_60m_mm": "Hujan dalam 60 minit lepas (tapak)",
+      "api_max": "Indeks pencemaran udara, tertinggi antara stesen",
+      "api_0600_min_last3_max": "Indeks pencemaran udara pada 06:00, terendah dalam tiga pagi lepas",
+      "met_warning_in_force": "Amaran MET sedang berkuat kuasa (tapak)",
+      "met_afternoon_thunderstorm": "Ramalan MET: ribut petir waktu petang",
+      "camera_far_low_frames": "Kamera langit: bingkai jauh berkontras rendah, daripada 3 terakhir",
+      "night": {
+        "baseline": "Keluar malam, paras biasa",
+        "uplift": "Keluar malam, tokokan daripada acara",
+        "forecast": "Keluar malam, ramalan",
+        "band_low": "Keluar malam, jalur ramalan (rendah)",
+        "band_high": "Keluar malam, jalur ramalan (tinggi)",
+        "doors": "Pintu dibuka",
+        "show": "Persembahan bermula",
+        "arrival_start": "Tempoh ketibaan bermula",
+        "arrival_end": "Tempoh ketibaan tamat",
+        "exit_start": "Tempoh keluar bermula",
+        "exit_end": "Tempoh keluar tamat",
+        "single_source": "Ramalan malam daripada satu sumber"
+      }
+    },
+    "w": {
+      "rain_max_60m_mm": "Hujan 60 minit paling lebat dalam tetingkap",
+      "rain_max_4h_mm": "Hujan 4 jam paling lebat dalam tetingkap",
+      "met_warning_in_force": "Amaran MET berkuat kuasa semasa tetingkap",
+      "start": "Permulaan tetingkap",
+      "end": "Penamat tetingkap",
+      "start_local_min": "Permulaan tetingkap, minit selepas tengah malam",
+      "end_local_min": "Penamat tetingkap, minit selepas tengah malam",
+      "kind": "Jenis tetingkap",
+      "duration": "Tempoh tetingkap"
+    },
+    "other": "Input lain"
+  },
+  "signal": {
+    "source": "Sumber",
+    "value": "Nilai terkini",
+    "age": "Umur",
+    "health": "Kesihatan",
+    "no_value": "Belum ada bacaan",
+    "updated": "Dibaca {time}"
   }
 }

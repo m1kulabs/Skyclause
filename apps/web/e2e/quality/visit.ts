@@ -32,6 +32,8 @@ export function expectedStatus(route: CrawlRoute, role: Role) {
     if (/^\/[^/]+\/[^/]+\/subscribers$/.test(route.path)) {
       return isOwnerOrAdmin || role === 'Approver' ? route.status : 404
     }
+    // PRD routes and LED-4: a share link opens its own project's ledger and windows, where rows.ts sends the reviewer.
+    if (role === 'share-link reviewer' && /^\/[^/]+\/[^/]+\/(?:ledger|windows)$/.test(route.path)) return route.status
     // PRD routes: an organisation's pages are its members'. Its layout only checks that it exists (#596).
     if (!hasSession(role)) return 404
   }
@@ -42,6 +44,10 @@ export function expectedStatus(route: CrawlRoute, role: Role) {
   if ((route.path === '/[org]' || route.path === '/test-org') && role === 'share-link reviewer') return 404
   return route.status
 }
+
+/** The probation labeller is for accounts: a guest, a share link or no session is sent to sign up. */
+const signsUpFirst = (route: CrawlRoute, role: Role) =>
+  /^\/[^/]+\/[^/]+\/signals\/probation\/[^/]+$/.test(route.path) && (!hasSession(role) || role === 'guest')
 
 /** #98 redirects members through #97's continue endpoint to their account destination. */
 export function redirectsToAccount(route: CrawlRoute, role: Role) {
@@ -63,7 +69,8 @@ export async function visit(
       )
     : undefined
   const response = await page.goto(path)
-  if (readySelector) await page.locator(readySelector).first().waitFor({ state: 'attached' })
+  if (readySelector && !signsUpFirst(route, role))
+    await page.locator(readySelector).first().waitFor({ state: 'attached' })
   if (continuation) {
     expect(orgSlug).toBeTruthy()
     expect((await continuation).headers().location).toBe(`/${orgSlug}`)
@@ -86,6 +93,11 @@ export async function visit(
     await expect(page.locator('main[aria-labelledby="oauth-consent-title"]')).toHaveCount(0)
     return []
   }
+  if (signsUpFirst(route, role)) {
+    await expect(page).toHaveURL(/\/sign-up$/)
+    await expect(page.locator('.probation-page')).toHaveCount(0)
+    return []
+  }
   if (route.path === '/new' && (!hasSession(role) || role === 'guest')) {
     await expect(page).toHaveURL(/\/sign-up$/)
     await expect(page.locator('form:has(#org-name)')).toHaveCount(0)
@@ -98,17 +110,15 @@ export async function visit(
     await expect(page.getByText(rendered(t('brand.not_safety_service', {}, locale)), { exact: true })).toBeVisible()
   }
   if (route.path === '/') {
-    // The landing carries DESIGN's copy-deck forms of both lines: the Proof footnote and the first FAQ answer, whose
-    // pane stays closed until its question is chosen.
+    // The landing's sources section carries the long form of the non-affiliation line, and its footer the brand's
+    // safety line, once.
     await expect(page.locator('html')).toHaveAttribute('lang', 'en')
     await expect(
       page.getByText(
         'Skyclause is not affiliated with or endorsed by APU, KPT, JPS, MET Malaysia, DOE, Prasarana or Rapid KL, or the stadium.'
       )
     ).toBeVisible()
-    await expect(
-      page.getByText('Skyclause is not a safety or emergency service. In an emergency, call 999.')
-    ).toBeAttached()
+    await expect(page.getByText(rendered(t('brand.not_safety_service', {}, 'en')), { exact: true })).toBeVisible()
   }
   const expected = expectedStatus(route, role)
   // Firefox revalidates a static page it has cached; 304 is its 200.

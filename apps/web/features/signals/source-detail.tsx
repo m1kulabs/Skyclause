@@ -3,9 +3,11 @@
 import { useMemo } from 'react'
 import type { EvaluatedSource, Project, ProjectStrip, SourcePoll, SourceReading } from './operations'
 import type { StripInput } from '@skyclause/elements'
-import { formatDateTime, formatLocalDateKey, formatNumber, formatTime } from '@skyclause/i18n/format'
+import { formatDate, formatDateTime, formatLocalDateKey, formatNumber, formatTime } from '@skyclause/i18n/format'
 import { WindowStrip } from '../data-components/window-strip'
 import { SignalsChart, type SignalChartPoint } from './signals-chart'
+import { Button } from '#ui/button'
+import { ReadingsTable } from './readings-table'
 import { t } from './catalogue'
 import { NotBuiltError } from '@skyclause/contracts'
 import { baseline as forecastBaseline, type DailyExits } from '@skyclause/forecast'
@@ -130,9 +132,10 @@ export interface SourceDetailProps {
   readings: readonly SourceReading[]
   polls: readonly SourcePoll[]
   locale: 'en' | 'ms'
+  onClose: () => void
 }
 
-export function SourceDetail({ project, source, strip, readings, polls, locale }: SourceDetailProps) {
+export function SourceDetail({ project, source, strip, readings, polls, locale, onClose }: SourceDetailProps) {
   const now = Date.now()
   const readingRows = useMemo(() => last24h(readings, now), [readings, now])
   const errors = polls
@@ -147,6 +150,7 @@ export function SourceDetail({ project, source, strip, readings, polls, locale }
   let body: React.ReactNode
   if (source.kind === 'jps_rain') {
     const input = rainfallStrip(readings, now)
+    const readingCount = input.rain5.filter((point) => point.value !== null).length
     const sixtyMinuteInput = strip.inputs.find(
       (value) => value.source_ids.includes(source.id) && value.name.includes('rain_60m_mm')
     )
@@ -154,12 +158,12 @@ export function SourceDetail({ project, source, strip, readings, polls, locale }
     const sixtyMinuteValue = typeof sixtyMinuteInput?.value === 'number' ? sixtyMinuteInput.value : sixtyMinuteSeries
     const at = source.latest_reading?.observed_at ?? new Date(now).toISOString()
     body = (
-      <section aria-labelledby="signals-gauge-title" className="space-y-3">
-        <h3 id="signals-gauge-title" className="text-base font-semibold">
+      <section aria-labelledby="signals-gauge-title" className="flex flex-col gap-3">
+        <h3 id="signals-gauge-title" className="type-card-title">
           {t('signals.no_window', {}, locale)}
         </h3>
         {sixtyMinuteValue !== null && sixtyMinuteValue !== undefined && (
-          <p className="tabular-nums">
+          <p data-numeric className="type-text">
             {t(
               'signals.rain_value_time',
               { value: formatNumber(sixtyMinuteValue, locale), time: formatTime(at, locale) },
@@ -167,8 +171,12 @@ export function SourceDetail({ project, source, strip, readings, polls, locale }
             )}
           </p>
         )}
-        <p className="text-sm text-muted-foreground">
-          {t('signals.gauge_summary', { count: input.rain5.filter((point) => point.value !== null).length }, locale)}
+        <p className="type-small text-muted-foreground">
+          {t(
+            readingCount === 1 ? 'signals.gauge_summary_one' : 'signals.gauge_summary',
+            { count: formatNumber(readingCount, locale) },
+            locale
+          )}
         </p>
         <WindowStrip windows={[]} strip={input} locale={locale} />
       </section>
@@ -213,19 +221,28 @@ export function SourceDetail({ project, source, strip, readings, polls, locale }
     }
     const from = points[0] ? asLocalDate(points[0].at, project.time_zone) : targetDate
     body = (
-      <section className="space-y-3">
+      <section className="flex flex-col gap-3">
         {baselineValue !== null && (
-          <p className="text-sm tabular-nums">
+          <p data-numeric className="type-body">
             {t('signals.rail_baseline', { value: formatNumber(baselineValue, locale) }, locale)}
           </p>
         )}
         {baselineUnavailable && (
-          <p className="text-sm text-muted-foreground">{t('signals.baseline_unavailable', {}, locale)}</p>
+          <p className="type-small text-muted-foreground">{t('signals.baseline_unavailable', {}, locale)}</p>
         )}
-        {baselineNoCall && <p className="text-sm text-muted-foreground">{t('signals.baseline_no_call', {}, locale)}</p>}
+        {baselineNoCall && (
+          <p className="type-small text-muted-foreground">{t('signals.baseline_no_call', {}, locale)}</p>
+        )}
         <SignalsChart
           title={t('signals.rail_title', {}, locale)}
-          summary={t('signals.rail_summary', { from, to: targetDate }, locale)}
+          summary={t(
+            'signals.rail_summary',
+            {
+              from: formatDate(`${from}T12:00:00.000Z`, locale),
+              to: formatDate(`${targetDate}T12:00:00.000Z`, locale)
+            },
+            locale
+          )}
           points={points}
           locale={locale}
           dateAxis
@@ -238,14 +255,19 @@ export function SourceDetail({ project, source, strip, readings, polls, locale }
   } else {
     const warningTime = source.latest_reading?.observed_at ?? source.state.since
     body = (
-      <section className="space-y-3">
-        {source.latest_reading?.value_text && <p className="text-lg font-medium">{source.latest_reading.value_text}</p>}
-        <p className="text-sm text-muted-foreground">
+      <section className="flex flex-col gap-3">
+        {source.latest_reading?.value_text && <p className="type-section">{source.latest_reading.value_text}</p>}
+        <p className="type-small text-muted-foreground">
           {t('signals.warning_summary', { time: formatTime(warningTime, locale) }, locale)}
         </p>
         {source.latest_reading?.value_json && (
-          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- axe scrollable-region-focusable requires the scroll container to be keyboard-focusable.
-          <pre tabIndex={0} className="overflow-auto rounded-md border border-border p-3 text-xs">
+          <pre
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- axe scrollable-region-focusable requires the scroll container to be keyboard-focusable.
+            tabIndex={0}
+            role="region"
+            aria-label={t('signals.warning_data', {}, locale)}
+            className="overflow-auto rounded-md bg-raised p-3 type-code"
+          >
             {JSON.stringify(source.latest_reading.value_json, null, 2)}
           </pre>
         )}
@@ -257,27 +279,44 @@ export function SourceDetail({ project, source, strip, readings, polls, locale }
     <section
       data-source-detail
       aria-labelledby="signals-detail-title"
-      className="mt-6 space-y-5 rounded-lg border border-border p-4 sm:p-6"
+      className="flex flex-col gap-5 rounded-xl bg-card p-5"
     >
-      <div>
-        <h2 id="signals-detail-title" className="text-lg font-semibold" translate="no">
-          {t('signals.detail_source', { source: source.external_id }, locale)}
-        </h2>
-        {latestObserved && (
-          <p className="mt-1 text-sm text-muted-foreground tabular-nums">
-            {t('signals.source_time_value', { time: formatDateTime(latestObserved, locale) }, locale)}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 id="signals-detail-title" className="type-section" translate="no">
+            {t('signals.detail_source', { source: source.external_id }, locale)}
+          </h2>
+          <p className="mt-1 flex flex-wrap gap-x-4 type-small text-muted-foreground">
+            {latestObserved && (
+              <span data-numeric>
+                {t('signals.source_time_value', { time: formatDateTime(latestObserved, locale) }, locale)}
+              </span>
+            )}
+            {source.latest_reading?.received_at && (
+              <span data-numeric>
+                {t(
+                  'signals.received_time_value',
+                  { time: formatDateTime(source.latest_reading.received_at, locale) },
+                  locale
+                )}
+              </span>
+            )}
           </p>
-        )}
+        </div>
+        <Button type="button" variant="ghost" onClick={onClose}>
+          {t('signals.close_detail', {}, locale)}
+        </Button>
       </div>
       {body}
-      <section aria-labelledby="signals-detail-errors-title" className="space-y-2">
-        <h3 id="signals-detail-errors-title" className="font-semibold">
+      <ReadingsTable readings={readingRows} locale={locale} />
+      <section aria-labelledby="signals-detail-errors-title" className="flex flex-col gap-2">
+        <h3 id="signals-detail-errors-title" className="type-card-title">
           {t('signals.recent_errors', {}, locale)}
         </h3>
         {errors.length ? (
-          <ul className="space-y-1 text-sm tabular-nums">
+          <ul className="flex flex-col type-body">
             {errors.map((poll) => (
-              <li key={poll.id}>
+              <li key={poll.id} data-numeric className="min-h-11 py-2">
                 {poll.http_status === null
                   ? t('signals.error_no_status', { time: formatDateTime(poll.started_at, locale) }, locale)
                   : t(
@@ -289,7 +328,7 @@ export function SourceDetail({ project, source, strip, readings, polls, locale }
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">{t('signals.no_errors', {}, locale)}</p>
+          <p className="type-small text-muted-foreground">{t('signals.no_errors', {}, locale)}</p>
         )}
       </section>
     </section>

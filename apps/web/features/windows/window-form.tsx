@@ -1,21 +1,25 @@
 'use client'
 
 import { useLayoutEffect, useRef, useState } from 'react'
-import { Field, FieldLabel, FieldGroup, FieldError } from '#ui/field'
+import { formatInputDateTime } from '@skyclause/i18n/format'
+import { Field, FieldLabel, FieldGroup, FieldError, FieldDescription } from '#ui/field'
 import { Input } from '#ui/input'
 import { Button } from '#ui/button'
 import { Alert, AlertDescription } from '#ui/alert'
 import { useUnsavedChangesGuard } from '../settings/set-7'
 import { ApiProblem } from '../../lib/api-fetch'
-import { localDate, validateWindow, windowBody, type WindowDraft, type FieldErrors } from './model'
+import { addDays, localDate, validateWindow, windowBody, type WindowDraft, type FieldErrors } from './model'
 import { windowsApi, type WindowView } from './operations'
 import { RecurrenceFields } from './recurrence-fields'
-import { t, fieldMessage } from './catalogue'
+import { t, fieldMessage, type Locale } from './catalogue'
 import { problemFields } from './validation'
-import styles from './windows.module.css'
+import { selectClass } from './recurrence-fields'
+
+/** What each field accepts, printed under it and tied to it for a screen reader. */
+const describedBy = (id: string, error: string | undefined) => `${id}-hint${error ? ` ${id}-error` : ''}`
 
 function timeInput(instant: string) {
-  return new Date(Date.parse(instant) + 8 * 3_600_000).toISOString().slice(11, 16)
+  return formatInputDateTime(instant).slice(11)
 }
 function initialDraft(window?: WindowView): WindowDraft {
   const recurrence = window?.recurrence
@@ -40,12 +44,14 @@ export function WindowForm({
   root,
   onSaved,
   onCancel,
-  registerClose
+  registerClose,
+  locale
 }: {
+  locale: Locale
   projectId: string
   window?: WindowView
   root: string
-  onSaved: () => void
+  onSaved: (saved: WindowView) => void
   onCancel: (scope: 'occurrence' | 'series') => void
   registerClose: (close: () => boolean) => void
 }) {
@@ -81,7 +87,7 @@ export function WindowForm({
   }
   return (
     <form
-      className={styles.form}
+      className="flex flex-col gap-5"
       data-window-form
       noValidate
       onSubmit={async (event) => {
@@ -96,15 +102,15 @@ export function WindowForm({
         setFailed(false)
         setErrors({})
         try {
-          if (window)
-            await windowsApi('updateWindow', {
-              params: { id: window.id },
-              query: window.series_id ? { scope } : undefined,
-              body: windowBody({ ...draft, repeat: scope === 'series' && draft.repeat })
-            })
-          else await windowsApi('createWindow', { params: { id: projectId }, body: windowBody(draft) })
+          const saved = window
+            ? await windowsApi('updateWindow', {
+                params: { id: window.id },
+                query: window.series_id ? { scope } : undefined,
+                body: windowBody({ ...draft, repeat: scope === 'series' && draft.repeat })
+              })
+            : await windowsApi('createWindow', { params: { id: projectId }, body: windowBody(draft) })
           setDirty(false)
-          onSaved()
+          onSaved(saved)
         } catch (error) {
           if (error instanceof ApiProblem && error.status === 422) focusError(problemFields(error.body.errors))
           setFailed(true)
@@ -115,7 +121,7 @@ export function WindowForm({
     >
       <FieldGroup inert={saving}>
         <Field data-invalid={!!errors.title}>
-          <FieldLabel htmlFor="window-title">{t('windows.field_title')}</FieldLabel>
+          <FieldLabel htmlFor="window-title">{t('windows.field_title', {}, locale)}</FieldLabel>
           <Input
             id="window-title"
             name="title"
@@ -124,81 +130,115 @@ export function WindowForm({
             value={draft.title}
             onChange={(event) => change('title', event.target.value)}
             aria-invalid={!!errors.title}
-            aria-describedby={errors.title ? 'window-title-error' : undefined}
+            aria-describedby={describedBy('window-title', errors.title)}
           />
-          {errors.title && <FieldError id="window-title-error">{fieldMessage(errors.title!)}</FieldError>}
+          <FieldDescription id="window-title-hint">{t('windows.limit_title', {}, locale)}</FieldDescription>
+          {errors.title && <FieldError id="window-title-error">{fieldMessage(errors.title!, locale)}</FieldError>}
         </Field>
         <Field data-invalid={!!errors.kind}>
-          <FieldLabel htmlFor="window-kind">{t('windows.kind')}</FieldLabel>
+          <FieldLabel htmlFor="window-kind">{t('windows.kind', {}, locale)}</FieldLabel>
           <select
             id="window-kind"
             name="kind"
+            autoComplete="off"
+            className={selectClass}
             value={draft.kind}
             onChange={(event) => change('kind', event.target.value as WindowDraft['kind'])}
             aria-invalid={!!errors.kind}
-            aria-describedby={errors.kind ? 'window-kind-error' : undefined}
+            aria-describedby={describedBy('window-kind', errors.kind)}
           >
             {(['class', 'event', 'commute_wave'] as const).map((kind) => (
               <option key={kind} value={kind}>
-                {t(`windows.${kind}`)}
+                {t(`windows.${kind}`, {}, locale)}
               </option>
             ))}
           </select>
-          {errors.kind && <FieldError id="window-kind-error">{fieldMessage(errors.kind!)}</FieldError>}
+          <FieldDescription id="window-kind-hint">{t('windows.limit_kind', {}, locale)}</FieldDescription>
+          {errors.kind && <FieldError id="window-kind-error">{fieldMessage(errors.kind!, locale)}</FieldError>}
         </Field>
-        {(['date', 'start', 'end'] as const).map((field) => (
-          <Field key={field} data-invalid={!!errors[field]}>
-            <FieldLabel htmlFor={`window-${field}`}>{t(`windows.${field}`)}</FieldLabel>
-            <Input
-              id={`window-${field}`}
-              name={field}
-              type={field === 'date' ? 'date' : 'time'}
-              autoComplete="off"
-              value={draft[field]}
-              onChange={(event) => change(field, event.target.value)}
-              aria-invalid={!!errors[field]}
-              aria-describedby={errors[field] ? `window-${field}-error` : undefined}
-            />
-            {errors[field] && (
-              <FieldError id={`window-${field}-error`}>
-                {fieldMessage(errors[field]!)}
-                {errors[field] === 'past' && <a href={`${root}/ledger?request=evidence`}>{t('windows.evidence')}</a>}
-              </FieldError>
-            )}
-          </Field>
-        ))}
+        <Field data-invalid={!!errors.date}>
+          <FieldLabel htmlFor="window-date">{t('windows.date', {}, locale)}</FieldLabel>
+          <Input
+            id="window-date"
+            name="date"
+            type="date"
+            autoComplete="off"
+            min={localDate()}
+            max={addDays(localDate(), 90)}
+            value={draft.date}
+            onChange={(event) => change('date', event.target.value)}
+            aria-invalid={!!errors.date}
+            aria-describedby={describedBy('window-date', errors.date)}
+          />
+          <FieldDescription id="window-date-hint">{t('windows.limit_date', {}, locale)}</FieldDescription>
+          {errors.date && <FieldError id="window-date-error">{fieldMessage(errors.date!, locale)}</FieldError>}
+        </Field>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-5">
+          {(['start', 'end'] as const).map((field) => (
+            <Field key={field} data-invalid={!!errors[field]}>
+              <FieldLabel htmlFor={`window-${field}`}>{t(`windows.${field}`, {}, locale)}</FieldLabel>
+              <Input
+                id={`window-${field}`}
+                name={field}
+                type="time"
+                autoComplete="off"
+                data-numeric
+                value={draft[field]}
+                onChange={(event) => change(field, event.target.value)}
+                aria-invalid={!!errors[field]}
+                aria-describedby={describedBy(`window-${field}`, errors[field])}
+              />
+              <FieldDescription id={`window-${field}-hint`}>{t(`windows.limit_${field}`, {}, locale)}</FieldDescription>
+              {errors[field] && (
+                <FieldError id={`window-${field}-error`}>
+                  {fieldMessage(errors[field]!, locale)}
+                  {errors[field] === 'past' && (
+                    <a className="ml-1 underline underline-offset-3" href={`${root}/ledger?tab=evidence`}>
+                      {t('windows.evidence', {}, locale)}
+                    </a>
+                  )}
+                </FieldError>
+              )}
+            </Field>
+          ))}
+        </div>
         {window?.series_id && (
           <Field>
-            <FieldLabel htmlFor="window-scope">{t('windows.scope')}</FieldLabel>
+            <FieldLabel htmlFor="window-scope">{t('windows.scope', {}, locale)}</FieldLabel>
             <select
               id="window-scope"
               name="scope"
+              autoComplete="off"
+              className={selectClass}
               value={scope}
               onChange={(event) => {
                 setScope(event.target.value === 'series' ? 'series' : 'occurrence')
               }}
             >
-              <option value="occurrence">{t('windows.occurrence')}</option>
-              <option value="series">{t('windows.whole_series')}</option>
+              <option value="occurrence">{t('windows.occurrence', {}, locale)}</option>
+              <option value="series">{t('windows.whole_series', {}, locale)}</option>
             </select>
           </Field>
         )}
-        {(!window || scope === 'series') && <RecurrenceFields draft={draft} change={change} errors={errors} />}
+        {(!window || scope === 'series') && (
+          <RecurrenceFields draft={draft} change={change} errors={errors} locale={locale} />
+        )}
       </FieldGroup>
       {failed && (
         <Alert variant="destructive">
-          <AlertDescription>{t('windows.save_error')}</AlertDescription>
+          <AlertDescription>{t('windows.save_error', {}, locale)}</AlertDescription>
         </Alert>
       )}
-      <div className={styles.formActions}>
-        <Button type="submit" disabled={saving}>
-          {t(saving ? 'windows.saving' : 'windows.save')}
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit" className="max-sm:w-full" disabled={saving}>
+          {t(saving ? 'windows.saving' : 'windows.save', {}, locale)}
         </Button>
         {window && (
           <Button
             type="button"
             data-window-cancel
             variant="outline"
+            className="max-sm:w-full"
             disabled={saving}
             onClick={() => {
               if (guardNavigation(() => {})) {
@@ -206,11 +246,11 @@ export function WindowForm({
               }
             }}
           >
-            {t('windows.cancel')}
+            {t('windows.cancel', {}, locale)}
           </Button>
         )}
       </div>
-      <p role="status">{saving ? t('windows.saving') : ''}</p>
+      <p role="status">{saving ? t('windows.saving', {}, locale) : ''}</p>
     </form>
   )
 }

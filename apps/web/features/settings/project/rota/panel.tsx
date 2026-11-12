@@ -1,14 +1,30 @@
 'use client'
 
-import { useCallback, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { useParams } from 'next/navigation'
 import { formatList, formatTimeZoneName } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
 import { Input } from '#ui/input'
 import { Label } from '#ui/label'
+import { Skeleton } from '#ui/skeleton'
 import { useRead } from '../../../analysis/use-read'
 import { useUnsavedChangesGuard } from '../../set-7'
 import { t } from '../../../project-settings/catalogue'
+import '../../catalogue'
+import {
+  SettingsAside,
+  SettingsError,
+  SettingsItem,
+  SettingsList,
+  SettingsLoading,
+  SettingsPart,
+  SettingsParts,
+  SettingsReadError,
+  SettingsStatus,
+  SettingsSummaryLine,
+  dateFieldRing,
+  focusPartHeading
+} from '../../parts'
 import {
   projectSettingsApi,
   resolveProject,
@@ -31,6 +47,14 @@ type ShiftForm = {
   template: Template
 }
 type RotaPageData = { project: Project; rota: Rota; members: Member[] }
+type FieldKey = 'approver' | 'days' | 'start' | 'end'
+/** The control each field's error is tied to, and the one that takes focus when the field is the first invalid. */
+const fieldControl: Record<FieldKey, string> = {
+  approver: 'rota-approver',
+  days: 'rota-day-monday',
+  start: 'rota-start',
+  end: 'rota-end'
+}
 
 const weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const
 const blankForm: ShiftForm = {
@@ -107,18 +131,44 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldKey, string>>>({})
+  const [focusEditor, setFocusEditor] = useState(false)
+  const [focusList, setFocusList] = useState(false)
+  const [lastData, setLastData] = useState<RotaPageData | null>(null)
+  const editorHeading = useRef<HTMLHeadingElement>(null)
 
   const dirty = formOpen && JSON.stringify(form) !== JSON.stringify(baseForm)
-  useUnsavedChangesGuard(dirty, locale)
+  const { guardNavigation } = useUnsavedChangesGuard(dirty, locale)
 
-  const pageData = loaded.status === 'ready' ? loaded.value : null
+  // Keep showing the rota while it is read again after a save, so the panel (and focus in it) is not replaced.
+  useEffect(() => {
+    if (loaded.status === 'ready') setLastData(loaded.value)
+  }, [loaded])
+  // The editor takes focus when it opens; when it closes, the list it belongs to does.
+  useEffect(() => {
+    if (focusEditor && formOpen) {
+      editorHeading.current?.focus()
+      setFocusEditor(false)
+    }
+    if (focusList && !formOpen) {
+      focusPartHeading('project-rota-override-title')
+      setFocusList(false)
+    }
+  }, [focusEditor, focusList, formOpen])
+
+  const pageData = loaded.status === 'ready' ? loaded.value : lastData
   const eligible = pageData?.members.filter((member) => ['owner', 'admin', 'approver'].includes(member.role)) ?? []
   const inherited = pageData?.rota.shifts.filter((shift) => shift.project_id === null) ?? []
   const overrides = pageData?.rota.shifts.filter((shift) => shift.project_id === pageData.project.id) ?? []
   const memberName = (accountId: string) => {
     const member = pageData?.members.find((item) => item.account_id === accountId)
-    return member ? t('project-settings.member_name', { name: member.name, email: member.email }, locale) : accountId
+    return member
+      ? t('project-settings.member_name', { name: member.name, email: member.email }, locale)
+      : t('project-settings.unknown_member', {}, locale)
   }
+  const shortName = (accountId: string) =>
+    pageData?.members.find((item) => item.account_id === accountId)?.name ??
+    t('project-settings.unknown_member', {}, locale)
 
   const openNew = () => {
     const next = { ...blankForm, accountId: eligible[0]?.account_id ?? '' }
@@ -126,8 +176,10 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
     setForm(next)
     setBaseForm(next)
     setFormOpen(true)
+    setFocusEditor(true)
     setStatus('')
     setError('')
+    setFieldErrors({})
   }
 
   const openEdit = (shift: RotaShift) => {
@@ -136,8 +188,10 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
     setForm(next)
     setBaseForm(next)
     setFormOpen(true)
+    setFocusEditor(true)
     setStatus('')
     setError('')
+    setFieldErrors({})
   }
 
   const closeEditor = () => {
@@ -146,28 +200,52 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
     setForm(blankForm)
     setBaseForm(blankForm)
     setError('')
+    setFieldErrors({})
+    setFocusList(true)
   }
 
-  const toggleDay = (day: number) =>
+  /** Opening another shift over an editor with unsaved input asks before it throws that input away. */
+  const openGuarded = (open: () => void) => {
+    guardNavigation(open)
+  }
+
+  const change = (patch: Partial<ShiftForm>, field: FieldKey) => {
+    setForm((current) => ({ ...current, ...patch }))
+    setFieldErrors((current) => (current[field] ? { ...current, [field]: undefined } : current))
+  }
+
+  /** What is wrong with the editor, by field, each with how to put it right. */
+  const problems = (): Partial<Record<FieldKey, string>> => {
+    const found: Partial<Record<FieldKey, string>> = {}
+    if (!form.accountId) found.approver = t('project-settings.error_approver', {}, locale)
+    if (!form.days.length) found.days = t('project-settings.error_days', {}, locale)
+    if (!form.localStart) found.start = t('project-settings.error_start', {}, locale)
+    if (!form.localEnd) found.end = t('project-settings.error_end', {}, locale)
+    else if (form.localStart && form.localEnd <= form.localStart)
+      found.end = t('project-settings.error_order', {}, locale)
+    return found
+  }
+
+  const toggleDay = (day: number) => {
     setForm((current) => ({
       ...current,
       days: current.days.includes(day) ? current.days.filter((item) => item !== day) : [...current.days, day]
     }))
+    setFieldErrors((current) => (current.days ? { ...current, days: undefined } : current))
+  }
 
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (
-      !pageData ||
-      busy ||
-      !form.accountId ||
-      !form.days.length ||
-      !form.localStart ||
-      !form.localEnd ||
-      form.localEnd <= form.localStart
-    ) {
-      setError(t('project-settings.shift_failed', {}, locale))
+    if (!pageData || busy) return
+    const found = problems()
+    const first = (['approver', 'days', 'start', 'end'] as const).find((key) => found[key])
+    if (first) {
+      setFieldErrors(found)
+      setError('')
+      document.getElementById(fieldControl[first])?.focus()
       return
     }
+    setFieldErrors({})
     setBusy(true)
     setError('')
     setStatus('')
@@ -196,104 +274,102 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
     }
   }
 
-  if (loaded.status === 'loading')
+  if (loaded.status === 'loading' && !lastData)
     return (
-      <div className="grid gap-4" aria-busy="true">
-        <div className="h-24 animate-pulse rounded bg-muted" />
-        <div className="h-24 animate-pulse rounded bg-muted" />
-      </div>
+      <SettingsLoading locale={locale} className="grid gap-4">
+        <Skeleton className="h-16 w-full rounded-md" />
+        <Skeleton className="h-16 w-full rounded-md" />
+      </SettingsLoading>
     )
   if (loaded.status === 'error')
     return (
-      <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">
-        <span>{t('project-settings.rota_failed', {}, locale)}</span>
-        <Button type="button" variant="link" onClick={() => setRevision((value) => value + 1)}>
-          {t('project-settings.retry', {}, locale)}
-        </Button>
-      </div>
+      <SettingsReadError
+        source={t('project-settings.source_rota', {}, locale)}
+        error={loaded.error}
+        onRetry={() => setRevision((value) => value + 1)}
+        locale={locale}
+      />
     )
   if (!pageData) return null
 
+  const shiftLine = (shift: RotaShift) => (
+    <div className="grid min-w-0 gap-0.5">
+      <p className="type-body font-semibold [overflow-wrap:anywhere]">{memberName(shift.account_id)}</p>
+      <p className="type-small text-muted-foreground">{shiftSchedule(shift, pageData.project.time_zone, locale)}</p>
+      <p className="type-small text-muted-foreground">{t(`project-settings.${shift.template}`, {}, locale)}</p>
+    </div>
+  )
+  const shifts = (count: number) =>
+    t(count === 1 ? 'project-settings.shift_count_one' : 'project-settings.shift_count_other', { count }, locale)
+
   return (
-    <div className="grid min-w-0 gap-8" data-project-settings-rota>
-      <section className="grid min-w-0 gap-3" aria-labelledby="project-rota-override-title">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 id="project-rota-override-title" className="flex flex-wrap items-baseline gap-2 text-base font-semibold">
-            <span>{t('project-settings.override', {}, locale)}</span>
-            <span className="text-sm font-normal text-muted-foreground">
-              {t('project-settings.count', { count: overrides.length }, locale)}
-            </span>
-          </h3>
-          <Button type="button" variant="outline" onClick={openNew}>
+    <SettingsParts data-project-settings-rota>
+      <SettingsAside>
+        <SettingsSummaryLine label={t('project-settings.override', {}, locale)}>
+          <span data-numeric>{shifts(overrides.length)}</span>
+        </SettingsSummaryLine>
+        <SettingsSummaryLine label={t('project-settings.inherited', {}, locale)}>
+          <span data-numeric>{shifts(inherited.length)}</span>
+        </SettingsSummaryLine>
+      </SettingsAside>
+      <SettingsPart
+        title={t('project-settings.override', {}, locale)}
+        description={t('project-settings.rota_description', {}, locale)}
+        id="project-rota-override-title"
+        actions={
+          <Button type="button" variant="outline" onClick={() => openGuarded(openNew)}>
             {t('project-settings.add_shift', {}, locale)}
           </Button>
-        </div>
+        }
+      >
         {overrides.length ? (
-          <ul className="grid gap-3">
+          <SettingsList>
             {overrides.map((shift) => (
-              <li key={shift.id} className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b pb-3">
-                <div className="min-w-0">
-                  <p className="font-medium [overflow-wrap:anywhere]">{memberName(shift.account_id)}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {shiftSchedule(shift, pageData.project.time_zone, locale)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{t(`project-settings.${shift.template}`, {}, locale)}</p>
-                </div>
-                <Button type="button" variant="outline" onClick={() => openEdit(shift)}>
+              <SettingsItem key={shift.id}>
+                {shiftLine(shift)}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  aria-label={t('project-settings.edit_shift_for', { name: shortName(shift.account_id) }, locale)}
+                  onClick={() => openGuarded(() => openEdit(shift))}
+                >
                   {t('project-settings.edit_shift', {}, locale)}
                 </Button>
-              </li>
+              </SettingsItem>
             ))}
-          </ul>
+          </SettingsList>
         ) : (
-          <p className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-            <span>{t('project-settings.count', { count: 0 }, locale)}</span>
-            <span>{t('project-settings.empty_rota', {}, locale)}</span>
-          </p>
+          <p className="type-body text-muted-foreground">{t('project-settings.empty_rota', {}, locale)}</p>
         )}
-      </section>
+      </SettingsPart>
 
-      <section className="grid min-w-0 gap-3" aria-labelledby="project-rota-inherited-title">
-        <h3 id="project-rota-inherited-title" className="flex flex-wrap items-baseline gap-2 text-base font-semibold">
-          <span>{t('project-settings.inherited', {}, locale)}</span>
-          <span className="text-sm font-normal text-muted-foreground">
-            {t('project-settings.count', { count: inherited.length }, locale)}
-          </span>
-        </h3>
+      <SettingsPart title={t('project-settings.inherited', {}, locale)} id="project-rota-inherited-title">
         {inherited.length ? (
-          <ul className="grid gap-3">
+          <SettingsList>
             {inherited.map((shift) => (
-              <li key={shift.id} className="border-b pb-3">
-                <p className="font-medium [overflow-wrap:anywhere]">{memberName(shift.account_id)}</p>
-                <p className="text-sm text-muted-foreground">
-                  {shiftSchedule(shift, pageData.project.time_zone, locale)}
-                </p>
-                <p className="text-sm text-muted-foreground">{t(`project-settings.${shift.template}`, {}, locale)}</p>
-              </li>
+              <SettingsItem key={shift.id}>{shiftLine(shift)}</SettingsItem>
             ))}
-          </ul>
+          </SettingsList>
         ) : (
-          <p className="text-sm text-muted-foreground">{t('project-settings.count', { count: 0 }, locale)}</p>
+          <p className="type-body text-muted-foreground">{t('project-settings.empty_inherited', {}, locale)}</p>
         )}
-      </section>
+      </SettingsPart>
 
-      {status ? (
-        <p role="status" className="text-sm">
-          {status}
-        </p>
-      ) : null}
+      {status ? <SettingsStatus>{status}</SettingsStatus> : null}
       {formOpen ? (
-        <form className="grid min-w-0 gap-5 border-t pt-6" onSubmit={save} data-rota-editor>
-          <h3 className="text-base font-semibold">
-            {t(`project-settings.${editingId ? 'edit_shift' : 'add_shift'}`, {}, locale)}
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            {t(
-              'project-settings.local_time_zone',
-              { zone: formatTimeZoneName(pageData.project.time_zone, locale) },
-              locale
-            )}
-          </p>
+        <form className="grid min-w-0 gap-5 rounded-md bg-raised p-4" onSubmit={save} noValidate data-rota-editor>
+          <div className="grid gap-1">
+            <h3 ref={editorHeading} tabIndex={-1} className="type-card-title">
+              {t(`project-settings.${editingId ? 'edit_shift' : 'add_shift'}`, {}, locale)}
+            </h3>
+            <p className="type-body text-muted-foreground">
+              {t(
+                'project-settings.local_time_zone',
+                { zone: formatTimeZoneName(pageData.project.time_zone, locale) },
+                locale
+              )}
+            </p>
+          </div>
           {eligible.length ? (
             <div className="grid gap-2">
               <Label htmlFor="rota-approver">{t('project-settings.approver', {}, locale)}</Label>
@@ -302,8 +378,10 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
                 name="account_id"
                 autoComplete="off"
                 value={form.accountId}
-                onChange={(event) => setForm((current) => ({ ...current, accountId: event.target.value }))}
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                onChange={(event) => change({ accountId: event.target.value }, 'approver')}
+                className="native-select"
+                aria-invalid={fieldErrors.approver ? true : undefined}
+                aria-describedby={fieldErrors.approver ? 'rota-approver-error' : undefined}
               >
                 <option value="">{t('project-settings.choose_approver', {}, locale)}</option>
                 {eligible.map((member) => (
@@ -312,40 +390,50 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
                   </option>
                 ))}
               </select>
+              {fieldErrors.approver ? (
+                <SettingsError id="rota-approver-error">{fieldErrors.approver}</SettingsError>
+              ) : null}
             </div>
           ) : (
-            <p role="status" className="text-sm text-muted-foreground">
+            <p role="status" className="type-body text-muted-foreground">
               {t('project-settings.no_approvers', {}, locale)}
             </p>
           )}
 
-          <fieldset className="grid min-w-0 gap-2 sm:grid-cols-2">
-            <legend className="mb-2 text-sm font-medium">{t('project-settings.days', {}, locale)}</legend>
+          <fieldset
+            className="grid min-w-0 gap-2 sm:grid-cols-2"
+            aria-describedby={fieldErrors.days ? 'rota-days-error' : undefined}
+          >
+            <legend className="type-body mb-2 font-medium">{t('project-settings.days', {}, locale)}</legend>
             {weekdays.map((name, index) => {
               const day = index + 1
               const id = `rota-day-${name}`
               return (
-                <label key={name} htmlFor={id} className="flex min-h-11 items-center gap-2 rounded border px-3 text-sm">
+                <label key={name} htmlFor={id} className="type-body flex min-h-11 items-center gap-3">
                   <input
                     id={id}
                     name="days"
                     autoComplete="off"
                     type="checkbox"
+                    className="native-check"
                     value={day}
                     checked={form.days.includes(day)}
+                    aria-invalid={fieldErrors.days ? true : undefined}
                     onChange={() => toggleDay(day)}
                   />
                   {t(`project-settings.weekdays.${name}`, {}, locale)}
                 </label>
               )
             })}
+            {fieldErrors.days ? (
+              <SettingsError id="rota-days-error" className="sm:col-span-2">
+                {fieldErrors.days}
+              </SettingsError>
+            ) : null}
           </fieldset>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div
-              data-focus-ring
-              className="grid gap-2 rounded-sm focus-within:outline-solid focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring"
-            >
+            <div className={`grid gap-2 ${dateFieldRing}`} data-focus-ring>
               <Label htmlFor="rota-start">{t('project-settings.start', {}, locale)}</Label>
               <Input
                 id="rota-start"
@@ -353,14 +441,13 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
                 autoComplete="off"
                 type="time"
                 value={form.localStart}
-                onChange={(event) => setForm((current) => ({ ...current, localStart: event.target.value }))}
-                required
+                onChange={(event) => change({ localStart: event.target.value }, 'start')}
+                aria-invalid={fieldErrors.start ? true : undefined}
+                aria-describedby={fieldErrors.start ? 'rota-start-error' : undefined}
               />
+              {fieldErrors.start ? <SettingsError id="rota-start-error">{fieldErrors.start}</SettingsError> : null}
             </div>
-            <div
-              data-focus-ring
-              className="grid gap-2 rounded-sm focus-within:outline-solid focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring"
-            >
+            <div className={`grid gap-2 ${dateFieldRing}`} data-focus-ring>
               <Label htmlFor="rota-end">{t('project-settings.end', {}, locale)}</Label>
               <Input
                 id="rota-end"
@@ -368,9 +455,11 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
                 autoComplete="off"
                 type="time"
                 value={form.localEnd}
-                onChange={(event) => setForm((current) => ({ ...current, localEnd: event.target.value }))}
-                required
+                onChange={(event) => change({ localEnd: event.target.value }, 'end')}
+                aria-invalid={fieldErrors.end ? true : undefined}
+                aria-describedby={fieldErrors.end ? 'rota-end-error' : undefined}
               />
+              {fieldErrors.end ? <SettingsError id="rota-end-error">{fieldErrors.end}</SettingsError> : null}
             </div>
           </div>
 
@@ -392,7 +481,7 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
                     ...(template === 'surge_night' ? { localStart: '08:00', localEnd: '22:00' } : {})
                   }))
                 }}
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                className="native-select"
               >
                 {(['custom', 'storm_afternoon', 'surge_night'] as const).map((template) => (
                   <option key={template} value={template}>
@@ -417,7 +506,7 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
                         : null
                   }))
                 }
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                className="native-select"
               >
                 <option value="">{t('project-settings.condition_none', {}, locale)}</option>
                 <option value="storm_afternoon">{t('project-settings.storm_afternoon', {}, locale)}</option>
@@ -425,11 +514,7 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
               </select>
             </div>
           </div>
-          {error ? (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          ) : null}
+          {error ? <SettingsError>{error}</SettingsError> : null}
           <div className="flex flex-wrap gap-3">
             <Button type="submit" disabled={busy || !eligible.length} aria-busy={busy}>
               {busy ? t('project-settings.saving', {}, locale) : t('project-settings.save_shift', {}, locale)}
@@ -440,7 +525,7 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
           </div>
         </form>
       ) : null}
-    </div>
+    </SettingsParts>
   )
 }
 

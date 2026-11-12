@@ -2,7 +2,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, it, expect } from 'vitest'
 import { MetricFigure } from '../features/analysis/presentation'
-import { LiveChart } from '../features/analysis/live-chart'
+import { LiveChart, PointsTable } from '../features/analysis/live-chart'
 import { allPages, type Metric } from '../features/analysis/operations'
 import { catalogueFor, messageAt } from '../../../packages/i18n/src/catalogue'
 import en from '../../../packages/i18n/catalogue/en/analysis.json'
@@ -13,7 +13,7 @@ const dates = { from: '2026-11-01', to: '2026-11-04', locale: 'en' as const }
 describe('ANL-5 rendered figures', () => {
   it('renders the server Wilson interval, 2px tick, numerator, denominator and period', () => {
     const html = renderToStaticMarkup(createElement(MetricFigure, { metric: figure, ...dates, source: 'test-capture' }))
-    for (const text of ['Wilson 95%: 0.53–0.98', 'stroke-width="2"', '7 of 8', 'n=8', '2026', 'test-capture'])
+    for (const text of ['Wilson 95% interval 53% to 98%', 'stroke-width="2"', '7 of 8', 'n=8', '2026', 'test-capture'])
       expect(html).toContain(text)
   })
   it('n=0 omits even a supplied interval and explains the next action', () => {
@@ -38,17 +38,27 @@ describe('ANL-5 rendered figures', () => {
     expect(html).not.toContain('data-slot="chart"')
     expect(html).toContain('Wait for nightly grading')
   })
-  it('keeps the Wilson interval beside a rate in the live chart table', () => {
-    const html = renderToStaticMarkup(
-      createElement(LiveChart, {
-        ...dates,
-        n: 8,
-        metric: 'precision',
-        series: { kind: 'live', points: [{ kind: 'live', at: '2026-11-04T00:00:00Z', value: 0.875, metric: figure }] }
-      })
+  it('keeps the Wilson interval beside a rate in the live chart table, and renders the rows only when it shows', () => {
+    const points = [{ kind: 'live' as const, at: '2026-11-04T00:00:00Z', value: 0.875, metric: figure }]
+    const chart = renderToStaticMarkup(
+      createElement(LiveChart, { ...dates, n: 8, metric: 'precision', series: { kind: 'live', points } })
     )
-    expect(html).toContain('Wilson 95%: 0.53–0.98')
-    expect(html).toContain('data-point-tick')
+    expect(chart).not.toContain('data-origin="live"')
+    const table = renderToStaticMarkup(createElement(PointsTable, { points, label: 'Precision', locale: 'en' }))
+    expect(table).toContain('Wilson 95% interval 53% to 98%')
+    expect(table).toContain('data-slot="table"')
+  })
+
+  it('a table of more than 50 days pages them', () => {
+    const points = Array.from({ length: 51 }, (_, index) => ({
+      kind: 'live' as const,
+      at: new Date(Date.UTC(2026, 9, 1 + index)).toISOString(),
+      value: 0.875,
+      metric: figure
+    }))
+    const table = renderToStaticMarkup(createElement(PointsTable, { points, label: 'Precision', locale: 'en' }))
+    expect(table.match(/data-origin="live"/g)).toHaveLength(50)
+    expect(table).toContain('Rows 1–50 of 51')
   })
 })
 

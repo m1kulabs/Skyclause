@@ -21,7 +21,7 @@ test('SET-4 Channels replaces its settings placeholder and saves toggles by keyb
   )
 })
 
-test('NTC-7 preview renders latest real-call operation data as text, or explicit n=0', async ({ page }) => {
+test('NTC-7 preview renders latest real-call operation data as text, or says there is none', async ({ page }) => {
   await setupProject(page)
   await stubApi(page, 'previewChannels', { n: 0, call_id: null, previews: [] }, { registry })
   await page.goto(channelsPath)
@@ -49,7 +49,7 @@ test('NTC-7 preview renders latest real-call operation data as text, or explicit
   )
   await page.getByRole('button', { name: t('channels.preview') }).focus()
   await page.keyboard.press('Enter')
-  await expect(page.getByText(t('channels.source', { id: 'test-call-from-api' }))).toBeVisible()
+  await expect(page.getByText(t('channels.source'))).toBeVisible()
   await expect(page.getByText('Operation-supplied subject')).toBeVisible()
   await expect(page.getByText(/<script>untrusted text/)).toBeVisible()
   expect(await page.evaluate(() => 'previewExecuted' in window)).toBe(false)

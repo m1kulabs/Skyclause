@@ -142,7 +142,7 @@ test('ACC-3 refuses unlinking Google when it is the only remaining method', asyn
   await stubPasskeyApi(page)
   await page.goto('/account/security')
   await page.getByRole('button', { name: 'Unlink Google' }).click()
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Unlink Google' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Unlink “Google”' }).click()
   await expect(page.locator('[data-account-panel="security"]').getByRole('alert')).toHaveText(
     'This is your only way to sign in. Add a passkey or link Google first.'
   )
@@ -183,7 +183,7 @@ test('ACC-7 sign out everywhere keeps this session and revokes every other sessi
   await stubPasskeyApi(page)
   await page.goto('/account/security')
   await page.getByRole('button', { name: 'Sign out everywhere' }).click()
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Sign out everywhere' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Sign out of “other sessions”' }).click()
 
   await expect(page.locator('[data-session-row]')).toHaveCount(1)
   await expect(page.locator(`[data-session-id="${login.sessionId}"]`)).toContainText('This device')
@@ -206,8 +206,8 @@ test('SET-2 applies system theme live, saves shortcuts, and enforces reduced mot
   await page.emulateMedia({ colorScheme: 'dark' })
   await expect(page.locator('html')).toHaveClass('dark')
 
-  await page.getByRole('switch', { name: 'Collapse sidebar' }).click()
-  await expect(page.locator('.app-shell')).toHaveAttribute('data-collapsed', 'true')
+  // The sidebar and its collapse preference are gone with the sidebar.
+  await expect(page.getByRole('switch', { name: 'Collapse sidebar' })).toHaveCount(0)
 
   const shortcuts = page.getByRole('switch', { name: 'Keyboard shortcuts' })
   await shortcuts.click()
@@ -217,7 +217,7 @@ test('SET-2 applies system theme live, saves shortcuts, and enforces reduced mot
   await page.reload()
   await expect(page.getByRole('switch', { name: 'Keyboard shortcuts' })).not.toBeChecked()
 
-  await page.getByRole('switch', { name: 'Reduced motion' }).click()
+  await page.getByText('Reduced motion', { exact: true }).click()
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await expect
     .poll(() =>

@@ -33,7 +33,7 @@ test('device pagination replaces its page and keeps the cursor in the URL', asyn
   await expect(page.getByText(testDevice.user_agent, { exact: true })).toBeVisible()
 })
 
-test('empty preferences show n=0 and a keyboard retry without invented defaults', async ({ page }) => {
+test('empty preferences say so and offer a keyboard retry without invented defaults', async ({ page }) => {
   await asPage(page, principal())
   await emptyApi(page)
   await stubApi(page, 'getMyNotificationPreferences', { data: [] }, { registry: alertsOperations })

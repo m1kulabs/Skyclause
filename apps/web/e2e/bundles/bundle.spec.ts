@@ -1,3 +1,4 @@
+import { pseudo } from '@skyclause/i18n'
 import { test, expect } from '../fixtures'
 import { stubApi, expectZonedTimes } from '../harness'
 import { expectUnclippedText } from '../harness/expect-unclipped-text'
@@ -20,7 +21,9 @@ import {
 import { seedReview } from './seed'
 
 const approve = (page: import('@playwright/test').Page, count = 2) =>
-  page.locator('.bundle-approval-bar').getByRole('button', { name: t('approve', { count }), exact: false })
+  page
+    .locator('.bundle-approval-bar')
+    .getByRole('button', { name: t(count === 1 ? 'approve_one' : 'approve', { count }), exact: false })
 
 test('CAL-13 GET-safe links, tabs and reads never submit decisions', async ({ page }) => {
   await prepare(page)
@@ -30,11 +33,14 @@ test('CAL-13 GET-safe links, tabs and reads never submit decisions', async ({ pa
   })
   await open(page)
   await expect(page.locator('.bundle-detail')).toContainText('Replay · 2 November 2026')
+  // P2-4: a bundle under review is a batch of calls, so the bar marks Calls current.
+  const calls = process.env.I18N_PSEUDO === '1' ? pseudo('Calls') : 'Calls'
+  await expect(page.locator('.shell-destinations [aria-current="page"]')).toHaveText(calls)
   for (const trigger of await page.locator('.bundle-detail [data-slot="trace-collapsible-trigger"]').all()) {
     await trigger.press('Enter')
   }
   const links = await page
-    .locator('.bundle-detail a, .shell-project-tabs a')
+    .locator('.bundle-detail a, .shell-destinations a')
     .evaluateAll((items) => items.map((item) => (item as HTMLAnchorElement).href))
   for (const href of links) {
     await page.route(href, (route) =>
@@ -106,8 +112,8 @@ test('CAL-9 inputs-changed waits for a second confirm and uses the new review ha
   await expect(dialog).toContainText(t('changed'))
   await expect(dialog).toContainText('39')
   await expect(dialog).toContainText('44.5')
-  await expect(dialog).toContainText(t('age', { seconds: 300 }))
-  await expect(dialog).toContainText(t('age', { seconds: 60 }))
+  await expect(dialog).toContainText(t('age_minutes', { count: 5 }))
+  await expect(dialog).toContainText(t('age_minutes', { count: 1 }))
   expect(writes).toBe(1)
   await dialog.getByRole('button', { name: t('confirm'), exact: true }).press('Enter')
   await expect(dialog).toBeHidden()
@@ -167,6 +173,57 @@ test('CAL-15 editing wording and recipients stays local and a template teaching 
   expect(writes).toBe(0)
 })
 
+test('P2-5 approving says what was sent, moves focus there and links the ledger and the next bundle', async ({
+  page
+}) => {
+  const waiting = bundleDouble([], { id: 'next-bundle', sla_due_at: '2026-11-02T07:20:00Z' })
+  const bundle = await prepare(page, bundleDouble([callDouble()]), { list: [bundleDouble([callDouble()]), waiting] })
+  await page.route('**/api/bundles/*/approve', (route) =>
+    route.fulfill({
+      json: {
+        ...bundle,
+        state: 'approved',
+        calls: bundle.calls.map((call) => ({ ...call, state: 'sending', approved_at: '2026-11-02T07:08:00Z' }))
+      }
+    })
+  )
+  await open(page)
+  await expect(page.locator('.bundle-approval-bar')).toContainText(
+    t('consequence', { notices: t('notices_one'), recipients: t('recipient_count', { count: 2 }) })
+  )
+  await approve(page, 1).press('Enter')
+  const summary = page.locator('[data-approved]')
+  await expect(summary).toBeFocused()
+  await expect(summary).toContainText(t('approved_at', { time: '15:08 MYT' }))
+  await expect(summary).toContainText(
+    t('approved_sending', { notices: t('notices_one'), recipients: t('recipient_count', { count: 2 }) })
+  )
+  await expect(summary.getByRole('link', { name: t('ledger_link') })).toHaveAttribute(
+    'href',
+    `/test-org/test-project/ledger?call=${ids.first}`
+  )
+  await expect(summary.getByRole('link', { name: t('next_bundle') })).toHaveAttribute(
+    'href',
+    '/test-org/test-project/bundles/next-bundle'
+  )
+})
+
+test('unsaved wording asks before the edit dialog closes', async ({ page }) => {
+  await prepare(page, bundleDouble([callDouble()]))
+  await open(page)
+  await page.locator('.bundle-call-list > li').focus()
+  await page.keyboard.press('e')
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('textbox', { name: t('body', { language: t('language.en') }), exact: true }).fill('Edited')
+  page.once('dialog', (question) => void question.dismiss())
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeVisible()
+  page.once('dialog', (question) => void question.accept())
+  await dialog.getByRole('button', { name: t('cancel'), exact: true }).press('Enter')
+  await expect(dialog).toBeHidden()
+  await expect(page.locator('.bundle-call-list > li')).toContainText(t('fate.included'))
+})
+
 test('LOC-4 and LOC-5 show recipient languages, Malay quotes and English fallback', async ({ page }) => {
   const call = callDouble()
   call.warnings = [
@@ -180,9 +237,7 @@ test('LOC-4 and LOC-5 show recipient languages, Malay quotes and English fallbac
   ]
   await prepare(page, bundleDouble([call]))
   await open(page)
-  await expect(page.locator('.bundle-call-list')).toContainText(
-    t('language_group', { language: t('language.en'), count: 1 })
-  )
+  await expect(page.locator('.bundle-sends')).toContainText(t('language_group_one', { language: t('language.en') }))
   await expect(page.locator('blockquote[lang="ms"]')).toHaveText('Amaran Ribut Petir')
   await expect(page.locator('.bundle-notice[lang="ms"]')).toContainText('Ulangan')
   await expectZonedTimes(page)
@@ -212,7 +267,8 @@ test('all-Normal shows only the trace, five fresh inputs and no approval', async
   await expect(page.locator('.bundle-trace')).toContainText(t('normal', { count: 5 }))
   await expect(page.locator('.bundle-call-list')).toHaveCount(0)
   await expect(page.locator('.bundle-approval-bar')).toHaveCount(0)
-  await expect(page.locator('.bundle-trace')).toContainText(t('age', { seconds: 300 }))
+  // Each input's age at drafting, in words.
+  await expect(page.locator('.bundle-trace')).toContainText('gauge 5 min old')
 })
 
 test('No call names the failing input and since when; expired calls cannot be submitted', async ({ page }) => {
@@ -359,6 +415,26 @@ test('failed reads show an error and Retry, without substituting data', async ({
   await expect(page.locator('.bundle-call-list > li')).toHaveCount(2)
 })
 
+test('on a phone the open bundle shows first; Bundles shows the list and its open row returns', async ({ page }) => {
+  await prepare(page)
+  await page.setViewportSize({ width: 375, height: 812 })
+  await open(page)
+  const list = page.getByRole('region', { name: t('region_list') })
+  const item = page.getByRole('region', { name: t('region_item') })
+  await expect(item).toBeVisible()
+  await expect(list).toBeHidden()
+  await expect(page.locator('.bundle-approval-bar')).toBeVisible()
+  await item.getByRole('button', { name: t('back_to_list'), exact: true }).click()
+  await expect(list).toBeVisible()
+  await expect(item).toBeHidden()
+  await expect(page.locator('.bundle-approval-bar')).toBeHidden()
+  const current = list.locator('[aria-current="true"]')
+  await expect(current).toHaveAttribute('href', path)
+  await current.click()
+  await expect(item).toBeVisible()
+  await expect(page).toHaveURL(path)
+})
+
 test('NFR-15 measured replay is derived from the named committed capture', () => {
   expect(rain60).toBe(39)
 })
@@ -412,7 +488,7 @@ test('expiry while reviewing disables approval without a write', async ({ page }
   await expect(approve(page, 1)).toBeEnabled()
   await page.clock.setFixedTime(new Date('2026-11-02T07:46:00Z'))
   await expect(page.locator('.bundle-call-list')).toContainText(t('expired'))
-  await expect(page.locator('.bundle-approval-bar button')).toBeDisabled()
+  await expect(page.locator('.bundle-approval-bar .bundle-approve')).toBeDisabled()
 })
 
 test('worst-case recipient identifiers and multilingual window titles wrap at 320px', async ({ page }) => {
@@ -466,14 +542,11 @@ for (const theme of ['dark', 'light', 'high-contrast']) {
         .getByRole('button', { name: t('cancel'), exact: true })
         .press('Enter')
       if (width < 641) {
-        await page.locator('.bundle-phone-approval button').press('Enter')
-        const drawer = page.locator('[data-slot="drawer-popup"]')
-        const button = drawer.getByRole('button', { name: t('approve', { count: 1 }), exact: true })
+        // P2-6: the phone approves as the desktop does, with the same words and no drawer.
+        const button = approve(page, 1)
         await expect(button).toBeVisible()
+        await expect(page.locator('[data-slot="drawer-popup"]')).toHaveCount(0)
         expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44)
-        await expectAxeClean(page)
-        await expectUnclippedText(page)
-        await page.keyboard.press('Escape')
       }
       await page.screenshot({ path: testInfo.outputPath(`${theme}-${width}.png`), fullPage: true })
     }
@@ -487,11 +560,7 @@ for (const theme of ['dark', 'light', 'high-contrast']) {
         })
       })
     )
-    await page.locator('.bundle-phone-approval button').press('Enter')
-    await page
-      .locator('[data-slot="drawer-popup"]')
-      .getByRole('button', { name: t('approve', { count: 1 }), exact: true })
-      .press('Enter')
+    await approve(page, 1).press('Enter')
     await expect(page.getByRole('alertdialog')).toBeVisible()
     await expectAxeClean(page)
     await expectUnclippedText(page)
@@ -542,7 +611,8 @@ test('#372 a signed-in approver’s bundle arrives rendered by the server and hy
   }
   // The run and strip arrive in the client refresh; new readings must replace the server's empty strip.
   await expect(page.locator('.bundle-trace')).toContainText(review.bundle.run_id)
-  await expect(page.locator('.bundle-call-list figure svg')).toBeVisible()
+  // The readings chart, under the window's capsule (whose glyph is an svg too).
+  await expect(page.locator('.bundle-call-list figure svg[data-strip-plot]')).toBeVisible()
   await expect(page.locator('.bundle-call-list figure figcaption')).toContainText('50')
   expect(errors.filter((error) => /hydrat|Minified React error #(418|419|421|422|423|425)\b/i.test(error))).toEqual([])
 })

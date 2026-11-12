@@ -139,7 +139,7 @@ describe('HeroReadout', () => {
     await expectAxeClean()
   })
 
-  test("erroring input renders Couldn't reach exactly with a Retry button, and a 429 names its MYT time", async () => {
+  test('erroring input renders Couldn’t reach exactly with a Retry button, and a 429 names its MYT time', async () => {
     const error = response({
       data: {
         label: 'Clause engine verdict: not reviewed, not sent',
@@ -179,7 +179,7 @@ describe('HeroReadout', () => {
         rainAnimated={false}
       />
     )
-    expect(screen.getByText("Couldn't reach the JPS gauge at 15:00 MYT.")).toBeTruthy()
+    expect(screen.getByText('Couldn’t reach the JPS gauge at 15:00 MYT.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy()
     unmount()
     render(
@@ -195,7 +195,7 @@ describe('HeroReadout', () => {
     await expectAxeClean()
   })
 
-  test('the latest approved call links to /c/{callId} with its calendar source', async () => {
+  test('the latest approved call reads its date from the calendar and links nowhere until /c/{callId} is built', async () => {
     render(
       <HeroReadout
         result={response()}
@@ -209,9 +209,10 @@ describe('HeroReadout', () => {
         rainAnimated
       />
     )
-    const link = screen.getByRole('link', { name: /Latest approved call/ })
-    expect(link.getAttribute('href')).toBe('/c/01J000000000000000000000001')
-    expect(link.closest('[data-source]')?.getAttribute('data-source')).toBe('/v1/public/x/y/calendar-entries?limit=1')
+    const latest = screen.getByText('Latest approved call').closest('[data-source]')
+    expect(latest?.querySelector('time')?.getAttribute('dateTime')).toBe('2026-11-04T08:00:00.000Z')
+    expect(latest?.getAttribute('data-source')).toBe('/v1/public/x/y/calendar-entries?limit=1')
+    expect(screen.queryByRole('link', { name: /Latest approved call/ })).toBeNull()
     await expectAxeClean()
   })
 
@@ -225,7 +226,79 @@ describe('HeroReadout', () => {
         rainAnimated
       />
     )
-    expect(screen.getByText("Couldn't reach the approved-call calendar.")).toBeTruthy()
+    expect(screen.getByText('Couldn’t reach the approved-call calendar.')).toBeTruthy()
     expect(screen.queryByText('No approved call yet (n=0)')).toBeNull()
+  })
+
+  test('a 501 says the verdict is not built, offers the replay instead of Retry, and keeps the approved-call line', async () => {
+    render(
+      <HeroReadout
+        result={{ kind: 'error', status: 501, at: '2026-11-05T08:25:00.000Z' }}
+        win={{ date: '2026-11-05', startMin: 1290, endMin: 1380 }}
+        latestCall="not_built"
+        calendarQuery="/v1/public/x/y/calendar-entries?limit=1"
+        rainAnimated={false}
+      />
+    )
+    expect(screen.getByText('The live verdict is not built yet.')).toBeTruthy()
+    expect(screen.getByText('The public API answered 501 at 16:25 MYT.')).toBeTruthy()
+    // Trying again cannot build it: the way forward is the labelled replay of a real day.
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+    const replay = screen.getByRole('link', { name: 'See 2 November, replayed' })
+    expect(replay.getAttribute('href')).toBe('#how')
+    expect(replay.getAttribute('data-source')).toBeTruthy()
+    // LND-3 holds in the error state too, and a calendar that answered 501 says so instead of n=0.
+    expect(screen.getByText('The approved-call calendar is not built yet.')).toBeTruthy()
+    expect(screen.queryByText('No approved call yet (n=0)')).toBeNull()
+    await expectAxeClean()
+  })
+
+  test('a failed read keeps Retry, names the time it failed, and still shows the latest approved call', () => {
+    render(
+      <HeroReadout
+        result={{ kind: 'error', status: 503, at: '2026-11-05T08:25:00.000Z' }}
+        win={{ date: '2026-11-05', startMin: 1290, endMin: 1380 }}
+        latestCall={{ callId: 'c1', permalink: '/c/c1', at: '2026-11-04T08:00:00.000Z' }}
+        calendarQuery="/v1/public/x/y/calendar-entries?limit=1"
+        rainAnimated={false}
+      />
+    )
+    expect(screen.getByText('Couldn’t reach the live verdict at 16:25 MYT.')).toBeTruthy()
+    expect(screen.getByText('It answered 503.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy()
+    expect(screen.queryByRole('link', { name: /replayed/ })).toBeNull()
+    expect(screen.getByText('Latest approved call')).toBeTruthy()
+  })
+
+  test('indicators and clauses read by their names, never their keys', () => {
+    render(
+      <HeroReadout
+        result={response({
+          data: {
+            ...response().data,
+            verdicts: [
+              {
+                ...response().data.verdicts[0]!,
+                windows: [
+                  verdict('sky', {
+                    clauses: [{ key: 'storm_confirmed', result: 'fired', blocked_by: [], inputs: [input()] }]
+                  })
+                ]
+              }
+            ]
+          }
+        })}
+        win={{ date: '2026-11-05', startMin: 1290, endMin: 1380 }}
+        latestCall={null}
+        calendarQuery="/v1/public/x/y/calendar-entries?limit=1"
+        rainAnimated
+      />
+    )
+    expect(screen.getByText('Storm confirmed')).toBeTruthy()
+    expect(screen.getByText('Rain in the last 60 minutes (site)')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/storm_confirmed|site\.rain_60m_mm/)
+    expect(
+      screen.getByRole('link', { name: 'Open source: Rain in the last 60 minutes (site), in a new tab' })
+    ).toBeTruthy()
   })
 })

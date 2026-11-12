@@ -84,6 +84,13 @@ export async function removeDeviceScenario(page: Page) {
   })
   await button.focus()
   await page.keyboard.press('Enter')
+  // Removing a device asks first, in a dialog that names it; the confirmation removes it.
+  const dialog = page.getByRole('alertdialog')
+  const title = t('removeTitle', { label: `“${testDevice.user_agent}”` })
+  await expect(dialog.getByRole('heading')).toHaveText(title)
+  await dialog.getByRole('button', { name: title, exact: true }).click()
   await expect(page.getByText(testDevice.user_agent, { exact: true })).toHaveCount(0)
   await expect(page.getByText(t('emptyDevices'))).toBeVisible()
+  // The row and its button are gone: the section heading holds focus and the removal is announced.
+  await expect(page.getByRole('heading', { name: t('devices') })).toBeFocused()
 }

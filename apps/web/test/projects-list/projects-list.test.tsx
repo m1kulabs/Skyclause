@@ -166,3 +166,45 @@ test('the stubbed summaries parse against the listProjects response schema', () 
     })
   ).not.toThrow()
 })
+
+test('with only archived projects the page says there are no active ones and still offers the archived list', async () => {
+  const archived = base({ id: 'project-old', name: 'Old project', slug: 'old', archived_at: '2026-10-01T00:00:00Z' })
+  vi.mocked(apiFetch).mockResolvedValue({ data: [archived], next_cursor: null })
+  render(<ProjectsList org="test-org" canCreate archived={false} />)
+  expect(await screen.findByText(/No active projects/)).toBeTruthy()
+  expect(screen.queryByText(/No projects yet/)).toBeNull()
+  const toggle = screen.getByRole('link', { name: 'Show archived' })
+  expect(toggle.getAttribute('href')).toBe('?archived=1')
+  // Create a project is still the next action for the empty active list.
+  expect(screen.getByText('Create a project')).toBeTruthy()
+})
+
+test('the archived view says so when there are none and links back to the active list', async () => {
+  vi.mocked(apiFetch).mockResolvedValue({ data: [base()], next_cursor: null })
+  render(<ProjectsList org="test-org" canCreate archived />)
+  expect(await screen.findByText('No archived projects.')).toBeTruthy()
+  expect(screen.getByRole('link', { name: 'Hide archived' }).getAttribute('href')).toBe('?')
+})
+
+test('without any archived project there is no toggle to offer', async () => {
+  vi.mocked(apiFetch).mockResolvedValue({ data: [base()], next_cursor: null })
+  render(<ProjectsList org="test-org" canCreate archived={false} />)
+  expect(await screen.findByText('Bukit Jalil')).toBeTruthy()
+  expect(screen.queryByRole('link', { name: /archived/i })).toBeNull()
+})
+
+test('the count is a count with its noun, signal health is a word and one input is singular', async () => {
+  const one = summarized()
+  one.summary!.signal_health = { state: 'off_hours', inputs_reporting: 1, oldest_age_s: 300 }
+  vi.mocked(apiFetch).mockResolvedValue({ data: [one], next_cursor: null })
+  render(<ProjectsList org="test-org" canCreate archived={false} />)
+  expect(await screen.findByText('1 project')).toBeTruthy()
+  expect(screen.queryByText(/n=1/)).toBeNull()
+  expect(await screen.findByText(/Signal health: Outside input hours · 1 input reporting/)).toBeTruthy()
+})
+
+test('the list is written in the language it is given', async () => {
+  vi.mocked(apiFetch).mockResolvedValue({ data: [], next_cursor: null })
+  render(<ProjectsList org="test-org" canCreate archived={false} locale="ms" />)
+  expect(await screen.findByText(/Tiada projek lagi/)).toBeTruthy()
+})

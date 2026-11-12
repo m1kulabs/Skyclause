@@ -13,7 +13,7 @@ test('SIG-1 bound sources show the captured values, finding, age, licence and so
   await page.goto(projectRoute)
   const root = page.locator('[data-signals-page]')
 
-  await expect(root.getByText(/5 inputs reporting; oldest 12 min/)).toBeVisible()
+  await expect(root.getByText(/5 inputs reporting; oldest 12\smin/)).toBeVisible()
   await expect(root.locator(`[data-source="${sourceIdsForTest.gauge}"]`)).toContainText('0232901RF')
   await expect(root.locator(`[data-source="${sourceIdsForTest.gauge}"]`)).toContainText('0.5 mm in 60 min')
   await expect(root.locator(`[data-source="${sourceIdsForTest.ca16w}"]`)).toContainText('67 API · Moderate')
@@ -22,7 +22,7 @@ test('SIG-1 bound sources show the captured values, finding, age, licence and so
   await expect(root).toContainText('Thunderstorms Warning')
   await expect(root).toContainText('21:05 MYT')
   await expect(
-    root.locator(`[data-source="${sourceIdsForTest.ca16w}"]`).getByRole('link', { name: 'Open source' })
+    root.locator(`[data-source="${sourceIdsForTest.ca16w}"]`).getByRole('link', { name: /^Publisher’s page for / })
   ).toHaveAttribute('href', 'https://eqms.doe.gov.my/mapcaqm')
   await expectZonedTimes(page)
   await expectAxeClean(page)
@@ -85,7 +85,6 @@ test('?source=CA16W opens the station detail, keeps its URL state, table view an
   await expect(detail).toContainText('API 150')
   await expect(detail).toContainText('API 180')
   await expect(detail.locator('[data-chart-summary]')).toBeVisible()
-  await detail.getByRole('button', { name: 'Show table' }).press('Enter')
   await expect(detail.getByRole('table')).toBeVisible()
   await expectAxeClean(page)
   await page.reload()
@@ -107,8 +106,8 @@ test('gauge detail uses a no-window strip with a table and the copied CLI tail c
   await expect(detail).toContainText('0.5 mm')
   await expect(detail).toContainText('21:00 MYT')
   await expect(detail).toContainText('no declared window')
-  await detail.getByRole('button', { name: 'Show table' }).press('Enter')
-  await expect(detail.getByRole('table')).toBeVisible()
+  await expect(detail.locator('[data-readings-table] table')).toBeVisible()
+  expect(await detail.locator('[data-readings-table] tbody tr').count()).toBeLessThanOrEqual(50)
   const copy = page.getByRole('button', { name: 'Copy tail command' })
   await copy.press('Enter')
   await expect
@@ -123,7 +122,7 @@ test('Signals rows reflow at 320px without horizontal overflow', async ({ page }
   await page.goto(projectRoute)
   const row = page.locator(`[data-source="${sourceIdsForTest.gauge}"]`)
 
-  await expect(row.locator('td')).toHaveCount(2)
+  await expect(row.locator('td')).toHaveCount(4)
   expect(
     await row
       .locator('td')

@@ -33,7 +33,7 @@ test('LED-7 selected filter chips clear one URL filter by keyboard and preserve 
 test('LED-4 evidence list opens its URL sheet and returns keyboard focus on close', async ({ page }) => {
   await setup(page, { role: 'viewer' })
   await page.goto(`${route}?tab=evidence`)
-  const link = page.getByRole('link', { name: new RegExp(copy('evidence.packFor', { id: evidence.id })) })
+  const link = page.locator(`[data-evidence-row="${evidence.id}"] a`)
   await link.press('Enter')
   await expect(page).toHaveURL(/evidence=evidence-1/)
   await expect(page.getByRole('dialog')).toContainText('reading-1')
@@ -55,12 +55,45 @@ test('LED-7 paginated ledger reads 1–50 then 51–100 and correction links fin
   )
   await page.goto(route)
   await expect(page.locator('[data-ledger-total]')).toHaveText(copy('ledger.total', { from: 1, to: 50, n: 100 }))
+  // The page scrolls and the header sticks under the shell bar.
+  await page.mouse.wheel(0, 1600)
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--shell-bar-height')) || 0
+        return Math.round(document.querySelector('[data-ledger-table] th')!.getBoundingClientRect().top - bar)
+      })
+    )
+    .toBe(0)
   await page.getByRole('button', { name: copy('ledger.nextPage'), exact: true }).press('Enter')
   await expect(page.locator('[data-ledger-total]')).toHaveText(copy('ledger.total', { from: 51, to: 100, n: 100 }))
   await expect(page.locator('tr[data-index]').first()).toHaveAttribute('aria-rowindex', '52')
   await page.getByRole('button', { name: copy('ledger.firstPage'), exact: true }).press('Enter')
   await page.getByRole('link', { name: copy('ledger.corrects', { id: 'entry-100' }), exact: true }).press('Enter')
   await expect(page.locator('#ledger-entry-100')).toBeVisible()
+})
+
+test('a link with ?request=evidence opens the request form; ?call= selects and focuses that call’s entry', async ({
+  page
+}) => {
+  await setup(page)
+  await page.goto(`${route}?request=evidence`)
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('heading', { name: copy('evidence.request') })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await expect(page).not.toHaveURL(/request=/)
+  await page.goto(`${route}?call=${row.refs.call_id}`)
+  const entry = page.locator(`#ledger-${row.id}`)
+  await expect(entry).toHaveAttribute('aria-current', 'true')
+  await expect(entry).toBeFocused()
+})
+
+test('filters that match nothing say so, not that the ledger is empty', async ({ page }) => {
+  await setup(page, { rows: [] })
+  await page.goto(`${route}?pack=crowd`)
+  await expect(page.getByText(copy('ledger.emptyFiltered'), { exact: true })).toBeVisible()
+  await expect(page.getByText(copy('ledger.empty'), { exact: true })).toBeHidden()
 })
 
 test('LED-7 filters survive reload, totals and CSV use current filters, integrity identifies the first bad entry', async ({
@@ -96,8 +129,19 @@ test('LED-7 empty ledger prints n=0 and its next action; unavailable operations 
   await expect(page.getByText(copy('ledger.next'), { exact: true })).toBeVisible()
   await page.route('**/v1/projects/*/ledger?*', (r) => r.fulfill({ status: 501, json: { title: 'Not built' } }))
   await page.reload()
-  await expect(page.locator('.ledger-page').getByRole('alert')).toContainText(copy('ledger.failed'))
+  const failed = page.locator('.ledger-page [data-source-error="501"]')
+  await expect(failed).toContainText(copy('ledger.sources.entries'))
+  // Reading again cannot change a "not built" answer, so it offers no retry; a failed read does.
+  await expect(failed.getByRole('button', { name: copy('ledger.retry'), exact: true })).toHaveCount(0)
   await expect(page.getByText(copy('ledger.empty'), { exact: true })).toBeHidden()
+  await page.unroute('**/v1/projects/*/ledger?*')
+  await page.route('**/v1/projects/*/ledger?*', (r) => r.fulfill({ status: 503, json: { title: 'Unavailable' } }))
+  await page.reload()
+  await expect(
+    page
+      .locator('.ledger-page [data-source-error="503"]')
+      .getByRole('button', { name: copy('ledger.retry'), exact: true })
+  ).toBeVisible()
 })
 
 test('LED-8 pilot archive appears only with files and downloads stay outside the ledger', async ({ page }) => {
@@ -212,11 +256,11 @@ test('LED-5 calls, approvals, grades and ledger values link to readings; long ta
   await page.setViewportSize({ width: 320, height: 900 })
   await page.goto(route)
   await expect(page.locator('[data-ledger-table]')).toContainText(detailedRow.window!.title)
-  await expect(page.locator('[data-ledger-table]')).toContainText(
-    copy('ledger.delays', {
-      approved: copy('ledger.minutes', { value: 2 }),
-      sent: copy('ledger.minutes', { value: 1 })
-    })
+  await expect(page.locator('[data-ledger-table] td.ledger-col-toApproval')).toContainText(
+    copy('ledger.minutes', { value: 2 })
+  )
+  await expect(page.locator('[data-ledger-table] td.ledger-col-toNotice')).toContainText(
+    copy('ledger.minutes', { value: 1 })
   )
   await expectUnclippedText(page)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
@@ -229,13 +273,8 @@ test('LED-5 calls, approvals, grades and ledger values link to readings; long ta
   const frameBounds = (await frame.boundingBox())!
   expect(actionBounds.x).toBeGreaterThanOrEqual(dateBounds.x + dateBounds.width + 4)
   expect(actionBounds.x + actionBounds.width).toBeLessThanOrEqual(frameBounds.x + frameBounds.width)
-  expect(
-    await frame.evaluate(
-      (element) =>
-        Number.parseFloat(getComputedStyle(element).scrollPaddingTop) >=
-        element.querySelector('thead')!.getBoundingClientRect().height
-    )
-  ).toBe(true)
+  // On a phone the record is a list: nothing in it scrolls sideways.
+  expect(await frame.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
   await page.goto(`${route}?tab=evidence&evidence=evidence-1`)
   const sheet = page.getByRole('dialog')
   await expect(sheet).toContainText('approval-1')
@@ -289,6 +328,10 @@ for (const role of ['owner', 'admin', 'approver', 'editor', 'viewer']) {
       )
       const request = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/approve'))
       await approve.press('Enter')
+      // Releasing a reply cannot be undone, so it asks first.
+      const confirm = page.getByRole('alertdialog')
+      await expect(confirm).toContainText(copy('evidence.confirmTitle'))
+      await confirm.getByRole('button', { name: copy('evidence.approve'), exact: true }).press('Enter')
       await request
       await expect(approve).toBeHidden()
     } else {
@@ -363,11 +406,7 @@ for (const theme of ['dark', 'light', 'high-contrast']) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await page.screenshot({ path: testInfo.outputPath(`ledger-${theme}.png`), fullPage: true })
     const frame = page.locator('[data-ledger-frame]')
-    const left = (await frame.locator('td').first().boundingBox())!.x
-    await frame.evaluate((e) => {
-      e.scrollLeft = 400
-    })
-    expect((await frame.locator('td').first().boundingBox())!.x).toBeCloseTo(left, 0)
+    expect(await frame.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
     await page
       .getByRole('button', { name: copy('evidence.request'), exact: true })
       .first()

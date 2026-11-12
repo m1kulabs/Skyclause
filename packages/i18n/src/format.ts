@@ -72,6 +72,12 @@ export function formatClock(value: DateValue, locale: Locale): string {
   }).format(asDate(value))
 }
 
+/** The MYT wall clock of an instant as a `datetime-local` input value ("2026-11-02T15:00"); slice it for a date or time input. */
+export function formatInputDateTime(value: DateValue): string {
+  const { year, month, day, hour, minute } = zonedDateTimeParts(value, TIME_ZONE)
+  return `${year}-${month}-${day}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+}
+
 export function formatDateKey(value: DateValue): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: TIME_ZONE,

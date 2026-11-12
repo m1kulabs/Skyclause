@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test'
 import type { Principal, Role } from '@skyclause/contracts'
 import { subscriberOperations } from '../../features/subscribe/operations'
+import { windowsOperations } from '../../features/windows/operations'
 import { asPage, stubApi } from '../harness'
 
 // Operation doubles only. These values never ship in application code.
@@ -103,6 +104,13 @@ export async function setupProject(page: Page, role: Role = 'admin') {
       next_cursor: null
     },
     { registry }
+  )
+  // The window names the counts are grouped by.
+  await stubApi(
+    page,
+    'listWindows',
+    { data: [{ ...windowData, latest_calls: { sky: null, crowd: null } }], next_cursor: null },
+    { registry: windowsOperations }
   )
   await stubApi(page, 'getSubscriberCounts', counts, { registry })
   await stubApi(page, 'listSubscribers', { data: [row], next_cursor: null }, { registry })

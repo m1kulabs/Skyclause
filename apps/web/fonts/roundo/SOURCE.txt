@@ -1,0 +1,16 @@
+Roundo by Shiva Nallaperumal, Indian Type Foundry (version 2.000).
+Licence: SIL Open Font License 1.1, in OFL.txt beside this file, copied byte for byte from the download's
+License/OFL.txt. The fonts' own name table (IDs 13 and 14) names the same licence.
+
+Page:     https://www.fontshare.com/fonts/roundo
+Download: https://api.fontshare.com/v2/fonts/download/roundo (zip "Roundo_Complete", retrieved 2026-11-12)
+CSS that lists the web files: https://api.fontshare.com/v2/css?f[]=roundo@400,500,600,1&display=swap
+
+Files, unmodified, from Roundo_Complete/Fonts/WEB/fonts/:
+74481965a428478803e36f6aaf21d163c36c5c8fc2cb27029dfbf1f9fb6f5a65  Roundo-Variable.woff2  web, weights 200-700 (lib/fonts.ts)
+c8a923f6fbc9d1b8f6b079523083c4b8ad255ccfb00d2dc22c76e62b2d1a9d2b  Roundo-Regular.woff    400, Open Graph cards (Satori reads no woff2)
+0ffccc785c6492b746271c68652cc660fe4f8c2aff33f60176ac1828cc8bd304  Roundo-Medium.woff     500, Open Graph cards
+19fc9e7f05f6d1faf7e2d82d383270efc06a5948011699bd7ffac854d38fb550  Roundo-SemiBold.woff   600, Open Graph cards
+
+Roundo ships no tabular figures (no tnum feature; its digits are proportional), so tabular-nums does not change
+digit widths in this face.

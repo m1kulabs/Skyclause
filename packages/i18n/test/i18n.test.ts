@@ -6,6 +6,7 @@ import {
   formatDateKeyAt,
   formatDateLong,
   formatDateTime,
+  formatInputDateTime,
   formatList,
   formatNumber,
   formatTime,
@@ -27,6 +28,12 @@ describe('MYT formatters', () => {
     expect(formatDate(instant, 'ms')).toBe('2 November 2026')
     expect(formatDateLong(instant, 'ms')).toBe('Isnin 2 November 2026')
     expect(formatDateTime(instant, 'ms')).toBe('2 November 2026, 15:00 MYT')
+  })
+
+  test('gives the MYT wall clock as a datetime-local input value', () => {
+    expect(formatInputDateTime(instant)).toBe('2026-11-02T15:00')
+    expect(formatInputDateTime('2026-11-05T16:30:00Z')).toBe('2026-11-06T00:30')
+    expect(formatInputDateTime(Date.parse('2026-12-31T15:59:00Z'))).toBe('2026-12-31T23:59')
   })
 
   test('formats project-local date keys, lists and time-zone labels', () => {

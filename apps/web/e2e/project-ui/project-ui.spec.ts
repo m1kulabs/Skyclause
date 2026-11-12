@@ -1,30 +1,52 @@
 import { expect, test } from '@playwright/test'
+import { pseudo } from '@skyclause/i18n'
 import { overviewOperations } from '../../features/overview/operations'
 import { projectSettingsOperations } from '../../features/project-settings/operations'
 import { adminId, prepareOverview, prepareSettings, projectFixtureData, baseProject, projectPath } from './fixtures'
 import { stubApi } from '../harness'
+import { expectUnclippedText } from '../harness/expect-unclipped-text'
 
+/** The copy as rendered: the pseudo project renders every string through `pseudo`. */
+const copy = (value: string) => (process.env.I18N_PSEUDO === '1' ? pseudo(value) : value)
 const emptyRoute = `${projectPath}`
 const settingsRoute = `${projectPath}/settings`
 
-test('every empty overview block gives a next action and draws no chart', async ({ page }) => {
+test('every empty overview block says so once and gives the next action that exists, and draws no chart', async ({
+  page
+}) => {
   await prepareOverview(page, 'admin', { empty: true })
   await page.goto(emptyRoute)
   const overview = page.locator('[data-project-overview]')
   await expect(overview.getByRole('heading', { name: 'Project overview' })).toBeVisible()
-  for (const [id, action] of [
-    ['overview-packs', 'Bind a source'],
-    ['overview-strip', 'Declare a window'],
-    ['overview-risk', 'Declare a window'],
-    ['overview-sources', 'Bind a source'],
-    ['overview-bundle', 'Declare a window'],
-    ['overview-next-event', 'Declare a window']
+  for (const [id, sentence, action] of [
+    ['overview-packs', 'No pack to show (n=0)', 'Bind a source'],
+    ['overview-strip', null, 'Declare a window'],
+    ['overview-risk', 'No windows at risk today (n=0)', 'Declare a window'],
+    ['overview-sources', 'No sources bound (n=0)', 'Bind a source'],
+    ['overview-bundle', 'No bundles yet (n=0)', 'Declare a window'],
+    // Nothing in the product lists a show by hand: what fills this block is a bound venue listing or forecast.
+    ['overview-next-event', 'No listed show or storm forecast (n=0)', 'Bind a source']
   ] as const) {
     const section = overview.locator(`#${id}`).locator('..').locator('..')
-    await expect(section.getByText('n=0', { exact: true }).first()).toBeVisible()
-    await expect(section.getByText(action)).toBeVisible()
+    if (sentence) await expect(section.getByText(copy(sentence))).toBeVisible()
+    await expect(section.getByText(copy(action), { exact: true })).toBeVisible()
+    // No bare "n=3" tag beside the heading.
+    await expect(section.locator('header')).not.toContainText('n=')
   }
   await expect(overview.locator('#overview-strip svg')).toHaveCount(0)
+})
+
+test('a viewer sees no instruction they cannot follow in an empty overview block', async ({ page }) => {
+  await prepareOverview(page, 'viewer', { empty: true })
+  await page.goto(emptyRoute)
+  const overview = page.locator('[data-project-overview]')
+  await expect(overview.getByRole('heading', { name: 'Project overview' })).toBeVisible()
+  await expect(overview.getByText('Bind a source')).toHaveCount(0)
+  await expect(overview.getByText('Declare a window')).toHaveCount(0)
+  // The windows page is something a viewer can open, so the blocks about windows link to it.
+  await expect(
+    overview.locator('#overview-risk').locator('..').locator('..').getByRole('link', { name: 'View windows' })
+  ).toHaveAttribute('href', `${projectPath}/windows`)
 })
 
 test('overview uses the 5 November captures, declares from the primary action and keeps filters on reload', async ({
@@ -34,16 +56,19 @@ test('overview uses the 5 November captures, declares from the primary action an
   await prepareOverview(page, 'admin', { empty: false })
   await page.goto(emptyRoute)
   const overview = page.locator('[data-project-overview]')
-  await expect(overview.locator('[data-finding-line]')).toContainText('Sky: Normal; 5 inputs reporting, oldest 12 min')
+  // The answer: each pack's mode set large with its glyph and word, then the inputs behind it.
+  await expect(overview.locator('[data-pack="sky"] [data-state="normal"]')).toHaveText(copy('Normal'))
+  // Two strings joined: under the pseudo pass each carries its own tildes.
+  await expect(overview.locator('[data-finding-line]')).toContainText(/5 inputs reporting~*, oldest 12\smin/)
   await expect(overview.locator('[data-pack="sky"]')).toContainText('No clause has fired')
   await expect(overview.locator('[data-source="source-jps"]')).toContainText('Sg. Kuyoh di LRT Bukit Jalil')
   await expect(overview.locator('[data-bundle]')).toBeVisible()
 
-  await overview.getByRole('button', { name: 'Crowd pack' }).click()
+  await overview.getByRole('button', { name: /^Crowd~* pack/ }).click()
   await expect(page).toHaveURL(/\?pack=crowd$/)
   await page.reload()
-  await expect(overview.getByRole('button', { name: 'Crowd pack' })).toHaveAttribute('aria-pressed', 'true')
-  await overview.getByRole('button', { name: 'Declare a window' }).click()
+  await expect(overview.getByRole('button', { name: /^Crowd~* pack/ })).toHaveAttribute('aria-pressed', 'true')
+  await overview.locator('.overview-topline').getByRole('link', { name: 'Declare a window' }).click()
   await expect(page).toHaveURL(/\?pack=crowd&declare=window$/)
 })
 
@@ -73,7 +98,6 @@ test('today at-risk windows use project local date, stop at six and link to all 
   await stubApi(page, 'listWindows', { data: windows, next_cursor: null }, { registry: overviewOperations })
   await page.goto(projectPath)
   const risk = page.locator('[data-project-overview] section[aria-labelledby="overview-risk"]')
-  await expect(risk.locator('header')).toContainText('n=8')
   await expect(risk.locator('ul li')).toHaveCount(6)
   await expect(risk.getByRole('link', { name: 'View all' })).toHaveAttribute('href', `${projectPath}/windows`)
 })
@@ -121,7 +145,11 @@ test('project fields save through PATCH /api/projects/{id}', async ({ page }) =>
   const panel = page.locator('[data-project-settings-general]')
   await panel.locator('#site-name').fill('Updated campus')
   await panel.locator('#project-time-zone').fill('Asia/Kuala_Lumpur')
-  await panel.locator('form').getByRole('button', { name: 'Save changes' }).click()
+  // Each deadline row is its own form with its own Save, named for its pack; the project form's Save is just "Save changes".
+  await panel
+    .locator('form')
+    .getByRole('button', { name: copy('Save changes'), exact: true })
+    .click()
   await expect.poll(() => submitted?.site_name).toBe('Updated campus')
   expect(submitted).toMatchObject({
     name: 'Bukit Jalil campus',
@@ -154,7 +182,7 @@ test('changing the Sky SLA sends sla_s and shows the saved value', async ({ page
   await general.locator('[data-sla-pack="sky"]').getByRole('button').click()
   await expect.poll(() => submitted?.sla_s).toBe(900)
   expect(submitted).toMatchObject({ enabled: true, sla_s: 900 })
-  await expect(general.locator('[data-sla-pack="sky"]')).toContainText('15 Minutes')
+  await expect(general.locator('[data-sla-pack="sky"]')).toContainText('15 minutes')
 })
 
 test('project rota adds a field-edited override with the project id', async ({ page }) => {
@@ -261,4 +289,31 @@ test('share link creation selects access and expiry and shows its URL once', asy
   await expect(page).toHaveURL(`${projectPath}/settings/share`)
   await expect(page.locator('[data-project-settings-share] #share-link-url')).toHaveCount(0)
   await expect(page.locator('[data-project-settings-share]')).not.toContainText('once-only-secret')
+})
+
+test('project settings panels fit phone, tablet and desktop widths with nothing clipped', async ({ page }) => {
+  await prepareSettings(page, 'admin')
+  const panels = [
+    ['', '[data-project-settings-general]'],
+    ['/rota', '[data-project-settings-rota]'],
+    ['/share', '[data-project-settings-share]'],
+    ['/public', '[data-unbuilt]']
+  ] as const
+  for (const [route, ready] of panels) {
+    await page.goto(`${settingsRoute}${route}`)
+    await expect(page.locator(ready)).toBeVisible()
+    if (route === '/rota') {
+      await page.getByRole('button', { name: 'Add a shift' }).click()
+      await expect(page.locator('[data-rota-editor]')).toBeVisible()
+    }
+    for (const width of [1440, 768, 375, 320]) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.evaluate(() => document.fonts.ready)
+      await expectUnclippedText(page)
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        `${route} at ${width}`
+      ).toBe(true)
+    }
+  }
 })

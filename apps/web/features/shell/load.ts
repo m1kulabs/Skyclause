@@ -1,6 +1,7 @@
-import { createApiFetch } from '../../lib/api-fetch'
-import type { ShellData } from './types'
+import { ApiProblem, createApiFetch } from '../../lib/api-fetch'
+import type { ShellData, ShellReadError } from './types'
 import { shellOperations } from './operations'
+import { SHELL_HARNESS_COOKIE, shellHarnessData } from './test-request'
 
 type Page<Item> = { data: Item[]; next_cursor: string | null }
 
@@ -29,38 +30,63 @@ async function readPages<Item>(read: (cursor?: string) => Promise<Page<Item>>): 
   return data
 }
 
-/** The shell can render before membership and project owners ship their reads. */
+function readError(error: unknown): ShellReadError {
+  return { status: error instanceof ApiProblem ? error.status : null, at: new Date().toISOString() }
+}
+
+function harnessCookie(requestHeaders: Headers): string | undefined {
+  const prefix = `${SHELL_HARNESS_COOKIE}=`
+  return requestHeaders
+    .get('cookie')
+    ?.split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix))
+    ?.slice(prefix.length)
+}
+
+/** The memberships and their projects, or the read that failed. Never a sample organisation. */
 export async function loadShellData(requestHeaders = new Headers()): Promise<ShellData> {
-  if (process.env.APP_ENV === 'test') return { memberships: [], projects: [], sidebarCollapsed: false }
+  // Server reads can't be stubbed from the browser: the test runtime takes the planted harness's cookie instead.
+  if (process.env.APP_ENV === 'test') return shellHarnessData(harnessCookie(requestHeaders))
 
   const headers = forwardedHeaders(requestHeaders)
-  const preferenceRead = apiFetch('getMyPreferences', {
-    headers,
-    cache: 'no-store',
-    signal: AbortSignal.timeout(5000)
-  }).catch(() => undefined)
-  const memberships = await readPages((cursor) =>
-    apiFetch('listMyMemberships', {
-      headers,
-      query: { cursor },
-      cache: 'no-store',
-      signal: AbortSignal.timeout(5000)
-    })
-  ).catch(() => [])
+  let memberships: ShellData['memberships']
+  try {
+    memberships = await readPages((cursor) =>
+      apiFetch('listMyMemberships', {
+        headers,
+        query: { cursor },
+        cache: 'no-store',
+        signal: AbortSignal.timeout(5000)
+      })
+    )
+  } catch (error) {
+    if (error instanceof ApiProblem && error.status === 401) return { memberships: [], projects: [], signedOut: true }
+    return { memberships: [], projects: [], membershipsError: readError(error) }
+  }
+  const projectsError: Record<string, ShellReadError> = {}
   const projectLists = await Promise.all(
     memberships.map(async (membership) => {
-      const projects = await readPages((cursor) =>
-        apiFetch('listProjects', {
-          headers,
-          org: membership.org_slug,
-          query: { cursor },
-          cache: 'no-store',
-          signal: AbortSignal.timeout(5000)
-        })
-      ).catch(() => [])
-      return projects.filter((project) => project.org_id === membership.org_id)
+      try {
+        const projects = await readPages((cursor) =>
+          apiFetch('listProjects', {
+            headers,
+            org: membership.org_slug,
+            query: { cursor },
+            cache: 'no-store',
+            signal: AbortSignal.timeout(5000)
+          })
+        )
+        return projects.filter((project) => project.org_id === membership.org_id)
+      } catch (error) {
+        projectsError[membership.org_id] = readError(error)
+        return []
+      }
     })
   )
-  const preferences = await preferenceRead
-  return { memberships, projects: projectLists.flat(), sidebarCollapsed: preferences?.sidebar_collapsed === true }
+  return {
+    memberships,
+    projects: projectLists.flat(),
+    ...(Object.keys(projectsError).length ? { projectsError } : {})
+  }
 }

@@ -1,183 +1,438 @@
+/*
+ * The ledger: a record read in time order. Surfaces separate by tone (the table on the surface step, the page on the
+ * ground), rows by a rule in the raised tone, the header sticks under the shell bar while the page scrolls.
+ * Breakpoints: the full record from 1200px, a compact table (secondary fields as sublines) from 1024px, a list of
+ * three-line rows below.
+ */
 .ledger-page {
-  max-width: 100%;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 24px;
-  font-variant-numeric: tabular-nums;
+}
+.ledger-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px 24px;
+}
+.ledger-title-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 .ledger-page h1 {
   font-size: 26px;
-  font-weight: 700;
-  line-height: 1.25;
+  font-weight: 500;
+  line-height: 32px;
+  letter-spacing: -0.02em;
+}
+.ledger-integrity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-height: 36px;
+}
+.ledger-integrity p {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 14px;
+  line-height: 20px;
+}
+.ledger-integrity p svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.ledger-integrity time {
+  color: var(--muted-foreground);
+}
+.ledger-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.ledger-archive-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--control-edge);
+  text-underline-offset: 4px;
+}
+.ledger-archive-link:hover {
+  text-decoration-color: currentColor;
+}
+.ledger-archive-link svg {
+  width: 16px;
+  height: 16px;
 }
 .ledger-page [data-slot='tabs'] {
-  flex-direction: column;
+  gap: 24px;
   min-width: 0;
 }
 .ledger-page [data-slot='tabs-content'] {
   min-width: 0;
-  width: 100%;
-}
-.ledger-heading,
-.ledger-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-.ledger-heading > p {
-  color: var(--muted-foreground);
-  max-width: 65ch;
-}
-.ledger-actions {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-.ledger-page button,
-.ledger-sheet button,
-.evidence-request button {
-  height: auto;
-  min-height: 34px;
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-.ledger-page a,
-.ledger-sheet a {
-  text-underline-offset: 4px;
-  text-decoration: underline;
-  overflow-wrap: anywhere;
 }
 .ledger-tabs {
-  width: 100%;
-  justify-content: flex-start;
-  gap: 24px;
-  border-bottom: 1px solid var(--border);
-  padding: 0;
-  height: auto !important;
+  max-width: 100%;
+  overflow-x: auto;
 }
-.ledger-tabs button {
-  flex: 0 1 auto;
-  min-width: 0;
-  padding-block: 12px;
-  border-radius: 0;
-  white-space: normal;
+.ledger-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
+
+/* Filters: one row of compact fields. The range, pack, mode and state are the query; Show dims rows in place. */
 .ledger-filters {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
-  align-items: end;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 16px;
-  margin-block: 24px;
+  align-items: end;
 }
-.ledger-page select,
-.evidence-request select {
-  width: 100%;
-  min-height: 34px;
-  padding: 6px 10px;
-  border: 1px solid var(--input);
-  border-radius: var(--radius);
-  background: var(--background);
-  color: var(--foreground);
-  font: inherit;
-}
-.ledger-table-frame {
-  width: 100%;
-  max-height: 600px;
-  overflow: auto;
-  border-block: 1px solid var(--border);
-  margin-block: 16px;
-  scroll-padding: 160px 16px 16px 201px;
-  overscroll-behavior: contain;
-}
-.ledger-table-frame table {
-  border-collapse: separate;
-  border-spacing: 0;
-  width: 100%;
-  min-width: 1100px;
-  table-layout: fixed;
+.ledger-filters [data-slot='field-label'],
+.evidence-form [data-slot='field-label'] {
   font-size: 13px;
-}
-.ledger-table-frame th,
-.ledger-table-frame td {
-  padding: 16px;
-  text-align: left;
-  vertical-align: top;
-  overflow-wrap: anywhere;
-  border-bottom: 1px solid var(--border);
-  background: var(--background);
-}
-.ledger-table-frame th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  font-weight: 500;
-  background: var(--muted);
-}
-.ledger-table-frame th:first-child,
-.ledger-table-frame td:first-child {
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  width: 185px;
-}
-.ledger-table-frame th:first-child {
-  z-index: 3;
-}
-.ledger-table-frame td > span,
-.ledger-table-frame td > time,
-.ledger-table-frame td > a {
-  display: block;
-}
-.ledger-table-frame tr[data-index] {
-  height: 144px;
-}
-.ledger-entry-id {
+  line-height: 18px;
   color: var(--muted-foreground);
-  margin-top: 8px;
 }
+.ledger-field-ring {
+  display: block;
+  border-radius: var(--radius-nested);
+}
+.ledger-field-ring:focus-within {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: 2px;
+}
+/* The wrapper draws the ring: Chromium drops :focus-visible on a date field's last segment. */
+.ledger-field-ring input:focus-visible {
+  outline: none;
+}
+.ledger-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.ledger-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ledger-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+.ledger-counts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ledger-counts [data-ledger-total] {
+  font-size: 14px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-figures);
+}
+.ledger-matching,
+.ledger-sub,
+.ledger-n {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--muted-foreground);
+}
+.ledger-invalid {
+  font-size: 14px;
+  line-height: 20px;
+}
+.ledger-pager {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.ledger-section-title {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+  letter-spacing: -0.01em;
+}
+.ledger-empty {
+  background: var(--card);
+}
+
+/* Loading: skeleton capsules on the record's pitch. */
+.ledger-loading {
+  padding: 0 12px;
+}
+.ledger-loading-row {
+  display: grid;
+  grid-template-columns: 96px 128px minmax(0, 1fr) 160px;
+  align-items: center;
+  gap: 16px;
+  height: 44px;
+}
+.ledger-loading-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-block: 12px;
+}
+
+/*
+ * The record: the shared table on the ground, one line per entry, its header stuck under the shell bar. Fixed column
+ * widths keep it inside the column; the window's name takes what is left and truncates (its full span in the title).
+ */
+.ledger-table-frame {
+  min-width: 0;
+}
+@media (min-width: 641px) {
+  .ledger-table-frame [data-slot='table'] {
+    table-layout: fixed;
+  }
+  .ledger-col-time {
+    width: 176px;
+  }
+  .ledger-col-entry {
+    width: 220px;
+  }
+  .ledger-col-actor {
+    width: 104px;
+  }
+  .ledger-col-detail {
+    width: 200px;
+  }
+  .ledger-col-toApproval {
+    width: 100px;
+  }
+  .ledger-col-toNotice {
+    width: 92px;
+  }
+  .ledger-col-seq {
+    width: 52px;
+  }
+  .ledger-col-evidence {
+    width: 48px;
+  }
+}
+td.ledger-col-evidence {
+  padding-block: 0;
+  padding-inline: 0 4px;
+  text-align: right;
+}
+.ledger-entry-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px 12px;
+}
+.ledger-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+}
+.ledger-kind svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  stroke-width: 2;
+}
+.ledger-span time + span[aria-hidden] {
+  padding-inline: 1px;
+}
+.ledger-detail {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px 8px;
+}
+.ledger-detail .mode-badge-pill > span {
+  white-space: nowrap;
+}
+.ledger-missing {
+  color: var(--muted-foreground);
+}
+.ledger-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  text-decoration: underline;
+  text-decoration-color: var(--control-edge);
+  text-underline-offset: 4px;
+}
+.ledger-link:hover {
+  text-decoration-color: currentColor;
+}
+/* Focus is never hidden under the sticky header: a focused row or control stops below the header's 40px. */
+.ledger-table-frame tbody tr,
+.ledger-table-frame tbody :is(a, button) {
+  scroll-margin-top: 48px;
+}
+/* Filters dim, never remove: an entry of another kind keeps its place in the sequence, in the muted ink. */
+.ledger-table-frame tr[data-dimmed] .mode-badge-pill {
+  filter: saturate(0);
+}
+/* While Show is set, the matching kind also gains weight, so the match is not told by the ink alone. */
+.ledger-table-frame[data-filtering] tr:not([data-dimmed]) .ledger-kind {
+  font-weight: 600;
+}
+
+/* Between a phone and 1200px, who decided, the minutes and the entry number step out; the rest stay on one line. */
+@media (min-width: 641px) and (max-width: 1199px) {
+  .ledger-table-frame [data-wide] {
+    display: none;
+  }
+}
+/* A narrow tablet keeps the time, the entry and what it concerns; the mode is on the call's own page. */
+@media (min-width: 641px) and (max-width: 899px) {
+  .ledger-table-frame [data-detail] {
+    display: none;
+  }
+}
+@media (max-width: 1023px) {
+  .ledger-filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .ledger-loading-row {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+  .ledger-loading-row > :nth-child(n + 3) {
+    display: none;
+  }
+}
+/* A phone: the shared list. A windowed run's spacer rows keep only their own height. */
+@media (max-width: 640px) {
+  .ledger-table-frame [data-slot='table'] tr.ledger-spacer {
+    min-height: 0;
+    padding: 0;
+  }
+}
+@media (max-width: 767px) {
+  .ledger-title > .ledger-actions {
+    width: 100%;
+  }
+}
+@media (max-width: 480px) {
+  .ledger-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Evidence requests: the shared table, one row per request, its span as the identity. */
+.evidence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.evidence-row-span {
+  font-weight: 500;
+}
+
+/* The request: one form that reads across, evidence for a span or a call. */
+.evidence-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.evidence-sentence {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 12px;
+}
+.evidence-sentence:has(.evidence-call) {
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 2fr);
+}
+.evidence-submit {
+  display: flex;
+  justify-content: flex-end;
+}
+.evidence-request[data-slot='dialog-content'] {
+  max-width: min(calc(100vw - 32px), 640px);
+}
+@media (max-width: 640px) {
+  .evidence-sentence,
+  .evidence-sentence:has(.evidence-call) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .evidence-submit > * {
+    width: 100%;
+  }
+}
+
+/* The pack and the archive, in a sheet. */
 .ledger-sheet[data-slot='sheet-content'] {
   width: min(100vw, 720px);
   max-width: 720px;
   overflow-y: auto;
-  scroll-padding-top: 80px;
-}
-.ledger-sheet [data-slot='sheet-header'] {
-  padding: 24px 60px 16px 24px;
+  overscroll-behavior: contain;
 }
 .ledger-sheet-body {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 0 24px 32px;
+  gap: 24px;
+  padding: 0 20px 32px;
   min-width: 0;
   overflow-wrap: anywhere;
 }
 .ledger-sheet-body h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
   font-size: 16px;
   font-weight: 600;
+  line-height: 24px;
 }
-.ledger-sheet-body article,
-.ledger-sheet-body li {
+.evidence-head {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-block: 12px;
-  border-bottom: 1px solid var(--border);
+  gap: 4px;
 }
-.ledger-sheet-body pre {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+.evidence-head .evidence-span {
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+  letter-spacing: -0.01em;
 }
 .evidence-times {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
 }
-.evidence-times dt {
+.evidence-times li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 18px;
+}
+.evidence-step {
+  display: block;
+  height: 8px;
+  border-radius: 9999px;
+  border: 2px solid var(--border);
+}
+.evidence-times li[data-done] .evidence-step {
+  border-color: var(--foreground);
+  background: var(--foreground);
+}
+.evidence-step-label {
   color: var(--muted-foreground);
 }
 .evidence-section {
@@ -185,58 +440,79 @@
   flex-direction: column;
   gap: 8px;
 }
-.evidence-list {
+.evidence-section article,
+.ledger-sheet-body > ul > li {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  margin-top: 24px;
+  gap: 6px;
+  padding: 12px 16px;
+  border-radius: var(--radius-nested);
+  background: var(--background);
 }
-.evidence-list li {
-  border-bottom: 1px solid var(--border);
-  padding-block: 16px;
-}
-.evidence-list li a {
+.evidence-entry-line {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 16px;
+  align-items: center;
+  gap: 4px 12px;
 }
-.ledger-page :focus-visible,
-.ledger-sheet :focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
+.evidence-refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
 }
-.hc .ledger-page :focus-visible,
-.hc .ledger-sheet :focus-visible {
-  outline-width: 3px;
+.evidence-reading-ref,
+.ledger-sheet a {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.evidence-reading-ref {
+  gap: 6px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  font-size: 13px;
+}
+.evidence-body summary {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.evidence-body pre {
+  margin-top: 8px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.evidence-value {
+  font-weight: 500;
+}
+.evidence-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.evidence-pager > p {
+  margin-right: auto;
+}
+.ledger-sheet-body > ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 @media (max-width: 640px) {
-  .ledger-table-frame {
-    scroll-padding-inline-start: 136px;
-  }
-  .ledger-table-frame th:first-child,
-  .ledger-table-frame td:first-child {
-    width: 120px;
-  }
-  .ledger-page button,
-  .ledger-page select,
-  .ledger-page input,
-  .ledger-sheet button,
-  .evidence-request button,
-  .evidence-request input,
-  .evidence-request select {
-    min-height: 44px;
-  }
-  .ledger-heading {
-    align-items: stretch;
-  }
-  .ledger-filters {
-    grid-template-columns: minmax(0, 1fr);
-  }
   .ledger-sheet-body {
     padding-inline: 16px;
   }
   .evidence-times {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (pointer: coarse) {
+  .ledger-archive-link,
+  .evidence-reading-ref,
+  .evidence-body summary {
+    min-height: 44px;
   }
 }

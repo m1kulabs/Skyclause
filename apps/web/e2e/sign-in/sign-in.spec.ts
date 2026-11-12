@@ -27,7 +27,7 @@ test.beforeEach(async ({ page }) => {
   await signedOut(page)
 })
 
-test('sign-in shows passkey, labelled email, Google, guest entry and the PDPA link', async ({ page }) => {
+test('sign-in shows passkey, labelled email, Google and the PDPA link, and no guest entry', async ({ page }) => {
   await page.goto('/sign-in')
 
   await expect(page.getByRole('heading', { level: 1, name: 'Sign in to Skyclause' })).toBeVisible()
@@ -39,7 +39,8 @@ test('sign-in shows passkey, labelled email, Google, guest entry and the PDPA li
   await expect(email).toHaveAttribute('autocomplete', 'username webauthn')
   await expect(email).toHaveAttribute('spellcheck', 'false')
   await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Continue as guest' })).toHaveAttribute('href', '/guest')
+  await expect(page.getByRole('link', { name: 'Continue as guest' })).toHaveCount(0)
+  await expect(page.locator('a[href="/guest"]')).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'PDPA privacy notice' })).toHaveAttribute('href', '/legal/privacy')
   await expectNoPasswordControls(page)
   await expectAuthAxe(page)
@@ -122,7 +123,7 @@ test('email, Google and link errors explain recovery and focus the message or fi
   await page.goto('/sign-in?link=invalid-token')
   await page.getByRole('button', { name: 'Sign in' }).click()
   const confirmError = signInRegion(page).getByRole('alert')
-  await expect(confirmError).toContainText('We couldn’t confirm this link')
+  await expect(confirmError).toContainText('This link couldn’t be confirmed')
   await expect(confirmError).toBeFocused()
   await expectAuthAxe(page)
 })
@@ -228,7 +229,7 @@ test('step-up link confirmation posts to the step-up endpoint and asks to return
 
   await page.goto('/sign-in?link=step-up-token&for=step-up')
   await expectAuthAxe(page)
-  await page.getByRole('button', { name: "Confirm it's you" }).click()
+  await page.getByRole('button', { name: 'Confirm it’s you' }).click()
 
   await expect(signInRegion(page).getByRole('status')).toContainText('Return to the tab and choose Send again')
   expect(confirmCount).toBe(1)
@@ -250,7 +251,7 @@ test('an expired link with a resend handle takes one press and announces the sen
   await expectAuthAxe(page)
   await page.getByRole('button', { name: 'Resend' }).click()
 
-  await expect(signInRegion(page).getByRole('status')).toContainText('We sent a new sign-in link. Check your email.')
+  await expect(signInRegion(page).getByRole('status')).toContainText('New sign-in link sent. Check your email.')
   expect(resendCount).toBe(1)
   await expectNoPasswordControls(page)
   await expectAuthAxe(page)

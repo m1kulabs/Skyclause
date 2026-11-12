@@ -1,218 +1,30 @@
-.page {
-  position: relative;
-  left: 50%;
-  width: 100vw;
-  transform: translateX(-50%);
-  min-height: 100vh;
-  padding: 48px 20px 72px;
-  color: var(--landing-foreground);
-  background: var(--landing-background);
-}
-
-.column {
-  width: min(100%, 520px);
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-}
-
-.project {
-  margin: 0;
-  color: var(--landing-muted-foreground);
-  font-size: 13px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.page h1 {
-  margin: 6px 0 0;
-  font-size: clamp(30px, 8vw, 42px);
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-}
-
-.intro {
-  margin: 0;
-  color: var(--landing-muted-foreground);
-  line-height: 1.6;
-}
-
+/*
+ * The data page: what is held about one subscriber, in the shared tables (components/ui/table.tsx), which separate rows
+ * by tone and turn each row into a two-line item on a phone, so nothing scrolls sideways.
+ */
 .section {
-  border-top: 1px solid #303030;
-  padding-top: 20px;
+  display: grid;
+  gap: 16px;
   min-width: 0;
-}
-
-.section h2,
-.result h2 {
-  margin: 0 0 12px;
-  font-size: 17px;
-  font-weight: 500;
-}
-
-.tableWrap {
-  width: 100%;
-  overflow-x: auto;
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.table caption {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-.table th,
-.table td {
-  padding: 10px 8px 10px 0;
-  border-bottom: 1px solid #303030;
-  vertical-align: top;
-  overflow-wrap: anywhere;
-}
-
-.table th {
-  color: var(--landing-muted-foreground);
-  font-weight: 500;
-}
-
-.summary th {
-  width: 36%;
+  margin-top: 16px;
 }
 
 .form {
-  display: grid;
-  gap: 14px;
-  margin-top: 22px;
-}
-
-.field {
-  display: grid;
-  gap: 6px;
-  font-size: 13px;
-}
-
-.field input {
-  min-height: 42px;
-  width: 100%;
-  padding: 9px 11px;
-  border: 1px solid #595959;
-  border-radius: 4px;
-  color: var(--landing-field-foreground);
-  background: var(--landing-field);
-  font: inherit;
-}
-
-.field input:focus-visible,
-.button:focus-visible,
-.download:focus-visible {
-  outline: 2px solid var(--selection);
-  outline-offset: 3px;
+  max-width: 520px;
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 18px;
+  gap: 12px;
 }
 
-.button,
-.download {
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 15px;
-  border: 1px solid var(--landing-foreground);
-  border-radius: 3px;
-  color: var(--landing-background);
-  background: var(--landing-foreground);
-  font: inherit;
-  font-weight: 500;
-  text-decoration: none;
-  cursor: pointer;
-  overflow-wrap: anywhere;
+.actions > * {
+  min-width: 0;
+  white-space: normal;
 }
 
-.button:disabled {
-  opacity: 0.7;
-  cursor: wait;
-}
-
-.download {
-  color: var(--landing-foreground);
-  background: transparent;
-}
-
-.danger {
-  color: #fff;
-  background: #8f1223;
-  border-color: #f0566c;
-}
-
-.confirmBox {
-  margin-top: 18px;
-  padding: 16px;
-  border: 1px solid #8f1223;
-  background: #190d10;
-}
-
-.confirmBox p,
-.status,
-.error,
-.footnote {
-  line-height: 1.6;
-}
-
-.confirmBox p {
-  margin: 0;
-}
-
-.status {
-  margin: 14px 0 0;
-  color: #c9e7ce;
-}
-
-.error {
-  margin: 14px 0 0;
-  color: #ff9aa7;
-}
-
-.result {
-  padding: 24px 0;
-  border-top: 1px solid #303030;
-}
-
-.result h2:focus {
-  outline: none;
-}
-
-.footnote {
-  margin: 10px 0 0;
-  color: var(--landing-muted-foreground);
-  font-size: 12px;
-}
-
-@media (max-width: 520px) {
-  .page {
-    padding: 32px 16px 56px;
-  }
-
+@media (max-width: 720px) {
   .actions > * {
     flex: 1 1 100%;
   }

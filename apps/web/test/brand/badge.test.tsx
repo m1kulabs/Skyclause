@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, test } from 'vitest'
 import { ModeBadge } from '../../features/brand/mode-badge'
+import { StatusMark } from '../../features/brand/status-mark'
 import * as glyphs from '../../features/brand/glyphs'
 
 test('ModeBadge replaces its placeholder with a hidden glyph and sentence-case word', () => {
@@ -9,7 +10,18 @@ test('ModeBadge replaces its placeholder with a hidden glyph and sentence-case w
   expect(html).toContain('aria-hidden="true"')
   expect(html).toContain('Commute disruption')
   expect(html).toContain('data-status="critical"')
+  expect(html).toContain('data-tone="commute-disruption"')
   expect(html).not.toContain('tabindex')
+})
+
+test('StatusMark prints any state as its glyph and word, in its tone or inline', () => {
+  const capsule = renderToStaticMarkup(<StatusMark state="stale" />)
+  expect(capsule).toContain('Stale input')
+  expect(capsule).toContain('data-tone="watch"')
+  expect(capsule).toContain('aria-hidden="true"')
+  const plain = renderToStaticMarkup(<StatusMark state="error" variant="plain" locale="ms" />)
+  expect(plain).toContain('Ralat input')
+  expect(plain).not.toContain('data-tone')
 })
 
 test('an explicit pack disambiguates badges with a translated complete phrase and protected brand', () => {

@@ -6,7 +6,7 @@ function Empty({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot="empty"
       className={cn(
-        'flex w-full min-w-0 flex-1 flex-col items-center justify-center gap-4 rounded-xl border-dashed p-6 text-center text-balance',
+        'flex w-full min-w-0 flex-1 flex-col items-center justify-center gap-4 rounded-xl border-dashed border-muted-foreground p-6 text-center text-balance',
         className
       )}
       {...props}
@@ -26,7 +26,7 @@ const emptyMediaVariants = cva(
     variants: {
       variant: {
         default: 'bg-transparent',
-        icon: "flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground [&_svg:not([class*='size-'])]:size-4"
+        icon: "flex size-9 shrink-0 items-center justify-center rounded-full bg-raised text-foreground [&_svg:not([class*='size-'])]:size-4"
       }
     },
     defaultVariants: {
@@ -54,7 +54,7 @@ function EmptyTitle({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="empty-title"
-      className={cn('font-heading text-[13px] font-medium tracking-tight', className)}
+      className={cn('font-heading text-[16px] leading-6 font-medium', className)}
       {...props}
     />
   )
@@ -65,7 +65,7 @@ function EmptyDescription({ className, ...props }: React.ComponentProps<'p'>) {
     <div
       data-slot="empty-description"
       className={cn(
-        'text-[13px]/relaxed text-muted-foreground [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary',
+        'text-[14px] leading-5 text-muted-foreground [&>a]:text-foreground [&>a]:underline [&>a]:underline-offset-3',
         className
       )}
       {...props}
@@ -77,7 +77,7 @@ function EmptyContent({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="empty-content"
-      className={cn('flex w-full max-w-sm min-w-0 flex-col items-center gap-2.5 text-[13px] text-balance', className)}
+      className={cn('flex w-full max-w-sm min-w-0 flex-col items-center gap-3 text-[14px] text-balance', className)}
       {...props}
     />
   )

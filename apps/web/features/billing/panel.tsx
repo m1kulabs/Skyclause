@@ -1,6 +1,8 @@
 import { t } from '@skyclause/i18n'
+import { formatNumber } from '@skyclause/i18n/format'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
+import { SettingsParts } from '../settings/parts'
 import '../settings/catalogue'
-import styles from './panel.module.css'
 
 export interface BillingOrganisation {
   id: string
@@ -17,60 +19,59 @@ export default function BillingPanel({
 }) {
   const plan = organization?.plan ?? ''
   const plans = [
-    { key: 'commons', price: 'commonsPrice', availability: 'now' },
-    { key: 'community', price: 'communityPrice', availability: 'now' },
-    { key: 'team', price: 'teamPrice', availability: 'fromP2' },
-    { key: 'campus', price: 'campusPrice', availability: 'afterGa' }
+    { key: 'commons', price: 'commonsPrice', amount: null, availability: 'now' },
+    { key: 'community', price: 'communityPrice', amount: null, availability: 'now' },
+    { key: 'team', price: 'teamPrice', amount: 49, availability: 'fromP2' },
+    { key: 'campus', price: 'campusPrice', amount: 900, availability: 'afterGa' }
   ] as const
 
-  const cell = (key: string): string => t(`settings.billing.${key}`, {}, locale)
+  const cell = (key: string, vars: Record<string, string | number> = {}): string =>
+    t(`settings.billing.${key}`, vars, locale)
+  // The prices are Malaysian ringgit in the reader's own format, not text typed into the catalogue.
+  const ringgit = (amount: number) =>
+    formatNumber(amount, locale, { style: 'currency', currency: 'MYR', maximumFractionDigits: 0 })
 
   return (
-    <div className="grid gap-6">
-      <section aria-labelledby="billing-plan-title" className="grid gap-2">
-        <h2 id="billing-plan-title" className="text-base font-semibold">
+    <SettingsParts className="gap-6">
+      <section aria-labelledby="billing-plan-title" className="grid gap-1">
+        <h3 id="billing-plan-title" className="type-small font-normal text-muted-foreground">
           {cell('currentPlan')}
-        </h2>
+        </h3>
         {plan ? (
-          <p data-current-plan={plan} className="capitalize">
+          <p data-current-plan={plan} className="type-section">
             {cell(plan)}
           </p>
         ) : (
-          <p>{cell('unknownPlan')}</p>
+          <p className="type-text">{cell('unknownPlan')}</p>
         )}
-        <p className="text-sm text-muted-foreground">{cell('betaNotice')}</p>
+        <p className="type-body text-muted-foreground">{cell('betaNotice')}</p>
       </section>
 
-      <table aria-label={cell('tableLabel')} className={styles.table}>
-        <thead>
-          <tr className="border-b border-border">
-            <th scope="col" className="py-3 pr-4 font-medium">
-              {cell('planColumn')}
-            </th>
-            <th scope="col" className="py-3 pr-4 font-medium">
-              {cell('priceColumn')}
-            </th>
-            <th scope="col" className="py-3 font-medium">
-              {cell('availabilityColumn')}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {plans.map(({ key, price, availability }) => (
-            <tr key={key} className="border-b border-border/70 align-top last:border-b-0">
-              <th scope="row" className="py-3 pr-4 font-medium">
+      <Table aria-label={cell('tableLabel')}>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{cell('planColumn')}</TableHead>
+            <TableHead>{cell('priceColumn')}</TableHead>
+            <TableHead>{cell('availabilityColumn')}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {plans.map(({ key, price, amount, availability }) => (
+            <TableRow key={key} selected={key === plan}>
+              <TableCell className="font-medium">
                 {cell(key)}
-              </th>
-              <td className="py-3 pr-4" data-label={cell('priceColumn')}>
-                <p data-price>{cell(price)}</p>
-              </td>
-              <td className="py-3" data-label={cell('availabilityColumn')}>
+                {key === plan ? <span className="type-small block font-normal">{cell('yourPlan')}</span> : null}
+              </TableCell>
+              <TableCell className="whitespace-normal" phone="meta" label={cell('priceColumn')}>
+                <p data-price>{cell(price, amount === null ? {} : { price: ringgit(amount) })}</p>
+              </TableCell>
+              <TableCell phone="meta" label={cell('availabilityColumn')}>
                 {cell(availability)}
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+      </Table>
+    </SettingsParts>
   )
 }

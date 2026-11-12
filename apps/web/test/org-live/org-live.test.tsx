@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { ApprovalsCount, OrgLive } from '../../features/org-live'
-import { t } from '../../features/shell/i18n'
+import { OrgLive } from '../../features/org-live'
+import { ReviewLink } from '../../features/shell/review'
 import * as announceModule from '../../lib/announce'
 import { Announcer } from '../../lib/announce'
 
@@ -184,24 +184,25 @@ function setupFetch(slaDueAt = new Date(Date.now() + 8 * 60_000).toISOString()) 
   return { streams, streamHeaders, fetchMock, dueAt }
 }
 
-function mountLive(org = 'test-org') {
-  return render(
+function live(org: string) {
+  return (
     <>
       <OrgLive org={org} />
-      <a href={`/${org}/approvals`} aria-label={t('app-shell.approvals')}>
-        <span>{t('app-shell.approvals')}</span>
-        <ApprovalsCount />
-      </a>
+      <ReviewLink org={org} />
       <Announcer />
     </>
   )
+}
+
+function mountLive(org = 'test-org') {
+  return render(live(org))
 }
 
 beforeEach(() => {
   navigation.pathname = '/test-org'
   navigation.router.refresh.mockReset()
   document.head.innerHTML =
-    '<title>Approvals · Skyclause</title><link rel="icon" type="image/svg+xml" href="/icon.svg">'
+    '<title>Dashboard · Skyclause</title><link rel="icon" type="image/svg+xml" href="/icon.svg">'
 })
 
 afterEach(() => {
@@ -210,13 +211,19 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-test('recounts snapshots, dedupes repeated event IDs, and clears the final approval badge', async () => {
+test('recounts snapshots, dedupes repeated event IDs, and clears the final waiting count', async () => {
   const { streams, streamHeaders, dueAt } = setupFetch()
   const announcement = vi.spyOn(announceModule, 'announce')
   mountLive()
   await waitFor(() => expect(streams).toHaveLength(1))
+  expect(screen.getByRole('link', { name: 'Review' }).getAttribute('href')).toBe('/test-org#dashboard-needs-review')
+  expect(screen.getByRole('link', { name: 'Review' }).dataset.waiting).toBe('unknown')
 
   await act(async () => send(streams[0]!, 'snapshot', { needs_review: [], sources: [] }))
+  // A known zero prints nothing: never "0".
+  expect(screen.getByRole('link', { name: 'Review' }).dataset.waiting).toBe('0')
+  expect(screen.getByRole('link', { name: 'Review' }).textContent).toBe('Review')
+  expect(document.querySelector('[data-count]')).toBeNull()
   const event = domainEvent('019a45b0-0000-7000-8000-000000000021', 'bundle.needs_review', {
     bundle_id: ids.bundle,
     pack: 'sky',
@@ -226,18 +233,14 @@ test('recounts snapshots, dedupes repeated event IDs, and clears the final appro
   })
   await act(async () => send(streams[0]!, 'bundle.needs_review', event))
 
-  await waitFor(() =>
-    expect(screen.getByRole('link', { name: 'Approvals, 1 need review' }).getAttribute('aria-label')).toBe(
-      'Approvals, 1 need review'
-    )
-  )
+  await waitFor(() => expect(screen.getByRole('link', { name: 'Review, 1 waiting' })).toBeTruthy())
   expect(document.querySelector('[data-count="1"]')).not.toBeNull()
   await waitFor(() =>
     expect(document.getElementById('skyclause-announcer')?.textContent).toContain(
       'New bundle needs review: Commute disruption, Test project, 8 min SLA'
     )
   )
-  expect(document.title).toBe('(1) Approvals · Skyclause')
+  expect(document.title).toBe('(1) Dashboard · Skyclause')
   expect(document.querySelector<HTMLLinkElement>('link[rel="icon"]')?.getAttribute('href')).toBe('/brand/tab-1.svg')
   expect(announcement).toHaveBeenCalledTimes(1)
   await waitFor(() => expect(navigation.router.refresh).toHaveBeenCalledTimes(1), { timeout: 2_000 })
@@ -254,9 +257,7 @@ test('recounts snapshots, dedupes repeated event IDs, and clears the final appro
     })
   )
 
-  expect(screen.getByRole('link', { name: 'Approvals, 1 need review' }).getAttribute('aria-label')).toBe(
-    'Approvals, 1 need review'
-  )
+  expect(screen.getByRole('link', { name: 'Review, 1 waiting' })).toBeTruthy()
   expect(document.getElementById('skyclause-announcer')?.textContent).toContain(
     'New bundle needs review: Commute disruption, Test project, 8 min SLA'
   )
@@ -264,8 +265,8 @@ test('recounts snapshots, dedupes repeated event IDs, and clears the final appro
   expect(streamHeaders.every((headers) => headers.get('Skyclause-Organization') === 'test-org')).toBe(true)
   expect(streamHeaders.every((headers) => !headers.has('Last-Event-ID'))).toBe(true)
 
-  document.title = 'Approvals queue · Skyclause'
-  await waitFor(() => expect(document.title).toBe('(1) Approvals queue · Skyclause'))
+  document.title = 'Windows · Skyclause'
+  await waitFor(() => expect(document.title).toBe('(1) Windows · Skyclause'))
 
   await act(async () =>
     send(
@@ -282,11 +283,9 @@ test('recounts snapshots, dedupes repeated event IDs, and clears the final appro
       })
     )
   )
-  await waitFor(() =>
-    expect(screen.getByRole('link', { name: 'Approvals' }).getAttribute('aria-label')).toBe('Approvals')
-  )
+  await waitFor(() => expect(screen.getByRole('link', { name: 'Review' }).hasAttribute('aria-label')).toBe(false))
   expect(document.querySelector('[data-count]')).toBeNull()
-  expect(document.title).toBe('Approvals queue · Skyclause')
+  expect(document.title).toBe('Windows · Skyclause')
   expect(document.querySelector<HTMLLinkElement>('link[rel="icon"]')?.getAttribute('href')).toBe('/icon.svg')
 })
 
@@ -358,10 +357,9 @@ test('shows raw counts accessibly and caps the favicon mark at 9+', async () => 
     })
   )
 
-  const count = screen.getByRole('link', { name: 'Approvals, 12 need review' })
-  expect(count.getAttribute('aria-label')).toBe('Approvals, 12 need review')
-  expect(document.querySelector('[data-count="9+"]')).not.toBeNull()
-  expect(document.title).toBe('(12) Approvals · Skyclause')
+  expect(screen.getByRole('link', { name: 'Review, 12 waiting' })).toBeTruthy()
+  expect(document.querySelector('[data-count="12"]')).not.toBeNull()
+  expect(document.title).toBe('(12) Dashboard · Skyclause')
   expect(document.querySelector<HTMLLinkElement>('link[rel="icon"]')?.getAttribute('href')).toBe('/brand/tab-9+.svg')
 })
 
@@ -377,7 +375,7 @@ test('keeps the title count when the browser rejects a favicon swap', async () =
 
   await act(async () => send(streams[0]!, 'snapshot', { needs_review: [ids.bundle], sources: [] }))
 
-  await waitFor(() => expect(document.title).toBe('(1) Approvals · Skyclause'))
+  await waitFor(() => expect(document.title).toBe('(1) Dashboard · Skyclause'))
   expect(document.querySelector<HTMLLinkElement>('link[rel="icon"]')?.getAttribute('href')).toBe('/icon.svg')
 })
 
@@ -387,28 +385,15 @@ test('switching organisations clears the previous count and opens a fresh stream
   const mounted = mountLive('org-a')
   await waitFor(() => expect(streams).toHaveLength(1))
   await act(async () => send(streams[0]!, 'snapshot', { needs_review: [ids.bundle], sources: [] }))
-  await waitFor(() =>
-    expect(screen.getByRole('link', { name: 'Approvals, 1 need review' }).getAttribute('aria-label')).toBe(
-      'Approvals, 1 need review'
-    )
-  )
+  await waitFor(() => expect(screen.getByRole('link', { name: 'Review, 1 waiting' })).toBeTruthy())
 
   navigation.pathname = '/org-b'
-  const nextOrg = 'org-b'
-  mounted.rerender(
-    <>
-      <OrgLive org={nextOrg} />
-      <a href={`/${nextOrg}/approvals`} aria-label={t('app-shell.approvals')}>
-        <span>{t('app-shell.approvals')}</span>
-        <ApprovalsCount />
-      </a>
-      <Announcer />
-    </>
-  )
+  mounted.rerender(live('org-b'))
 
   await waitFor(() => expect(streams).toHaveLength(2))
-  expect(screen.getByRole('link', { name: 'Approvals' }).getAttribute('aria-label')).toBe('Approvals')
-  expect(document.title).toBe('Approvals · Skyclause')
+  expect(screen.getByRole('link', { name: 'Review' }).getAttribute('href')).toBe('/org-b#dashboard-needs-review')
+  expect(document.querySelector('[data-count]')).toBeNull()
+  expect(document.title).toBe('Dashboard · Skyclause')
   expect(document.querySelector<HTMLLinkElement>('link[rel="icon"]')?.getAttribute('href')).toBe('/icon.svg')
   await act(async () => send(streams[1]!, 'snapshot', { needs_review: [], sources: [] }))
   expect(streamHeaders.map((headers) => headers.get('Skyclause-Organization'))).toEqual(['org-a', 'org-b'])
@@ -437,4 +422,41 @@ test('debounces refreshes on the approvals queue', async () => {
     }
   })
   await waitFor(() => expect(navigation.router.refresh).toHaveBeenCalledTimes(1), { timeout: 2_000 })
+})
+
+test('prints no count before the first snapshot, and drops it when the stream fails', async () => {
+  const { streams, dueAt } = setupFetch()
+  const announcement = vi.spyOn(announceModule, 'announce')
+  mountLive()
+  await waitFor(() => expect(streams).toHaveLength(1))
+
+  // An event seen since page load is not the waiting count: only a snapshot says how many bundles wait.
+  await act(async () =>
+    send(
+      streams[0]!,
+      'bundle.needs_review',
+      domainEvent('019a45b0-0000-7000-8000-000000000061', 'bundle.needs_review', {
+        bundle_id: ids.bundle,
+        pack: 'sky',
+        state: 'needs_review',
+        call_ids: [ids.first],
+        sla_due_at: dueAt
+      })
+    )
+  )
+  await waitFor(() => expect(announcement).toHaveBeenCalledTimes(1))
+  expect(screen.getByRole('link', { name: 'Review' }).hasAttribute('aria-label')).toBe(false)
+  expect(document.querySelector('[data-count]')).toBeNull()
+  expect(document.title).toBe('Dashboard · Skyclause')
+
+  await act(async () => send(streams[0]!, 'snapshot', { needs_review: [ids.bundle], sources: [] }))
+  await waitFor(() => expect(screen.getByRole('link', { name: 'Review, 1 waiting' })).toBeTruthy())
+  expect(document.title).toBe('(1) Dashboard · Skyclause')
+
+  await act(async () => streams[0]!.controller.error(new Error('stream dropped')))
+  await waitFor(() => expect(screen.getByRole('link', { name: 'Review' }).hasAttribute('aria-label')).toBe(false))
+  expect(screen.getByRole('link', { name: 'Review' }).dataset.waiting).toBe('unknown')
+  expect(document.querySelector('[data-count]')).toBeNull()
+  expect(document.title).toBe('Dashboard · Skyclause')
+  expect(document.querySelector<HTMLLinkElement>('link[rel="icon"]')?.getAttribute('href')).toBe('/icon.svg')
 })

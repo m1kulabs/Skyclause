@@ -7,6 +7,7 @@ import { prefersMalay } from '../../../../lib/preferred-language'
 import { oauthConsentRedirect } from '../../../../features/oauth/guard'
 import '../../../../features/oauth/catalogue'
 import { OAuthConsentForm } from '../../../../features/oauth/consent-form'
+import { AuthHeader, AuthMessage } from '../../../../features/public-chrome/auth'
 
 export default async function OAuthConsentPage({
   searchParams
@@ -34,20 +35,17 @@ export default async function OAuthConsentPage({
   const locale = prefersMalay(requestHeaders.get('accept-language')) ? 'ms' : 'en'
   const hasChoices = details.link || details.organisations.length > 0
   return (
-    <main className="grid gap-6 py-8" aria-labelledby="oauth-consent-title">
-      <header className="grid gap-2">
-        <p className="text-sm text-muted-foreground">{t('oauth.consent.brand', {}, locale)}</p>
-        <h1 id="oauth-consent-title" className="text-2xl font-semibold text-balance">
-          {t('oauth.consent.title', { client: details.clientName }, locale)}
-        </h1>
-        <p className="text-sm leading-6 text-muted-foreground">{t('oauth.consent.intro', {}, locale)}</p>
-      </header>
+    <main className="auth-page" lang={locale} aria-labelledby="oauth-consent-title">
+      <AuthHeader
+        title={t('oauth.consent.title', { client: details.clientName }, locale)}
+        titleId="oauth-consent-title"
+        lead={t('oauth.consent.intro', {}, locale)}
+        locale={locale}
+      />
       {hasChoices ? (
         <OAuthConsentForm details={details} oauthQuery={oauthQuery} locale={locale} />
       ) : (
-        <p role="alert" className="rounded-md border border-border bg-card p-4 text-sm leading-6">
-          {t('oauth.consent.noOrganisations', {}, locale)}
-        </p>
+        <AuthMessage>{t('oauth.consent.noOrganisations', {}, locale)}</AuthMessage>
       )}
     </main>
   )

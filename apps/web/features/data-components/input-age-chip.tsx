@@ -2,10 +2,12 @@
 
 import { useEffect, useReducer } from 'react'
 import type { InputValue } from '@skyclause/contracts'
-import { formatAge, formatDate, formatTime } from '@skyclause/i18n/format'
+import { formatAge, formatDate, formatNumber, formatTime } from '@skyclause/i18n/format'
 import { Glyph } from '../brand/glyph'
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '#ui/hover-card'
+import { Popover, PopoverContent, PopoverTrigger } from '#ui/popover'
 import { t } from './catalogue'
+import { indicatorName } from './indicator-names'
+import { useMounted } from './use-mounted'
 
 export interface InputAgeChipProps {
   input: InputValue
@@ -57,45 +59,60 @@ export function InputAgeChip({
   locale = 'en'
 }: InputAgeChipProps) {
   useMinuteTick()
+  const mounted = useMounted()
 
   const observed = input.observed_at ?? input.since
   const isError = input.state === 'error'
   const isStale = input.state === 'stale'
+  // Server and first client render both read the API's own age, so the label cannot differ at hydration; once live the
+  // age follows the clock, a minute at a time.
+  const snapshotAge = ageSeconds ?? (mounted ? null : input.age_s)
+  const name = indicatorName(input.name, locale)
 
   let label: string
   if (isError) {
-    const since = input.since
-      ? formatTime(input.since, locale)
-      : formatTime(observed ?? new Date().toISOString(), locale)
-    label = t('data.age.error', { name: input.name, time: since }, locale)
+    const errorTime = input.since ?? observed
+    label = t('data.age.error', { name, time: errorTime ? formatTime(errorTime, locale) : '–' }, locale)
   } else if (dailyDate) {
     label = t('data.age.daily', { date: formatDate(dailyDate, locale) }, locale)
-  } else if (observed) {
-    const age = formatAge(ageSeconds === null ? observed : Date.now() - ageSeconds * 1000, locale)
+  } else if (snapshotAge !== null && snapshotAge !== undefined) {
+    const age = formatAge(new Date(Date.now() - snapshotAge * 1000), locale)
     label = isStale
-      ? t('data.age.label_stale', { name: input.name, age, stale: t('data.age.stale', {}, locale) }, locale)
-      : t('data.age.label', { name: input.name, age }, locale)
+      ? t('data.age.label_stale', { name, age, stale: t('data.age.stale', {}, locale) }, locale)
+      : t('data.age.label', { name, age }, locale)
+  } else if (observed) {
+    const age = formatAge(observed, locale)
+    label = isStale
+      ? t('data.age.label_stale', { name, age, stale: t('data.age.stale', {}, locale) }, locale)
+      : t('data.age.label', { name, age }, locale)
   } else {
-    const age = formatAge(new Date().toISOString(), locale)
-    label = t('data.age.label', { name: input.name, age }, locale)
+    label = name
   }
 
-  const sourceTime = observed ? formatTime(observed, locale) : formatTime(new Date().toISOString(), locale)
+  const sourceTime = observed ? formatTime(observed, locale) : '–'
   const received = receiptAt ? formatTime(receiptAt, locale) : sourceTime
 
   return (
-    <HoverCard>
-      <HoverCardTrigger
-        className="inline-flex min-h-[34px] min-w-[34px] items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:transition-none [@media(pointer:coarse)]:min-h-[44px] [@media(pointer:coarse)]:min-w-[44px]"
+    // A button, so keyboard and touch open the details as hover does.
+    <Popover>
+      <PopoverTrigger
+        openOnHover
+        delay={250}
+        className="group/age inline-flex min-h-[34px] min-w-[34px] items-center rounded-full text-[13px] font-medium tabular-nums motion-reduce:transition-none [@media(pointer:coarse)]:min-h-[44px] [@media(pointer:coarse)]:min-w-[44px]"
         aria-label={label}
+        data-state={input.state}
       >
-        <span className="inline-flex items-center gap-1">
+        {/* A tag, not a button: the raised tone and no edge (high contrast adds its own through data-slot="badge"). */}
+        <span
+          data-slot="badge"
+          className="inline-flex min-h-6 items-center gap-1.5 rounded-full bg-raised px-2.5 in-data-[slot=card]:bg-overlay group-hover/age:bg-accent"
+        >
           <Glyph state={input.state} />
           <span>{label}</span>
         </span>
-      </HoverCardTrigger>
-      <HoverCardContent className="tabular-nums">
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+      </PopoverTrigger>
+      <PopoverContent className="w-64 gap-0 tabular-nums">
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px] [&_dt]:text-muted-foreground">
           <dt>{t('data.age.source_time', {}, locale)}</dt>
           <dd>
             <time dateTime={observed ?? undefined}>{sourceTime}</time>
@@ -109,15 +126,15 @@ export function InputAgeChip({
             )}
           </dd>
           <dt>{t('data.age.status', {}, locale)}</dt>
-          <dd>{input.state}</dd>
+          <dd>{t(`brand.states.${input.state}`, {}, locale)}</dd>
           <dt>{t('data.age.latency', {}, locale)}</dt>
-          <dd>
+          <dd data-numeric>
             {latencyMs !== null
-              ? t('data.age.latency_value', { value: latencyMs }, locale)
-              : t('data.age.latency_value', { value: 0 }, locale)}
+              ? t('data.age.latency_value', { value: formatNumber(latencyMs, locale) }, locale)
+              : t('data.age.latency_unknown', {}, locale)}
           </dd>
         </dl>
-      </HoverCardContent>
-    </HoverCard>
+      </PopoverContent>
+    </Popover>
   )
 }

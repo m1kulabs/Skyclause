@@ -3,15 +3,15 @@
 import { DEFAULT_PREFERENCES, Preferences, type Preferences as PreferenceValues } from '@skyclause/contracts'
 import { t } from '@skyclause/i18n'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ApiProblem } from '../../lib/api-fetch'
 import { applyAccountPreferences } from './presentation'
 import { accountApi } from './operations'
 import '../settings/catalogue'
 
-export function useAccountPreferences(initial = DEFAULT_PREFERENCES) {
+export function useAccountPreferences(initial = DEFAULT_PREFERENCES, locale: 'en' | 'ms' = 'en') {
   const [preferences, setPreferences] = useState<PreferenceValues>(initial)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
   const current = useRef(initial)
   const inFlight = useRef(false)
 
@@ -32,35 +32,37 @@ export function useAccountPreferences(initial = DEFAULT_PREFERENCES) {
     }
   }, [])
 
-  const save = useCallback(async (update: Partial<PreferenceValues>) => {
-    if (inFlight.current) return
-    inFlight.current = true
-    const previous = current.current
-    const next = Preferences.parse({ ...previous, ...update })
-    current.current = next
-    setPreferences(next)
-    applyAccountPreferences(next)
-    setSaving(true)
-    setError(null)
-    try {
-      const saved = await accountApi('updateMyPreferences', { body: update })
-      current.current = saved
-      setPreferences(saved)
-      applyAccountPreferences(saved)
-    } catch (failure) {
-      current.current = previous
-      setPreferences(previous)
-      applyAccountPreferences(previous)
-      setError(
-        failure instanceof ApiProblem
-          ? (failure.body.detail ?? t('account-settings.appearance.saveFailed'))
-          : t('account-settings.appearance.saveFailed')
-      )
-    } finally {
-      inFlight.current = false
-      setSaving(false)
-    }
-  }, [])
+  const save = useCallback(
+    async (update: Partial<PreferenceValues>) => {
+      if (inFlight.current) return
+      inFlight.current = true
+      const previous = current.current
+      const next = Preferences.parse({ ...previous, ...update })
+      current.current = next
+      setPreferences(next)
+      applyAccountPreferences(next)
+      setSaving(true)
+      setError(null)
+      setSaved(false)
+      try {
+        const stored = await accountApi('updateMyPreferences', { body: update })
+        current.current = stored
+        setPreferences(stored)
+        applyAccountPreferences(stored)
+        setSaved(true)
+      } catch {
+        current.current = previous
+        setPreferences(previous)
+        applyAccountPreferences(previous)
+        // The server's own detail is English and says nothing the person can act on: the panel's sentence is shown.
+        setError(t('account-settings.appearance.saveFailed', {}, locale))
+      } finally {
+        inFlight.current = false
+        setSaving(false)
+      }
+    },
+    [locale]
+  )
 
-  return { preferences, save, saving, error }
+  return { preferences, save, saving, saved, error }
 }

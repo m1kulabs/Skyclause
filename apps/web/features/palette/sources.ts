@@ -21,6 +21,9 @@ export interface PaletteProject {
 
 export interface PaletteContext {
   pathname: string
+  /** The route's organisation and project, from the URL's parameters (not the path's first segments). */
+  org?: string
+  project?: string
   memberships: readonly PaletteMembership[]
   projects: readonly PaletteProject[]
   query: string
@@ -31,6 +34,9 @@ export interface PaletteContext {
   navigate: (href: string) => void
 }
 
+/** How the palette groups an item: the place it goes or the kind of thing it does. */
+export type PaletteKind = 'actions' | 'pages' | 'places' | 'appearance' | 'results'
+
 export interface PaletteItem {
   id: string
   /** A translated label supplied by the source. */
@@ -38,6 +44,10 @@ export interface PaletteItem {
   keywords?: string[]
   translateNo?: boolean
   keepOpen?: boolean
+  /** The group it shows in. */
+  kind: PaletteKind
+  /** Offered under Suggestions while the search is empty. */
+  suggested?: boolean
   onSelect: () => void
 }
 
@@ -51,8 +61,9 @@ export interface PaletteSource {
 }
 
 import { dashboardPaletteSource } from '../dashboard/palette-source'
+import { navigationPaletteSource } from './navigation-source'
 
-export const paletteSources: readonly PaletteSource[] = [dashboardPaletteSource]
+export const paletteSources: readonly PaletteSource[] = [dashboardPaletteSource, navigationPaletteSource]
 
 export function sourcesForRole(sources: readonly PaletteSource[], role: Role | null): PaletteSource[] {
   return sources.filter((source) => source.roles === 'all' || (role !== null && source.roles.includes(role)))

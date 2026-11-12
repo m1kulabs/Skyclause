@@ -5,7 +5,8 @@ import { DeviceAlerts } from './device-alerts'
 import { Inbox } from './inbox'
 import { Devices } from './devices'
 import { Preferences } from './preferences'
-import type { Locale } from './i18n'
+import { SettingsAside } from '../settings/parts'
+import { t, type Locale } from './i18n'
 import styles from './alerts.module.css'
 
 export function NotificationsPanel({ accountId, locale }: { accountId: string; locale: Locale }) {
@@ -17,6 +18,9 @@ export function NotificationsPanel({ accountId, locale }: { accountId: string; l
   }, [])
   return (
     <div className={styles.panel} data-alerts-panel lang={locale}>
+      <SettingsAside>
+        <p>{t('alerts.help', {}, locale)}</p>
+      </SettingsAside>
       <Inbox locale={locale} />
       <DeviceAlerts embedded locale={locale} endpointVersion={version} />
       <Devices

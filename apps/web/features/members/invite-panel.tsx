@@ -1,14 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Alert, AlertDescription } from '#ui/alert'
+import { CircleAlertIcon } from 'lucide-react'
+import { Alert } from '#ui/alert'
 import { Badge } from '#ui/badge'
-import { Button } from '#ui/button'
+import { Button, buttonVariants } from '#ui/button'
+import { AuthHeader, AuthMessage } from '../public-chrome/auth'
 import { errorMessageKey, maskEmail, problemCode } from './model'
 import { inviteApiFetch } from './operations'
 import { t, type Locale } from './i18n'
-import styles from './invite.module.css'
 
 type TokenInfo = {
   kind: 'invitation' | 'ownership_transfer'
@@ -27,8 +28,8 @@ interface InvitePanelProps {
   signedIn: boolean
 }
 
-function organisationName(info: TokenInfo | null): string {
-  return info?.org_name ?? info?.org ?? 'your organisation'
+function organisationName(info: TokenInfo | null, locale: Locale): string {
+  return info?.org_name ?? info?.org ?? t('members.your_organisation', {}, locale)
 }
 
 function roleName(role: string, locale: Locale): string {
@@ -60,6 +61,7 @@ export function InvitePanel({ token, locale, signedIn }: InvitePanelProps) {
   const [accepted, setAccepted] = useState(false)
   const [wrongEmail, setWrongEmail] = useState('')
   const [reload, setReload] = useState(0)
+  const acceptedRef = useRef<HTMLParagraphElement>(null)
   const next = `/invite/${encodeURIComponent(token)}`
   const authQuery = `?next=${encodeURIComponent(next)}`
 
@@ -80,6 +82,11 @@ export function InvitePanel({ token, locale, signedIn }: InvitePanelProps) {
       })
     return () => controller.abort()
   }, [token, reload])
+
+  // The Accept button is gone once the invite is accepted; focus moves to the sentence that says so.
+  useEffect(() => {
+    if (accepted) acceptedRef.current?.focus()
+  }, [accepted])
 
   async function accept() {
     if (!info || info.state !== 'valid') return
@@ -127,87 +134,96 @@ export function InvitePanel({ token, locale, signedIn }: InvitePanelProps) {
   }
 
   let statusText = ''
+  // A withdrawn or used link says what to do next: ask for a new one.
+  const askAgain = (kind: TokenInfo['kind']) =>
+    kind === 'ownership_transfer'
+      ? t('members.transfer_ask_again', {}, locale)
+      : t('members.invite_ask_again', { org: organisationName(info, locale) }, locale)
   if (info?.state === 'withdrawn') {
-    statusText = t(
+    statusText = `${t(
       info.kind === 'ownership_transfer' ? 'members.transfer_withdrawn' : 'members.invite_withdrawn',
       {},
       locale
-    )
+    )} ${askAgain(info.kind)}`
   } else if (info?.state === 'expired') {
     statusText =
       info.kind === 'ownership_transfer'
         ? t('members.transfer_expired', {}, locale)
-        : t('members.invite_expired', { org: organisationName(info) }, locale)
+        : t('members.invite_expired', { org: organisationName(info, locale) }, locale)
   } else if (info?.state === 'used') {
-    statusText = t(info.kind === 'ownership_transfer' ? 'members.transfer_used' : 'members.invite_used', {}, locale)
+    statusText = `${t(
+      info.kind === 'ownership_transfer' ? 'members.transfer_used' : 'members.invite_used',
+      {},
+      locale
+    )} ${askAgain(info.kind)}`
   }
 
   return (
-    <main className={styles.page}>
-      <section className={styles.card} aria-labelledby="invite-heading">
-        <h1 id="invite-heading">{t('members.invite_page_title', {}, locale)}</h1>
+    <main className="auth-page" lang={locale}>
+      <section className="auth-page" aria-labelledby="invite-heading">
+        <AuthHeader title={t('members.invite_page_title', {}, locale)} titleId="invite-heading" locale={locale} />
         {loading && <p role="status">{t('members.invite_loading', {}, locale)}</p>}
         {loadError && (
-          <Alert variant="destructive" role="alert">
-            <AlertDescription className={styles.retryRow}>
-              <span>{t('members.invite_load_failed', {}, locale)}</span>
-              <button className={styles.retry} type="button" onClick={() => setReload((value) => value + 1)}>
+          <Alert variant="destructive" role="alert" className="text-base leading-6">
+            <CircleAlertIcon aria-hidden="true" />
+            <div className="grid justify-items-start gap-3">
+              <p className="m-0">{t('members.invite_load_failed', {}, locale)}</p>
+              <Button variant="outline" onClick={() => setReload((value) => value + 1)}>
                 {t('members.retry', {}, locale)}
-              </button>
-            </AlertDescription>
+              </Button>
+            </div>
           </Alert>
         )}
 
         {!loading && !loadError && info && (
           <>
             {info.state !== 'valid' ? (
-              <p role="status">{statusText}</p>
+              <p role="status" className="m-0">
+                {statusText}
+              </p>
             ) : accepted ? (
               <>
-                <p role="status">
+                <p role="status" className="m-0" tabIndex={-1} ref={acceptedRef}>
                   {t(
                     info.kind === 'ownership_transfer' ? 'members.transfer_accepted' : 'members.invite_accepted',
                     {
-                      org: organisationName(info)
+                      org: organisationName(info, locale)
                     },
                     locale
                   )}
                 </p>
                 {info.org_slug && (
-                  <Button render={<Link href={`/${encodeURIComponent(info.org_slug)}`} />}>
+                  <Link
+                    className={`${buttonVariants({ size: 'lg' })} w-full`}
+                    href={`/${encodeURIComponent(info.org_slug)}`}
+                  >
                     {t('members.continue_to_org', {}, locale)}
-                  </Button>
+                  </Link>
                 )}
               </>
             ) : (
               <>
-                <div className={styles.summary}>
-                  <h2>
+                <div className="auth-tile">
+                  <h2 className="auth-h2">
                     {info.kind === 'ownership_transfer'
-                      ? t('members.transfer_accept_title', { org: organisationName(info) }, locale)
-                      : t('members.invite_for', { org: organisationName(info) }, locale)}
+                      ? t('members.transfer_accept_title', { org: organisationName(info, locale) }, locale)
+                      : t('members.invite_for', { org: organisationName(info, locale) }, locale)}
                   </h2>
                   {info.role && (
-                    <Badge variant="secondary">
-                      {t('members.invite_role_summary', { role: roleName(info.role, locale) }, locale)}
-                    </Badge>
+                    <div>
+                      <Badge variant="secondary">
+                        {t('members.invite_role_summary', { role: roleName(info.role, locale) }, locale)}
+                      </Badge>
+                    </div>
                   )}
                   {!info.role && info.kind === 'invitation' && (
-                    <p>{t('members.invite_details_unavailable', {}, locale)}</p>
+                    <p className="m-0">{t('members.invite_details_unavailable', {}, locale)}</p>
                   )}
                 </div>
-                {wrongEmail && (
-                  <Alert variant="destructive" role="alert">
-                    <AlertDescription>{t('members.wrong_email', { address: wrongEmail }, locale)}</AlertDescription>
-                  </Alert>
-                )}
-                {message && (
-                  <p role="alert" className={styles.problem}>
-                    {message}
-                  </p>
-                )}
+                {wrongEmail && <AuthMessage>{t('members.wrong_email', { address: wrongEmail }, locale)}</AuthMessage>}
+                {message && <AuthMessage>{message}</AuthMessage>}
                 {signedIn ? (
-                  <Button type="button" disabled={busy} onClick={() => void accept()}>
+                  <Button type="button" size="lg" className="w-full" disabled={busy} onClick={() => void accept()}>
                     {busy
                       ? t('members.accepting', {}, locale)
                       : info.kind === 'ownership_transfer'
@@ -215,11 +231,16 @@ export function InvitePanel({ token, locale, signedIn }: InvitePanelProps) {
                         : t('members.invite_accept_generic', {}, locale)}
                   </Button>
                 ) : (
-                  <div className={styles.authActions}>
-                    <Button render={<Link href={`/sign-in${authQuery}`} />}>{t('members.sign_in', {}, locale)}</Button>
-                    <Button variant="outline" render={<Link href={`/sign-up${authQuery}`} />}>
+                  <div className="auth-stack">
+                    <Link className={`${buttonVariants({ size: 'lg' })} w-full`} href={`/sign-in${authQuery}`}>
+                      {t('members.sign_in', {}, locale)}
+                    </Link>
+                    <Link
+                      className={`${buttonVariants({ size: 'lg', variant: 'outline' })} w-full`}
+                      href={`/sign-up${authQuery}`}
+                    >
                       {t('members.create_account', {}, locale)}
-                    </Button>
+                    </Link>
                   </div>
                 )}
               </>

@@ -1,3 +1,5 @@
+import { formatInputDateTime } from '@skyclause/i18n/format'
+
 export const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const
 export type Weekday = (typeof WEEKDAYS)[number]
 export interface WindowDraft {
@@ -17,8 +19,8 @@ export type FieldErrors = Partial<Record<keyof WindowDraft | 'url' | 'file' | 's
 const DAY = 86_400_000
 
 export function localDate(value: string | Date = new Date()): string {
-  // MYT is UTC+08 year-round. This is a date input/URL value; visible dates use the shared formatter.
-  return new Date(new Date(value).getTime() + 8 * 3_600_000).toISOString().slice(0, 10)
+  // A date input/URL value; visible dates use the shared formatter.
+  return formatInputDateTime(value).slice(0, 10)
 }
 
 export function validDate(value: string): boolean {

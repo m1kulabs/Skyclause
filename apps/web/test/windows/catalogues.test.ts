@@ -12,8 +12,9 @@ test('windows English and Malay catalogues have the same keys and interpolation 
   }
 })
 
-test('the empty state matches DESIGN exactly and Malay translates the window form', () => {
-  expect(t('windows.empty')).toBe('0 windows. Declare one, or import an ICS calendar.')
+test('Malay translates the window form and the limits printed under its fields', () => {
+  expect(t('windows.limit_end')).toBe('At most 12 hours after the start.')
+  expect(t('windows.limit_end', {}, 'ms')).toContain('12 jam')
   expect(t('windows.declare', {}, 'ms')).toBe('Isytiharkan jendela masa')
   expect(t('windows.past', {}, 'ms')).toContain('Minta bukti')
 })

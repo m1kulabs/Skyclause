@@ -16,7 +16,7 @@ export interface CallRowProps {
 export function CallRow({ call, dashboard, actions = null, locale = 'en' }: CallRowProps) {
   if (dashboard) {
     return (
-      <tr data-dashboard-call-row={dashboard.window.id} className="block border-b md:table-row">
+      <tr data-dashboard-call-row={dashboard.window.id} className="block border-b border-rule md:table-row">
         <td colSpan={4} className="block p-2 md:table-cell">
           <span className="flex min-h-[34px] flex-wrap items-center gap-2 [@media(pointer:coarse)]:min-h-[44px]">
             {dashboard.verdict.mode ? (
@@ -52,7 +52,7 @@ export function CallRow({ call, dashboard, actions = null, locale = 'en' }: Call
   const firedEmpty = t('data.call.fired_empty', {}, locale)
 
   return (
-    <tr data-call={call.id} className="group block border-b md:table-row">
+    <tr data-call={call.id} className="group block border-b border-rule md:table-row">
       <td className="block p-2 md:table-cell">
         <span className="flex min-h-[34px] flex-wrap items-center gap-2 [@media(pointer:coarse)]:min-h-[44px]">
           <ModeBadge mode={call.mode ?? 'no_call'} locale={locale} />
@@ -61,7 +61,7 @@ export function CallRow({ call, dashboard, actions = null, locale = 'en' }: Call
             {formatTime(call.triggered_at, locale)}
           </time>
         </span>
-        <span className="mt-1 block text-xs text-muted-foreground md:hidden">
+        <span className="mt-1 block text-[13px] text-muted-foreground md:hidden">
           {firedItems.length ? (
             <ul className="space-y-1">
               {firedItems.map((item, index) => (
@@ -73,7 +73,7 @@ export function CallRow({ call, dashboard, actions = null, locale = 'en' }: Call
           )}
         </span>
       </td>
-      <td className="hidden p-2 text-xs text-muted-foreground md:table-cell">
+      <td className="hidden p-2 text-[13px] text-muted-foreground md:table-cell">
         {firedItems.length ? (
           <ul className="space-y-1">
             {firedItems.map((item, index) => (
@@ -84,7 +84,7 @@ export function CallRow({ call, dashboard, actions = null, locale = 'en' }: Call
           firedEmpty
         )}
       </td>
-      <td className="block p-2 text-xs tabular-nums md:table-cell">
+      <td className="block p-2 text-[13px] tabular-nums md:table-cell">
         <span className="inline-flex flex-wrap items-center gap-2">
           <span>{t(`data.call.state_${call.state}`, {}, locale)}</span>
           <time dateTime={call.expires_at}>
@@ -94,7 +94,8 @@ export function CallRow({ call, dashboard, actions = null, locale = 'en' }: Call
       </td>
       <td className="block p-2 md:table-cell">
         <span
-          className="flex min-h-[34px] items-center gap-2 opacity-100 group-focus-within:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 [@media(pointer:coarse)]:min-h-[44px]"
+          role="group"
+          className="flex min-h-[34px] items-center gap-2 opacity-100 group-focus-within:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 [@media(hover:none)]:opacity-100 [@media(pointer:coarse)]:min-h-[44px]"
           aria-label={t('data.call.actions', {}, locale)}
         >
           {actions}

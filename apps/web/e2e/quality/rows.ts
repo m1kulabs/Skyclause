@@ -10,9 +10,22 @@ import { makeProject, makeProjectSource, makeSubscriber } from '@skyclause/db/te
 import { bundleDouble } from '../bundles/doubles'
 import { seedReview } from '../bundles/seed'
 import type { TestOrg } from '../harness/sign-in-as'
+import type { Role } from './roles'
 import type { CrawlRoute } from './routes'
 
 const PROJECT = 'crawl-project'
+/** The project the share-link reviewer's link opens (roles.ts). */
+export const SHARED_PROJECT = 'shared-project'
+/**
+ * Project pages the PRD opens to a share-link holder, in the link's own project (PRD routes, LED-4): the reviewer is
+ * crawled there. On the other project pages it keeps a project its link doesn't open.
+ */
+const SHARED_PAGES = new Set(['/[org]/[project]/ledger', '/[org]/[project]/windows'])
+/** Pages under a project's source: the crawl binds a source to the role's project and visits it there. */
+const SOURCE_PAGES: Record<string, string> = {
+  '/[org]/[project]/camera/[sourceId]': 'camera',
+  '/[org]/[project]/signals/probation/[sourceId]': 'signals/probation'
+}
 /** The token each subscriber page is reached with, as the product's emails link them. */
 const SUBSCRIBER_PAGES: Record<string, SubscriberTokenPurpose> = {
   '/subscribe/[token]/confirm': 'confirm',
@@ -23,7 +36,7 @@ const SUBSCRIBER_PAGES: Record<string, SubscriberTokenPurpose> = {
 }
 const OTHER_PARAMS = new Set([
   '/[org]/[project]/bundles/[id]',
-  '/[org]/[project]/camera/[sourceId]',
+  ...Object.keys(SOURCE_PAGES),
   '/invite/[token]',
   '/subscribe/[token]',
   ...Object.keys(SUBSCRIBER_PAGES)
@@ -35,17 +48,22 @@ export const fillable = (route: CrawlRoute) =>
 
 /**
  * Writes the rows `route`'s page reads and returns the path that reaches them: in `org`, the role's organisation, or
- * in a new one for a token or a role without one. A project page signed out keeps its made-up organisation.
+ * in a new one for a token or a role without one. A project page signed out keeps its made-up organisation; a page a
+ * share link opens is reached in the reviewer's own project.
  */
-export async function crawlPath(route: CrawlRoute, org: TestOrg | null): Promise<string> {
+export async function crawlPath(route: CrawlRoute, org: TestOrg | null, role?: Role): Promise<string> {
   const { path } = route
   if (path === '/[org]/[project]/bundles/[id]') return (await seedReview(org ?? (await makeOrg()), bundleDouble())).path
-  if (path === '/[org]/[project]/camera/[sourceId]') {
+  const sourcePage = SOURCE_PAGES[path]
+  if (sourcePage) {
     const owner = org ?? (await makeOrg())
     const bound = await inOrg(owner.id, async (tx) =>
       makeProjectSource(tx, { projectId: (await makeProject(tx, { slug: PROJECT })).id })
     )
-    return `/${owner.slug}/${PROJECT}/camera/${bound.sourceId}`
+    return `/${owner.slug}/${PROJECT}/${sourcePage}/${bound.sourceId}`
+  }
+  if (org && role === 'share-link reviewer' && SHARED_PAGES.has(path)) {
+    return path.replace('[org]', encodeURIComponent(org.slug)).replace('[project]', SHARED_PROJECT)
   }
   if (path === '/invite/[token]') {
     // createInvitation keeps the token only in its email, so the invitation is written as it writes one.

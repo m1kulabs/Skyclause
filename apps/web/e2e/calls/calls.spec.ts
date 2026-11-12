@@ -20,6 +20,35 @@ test('CAL-16 calls list keeps filters in the URL and shows the empty next action
   await expect(page.getByRole('region', { name: 'Calls' }).getByLabel('Pack')).toHaveValue('crowd')
 })
 
+test('CAL-16 P2-9 filters apply as they change, in one row with native date fields, and stay in the URL', async ({
+  page
+}) => {
+  const reads: URL[] = []
+  page.on('request', (request) => {
+    if (/\/v1\/projects\/[^/]+\/calls/.test(request.url())) reads.push(new URL(request.url()))
+  })
+  await prepareCalls(page, { rows: [callReplay()] })
+  await page.goto(callsPath)
+  const list = page.getByRole('region', { name: 'Calls' })
+  await expect(list.locator('[data-call]')).toHaveCount(1)
+  await expect(list.getByRole('button', { name: /apply/i })).toHaveCount(0)
+  await expect(list.getByLabel('From')).toHaveAttribute('type', 'date')
+  await expect(list.getByLabel('To')).toHaveAttribute('type', 'date')
+  await list.getByLabel('Pack').selectOption('sky')
+  await expect.poll(() => reads.at(-1)?.searchParams.get('pack')).toBe('sky')
+  expect(new URL(page.url()).searchParams.get('pack')).toBe('sky')
+  await list.getByLabel('From').fill('2026-11-02')
+  await expect.poll(() => reads.at(-1)?.searchParams.get('from')).toBe('2026-11-02')
+  expect(new URL(page.url()).searchParams.get('from')).toBe('2026-11-02')
+  // A reversed range says so and reads nothing new.
+  const before = reads.length
+  await list.getByLabel('To').fill('2026-11-01')
+  await expect(list.getByRole('alert')).toContainText('on or before')
+  expect(reads.length).toBe(before)
+  await page.reload()
+  await expect(page.getByRole('region', { name: 'Calls' }).getByLabel('From')).toHaveValue('2026-11-02')
+})
+
 test('CAL-16 list cursor pages render at most 50 call rows at once', async ({ page }) => {
   const rows = Array.from({ length: 50 }, (_, index) =>
     callDouble(`019a45b0-0000-7000-8000-${String(index + 10).padStart(12, '0')}`)
@@ -31,6 +60,30 @@ test('CAL-16 list cursor pages render at most 50 call rows at once', async ({ pa
   await expect(list.locator('[data-call]')).toHaveCount(50)
   await expect(list.getByRole('link', { name: 'Next' })).toBeVisible()
   await expect(list.getByRole('link', { name: 'Next' })).toHaveAttribute('href', /cursor=calls-after-50/)
+})
+
+test('CAL-16 rows measure each call, and mode and state dim the rows that do not match', async ({ page }) => {
+  const sent = callReplay()
+  const expired = callDouble(ids.second, { state: 'expired', mode: 'outdoor_limited', sent_at: null })
+  await prepareCalls(page, { rows: [sent, expired], grades: [gradeDouble(sent)] })
+  await page.goto(`${callsPath}?mode=commute_disruption`)
+
+  const list = page.getByRole('region', { name: 'Calls' })
+  const rows = list.locator('[data-call]')
+  await expect(rows).toHaveCount(2)
+  await expect(list).toContainText('2 calls · 1 match')
+  await expect(rows.nth(0)).not.toHaveAttribute('data-dimmed')
+  await expect(rows.nth(0)).toContainText('Hit')
+  await expect(rows.nth(0)).toContainText('9 min')
+  await expect(rows.nth(1)).toHaveAttribute('data-dimmed', 'true')
+  await expect(rows.nth(1)).toContainText('Outdoor')
+  await list.getByLabel('Mode').selectOption('')
+  await expect(list.locator('[data-dimmed]')).toHaveCount(0)
+  await expect(list).toContainText('2 calls')
+  expect(new URL(page.url()).searchParams.has('mode')).toBe(false)
+  await list.getByLabel('State').selectOption('expired')
+  await expect(rows.nth(0)).toHaveAttribute('data-dimmed', 'true')
+  expect(new URL(page.url()).searchParams.get('state')).toBe('expired')
 })
 
 test('CAL-12 detail renders the strip, trace ages, role, delay, grade, version and copy actions', async ({ page }) => {
@@ -58,20 +111,20 @@ test('CAL-12 detail renders the strip, trace ages, role, delay, grade, version a
 
   const detail = page.getByRole('region', { name: 'Call details' })
   await expect(detail.getByRole('figure')).toBeVisible()
-  const inputRows = detail.locator('div[aria-label="Inputs read at drafting"] [data-slot="trace-line"]')
+  const inputRows = detail.getByRole('table', { name: 'Inputs read at drafting' }).locator('tbody tr')
   await expect(inputRows).toHaveCount(2)
-  await expect(inputRows.nth(0)).toContainText(/gauge.*5 min old/)
-  await expect(inputRows.nth(1)).toContainText(/gauge_5m.*5 min old/)
-  await expect(detail).toContainText('Approver on duty')
+  await expect(inputRows.nth(0)).toContainText(/gauge.*39\smm \/ 60 min.*5\smin/)
+  await expect(inputRows.nth(1)).toContainText(/gauge_5m.*5\smin/)
+  // P2-8: a sentence, not a fragment.
+  await expect(detail).toContainText('Approved by the Approver on duty.')
   await expect(detail).toContainText(
-    /Crossing 15:05 MYT · drafted 15:06 MYT \(1 min\) · approved 15:12 MYT \(6 min\) · sent 15:14 MYT \(2 min\)/
+    /Crossing 15:05 MYT · drafted 15:06 MYT \(1\smin\) · approved 15:12 MYT \(6\smin\) · sent 15:14 MYT \(2\smin\)/
   )
   await expect(detail).toContainText('Hit')
   await expect(detail).toContainText(/commute disruption/i)
-  await expect(detail.getByRole('link', { name: 'Sheet version test-sheet' })).toHaveAttribute(
-    'href',
-    /clauses\?version=test-sheet/
-  )
+  // The clause sheet is named; its page isn't built, so nothing links to it.
+  await expect(detail).toContainText('Sheet version test-sheet')
+  await expect(detail.locator('a[href*="/clauses"]')).toHaveCount(0)
   await expect(detail.getByRole('link', { name: /permalink/i })).toHaveAttribute('href', call.permalink)
   await expect(detail).not.toContainText('private-account-must-not-render')
   const copy = detail.getByRole('button', { name: 'Copy permalink' })

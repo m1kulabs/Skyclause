@@ -136,7 +136,12 @@ async function stubLanding(page: Page, calendarCall: boolean) {
 }
 
 function hero(page: Page) {
-  return page.locator('form[data-ui]')
+  return page.locator('form#window[data-ui]')
+}
+
+/** The day strip in the card's stripe band: the window's capsule on 24 hours, the picker's drag and key target. */
+function band(page: Page) {
+  return page.getByRole('slider', { name: 'Your window on the day' })
 }
 
 test('LND-1 hero renders the live verdict with at least five inputs, ages and sources', async ({
@@ -147,10 +152,10 @@ test('LND-1 hero renders the live verdict with at least five inputs, ages and so
   await page.goto('/')
   const picker = hero(page)
   // The default window is the next hour; moving the start triggers the stubbed evaluate.
-  await picker.getByRole('slider').press('ArrowRight')
+  await band(page).press('ArrowRight')
   await expect(picker.getByText('Clause engine verdict: not reviewed, not sent')).toBeVisible()
   await expect(picker.getByText('5 min old').first()).toBeVisible()
-  // PILOT_PROJECT is unset in this harness, so the hero reads n=0; the /c/{callId} link is covered in unit tests.
+  // PILOT_PROJECT is unset in this harness, so the hero reads n=0; the latest call's date is covered in unit tests.
   await expect(picker.getByText('No approved call yet (n=0)')).toBeVisible()
   const station = picker.locator('li[data-source="https://example.com/gauge"]')
   await expect(station).toContainText('0232901RF')
@@ -169,41 +174,49 @@ test('no-JS GET form returns a new window and renders the server verdict', async
   await expect(form.getByLabel('Window start')).toHaveValue('22:00')
   await expect(form.getByLabel('Window end')).toHaveValue('23:00')
   await expect(form.locator('input[name="date"][value="' + tomorrow + '"]')).toBeChecked()
-  // The server read targets the unreachable API in this harness, so it renders the honest error, never a value.
-  await expect(form.getByText(/Couldn't reach the live verdict at .* MYT/)).toBeVisible()
-  await expect(form.getByRole('button', { name: 'Retry' })).toBeVisible()
+  // The server read targets an API this harness does not stub, so it renders the honest state, never a value: a
+  // failed read offers Retry; a verdict not built yet (501) offers the labelled replay instead, since Retry cannot help.
+  const error = form.getByText(/Couldn’t reach the live verdict at .* MYT|The live verdict is not built yet/)
+  await expect(error).toBeVisible()
+  if (/not built/.test((await error.textContent()) ?? '')) {
+    await expect(form.getByRole('link', { name: 'See 2 November, replayed' })).toHaveAttribute('href', '#how')
+    await expect(form.getByRole('button', { name: 'Retry' })).toHaveCount(0)
+  } else await expect(form.getByRole('button', { name: 'Retry' })).toBeVisible()
+  // LND-3: the latest approved call's line stands in the error state too.
+  await expect(form.getByText(/approved call|approved-call calendar/)).toBeVisible()
   await context.close()
 })
 
-test('one crimson element and no navigation at 1440 and 375', async ({ page }) => {
+test('the band’s capsule takes the verdict’s mode and the readings strip draws the window as its capsule', async ({
+  page
+}) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await stubLanding(page, false)
   await page.goto('/')
-  await hero(page).getByRole('slider').press('ArrowRight')
+  // Before any read answers, the capsule is the selection's ink, with no mode of its own.
+  await expect(page.locator('[role="slider"] [data-state="selection"]')).toHaveCount(1)
+  await band(page).press('ArrowRight')
   await expect(hero(page).getByText('Clause engine verdict: not reviewed, not sent')).toBeVisible()
-  // The sections' footer (#185) carries the page's only nav; nothing navigates above it.
-  expect(await page.locator('nav:not([aria-label="Footer"])').count()).toBe(0)
-  const crimson = await page.evaluate(
-    () =>
-      [...document.querySelectorAll('rect, line, path, circle')].filter((el) => el.getAttribute('stroke') === '#f0566c')
-        .length
-  )
-  expect(crimson).toBe(1)
+  const capsule = page.locator('[role="slider"] [data-state="normal"]')
+  await expect(capsule).toHaveAttribute('data-tone', 'normal')
+  // The shared strip engine draws the window as a capsule with its span band (T1), never a crimson line.
+  await expect(hero(page).locator('svg [data-window]')).toHaveCount(1)
+  await expect(hero(page).locator('svg [data-window-span]')).toHaveCount(1)
+  // The card's one row of links points at sections that exist on the page.
+  for (const link of await page.getByRole('navigation', { name: 'On this page' }).getByRole('link').all()) {
+    const target = (await link.getAttribute('href'))!.slice(1)
+    await expect(page.locator(`#${target}`)).toHaveCount(1)
+  }
   await page.setViewportSize({ width: 375, height: 812 })
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  const crimsonPhone = await page.evaluate(
-    () =>
-      [...document.querySelectorAll('rect, line, path, circle')].filter((el) => el.getAttribute('stroke') === '#f0566c')
-        .length
-  )
-  expect(crimsonPhone).toBe(1)
+  await expect(capsule).toBeVisible()
 })
 
 test('reduced motion leaves nothing animating and gauge errors suppress rain growth', async ({ page }) => {
   await stubLanding(page, false)
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
-  await hero(page).getByRole('slider').press('ArrowRight')
+  await band(page).press('ArrowRight')
   await expect(hero(page).getByText('Clause engine verdict: not reviewed, not sent')).toBeVisible()
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
   expect(await page.evaluate(() => document.getAnimations().filter((a) => a.playState === 'running').length)).toBe(0)
@@ -237,7 +250,7 @@ test('reduced motion leaves nothing animating and gauge errors suppress rain gro
     },
     { registry: landingHeroOperations }
   )
-  await hero(page).getByRole('slider').press('ArrowLeft')
+  await band(page).press('ArrowLeft')
   await expect(
     hero(page).getByText('No call for Storm confirmed: gauge 0232901RF silent since 15:00 MYT')
   ).toBeVisible()
@@ -253,7 +266,7 @@ test('expectAxeClean covers normal, no-call, error and no-JS at both widths', as
   await stubLanding(page, false)
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')
-  await hero(page).getByRole('slider').press('ArrowRight')
+  await band(page).press('ArrowRight')
   await expect(hero(page).getByText('Clause engine verdict: not reviewed, not sent')).toBeVisible()
   expect((await blockingViolations(page)).length).toBe(0)
   await page.setViewportSize({ width: 375, height: 812 })
@@ -272,9 +285,8 @@ test('the picker keyboard path fires the same evaluate request', async ({ page }
   })
   await stubLanding(page, false)
   await page.goto('/')
-  const picker = hero(page)
-  await picker.getByRole('slider').focus()
-  await picker.getByRole('slider').press('ArrowRight')
+  await band(page).focus()
+  await band(page).press('ArrowRight')
   await expect.poll(() => requests.length).toBeGreaterThan(0)
   const body = requests.at(-1) as { date: string; start_time: string; end_time: string }
   expect(body.start_time).toMatch(/^\d{2}:\d{2}$/)

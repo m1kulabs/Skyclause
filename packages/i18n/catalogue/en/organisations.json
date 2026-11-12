@@ -4,11 +4,13 @@
     "description": "Organisations hold projects, sources and approvers. You become its Owner.",
     "name": "Organisation name",
     "nameHint": "Shown in the switcher and on notices.",
+    "nameRequired": "Enter a name for the organisation.",
     "slug": "Slug",
     "slugHint": "Lowercase letters, digits and single hyphens, 2–39 characters.",
     "format": "Use 2–39 lowercase letters, digits and single hyphens, starting and ending with a letter or digit.",
     "reserved": "{slug} is reserved. Choose another slug.",
     "taken": "{slug} is taken. Choose another slug.",
+    "failed": "The organisation was not created. Try again.",
     "submit": "Create organisation",
     "creating": "Creating…",
     "signedOut": "Sign in to create an organisation."
@@ -25,20 +27,24 @@
   },
   "projects": {
     "title": "Projects",
-    "count": "n={count}",
     "empty": "No projects yet (n=0).",
+    "emptyActive": "No active projects. Archived ones are one click away.",
+    "emptyArchived": "No archived projects.",
     "create": "Create a project",
     "askAdmin": "Ask an Admin to create a project",
     "needsReview": "{count} need review",
-    "meta": "{review} · {signal}",
     "signal": "Signal health: {state} · {reporting}{oldest}",
     "inputsReporting": "{count} inputs reporting",
+    "inputsReporting_one": "{count} input reporting",
     "oldestAge": "· oldest {age}",
     "noCall": "No call: {input} since {time}",
     "archived": "Archived",
     "showArchived": "Show archived",
     "hideArchived": "Hide archived",
-    "loadError": "Could not load projects.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "loading": "Loading projects…",
+    "source": "the projects list",
+    "count": "{count} projects",
+    "count_one": "1 project"
   }
 }

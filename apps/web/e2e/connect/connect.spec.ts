@@ -11,7 +11,9 @@ test('connect is in the app shell with the current navigation selected', async (
   await prepare(page)
   await page.goto('/connect')
   await expect(page.getByRole('heading', { level: 1, name: t('title'), exact: true })).toBeVisible()
-  await expect(page.locator('.shell-sidebar a[href="/connect"]')).toHaveAttribute('aria-current', 'page')
+  // Connect your AI lives in the closed organisation and account menu; the menu marks the current page.
+  await page.getByRole('button', { name: 'Organisation and account' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Connect your AI' })).toHaveAttribute('aria-current', 'page')
 })
 
 test('CAI-3 renders exactly the live tools.json set and its scopes', async ({ page }) => {
@@ -19,7 +21,7 @@ test('CAI-3 renders exactly the live tools.json set and its scopes', async ({ pa
   await page.goto('/connect')
   const rows = page.locator('.connect-tools tbody tr')
   await expect(rows).toHaveCount(tools.length)
-  expect(await rows.locator('th').allTextContents()).toEqual(tools.map((tool) => tool.name))
+  expect(await rows.locator('td:first-child').allTextContents()).toEqual(tools.map((tool) => tool.name))
   await expect(rows.first()).toContainText(t('scope_read'))
   await expect(rows.last()).toContainText(t('scope_draft'))
   await expect(page.getByText('ignored_config_tool')).toHaveCount(0)
@@ -33,12 +35,14 @@ test('verification badges use API statuses and stored MYT dates without age math
   await expect(page.locator('.connect-targets a')).toHaveCount(8)
   // This deliberately ancient record is still verified because the server says so; UTC crosses the MYT date.
   await expect(page.locator('.connect-targets a').first()).toContainText('2 January 2020')
-  await expect(page.getByText(t('reverify_due'), { exact: true })).toBeVisible()
-  await expect(page.getByText(t('not_verified'), { exact: true })).toHaveCount(6)
+  // Each of the eight targets in the strip carries its own status; the selected client repeats it under its name.
+  const statuses = page.locator('.connect-verification')
+  await expect(statuses.filter({ hasText: t('reverify_due') })).toHaveCount(1)
+  await expect(statuses.filter({ hasText: t('not_verified') })).toHaveCount(6)
   await stubApi(page, 'listConnectVerifications', { data: [], next_cursor: null }, { registry: connectOperations })
   await page.reload()
   await expect(page.getByText(t('finding', { n: 0 }), { exact: true })).toBeVisible()
-  await expect(page.getByText(t('not_verified'), { exact: true })).toHaveCount(8)
+  await expect(statuses.filter({ hasText: t('not_verified') })).toHaveCount(8)
 })
 
 test('selection survives reload and config copies byte for byte by keyboard', async ({ page }) => {
@@ -152,17 +156,10 @@ test('CAI-4 names the constraint, policy-admin role, cited date and all Enterpri
   await prepare(page)
   await page.goto('/connect?target=gemini_enterprise')
   const setup = page.getByRole('region', { name: t('enterprise') })
-  for (const key of [
-    'preview',
-    'policy_id',
-    'policy_role',
-    'egress',
-    'registration_path',
-    'oauth_fields',
-    'redirect',
-    'enable_tools'
-  ])
+  for (const key of ['preview', 'policy_id', 'policy_role', 'egress', 'oauth_fields', 'redirect', 'enable_tools'])
     await expect(setup).toContainText(t(key))
+  // The registration path is drawn as steps with an icon between them, never as the arrow character.
+  for (const step of t('registration_path').split(' > ')) await expect(setup).toContainText(step)
   await expect(setup).toContainText('6 November 2026')
   await expect(setup.getByRole('link', { name: t('policy_source') })).toHaveAttribute('href', /override-constraint/)
 })
@@ -201,6 +198,8 @@ test('Admin creates the selected organisation client and sees its secret only on
   await create.focus()
   await page.keyboard.press('Enter')
   await expect(page.getByText(secret, { exact: true })).toBeVisible()
+  // The button that made the secret is gone: the panel, named by its once-only warning, holds focus.
+  await expect(page.getByRole('group', { name: t('secret_once'), exact: true })).toBeFocused()
   await page.getByRole('button', { name: t('copy_secret'), exact: true }).focus()
   await page.keyboard.press('Enter')
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(secret)
@@ -208,6 +207,8 @@ test('Admin creates the selected organisation client and sees its secret only on
   await page.keyboard.press('Enter')
   await expect(page.getByText(secret, { exact: true })).toHaveCount(0)
   await expect(page.getByText(t('client_created'), { exact: true })).toBeVisible()
+  // The status line (the paragraph around its words) takes focus once the secret panel is gone.
+  await expect(page.getByRole('status').filter({ hasText: t('client_created') })).toBeFocused()
   await page.reload()
   await expect(page.getByText(secret, { exact: true })).toHaveCount(0)
   expect(writes).toBe(1)
@@ -403,15 +404,16 @@ test('NFR-15 shows no tool, verification date or activity until APIs answer', as
   await expect(page.locator('.connect-tools tbody tr')).toHaveCount(2)
 })
 
-test('API failures and n=0 tools offer recovery without fallback data', async ({ page }) => {
+test('API failures and an empty tool list offer recovery without fallback data', async ({ page }) => {
   await prepare(page)
   await page.route('**/api/connect/*', (route) =>
     route.fulfill({ status: 503, json: { title: 'Unavailable', status: 503 } })
   )
   await page.route('**/mcp/tools.json', (route) => route.fulfill({ status: 503 }))
   await page.goto('/connect')
-  for (const key of ['verification_error', 'config_error', 'tools_error', 'activity_error'])
-    await expect(page.getByText(t(key), { exact: true })).toBeVisible()
+  // The verification records, the client config and the tool list each name their failed read with its answer.
+  await expect(page.locator('[data-connect-page] [data-source-error="503"]')).toHaveCount(3)
+  await expect(page.getByText(t('activity_error'), { exact: true })).toBeVisible()
   await expect(page.locator('[data-connect-page] pre, .connect-tools')).toHaveCount(0)
   await page.route('**/mcp/tools.json', (route) => route.fulfill({ json: { tools: [] } }))
   await page

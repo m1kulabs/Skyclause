@@ -10,7 +10,7 @@ let shared: HostConfig | undefined
 // lib/theme.ts's APPEARANCE_SCRIPT, hashed once as a pinned allowance alongside
 // the per-request nonce. The script is a plain string literal (bundler-stable,
 // never `fn.toString()`), and test/hardening.test.ts recomputes the hash.
-export const APPEARANCE_HASH = 'sha256-HRaBKcF3NonJpCn+ZC9rV9veu2iZQtO2AZS9TOso27M='
+export const APPEARANCE_HASH = 'sha256-MWVrV0mJ6aytZqH6U0Q26g7hLv2PCpYyhsf462cd97s='
 
 const randomNonce = () => {
   const bytes = globalThis.crypto.getRandomValues(new Uint8Array(16))

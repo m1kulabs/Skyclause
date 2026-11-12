@@ -16,7 +16,11 @@ export interface Capture {
   data: CaptureRow[]
 }
 
-const CAPTURE_PATH = join(process.cwd(), 'packages/agent/test/fixtures/rainfall-graph-75-20261105T1312Z.json')
+// From this file, so the tests find it whichever directory Vitest runs from.
+const CAPTURE_PATH = join(
+  import.meta.dirname,
+  '../../../../packages/agent/test/fixtures/rainfall-graph-75-20261105T1312Z.json'
+)
 
 export function loadCapture(): Capture {
   return JSON.parse(readFileSync(CAPTURE_PATH, 'utf8')) as Capture

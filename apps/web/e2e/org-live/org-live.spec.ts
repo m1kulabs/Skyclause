@@ -97,7 +97,7 @@ async function addAppearance(page: Parameters<typeof signInAs>[0], baseURL: stri
   ])
 }
 
-test('approvals counts are axe-clean at 0, 1 and 12 in dark, light and high contrast', async ({
+test('review counts are axe-clean at 0, 1 and 12 in dark, light and high contrast', async ({
   page,
   baseURL,
   expectAxeClean
@@ -119,20 +119,22 @@ test('approvals counts are axe-clean at 0, 1 and 12 in dark, light and high cont
       await addAppearance(page, baseURL!, theme)
       await page.goto(`/${org.slug}/settings/general`)
       await expect(page.locator('.app-shell')).toBeVisible()
-      const sidebar = page.locator('.shell-sidebar')
-      const badge = sidebar.locator('.shell-approvals-count')
+      const bar = page.locator('.shell-bar')
+      const badge = bar.locator('.shell-review-count')
 
       if (count === 0) {
-        await expect(badge).toBeEmpty()
+        // A known zero prints no count: the control is just "Review", never "0".
+        await expect(bar.getByRole('link', { name: 'Review', exact: true })).toHaveAttribute('data-waiting', '0')
+        await expect(badge).toHaveCount(0)
         await expect(page).not.toHaveTitle(/^\(\d+\) /)
         await expect(page.locator('link[rel="icon"][type="image/svg+xml"]')).toHaveAttribute('href', '/icon.svg')
       } else {
-        const accessibleName = `Approvals, ${count} need review`
-        await expect(sidebar.getByRole('link', { name: accessibleName })).toBeVisible()
-        await expect(badge.locator('[data-count]')).toHaveAttribute('data-count', count > 9 ? '9+' : String(count))
+        const accessibleName = `Review, ${count} waiting`
+        await expect(bar.getByRole('link', { name: accessibleName })).toBeVisible()
+        await expect(badge).toHaveAttribute('data-count', String(count))
         await expect
-          .poll(() => badge.locator('[data-count]').evaluate((element) => getComputedStyle(element, '::after').content))
-          .toBe(`"${count > 9 ? '9+' : count}"`)
+          .poll(() => badge.evaluate((element) => getComputedStyle(element, '::after').content))
+          .toBe(`"${count}"`)
         await expect(page).toHaveTitle(new RegExp(`^\\(${count}\\) `))
         await expect(page.locator('link[rel="icon"][type="image/svg+xml"]')).toHaveAttribute(
           'href',
@@ -144,7 +146,7 @@ test('approvals counts are axe-clean at 0, 1 and 12 in dark, light and high cont
   }
 })
 
-test('live events announce once, update the tab without navigation, and clear the final approval', async ({
+test('live events announce once, update the tab without navigation, and clear the final waiting count', async ({
   page,
   baseURL
 }) => {
@@ -292,8 +294,8 @@ test('live events announce once, update the tab without navigation, and clear th
     }).observe(document, { childList: true, characterData: true, subtree: true })
   })
   releaseEvents?.()
-  const sidebar = page.locator('.shell-sidebar')
-  await expect(sidebar.getByRole('link', { name: 'Approvals, 1 need review' })).toBeVisible({ timeout: 10_000 })
+  const bar = page.locator('.shell-bar')
+  await expect(bar.getByRole('link', { name: 'Review, 1 waiting' })).toBeVisible({ timeout: 10_000 })
   await expect(page).toHaveTitle(/^\(1\) /)
   await expect(page.locator('link[rel="icon"][type="image/svg+xml"]')).toHaveAttribute('href', '/brand/tab-1.svg')
   await expect
@@ -314,7 +316,7 @@ test('live events announce once, update the tab without navigation, and clear th
   expect(organizationHeaders.every((header) => header === org.slug)).toBe(true)
   expect(documentRequests).toHaveLength(1)
 
-  await expect(sidebar.locator('.shell-approvals-count')).toBeEmpty({ timeout: 10_000 })
+  await expect(bar.locator('.shell-review-count')).toHaveCount(0, { timeout: 10_000 })
   await expect(page).not.toHaveTitle(/^\(\d+\) /)
   await expect(page.locator('link[rel="icon"][type="image/svg+xml"]')).toHaveAttribute('href', '/icon.svg')
   expect(documentRequests).toHaveLength(1)

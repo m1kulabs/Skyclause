@@ -1,4 +1,6 @@
-.mode-badge {
+/* The text-size capsule (DIRECTION's fourth scale): a mode's tone, its glyph and its word. */
+.mode-badge,
+.status-mark {
   display: inline-flex;
   align-items: center;
   min-height: 24px;
@@ -8,36 +10,30 @@
 }
 .mode-badge-pill {
   display: inline-flex;
+  flex: none;
   align-items: center;
-  gap: 4px;
-  min-height: 20px;
+  gap: 6px;
+  min-height: 22px;
   max-width: 100%;
-  padding: 1px 8px;
-  border: 1px solid transparent;
+  box-sizing: border-box;
+  padding: 1px 10px 1px 7px;
   border-radius: 9999px;
-  font-size: 12px;
+  border: 2px solid transparent;
+  font-size: 13px;
   font-weight: 500;
   line-height: 16px;
+}
+.mode-badge-pill[data-tone] {
+  background: var(--tone);
+  color: var(--tone-ink);
+  border-color: var(--tone-edge);
+  border-style: var(--tone-edge-style);
 }
 .mode-badge-pill > span {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.mode-badge-pill[data-status='neutral'] {
-  color: var(--status-neutral-foreground);
-  background: var(--status-neutral-background);
-}
-.mode-badge-pill[data-status='warning'] {
-  color: var(--status-warning-foreground);
-  background: var(--status-warning-background);
-}
-.mode-badge-pill[data-status='critical'] {
-  color: var(--status-critical-foreground);
-  background: var(--status-critical-background);
-}
-.mode-badge-pill[data-status='no-call'] {
-  color: var(--status-no-call-foreground);
-  background: var(--status-no-call-background);
-  border-color: var(--status-no-call-border);
-  border-style: dashed;
+.status-mark[data-variant='plain'] .mode-badge-pill {
+  padding-inline: 0;
+  gap: 4px;
 }

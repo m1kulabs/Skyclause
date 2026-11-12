@@ -1,10 +1,12 @@
 import { loadEnv } from '@skyclause/config'
+import { serverBaseUrl } from '../landing-hero/evaluate'
 
 // Grades read for the FAQ (#185, #187): GET /v1/public/{org}/{project}/grades for PILOT_PROJECT (§6, D4).
 // Unset or empty reads n=0; a failed read returns an error so the FAQ shows it rather than a fallback.
 export type GradesState =
   | { kind: 'empty'; n: 0 }
   | { kind: 'grades'; n: number; x: number | null; low: number | null; high: number | null; metric: string }
+  | { kind: 'not_built' }
   | { kind: 'error'; message: string }
 
 export function pilotRefFromEnv(env: Record<string, string | undefined>): { org: string; project: string } | null {
@@ -39,18 +41,26 @@ function parseMetrics(
   return out
 }
 
+/** The public grades query for the pilot project, or the Commons project's when PILOT_PROJECT names none. */
+export function gradesPath(ref: { org: string; project: string } | null): string {
+  return ref
+    ? `/v1/public/${encodeURIComponent(ref.org)}/${encodeURIComponent(ref.project)}/grades`
+    : '/v1/public/commons/bukit-jalil/grades'
+}
+
 export async function readGrades(
   fetcher: typeof fetch = fetch,
-  env: Record<string, string | undefined> = process.env
+  env: Record<string, string | undefined> = process.env,
+  signal?: AbortSignal
 ): Promise<GradesState> {
   const ref = pilotRefFromEnv(env)
   if (!ref) return { kind: 'empty', n: 0 }
-  const apiOrigin = env.API_ORIGIN ?? ''
-  const url = apiOrigin
-    ? `${apiOrigin}/v1/public/${encodeURIComponent(ref.org)}/${encodeURIComponent(ref.project)}/grades`
-    : `/v1/public/${encodeURIComponent(ref.org)}/${encodeURIComponent(ref.project)}/grades`
+  // Server reads go to API_ORIGIN, as the hero's do (the production API when it is unset).
+  const url = new URL(gradesPath(ref), env.API_ORIGIN ?? serverBaseUrl()).toString()
   try {
-    const res = await fetcher(url, { cache: 'no-store' })
+    const res = await fetcher(url, { cache: 'no-store', signal })
+    // 501: the public grades are not built yet, which no reload changes.
+    if (res.status === 501) return { kind: 'not_built' }
     if (!res.ok) return { kind: 'error', message: `Grades request failed (${res.status})` }
     const body = (await res.json()) as { data?: unknown }
     const metrics = parseMetrics(body.data)

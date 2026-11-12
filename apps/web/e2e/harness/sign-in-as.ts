@@ -32,14 +32,16 @@ export async function signInAs(page: Page, role: Role, org: TestOrg): Promise<{ 
   return { accountId: account.id, email: account.email }
 }
 
-/** Opens a share link to a new project in `org` on `page`: its `sc_share` cookie carries the link's token (#140). */
+/** Opens a share link to a project in `org` on `page`: its `sc_share` cookie carries the link's token (#140). */
 export async function openShareLink(
   page: Page,
   org: TestOrg,
-  access: 'view' | 'reviewer' = 'reviewer'
+  access: 'view' | 'reviewer' = 'reviewer',
+  /** The project the link opens; a new one if unset. */
+  projectId?: string
 ): Promise<{ linkId: string; projectId: string }> {
   requireDatabase()
-  const link = await makeShareLinkFor({ orgId: org.id, access })
+  const link = await makeShareLinkFor({ orgId: org.id, access, projectId })
   const url = process.env.E2E_BASE_URL ?? `http://localhost:${process.env.E2E_PORT ?? 3100}`
   await page.context().addCookies([{ name: 'sc_share', value: link.token, url, httpOnly: true, sameSite: 'Lax' }])
   return { linkId: link.id, projectId: link.projectId }

@@ -1,8 +1,9 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
+import { metricValue } from '../features/data-components/metrics'
 import {
   analysisState,
   analysisQuery,
-  metricValue,
+  thinned,
   axisTicks,
   type LiveSeries,
   type ReplaySeries
@@ -56,6 +57,15 @@ describe('ANL-5 presentation', () => {
     expect(metricValue({ metric: 'precision', x: 7, n: 8, low: 0.53, high: 0.98 })).toBe(0.875)
     expect(metricValue({ metric: 'approval_p50', x: null, value: 12, n: 8, low: null, high: null })).toBe(12)
   })
+  it('a long replay is drawn at most 400 points, each the highest count of its run, so peaks survive', () => {
+    const points = Array.from({ length: 1000 }, (_, index) => ({ value: index === 517 ? 9 : 1 }))
+    const drawn = thinned(points)
+    expect(drawn.size).toBe(3)
+    expect(drawn.points.length).toBeLessThanOrEqual(400)
+    expect(Math.max(...drawn.points.map((point) => point.value ?? 0))).toBe(9)
+    expect(thinned(points.slice(0, 10))).toEqual({ points: points.slice(0, 10), size: 1 })
+  })
+
   it('one axis has 3–5 round ticks and a top tick above the maximum', () => {
     for (const max of [0, 0.99, 1, 12, 2500, 40000]) {
       const ticks = axisTicks(max)

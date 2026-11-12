@@ -1,4 +1,3 @@
-@import '@fontsource-variable/work-sans';
 @import '@fontsource-variable/jetbrains-mono';
 @import 'tailwindcss' source(none);
 
@@ -7,240 +6,263 @@
 @source '../features';
 
 @custom-variant dark (&:is(.dark *));
-
-:root,
-.dark {
-  --background: #171719;
-  --card: #131217;
-  --popover: #212023;
-  --foreground: #ffffff;
-  --secondary-foreground: #bdbdc0;
-  --muted-foreground: #8a8c92;
-  --primary: #ffffff;
-  --primary-foreground: #131217;
-  --secondary: #212023;
-  --muted: #212023;
-  --accent: #212023;
-  --accent-foreground: #ffffff;
-  --border: #222224;
-  --rule: #1b1a1f;
-  --control: #3a3a3e;
-  --input: #6a6c72;
-  --ring: #ffffff;
-  --selection: #f0566c;
-  --destructive: #f0566c;
-  --sidebar: #171719;
-  --chart-1: #f0566c;
-  --chart-2: #bdbdc0;
-  --chart-3: #8a8c92;
-  --chart-4: #d9a441;
-  --chart-5: #3a3a3e;
-  --grid: #2a292e;
-  --status-neutral-background: #212023;
-  --status-neutral-foreground: #bdbdc0;
-  --status-warning-background: #2a2416;
-  --status-warning-foreground: #d9a441;
-  --status-critical-background: #2c1a20;
-  --status-critical-foreground: #f0566c;
-  --status-no-call-background: transparent;
-  --status-no-call-foreground: #bdbdc0;
-  --status-no-call-border: #6a6c72;
-  --brand-crimson: #b11226;
-  --brand-crimson-foreground: #ffffff;
-  --landing-background: #0a0a0a;
-  --landing-surface: #151515;
-  --landing-foreground: #efefef;
-  --landing-muted-foreground: #8c8c8c;
-  --landing-primary: #b11226;
-  --landing-primary-foreground: #ffffff;
-  --landing-field: #efefef;
-  --landing-field-foreground: #0a0a0a;
-  --landing-field-muted-foreground: #595959;
-  --card-foreground: var(--foreground);
-  --popover-foreground: var(--foreground);
-  --sidebar-foreground: var(--foreground);
-  --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: var(--accent);
-  --sidebar-accent-foreground: var(--accent-foreground);
-  --sidebar-border: var(--border);
-  --sidebar-ring: var(--ring);
-  --shadow-float: 0 12px 28px rgba(0, 0, 0, 0.2);
-  --focus-width: 2px;
-  --selection-width: 1px;
+/*
+ * calm: reduced motion, from the OS (unless the account says full motion) or from the account (html[data-motion]). One
+ * gate for every motion rule: `calm:animate-none` on a class, or `@variant calm { ... }` in CSS.
+ */
+@custom-variant calm {
+  @media (prefers-reduced-motion: reduce) {
+    html:not([data-motion='full']) & {
+      @slot;
+    }
+  }
+  html[data-motion='reduce'] & {
+    @slot;
+  }
 }
 
+/*
+ * Skyclause Figures: Roundo's digits at one width (fonts/skyclause-figures/build.py), for the characters numbers are
+ * printed with. Roundo has no tabular figures; [data-numeric], the figures utility and type-figure list this family
+ * ahead of Roundo, so their figures line up and their letters stay Roundo. The cell is the median digit's, the widest
+ * digits are condensed a little to fit, the 1 has a foot and sits centred in it, and the colon, full stop, comma and
+ * space keep their narrow widths, so a time reads as a time. Keep it to columns and figures that update, not running
+ * text. The three faces are declared and preloaded by next/font in lib/fonts.ts.
+ */
+
+/*
+ * Roles, set per theme. Two colours do everything (ground and ink, with tone steps of the ground); mode hues are for
+ * data only. Every text pair and every control edge is checked in test/tokens/contrast.test.ts. The shadcn names
+ * further down are aliases of these roles, declared once.
+ *
+ * Surfaces (panels, cards, menus) separate by tone alone. Controls and data marks are not surfaces: fields, checkboxes,
+ * switches, unselected segments and low-emphasis capsules carry a 2px edge in --ink-muted (3:1 or more). A mode
+ * capsule's edge is transparent where its fill alone reaches 3:1 on the ground and the surface, and muted otherwise.
+ * Text sits on the overlay step (hover and pressed fills) only in ink.
+ */
+
+/* Dusk: the default theme, navy and pink. Marketing and auth surfaces always use it. */
+:root,
+.dark,
+[data-surface='marketing'],
+[data-surface='auth'] {
+  --ground: #1a2039;
+  --surface: #212846;
+  --raised: #2a3257;
+  --overlay: #313a62;
+  --ink: #f9a3c0;
+  --ink-muted: #c68da3;
+  --edge: transparent;
+  --mode-normal: #2a3257;
+  --mode-outdoor-limited: #f6dc8e;
+  --mode-commute-disruption: #f08c3f;
+  --mode-hybrid-recommended: #ea5a44;
+  --mode-surge-night: #7fb0ff;
+  --mode-outdoor-limited-ink: #1a2039;
+  --mode-commute-disruption-ink: #1a2039;
+  --mode-hybrid-recommended-ink: #1a2039;
+  --mode-surge-night-ink: #1a2039;
+  --mode-outdoor-limited-edge: transparent;
+  --shadow-float: 0 12px 32px rgb(6 8 20 / 0.45);
+  --focus-width: 2px;
+  --edge-width: 0px;
+}
+
+/* Day: pale pink and navy. */
 .light {
-  --background: #f6f6f7;
-  --card: #ffffff;
-  --popover: #ffffff;
-  --foreground: #111113;
-  --secondary-foreground: #3f4246;
-  --muted-foreground: #5f6368;
-  --primary: #1d1f20;
-  --primary-foreground: #ffffff;
-  --secondary: #f0f0f2;
-  --muted: #f0f0f2;
-  --accent: #f0f0f2;
-  --accent-foreground: #111113;
-  --border: #e4e4e7;
-  --rule: #efeff1;
-  --control: #d1d3d8;
-  --input: #8b8e94;
-  --ring: #111113;
-  --selection: #b11226;
-  --destructive: #9b0f24;
-  --sidebar: #f6f6f7;
-  --chart-1: #b11226;
-  --chart-2: #5f6368;
-  --chart-3: #8b8e94;
-  --chart-4: #966400;
-  --chart-5: #d1d3d8;
-  --grid: #e4e4e7;
-  --status-neutral-background: #ededef;
-  --status-neutral-foreground: #3f4246;
-  --status-warning-background: #fdf3dc;
-  --status-warning-foreground: #966400;
-  --status-critical-background: #fdecef;
-  --status-critical-foreground: #9b0f24;
-  --status-no-call-background: transparent;
-  --status-no-call-foreground: #3f4246;
-  --status-no-call-border: #8b8e94;
-  --shadow-float: 0 8px 24px rgb(17 17 19 / 0.08);
+  --ground: #fdeef3;
+  --surface: #f9dfe8;
+  --raised: #f3cfdc;
+  --overlay: #eec3d3;
+  --ink: #1a2039;
+  --ink-muted: #555a75;
+  --mode-normal: #f3cfdc;
+  --mode-outdoor-limited: #b4831a;
+  --mode-commute-disruption: #a8541c;
+  --mode-hybrid-recommended: #93302a;
+  --mode-surge-night: #3a64b0;
+  --mode-outdoor-limited-ink: #1a2039;
+  --mode-commute-disruption-ink: #fdeef3;
+  --mode-hybrid-recommended-ink: #fdeef3;
+  --mode-surge-night-ink: #fdeef3;
+  --mode-outdoor-limited-edge: var(--ink-muted);
+  --shadow-float: 0 12px 28px rgb(26 32 57 / 0.16);
 }
 
 @media (prefers-color-scheme: light) {
   html[data-theme='system'] {
     color-scheme: light;
-    --background: #f6f6f7;
-    --card: #ffffff;
-    --popover: #ffffff;
-    --foreground: #111113;
-    --secondary-foreground: #3f4246;
-    --muted-foreground: #5f6368;
-    --primary: #1d1f20;
-    --primary-foreground: #ffffff;
-    --secondary: #f0f0f2;
-    --muted: #f0f0f2;
-    --accent: #f0f0f2;
-    --accent-foreground: #111113;
-    --border: #e4e4e7;
-    --rule: #efeff1;
-    --control: #d1d3d8;
-    --input: #8b8e94;
-    --ring: #111113;
-    --selection: #b11226;
-    --destructive: #9b0f24;
-    --sidebar: #f6f6f7;
-    --chart-1: #b11226;
-    --chart-2: #5f6368;
-    --chart-3: #8b8e94;
-    --chart-4: #966400;
-    --chart-5: #d1d3d8;
-    --grid: #e4e4e7;
-    --status-neutral-background: #ededef;
-    --status-neutral-foreground: #3f4246;
-    --status-warning-background: #fdf3dc;
-    --status-warning-foreground: #966400;
-    --status-critical-background: #fdecef;
-    --status-critical-foreground: #9b0f24;
-    --status-no-call-background: transparent;
-    --status-no-call-foreground: #3f4246;
-    --status-no-call-border: #8b8e94;
+    --ground: #fdeef3;
+    --surface: #f9dfe8;
+    --raised: #f3cfdc;
+    --overlay: #eec3d3;
+    --ink: #1a2039;
+    --ink-muted: #555a75;
+    --mode-normal: #f3cfdc;
+    --mode-outdoor-limited: #b4831a;
+    --mode-commute-disruption: #a8541c;
+    --mode-hybrid-recommended: #93302a;
+    --mode-surge-night: #3a64b0;
+    --mode-outdoor-limited-ink: #1a2039;
+    --mode-commute-disruption-ink: #fdeef3;
+    --mode-hybrid-recommended-ink: #fdeef3;
+    --mode-surge-night-ink: #fdeef3;
+    --mode-outdoor-limited-edge: var(--ink-muted);
+    --shadow-float: 0 12px 28px rgb(26 32 57 / 0.16);
   }
 }
 
+/* High contrast, dark: ink outlines on every capsule and field, 3px focus. */
 .dark.hc,
 .hc [data-surface='marketing'],
 .hc [data-surface='auth'] {
-  --background: #000000;
-  --popover: #121212;
-  --foreground: #ffffff;
-  --muted-foreground: #d4d4d4;
-  --border: #8a8a8a;
-  --input: #ffffff;
-  --ring: #ffffff;
-  --selection: #ff6b80;
-  --warning: #ffc04d;
-  --card: var(--background);
-  --secondary: var(--popover);
-  --muted: var(--popover);
-  --accent: var(--popover);
-  --secondary-foreground: var(--muted-foreground);
-  --primary: var(--foreground);
-  --primary-foreground: var(--background);
-  --accent-foreground: var(--foreground);
-  --destructive: var(--selection);
-  --rule: var(--border);
-  --control: var(--border);
-  --sidebar: var(--background);
-  --chart-1: var(--selection);
-  --chart-2: var(--muted-foreground);
-  --chart-3: var(--input);
-  --chart-4: var(--warning);
-  --chart-5: var(--border);
-  --grid: transparent;
+  --ground: #0b0e1f;
+  --surface: #141933;
+  --raised: #1e2448;
+  --overlay: #2a315c;
+  --ink: #ffffff;
+  --ink-muted: #e6e8f2;
+  --edge: #ffffff;
+  --mode-outdoor-limited-edge: #ffffff;
+  --mode-normal: #1e2448;
+  --mode-outdoor-limited: #ffe29a;
+  --mode-commute-disruption: #ffa25a;
+  --mode-hybrid-recommended: #ff7a52;
+  --mode-surge-night: #93c2ff;
+  --mode-outdoor-limited-ink: #0b0e1f;
+  --mode-commute-disruption-ink: #0b0e1f;
+  --mode-hybrid-recommended-ink: #0b0e1f;
+  --mode-surge-night-ink: #0b0e1f;
   --focus-width: 3px;
-  --selection-width: 2px;
-  --status-neutral-background: transparent;
-  --status-neutral-foreground: var(--muted-foreground);
-  --status-neutral-border: var(--status-neutral-foreground);
-  --status-warning-background: transparent;
-  --status-warning-foreground: var(--warning);
-  --status-warning-border: var(--status-warning-foreground);
-  --status-critical-background: transparent;
-  --status-critical-foreground: var(--selection);
-  --status-critical-border: var(--status-critical-foreground);
-  --status-no-call-background: transparent;
-  --status-no-call-foreground: var(--muted-foreground);
-  --status-no-call-border: var(--status-no-call-foreground);
+  --edge-width: 2px;
 }
 
+/* High contrast, light. */
 .light.hc {
-  --background: #ffffff;
-  --popover: #ffffff;
-  --foreground: #000000;
-  --muted-foreground: #2b2b2b;
-  --border: #575757;
-  --input: #000000;
-  --ring: #000000;
-  --selection: #8f0b1e;
-  --warning: #6b4500;
-  --card: var(--background);
-  --secondary: var(--popover);
-  --muted: var(--popover);
-  --accent: var(--popover);
-  --secondary-foreground: var(--muted-foreground);
-  --primary: var(--foreground);
-  --primary-foreground: var(--background);
-  --accent-foreground: var(--foreground);
-  --destructive: var(--selection);
-  --rule: var(--border);
-  --control: var(--border);
-  --sidebar: var(--background);
-  --chart-1: var(--selection);
-  --chart-2: var(--muted-foreground);
-  --chart-3: var(--input);
-  --chart-4: var(--warning);
-  --chart-5: var(--border);
-  --grid: transparent;
+  --ground: #ffffff;
+  --surface: #f4f2f7;
+  --raised: #e9e6f0;
+  --overlay: #dcd8e6;
+  --ink: #0b0e1f;
+  --ink-muted: #262a40;
+  --edge: #0b0e1f;
+  --mode-outdoor-limited-edge: #0b0e1f;
+  --mode-normal: #e9e6f0;
+  --mode-outdoor-limited: #fbd25e;
+  --mode-commute-disruption: #ffb066;
+  --mode-hybrid-recommended: #ff8d6e;
+  --mode-surge-night: #9cc8ff;
+  --mode-outdoor-limited-ink: #0b0e1f;
+  --mode-commute-disruption-ink: #0b0e1f;
+  --mode-hybrid-recommended-ink: #0b0e1f;
+  --mode-surge-night-ink: #0b0e1f;
   --focus-width: 3px;
+  --edge-width: 2px;
+}
+
+/*
+ * Derived roles and the shadcn aliases, resolved wherever the roles are set (the document, a nested .dark or .light
+ * such as the Appearance preview, and the forced-dusk surfaces), so a surface's own theme reaches its aliases.
+ */
+:root,
+.dark,
+.light,
+[data-surface='marketing'],
+[data-surface='auth'] {
+  --control: var(--raised);
+  --control-edge: var(--ink-muted);
+  --focus: var(--ink);
+  --field: var(--surface);
+  --rule: var(--raised);
+  --chart-emphasis: var(--ink);
+  --chart-ink: var(--ink-muted);
+  --chart-grid: var(--raised);
+  --mode-normal-ink: var(--ink);
+  --mode-normal-edge: var(--ink-muted);
+  --mode-commute-disruption-edge: var(--edge);
+  --mode-hybrid-recommended-edge: var(--edge);
+  --mode-surge-night-edge: var(--edge);
+  /* Non-mode states carry no hue: an edge style, a tone step, a word and a glyph. */
+  --mode-watch: var(--ink);
+  --mode-watch-ink: var(--ink);
+  --mode-no-call: var(--ink-muted);
+  --mode-no-call-ink: var(--ink);
+  --mode-draft: var(--ink);
+  --mode-draft-ink: var(--ink);
+  --mode-expired: var(--surface);
+  --mode-expired-ink: var(--ink-muted);
+  --mode-rejected: var(--raised);
+  --mode-rejected-ink: var(--ink);
+
+  --background: var(--ground);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--raised);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--ground);
+  --secondary: var(--raised);
+  --secondary-foreground: var(--ink);
+  --muted: var(--surface);
+  --muted-foreground: var(--ink-muted);
+  --accent: var(--overlay);
+  --accent-foreground: var(--ink);
+  --border: var(--control-edge);
+  --input: var(--control-edge);
+  --ring: var(--focus);
+  --selection: var(--ink);
+  --destructive: var(--ink);
+  --warning: var(--ink);
+  --chart-1: var(--chart-emphasis);
+  --chart-2: var(--chart-ink);
+  --chart-3: var(--chart-ink);
+  --chart-4: var(--chart-ink);
+  --chart-5: var(--overlay);
+  --grid: var(--chart-grid);
+  --landing-background: var(--ground);
+  --landing-surface: var(--surface);
+  --landing-foreground: var(--ink);
+  --landing-muted-foreground: var(--ink-muted);
+  --landing-field: var(--ink);
+  --landing-field-foreground: var(--ground);
+  --landing-field-muted-foreground: var(--ink-muted);
+  --landing-primary: var(--ink);
+  --landing-primary-foreground: var(--ground);
   --selection-width: 2px;
-  --status-neutral-background: transparent;
-  --status-neutral-foreground: var(--muted-foreground);
-  --status-neutral-border: var(--status-neutral-foreground);
-  --status-warning-background: transparent;
-  --status-warning-foreground: var(--warning);
-  --status-warning-border: var(--status-warning-foreground);
-  --status-critical-background: transparent;
-  --status-critical-foreground: var(--selection);
-  --status-critical-border: var(--status-critical-foreground);
+  /* Earlier names, kept so nothing that still reads them silently loses its colour. */
+  --brand-crimson: var(--ink);
+  --brand-crimson-foreground: var(--ground);
+  --status-neutral-background: var(--mode-normal);
+  --status-neutral-foreground: var(--mode-normal-ink);
+  --status-warning-background: var(--mode-outdoor-limited);
+  --status-warning-foreground: var(--mode-outdoor-limited-ink);
+  --status-critical-background: var(--mode-hybrid-recommended);
+  --status-critical-foreground: var(--mode-hybrid-recommended-ink);
   --status-no-call-background: transparent;
-  --status-no-call-foreground: var(--muted-foreground);
-  --status-no-call-border: var(--status-no-call-foreground);
+  --status-no-call-foreground: var(--mode-no-call-ink);
+  --status-no-call-border: var(--mode-no-call);
 }
 
 @theme static inline {
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-overlay: var(--overlay);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-control: var(--control);
+  --color-focus: var(--focus);
+  --color-field: var(--field);
+  --color-edge: var(--edge);
+  --color-mode-normal: var(--mode-normal);
+  --color-mode-outdoor-limited: var(--mode-outdoor-limited);
+  --color-mode-commute-disruption: var(--mode-commute-disruption);
+  --color-mode-hybrid-recommended: var(--mode-hybrid-recommended);
+  --color-mode-surge-night: var(--mode-surge-night);
+  --color-control-edge: var(--control-edge);
+  --color-chart-emphasis: var(--chart-emphasis);
+  --color-chart-ink: var(--chart-ink);
   --color-background: var(--background);
   --color-card: var(--card);
   --color-popover: var(--popover);
@@ -255,18 +277,30 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-border: var(--border);
   --color-rule: var(--rule);
-  --color-control: var(--control);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-selection: var(--selection);
   --color-destructive: var(--destructive);
-  --color-sidebar: var(--sidebar);
+  --color-warning: var(--warning);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --color-grid: var(--grid);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-landing-background: var(--landing-background);
+  --color-landing-surface: var(--landing-surface);
+  --color-landing-foreground: var(--landing-foreground);
+  --color-landing-muted-foreground: var(--landing-muted-foreground);
+  --color-landing-field: var(--landing-field);
+  --color-landing-field-foreground: var(--landing-field-foreground);
+  --color-landing-field-muted-foreground: var(--landing-field-muted-foreground);
+  --color-landing-primary: var(--landing-primary);
+  --color-landing-primary-foreground: var(--landing-primary-foreground);
+  --color-brand-crimson: var(--brand-crimson);
+  --color-brand-crimson-foreground: var(--brand-crimson-foreground);
   --color-status-neutral-background: var(--status-neutral-background);
   --color-status-neutral-foreground: var(--status-neutral-foreground);
   --color-status-warning-background: var(--status-warning-background);
@@ -276,36 +310,31 @@
   --color-status-no-call-background: var(--status-no-call-background);
   --color-status-no-call-foreground: var(--status-no-call-foreground);
   --color-status-no-call-border: var(--status-no-call-border);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-brand-crimson: var(--brand-crimson);
-  --color-brand-crimson-foreground: var(--brand-crimson-foreground);
-  --color-landing-background: var(--landing-background);
-  --color-landing-surface: var(--landing-surface);
-  --color-landing-foreground: var(--landing-foreground);
-  --color-landing-muted-foreground: var(--landing-muted-foreground);
-  --color-landing-primary: var(--landing-primary);
-  --color-landing-primary-foreground: var(--landing-primary-foreground);
-  --color-landing-field: var(--landing-field);
-  --color-landing-field-foreground: var(--landing-field-foreground);
-  --color-landing-field-muted-foreground: var(--landing-field-muted-foreground);
-  --font-sans: 'Work Sans Variable', 'Work Sans', system-ui, sans-serif;
+  --font-sans: 'Roundo', 'Roundo Fallback', system-ui, sans-serif;
+  --font-figures: 'Skyclause Figures', 'Roundo', 'Roundo Fallback', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
   --font-heading: var(--font-sans);
+  /* One surface radius (16px), its nested step (10px) and the capsule. `sm` is the checkbox's text-size square. */
+  --radius-surface: 16px;
+  --radius-nested: 10px;
+  --radius-capsule: 9999px;
   --radius-sm: 4px;
-  --radius-md: 4px;
-  --radius-lg: 6px;
-  --radius-xl: 6px;
-  --radius-2xl: 8px;
+  --radius-md: 10px;
+  --radius-lg: 10px;
+  --radius-xl: 16px;
+  --radius-2xl: 16px;
   --radius-4xl: 9999px;
+  /* Only what floats (menus, popovers, dialogs, sheets, toasts) has a shadow. */
   --shadow-lg: var(--shadow-float);
+  --shadow-md: var(--shadow-float);
+  --shadow-xl: var(--shadow-float);
+  /* Spacing on the 4px base: the gap between blocks, panel padding, the gap between sections of a screen. */
+  --spacing-gap: 16px;
+  --spacing-pad: 20px;
+  --spacing-section: 48px;
+  --spacing-control: 36px;
+  --spacing-control-page: 48px;
+  --spacing-target: 24px;
 }
 
 @theme static {
@@ -317,23 +346,33 @@
   font-variant-numeric: tabular-nums;
 }
 
-@utility type-title {
-  font-size: 26px;
-  font-weight: 700;
-  line-height: 32px;
+/* Figures that must line up (numeric columns, values that update in place): Skyclause Figures ahead of Roundo. */
+@utility figures {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-figures);
 }
 
-@utility type-answer-figure {
-  font-size: 30px;
+/* App type: five sizes (13, 14, 16, 20, 26). Labels and meta 13, controls and tables 14, running text 16. */
+@utility type-title {
+  font-size: 26px;
   font-weight: 500;
-  line-height: 36px;
+  line-height: 32px;
+  letter-spacing: -0.02em;
 }
 
 @utility type-section {
   font-size: 20px;
-  font-weight: 400;
+  font-weight: 500;
   line-height: 28px;
-  color: var(--muted-foreground);
+  letter-spacing: -0.01em;
+}
+
+@utility type-figure {
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-figures);
 }
 
 @utility type-card-title {
@@ -342,34 +381,22 @@
   line-height: 24px;
 }
 
-@utility type-figure {
-  font-size: 20px;
-  font-weight: 500;
-  line-height: 28px;
+@utility type-text {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
 }
 
 @utility type-body {
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 20px;
-}
-
-@utility type-body-comfortable {
   font-size: 14px;
   font-weight: 400;
   line-height: 20px;
 }
 
 @utility type-small {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 400;
-  line-height: 16px;
-}
-
-@utility type-badge {
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 16px;
+  line-height: 18px;
 }
 
 @utility type-code {
@@ -378,36 +405,261 @@
   line-height: 20px;
 }
 
-@utility type-landing-display {
-  font-size: clamp(48px, 5vw, 80px);
-  font-weight: 300;
-  line-height: 1;
-  letter-spacing: -0.035em;
-}
-
-@utility type-landing-head {
-  font-size: clamp(26px, 2.1vw, 32px);
+/* Public pages: the dealt steps. Display is the hero (6-8vw), head the section heads. */
+@utility type-display {
+  font-size: clamp(3rem, 7vw, 8rem);
   font-weight: 500;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
 }
 
-@utility type-landing-lead {
-  font-size: clamp(20px, 1.1rem + 0.7vw, 26px);
+@utility type-head {
+  font-size: clamp(2rem, 1.3rem + 3.2vw, 4rem);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+}
+
+@utility type-lead {
+  font-size: clamp(1.25rem, 1.1rem + 0.7vw, 1.625rem);
   font-weight: 400;
-  line-height: 1.3;
+  line-height: 1.35;
+}
+
+@utility type-page-body {
+  font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+@utility type-page-small {
+  font-size: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* The landing's names for the same steps, kept until its own ticket moves it to the ones above. */
+@utility type-landing-head {
+  font-size: clamp(2rem, 1.3rem + 3.2vw, 4rem);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
 }
 
 @utility type-landing-body {
-  font-size: clamp(17px, 1rem + 0.25vw, 19px);
+  font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
   font-weight: 400;
-  line-height: 1.55;
+  line-height: 1.5;
 }
 
 @utility type-landing-small {
-  font-size: 14px;
+  font-size: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
   font-weight: 400;
   line-height: 1.5;
+}
+
+/* A capsule at text size or larger, filled by its data-tone (see the tone block below), with its 2px edge. */
+@utility tone-fill {
+  background-color: var(--tone);
+  color: var(--tone-ink);
+  border: 2px var(--tone-edge-style, solid) var(--tone-edge, transparent);
+}
+
+/*
+ * The current item (navigation, a selected segment): the label in ink plus a text-size capsule under it, so the state is
+ * never told by colour alone. Pair it with aria-current or aria-selected.
+ */
+@utility current-mark {
+  position: relative;
+  &:is([aria-current]:not([aria-current='false']), [aria-selected='true'], [data-current])::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: 2px;
+    width: 16px;
+    height: 4px;
+    border-radius: 9999px;
+    background: currentColor;
+    transform: translateX(-50%);
+  }
+}
+
+/*
+ * Native form controls, for a plain form that has to post without a client component and where a Base UI primitive
+ * cannot stand in: `native-check` on <input type="checkbox"> or <input type="radio">, `native-select` on <select>, and
+ * `native-switch` below.
+ * They match <Input> and <Checkbox>: the filled field with its 2px control edge (one tone up inside a card, down to the
+ * ground inside anything that floats), an ink fill with a ground tick or dot when checked, an ink edge when invalid.
+ * Opt-in by class, so no existing native control changes. Put the control and its <label> in a row of at least 44px on
+ * touch screens; the box is 24px. The ring is the page-wide :focus-visible outline.
+ */
+@utility native-check {
+  appearance: none;
+  flex: none;
+  display: inline-grid;
+  place-content: center;
+  inline-size: 24px;
+  block-size: 24px;
+  margin: 0;
+  border: 2px solid var(--input);
+  border-radius: 4px;
+  background: var(--field);
+  cursor: pointer;
+  :where([data-slot='card']) & {
+    background: var(--raised);
+  }
+  :where(
+      [data-slot='dialog-content'],
+      [data-slot='alert-dialog-content'],
+      [data-slot='sheet-content'],
+      [data-slot='drawer-popup'],
+      [data-slot='popover-content']
+    )
+    & {
+    background: var(--background);
+  }
+  &[type='radio'] {
+    border-radius: 9999px;
+  }
+  &::before {
+    content: '';
+    inline-size: 12px;
+    block-size: 12px;
+    background: var(--ground);
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+    transform: scale(0);
+  }
+  &[type='radio']::before {
+    inline-size: 10px;
+    block-size: 10px;
+    border-radius: 9999px;
+    clip-path: none;
+  }
+  &:checked {
+    border-color: var(--ink);
+    background: var(--ink);
+  }
+  &:checked::before {
+    transform: scale(1);
+  }
+  &[aria-invalid='true'] {
+    border-color: var(--foreground);
+  }
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  @media (forced-colors: active) {
+    &:checked {
+      border-color: Highlight;
+      background: Highlight;
+    }
+    &:checked::before {
+      background: HighlightText;
+    }
+  }
+}
+
+/*
+ * A native checkbox drawn as a switch (`native-switch` on <input type="checkbox" role="switch">), so the control stays a
+ * labelled input that posts and that tests address by name. Same filled field and 2px control edge as native-check; on
+ * it the thumb is ink and the track inverts to ink. The reduced-motion rules at the end of this file stop its slide.
+ */
+@utility native-switch {
+  appearance: none;
+  flex: none;
+  position: relative;
+  inline-size: 40px;
+  block-size: 24px;
+  margin: 0;
+  border: 2px solid var(--input);
+  border-radius: 9999px;
+  background: var(--field);
+  cursor: pointer;
+  :where([data-slot='card']) & {
+    background: var(--raised);
+  }
+  :where(
+      [data-slot='dialog-content'],
+      [data-slot='alert-dialog-content'],
+      [data-slot='sheet-content'],
+      [data-slot='drawer-popup'],
+      [data-slot='popover-content']
+    )
+    & {
+    background: var(--background);
+  }
+  &::before {
+    content: '';
+    position: absolute;
+    inset-block-start: 2px;
+    inset-inline-start: 2px;
+    inline-size: 16px;
+    block-size: 16px;
+    border-radius: 9999px;
+    background: var(--foreground);
+    transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  &:checked {
+    border-color: var(--ink);
+    background: var(--ink);
+  }
+  &:checked::before {
+    background: var(--ground);
+    transform: translateX(16px);
+  }
+  &[aria-invalid='true'] {
+    border-color: var(--foreground);
+  }
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  @media (forced-colors: active) {
+    &:checked {
+      border-color: Highlight;
+      background: Highlight;
+    }
+    &:checked::before {
+      background: HighlightText;
+    }
+  }
+}
+
+@utility native-select {
+  inline-size: 100%;
+  min-inline-size: 0;
+  block-size: 40px;
+  padding-inline: 12px;
+  border: 2px solid var(--input);
+  border-radius: 10px;
+  background-color: var(--field);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 16px;
+  @media (min-width: 768px) {
+    font-size: 14px;
+  }
+  :where([data-slot='card']) & {
+    background-color: var(--raised);
+  }
+  :where(
+      [data-slot='dialog-content'],
+      [data-slot='alert-dialog-content'],
+      [data-slot='sheet-content'],
+      [data-slot='drawer-popup'],
+      [data-slot='popover-content']
+    )
+    & {
+    background-color: var(--background);
+  }
+  &[aria-invalid='true'] {
+    border-color: var(--foreground);
+  }
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
 }
 
 @layer base {
@@ -415,28 +667,78 @@
     border-color: var(--border);
   }
   html {
+    /* The tap flash on iOS and Android, in the theme's ink rather than the browser's grey; controls that draw their own pressed state clear it. */
+    -webkit-tap-highlight-color: color-mix(in oklab, var(--ink) 16%, transparent);
     background: var(--background);
     color: var(--foreground);
+    caret-color: var(--ink);
+    accent-color: var(--ink);
+    scrollbar-color: var(--overlay) var(--ground);
+    /* The one anchor offset: html reserves it, ids add none (a margin on top of it doubled every jump). */
     scroll-padding-top: 64px;
-    --density-row-height: 48px;
+    --density-row-height: 44px;
     --density-body-size: 14px;
   }
+  @media (pointer: fine) {
+    /* No rubber band under the sticky bars on a desktop; the horizontal axis stays, so the trackpad's back swipe works. */
+    html {
+      overscroll-behavior-y: none;
+    }
+  }
   html[data-density='compact'] {
-    --density-row-height: 42px;
+    --density-row-height: 40px;
     --density-body-size: 13px;
   }
   html[data-density='comfortable'] {
-    --density-row-height: 48px;
+    --density-row-height: 44px;
     --density-body-size: 14px;
   }
   body {
     margin: 0;
+    /* viewport-fit=cover runs content under a landscape notch; the side insets keep it clear (the landing is full bleed). */
+    padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
     font-family: var(--font-sans);
     font-size: var(--density-body-size);
     line-height: 20px;
   }
+  body:has([data-surface='marketing']) {
+    padding-inline: 0;
+  }
   [data-density-row] {
     min-height: var(--density-row-height);
+  }
+  /* No double-tap zoom delay on anything that takes a tap. */
+  a,
+  button,
+  summary,
+  label,
+  input,
+  select,
+  textarea,
+  [role='button'],
+  [role='tab'],
+  [role='menuitem'],
+  [role='menuitemcheckbox'],
+  [role='menuitemradio'],
+  [role='option'],
+  [role='checkbox'],
+  [role='radio'],
+  [role='switch'],
+  [role='combobox'] {
+    touch-action: manipulation;
+  }
+  button,
+  [role='button'],
+  [role='tab'] {
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* A scroll container that ends does not hand the scroll to the page behind it. */
+  [role='dialog'],
+  [role='alertdialog'],
+  [role='menu'],
+  [role='listbox'],
+  [data-scroll-contain] {
+    overscroll-behavior: contain;
   }
   h1,
   h2,
@@ -446,26 +748,110 @@
   h6 {
     text-wrap: balance;
   }
-  [id] {
-    scroll-margin-top: 64px;
-  }
   table,
   time,
   [data-numeric] {
     font-variant-numeric: tabular-nums;
   }
+  /* Figures that line up in columns or update in place; identity text and running prose keep Roundo's own digits. */
+  [data-numeric] {
+    font-family: var(--font-figures);
+  }
   code,
-  pre {
+  pre,
+  kbd,
+  samp {
     font-family: var(--font-mono);
+  }
+  ::selection {
+    background: var(--ink);
+    color: var(--ground);
+  }
+  a {
+    text-underline-offset: 3px;
   }
 }
 
-/* An unlayered outline replaces the registry's focus shadows, including on fields. */
+/* An unlayered outline replaces the registry's focus shadows, including on fields: 2px ink, 2px offset. */
 :focus-visible {
-  outline: var(--focus-width) solid var(--ring);
+  outline: var(--focus-width) solid var(--focus);
   outline-offset: 2px;
   --tw-ring-shadow: 0 0 #0000;
   --tw-ring-offset-shadow: 0 0 #0000;
+}
+
+/* Mode tones: set data-tone on a capsule, a strip mark or an SVG shape and read --tone and --tone-ink. */
+[data-tone] {
+  --tone: transparent;
+  --tone-ink: var(--ink);
+  --tone-edge: var(--edge);
+  --tone-edge-style: solid;
+}
+[data-tone='normal'] {
+  --tone: var(--mode-normal);
+  --tone-ink: var(--mode-normal-ink);
+  --tone-edge: var(--mode-normal-edge);
+}
+[data-tone='outdoor-limited'] {
+  --tone: var(--mode-outdoor-limited);
+  --tone-ink: var(--mode-outdoor-limited-ink);
+  --tone-edge: var(--mode-outdoor-limited-edge);
+}
+[data-tone='commute-disruption'] {
+  --tone: var(--mode-commute-disruption);
+  --tone-ink: var(--mode-commute-disruption-ink);
+  --tone-edge: var(--mode-commute-disruption-edge);
+}
+[data-tone='hybrid-recommended'] {
+  --tone: var(--mode-hybrid-recommended);
+  --tone-ink: var(--mode-hybrid-recommended-ink);
+  --tone-edge: var(--mode-hybrid-recommended-edge);
+}
+[data-tone='surge-night'] {
+  --tone: var(--mode-surge-night);
+  --tone-ink: var(--mode-surge-night-ink);
+  --tone-edge: var(--mode-surge-night-edge);
+}
+[data-tone='watch'] {
+  --tone-ink: var(--mode-watch-ink);
+  --tone-edge: var(--mode-watch);
+}
+[data-tone='no-call'] {
+  --tone-ink: var(--mode-no-call-ink);
+  --tone-edge: var(--mode-no-call);
+  --tone-edge-style: dashed;
+}
+[data-tone='draft'] {
+  --tone-ink: var(--mode-draft-ink);
+  --tone-edge: var(--mode-draft);
+  --tone-edge-style: dotted;
+}
+[data-tone='expired'] {
+  --tone: var(--mode-expired);
+  --tone-ink: var(--mode-expired-ink);
+  --tone-edge: var(--control-edge);
+}
+[data-tone='rejected'] {
+  --tone: var(--mode-rejected);
+  --tone-ink: var(--mode-rejected-ink);
+  --tone-edge: var(--control-edge);
+}
+/* The strip engine writes the Dusk values as attributes for standalone SVG; on a page the theme's tokens win. */
+svg [data-tone][data-fill] {
+  fill: var(--tone);
+}
+svg [data-tone][data-stroke] {
+  stroke: var(--tone-edge);
+}
+svg [data-tone][data-ink] {
+  fill: var(--tone-ink);
+}
+svg [data-tone][data-ink] * {
+  stroke: var(--tone-ink);
+}
+.hc svg [data-tone][data-fill] {
+  stroke: var(--ink);
+  stroke-width: 2px;
 }
 
 .skip-link {
@@ -473,11 +859,14 @@
   z-index: 100;
   top: 8px;
   left: 8px;
-  min-height: 34px;
-  padding: 7px 14px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 16px;
   background: var(--primary);
   color: var(--primary-foreground);
   border-radius: 9999px;
+  font-weight: 500;
   transform: translateY(-200%);
 }
 .skip-link:focus {
@@ -488,14 +877,12 @@
 [data-surface='auth'] {
   min-height: 100svh;
   color-scheme: dark;
-  background: var(--landing-background);
-  color: var(--landing-foreground);
-  --ring: var(--landing-foreground);
-  --primary: var(--landing-field);
-  --primary-foreground: var(--landing-field-foreground);
+  background: var(--ground);
+  color: var(--ink);
 }
-[data-surface='marketing'] {
-  padding: 40px;
+.hc [data-surface='marketing'],
+.hc [data-surface='auth'] {
+  color-scheme: dark;
 }
 [data-surface='auth'] {
   padding: 40px 20px;
@@ -509,77 +896,316 @@
   overflow-wrap: anywhere;
 }
 .language-suggestion a {
-  min-height: 34px;
+  min-height: 36px;
   display: inline-flex;
   align-items: center;
   text-decoration: underline;
   text-underline-offset: 4px;
 }
+.language-suggestion a:hover {
+  text-decoration-thickness: 2px;
+}
 .language-suggestion button {
-  min-height: 34px;
-  padding: 7px 14px;
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 9999px;
+  background: var(--control);
+  color: var(--ink);
   cursor: pointer;
 }
 .language-suggestion button:hover {
-  text-decoration: underline;
-  text-underline-offset: 4px;
+  background: var(--overlay);
 }
 .auth-column {
   width: min(100%, 520px);
   margin-inline: auto;
 }
 
-.token-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
-  gap: 24px;
-}
-.token-page {
-  padding: 32px;
-}
-.token-swatch {
-  display: block;
-  height: 40px;
-  border: 1px solid var(--input);
-  border-radius: 6px;
-}
-.token-name {
-  overflow-wrap: anywhere;
-}
-
-[data-slot='sidebar-menu-button'][data-active] > span:last-child,
-[data-slot='sidebar-menu-sub-button'][data-active] > span:last-child {
-  text-decoration: underline;
-  text-decoration-color: var(--selection);
-  text-decoration-thickness: var(--selection-width);
-  text-underline-offset: 4px;
-}
-[data-collapsible='icon'] [data-slot='sidebar-menu-button'][data-active]::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  height: 16px;
-  width: var(--selection-width);
-  background: var(--selection);
-}
-
-.hc [data-status] {
-  background: transparent;
-  border: 1px solid currentColor;
-}
+/* High contrast: every capsule, chip and field carries a 2px ink edge; surfaces keep their tone step and add one. */
+.hc [data-status],
 .hc [data-slot='badge'] {
-  background: transparent;
-  border: 1px solid currentColor;
+  border: var(--edge-width) solid var(--edge);
 }
 .hc [data-slot='chart'] .recharts-cartesian-grid {
   display: none;
 }
 
-@media (max-width: 640px) {
-  [data-surface='marketing'] {
-    padding: 20px;
+/*
+ * Tables (components/ui/table.tsx): the one table. Unlayered, so a utility class on a cell cannot undo the phone list.
+ * Rows are told apart by space and tone, never by rules: the header is one raised capsule strip, the body rows rest on
+ * the page and take the raised tone on hover, the overlay tone and a 4x20 capsule mark when selected, muted ink when
+ * dimmed. Fills sit on the cells so the first and last cell can round the row's ends.
+ */
+[data-slot='table-header'] th {
+  background-color: var(--raised);
+}
+[data-slot='table-header'] th:first-child {
+  border-top-left-radius: 9999px;
+  border-bottom-left-radius: 9999px;
+}
+[data-slot='table-header'] th:last-child {
+  border-top-right-radius: 9999px;
+  border-bottom-right-radius: 9999px;
+}
+[data-slot='table'][data-sticky] > [data-slot='table-header'] th {
+  position: sticky;
+  top: var(--shell-bar-height, 0px);
+  z-index: 1;
+}
+tbody > tr[data-slot='table-row'] > :is(td, th):first-child {
+  border-top-left-radius: var(--radius-nested, 10px);
+  border-bottom-left-radius: var(--radius-nested, 10px);
+}
+tbody > tr[data-slot='table-row'] > :is(td, th):last-child {
+  border-top-right-radius: var(--radius-nested, 10px);
+  border-bottom-right-radius: var(--radius-nested, 10px);
+}
+@media (hover: hover) {
+  tbody > tr[data-slot='table-row']:hover > :is(td, th) {
+    background-color: var(--raised);
   }
 }
+tbody > tr[data-slot='table-row']:has([aria-expanded='true']) > :is(td, th) {
+  background-color: var(--raised);
+}
+tbody > tr[data-slot='table-row'][data-state='selected'] {
+  /* Muted holds 4.5:1 on the raised tone and not on the overlay tone, so a selected row reads in ink throughout. */
+  --muted-foreground: var(--ink);
+}
+tbody > tr[data-slot='table-row'][data-state='selected'] > :is(td, th) {
+  background-color: var(--overlay);
+}
+tbody > tr[data-slot='table-row'][data-state='selected'] > :is(td, th):first-child {
+  position: relative;
+}
+tbody > tr[data-slot='table-row'][data-state='selected'] > :is(td, th):first-child::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 4px;
+  height: 20px;
+  margin-top: -10px;
+  border-radius: 9999px;
+  background: var(--ink);
+}
+tbody > tr[data-slot='table-row'][data-state='dimmed'] {
+  color: var(--muted-foreground);
+}
+/*
+ * A figure that measures: a capsule-ended fill behind it, one tone step off the row's own, so the figure stays ink on a
+ * tone it is known to hold (ink is the only text on the overlay tone): raised at rest, overlay on a hovered row, the
+ * ground on a selected one.
+ */
+tbody > tr[data-slot='table-row'] {
+  --measure-fill: var(--raised);
+}
+@media (hover: hover) {
+  tbody > tr[data-slot='table-row']:hover {
+    --measure-fill: var(--overlay);
+  }
+}
+tbody > tr[data-slot='table-row']:has([aria-expanded='true']) {
+  --measure-fill: var(--overlay);
+}
+tbody > tr[data-slot='table-row'][data-state='selected'] {
+  --measure-fill: var(--ground);
+}
+[data-slot='table-measure-fill'] {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: max(calc(var(--measure, 0) * 100%), 28px);
+  border-radius: 9999px;
+  background: var(--measure-fill, var(--raised));
+}
+[data-slot='table-measure'][data-align='end'] > [data-slot='table-measure-fill'] {
+  right: 0;
+}
+[data-slot='table-measure'][data-align='start'] > [data-slot='table-measure-fill'] {
+  left: 0;
+}
+[data-slot='table-measure-fill'][data-empty] {
+  display: none;
+}
+
+/*
+ * The phone list: at 640px and below a table with data-phone="list" (the default), or any table holding a row marked
+ * data-phone-row (a row component that brings its own table, such as the signal-health row), turns each row into a
+ * two-line item.
+ * Line one is the cell with phone="primary" (the first cell unless another says so) and the one with phone="end" (under
+ * the name when the two do not fit side by side); line two is every other cell, 13px muted, each led by its `label` when
+ * it has one. phone="hide" drops a cell. The header
+ * stays in the document for assistive technology and leaves the screen. The empty ::after is a full-width item that
+ * breaks line one from line two without adding height.
+ */
+@media (max-width: 640px) {
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row])),
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row])) > tbody,
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row])) > tfoot {
+    display: block;
+  }
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row])) > thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row])) > :is(tbody, tfoot) > tr {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 0;
+    height: auto;
+    min-height: 56px;
+    padding: 8px 12px;
+    border-radius: var(--radius-nested, 10px);
+  }
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row])) > :is(tbody, tfoot) > tr::after {
+    content: '';
+    order: 1;
+    flex: 0 0 100%;
+    height: 0;
+  }
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > :is(tbody, tfoot)
+    > tr
+    > :is(td, th) {
+    display: block;
+    order: 2;
+    min-width: 0;
+    height: auto;
+    margin-top: 2px;
+    padding: 0;
+    border-radius: 0;
+    background-color: transparent;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--muted-foreground);
+    text-align: left;
+  }
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row])) [data-slot='table-measure'] {
+    display: inline-flex;
+    width: 6rem;
+    justify-content: flex-start;
+    vertical-align: middle;
+  }
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    [data-slot='table-measure']
+    > [data-slot='table-measure-fill'] {
+    right: auto;
+    left: 0;
+  }
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > :is(tbody, tfoot)
+    > tr
+    > :is(td, th)[data-label]::before {
+    content: attr(data-label) ' ';
+  }
+  /* A labelled cell keeps its value inline beside the label and wraps: truncation is for the wide table only. */
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > :is(tbody, tfoot)
+    > tr
+    > :is(td, th)[data-label]
+    [data-slot='table-truncate'] {
+    display: inline;
+    max-width: none !important;
+    overflow: visible;
+    white-space: normal;
+  }
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > :is(tbody, tfoot)
+    > tr
+    > :is(td, th):first-child:not([data-phone]),
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > :is(tbody, tfoot)
+    > tr
+    > :is(td, th)[data-phone='primary'] {
+    order: 0;
+    flex: 1 1 0;
+    /* Room for a name: an end mark that does not fit beside it moves under it instead. */
+    min-width: min(6rem, 100%);
+    margin-top: 0;
+    font-size: 14px;
+    line-height: 20px;
+    color: inherit;
+  }
+  /* A name that is not truncated wraps, instead of running under the end mark. */
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > :is(tbody, tfoot)
+    > tr
+    > :is(td, th):is(:first-child:not([data-phone]), [data-phone='primary']):not([data-truncate]) {
+    white-space: normal;
+  }
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > :is(tbody, tfoot)
+    > tr
+    > :is(td, th)[data-phone='end'] {
+    order: 1;
+    flex: 0 1 auto;
+    /* Text wraps inside 60%; a capsule never shrinks below its own width, and moves under the name if need be. */
+    min-width: min-content;
+    max-width: 60%;
+    margin-top: 0;
+    margin-inline-start: auto;
+    font-size: 14px;
+    line-height: 20px;
+    color: inherit;
+    text-align: right;
+  }
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > :is(tbody, tfoot)
+    > tr
+    > :is(td, th)[data-phone='hide'] {
+    display: none;
+  }
+  /* The fill moves from the cells to the row, and the selected mark from the first cell to the row's start. */
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > tbody
+    > tr[data-state='selected'] {
+    background-color: var(--overlay);
+  }
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > tbody
+    > tr:has([aria-expanded='true']) {
+    background-color: var(--raised);
+  }
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > tbody
+    > tr[data-state='selected']::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 4px;
+    width: 4px;
+    height: 20px;
+    margin-top: -10px;
+    border-radius: 9999px;
+    background: var(--ink);
+  }
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > tbody
+    > tr[data-slot='table-row'][data-state='selected']
+    > :is(td, th):first-child::before {
+    content: none;
+  }
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > tbody
+    > tr[data-state='dimmed']
+    > :is(td, th) {
+    color: var(--muted-foreground);
+  }
+}
+@media (max-width: 640px) and (hover: hover) {
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row])) > tbody > tr:hover {
+    background-color: var(--raised);
+  }
+}
+
 @media (pointer: coarse) {
   .language-suggestion button,
   .language-suggestion a,
@@ -591,24 +1217,56 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation: none !important;
-    transition: none !important;
-    scroll-behavior: auto !important;
+/*
+ * Reduced motion (the OS, or the account's Reduced motion) takes the movement out and leaves the state changes: what
+ * spins stops and says "Loading…", what slides or scales appears with a 120ms fade, a thumb or a bar jumps to its place.
+ * There is no blanket rule: a new animation chooses its own calm rule (or gates itself on no-preference, as the landing
+ * does).
+ */
+.animate-spin {
+  @variant calm {
+    animation: none;
   }
 }
-html[data-motion='reduce'],
-html[data-motion='reduce']::before,
-html[data-motion='reduce']::after,
-html[data-motion='reduce'] *,
-html[data-motion='reduce'] *::before,
-html[data-motion='reduce'] *::after {
-  animation: none !important;
-  transition: none !important;
-  scroll-behavior: auto !important;
+/* A popup, sheet, drawer or toast: no slide or zoom, a short fade in and out. */
+:is([data-open], [data-closed], [data-starting-style], [data-ending-style]) {
+  @variant calm {
+    transition: opacity 120ms linear;
+  }
+}
+:is([data-starting-style], [data-ending-style]) {
+  @variant calm {
+    transform: none;
+    opacity: 0;
+  }
+}
+/* Controls and marks change state at once: no fade or slide between hover, disabled, checked and the like. */
+:is(
+  button,
+  a,
+  summary,
+  [role='tab'],
+  [role='switch'],
+  [role='checkbox'],
+  [role='radio'],
+  [role='option'],
+  [role='menuitem'],
+  [data-slot='badge'],
+  [data-slot='switch-thumb'],
+  [data-slot='progress-indicator']
+),
+.native-switch::before {
+  @variant calm {
+    transition: none;
+  }
+}
+/* The landing's own timings (--t-press, --t-ui, --t-hover) go to zero. */
+* {
+  @variant calm {
+    --t-press: 0ms;
+    --t-hover: 0ms;
+    --t-ui: 0ms;
+  }
 }
 
 @media (forced-colors: active) {
@@ -619,35 +1277,66 @@ html[data-motion='reduce'] *::after {
   .light.hc,
   [data-surface='marketing'],
   [data-surface='auth'] {
+    --ground: Canvas;
+    --surface: Canvas;
+    --raised: Canvas;
+    --overlay: Highlight;
+    --ink: CanvasText;
+    --ink-muted: CanvasText;
+    --edge: CanvasText;
+    --edge-width: 1px;
+    --mode-normal: Canvas;
+    --mode-outdoor-limited: Canvas;
+    --mode-commute-disruption: Canvas;
+    --mode-hybrid-recommended: Canvas;
+    --mode-surge-night: Canvas;
+    --mode-outdoor-limited-ink: CanvasText;
+    --mode-commute-disruption-ink: CanvasText;
+    --mode-hybrid-recommended-ink: CanvasText;
+    --mode-surge-night-ink: CanvasText;
+    --mode-outdoor-limited-edge: CanvasText;
+    --control-edge: CanvasText;
     --background: Canvas;
     --card: Canvas;
     --popover: Canvas;
     --foreground: CanvasText;
     --secondary-foreground: CanvasText;
     --muted-foreground: CanvasText;
-    --primary: ButtonFace;
-    --primary-foreground: ButtonText;
-    --secondary: Canvas;
+    --primary: ButtonText;
+    --primary-foreground: ButtonFace;
+    --secondary: ButtonFace;
     --muted: Canvas;
     --accent: Highlight;
     --accent-foreground: HighlightText;
-    --border: ButtonBorder;
-    --input: ButtonBorder;
-    --control: ButtonBorder;
-    --rule: ButtonBorder;
+    --control: ButtonFace;
+    --border: CanvasText;
+    --rule: CanvasText;
+    --input: Field;
+    --field: Field;
     --ring: Highlight;
+    --focus: Highlight;
     --selection: Highlight;
     --destructive: CanvasText;
     --grid: transparent;
     --landing-background: Canvas;
     --landing-foreground: CanvasText;
-    --landing-field: ButtonFace;
-    --landing-field-foreground: ButtonText;
+    --landing-field: ButtonText;
+    --landing-field-foreground: ButtonFace;
   }
+  /* A selected table row keeps its capsule mark, since fills vanish. */
+  tbody > tr[data-slot='table-row'][data-state='selected'] > :is(td, th):first-child::before,
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > tbody
+    > tr[data-state='selected']::before {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  /* Fills vanish here: every capsule keeps a system-coloured edge and its glyph and word. */
   [data-status],
-  [data-slot='badge'] {
+  [data-slot='badge'],
+  [data-tone] {
     background: Canvas;
     color: CanvasText;
-    border: 1px solid CanvasText;
+    border: 2px solid CanvasText;
   }
 }

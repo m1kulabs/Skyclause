@@ -81,15 +81,20 @@ export function Preferences({ locale }: { locale: Locale }) {
                         locale
                       )}
                     </p>
-                    <p id={`alerts-save-${kind}`} role={state === 'saveError' ? 'alert' : 'status'}>
-                      {state && t(`alerts.${state}`, {}, locale)}
+                    <p id={`alerts-save-${kind}`} role="status">
+                      {state && state !== 'saveError' ? t(`alerts.${state}`, {}, locale) : null}
                     </p>
+                    {state === 'saveError' && (
+                      <p id={`alerts-error-${kind}`} role="alert">
+                        {t('alerts.saveError', {}, locale)}
+                      </p>
+                    )}
                   </div>
                   <Switch
                     id={`alerts-${kind}`}
                     name={kind}
                     aria-labelledby={`alerts-label-${kind}`}
-                    aria-describedby={`alerts-save-${kind}`}
+                    aria-describedby={`alerts-save-${kind}${state === 'saveError' ? ` alerts-error-${kind}` : ''}`}
                     checked={preference?.enabled ?? false}
                     disabled={!preference || state === 'saving'}
                     onCheckedChange={(enabled) => void save(kind, enabled)}

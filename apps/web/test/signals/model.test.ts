@@ -43,7 +43,17 @@ test('the finding reports five inputs and the oldest age in minutes', () => {
     external_id: `SOURCE-${index}`
   }))
 
-  expect(findingLine(sources, 'en')).toBe('Sky: 5 inputs reporting; oldest 12 min')
+  expect(findingLine(sources, 'en')).toBe('Sky: 5 inputs reporting; oldest 12 min')
+})
+
+test('one input reporting is singular, and the age stays with its unit', () => {
+  expect(findingLine([{ state: { state: 'fresh' as const }, age_s: 90 }], 'en')).toBe(
+    'Sky: 1 input reporting; oldest 2\u00a0min'
+  )
+})
+
+test('a project with no evaluated source says nothing is reporting instead of printing an age of 0', () => {
+  expect(findingLine([], 'en')).toBe('No inputs are reporting yet.')
 })
 
 test('errors from the last 24 hours remain in the error list, a timeout with no HTTP status included', () => {

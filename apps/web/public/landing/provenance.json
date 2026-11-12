@@ -1,0 +1,88 @@
+{
+  "note": "Every picture on the landing page, as downloaded from Wikimedia Commons on 12 November 2026, resized and re-encoded as JPEG; no other change. Credits print in the landing footer.",
+  "pictures": {
+    "lrtDay": {
+      "files": ["bukit-jalil-lrt-day.jpg", "bukit-jalil-lrt-day-800.jpg"],
+      "width": 1400,
+      "height": 1050,
+      "title": "Bukit Jalil LRT Station outview (230527) 01",
+      "creator": "*angys*",
+      "date": "2023-05-27",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "page": "https://commons.wikimedia.org/wiki/File:Bukit_Jalil_LRT_Station_outview_(230527)_01.jpg",
+      "alt": "Bukit Jalil LRT station under a blue afternoon sky with tall white clouds"
+    },
+    "stadiumClouds": {
+      "files": ["stadium-clouds.jpg", "stadium-clouds-800.jpg"],
+      "width": 1400,
+      "height": 1050,
+      "title": "Bukit Jalil National Stadium (220713)",
+      "creator": "*angys*",
+      "date": "2022-07-13",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "page": "https://commons.wikimedia.org/wiki/File:Bukit_Jalil_National_Stadium_(220713).jpg",
+      "alt": "Bukit Jalil National Stadium under a grey cloud deck, its empty forecourt in front"
+    },
+    "stadiumNight": {
+      "files": ["stadium-night.jpg", "stadium-night-800.jpg"],
+      "width": 1400,
+      "height": 1050,
+      "title": "Bukit Jalil National Stadium at night",
+      "creator": "Pak Misai",
+      "date": "2021-08-17",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "page": "https://commons.wikimedia.org/wiki/File:Bukit_Jalil_National_Stadium_at_night.jpg",
+      "alt": "Bukit Jalil National Stadium lit at night under a dark sky, mirrored in its forecourt pool"
+    },
+    "storm": {
+      "files": ["storm-kuala-lumpur.jpg", "storm-kuala-lumpur-800.jpg"],
+      "width": 1400,
+      "height": 1050,
+      "title": "Kuala Lumpur skyline thunderstorm 03",
+      "creator": "Pradana Aumars",
+      "date": "2016-07-17",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "page": "https://commons.wikimedia.org/wiki/File:Kuala_Lumpur_skyline_thunderstorm_03.jpg",
+      "alt": "Kuala Lumpur tower blocks fading into the grey rain of a thunderstorm"
+    },
+    "lrtPlatform": {
+      "files": ["lrt-platform-panorama.jpg", "lrt-platform-panorama-1200.jpg"],
+      "width": 2400,
+      "height": 565,
+      "title": "Bukit Jalil LRT Panorama",
+      "creator": "Pixdoet",
+      "date": "2025-07-31",
+      "licence": "CC BY 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/4.0",
+      "page": "https://commons.wikimedia.org/wiki/File:Bukit_Jalil_LRT_Panorama.jpg",
+      "alt": "The platforms of Bukit Jalil LRT station under their red steel roof, in a wide panorama"
+    },
+    "persiaran": {
+      "files": ["persiaran-jalil-utama.jpg", "persiaran-jalil-utama-800.jpg"],
+      "width": 1400,
+      "height": 1050,
+      "title": "Persiaran Jalil Utama, Bukit Jalil 20231118 112053",
+      "creator": "Wiki Farazi",
+      "date": "2023-11-18",
+      "licence": "CC0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "page": "https://commons.wikimedia.org/wiki/File:Persiaran_Jalil_Utama,_Bukit_Jalil_20231118_112053.jpg",
+      "alt": "Persiaran Jalil Utama in Bukit Jalil on a bright morning, a motorcycle on the empty road"
+    },
+    "rain": {
+      "files": ["rain-kuala-lumpur.jpg"],
+      "width": 960,
+      "height": 640,
+      "title": "Rain, Kuala Lumpur (Unsplash)",
+      "creator": "Eutah Mizushima",
+      "licence": "CC0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "page": "https://commons.wikimedia.org/wiki/File:Rain,_Kuala_Lumpur_(Unsplash).jpg",
+      "alt": "Heavy rain splashing on a flat surface in Kuala Lumpur, in black and white"
+    }
+  }
+}

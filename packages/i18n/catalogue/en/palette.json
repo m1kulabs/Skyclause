@@ -1,14 +1,14 @@
 {
   "title": "Command palette",
-  "description": "Search the commands available to your role. Press Escape to close.",
+  "description": "Search the pages and commands available to your role. Use the arrow keys to move, Enter to choose and Escape to close.",
   "search": "Search commands",
-  "placeholder": "Search commands…",
+  "placeholder": "Search commands, for example declare a window…",
   "results": "Available commands",
   "empty": "n=0 commands. Press Escape to return to the app.",
   "no_matches": "n=0 matches. Try another search.",
   "searching": "Searching…",
   "loading": "Loading commands…",
-  "choose_project": "Choose a project",
+  "choose_project": "Choose a project…",
   "choose_project_empty": "No project is available for this action.",
   "open_organisation": "Open organisation {name}",
   "open_project": "Open project {name}",
@@ -19,5 +19,29 @@
   "dark": "Dark",
   "system": "System",
   "theme_saved": "Theme preference saved.",
-  "theme_failed": "Theme could not be saved. Try again."
+  "theme_failed": "Theme could not be saved. Try again.",
+  "groups": {
+    "suggestions": "Suggestions",
+    "actions": "Actions",
+    "pages": "Go to",
+    "places": "Organisations and projects",
+    "appearance": "Theme",
+    "choose": "Choose a project",
+    "project": "Projects",
+    "source": "Sources",
+    "window": "Windows",
+    "bundle": "Bundles",
+    "call": "Calls",
+    "ledger": "Ledger entries"
+  },
+  "load_source": "your organisations and projects",
+  "search_source": "the organisation search",
+  "retry": "Try again",
+  "footer": {
+    "move": "to move",
+    "choose": "to choose",
+    "close": "to close",
+    "enter": "Enter",
+    "escape": "Esc"
+  }
 }

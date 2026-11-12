@@ -42,20 +42,6 @@ export function analysisState(search: Pick<URLSearchParams, 'get'>): AnalysisSta
 export function analysisQuery(state: Pick<AnalysisState, 'period' | 'pack'>) {
   return { period: state.period, pack: state.pack }
 }
-export const rateMetrics = new Set([
-  'precision',
-  'recall',
-  'false_alarm_ratio',
-  'band_coverage',
-  'agreement',
-  'agent_shadow_agreement'
-])
-export function metricValue(metric: AnalysisMetric): number | null {
-  if (metric.n === 0) return null
-  if (metric.value !== undefined) return metric.value
-  if (metric.x === null) return null
-  return rateMetrics.has(metric.metric) ? metric.x / metric.n : metric.x
-}
 
 export interface LivePoint {
   kind: 'live'
@@ -79,11 +65,41 @@ export interface ReplaySeries {
   points: ReplayPoint[]
 }
 
+/**
+ * A long replay drawn at a readable density: at most `limit` points, each the highest count in its run of steps, so a
+ * peak is never smoothed away. `size` is how many steps each drawn point stands for (1 when nothing is thinned).
+ */
+export function thinned<Point extends { value: number | null }>(points: readonly Point[], limit = 400) {
+  if (points.length <= limit) return { points: [...points], size: 1 }
+  const size = Math.ceil(points.length / limit)
+  const drawn: Point[] = []
+  for (let start = 0; start < points.length; start += size) {
+    const run = points.slice(start, start + size)
+    drawn.push(run.reduce((best, point) => ((point.value ?? -Infinity) > (best.value ?? -Infinity) ? point : best)))
+  }
+  return { points: drawn, size }
+}
+
 export function axisTicks(max: number): number[] {
   const rough = Math.max(max, 0.01) / 3
   const magnitude = 10 ** Math.floor(Math.log10(rough))
   const step = [1, 2, 5, 10].map((value) => value * magnitude).find((value) => value > rough)!
   return [0, step, step * 2, step * 3]
+}
+
+/** The figure that answers each tab's "were the calls right?", in order of preference. */
+const LEADS: Record<Tab, readonly string[]> = {
+  sky: ['precision'],
+  crowd: ['band_coverage', 'precision'],
+  agreement: ['agreement', 'agent_shadow_agreement'],
+  delays: ['crossing_to_approved_p50'],
+  review: ['no_call']
+}
+
+/** Splits a tab's figures into the one that leads and the rows that follow it. */
+export function leadAndRows<Item extends { metric: string }>(tab: Tab, figures: readonly Item[]) {
+  const lead = LEADS[tab].map((name) => figures.find((item) => item.metric === name)).find(Boolean) ?? figures[0]
+  return { lead, rows: figures.filter((item) => item !== lead) }
 }
 
 export function metricForTab(tab: Tab, metric: string): boolean {

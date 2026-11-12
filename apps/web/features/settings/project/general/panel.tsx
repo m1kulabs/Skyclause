@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { useParams } from 'next/navigation'
 import { formatTimeZoneName } from '@skyclause/i18n/format'
 import { defaultSlaSeconds, slaUpdateBody } from '../../../project-settings/model'
@@ -9,8 +9,26 @@ import { useRead } from '../../../analysis/use-read'
 import { Button } from '#ui/button'
 import { Input } from '#ui/input'
 import { Label } from '#ui/label'
-import { useUndoableAction } from '../../set-7'
+import { Textarea } from '#ui/textarea'
+import { Skeleton } from '#ui/skeleton'
+import { ConfirmDialog, useUndoableAction, useUnsavedChangesGuard } from '../../set-7'
+import { focusWhenFree } from '../../focus'
 import { t } from '../../../project-settings/catalogue'
+import '../../catalogue'
+import {
+  SettingsAside,
+  SettingsDanger,
+  SettingsError,
+  SettingsItem,
+  SettingsList,
+  SettingsLoading,
+  SettingsPart,
+  SettingsParts,
+  SettingsReadError,
+  SettingsStatus,
+  SettingsSummaryLine,
+  dateFieldRing
+} from '../../parts'
 
 type Locale = 'en' | 'ms'
 type ProjectForm = {
@@ -23,6 +41,20 @@ type ProjectForm = {
   cameraEnd: string
   semesterEnd: string
   warningTerms: string
+}
+
+type Pack = 'sky' | 'crowd'
+const PACKS = ['sky', 'crowd'] as const
+const SLA_SECONDS_MAX = 2147483647
+/** Seconds in the unit each pack's deadline is written in: minutes for Sky, hours for Crowd. */
+const slaUnit = (pack: Pack) => (pack === 'sky' ? 60 : 3600)
+const slaWords = (seconds: number, pack: Pack) => String(Math.max(1, Math.round(seconds / slaUnit(pack))))
+
+/** The whole number of units a deadline field holds, or null while it is empty, fractional, below 1 or too large. */
+function parseSla(text: string, pack: Pack): number | null {
+  if (!/^\d+$/.test(text.trim())) return null
+  const value = Number(text.trim())
+  return value >= 1 && value * slaUnit(pack) <= SLA_SECONDS_MAX ? value : null
 }
 
 function formFrom(project: Project): ProjectForm {
@@ -56,31 +88,6 @@ function projectFromForm(form: ProjectForm) {
   }
 }
 
-function Field({
-  id,
-  label,
-  children,
-  hint,
-  focusRing = false
-}: {
-  id: string
-  label: string
-  children: React.ReactNode
-  hint?: string
-  focusRing?: boolean
-}) {
-  return (
-    <div
-      data-focus-ring={focusRing ? '' : undefined}
-      className={`grid min-w-0 gap-2 ${focusRing ? 'rounded-sm focus-within:outline-solid focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring' : ''}`}
-    >
-      <Label htmlFor={id}>{label}</Label>
-      {children}
-      {hint ? <p className="text-sm text-muted-foreground">{hint}</p> : null}
-    </div>
-  )
-}
-
 export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
   const params = useParams<{ org: string; project: string }>()
   const [readRevision, setReadRevision] = useState(0)
@@ -92,15 +99,22 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
   const [project, setProject] = useState<Project | null>(null)
   const [form, setForm] = useState<ProjectForm | null>(null)
   const [savedForm, setSavedForm] = useState<ProjectForm | null>(null)
-  const [sla, setSla] = useState<Record<'sky' | 'crowd', number>>({
-    sky: defaultSlaSeconds('sky'),
-    crowd: defaultSlaSeconds('crowd')
+  // What each deadline field holds, as typed: it is checked on blur and on save, never rewritten while typing.
+  const [slaText, setSlaText] = useState<Record<Pack, string>>({
+    sky: slaWords(defaultSlaSeconds('sky'), 'sky'),
+    crowd: slaWords(defaultSlaSeconds('crowd'), 'crowd')
   })
-  const [savedSla, setSavedSla] = useState<Record<'sky' | 'crowd', number> | null>(null)
-  const [busy, setBusy] = useState<'project' | 'sky' | 'crowd' | null>(null)
+  const [slaProblem, setSlaProblem] = useState<Record<Pack, boolean>>({ sky: false, crowd: false })
+  const [savedSla, setSavedSla] = useState<Record<Pack, number> | null>(null)
+  const [busy, setBusy] = useState<'project' | Pack | null>(null)
   const [status, setStatus] = useState('')
   const [error, setError] = useState('')
   const [archived, setArchived] = useState(false)
+  const [archiveOpen, setArchiveOpen] = useState(false)
+  const [slaSaved, setSlaSaved] = useState<Pack | null>(null)
+  const [focusNext, setFocusNext] = useState<'undo' | 'archive' | null>(null)
+  const archiveRef = useRef<HTMLButtonElement>(null)
+  const undoRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (loaded.status !== 'ready') return
@@ -113,18 +127,31 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
     setProject(value)
     setForm(nextForm)
     setSavedForm(nextForm)
-    setSla(nextSla)
+    setSlaText({ sky: slaWords(nextSla.sky, 'sky'), crowd: slaWords(nextSla.crowd, 'crowd') })
     setSavedSla(nextSla)
     setArchived(value.archived_at !== null)
   }, [loaded])
 
   const dirty = !!form && !!savedForm && JSON.stringify(form) !== JSON.stringify(savedForm)
-  const slaDirty = (pack: 'sky' | 'crowd') => savedSla !== null && sla[pack] !== savedSla[pack]
+  const slaDirty = (pack: Pack) => savedSla !== null && slaText[pack].trim() !== slaWords(savedSla[pack], pack)
+  // Leaving the page (a link, the back button, closing the tab) with edits in the form or a deadline asks first.
+  useUnsavedChangesGuard(dirty || PACKS.some(slaDirty), locale)
   const archiveAction = useUndoableAction(async ({ keepalive }) => {
     if (!project) return
     const result = await projectSettingsApi('archiveProject', { params: { id: project.id }, keepalive })
     setArchived(result.archived_at !== null)
   })
+  // The control that was pressed is replaced by the next one (Archive by Undo, Undo and Restore by Archive): focus
+  // follows it, once the confirm dialog that was open has let go of the page.
+  useEffect(() => {
+    if (focusNext === 'undo' && archiveAction.pending) {
+      focusWhenFree(() => undoRef.current)
+      setFocusNext(null)
+    } else if (focusNext === 'archive' && !archiveAction.pending && !archived) {
+      focusWhenFree(() => archiveRef.current)
+      setFocusNext(null)
+    }
+  }, [focusNext, archiveAction.pending, archived])
 
   const saveProject = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -155,17 +182,25 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
     }
   }
 
-  const saveSla = async (pack: 'sky' | 'crowd') => {
+  const saveSla = async (pack: Pack) => {
     if (!project || !slaDirty(pack) || busy) return
+    const words = parseSla(slaText[pack], pack)
+    if (words === null) {
+      setSlaProblem((current) => ({ ...current, [pack]: true }))
+      document.getElementById(`sla-${pack}`)?.focus()
+      return
+    }
+    const seconds = words * slaUnit(pack)
     setBusy(pack)
     setError('')
     setStatus('')
+    setSlaSaved(null)
     try {
       const existing = project.packs.find((item) => item.pack === pack)
       const updated = await projectSettingsApi('updateProjectPack', {
         org: params.org,
         params: { id: project.id, pack },
-        body: slaUpdateBody({ pack, enabled: existing?.enabled ?? false }, sla[pack])
+        body: slaUpdateBody({ pack, enabled: existing?.enabled ?? false }, seconds)
       })
       setProject(
         (current) =>
@@ -176,9 +211,11 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
               : [...current.packs, updated]
           }
       )
-      setSla((current) => ({ ...current, [pack]: updated.sla_s ?? sla[pack] }))
-      setSavedSla((current) => current && { ...current, [pack]: updated.sla_s ?? sla[pack] })
-      setStatus(t('project-settings.saved', {}, locale))
+      const saved = updated.sla_s ?? seconds
+      setSlaText((current) => ({ ...current, [pack]: slaWords(saved, pack) }))
+      setSavedSla((current) => current && { ...current, [pack]: saved })
+      setSlaProblem((current) => ({ ...current, [pack]: false }))
+      setSlaSaved(pack)
     } catch {
       setError(t('project-settings.save_failed', {}, locale))
     } finally {
@@ -195,6 +232,7 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
       setProject(result)
       setArchived(false)
       setStatus(t('project-settings.saved', {}, locale))
+      setFocusNext('archive')
     } catch {
       setError(t('project-settings.restore_failed', {}, locale))
     } finally {
@@ -202,233 +240,308 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
     }
   }
 
-  if (loaded.status === 'loading')
+  if (loaded.status === 'loading' || (loaded.status === 'ready' && (!project || !form)))
     return (
-      <div className="grid gap-6" aria-busy="true">
-        <div className="h-10 animate-pulse rounded bg-muted" />
-        <div className="h-40 animate-pulse rounded bg-muted" />
-      </div>
+      <SettingsLoading locale={locale} className="grid gap-4">
+        <Skeleton className="h-10 w-full rounded-full" />
+        <Skeleton className="h-10 w-full rounded-full" />
+        <Skeleton className="h-10 w-2/3 rounded-full" />
+      </SettingsLoading>
     )
   if (loaded.status === 'error')
     return (
-      <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">
-        <span>{t('project-settings.load_failed', {}, locale)}</span>
-        <Button type="button" variant="link" onClick={() => setReadRevision((value) => value + 1)}>
-          {t('project-settings.retry', {}, locale)}
-        </Button>
-      </div>
+      <SettingsReadError
+        source={t('project-settings.source', {}, locale)}
+        error={loaded.error}
+        onRetry={() => setReadRevision((value) => value + 1)}
+        locale={locale}
+      />
     )
-  if (!project || !form)
-    return (
-      <div className="grid gap-6" aria-busy="true">
-        <div className="h-10 animate-pulse rounded bg-muted" />
-        <div className="h-40 animate-pulse rounded bg-muted" />
-      </div>
-    )
+  if (!project || !form) return null
 
   const field = (key: keyof ProjectForm, value: string) => setForm((current) => current && { ...current, [key]: value })
 
   return (
-    <div className="grid min-w-0 gap-8" data-project-settings-general>
-      <form className="grid min-w-0 gap-6" onSubmit={saveProject}>
-        <div className="grid min-w-0 gap-5 sm:grid-cols-2">
-          <Field id="project-name" label={t('project-settings.name', {}, locale)}>
-            <Input
-              id="project-name"
-              name="name"
-              autoComplete="organization-title"
-              value={form.name}
-              onChange={(event) => field('name', event.target.value)}
-              required
-              maxLength={120}
-            />
-          </Field>
-          <Field id="site-name" label={t('project-settings.site_name', {}, locale)}>
-            <Input
-              id="site-name"
-              name="site_name"
-              autoComplete="organization"
-              value={form.siteName}
-              onChange={(event) => field('siteName', event.target.value)}
-              maxLength={160}
-            />
-          </Field>
-          <Field id="site-latitude" label={t('project-settings.latitude', {}, locale)}>
-            <Input
-              id="site-latitude"
-              name="site_lat"
-              autoComplete="off"
-              inputMode="decimal"
-              type="number"
-              step="any"
-              min="-90"
-              max="90"
-              value={form.latitude}
-              onChange={(event) => field('latitude', event.target.value)}
-            />
-          </Field>
-          <Field id="site-longitude" label={t('project-settings.longitude', {}, locale)}>
-            <Input
-              id="site-longitude"
-              name="site_lon"
-              autoComplete="off"
-              inputMode="decimal"
-              type="number"
-              step="any"
-              min="-180"
-              max="180"
-              value={form.longitude}
-              onChange={(event) => field('longitude', event.target.value)}
-            />
-          </Field>
-          <Field id="project-time-zone" label={t('project-settings.time_zone', {}, locale)}>
-            <Input
-              id="project-time-zone"
-              name="time_zone"
-              autoComplete="off"
-              value={form.timeZone}
-              onChange={(event) => field('timeZone', event.target.value)}
-              required
-            />
-          </Field>
-          <Field id="semester-end" label={t('project-settings.semester_end', {}, locale)} focusRing>
-            <Input
-              id="semester-end"
-              name="semester_ends_on"
-              autoComplete="off"
-              type="date"
-              value={form.semesterEnd}
-              onChange={(event) => field('semesterEnd', event.target.value)}
-            />
-          </Field>
-        </div>
+    <SettingsParts data-project-settings-general>
+      <SettingsAside>
+        <SettingsSummaryLine label={t('project-settings.name', {}, locale)}>{project.name}</SettingsSummaryLine>
+        <SettingsSummaryLine label={t('project-settings.site_name', {}, locale)}>
+          {project.site_name ?? t('project-settings.missing', {}, locale)}
+        </SettingsSummaryLine>
+        <SettingsSummaryLine label={t('project-settings.time_zone', {}, locale)}>
+          {formatTimeZoneName(project.time_zone, locale)}
+        </SettingsSummaryLine>
+        {PACKS.map((pack) => (
+          <SettingsSummaryLine
+            key={pack}
+            label={t('project-settings.deadline_of', { pack: t(`project-settings.${pack}`, {}, locale) }, locale)}
+          >
+            {t(
+              'project-settings.value_unit',
+              {
+                value: savedSla ? slaWords(savedSla[pack], pack) : slaText[pack],
+                unit: t(`project-settings.unit_${pack === 'sky' ? 'minutes' : 'hours'}`, {}, locale)
+              },
+              locale
+            )}
+          </SettingsSummaryLine>
+        ))}
+      </SettingsAside>
+      <form className="grid min-w-0 gap-10" onSubmit={saveProject}>
+        <SettingsPart title={t('project-settings.site', {}, locale)}>
+          <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+            <div className="grid min-w-0 gap-2">
+              <Label htmlFor="project-name">{t('project-settings.name', {}, locale)}</Label>
+              <Input
+                id="project-name"
+                name="name"
+                autoComplete="off"
+                value={form.name}
+                onChange={(event) => field('name', event.target.value)}
+                required
+                maxLength={120}
+              />
+            </div>
+            <div className="grid min-w-0 gap-2">
+              <Label htmlFor="site-name">{t('project-settings.site_name', {}, locale)}</Label>
+              <Input
+                id="site-name"
+                name="site_name"
+                autoComplete="off"
+                value={form.siteName}
+                onChange={(event) => field('siteName', event.target.value)}
+                maxLength={160}
+              />
+            </div>
+            <div className="grid min-w-0 gap-2">
+              <Label htmlFor="site-latitude">{t('project-settings.latitude', {}, locale)}</Label>
+              <Input
+                id="site-latitude"
+                name="site_lat"
+                autoComplete="off"
+                inputMode="decimal"
+                type="number"
+                step="any"
+                min="-90"
+                max="90"
+                value={form.latitude}
+                data-numeric
+                onChange={(event) => field('latitude', event.target.value)}
+              />
+            </div>
+            <div className="grid min-w-0 gap-2">
+              <Label htmlFor="site-longitude">{t('project-settings.longitude', {}, locale)}</Label>
+              <Input
+                id="site-longitude"
+                name="site_lon"
+                autoComplete="off"
+                inputMode="decimal"
+                type="number"
+                step="any"
+                min="-180"
+                max="180"
+                value={form.longitude}
+                data-numeric
+                onChange={(event) => field('longitude', event.target.value)}
+              />
+            </div>
+            <div className="grid min-w-0 gap-2">
+              <Label htmlFor="project-time-zone">{t('project-settings.time_zone', {}, locale)}</Label>
+              <Input
+                id="project-time-zone"
+                name="time_zone"
+                autoComplete="off"
+                spellCheck={false}
+                aria-describedby="project-time-zone-hint"
+                value={form.timeZone}
+                onChange={(event) => field('timeZone', event.target.value)}
+                required
+              />
+              <p id="project-time-zone-hint" className="type-small text-muted-foreground">
+                {t('project-settings.time_zone_hint', {}, locale)}
+              </p>
+            </div>
+            <div className={`grid min-w-0 gap-2 ${dateFieldRing}`} data-focus-ring>
+              <Label htmlFor="semester-end">{t('project-settings.semester_end', {}, locale)}</Label>
+              <Input
+                id="semester-end"
+                name="semester_ends_on"
+                autoComplete="off"
+                type="date"
+                value={form.semesterEnd}
+                onChange={(event) => field('semesterEnd', event.target.value)}
+              />
+            </div>
+            <div className="grid min-w-0 gap-2 sm:col-span-2">
+              <Label htmlFor="warning-terms">{t('project-settings.warning_terms', {}, locale)}</Label>
+              <Textarea
+                id="warning-terms"
+                name="warning_area_terms"
+                autoComplete="off"
+                spellCheck={false}
+                rows={3}
+                aria-describedby="warning-terms-hint"
+                value={form.warningTerms}
+                onChange={(event) => field('warningTerms', event.target.value)}
+              />
+              <p id="warning-terms-hint" className="type-small text-muted-foreground">
+                {t('project-settings.warning_hint', {}, locale)}
+              </p>
+            </div>
+          </div>
+        </SettingsPart>
 
-        <fieldset className="grid min-w-0 gap-4 rounded-md border p-4 sm:grid-cols-2">
-          <legend className="px-1 text-sm font-medium">{t('project-settings.camera_hours', {}, locale)}</legend>
-          <p className="text-sm text-muted-foreground sm:col-span-2">
-            {t('project-settings.local_time_zone', { zone: formatTimeZoneName(form.timeZone, locale) }, locale)}
-          </p>
-          <Field id="camera-start" label={t('project-settings.camera_start', {}, locale)} focusRing>
-            <Input
-              id="camera-start"
-              name="camera_day_start"
-              autoComplete="off"
-              type="time"
-              value={form.cameraStart}
-              onChange={(event) => field('cameraStart', event.target.value)}
-            />
-          </Field>
-          <Field id="camera-end" label={t('project-settings.camera_end', {}, locale)} focusRing>
-            <Input
-              id="camera-end"
-              name="camera_day_end"
-              autoComplete="off"
-              type="time"
-              value={form.cameraEnd}
-              onChange={(event) => field('cameraEnd', event.target.value)}
-            />
-          </Field>
-        </fieldset>
-
-        <Field
-          id="warning-terms"
-          label={t('project-settings.warning_terms', {}, locale)}
-          hint={t('project-settings.warning_hint', {}, locale)}
+        <SettingsPart
+          title={t('project-settings.camera_hours', {}, locale)}
+          description={t(
+            'project-settings.local_time_zone',
+            { zone: formatTimeZoneName(form.timeZone, locale) },
+            locale
+          )}
         >
-          <textarea
-            id="warning-terms"
-            name="warning_area_terms"
-            autoComplete="off"
-            rows={3}
-            value={form.warningTerms}
-            onChange={(event) => field('warningTerms', event.target.value)}
-            className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </Field>
+          <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+            <div className={`grid min-w-0 gap-2 ${dateFieldRing}`} data-focus-ring>
+              <Label htmlFor="camera-start">{t('project-settings.camera_start', {}, locale)}</Label>
+              <Input
+                id="camera-start"
+                name="camera_day_start"
+                autoComplete="off"
+                type="time"
+                value={form.cameraStart}
+                onChange={(event) => field('cameraStart', event.target.value)}
+              />
+            </div>
+            <div className={`grid min-w-0 gap-2 ${dateFieldRing}`} data-focus-ring>
+              <Label htmlFor="camera-end">{t('project-settings.camera_end', {}, locale)}</Label>
+              <Input
+                id="camera-end"
+                name="camera_day_end"
+                autoComplete="off"
+                type="time"
+                value={form.cameraEnd}
+                onChange={(event) => field('cameraEnd', event.target.value)}
+              />
+            </div>
+          </div>
+        </SettingsPart>
+
         <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" disabled={!dirty || busy !== null} aria-busy={busy === 'project'}>
             {busy === 'project' ? t('project-settings.saving', {}, locale) : t('project-settings.save', {}, locale)}
           </Button>
-          {status ? (
-            <p role="status" className="text-sm text-muted-foreground">
-              {status}
-            </p>
-          ) : null}
-          {error ? (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          ) : null}
+          {status ? <SettingsStatus>{status}</SettingsStatus> : null}
+          {error ? <SettingsError>{error}</SettingsError> : null}
         </div>
       </form>
 
-      <section className="grid gap-4 border-t pt-6" aria-labelledby="project-sla-title">
-        <div>
-          <h3 id="project-sla-title" className="text-base font-semibold">
-            {t('project-settings.sla', {}, locale)}
-          </h3>
-          <p className="mt-1 text-sm text-muted-foreground">{t('project-settings.sla_description', {}, locale)}</p>
-        </div>
-        {(['sky', 'crowd'] as const).map((pack) => {
-          const unit = pack === 'sky' ? 60 : 3600
-          const value = Math.max(1, Math.round(sla[pack] / unit))
-          return (
-            <div className="grid min-w-0 items-end gap-3 sm:grid-cols-[1fr_1fr_auto]" key={pack} data-sla-pack={pack}>
-              <div className="grid gap-2">
-                <Label htmlFor={`sla-${pack}`}>{t(`project-settings.${pack}`, {}, locale)}</Label>
-                <Input
-                  id={`sla-${pack}`}
-                  name={`sla_s_${pack}`}
-                  autoComplete="off"
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={value}
-                  aria-label={`${t(`project-settings.${pack}`, {}, locale)} ${t('project-settings.sla', {}, locale)}`}
-                  onChange={(event) =>
-                    setSla((current) => ({ ...current, [pack]: Math.max(1, Number(event.target.value) || 1) * unit }))
-                  }
-                />
-              </div>
-              <span className="pb-2 text-sm text-muted-foreground">
-                {t(`project-settings.${pack === 'sky' ? 'minutes' : 'hours'}`, {}, locale)}
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={!slaDirty(pack) || busy !== null}
-                aria-busy={busy === pack}
-                onClick={() => void saveSla(pack)}
-              >
-                {busy === pack ? t('project-settings.saving', {}, locale) : t('project-settings.save', {}, locale)}
-              </Button>
-              {savedSla?.[pack] === sla[pack] && (
-                <p className="text-sm text-muted-foreground sm:col-span-3" role="status">
-                  {t(
-                    'project-settings.saved_sla_value',
-                    {
-                      value,
-                      unit: t(`project-settings.${pack === 'sky' ? 'minutes' : 'hours'}`, {}, locale)
-                    },
-                    locale
-                  )}
-                </p>
-              )}
-            </div>
-          )
-        })}
-      </section>
+      <SettingsPart
+        title={t('project-settings.sla', {}, locale)}
+        description={t('project-settings.sla_description', {}, locale)}
+        id="project-sla-title"
+      >
+        <SettingsList>
+          {PACKS.map((pack) => {
+            const unitWord = t(`project-settings.unit_${pack === 'sky' ? 'minutes' : 'hours'}`, {}, locale)
+            const packName = t(`project-settings.${pack}`, {}, locale)
+            return (
+              <SettingsItem key={pack} data-sla-pack={pack} className="items-end">
+                <form
+                  className="flex w-full min-w-0 flex-wrap items-end justify-between gap-x-4 gap-y-3"
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    void saveSla(pack)
+                  }}
+                  noValidate
+                >
+                  <div className="grid min-w-0 content-start gap-2">
+                    <Label htmlFor={`sla-${pack}`}>
+                      {t('project-settings.deadline_of', { pack: packName }, locale)}
+                    </Label>
+                    <div className="flex items-center gap-3">
+                      <Input
+                        id={`sla-${pack}`}
+                        name={`sla_s_${pack}`}
+                        autoComplete="off"
+                        type="number"
+                        min={1}
+                        step={1}
+                        inputMode="numeric"
+                        value={slaText[pack]}
+                        data-numeric
+                        className="w-24 text-right"
+                        aria-invalid={slaProblem[pack] ? true : undefined}
+                        aria-describedby={`sla-${pack}-hint${slaProblem[pack] ? ` sla-${pack}-error` : ''}`}
+                        onChange={(event) => {
+                          setSlaText((current) => ({ ...current, [pack]: event.target.value }))
+                          if (slaProblem[pack]) setSlaProblem((current) => ({ ...current, [pack]: false }))
+                        }}
+                        onBlur={() => {
+                          if (parseSla(slaText[pack], pack) === null)
+                            setSlaProblem((current) => ({ ...current, [pack]: true }))
+                        }}
+                      />
+                      <span aria-hidden="true" className="type-body text-muted-foreground">
+                        {unitWord}
+                      </span>
+                    </div>
+                    <p id={`sla-${pack}-hint`} className="type-small text-muted-foreground">
+                      {t('project-settings.sla_hint', { unit: unitWord }, locale)}
+                    </p>
+                    {slaProblem[pack] ? (
+                      <SettingsError id={`sla-${pack}-error`}>
+                        {t('project-settings.sla_invalid', { unit: unitWord }, locale)}
+                      </SettingsError>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {slaSaved === pack && !slaDirty(pack) && (
+                      <SettingsStatus>
+                        {t(
+                          'project-settings.saved_sla_value',
+                          { value: slaWords(savedSla?.[pack] ?? 0, pack), unit: unitWord },
+                          locale
+                        )}
+                      </SettingsStatus>
+                    )}
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      disabled={!slaDirty(pack) || busy !== null}
+                      aria-busy={busy === pack}
+                      aria-label={t('project-settings.save_named', { name: packName }, locale)}
+                    >
+                      {busy === pack
+                        ? t('project-settings.saving', {}, locale)
+                        : t('project-settings.save', {}, locale)}
+                    </Button>
+                  </div>
+                </form>
+              </SettingsItem>
+            )
+          })}
+        </SettingsList>
+      </SettingsPart>
 
-      <section className="grid gap-3 border-t border-destructive/40 pt-6" aria-labelledby="project-archive-title">
-        <h3 id="project-archive-title" className="text-base font-semibold text-destructive">
-          {t('project-settings.archive', {}, locale)}
-        </h3>
-        <p className="text-sm text-muted-foreground">{t('project-settings.archive_description', {}, locale)}</p>
-        {archived ? <p role="status">{t('project-settings.archived', {}, locale)}</p> : null}
+      <SettingsDanger
+        title={t('project-settings.archive', {}, locale)}
+        description={t('project-settings.archive_description', {}, locale)}
+        id="project-archive-title"
+      >
+        {archived ? (
+          <SettingsStatus>{t('project-settings.archived', { name: project.name }, locale)}</SettingsStatus>
+        ) : null}
         {archiveAction.pending ? (
           <div className="flex flex-wrap items-center gap-3" role="status">
-            <span>{t('project-settings.archive_pending', {}, locale)}</span>
-            <Button type="button" variant="outline" onClick={archiveAction.undo}>
+            <span className="type-body">{t('project-settings.archive_pending', { name: project.name }, locale)}</span>
+            <Button
+              ref={undoRef}
+              type="button"
+              variant="outline"
+              onClick={() => {
+                archiveAction.undo()
+                setFocusNext('archive')
+              }}
+            >
               {t('project-settings.undo', {}, locale)}
             </Button>
           </div>
@@ -438,21 +551,31 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
           </Button>
         ) : (
           <Button
+            ref={archiveRef}
             type="button"
             variant="destructive"
             disabled={busy !== null || archiveAction.committing}
-            onClick={archiveAction.start}
+            onClick={() => setArchiveOpen(true)}
           >
             {t('project-settings.archive_action', {}, locale)}
           </Button>
         )}
-        {archiveAction.error ? (
-          <p role="alert" className="text-sm text-destructive">
-            {t('project-settings.archive_failed', {}, locale)}
-          </p>
-        ) : null}
-      </section>
-    </div>
+        {archiveAction.error ? <SettingsError>{t('project-settings.archive_failed', {}, locale)}</SettingsError> : null}
+      </SettingsDanger>
+      <ConfirmDialog
+        open={archiveOpen}
+        onOpenChange={setArchiveOpen}
+        objectName={project.name}
+        title={t('project-settings.archive_title', { name: project.name }, locale)}
+        confirmLabel={t('project-settings.archive_title', { name: project.name }, locale)}
+        description={t('project-settings.archive_description', {}, locale)}
+        locale={locale}
+        onConfirm={() => {
+          archiveAction.start()
+          setFocusNext('undo')
+        }}
+      />
+    </SettingsParts>
   )
 }
 
