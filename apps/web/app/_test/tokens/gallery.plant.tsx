@@ -18,7 +18,7 @@ import { Label } from '#ui/label'
 import { Progress } from '#ui/progress'
 import { Skeleton } from '#ui/skeleton'
 import { Switch } from '#ui/switch'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableMeasure, TableRow } from '#ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#ui/tabs'
 import { Textarea } from '#ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '#ui/toggle-group'
@@ -239,6 +239,36 @@ const pack: PackState = {
   no_call: null
 }
 
+// A call record and a source record at fixed instants: enum specimens, never product data.
+const callRecord: {
+  id: string
+  window: string
+  time: string
+  mode: Parameters<typeof ModeBadge>[0]['mode']
+  sent: number | null
+  selected?: boolean
+  dimmed?: boolean
+}[] = [
+  { id: 'c1', window: 'Lecture block A, Bukit Jalil', time: '08:15', mode: 'normal', sent: 3 },
+  { id: 'c2', window: 'Field lab, outdoor session', time: '10:05', mode: 'outdoor_limited', sent: 6 },
+  {
+    id: 'c3',
+    window: 'Release wave at the stadium gate, with the long name of the event that must truncate',
+    time: '12:50',
+    mode: 'commute_disruption',
+    sent: 11,
+    selected: true
+  },
+  { id: 'c4', window: 'Seminar', time: '15:30', mode: 'hybrid_recommended', sent: 4 },
+  { id: 'c5', window: 'Club meeting', time: '17:00', mode: 'no_call', sent: null, dimmed: true },
+  { id: 'c6', window: 'Stadium exit', time: '20:30', mode: 'surge_night', sent: 9 }
+]
+const sourceRecord = [
+  { name: 'Sg. Kuyoh', state: 'fresh', rain: '0.5', read: '07:36' },
+  { name: 'JPS station 75', state: 'stale', rain: '39.0', read: '07:11' },
+  { name: 'MET Malaysia warnings', state: 'error', rain: '12.5', read: '06:55' }
+] as const
+
 // The static look of a state the browser shows only on interaction (hover, press, focus), for the screenshot.
 const focusRing = 'outline-(length:--focus-width) outline-offset-2 outline-(--focus) outline-solid'
 const states = [
@@ -358,10 +388,10 @@ export function Gallery() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="whitespace-normal">Reading</TableHead>
-              <TableHead className="text-right whitespace-normal">Time</TableHead>
-              <TableHead className="text-right whitespace-normal">mm in 60 min</TableHead>
-              <TableHead className="text-right whitespace-normal">Share of windows</TableHead>
+              <TableHead>Reading</TableHead>
+              <TableHead numeric>Time</TableHead>
+              <TableHead numeric>mm in 60 min</TableHead>
+              <TableHead numeric>Share of windows</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -372,15 +402,85 @@ export function Gallery() {
               ['Gauge 12', '20:00', '0.0', '100.0%']
             ].map(([name, time, rain, share], index) => (
               <TableRow key={index}>
-                <TableCell className="whitespace-normal">{name}</TableCell>
-                <TableCell className="text-right whitespace-normal" data-numeric>
+                <TableCell>{name}</TableCell>
+                <TableCell numeric phone="meta" label="Time">
                   <time dateTime={`2026-11-12T${time}:00+08:00`}>{`${time} MYT`}</time>
                 </TableCell>
-                <TableCell className="text-right whitespace-normal" data-numeric>
+                <TableCell numeric phone="end">
                   {rain}
                 </TableCell>
-                <TableCell className="text-right whitespace-normal" data-numeric>
+                <TableCell numeric phone="meta" label="Share of windows">
                   {share}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Section>
+
+      <Section id="tables" title="Tables">
+        <p className="type-text max-w-[65ch]">
+          One table for every record: rows on a 44px pitch, a header strip in sentence case, no rules between rows. A
+          name truncates with its title, a figure aligns right, a bar measures it. Below 640px each row is a two-line
+          item.
+        </p>
+        <h3 className="type-card-title">Call record, with a selected row, a dimmed row and a measuring column</h3>
+        <Table sticky>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Window</TableHead>
+              <TableHead numeric>Crossed</TableHead>
+              <TableHead>Call</TableHead>
+              <TableHead numeric className="w-48">
+                Sent after
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {callRecord.map((row) => (
+              <TableRow key={row.id} selected={row.selected} dimmed={row.dimmed}>
+                <TableCell truncate>{row.window}</TableCell>
+                <TableCell numeric phone="meta" label="Crossed">
+                  <time dateTime={`2026-11-12T${row.time}:00+08:00`}>{`${row.time} MYT`}</time>
+                </TableCell>
+                <TableCell phone="end">
+                  <ModeBadge mode={row.mode} />
+                </TableCell>
+                <TableCell numeric phone="meta" label="Sent after">
+                  {row.sent === null ? (
+                    <span className="text-muted-foreground">Not sent</span>
+                  ) : (
+                    <TableMeasure value={row.sent} max={12}>
+                      <span data-numeric>{`${row.sent} min`}</span>
+                    </TableMeasure>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <h3 className="type-card-title">Compact, 40px</h3>
+        <Table compact>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Source</TableHead>
+              <TableHead>State</TableHead>
+              <TableHead numeric>mm in 60 min</TableHead>
+              <TableHead numeric>Read</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sourceRecord.map((row) => (
+              <TableRow key={row.name}>
+                <TableCell truncate>{row.name}</TableCell>
+                <TableCell phone="end">
+                  <StatusMark state={row.state} variant="plain" />
+                </TableCell>
+                <TableCell numeric phone="meta" label="mm in 60 min">
+                  {row.rain}
+                </TableCell>
+                <TableCell numeric phone="meta" label="Read">
+                  <time dateTime={`2026-11-12T${row.read}:00+08:00`}>{`${row.read} MYT`}</time>
                 </TableCell>
               </TableRow>
             ))}
