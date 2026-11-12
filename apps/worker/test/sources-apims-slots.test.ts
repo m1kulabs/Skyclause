@@ -537,8 +537,8 @@ test.each(['poll', 'discovery'] as const)(
 test('failed discovery captures are durable but never current successful input or domain results', async () => {
   const t = await fixture([])
   t.http.mockImplementation(async () => new Response('unavailable', { status: 503 }))
-  await expect(t.jobs.catalogueSync()).rejects.toThrow(/unavailable/)
-  await expect(t.jobs.catalogueSync()).rejects.toThrow(/unavailable/)
+  await expect(t.jobs.catalogueSync()).rejects.toThrow(/Catalogue unavailable.*apims.*HTTP 503/)
+  await expect(t.jobs.catalogueSync()).rejects.toThrow(/Catalogue unavailable.*apims.*HTTP 503/)
   const outcome = await t.run()
   expect(outcome).toMatchObject({
     state: 'complete',

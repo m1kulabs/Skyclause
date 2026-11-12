@@ -265,17 +265,26 @@ export function createSourceJobs(ports: SourceJobPorts) {
     refreshSourcePlan: (now: Date) => refreshSourcePlan(now, ports.store, ports.database.snapshot),
     async catalogueSync(): Promise<void> {
       let count = 0
-      // Each kind stands alone: one provider's failure keeps its own catalogue as it was, never another kind's.
-      const failures: Array<{ kind: string; message: string }> = []
+      const failures: Array<{ kind: string; error: unknown }> = []
       for (const adapter of ports.adapters)
         if (adapter.latestSlot?.discover || adapter.discover) {
+          let entries
           try {
-            // Discovery must finish before the transaction; a provider error preserves the catalogue.
-            let entries
+            // Discovery must finish before the transaction; a provider error preserves its catalogue.
             if (adapter.latestSlot?.discover) {
               const plan = await readSourcePlan(ports.store)
               const sources = plan.sources.filter((entry) => entry.source.kind === adapter.kind)
-              if (!sources.length) await latest(adapter, [], plan, null)
+              if (!sources.length) {
+                const result = await latest(adapter, [], plan, null)
+                if (result.state === 'complete') {
+                  const request =
+                    result.capture.purpose === 'poll' ? result.capture.result.requests[0]! : result.capture.request
+                  if (request.error)
+                    throw new Error(`Catalogue unavailable for ${adapter.kind}: ${request.error.message}`, {
+                      cause: request.error
+                    })
+                }
+              }
               const capture = await readCurrentSlotCapture(
                 ports.store,
                 adapter.kind,
@@ -286,22 +295,29 @@ export function createSourceJobs(ports: SourceJobPorts) {
                 throw new Error(`Catalogue unavailable: no successful current-slot capture for ${adapter.kind}`)
               entries = adapter.latestSlot.discover(capture.body)
             } else entries = await adapter.discover!()
-            await ports.database.catalogue(adapter, entries)
-            count++
           } catch (error) {
-            const message = error instanceof Error ? error.message : String(error)
-            failures.push({ kind: adapter.kind, message })
-            ports.log('source.catalogue.failed', { adapter: adapter.kind, error: message })
+            failures.push({ kind: adapter.kind, error })
+            ports.log('source.catalogue.failed', {
+              adapter: adapter.kind,
+              error: error instanceof Error ? error.message : String(error)
+            })
+            continue
           }
+          // A database outage is fatal; do not start more provider requests after a failed write.
+          await ports.database.catalogue(adapter, entries)
+          count++
         }
-      ports.log('source.catalogue.complete', { adapters: count })
-      // The job still fails, so the alarm still fires, after every other kind has been saved.
-      if (failures.length)
-        throw new Error(
+      if (failures.length) {
+        ports.log('source.catalogue.partial', { adapters: count, failedAdapters: failures.map((f) => f.kind) })
+        if (failures.length === 1) throw failures[0]!.error
+        throw new AggregateError(
+          failures.map((f) => f.error),
           `Catalogue sync failed for ${failures.map((f) => f.kind).join(', ')}: ${failures
-            .map((f) => `${f.kind}: ${f.message}`)
+            .map((f) => `${f.kind}: ${f.error instanceof Error ? f.error.message : String(f.error)}`)
             .join('; ')}`
         )
+      }
+      ports.log('source.catalogue.complete', { adapters: count })
     },
     async adapterContracts(): Promise<void> {
       if (!ports.adapters.length) {
