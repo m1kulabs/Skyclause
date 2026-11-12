@@ -119,15 +119,10 @@
     "reason": "{inputs} gagal sejak {time}.",
     "reason_plain": "Input wajib gagal, jadi tetingkap ini tiada keputusan."
   },
-  "not_built": {
-    "title": "{thing} belum dibina.",
-    "detail": "Belum ada apa untuk ditunjukkan di sini."
-  },
   "source_error": {
-    "title": "Tidak dapat membaca {source}.",
-    "not_built": "Belum dibina, jadi tiada apa untuk ditunjukkan di sini.",
-    "status": "Ia menjawab {status} pada {time}.",
-    "status_untimed": "Ia menjawab {status}.",
+    "title": "Tidak dapat membaca {source} buat masa ini.",
+    "unavailable": "Skyclause belum dapat menunjukkan {source}.",
+    "tried": "Dicuba pada {time}.",
     "unreachable": "Tiada jawapan pada {time}.",
     "retry": "Cuba lagi"
   },

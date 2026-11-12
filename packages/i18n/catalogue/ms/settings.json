@@ -400,10 +400,10 @@
     "exportJobFailed": "Eksport ini gagal. Minta eksport baharu."
   },
   "unbuilt": {
-    "accountAi": "kunci AI untuk akaun anda",
-    "accountApi": "kunci API untuk akaun anda",
-    "organisationAi": "kunci AI untuk organisasi ini",
-    "organisationApi": "kunci API untuk organisasi ini"
+    "accountAi": "Kunci AI belum tersedia.",
+    "accountApi": "Kunci API belum tersedia.",
+    "organisationAi": "Kunci AI belum tersedia.",
+    "organisationApi": "Kunci API belum tersedia."
   },
   "general": {
     "title": "Namakan semula organisasi",

@@ -307,7 +307,7 @@ test('a failed memberships read names itself as an error, not as no organisation
   )
   const main = page.locator('main')
   await expect(main.locator('[data-source-error="501"]')).toContainText(
-    copy(`Couldn’t read ${copy('your organisations')}.`)
+    copy(`Skyclause can’t show ${copy('your organisations')} yet.`)
   )
   // Reading again cannot change a "not built" answer, so it offers no Try again; a failed read (below) does.
   await expect(main.getByRole('button', { name: copy('Try again') })).toHaveCount(0)
