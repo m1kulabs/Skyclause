@@ -127,11 +127,14 @@ export function DayStrip({
                 ) : null}
                 {mark.title ? (
                   href ? (
-                    <a href={href} className="inline-flex min-h-6 items-center underline underline-offset-3">
+                    <a
+                      href={href}
+                      className="inline-flex min-h-6 min-w-0 items-center break-words underline underline-offset-3 hover:decoration-2"
+                    >
                       {mark.title}
                     </a>
                   ) : (
-                    <span>{mark.title}</span>
+                    <span className="min-w-0 break-words">{mark.title}</span>
                   )
                 ) : null}
               </li>
@@ -141,7 +144,11 @@ export function DayStrip({
       ) : null}
       {list && marks.length > MAX_ROWS ? (
         <p className="type-small text-muted-foreground">
-          {t('data.day.more', { count: marks.length - MAX_ROWS }, locale)}
+          {t(
+            marks.length - MAX_ROWS === 1 ? 'data.day.more_one' : 'data.day.more',
+            { count: marks.length - MAX_ROWS },
+            locale
+          )}
         </p>
       ) : null}
     </Frame>

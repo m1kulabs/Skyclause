@@ -108,8 +108,8 @@ describe('WindowStrip', () => {
     // Header, y labels, now and Lebat labels and the x axis are all text outside the SVG, in the 13px step.
     const labels = [...chart.querySelectorAll('span.type-small, div.type-small')]
     expect(labels.length).toBeGreaterThan(6)
-    expect(chart.querySelector('[data-now-label]')!.textContent).toBe('Now MYT')
-    expect(chart.querySelector('[data-lebat-label]')!.textContent).toBe('Lebat 31 mm')
+    expect(chart.querySelector('[data-now-label]')!.textContent).toBe('Now\u00a0MYT')
+    expect(chart.querySelector('[data-lebat-label]')!.textContent).toBe('Lebat\u00a031\u00a0mm')
     expect(chart.querySelector('[data-replay]')!.textContent).toContain('Replay')
     // The two lanes' ticks are different elements at different heights, never two labels on one spot.
     const tops = [...chart.querySelectorAll<HTMLElement>('[data-numeric]')].map((el) => Number.parseFloat(el.style.top))
