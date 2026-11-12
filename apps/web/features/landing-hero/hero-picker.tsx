@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { t } from './catalogue'
 import { fetchEvaluate, fetchLatestCall, type EvaluateResult, type LatestCallRead } from './evaluate'
 import type { PickerReplay } from './activator'
@@ -14,9 +14,12 @@ import {
   groupedVerdicts,
   hasGaugeError,
   parseLocalTime,
+  parseTimeInput,
   skyStateOf,
   snapToStep,
+  stripKeyWindow,
   stripOf,
+  TIME_INPUT_PATTERN,
   toLocalTime,
   type HeroWindow
 } from './window-model'
@@ -58,6 +61,9 @@ export default function HeroPicker({
   const [startText, setStartText] = useState(toLocalTime(initialWin.startMin))
   const [endText, setEndText] = useState(toLocalTime(initialWin.endMin))
   const [pending, setPending] = useState(false)
+  // A typed time the parser cannot read stays in its field, marked, with the rule beside it.
+  const [invalid, setInvalid] = useState<{ start: boolean; end: boolean }>({ start: false, end: false })
+  const timeErrorId = useId()
   const rootRef = useRef<HTMLFormElement>(null)
   const firstWindowRef = useRef(true)
   const visibleRef = useRef(true)
@@ -69,30 +75,34 @@ export default function HeroPicker({
   winRef.current = win
   const sliderRef = useRef<HTMLDivElement>(null)
   const replayDoneRef = useRef(false)
+  const firstSyncRef = useRef(false)
 
   // The first intent that mounted this island is replayed once, so the click or key is not lost.
   useEffect(() => {
     if (replayDoneRef.current || !initialReplay) return
     replayDoneRef.current = true
     const replay: PickerReplay = initialReplay
+    // The server's controls were replaced by this island's: focus returns to the one the visitor was using.
+    const refocus = (selector: string) => rootRef.current?.ownerDocument.querySelector<HTMLElement>(selector)?.focus()
     if (replay.k === 'fld' && replay.n && replay.v) {
       if (replay.n === 'date' && dates.includes(replay.v)) {
         setWin((current) => ({ ...current, date: replay.v! }))
+        refocus(`#window input[name="date"][value="${replay.v}"]`)
       } else if (replay.n === 'start' || replay.n === 'end') {
+        // The typed text carries over whole; a complete time also moves the window.
+        if (replay.n === 'start') setStartText(replay.v)
+        else setEndText(replay.v)
         const parsed = parseLocalTime(replay.v)
         if (parsed !== null) {
           if (replay.n === 'start') commitTimes(parsed, winRef.current.endMin)
           else commitTimes(winRef.current.startMin, parsed)
         }
+        refocus(`#window input[name="${replay.n}"]`)
       }
-    } else if (replay.k === 'key' && replay.key?.slice(0, 5) === 'Arrow') {
-      const delta = replay.key === 'ArrowRight' || replay.key === 'ArrowDown' ? 15 : -15
-      if (replay.shift) commitTimes(winRef.current.startMin, winRef.current.endMin + delta)
-      else {
-        const length = winRef.current.endMin - winRef.current.startMin
-        const start = Math.min(1425 - length, Math.max(0, winRef.current.startMin + delta))
-        commitTimes(start, start + length)
-      }
+    } else if (replay.k === 'key' && replay.key) {
+      const next = stripKeyWindow(replay.key, !!replay.shift, winRef.current)
+      if (next) commitTimes(next.start, next.end)
+      sliderRef.current?.focus()
     } else if (replay.k === 'ptr' && typeof replay.x === 'number' && sliderRef.current) {
       const minutes = minutesAt(replay.x, sliderRef.current)
       const current = winRef.current
@@ -168,6 +178,12 @@ export default function HeroPicker({
   }, [])
 
   useEffect(() => {
+    if (replayDoneRef.current && initialReplay?.k === 'fld' && !firstSyncRef.current) {
+      // The replayed keystroke's text stays until the visitor leaves the field.
+      firstSyncRef.current = true
+      return
+    }
+    firstSyncRef.current = true
     setStartText(toLocalTime(win.startMin))
     setEndText(toLocalTime(win.endMin))
   }, [win.startMin, win.endMin])
@@ -227,21 +243,37 @@ export default function HeroPicker({
   }
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+    const next = stripKeyWindow(event.key, event.shiftKey, win)
+    if (!next) return
     event.preventDefault()
-    const delta = event.key === 'ArrowRight' ? 15 : -15
-    if (event.shiftKey) {
-      commitTimes(win.startMin, win.endMin + delta)
+    commitTimes(next.start, next.end)
+  }
+
+  /** On leaving a time field (or sending the form): read any common form, or mark the field and keep the text. */
+  const settleTime = (field: 'start' | 'end', text: string): number | null => {
+    const parsed = parseTimeInput(text)
+    setInvalid((current) => ({ ...current, [field]: parsed === null }))
+    if (parsed === null) return null
+    if (field === 'start') {
+      commitTimes(parsed, win.endMin)
+      setStartText(toLocalTime(parsed))
     } else {
-      const length = win.endMin - win.startMin
-      const start = Math.min(1425 - length, Math.max(0, win.startMin + delta))
-      commitTimes(start, start + length)
+      commitTimes(win.startMin, parsed)
+      setEndText(toLocalTime(parsed))
     }
+    return parsed
   }
 
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    void evaluate(win, true)
+    const start = parseTimeInput(startText)
+    const end = parseTimeInput(endText)
+    setInvalid({ start: start === null, end: end === null })
+    if (start === null || end === null) return
+    const clamped = clampWindow(start, end)
+    const next = { ...win, startMin: clamped.start, endMin: clamped.end }
+    setWin(next)
+    void evaluate(next, true)
   }
 
   const strip = result.kind === 'ok' ? stripOf(result.data.strip, win, result.data.evaluated_at) : null
@@ -256,6 +288,7 @@ export default function HeroPicker({
     <>
       <HeroBand
         win={win}
+        now={new Date().toISOString()}
         state={skyStateOf(groupedForError)}
         sliderRef={sliderRef}
         sliderProps={{
@@ -298,41 +331,52 @@ export default function HeroPicker({
             <span>{t('landing-hero.start_label', {}, 'en')}</span>
             <input
               type="text"
-              inputMode="numeric"
+              inputMode="text"
+              enterKeyHint="go"
               placeholder="09:45…"
               name="start"
               autoComplete="off"
-              step={900}
+              spellCheck={false}
+              pattern={TIME_INPUT_PATTERN}
               required
               value={startText}
+              aria-invalid={invalid.start || undefined}
+              aria-describedby={invalid.start ? timeErrorId : undefined}
               onChange={(event) => {
                 setStartText(event.target.value)
                 const parsed = parseLocalTime(event.target.value)
                 if (parsed !== null) commitTimes(parsed, win.endMin)
               }}
-              onBlur={() => setStartText(toLocalTime(win.startMin))}
+              onBlur={(event) => settleTime('start', event.target.value)}
             />
           </label>
           <label className={styles.field}>
             <span>{t('landing-hero.end_label', {}, 'en')}</span>
             <input
               type="text"
-              inputMode="numeric"
+              inputMode="text"
+              enterKeyHint="go"
               placeholder="09:45…"
               name="end"
               autoComplete="off"
-              step={900}
+              spellCheck={false}
+              pattern={TIME_INPUT_PATTERN}
               required
               value={endText}
+              aria-invalid={invalid.end || undefined}
+              aria-describedby={invalid.end ? timeErrorId : undefined}
               onChange={(event) => {
                 setEndText(event.target.value)
                 const parsed = parseLocalTime(event.target.value)
                 if (parsed !== null) commitTimes(win.startMin, parsed)
               }}
-              onBlur={() => setEndText(toLocalTime(win.endMin))}
+              onBlur={(event) => settleTime('end', event.target.value)}
             />
           </label>
           <p className={styles.zone}>{t('landing-hero.time_zone', {}, 'en')}</p>
+          <p id={timeErrorId} className={styles.timeError} aria-live="polite">
+            {invalid.start || invalid.end ? t('landing-hero.time_error', {}, 'en') : null}
+          </p>
         </div>
         <HeroStrip strip={strip} initialSvg={initialStripSvg} rainAnimated={!gaugeError && !pending} />
         <div aria-live="polite" aria-busy={pending}>

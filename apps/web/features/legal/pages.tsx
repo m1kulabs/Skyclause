@@ -1,6 +1,8 @@
 import { PRIVACY_NOTICE_VERSION, TERMS_VERSION } from '@skyclause/contracts'
 import { t } from '@skyclause/i18n'
+import { formatDate } from '@skyclause/i18n/format'
 import type { ReactNode } from 'react'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
 import type { PublicLocale } from '../public-chrome'
 import '../public-chrome/catalogue'
 import styles from './legal.module.css'
@@ -19,27 +21,58 @@ const retentionRows = [
   'backups'
 ] as const
 
+/** Identifiers inside legal sentences (region codes, timetable column names) that a browser must never translate. */
+const IDENTIFIERS = /(ap-northeast-1|ap-southeast-1|asia-southeast1|SAMACCOUNTNAME|LECTID|\bNAME\b)/
+
+function untranslated(text: string): ReactNode {
+  return text.split(IDENTIFIERS).map((part, index) =>
+    index % 2 ? (
+      <span key={index} translate="no">
+        {part}
+      </span>
+    ) : (
+      part
+    )
+  )
+}
+
+/** A date-only version, written as the reader's locale writes a date, with the ISO date kept in `dateTime`. */
+function Version({ label, version, locale }: { label: string; version: string; locale: PublicLocale }) {
+  return (
+    <>
+      {label} <time dateTime={version}>{formatDate(`${version}T12:00:00+08:00`, locale)}</time>
+    </>
+  )
+}
+
 function RetentionTable({ locale, labelledBy }: { locale: PublicLocale; labelledBy: string }) {
   const column = (name: 'columnData' | 'columnKept' | 'columnAfter') => t(`legal.privacy.retention.${name}`, {}, locale)
+  // The shared table at the page's reading size; on a phone each row becomes the name with its two values under it.
   return (
-    <table className={styles.retention} aria-labelledby={labelledBy}>
-      <thead>
-        <tr>
-          <th scope="col">{column('columnData')}</th>
-          <th scope="col">{column('columnKept')}</th>
-          <th scope="col">{column('columnAfter')}</th>
-        </tr>
-      </thead>
-      <tbody>
+    <Table className={styles.retention} aria-labelledby={labelledBy}>
+      <TableHeader>
+        <TableRow>
+          <TableHead scope="col">{column('columnData')}</TableHead>
+          <TableHead scope="col">{column('columnKept')}</TableHead>
+          <TableHead scope="col">{column('columnAfter')}</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
         {retentionRows.map((row) => (
-          <tr key={row}>
-            <th scope="row">{t(`legal.privacy.retention.${row}Label`, {}, locale)}</th>
-            <td data-label={column('columnKept')}>{t(`legal.privacy.retention.${row}Kept`, {}, locale)}</td>
-            <td data-label={column('columnAfter')}>{t(`legal.privacy.retention.${row}After`, {}, locale)}</td>
-          </tr>
+          <TableRow key={row}>
+            <TableHead scope="row" className={styles.retentionName}>
+              {t(`legal.privacy.retention.${row}Label`, {}, locale)}
+            </TableHead>
+            <TableCell className={styles.retentionCell} data-label={column('columnKept')}>
+              {t(`legal.privacy.retention.${row}Kept`, {}, locale)}
+            </TableCell>
+            <TableCell className={styles.retentionCell} data-label={column('columnAfter')}>
+              {untranslated(t(`legal.privacy.retention.${row}After`, {}, locale))}
+            </TableCell>
+          </TableRow>
         ))}
-      </tbody>
-    </table>
+      </TableBody>
+    </Table>
   )
 }
 
@@ -121,11 +154,7 @@ export function PrivacyNoticePage({ locale }: { locale: PublicLocale }) {
       locale={locale}
       title={heading('title')}
       intro={heading('intro')}
-      version={
-        <>
-          {heading('version')} <time dateTime={version}>{version}</time>
-        </>
-      }
+      version={<Version label={heading('version')} version={version} locale={locale} />}
       contents={sections.map(({ id, heading: key }) => ({ id, label: heading(key) }))}
     >
       <section className={styles.section} id="collection" aria-labelledby="collection-heading">
@@ -136,13 +165,13 @@ export function PrivacyNoticePage({ locale }: { locale: PublicLocale }) {
 
       <section className={styles.section} id="processors" aria-labelledby="processors-heading">
         <h2 id="processors-heading">{heading('processorsHeading')}</h2>
-        <p>{heading('processors')}</p>
+        <p>{untranslated(heading('processors'))}</p>
         <p>{heading('purpose')}</p>
       </section>
 
       <section className={styles.section} id="region" aria-labelledby="region-heading">
         <h2 id="region-heading">{heading('regionHeading')}</h2>
-        <p>{heading('region')}</p>
+        <p>{untranslated(heading('region'))}</p>
         <p>{heading('emailTransfer')}</p>
         <p>{heading('crossBorder')}</p>
       </section>
@@ -194,11 +223,7 @@ export function TermsPage({ locale = 'en' }: { locale?: PublicLocale }) {
       locale={locale}
       title={heading('title')}
       intro={heading('intro')}
-      version={
-        <>
-          {heading('version')} <time dateTime={TERMS_VERSION}>{TERMS_VERSION}</time>
-        </>
-      }
+      version={<Version label={heading('version')} version={TERMS_VERSION} locale={locale} />}
       contents={[
         { id: 'plans', label: heading('plansHeading') },
         {

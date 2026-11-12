@@ -1,10 +1,12 @@
 'use client'
 
 import type { SubscriberData } from '@skyclause/contracts'
-import { formatDateTime } from '@skyclause/i18n/format'
+import { formatDateTime, formatList, formatTimeZoneName } from '@skyclause/i18n/format'
+import { CircleAlertIcon } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Button, buttonVariants } from '#ui/button'
 import { Input } from '#ui/input'
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
 import { AuthHeader, AuthMessage } from '../public-chrome/auth'
 import { SubscribeColumn } from '../subscribe/column'
 import { t } from './i18n'
@@ -20,48 +22,72 @@ function date(value: string | null, locale: Locale) {
   return formatDateTime(value, locale)
 }
 
-/** A real table; on a phone each row stacks under its first cell and every value keeps its column's name. */
+/** The most rows a table here renders; the download holds every record. */
+const ROW_LIMIT = 50
+
+/** The latest `ROW_LIMIT` records, newest first. */
+function latest<T extends { at: string }>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => b.at.localeCompare(a.at)).slice(0, ROW_LIMIT)
+}
+
+/**
+ * One table of the shared kind; on a phone each row becomes a two-line item and every value after the first keeps its
+ * column's name. Past `ROW_LIMIT` records it says how many it shows.
+ */
 function DataTable({
   caption,
   columns,
   rows,
-  empty
+  count,
+  empty,
+  locale
 }: {
   caption: string
   columns: string[]
   rows: { key: string; cells: ReactNode[] }[]
+  count: number
   empty: string
+  locale: Locale
 }) {
   return (
-    <table className={styles.table}>
-      <caption>{caption}</caption>
-      <thead>
-        <tr>
-          {columns.map((column) => (
-            <th scope="col" key={column}>
-              {column}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.length ? (
-          rows.map(({ key, cells }) => (
-            <tr key={key}>
-              {cells.map((cell, index) => (
-                <td key={index} data-label={columns[index]}>
-                  {cell}
-                </td>
-              ))}
-            </tr>
-          ))
-        ) : (
-          <tr>
-            <td colSpan={columns.length}>{empty}</td>
-          </tr>
-        )}
-      </tbody>
-    </table>
+    <>
+      <Table>
+        <TableCaption className="sr-only">{caption}</TableCaption>
+        <TableHeader>
+          <TableRow>
+            {columns.map((column) => (
+              <TableHead scope="col" key={column}>
+                {column}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.length ? (
+            rows.map(({ key, cells }) => (
+              <TableRow key={key}>
+                {cells.map((cell, index) => (
+                  <TableCell key={index} className="whitespace-normal" data-label={index ? columns[index] : undefined}>
+                    {cell}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={columns.length} className="whitespace-normal">
+                {empty}
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+      {count > rows.length ? (
+        <p className="auth-hint">
+          {label('showing_latest', locale, { shown: String(rows.length), count: String(count) })}
+        </p>
+      ) : null}
+    </>
   )
 }
 
@@ -75,8 +101,10 @@ export function SubscriberRights({ initialData, token }: { initialData: Subscrib
   const [deleted, setDeleted] = useState(false)
   const [message, setMessage] = useState('')
   const [saveError, setSaveError] = useState('')
+  const [emailRejected, setEmailRejected] = useState(false)
   const [deleteError, setDeleteError] = useState('')
   const resultRef = useRef<HTMLHeadingElement>(null)
+  const emailRef = useRef<HTMLInputElement>(null)
   const locale: Locale = data.subscriber.language === 'ms' ? 'ms' : 'en'
   const base = `/api/subscribe/${encodeURIComponent(token)}/data`
 
@@ -88,6 +116,7 @@ export function SubscriberRights({ initialData, token }: { initialData: Subscrib
     event.preventDefault()
     setSaving(true)
     setSaveError('')
+    setEmailRejected(false)
     setMessage('')
     try {
       const response = await fetch(base, {
@@ -95,6 +124,12 @@ export function SubscriberRights({ initialData, token }: { initialData: Subscrib
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ email, role })
       })
+      // A refused correction is almost always the address: say so beside it and put the reader back there.
+      if (response.status === 400 || response.status === 422) {
+        setEmailRejected(true)
+        emailRef.current?.focus()
+        return
+      }
       if (!response.ok) throw new Error('save')
       const result = (await response.json()) as SubscriberData
       setData(result)
@@ -131,29 +166,32 @@ export function SubscriberRights({ initialData, token }: { initialData: Subscrib
 
   const suppression = data.suppression
     ? label('suppression_value', locale, {
-        reason: data.suppression.reason,
-        time: date(data.suppression.at, locale),
-        hash: data.suppression.email_hash
+        reason: label(`reason_${data.suppression.reason}`, locale),
+        time: date(data.suppression.at, locale)
       })
     : label('none', locale)
   const status = label(`status_${data.subscriber_status}`, locale)
-  const selectedWindows = data.subscriber.window_ids
-    .map((id) => {
-      const row = data.windows.find((window) => window.id === id)
-      return row ? `${row.title} (${id})` : id
-    })
-    .join(', ')
+  // Windows by title, never by ID; a selected window the project has since removed is not listed.
+  const selectedWindows = formatList(
+    data.subscriber.window_ids.flatMap((id) => data.windows.find((window) => window.id === id)?.title ?? []),
+    locale
+  )
+  const channels = formatList(
+    data.subscriber.channels.map((channel) => label(`channel_${channel}`, locale)),
+    locale
+  )
   const summary: [string, string][] = [
-    ['subscriber_id', data.subscriber.id],
     ['email', data.subscriber.email],
     ['role', data.subscriber.role || '—'],
     ['windows_selected', selectedWindows || '—'],
-    ['channels', data.subscriber.channels.join(', ') || '—'],
-    ['language', data.subscriber.language],
+    ['channels', channels || '—'],
+    ['language', label(`language_${data.subscriber.language}`, locale)],
     ['status', status],
     ['suppression', suppression]
   ]
   const column = (key: string) => label(key, locale)
+  const deliveries = latest(data.delivery_history)
+  const replies = latest(data.crowd_replies)
 
   return (
     <SubscribeColumn locale={locale} wide>
@@ -167,17 +205,20 @@ export function SubscriberRights({ initialData, token }: { initialData: Subscrib
         <h2 id="rights-overview" className="auth-h2">
           {label('overview', locale)}
         </h2>
-        <table className={`${styles.table} ${styles.summary}`}>
-          <caption>{label('overview', locale)}</caption>
-          <tbody>
+        {/* Each label reads with its value, so on a phone this table keeps its two columns. */}
+        <Table data-phone="scroll">
+          <TableCaption className="sr-only">{label('overview', locale)}</TableCaption>
+          <TableBody>
             {summary.map(([key, value]) => (
-              <tr key={key}>
-                <th scope="row">{column(key)}</th>
-                <td>{value}</td>
-              </tr>
+              <TableRow key={key}>
+                <TableHead scope="row" className="w-1/3 whitespace-normal">
+                  {column(key)}
+                </TableHead>
+                <TableCell className="whitespace-normal">{value}</TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </section>
 
       <section className={styles.section} aria-labelledby="rights-correct">
@@ -188,6 +229,7 @@ export function SubscriberRights({ initialData, token }: { initialData: Subscrib
           <div className="auth-field">
             <label htmlFor="rights-email">{column('email')}</label>
             <Input
+              ref={emailRef}
               id="rights-email"
               name="email"
               type="email"
@@ -198,8 +240,19 @@ export function SubscriberRights({ initialData, token }: { initialData: Subscrib
               required
               className="h-12 text-base md:text-base"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              aria-invalid={emailRejected || undefined}
+              aria-describedby={emailRejected ? 'rights-email-error' : undefined}
+              onChange={(event) => {
+                setEmail(event.target.value)
+                setEmailRejected(false)
+              }}
             />
+            {emailRejected ? (
+              <p className="auth-error" id="rights-email-error" role="alert">
+                <CircleAlertIcon aria-hidden="true" />
+                {label('email_rejected', locale)}
+              </p>
+            ) : null}
           </div>
           <div className="auth-field">
             <label htmlFor="rights-role">{column('role')}</label>
@@ -226,18 +279,19 @@ export function SubscriberRights({ initialData, token }: { initialData: Subscrib
         </h2>
         <DataTable
           caption={column('windows')}
-          columns={[column('id'), column('windows'), column('starts'), column('ends'), column('time_zone')]}
-          rows={data.windows.map((row) => ({
+          columns={[column('windows'), column('starts'), column('ends'), column('time_zone')]}
+          rows={data.windows.slice(0, ROW_LIMIT).map((row) => ({
             key: row.id,
             cells: [
-              row.id,
-              label('window_title', locale, { title: row.title, kind: row.kind }),
+              label('window_title', locale, { title: row.title, kind: label(`window_kind_${row.kind}`, locale) }),
               date(row.starts_at, locale),
               date(row.ends_at, locale),
-              <span className="whitespace-nowrap">{row.tz}</span>
+              formatTimeZoneName(row.tz, locale)
             ]
           }))}
+          count={data.windows.length}
           empty={label('no_windows', locale)}
+          locale={locale}
         />
       </section>
 
@@ -248,11 +302,18 @@ export function SubscriberRights({ initialData, token }: { initialData: Subscrib
         <DataTable
           caption={column('consent')}
           columns={[column('time'), column('form'), column('notice_version'), column('language')]}
-          rows={data.consent_records.map((row, index) => ({
+          rows={latest(data.consent_records).map((row, index) => ({
             key: `${row.at}-${index}`,
-            cells: [date(row.at, locale), row.form, row.notice_version, row.language]
+            cells: [
+              date(row.at, locale),
+              label(`form_${row.form}`, locale),
+              row.notice_version,
+              label(`language_${row.language}`, locale)
+            ]
           }))}
+          count={data.consent_records.length}
           empty={label('no_consent', locale)}
+          locale={locale}
         />
       </section>
 
@@ -262,29 +323,22 @@ export function SubscriberRights({ initialData, token }: { initialData: Subscrib
         </h2>
         <DataTable
           caption={column('delivery')}
-          columns={[
-            column('id'),
-            column('time'),
-            column('kind'),
-            column('call'),
-            column('channel'),
-            column('delivery_status')
-          ]}
-          rows={data.delivery_history.map((row) => ({
+          columns={[column('time'), column('kind'), column('channel'), column('delivery_status')]}
+          rows={deliveries.map((row) => ({
             key: row.id,
             cells: [
-              row.id,
               date(row.at, locale),
-              row.kind,
-              row.call_permalink ? <a href={row.call_permalink}>{row.call_id}</a> : '—',
-              row.channel,
+              label(`notice_${row.kind}`, locale),
+              label(`channel_${row.channel}`, locale),
               <>
-                {row.status}
+                {label(`delivery_${row.status}`, locale)}
                 {row.accepted_at ? ` · ${column('accepted')} ${date(row.accepted_at, locale)}` : ''}
               </>
             ]
           }))}
+          count={data.delivery_history.length}
           empty={label('no_delivery', locale)}
+          locale={locale}
         />
       </section>
 
@@ -294,26 +348,19 @@ export function SubscriberRights({ initialData, token }: { initialData: Subscrib
         </h2>
         <DataTable
           caption={column('replies')}
-          columns={[
-            column('id'),
-            column('time'),
-            column('window'),
-            column('call'),
-            column('reply'),
-            column('shift_to')
-          ]}
-          rows={data.crowd_replies.map((row) => ({
+          columns={[column('time'), column('window'), column('reply'), column('shift_to')]}
+          rows={replies.map((row) => ({
             key: row.id,
             cells: [
-              row.id,
               date(row.at, locale),
-              data.windows.find((window) => window.id === row.window_id)?.title ?? row.window_id,
-              <a href={`/c/${row.call_id}`}>{row.call_id}</a>,
-              row.kind,
+              data.windows.find((window) => window.id === row.window_id)?.title ?? '—',
+              label(`reply_${row.kind}`, locale),
               row.shift_to ? date(row.shift_to, locale) : '—'
             ]
           }))}
+          count={data.crowd_replies.length}
           empty={label('no_replies', locale)}
+          locale={locale}
         />
       </section>
 
@@ -355,10 +402,10 @@ export function SubscriberRights({ initialData, token }: { initialData: Subscrib
   )
 }
 
-export function SubscriberRightsLinkError({ expired }: { expired: boolean }) {
+export function SubscriberRightsLinkError({ expired, locale }: { expired: boolean; locale: Locale }) {
   return (
-    <SubscribeColumn locale="en" wide>
-      <AuthHeader title={label(expired ? 'expired' : 'unavailable', 'en')} statement />
+    <SubscribeColumn locale={locale} wide>
+      <AuthHeader title={label(expired ? 'expired' : 'unavailable', locale)} statement locale={locale} />
     </SubscribeColumn>
   )
 }

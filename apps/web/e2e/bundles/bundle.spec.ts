@@ -20,7 +20,9 @@ import {
 import { seedReview } from './seed'
 
 const approve = (page: import('@playwright/test').Page, count = 2) =>
-  page.locator('.bundle-approval-bar').getByRole('button', { name: t('approve', { count }), exact: false })
+  page
+    .locator('.bundle-approval-bar')
+    .getByRole('button', { name: t(count === 1 ? 'approve_one' : 'approve', { count }), exact: false })
 
 test('CAL-13 GET-safe links, tabs and reads never submit decisions', async ({ page }) => {
   await prepare(page)
@@ -106,8 +108,8 @@ test('CAL-9 inputs-changed waits for a second confirm and uses the new review ha
   await expect(dialog).toContainText(t('changed'))
   await expect(dialog).toContainText('39')
   await expect(dialog).toContainText('44.5')
-  await expect(dialog).toContainText(t('age', { seconds: 300 }))
-  await expect(dialog).toContainText(t('age', { seconds: 60 }))
+  await expect(dialog).toContainText(t('age_minutes', { count: 5 }))
+  await expect(dialog).toContainText(t('age_minutes', { count: 1 }))
   expect(writes).toBe(1)
   await dialog.getByRole('button', { name: t('confirm'), exact: true }).press('Enter')
   await expect(dialog).toBeHidden()
@@ -167,6 +169,57 @@ test('CAL-15 editing wording and recipients stays local and a template teaching 
   expect(writes).toBe(0)
 })
 
+test('P2-5 approving says what was sent, moves focus there and links the ledger and the next bundle', async ({
+  page
+}) => {
+  const waiting = bundleDouble([], { id: 'next-bundle', sla_due_at: '2026-11-02T07:20:00Z' })
+  const bundle = await prepare(page, bundleDouble([callDouble()]), { list: [bundleDouble([callDouble()]), waiting] })
+  await page.route('**/api/bundles/*/approve', (route) =>
+    route.fulfill({
+      json: {
+        ...bundle,
+        state: 'approved',
+        calls: bundle.calls.map((call) => ({ ...call, state: 'sending', approved_at: '2026-11-02T07:08:00Z' }))
+      }
+    })
+  )
+  await open(page)
+  await expect(page.locator('.bundle-approval-bar')).toContainText(
+    t('consequence', { notices: t('notices_one'), recipients: t('recipient_count', { count: 2 }) })
+  )
+  await approve(page, 1).press('Enter')
+  const summary = page.locator('[data-approved]')
+  await expect(summary).toBeFocused()
+  await expect(summary).toContainText(t('approved_at', { time: '15:08 MYT' }))
+  await expect(summary).toContainText(
+    t('approved_sending', { notices: t('notices_one'), recipients: t('recipient_count', { count: 2 }) })
+  )
+  await expect(summary.getByRole('link', { name: t('ledger_link') })).toHaveAttribute(
+    'href',
+    `/test-org/test-project/ledger?call=${ids.first}`
+  )
+  await expect(summary.getByRole('link', { name: t('next_bundle') })).toHaveAttribute(
+    'href',
+    '/test-org/test-project/bundles/next-bundle'
+  )
+})
+
+test('unsaved wording asks before the edit dialog closes', async ({ page }) => {
+  await prepare(page, bundleDouble([callDouble()]))
+  await open(page)
+  await page.locator('.bundle-call-list > li').focus()
+  await page.keyboard.press('e')
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('textbox', { name: t('body', { language: t('language.en') }), exact: true }).fill('Edited')
+  page.once('dialog', (question) => void question.dismiss())
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeVisible()
+  page.once('dialog', (question) => void question.accept())
+  await dialog.getByRole('button', { name: t('cancel'), exact: true }).press('Enter')
+  await expect(dialog).toBeHidden()
+  await expect(page.locator('.bundle-call-list > li')).toContainText(t('fate.included'))
+})
+
 test('LOC-4 and LOC-5 show recipient languages, Malay quotes and English fallback', async ({ page }) => {
   const call = callDouble()
   call.warnings = [
@@ -180,9 +233,7 @@ test('LOC-4 and LOC-5 show recipient languages, Malay quotes and English fallbac
   ]
   await prepare(page, bundleDouble([call]))
   await open(page)
-  await expect(page.locator('.bundle-sends')).toContainText(
-    t('language_group', { language: t('language.en'), count: 1 })
-  )
+  await expect(page.locator('.bundle-sends')).toContainText(t('language_group_one', { language: t('language.en') }))
   await expect(page.locator('blockquote[lang="ms"]')).toHaveText('Amaran Ribut Petir')
   await expect(page.locator('.bundle-notice[lang="ms"]')).toContainText('Ulangan')
   await expectZonedTimes(page)
@@ -487,14 +538,11 @@ for (const theme of ['dark', 'light', 'high-contrast']) {
         .getByRole('button', { name: t('cancel'), exact: true })
         .press('Enter')
       if (width < 641) {
-        await page.locator('.bundle-phone-approval button').press('Enter')
-        const drawer = page.locator('[data-slot="drawer-popup"]')
-        const button = drawer.getByRole('button', { name: t('approve', { count: 1 }), exact: true })
+        // P2-6: the phone approves as the desktop does, with the same words and no drawer.
+        const button = approve(page, 1)
         await expect(button).toBeVisible()
+        await expect(page.locator('[data-slot="drawer-popup"]')).toHaveCount(0)
         expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44)
-        await expectAxeClean(page)
-        await expectUnclippedText(page)
-        await page.keyboard.press('Escape')
       }
       await page.screenshot({ path: testInfo.outputPath(`${theme}-${width}.png`), fullPage: true })
     }
@@ -508,11 +556,7 @@ for (const theme of ['dark', 'light', 'high-contrast']) {
         })
       })
     )
-    await page.locator('.bundle-phone-approval button').press('Enter')
-    await page
-      .locator('[data-slot="drawer-popup"]')
-      .getByRole('button', { name: t('approve', { count: 1 }), exact: true })
-      .press('Enter')
+    await approve(page, 1).press('Enter')
     await expect(page.getByRole('alertdialog')).toBeVisible()
     await expectAxeClean(page)
     await expectUnclippedText(page)

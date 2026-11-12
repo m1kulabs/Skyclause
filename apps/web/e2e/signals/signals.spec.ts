@@ -13,7 +13,7 @@ test('SIG-1 bound sources show the captured values, finding, age, licence and so
   await page.goto(projectRoute)
   const root = page.locator('[data-signals-page]')
 
-  await expect(root.getByText(/5 inputs reporting; oldest 12 min/)).toBeVisible()
+  await expect(root.getByText(/5 inputs reporting; oldest 12\smin/)).toBeVisible()
   await expect(root.locator(`[data-source="${sourceIdsForTest.gauge}"]`)).toContainText('0232901RF')
   await expect(root.locator(`[data-source="${sourceIdsForTest.gauge}"]`)).toContainText('0.5 mm in 60 min')
   await expect(root.locator(`[data-source="${sourceIdsForTest.ca16w}"]`)).toContainText('67 API · Moderate')
@@ -22,7 +22,7 @@ test('SIG-1 bound sources show the captured values, finding, age, licence and so
   await expect(root).toContainText('Thunderstorms Warning')
   await expect(root).toContainText('21:05 MYT')
   await expect(
-    root.locator(`[data-source="${sourceIdsForTest.ca16w}"]`).getByRole('link', { name: 'Open source' })
+    root.locator(`[data-source="${sourceIdsForTest.ca16w}"]`).getByRole('link', { name: /^Publisher’s page for / })
   ).toHaveAttribute('href', 'https://eqms.doe.gov.my/mapcaqm')
   await expectZonedTimes(page)
   await expectAxeClean(page)

@@ -202,9 +202,11 @@
 }
 
 /* Rows that measure. In the lead: name and figure on a line, the bar, the interval in words. */
+/* Rows separate by space, never by a rule. */
 .analysis-rows {
   display: flex;
   flex-direction: column;
+  gap: 4px;
 }
 .analysis-row {
   display: grid;
@@ -219,9 +221,6 @@
   padding-block: 10px;
   font-size: 14px;
   line-height: 20px;
-}
-.analysis-row + .analysis-row {
-  border-top: 1px solid var(--grid);
 }
 .analysis-row-name {
   grid-area: name;
@@ -335,54 +334,20 @@
   line-height: 20px;
 }
 
-/* Tables: rules and alignment on the surface step. */
+/* Tables: the shared table, on the ground; a wide one scrolls inside its frame. */
 .analysis-table-frame {
   max-width: 100%;
-  overflow-x: auto;
-}
-.analysis-graded .analysis-table-frame {
-  padding: 0 20px 4px;
-  border-radius: var(--radius-surface);
-  background: var(--card);
-}
-.analysis-page table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-  line-height: 20px;
-}
-.analysis-page thead th {
-  padding: 12px 8px 8px;
-  border-bottom: 2px solid var(--grid);
-  color: var(--muted-foreground);
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 18px;
-  text-align: left;
-  vertical-align: bottom;
-}
-.analysis-page tbody th,
-.analysis-page td {
-  padding: 8px;
-  height: 44px;
-  text-align: left;
-  vertical-align: middle;
-  font-weight: 400;
-}
-.analysis-page tbody tr + tr > * {
-  border-top: 1px solid var(--grid);
-}
-.analysis-page [data-figure] {
-  text-align: right;
-}
-.analysis-page td[data-figure] .analysis-wilson {
-  align-items: flex-end;
+  min-width: 0;
 }
 .analysis-pager {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 12px;
   margin-top: 16px;
+}
+.analysis-pager > p {
+  margin-right: auto;
 }
 .analysis-project-choice {
   display: flex;
@@ -415,8 +380,10 @@
   border-radius: var(--radius-surface);
   background: var(--card);
 }
-.analysis-review-list > li + li {
-  border-top: 1px solid var(--grid);
+.analysis-review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .analysis-review-item {
   display: grid;
@@ -491,15 +458,48 @@
   flex-direction: column;
   gap: 8px;
 }
-.analysis-night svg {
+/* A drawing and its labels share one width; the labels are HTML at 13px, so a narrow lane never shrinks them. */
+.analysis-night-drawing {
   width: 100%;
   max-width: 420px;
+}
+.analysis-night-drawing svg {
+  display: block;
+  width: 100%;
   height: auto;
 }
-.analysis-night svg text {
-  fill: var(--muted-foreground);
-  /* In the drawing's own units: 11px or more at every width the lane is drawn. */
-  font-size: 11px;
+.analysis-night-axis {
+  position: relative;
+  height: 18px;
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--muted-foreground);
+}
+.analysis-night-axis > span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.analysis-night-axis > span[data-edge='start'] {
+  transform: none;
+}
+.analysis-night-axis > span[data-edge='end'] {
+  transform: translateX(-100%);
+}
+.analysis-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-decoration-color: var(--control-edge);
+  text-underline-offset: 3px;
+}
+.analysis-link:hover {
+  text-decoration-color: currentColor;
 }
 .analysis-night-facts {
   display: flex;
@@ -521,24 +521,7 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
-/* The replay: always labelled Replay, its line dashed, never on a live chart. */
-.analysis-replay-mark {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 24px;
-  padding: 0 10px 0 8px;
-  border: 2px dashed var(--border);
-  border-radius: 9999px;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 16px;
-  letter-spacing: 0;
-}
-.analysis-replay-mark svg {
-  width: 14px;
-  height: 14px;
-}
+/* The replay: always marked Replay (the foundation's mark), its line dashed, never on a live chart. */
 .analysis-replay-body {
   display: flex;
   flex-direction: column;
@@ -587,11 +570,14 @@
   flex-direction: column;
   gap: 16px;
 }
-.analysis-replay-result [data-slot='badge'] {
+.analysis-replay-result [data-replay-mark] {
   align-self: flex-start;
   height: auto;
   min-height: 24px;
   white-space: normal;
+}
+.analysis-replay-result:focus {
+  outline: none;
 }
 .analysis-replay-result .analysis-rows {
   padding: 4px 0;
@@ -637,31 +623,6 @@
       'field'
       'foot';
   }
-  .analysis-graded-table tbody tr {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px 12px;
-    padding-block: 12px;
-  }
-  .analysis-page .analysis-graded-table tbody th,
-  .analysis-page .analysis-graded-table td {
-    height: auto;
-    padding: 0;
-    border: 0;
-  }
-  .analysis-graded-table tbody th {
-    grid-column: 1 / -1;
-  }
-  .analysis-graded-table tbody tr + tr {
-    border-top: 1px solid var(--grid);
-  }
-  .analysis-graded-table td::before {
-    content: attr(data-label);
-    display: block;
-    margin-bottom: 2px;
-    font-size: 13px;
-    color: var(--muted-foreground);
-  }
 }
 @media (max-width: 640px) {
   .analysis-lead-grid,
@@ -672,7 +633,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
   .analysis-ranked .analysis-rows,
-  .analysis-graded .analysis-table-frame,
   .analysis-review-list {
     padding-inline: 16px;
   }

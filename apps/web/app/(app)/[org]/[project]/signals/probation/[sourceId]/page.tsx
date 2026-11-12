@@ -2,8 +2,11 @@ import { redirect } from 'next/navigation'
 import { getPrincipal } from '../../../../../../../lib/principal'
 import { ProbationPanel } from '../../../../../../../features/probation/panel'
 import { t } from '../../../../../../../features/probation/i18n'
+import { settingsLocale } from '../../../../../../../features/settings/locale'
 
-export const metadata = { title: t('probation.title') }
+export async function generateMetadata() {
+  return { title: t('probation.title', {}, await settingsLocale()) }
+}
 
 export default async function Page({
   params,
@@ -17,5 +20,14 @@ export default async function Page({
   const { org, project, sourceId } = await params
   const query = await searchParams
   const view = typeof query.view === 'string' ? query.view : 'label'
-  return <ProbationPanel org={org} project={project} sourceId={sourceId} view={view} role={principal.role ?? null} />
+  return (
+    <ProbationPanel
+      org={org}
+      project={project}
+      sourceId={sourceId}
+      view={view}
+      role={principal.role ?? null}
+      locale={await settingsLocale()}
+    />
+  )
 }

@@ -123,7 +123,7 @@ test('email, Google and link errors explain recovery and focus the message or fi
   await page.goto('/sign-in?link=invalid-token')
   await page.getByRole('button', { name: 'Sign in' }).click()
   const confirmError = signInRegion(page).getByRole('alert')
-  await expect(confirmError).toContainText('We couldn’t confirm this link')
+  await expect(confirmError).toContainText('This link couldn’t be confirmed')
   await expect(confirmError).toBeFocused()
   await expectAuthAxe(page)
 })
@@ -229,7 +229,7 @@ test('step-up link confirmation posts to the step-up endpoint and asks to return
 
   await page.goto('/sign-in?link=step-up-token&for=step-up')
   await expectAuthAxe(page)
-  await page.getByRole('button', { name: "Confirm it's you" }).click()
+  await page.getByRole('button', { name: 'Confirm it’s you' }).click()
 
   await expect(signInRegion(page).getByRole('status')).toContainText('Return to the tab and choose Send again')
   expect(confirmCount).toBe(1)
@@ -251,7 +251,7 @@ test('an expired link with a resend handle takes one press and announces the sen
   await expectAuthAxe(page)
   await page.getByRole('button', { name: 'Resend' }).click()
 
-  await expect(signInRegion(page).getByRole('status')).toContainText('We sent a new sign-in link. Check your email.')
+  await expect(signInRegion(page).getByRole('status')).toContainText('New sign-in link sent. Check your email.')
   expect(resendCount).toBe(1)
   await expectNoPasswordControls(page)
   await expectAuthAxe(page)

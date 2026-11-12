@@ -146,6 +146,75 @@ describe('HeroPicker', () => {
     expect(body).toMatchObject({ start_time: '21:45', end_time: '23:30' })
   })
 
+  test('the strip takes Home, End and Page keys as a slider does', async () => {
+    render(
+      <HeroPicker
+        initialResult={initialResult}
+        initialStripSvg={null}
+        initialWin={{ date: '2026-11-05', startMin: 1290, endMin: 1380 }}
+        dates={dates}
+        latestCall={null}
+        pilot={null}
+        calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+      />
+    )
+    const slider = screen.getByRole('slider')
+    const lastBody = () => JSON.parse((fetchMock.mock.calls.at(-1)![1] as RequestInit).body as string)
+    fireEvent.keyDown(slider, { key: 'Home' })
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    expect(lastBody()).toMatchObject({ start_time: '00:00', end_time: '01:30' })
+    fetchMock.mockClear()
+    // Page Up moves an hour later, as a slider's value rises.
+    fireEvent.keyDown(slider, { key: 'PageUp' })
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    expect(lastBody()).toMatchObject({ start_time: '01:00', end_time: '02:30' })
+    fetchMock.mockClear()
+    fireEvent.keyDown(slider, { key: 'End' })
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    expect(lastBody()).toMatchObject({ start_time: '22:15', end_time: '23:45' })
+  })
+
+  test('time fields ask for text, read any common form on blur, and say beside the field when they cannot', async () => {
+    render(
+      <HeroPicker
+        initialResult={initialResult}
+        initialStripSvg={null}
+        initialWin={{ date: '2026-11-05', startMin: 1290, endMin: 1380 }}
+        dates={dates}
+        latestCall={null}
+        pilot={null}
+        calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+      />
+    )
+    const start = screen.getByLabelText('Window start') as HTMLInputElement
+    const end = screen.getByLabelText('Window end') as HTMLInputElement
+    // A phone's number pad has no colon: both fields open the text keyboard.
+    expect(start.getAttribute('inputmode')).toBe('text')
+    expect(end.getAttribute('inputmode')).toBe('text')
+    fireEvent.change(start, { target: { value: '3.30pm' } })
+    fireEvent.blur(start)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    expect(JSON.parse((fetchMock.mock.calls.at(-1)![1] as RequestInit).body as string)).toMatchObject({
+      start_time: '15:30',
+      end_time: '23:00'
+    })
+    expect(start.value).toBe('15:30')
+    expect(start.getAttribute('aria-invalid')).toBeNull()
+    fetchMock.mockClear()
+    fireEvent.change(end, { target: { value: 'soon' } })
+    fireEvent.blur(end)
+    expect(end.getAttribute('aria-invalid')).toBe('true')
+    const message = document.getElementById(end.getAttribute('aria-describedby')!.split(' ').at(-1)!)
+    expect(message?.textContent).toMatch(/quarter hour/)
+    // The unreadable text stays for the visitor to correct; nothing is sent for it.
+    expect(end.value).toBe('soon')
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    expect(fetchMock).not.toHaveBeenCalled()
+    fireEvent.change(end, { target: { value: '1800' } })
+    fireEvent.blur(end)
+    expect(end.getAttribute('aria-invalid')).toBeNull()
+  })
+
   test('range limits hold for fields, and drag makes the same request as the fields', async () => {
     render(
       <HeroPicker
@@ -289,7 +358,7 @@ describe('HeroPicker', () => {
       />
     )
     fireEvent.change(screen.getByLabelText('Window start') as HTMLInputElement, { target: { value: '22:00' } })
-    await waitFor(() => expect(screen.getByText("Couldn't reach the approved-call calendar.")).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Couldn’t reach the approved-call calendar.')).toBeTruthy())
     expect(screen.queryByText('No approved call yet (n=0)')).toBeNull()
   })
 

@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import type { EvaluatedSource, Project, ProjectStrip, SourcePoll, SourceReading } from './operations'
 import type { StripInput } from '@skyclause/elements'
-import { formatDateTime, formatLocalDateKey, formatNumber, formatTime } from '@skyclause/i18n/format'
+import { formatDate, formatDateTime, formatLocalDateKey, formatNumber, formatTime } from '@skyclause/i18n/format'
 import { WindowStrip } from '../data-components/window-strip'
 import { SignalsChart, type SignalChartPoint } from './signals-chart'
 import { Button } from '#ui/button'
@@ -150,6 +150,7 @@ export function SourceDetail({ project, source, strip, readings, polls, locale, 
   let body: React.ReactNode
   if (source.kind === 'jps_rain') {
     const input = rainfallStrip(readings, now)
+    const readingCount = input.rain5.filter((point) => point.value !== null).length
     const sixtyMinuteInput = strip.inputs.find(
       (value) => value.source_ids.includes(source.id) && value.name.includes('rain_60m_mm')
     )
@@ -171,7 +172,11 @@ export function SourceDetail({ project, source, strip, readings, polls, locale, 
           </p>
         )}
         <p className="type-small text-muted-foreground">
-          {t('signals.gauge_summary', { count: input.rain5.filter((point) => point.value !== null).length }, locale)}
+          {t(
+            readingCount === 1 ? 'signals.gauge_summary_one' : 'signals.gauge_summary',
+            { count: formatNumber(readingCount, locale) },
+            locale
+          )}
         </p>
         <WindowStrip windows={[]} strip={input} locale={locale} />
       </section>
@@ -230,7 +235,14 @@ export function SourceDetail({ project, source, strip, readings, polls, locale, 
         )}
         <SignalsChart
           title={t('signals.rail_title', {}, locale)}
-          summary={t('signals.rail_summary', { from, to: targetDate }, locale)}
+          summary={t(
+            'signals.rail_summary',
+            {
+              from: formatDate(`${from}T12:00:00.000Z`, locale),
+              to: formatDate(`${targetDate}T12:00:00.000Z`, locale)
+            },
+            locale
+          )}
           points={points}
           locale={locale}
           dateAxis
@@ -249,8 +261,13 @@ export function SourceDetail({ project, source, strip, readings, polls, locale, 
           {t('signals.warning_summary', { time: formatTime(warningTime, locale) }, locale)}
         </p>
         {source.latest_reading?.value_json && (
-          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- axe scrollable-region-focusable requires the scroll container to be keyboard-focusable.
-          <pre tabIndex={0} className="overflow-auto rounded-md bg-raised p-3 type-code">
+          <pre
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- axe scrollable-region-focusable requires the scroll container to be keyboard-focusable.
+            tabIndex={0}
+            role="region"
+            aria-label={t('signals.warning_data', {}, locale)}
+            className="overflow-auto rounded-md bg-raised p-3 type-code"
+          >
             {JSON.stringify(source.latest_reading.value_json, null, 2)}
           </pre>
         )}

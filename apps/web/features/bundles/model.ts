@@ -40,6 +40,74 @@ export function reviewCount(calls: readonly CallView[], decisions: Decisions, no
   return decisionsFor(calls, decisions, now).filter((call) => call.action !== 'reject').length
 }
 
+/** A call's fate if the bundle is approved now, printed under its badge. */
+export type Fate = 'included' | 'edited' | 'rejected'
+export function callFate(decision: Decision): Fate {
+  if (decision.action === 'reject') return 'rejected'
+  return decision.action === 'edit' || decision.notices || decision.recipients ? 'edited' : 'included'
+}
+
+/** What a decision reaches: one notice per call that has recipients, the recipients counted once across calls. */
+export interface Reach {
+  notices: number
+  recipients: number
+  rejected: number
+}
+
+function reach(items: ReadonlyArray<{ rejected: boolean; recipients: readonly string[] }>): Reach {
+  const recipients = new Set<string>()
+  let notices = 0
+  let rejected = 0
+  for (const item of items) {
+    if (item.rejected) rejected += 1
+    else if (item.recipients.length) {
+      notices += 1
+      for (const id of item.recipients) recipients.add(id)
+    }
+  }
+  return { notices, recipients: recipients.size, rejected }
+}
+
+/** What Approve would send now, from the calls still open and the reviewer's decisions on them. */
+export function approvalReach(calls: readonly CallView[], decisions: Decisions, now: number): Reach {
+  return reach(
+    decisionsFor(calls, decisions, now).map((decision) => ({
+      rejected: decision.action === 'reject',
+      recipients: decision.recipients ?? calls.find((call) => call.id === decision.call_id)?.recipients ?? []
+    }))
+  )
+}
+
+/** The calls an approval let through: approved, sending or sent (or stamped approved), never the rejected ones. */
+export function approvedCalls<T extends CallView>(calls: readonly T[]): T[] {
+  return calls.filter(
+    (call) =>
+      call.state !== 'rejected' &&
+      (!!call.approved_at || ['approved', 'sending', 'sent', 'failed'].includes(call.state))
+  )
+}
+
+/**
+ * What an approved bundle sent or is sending: its approved calls, their recipients once each, when it was approved and,
+ * once every one of them is sent, when the last went out.
+ */
+export function approvedReach(
+  calls: readonly CallView[]
+): Reach & { approvedAt: string | null; sentAt: string | null } {
+  const approved = approvedCalls(calls)
+  const latest = (values: Array<string | null>) =>
+    values.reduce<string | null>((last, value) => (value && (!last || value > last) ? value : last), null)
+  const sending = approved.filter((call) => call.recipients.length)
+  return {
+    ...reach([
+      ...approved.map((call) => ({ rejected: false, recipients: call.recipients })),
+      ...calls.filter((call) => call.state === 'rejected').map(() => ({ rejected: true, recipients: [] }))
+    ]),
+    approvedAt: latest(approved.map((call) => call.approved_at)),
+    sentAt: sending.length && sending.every((call) => call.sent_at) ? latest(sending.map((call) => call.sent_at)) : null
+  }
+}
+
 export function teachingLineIncluded(call: CallView, decision: Decision): boolean {
   if (decision.action === 'reject') return false
   const mode = decision.chosen === 'shadow' ? call.shadow.mode : call.mode

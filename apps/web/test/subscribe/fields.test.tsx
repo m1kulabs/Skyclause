@@ -9,14 +9,7 @@ const window = (id: string, starts_at: string, ends_at: string): Window =>
 
 const render = (locale: 'en' | 'ms', windows: Window[] = [], preferences = false) =>
   renderToStaticMarkup(
-    <Fields
-      value={value}
-      windows={windows}
-      preferences={preferences}
-      disabled={false}
-      locale={locale}
-      onChange={() => undefined}
-    />
+    <Fields value={value} windows={windows} preferences={preferences} locale={locale} onChange={() => undefined} />
   )
 
 test('every field has a label, a name, an autocomplete and the keyboard its content needs (#691)', () => {

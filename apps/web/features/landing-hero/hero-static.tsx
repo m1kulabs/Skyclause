@@ -1,6 +1,13 @@
 import { t } from './catalogue'
 import type { EvaluateResult, LatestCallRead } from './evaluate'
-import { CLOCK_SOURCE, groupedVerdicts, hasGaugeError, skyStateOf, toLocalTime } from './window-model'
+import {
+  CLOCK_SOURCE,
+  groupedVerdicts,
+  hasGaugeError,
+  skyStateOf,
+  TIME_INPUT_PATTERN,
+  toLocalTime
+} from './window-model'
 import { HeroBand } from './hero-band'
 import { HeroReadout } from './readout'
 import styles from './hero.module.css'
@@ -14,7 +21,8 @@ export function HeroStatic({
   win,
   dates,
   latestCall,
-  calendarQuery
+  calendarQuery,
+  now
 }: {
   result: EvaluateResult
   stripSvg: string | null
@@ -22,6 +30,7 @@ export function HeroStatic({
   dates: string[]
   latestCall: LatestCallRead
   calendarQuery: string
+  now: string
 }) {
   const grouped = result.kind === 'ok' ? groupedVerdicts(result.data.verdicts) : []
   const rainAnimated =
@@ -30,7 +39,7 @@ export function HeroStatic({
     !grouped.some((group) => group.blocked.length > 0)
   return (
     <>
-      <HeroBand win={win} state={skyStateOf(grouped)} />
+      <HeroBand win={win} state={skyStateOf(grouped)} now={now} />
       <form
         method="get"
         action="/"
@@ -55,11 +64,14 @@ export function HeroStatic({
             <span>{t('landing-hero.start_label', {}, 'en')}</span>
             <input
               type="text"
-              inputMode="numeric"
+              inputMode="text"
+              enterKeyHint="go"
               placeholder="09:45…"
               name="start"
               autoComplete="off"
-              step={900}
+              spellCheck={false}
+              pattern={TIME_INPUT_PATTERN}
+              title={t('landing-hero.time_error', {}, 'en')}
               required
               defaultValue={toLocalTime(win.startMin)}
             />
@@ -68,11 +80,14 @@ export function HeroStatic({
             <span>{t('landing-hero.end_label', {}, 'en')}</span>
             <input
               type="text"
-              inputMode="numeric"
+              inputMode="text"
+              enterKeyHint="go"
               placeholder="09:45…"
               name="end"
               autoComplete="off"
-              step={900}
+              spellCheck={false}
+              pattern={TIME_INPUT_PATTERN}
+              title={t('landing-hero.time_error', {}, 'en')}
               required
               defaultValue={toLocalTime(win.endMin)}
             />

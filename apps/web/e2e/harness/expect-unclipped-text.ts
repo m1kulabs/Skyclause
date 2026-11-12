@@ -30,29 +30,27 @@ export async function expectUnclippedText(page: Page): Promise<void> {
       const range = document.createRange()
       range.selectNodeContents(node)
       if (!range.getClientRects().length) continue
-      // Visually hidden labels (the sr-only class, or a library's own 1px clipped box) and the offscreen skip link are
-      // deliberate, not clipped visible copy.
-      // The shared table's header strip is visually hidden on a phone the same way (a 1px clipped box around the
-      // header cells), so the box may be an ancestor's.
-      const hiddenBox = (element: Element) => {
+      // Visually hidden labels (the sr-only class, a library's own 1px clipped box, or a table's header strip on a phone,
+      // where the box is the row group around the text) and the offscreen skip link are deliberate, not clipped copy.
+      let visuallyHidden = false
+      for (let element: HTMLElement | null = parent; element && !visuallyHidden; element = element.parentElement) {
         const box = element.getBoundingClientRect()
-        return box.width <= 1 && box.height <= 1 && getComputedStyle(element).overflow === 'hidden'
+        visuallyHidden = box.width <= 1 && box.height <= 1 && getComputedStyle(element).overflow === 'hidden'
       }
-      const visuallyHidden = hiddenBox(parent) || (!!parent.closest('thead') && hiddenBox(parent.closest('thead')!))
       if (parent.closest('.sr-only') || visuallyHidden || (parent.closest('.skip-link') && !parent.matches(':focus')))
         continue
       for (let element: HTMLElement | null = parent; element; element = element.parentElement) {
         const style = getComputedStyle(element)
         if (style.visibility === 'hidden' || style.display === 'none' || Number(style.opacity) === 0) break
+        // The shared table's one-line truncation is deliberate when its cell's title carries the whole text.
+        const cell = element.matches('[data-slot="table-truncate"]') ? element.closest('td, th') : null
+        if (cell && (cell.getAttribute('title') ?? '').includes(element.textContent?.trim() ?? '\u0000')) continue
         const clipsX = ['hidden', 'clip'].includes(style.overflowX) || style.textOverflow === 'ellipsis'
         const clipsY = ['hidden', 'clip'].includes(style.overflowY)
         // Modal scroll locks freeze the background document. Fixed overlay text can still scroll in its own frame.
         const modalScrollLock = element === body && modalOpen && style.overflowY === 'hidden'
-        // A truncation the page chose and says so: one line with an ellipsis and the whole text in its title (the shared
-        // table's `truncate` cells). The words stay reachable; only an ellipsis with no title is clipped copy.
-        const titled = style.textOverflow === 'ellipsis' && !!element.closest('[title]')
         if (
-          (clipsX && !titled && element.scrollWidth > element.clientWidth) ||
+          (clipsX && element.scrollWidth > element.clientWidth) ||
           (clipsY && !modalScrollLock && element.scrollHeight > element.clientHeight)
         ) {
           failures.add(`${element.tagName.toLowerCase()}: ${node.textContent.trim()}`)

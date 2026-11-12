@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '#ui/dropdown-menu'
-import { t } from './i18n'
+import { t, type Locale } from './i18n'
 import type { Destination, DestinationKey } from './navigation'
 import type { ShellScope } from './scope'
 
@@ -29,13 +29,21 @@ function MenuLink({ href, current, label }: { href: string; current?: boolean; l
   )
 }
 
-function DestinationLinks({ destinations, current }: { destinations: Destination[]; current?: DestinationKey }) {
+function DestinationLinks({
+  destinations,
+  current,
+  locale
+}: {
+  destinations: Destination[]
+  current?: DestinationKey
+  locale: Locale
+}) {
   return destinations.map((destination) => (
     <MenuLink
       key={destination.key}
       href={destination.href}
       current={destination.key === current}
-      label={t(`app-shell.${destination.key}`)}
+      label={t(`app-shell.${destination.key}`, {}, locale)}
     />
   ))
 }
@@ -59,14 +67,14 @@ function SwitcherTrigger({ label, name }: { label: string; name: string }) {
 }
 
 export function OrganisationSwitcher({ scope }: { scope: ShellScope }) {
-  const { data, membership } = scope
+  const { data, membership, locale } = scope
   return (
     <DropdownMenu>
-      <SwitcherTrigger label={t('app-shell.organisationLabel', { name: scope.orgName })} name={scope.orgName} />
+      <SwitcherTrigger label={t('app-shell.organisationLabel', { name: scope.orgName }, locale)} name={scope.orgName} />
       <DropdownMenuContent className="shell-menu">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>{t('app-shell.switchOrganisation')}</DropdownMenuLabel>
-          {data.membershipsError && <Note>{t('app-shell.organisationsUnavailable')}</Note>}
+          <DropdownMenuLabel>{t('app-shell.switchOrganisation', {}, locale)}</DropdownMenuLabel>
+          {data.membershipsError && <Note>{t('app-shell.organisationsUnavailable', {}, locale)}</Note>}
           {data.memberships.map((item) => (
             <DropdownMenuItem
               key={item.org_id}
@@ -75,22 +83,27 @@ export function OrganisationSwitcher({ scope }: { scope: ShellScope }) {
                 <a
                   href={`/${encodeURIComponent(item.org_slug)}`}
                   aria-current={item.org_id === membership?.org_id ? 'true' : undefined}
-                  aria-label={t('app-shell.membershipLabel', {
-                    name: item.org_name,
-                    role: t(`app-shell.roles.${item.role}`)
-                  })}
+                  aria-label={t(
+                    'app-shell.membershipLabel',
+                    { name: item.org_name, role: t(`app-shell.roles.${item.role}`, {}, locale) },
+                    locale
+                  )}
                 />
               }
             >
               <span>{item.org_name}</span>
-              <span className="shell-menu-meta" aria-hidden="true" data-role={t(`app-shell.roles.${item.role}`)} />
+              <span
+                className="shell-menu-meta"
+                aria-hidden="true"
+                data-role={t(`app-shell.roles.${item.role}`, {}, locale)}
+              />
             </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>
         {!scope.guestAccount && (
           <>
             <DropdownMenuSeparator />
-            <MenuLink href="/new" label={t('app-shell.createOrganisation')} />
+            <MenuLink href="/new" label={t('app-shell.createOrganisation', {}, locale)} />
           </>
         )}
       </DropdownMenuContent>
@@ -104,17 +117,20 @@ export function canCreateProject(scope: ShellScope) {
 }
 
 export function ProjectSwitcher({ scope }: { scope: ShellScope }) {
-  const { org, project, projects, projectsError } = scope
+  const { org, project, projects, projectsError, locale } = scope
   return (
     <DropdownMenu>
-      <SwitcherTrigger label={t('app-shell.projectLabel', { name: scope.projectName })} name={scope.projectName} />
+      <SwitcherTrigger
+        label={t('app-shell.projectLabel', { name: scope.projectName }, locale)}
+        name={scope.projectName}
+      />
       <DropdownMenuContent className="shell-menu">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>{t('app-shell.switchProject')}</DropdownMenuLabel>
+          <DropdownMenuLabel>{t('app-shell.switchProject', {}, locale)}</DropdownMenuLabel>
           {projectsError ? (
-            <Note>{t('app-shell.projectsUnavailable')}</Note>
+            <Note>{t('app-shell.projectsUnavailable', {}, locale)}</Note>
           ) : (
-            !projects.length && <Note>{t('app-shell.noProjects')}</Note>
+            !projects.length && <Note>{t('app-shell.noProjects', {}, locale)}</Note>
           )}
           {org &&
             projects.map((item) => (
@@ -129,10 +145,10 @@ export function ProjectSwitcher({ scope }: { scope: ShellScope }) {
         {org && canCreateProject(scope) ? (
           <>
             <DropdownMenuSeparator />
-            <MenuLink href={`/${encodeURIComponent(org)}/new`} label={t('app-shell.createProject')} />
+            <MenuLink href={`/${encodeURIComponent(org)}/new`} label={t('app-shell.createProject', {}, locale)} />
           </>
         ) : (
-          !projects.length && !projectsError && <Note>{t('app-shell.askProject')}</Note>
+          !projects.length && !projectsError && <Note>{t('app-shell.askProject', {}, locale)}</Note>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
@@ -146,14 +162,14 @@ export function ProjectMenu({ scope }: { scope: ShellScope }) {
     <DropdownMenu>
       <DropdownMenuTrigger
         render={<button type="button" className="shell-destination current-mark" />}
-        aria-label={t('app-shell.moreLabel')}
+        aria-label={t('app-shell.moreLabel', {}, scope.locale)}
         data-current={current ? '' : undefined}
       >
-        <span>{t('app-shell.more')}</span>
+        <span>{t('app-shell.more', {}, scope.locale)}</span>
         <ChevronDownIcon aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="shell-menu">
-        <DestinationLinks destinations={scope.projectMenu} current={scope.current} />
+        <DestinationLinks destinations={scope.projectMenu} current={scope.current} locale={scope.locale} />
       </DropdownMenuContent>
     </DropdownMenu>
   )
@@ -167,7 +183,7 @@ export function AccountMenu({ scope }: { scope: ShellScope }) {
     <DropdownMenu>
       <DropdownMenuTrigger
         render={<Button variant="ghost" size="icon" className="shell-account" />}
-        aria-label={t('app-shell.accountMenu')}
+        aria-label={t('app-shell.accountMenu', {}, scope.locale)}
       >
         <CircleUserRoundIcon aria-hidden="true" />
       </DropdownMenuTrigger>
@@ -176,14 +192,14 @@ export function AccountMenu({ scope }: { scope: ShellScope }) {
           <>
             <DropdownMenuGroup>
               <DropdownMenuLabel>{scope.orgName}</DropdownMenuLabel>
-              <DestinationLinks destinations={organisation} current={scope.current} />
+              <DestinationLinks destinations={organisation} current={scope.current} locale={scope.locale} />
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
           </>
         )}
         <DropdownMenuGroup>
-          <DropdownMenuLabel>{t('app-shell.accountGroup')}</DropdownMenuLabel>
-          <DestinationLinks destinations={account} current={scope.current} />
+          <DropdownMenuLabel>{t('app-shell.accountGroup', {}, scope.locale)}</DropdownMenuLabel>
+          <DestinationLinks destinations={account} current={scope.current} locale={scope.locale} />
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>

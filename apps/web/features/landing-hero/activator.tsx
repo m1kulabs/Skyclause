@@ -22,6 +22,10 @@ export interface PickerReplay {
 
 const HeroPicker = lazy(() => import('./hero-picker'))
 
+// The keys the strip answers as a slider (window-model's stripKeyWindow); the same keys in a time field or on a date
+// radio stay with that control. Kept here, not imported, so the pre-interaction script carries no window model.
+const STRIP_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'])
+
 export function HeroActivator(props: HeroActivatorProps) {
   const [replay, setReplay] = useState<PickerReplay | null>(null)
 
@@ -35,7 +39,8 @@ export function HeroActivator(props: HeroActivatorProps) {
           if ((event.target as Element).closest('[role="slider"]')) setReplay({ k: 'ptr', x: event.clientX })
         }}
         onKeyDown={(event) => {
-          if (event.key[0] === 'A') setReplay({ k: 'key', key: event.key, shift: event.shiftKey })
+          if (STRIP_KEYS.has(event.key) && (event.target as Element).closest('[role="slider"]'))
+            setReplay({ k: 'key', key: event.key, shift: event.shiftKey })
         }}
         onChange={(event) => {
           const target = event.target as HTMLInputElement

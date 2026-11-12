@@ -9,5 +9,5 @@ test('the Malay device catalogue covers every English message and keeps the devi
     expect(malay[key].match(/\{\w+\}/g)?.sort()).toEqual(english[key].match(/\{\w+\}/g)?.sort())
     expect(t(`device.${key}`, {}, 'ms')).toBe(malay[key])
   }
-  expect(t('device.expired')).toBe('This code has expired. Run `skyclause login` again.')
+  expect(t('device.expired', { command: 'skyclause login' })).toBe('This code has expired. Run skyclause login again.')
 })

@@ -1,11 +1,13 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '#ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '#ui/toggle-group'
 import { formatDateTime, formatNumber } from '@skyclause/i18n/format'
 import { ApiProblem } from '../../lib/api-fetch'
+import { metricValue } from '../data-components/metrics'
+import { useUnsavedChangesGuard } from '../settings/set-7/use-unsaved-changes-guard'
 import { t } from './catalogue'
 import { apiFetch, allPages, type Analysis, type Project } from './operations'
 import {
@@ -13,7 +15,6 @@ import {
   analysisState,
   leadAndRows,
   metricForTab,
-  metricValue,
   periods,
   tabs,
   type AnalysisState,
@@ -167,8 +168,12 @@ function Workspace({
   projects: Project[]
   role: string
   state: AnalysisState
-  change: (values: Record<string, string>) => void
+  change: (values: Record<string, string>, replace?: boolean) => void
 }) {
+  // An explanation typed but not saved is lost when the tab, period, pack or project changes: those ask first.
+  const [reviewDirty, setReviewDirty] = useState(false)
+  const { guardNavigation } = useUnsavedChangesGuard(reviewDirty, locale)
+  const guarded = (values: Record<string, string>) => guardNavigation(() => change(values))
   const project = slug
     ? projects.find((item) => item.slug === slug)
     : projects.find((item) => item.id === state.project)
@@ -250,7 +255,7 @@ function Workspace({
         <ToggleGroup
           className="analysis-period"
           value={[state.period]}
-          onValueChange={(values) => values[0] && change({ period: String(values[0]) })}
+          onValueChange={(values) => values[0] && guarded({ period: String(values[0]) })}
           aria-label={t('analysis.rangeLabel', {}, locale)}
         >
           {periods.map((period) => (
@@ -273,7 +278,7 @@ function Workspace({
         value={visibleTabs.includes(state.tab) ? state.tab : null}
         onValueChange={(value) =>
           value &&
-          change({ tab: String(value), pack: value === 'sky' || value === 'crowd' ? String(value) : state.pack })
+          guarded({ tab: String(value), pack: value === 'sky' || value === 'crowd' ? String(value) : state.pack })
         }
       >
         <div className="analysis-toolbar">
@@ -294,7 +299,7 @@ function Workspace({
                 className="native-select"
                 autoComplete="off"
                 value={state.pack}
-                onChange={(event) => change({ pack: event.target.value })}
+                onChange={(event) => guarded({ pack: event.target.value })}
               >
                 <option value="sky">{t('analysis.tabs.sky', {}, locale)}</option>
                 {crowdEnabled && <option value="crowd">{t('analysis.tabs.crowd', {}, locale)}</option>}
@@ -327,7 +332,7 @@ function Workspace({
                   className="native-select"
                   autoComplete="off"
                   value={projectId ?? ''}
-                  onChange={(event) => change({ project: event.target.value, sheet: '', version: '' })}
+                  onChange={(event) => guarded({ project: event.target.value, sheet: '', version: '' })}
                 >
                   <option value="">{t('analysis.chooseProject', {}, locale)}</option>
                   {projects.map((item) => (
@@ -358,6 +363,8 @@ function Workspace({
                     grades={grades.value}
                     canEdit={canEdit}
                     locale={locale}
+                    onDirtyChange={setReviewDirty}
+                    guardNavigation={guardNavigation}
                   />
                 )
               ) : (
@@ -417,14 +424,15 @@ export function AnalysisPage({ org, project, locale }: Scope) {
     [org]
   )
   const data = useRead(read)
+  // Tabs, period and pack push a history entry; a form field's edit replaces it (a date field fires per digit).
   const change = useCallback(
-    (values: Record<string, string>) => {
+    (values: Record<string, string>, replace = false) => {
       const next = new URLSearchParams(search.toString())
       for (const [key, value] of Object.entries(values)) {
         if (value) next.set(key, value)
         else next.delete(key)
       }
-      router.push(`${pathname}?${next}`, { scroll: false })
+      router[replace ? 'replace' : 'push'](`${pathname}?${next}`, { scroll: false })
     },
     [search, router, pathname]
   )

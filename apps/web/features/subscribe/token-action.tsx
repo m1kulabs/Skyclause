@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '#ui/button'
 import { Input } from '#ui/input'
 import { AuthHeader, AuthMessage } from '../public-chrome/auth'
@@ -29,6 +29,11 @@ export function TokenAction({
   const [done, setDone] = useState(false)
   const [error, setError] = useState<unknown>(null)
   const inFlight = useRef(false)
+  const resultRef = useRef<HTMLDivElement>(null)
+  // The form the result replaces held focus; it moves to the result, which says what happened.
+  useEffect(() => {
+    if (done) resultRef.current?.focus()
+  }, [done])
   const button = kind === 'reply' ? 'send_reply' : kind === 'feedback' ? 'send_feedback' : kind
   const success = kind === 'confirm' ? 'confirmed' : kind === 'unsubscribe' ? 'unsubscribed' : `${kind}_saved`
   async function submit() {
@@ -63,7 +68,9 @@ export function TokenAction({
       <AuthHeader title={t(`subscribe.${kind}_title`, {}, locale)} locale={locale} />
       {error ? <AuthMessage>{operationError(error, locale)}</AuthMessage> : null}
       {done ? (
-        <AuthMessage tone="result">{t(`subscribe.${success}`, {}, locale)}</AuthMessage>
+        <AuthMessage tone="result" ref={resultRef} tabIndex={-1}>
+          {t(`subscribe.${success}`, {}, locale)}
+        </AuthMessage>
       ) : (
         <form
           className="auth-form"
@@ -128,8 +135,8 @@ export function TokenAction({
             size="lg"
             className="w-full"
             variant={kind === 'unsubscribe' ? 'destructive' : 'default'}
+            aria-busy={busy || undefined}
             disabled={
-              busy ||
               (kind === 'feedback' && !answer) ||
               (kind === 'reply' && reply === 'shift' && !/^([01]\d|2[0-3]):[0-5]\d$/.test(shiftTo))
             }

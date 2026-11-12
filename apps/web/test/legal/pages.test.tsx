@@ -3,15 +3,19 @@ import type { ReactNode } from 'react'
 import { expect, test } from 'vitest'
 import { PRIVACY_NOTICE_VERSION, TERMS_VERSION } from '@skyclause/contracts'
 import { t } from '@skyclause/i18n'
+import { formatDate } from '@skyclause/i18n/format'
 import { PrivacyNoticePage, TermsPage } from '../../features/legal'
 
 const html = (node: ReactNode) => renderToStaticMarkup(node)
+// A version prints as the reader's locale writes a date; the ISO date stays in `dateTime`.
+const version = (iso: string, locale: 'en' | 'ms') =>
+  `<time dateTime="${iso}">${formatDate(`${iso}T12:00:00+08:00`, locale)}</time>`
 
 test('the English privacy notice publishes every required processor, region, right and retention period', () => {
   const page = html(<PrivacyNoticePage locale="en" />)
 
   expect(page).toContain('Notice version:')
-  expect(page).toContain(`<time dateTime="${PRIVACY_NOTICE_VERSION}">${PRIVACY_NOTICE_VERSION}</time>`)
+  expect(page).toContain(version(PRIVACY_NOTICE_VERSION!, 'en'))
   for (const item of [
     'email address',
     'role',
@@ -31,8 +35,8 @@ test('the English privacy notice publishes every required processor, region, rig
     'We do not promise that data will stay in one country or region.',
     '72 hours',
     '7 days',
-    '183 days',
-    '24 hours',
+    '183\u00a0days',
+    '24\u00a0hours',
     '14 days',
     '30 days',
     '7 days',
@@ -47,7 +51,7 @@ test('the Malay privacy notice is fully translated and publishes the same versio
 
   expect(page).toContain('lang="ms"')
   expect(page).toContain('Versi notis:')
-  expect(page).toContain(`<time dateTime="${PRIVACY_NOTICE_VERSION}">${PRIVACY_NOTICE_VERSION}</time>`)
+  expect(page).toContain(version(PRIVACY_NOTICE_VERSION!, 'ms'))
   for (const item of [
     'Resend',
     'Tokyo, Jepun',
@@ -61,8 +65,8 @@ test('the Malay privacy notice is fully translated and publishes the same versio
     '7 hari',
     '14 hari',
     '30 hari',
-    '183 hari',
-    '24 jam'
+    '183\u00a0hari',
+    '24\u00a0jam'
   ]) {
     expect(page).toContain(item)
   }
@@ -83,11 +87,11 @@ test('terms publish all proposal prices and the linked service details', () => {
 
   expect(page).toContain('id="plans"')
   expect(page).toContain('id="service"')
-  expect(page).toContain(`<time dateTime="${TERMS_VERSION}">${TERMS_VERSION}</time>`)
+  expect(page).toContain(version(TERMS_VERSION, 'en'))
   expect(page.match(/proposal, untested/g)).toHaveLength(4)
   for (const item of [
-    'RM 49 a month per organisation',
-    'RM 900 a month per campus, billed yearly',
+    'RM\u00a049 a month per organisation',
+    'RM\u00a0900 a month per campus, billed yearly',
     'JPS',
     'MET',
     'APIMS',
@@ -109,7 +113,7 @@ test('terms publish all proposal prices and the linked service details', () => {
     '5 active guest windows',
     '14 days',
     '30 days',
-    'six-hour restore window',
+    '6-hour restore window',
     'dropped at ingest and never stored',
     'not a safety or emergency service'
   ]) {
@@ -135,13 +139,29 @@ test('a legal page is set for reading: one h1, a contents list whose links all l
   }
 })
 
+test('identifiers in legal sentences are never translated, and the version is a date in words', () => {
+  const page = html(<PrivacyNoticePage locale="en" />)
+  for (const identifier of ['ap-northeast-1', 'asia-southeast1', 'LECTID']) {
+    expect(page).toContain(`<span translate="no">${identifier}</span>`)
+  }
+  expect(page).not.toContain(`>${PRIVACY_NOTICE_VERSION}</time>`)
+})
+
+test('the terms say plans in dates, not roadmap phases', () => {
+  const page = html(<TermsPage locale="en" />)
+  expect(page).not.toMatch(/\bP[0-3]\b|\bGA\b|general availability|next_update/)
+  for (const plain of ['Planned from May 2027', 'Planned after May 2027', 'The beta, until February 2027']) {
+    expect(page).toContain(plain)
+  }
+})
+
 test('the retention periods are a real table with a name, a period and what happens after', () => {
   for (const locale of ['en', 'ms'] as const) {
     const markup = html(<PrivacyNoticePage locale={locale} />)
     const table = markup.match(/<table[^>]*>.*<\/table>/)![0]
 
-    expect(table.match(/<th scope="col">/g)).toHaveLength(3)
-    expect(table.match(/<th scope="row">/g)).toHaveLength(11)
+    expect(table.match(/<th[^>]*scope="col"/g)).toHaveLength(3)
+    expect(table.match(/<th[^>]*scope="row"/g)).toHaveLength(11)
     expect(table.match(/<td /g)).toHaveLength(22)
     expect(table).toContain(t('legal.privacy.retention.columnKept', {}, locale))
   }

@@ -5,25 +5,15 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '#ui/button'
 import { Input } from '#ui/input'
 import { Field, FieldLabel } from '#ui/field'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
 import { distanceKm, filterSources, formatDistanceKm, sortSources, type PickerSource } from '../onboarding/model'
-import { t } from '../onboarding/catalogue'
-import { formatTime } from '@skyclause/i18n/format'
+import { t, type Locale } from '../onboarding/catalogue'
+import { formatNumber, formatTime } from '@skyclause/i18n/format'
 import { sourcesApi, type CatalogueSourceView } from './operations'
 import styles from '../onboarding/onboarding.module.css'
 
-const ADAPTERS = [
-  'apims',
-  'jps_rain',
-  'met_warning',
-  'met_forecast',
-  'rapidrail_od',
-  'gtfs_static',
-  'gtfs_rt',
-  'golive',
-  'wikipedia',
-  'camera',
-  'pi'
-] as const
+/** The picker never draws more than this many rows: the API sorts by distance and searches, so a page is enough. */
+const PAGE = 50
 
 interface SourcePickerProps {
   open: boolean
@@ -33,91 +23,106 @@ interface SourcePickerProps {
   site: { lat: number | null; lon: number | null }
   boundIds: Set<string>
   onBound(source: CatalogueSourceView): Promise<void> | void
+  /** The page's language: the picker is written in it (the packs panel passes its own). */
+  locale?: Locale
 }
 
-function cadence(seconds: number) {
+function cadence(seconds: number, locale: Locale) {
   if (seconds % 86400 === 0)
-    return seconds === 86400 ? t('onboarding.day') : t('onboarding.cadence_days', { count: seconds / 86400 })
+    return seconds === 86400
+      ? t('onboarding.day', {}, locale)
+      : t('onboarding.cadence_days', { count: seconds / 86400 }, locale)
   if (seconds % 3600 === 0)
-    return seconds === 3600 ? t('onboarding.hour') : t('onboarding.cadence_hours', { count: seconds / 3600 })
+    return seconds === 3600
+      ? t('onboarding.hour', {}, locale)
+      : t('onboarding.cadence_hours', { count: seconds / 3600 }, locale)
   if (seconds % 60 === 0)
-    return seconds === 60 ? t('onboarding.minute') : t('onboarding.cadence_minutes', { count: seconds / 60 })
-  return t('onboarding.cadence_seconds', { count: seconds })
+    return seconds === 60
+      ? t('onboarding.minute', {}, locale)
+      : t('onboarding.cadence_minutes', { count: seconds / 60 }, locale)
+  return t('onboarding.cadence_seconds', { count: seconds }, locale)
 }
 
-function observedAt(value: string) {
-  return formatTime(value, 'en')
-}
-
-function reading(source: CatalogueSourceView) {
-  const value = source.latest_reading?.value ?? source.latest_reading?.value_text
-  if (value === null || value === undefined) return t('onboarding.no_reading')
-  const metric = source.kind === 'apims' ? 'API' : source.latest_reading?.metric.toUpperCase()
+/** The newest reading as its value and unit, how old it is, and when it was taken. */
+function reading(source: CatalogueSourceView, locale: Locale) {
+  const latest = source.latest_reading
+  const value = latest?.value ?? latest?.value_text
+  if (latest === null || latest === undefined || value === null || value === undefined)
+    return t('onboarding.no_reading', {}, locale)
+  const unit = latest.unit ?? (source.kind === 'apims' ? 'API' : '')
+  const text = typeof value === 'number' ? `${formatNumber(value, locale)}\u00a0${unit}`.trim() : value
+  if (source.age_s === null) return text
   const age =
-    source.age_s === null
-      ? null
-      : source.age_s < 90 * 60
-        ? `${Math.max(1, Math.floor(source.age_s / 60))} min`
-        : `${Math.floor(source.age_s / 3600)} h`
-  const text = `${metric} ${value}`
-  if (!age) return text
-  const observed = source.latest_reading?.observed_at
-    ? ` · ${t('onboarding.observed_at', { time: observedAt(source.latest_reading.observed_at) })}`
+    source.age_s < 90 * 60
+      ? t('onboarding.age_minutes', { count: formatNumber(Math.max(1, Math.floor(source.age_s / 60)), locale) }, locale)
+      : t('onboarding.age_hours', { count: formatNumber(Math.floor(source.age_s / 3600), locale) }, locale)
+  const observed = latest.observed_at
+    ? ` · ${t('onboarding.observed_at', { time: formatTime(latest.observed_at, locale) }, locale)}`
     : ''
-  return `${t('onboarding.reading_age', { value: text, age })}${observed}`
+  return `${t('onboarding.reading_age', { value: text, age }, locale)}${observed}`
 }
 
-export function SourcePicker({ open, onOpenChange, org, projectId, site, boundIds, onBound }: SourcePickerProps) {
+export function SourcePicker({
+  open,
+  onOpenChange,
+  org,
+  projectId,
+  site,
+  boundIds,
+  onBound,
+  locale = 'en'
+}: SourcePickerProps) {
   const [sources, setSources] = useState<CatalogueSourceView[]>([])
+  const [more, setMore] = useState(false)
   const [query, setQuery] = useState('')
+  const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [failed, setFailed] = useState(false)
   const [binding, setBinding] = useState<string | null>(null)
   const [message, setMessage] = useState('')
+  const [attempt, setAttempt] = useState(0)
 
-  async function load() {
-    setLoading(true)
-    setFailed(false)
-    try {
-      const data: CatalogueSourceView[] = []
-      const cursors = new Set<string>()
-      let cursor: string | undefined
-      do {
-        const page = await sourcesApi('listCatalogueSources', { query: { limit: 200, cursor } })
-        data.push(...page.data)
-        cursor = page.next_cursor ?? undefined
-        if (cursor && cursors.has(cursor)) throw new Error('Repeated catalogue cursor')
-        if (cursor) cursors.add(cursor)
-      } while (cursor)
-      setSources(data)
-    } catch {
-      setFailed(true)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // What is typed reaches the API a moment after the last key: it searches the whole catalogue, nearest first.
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSearch(query.trim()), 250)
+    return () => window.clearTimeout(timer)
+  }, [query])
 
   useEffect(() => {
-    if (open) void load()
-  }, [open, org])
+    if (!open) return
+    const controller = new AbortController()
+    setLoading(true)
+    setFailed(false)
+    sourcesApi('listCatalogueSources', {
+      query: {
+        limit: PAGE,
+        q: search || undefined,
+        near: site.lat !== null && site.lon !== null ? `${site.lat},${site.lon}` : undefined
+      },
+      signal: controller.signal
+    })
+      .then((page) => {
+        if (controller.signal.aborted) return
+        setSources(page.data)
+        setMore(page.next_cursor !== null)
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setFailed(true)
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false)
+      })
+    return () => controller.abort()
+  }, [open, org, search, site.lat, site.lon, attempt])
 
   const ordered = useMemo(
     () =>
       site.lat === null || site.lon === null
         ? [...sources].sort((left, right) => left.external_id.localeCompare(right.external_id))
-        : sortSources(sources as PickerSource[], { lat: site.lat, lon: site.lon }),
+        : (sortSources(sources as PickerSource[], { lat: site.lat, lon: site.lon }) as CatalogueSourceView[]),
     [site, sources]
   )
-  const filtered = useMemo(() => filterSources(ordered, query), [ordered, query])
-  const byAdapter = useMemo(() => {
-    const groups = new Map<string, typeof filtered>()
-    for (const source of filtered) groups.set(source.kind, [...(groups.get(source.kind) ?? []), source])
-    return [...groups.entries()].sort((left, right) => {
-      const leftIndex = ADAPTERS.indexOf(left[0] as (typeof ADAPTERS)[number])
-      const rightIndex = ADAPTERS.indexOf(right[0] as (typeof ADAPTERS)[number])
-      return (leftIndex < 0 ? ADAPTERS.length : leftIndex) - (rightIndex < 0 ? ADAPTERS.length : rightIndex)
-    })
-  }, [filtered])
+  const rows = useMemo(() => filterSources(ordered, query).slice(0, PAGE), [ordered, query])
 
   async function bind(source: CatalogueSourceView) {
     if (binding) return
@@ -127,9 +132,9 @@ export function SourcePicker({ open, onOpenChange, org, projectId, site, boundId
       await sourcesApi('bindSource', { params: { id: projectId }, body: { source_id: source.id } })
       await onBound(source)
       window.dispatchEvent(new Event('onboarding:changed'))
-      setMessage(t('onboarding.source_bound'))
+      setMessage(t('onboarding.source_bound', {}, locale))
     } catch {
-      setMessage(t('onboarding.save_error_generic'))
+      setMessage(t('onboarding.save_error_generic', {}, locale))
     } finally {
       setBinding(null)
     }
@@ -139,14 +144,16 @@ export function SourcePicker({ open, onOpenChange, org, projectId, site, boundId
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={styles.pickerDialog} showCloseButton>
         <DialogHeader>
-          <DialogTitle>{t('onboarding.sources_title')}</DialogTitle>
-          <DialogDescription>{t('onboarding.picker_description')}</DialogDescription>
+          <DialogTitle>{t('onboarding.sources_title', {}, locale)}</DialogTitle>
+          <DialogDescription>{t('onboarding.picker_description', {}, locale)}</DialogDescription>
         </DialogHeader>
         <Field>
-          <FieldLabel htmlFor="source-search">{t('onboarding.source_search')}</FieldLabel>
+          <FieldLabel htmlFor="source-search">{t('onboarding.source_search', {}, locale)}</FieldLabel>
           <Input
             id="source-search"
             name="source-search"
+            type="search"
+            enterKeyHint="search"
             autoComplete="off"
             spellCheck={false}
             value={query}
@@ -155,94 +162,103 @@ export function SourcePicker({ open, onOpenChange, org, projectId, site, boundId
         </Field>
         {failed ? (
           <div role="alert" className={styles.status}>
-            <p>{t('onboarding.source_load_error')}</p>
-            <Button type="button" variant="outline" onClick={() => void load()}>
-              {t('onboarding.retry')}
+            <p>{t('onboarding.source_load_error', {}, locale)}</p>
+            <Button type="button" variant="outline" onClick={() => setAttempt((value) => value + 1)}>
+              {t('onboarding.retry', {}, locale)}
             </Button>
           </div>
         ) : loading ? (
-          <p role="status">{t('onboarding.loading_sources')}</p>
-        ) : byAdapter.length === 0 ? (
-          <p>{t('onboarding.no_sources')}</p>
+          <p role="status">{t('onboarding.loading_sources', {}, locale)}</p>
+        ) : rows.length === 0 ? (
+          <p>{t('onboarding.no_sources', {}, locale)}</p>
         ) : (
           <div className={styles.sourceGroups}>
-            {byAdapter.map(([kind, rows]) => (
-              <section className={styles.sourceGroup} key={kind} aria-labelledby={`source-adapter-${kind}`}>
-                <h3 id={`source-adapter-${kind}`}>{t(`onboarding.adapter_${kind}`)}</h3>
-                <div className={styles.tableScroll}>
-                  <table className={styles.sourceTable}>
-                    <thead>
-                      <tr>
-                        <th scope="col">{t('onboarding.source_id')}</th>
-                        <th scope="col">{t('onboarding.source_name')}</th>
-                        <th scope="col">{t('onboarding.distance_column')}</th>
-                        <th scope="col">{t('onboarding.licence')}</th>
-                        <th scope="col">{t('onboarding.cadence')}</th>
-                        <th scope="col">{t('onboarding.reading')}</th>
-                        <th scope="col">
-                          <span className="sr-only">{t('onboarding.bind_action')}</span>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((source) => {
-                        const sourceRow = source as CatalogueSourceView
-                        const distance =
-                          site.lat !== null &&
-                          site.lon !== null &&
-                          Number.isFinite(source.lat) &&
-                          Number.isFinite(source.lon)
-                            ? distanceKm({ lat: site.lat, lon: site.lon }, source)
-                            : null
-                        const alreadyBound = boundIds.has(source.id)
-                        const sourceError = source.source_state?.state === 'error'
-                        return (
-                          <tr key={source.id}>
-                            <td>
-                              <span>{source.external_id}</span>
-                              {sourceError && (
-                                <span className={styles.sourceError}>
-                                  {source.source_state?.http_status == null
-                                    ? t('onboarding.source_error_unknown')
-                                    : t('onboarding.source_error', { status: source.source_state.http_status })}
-                                </span>
-                              )}
-                            </td>
-                            <td>{source.name}</td>
-                            <td>
-                              {distance === null
-                                ? t('onboarding.no_distance')
-                                : t('onboarding.distance', { distance: formatDistanceKm(distance) })}
-                            </td>
-                            <td>
-                              {source.licence_label ||
-                                (source.licence_id === 'unpublished' ? t('onboarding.no_terms') : source.licence_id)}
-                            </td>
-                            <td>{cadence(source.cadence_s)}</td>
-                            <td>{reading(sourceRow)}</td>
-                            <td>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                disabled={alreadyBound || binding !== null}
-                                onClick={() => void bind(sourceRow)}
-                              >
-                                {alreadyBound
-                                  ? t('onboarding.bound')
-                                  : binding === source.id
-                                    ? t('onboarding.binding')
-                                    : t('onboarding.bind', { source: source.external_id })}
-                              </Button>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            ))}
+            <Table compact phone="list">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('onboarding.source_id', {}, locale)}</TableHead>
+                  <TableHead>{t('onboarding.source_name', {}, locale)}</TableHead>
+                  <TableHead numeric>{t('onboarding.distance_column', {}, locale)}</TableHead>
+                  <TableHead>{t('onboarding.licence', {}, locale)}</TableHead>
+                  <TableHead>{t('onboarding.cadence', {}, locale)}</TableHead>
+                  <TableHead>{t('onboarding.reading', {}, locale)}</TableHead>
+                  <TableHead>
+                    <span className="sr-only">{t('onboarding.bind_action', {}, locale)}</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((source) => {
+                  const distance =
+                    site.lat !== null && site.lon !== null && Number.isFinite(source.lat) && Number.isFinite(source.lon)
+                      ? distanceKm({ lat: site.lat, lon: site.lon }, source)
+                      : null
+                  const alreadyBound = boundIds.has(source.id)
+                  const sourceError = source.source_state?.state === 'error'
+                  return (
+                    <TableRow key={source.id}>
+                      <TableCell phone="primary" className="whitespace-normal">
+                        <span translate="no">{source.external_id}</span>
+                        {sourceError && (
+                          <span className={styles.sourceError}>
+                            {source.source_state?.http_status == null
+                              ? t('onboarding.source_error_unknown', {}, locale)
+                              : t('onboarding.source_error', { status: source.source_state.http_status }, locale)}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell
+                        phone="meta"
+                        label={t('onboarding.source_name', {}, locale)}
+                        className="whitespace-normal"
+                      >
+                        {source.name}
+                        <span className="block type-small text-muted-foreground">
+                          {t(`onboarding.adapter_${source.kind}`, {}, locale)}
+                        </span>
+                      </TableCell>
+                      <TableCell numeric phone="meta" label={t('onboarding.distance_column', {}, locale)}>
+                        {distance === null
+                          ? t('onboarding.no_distance', {}, locale)
+                          : t('onboarding.distance', { distance: formatDistanceKm(distance, locale) }, locale)}
+                      </TableCell>
+                      <TableCell phone="meta" label={t('onboarding.licence', {}, locale)} className="whitespace-normal">
+                        {source.licence_label ||
+                          (source.licence_id === 'unpublished'
+                            ? t('onboarding.no_terms', {}, locale)
+                            : source.licence_id)}
+                      </TableCell>
+                      <TableCell phone="meta" label={t('onboarding.cadence', {}, locale)}>
+                        {cadence(source.cadence_s, locale)}
+                      </TableCell>
+                      <TableCell phone="meta" label={t('onboarding.reading', {}, locale)} className="whitespace-normal">
+                        {reading(source, locale)}
+                      </TableCell>
+                      <TableCell phone="end">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={alreadyBound || binding !== null}
+                          onClick={() => void bind(source)}
+                        >
+                          {alreadyBound
+                            ? t('onboarding.bound', {}, locale)
+                            : binding === source.id
+                              ? t('onboarding.binding', {}, locale)
+                              : t('onboarding.bind', { source: source.external_id }, locale)}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+            {more || sources.length > PAGE ? (
+              <p className="type-small text-muted-foreground" data-numeric>
+                {t('onboarding.nearest_shown', { count: formatNumber(rows.length, locale) }, locale)}
+              </p>
+            ) : null}
           </div>
         )}
         {message && (

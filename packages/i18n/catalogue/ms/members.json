@@ -123,5 +123,8 @@
   "previous_page": "Halaman sebelumnya",
   "next_page": "Halaman seterusnya",
   "actions": "Tindakan",
-  "signs_in_with": "Log masuk dengan {methods}"
+  "signs_in_with": "Log masuk dengan {methods}",
+  "your_organisation": "organisasi anda",
+  "invite_ask_again": "Minta jemputan baharu daripada Pentadbir {org}.",
+  "transfer_ask_again": "Minta yang baharu daripada Pemilik."
 }

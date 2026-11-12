@@ -43,8 +43,8 @@ export function Faq({ grades, gradesSource }: { grades: GradesState; gradesSourc
       q: 'What happens when a source fails?',
       a: (
         <p data-source={TERMS_SERVICE}>
-          The call says so, for example &ldquo;No call: gauge silent 25 min&rdquo;, and only the clauses that need it
-          stop. It never shows an old reading.
+          The call says so, for example &ldquo;No call: gauge silent 25&nbsp;min&rdquo;, and only the clauses that need
+          it stop. It never shows an old reading.
         </p>
       )
     },

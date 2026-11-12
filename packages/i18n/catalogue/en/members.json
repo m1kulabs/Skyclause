@@ -123,5 +123,8 @@
   "previous_page": "Previous page",
   "next_page": "Next page",
   "actions": "Actions",
-  "signs_in_with": "Signs in with {methods}"
+  "signs_in_with": "Signs in with {methods}",
+  "your_organisation": "your organisation",
+  "invite_ask_again": "Ask an Admin of {org} for a new invite.",
+  "transfer_ask_again": "Ask the Owner for a new one."
 }

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { ProjectsList } from '../../../../features/projects-list/projects-list'
 import { getOrgPrincipal } from '../../../../lib/principal'
+import { settingsLocale } from '../../../../features/settings/locale'
 
 /** `/{org}/projects`: the organisation's projects with per-pack modes, review counts and signal health. */
 export default async function Page({
@@ -17,5 +18,5 @@ export default async function Page({
   const role = principal.role
   const canCreate = role === 'owner' || role === 'admin'
   const archived = query.archived === '1'
-  return <ProjectsList org={org} canCreate={canCreate} archived={archived} />
+  return <ProjectsList org={org} canCreate={canCreate} archived={archived} locale={await settingsLocale()} />
 }

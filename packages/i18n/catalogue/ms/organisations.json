@@ -4,11 +4,13 @@
     "description": "Organisasi memegang projek, sumber dan pelulus. Anda menjadi Pemiliknya.",
     "name": "Nama organisasi",
     "nameHint": "Dipaparkan dalam penukar dan pada notis.",
+    "nameRequired": "Masukkan nama untuk organisasi.",
     "slug": "Slug",
     "slugHint": "Huruf kecil, digit dan sempang tunggal, 2–39 aksara.",
     "format": "Gunakan 2–39 huruf kecil, digit dan sempang tunggal, bermula dan berakhir dengan huruf atau digit.",
     "reserved": "{slug} dikhaskan. Pilih slug lain.",
     "taken": "{slug} telah digunakan. Pilih slug lain.",
+    "failed": "Organisasi tidak dicipta. Cuba lagi.",
     "submit": "Cipta organisasi",
     "creating": "Mencipta…",
     "signedOut": "Log masuk untuk mencipta organisasi."
@@ -25,13 +27,15 @@
   },
   "projects": {
     "title": "Projek",
-    "count": "n={count}",
     "empty": "Tiada projek lagi (n=0).",
+    "emptyActive": "Tiada projek aktif. Projek yang diarkibkan hanya satu klik jauhnya.",
+    "emptyArchived": "Tiada projek yang diarkibkan.",
     "create": "Cipta projek",
     "askAdmin": "Minta Admin mencipta projek",
     "needsReview": "{count} perlu semakan",
     "signal": "Kesihatan isyarat: {state} · {reporting}{oldest}",
     "inputsReporting": "{count} input melaporkan",
+    "inputsReporting_one": "{count} input melaporkan",
     "oldestAge": "· tertua {age}",
     "noCall": "Tiada panggilan: {input} sejak {time}",
     "archived": "Diarkib",
@@ -39,6 +43,8 @@
     "hideArchived": "Sembunyi yang diarkib",
     "retry": "Cuba lagi",
     "loading": "Memuatkan projek…",
-    "source": "senarai projek"
+    "source": "senarai projek",
+    "count": "{count} projek",
+    "count_one": "1 projek"
   }
 }

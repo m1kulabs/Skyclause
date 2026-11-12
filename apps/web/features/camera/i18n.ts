@@ -5,3 +5,4 @@ import malay from '../../../../packages/i18n/catalogue/ms/camera.json'
 catalogueFiles['../catalogue/en/camera.json'] = { default: english }
 catalogueFiles['../catalogue/ms/camera.json'] = { default: malay }
 export { t } from '@skyclause/i18n'
+export type Locale = 'en' | 'ms'

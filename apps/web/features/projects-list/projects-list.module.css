@@ -40,6 +40,10 @@
   text-underline-offset: 4px;
 }
 
+.toggle:hover {
+  text-decoration-color: currentColor;
+}
+
 .rows {
   display: flex;
   flex-direction: column;
@@ -49,8 +53,9 @@
 /* Above 50 rows the list scrolls in its own frame, so only the rows in view render. */
 .rows[data-virtualized='true'] {
   display: block;
-  max-height: min(70vh, 960px);
+  max-height: min(70dvh, 960px);
   overflow-y: auto;
+  overscroll-behavior: contain;
   border-radius: var(--radius-surface, 16px);
 }
 
