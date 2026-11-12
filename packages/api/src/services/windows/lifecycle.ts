@@ -15,6 +15,7 @@ import type { ServiceContext } from '../../tenancy'
 import { ApiError } from '../../problems'
 import { invalidField, validateFields } from './fields'
 import { addDays, dayDifference, materializeNative, parseRule, resolveSpan, shiftRule } from './series'
+import { expandWeeklyDates } from './recurrence'
 import {
   consumeWindowBudget,
   currentWindowView,
@@ -139,19 +140,21 @@ async function seriesPlan(
   if (!series) throw invalidScope()
   const definition = readWindowSeriesDefinition(series)
   if (series.cancelledAt) throw conflict('The series is cancelled.')
-  if (body.tz !== undefined) await validateFields(ctx, { ...fields(selected, {}), tz: body.tz }, access.now, false)
-  // Validate exact supplied precision before Date conversion, even when all current members have started.
-  if (body.starts_at !== undefined || body.ends_at !== undefined)
-    await validateFields(
-      ctx,
-      {
-        ...fields(selected, {}),
-        starts_at: body.starts_at ?? selected.startsAt.toISOString(),
-        ends_at: body.ends_at ?? selected.endsAt.toISOString(),
-        tz: body.tz ?? selected.tz
-      },
-      access.now
-    )
+  const timeChanged =
+    (body.starts_at !== undefined && Date.parse(body.starts_at) !== selected.startsAt.getTime()) ||
+    (body.ends_at !== undefined && Date.parse(body.ends_at) !== selected.endsAt.getTime())
+  // Validate the combined supplied/effective fields before conversion, preserving independent issue codes.
+  await validateFields(
+    ctx,
+    {
+      starts_at: body.starts_at ?? selected.startsAt.toISOString(),
+      ends_at: body.ends_at ?? selected.endsAt.toISOString(),
+      kind: body.kind ?? selected.kind,
+      tz: body.tz ?? selected.tz
+    },
+    access.now,
+    timeChanged
+  )
   const selectedSpan = await windowLocalSpan(ctx.tx, {
     startsAt: new Date(body.starts_at ?? selected.startsAt),
     endsAt: new Date(body.ends_at ?? selected.endsAt),
@@ -214,14 +217,22 @@ async function seriesPlan(
       },
       access.now
     )
-    const desiredDates = new Set(desired.map((row) => row.seriesOccurrenceDate))
+    // Existing identities can still belong to the rule when their template time is past or beyond this horizon.
+    // Only new materialization is bounded by now/+90 days; absence there is not evidence of recurrence removal.
+    const dateOffsetDays = nextDefinition.dateOffsetDays
+    const effectiveAnchor = addDays(nextDefinition.anchor, dateOffsetDays)
+    const membershipThrough = members
+      .map((row) => addDays(row.seriesOccurrenceDate!, dateOffsetDays))
+      .sort()
+      .at(-1)!
+    const membershipDates = new Set(expandWeeklyDates(parseRule(rule), effectiveAnchor, membershipThrough))
     const known = new Set<string | null | undefined>(members.map((row) => row.seriesOccurrenceDate))
     for (const row of members)
       if (
         !row.cancelledAt &&
         row.startsAt >= access.now &&
         body.recurrence !== undefined &&
-        !desiredDates.has(row.seriesOccurrenceDate)
+        !membershipDates.has(addDays(row.seriesOccurrenceDate!, dateOffsetDays))
       )
         changes.push({ kind: 'cancel', id: row.id, origin: 'series', now: access.now })
     for (const row of desired)

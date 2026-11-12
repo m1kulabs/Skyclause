@@ -676,3 +676,123 @@ test('a series edit validates every effective override before changing any membe
     null
   ])
 })
+
+// Review I1: original rule membership is independent of today's new-materialization horizon.
+test('unchanged series recurrence after the original date preserves a moved future override and its sent call', async () => {
+  const view = await create({ recurrence: rule })
+  const rows = await members(view.series_id!)
+  expect(
+    (await mutate(view.id, 'PATCH', { starts_at: '2026-11-20T01:00:00.123Z', ends_at: '2026-11-20T02:00:00.123Z' }))
+      .status
+  ).toBe(200)
+  const sent = await run((tx) => makeCall(tx, { projectId, windowId: view.id, state: 'sent' }))
+  const snapshot = () =>
+    run(async (tx) => ({
+      rows: await tx.select().from(window).where(eq(window.seriesId, view.series_id!)).orderBy(window.id),
+      series: await tx.select().from(windowSeries).where(eq(windowSeries.id, view.series_id!)),
+      events: (await tx.select().from(domainEvent)).filter(
+        (event) => (event.data as { series_id?: string }).series_id === view.series_id
+      ),
+      ledger: await tx.select().from(ledgerEntry)
+    }))
+  const before = await snapshot()
+  const late = createTestApi({ deps: testDeps({ withTenant, now: () => new Date('2026-11-17T02:00:00Z') }) })
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await apiRequest(late.v1, {
+      as: editor(),
+      org: ORG,
+      method: 'PATCH',
+      path: `/v1/windows/${rows[1]!.id}`,
+      query: { scope: 'series' },
+      body: { recurrence: rule }
+    })
+    expect(response.status).toBe(200)
+    expect(await snapshot()).toEqual(before)
+  }
+  const listed = await apiRequest(late.v1, {
+    as: editor(),
+    org: ORG,
+    method: 'GET',
+    path: `/v1/projects/${projectId}/windows`
+  })
+  expect(((await listed.json()) as { data: View[] }).data.find((row) => row.id === view.id)).toMatchObject({
+    cancelled_at: null,
+    latest_calls: { sky: { id: sent.id, state: 'sent' } }
+  })
+})
+
+test.each([false, true])(
+  'a positive seven-day shift refuses its over-horizon tail atomically; explicit equivalent rule=%s',
+  async (explicit) => {
+    const recurrence = { ...rule, count: 100, skip_dates: [] }
+    const view = await create({ recurrence })
+    const rows = await members(view.series_id!)
+    expect(rows.slice(-2).map((row) => row.seriesOccurrenceDate)).toEqual(['2027-02-01', '2027-02-03'])
+    for (const row of rows.slice(-2)) await run((tx) => makeCall(tx, { projectId, windowId: row.id, state: 'sent' }))
+    const snapshot = () =>
+      run(async (tx) => ({
+        rows: await tx.select().from(window).where(eq(window.seriesId, view.series_id!)).orderBy(window.id),
+        series: await tx.select().from(windowSeries).where(eq(windowSeries.id, view.series_id!)),
+        events: (await tx.select().from(domainEvent)).filter(
+          (event) => (event.data as { series_id?: string }).series_id === view.series_id
+        ),
+        ledger: await tx.select().from(ledgerEntry)
+      }))
+    const before = await snapshot()
+    const response = await mutate(
+      view.id,
+      'PATCH',
+      {
+        starts_at: '2026-11-23T01:00:00.123Z',
+        ends_at: '2026-11-23T02:00:00.123Z',
+        ...(explicit ? { recurrence } : {})
+      },
+      'series'
+    )
+    expect(response.status).toBe(422)
+    expect(await response.json()).toMatchObject({
+      errors: expect.arrayContaining([expect.objectContaining({ pointer: '/starts_at', code: 'too_far' })])
+    })
+    expect(await snapshot()).toEqual(before)
+  }
+)
+
+test('series PATCH reports invalid zone and all independent supplied time violations together', async () => {
+  const view = await create({ recurrence: rule })
+  const response = await mutate(
+    view.id,
+    'PATCH',
+    { tz: 'unknown', starts_at: '2026-11-07T01:00:00Z', ends_at: '2026-11-07T00:00:00Z' },
+    'series'
+  )
+  expect(response.status).toBe(422)
+  expect(
+    ((await response.json()) as { errors: Array<{ in: string; pointer: string; code: string }> }).errors.map(
+      ({ in: where, pointer, code }) => [where, pointer, code]
+    )
+  ).toEqual([
+    ['body', '/tz', 'invalid_tz'],
+    ['body', '/ends_at', 'end_before_start'],
+    ['body', '/starts_at', 'past']
+  ])
+})
+
+test('series PATCH validates supplied kind with supplied times', async () => {
+  const view = await create({ recurrence: rule })
+  expect((await mutate(view.id, 'PATCH', { kind: 'commute_wave', ends_at: view.starts_at }, 'series')).status).toBe(200)
+})
+
+test('series PATCH exempts unchanged historical instants from creation-time bounds', async () => {
+  const historical = await create({ recurrence: rule })
+  const late = createTestApi({ deps: testDeps({ withTenant, now: () => new Date('2026-11-17T02:00:00Z') }) })
+  const response = await apiRequest(late.v1, {
+    as: editor(),
+    org: ORG,
+    method: 'PATCH',
+    path: `/v1/windows/${historical.id}`,
+    query: { scope: 'series' },
+    body: { starts_at: historical.starts_at }
+  })
+  expect(response.status).toBe(200)
+  expect(await response.json()).toMatchObject({ id: historical.id, starts_at: historical.starts_at })
+})

@@ -62,6 +62,7 @@ const denied = (statement: Statement) =>
 export async function openProject(ctx: ServiceContext, projectId: string, statement: Statement, access: WindowsAccess) {
   const { principal, tx } = ctx
   assertWindowsStatement(ctx, statement, access)
+  if (statement === 'window.declare') declarer(principal)
   if (
     !tx.orgId ||
     principal.kind === 'system' ||
@@ -168,6 +169,7 @@ type DeclaringVia = 'app' | 'api' | 'cli' | 'mcp'
 export function declarer(principal: Principal): { via: DeclaringVia; declaredBy: string } {
   const refuse = () => new ApiError(403, 'insufficient-scope', 'This principal cannot declare windows yet.')
   if (principal.kind !== 'session' && principal.kind !== 'api_key' && principal.kind !== 'oauth') throw refuse()
+  if (principal.role === null || principal.role === 'guest') throw refuse()
   if (principal.kind === 'session' && principal.isGuest) throw refuse()
   if (principal.kind === 'oauth' && principal.shareLinkId) throw refuse()
   const vias: Record<Principal['client'], DeclaringVia | null> = {
