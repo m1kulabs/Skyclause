@@ -85,6 +85,7 @@ export default function Panel({ locale = 'en' }: { locale?: Locale }) {
                 disabled={saving}
                 label={copy(item.key)}
                 note={copy(`${item.key}Note`)}
+                wide={item.value === 'system'}
                 onSelect={() => void save({ theme: item.value })}
               >
                 {item.value === 'system' ? (
@@ -215,6 +216,7 @@ function Tile({
   label,
   note,
   onSelect,
+  wide = false,
   children
 }: {
   name: string
@@ -224,10 +226,12 @@ function Tile({
   label: string
   note: string
   onSelect: () => void
+  wide?: boolean
   children: ReactNode
 }) {
   return (
     <label
+      data-wide={wide || undefined}
       className={cn(styles.tile, 'current-mark')}
       data-current={checked || undefined}
       data-disabled={disabled || undefined}
@@ -257,7 +261,11 @@ function Specimen({
     <div className={cn(styles.preview, scheme, contrast && 'hc')} aria-hidden="true">
       <div className={styles.marks}>
         <StatusMark state="normal" locale={locale} />
-        {compact ? null : <StatusMark state="outdoor_limited" locale={locale} />}
+        {compact ? null : (
+          <span className={styles.optional}>
+            <StatusMark state="outdoor_limited" locale={locale} />
+          </span>
+        )}
       </div>
       <div className={styles.marks}>
         <span className={styles.capsule}>{copy('previewApprove')}</span>

@@ -4,6 +4,7 @@
  * a picture: the capsule is the status mark, the buttons are capsules, the rows keep their real pitch.
  */
 .choices {
+  container-type: inline-size;
   display: grid;
   min-width: 0;
   grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
@@ -237,4 +238,26 @@
   display: grid;
   max-width: 320px;
   gap: 8px;
+}
+
+/* A narrow panel (a phone, or a tablet with the label column beside it) gives the System pair a row of its own. */
+@container (width < 520px) {
+  .tile[data-wide] {
+    grid-column: 1 / -1;
+  }
+}
+
+/* The second mode capsule is long; it appears only where the preview is wide enough to hold it on one line. */
+.preview {
+  container-type: inline-size;
+}
+
+.optional {
+  display: none;
+}
+
+@container (width >= 200px) {
+  .optional {
+    display: inline-flex;
+  }
 }
