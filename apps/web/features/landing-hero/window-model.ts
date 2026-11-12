@@ -2,7 +2,7 @@ import { t } from '@skyclause/i18n'
 import { formatNumber, formatTime } from '@skyclause/i18n/format'
 import type { BlockedInput, ClauseResult, InputValue, Mode, Pack, Verdicts } from '@skyclause/contracts/api/shared'
 import type { StripInput } from '@skyclause/elements'
-import './catalogue'
+import { heroCatalogue } from './catalogue'
 
 export interface HeroWindow {
   date: string
@@ -53,6 +53,31 @@ export function parseLocalTime(value: string): number | null {
   return minutes % STEP_MIN === 0 ? minutes : null
 }
 
+function quarterHour(hour: number, minute: number): number | null {
+  if (hour > 23 || minute > 59 || minute % STEP_MIN) return null
+  return hour * 60 + minute
+}
+
+/**
+ * A typed time in any common form ("15:30", "1530", "15.30", "9:30", "3.30pm", "3pm"), on the quarter hour, so a
+ * field never needs a number pad that has no colon. `null` when it is not a time or not on a 15-minute step.
+ */
+export function parseTimeInput(value: string): number | null {
+  const text = value.trim().toLowerCase().replace(/\s+/g, '')
+  const twelve = /^(\d{1,2})(?:[:.](\d{2}))?([ap])\.?m\.?$/.exec(text)
+  if (twelve) {
+    const hour = Number(twelve[1])
+    if (hour < 1 || hour > 12) return null
+    return quarterHour((hour % 12) + (twelve[3] === 'p' ? 12 : 0), Number(twelve[2] ?? 0))
+  }
+  const day = /^(\d{1,2})(?:[:.h]?(\d{2}))?$/.exec(text)
+  return day ? quarterHour(Number(day[1]), Number(day[2] ?? 0)) : null
+}
+
+const QUARTER = '(?:00|15|30|45)'
+/** The no-JS fields' `pattern`: the forms parseTimeInput reads, so the browser refuses what the server cannot. */
+export const TIME_INPUT_PATTERN = `\\s*(?:(?:[01]?\\d|2[0-3])(?:[:.h]?${QUARTER})?|(?:0?[1-9]|1[0-2])(?:[:.]${QUARTER})?\\s*[aApP]\\.?[mM]\\.?)\\s*`
+
 export function toLocalTime(minutes: number): string {
   const clamped = Math.min(1425, Math.max(0, minutes))
   const h = Math.floor(clamped / 60)
@@ -73,6 +98,34 @@ export function clampWindow(startMin: number, endMin: number): { start: number; 
   return { start, end }
 }
 
+const KEY_STEPS: Readonly<Record<string, number>> = {
+  ArrowRight: STEP_MIN,
+  ArrowUp: STEP_MIN,
+  PageUp: 60,
+  ArrowLeft: -STEP_MIN,
+  ArrowDown: -STEP_MIN,
+  PageDown: -60
+}
+
+/**
+ * The strip as a slider: arrows move the window 15 minutes (with Shift, its end only), Page Up and Page Down an hour,
+ * Home and End to the day's first and last step, the length held. `null` for any other key.
+ */
+export function stripKeyWindow(
+  key: string,
+  shift: boolean,
+  win: Pick<HeroWindow, 'startMin' | 'endMin'>
+): { start: number; end: number } | null {
+  const length = win.endMin - win.startMin
+  if (key === 'Home') return clampWindow(0, length)
+  if (key === 'End') return clampWindow(1425 - length, 1425)
+  const delta = KEY_STEPS[key]
+  if (delta === undefined) return null
+  if (shift) return clampWindow(win.startMin, win.endMin + delta)
+  const start = Math.min(1425 - length, Math.max(0, win.startMin + delta))
+  return clampWindow(start, start + length)
+}
+
 export function parseWindowFromSearch(query: string, now: Date): HeroWindow | null {
   const params = new URLSearchParams(query)
   const date = params.get('date')
@@ -80,10 +133,10 @@ export function parseWindowFromSearch(query: string, now: Date): HeroWindow | nu
   const end = params.get('end')
   if (!date || !start) return null
   if (!datesTodayPlusSeven(now).includes(date)) return null
-  const startMin = parseLocalTime(start)
+  const startMin = parseTimeInput(start)
   if (startMin === null) return null
   // The closing sentence asks for one time: without an end, the window is the hour from its start.
-  const endMin = end ? parseLocalTime(end) : startMin + 60
+  const endMin = end ? parseTimeInput(end) : startMin + 60
   if (endMin === null) return null
   const clamped = clampWindow(startMin, endMin)
   return { date, startMin: clamped.start, endMin: clamped.end }
@@ -192,12 +245,44 @@ export function skyStateOf(grouped: readonly GroupedVerdict[]): Mode | 'no_call'
   return sky.blocked.length ? 'no_call' : null
 }
 
+function catalogued(path: string[]): boolean {
+  let node: unknown = heroCatalogue
+  for (const segment of path) {
+    if (typeof node !== 'object' || node === null || !(segment in node)) return false
+    node = (node as Record<string, unknown>)[segment]
+  }
+  return typeof node === 'string'
+}
+
+/** A clause by its name in the catalogue; a project's own clause key reads as words, never as an identifier. */
+export function clauseNameOf(key: string): string {
+  if (catalogued(['clauses', key])) return t(`landing-hero.clauses.${key}`, {}, 'en')
+  const words = key.replace(/_/g, ' ')
+  return words.charAt(0).toUpperCase() + words.slice(1)
+}
+
+/**
+ * An indicator by its catalogue name, in the words the product's data components use ("Rain in the last 60 minutes
+ * (site)"). A name that is already words (a source's own "gauge") stays; an unknown identifier is never printed: it
+ * reads as an input from its source.
+ */
+export function inputNameOf(name: string, source?: string | null): string {
+  if (catalogued(['inputs', ...name.split('.')])) return t(`landing-hero.inputs.${name}`, {}, 'en')
+  if (!/[._]/.test(name)) return name
+  return source ? t('landing-hero.input_from', { source }, 'en') : t('landing-hero.an_input', {}, 'en')
+}
+
+/** A name inside a sentence: its first letter lowered unless it opens an acronym ("MET warning in force"). */
+function inSentence(name: string): string {
+  return /^[A-Z][a-z]/.test(name) ? name.charAt(0).toLowerCase() + name.slice(1) : name
+}
+
 export function blockedLineOf(input: { clause: string; blocked: BlockedInput }): string {
   return t(
     'landing-hero.no_call_for',
     {
-      clause: input.clause,
-      input: input.blocked.name,
+      clause: clauseNameOf(input.clause),
+      input: inSentence(inputNameOf(input.blocked.name, input.blocked.source_id)),
       station: input.blocked.source_id ?? '',
       time: formatTime(input.blocked.since, 'en')
     },
@@ -205,13 +290,17 @@ export function blockedLineOf(input: { clause: string; blocked: BlockedInput }):
   )
 }
 
-export function errorLineOf(input: Pick<InputValue, 'name' | 'since' | 'observed_at'>): string {
+export function errorLineOf(input: Pick<InputValue, 'name' | 'since' | 'observed_at' | 'source_ids'>): string {
   const at = input.since ?? input.observed_at
-  return t('landing-hero.couldnt_reach', { input: input.name, time: at ? formatTime(at, 'en') : '' }, 'en')
+  return t(
+    'landing-hero.couldnt_reach',
+    { input: inSentence(inputNameOf(input.name, input.source_ids[0])), time: at ? formatTime(at, 'en') : '' },
+    'en'
+  )
 }
 
 export function notOpenLineOf(clause: string, openFrom: string): string {
-  return t('landing-hero.evaluates_from', { clause, time: formatTime(openFrom, 'en') }, 'en')
+  return t('landing-hero.evaluates_from', { clause: clauseNameOf(clause), time: formatTime(openFrom, 'en') }, 'en')
 }
 
 export function ageMinutesOf(input: Pick<InputValue, 'age_s' | 'observed_at'>, evaluatedAt: string): string {

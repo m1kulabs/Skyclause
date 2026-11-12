@@ -145,7 +145,7 @@ describe('exact LND lines', () => {
           observed_at: '2026-11-05T07:00:00.000Z'
         })
       )
-    ).toBe("Couldn't reach the JPS gauge at 15:00 MYT.")
+    ).toBe('Couldn’t reach the JPS gauge at 15:00 MYT.')
     expect(notOpenLineOf('Surge', '2026-11-05T14:00:00.000Z')).toBe('Surge evaluates from 22:00 MYT')
   })
 
