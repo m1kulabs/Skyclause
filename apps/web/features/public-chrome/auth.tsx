@@ -2,6 +2,7 @@ import { t } from '@skyclause/i18n'
 import { CircleAlertIcon, InfoIcon } from 'lucide-react'
 import type { ComponentProps, ReactNode, Ref } from 'react'
 import { Alert } from '#ui/alert'
+import { cn } from '#lib/utils'
 import './auth.css'
 import './catalogue'
 
@@ -56,7 +57,7 @@ export function AuthMessage({
     <Alert
       variant="destructive"
       role={tone === 'error' ? 'alert' : 'status'}
-      className={`text-base leading-6 ${className ?? ''}`}
+      className={cn('text-base leading-6', className)}
       {...props}
     >
       <Icon aria-hidden="true" />

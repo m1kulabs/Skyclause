@@ -8,6 +8,7 @@ import { projectSettingsApi, resolveProject, type Project } from '../../../proje
 import { useRead } from '../../../analysis/use-read'
 import { Button } from '#ui/button'
 import { Input } from '#ui/input'
+import { Field, FieldDescription, FieldGroup } from '#ui/field'
 import { Label } from '#ui/label'
 import { Textarea } from '#ui/textarea'
 import { Skeleton } from '#ui/skeleton'
@@ -29,6 +30,7 @@ import {
   SettingsSummaryLine,
   dateFieldRing
 } from '../../parts'
+import { cn } from '#lib/utils'
 
 type Locale = 'en' | 'ms'
 type ProjectForm = {
@@ -289,8 +291,8 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
       </SettingsAside>
       <form className="grid min-w-0 gap-10" onSubmit={saveProject}>
         <SettingsPart title={t('project-settings.site', {}, locale)}>
-          <div className="grid min-w-0 gap-4 sm:grid-cols-2">
-            <div className="grid min-w-0 gap-2">
+          <FieldGroup className="grid min-w-0 gap-4 sm:grid-cols-2">
+            <Field className="min-w-0">
               <Label htmlFor="project-name">{t('project-settings.name', {}, locale)}</Label>
               <Input
                 id="project-name"
@@ -301,8 +303,8 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
                 required
                 maxLength={120}
               />
-            </div>
-            <div className="grid min-w-0 gap-2">
+            </Field>
+            <Field className="min-w-0">
               <Label htmlFor="site-name">{t('project-settings.site_name', {}, locale)}</Label>
               <Input
                 id="site-name"
@@ -312,8 +314,8 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
                 onChange={(event) => field('siteName', event.target.value)}
                 maxLength={160}
               />
-            </div>
-            <div className="grid min-w-0 gap-2">
+            </Field>
+            <Field className="min-w-0">
               <Label htmlFor="site-latitude">{t('project-settings.latitude', {}, locale)}</Label>
               <Input
                 id="site-latitude"
@@ -328,8 +330,8 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
                 data-numeric
                 onChange={(event) => field('latitude', event.target.value)}
               />
-            </div>
-            <div className="grid min-w-0 gap-2">
+            </Field>
+            <Field className="min-w-0">
               <Label htmlFor="site-longitude">{t('project-settings.longitude', {}, locale)}</Label>
               <Input
                 id="site-longitude"
@@ -344,8 +346,8 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
                 data-numeric
                 onChange={(event) => field('longitude', event.target.value)}
               />
-            </div>
-            <div className="grid min-w-0 gap-2">
+            </Field>
+            <Field className="min-w-0">
               <Label htmlFor="project-time-zone">{t('project-settings.time_zone', {}, locale)}</Label>
               <Input
                 id="project-time-zone"
@@ -357,11 +359,11 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
                 onChange={(event) => field('timeZone', event.target.value)}
                 required
               />
-              <p id="project-time-zone-hint" className="type-small text-muted-foreground">
+              <FieldDescription id="project-time-zone-hint">
                 {t('project-settings.time_zone_hint', {}, locale)}
-              </p>
-            </div>
-            <div className={`grid min-w-0 gap-2 ${dateFieldRing}`} data-focus-ring>
+              </FieldDescription>
+            </Field>
+            <Field className={cn('grid min-w-0', dateFieldRing)} data-focus-ring>
               <Label htmlFor="semester-end">{t('project-settings.semester_end', {}, locale)}</Label>
               <Input
                 id="semester-end"
@@ -371,8 +373,8 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
                 value={form.semesterEnd}
                 onChange={(event) => field('semesterEnd', event.target.value)}
               />
-            </div>
-            <div className="grid min-w-0 gap-2 sm:col-span-2">
+            </Field>
+            <Field className="min-w-0 sm:col-span-2">
               <Label htmlFor="warning-terms">{t('project-settings.warning_terms', {}, locale)}</Label>
               <Textarea
                 id="warning-terms"
@@ -384,11 +386,11 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
                 value={form.warningTerms}
                 onChange={(event) => field('warningTerms', event.target.value)}
               />
-              <p id="warning-terms-hint" className="type-small text-muted-foreground">
+              <FieldDescription id="warning-terms-hint">
                 {t('project-settings.warning_hint', {}, locale)}
-              </p>
-            </div>
-          </div>
+              </FieldDescription>
+            </Field>
+          </FieldGroup>
         </SettingsPart>
 
         <SettingsPart
@@ -399,8 +401,8 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
             locale
           )}
         >
-          <div className="grid min-w-0 gap-4 sm:grid-cols-2">
-            <div className={`grid min-w-0 gap-2 ${dateFieldRing}`} data-focus-ring>
+          <FieldGroup className="grid min-w-0 gap-4 sm:grid-cols-2">
+            <Field className={cn('min-w-0', dateFieldRing)} data-focus-ring>
               <Label htmlFor="camera-start">{t('project-settings.camera_start', {}, locale)}</Label>
               <Input
                 id="camera-start"
@@ -410,8 +412,8 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
                 value={form.cameraStart}
                 onChange={(event) => field('cameraStart', event.target.value)}
               />
-            </div>
-            <div className={`grid min-w-0 gap-2 ${dateFieldRing}`} data-focus-ring>
+            </Field>
+            <Field className={cn('min-w-0', dateFieldRing)} data-focus-ring>
               <Label htmlFor="camera-end">{t('project-settings.camera_end', {}, locale)}</Label>
               <Input
                 id="camera-end"
@@ -421,8 +423,8 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
                 value={form.cameraEnd}
                 onChange={(event) => field('cameraEnd', event.target.value)}
               />
-            </div>
-          </div>
+            </Field>
+          </FieldGroup>
         </SettingsPart>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -453,7 +455,7 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
                   }}
                   noValidate
                 >
-                  <div className="grid min-w-0 content-start gap-2">
+                  <Field data-invalid={slaProblem[pack] || undefined} className="w-auto min-w-0">
                     <Label htmlFor={`sla-${pack}`}>
                       {t('project-settings.deadline_of', { pack: packName }, locale)}
                     </Label>
@@ -484,15 +486,15 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
                         {unitWord}
                       </span>
                     </div>
-                    <p id={`sla-${pack}-hint`} className="type-small text-muted-foreground">
+                    <FieldDescription id={`sla-${pack}-hint`}>
                       {t('project-settings.sla_hint', { unit: unitWord }, locale)}
-                    </p>
+                    </FieldDescription>
                     {slaProblem[pack] ? (
                       <SettingsError id={`sla-${pack}-error`}>
                         {t('project-settings.sla_invalid', { unit: unitWord }, locale)}
                       </SettingsError>
                     ) : null}
-                  </div>
+                  </Field>
                   <div className="flex flex-wrap items-center gap-3">
                     {slaSaved === pack && !slaDirty(pack) && (
                       <SettingsStatus>

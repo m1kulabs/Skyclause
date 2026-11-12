@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#
 import type { PublicLocale } from '../public-chrome'
 import '../public-chrome/catalogue'
 import styles from './legal.module.css'
+import { cn } from '#lib/utils'
 
 const retentionRows = [
   'readings',
@@ -121,7 +122,7 @@ function LegalPage({
     <main className={styles.page} lang={locale}>
       <header className={styles.head}>
         <h1 className="type-head">{title}</h1>
-        <p className={`type-lead ${styles.intro}`}>{intro}</p>
+        <p className={cn('type-lead', styles.intro)}>{intro}</p>
         <p className={styles.version}>{version}</p>
       </header>
       <div className={styles.body}>

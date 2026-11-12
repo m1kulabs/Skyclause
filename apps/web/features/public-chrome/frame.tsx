@@ -6,6 +6,7 @@ import { BlockWordmark } from './block-wordmark'
 import { BrandLines } from './brand-lines'
 import './catalogue'
 import styles from './public-chrome.module.css'
+import { cn } from '#lib/utils'
 
 export { BrandLines } from './brand-lines'
 
@@ -58,7 +59,7 @@ export function PublicChrome({
             {legal.map(link)}
           </nav>
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Public navigation stays server-rendered and works without JavaScript. */}
-          <a className={`${buttonVariants({ size: 'lg' })} ${styles.action}`} href="/sign-in">
+          <a className={cn(buttonVariants({ size: 'lg' }), styles.action)} href="/sign-in">
             {t('legal.frame.signIn', {}, locale)}
           </a>
         </div>

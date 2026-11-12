@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Button } from '#ui/button'
 import { Checkbox } from '#ui/checkbox'
 import { Input } from '#ui/input'
+import { FieldGroup, FieldLegend, FieldSet } from '#ui/field'
 import { Skeleton } from '#ui/skeleton'
 import { ConfirmDialog } from '../../set-7'
 import { focusHeadingWhenFree } from '../../focus'
@@ -230,82 +231,84 @@ export default function Panel({ org, locale = 'en' }: { org: string; locale?: 'e
       )}
       <SettingsParts>
         <SettingsPart title={t('oauth.settings.clients', {}, locale)} id="oauth-clients-heading">
-          <form onSubmit={create} className="grid min-w-0 gap-5" noValidate>
-            <SettingsField
-              label={t('oauth.settings.clientName', {}, locale)}
-              hint={copy('nameHint', {
-                limit: NAME_LIMIT,
-                redirect: t('oauth.settings.geminiRedirect', {}, locale)
-              })}
-              error={
-                error
-                  ? t('oauth.settings.saveFailed', {}, locale)
-                  : nameError
-                    ? t('oauth.settings.nameRequired', {}, locale)
-                    : undefined
-              }
-            >
-              {(aria) => (
-                <Input
-                  {...aria}
-                  ref={nameRef}
-                  name="client_name"
-                  type="text"
-                  autoComplete="off"
-                  spellCheck={false}
-                  value={name}
-                  onChange={(event) => {
-                    setName(event.target.value)
-                    setNameError(false)
-                  }}
-                  placeholder={t('oauth.settings.namePlaceholder', {}, locale)}
-                  maxLength={NAME_LIMIT}
-                  disabled={saving}
-                />
-              )}
-            </SettingsField>
-            <fieldset className="m-0 grid min-w-0 gap-1 border-0 p-0">
-              <legend className="mb-1 p-0 text-[14px] leading-5 font-medium">
-                {t('oauth.settings.scopes', {}, locale)}
-              </legend>
-              {(['read', 'draft'] as const).map((scope, index) => (
-                <label key={scope} className="flex min-h-9 items-center gap-3 text-[14px]">
-                  <Checkbox
-                    ref={index === 0 ? firstScopeRef : undefined}
-                    aria-invalid={scopeError ? true : undefined}
-                    name="scopes"
-                    value={scope}
-                    aria-label={
-                      scope === 'read'
-                        ? t('oauth.settings.scopeRead', {}, locale)
-                        : t('oauth.settings.scopeDraft', {}, locale)
-                    }
-                    checked={scopes.includes(scope)}
-                    onCheckedChange={() => {
-                      setScopeError(false)
-                      setScopes((current) =>
-                        current.includes(scope) ? current.filter((item) => item !== scope) : [...current, scope]
-                      )
-                    }}
-                  />
-                  {scope === 'read'
-                    ? t('oauth.settings.scopeRead', {}, locale)
-                    : t('oauth.settings.scopeDraft', {}, locale)}
-                </label>
-              ))}
-              {scopeError ? <SettingsError>{t('oauth.settings.scopeRequired', {}, locale)}</SettingsError> : null}
-            </fieldset>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                type="submit"
-                className="h-auto min-h-9 max-w-full shrink py-1.5 whitespace-normal"
-                disabled={saving}
-                aria-busy={saving}
+          <form onSubmit={create} className="min-w-0" noValidate>
+            <FieldGroup>
+              <SettingsField
+                label={t('oauth.settings.clientName', {}, locale)}
+                hint={copy('nameHint', {
+                  limit: NAME_LIMIT,
+                  redirect: t('oauth.settings.geminiRedirect', {}, locale)
+                })}
+                error={
+                  error
+                    ? t('oauth.settings.saveFailed', {}, locale)
+                    : nameError
+                      ? t('oauth.settings.nameRequired', {}, locale)
+                      : undefined
+                }
               >
-                {t('oauth.settings.create', {}, locale)}
-              </Button>
-              {notice ? <SettingsStatus>{notice}</SettingsStatus> : null}
-            </div>
+                {(aria) => (
+                  <Input
+                    {...aria}
+                    ref={nameRef}
+                    name="client_name"
+                    type="text"
+                    autoComplete="off"
+                    spellCheck={false}
+                    value={name}
+                    onChange={(event) => {
+                      setName(event.target.value)
+                      setNameError(false)
+                    }}
+                    placeholder={t('oauth.settings.namePlaceholder', {}, locale)}
+                    maxLength={NAME_LIMIT}
+                    disabled={saving}
+                  />
+                )}
+              </SettingsField>
+              <FieldSet className="m-0 grid min-w-0 gap-1 border-0 p-0" data-invalid={scopeError ? true : undefined}>
+                <FieldLegend variant="label" className="mb-1 p-0 leading-5">
+                  {t('oauth.settings.scopes', {}, locale)}
+                </FieldLegend>
+                {(['read', 'draft'] as const).map((scope, index) => (
+                  <label key={scope} className="flex min-h-9 items-center gap-3 text-[14px]">
+                    <Checkbox
+                      ref={index === 0 ? firstScopeRef : undefined}
+                      aria-invalid={scopeError ? true : undefined}
+                      name="scopes"
+                      value={scope}
+                      aria-label={
+                        scope === 'read'
+                          ? t('oauth.settings.scopeRead', {}, locale)
+                          : t('oauth.settings.scopeDraft', {}, locale)
+                      }
+                      checked={scopes.includes(scope)}
+                      onCheckedChange={() => {
+                        setScopeError(false)
+                        setScopes((current) =>
+                          current.includes(scope) ? current.filter((item) => item !== scope) : [...current, scope]
+                        )
+                      }}
+                    />
+                    {scope === 'read'
+                      ? t('oauth.settings.scopeRead', {}, locale)
+                      : t('oauth.settings.scopeDraft', {}, locale)}
+                  </label>
+                ))}
+                {scopeError ? <SettingsError>{t('oauth.settings.scopeRequired', {}, locale)}</SettingsError> : null}
+              </FieldSet>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  type="submit"
+                  className="h-auto min-h-9 max-w-full shrink py-1.5 whitespace-normal"
+                  disabled={saving}
+                  aria-busy={saving}
+                >
+                  {t('oauth.settings.create', {}, locale)}
+                </Button>
+                {notice ? <SettingsStatus>{notice}</SettingsStatus> : null}
+              </div>
+            </FieldGroup>
           </form>
 
           {failure ? (

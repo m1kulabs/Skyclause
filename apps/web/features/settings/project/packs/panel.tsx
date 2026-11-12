@@ -6,6 +6,7 @@ import { formatList } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
 import { CodeBlock, CodeBlockContent } from '#ui/code-block'
 import { Input } from '#ui/input'
+import { Field, FieldDescription, FieldGroup } from '#ui/field'
 import { Label } from '#ui/label'
 import { Skeleton } from '#ui/skeleton'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '#ui/dialog'
@@ -519,47 +520,47 @@ export default function Panel({ org, project: projectSlug, initialPack, locale =
               {tokenCopied === 'failed' ? <SettingsError>{ts('project-settings.copy_failed')}</SettingsError> : null}
             </div>
           ) : (
-            <form className="grid min-w-0 gap-4" onSubmit={(event) => void createDevice(event)}>
-              <div className="grid gap-2">
-                <Label htmlFor="device-name">{t('onboarding.device_name')}</Label>
-                <Input
-                  id="device-name"
-                  name="name"
-                  autoComplete="off"
-                  value={deviceName}
-                  maxLength={80}
-                  aria-invalid={deviceNameError ? true : undefined}
-                  aria-describedby={`device-name-hint${deviceNameError ? ' device-name-error' : ''}`}
-                  onChange={(event) => {
-                    setDeviceName(event.target.value)
-                    if (deviceNameError) setDeviceNameError(false)
-                  }}
-                />
-                <p id="device-name-hint" className="type-small text-muted-foreground">
-                  {ts('project-settings.device_name_hint')}
-                </p>
-                {deviceNameError ? (
-                  <SettingsError id="device-name-error">{ts('project-settings.device_name_required')}</SettingsError>
-                ) : null}
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="device-kind">{t('onboarding.device_kind')}</Label>
-                <select
-                  id="device-kind"
-                  name="kind"
-                  autoComplete="off"
-                  className="native-select"
-                  value={deviceKind}
-                  onChange={(event) => setDeviceKind(event.target.value as 'camera' | 'pi')}
-                >
-                  <option value="camera">{t('onboarding.camera')}</option>
-                  <option value="pi">{t('onboarding.pi')}</option>
-                </select>
-              </div>
-              {deviceError ? <SettingsError>{t('onboarding.save_error_generic')}</SettingsError> : null}
-              <Button type="submit" disabled={deviceSaving} aria-busy={deviceSaving}>
-                {deviceSaving ? t('onboarding.saving') : t('onboarding.create_device')}
-              </Button>
+            <form className="min-w-0" onSubmit={(event) => void createDevice(event)}>
+              <FieldGroup className="gap-4">
+                <Field data-invalid={deviceNameError || undefined}>
+                  <Label htmlFor="device-name">{t('onboarding.device_name')}</Label>
+                  <Input
+                    id="device-name"
+                    name="name"
+                    autoComplete="off"
+                    value={deviceName}
+                    maxLength={80}
+                    aria-invalid={deviceNameError ? true : undefined}
+                    aria-describedby={`device-name-hint${deviceNameError ? ' device-name-error' : ''}`}
+                    onChange={(event) => {
+                      setDeviceName(event.target.value)
+                      if (deviceNameError) setDeviceNameError(false)
+                    }}
+                  />
+                  <FieldDescription id="device-name-hint">{ts('project-settings.device_name_hint')}</FieldDescription>
+                  {deviceNameError ? (
+                    <SettingsError id="device-name-error">{ts('project-settings.device_name_required')}</SettingsError>
+                  ) : null}
+                </Field>
+                <Field>
+                  <Label htmlFor="device-kind">{t('onboarding.device_kind')}</Label>
+                  <select
+                    id="device-kind"
+                    name="kind"
+                    autoComplete="off"
+                    className="native-select"
+                    value={deviceKind}
+                    onChange={(event) => setDeviceKind(event.target.value as 'camera' | 'pi')}
+                  >
+                    <option value="camera">{t('onboarding.camera')}</option>
+                    <option value="pi">{t('onboarding.pi')}</option>
+                  </select>
+                </Field>
+                {deviceError ? <SettingsError>{t('onboarding.save_error_generic')}</SettingsError> : null}
+                <Button type="submit" disabled={deviceSaving} aria-busy={deviceSaving}>
+                  {deviceSaving ? t('onboarding.saving') : t('onboarding.create_device')}
+                </Button>
+              </FieldGroup>
             </form>
           )}
         </DialogContent>

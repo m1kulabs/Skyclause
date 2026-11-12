@@ -7,6 +7,7 @@ import { Announcer } from '../lib/announce'
 import { WebVitals } from '../features/quality/web-vitals'
 import { figures, roundo } from '../lib/fonts'
 import { APPEARANCE_SCRIPT, DEFAULT_APPEARANCE, resolveAppearance, type Appearance } from '../lib/theme'
+import { cn } from '#lib/utils'
 import '../styles/globals.css'
 
 type Locale = 'en' | 'ms'
@@ -58,7 +59,7 @@ export async function RootDocument({
         <noscript dangerouslySetInnerHTML={{ __html: `<meta name="theme-color" content="${resolved.color}">` }} />
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: APPEARANCE_SCRIPT }} />
       </head>
-      <body className={`${roundo.className} ${figures.variable}`}>
+      <body className={cn(roundo.className, figures.variable)}>
         <a className="skip-link" href={`#${skipTarget}`}>
           {t('shell.skip_to_content', {}, locale ?? preferences.language)}
         </a>

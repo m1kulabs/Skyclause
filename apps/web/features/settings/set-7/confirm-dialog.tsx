@@ -13,6 +13,7 @@ import {
   AlertDialogTitle
 } from '#ui/alert-dialog'
 import { Input } from '#ui/input'
+import { Field } from '#ui/field'
 import { Label } from '#ui/label'
 
 export interface ConfirmDialogProps {
@@ -86,7 +87,7 @@ function Confirmation({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         {typed && (
-          <div className="grid min-w-0 gap-2">
+          <Field className="min-w-0">
             <Label htmlFor={fieldId} className="block leading-5 [overflow-wrap:anywhere]">
               {t('set7.type_name', { name: objectName }, locale)}
             </Label>
@@ -102,7 +103,7 @@ function Confirmation({
               onChange={(event) => setValue(event.target.value)}
               disabled={saving}
             />
-          </div>
+          </Field>
         )}
         {failed && (
           <p id={errorId} role="alert" className="text-destructive">

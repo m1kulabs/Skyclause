@@ -17,6 +17,7 @@ import {
   SettingsStatus,
   SettingsSummaryLine
 } from '../../parts'
+import { FieldGroup } from '#ui/field'
 import '../../catalogue'
 
 const NAME_LIMIT = 100
@@ -112,7 +113,7 @@ export default function Panel({ org, locale = 'en' }: { org: string; locale?: 'e
       )}
       <form noValidate onSubmit={save} aria-label={copy('title')}>
         <SettingsParts className="gap-6">
-          <div className="grid gap-5">
+          <FieldGroup>
             <SettingsField
               label={organisations('organisations.general.name', {}, locale)}
               hint={copy('nameHint', { limit: NAME_LIMIT })}
@@ -164,7 +165,7 @@ export default function Panel({ org, locale = 'en' }: { org: string; locale?: 'e
                 )
               }
             </SettingsField>
-          </div>
+          </FieldGroup>
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" disabled={name === null || saving} aria-busy={saving}>
               {organisations(saving ? 'organisations.general.saving' : 'organisations.general.save', {}, locale)}
