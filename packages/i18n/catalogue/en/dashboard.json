@@ -24,8 +24,6 @@
   "warning_gloss": "English gloss: {gloss}",
   "warning_separator": " · ",
   "time_range_separator": " – ",
-  "source": "Source",
-  "cadence": "Cadence",
   "finding_prefix_one": "1 bundle needs review:",
   "sla_unit": "min of SLA left",
   "sla_passed": "SLA passed",

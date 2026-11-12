@@ -24,8 +24,6 @@
   "warning_gloss": "Maksud bahasa Inggeris: {gloss}",
   "warning_separator": " · ",
   "time_range_separator": " – ",
-  "source": "Sumber",
-  "cadence": "Kekerapan",
   "finding_prefix_one": "1 himpunan perlu disemak:",
   "sla_unit": "minit sebelum SLA tamat",
   "sla_passed": "SLA telah tamat",

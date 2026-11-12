@@ -12,10 +12,19 @@ import { cn } from '#lib/utils'
 import { Button } from '#ui/button'
 import { buttonVariants } from '#ui/button-variants'
 import { Skeleton } from '#ui/skeleton'
+import { Table, TableBody } from '#ui/table'
 import { ToggleGroup, ToggleGroupItem } from '#ui/toggle-group'
 import { ModeBadge } from '../brand/mode-badge'
 import { Glyph } from '../brand/glyph'
-import { DayStrip, InputAgeChip, NoCallState, SourceError, SourceHealthRow, WindowStrip } from '../data-components'
+import {
+  DayStrip,
+  InputAgeChip,
+  NoCallState,
+  SignalHealthHead,
+  SourceError,
+  SourceHealthRow,
+  WindowStrip
+} from '../data-components'
 import { ApiProblem } from '../../lib/api-fetch'
 import { readSse } from '../../lib/read-sse'
 import { useRead } from '../analysis/use-read'
@@ -38,6 +47,9 @@ import { t } from './catalogue'
 import './overview.css'
 
 type Locale = 'en' | 'ms'
+
+/** The sources table draws at most this many rows. */
+const SOURCE_CAP = 50
 
 /** One of the overview's reads: its value, or the status it failed with and when (shown as a named error). */
 type Read<Value> = { ok: true; value: Value } | { ok: false; status: number | null; at: string }
@@ -720,34 +732,39 @@ export function ProjectOverview({
               locale={locale}
             />
           ) : sources.length ? (
-            <table className="overview-source-table">
-              <caption className="sr-only">{t('overview.sources', {}, locale)}</caption>
-              <thead className="sr-only">
-                <tr>
-                  <th scope="col">{t('overview.sources', {}, locale)}</th>
-                  <th scope="col">{t('overview.updated', {}, locale)}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sources.map((item) => (
-                  <SourceHealthRow
-                    key={item.id}
-                    source={item}
-                    latest={
-                      item.latest_reading
-                        ? {
-                            value: item.latest_reading.value,
-                            observed_at: item.latest_reading.observed_at,
-                            unit: item.latest_reading.unit ?? undefined
-                          }
-                        : null
-                    }
-                    state={item.state}
-                    locale={locale}
-                  />
-                ))}
-              </tbody>
-            </table>
+            <>
+              <Table aria-label={t('overview.sources', {}, locale)}>
+                <SignalHealthHead locale={locale} />
+                <TableBody>
+                  {sources.slice(0, SOURCE_CAP).map((item) => (
+                    <SourceHealthRow
+                      key={item.id}
+                      source={item}
+                      latest={
+                        item.latest_reading
+                          ? {
+                              value: item.latest_reading.value,
+                              observed_at: item.latest_reading.observed_at,
+                              unit: item.latest_reading.unit ?? undefined
+                            }
+                          : null
+                      }
+                      state={item.state}
+                      locale={locale}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+              {sources.length > SOURCE_CAP ? (
+                <p className="type-small text-muted-foreground" data-numeric>
+                  {t(
+                    'overview.capped',
+                    { shown: formatNumber(SOURCE_CAP, locale), total: formatNumber(sources.length, locale) },
+                    locale
+                  )}
+                </p>
+              ) : null}
+            </>
           ) : (
             <EmptyBlock sentence={t('overview.no_sources', {}, locale)} action={sourcesAction} />
           )}

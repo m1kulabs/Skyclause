@@ -10,7 +10,8 @@ import { ApiProblem } from '../../lib/api-fetch'
 import { cn } from '#lib/utils'
 import { Button, buttonVariants } from '#ui/button'
 import { Skeleton } from '#ui/skeleton'
-import { DayStrip, GradeCard, SourceError, SourceHealthRow, WindowStrip } from '../data-components'
+import { Table, TableBody } from '#ui/table'
+import { DayStrip, GradeCard, SignalHealthHead, SourceError, SourceHealthRow, WindowStrip } from '../data-components'
 import { ModeBadge } from '../brand/mode-badge'
 import { readDashboard, type DashboardRead } from './operations'
 import { daySpan, slaLeft, stripInput, verdictState } from './model'
@@ -513,15 +514,9 @@ function DashboardContent({ org, data, locale }: { org: string; data: DashboardR
           {dashboard.signal_health.n === 0 ? (
             <EmptyBlock sentence={t('dashboard.no_signals', {}, locale)} {...emptyAction('signal_health')} />
           ) : (
-            <table className="w-full border-collapse type-body">
-              <caption className="sr-only">{t('dashboard.signal_health', {}, locale)}</caption>
-              <thead className="sr-only">
-                <tr>
-                  <th scope="col">{t('dashboard.source', {}, locale)}</th>
-                  <th scope="col">{t('dashboard.cadence', {}, locale)}</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table aria-label={t('dashboard.signal_health', {}, locale)}>
+              <SignalHealthHead locale={locale} />
+              <TableBody>
                 {dashboard.signal_health.data.slice(0, LIST_CAP).map((item) => (
                   <SourceHealthRow
                     key={item.source.id}
@@ -531,8 +526,8 @@ function DashboardContent({ org, data, locale }: { org: string; data: DashboardR
                     locale={locale}
                   />
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           )}
           <Capped shown={LIST_CAP} total={dashboard.signal_health.data.length} locale={locale} />
         </Block>

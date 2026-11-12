@@ -195,13 +195,6 @@
   white-space: nowrap;
 }
 
-.overview-source-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-  font-size: 14px;
-}
-
 .overview-next-event {
   display: flex;
   flex-direction: column;
