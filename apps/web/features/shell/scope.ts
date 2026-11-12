@@ -56,12 +56,15 @@ export function shellScope(
   const role = membership?.role
   const projects = membership ? data.projects.filter((item) => item.org_id === membership.org_id) : []
   const project = url.project ? projects.find((item) => item.slug === url.project) : undefined
-  const core = org && url.project ? coreDestinations(org, url.project) : []
-  const projectMenu = org && url.project ? projectMenuDestinations(org, url.project, role) : []
-  const guestAccount = data.memberships.length > 0 && data.memberships.every((item) => item.role === 'guest')
-  const organisationMenu = organisationMenuDestinations(org, role, guestAccount)
   // Without the memberships the project list is unknown too: an error, never n=0.
   const projectsError = data.membershipsError ?? (membership ? data.projectsError?.[membership.org_id] : undefined)
+  // A project the member's list does not have (a mistyped or foreign URL, answered by the not-found page) gets no
+  // links into it. Without a membership or a list read, the URL's project is all there is to go on.
+  const projectSlug = url.project && (project || !membership || projectsError) ? url.project : undefined
+  const core = org && projectSlug ? coreDestinations(org, projectSlug) : []
+  const projectMenu = org && projectSlug ? projectMenuDestinations(org, projectSlug, role) : []
+  const guestAccount = data.memberships.length > 0 && data.memberships.every((item) => item.role === 'guest')
+  const organisationMenu = organisationMenuDestinations(org, role, guestAccount)
   return {
     data,
     locale,
@@ -69,7 +72,7 @@ export function shellScope(
     membership,
     role,
     guestAccount,
-    projectSlug: url.project,
+    projectSlug,
     project,
     projects,
     projectsError,

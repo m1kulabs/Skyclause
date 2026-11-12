@@ -203,13 +203,26 @@ test('Viewers read explanations and cannot edit or request drafts', async ({ pag
   await expect(run).toHaveAccessibleDescription(copy('chooseVersionFirst'))
 })
 
-test('pack_crowd off removes Crowd and explains a direct feature-off URL', async ({ page }) => {
+test('a project without the Crowd pack offers and reads no Crowd, and says so at a direct Crowd URL', async ({
+  page
+}) => {
   await setup(page, { crowd: false })
+  const crowdReads: string[] = []
+  page.on('request', (request) => {
+    // The page's own address may carry it; no read may.
+    if (request.resourceType() !== 'document' && new URL(request.url()).searchParams.get('pack') === 'crowd')
+      crowdReads.push(request.url())
+  })
   await page.goto(`${projectRoute}?tab=crowd`)
   await expect(page.getByRole('tab', { name: tabName('crowd'), exact: true })).toHaveCount(0)
-  await expect(page.locator('[data-analysis-page]').getByRole('alert')).toContainText(copy('featureOff'))
+  await expect(page.locator('[data-analysis-page]').getByRole('alert')).toContainText(copy('crowdOff'))
   await page.getByRole('tab', { name: tabName('sky'), exact: true }).press('Enter')
   await expect(page.locator('[data-metric=precision]').first()).toBeVisible()
+  // A pack in the URL that the project does not run reads Sky, and the pack choice offers Sky only.
+  await page.goto(`${projectRoute}?tab=agreement&pack=crowd`)
+  await expect(page.locator('[data-metric]').first()).toBeVisible()
+  await expect(page.getByRole('combobox', { name: copy('pack'), exact: true }).locator('option')).toHaveCount(1)
+  expect(crowdReads).toEqual([])
 })
 
 test('Crowd Night lanes show arrival, hatched exit, forecast band and the D+1 actual tick', async ({ page }) => {
@@ -341,18 +354,6 @@ test('operation failures render errors instead of inventing zero counts', async 
   await expect(page.locator('[data-analysis-page] [data-source-error="503"]')).toBeVisible()
   await expect(page.locator('[data-live-chart], [data-metric]')).toHaveCount(0)
   await expect(page.locator('[data-analysis-page]')).not.toContainText(copy('emptyFinding'))
-})
-
-test('a Crowd availability failure is reported while live Sky figures remain available', async ({ page }) => {
-  await setup(page)
-  await page.route(`**/v1/projects/${projectId}/analysis?**`, (route) =>
-    new URL(route.request().url()).searchParams.get('pack') === 'crowd'
-      ? route.fulfill({ status: 503, json: { title: 'Unavailable' } })
-      : route.fallback()
-  )
-  await page.goto(projectRoute)
-  await expect(page.locator('[data-analysis-page] [data-source-error="503"]')).toContainText('Crowd')
-  await expect(page.locator('[data-metric=precision]').first()).toBeVisible()
 })
 
 // Recharts 3 draws an axis label as `.recharts-cartesian-axis-tick-value` with its own grey fill (#666, 2.51:1 on

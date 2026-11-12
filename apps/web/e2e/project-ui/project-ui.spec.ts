@@ -75,6 +75,31 @@ test('overview uses the 5 November captures, declares from the primary action an
   await expect(page).toHaveURL(/\?pack=crowd&declare=window$/)
 })
 
+test('a project that runs only Sky shows no Crowd card, offers no pack filter and reads no show nights', async ({
+  page
+}) => {
+  await page.clock.install({ time: new Date(projectFixtureData.capturedAt) })
+  await prepareOverview(page, 'admin', { empty: false })
+  // The summary still carries a state for both packs, as the API answers it; the project runs Sky only.
+  const skyOnly = {
+    ...baseProject,
+    packs: baseProject.packs.map((pack) => ({ ...pack, enabled: pack.pack === 'sky' }))
+  }
+  await stubApi(page, 'getProject', skyOnly, { registry: overviewOperations })
+  const nights: string[] = []
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname.endsWith('/nights')) nights.push(request.url())
+  })
+  await page.goto(`${emptyRoute}?pack=crowd`)
+  const overview = page.locator('[data-project-overview]')
+  await expect(overview.locator('[data-pack="sky"]')).toBeVisible()
+  await expect(overview.locator('[data-pack="crowd"]')).toHaveCount(0)
+  await expect(overview.getByRole('group', { name: copy('Show packs') })).toHaveCount(0)
+  await expect(overview.getByRole('button', { name: /Crowd~* pack/ })).toHaveCount(0)
+  await expect(overview.getByRole('heading', { name: copy('Next storm forecast') })).toBeVisible()
+  expect(nights).toEqual([])
+})
+
 test('a mistyped or foreign project is the not-found page, and a member’s own project is the overview', async ({
   page
 }) => {

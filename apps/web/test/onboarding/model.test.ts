@@ -7,7 +7,9 @@ import {
   progressForSteps,
   sortSources,
   stepStates,
-  type PickerSource
+  type PickerSource,
+  firstRunFinished,
+  projectHomeHref
 } from '../../features/onboarding/model'
 
 type CapturedStation = {
@@ -104,4 +106,23 @@ test('each first-run step is done, skipped, the next one, or still to do', () =>
   // A skipped step is never the next one; the first open step after it is.
   expect(stepStates([step(false, true), step(false)])).toEqual(['skipped', 'current'])
   expect(stepStates([step(true), step(false, true)])).toEqual(['done', 'skipped'])
+})
+
+test('the first run is finished once every step is done or skipped', () => {
+  const step = (completed: boolean, skipped = false) => ({
+    completed_at: completed ? '2026-11-12T01:00:00.000Z' : null,
+    skipped
+  })
+  expect(firstRunFinished([step(true), step(false, true)])).toBe(true)
+  expect(firstRunFinished([step(true), step(false)])).toBe(false)
+})
+
+test('the first project’s overview is read from the steps’ own links', () => {
+  const steps = (channel: string) => [
+    { step: 'sources', href: '/campus/bukit-jalil/settings/packs' },
+    { step: 'channel', href: channel }
+  ]
+  expect(projectHomeHref(steps('/campus/bukit-jalil/settings/channels'))).toBe('/campus/bukit-jalil')
+  // No project yet: the channel step points at the project form, and there is no overview to open.
+  expect(projectHomeHref(steps('/campus/new'))).toBeNull()
 })

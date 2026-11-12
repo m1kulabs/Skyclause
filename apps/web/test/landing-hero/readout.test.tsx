@@ -336,10 +336,8 @@ describe('HeroReadout', () => {
       />
     )
     expect(screen.getByText('Storm confirmed fired')).toBeTruthy()
-    expect(screen.getByText('Rain in the last 60 minutes (site)')).toBeTruthy()
+    expect(screen.getByText('Rain in the last 60 minutes')).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/storm_confirmed|site\.rain_60m_mm/)
-    expect(
-      screen.getByRole('link', { name: 'Open source: Rain in the last 60 minutes (site), in a new tab' })
-    ).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Open source: Rain in the last 60 minutes, in a new tab' })).toBeTruthy()
   })
 })

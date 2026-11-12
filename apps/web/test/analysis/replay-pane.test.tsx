@@ -86,3 +86,15 @@ test('a sheet or range the replay refuses still points at the inputs', async () 
   await run()
   expect(await screen.findByText('Replay failed. Check the selected subject and dates, then retry.')).toBeTruthy()
 })
+
+test('with no saved sheet version the pane says what a replay needs, and points at nothing that is not there', async () => {
+  vi.mocked(apiFetch).mockImplementation((async (operation: string) => {
+    if (operation === 'listClauseSheets') return { data: [], next_cursor: null }
+    throw new Error(`not reached: ${operation}`)
+  }) as never)
+  render(pane())
+  const hint = await screen.findByText(/^Saved sheet versions: n=0\./)
+  expect(hint.textContent).toContain('The live grades above are available now.')
+  // There is no Clauses page to send anyone to.
+  expect(document.body.textContent).not.toMatch(/in Clauses/)
+})

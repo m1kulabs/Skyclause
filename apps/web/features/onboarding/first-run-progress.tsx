@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { formatTime } from '@skyclause/i18n/format'
@@ -10,7 +10,7 @@ import { Skeleton } from '#ui/skeleton'
 import { ApiProblem } from '../../lib/api-fetch'
 import { SourceError } from '../data-components/states'
 import { onboardingApi, type OnboardingView } from './operations'
-import { progressForSteps, stepStates, type StepState } from './model'
+import { firstRunFinished, progressForSteps, projectHomeHref, stepStates, type StepState } from './model'
 import { t, type Locale } from './catalogue'
 import styles from './onboarding.module.css'
 
@@ -50,7 +50,15 @@ export interface FirstRunProgressProps {
    * another project, and never while the project form holds a draft.
    */
   redirectFromProject?: boolean
+  /**
+   * On the page a finished first run lands on (the first project's overview): the steps stay to show every one done,
+   * with this next action in place of Continue.
+   */
+  next?: { sentence: string; action: ReactNode }
 }
+
+/** The steps that open a settings page say which one, and what there completes them. */
+const HINTED: ReadonlySet<Step> = new Set<Step>(['rota', 'channel'])
 
 /** The six steps as a strip of capsules: filled when done, dashed when skipped, edged in ink for the next one. */
 function ProgressStrip({ states, label, done }: { states: readonly StepState[]; label: string; done: number }) {
@@ -94,10 +102,16 @@ function ProgressSkeleton({ locale }: { locale: Locale }) {
   )
 }
 
-export function FirstRunProgress({ org, locale = 'en', redirectFromProject = false }: FirstRunProgressProps) {
+export function FirstRunProgress({ org, locale = 'en', redirectFromProject = false, next }: FirstRunProgressProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const [onboarding, setOnboarding] = useState<OnboardingView | null>(null)
+  const [onboarding, setOnboardingView] = useState<OnboardingView | null>(null)
+  // A step was still open while this page showed the steps: finishing it here leads on to the project's overview.
+  const [sawOpen, setSawOpen] = useState(false)
+  const setOnboarding = useCallback((view: OnboardingView) => {
+    setOnboardingView(view)
+    if (!firstRunFinished(view.steps)) setSawOpen(true)
+  }, [])
   const [loading, setLoading] = useState(true)
   const [failure, setFailure] = useState<{ status: number | null; at: string } | null>(null)
   const [working, setWorking] = useState<Step | null>(null)
@@ -116,7 +130,7 @@ export function FirstRunProgress({ org, locale = 'en', redirectFromProject = fal
     } finally {
       setLoading(false)
     }
-  }, [org])
+  }, [org, setOnboarding])
 
   useEffect(() => {
     void reload()
@@ -182,8 +196,10 @@ export function FirstRunProgress({ org, locale = 'en', redirectFromProject = fal
   }
 
   const progress = progressForSteps(onboarding.steps)
+  const finished = firstRunFinished(onboarding.steps)
   const allActuallyDone = onboarding.steps.every((step) => !!step.completed_at)
-  if (allActuallyDone) return null
+  if (allActuallyDone && !next && !sawOpen) return null
+  const home = projectHomeHref(onboarding.steps) ?? `/${encodeURIComponent(org)}`
   const states = stepStates(onboarding.steps)
   const label = t('onboarding.progress', { completed: progress.completed, total: progress.total }, locale)
 
@@ -220,9 +236,14 @@ export function FirstRunProgress({ org, locale = 'en', redirectFromProject = fal
                     <DoneLine item={item} locale={locale} />
                   </p>
                 ) : state === 'current' ? (
-                  <p className={styles.stepResult}>
-                    {here ? t('onboarding.here', {}, locale) : t('onboarding.next_step', {}, locale)}
-                  </p>
+                  <>
+                    <p className={styles.stepResult}>
+                      {here ? t('onboarding.here', {}, locale) : t('onboarding.next_step', {}, locale)}
+                    </p>
+                    {HINTED.has(step) ? (
+                      <p className={styles.stepResult}>{t(`onboarding.hint_${step}`, {}, locale)}</p>
+                    ) : null}
+                  </>
                 ) : null}
               </div>
               <div className={styles.stepActions}>
@@ -265,6 +286,28 @@ export function FirstRunProgress({ org, locale = 'en', redirectFromProject = fal
           )
         })}
       </ol>
+      {finished ? (
+        <div className={styles.finish} data-first-run-finished>
+          <p id="first-run-finished" className={styles.finishText}>
+            <strong>{t('onboarding.finished', {}, locale)}</strong>
+            <span>{next ? next.sentence : t('onboarding.finished_overview', {}, locale)}</span>
+          </p>
+          <div className={styles.stepActions}>
+            {next ? (
+              next.action
+            ) : (
+              <Link
+                className={buttonVariants()}
+                href={`${home}?first-run=done`}
+                aria-describedby="first-run-finished"
+                data-step-action
+              >
+                {t('onboarding.continue', {}, locale)}
+              </Link>
+            )}
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }

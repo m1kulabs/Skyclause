@@ -291,3 +291,28 @@
     grid-row: auto;
   }
 }
+
+/* The first run is finished: one line saying so, then the one action that leads on. */
+.finish {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+
+.finishText {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.3em;
+  flex: 1 1 18rem;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.finishText strong {
+  font-weight: 600;
+}
