@@ -282,6 +282,7 @@ test('empty data shows the no-organisation state and its next action, never samp
   await expect(main.getByRole('link', { name: copy('Create an organisation') })).toHaveAttribute('href', '/new')
   await expect(main).not.toContainText('Test organisation')
   await expect(main.locator('[data-source-error]')).toHaveCount(0)
+  await expect(bar(page).getByRole('button', { name: /Switch project:/ })).toHaveCount(0)
 })
 
 test('a failed memberships read names itself as an error, not as no organisations', async ({ page }) => {

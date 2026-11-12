@@ -150,8 +150,13 @@ export function AppShell({ data, children, palette, now, scope: explicit }: AppS
             <Wordmark org={scope.org} />
             <div className="shell-scope">
               <OrganisationSwitcher scope={scope} />
-              <span className="shell-scope-divider" aria-hidden="true" />
-              <ProjectSwitcher scope={scope} />
+              {/* Without an organisation there is no project to switch to: its next step is in the page's state. */}
+              {scope.org && (
+                <>
+                  <span className="shell-scope-divider" aria-hidden="true" />
+                  <ProjectSwitcher scope={scope} />
+                </>
+              )}
             </div>
           </div>
           {scope.core.length > 0 && <Destinations scope={scope} />}
