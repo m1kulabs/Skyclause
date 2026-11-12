@@ -119,8 +119,8 @@
     "campus": "Campus",
     "commonsPrice": "Free · proposal, untested",
     "communityPrice": "Free · proposal, untested",
-    "teamPrice": "RM 49 a month per organisation from P2 · proposal, untested",
-    "campusPrice": "RM 900 a month per campus, billed yearly after GA · proposal, untested",
+    "teamPrice": "{price} a month per organisation from P2 · proposal, untested",
+    "campusPrice": "{price} a month per campus, billed yearly after GA · proposal, untested",
     "now": "Available now",
     "fromP2": "From P2",
     "afterGa": "After GA",
@@ -285,8 +285,8 @@
     "linkExpires": "Link expires {date}",
     "download": "Download",
     "downloadAccount": "Download account",
-    "downloadFor": "Download export {id}",
-    "downloadAccountFor": "Download account export {id}",
+    "downloadFor": "Download export from {date}",
+    "downloadAccountFor": "Download account export from {date}",
     "expiredLink": "This download link has expired. Request a new export.",
     "status": {
       "queued": "Queued",
@@ -295,7 +295,7 @@
       "failed": "Failed",
       "expired": "Expired"
     },
-    "exportPending": "An export is already being prepared.",
+    "exportPending": "An export is already being prepared. Wait for it to finish, then request another.",
     "exportFailed": "The export could not be requested. Try again.",
     "refreshExports": "Refresh exports",
     "loadMoreExports": "Load more exports",
@@ -313,27 +313,27 @@
       },
       "camera": {
         "item": "Camera frames",
-        "period": "Until semester end, up to 183 days",
+        "period": "Until semester end, up to 183 days",
         "after": "Deleted; contrast rows are kept"
       },
       "bus": {
         "item": "Raw bus positions",
-        "period": "Until segment times are computed, up to 24 hours",
+        "period": "Until segment times are computed, up to 24 hours",
         "after": "Deleted; segment times are kept"
       },
       "guestWindows": {
         "item": "Guest windows",
-        "period": "14 days",
+        "period": "14 days",
         "after": "Deleted"
       },
       "guestAccounts": {
         "item": "Guest accounts",
-        "period": "30 days idle",
+        "period": "30 days idle",
         "after": "Deleted with data"
       },
       "subscribers": {
         "item": "Subscriber records",
-        "period": "Until unsubscribe, then 30 days",
+        "period": "Until unsubscribe, then 30 days",
         "after": "Deleted; hashed suppression remains"
       },
       "ledger": {
@@ -348,7 +348,7 @@
       },
       "exports": {
         "item": "Export files",
-        "period": "7 days",
+        "period": "7 days",
         "after": "Deleted"
       },
       "apu": {
@@ -373,11 +373,11 @@
     "deleteAccount": "Delete account",
     "deleteAccountDescription": "Type your sign-in email to schedule account deletion.",
     "accountDeletionScheduled": "Account deletion has been scheduled.",
-    "accountDeleteUnavailable": "Your account email is unavailable, so account deletion cannot be confirmed.",
+    "accountDeleteUnavailable": "Your account email is unavailable, so account deletion cannot be confirmed. Sign in again, then try once more.",
     "accountDeleteFailed": "Account deletion could not be scheduled. Try again.",
     "soleOwner": "Transfer ownership before deleting this account.",
     "transferOwnership": "Transfer ownership in {name}",
-    "membershipsUnavailable": "Organisation ownership could not be loaded.",
+    "membershipsUnavailable": "Organisation ownership could not be loaded. Reload the page to try again.",
     "noOwnedOrganisations": "No organisation ownership needs to be transferred.",
     "cancel": "Cancel",
     "ownerOnly": "Only an Owner can delete this organisation.",
@@ -386,7 +386,16 @@
     "summaryDeletion": "Deletion",
     "deleteAccountConsequence": "Deleting your account removes your profile, passkeys and sessions. Ledger and audit records you appear in stay, with your personal fields pseudonymised.",
     "deleteAccountDialog": "This removes your profile, passkeys and sessions and pseudonymises your personal fields in ledger and audit records. Type your sign-in email to schedule it.",
-    "deleteOrgConsequence": "When the grace period ends the organisation and its data are purged. Exports already downloaded are not affected."
+    "deleteOrgConsequence": "When the grace period ends the organisation and its data are purged. Exports already downloaded are not affected.",
+    "cancelFailed": "Deletion could not be cancelled. Try again.",
+    "exportRequested": "Export requested. It will be ready within 24 hours.",
+    "colStatus": "Status",
+    "colRequested": "Requested",
+    "colDownload": "Download",
+    "exportRange": "Exports {from}–{to}",
+    "newerExports": "Newer exports",
+    "olderExports": "Older exports",
+    "exportJobFailed": "This export failed. Request a new export."
   },
   "unbuilt": {
     "accountAi": "AI keys for your account",
@@ -400,7 +409,9 @@
     "summaryName": "Name now",
     "summarySlug": "Slug",
     "nameHint": "Up to {limit} characters.",
-    "saveFailed": "The name could not be saved. Try again."
+    "saveFailed": "The name could not be saved. Try again.",
+    "nameRequired": "Enter a name for the organisation.",
+    "unchanged": "That is already the organisation’s name."
   },
   "integrations": {
     "source": "the OAuth clients and grants",

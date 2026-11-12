@@ -268,10 +268,9 @@ test('organisation data shows API export states, retention policy and a cancella
 
   await expect(panel.getByText('Ready within 24 hours').first()).toBeVisible()
   await expect(panel.getByText('Link expires 18 November 2026')).toBeVisible()
-  await expect(panel.getByRole('link', { name: `Download export ${ids.readyExport}` })).toHaveAttribute(
-    'href',
-    `/api/exports/${ids.readyExport}/download`
-  )
+  // A download is named by when it was requested, never by its internal id.
+  const download = panel.getByRole('link', { name: 'Download export from 10 November 2026, 10:00 MYT' })
+  await expect(download).toHaveAttribute('href', `/api/exports/${ids.readyExport}/download`)
   await expect(panel.getByText('This download link has expired. Request a new export.')).toBeVisible()
   await expect(exports.locator('[data-export-row]')).toHaveCount(5)
   await expect(exports).toContainText('Queued')
@@ -315,7 +314,9 @@ test('organisation data shows API export states, retention policy and a cancella
   }
 
   await panel.getByRole('button', { name: 'Request export' }).click()
-  await expect(panel.getByRole('link', { name: `Download export ${ids.newExport}` })).toBeVisible()
+  await expect(download).toHaveCount(2)
+  await expect(download.first()).toHaveAttribute('href', `/api/exports/${ids.newExport}/download`)
+  await expect(panel.getByText(/Export requested/)).toBeVisible()
   await panel.getByRole('button', { name: 'Cancel deletion' }).click()
   await expect(panel.getByText('Deletion is not scheduled.')).toBeVisible()
 })
@@ -346,7 +347,7 @@ test('organisation export-pending is shown inline', async ({ page }) => {
   await expect(panel.getByText('An export is already being prepared.')).toBeVisible()
 })
 
-test('organisation export list loads another cursor page and virtualises over 50 jobs', async ({ page }) => {
+test('organisation export list loads another cursor page and never draws more than 50 rows', async ({ page }) => {
   await asPage(page, principal('owner'))
   const firstPage = Array.from({ length: 50 }, (_, index) => organisationExport(uuidV7(index + 500), 'ready'))
   const secondPage = Array.from({ length: 20 }, (_, index) => organisationExport(uuidV7(index + 600), 'ready'))
@@ -373,27 +374,25 @@ test('organisation export list loads another cursor page and virtualises over 50
   const panel = settingsPanel(page)
   const jobs = panel.getByRole('region', { name: 'Export jobs' })
   await panel.getByRole('button', { name: 'Load more exports' }).click()
-  await expect.poll(() => jobs.locator('[data-export-row]').count()).toBeLessThan(70)
-  await expect(jobs.locator('[data-export-row]')).not.toHaveCount(0)
+  await expect(jobs.locator('[data-export-row]')).toHaveCount(50)
+  await panel.getByRole('button', { name: 'Older exports' }).click()
+  await expect(jobs.locator('[data-export-row]')).toHaveCount(20)
 })
 
-test('billing and retention tables reflow into two-line rows below 640px', async ({ page }) => {
+test('billing and retention tables reflow into two-line list rows below 640px', async ({ page }) => {
   await asPage(page, principal('owner'))
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto('/test-org/settings/billing')
   const panel = settingsPanel(page)
+  // The shared table turns each row into a list item: the first cell names it, the others carry their column name.
   const checkTwoLineRows = async (table: Locator) => {
     const firstRow = table.locator('tbody tr').first()
-    const layout = await firstRow.evaluate((row) => {
-      const heading = row.querySelector('th[scope="row"]')
-      return {
-        display: getComputedStyle(row).display,
-        columns: getComputedStyle(row).gridTemplateColumns.split(' ').length,
-        headingColumnEnd: heading ? getComputedStyle(heading).gridColumnEnd : null,
-        dataCells: row.querySelectorAll('td').length
-      }
-    })
-    expect(layout).toEqual({ display: 'grid', columns: 2, headingColumnEnd: '-1', dataCells: 2 })
+    const layout = await firstRow.evaluate((row) => ({
+      display: getComputedStyle(row).display,
+      cells: row.querySelectorAll('td').length,
+      labelled: row.querySelectorAll('td[data-label]').length
+    }))
+    expect(layout).toEqual({ display: 'flex', cells: 3, labelled: 2 })
   }
 
   await checkTwoLineRows(panel.getByRole('table'))
@@ -477,9 +476,10 @@ test('account export downloads and sole-owner refusal links every organisation t
   await page.goto('/account/data')
   const panel = settingsPanel(page)
 
-  await expect(panel.getByRole('link', { name: `Download account export ${ids.accountReadyExport}` })).toBeVisible()
+  const accountDownload = panel.getByRole('link', { name: 'Download account export from 10 November 2026, 10:00 MYT' })
+  await expect(accountDownload).toBeVisible()
   await panel.getByRole('button', { name: 'Request account export' }).click()
-  await expect(panel.getByRole('link', { name: `Download account export ${ids.accountNewExport}` })).toBeVisible()
+  await expect(accountDownload).toHaveCount(2)
   await panel.getByRole('button', { name: 'Delete account' }).click()
   const dialog = page.getByRole('alertdialog')
   const confirm = dialog.getByRole('button', { name: /Delete account/ })

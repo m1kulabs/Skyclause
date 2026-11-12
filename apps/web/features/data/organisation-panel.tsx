@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Role } from '@skyclause/contracts'
 import { t } from '@skyclause/i18n'
 import { Button } from '../../components/ui/button'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import {
   SettingsAside,
   SettingsDanger,
@@ -29,7 +30,6 @@ import { retentionRows } from './retention-catalogue'
 import { ExportList } from './export-list'
 import { organisationApiFetch, type DeletionState, type OrganisationExport } from './operations'
 import { formatExpiryDate, problemSlug } from './model'
-import retentionStyles from './retention.module.css'
 
 export function OrganisationDataPanel({
   org,
@@ -47,6 +47,8 @@ export function OrganisationDataPanel({
   const [loading, setLoading] = useState(true)
   const [exportError, setExportError] = useState('')
   const [pageError, setPageError] = useState('')
+  const [cancelError, setCancelError] = useState('')
+  const [requested, setRequested] = useState(false)
   const [offerOpen, setOfferOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [scheduled, setScheduled] = useState('')
@@ -94,19 +96,21 @@ export function OrganisationDataPanel({
   useEffect(() => {
     if (!exports.some((job) => job.status === 'queued' || job.status === 'running')) return
     const timer = window.setInterval(() => {
-      void loadExports().catch(() => setPageError(label('exportFailed')))
+      void loadExports().catch(() => setExportError(label('exportFailed')))
     }, 10_000)
     return () => window.clearInterval(timer)
   }, [exports, label, loadExports])
 
   const requestExport = async (continueToDelete = false) => {
     setExportError('')
+    setRequested(false)
     try {
       const job = await organisationApiFetch('createOrganisationExport', {
         params: { org },
         body: { formats: ['json', 'csv'] }
       })
       setExports((current) => [job, ...current.filter((entry) => entry.id !== job.id)])
+      setRequested(true)
       if (continueToDelete) {
         setOfferOpen(false)
         setConfirmOpen(true)
@@ -129,15 +133,17 @@ export function OrganisationDataPanel({
     }
   }
 
+  // A failed cancel gets its own message, shown where the cancel is: the grace period is still running.
   const cancelDeletion = async () => {
     setPageError('')
+    setCancelError('')
     try {
       const state = await organisationApiFetch('cancelOrganisationDeletion', { params: { org } })
       setDeletion(state)
       setScheduled('')
       setCancelled(true)
     } catch {
-      setPageError(label('deleteFailed'))
+      setCancelError(label('cancelFailed'))
     }
   }
 
@@ -179,24 +185,19 @@ export function OrganisationDataPanel({
         <SettingsPart title={label('exportsTitle')} description={label('exportsDescription')} id="org-exports-title">
           <p className="type-small text-muted-foreground">{label('readyWithin')}</p>
           <div className="flex flex-wrap items-center gap-3">
-            <Button
-              type="button"
-              className="disabled:opacity-100"
-              onClick={() => void requestExport()}
-              disabled={loading}
-            >
+            <Button type="button" onClick={() => void requestExport()} disabled={loading}>
               {label('requestExport')}
             </Button>
             <Button
               type="button"
               variant="outline"
-              className="disabled:opacity-100"
               onClick={() => void loadExports().catch(() => setExportError(label('exportFailed')))}
               disabled={loading}
             >
               {label('refreshExports')}
             </Button>
             {loading && <SettingsStatus>{label('loadingExports')}</SettingsStatus>}
+            {requested && <SettingsStatus>{label('exportRequested')}</SettingsStatus>}
           </div>
           {exportError && <SettingsError>{exportError}</SettingsError>}
           <ExportList
@@ -209,24 +210,28 @@ export function OrganisationDataPanel({
         </SettingsPart>
 
         <SettingsPart title={label('retentionTitle')} description={label('retentionDescription')} id="retention-title">
-          <table aria-label={label('retentionTitle')} className={retentionStyles.table}>
-            <thead className="sr-only sm:not-sr-only">
-              <tr>
-                <th scope="col">{label('retentionItem')}</th>
-                <th scope="col">{label('retentionPeriod')}</th>
-                <th scope="col">{label('retentionAfter')}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table aria-label={label('retentionTitle')}>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{label('retentionItem')}</TableHead>
+                <TableHead>{label('retentionPeriod')}</TableHead>
+                <TableHead>{label('retentionAfter')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {rows.map((row) => (
-                <tr key={row.item}>
-                  <th scope="row">{row.item}</th>
-                  <td data-label={label('retentionPeriod')}>{row.period}</td>
-                  <td data-label={label('retentionAfter')}>{row.after}</td>
-                </tr>
+                <TableRow key={row.item}>
+                  <TableCell className="font-medium whitespace-normal">{row.item}</TableCell>
+                  <TableCell className="whitespace-normal" phone="meta" label={label('retentionPeriod')}>
+                    {row.period}
+                  </TableCell>
+                  <TableCell className="whitespace-normal" phone="meta" label={label('retentionAfter')}>
+                    {row.after}
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </SettingsPart>
 
         <SettingsDanger
@@ -250,15 +255,10 @@ export function OrganisationDataPanel({
               <Button type="button" variant="outline" onClick={() => void cancelDeletion()}>
                 {label('cancelDeletion')}
               </Button>
+              {cancelError && <SettingsError>{cancelError}</SettingsError>}
             </div>
           ) : owner ? (
-            <Button
-              type="button"
-              variant="destructive"
-              className="disabled:opacity-100"
-              onClick={() => setOfferOpen(true)}
-              disabled={loading}
-            >
+            <Button type="button" variant="destructive" onClick={() => setOfferOpen(true)} disabled={loading}>
               {label('deleteOrgTitle')}
             </Button>
           ) : (

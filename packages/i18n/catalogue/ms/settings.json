@@ -117,10 +117,10 @@
     "community": "Komuniti",
     "team": "Pasukan",
     "campus": "Kampus",
-    "commonsPrice": "Percuma · proposal, untested",
-    "communityPrice": "Percuma · proposal, untested",
-    "teamPrice": "RM 49 sebulan bagi setiap organisasi mulai P2 · proposal, untested",
-    "campusPrice": "RM 900 sebulan bagi setiap kampus, dibil setiap tahun selepas GA · proposal, untested",
+    "commonsPrice": "Percuma · cadangan, belum diuji",
+    "communityPrice": "Percuma · cadangan, belum diuji",
+    "teamPrice": "{price} sebulan bagi setiap organisasi mulai P2 · cadangan, belum diuji",
+    "campusPrice": "{price} sebulan bagi setiap kampus, dibil setiap tahun selepas GA · cadangan, belum diuji",
     "now": "Tersedia sekarang",
     "fromP2": "Mulai P2",
     "afterGa": "Selepas GA",
@@ -285,8 +285,8 @@
     "linkExpires": "Pautan tamat pada {date}",
     "download": "Muat turun",
     "downloadAccount": "Muat turun akaun",
-    "downloadFor": "Muat turun eksport {id}",
-    "downloadAccountFor": "Muat turun eksport akaun {id}",
+    "downloadFor": "Muat turun eksport daripada {date}",
+    "downloadAccountFor": "Muat turun eksport akaun daripada {date}",
     "expiredLink": "Pautan muat turun ini telah tamat tempoh. Minta eksport baharu.",
     "status": {
       "queued": "Dalam giliran",
@@ -295,7 +295,7 @@
       "failed": "Gagal",
       "expired": "Tamat tempoh"
     },
-    "exportPending": "Eksport sedang disediakan.",
+    "exportPending": "Eksport sedang disediakan. Tunggu sehingga siap, kemudian minta yang lain.",
     "exportFailed": "Eksport tidak dapat diminta. Cuba lagi.",
     "refreshExports": "Muat semula eksport",
     "loadMoreExports": "Muat lagi eksport",
@@ -313,27 +313,27 @@
       },
       "camera": {
         "item": "Bingkai kamera",
-        "period": "Sehingga akhir semester, maksimum 183 hari",
+        "period": "Sehingga akhir semester, maksimum 183 hari",
         "after": "Dipadam; baris kontras dikekalkan"
       },
       "bus": {
         "item": "Lokasi bas mentah",
-        "period": "Sehingga masa segmen dikira, maksimum 24 jam",
+        "period": "Sehingga masa segmen dikira, maksimum 24 jam",
         "after": "Dipadam; masa segmen dikekalkan"
       },
       "guestWindows": {
         "item": "Tetingkap tetamu",
-        "period": "14 hari",
+        "period": "14 hari",
         "after": "Dipadam"
       },
       "guestAccounts": {
         "item": "Akaun tetamu",
-        "period": "30 hari tidak aktif",
+        "period": "30 hari tidak aktif",
         "after": "Dipadam bersama data"
       },
       "subscribers": {
         "item": "Rekod pelanggan",
-        "period": "Sehingga berhenti langgan, kemudian 30 hari",
+        "period": "Sehingga berhenti langgan, kemudian 30 hari",
         "after": "Dipadam; penindasan cincangan dikekalkan"
       },
       "ledger": {
@@ -343,12 +343,12 @@
       },
       "deletedOrg": {
         "item": "Organisasi dipadam",
-        "period": "Tempoh ihsan 30 hari",
+        "period": "Tempoh ihsan 30 hari",
         "after": "Dihapuskan sepenuhnya"
       },
       "exports": {
         "item": "Fail eksport",
-        "period": "7 hari",
+        "period": "7 hari",
         "after": "Dipadam"
       },
       "apu": {
@@ -373,11 +373,11 @@
     "deleteAccount": "Padam akaun",
     "deleteAccountDescription": "Taip e-mel log masuk untuk menjadualkan pemadaman akaun.",
     "accountDeletionScheduled": "Pemadaman akaun telah dijadualkan.",
-    "accountDeleteUnavailable": "E-mel akaun anda tidak tersedia, jadi pemadaman akaun tidak boleh disahkan.",
+    "accountDeleteUnavailable": "E-mel akaun anda tidak tersedia, jadi pemadaman akaun tidak boleh disahkan. Log masuk semula, kemudian cuba sekali lagi.",
     "accountDeleteFailed": "Pemadaman akaun tidak dapat dijadualkan. Cuba lagi.",
     "soleOwner": "Pindahkan pemilikan sebelum memadam akaun ini.",
     "transferOwnership": "Pindahkan pemilikan di {name}",
-    "membershipsUnavailable": "Pemilikan organisasi tidak dapat dimuatkan.",
+    "membershipsUnavailable": "Pemilikan organisasi tidak dapat dimuatkan. Muat semula halaman untuk mencuba lagi.",
     "noOwnedOrganisations": "Tiada pemilikan organisasi yang perlu dipindahkan.",
     "cancel": "Batal",
     "ownerOnly": "Hanya Pemilik boleh memadam organisasi ini.",
@@ -386,7 +386,16 @@
     "summaryDeletion": "Pemadaman",
     "deleteAccountConsequence": "Memadam akaun anda membuang profil, kunci laluan dan sesi anda. Rekod lejar dan audit yang memaparkan anda kekal, dengan medan peribadi anda disamarkan.",
     "deleteAccountDialog": "Ini membuang profil, kunci laluan dan sesi anda serta menyamarkan medan peribadi anda dalam rekod lejar dan audit. Taip e-mel log masuk anda untuk menjadualkannya.",
-    "deleteOrgConsequence": "Apabila tempoh bertenang tamat, organisasi dan datanya dihapuskan. Eksport yang telah dimuat turun tidak terjejas."
+    "deleteOrgConsequence": "Apabila tempoh bertenang tamat, organisasi dan datanya dihapuskan. Eksport yang telah dimuat turun tidak terjejas.",
+    "cancelFailed": "Pemadaman tidak dapat dibatalkan. Cuba lagi.",
+    "exportRequested": "Eksport diminta. Ia akan siap dalam masa 24 jam.",
+    "colStatus": "Status",
+    "colRequested": "Diminta",
+    "colDownload": "Muat turun",
+    "exportRange": "Eksport {from}–{to}",
+    "newerExports": "Eksport lebih baharu",
+    "olderExports": "Eksport lebih lama",
+    "exportJobFailed": "Eksport ini gagal. Minta eksport baharu."
   },
   "unbuilt": {
     "accountAi": "kunci AI untuk akaun anda",
@@ -400,7 +409,9 @@
     "summaryName": "Nama sekarang",
     "summarySlug": "Slug",
     "nameHint": "Sehingga {limit} aksara.",
-    "saveFailed": "Nama tidak dapat disimpan. Cuba lagi."
+    "saveFailed": "Nama tidak dapat disimpan. Cuba lagi.",
+    "nameRequired": "Masukkan nama untuk organisasi.",
+    "unchanged": "Itu sudah nama organisasi."
   },
   "integrations": {
     "source": "klien dan geran OAuth",
