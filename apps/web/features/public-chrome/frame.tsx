@@ -58,7 +58,7 @@ export function PublicChrome({
             {legal.map(link)}
           </nav>
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Public navigation stays server-rendered and works without JavaScript. */}
-          <a className={buttonVariants({ size: 'lg' })} href="/sign-in">
+          <a className={`${buttonVariants({ size: 'lg' })} ${styles.action}`} href="/sign-in">
             {t('legal.frame.signIn', {}, locale)}
           </a>
         </div>

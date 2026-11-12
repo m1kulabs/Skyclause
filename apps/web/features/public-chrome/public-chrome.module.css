@@ -82,6 +82,11 @@
   background: var(--raised);
 }
 
+/* The capsule's fill reaches its 2px edge, as tall as the outlined controls (see requests/t4.md). */
+.action {
+  background-clip: border-box;
+}
+
 .content {
   width: 100%;
   flex: 1;

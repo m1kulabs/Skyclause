@@ -11,7 +11,7 @@ export function NotFoundContent({ locale = 'en' }: { locale?: PublicLocale }) {
       <p className={`type-page-body ${styles.errorSentence}`}>{t('legal.notFound.sentence', {}, locale)}</p>
       <div className={styles.exits}>
         {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Error exits must work without JavaScript. */}
-        <a className={buttonVariants({ size: 'lg' })} href="/">
+        <a className={`${buttonVariants({ size: 'lg' })} ${styles.action}`} href="/">
           {t('legal.notFound.home', {}, locale)}
         </a>
       </div>
@@ -26,12 +26,15 @@ export function PublicErrorContent({ locale = 'en', reset }: { locale?: PublicLo
       <p className={`type-page-body ${styles.errorSentence}`}>{t('legal.error.sentence', {}, locale)}</p>
       <div className={styles.exits}>
         {reset ? (
-          <button className={buttonVariants({ size: 'lg' })} type="button" onClick={reset}>
+          <button className={`${buttonVariants({ size: 'lg' })} ${styles.action}`} type="button" onClick={reset}>
             {t('legal.error.retry', {}, locale)}
           </button>
         ) : null}
         {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Error exits must work without JavaScript. */}
-        <a className={buttonVariants({ size: 'lg', variant: reset ? 'outline' : 'default' })} href="/">
+        <a
+          className={`${buttonVariants({ size: 'lg', variant: reset ? 'outline' : 'default' })} ${styles.action}`}
+          href="/"
+        >
           {t('legal.error.home', {}, locale)}
         </a>
       </div>
