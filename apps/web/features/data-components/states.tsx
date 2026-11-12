@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 import { formatTime } from '@skyclause/i18n/format'
 import { Glyph } from '../brand/glyph'
 import { StatusMark } from '../brand/status-mark'
@@ -87,15 +87,23 @@ export interface NotBuiltProps {
   title: string
   /** What is available instead, or the one next action that works. */
   children?: ReactNode
+  /** For a notice that takes the place of the control that had focus: it can take focus itself. */
+  ref?: Ref<HTMLDivElement>
 }
 
 /**
  * A part of the product that is not available yet, said plainly. No read was attempted, so it is not a SourceError; it
  * is not an empty state either, since nothing could ever fill it.
  */
-export function NotBuilt({ title, children }: NotBuiltProps) {
+export function NotBuilt({ title, children, ref }: NotBuiltProps) {
   return (
-    <div role="status" data-not-built className="flex flex-col items-start gap-2 rounded-xl bg-card p-5">
+    <div
+      ref={ref}
+      tabIndex={ref ? -1 : undefined}
+      role="status"
+      data-not-built
+      className="flex flex-col items-start gap-2 rounded-xl bg-card p-5"
+    >
       <p className="flex items-center gap-2 font-medium">
         <Glyph state="off_hours" width={14} height={14} />
         <span>{title}</span>

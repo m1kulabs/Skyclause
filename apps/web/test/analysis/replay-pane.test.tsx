@@ -61,6 +61,9 @@ test('a replay that is not available yet says so, never blames the inputs, and o
   }
   await run()
   expect(await screen.findByText('What-if replay is not available yet.')).toBeTruthy()
+  // Run is gone, so focus goes to the notice in its place, never to the page's body.
+  const notice = screen.getByText('What-if replay is not available yet.').closest('[data-not-built]')
+  await waitFor(() => expect(document.activeElement).toBe(notice))
   expect(screen.queryByText(/Check the selected subject and dates/)).toBeNull()
   expect(screen.queryByRole('button', { name: 'Run replay' })).toBeNull()
   expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()

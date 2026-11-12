@@ -225,6 +225,7 @@ export function ReplayPane({
   // A 501 means the replay engine is not available on this server yet: Run could only fail again, so the form gives way
   // to saying so. Only an answer decides it, so once the engine answers, Run works on the next visit.
   const [unavailable, setUnavailable] = useState(false)
+  const notice = useRef<HTMLDivElement>(null)
   const visible = run?.key === inputKey ? run : undefined
   const validRange =
     !!state.from &&
@@ -255,8 +256,11 @@ export function ReplayPane({
         requestAnimationFrame(() => result.current?.focus())
       }
     } catch (error) {
-      if (error instanceof ApiProblem && error.status === 501) setUnavailable(true)
-      else if (currentKey.current === key)
+      if (error instanceof ApiProblem && error.status === 501) {
+        setUnavailable(true)
+        // The notice takes Run's place, so it takes Run's focus too and is read out; focus never falls to the body.
+        requestAnimationFrame(() => notice.current?.focus())
+      } else if (currentKey.current === key)
         setRun({
           key,
           status: 'error',
@@ -327,7 +331,7 @@ export function ReplayPane({
       </div>
       {/* In place of the form's card, not inside it: the notice is a card of its own. */}
       {unavailable ? (
-        <NotBuilt title={t('analysis.replayUnavailable', {}, locale)}>
+        <NotBuilt ref={notice} title={t('analysis.replayUnavailable', {}, locale)}>
           <p className="analysis-muted">{t('analysis.replayUnavailableDetail', {}, locale)}</p>
         </NotBuilt>
       ) : (
