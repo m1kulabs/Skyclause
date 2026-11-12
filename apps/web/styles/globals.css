@@ -1117,7 +1117,8 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
   }
   [data-slot='table'][data-phone='list'] > :is(tbody, tfoot) > tr > :is(td, th)[data-phone='end'] {
     order: 1;
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    max-width: 60%;
     margin-top: 0;
     margin-inline-start: auto;
     font-size: 14px;

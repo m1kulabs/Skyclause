@@ -34,7 +34,7 @@ export function ReadingsChart({ layout, locale }: { layout: StripLayout; locale:
             <span
               key={`${lane.key}-title`}
               data-lane-title={lane.key}
-              className="absolute right-2 left-0 flex items-baseline justify-between gap-x-3 type-small whitespace-nowrap text-muted-foreground"
+              className="absolute right-2 left-9 flex items-baseline justify-between gap-x-3 type-small whitespace-nowrap text-muted-foreground"
               style={{ top: lane.top - 20 }}
             >
               <span>{t(lane.key === 'rain5' ? 'data.strip.lane_rain5' : 'data.strip.lane_rain60', {}, locale)}</span>
@@ -102,11 +102,11 @@ export function ReadingsChart({ layout, locale }: { layout: StripLayout; locale:
           {crossing ? (
             <span
               data-crossing-label
-              className={`absolute type-small whitespace-nowrap text-foreground ${crossing.labelBeside ? 'pl-2' : '-translate-x-full pr-1'}`}
+              className={`absolute type-small whitespace-nowrap text-foreground ${crossing.labelBeside ? 'pl-2' : '-translate-x-full pr-3'}`}
               style={
                 crossing.labelBeside
                   ? { left: pct(crossing.x), top: crossing.y + 6 }
-                  : { left: `max(${pct(crossing.x)}, 8.5rem)`, top: crossing.y - 26 }
+                  : { left: `max(${pct(crossing.x)}, 8.5rem)`, top: crossing.y - 30 }
               }
             >
               {crossing.label}

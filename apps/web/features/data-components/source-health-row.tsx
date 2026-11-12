@@ -113,7 +113,7 @@ export function SourceHealthRow({
                 ': ' +
                 t('data.strip.ticks_received', { received, missed, errors: failed }, locale)
               }
-              className="mt-1 inline-flex gap-[2px]"
+              className="mt-1 flex w-fit gap-[2px]"
             >
               {ticks.slice(0, 48).map((tick, i) => (
                 <span
