@@ -61,8 +61,9 @@ function ChartContainer({
         data-slot="chart"
         data-chart={chartId}
         className={cn(
-          // Drawn in ink with one emphasised series (--chart-1); grid lines in --grid replace Recharts' default greys.
-          'flex aspect-video justify-center text-[13px] [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line]:stroke-grid [&_.recharts-curve.recharts-tooltip-cursor]:stroke-muted-foreground [&_.recharts-dot]:stroke-transparent [&_.recharts-layer]:outline-hidden [&_.recharts-polar-grid_*]:stroke-grid [&_.recharts-radial-bar-background-sector]:fill-raised [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_line]:stroke-muted-foreground [&_.recharts-sector]:stroke-transparent [&_.recharts-sector]:outline-hidden [&_.recharts-surface]:outline-hidden',
+          // Drawn in ink with one emphasised series (--chart-1); grid lines in --grid replace Recharts' default greys. Axis
+          // labels are Recharts 3's `.recharts-cartesian-axis-tick-value`, whose own #666 fill this inks with --chart-ink.
+          'flex aspect-video justify-center text-[13px] [&_.recharts-cartesian-axis-tick-value]:fill-chart-ink [&_.recharts-cartesian-grid_line]:stroke-grid [&_.recharts-curve.recharts-tooltip-cursor]:stroke-muted-foreground [&_.recharts-dot]:stroke-transparent [&_.recharts-layer]:outline-hidden [&_.recharts-polar-grid_*]:stroke-grid [&_.recharts-radial-bar-background-sector]:fill-raised [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_line]:stroke-muted-foreground [&_.recharts-sector]:stroke-transparent [&_.recharts-sector]:outline-hidden [&_.recharts-surface]:outline-hidden',
           className
         )}
         {...props}

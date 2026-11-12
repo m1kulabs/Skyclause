@@ -86,6 +86,15 @@ export function toLocalTime(minutes: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
+/** The least width the band draws a window's capsule at (hero-band), so a short window stays a target. */
+export const CAPSULE_MIN_PX = 28
+
+/** Whether a press `x` px into a strip `width` px wide lands on the window's capsule as drawn, not only on its span. */
+export function onCapsule(x: number, width: number, win: Pick<HeroWindow, 'startMin' | 'endMin'>): boolean {
+  const left = (win.startMin / DAY_MIN) * width
+  return x >= left && x < left + Math.max(CAPSULE_MIN_PX, ((win.endMin - win.startMin) / DAY_MIN) * width)
+}
+
 export function snapToStep(minutes: number): number {
   return Math.round(minutes / STEP_MIN) * STEP_MIN
 }

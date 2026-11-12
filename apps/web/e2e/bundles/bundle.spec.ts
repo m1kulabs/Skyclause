@@ -609,8 +609,10 @@ test('#372 a signed-in approver’s bundle arrives rendered by the server and hy
   } finally {
     releaseStrip()
   }
-  // The run and strip arrive in the client refresh; new readings must replace the server's empty strip.
-  await expect(page.locator('.bundle-trace')).toContainText(review.bundle.run_id)
+  // The run and strip arrive in the client refresh; new readings must replace the server's empty strip. The run line
+  // prints the ID's last eight characters and keeps the whole of it in its title.
+  await expect(page.locator('.bundle-trace p[title]')).toHaveAttribute('title', review.bundle.run_id)
+  await expect(page.locator('.bundle-trace')).toContainText(`…${review.bundle.run_id.slice(-8)}`)
   // The readings chart, under the window's capsule (whose glyph is an svg too).
   await expect(page.locator('.bundle-call-list figure svg[data-strip-plot]')).toBeVisible()
   await expect(page.locator('.bundle-call-list figure figcaption')).toContainText('50')

@@ -13,6 +13,7 @@ import {
   clampWindow,
   groupedVerdicts,
   hasGaugeError,
+  onCapsule,
   parseLocalTime,
   parseTimeInput,
   skyStateOf,
@@ -45,6 +46,22 @@ function beaconEndpoint(): string {
     : '/e'
 }
 
+/** Sideways travel before a touch or pen press moves the window: a scroll that starts on the strip stays a scroll. */
+const DRAG_THRESHOLD_PX = 8
+
+interface Drag {
+  mode: 'move' | 'create'
+  offset: number
+  start: number
+  end: number
+  /** Where the press landed and the travel it needs before it changes anything. */
+  x: number
+  threshold: number
+  moved: boolean
+  /** The window at the press, which a cancelled gesture puts back. */
+  from: { startMin: number; endMin: number }
+}
+
 export default function HeroPicker({
   initialResult,
   initialStripSvg,
@@ -67,7 +84,7 @@ export default function HeroPicker({
   const rootRef = useRef<HTMLFormElement>(null)
   const firstWindowRef = useRef(true)
   const visibleRef = useRef(true)
-  const dragRef = useRef<{ mode: 'move' | 'create'; offset: number; start: number; end: number } | null>(null)
+  const dragRef = useRef<Drag | null>(null)
   const beaconedRef = useRef(`${initialWin.date}|${initialWin.startMin}|${initialWin.endMin}`)
   const requestRef = useRef(0)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -104,14 +121,8 @@ export default function HeroPicker({
       if (next) commitTimes(next.start, next.end)
       sliderRef.current?.focus()
     } else if (replay.k === 'ptr' && typeof replay.x === 'number' && sliderRef.current) {
-      const minutes = minutesAt(replay.x, sliderRef.current)
-      const current = winRef.current
-      const inside = minutes !== null && minutes >= current.startMin && minutes < current.endMin
-      if (minutes !== null) {
-        dragRef.current = inside
-          ? { mode: 'move', offset: minutes - current.startMin, start: current.startMin, end: current.endMin }
-          : { mode: 'create', offset: 0, start: minutes, end: current.endMin }
-      }
+      // The replay doesn't say which pointer pressed, so the press waits for sideways travel as a touch's does.
+      dragRef.current = press(replay.x, sliderRef.current, DRAG_THRESHOLD_PX)
     }
   }, [])
 
@@ -199,17 +210,30 @@ export default function HeroPicker({
     return snapToStep(Math.round(((clientX - rect.left) / rect.width) * 1440))
   }
 
-  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    const minutes = minutesAt(event.clientX, event.currentTarget)
-    if (minutes === null) return
-    const inside = minutes >= win.startMin && minutes < win.endMin
-    dragRef.current = {
+  /** A press on the strip: on the capsule as drawn it moves the window; elsewhere it anchors a new one at the press. */
+  const press = (clientX: number, target: HTMLElement, threshold: number): Drag | null => {
+    const minutes = minutesAt(clientX, target)
+    if (minutes === null) return null
+    const rect = target.getBoundingClientRect()
+    const current = winRef.current
+    const inside = onCapsule(clientX - rect.left, rect.width, current)
+    return {
       mode: inside ? 'move' : 'create',
-      offset: inside ? minutes - win.startMin : 0,
-      // A press outside the window anchors a new window at the press point.
-      start: inside ? win.startMin : minutes,
-      end: win.endMin
+      offset: inside ? minutes - current.startMin : 0,
+      start: inside ? current.startMin : minutes,
+      end: current.endMin,
+      x: clientX,
+      threshold,
+      moved: false,
+      from: { startMin: current.startMin, endMin: current.endMin }
     }
+  }
+
+  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    // A mouse drags at once; a touch or pen waits for sideways travel, since a vertical swipe here scrolls the page.
+    const drag = press(event.clientX, event.currentTarget, event.pointerType === 'mouse' ? 0 : DRAG_THRESHOLD_PX)
+    if (!drag) return
+    dragRef.current = drag
     try {
       event.currentTarget.setPointerCapture(event.pointerId)
     } catch {
@@ -225,6 +249,8 @@ export default function HeroPicker({
       dragRef.current = null
       return
     }
+    if (!drag.moved && Math.abs(event.clientX - drag.x) < drag.threshold) return
+    drag.moved = true
     const minutes = minutesAt(event.clientX, event.currentTarget)
     if (minutes === null) return
     if (drag.mode === 'move') {
@@ -240,6 +266,13 @@ export default function HeroPicker({
 
   const onPointerUp = () => {
     dragRef.current = null
+  }
+
+  // WCAG 2.5.2: a cancelled gesture (the browser took it for a scroll, or the touch was interrupted) undoes its change.
+  const onPointerCancel = () => {
+    const drag = dragRef.current
+    dragRef.current = null
+    if (drag?.moved) setWin((current) => ({ ...current, ...drag.from }))
   }
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -295,7 +328,7 @@ export default function HeroPicker({
           onPointerDown,
           onPointerMove,
           onPointerUp,
-          onPointerCancel: onPointerUp,
+          onPointerCancel,
           onKeyDown
         }}
       />

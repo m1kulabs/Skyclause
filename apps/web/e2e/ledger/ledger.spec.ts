@@ -3,6 +3,7 @@ import { test, expect } from '../fixtures'
 import { stubApi } from '../harness/stub-api'
 import { expectUnclippedText } from '../harness/expect-unclipped-text'
 import { expectZonedTimes } from '../harness/expect-zoned-times'
+import { makeOrg, signInAs } from '../harness/sign-in-as'
 import { ledgerOperations } from '../../features/ledger/operations'
 import { setup, copy, route, row, evidence, project, detailedRow, call } from './fixtures'
 
@@ -340,6 +341,17 @@ for (const role of ['owner', 'admin', 'approver', 'editor', 'viewer']) {
     }
   })
 }
+
+// #647: the page passes the URL organisation's member principal, so a real Approver's session (signInAs, no test
+// principal) can release an external reply; a session without the organisation's role never could.
+test('a real Approver session can approve an external reply', async ({ page }) => {
+  await setup(page)
+  await page.context().clearCookies({ name: 'skyclause_test_principal' })
+  const org = await makeOrg()
+  await signInAs(page, 'approver', org)
+  await page.goto(`/${org.slug}/${project.slug}/ledger?tab=evidence&evidence=evidence-1`)
+  await expect(page.getByRole('button', { name: copy('evidence.approve'), exact: true })).toBeVisible()
+})
 
 test('budget-exhausted shows the API reset in MYT; window form validates and preserves input after failure', async ({
   page

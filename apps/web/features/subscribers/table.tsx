@@ -168,8 +168,9 @@ export function SubscriberTable({
         <h2 id="subscriber-list-title" tabIndex={-1} className="type-section">
           {t('subscribers.list_title', {}, locale)}
         </h2>
+        {/* One row of four down to 360px; below it (a small phone, or 200% zoom) two rows of two, inside the page. */}
         <ToggleGroup
-          className="max-[420px]:flex-nowrap"
+          className="max-[420px]:flex-nowrap max-[360px]:grid max-[360px]:grid-cols-2 max-[360px]:rounded-3xl"
           aria-label={t('subscribers.filter', {}, locale)}
           value={[filter]}
           onValueChange={(value) => {

@@ -296,6 +296,38 @@ test('a Crowd availability failure is reported while live Sky figures remain ava
   await expect(page.locator('[data-metric=precision]').first()).toBeVisible()
 })
 
+// Recharts 3 draws an axis label as `.recharts-cartesian-axis-tick-value` with its own grey fill (#666, 2.51:1 on
+// Dusk); the kit's chart container inks every chart's labels with --chart-ink instead, in each theme.
+for (const appearance of [
+  { theme: 'dark', contrast: 'standard' },
+  { theme: 'light', contrast: 'standard' },
+  { theme: 'dark', contrast: 'more' },
+  { theme: 'light', contrast: 'more' }
+] as const) {
+  test(`axis labels take the chart ink in ${appearance.theme}, ${appearance.contrast} contrast`, async ({
+    page,
+    baseURL
+  }) => {
+    await setup(page)
+    await page
+      .context()
+      .addCookies([{ name: 'skyclause-test-appearance', value: JSON.stringify(appearance), url: baseURL! }])
+    await page.goto(`${projectRoute}?tab=agreement`)
+    const labels = page.locator('[data-live-chart=agreement] .recharts-cartesian-axis-tick-value')
+    await expect(labels.first()).toBeVisible()
+    const fills = await labels.evaluateAll((texts) => {
+      const probe = document.createElementNS('http://www.w3.org/2000/svg', 'text')
+      probe.style.fill = 'var(--chart-ink)'
+      texts[0]!.parentNode!.appendChild(probe)
+      const ink = getComputedStyle(probe).fill
+      probe.remove()
+      return { ink, labels: [...new Set(texts.map((text) => getComputedStyle(text).fill))] }
+    })
+    expect(fills.ink).toMatch(/^rgb/)
+    expect(fills.labels).toEqual([fills.ink])
+  })
+}
+
 for (const theme of ['dark', 'light', 'high-contrast'] as const) {
   test(`analysis is keyboard usable, axe-clean and unclipped in ${theme}`, async ({
     page,
