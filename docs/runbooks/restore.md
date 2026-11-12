@@ -84,7 +84,7 @@ A write here is a `domain_event` or `analytics_event` row: the database stamps b
 
 ### What the drill may touch
 
-The job runs as `skyclause-drill`, which reads only the `NEON_DRILL_API_KEY` and `DATABASE_URL_SYSTEM` secrets. It connects as `system` to production and to the branch, with the same URL and the branch's host, since a branch keeps its parent's logins and passwords. It only reads, but `system` may write what the workers write. The branch's connection closes before the branch is deleted. The Neon key is a Neon key scoped to this one project: it can't create projects, mint keys or read another project, but Neon can't narrow it further, so it could change anything inside the project. The job's Neon client refuses to create or delete any branch not named `drill-*`, and Neon refuses to delete the default branch.
+The job runs as `skyclause-drill`, which reads only the `NEON_DRILL_API_KEY` and `DATABASE_URL_SYSTEM` secrets. It connects as `system` to production and to the branch, with the same URL and the branch's host, since a branch keeps its parent's logins and passwords. Its connections are read-only (`default_transaction_read_only`), though the `system` login may write what the workers write. The branch's connection closes before the branch is deleted, except when SIGTERM stops the drill mid-walk: the branch is then deleted under the open connection, and the deletion still goes through. The Neon key is scoped to this one project: it can't create projects, mint keys or read another project, but Neon can't narrow it further, so it could change anything inside the project. The job's Neon client refuses to create or delete any branch not named `drill-*`, and Neon refuses to delete the default branch.
 
 ### Run the drill
 
@@ -102,7 +102,7 @@ gcloud logging read \
   --project=skyclause --limit=1 --format=json
 ```
 
-A pass logs `restore drill` at INFO with the record. A miss logs `restore drill missed` at ERROR with the record and a `misses` list, and the execution fails. If `deleted` is false, or the execution was killed, delete the leftover `drill-*` branch now: it is a full copy of production's personal data. The next run would sweep it, but not for 3 months.
+A pass logs `restore drill` at INFO with the record. A miss logs `restore drill missed` at ERROR with the record and a `misses` list, and the execution fails. If the ledger walk or a read throws, the drill still deletes the branch, but the execution fails with that error as `worker failed` and records no row, so the read above finds nothing for it. If `deleted` is false, or the execution was killed, delete the leftover `drill-*` branch now: it is a full copy of production's personal data. The next run would sweep it, but not for 3 months.
 
 ## Drill log
 
