@@ -58,7 +58,7 @@ export const projectSettingsOperations = {
   ),
   getRota: operation(
     getRota,
-    { params: getRota.request.params },
+    { params: getRota.request.params, query: getRota.request.query },
     getRota.responses[200].content['application/json'].schema
   ),
   listMembers: operation(
