@@ -1,17 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
+import { ChevronRight } from 'lucide-react'
 import { formatDate, formatNumber, formatTime } from '@skyclause/i18n/format'
+import type { StripWindow } from '@skyclause/elements'
 import type { Mode } from '@skyclause/contracts'
 import { ApiProblem } from '../../lib/api-fetch'
-import { Button } from '#ui/button'
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '#ui/empty'
+import { cn } from '#lib/utils'
+import { Button, buttonVariants } from '#ui/button'
 import { Skeleton } from '#ui/skeleton'
-import { BundleCard, CallRow, GradeCard, SourceHealthRow, WindowStrip } from '../data-components'
+import { DayStrip, GradeCard, SourceError, SourceHealthRow, WindowStrip } from '../data-components'
 import { ModeBadge } from '../brand/mode-badge'
 import { readDashboard, type DashboardRead } from './operations'
-import { stripInput } from './model'
+import { daySpan, slaLeft, stripInput, verdictState } from './model'
 import { t } from './catalogue'
 import styles from './dashboard.module.css'
 
@@ -21,30 +23,66 @@ interface DashboardPageProps {
   org: string
   initialData: DashboardRead | null
   initialError: number | null
+  /** When the server's read failed, so the error says when. */
+  initialErrorAt?: string | null
 }
 
 type ReadState =
-  { status: 'loading' } | { status: 'ready'; value: DashboardRead } | { status: 'error'; httpStatus: number | null }
+  | { status: 'loading' }
+  | { status: 'ready'; value: DashboardRead }
+  | { status: 'error'; httpStatus: number | null; at: string | null }
 
-function blockTitle(key: DashboardBlockKey) {
-  return t(`dashboard.${key}`)
+const BLOCK_IDS: Record<DashboardBlockKey, string> = {
+  // The bar's Review control links here (`/{org}#dashboard-needs-review`): every state keeps this heading.
+  needs_review: 'dashboard-needs-review',
+  windows_at_risk: 'dashboard-windows-at-risk',
+  signal_health: 'dashboard-signal-health',
+  upcoming_risks: 'dashboard-upcoming-risks',
+  yesterday_grades: 'dashboard-yesterday-grades'
 }
 
+const linkClass =
+  'inline-flex min-h-6 items-center text-foreground underline underline-offset-4 decoration-ink-muted hover:decoration-current'
+
+/** The minutes since the read, ticking once a minute after the page mounts (so the server and client agree). */
+function useMinutesSinceRead(key: unknown) {
+  const [minutes, setMinutes] = useState(0)
+  useEffect(() => {
+    setMinutes(0)
+    const timer = setInterval(() => setMinutes((value) => value + 1), 60_000)
+    return () => clearInterval(timer)
+  }, [key])
+  return minutes
+}
+
+function root(org: string) {
+  return `/${encodeURIComponent(org)}`
+}
+
+function projectRoot(org: string, slug: string) {
+  return `${root(org)}/${encodeURIComponent(slug)}`
+}
+
+/** Where each block's next action goes: the first project's page for it, or creating a project when there is none. */
 function blockHref(key: DashboardBlockKey, org: string, data: DashboardRead) {
   const project = data.projects[0]
-  const root = `/${encodeURIComponent(org)}`
-  if (!project) return `${root}/new`
-  const projectRoot = `${root}/${encodeURIComponent(project.slug)}`
-  if (key === 'needs_review') return `${root}/approvals`
-  if (key === 'windows_at_risk' || key === 'upcoming_risks') return `${projectRoot}/windows`
-  if (key === 'signal_health') return `${root}/settings/integrations`
-  return `${root}/analysis`
+  if (!project) return `${root(org)}/new`
+  const base = projectRoot(org, project.slug)
+  if (key === 'needs_review') {
+    const first = data.bundles[0]?.summary
+    return first ? `${projectRoot(org, first.project.slug)}/bundles/${encodeURIComponent(first.id)}` : `${base}/calls`
+  }
+  if (key === 'windows_at_risk' || key === 'upcoming_risks') return `${base}/windows`
+  if (key === 'signal_health') return data.dashboard.signal_health.n ? `${base}/signals` : `${base}/settings/packs`
+  return `${root(org)}/analysis`
 }
 
-function nextAction(key: DashboardBlockKey, value: string | null) {
-  if (value) return value
+function nextAction(key: DashboardBlockKey, data: DashboardRead) {
+  const block = data.dashboard[key]
+  if (key === 'needs_review' && block.n === 0) return t('dashboard.view_calls')
+  if (block.next_action) return block.next_action
   const fallback: Record<DashboardBlockKey, string> = {
-    needs_review: t('dashboard.review_next'),
+    needs_review: t('dashboard.view_calls'),
     windows_at_risk: t('dashboard.declare_window'),
     signal_health: t('dashboard.bind_source'),
     upcoming_risks: t('dashboard.list_show'),
@@ -53,352 +91,414 @@ function nextAction(key: DashboardBlockKey, value: string | null) {
   return fallback[key]
 }
 
-function Count({ value }: { value: number }) {
+function BlockHead({ id, title, count, action }: { id: string; title: string; count?: number; action?: ReactNode }) {
   return (
-    <span className="text-xs tabular-nums text-muted-foreground">
-      {t('dashboard.count', { count: formatNumber(value, 'en') })}
-    </span>
+    <header className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-3">
+        <h2 id={id} className="type-section">
+          {title}
+        </h2>
+        {count !== undefined ? (
+          <span className="type-small text-muted-foreground" data-numeric>
+            {t('dashboard.count', { count: formatNumber(count, 'en') })}
+          </span>
+        ) : null}
+      </div>
+      {action}
+    </header>
   )
 }
 
-function NextAction({ href, label }: { href: string; label: string }) {
+/** A block with nothing in it: the n=0 sentence and its one next action. */
+function EmptyBlock({ sentence, href, action }: { sentence: string; href: string; action: string }) {
   return (
-    <p className="mt-2 flex flex-wrap items-baseline gap-x-1 text-sm text-muted-foreground">
-      <span>{t('dashboard.next_action')}</span>
-      <Link
-        href={href}
-        className="inline-flex min-h-6 items-center text-foreground underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-      >
-        {label}
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+      <p className="type-text">{sentence}</p>
+      <Link href={href} className={cn(buttonVariants({ variant: 'outline' }), 'max-w-full whitespace-normal')}>
+        {action}
       </Link>
-    </p>
+    </div>
   )
 }
 
-function EmptyBlock({
-  title,
-  description,
-  href,
-  action
-}: {
-  title: string
-  description?: string
-  href: string
-  action: string
-}) {
+function Block({ block, className, children }: { block: DashboardBlockKey; className?: string; children: ReactNode }) {
   return (
-    <Empty className="items-start gap-3 rounded-none border-0 p-0 text-left">
-      <EmptyHeader className="items-start gap-1">
-        <EmptyTitle>{title}</EmptyTitle>
-        {description ? <EmptyDescription>{description}</EmptyDescription> : null}
-      </EmptyHeader>
-      <EmptyContent className="items-start">
-        <Button
-          variant="outline"
-          render={<Link href={href} />}
-          className="min-h-9 max-w-full whitespace-normal text-left"
-        >
-          {action}
-        </Button>
-      </EmptyContent>
-    </Empty>
+    <section
+      data-dashboard-block={block}
+      aria-labelledby={BLOCK_IDS[block]}
+      className={cn('flex min-w-0 flex-col gap-4', className)}
+    >
+      {children}
+    </section>
   )
 }
 
 function DashboardSkeleton() {
-  const blocks: DashboardBlockKey[] = [
-    'needs_review',
-    'windows_at_risk',
-    'signal_health',
-    'upcoming_risks',
-    'yesterday_grades'
-  ]
   return (
-    <section
-      aria-label={t('dashboard.loading')}
-      aria-busy="true"
-      role="status"
-      className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6"
-    >
-      <div className="mb-8 space-y-3">
-        <h1 className="text-[26px] font-bold tracking-tight">{t('dashboard.title')}</h1>
-        <Skeleton aria-hidden="true" className="h-7 w-[min(100%,34rem)]" />
-        <Skeleton aria-hidden="true" className="h-9 w-44" />
-      </div>
-      <div className="space-y-8">
-        {blocks.map((key, index) => (
-          <section key={key} data-dashboard-block={key}>
-            <h2 className="text-xl font-normal text-muted-foreground">{blockTitle(key)}</h2>
-            <div className="mt-3 space-y-3" aria-hidden="true">
-              <Skeleton className="h-5 w-14" />
-              <Skeleton className={index === 0 ? 'h-32 w-full max-w-2xl' : 'h-12 w-full max-w-2xl'} />
-              {index === 0 ? <Skeleton className="h-5 w-56" /> : null}
-            </div>
-          </section>
-        ))}
+    <section className={styles.page} aria-labelledby="dashboard-title" aria-busy="true">
+      <header className={styles.head}>
+        <h1 id="dashboard-title" className="type-title">
+          {t('dashboard.title')}
+        </h1>
+        <p className="sr-only" role="status">
+          {t('dashboard.loading')}
+        </p>
+        <Skeleton aria-hidden="true" className="h-7 w-[min(100%,34rem)] rounded-full" />
+      </header>
+      <Block block="needs_review">
+        <BlockHead id={BLOCK_IDS.needs_review} title={t('dashboard.needs_review')} />
+        <Skeleton aria-hidden="true" className="h-[104px] w-full rounded-xl" />
+      </Block>
+      <Block block="windows_at_risk">
+        <BlockHead id={BLOCK_IDS.windows_at_risk} title={t('dashboard.windows_at_risk')} />
+        <div className="flex flex-col gap-2" aria-hidden="true">
+          <Skeleton className="h-[18px] w-64 rounded-full" />
+          <Skeleton className="h-10 w-full rounded-full" />
+          <Skeleton className="h-5 w-full rounded-full bg-transparent" />
+        </div>
+      </Block>
+      <div className={styles.lower}>
+        <Block block="signal_health" className={styles.signals}>
+          <BlockHead id={BLOCK_IDS.signal_health} title={t('dashboard.signal_health')} />
+          <div className="flex flex-col gap-2" aria-hidden="true">
+            <Skeleton className="h-11 w-full" />
+            <Skeleton className="h-11 w-full" />
+          </div>
+        </Block>
+        <div className={styles.side}>
+          <Block block="upcoming_risks">
+            <BlockHead id={BLOCK_IDS.upcoming_risks} title={t('dashboard.upcoming_risks')} />
+            <Skeleton aria-hidden="true" className="h-11 w-full" />
+          </Block>
+          <Block block="yesterday_grades">
+            <BlockHead id={BLOCK_IDS.yesterday_grades} title={t('dashboard.yesterday_grades')} />
+            <Skeleton aria-hidden="true" className="h-32 w-full rounded-xl" />
+          </Block>
+        </div>
       </div>
     </section>
   )
 }
 
-function DashboardFailure({ httpStatus, retry }: { httpStatus: number | null; retry: () => void }) {
+/** The read failed or is not built (501 in production today): a named error in the first block, never an empty day. */
+function DashboardFailure({
+  httpStatus,
+  at,
+  retry
+}: {
+  httpStatus: number | null
+  at: string | null
+  retry: () => void
+}) {
   return (
-    <section className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6" aria-labelledby="dashboard-title">
-      <h1 id="dashboard-title" className="text-[26px] font-bold tracking-tight">
-        {t('dashboard.title')}
-      </h1>
-      <div className="mt-5" role="alert">
-        <p className="text-sm text-destructive tabular-nums">
-          {t('dashboard.dashboard_error', { status: httpStatus ?? 'unknown' })}
-        </p>
-        <Button type="button" variant="outline" className="mt-3 min-h-9" onClick={retry}>
-          {t('dashboard.retry')}
-        </Button>
-      </div>
+    <section className={styles.page} aria-labelledby="dashboard-title">
+      <header className={styles.head}>
+        <h1 id="dashboard-title" className="type-title">
+          {t('dashboard.title')}
+        </h1>
+      </header>
+      <Block block="needs_review">
+        <BlockHead id={BLOCK_IDS.needs_review} title={t('dashboard.needs_review')} />
+        <SourceError
+          source={t('dashboard.read_source')}
+          status={httpStatus}
+          at={at}
+          retry={
+            <Button type="button" variant="outline" onClick={retry}>
+              {t('dashboard.retry')}
+            </Button>
+          }
+        />
+      </Block>
     </section>
   )
+}
+
+function ReviewRow({
+  org,
+  item,
+  index,
+  data,
+  minutesSinceRead
+}: {
+  org: string
+  item: DashboardRead['bundles'][number]
+  index: number
+  data: DashboardRead
+  minutesSinceRead: number
+}) {
+  const { summary, detail } = item
+  const sla = slaLeft(detail, summary.seconds_remaining, minutesSinceRead)
+  const project = data.projects.find((entry) => entry.id === summary.project.id)
+  const modes = [...new Set(detail.calls.map((call) => call.mode ?? 'no_call'))] as Array<Mode | 'no_call'>
+  const disagreements = detail.calls.filter((call) => !call.agrees).length
+  const href = `${projectRoot(org, summary.project.slug)}/bundles/${encodeURIComponent(summary.id)}`
+  const titleId = `dashboard-bundle-${summary.id}`
+  const triggered = detail.triggered_at ?? summary.sla_due_at
+  return (
+    <li
+      data-bundle={summary.id}
+      data-dashboard-bundle-entry={index === 0 ? 'new' : undefined}
+      className={cn(styles.review, index === 0 && styles.bundleEnter)}
+    >
+      <div className={styles.sla}>
+        <p className="flex items-baseline gap-2">
+          {sla.passed ? (
+            <span className="type-card-title">{t('dashboard.sla_passed')}</span>
+          ) : (
+            <>
+              <span className="type-title figures" data-numeric>
+                {formatNumber(sla.minutes, 'en')}
+              </span>
+              <span className="type-small text-muted-foreground">{t('dashboard.sla_unit')}</span>
+            </>
+          )}
+        </p>
+        {/* The SLA countdown at text size: the capsule's fill is the share of the bundle's SLA still left. */}
+        <span className={styles.slaTrack} aria-hidden="true">
+          <span className={styles.slaFill} style={{ width: `${(sla.share * 100).toFixed(1)}%` }} />
+        </span>
+      </div>
+      <div className="flex min-w-0 flex-col gap-2">
+        <p id={titleId} className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+          <span className="type-card-title" translate="no">
+            {project?.name ?? summary.project.slug}
+          </span>
+          <span className="type-body text-muted-foreground">
+            {detail.trigger
+              ? t('dashboard.bundle_trigger', { trigger: detail.trigger, time: formatTime(triggered, 'en') })
+              : formatTime(triggered, 'en')}
+          </span>
+        </p>
+        <p className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 type-body">
+          {modes.map((mode) => (
+            <ModeBadge key={mode} mode={mode} pack={detail.pack} />
+          ))}
+          <span>
+            {disagreements === 0
+              ? t('dashboard.shadow_agrees')
+              : t('dashboard.shadow_disagrees', { count: formatNumber(disagreements, 'en') })}
+          </span>
+          {detail.escalation_level > 0 ? (
+            <span className="text-muted-foreground" data-numeric>
+              {t('dashboard.escalation', { level: detail.escalation_level })}
+            </span>
+          ) : null}
+        </p>
+        {index === 0 && data.strip ? (
+          <details className={styles.readings}>
+            <summary>
+              <ChevronRight aria-hidden="true" className="size-4" />
+              {t('dashboard.readings')}
+            </summary>
+            <div data-window-strip className="pt-3">
+              <WindowStrip windows={data.strip.window ? [data.strip.window] : []} strip={stripInput(data.strip)} />
+            </div>
+          </details>
+        ) : null}
+      </div>
+      <Link
+        href={href}
+        aria-describedby={titleId}
+        className={cn(buttonVariants({ variant: index === 0 ? 'default' : 'outline' }), styles.reviewAction)}
+      >
+        {t('dashboard.review_bundle')}
+      </Link>
+    </li>
+  )
+}
+
+function Finding({ data, minutesSinceRead }: { data: DashboardRead; minutesSinceRead: number }) {
+  const { dashboard, bundles, firstCall } = data
+  const first = bundles[0]
+  if (dashboard.needs_review.n === 0 || !first) return <p className="type-text">{t('dashboard.nothing_to_approve')}</p>
+  const window =
+    firstCall?.window ??
+    // The call's window, else today's at-risk row for it or for the bundle's project.
+    (
+      dashboard.windows_at_risk.data.find((item) => item.window.id === firstCall?.window_id) ??
+      dashboard.windows_at_risk.data.find((item) => item.project.id === first.summary.project.id)
+    )?.window
+  const sla = slaLeft(first.detail, first.summary.seconds_remaining, minutesSinceRead)
+  const count = dashboard.needs_review.n
+  return (
+    <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 type-text">
+      <span>
+        {count === 1
+          ? t('dashboard.finding_prefix_one')
+          : t('dashboard.finding_prefix', { count: formatNumber(count, 'en') })}
+      </span>
+      {firstCall?.mode ? <ModeBadge mode={firstCall.mode} /> : <span>{t('dashboard.unknown')}</span>}
+      <span>
+        {t('dashboard.finding_suffix', {
+          window: window?.title ?? t('dashboard.unknown'),
+          minutes: formatNumber(sla.minutes, 'en')
+        })}
+      </span>
+    </p>
+  )
+}
+
+/** Today's windows at risk across projects on the day strip; each verdict is the engine's, not an approved call. */
+function todayStrip(org: string, data: DashboardRead, now: string) {
+  const items = data.dashboard.windows_at_risk.data
+  const several = data.projects.length > 1
+  const windows: StripWindow[] = items.map(({ project, window, verdict }) => {
+    const name = data.projects.find((entry) => entry.id === project.id)?.name ?? project.slug
+    return {
+      id: window.id,
+      from: window.starts_at,
+      to: window.ends_at,
+      state: verdictState(verdict),
+      draft: true,
+      title: several ? t('dashboard.window_in_project', { project: name, window: window.title }) : window.title
+    }
+  })
+  const hrefs = Object.fromEntries(
+    items.map(({ project, window }) => [
+      window.id,
+      `${projectRoot(org, project.slug)}/windows?window=${encodeURIComponent(window.id)}`
+    ])
+  )
+  return { windows, hrefs, span: daySpan(windows, now) }
 }
 
 function DashboardContent({ org, data }: { org: string; data: DashboardRead }) {
-  const dashboard = data.dashboard
-  const review = data.bundles
-  const firstBundle = review[0]
-  const firstCall = data.firstCall
-  const firstWindow =
-    firstCall?.window ??
-    (firstBundle
-      ? (
-          dashboard.windows_at_risk.data.find((item) => item.window.id === firstCall?.window_id) ??
-          dashboard.windows_at_risk.data.find((item) => item.project.id === firstBundle.summary.project.id)
-        )?.window
-      : undefined)
-  const primaryMode: Mode | null = firstCall?.mode ?? null
-  const minutes = firstBundle ? Math.max(0, Math.ceil(firstBundle.summary.seconds_remaining / 60)) : 0
-  const reviewHref = firstBundle
-    ? `/${encodeURIComponent(org)}/approvals?item=${encodeURIComponent(firstBundle.summary.id)}`
-    : `/${encodeURIComponent(org)}/approvals`
+  const { dashboard } = data
+  const minutesSinceRead = useMinutesSinceRead(data)
+  const now = new Date(Date.parse(data.readAt) + minutesSinceRead * 60_000).toISOString()
+  const today = useMemo(() => todayStrip(org, data, now), [org, data, now])
+  const headAction = (key: DashboardBlockKey) =>
+    dashboard[key].n > 0 ? (
+      <Link href={blockHref(key, org, data)} className={linkClass}>
+        {nextAction(key, data)}
+      </Link>
+    ) : undefined
 
   return (
-    <section className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6" aria-labelledby="dashboard-title">
-      <header className="mb-8 flex min-w-0 flex-col items-start gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <h1 id="dashboard-title" className="text-[26px] font-bold tracking-tight">
-            {t('dashboard.title')}
-          </h1>
-          {dashboard.needs_review.n > 0 && firstBundle ? (
-            <p className="mt-2 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-2 text-xl font-medium tabular-nums">
-              <span>{t('dashboard.finding_prefix', { count: formatNumber(dashboard.needs_review.n, 'en') })}</span>
-              {primaryMode ? <ModeBadge mode={primaryMode} /> : <span>{t('dashboard.unknown')}</span>}
-              <span>
-                {t('dashboard.finding_suffix', {
-                  window: firstWindow?.title ?? t('dashboard.unknown'),
-                  minutes: formatNumber(minutes, 'en')
-                })}
-              </span>
-            </p>
-          ) : (
-            <p className="mt-2 text-xl font-medium tabular-nums">{t('dashboard.nothing_to_approve')}</p>
-          )}
-        </div>
-        {dashboard.needs_review.n > 0 ? (
-          <Button render={<Link href={reviewHref} />} className="min-h-9 max-w-full whitespace-normal">
-            {t('dashboard.review_bundles', { count: formatNumber(dashboard.needs_review.n, 'en') })}
-          </Button>
-        ) : null}
+    <section className={styles.page} aria-labelledby="dashboard-title">
+      <header className={styles.head}>
+        <h1 id="dashboard-title" className="type-title">
+          {t('dashboard.title')}
+        </h1>
+        <Finding data={data} minutesSinceRead={minutesSinceRead} />
       </header>
 
-      <div className="space-y-8">
-        <section data-dashboard-block="needs_review" aria-labelledby="dashboard-needs-review" className="min-w-0">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 id="dashboard-needs-review" className="text-xl font-normal text-muted-foreground">
-              {blockTitle('needs_review')}
-            </h2>
-            <Count value={dashboard.needs_review.n} />
-          </div>
-          {dashboard.needs_review.n === 0 ? (
-            data.projects.length === 0 ? (
-              <div className="mt-3">
-                <EmptyBlock
-                  title={t('dashboard.create_project')}
-                  description={t('dashboard.no_projects')}
-                  href={`/${encodeURIComponent(org)}/new`}
-                  action={t('dashboard.create_project')}
-                />
-              </div>
-            ) : (
-              <div className="mt-3">
-                <EmptyBlock
-                  title={t('dashboard.no_review')}
-                  href={blockHref('needs_review', org, data)}
-                  action={nextAction('needs_review', dashboard.needs_review.next_action)}
-                />
-              </div>
-            )
+      <Block block="needs_review">
+        <BlockHead id={BLOCK_IDS.needs_review} title={t('dashboard.needs_review')} count={dashboard.needs_review.n} />
+        {dashboard.needs_review.n === 0 ? (
+          data.projects.length === 0 ? (
+            <EmptyBlock
+              sentence={t('dashboard.no_projects')}
+              href={`${root(org)}/new`}
+              action={t('dashboard.create_project')}
+            />
           ) : (
-            <>
-              <NextAction
-                href={blockHref('needs_review', org, data)}
-                label={nextAction('needs_review', dashboard.needs_review.next_action)}
+            <EmptyBlock
+              sentence={t('dashboard.no_review')}
+              href={blockHref('needs_review', org, data)}
+              action={nextAction('needs_review', data)}
+            />
+          )
+        ) : (
+          <ol className="flex flex-col gap-2">
+            {data.bundles.map((item, index) => (
+              <ReviewRow
+                key={item.summary.id}
+                org={org}
+                item={item}
+                index={index}
+                data={data}
+                minutesSinceRead={minutesSinceRead}
               />
-              <ol className="mt-4 space-y-4">
-                {review.map(({ summary, detail }, index) => {
-                  const project = data.projects.find((item) => item.id === summary.project.id)
-                  return (
-                    <li
-                      key={summary.id}
-                      className={index === 0 ? styles.bundleEnter : undefined}
-                      data-dashboard-bundle-entry={index === 0 ? 'new' : undefined}
-                    >
-                      <BundleCard
-                        bundle={detail}
-                        trigger={detail.trigger}
-                        triggeredAt={detail.triggered_at}
-                        projectName={project?.name ?? summary.project.slug}
-                        now={new Date(
-                          new Date(summary.sla_due_at).getTime() - summary.seconds_remaining * 1000
-                        ).toISOString()}
-                      />
-                      {index === 0 && data.strip ? (
-                        <div data-window-strip className="mt-3 rounded-xl border border-border p-3 sm:p-4">
-                          <WindowStrip
-                            windows={data.strip.window ? [data.strip.window] : []}
-                            strip={stripInput(data.strip)}
-                          />
-                        </div>
-                      ) : null}
-                    </li>
-                  )
-                })}
-              </ol>
-            </>
-          )}
-        </section>
+            ))}
+          </ol>
+        )}
+      </Block>
 
-        <section data-dashboard-block="windows_at_risk" aria-labelledby="dashboard-windows-at-risk" className="min-w-0">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 id="dashboard-windows-at-risk" className="text-xl font-normal text-muted-foreground">
-              {blockTitle('windows_at_risk')}
-            </h2>
-            <Count value={dashboard.windows_at_risk.n} />
-          </div>
-          {dashboard.windows_at_risk.n === 0 ? (
-            <div className="mt-3">
-              <EmptyBlock
-                title={t('dashboard.no_at_risk')}
-                href={blockHref('windows_at_risk', org, data)}
-                action={nextAction('windows_at_risk', dashboard.windows_at_risk.next_action)}
-              />
-            </div>
-          ) : (
-            <>
-              <NextAction
-                href={blockHref('windows_at_risk', org, data)}
-                label={nextAction('windows_at_risk', dashboard.windows_at_risk.next_action)}
-              />
-              <div className="mt-3 overflow-x-auto">
-                <table className="w-full border-collapse text-sm">
-                  <caption className="sr-only">{blockTitle('windows_at_risk')}</caption>
-                  <thead className="sr-only">
-                    <tr>
-                      <th scope="col">{t('dashboard.window')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dashboard.windows_at_risk.data.slice(0, 6).map((item) => (
-                      <CallRow
-                        key={item.window.id}
-                        dashboard={{
-                          projectName:
-                            data.projects.find((project) => project.id === item.project.id)?.name ?? item.project.slug,
-                          window: item.window,
-                          verdict: item.verdict
-                        }}
-                      />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {dashboard.windows_at_risk.n > 6 ? (
-                <p className="mt-2">
-                  <Link
-                    href={blockHref('windows_at_risk', org, data)}
-                    className="inline-flex min-h-6 items-center underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                  >
-                    {t('dashboard.view_all')}
-                  </Link>
-                </p>
-              ) : null}
-            </>
-          )}
-        </section>
+      <Block block="windows_at_risk">
+        <BlockHead
+          id={BLOCK_IDS.windows_at_risk}
+          title={t('dashboard.windows_at_risk')}
+          count={dashboard.windows_at_risk.n}
+          action={headAction('windows_at_risk')}
+        />
+        {dashboard.windows_at_risk.n === 0 ? (
+          <EmptyBlock
+            sentence={t('dashboard.no_at_risk')}
+            href={
+              data.projects[0]
+                ? `${projectRoot(org, data.projects[0].slug)}/windows?declare=window`
+                : `${root(org)}/new`
+            }
+            action={nextAction('windows_at_risk', data)}
+          />
+        ) : (
+          <>
+            <DayStrip from={today.span.from} to={today.span.to} now={now} windows={today.windows} hrefs={today.hrefs} />
+            <p className="type-small text-muted-foreground">{t('dashboard.today_at_risk_note')}</p>
+          </>
+        )}
+      </Block>
 
-        <section data-dashboard-block="signal_health" aria-labelledby="dashboard-signal-health" className="min-w-0">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 id="dashboard-signal-health" className="text-xl font-normal text-muted-foreground">
-              {blockTitle('signal_health')}
-            </h2>
-            <Count value={dashboard.signal_health.n} />
-          </div>
+      <div className={styles.lower}>
+        <Block block="signal_health" className={styles.signals}>
+          <BlockHead
+            id={BLOCK_IDS.signal_health}
+            title={t('dashboard.signal_health')}
+            count={dashboard.signal_health.n}
+            action={headAction('signal_health')}
+          />
           {dashboard.signal_health.n === 0 ? (
-            <div className="mt-3">
-              <EmptyBlock
-                title={t('dashboard.no_signals')}
-                href={blockHref('signal_health', org, data)}
-                action={nextAction('signal_health', dashboard.signal_health.next_action)}
-              />
-            </div>
+            <EmptyBlock
+              sentence={t('dashboard.no_signals')}
+              href={blockHref('signal_health', org, data)}
+              action={nextAction('signal_health', data)}
+            />
           ) : (
-            <>
-              <NextAction
-                href={blockHref('signal_health', org, data)}
-                label={nextAction('signal_health', dashboard.signal_health.next_action)}
-              />
-              <div className="mt-3 overflow-x-auto">
-                <table className="w-full border-collapse text-sm">
-                  <caption className="sr-only">{blockTitle('signal_health')}</caption>
-                  <thead className="sr-only">
-                    <tr>
-                      <th scope="col">{t('dashboard.source')}</th>
-                      <th scope="col">{t('dashboard.cadence')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dashboard.signal_health.data.map((item) => (
-                      <SourceHealthRow key={item.source.id} source={item.source} state={item.state} ageS={item.age_s} />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
+            <table className="w-full border-collapse type-body">
+              <caption className="sr-only">{t('dashboard.signal_health')}</caption>
+              <thead className="sr-only">
+                <tr>
+                  <th scope="col">{t('dashboard.source')}</th>
+                  <th scope="col">{t('dashboard.cadence')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dashboard.signal_health.data.map((item) => (
+                  <SourceHealthRow key={item.source.id} source={item.source} state={item.state} ageS={item.age_s} />
+                ))}
+              </tbody>
+            </table>
           )}
-        </section>
+        </Block>
 
-        <section data-dashboard-block="upcoming_risks" aria-labelledby="dashboard-upcoming-risks" className="min-w-0">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 id="dashboard-upcoming-risks" className="text-xl font-normal text-muted-foreground">
-              {blockTitle('upcoming_risks')}
-            </h2>
-            <Count value={dashboard.upcoming_risks.n} />
-          </div>
-          {dashboard.upcoming_risks.n === 0 ? (
-            <div className="mt-3">
+        <div className={styles.side}>
+          <Block block="upcoming_risks">
+            <BlockHead
+              id={BLOCK_IDS.upcoming_risks}
+              title={t('dashboard.upcoming_risks')}
+              count={dashboard.upcoming_risks.n}
+              action={headAction('upcoming_risks')}
+            />
+            {dashboard.upcoming_risks.n === 0 ? (
               <EmptyBlock
-                title={t('dashboard.no_upcoming')}
+                sentence={t('dashboard.no_upcoming')}
                 href={blockHref('upcoming_risks', org, data)}
-                action={nextAction('upcoming_risks', dashboard.upcoming_risks.next_action)}
+                action={nextAction('upcoming_risks', data)}
               />
-            </div>
-          ) : (
-            <>
-              <NextAction
-                href={blockHref('upcoming_risks', org, data)}
-                label={nextAction('upcoming_risks', dashboard.upcoming_risks.next_action)}
-              />
-              <ul className="mt-3 divide-y divide-border">
+            ) : (
+              <ul className="flex flex-col">
                 {dashboard.upcoming_risks.data.map((item, index) => (
-                  <li key={`${item.project.id}:${item.date}:${item.pack}:${index}`} className="min-w-0 py-3">
-                    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="font-medium" translate={item.show_name ? 'no' : undefined}>
+                  <li key={`${item.project.id}:${item.date}:${item.pack}:${index}`} className={styles.upcoming}>
+                    <time dateTime={item.starts_at} className="type-body text-muted-foreground" data-numeric>
+                      {t('dashboard.show_date', {
+                        date: formatDate(item.date, 'en'),
+                        time: formatTime(item.starts_at, 'en')
+                      })}
+                    </time>
+                    <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="type-card-title" translate={item.show_name ? 'no' : undefined}>
                         {item.show_name ??
                           data.projects.find((project) => project.id === item.project.id)?.name ??
                           item.project.slug}
@@ -406,17 +506,11 @@ function DashboardContent({ org, data }: { org: string; data: DashboardRead }) {
                       {item.mode ? (
                         <ModeBadge mode={item.mode} pack={item.pack} />
                       ) : (
-                        <span className="text-sm text-muted-foreground">{t('dashboard.unknown')}</span>
+                        <span className="type-body text-muted-foreground">{t('dashboard.unknown')}</span>
                       )}
-                      <time dateTime={item.starts_at} className="text-sm tabular-nums text-muted-foreground">
-                        {t('dashboard.show_date', {
-                          date: formatDate(item.date, 'en'),
-                          time: formatTime(item.starts_at, 'en')
-                        })}
-                      </time>
-                    </div>
+                    </p>
                     {item.warning ? (
-                      <p className="mt-1 max-w-3xl text-sm leading-6">
+                      <p className="type-body">
                         <span lang="ms">{item.warning.text}</span>
                         {item.warning.gloss ? (
                           <span className="text-muted-foreground">
@@ -424,7 +518,7 @@ function DashboardContent({ org, data }: { org: string; data: DashboardRead }) {
                             {t('dashboard.warning_gloss', { gloss: item.warning.gloss })}
                           </span>
                         ) : null}
-                        <span className="ml-1 text-xs text-muted-foreground tabular-nums">
+                        <span className="ml-1 type-small text-muted-foreground" data-numeric>
                           <time dateTime={item.warning.valid_from}>{formatTime(item.warning.valid_from, 'en')}</time>
                           {t('dashboard.time_range_separator')}
                           <time dateTime={item.warning.valid_to}>{formatTime(item.warning.valid_to, 'en')}</time>
@@ -434,60 +528,48 @@ function DashboardContent({ org, data }: { org: string; data: DashboardRead }) {
                   </li>
                 ))}
               </ul>
-            </>
-          )}
-        </section>
+            )}
+          </Block>
 
-        <section
-          data-dashboard-block="yesterday_grades"
-          aria-labelledby="dashboard-yesterday-grades"
-          className="min-w-0"
-        >
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 id="dashboard-yesterday-grades" className="text-xl font-normal text-muted-foreground">
-              {blockTitle('yesterday_grades')}
-            </h2>
-            <Count value={dashboard.yesterday_grades.n} />
-          </div>
-          {dashboard.yesterday_grades.n === 0 ? (
-            <div className="mt-3">
+          <Block block="yesterday_grades">
+            <BlockHead
+              id={BLOCK_IDS.yesterday_grades}
+              title={t('dashboard.yesterday_grades')}
+              count={dashboard.yesterday_grades.n}
+              action={headAction('yesterday_grades')}
+            />
+            {dashboard.yesterday_grades.n === 0 ? (
               <EmptyBlock
-                title={t('dashboard.no_grades')}
+                sentence={t('dashboard.no_grades')}
                 href={blockHref('yesterday_grades', org, data)}
-                action={nextAction('yesterday_grades', dashboard.yesterday_grades.next_action)}
+                action={nextAction('yesterday_grades', data)}
               />
-            </div>
-          ) : (
-            <>
-              <NextAction
-                href={blockHref('yesterday_grades', org, data)}
-                label={nextAction('yesterday_grades', dashboard.yesterday_grades.next_action)}
-              />
-              <div className="mt-3 grid min-w-0 gap-4 sm:grid-cols-2">
+            ) : (
+              <div className={styles.grades}>
                 {dashboard.yesterday_grades.data.map(({ project, grade, metric }) => (
-                  <article key={grade.id} className="min-w-0">
-                    <h3 className="mb-2 text-sm font-medium">
+                  <article key={grade.id} className="flex min-w-0 flex-col gap-2">
+                    <h3 className="type-card-title" translate="no">
                       {data.projects.find((item) => item.id === project.id)?.name ?? project.slug}
                     </h3>
                     <GradeCard grade={grade} metric={metric} />
                   </article>
                 ))}
               </div>
-            </>
-          )}
-        </section>
+            )}
+          </Block>
+        </div>
       </div>
     </section>
   )
 }
 
-export function DashboardPage({ org, initialData, initialError }: DashboardPageProps) {
+export function DashboardPage({ org, initialData, initialError, initialErrorAt = null }: DashboardPageProps) {
   const [attempt, setAttempt] = useState(0)
   const [state, setState] = useState<ReadState>(() =>
     initialData
       ? { status: 'ready', value: initialData }
       : initialError
-        ? { status: 'error', httpStatus: initialError }
+        ? { status: 'error', httpStatus: initialError, at: initialErrorAt }
         : { status: 'loading' }
   )
 
@@ -497,7 +579,7 @@ export function DashboardPage({ org, initialData, initialError }: DashboardPageP
       return
     }
     if (initialError !== null && attempt === 0) {
-      setState({ status: 'error', httpStatus: initialError })
+      setState({ status: 'error', httpStatus: initialError, at: initialErrorAt })
       return
     }
     const controller = new AbortController()
@@ -508,15 +590,21 @@ export function DashboardPage({ org, initialData, initialError }: DashboardPageP
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return
-        setState({ status: 'error', httpStatus: error instanceof ApiProblem ? error.status : null })
+        setState({
+          status: 'error',
+          httpStatus: error instanceof ApiProblem ? error.status : null,
+          at: new Date().toISOString()
+        })
       })
     return () => controller.abort()
-  }, [attempt, initialData, initialError, org])
+  }, [attempt, initialData, initialError, initialErrorAt, org])
 
   if (initialData) return <DashboardContent org={org} data={initialData} />
   if (state.status === 'loading') return <DashboardSkeleton />
   if (state.status === 'error')
-    return <DashboardFailure httpStatus={state.httpStatus} retry={() => setAttempt((value) => value + 1)} />
+    return (
+      <DashboardFailure httpStatus={state.httpStatus} at={state.at} retry={() => setAttempt((value) => value + 1)} />
+    )
   return <DashboardContent org={org} data={state.value} />
 }
 

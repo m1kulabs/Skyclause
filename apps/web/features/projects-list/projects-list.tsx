@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useReducer, useState } from 'react'
-import { Button } from '#ui/button'
-import { Alert, AlertDescription } from '#ui/alert'
-import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent } from '#ui/empty'
+import { Button, buttonVariants } from '#ui/button'
+import { Skeleton } from '#ui/skeleton'
 import type { PackState } from '@skyclause/contracts'
+import { ApiProblem } from '../../lib/api-fetch'
+import { SourceError } from '../data-components/states'
 import { formatAge, formatNumber, formatTime } from '@skyclause/i18n/format'
 import { PackStateNote } from '../data-components/pack-state-note'
 import { VirtualRows } from '../windows/virtual-rows'
@@ -57,32 +58,41 @@ function ProjectMeta({ item, fetchedAt }: { item: ProjectListItem; fetchedAt: nu
       ? health.oldest_age_s + Math.max(0, Math.floor((Date.now() - fetchedAt) / 1000))
       : null
   const age = ageS !== null ? formatAge(new Date(Date.now() - ageS * 1000).toISOString(), 'en') : null
-  const signal = t('organisations.projects.signal', {
-    state: health.state,
-    reporting: t('organisations.projects.inputsReporting', { count: formatNumber(health.inputs_reporting, 'en') }),
-    oldest: age ? ` ${t('organisations.projects.oldestAge', { age })}` : ''
-  })
   return (
-    <span className={styles.meta}>
-      {t('organisations.projects.meta', {
-        review: t('organisations.projects.needsReview', { count: formatNumber(summary.windows_at_risk, 'en') }),
-        signal
-      })}
-    </span>
+    <div className={styles.meta}>
+      {/* A zero is printed as a zero, quietly: only a count that needs someone is set in the card title. */}
+      <p className={summary.windows_at_risk > 0 ? 'type-card-title' : 'type-body text-muted-foreground'} data-numeric>
+        {t('organisations.projects.needsReview', { count: formatNumber(summary.windows_at_risk, 'en') })}
+      </p>
+      <p className="type-small text-muted-foreground">
+        {t('organisations.projects.signal', {
+          state: health.state,
+          reporting: t('organisations.projects.inputsReporting', {
+            count: formatNumber(health.inputs_reporting, 'en')
+          }),
+          oldest: age ? ` ${t('organisations.projects.oldestAge', { age })}` : ''
+        })}
+      </p>
+    </div>
   )
 }
 
 function ProjectRow({ item, org, fetchedAt }: { item: ProjectListItem; org: string; fetchedAt: number }) {
   const summary = item.summary
   return (
-    <article aria-label={item.name} className={styles.row}>
-      <div className={styles.rowMain}>
-        <h2>
-          <a href={`/${encodeURIComponent(org)}/${encodeURIComponent(item.slug)}`}>{item.name}</a>
-        </h2>
-        {item.archived_at && <p className={styles.meta}>{t('organisations.projects.archived')}</p>}
-      </div>
-      <div className={styles.rowSide}>
+    <div className={styles.rowWrap}>
+      <article aria-label={item.name} className={styles.row}>
+        <div className={styles.identity}>
+          <h2 className="type-card-title">
+            <a className={styles.name} href={`/${encodeURIComponent(org)}/${encodeURIComponent(item.slug)}`}>
+              {item.name}
+            </a>
+          </h2>
+          {item.site_name ? <p className="type-small text-muted-foreground">{item.site_name}</p> : null}
+          {item.archived_at && (
+            <p className="type-small text-muted-foreground">{t('organisations.projects.archived')}</p>
+          )}
+        </div>
         <ul className={styles.packs}>
           {(summary?.pack_states ?? []).map((packState) => (
             <li key={packState.pack}>
@@ -91,13 +101,9 @@ function ProjectRow({ item, org, fetchedAt }: { item: ProjectListItem; org: stri
             </li>
           ))}
         </ul>
-        {summary && (
-          <p className={styles.meta}>
-            <ProjectMeta item={item} fetchedAt={fetchedAt} />
-          </p>
-        )}
-      </div>
-    </article>
+        {summary ? <ProjectMeta item={item} fetchedAt={fetchedAt} /> : null}
+      </article>
+    </div>
   )
 }
 
@@ -106,17 +112,17 @@ function ProjectRow({ item, org, fetchedAt }: { item: ProjectListItem; org: stri
 export function ProjectsList({ org, canCreate, archived }: { org: string; canCreate: boolean; archived: boolean }) {
   const [items, setItems] = useState<ProjectListItem[] | null>(null)
   const [fetchedAt, setFetchedAt] = useState<number | null>(null)
-  const [failed, setFailed] = useState(false)
+  const [failure, setFailure] = useState<{ status: number | null; at: string } | null>(null)
 
   async function load(signal?: AbortSignal) {
-    setFailed(false)
+    setFailure(null)
     try {
       const first = await apiFetch('listProjects', { org, query: { limit: 200, include: 'summary' }, signal })
       setItems(first.data)
       setFetchedAt(Date.now())
-    } catch {
+    } catch (error) {
       if (!signal?.aborted) {
-        setFailed(true)
+        setFailure({ status: error instanceof ApiProblem ? error.status : null, at: new Date().toISOString() })
         setItems([])
       }
     }
@@ -128,59 +134,76 @@ export function ProjectsList({ org, canCreate, archived }: { org: string; canCre
     return () => controller.abort()
   }, [org])
 
-  if (items === null && !failed) return <p role="status">{t('organisations.projects.title')}</p>
-  if (failed)
-    return (
-      <Alert variant="destructive">
-        <AlertDescription>{t('organisations.projects.loadError')}</AlertDescription>
-        <Button variant="outline" onClick={() => void load()}>
-          {t('organisations.projects.retry')}
-        </Button>
-      </Alert>
-    )
-
+  const loading = items === null && !failure
   const visible = (items ?? []).filter((item) => archived === (item.archived_at !== null))
-  if (visible.length === 0) {
-    return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyTitle>{t('organisations.projects.title')}</EmptyTitle>
-          <EmptyDescription>
-            {t('organisations.projects.empty')} {t('organisations.projects.count', { count: 0 })}
-          </EmptyDescription>
-        </EmptyHeader>
-        <EmptyContent>
-          {canCreate ? (
-            <a href={`/${encodeURIComponent(org)}/new`}>{t('organisations.projects.create')}</a>
-          ) : (
-            <p>{t('organisations.projects.askAdmin')}</p>
-          )}
-        </EmptyContent>
-      </Empty>
-    )
-  }
+  const createHref = `/${encodeURIComponent(org)}/new`
+  const nextAction = canCreate ? (
+    <a href={createHref} className={buttonVariants()}>
+      {t('organisations.projects.create')}
+    </a>
+  ) : (
+    <p className="type-text">{t('organisations.projects.askAdmin')}</p>
+  )
 
   return (
-    <section aria-label={t('organisations.projects.title')} className={styles.page}>
-      <h1>
-        {t('organisations.projects.title')} {t('organisations.projects.count', { count: visible.length })}
-      </h1>
-      <p>
-        <a href={archived ? '?' : '?archived=1'}>
-          {t(archived ? 'organisations.projects.hideArchived' : 'organisations.projects.showArchived')}
-        </a>
-      </p>
-      <VirtualRows
-        items={visible.map((item) => ({ item, fetchedAt: fetchedAt ?? Date.now() }))}
-        label={t('organisations.projects.title')}
-        render={({ item, fetchedAt: at }) => <ProjectRow item={item} org={org} fetchedAt={at} />}
-      />
-      {canCreate ? (
-        <p>
-          <a href={`/${encodeURIComponent(org)}/new`}>{t('organisations.projects.create')}</a>
-        </p>
+    <section
+      aria-labelledby="projects-title"
+      aria-busy={loading || undefined}
+      className={styles.page}
+      data-projects-list
+    >
+      <header className={styles.head}>
+        <div className={styles.title}>
+          <h1 id="projects-title" className="type-title">
+            {t('organisations.projects.title')}
+          </h1>
+          {!loading && !failure && visible.length > 0 ? (
+            <span className="type-small text-muted-foreground" data-numeric>
+              {t('organisations.projects.count', { count: visible.length })}
+            </span>
+          ) : null}
+        </div>
+        {!loading && !failure && visible.length > 0 ? (
+          <div className={styles.actions}>
+            <a className={styles.toggle} href={archived ? '?' : '?archived=1'}>
+              {t(archived ? 'organisations.projects.hideArchived' : 'organisations.projects.showArchived')}
+            </a>
+            {nextAction}
+          </div>
+        ) : null}
+      </header>
+      {loading ? (
+        <div className={styles.rows}>
+          <p className="sr-only" role="status">
+            {t('organisations.projects.loading')}
+          </p>
+          {[0, 1, 2].map((row) => (
+            <Skeleton key={row} aria-hidden="true" className="h-[88px] w-full rounded-xl" />
+          ))}
+        </div>
+      ) : failure ? (
+        <SourceError
+          source={t('organisations.projects.source')}
+          status={failure.status}
+          at={failure.at}
+          retry={
+            <Button type="button" variant="outline" onClick={() => void load()}>
+              {t('organisations.projects.retry')}
+            </Button>
+          }
+        />
+      ) : visible.length === 0 ? (
+        <div className={styles.empty} data-slot="empty">
+          <p className="type-text">{t('organisations.projects.empty')}</p>
+          {nextAction}
+        </div>
       ) : (
-        <p>{t('organisations.projects.askAdmin')}</p>
+        <VirtualRows
+          className={styles.rows}
+          items={visible.map((item) => ({ item, fetchedAt: fetchedAt ?? Date.now() }))}
+          label={t('organisations.projects.title')}
+          render={({ item, fetchedAt: at }) => <ProjectRow item={item} org={org} fetchedAt={at} />}
+        />
       )}
     </section>
   )
