@@ -155,7 +155,7 @@ test('LND-1 hero renders the live verdict with at least five inputs, ages and so
   await band(page).press('ArrowRight')
   await expect(picker.getByText('Clause engine verdict: not reviewed, not sent')).toBeVisible()
   await expect(picker.getByText('5 min old').first()).toBeVisible()
-  // PILOT_PROJECT is unset in this harness, so the hero reads n=0; the /c/{callId} link is covered in unit tests.
+  // PILOT_PROJECT is unset in this harness, so the hero reads n=0; the latest call's date is covered in unit tests.
   await expect(picker.getByText('No approved call yet (n=0)')).toBeVisible()
   const station = picker.locator('li[data-source="https://example.com/gauge"]')
   await expect(station).toContainText('0232901RF')

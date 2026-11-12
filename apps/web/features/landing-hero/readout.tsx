@@ -153,11 +153,10 @@ export function HeroReadout({ result, win: _win, latestCall, calendarQuery, rain
           <span>{t('landing-hero.latest_call_error', {}, 'en')}</span>
         </p>
       ) : latestCall ? (
+        // The permalink's page (/c/{callId}, PUB-3) is not built yet: the date stands alone until it is.
         <p data-source={calendarQuery} className={styles.meta}>
-          <a href={latestCall.permalink}>
-            <span>{t('landing-hero.latest_call', {}, 'en')}</span>
-            <time dateTime={latestCall.at}>{formatDate(latestCall.at, 'en')}</time>
-          </a>
+          <span>{t('landing-hero.latest_call', {}, 'en')}</span>
+          <time dateTime={latestCall.at}>{formatDate(latestCall.at, 'en')}</time>
         </p>
       ) : (
         <p data-source={calendarQuery} className={styles.meta}>

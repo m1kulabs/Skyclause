@@ -195,7 +195,7 @@ describe('HeroReadout', () => {
     await expectAxeClean()
   })
 
-  test('the latest approved call links to /c/{callId} with its calendar source', async () => {
+  test('the latest approved call reads its date from the calendar and links nowhere until /c/{callId} is built', async () => {
     render(
       <HeroReadout
         result={response()}
@@ -209,9 +209,10 @@ describe('HeroReadout', () => {
         rainAnimated
       />
     )
-    const link = screen.getByRole('link', { name: /Latest approved call/ })
-    expect(link.getAttribute('href')).toBe('/c/01J000000000000000000000001')
-    expect(link.closest('[data-source]')?.getAttribute('data-source')).toBe('/v1/public/x/y/calendar-entries?limit=1')
+    const latest = screen.getByText('Latest approved call').closest('[data-source]')
+    expect(latest?.querySelector('time')?.getAttribute('dateTime')).toBe('2026-11-04T08:00:00.000Z')
+    expect(latest?.getAttribute('data-source')).toBe('/v1/public/x/y/calendar-entries?limit=1')
+    expect(screen.queryByRole('link', { name: /Latest approved call/ })).toBeNull()
     await expectAxeClean()
   })
 

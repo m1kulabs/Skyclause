@@ -366,10 +366,9 @@ export function CalendarFragment({
           <span>Couldn&rsquo;t reach the approved-call calendar.</span>
         </p>
       ) : latestCall ? (
+        // The permalink's page (/c/{callId}, PUB-3) is not built yet: the date stands alone until it is.
         <p className="frag-live" data-source={source}>
-          <a href={latestCall.permalink}>
-            Latest approved call, <time dateTime={latestCall.at}>{formatDate(latestCall.at, 'en')}</time>
-          </a>
+          Latest approved call, <time dateTime={latestCall.at}>{formatDate(latestCall.at, 'en')}</time>
         </p>
       ) : (
         <p className="frag-live" data-source={source}>
