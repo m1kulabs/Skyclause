@@ -400,7 +400,7 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
 
         {loaded && members.length > 0 ? (
           <SettingsPart title={countTitle('count', members.length)} id="members-table-heading">
-            <div role="region" aria-label={t('members.table_label', {}, locale)}>
+            <div role="region" className="min-w-0" aria-label={t('members.table_label', {}, locale)}>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -528,7 +528,7 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
               <p className="type-body text-muted-foreground">{t('members.invites_empty', {}, locale)}</p>
             ) : (
               <>
-                <div role="region" aria-label={countTitle('invites', invites.length)}>
+                <div role="region" className="min-w-0" aria-label={countTitle('invites', invites.length)}>
                   <Table>
                     <TableHeader>
                       <TableRow>

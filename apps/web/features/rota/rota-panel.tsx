@@ -634,7 +634,7 @@ export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
             </SettingsPart>
 
             <SettingsPart title={t('rota.templates_heading', {}, locale)} id="rota-templates-heading">
-              <div>
+              <div className="min-w-0">
                 <Table compact>
                   <TableHeader>
                     <TableRow>

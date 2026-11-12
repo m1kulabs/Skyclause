@@ -189,6 +189,7 @@ export function SubscriberTable({
       </p>
       <div
         role="region"
+        className="min-w-0"
         aria-label={t('subscribers.title', {}, locale)}
         /* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- axe scrollable-region-focusable requires the scroll container to be keyboard-focusable. */
         tabIndex={0}

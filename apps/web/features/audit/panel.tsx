@@ -404,7 +404,13 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
             </SettingsField>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" variant="outline" onClick={exportCsv} disabled={!hydrated || exporting}>
+            <Button
+              type="button"
+              variant="outline"
+              className="transition-none"
+              onClick={exportCsv}
+              disabled={!hydrated || exporting}
+            >
               {exporting ? copy('exporting') : copy('export')}
             </Button>
             {exportError ? <SettingsError>{copy('exportError')}</SettingsError> : null}
@@ -434,6 +440,7 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
           ) : (
             <div
               role="region"
+              className="min-w-0"
               aria-label={copy('entriesRegion')}
               aria-busy={loading}
               /* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- axe scrollable-region-focusable requires the scroll container to be keyboard-focusable. */

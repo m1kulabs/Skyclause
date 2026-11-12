@@ -32,8 +32,13 @@ export async function expectUnclippedText(page: Page): Promise<void> {
       if (!range.getClientRects().length) continue
       // Visually hidden labels (the sr-only class, or a library's own 1px clipped box) and the offscreen skip link are
       // deliberate, not clipped visible copy.
-      const box = parent.getBoundingClientRect()
-      const visuallyHidden = box.width <= 1 && box.height <= 1 && getComputedStyle(parent).overflow === 'hidden'
+      // The shared table's header strip is visually hidden on a phone the same way (a 1px clipped box around the
+      // header cells), so the box may be an ancestor's.
+      const hiddenBox = (element: Element) => {
+        const box = element.getBoundingClientRect()
+        return box.width <= 1 && box.height <= 1 && getComputedStyle(element).overflow === 'hidden'
+      }
+      const visuallyHidden = hiddenBox(parent) || (!!parent.closest('thead') && hiddenBox(parent.closest('thead')!))
       if (parent.closest('.sr-only') || visuallyHidden || (parent.closest('.skip-link') && !parent.matches(':focus')))
         continue
       for (let element: HTMLElement | null = parent; element; element = element.parentElement) {
@@ -43,8 +48,11 @@ export async function expectUnclippedText(page: Page): Promise<void> {
         const clipsY = ['hidden', 'clip'].includes(style.overflowY)
         // Modal scroll locks freeze the background document. Fixed overlay text can still scroll in its own frame.
         const modalScrollLock = element === body && modalOpen && style.overflowY === 'hidden'
+        // A truncation the page chose and says so: one line with an ellipsis and the whole text in its title (the shared
+        // table's `truncate` cells). The words stay reachable; only an ellipsis with no title is clipped copy.
+        const titled = style.textOverflow === 'ellipsis' && !!element.closest('[title]')
         if (
-          (clipsX && element.scrollWidth > element.clientWidth) ||
+          (clipsX && !titled && element.scrollWidth > element.clientWidth) ||
           (clipsY && !modalScrollLock && element.scrollHeight > element.clientHeight)
         ) {
           failures.add(`${element.tagName.toLowerCase()}: ${node.textContent.trim()}`)
