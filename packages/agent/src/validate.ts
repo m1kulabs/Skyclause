@@ -298,7 +298,15 @@ export function validate(p: ProposedBundle, input: AgentInput): Validation {
   ])
   const names = identifiers(input)
   const allowsLink = linkPolicy(input)
-  const allowed = new Set(quotable(input).flatMap((item) => numbersIn(item, new Set()).map((found) => found.key)))
+  const quoted = quotable(input)
+  const allowed = new Set(quoted.flatMap((item) => numbersIn(item, new Set()).map((found) => found.key)))
+  // Tokens the trusted text and the quotable strings carry, folded as the letter checks fold: a place label the sheet or
+  // the caller names (Gate B2) may be printed as written.
+  const verbatim = new Set(
+    [...trustedTexts(input), ...quoted].flatMap(
+      (text) => asciiLetters(text.normalize('NFKC')).match(/[\p{L}\p{N}_]+/gu) ?? []
+    )
+  )
 
   bundle.calls.forEach((call, i) => {
     const at = `calls[${i}] (window ${call.window_id})`
@@ -389,7 +397,7 @@ export function validate(p: ProposedBundle, input: AgentInput): Validation {
       if (LETTER_ACROSS_SEPARATOR.test(folded))
         reasons.push(`${where}: letters read as digits across a separator; quote the figure from the quotable block`)
       for (const token of folded.match(/[\p{L}\p{N}_]+/gu) ?? []) {
-        if (names.has(token)) continue
+        if (names.has(token) || verbatim.has(token)) continue
         const run = LETTER_DIGITS.exec(token)?.[1]
         if ((run && LETTER_BESIDE_DIGIT.test(run)) || OTHER_LETTER_BESIDE_DIGIT.test(token))
           reasons.push(`${where}: ${token} has letters read as digits; quote the figure from the quotable block`)

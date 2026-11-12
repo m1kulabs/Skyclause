@@ -600,6 +600,26 @@ describe('more exotic look-alikes (#512)', () => {
     }
   })
 
+  // A place, venue or organisation name the pinned sheet or the quotable strings carry may be printed as written.
+  const trusted = (name: string) => {
+    const quoted = { ...replayInput(), quotable: [name] }
+    const sheet = replayInput()
+    sheet.sheet.clauses[0]!.wording.en = `Storm watch at ${name}`
+    return [quoted, sheet]
+  }
+  const reasonsWith = (text: string, input: ReturnType<typeof replayInput>) => {
+    const result = validate(replayBundle(text), input)
+    return result.ok ? [] : result.reasons
+  }
+
+  test.each(['Gate B2', 'Exit 2B', 'Level 5B', 'B2 car park', 'Bay S5'])(
+    'refuses the label %j unless trusted input names it',
+    (label) => {
+      refused(`Rain near ${label} at 15:30 MYT.`, 'letters read as digits')
+      for (const input of trusted(label)) expect(reasonsWith(`Rain near ${label} at 15:30 MYT.`, input)).toEqual([])
+    }
+  )
+
   test.each(['O2', '5lb', '5oz'])('keeps refusing %j: notices quote "{value} {unit}" with a space', (text) => {
     refused(`Gauge ${text}.`, 'letters read as digits')
   })
