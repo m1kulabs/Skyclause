@@ -169,9 +169,7 @@ export function ReplayPane({
 }) {
   // A form field's edit replaces the URL's history entry instead of adding one per keystroke.
   const edit = (values: Record<string, string>) => change(values, true)
-  const form = useRef<HTMLFormElement>(null)
   const result = useRef<HTMLElement>(null)
-  const [problem, setProblem] = useState<'sheet' | 'version' | 'range' | null>(null)
   const sheetsRead = useCallback(
     (signal: AbortSignal) =>
       allPages((cursor) => apiFetch('listClauseSheets', { org, params: { id: projectId }, query: { cursor }, signal })),
@@ -224,15 +222,7 @@ export function ReplayPane({
     Date.parse(state.to) - Date.parse(state.from) < 90 * 86_400_000
   async function submit(event: FormEvent) {
     event.preventDefault()
-    if (visible?.status === 'loading') return
-    // Run stays enabled: pressing it names the first thing missing and takes focus there.
-    const missing = !sheet ? 'sheet' : !version ? 'version' : !validRange ? 'range' : null
-    setProblem(missing)
-    if (missing) {
-      form.current?.querySelector<HTMLElement>(`[name="${missing === 'range' ? 'from' : missing}"]`)?.focus()
-      return
-    }
-    if (!version) return
+    if (!version || !validRange || visible?.status === 'loading') return
     const key = inputKey
     setRun({ key, status: 'loading' })
     try {
@@ -278,9 +268,18 @@ export function ReplayPane({
     </label>
   )
   const reversed = !!state.from && !!state.to && !validRange
+  // Run waits for a sheet, a version and a valid range, and says which it is waiting for (once the lists have loaded).
+  const waiting =
+    sheets.status === 'ready' && !sheet
+      ? 'analysis.chooseSheetFirst'
+      : sheet && versions.status === 'ready' && !version
+        ? 'analysis.chooseVersionFirst'
+        : null
   const invalid = (key: 'sheet' | 'version' | 'range') =>
-    problem === key || (key === 'range' && reversed)
-      ? { 'aria-invalid': true, 'aria-describedby': 'analysis-replay-problem' }
+    (key === 'range' && reversed) ||
+    (key === 'sheet' && waiting === 'analysis.chooseSheetFirst') ||
+    (key === 'version' && waiting === 'analysis.chooseVersionFirst')
+      ? { 'aria-describedby': 'analysis-replay-problem', ...(key === 'range' ? { 'aria-invalid': true } : {}) }
       : {}
   const sheetsOfPack = sheets.status === 'ready' ? sheets.value.filter((item) => item.pack === state.pack) : []
   const sheetName = (id: string) => {
@@ -319,7 +318,7 @@ export function ReplayPane({
             locale={locale}
           />
         ) : (
-          <form ref={form} noValidate onSubmit={(event) => void submit(event)} className="analysis-replay-form">
+          <form noValidate onSubmit={(event) => void submit(event)} className="analysis-replay-form">
             <div className="analysis-form-grid">
               {field(
                 'sheet',
@@ -428,22 +427,23 @@ export function ReplayPane({
               <EmptyBlock message="subjectsEmpty" locale={locale} />
             )}
             <div className="analysis-replay-run">
-              <Button type="submit" variant="outline" aria-disabled={visible?.status === 'loading' || undefined}>
+              <Button
+                type="submit"
+                variant="outline"
+                disabled={!version || !validRange || visible?.status === 'loading'}
+                aria-describedby={reversed || waiting ? 'analysis-replay-problem' : undefined}
+              >
                 {t(visible?.status === 'loading' ? 'analysis.running' : 'analysis.run', {}, locale)}
               </Button>
-              {(problem || reversed) && (
+              {reversed ? (
                 <p role="alert" id="analysis-replay-problem">
-                  {t(
-                    problem === 'sheet'
-                      ? 'analysis.chooseSheetFirst'
-                      : problem === 'version'
-                        ? 'analysis.chooseVersionFirst'
-                        : 'analysis.invalidRange',
-                    {},
-                    locale
-                  )}
+                  {t('analysis.invalidRange', {}, locale)}
                 </p>
-              )}
+              ) : waiting ? (
+                <p role="status" id="analysis-replay-problem" className="analysis-sub">
+                  {t(waiting, {}, locale)}
+                </p>
+              ) : null}
               {visible?.status === 'error' && <p role="alert">{t('analysis.replayFailed', {}, locale)}</p>}
               {/* Always mounted: says when a replay starts and when it is done. */}
               <p role="status" className="sr-only">

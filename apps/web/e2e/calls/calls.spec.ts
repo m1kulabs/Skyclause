@@ -43,7 +43,7 @@ test('CAL-16 P2-9 filters apply as they change, in one row with native date fiel
   // A reversed range says so and reads nothing new.
   const before = reads.length
   await list.getByLabel('To').fill('2026-11-01')
-  await expect(page.getByRole('alert')).toContainText('on or before')
+  await expect(list.getByRole('alert')).toContainText('on or before')
   expect(reads.length).toBe(before)
   await page.reload()
   await expect(page.getByRole('region', { name: 'Calls' }).getByLabel('From')).toHaveValue('2026-11-02')

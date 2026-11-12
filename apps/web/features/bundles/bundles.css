@@ -294,16 +294,16 @@ html:has(.bundle-detail) {
 .bundle-call-mark {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 4px;
   max-width: 100%;
 }
 /* A call's fate if the bundle is approved now, in words under its badge. */
 .bundle-call-fate {
+  padding-inline: 2px;
   font-size: 13px;
   line-height: 18px;
   color: var(--muted-foreground);
-  text-align: right;
 }
 .bundle-call-fate[data-fate='rejected'] {
   font-weight: 600;
@@ -655,9 +655,15 @@ html:has(.bundle-detail) {
     margin-left: 0;
   }
   .bundle-approval-reason {
-    flex: 1 1 12rem;
+    flex: 1 1 100%;
     max-width: none;
     text-align: left;
+  }
+  .bundle-approval-reason:empty {
+    display: none;
+  }
+  .bundle-approve {
+    flex: 1 1 100%;
   }
   .bundle-edit button,
   .bundle-recheck button {

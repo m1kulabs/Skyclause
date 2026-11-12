@@ -69,7 +69,7 @@ export function targetEntry(
   entry: string | null,
   call: string | null
 ): string | null {
-  if (entry) return entry
+  if (entry) return rows.some((row) => row.id === entry) ? entry : null
   if (!call) return null
   const matches = rows.filter((row) => row.refs.call_id === call || row.call?.id === call)
   return (matches.find((row) => row.kind === 'call_approved') ?? matches[0])?.id ?? null

@@ -222,6 +222,7 @@ export function LedgerTable({
                 numeric={'figure' in column}
                 className={`ledger-col-${column.key}`}
                 data-wide={'wide' in column ? '' : undefined}
+                data-detail={column.key === 'detail' ? '' : undefined}
               >
                 {'hidden' in column ? (
                   <span className="sr-only">{t(`ledger.columns.${column.key}`, {}, locale)}</span>
@@ -334,7 +335,7 @@ const EntryRow = memo(function EntryRow({
       </TableCell>
       <TableCell
         className="ledger-col-concerns"
-        truncate={row.window ? '40ch' : undefined}
+        truncate={row.window ? '100%' : undefined}
         title={span}
         label={t('ledger.columns.concerns', {}, locale)}
       >
@@ -351,7 +352,7 @@ const EntryRow = memo(function EntryRow({
       <TableCell className="ledger-col-actor" data-wide="" label={t('ledger.columns.actor', {}, locale)}>
         {actorText ?? <Missing locale={locale} />}
       </TableCell>
-      <TableCell className="ledger-col-detail">
+      <TableCell className="ledger-col-detail" data-detail="">
         {call?.mode || outcome ? (
           <span className="ledger-detail">
             {call?.mode && <ModeBadge mode={call.mode} pack={row.pack ?? undefined} locale={locale} />}

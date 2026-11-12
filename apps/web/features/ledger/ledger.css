@@ -195,15 +195,41 @@
   padding-block: 12px;
 }
 
-/* The record: the shared table on the ground, one line per entry, its header stuck under the shell bar. */
+/*
+ * The record: the shared table on the ground, one line per entry, its header stuck under the shell bar. Fixed column
+ * widths keep it inside the column; the window's name takes what is left and truncates (its full span in the title).
+ */
 .ledger-table-frame {
   min-width: 0;
 }
-.ledger-col-time {
-  white-space: nowrap;
-}
-.ledger-col-evidence {
-  width: 44px;
+@media (min-width: 641px) {
+  .ledger-table-frame [data-slot='table'] {
+    table-layout: fixed;
+  }
+  .ledger-col-time {
+    width: 176px;
+  }
+  .ledger-col-entry {
+    width: 220px;
+  }
+  .ledger-col-actor {
+    width: 104px;
+  }
+  .ledger-col-detail {
+    width: 200px;
+  }
+  .ledger-col-toApproval {
+    width: 100px;
+  }
+  .ledger-col-toNotice {
+    width: 92px;
+  }
+  .ledger-col-seq {
+    width: 52px;
+  }
+  .ledger-col-evidence {
+    width: 48px;
+  }
 }
 td.ledger-col-evidence {
   padding-block: 0;
@@ -269,6 +295,12 @@ td.ledger-col-evidence {
 /* Between a phone and 1200px, who decided, the minutes and the entry number step out; the rest stay on one line. */
 @media (min-width: 641px) and (max-width: 1199px) {
   .ledger-table-frame [data-wide] {
+    display: none;
+  }
+}
+/* A narrow tablet keeps the time, the entry and what it concerns; the mode is on the call's own page. */
+@media (min-width: 641px) and (max-width: 899px) {
+  .ledger-table-frame [data-detail] {
     display: none;
   }
 }

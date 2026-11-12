@@ -99,5 +99,7 @@ test('a link to a call finds its approval entry, else its first entry; an entry 
   expect(targetEntry(rows, null, 'c2')).toBe('other')
   expect(targetEntry(rows, 'sent', 'c1')).toBe('sent')
   expect(targetEntry(rows, null, 'missing')).toBeNull()
+  // Not on this page yet: the read keeps going until the entry is found.
+  expect(targetEntry(rows, 'entry-on-a-later-page', null)).toBeNull()
   expect(targetEntry(rows, null, null)).toBeNull()
 })

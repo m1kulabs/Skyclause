@@ -32,8 +32,12 @@ export async function expectUnclippedText(page: Page): Promise<void> {
       if (!range.getClientRects().length) continue
       // Visually hidden labels (the sr-only class, or a library's own 1px clipped box) and the offscreen skip link are
       // deliberate, not clipped visible copy.
-      const box = parent.getBoundingClientRect()
-      const visuallyHidden = box.width <= 1 && box.height <= 1 && getComputedStyle(parent).overflow === 'hidden'
+      // The box may be an ancestor's: the shared table hides its header strip on a phone in a 1px clipped thead.
+      let visuallyHidden = false
+      for (let element: HTMLElement | null = parent; element && !visuallyHidden; element = element.parentElement) {
+        const box = element.getBoundingClientRect()
+        visuallyHidden = box.width <= 1 && box.height <= 1 && getComputedStyle(element).overflow === 'hidden'
+      }
       if (parent.closest('.sr-only') || visuallyHidden || (parent.closest('.skip-link') && !parent.matches(':focus')))
         continue
       for (let element: HTMLElement | null = parent; element; element = element.parentElement) {

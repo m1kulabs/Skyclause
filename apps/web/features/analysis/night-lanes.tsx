@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useId, useState } from 'react'
+import { useCallback, useId, useState, type ReactNode } from 'react'
 import type { Forecast, Listing, Night } from '@skyclause/contracts'
-import { formatDate, formatNumber, formatTime } from '@skyclause/i18n/format'
+import { formatClock, formatDate, formatNumber, formatTime } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
 import { t } from './catalogue'
 import { apiFetch, allPages, type Graded } from './operations'
@@ -34,7 +34,7 @@ function NightLane({
   const span = (from: string, to: string) =>
     t('analysis.period', { from: formatTime(from, locale), to: formatTime(to, locale) }, locale)
   // Labels are HTML at 13px under each drawing, placed by share of its width, so they never scale below the floor.
-  const label = (x: number, index: number, last: number, text: string) => (
+  const label = (x: number, index: number, last: number, text: ReactNode) => (
     <span
       key={index}
       data-edge={index === 0 ? 'start' : index === last ? 'end' : undefined}
@@ -119,14 +119,16 @@ function NightLane({
               )}
             </svg>
             <p className="analysis-night-axis" aria-hidden="true">
-              {[0, 1, 2, 3].map((index) =>
-                label(
-                  10 + (index * 280) / 3,
+              {/* Three clock times fit a phone's lane at 13px; the zone is the lane's own (MYT, in its facts). */}
+              {[0, 1, 2].map((index) => {
+                const at = new Date(start + ((end - start) * index) / 2)
+                return label(
+                  10 + index * 140,
                   index,
-                  3,
-                  formatTime(new Date(start + ((end - start) * index) / 3), locale)
+                  2,
+                  <time dateTime={at.toISOString()}>{formatClock(at, locale)}</time>
                 )
-              )}
+              })}
             </p>
           </div>
           {forecast && (

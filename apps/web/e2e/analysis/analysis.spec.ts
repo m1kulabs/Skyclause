@@ -114,18 +114,15 @@ test('replay enforces the API 90-day range and preserves an explicit URL step', 
   )
   const pane = page.locator('[data-replay-pane]')
   await expect(pane.getByRole('combobox', { name: copy('step'), exact: true })).toHaveValue('PT15M')
+  await expect(pane.getByRole('button', { name: copy('run'), exact: true })).toBeDisabled()
   await expect(pane.getByRole('alert')).toHaveText(copy('invalidRange'))
-  // Run stays enabled and, pressed, takes focus to the field to fix without sending anything.
-  let posts = 0
-  page.on('request', (r) => {
-    if (r.method() === 'POST' && r.url().includes('/analysis/what-if')) posts++
-  })
-  await pane.getByRole('button', { name: copy('run'), exact: true }).press('Enter')
-  await expect(pane.getByLabel(copy('from'), { exact: true })).toBeFocused()
+  // The reason is tied to the fields and to Run, so a screen reader hears why Run waits.
   await expect(pane.getByLabel(copy('from'), { exact: true })).toHaveAttribute('aria-invalid', 'true')
-  expect(posts).toBe(0)
+  await expect(pane.getByRole('button', { name: copy('run'), exact: true })).toHaveAccessibleDescription(
+    copy('invalidRange')
+  )
   await pane.getByLabel(copy('from'), { exact: true }).fill('2026-11-01')
-  await expect(pane.getByRole('alert')).toHaveCount(0)
+  await expect(pane.getByRole('button', { name: copy('run'), exact: true })).toBeEnabled()
 })
 
 test('agreement kill line, delay columns and table views use a single scale', async ({ page }) => {
@@ -179,12 +176,10 @@ test('Viewers read explanations and cannot edit or request drafts', async ({ pag
   await expect(page.locator('.analysis-review-item textarea')).toHaveAttribute('readonly', '')
   await expect(page.getByRole('button', { name: copy('save'), exact: true })).toHaveCount(0)
   await expect(page.locator('[data-replay-pane] option[value=draft]')).toHaveCount(0)
-  // Run names what is missing instead of sitting disabled: a viewer has no draft to replay.
-  await page
-    .locator('[data-replay-pane]')
-    .getByRole('button', { name: copy('run'), exact: true })
-    .press('Enter')
-  await expect(page.locator('[data-replay-pane]').getByRole('alert')).toHaveText(copy('chooseVersionFirst'))
+  // Run waits, and says what for: a viewer has no draft to replay.
+  const run = page.locator('[data-replay-pane]').getByRole('button', { name: copy('run'), exact: true })
+  await expect(run).toBeDisabled()
+  await expect(run).toHaveAccessibleDescription(copy('chooseVersionFirst'))
 })
 
 test('pack_crowd off removes Crowd and explains a direct feature-off URL', async ({ page }) => {
