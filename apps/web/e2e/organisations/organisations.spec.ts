@@ -137,7 +137,24 @@ test('ORG-5 a stubbed summary shows pack modes, the No call text, review counts 
   await expect(page.getByRole('heading', { name: 'Bukit Jalil' })).toBeVisible()
   await expect(page.getByText('No call: gauge since 14:00 MYT')).toBeVisible()
   await expect(page.getByText(/2 need review/)).toBeVisible()
-  await expect(page.getByText(/Signal health: fresh/)).toBeVisible()
+  await expect(page.getByText(/Signal health: Fresh input/)).toBeVisible()
+})
+
+test('ORG-5 with only archived projects the page says no active ones and still reaches the archived list', async ({
+  page
+}) => {
+  await asPage(page, principal('owner'))
+  await stubProjects(page, [
+    project({ id: 'project-old', name: 'Old project', slug: 'old', archived_at: '2026-10-01T00:00:00Z' })
+  ])
+  await page.goto('/test-org/projects')
+  await expect(page.getByText(/No active projects/)).toBeVisible()
+  await expect(page.getByText(/No projects yet/)).toHaveCount(0)
+  await page.getByRole('link', { name: 'Show archived' }).click()
+  await expect(page).toHaveURL(/archived=1/)
+  await expect(page.getByRole('heading', { name: 'Old project' })).toBeVisible()
+  await page.getByRole('link', { name: 'Hide archived' }).click()
+  await expect(page.getByText(/No active projects/)).toBeVisible()
 })
 
 test('ACC-9 an Owner in A and Viewer in B sees Create on /a/projects only', async ({ page }) => {
