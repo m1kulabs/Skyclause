@@ -86,16 +86,17 @@ export function InputAgeChip({
   return (
     <HoverCard>
       <HoverCardTrigger
-        className="inline-flex min-h-[34px] min-w-[34px] items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:transition-none [@media(pointer:coarse)]:min-h-[44px] [@media(pointer:coarse)]:min-w-[44px]"
+        className="group/age inline-flex min-h-[34px] min-w-[34px] items-center rounded-full text-[13px] font-medium tabular-nums motion-reduce:transition-none [@media(pointer:coarse)]:min-h-[44px] [@media(pointer:coarse)]:min-w-[44px]"
         aria-label={label}
+        data-state={input.state}
       >
-        <span className="inline-flex items-center gap-1">
+        <span className="inline-flex min-h-6 items-center gap-1.5 rounded-full border-2 border-input px-2.5 group-hover/age:bg-accent">
           <Glyph state={input.state} />
           <span>{label}</span>
         </span>
       </HoverCardTrigger>
       <HoverCardContent className="tabular-nums">
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px] [&_dt]:text-muted-foreground">
           <dt>{t('data.age.source_time', {}, locale)}</dt>
           <dd>
             <time dateTime={observed ?? undefined}>{sourceTime}</time>

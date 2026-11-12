@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from 'react'
 import type { Window } from '@skyclause/contracts'
-import { layoutStrip, stripSvg, type StripInput } from '@skyclause/elements'
+import { layoutStrip, stripSvg, type StripInput, type StripWindow } from '@skyclause/elements'
 import { formatTime } from '@skyclause/i18n/format'
 import { Badge } from '#ui/badge'
 import { Button } from '#ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '#ui/tooltip'
 import { t } from './catalogue'
+import { DayStrip } from './day-strip'
 
 export interface WindowStripProps {
   windows: readonly Window[]
@@ -27,11 +28,50 @@ function emptyStrip(windows: readonly Window[]): StripInput {
   }
 }
 
+const HOUR = 3_600_000
+const hourFloor = (at: number) => Math.floor(at / HOUR) * HOUR
+
 export function WindowStrip({ windows, strip, locale = 'en' }: WindowStripProps) {
   const [showTable, setShowTable] = useState(false)
   const input = useMemo(() => strip ?? emptyStrip(windows), [strip, windows])
-  const layout = useMemo(() => layoutStrip({ ...input, locale }), [input, locale])
-  const svg = useMemo(() => stripSvg(layout, { locale }).replace('role="img"', 'aria-hidden="true"'), [layout, locale])
+  // The day row: the strip's own windows with their calls, else the windows passed in (their calls unknown here).
+  const dayWindows = useMemo<StripWindow[]>(
+    () =>
+      input.windows
+        ? [...input.windows]
+        : windows.map((w) => ({ id: w.id, from: w.starts_at, to: w.ends_at, state: null, title: w.title })),
+    [input.windows, windows]
+  )
+  // Readings keep the strip's span; with none, the day row spans its windows with an hour either side.
+  const daySpan = useMemo(() => {
+    if (input.from !== input.to || !dayWindows.length) return { from: input.from, to: input.to }
+    const starts = dayWindows.map((w) => Date.parse(w.from))
+    const ends = dayWindows.map((w) => Date.parse(w.to))
+    return {
+      from: new Date(hourFloor(Math.min(...starts)) - HOUR).toISOString(),
+      to: new Date(hourFloor(Math.max(...ends)) + 2 * HOUR).toISOString()
+    }
+  }, [input.from, input.to, dayWindows])
+  // The readings under the day row: the window's span stays as a tone band, its capsule is the row above.
+  const layout = useMemo(
+    () => layoutStrip({ ...input, windows: dayWindows.length ? [] : input.windows, locale }),
+    [input, dayWindows.length, locale]
+  )
+  const svg = useMemo(
+    () => stripSvg(layout, { locale, windowLane: false }).replace('role="img"', 'aria-hidden="true"'),
+    [layout, locale]
+  )
+  const dayRow = dayWindows.length ? (
+    <DayStrip
+      from={daySpan.from}
+      to={daySpan.to}
+      now={input.now}
+      windows={dayWindows}
+      list={Boolean(input.windows)}
+      embedded
+      locale={locale}
+    />
+  ) : null
 
   const count = input.rain5.length + input.rain60.length
   const firstCrossing = layout.crossings[0]
@@ -56,21 +96,25 @@ export function WindowStrip({ windows, strip, locale = 'en' }: WindowStripProps)
 
   if (count === 0) {
     return (
-      <figure className="w-full">
-        {input.replay ? <Badge variant="outline">{t('data.strip.replay_badge', {}, locale)}</Badge> : null}
-        <figcaption className="text-sm text-muted-foreground">
-          {input.replay ? summary : t('data.strip.empty', {}, locale)}
-        </figcaption>
-      </figure>
+      <div className="flex w-full flex-col gap-3">
+        {dayRow}
+        <figure className="w-full">
+          {input.replay ? <Badge variant="outline">{t('data.strip.replay_badge', {}, locale)}</Badge> : null}
+          <figcaption className="text-sm text-muted-foreground">
+            {input.replay ? summary : t('data.strip.empty', {}, locale)}
+          </figcaption>
+        </figure>
+      </div>
     )
   }
 
   return (
-    <figure className="w-full">
+    <figure className="flex w-full flex-col gap-2">
+      {dayRow}
       <div className="flex flex-wrap items-center gap-2">
         {layout.isReplay ? <Badge variant="outline">{t('data.strip.replay_badge', {}, locale)}</Badge> : null}
         {win ? (
-          <span className="inline-flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+          <span className="inline-flex flex-wrap items-center gap-1 type-small text-muted-foreground">
             <span>{t('data.strip.window', {}, locale)}</span>
             <time dateTime={win.starts_at}>{formatTime(win.starts_at, locale)}</time>
           </span>
@@ -78,14 +122,14 @@ export function WindowStrip({ windows, strip, locale = 'en' }: WindowStripProps)
       </div>
       <div className="relative w-full">
         <div
-          className="w-full overflow-hidden [&>svg]:h-auto [&>svg]:w-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          className="w-full overflow-hidden [&>svg]:h-auto [&>svg]:w-full"
           // biome-ignore lint/security/noDangerouslySetInnerHtml: stripSvg is deterministic geometry from readings.
           dangerouslySetInnerHTML={{ __html: svg }}
         />
         {layout.crossings.map((crossing) => (
           <Tooltip key={crossing.at}>
             <TooltipTrigger
-              className="absolute top-1/3 min-h-[34px] min-w-[34px] -translate-x-1/2 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:transition-none [@media(pointer:coarse)]:min-h-[44px] [@media(pointer:coarse)]:min-w-[44px]"
+              className="absolute top-1/3 min-h-[34px] min-w-[34px] -translate-x-1/2 rounded-full motion-reduce:transition-none [@media(pointer:coarse)]:min-h-[44px] [@media(pointer:coarse)]:min-w-[44px]"
               style={{ left: `${(crossing.x / layout.width) * 100}%` }}
               aria-label={crossing.label}
             >
@@ -97,31 +141,40 @@ export function WindowStrip({ windows, strip, locale = 'en' }: WindowStripProps)
           </Tooltip>
         ))}
       </div>
-      <figcaption className="mt-2 text-sm text-muted-foreground">{summary}</figcaption>
-      <div className="mt-2">
+      <figcaption className="type-small text-muted-foreground">{summary}</figcaption>
+      <div>
         <Button
           type="button"
           variant="outline"
           size="sm"
           onClick={() => setShowTable((v) => !v)}
           aria-expanded={showTable}
-          className="min-h-[34px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:transition-none [@media(pointer:coarse)]:min-h-[44px]"
+          className="min-h-[34px] motion-reduce:transition-none [@media(pointer:coarse)]:min-h-[44px]"
         >
           {toggleLabel}
         </Button>
         {showTable ? (
           <div className="mt-2 overflow-x-auto">
-            <table className="w-full border-collapse text-sm tabular-nums">
+            <table className="w-full border-collapse text-sm">
               <caption className="text-left text-muted-foreground">{t('data.strip.table_caption', {}, locale)}</caption>
               <thead>
                 <tr>
-                  <th scope="col" className="border-b p-2 text-left">
+                  <th
+                    scope="col"
+                    className="h-10 border-b border-rule px-2 text-left text-[13px] font-medium text-muted-foreground"
+                  >
                     {t('data.strip.table_time', {}, locale)}
                   </th>
-                  <th scope="col" className="border-b p-2 text-right">
+                  <th
+                    scope="col"
+                    className="h-10 border-b border-rule px-2 text-right text-[13px] font-medium text-muted-foreground"
+                  >
                     {t('data.strip.table_rain5', {}, locale)}
                   </th>
-                  <th scope="col" className="border-b p-2 text-right">
+                  <th
+                    scope="col"
+                    className="h-10 border-b border-rule px-2 text-right text-[13px] font-medium text-muted-foreground"
+                  >
                     {t('data.strip.table_rain60', {}, locale)}
                   </th>
                 </tr>
@@ -131,13 +184,13 @@ export function WindowStrip({ windows, strip, locale = 'en' }: WindowStripProps)
                   const sixty = input.rain60.find((s) => s.at === point.at)
                   return (
                     <tr key={point.at}>
-                      <th scope="row" className="border-b p-2 text-left font-normal">
+                      <th scope="row" className="h-11 border-b border-rule px-2 text-left font-normal">
                         <time dateTime={point.at}>{formatTime(point.at, locale)}</time>
                       </th>
-                      <td className="border-b p-2 text-right tabular-nums">
+                      <td className="h-11 border-b border-rule px-2 text-right tabular-nums">
                         {point.value === null ? t('data.strip.missing', {}, locale) : point.value}
                       </td>
-                      <td className="border-b p-2 text-right tabular-nums">
+                      <td className="h-11 border-b border-rule px-2 text-right tabular-nums">
                         {sixty?.value === null || sixty?.value === undefined
                           ? t('data.strip.missing', {}, locale)
                           : sixty.value}
@@ -151,9 +204,9 @@ export function WindowStrip({ windows, strip, locale = 'en' }: WindowStripProps)
         ) : null}
       </div>
       {input.ages && input.ages.length ? (
-        <div className="mt-2 md:hidden">
-          <h4 className="text-xs font-medium">{t('data.strip.ages_title', {}, locale)}</h4>
-          <ul className="mt-1 space-y-1 text-xs tabular-nums">
+        <div className="md:hidden">
+          <h4 className="type-small font-medium">{t('data.strip.ages_title', {}, locale)}</h4>
+          <ul className="mt-1 space-y-1 type-small tabular-nums">
             {input.ages.map((age) => (
               <li key={age.name} className="flex flex-wrap items-center gap-1">
                 <span>{age.name}</span>

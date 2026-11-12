@@ -53,7 +53,7 @@ export function GradeCard({
           {n === 0 ? t('data.grade.n_zero', {}, locale) : t('data.grade.n', { count: n }, locale)}
         </p>
         {period ? (
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-[13px] text-muted-foreground">
             {t(
               'data.grade.period',
               { from: formatDate(period.from, locale), to: formatDate(period.to, locale) },
@@ -66,22 +66,22 @@ export function GradeCard({
             <div
               role="img"
               aria-label={t('data.grade.interval_label', { low: low as number, high: high as number }, locale)}
-              className="relative mt-3 h-6 w-full rounded bg-muted"
+              className="relative mt-3 h-6 w-full rounded-full bg-raised"
               data-wilson-interval
             >
               <div
-                className="absolute top-1/2 h-2 -translate-y-1/2 rounded bg-foreground/70"
+                className="absolute top-1/2 h-3 -translate-y-1/2 rounded-full bg-muted-foreground"
                 style={{
                   left: `${(low as number) * 100}%`,
                   width: `${Math.max(0, (high as number) - (low as number)) * 100}%`
                 }}
               />
               <div
-                className="absolute top-0 h-full w-[2px] bg-foreground"
-                style={{ left: `calc(${(value as number) * 100}% - 1px)` }}
+                className="absolute top-0 h-full w-1 rounded-full bg-foreground"
+                style={{ left: `calc(${(value as number) * 100}% - 2px)` }}
               />
             </div>
-            <p className="mt-1 text-xs tabular-nums text-muted-foreground">
+            <p className="mt-1 text-[13px] tabular-nums text-muted-foreground">
               {t('data.grade.wilson_95', { low: percent(low as number), high: percent(high as number) }, locale)}
             </p>
           </>
@@ -90,7 +90,7 @@ export function GradeCard({
             {n === 0 ? t('data.grade.empty', {}, locale) : t('data.grade.n_zero', {}, locale)}
           </p>
         )}
-        <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <p className="mt-2 flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">
           {source ? <span>{source}</span> : null}
           {replay ? <Badge variant="outline">{t('data.grade.replay', {}, locale)}</Badge> : null}
         </p>

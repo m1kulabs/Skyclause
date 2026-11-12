@@ -88,26 +88,31 @@ export function SourceHealthRow({
     ) : null)
 
   return (
-    <tr data-source={source.id} className="block border-b md:table-row">
+    <tr data-source={source.id} className="block border-b border-rule md:table-row">
       <td className="block p-2 md:table-cell">
         <span className="flex min-h-[34px] flex-wrap items-center gap-2 [@media(pointer:coarse)]:min-h-[44px]">
           <Glyph state={current} />
           <span className="font-medium break-words">{source.name}</span>
-          <span translate="no" className="break-all text-xs text-muted-foreground tabular-nums">
+          <span translate="no" className="break-all text-[13px] text-muted-foreground tabular-nums">
             {source.external_id}
           </span>
           {valueText && (
-            <span className="max-w-full break-words text-xs text-muted-foreground tabular-nums">{valueText}</span>
+            <span className="max-w-full break-words text-[13px] text-muted-foreground tabular-nums">{valueText}</span>
           )}
         </span>
-        {error && <span className="mt-1 block text-xs text-destructive tabular-nums">{error}</span>}
-        <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground tabular-nums md:hidden">
+        {error && (
+          <span className="mt-1 flex items-center gap-1.5 text-[13px] text-destructive tabular-nums">
+            <Glyph state="error" />
+            <span>{error}</span>
+          </span>
+        )}
+        <span className="mt-1 flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground tabular-nums md:hidden">
           <span>{ageText}</span>
           <span>{cadence}</span>
           <span>{currentState}</span>
         </span>
       </td>
-      <td className="block p-2 text-xs tabular-nums md:table-cell">
+      <td className="block p-2 text-[13px] tabular-nums md:table-cell">
         <span className="hidden flex-wrap items-center gap-3 text-muted-foreground md:flex">
           <span>{ageText}</span>
           <span>{cadence}</span>
@@ -130,10 +135,10 @@ export function SourceHealthRow({
                   title={t(`data.source.tick_${tick}`, {}, locale)}
                   className={
                     tick === 'received'
-                      ? 'inline-block h-3 w-1 bg-foreground/70'
+                      ? 'inline-block h-3 w-1 rounded-full bg-foreground'
                       : tick === 'missed'
-                        ? 'inline-block h-3 w-1 bg-foreground/20'
-                        : 'inline-block h-3 w-1 bg-destructive'
+                        ? 'inline-block h-3 w-1 rounded-full bg-raised'
+                        : 'inline-block h-1 w-1 self-end rounded-full bg-foreground'
                   }
                 />
               ))}

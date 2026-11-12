@@ -11,12 +11,13 @@ export interface ModeBadgeProps {
   locale?: 'en' | 'ms'
 }
 
+/** A call's mode as a text-size capsule: filled by the mode's tone, with its glyph and its word inside. */
 export function ModeBadge({ mode, pack, locale = 'en' }: ModeBadgeProps) {
-  const { word, level } = brandStates[mode]
+  const { word, level, tone } = brandStates[mode]
   const label = t(word, {}, locale)
   return (
     <span className="mode-badge" data-mode={mode} lang={locale}>
-      <span className="mode-badge-pill" data-status={level}>
+      <span className="mode-badge-pill" data-status={level} data-tone={tone}>
         <Glyph state={mode} />
         <span translate={pack ? 'no' : undefined}>
           {pack

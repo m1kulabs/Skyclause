@@ -91,5 +91,29 @@
     "clause_engine": "Keputusan enjin klausa: belum disemak, belum dihantar",
     "approved_call": "Panggilan diluluskan",
     "no_basis": "Tiada keputusan lagi"
+  },
+  "day": {
+    "label": "Tetingkap pada {date}",
+    "summary": "{count} tetingkap pada {date}. Masa dalam MYT.",
+    "summary_one": "1 tetingkap pada {date}. Masa dalam MYT.",
+    "empty": "Tiada tetingkap pada {date}.",
+    "now": "Kini {time}",
+    "range": "{from}–{to} MYT",
+    "pending": "Belum ada keputusan",
+    "draft": "Draf, belum diluluskan",
+    "more": "{count} lagi tetingkap tidak disenaraikan.",
+    "list": "Tetingkap dan keputusannya"
+  },
+  "no_call": {
+    "reason": "{inputs} gagal sejak {time}.",
+    "reason_plain": "Input wajib gagal, jadi tetingkap ini tiada keputusan."
+  },
+  "source_error": {
+    "title": "Tidak dapat membaca {source}.",
+    "not_built": "Belum dibina, jadi tiada apa untuk ditunjukkan di sini.",
+    "status": "Ia menjawab {status} pada {time}.",
+    "status_untimed": "Ia menjawab {status}.",
+    "unreachable": "Tiada jawapan pada {time}.",
+    "retry": "Cuba lagi"
   }
 }

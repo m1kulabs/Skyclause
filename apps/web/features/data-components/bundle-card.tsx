@@ -43,7 +43,7 @@ export function BundleCard({
       </CardHeader>
       <CardContent>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground">{t('data.bundle.calls_title', {}, locale)}</span>
+          <span className="text-[13px] text-muted-foreground">{t('data.bundle.calls_title', {}, locale)}</span>
           {modes.map((mode) => (
             <ModeBadge key={mode} mode={mode} pack={bundle.pack} locale={locale} />
           ))}
@@ -59,7 +59,7 @@ export function BundleCard({
             : t('data.bundle.disagrees', { count: disagreements }, locale)}
         </p>
         {bundle.escalation_level > 0 ? (
-          <p className="mt-1 text-xs text-muted-foreground tabular-nums">
+          <p className="mt-1 text-[13px] text-muted-foreground tabular-nums">
             {t('data.bundle.escalation', { level: bundle.escalation_level }, locale)}
           </p>
         ) : null}

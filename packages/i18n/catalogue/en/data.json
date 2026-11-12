@@ -91,5 +91,29 @@
     "clause_engine": "Clause engine verdict: not reviewed, not sent",
     "approved_call": "Approved call",
     "no_basis": "No call yet"
+  },
+  "day": {
+    "label": "Windows on {date}",
+    "summary": "{count} windows on {date}. Times in MYT.",
+    "summary_one": "1 window on {date}. Times in MYT.",
+    "empty": "No windows on {date}.",
+    "now": "Now {time}",
+    "range": "{from}–{to} MYT",
+    "pending": "No call yet",
+    "draft": "Draft, not approved",
+    "more": "{count} more windows are not listed.",
+    "list": "Windows and their calls"
+  },
+  "no_call": {
+    "reason": "{inputs} failing since {time}.",
+    "reason_plain": "A required input is failing, so this window gets no call."
+  },
+  "source_error": {
+    "title": "Couldn’t read {source}.",
+    "not_built": "Not built yet, so there is nothing to show here.",
+    "status": "It answered {status} at {time}.",
+    "status_untimed": "It answered {status}.",
+    "unreachable": "No answer at {time}.",
+    "retry": "Try again"
   }
 }
