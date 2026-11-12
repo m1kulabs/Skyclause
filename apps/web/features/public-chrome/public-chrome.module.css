@@ -82,9 +82,7 @@
   background: var(--raised);
 }
 
-/* The capsule's fill reaches its 2px edge, as tall as the outlined controls (see requests/t4.md). */
 .action {
-  background-clip: border-box;
   /* A long label (Malay, or 30% longer) wraps inside the capsule instead of pushing the page past 320px. */
   max-width: 100%;
   height: auto;
@@ -141,30 +139,6 @@
   width: min(100%, var(--page-max));
   margin-inline: auto;
   container-type: inline-size;
-}
-
-/* Nine capsules of different lengths, one per letter, like windows on a strip: the length is the letter's own. */
-.footerWordmark {
-  display: flex;
-  gap: 1.1cqw;
-  font-size: 8.4cqw;
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: -0.02em;
-  user-select: none;
-}
-
-.footerWordmark span {
-  flex: 1 1 auto;
-  display: grid;
-  place-items: center;
-  height: 1.5em;
-  padding-inline: 0.2em;
-  padding-bottom: 0.06em;
-  border: 2px solid var(--ink);
-  border-radius: 9999px;
-  background: var(--ink);
-  color: var(--ground);
 }
 
 .errorPage {

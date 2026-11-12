@@ -66,12 +66,6 @@
   margin: 0;
 }
 
-/* The capsule's fill reaches its 2px edge, so the primary is as tall as the outlined controls beside it (see requests). */
-.auth-page [data-slot='button'],
-.auth-page .auth-button {
-  background-clip: border-box;
-}
-
 .auth-stack,
 .auth-form {
   display: grid;

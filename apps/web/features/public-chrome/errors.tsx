@@ -1,5 +1,5 @@
 import { t } from '@skyclause/i18n'
-import { buttonVariants } from '#ui/button'
+import { buttonVariants } from '#ui/button-variants'
 import './catalogue'
 import type { PublicLocale } from './attribution'
 import styles from './public-chrome.module.css'

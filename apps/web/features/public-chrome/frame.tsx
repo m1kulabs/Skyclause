@@ -1,6 +1,6 @@
 import { t } from '@skyclause/i18n'
 import type { ReactNode } from 'react'
-import { buttonVariants } from '#ui/button'
+import { buttonVariants } from '#ui/button-variants'
 import { CapsuleWordmark } from '../brand'
 import type { PublicLocale } from './attribution'
 import { BrandLines } from './brand-lines'

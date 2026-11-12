@@ -179,7 +179,7 @@ export function InvitePanel({ token, locale, signedIn }: InvitePanelProps) {
                 </p>
                 {info.org_slug && (
                   <Link
-                    className={`${buttonVariants({ size: 'lg' })} auth-button w-full`}
+                    className={`${buttonVariants({ size: 'lg' })} w-full`}
                     href={`/${encodeURIComponent(info.org_slug)}`}
                   >
                     {t('members.continue_to_org', {}, locale)}
@@ -217,14 +217,11 @@ export function InvitePanel({ token, locale, signedIn }: InvitePanelProps) {
                   </Button>
                 ) : (
                   <div className="auth-stack">
-                    <Link
-                      className={`${buttonVariants({ size: 'lg' })} auth-button w-full`}
-                      href={`/sign-in${authQuery}`}
-                    >
+                    <Link className={`${buttonVariants({ size: 'lg' })} w-full`} href={`/sign-in${authQuery}`}>
                       {t('members.sign_in', {}, locale)}
                     </Link>
                     <Link
-                      className={`${buttonVariants({ size: 'lg', variant: 'outline' })} auth-button w-full`}
+                      className={`${buttonVariants({ size: 'lg', variant: 'outline' })} w-full`}
                       href={`/sign-up${authQuery}`}
                     >
                       {t('members.create_account', {}, locale)}

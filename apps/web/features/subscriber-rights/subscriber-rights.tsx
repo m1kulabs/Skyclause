@@ -322,7 +322,7 @@ export function SubscriberRights({ initialData, token }: { initialData: Subscrib
           {column('export_erase')}
         </h2>
         <div className={styles.actions}>
-          <a className={`${buttonVariants({ size: 'lg', variant: 'outline' })} auth-button`} href={`${base}/export`}>
+          <a className={buttonVariants({ size: 'lg', variant: 'outline' })} href={`${base}/export`}>
             {column('download')}
           </a>
           <Button size="lg" variant="destructive" type="button" onClick={() => setConfirming(true)}>
