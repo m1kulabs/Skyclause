@@ -401,6 +401,8 @@ function responseRedirect(location: string, response?: Response, status = 303) {
   })
   for (const cookie of response?.headers.getSetCookie() ?? []) headers.append('Set-Cookie', cookie)
   headers.set('Location', location)
+  // Every redirect here depends on the session or sets a cookie: no cache may keep it.
+  headers.set('Cache-Control', 'private, no-store')
   return new Response(null, { status, headers })
 }
 
@@ -611,12 +613,14 @@ function googleCallbackRedirect(response: Response, appOrigin: string) {
   return responseRedirect(`${target.pathname}${target.search}${target.hash}`, response)
 }
 
-/** Better Auth's form CSRF check stops cross-site sign-in posts; these wrappers bypass its router, so they check here. */
+/**
+ * Better Auth's form CSRF check stops cross-site sign-in posts; these wrappers bypass its router, so they check here.
+ * A post proves it came from the app by its Origin, or else by Sec-Fetch-Site; with neither it fails closed.
+ */
 function crossSite(request: Request, appOrigin: string) {
   const origin = request.headers.get('Origin')
   if (origin) return origin !== new URL(appOrigin).origin
-  const site = request.headers.get('Sec-Fetch-Site')
-  return site !== null && site !== 'same-origin' && site !== 'none'
+  return request.headers.get('Sec-Fetch-Site') !== 'same-origin'
 }
 
 export async function authSignInHandler(

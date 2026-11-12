@@ -111,7 +111,14 @@ test('a cross-site confirm or resend is refused and leaves the link usable', asy
   const metadataOnly = await crossSite('/magic-link/confirm', { 'Sec-Fetch-Site': 'cross-site' })
   expect(metadataOnly.status).toBe(403)
   expect((await crossSite('/magic-link/resend', { Origin: 'https://evil.example' })).status).toBe(403)
-  expect(mailbox.sent).toHaveLength(1)
+  // Neither header proves the post came from the app: it fails closed, whatever the Referer says.
+  for (const path of ['/magic-link/confirm', '/magic-link/resend']) {
+    expect((await crossSite(path, {})).status, path).toBe(403)
+    expect((await crossSite(path, { Referer: `${APP}/sign-in` })).status, path).toBe(403)
+  }
+  // A same-origin browser post that sends only Sec-Fetch-Site still works (the confirmation below sends Origin).
+  expect((await crossSite('/magic-link/resend', { 'Sec-Fetch-Site': 'same-origin' })).status).not.toBe(403)
+  expect(mailbox.sent).toHaveLength(2)
 
   const confirmed = await request('POST', '/magic-link/confirm', JSON.parse(body))
   expect(new URL(confirmed.headers.get('Location')!, APP).pathname).toBe('/api/auth/continue')
@@ -258,6 +265,10 @@ test('continue sends a signed-out visitor to sign-in, and a signed-in one with t
   const never = await makeUser({ email: 'never@example.test', emailVerified: true })
   const cleared = await request('GET', '/continue', undefined, (await signIn(never.id)).cookie)
   expect(languageOf(cleared)).toMatch(/^skyclause-language=; Path=\/; Max-Age=0;/)
+  // Each answer depends on the session and may set a cookie: no cache may keep it.
+  for (const response of [signedOut, chose, cleared]) {
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store')
+  }
 })
 
 test('magic-link requests and resends enforce email and IP-hour limits with Retry-After', async () => {
