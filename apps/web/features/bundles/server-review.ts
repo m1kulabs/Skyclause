@@ -1,11 +1,18 @@
-import { ApiError, getAccountPreferences, getBundle, getCall, getCallExplanation } from '@skyclause/api'
+import {
+  ApiError,
+  getAccountPreferences,
+  getBundle,
+  getCall,
+  getCallExplanation,
+  listProjectBundles
+} from '@skyclause/api'
 import { can } from '@skyclause/auth'
 import { log } from '@skyclause/config'
 import { withTenant } from '@skyclause/db'
 import { getOrgPrincipal } from '../../lib/principal'
-import { approves } from './model'
 import type { CallDetail } from './operations'
 import type { InitialReview } from './use-bundle-review'
+import { approves, LIST_LIMIT } from './model'
 
 /** D33's permalink host, as the `getCall` route picks it: the marketing origin under `HOST_MODE=multi`, else the app's. */
 const permalinkOrigin = () =>
@@ -13,7 +20,7 @@ const permalinkOrigin = () =>
 
 /**
  * #372: the bundle and its calls for the page's first paint, read on the server through the services `/v1` serves, so
- * the review shows before the client's JavaScript has loaded. `useBundleReview` still reads it all again on load, with
+ * the review shows before the client's JavaScript has loaded, with the project's bundles for the list beside it. `useBundleReview` still reads it all again on load, with
  * the run, strip, preferences and role. Only a member's session that may view the organisation's projects gets one, as
  * the routes' `requireOrg` and `requirePermission('project.view')` allow. Otherwise, or when a read fails, the page
  * renders as the client reads it.
@@ -31,6 +38,7 @@ export async function serverReview(org: string, bundleId: string): Promise<Initi
         const call = await getCall(ctx, { id, origin: permalinkOrigin() })
         calls.push({ ...call, ...(await getCallExplanation(ctx, { id })) })
       }
+      const bundles = await listProjectBundles(ctx, { projectId: bundle.project_id, limit: LIST_LIMIT })
       const preferences = await getAccountPreferences(principal.accountId)
       const data = {
         bundle,
@@ -39,7 +47,8 @@ export async function serverReview(org: string, bundleId: string): Promise<Initi
         canApprove: approves(principal.role),
         errors: []
       }
-      return { data, now: Date.now() }
+      const list = { status: 'ready' as const, rows: bundles.data, more: Boolean(bundles.next_cursor) }
+      return { data, now: Date.now(), list }
     })
   } catch (error) {
     // A missing or out-of-scope bundle is the API's 404; anything else is worth a log line.

@@ -80,6 +80,7 @@ export function EditCallDialog({
               <label className="bundle-recipient" key={recipient}>
                 <input
                   type="checkbox"
+                  className="native-check"
                   name="recipients"
                   value={recipient}
                   checked={recipients.includes(recipient)}

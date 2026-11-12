@@ -5,6 +5,9 @@ export function parseView(value: unknown): ProbationView {
   return value === 'resolve' || value === 'progress' ? value : 'label'
 }
 
+/** What a camera must show to leave probation (SIG-9): agreement over at least this many frames, this many obscured. */
+export const PASS = { frames: 100, obscured: 10, agreement: 0.9 } as const
+
 export interface WilsonInterval {
   lo: number
   hi: number

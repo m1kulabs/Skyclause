@@ -1,6 +1,10 @@
 {
   "title": "Kamera latar langit",
   "intro": "Sambungkan telefon ini kepada pengecas dan biarkan halaman ini di hadapan. Rakaman dibuat setiap 10 minit pada waktu siang.",
+  "groupDevice": "Telefon ini dan tapak",
+  "groupRegions": "Kawasan dalam bingkai",
+  "groupReference": "Rujukan hari cerah",
+  "groupSend": "Mula menghantar",
   "preview": "Pratonton kamera bertopeng. Sepertiga bahagian bawah kekal hitam.",
   "openCamera": "Benarkan kamera",
   "opening": "Membuka kamera…",
