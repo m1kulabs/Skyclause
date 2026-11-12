@@ -20,6 +20,8 @@ import { t, type Locale } from './i18n'
 import './sign-in.css'
 
 type Mode = 'sign-in' | 'sign-up'
+/** What is running, so only the pressed control says so: a passkey prompt never reads as a link being sent. */
+type Busy = 'email' | 'passkey' | 'google' | 'confirm' | 'resend' | null
 type FieldProblem = 'email_empty' | 'email_invalid'
 type SendProblem = { key: 'send_failed' | 'send_unreachable' } | { key: 'send_limited'; retryAt: number | null }
 /** A link out: to whom (unknown when the no-script form sent it), until when, and whether it was a second send. */
@@ -29,6 +31,13 @@ interface SentLink {
   again?: boolean
   resent?: boolean
 }
+
+/** What the pressed way in says while it runs, on the button and in the live line. */
+const BUSY_LABEL = {
+  email: 'sign-in.sending',
+  passkey: 'sign-in.passkey_waiting',
+  google: 'sign-in.google_opening'
+} as const
 
 /** The room's photograph: the landing's first, the LRT station under the afternoon sky it reads. */
 const ROOM = photo('lrtDay')
@@ -100,7 +109,7 @@ export function SignInPanel({
   const [actionAlert, setActionAlert] = useState<string | null>(null)
   const [passkeyNote, setPasskeyNote] = useState<'passkey_unsupported' | null>(null)
   const [status, setStatus] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState<Busy>(null)
   const [resendSent, setResendSent] = useState(false)
   const [forceEmailForm, setForceEmailForm] = useState(false)
   /** Bumped when the form comes back (a different address, an expired link): focus returns to the field. */
@@ -193,12 +202,12 @@ export function SignInPanel({
 
   const startPasskeySignIn = async () => {
     if (busy) return
-    setBusy(true)
+    setBusy('passkey')
     clearProblems()
     try {
       await completePasskeySignIn()
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
 
@@ -227,7 +236,7 @@ export function SignInPanel({
 
   /** Sends a link to `address`; on success the form gives way to "Check your email" and the strip draws its window. */
   const send = async (address: string, again: boolean) => {
-    setBusy(true)
+    setBusy('email')
     clearProblems()
     setStatus('')
     // Taken before the request, so the end drawn is never later than the server's own.
@@ -263,7 +272,7 @@ export function SignInPanel({
       setSendProblem({ key: 'send_unreachable' })
       if (!again) emailRef.current?.focus()
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
 
@@ -284,7 +293,7 @@ export function SignInPanel({
   const startGoogleSignIn = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (busy) return
-    setBusy(true)
+    setBusy('google')
     clearProblems()
     try {
       const result = await authClient.signIn.social({ provider: 'google', callbackURL: continueHref })
@@ -292,13 +301,13 @@ export function SignInPanel({
     } catch {
       setActionAlert('google_start_failed')
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
 
   const confirmLink = async () => {
     if (state.kind !== 'confirm' || busy || stepUpConfirmed) return
-    setBusy(true)
+    setBusy('confirm')
     setActionAlert(null)
     setStatus('')
     try {
@@ -332,13 +341,13 @@ export function SignInPanel({
     } catch {
       setActionAlert('confirm_failed')
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
 
   const resendLink = async () => {
     if (state.kind !== 'expired' || !state.resend || busy || resendSent) return
-    setBusy(true)
+    setBusy('resend')
     setActionAlert(null)
     setStatus('')
     const startedAt = Date.now()
@@ -354,7 +363,7 @@ export function SignInPanel({
     } catch {
       setActionAlert('resend_failed')
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
 
@@ -455,8 +464,8 @@ export function SignInPanel({
                   <input type="hidden" name="link" value={state.link} />
                   {state.resend ? <input type="hidden" name="resend" value={state.resend} /> : null}
                   {state.stepUp ? <input type="hidden" name="for" value="step-up" /> : null}
-                  <Button size="lg" className="w-full" type="submit" disabled={busy}>
-                    {busy
+                  <Button size="lg" className="w-full" type="submit" disabled={busy !== null}>
+                    {busy === 'confirm'
                       ? text('sign-in.confirming')
                       : text(state.stepUp ? 'sign-in.confirm_step_up' : 'sign-in.confirm')}
                   </Button>
@@ -476,8 +485,8 @@ export function SignInPanel({
                 }}
               >
                 <input type="hidden" name="resend" value={state.resend} />
-                <Button size="lg" className="w-full" type="submit" disabled={busy}>
-                  {busy ? text('sign-in.sending') : text('sign-in.resend')}
+                <Button size="lg" className="w-full" type="submit" disabled={busy !== null}>
+                  {busy === 'resend' ? text('sign-in.sending') : text('sign-in.resend')}
                 </Button>
               </form>
               {differentEmail}
@@ -506,10 +515,12 @@ export function SignInPanel({
                     size="lg"
                     className="w-full"
                     onClick={() => void send(sent.email!, true)}
-                    disabled={busy}
+                    disabled={busy !== null}
                   >
-                    {busy ? <Loader2Icon data-icon="inline-start" aria-hidden="true" className="animate-spin" /> : null}
-                    {busy ? text('sign-in.sending') : text('sign-in.resend_again')}
+                    {busy === 'email' ? (
+                      <Loader2Icon data-icon="inline-start" aria-hidden="true" className="animate-spin" />
+                    ) : null}
+                    {busy === 'email' ? text('sign-in.sending') : text('sign-in.resend_again')}
                   </Button>
                 )}
                 {differentEmail}
@@ -519,6 +530,10 @@ export function SignInPanel({
 
           {showForm && (
             <>
+              {/* Mounted before anything runs, so what the pressed control starts is announced when it starts. */}
+              <p className="sr-only" aria-live="polite" aria-atomic="true">
+                {busy === 'email' || busy === 'passkey' || busy === 'google' ? text(BUSY_LABEL[busy]) : ''}
+              </p>
               {methods.email ? (
                 <form
                   className="sign-in-form"
@@ -543,7 +558,7 @@ export function SignInPanel({
                         spellCheck={false}
                         autoCapitalize="none"
                         required
-                        readOnly={busy}
+                        readOnly={busy === 'email'}
                         className="h-12 text-base md:text-base"
                         value={email}
                         onChange={(event) => {
@@ -562,16 +577,11 @@ export function SignInPanel({
                       ) : null}
                     </Field>
                     {sendProblem && <AuthMessage>{sendProblemText(sendProblem)}</AuthMessage>}
-                    {busy && (
-                      <p className="sr-only" role="status" aria-live="polite">
-                        {text('sign-in.sending')}
-                      </p>
-                    )}
-                    <Button size="lg" className="w-full" type="submit" disabled={busy}>
-                      {busy ? (
+                    <Button size="lg" className="w-full" type="submit" disabled={busy !== null}>
+                      {busy === 'email' ? (
                         <Loader2Icon data-icon="inline-start" aria-hidden="true" className="animate-spin" />
                       ) : null}
-                      {busy ? text('sign-in.sending') : text('sign-in.email_submit')}
+                      {busy === 'email' ? text('sign-in.sending') : text('sign-in.email_submit')}
                     </Button>
                     {mode === 'sign-in' ? (
                       <FieldDescription id="sign-in-email-hint" className="sign-in-hint">
@@ -603,16 +613,22 @@ export function SignInPanel({
                         className="w-full"
                         data-sign-in-script=""
                         onClick={() => void startPasskeySignIn()}
-                        disabled={busy}
+                        disabled={busy !== null}
                       >
-                        {text('sign-in.passkey')}
+                        {busy === 'passkey' ? (
+                          <Loader2Icon data-icon="inline-start" aria-hidden="true" className="animate-spin" />
+                        ) : null}
+                        {text(busy === 'passkey' ? BUSY_LABEL.passkey : 'sign-in.passkey')}
                       </Button>
                     ))}
                   {methods.google && (
                     <form method="post" action="/sign-in/google" onSubmit={(event) => void startGoogleSignIn(event)}>
                       {next ? <input type="hidden" name="next" value={next} /> : null}
-                      <Button variant="outline" size="lg" className="w-full" type="submit" disabled={busy}>
-                        {text('sign-in.google')}
+                      <Button variant="outline" size="lg" className="w-full" type="submit" disabled={busy !== null}>
+                        {busy === 'google' ? (
+                          <Loader2Icon data-icon="inline-start" aria-hidden="true" className="animate-spin" />
+                        ) : null}
+                        {text(busy === 'google' ? BUSY_LABEL.google : 'sign-in.google')}
                       </Button>
                     </form>
                   )}
