@@ -111,6 +111,10 @@
     "reason": "{inputs} failing since {time}.",
     "reason_plain": "A required input is failing, so this window gets no call."
   },
+  "not_built": {
+    "title": "{thing} is not built yet.",
+    "detail": "There is nothing to show here yet."
+  },
   "source_error": {
     "title": "Couldn’t read {source}.",
     "not_built": "Not built yet, so there is nothing to show here.",
