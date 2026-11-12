@@ -31,6 +31,20 @@
             },
             "cursor": {
               "type": "string"
+            },
+            "from": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$"
+            },
+            "to": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$"
+            },
+            "outcome": {
+              "type": "string",
+              "enum": ["ok", "unchanged", "error"]
             }
           },
           "required": [],
@@ -80,6 +94,16 @@
                       },
                       "error_code": {
                         "type": ["string", "null"]
+                      },
+                      "message": {
+                        "type": ["string", "null"]
+                      },
+                      "purpose": {
+                        "type": "string"
+                      },
+                      "received_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
                       }
                     },
                     "required": [
