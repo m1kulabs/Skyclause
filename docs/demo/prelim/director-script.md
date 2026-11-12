@@ -148,18 +148,18 @@ Every label below was read off `main` at `d45a0b2` (#733, the redesign) on 13 No
 
 ### Read this first: what records today
 
-Four of the six beats can't be recorded as written on today's production build. The server answers 501 "not built" for the reads those pages need. The lines below were written to survive that: D1, D2 and D3 keep their narration word for word in the fallback, D4 and D5 swap their lines, and D6 swaps its first two. Run the two-minute check in step 9 of the setup, then pick each beat's version from this table.
+Status from a live walk on production at 03:08 MYT, 13 November 2026 (main `c250a78`, web revision `web-00039-hss`). Five beats record as written; D4's live verdict depends on the real sky. Recheck with the team's troubleshooting session before the take, and run step 10 of the setup.
 
-| Beat        | Records today as written? | Why                                                                                                | Fallback                                         |
-| ----------- | ------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| D1, declare | Half                      | The form opens and fills. **Save window** fails: no handler for `createWindow` (#139, open).       | Fill the form, cut before Save.                  |
-| D2, watch   | No                        | The Signals page fails whole: it needs `getProjectStrip` (#134, open).                             | **Signal health** on the project overview.       |
-| D3, decide  | Yes                       | It's the labelled replay. Nothing live is needed.                                                  | The same replay on the public site.              |
-| D4, approve | No                        | No window means no window call, and a failed strip read disables **Approve** on every bundle.      | The live rota, then the replay's worked example. |
-| D5, notify  | No                        | No approved call, so no notice. The pilot's public calendar answers 404.                           | The notice wording from the replay.              |
-| D6, record  | Yes, but short            | The ledger and **Check integrity** are built. Without an approved call it holds few rows, or none. | Show it as it is, and say so.                    |
+| Beat        | Records as written?   | What to know                                                                                                                                                                                                                                         | Fallback                                                       |
+| ----------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| D1, declare | Yes                   | The dialog has Title, Kind, Date, Start (MYT), End (MYT) and **Save window**, and saving works. Don't tick **Repeat weekly** or open **Import an ICS calendar**: neither is built.                                                                   | None needed.                                                   |
+| D2, watch   | Yes                   | The JPS row usually reads **Stale input** (#777): readings are pulled in 15-minute batches. Run setup step 9 just before the take. If it still reads stale, keep the take: the line "if a feed goes quiet, we say No call" is what the screen shows. | None needed.                                                   |
+| D3, decide  | Yes                   | The labelled replay. Nothing live is needed.                                                                                                                                                                                                         | None needed.                                                   |
+| D4, approve | Yes, if the sky turns | **Ask for a call** on the overview starts a run for today's open windows, so declare the window and ask before 15:30 MYT. A clear sky gives "Normal: nothing to send."                                                                               | The live bundle as it reads, then the replay's worked example. |
+| D5, notify  | Partly                | The pilot's calendar feed is live. The email needs a confirmed subscriber (setup step 5) and an approved call that isn't Normal. Don't open the link in the email: the public call page isn't built.                                                 | The notice wording from the replay.                            |
+| D6, record  | Yes                   | The ledger and **Check integrity** work. Without an approved call it reads "No entries yet (n=0)" and "Chain intact: 0 checked".                                                                                                                     | Show it as it is, and say so.                                  |
 
-Slide 6 says "The rest is recorded from the live system." If more than D3 ends up as replay, change that note on the slide to "Storm, call and notice replay the real JPS gauge record of 2 November. Windows, signals, rota and ledger are recorded from the live system." Don't leave a slide that claims more than the cut shows.
+Slide 6 says "The rest is recorded from the live system." If D4 or D5 ends up as replay, change that note on the slide to "Storm, call and notice replay the real JPS gauge record of 2 November. Windows, signals, rota and ledger are recorded from the live system." Don't leave a slide that claims more than the cut shows.
 
 ### Before the recording
 
@@ -167,22 +167,23 @@ A teammate sets up production the day before, about 30 minutes. The Recorder sig
 
 1.  Open Chrome with a clean profile: no bookmarks bar, no extensions, no other tabs. Set the window to 1920×1080 at 100% zoom (Ctrl+0). Turn on Do Not Disturb in the operating system, and close mail and chat apps.
 1.  Go to `https://app.skyclause.m1ku.tech/sign-in` and click **Continue with Google**. Use the team's pilot account, not a personal one. The account avatar and email must never be on screen: keep the account menu closed, and mask it in the edit if it shows.
-1.  Open `https://app.skyclause.m1ku.tech/skyclause-pilot/bukit-jalil`. The page heading is **Project overview**. Check that **Signal health** lists the JPS gauge, the MET warnings and the DOE index, each with a reading. If it says "No sources bound (n=0)", bind them under **Project settings**, **Packs and sources** first.
+1.  Open `https://app.skyclause.m1ku.tech/skyclause-pilot/bukit-jalil`. The page heading is **Project overview**. Check that **Signal health** lists the four bound sources: the JPS gauge `0232901RF`, MET warnings, the MET forecast for Kuala Lumpur and the DOE station at Cheras (`CA16W`). They were bound on 13 November; a source may read "No reading yet" until its next poll. If the header shows "Projects unavailable", reload: the database wakes from idle.
 1.  Set the rota. Go to `/skyclause-pilot/bukit-jalil/settings/rota`, the **Rota** page. Click **Add an approver**, pick yourself under **Person**, pick **Storm afternoons** under **Template** (14:00–19:15 MYT), tick Monday to Friday under **Days**, click **Add shift**, then **Save rota**. Wait for "Rota saved." **On duty now** must show a person during the recording, so record between 14:00 and 19:15 MYT on a weekday, or add a **Custom times** shift that covers your recording hour.
 1.  Add one subscriber. Go to `/skyclause-pilot/bukit-jalil/subscribers`, the **Subscribers** page. Under **Add or import addresses**, type the team's own test address in **Email addresses, one per line** and click **Send confirmations**. Open that inbox, confirm, and reload until the row reads **Confirmed**. It's the team's address, by its own consent. Mask the address in the edit everywhere it appears.
 1.  Keep the window's field values on a card next to the laptop. The 15:30 release wave is real: it's the wave the 2 November story is about, and it runs every teaching weekday. Check the date against the APU timetable before you record.
 
-    | Field           | Value                                                                                                                                                                                                             |
-    | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-    | **Title**       | `15:30 release wave, LRT Bukit Jalil`                                                                                                                                                                             |
-    | **Kind**        | **Commute wave**                                                                                                                                                                                                  |
-    | **Date**        | The recording day, if you record before 15:00 MYT on a teaching weekday (the form starts on today). Otherwise the next teaching weekday: Monday 16 November 2026 if you record on Friday 13 November after 15:00. |
-    | **Start (MYT)** | `15:30`                                                                                                                                                                                                           |
-    | **End (MYT)**   | `15:30` (a commute wave may start and end at the same time)                                                                                                                                                       |
+    | Field           | Value                                                                                 |
+    | --------------- | ------------------------------------------------------------------------------------- |
+    | **Title**       | `15:30 release wave, LRT Bukit Jalil`                                                 |
+    | **Kind**        | **Commute wave**                                                                      |
+    | **Date**        | Today, Friday 13 November 2026: recording starts at 08:00 MYT, before the 15:30 wave. |
+    | **Start (MYT)** | `15:30`                                                                               |
+    | **End (MYT)**   | `15:30` (a commute wave may start and end at the same time)                           |
 
 1.  Don't declare the window yet. D1 declares it on camera.
 1.  Have the replay clip ready: the Remotion composition `D3Crossing` (30 seconds, 1920×1080), rendered from `docs/video/src/D3Crossing.tsx`.
-1.  Run the two-minute check. Open **Windows**: if it says "Couldn’t read the windows list.", D1 uses its fallback. Open **Signals**: if it says "Couldn’t read the bound sources.", D2 uses its fallback. Open **Calls**: if it says "No calls yet (n=0).", D4 and D5 use their fallbacks. Open **Ledger** and click **Check integrity**: note the number it reports, for D6.
+1.  Just before the D2 take, have someone with Cloud Scheduler access pull the newest readings: `gcloud scheduler jobs run ticks-batch --location=asia-southeast1 --project=skyclause`. Wait about a minute.
+1.  Run the two-minute check, opening each page once so it's warm: **Windows** shows no error banner; **Signals** lists four rows; **Calls** and **Ledger** load; click **Check integrity** and note the number it reports, for D6.
 1.  Leave the browser on **Windows**, `/skyclause-pilot/bukit-jalil/windows`, in the **Timeline** view, with the mouse parked in the middle of the page.
 
 Record each beat as its own take, with two seconds of still screen at each end. Move the mouse slowly and stop it on the thing the Narrator names. Never type an email address, a name or a phone number on camera.
@@ -267,7 +268,7 @@ Say "could be on the record". No call was made on 2 November, and the clip says 
 
 ### D4, approve (0:35)
 
-**Page:** Bundle review, `/skyclause-pilot/bukit-jalil/bundles/{id}`, headed "Bundle review". Reach it from **Project overview**, **Recent bundles**: click the newest row marked **Needs review**.
+**Page:** Bundle review, `/skyclause-pilot/bukit-jalil/bundles/{id}`, headed "Bundle review". Reach it from **Project overview**, **Recent bundles**: after D1, click **Ask for a call** there, wait for the new row, and click it. Do this before 15:30 MYT; it covers today's open windows only.
 
 This beat needs the sky to give a verdict that isn't Normal while you record: heavy rain at the gauge, a MET warning in force, or unhealthy haze. Nothing here may be staged. If the sky is clear, the bundle reads "Normal: nothing to send." and you use the fallback.
 
