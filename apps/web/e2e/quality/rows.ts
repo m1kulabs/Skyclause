@@ -20,7 +20,7 @@ export const SHARED_PROJECT = 'shared-project'
  * Project pages the PRD opens to a share-link holder, in the link's own project (PRD routes, LED-4): the reviewer is
  * crawled there. On the other project pages it keeps a project its link doesn't open.
  */
-const SHARED_PAGES = new Set(['/[org]/[project]/ledger'])
+const SHARED_PAGES = new Set(['/[org]/[project]/ledger', '/[org]/[project]/windows'])
 /** Pages under a project's source: the crawl binds a source to the role's project and visits it there. */
 const SOURCE_PAGES: Record<string, string> = {
   '/[org]/[project]/camera/[sourceId]': 'camera',

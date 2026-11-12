@@ -32,8 +32,8 @@ export function expectedStatus(route: CrawlRoute, role: Role) {
     if (/^\/[^/]+\/[^/]+\/subscribers$/.test(route.path)) {
       return isOwnerOrAdmin || role === 'Approver' ? route.status : 404
     }
-    // PRD routes and LED-4: a share link opens its own project's ledger, where rows.ts sends the reviewer.
-    if (role === 'share-link reviewer' && /^\/[^/]+\/[^/]+\/ledger$/.test(route.path)) return route.status
+    // PRD routes and LED-4: a share link opens its own project's ledger and windows, where rows.ts sends the reviewer.
+    if (role === 'share-link reviewer' && /^\/[^/]+\/[^/]+\/(?:ledger|windows)$/.test(route.path)) return route.status
     // PRD routes: an organisation's pages are its members'. Its layout only checks that it exists (#596).
     if (!hasSession(role)) return 404
   }
