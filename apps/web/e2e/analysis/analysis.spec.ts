@@ -209,7 +209,9 @@ test('a project without the Crowd pack offers and reads no Crowd, and says so at
   await setup(page, { crowd: false })
   const crowdReads: string[] = []
   page.on('request', (request) => {
-    if (new URL(request.url()).searchParams.get('pack') === 'crowd') crowdReads.push(request.url())
+    // The page's own address may carry it; no read may.
+    if (request.resourceType() !== 'document' && new URL(request.url()).searchParams.get('pack') === 'crowd')
+      crowdReads.push(request.url())
   })
   await page.goto(`${projectRoute}?tab=crowd`)
   await expect(page.getByRole('tab', { name: tabName('crowd'), exact: true })).toHaveCount(0)

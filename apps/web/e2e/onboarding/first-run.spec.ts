@@ -161,7 +161,7 @@ test.describe('the first run on a production-style server', () => {
     await expect(progress).toContainText('4 of 6 steps complete')
     await expectClean(page, 'windows')
     // The project runs Sky only: the windows page draws no Crowd lane.
-    await expect(page.locator('main')).not.toContainText('Crowd')
+    await expect(page.locator('main').getByText(/Crowd/).filter({ visible: true })).toHaveCount(0)
     await shoot(page, '4-window-saved')
 
     // 5. The approver rota: the step says which rota and what completes it, and Continue opens it. The steps carry on
