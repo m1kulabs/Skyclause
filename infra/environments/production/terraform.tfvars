@@ -20,7 +20,7 @@ app_config = {
 }
 
 # #118 gate 3: each has a version, from infra/wizards/google-sign-in.sh and staff-emails.sh.
-supplied_secrets = ["GOOGLE_CLIENT_SECRET", "SKYCLAUSE_STAFF_EMAILS", "TURNSTILE_SECRET_KEY"]
+supplied_secrets = ["GOOGLE_CLIENT_SECRET", "RESEND_RECEIVING_API_KEY", "RESEND_SENDING_API_KEY", "RESEND_WEBHOOK_SECRET", "SKYCLAUSE_STAFF_EMAILS", "TURNSTILE_SECRET_KEY"]
 
 # VAPID_PRIVATE_KEY has its one version (#113), so the worker mounts it.
 vapid_private_key_ready = true

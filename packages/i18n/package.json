@@ -11,6 +11,7 @@
     "./notices": "./src/notices.ts",
     "./evidence": "./src/evidence.ts",
     "./replies": "./src/replies.ts",
-    "./approver-alerts": "./src/approver-alerts.ts"
+    "./approver-alerts": "./src/approver-alerts.ts",
+    "./legal": "./src/legal.ts"
   }
 }

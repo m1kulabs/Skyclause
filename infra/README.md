@@ -1,6 +1,6 @@
 # Skyclause infrastructure
 
-Terraform for every Google Cloud and Neon resource P1 runs on, and one unused AWS root that awaits teardown. There is one environment, `production`, in the Google Cloud project `skyclause` beside the P0 pilot, whose resources it never manages (D10 in #79). Compute and storage sit in `asia-southeast1` and the Neon database in `aws-ap-southeast-1`, both Singapore. Resend carries all email, with its sending and receiving domains in Tokyo (`ap-northeast-1`), the nearest Resend region to Malaysia.
+Terraform for every Google Cloud and Neon resource P1 runs on. There is one environment, `production`, in the Google Cloud project `skyclause` beside the P0 pilot, whose resources it never manages (D10 in #79). Compute and storage sit in `asia-southeast1` and the Neon database in `aws-ap-southeast-1`, both Singapore. Resend carries all email, with its sending and receiving domains in Tokyo (`ap-northeast-1`), the nearest Resend region to Malaysia.
 
 Contents:
 
@@ -16,7 +16,6 @@ Contents:
 
 - `bootstrap/`: the state bucket, the APIs, the `skyclause-terraform` service account that CI impersonates, the `NEON_API_KEY` secret and the project's monthly budget alert (RM40, gate 2's US$10), so CI holds no billing role. A project owner who can manage the billing account's budgets applies it by hand, and again whenever it changes.
 - `environments/production/`: everything else. CI plans and applies it from `main`.
-- `aws/`: the Amazon SES, SNS and S3 stack mail ran on before Resend, with the role `web` and `worker` assumed with Google ID tokens (#113), in AWS account `776566309118`. It has its own state in S3. Nothing reads it any more and nobody applies it; the teardown (#661) destroys it from that state and deletes the directory.
 - `modules/`: `service` (Cloud Run service), `job` (Cloud Run job with an optional schedule), `topic` (Pub/Sub topic with a push subscription to the worker) and `queue` (Cloud Tasks).
 - `scripts/check-region`: fails unless every located resource in a `terraform show -json` document is in Singapore. CI runs it on each plan before applying, and `scripts/check-region.test.sh` tests it.
 - `wizards/production-pilot.sh`: walks the repository owner through the human-only production pilot steps of #194, #531, #534, #536, #539 and #622. It only reads, through the product's API with a `read` key, `gcloud` lists and, when `RESEND_FULL_ACCESS_KEY` is exported, Resend's domain and webhook lists; every write is the person's, in the browser or printed for them to run. It records evidence in the git-ignored `infra/wizards/production-pilot.evidence.md` and refuses any section that holds a credential or an email address.
@@ -120,7 +119,7 @@ The cutover order:
 1.  Run the wizard below (about 20 minutes, plus Resend's DNS check, which usually takes up to 15 minutes). The production apply must have made the three secrets and the worker. It needs `gcloud` signed in as a `skyclause` owner, `bun`, `M1KU_CLOUDFLARE_API_TOKEN` in the shell, and a full-access Resend API key, which Resend shows once when you create it at <https://resend.com/api-keys>: export it as `RESEND_FULL_ACCESS_KEY` or paste it at the hidden prompt. The wizard works with that key and never stores it, so revoking it later doesn't stop inbound mail.
 1.  Commit the `supplied_secrets` line the wizard prints in `environments/production/terraform.tfvars`, in a pull request.
 1.  The next apply turns mail on: Terraform mounts the three secrets and gives the services their sender addresses and the worker its inbound domain.
-1.  Check with a real send, a bounce and an inbound reply. Until the Free plan is upgraded, the 100-a-day limit is the known limit that replaces the old SES sandbox. Then turn on `inbound_email` with the audited `flag:set` script (#92) if it is off.
+1.  Check with a real send, a bounce and an inbound reply. Until the Free plan is upgraded, the 100-a-day limit is the known limit. Then turn on `inbound_email` with the audited `flag:set` script (#92) if it is off.
 
 ```shell
 M1KU_CLOUDFLARE_API_TOKEN=... ./infra/wizards/resend.sh
@@ -130,7 +129,7 @@ In order, the wizard:
 
 1.  Checks its tools and the Cloudflare token, that the three secrets exist and the worker's URL, and takes the key. It refuses a key that can only send.
 1.  Creates `notices.` (sending on, receiving off) and `in.` (sending off, receiving on) in `ap-northeast-1` with tracking off, or finds them and puts any difference right. A domain in another region stops it, because Resend can't move one.
-1.  Reads the DNS records Resend returns for both domains and enters them in Cloudflare with `bun scripts/cloudflare-record.ts` (DNS only, comment `owner: skyclause`). Names, values and MX priorities are Resend's answer, since newer domains may get CNAME sending records and the receiving MX host varies. It also rewrites `_dmarc.notices.skyclause.m1ku.tech` to `v=DMARC1; p=quarantine`, without the report address. It dry-runs every record first, shows what would change and asks once. Besides that DMARC record, the only existing record it changes is the MX at `in.`, so mail to `in.` stops reaching SES from that point.
+1.  Reads the DNS records Resend returns for both domains and enters them in Cloudflare with `bun scripts/cloudflare-record.ts` (DNS only, comment `owner: skyclause`). Names, values and MX priorities are Resend's answer, since newer domains may get CNAME sending records and the receiving MX host varies. It also rewrites `_dmarc.notices.skyclause.m1ku.tech` to `v=DMARC1; p=quarantine`, without the report address. It dry-runs every record first, shows what would change and asks once. Besides that DMARC record, the only existing record it changes is the MX at `in.`, so mail to `in.` reaches Resend from that point.
 1.  Asks Resend to verify each domain and waits (Resend allows up to 72 hours).
 1.  Creates the webhook with its five events, or finds it and puts its events and status right, and stores its signing secret as `RESEND_WEBHOOK_SECRET`.
 1.  Creates the sending-only key for `notices.` and stores it as `RESEND_SENDING_API_KEY`, then a full-access key for the worker, `skyclause-production-worker`, and stores it as `RESEND_RECEIVING_API_KEY`. A stored key Resend still accepts is kept. Resend shows a token only once, so a key whose token isn't stored is deleted and made again after a yes.
@@ -140,7 +139,7 @@ Every step reads before it writes, so a re-run changes nothing that is already r
 
 `./infra/wizards/production-pilot.sh` later reads both Resend domains' status and the webhook's status, with `RESEND_FULL_ACCESS_KEY` exported.
 
-Besides the MX at `in.` and the DMARC record at `notices.`, the wizard leaves every SES record alone: Resend's records sit under other names (`resend._domainkey.…` and its own return-path name), so both providers' records coexist until the teardown (#661). That ticket destroys `aws/` from its state, then deletes the directory, its CI steps, the SES DNS records and this paragraph.
+Besides the MX at `in.` and the DMARC record at `notices.`, the wizard leaves every existing record alone: it stops before writing any record if the record script would replace another one, or refuses one whose comment isn't `owner: skyclause`. Under the two mail domains Cloudflare holds Resend's records (`resend._domainkey.…` and its own return-path name) and the DMARC record, `v=DMARC1; p=quarantine` with no report address, since nothing reads the reports.
 
 ## Source jobs and buffered ingestion
 

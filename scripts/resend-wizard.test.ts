@@ -39,8 +39,9 @@ const TFVARS = 'supplied_secrets = ["GOOGLE_CLIENT_SECRET", "SKYCLAUSE_STAFF_EMA
 const ALL_SUPPLIED =
   'supplied_secrets = ["GOOGLE_CLIENT_SECRET", "RESEND_RECEIVING_API_KEY", "RESEND_SENDING_API_KEY", "RESEND_WEBHOOK_SECRET", "SKYCLAUSE_STAFF_EMAILS", "TURNSTILE_SECRET_KEY"]'
 
-// What Cloudflare holds before the wizard runs: the SES records, each entered through the record script.
-const ses = (type: string, name: string, content: string, priority?: number) => ({
+// What Cloudflare holds before the wizard runs: a sample zone with mail records already in it, each entered through the
+// record script. The wizard replaces only the MX at in. and the DMARC record, and leaves the rest.
+const existing = (type: string, name: string, content: string, priority?: number) => ({
   type,
   name,
   content,
@@ -48,13 +49,17 @@ const ses = (type: string, name: string, content: string, priority?: number) => 
   proxied: type === 'CNAME' ? false : undefined,
   comment: 'owner: skyclause'
 })
-const SES_RECORDS = [
-  ses('CNAME', 'aaa111._domainkey.notices.skyclause.m1ku.tech', 'aaa111.dkim.amazonses.com'),
-  ses('CNAME', 'bbb222._domainkey.in.skyclause.m1ku.tech', 'bbb222.dkim.amazonses.com'),
-  ses('MX', 'bounce.notices.skyclause.m1ku.tech', 'feedback-smtp.ap-southeast-2.amazonses.com', 10),
-  ses('TXT', 'bounce.notices.skyclause.m1ku.tech', SPF),
-  ses('TXT', '_dmarc.notices.skyclause.m1ku.tech', 'v=DMARC1; p=quarantine; rua=mailto:dmarc@in.skyclause.m1ku.tech'),
-  ses('MX', 'in.skyclause.m1ku.tech', 'inbound-smtp.ap-southeast-2.amazonaws.com', 10)
+const EXISTING_RECORDS = [
+  existing('CNAME', 'aaa111._domainkey.notices.skyclause.m1ku.tech', 'aaa111.dkim.amazonses.com'),
+  existing('CNAME', 'bbb222._domainkey.in.skyclause.m1ku.tech', 'bbb222.dkim.amazonses.com'),
+  existing('MX', 'bounce.notices.skyclause.m1ku.tech', 'feedback-smtp.ap-southeast-2.amazonses.com', 10),
+  existing('TXT', 'bounce.notices.skyclause.m1ku.tech', SPF),
+  existing(
+    'TXT',
+    '_dmarc.notices.skyclause.m1ku.tech',
+    'v=DMARC1; p=quarantine; rua=mailto:dmarc@in.skyclause.m1ku.tech'
+  ),
+  existing('MX', 'in.skyclause.m1ku.tech', 'inbound-smtp.ap-southeast-2.amazonaws.com', 10)
 ]
 
 interface Behaviour {
@@ -129,7 +134,7 @@ function sandbox(overrides: Partial<Behaviour> = {}) {
   )
   writeFileSync(
     join(state, 'cloudflare.json'),
-    JSON.stringify({ next: 1, records: SES_RECORDS.map((record, n) => ({ ...record, id: `ses-${n}` })) })
+    JSON.stringify({ next: 1, records: EXISTING_RECORDS.map((record, n) => ({ ...record, id: `existing-${n}` })) })
   )
   const read = (name: string) => (existsSync(join(state, name)) ? readFileSync(join(state, name), 'utf8') : '')
   const lines = (name: string) => read(name).split('\n').filter(Boolean)
@@ -144,7 +149,7 @@ function sandbox(overrides: Partial<Behaviour> = {}) {
         JSON.stringify({ n: 100, domains: [], webhooks: [], keys: [], ...account })
       ),
     /** Adds records to Cloudflare, each as the record script would have entered it. */
-    seedCloudflare: (records: ReturnType<typeof ses>[]) => {
+    seedCloudflare: (records: ReturnType<typeof existing>[]) => {
       const current = JSON.parse(read('cloudflare.json')) as { next: number; records: object[] }
       current.records.push(...records.map((record, n) => ({ ...record, id: `seed-${n}` })))
       writeFileSync(join(state, 'cloudflare.json'), JSON.stringify(current))
@@ -279,6 +284,10 @@ describe('infra/wizards/resend.sh static invariants', () => {
     })
     expect(shellcheck.status, shellcheck.stdout + shellcheck.stderr).toBe(0)
   })
+
+  test('names no SES, AWS account or teardown in its messages or comments, since none of them exists any more', () => {
+    expect(readFileSync(wizardPath, 'utf8')).not.toMatch(/\bSES\b|\bAWS\b|#661|teardown/i)
+  })
 })
 
 describe('infra/wizards/resend.sh on an account with nothing set up', () => {
@@ -344,14 +353,16 @@ describe('infra/wizards/resend.sh on an account with nothing set up', () => {
     expect(first.output).toContain('This replaces the MX at in.skyclause.m1ku.tech')
   })
 
-  test('leaves every other SES record exactly as it was, and writes only through the record script', () => {
-    const untouched = SES_RECORDS.filter((record) => !(record.name === RECEIVING || record.name.startsWith('_dmarc.')))
+  test('leaves every other record exactly as it was, and writes only through the record script', () => {
+    const untouched = EXISTING_RECORDS.filter(
+      (record) => !(record.name === RECEIVING || record.name.startsWith('_dmarc.'))
+    )
     for (const record of untouched) {
       expect(box.cloudflare()).toContainEqual(
         expect.objectContaining({ type: record.type, name: record.name, content: record.content })
       )
     }
-    expect(box.cloudflare()).toHaveLength(SES_RECORDS.length + 4)
+    expect(box.cloudflare()).toHaveLength(EXISTING_RECORDS.length + 4)
     // Six dry runs, then the six writes, each by the record script.
     expect(first.bunCalls).toHaveLength(12)
     expect(first.bunCalls.every((call) => call.startsWith('scripts/cloudflare-record.ts '))).toBe(true)
@@ -740,7 +751,7 @@ describe('infra/wizards/resend.sh resumes and refuses', () => {
 
     expect(stopped.result.status).toBe(1)
     expect(stopped.output).toContain('is still pending after 10 minutes')
-    expect(box.cloudflare()).toHaveLength(SES_RECORDS.length + 4)
+    expect(box.cloudflare()).toHaveLength(EXISTING_RECORDS.length + 4)
     expect(box.resend().domains.map((domain: { status: string }) => domain.status)).toEqual(['pending', 'not_started'])
 
     box.configure({ verifyAfter: 1 })
@@ -776,7 +787,7 @@ describe('infra/wizards/resend.sh resumes and refuses', () => {
   test('refuses to replace any existing record but the in. MX and the DMARC record', () => {
     const box = sandbox()
     // A different SPF record at the name Resend wants: the record script would replace it.
-    box.seedCloudflare([ses('TXT', 'send.notices.skyclause.m1ku.tech', 'v=spf1 include:example.org ~all')])
+    box.seedCloudflare([existing('TXT', 'send.notices.skyclause.m1ku.tech', 'v=spf1 include:example.org ~all')])
     const run = box.run({ input: mainPath })
 
     expect(run.result.status).toBe(1)

@@ -11,7 +11,9 @@ test('@smoke production serves no test route', async ({ request }) => {
     '/quality-planted/unlabelled-input',
     '/quality-planted/motion',
     '/quality-planted/form-types',
-    '/quality-planted/vitals'
+    '/quality-planted/vitals',
+    '/legal/__test/attribution',
+    '/legal/__test/error'
   ]) {
     const response = await request.get(path)
     expect(response.status(), path).toBe(404)

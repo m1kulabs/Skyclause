@@ -1,7 +1,8 @@
 import { expect, test } from 'vitest'
-import { consentWriteProblem, PRIVACY_NOTICE_VERSION } from '../src/legal'
+import { consentWriteProblem, PRIVACY_NOTICE_VERSION, TERMS_VERSION } from '../src/legal'
 
-test('refuses a consent write while the privacy notice is unpublished', () => {
-  expect(PRIVACY_NOTICE_VERSION).toBeNull()
-  expect(consentWriteProblem()).toEqual({ slug: 'privacy-notice-unpublished', status: 503 })
+test('allows consent writes after the versioned privacy notice is published', () => {
+  expect(PRIVACY_NOTICE_VERSION).toBe('2026-11-10')
+  expect(TERMS_VERSION).toBe('2026-11-10')
+  expect(consentWriteProblem()).toBeNull()
 })

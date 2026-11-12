@@ -1,4 +1,4 @@
-export const OPENAPI_SHA256 = '0b06981f7cfb79daf4f90146216c99f88ccaf7756cfb998dac1600c0d6898998' as const // gitleaks:allow -- a SHA-256 of openapi.json, not a secret.
+export const OPENAPI_SHA256 = '1d71706d5cda572ddb4027296cd4b69e897978ba749ba48b69051765803bc8a9' as const // gitleaks:allow -- a SHA-256 of openapi.json, not a secret.
 
 export const OPERATION_IDS = [
   'getProjectAnalysis',
@@ -5598,6 +5598,14 @@ export type OperationResponses = {
       request_id: string
       error_code: string | null
     }>
+    probation?: {
+      source_id: string
+      probation: boolean
+      labeller_ids: Array<string>
+      n: number
+      obscured_frames: number
+      agreement: number | null
+    }
   }
   listProjectSources: {
     data: Array<{
@@ -5668,6 +5676,14 @@ export type OperationResponses = {
         request_id: string
         error_code: string | null
       }>
+      probation?: {
+        source_id: string
+        probation: boolean
+        labeller_ids: Array<string>
+        n: number
+        obscured_frames: number
+        agreement: number | null
+      }
     }>
     next_cursor: string | null
   }

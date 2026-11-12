@@ -26,7 +26,7 @@ export function crawlRoutes(manifest: Record<string, string>): CrawlRoute[] {
     .filter(([entry, url]) => entry.endsWith('/page') && !UNVISITABLE.has(url))
     .map(([entry, url]) => ({
       path: url,
-      group: /\/\(([^)]+)\)\//.exec(entry)?.[1] ?? null,
+      group: url === '/_not-found' ? 'public' : (/\/\(([^)]+)\)\//.exec(entry)?.[1] ?? null),
       dynamic: url.includes('['),
       ...(PROJECT_PAGE.test(url)
         ? { params: ['org' as const, 'project' as const] }

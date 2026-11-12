@@ -37,12 +37,10 @@ jobs:
       - run: terraform fmt -check -recursive infra
       - name: Validate
         run: |
-          for dir in infra/bootstrap infra/environments/production infra/aws; do
+          for dir in infra/bootstrap infra/environments/production; do
             terraform -chdir="$dir" init -backend=false -input=false
             terraform -chdir="$dir" validate
           done
-      - name: Test the email role's policy
-        run: terraform -chdir=infra/aws test
       - name: Test which units get the mail settings
         run: terraform -chdir=infra/environments/production test
       - name: Test the region check
