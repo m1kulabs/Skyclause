@@ -71,9 +71,10 @@ test('catalogue refresh preserves identity and readings while updating all disco
     await withSystem('test-source-catalogue', (tx) => tx.select().from(reading).where(eq(reading.id, old.id)))
   ).toHaveLength(1)
   await withSystem('test-source-catalogue', (tx) => upsertSourceCatalogue(tx, metadata, [entry]))
+  // Two 300 s intervals plus two 900 s ingestion batches (D45).
   expect(
     await withSystem('test-source-catalogue', (tx) => tx.select().from(source).where(eq(source.id, before!.id)))
-  ).toMatchObject([{ staleAfterS: 600 }])
+  ).toMatchObject([{ staleAfterS: 2400 }])
   await withSystem('test-source-catalogue', (tx) => upsertSourceCatalogue(tx, metadata, []))
   expect(
     await withSystem('test-source-catalogue', (tx) => tx.select().from(source).where(eq(source.id, before!.id)))

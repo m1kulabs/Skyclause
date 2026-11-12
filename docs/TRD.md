@@ -278,7 +278,7 @@ The GTFS Realtime cadence is the platform's; the pilot's Pi probe polls every mi
 ### Freshness, staleness and recovery
 
 - Input states: fresh, stale, error, recovered ([SIG-3](/docs/PRD.md#signals-sig)), plus `probation` and `off_hours` for the camera.
-- `observed` sources: age is `t_eval − observed_at` of the newest reading; stale after two missed intervals (JPS 10 minutes, APIMS 2 hours, camera 20 minutes in daylight).
+- `observed` sources: age is `t_eval − observed_at` of the newest reading; stale after two missed intervals. A catalogued source's readings reach Postgres only in the 15-minute batch (D45), so its threshold adds two batches, one for the wait and one for the poll's phase and the provider's publishing lag (JPS 40 minutes, APIMS 2 hours as published); a device source ingests directly (camera 20 minutes in daylight).
 - `polled` sources (warnings, forecast, listings): age is time since the last `ok` or `unchanged` poll, because an unchanged warning list is still current; stale after two missed or failed polls.
 - Error: the latest poll failed, naming the HTTP status and since when. Recovered: the first good reading after stale or error marks the input recovered and names it on the next call; clauses use it only from the next fresh reading.
 - Rapid Rail is "pending" until its `next_update`, then stale after two missed polls. Ages are computed at `t_eval` and frozen in the indicator snapshot, so a replay reproduces them exactly.
