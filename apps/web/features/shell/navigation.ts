@@ -28,6 +28,8 @@ export interface Destination {
   href: string
   /** Pages under this prefix count as this destination; the destination's own href when unset. */
   match?: string
+  /** Further prefixes that count as this destination (a bundle under review is a batch of calls). */
+  also?: string[]
   /** Only this exact path counts (an overview or a dashboard has deeper pages that are not it). */
   exact?: boolean
 }
@@ -35,9 +37,13 @@ export interface Destination {
 const path = (...segments: string[]) => `/${segments.map(encodeURIComponent).join('/')}`
 const manages = (role?: Role) => role === 'owner' || role === 'admin'
 
-/** The four core destinations of a project: the bar's text links. */
+/** The four core destinations of a project: the bar's text links. Bundle review counts as Calls. */
 export function coreDestinations(org: string, project: string): Destination[] {
-  return (['windows', 'signals', 'calls', 'ledger'] as const).map((key) => ({ key, href: path(org, project, key) }))
+  return (['windows', 'signals', 'calls', 'ledger'] as const).map((key) =>
+    key === 'calls'
+      ? { key, href: path(org, project, key), also: [path(org, project, 'bundles')] }
+      : { key, href: path(org, project, key) }
+  )
 }
 
 /** The project menu: the rest of a project's pages, filtered by the member's role. */
@@ -99,13 +105,14 @@ export function reviewHref(org: string): string {
 
 /** The destination the path is on: the longest matching prefix, so a call's page is under Calls. */
 export function currentDestination(pathname: string, destinations: readonly Destination[]): DestinationKey | undefined {
-  let best: Destination | undefined
+  let best: { key: DestinationKey; length: number } | undefined
   for (const destination of destinations) {
-    const prefix = destination.match ?? destination.href
-    const hit = destination.exact
-      ? pathname === destination.href
-      : pathname === prefix || pathname.startsWith(`${prefix}/`)
-    if (hit && (!best || prefix.length > (best.match ?? best.href).length)) best = destination
+    for (const prefix of [destination.match ?? destination.href, ...(destination.also ?? [])]) {
+      const hit = destination.exact
+        ? pathname === destination.href
+        : pathname === prefix || pathname.startsWith(`${prefix}/`)
+      if (hit && (!best || prefix.length > best.length)) best = { key: destination.key, length: prefix.length }
+    }
   }
   return best?.key
 }

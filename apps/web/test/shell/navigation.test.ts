@@ -13,11 +13,11 @@ import {
 const keys = (items: { key: string }[]) => items.map((item) => item.key)
 const roles: Role[] = ['owner', 'admin', 'approver', 'editor', 'viewer', 'guest']
 
-test('the bar carries the four core destinations of the project in the URL', () => {
+test('the bar carries the four core destinations of the project in the URL; bundles count as Calls', () => {
   expect(coreDestinations('test-org', 'test-project')).toEqual([
     { key: 'windows', href: '/test-org/test-project/windows' },
     { key: 'signals', href: '/test-org/test-project/signals' },
-    { key: 'calls', href: '/test-org/test-project/calls' },
+    { key: 'calls', href: '/test-org/test-project/calls', also: ['/test-org/test-project/bundles'] },
     { key: 'ledger', href: '/test-org/test-project/ledger' }
   ])
 })
@@ -108,7 +108,9 @@ test('the current destination is the longest match; overview and dashboard only 
   expect(currentDestination('/test-org/test-project/signals/probation/source', all)).toBe('signals')
   expect(currentDestination('/test-org/test-project', all)).toBe('overview')
   expect(currentDestination('/test-org/test-project/settings/packs', all)).toBe('projectSettings')
-  expect(currentDestination('/test-org/test-project/bundles/019a45b0', all)).toBeUndefined()
+  expect(currentDestination('/test-org/test-project/bundles/019a45b0', all)).toBe('calls')
+  expect(currentDestination('/test-org/test-project/bundles/019a45b0', coreDestinations('o', 'p'))).toBeUndefined()
+  expect(currentDestination('/o/p/bundles/x', coreDestinations('o', 'p'))).toBe('calls')
   expect(currentDestination('/test-org', all)).toBe('dashboard')
   expect(currentDestination('/test-org/settings/members', all)).toBe('organisationSettings')
   expect(currentDestination('/test-org/settings/webhooks', all)).toBe('webhooks')
