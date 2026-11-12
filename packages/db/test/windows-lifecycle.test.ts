@@ -723,3 +723,103 @@ test.each([false, true])('guest cancellation with sent call=%s never creates pub
     expect(saved.events.map((event) => event.type)).toEqual(['window.created', 'window.cancelled'])
   }
 })
+
+test.each(['create', 'update'] as const)(
+  'a first %s refuses unplanned existing-window locks after mutation begins',
+  async (first) => {
+    const c = await context()
+    const rows = await c.run(async (tx) => [await makeWindow(tx, c.values), await makeWindow(tx, c.values)])
+    const [a, b] = rows.sort((left, right) => left.id.localeCompare(right.id))
+    await expect(
+      c.run(async (tx) => {
+        if (first === 'create') await writeWindowChange(tx, { kind: 'create', values: c.values, now })
+        else await writeWindowChange(tx, { kind: 'update', id: a!.id, patch: { title: 'First edit' }, now })
+        await writeWindowChange(tx, { kind: 'update', id: b!.id, patch: { title: 'Late edit' }, now })
+      })
+    ).rejects.toThrow(/complete window batch/)
+    expect(await c.run((tx) => tx.select().from(window).orderBy(window.id))).toEqual([a, b])
+    expect(await c.run((tx) => tx.select().from(domainEvent))).toEqual([])
+  }
+)
+
+async function windowBlockers(pid: number): Promise<number[]> {
+  const result = await asLogin('postgres', (client) =>
+    client.query<{ blockers: number[] }>('SELECT pg_blocking_pids($1) AS blockers', [pid])
+  )
+  return result.rows[0]!.blockers
+}
+
+test('mixed create/update refuses the event-counter inversion before waiting on another transaction', async () => {
+  const c = await context()
+  const existing = await c.run((tx) => makeWindow(tx, c.values))
+  const creatorReady = signal<number>()
+  const updaterReady = signal<number>()
+  const attempt = signal<void>()
+  let creatorSettled = false
+  const creator = c
+    .run(async (tx) => {
+      await writeWindowChange(tx, { kind: 'create', values: c.values, now })
+      const { rows } = await tx.execute<{ pid: number }>(sql`SELECT pg_backend_pid() AS pid`)
+      creatorReady.resolve(rows[0]!.pid)
+      await attempt.promise
+      try {
+        await writeWindowChange(tx, { kind: 'update', id: existing.id, patch: { title: 'Unplanned edit' }, now })
+        return null
+      } catch (error) {
+        return error
+      }
+    })
+    .finally(() => {
+      creatorSettled = true
+    })
+  const creatorPid = await creatorReady.promise
+  const updater = c.run(async (tx) => {
+    const { rows } = await tx.execute<{ pid: number }>(sql`SELECT pg_backend_pid() AS pid`)
+    updaterReady.resolve(rows[0]!.pid)
+    return writeWindowChange(tx, { kind: 'update', id: existing.id, patch: { title: 'Concurrent edit' }, now })
+  })
+  const updaterPid = await updaterReady.promise
+  try {
+    await expect.poll(() => windowBlockers(updaterPid)).toContain(creatorPid)
+  } finally {
+    attempt.resolve()
+  }
+  let inverted = false
+  while (!creatorSettled) {
+    if ((await windowBlockers(creatorPid)).includes(updaterPid)) {
+      inverted = true
+      // Cancel only this test's blocked backend so a demonstrated RED inversion drains without timing out.
+      await asLogin('postgres', (client) => client.query('SELECT pg_cancel_backend($1)', [creatorPid]))
+      break
+    }
+  }
+  const failure = await creator
+  const concurrent = await updater
+  expect(inverted).toBe(false)
+  expect(String(failure)).toMatch(/complete window batch/)
+  expect(concurrent.title).toBe('Concurrent edit')
+  const persisted = await c.run(async (tx) => ({
+    rows: await tx.select().from(window),
+    events: await tx.select().from(domainEvent)
+  }))
+  expect(persisted.rows).toHaveLength(2)
+  expect(persisted.events.map((event) => event.type)).toEqual(['window.created', 'window.updated'])
+})
+
+test('a fully prelocked mixed batch can update existing windows and reuse its newly inserted row', async () => {
+  const c = await context()
+  const existing = await c.run((tx) => makeWindow(tx, c.values))
+  const created = await c.run(async (tx) => {
+    await lockWindowParents(tx, [existing.id], [c.values])
+    const row = await writeWindowChange(tx, { kind: 'create', values: c.values, now })
+    await writeWindowChange(tx, { kind: 'update', id: existing.id, patch: { title: 'Planned edit' }, now })
+    return writeWindowChange(tx, { kind: 'update', id: row.id, patch: { title: 'Owned row edit' }, now })
+  })
+  expect(created.title).toBe('Owned row edit')
+  const persisted = await c.run(async (tx) => ({
+    rows: await tx.select().from(window).orderBy(window.id),
+    events: await tx.select().from(domainEvent).orderBy(domainEvent.seq)
+  }))
+  expect(persisted.rows.map((row) => row.title)).toEqual(['Planned edit', 'Owned row edit'])
+  expect(persisted.events.map((event) => event.type)).toEqual(['window.created', 'window.updated', 'window.updated'])
+})

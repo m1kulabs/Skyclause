@@ -13,10 +13,17 @@ export function windowTenant(tx: Tx): string {
 const locked = new WeakMap<Tx, Set<string>>()
 const mutationStarted = new WeakSet<Tx>()
 
-/** Freeze the complete planned parent set before the first write or event. */
+/** Freeze the complete planned parent and existing-window set before the first write or event. */
 export function startWindowMutation(tx: Tx) {
   mutationStarted.add(tx)
 }
+/** A row inserted by this transaction is already exclusively owned; later edits need no new row lock. */
+export function registerWindowInsert(tx: Tx, id: string) {
+  const held = locked.get(tx) ?? new Set<string>()
+  held.add(`window:${id}`)
+  locked.set(tx, held)
+}
+
 const keys = (kind: string, ids: readonly string[]) => ids.map((id) => `${kind}:${id}`)
 
 /**
@@ -61,6 +68,7 @@ export async function lockWindowParents(
   if (newFeeds.length && [...held].some((key) => key.startsWith('series:')))
     throw new Error('lock the complete window batch before mutation')
   const newIds = [...new Set(ids)].filter((id) => !held.has(`window:${id}`)).sort()
+  if (mutationStarted.has(tx) && newIds.length) throw new Error('lock the complete window batch before mutation')
   for (const [kind, additions] of [
     ['feed', newFeeds],
     ['series', newSeries],

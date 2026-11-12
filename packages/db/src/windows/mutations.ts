@@ -5,7 +5,13 @@ import { emitEvent } from '../events'
 import { appendLedger } from '../ledger'
 import { call, icsFeed, window, windowSeries } from '../schema'
 import type { WindowRow } from './index'
-import { lockWindowCreation, lockWindowParent, startWindowMutation, windowTenant } from './repository'
+import {
+  lockWindowCreation,
+  lockWindowParent,
+  registerWindowInsert,
+  startWindowMutation,
+  windowTenant
+} from './repository'
 import type { CalendarBatch, WindowChange } from './types'
 
 function actorOf(principal: Principal): { actor_type: string; actor_id: string } {
@@ -88,6 +94,7 @@ export async function writeWindowChange(tx: Tx, change: WindowChange): Promise<W
       .insert(window)
       .values({ ...change.values, orgId, createdAt: change.now, updatedAt: change.now })
       .returning()
+    registerWindowInsert(tx, row!.id)
     await event(tx, row!, 'window.created', false, change.calendar)
     return row!
   }
