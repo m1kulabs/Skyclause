@@ -87,12 +87,14 @@ export function SourceHealthRow({
           {licence?.licence_url ? (
             <a href={licence.licence_url} target="_blank" rel="noreferrer" className={link}>
               {licenceLabel}
+              <span className="sr-only"> {t('data.source.new_tab', {}, locale)}</span>
             </a>
           ) : (
             <span>{licenceLabel}</span>
           )}
           <a href={source.url} target="_blank" rel="noreferrer" className={link}>
             {t('data.source.open_source', {}, locale)}
+            <span className="sr-only"> {t('data.source.new_tab', {}, locale)}</span>
           </a>
         </>
       }

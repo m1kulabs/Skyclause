@@ -191,6 +191,7 @@ function ComboboxChips({
   return (
     <ComboboxPrimitive.Chips
       data-slot="combobox-chips"
+      data-focus-ring
       className={cn(
         'flex min-h-10 flex-wrap items-center gap-1 rounded-md border-2 border-input bg-field bg-clip-padding px-3 py-1 text-[14px] transition-none has-[[data-slot=combobox-chip-input]:focus-visible]:outline-(length:--focus-width) has-[[data-slot=combobox-chip-input]:focus-visible]:outline-solid has-[[data-slot=combobox-chip-input]:focus-visible]:outline-(--focus) has-[[data-slot=combobox-chip-input]:focus-visible]:outline-offset-2 has-aria-invalid:border-2 has-aria-invalid:border-foreground has-data-[slot=combobox-chip]:px-1.5 in-data-[slot=card]:bg-raised in-data-[slot=dialog-content]:bg-background in-data-[slot=alert-dialog-content]:bg-background in-data-[slot=sheet-content]:bg-background in-data-[slot=drawer-popup]:bg-background in-data-[slot=popover-content]:bg-background',
         className

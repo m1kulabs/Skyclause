@@ -27,32 +27,8 @@
  * ahead of Roundo, so their figures line up and their letters stay Roundo. The cell is the median digit's, the widest
  * digits are condensed a little to fit, the 1 has a foot and sits centred in it, and the colon, full stop, comma and
  * space keep their narrow widths, so a time reads as a time. Keep it to columns and figures that update, not running
- * text.
+ * text. The three faces are declared and preloaded by next/font in lib/fonts.ts.
  */
-@font-face {
-  font-family: 'Skyclause Figures';
-  src: url('../fonts/skyclause-figures/SkyclauseFigures-Regular.woff2') format('woff2');
-  font-weight: 200 449;
-  font-style: normal;
-  font-display: swap;
-  unicode-range: U+0020, U+0025, U+002B-003A, U+00A0, U+2009, U+2013, U+202F, U+2212;
-}
-@font-face {
-  font-family: 'Skyclause Figures';
-  src: url('../fonts/skyclause-figures/SkyclauseFigures-Medium.woff2') format('woff2');
-  font-weight: 450 549;
-  font-style: normal;
-  font-display: swap;
-  unicode-range: U+0020, U+0025, U+002B-003A, U+00A0, U+2009, U+2013, U+202F, U+2212;
-}
-@font-face {
-  font-family: 'Skyclause Figures';
-  src: url('../fonts/skyclause-figures/SkyclauseFigures-SemiBold.woff2') format('woff2');
-  font-weight: 550 700;
-  font-style: normal;
-  font-display: swap;
-  unicode-range: U+0020, U+0025, U+002B-003A, U+00A0, U+2009, U+2013, U+202F, U+2212;
-}
 
 /*
  * Roles, set per theme. Two colours do everything (ground and ink, with tone steps of the ground); mode hues are for
@@ -742,7 +718,13 @@
   [role='button'],
   [role='tab'],
   [role='menuitem'],
-  [role='option'] {
+  [role='menuitemcheckbox'],
+  [role='menuitemradio'],
+  [role='option'],
+  [role='checkbox'],
+  [role='radio'],
+  [role='switch'],
+  [role='combobox'] {
     touch-action: manipulation;
   }
   button,
@@ -920,6 +902,9 @@ svg [data-tone][data-ink] * {
   text-decoration: underline;
   text-underline-offset: 4px;
 }
+.language-suggestion a:hover {
+  text-decoration-thickness: 2px;
+}
 .language-suggestion button {
   min-height: 36px;
   padding: 0 16px;
@@ -1045,19 +1030,21 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
 }
 
 /*
- * The phone list: at 640px and below a table with data-phone="list" (the default) turns each row into a two-line item.
+ * The phone list: at 640px and below a table with data-phone="list" (the default), or any table holding a row marked
+ * data-phone-row (a row component that brings its own table, such as the signal-health row), turns each row into a
+ * two-line item.
  * Line one is the cell with phone="primary" (the first cell unless another says so) and the one with phone="end"; line
  * two is every other cell, 13px muted, each led by its `label` when it has one. phone="hide" drops a cell. The header
  * stays in the document for assistive technology and leaves the screen. The empty ::after is a full-width item that
  * breaks line one from line two without adding height.
  */
 @media (max-width: 640px) {
-  [data-slot='table'][data-phone='list'],
-  [data-slot='table'][data-phone='list'] > tbody,
-  [data-slot='table'][data-phone='list'] > tfoot {
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row])),
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row])) > tbody,
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row])) > tfoot {
     display: block;
   }
-  [data-slot='table'][data-phone='list'] > thead {
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row])) > thead {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -1065,7 +1052,7 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
     clip-path: inset(50%);
     white-space: nowrap;
   }
-  [data-slot='table'][data-phone='list'] > :is(tbody, tfoot) > tr {
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row])) > :is(tbody, tfoot) > tr {
     position: relative;
     display: flex;
     flex-wrap: wrap;
@@ -1077,13 +1064,16 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
     padding: 8px 12px;
     border-radius: var(--radius-nested, 10px);
   }
-  [data-slot='table'][data-phone='list'] > :is(tbody, tfoot) > tr::after {
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row])) > :is(tbody, tfoot) > tr::after {
     content: '';
     order: 1;
     flex: 0 0 100%;
     height: 0;
   }
-  [data-slot='table'][data-phone='list'] > :is(tbody, tfoot) > tr > :is(td, th) {
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > :is(tbody, tfoot)
+    > tr
+    > :is(td, th) {
     display: block;
     order: 2;
     min-width: 0;
@@ -1097,17 +1087,26 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
     color: var(--muted-foreground);
     text-align: left;
   }
-  [data-slot='table'][data-phone='list'] [data-slot='table-measure'] {
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row])) [data-slot='table-measure'] {
     display: inline-flex;
     width: 6rem;
     justify-content: flex-start;
     vertical-align: middle;
   }
-  [data-slot='table'][data-phone='list'] > :is(tbody, tfoot) > tr > :is(td, th)[data-label]::before {
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > :is(tbody, tfoot)
+    > tr
+    > :is(td, th)[data-label]::before {
     content: attr(data-label) ' ';
   }
-  [data-slot='table'][data-phone='list'] > :is(tbody, tfoot) > tr > :is(td, th):first-child:not([data-phone]),
-  [data-slot='table'][data-phone='list'] > :is(tbody, tfoot) > tr > :is(td, th)[data-phone='primary'] {
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > :is(tbody, tfoot)
+    > tr
+    > :is(td, th):first-child:not([data-phone]),
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > :is(tbody, tfoot)
+    > tr
+    > :is(td, th)[data-phone='primary'] {
     order: 0;
     flex: 1 1 0;
     margin-top: 0;
@@ -1115,7 +1114,10 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
     line-height: 20px;
     color: inherit;
   }
-  [data-slot='table'][data-phone='list'] > :is(tbody, tfoot) > tr > :is(td, th)[data-phone='end'] {
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > :is(tbody, tfoot)
+    > tr
+    > :is(td, th)[data-phone='end'] {
     order: 1;
     flex: 0 1 auto;
     max-width: 60%;
@@ -1126,17 +1128,26 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
     color: inherit;
     text-align: right;
   }
-  [data-slot='table'][data-phone='list'] > :is(tbody, tfoot) > tr > :is(td, th)[data-phone='hide'] {
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > :is(tbody, tfoot)
+    > tr
+    > :is(td, th)[data-phone='hide'] {
     display: none;
   }
   /* The fill moves from the cells to the row, and the selected mark from the first cell to the row's start. */
-  [data-slot='table'][data-phone='list'] > tbody > tr[data-state='selected'] {
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > tbody
+    > tr[data-state='selected'] {
     background-color: var(--overlay);
   }
-  [data-slot='table'][data-phone='list'] > tbody > tr:has([aria-expanded='true']) {
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > tbody
+    > tr:has([aria-expanded='true']) {
     background-color: var(--raised);
   }
-  [data-slot='table'][data-phone='list'] > tbody > tr[data-state='selected']::before {
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > tbody
+    > tr[data-state='selected']::before {
     content: '';
     position: absolute;
     top: 50%;
@@ -1147,18 +1158,21 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
     border-radius: 9999px;
     background: var(--ink);
   }
-  [data-slot='table'][data-phone='list']
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
     > tbody
     > tr[data-slot='table-row'][data-state='selected']
     > :is(td, th):first-child::before {
     content: none;
   }
-  [data-slot='table'][data-phone='list'] > tbody > tr[data-state='dimmed'] > :is(td, th) {
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > tbody
+    > tr[data-state='dimmed']
+    > :is(td, th) {
     color: var(--muted-foreground);
   }
 }
 @media (max-width: 640px) and (hover: hover) {
-  [data-slot='table'][data-phone='list'] > tbody > tr:hover {
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row])) > tbody > tr:hover {
     background-color: var(--raised);
   }
 }
@@ -1197,7 +1211,21 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
     opacity: 0;
   }
 }
-:is([data-slot='switch-thumb'], [data-slot='progress-indicator']),
+/* Controls and marks change state at once: no fade or slide between hover, disabled, checked and the like. */
+:is(
+  button,
+  a,
+  summary,
+  [role='tab'],
+  [role='switch'],
+  [role='checkbox'],
+  [role='radio'],
+  [role='option'],
+  [role='menuitem'],
+  [data-slot='badge'],
+  [data-slot='switch-thumb'],
+  [data-slot='progress-indicator']
+),
 .native-switch::before {
   @variant calm {
     transition: none;
@@ -1268,7 +1296,9 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
   }
   /* A selected table row keeps its capsule mark, since fills vanish. */
   tbody > tr[data-slot='table-row'][data-state='selected'] > :is(td, th):first-child::before,
-  [data-slot='table'][data-phone='list'] > tbody > tr[data-state='selected']::before {
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > tbody
+    > tr[data-state='selected']::before {
     forced-color-adjust: none;
     background: CanvasText;
   }
