@@ -1,5 +1,5 @@
 import { log } from '@skyclause/config'
-import { and, asc, eq, getViewSelectedFields, inArray, isNotNull, or, sql, type SQL } from 'drizzle-orm'
+import { and, asc, eq, getViewSelectedFields, inArray, isNotNull, isNull, or, sql, type SQL } from 'drizzle-orm'
 import type { Tx } from '../client'
 import { citedSourceIds } from '../channels'
 import {
@@ -267,6 +267,7 @@ export async function listProjectIcsFeedRecords(
       and(
         eq(icsFeed.orgId, tx.orgId!),
         eq(icsFeed.projectId, query.projectId),
+        isNull(icsFeed.deletedAt),
         query.afterId
           ? sql`(${icsFeed.createdAt}, ${icsFeed.id}) > (SELECT created_at, id FROM ics_feed WHERE id = ${query.afterId}::uuid)`
           : undefined
@@ -275,3 +276,5 @@ export async function listProjectIcsFeedRecords(
     .orderBy(asc(icsFeed.createdAt), asc(icsFeed.id))
     .limit(query.limit + 1)
 }
+
+export { getIcsFeedRecord, insertIcsFeedRecord, type IcsFeedInsert, type IcsFeedRow } from './feeds'
