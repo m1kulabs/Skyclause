@@ -7,9 +7,11 @@ import { Input } from '#ui/input'
 import { Skeleton } from '#ui/skeleton'
 import { t as organisations } from '../../../organisations/catalogue'
 import { apiFetch } from '../../../organisations/operations'
+import { useUnsavedChangesGuard } from '../../set-7'
 import {
   SettingsAside,
   SettingsField,
+  SettingsLoading,
   SettingsParts,
   SettingsReadError,
   SettingsStatus,
@@ -29,6 +31,8 @@ export default function Panel({ org, locale = 'en' }: { org: string; locale?: 'e
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [unchanged, setUnchanged] = useState(false)
+  useUnsavedChangesGuard(name !== null && name.trim() !== stored, locale)
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -58,9 +62,19 @@ export default function Panel({ org, locale = 'en' }: { org: string; locale?: 'e
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (saving || name === null || name.trim().length === 0) return
-    setSaving(true)
+    if (saving || name === null) return
     setSaved(false)
+    setUnchanged(false)
+    if (name.trim().length === 0) {
+      setError(copy('nameRequired'))
+      return
+    }
+    if (name.trim() === stored) {
+      setError(null)
+      setUnchanged(true)
+      return
+    }
+    setSaving(true)
     setError(null)
     try {
       const updated = await apiFetch('updateOrganisation', { org, body: { name: name.trim() } })
@@ -106,7 +120,9 @@ export default function Panel({ org, locale = 'en' }: { org: string; locale?: 'e
             >
               {(aria) =>
                 name === null ? (
-                  <Skeleton className="h-10 w-full rounded-md" />
+                  <SettingsLoading locale={locale}>
+                    <Skeleton className="h-10 w-full rounded-md" />
+                  </SettingsLoading>
                 ) : (
                   <Input
                     {...aria}
@@ -120,6 +136,8 @@ export default function Panel({ org, locale = 'en' }: { org: string; locale?: 'e
                     onChange={(event) => {
                       setName(event.target.value)
                       setSaved(false)
+                      setUnchanged(false)
+                      setError(null)
                     }}
                   />
                 )
@@ -148,14 +166,11 @@ export default function Panel({ org, locale = 'en' }: { org: string; locale?: 'e
             </SettingsField>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Button
-              type="submit"
-              disabled={name === null || saving || name.trim().length === 0 || name.trim() === stored}
-              aria-busy={saving}
-            >
+            <Button type="submit" disabled={name === null || saving} aria-busy={saving}>
               {organisations(saving ? 'organisations.general.saving' : 'organisations.general.save', {}, locale)}
             </Button>
             {saved ? <SettingsStatus>{organisations('organisations.general.saved', {}, locale)}</SettingsStatus> : null}
+            {unchanged ? <SettingsStatus>{copy('unchanged')}</SettingsStatus> : null}
           </div>
         </SettingsParts>
       </form>

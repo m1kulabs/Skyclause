@@ -84,3 +84,31 @@ test('keyboard only: the name field and save button complete the rename', async 
     )
   )
 })
+
+test('an empty or unchanged name is answered on submit, and unsaved edits warn before leaving', async () => {
+  answer()
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  render(<Panel org="test-org" />)
+  const name = (await screen.findByLabelText('Organisation name')) as HTMLInputElement
+  const save = screen.getByRole('button', { name: 'Save name' }) as HTMLButtonElement
+  expect(save.disabled).toBe(false)
+
+  fireEvent.click(save)
+  expect(await screen.findByText('That is already the organisation’s name.')).toBeTruthy()
+  fireEvent.change(name, { target: { value: '  ' } })
+  fireEvent.click(save)
+  expect(await screen.findByText('Enter a name for the organisation.')).toBeTruthy()
+  expect(vi.mocked(apiFetch)).not.toHaveBeenCalledWith('updateOrganisation', expect.anything())
+
+  const link = document.createElement('a')
+  link.href = '/elsewhere'
+  document.body.append(link)
+  const reached = vi.fn((event: Event) => event.preventDefault())
+  link.addEventListener('click', reached)
+  fireEvent.change(name, { target: { value: 'Another name' } })
+  link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }))
+  expect(confirm).toHaveBeenCalledTimes(1)
+  expect(reached).not.toHaveBeenCalled()
+  link.remove()
+  confirm.mockRestore()
+})
