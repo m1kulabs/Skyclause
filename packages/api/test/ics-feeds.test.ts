@@ -1016,3 +1016,84 @@ test.each([true, false])(
     expect(identities.size).toBe(3)
   }
 )
+
+test.each([
+  {
+    label: 'backward across through',
+    projectTz: 'Pacific/Pago_Pago',
+    overrideTz: 'Pacific/Kiritimati',
+    sourceStart: '20261116T235900',
+    sourceEnd: '20261117T005900',
+    editedStart: '2026-11-15T10:00:00Z',
+    editedEnd: '2026-11-15T11:00:00Z',
+    at: '2026-11-12T10:00:00Z',
+    targets: ['20270211T232900', '20270211T235900'],
+    expected: [
+      ['2027-02-11T23:29:00', '2027-02-10T10:00:00.000Z'],
+      ['2027-02-11T23:59:00', '2027-02-10T10:00:00.000Z']
+    ]
+  },
+  {
+    label: 'forward across now',
+    projectTz: 'Pacific/Kiritimati',
+    overrideTz: 'Pacific/Pago_Pago',
+    sourceStart: '20261106T000000',
+    sourceEnd: '20261106T010000',
+    editedStart: '2026-11-07T10:59:00Z',
+    editedEnd: '2026-11-07T11:59:00Z',
+    at: '2026-11-12T10:30:00Z',
+    targets: ['20261111T000000'],
+    expected: [['2026-11-11T00:00:00', '2026-11-12T10:59:00.000Z']]
+  }
+])('clock and zone defaults cover a shift over 48 hours: $label', async (scenario) => {
+  const setupNow = new Date('2026-11-01T00:00:00Z')
+  const p = await tenant((tx) => makeProject(tx, { timeZone: scenario.projectTz }))
+  const feed = await tenant((tx) =>
+    makeIcsFeed(tx, { projectId: p.id, provenance: { version: 1, declaredBy: 'account', via: 'app' } })
+  )
+  const doc = (targets: string[]) =>
+    [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'BEGIN:VEVENT',
+      'UID:extreme-zones',
+      `DTSTART:${scenario.sourceStart}`,
+      `DTEND:${scenario.sourceEnd}`,
+      'SUMMARY:Lecture',
+      'RRULE:FREQ=WEEKLY;COUNT=1',
+      ...(targets.length ? [`RDATE:${targets.join(',')}`] : []),
+      'END:VEVENT',
+      'END:VCALENDAR',
+      ''
+    ].join('\r\n')
+  const apply = (targets: string[], at: Date) =>
+    tenant((tx) =>
+      applyCalendar(
+        { tx, principal: viewer },
+        { feedId: feed.id, now: at, result: { status: 'changed', text: doc(targets), etag: null, lastModified: null } }
+      )
+    )
+  await apply([], setupNow)
+  const [anchor] = await tenant((tx) => tx.select().from(window).where(eq(window.icsFeedId, feed.id)))
+  const api = createTestApi({ deps: testDeps({ withTenant, recordAudit, now: () => setupNow, can: testCan }) }).v1
+  const response = await apiRequest(api, {
+    as: asSession({ org: ORG, role: 'editor' }),
+    org: ORG,
+    method: 'PATCH',
+    path: `/v1/windows/${anchor!.id}`,
+    query: { scope: 'series' },
+    idempotencyKey: randomUUID(),
+    body: { starts_at: scenario.editedStart, ends_at: scenario.editedEnd, tz: scenario.overrideTz }
+  })
+  expect(response.status).toBe(200)
+  const [series] = await tenant((tx) => tx.select().from(windowSeries).where(eq(windowSeries.id, anchor!.seriesId!)))
+  expect(series?.definition).toMatchObject({ manualDefaults: { dateOffsetDays: 0 } })
+  await apply(scenario.targets, new Date(scenario.at))
+  const rows = await tenant((tx) => tx.select().from(window).where(eq(window.icsFeedId, feed.id)))
+  expect(
+    rows
+      .filter((row) => row.id !== anchor!.id)
+      .map((row) => [row.icsRecurrenceId, row.startsAt.toISOString()])
+      .sort()
+  ).toEqual(scenario.expected)
+})

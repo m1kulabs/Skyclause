@@ -30,6 +30,8 @@ const provenance = z
 const importedRule = z.object({ version: z.literal(1), source: z.literal('ics'), uid: z.string().min(1) }).strict()
 const unavailable = () => new ApiError(409, 'conflict', 'The calendar source cannot be reconciled.')
 export class MissingCalendarDocumentError extends Error {}
+// Replacing a local clock and converting zones can together move an occurrence by more than 48 hours.
+const DEFAULT_TIME_MARGIN_DAYS = 3
 
 /** HTTP has already completed; parsing, local resolution and atomic apply use this tenant transaction. */
 export async function applyCalendar(
@@ -75,7 +77,10 @@ export async function applyCalendar(
             defaults.localEnd !== undefined ||
             defaults.endDayOffset !== undefined)
         )
-          extraSourceDays = Math.max(extraSourceDays, Math.max(0, -(defaults.dateOffsetDays ?? 0)) + 2)
+          extraSourceDays = Math.max(
+            extraSourceDays,
+            Math.max(0, -(defaults.dateOffsetDays ?? 0)) + DEFAULT_TIME_MARGIN_DAYS
+          )
       }
       const sourceThrough = new Date(through.getTime() + extraSourceDays * 86_400_000)
       if (!Number.isFinite(sourceThrough.getTime()) || sourceThrough.getUTCFullYear() > 9999) throw unavailable()
@@ -90,7 +95,7 @@ export async function applyCalendar(
           const row = byUid.get(occurrence.uid)
           const definition = row ? readWindowSeriesDefinition(row) : null
           if (definition && definition.source !== 'ics') throw unavailable()
-          const days = Math.max(0, definition?.manualDefaults.dateOffsetDays ?? 0) + 2
+          const days = Math.max(0, definition?.manualDefaults.dateOffsetDays ?? 0) + DEFAULT_TIME_MARGIN_DAYS
           if (occurrence.startsAt.getTime() < input.now.getTime() - days * 86_400_000)
             return Promise.resolve({ ...occurrence, kind: definition?.manualDefaults.kind ?? feed.kind })
           return applyCalendarDefaults(tx, occurrence, feed.kind, definition?.manualDefaults ?? {})
