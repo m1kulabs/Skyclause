@@ -180,7 +180,7 @@ test('LOC-4 and LOC-5 show recipient languages, Malay quotes and English fallbac
   ]
   await prepare(page, bundleDouble([call]))
   await open(page)
-  await expect(page.locator('.bundle-call-list')).toContainText(
+  await expect(page.locator('.bundle-sends')).toContainText(
     t('language_group', { language: t('language.en'), count: 1 })
   )
   await expect(page.locator('blockquote[lang="ms"]')).toHaveText('Amaran Ribut Petir')
@@ -212,7 +212,8 @@ test('all-Normal shows only the trace, five fresh inputs and no approval', async
   await expect(page.locator('.bundle-trace')).toContainText(t('normal', { count: 5 }))
   await expect(page.locator('.bundle-call-list')).toHaveCount(0)
   await expect(page.locator('.bundle-approval-bar')).toHaveCount(0)
-  await expect(page.locator('.bundle-trace')).toContainText(t('age', { seconds: 300 }))
+  // Each input's age at drafting, in words.
+  await expect(page.locator('.bundle-trace')).toContainText('gauge 5 min old')
 })
 
 test('No call names the failing input and since when; expired calls cannot be submitted', async ({ page }) => {
@@ -359,6 +360,26 @@ test('failed reads show an error and Retry, without substituting data', async ({
   await expect(page.locator('.bundle-call-list > li')).toHaveCount(2)
 })
 
+test('on a phone the open bundle shows first; Bundles shows the list and its open row returns', async ({ page }) => {
+  await prepare(page)
+  await page.setViewportSize({ width: 375, height: 812 })
+  await open(page)
+  const list = page.getByRole('region', { name: t('region_list') })
+  const item = page.getByRole('region', { name: t('region_item') })
+  await expect(item).toBeVisible()
+  await expect(list).toBeHidden()
+  await expect(page.locator('.bundle-approval-bar')).toBeVisible()
+  await item.getByRole('button', { name: t('back_to_list'), exact: true }).click()
+  await expect(list).toBeVisible()
+  await expect(item).toBeHidden()
+  await expect(page.locator('.bundle-approval-bar')).toBeHidden()
+  const current = list.locator('[aria-current="true"]')
+  await expect(current).toHaveAttribute('href', path)
+  await current.click()
+  await expect(item).toBeVisible()
+  await expect(page).toHaveURL(path)
+})
+
 test('NFR-15 measured replay is derived from the named committed capture', () => {
   expect(rain60).toBe(39)
 })
@@ -412,7 +433,7 @@ test('expiry while reviewing disables approval without a write', async ({ page }
   await expect(approve(page, 1)).toBeEnabled()
   await page.clock.setFixedTime(new Date('2026-11-02T07:46:00Z'))
   await expect(page.locator('.bundle-call-list')).toContainText(t('expired'))
-  await expect(page.locator('.bundle-approval-bar button')).toBeDisabled()
+  await expect(page.locator('.bundle-approval-bar .bundle-approve')).toBeDisabled()
 })
 
 test('worst-case recipient identifiers and multilingual window titles wrap at 320px', async ({ page }) => {
@@ -542,7 +563,8 @@ test('#372 a signed-in approver’s bundle arrives rendered by the server and hy
   }
   // The run and strip arrive in the client refresh; new readings must replace the server's empty strip.
   await expect(page.locator('.bundle-trace')).toContainText(review.bundle.run_id)
-  await expect(page.locator('.bundle-call-list figure svg')).toBeVisible()
+  // The readings chart, under the window's capsule (whose glyph is an svg too).
+  await expect(page.locator('.bundle-call-list figure svg[viewBox^="0 0 640"]')).toBeVisible()
   await expect(page.locator('.bundle-call-list figure figcaption')).toContainText('50')
   expect(errors.filter((error) => /hydrat|Minified React error #(418|419|421|422|423|425)\b/i.test(error))).toEqual([])
 })

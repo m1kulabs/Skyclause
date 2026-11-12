@@ -18,6 +18,7 @@ import { approves, canReviewCall, decisionsFor, teachingLineIncluded, type Decis
 import { t } from './i18n'
 import { useReauth } from '../reauth'
 import { cancelStepUp, ReauthCancelledError } from '../step-up/flow'
+import type { BundleList } from './use-project-bundles'
 
 export interface ReviewData {
   bundle: BundleView
@@ -33,9 +34,21 @@ export interface ReviewData {
 export interface InitialReview {
   data: ReviewData
   now: number
+  /** The project's bundles as the server read them, for the list beside the review. */
+  list?: BundleList
 }
 
-export function useBundleReview(bundleId: string, org: string, initial?: InitialReview) {
+export function useBundleReview(
+  bundleId: string,
+  org: string,
+  initial?: InitialReview,
+  /** Called on every bundle event of the project, this bundle's or another's, so the list can read again. */
+  onProjectEvent?: () => void
+) {
+  const projectEvent = useRef(onProjectEvent)
+  useEffect(() => {
+    projectEvent.current = onProjectEvent
+  })
   const [data, setData] = useState(initial?.data)
   const [loadError, setLoadError] = useState(false)
   const [revision, setRevision] = useState(0)
@@ -150,6 +163,7 @@ export function useBundleReview(bundleId: string, org: string, initial?: Initial
           return
         }
         const parsed = bundleStream.responses[200].content['text/event-stream'].schema.safeParse(raw)
+        if (parsed.success) projectEvent.current?.()
         if (!parsed.success || parsed.data.data.bundle_id !== bundleId) return
         const bundleEvent = parsed.data
         if (!['bundle.superseded', 'bundle.expired', 'bundle.approved'].includes(bundleEvent.type)) return

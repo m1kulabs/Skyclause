@@ -9,7 +9,6 @@ import { useUnsavedChangesGuard } from '../settings/set-7'
 import { windowsApi } from './operations'
 import { ApiProblem } from '../../lib/api-fetch'
 import { t } from './catalogue'
-import styles from './windows.module.css'
 
 export function ImportForm({
   projectId,
@@ -30,7 +29,7 @@ export function ImportForm({
   registerClose(() => !saving && guardNavigation(() => {}))
   return (
     <form
-      className={styles.form}
+      className="flex flex-col gap-5"
       noValidate
       onSubmit={async (event) => {
         event.preventDefault()
