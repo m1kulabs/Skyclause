@@ -44,6 +44,26 @@ test('reserved and format errors show inline as you type, with spellcheck off on
   await expectAxeClean()
 })
 
+test('typing the first letter of the name shows no slug error before the slug is touched', async () => {
+  render(<OrgCreateForm />)
+  const slug = screen.getByLabelText('Slug') as HTMLInputElement
+  fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'R' } })
+  expect(slug.value).toBe('r')
+  expect(screen.queryByText(/Use 2–39 lowercase letters/)).toBeNull()
+  expect(slug.getAttribute('aria-invalid')).toBe('false')
+  fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'New' } })
+  expect(await screen.findByText('new is reserved. Choose another slug.')).toBeTruthy()
+})
+
+test('a one-letter suggested slug still fails on submit, with focus on the slug', async () => {
+  render(<OrgCreateForm />)
+  fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'R' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }))
+  expect(await screen.findByText(/Use 2–39 lowercase letters/)).toBeTruthy()
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Slug')))
+  expect(apiFetch).not.toHaveBeenCalled()
+})
+
 test('the slug is suggested from the name and stays editable', async () => {
   render(<OrgCreateForm />)
   fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'River Watch' } })
