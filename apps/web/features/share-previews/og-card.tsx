@@ -4,8 +4,9 @@ import {
   glyphSvg,
   layoutStrip,
   markSvg,
-  statusColours,
+  modeColours,
   stripSvg,
+  toneColours,
   type StripInput
 } from '@skyclause/elements'
 import { ImageResponse } from 'next/og'
@@ -14,13 +15,11 @@ import { stateWord, type Card } from './card'
 import { t } from './i18n'
 import type { Locale } from './i18n'
 
-// DESIGN "Open Graph card": 1200×630 on the dark ground, Work Sans throughout. Colours are f-ui's dark tokens.
+// The Open Graph card: 1200×630 in Dusk (navy ground, pink ink), Roundo throughout. Colours are the Dusk tokens.
 export const CARD_SIZE = { width: 1200, height: 630 }
 const PAD = 56
 const BAND = 220
-const GROUND = '#171719'
-const INK = '#ffffff'
-const MUTED = '#bdbdc0'
+const { ground: GROUND, ink: INK, 'ink-muted': MUTED } = modeColours.dark
 
 // Roundo's static woff weights (fonts/roundo/SOURCE.txt): Satori reads neither woff2 nor variable fonts. Literal URLs,
 // so the build traces each file; loaded once, as the route module loads.
@@ -98,8 +97,31 @@ function Strip({ strip }: { strip: StripInput }) {
   )
 }
 
+/** The call's mode as the capsule: filled by its hue (or edged, for the non-mode states) with its glyph inside. */
+function StateCapsule({ state }: { state: NonNullable<Card['state']> }) {
+  const { tone } = brandStates[state]
+  const { fill, edge, ink } = toneColours(tone, modeColours.dark)
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flex: 'none',
+        width: 136,
+        height: 80,
+        borderRadius: 40,
+        background: fill ?? 'transparent',
+        border: edge ? `4px ${tone === 'no-call' ? 'dashed' : 'solid'} ${edge}` : 'none'
+      }}
+    >
+      <img src={dataUri(inked(glyphSvg(state), ink))} width={48} height={48} alt="" />
+    </div>
+  )
+}
+
 export function CardView({ card, locale = 'en' }: { card: Card; locale?: Locale }) {
-  const level = card.state && brandStates[card.state].level
+  const word = stateWord(card.state, locale)
   const title = card.project
     ? t('share-previews.title', { brand: t('brand.name', {}, locale), project: card.project }, locale)
     : null
@@ -128,22 +150,19 @@ export function CardView({ card, locale = 'en' }: { card: Card; locale?: Locale 
           alignItems: 'center',
           gap: 20,
           marginTop: 36,
-          fontSize: 96,
+          // The word steps down so the longest states (Malay included) stay on the card at 1200px.
+          fontSize: word.length > 20 ? 64 : word.length > 15 ? 76 : 92,
           fontWeight: 500,
           letterSpacing: '-0.02em',
           whiteSpace: 'nowrap'
         }}
       >
-        {card.state && (
-          <img src={dataUri(inked(glyphSvg(card.state), statusColours.dark[level!]))} width={96} height={96} alt="" />
-        )}
-        <span style={{ lineHeight: 1 }}>{stateWord(card.state, locale)}</span>
+        {card.state && <StateCapsule state={card.state} />}
+        <span style={{ lineHeight: 1 }}>{word}</span>
       </div>
       {card.window && <span style={{ marginTop: 16, fontSize: 40 }}>{card.window}</span>}
       {card.approved && <span style={{ marginTop: 8, fontSize: 32, color: MUTED }}>{card.approved}</span>}
-      {card.noCall && (
-        <span style={{ marginTop: 8, fontSize: 32, color: statusColours.dark.critical }}>{card.noCall}</span>
-      )}
+      {card.noCall && <span style={{ marginTop: 8, fontSize: 32, color: INK }}>{card.noCall}</span>}
       <div
         style={{
           display: 'flex',

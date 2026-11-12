@@ -102,7 +102,8 @@ test('maskable mark is wholly inside the 409px safe circle', async ({ page }) =>
     for (let y = 0; y < 512; y++)
       for (let x = 0; x < 512; x++) {
         const i = (y * 512 + x) * 4
-        if (data[i] !== 23 || data[i + 1] !== 23 || data[i + 2] !== 25) {
+        // Anything that is not the Dusk ground (#1a2039) belongs to the mark.
+        if (data[i] !== 26 || data[i + 1] !== 32 || data[i + 2] !== 57) {
           pixels++
           radius = Math.max(radius, Math.hypot(x + 0.5 - 256, y + 0.5 - 256))
         }

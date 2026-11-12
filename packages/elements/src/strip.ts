@@ -540,8 +540,10 @@ export function stripSvg(layout: StripLayout, options: StripSvgOptions = {}): st
     parts.push(
       `<line x1="${layout.nowX.toFixed(1)}" y1="${HEADER}" x2="${layout.nowX.toFixed(1)}" y2="${(layout.height - X_AXIS).toFixed(1)}" stroke="currentColor" stroke-width="2" stroke-linecap="round" data-now="true"/>`
     )
+    // Near the right edge the label sits left of the line, so it stays inside the strip.
+    const nearEnd = layout.nowX > layout.width - RIGHT - 60
     parts.push(
-      `<text x="${(layout.nowX + 4).toFixed(1)}" y="${HEADER - 4}" font-size="10" fill="currentColor">Now MYT</text>`
+      `<text x="${(layout.nowX + (nearEnd ? -4 : 4)).toFixed(1)}" y="${HEADER - 4}" font-size="10"${nearEnd ? ' text-anchor="end"' : ''} fill="currentColor">Now MYT</text>`
     )
   }
 

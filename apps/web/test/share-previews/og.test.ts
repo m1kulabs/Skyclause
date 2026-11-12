@@ -191,7 +191,7 @@ describe('a failed read', () => {
 })
 
 describe("the strip's labels", () => {
-  test('are lifted out of the SVG with their places, so Satori sets them in Work Sans', () => {
+  test('are lifted out of the SVG with their places, so Satori sets them in Roundo', () => {
     const { geometry, labels } = splitStrip(
       '<svg><text x="48" y="16" font-size="12" fill="currentColor">2 November 2026 · MYT</text><path d="M0,0"/>' +
         '<text x="624" y="164.0" font-size="10" text-anchor="end" fill="currentColor">Lebat &lt;31 &amp; up</text></svg>'

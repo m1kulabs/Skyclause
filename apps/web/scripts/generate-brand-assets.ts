@@ -3,10 +3,12 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { chromium } from '@playwright/test'
-import { markSvg, tabBadgeSvg, wordmarkSvg } from '@skyclause/elements'
+import { markSvg, modeColours, tabBadgeSvg, wordmarkSvg } from '@skyclause/elements'
 import { t } from '@skyclause/i18n/brand'
 
 const directory = resolve(import.meta.dirname, '../public')
+// Raster icons and the manifest are Dusk: the pink mark on the navy ground.
+const { ground, ink } = modeColours.dark
 const checking = process.argv.includes('--check')
 let files = 0
 async function output(file: string, content: string | Uint8Array) {
@@ -41,9 +43,9 @@ try {
     const paths = markSvg
       .replace(/<style>.*?<\/style>/, '')
       .replace(/^<svg[^>]*>|<\/svg>$/g, '')
-      .replaceAll('currentColor', '#ffffff')
+      .replaceAll('currentColor', ink)
     const offset = (size - markSize) / 2
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect width="${size}" height="${size}" fill="#171719"/><g transform="translate(${offset} ${offset}) scale(${markSize / 16})">${paths}</g></svg>`
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect width="${size}" height="${size}" fill="${ground}"/><g transform="translate(${offset} ${offset}) scale(${markSize / 16})">${paths}</g></svg>`
     const dataUrl = await page.evaluate(
       async ({ svg, size }) => {
         const image = new Image()
@@ -83,8 +85,8 @@ await output(
       short_name: t('brand.name'),
       start_url: '/',
       display: 'standalone',
-      background_color: '#171719',
-      theme_color: '#171719',
+      background_color: ground,
+      theme_color: ground,
       icons: [
         { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
         { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
