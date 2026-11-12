@@ -17,6 +17,17 @@ export interface ReadSseOptions {
 const INITIAL_BACKOFF_MS = 250
 const MAX_BACKOFF_MS = 10_000
 
+/** A stream request the server refused, with its status: a 501 (not available yet) is never retried. */
+export class SseRequestError extends Error {
+  readonly status: number
+
+  constructor(status: number) {
+    super(`SSE request failed with status ${status}`)
+    this.name = 'SseRequestError'
+    this.status = status
+  }
+}
+
 function pause(milliseconds: number, signal?: AbortSignal): Promise<void> {
   if (signal?.aborted) return Promise.resolve()
 
@@ -65,7 +76,7 @@ export async function readSse(url: string | URL, options: ReadSseOptions): Promi
       headers.set('Accept', 'text/event-stream')
       if (options.resume !== false && lastEventId !== undefined) headers.set('Last-Event-ID', lastEventId)
       const response = await fetch(url, { headers, signal: options.signal })
-      if (!response.ok || !response.body) throw new Error(`SSE request failed with status ${response.status}`)
+      if (!response.ok || !response.body) throw new SseRequestError(response.status)
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
@@ -123,6 +134,8 @@ export async function readSse(url: string | URL, options: ReadSseOptions): Promi
       if (options.signal?.aborted) return
       // A dropped stream or failed request is retried below with the latest event ID.
       options.onError?.(error)
+      // A stream that is not available yet answers the same however often it is asked.
+      if (error instanceof SseRequestError && error.status === 501) return
     }
 
     if (options.signal?.aborted) return

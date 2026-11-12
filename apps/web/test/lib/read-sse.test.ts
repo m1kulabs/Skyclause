@@ -94,3 +94,38 @@ test('reconnect delay is jittered inside the exponential backoff window', async 
     vi.unstubAllGlobals()
   }
 })
+
+test('a stream that is not available yet (501) is asked once, reported once and never retried', async () => {
+  const fetchMock = vi.fn(async () => new Response(null, { status: 501 }))
+  const errors: unknown[] = []
+  vi.stubGlobal('fetch', fetchMock)
+  try {
+    await readSse('/v1/events/stream', { onError: (error) => errors.push(error), onEvent: () => undefined })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(errors).toHaveLength(1)
+    expect(errors[0]).toMatchObject({ status: 501 })
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
+
+test('a real failure (503) is still retried with backoff', async () => {
+  const controller = new AbortController()
+  const fetchMock = vi.fn(async () => {
+    if (fetchMock.mock.calls.length === 2) controller.abort()
+    return new Response(null, { status: 503 })
+  })
+  const errors: unknown[] = []
+  vi.stubGlobal('fetch', fetchMock)
+  try {
+    await readSse('/v1/events/stream', {
+      signal: controller.signal,
+      onError: (error) => errors.push(error),
+      onEvent: () => undefined
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(errors[0]).toMatchObject({ status: 503 })
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
