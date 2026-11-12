@@ -80,6 +80,25 @@ test('ANL-6 what-if uses a named version and every live table stays live', async
   await expect(pane.locator('[data-replay-chart]')).toHaveCount(0)
 })
 
+test('a what-if replay that is not available yet says so instead of blaming the inputs, and drops Run', async ({
+  page
+}) => {
+  await setup(page)
+  await stubApi(
+    page,
+    'evaluateWhatIf',
+    { type: 'https://skyclause.test/problems/not-built', title: 'Not built', status: 501 },
+    { registry, status: 501 }
+  )
+  await page.goto(`${projectRoute}?${replayQuery}`)
+  const pane = page.locator('[data-replay-pane]')
+  await expect(pane.getByRole('button', { name: copy('run'), exact: true })).toBeEnabled()
+  await pane.getByRole('button', { name: copy('run'), exact: true }).press('Enter')
+  await expect(pane.locator('[data-not-built]')).toContainText(copy('replayUnavailable'))
+  await expect(pane).not.toContainText(copy('replayFailed'))
+  await expect(pane.getByRole('button', { name: copy('run'), exact: true })).toHaveCount(0)
+})
+
 test('URL state restores tabs, period, pack and draft inputs with Back navigation', async ({ page }) => {
   await setup(page)
   await page.goto(`${projectRoute}?tab=agreement&period=7d&pack=sky&${replayQuery}`)
