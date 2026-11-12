@@ -8,7 +8,7 @@ import {
 } from '../common'
 import { z } from '@hono/zod-openapi'
 import { createRoute } from '../create-route'
-import { Page, PageQuery, Poll, Reading, Source, SourceRole, SourceState } from '../shared'
+import { Instant, Page, PageQuery, Poll, Reading, Source, SourceRole, SourceState } from '../shared'
 
 const ProjectSourceParams = ProjectParams.extend({ sourceId: ProjectParams.shape.id })
 const PageRequest = z.object({ ...PageQuery.shape })
@@ -29,6 +29,21 @@ const ProjectSource = Source.extend({
       obscured_frames: z.number().int().nonnegative(),
       agreement: z.number().min(0).max(1).nullable()
     })
+    .optional()
+})
+const ProjectSourceHealth = ProjectSource.extend({
+  history: z
+    .array(z.object({ start_at: Instant, end_at: Instant, status: z.enum(['received', 'missed', 'error']) }))
+    .length(48)
+    .describe(
+      '48 ascending rolling half-open cadence intervals ending at request time. Only normal polls count by actual started_at; any error wins over success or unchanged. APIMS uses 3600-second slots. Missed means no recorded normal outcome, not proof of a missed scheduler invocation; device readings do not fill poll slots.'
+    )
+    .optional(),
+  last_error: Poll.extend({ message: z.string().nullable(), purpose: z.string() })
+    .nullable()
+    .describe(
+      'Newest retained error of any purpose, ordered by actual started_at then id descending; purpose distinguishes diagnostic backfill errors from normal polls.'
+    )
     .optional()
 })
 export const PackPrerequisitesProblem = Problem.extend({ missing: z.array(SourceRole) })
@@ -108,7 +123,7 @@ export const listProjectSources = createRoute({
   responses: {
     200: {
       description: 'Project source health and recent errors',
-      content: { 'application/json': { schema: Page(ProjectSource) } }
+      content: { 'application/json': { schema: Page(ProjectSourceHealth) } }
     },
     ...projectErrors
   },

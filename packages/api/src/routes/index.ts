@@ -29,6 +29,7 @@ import { rotaHandlers } from './rota'
 import { subscriberHandlers } from './subscribers'
 import { subscriberRightsHandlers } from './subscriber-rights'
 import { sourceHandlers } from './sources'
+import { signalHandlers } from './signals'
 import { dataRightsHandlers } from './data-rights'
 
 /**
@@ -54,6 +55,7 @@ export type Handlers = { [Id in OperationId]?: HandlerEntry<Operations[Id]> }
  */
 export const HANDLERS: Handlers = {
   ...sourceHandlers, // b-source-binding
+  ...signalHandlers, // b-signals-api
   ...apiKeyHandlers, // a-api-keys
   ...auditHandlers, // a-audit-log
   ...aiKeyHandlers, // e-byok-api

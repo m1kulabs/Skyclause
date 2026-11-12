@@ -110,3 +110,10 @@ export { loadEvaluatorHistory } from './services/evaluator/history'
 export { createEvaluatorProviders, semanticVerdictKey, type EvaluatorProviders } from './services/evaluator'
 
 export { nextEvaluationAt, evaluatorWindows } from './services/evaluator/deadline'
+
+export {
+  listProjectSources,
+  serializeProjectSourceHealth,
+  type ProjectSourcesQuery,
+  type ProjectSourceHealthView
+} from './services/signals'
