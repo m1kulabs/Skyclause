@@ -1105,6 +1105,17 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
     > :is(td, th)[data-label]::before {
     content: attr(data-label) ' ';
   }
+  /* A labelled cell keeps its value inline beside the label and wraps: truncation is for the wide table only. */
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > :is(tbody, tfoot)
+    > tr
+    > :is(td, th)[data-label]
+    [data-slot='table-truncate'] {
+    display: inline;
+    max-width: none !important;
+    overflow: visible;
+    white-space: normal;
+  }
   :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
     > :is(tbody, tfoot)
     > tr
