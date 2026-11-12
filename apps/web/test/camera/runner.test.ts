@@ -146,7 +146,7 @@ test('422 drops a frame and outside_daylight blocks capture until the next start
   await h.runner.step()
   expect(h.frames.size).toBe(0)
   expect(h.captures()).toBe(1)
-  expect(h.events).toContain('dropped')
+  expect(h.events).toContain('droppedDaylight')
   expect((await h.store.setup())!.blockedUntil).toBe(Date.parse('2026-11-07T07:15:00+08:00'))
 })
 

@@ -34,11 +34,11 @@ async function expectAxeClean(): Promise<void> {
 
 test('reserved and format errors show inline as you type, with spellcheck off on the slug', async () => {
   render(<OrgCreateForm />)
-  const slug = screen.getByLabelText('Slug') as HTMLInputElement
+  const slug = screen.getByLabelText('Web address name') as HTMLInputElement
   expect(slug.getAttribute('spellcheck')).toBe('false')
 
   fireEvent.change(slug, { target: { value: 'New' } })
-  expect(await screen.findByText('new is reserved. Choose another slug.')).toBeTruthy()
+  expect(await screen.findByText('new is reserved. Choose another web address name.')).toBeTruthy()
   fireEvent.change(slug, { target: { value: 'A' } })
   expect(await screen.findByText(/Use 2–39 lowercase letters/)).toBeTruthy()
   await expectAxeClean()
@@ -46,13 +46,13 @@ test('reserved and format errors show inline as you type, with spellcheck off on
 
 test('typing the first letter of the name shows no slug error before the slug is touched', async () => {
   render(<OrgCreateForm />)
-  const slug = screen.getByLabelText('Slug') as HTMLInputElement
+  const slug = screen.getByLabelText('Web address name') as HTMLInputElement
   fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'R' } })
   expect(slug.value).toBe('r')
   expect(screen.queryByText(/Use 2–39 lowercase letters/)).toBeNull()
   expect(slug.getAttribute('aria-invalid')).toBe('false')
   fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'New' } })
-  expect(await screen.findByText('new is reserved. Choose another slug.')).toBeTruthy()
+  expect(await screen.findByText('new is reserved. Choose another web address name.')).toBeTruthy()
 })
 
 test('a one-letter suggested slug still fails on submit, with focus on the slug', async () => {
@@ -60,17 +60,17 @@ test('a one-letter suggested slug still fails on submit, with focus on the slug'
   fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'R' } })
   fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }))
   expect(await screen.findByText(/Use 2–39 lowercase letters/)).toBeTruthy()
-  await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Slug')))
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Web address name')))
   expect(apiFetch).not.toHaveBeenCalled()
 })
 
 test('the slug is suggested from the name and stays editable', async () => {
   render(<OrgCreateForm />)
   fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'River Watch' } })
-  expect((screen.getByLabelText('Slug') as HTMLInputElement).value).toBe('river-watch')
-  fireEvent.change(screen.getByLabelText('Slug'), { target: { value: 'custom-slug' } })
+  expect((screen.getByLabelText('Web address name') as HTMLInputElement).value).toBe('river-watch')
+  fireEvent.change(screen.getByLabelText('Web address name'), { target: { value: 'custom-slug' } })
   fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'River Watch 2' } })
-  expect((screen.getByLabelText('Slug') as HTMLInputElement).value).toBe('custom-slug')
+  expect((screen.getByLabelText('Web address name') as HTMLInputElement).value).toBe('custom-slug')
 })
 
 test('a taken slug shows its reason on submit, with focus moved to the field (ORG-1)', async () => {
@@ -84,9 +84,9 @@ test('a taken slug shows its reason on submit, with focus moved to the field (OR
   )
   render(<OrgCreateForm />)
   fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'River Watch' } })
-  const slug = screen.getByLabelText('Slug')
+  const slug = screen.getByLabelText('Web address name')
   fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }))
-  expect(await screen.findByText('river-watch is taken. Choose another slug.')).toBeTruthy()
+  expect(await screen.findByText('river-watch is taken. Choose another web address name.')).toBeTruthy()
   await waitFor(() => expect(document.activeElement).toBe(slug))
   expect(push).not.toHaveBeenCalled()
   await expectAxeClean()
@@ -129,7 +129,7 @@ test('a failed create says it was not created and moves focus to that message', 
   expect(screen.queryByText('Could not load this organisation.')).toBeNull()
   await waitFor(() => expect(document.activeElement).toBe(alert.closest('[role="alert"]')))
   // The fields keep focus while a request runs: they are read-only, never disabled.
-  expect((screen.getByLabelText('Slug') as HTMLInputElement).disabled).toBe(false)
+  expect((screen.getByLabelText('Web address name') as HTMLInputElement).disabled).toBe(false)
 })
 
 test('the button stays busy after success until the next page takes over, so a second click cannot create it twice', async () => {

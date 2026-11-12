@@ -95,7 +95,7 @@ export function WindowStrip({ windows, strip, list, locale = 'en' }: WindowStrip
     : t('data.strip.no_crossing', {}, locale)
   const summary = input.replay
     ? t(
-        'data.strip.summary_replay',
+        count === 1 ? 'data.strip.summary_replay_one' : 'data.strip.summary_replay',
         {
           source: input.replay.source,
           captured: formatTime(input.replay.capturedAt, locale),
@@ -104,7 +104,11 @@ export function WindowStrip({ windows, strip, list, locale = 'en' }: WindowStrip
         },
         locale
       )
-    : t('data.strip.summary_live', { to: formatTime(input.to, locale), crossing: crossingText, count }, locale)
+    : t(
+        count === 1 ? 'data.strip.summary_live_one' : 'data.strip.summary_live',
+        { to: formatTime(input.to, locale), crossing: crossingText, count },
+        locale
+      )
 
   const win = windows[0]
   const toggleLabel = showTable ? t('data.strip.hide_table', {}, locale) : t('data.strip.show_table', {}, locale)
@@ -155,7 +159,11 @@ export function WindowStrip({ windows, strip, list, locale = 'en' }: WindowStrip
                 {t('data.strip.table_caption', {}, locale)}
                 {table.bucketMinutes ? (
                   <span className="block">
-                    {t('data.strip.table_peaks', { minutes: table.bucketMinutes, count }, locale)}
+                    {t(
+                      count === 1 ? 'data.strip.table_peaks_one' : 'data.strip.table_peaks',
+                      { minutes: table.bucketMinutes, count },
+                      locale
+                    )}
                   </span>
                 ) : null}
               </TableCaption>

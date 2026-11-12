@@ -43,7 +43,11 @@ test('NTC-13 Admin sees consent, suppression and bounce records and can copy a r
   await expect(table).not.toContainText(t('subscribers.consent'))
   await table.getByRole('button', { name: row.email, exact: true }).click()
   await expect(page.getByRole('dialog')).toContainText(
-    t('subscribers.consent_detail', { form: 'subscribe', version: '2026-11-06', language: t('subscribe.english') })
+    t('subscribers.consent_detail', {
+      form: t('subscribers.form_subscribe_link'),
+      version: '2026-11-06',
+      language: t('subscribe.english')
+    })
   )
   await page.keyboard.press('Escape')
   await table.getByRole('button', { name: 'bounced@example.test', exact: true }).click()
@@ -146,7 +150,11 @@ test('subscriber pagination uses the returned cursor and preserves earlier conse
   await expect(page.getByRole('table')).toContainText(row.email)
   await page.getByRole('table').getByRole('button', { name: row.email, exact: true }).click()
   await expect(page.getByRole('dialog')).toContainText(
-    t('subscribers.consent_detail', { form: 'subscribe', version: '2026-11-06', language: t('subscribe.english') })
+    t('subscribers.consent_detail', {
+      form: t('subscribers.form_subscribe_link'),
+      version: '2026-11-06',
+      language: t('subscribe.english')
+    })
   )
 })
 

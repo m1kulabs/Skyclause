@@ -108,7 +108,11 @@ export function SourceHealthRow({
             <span
               role="img"
               aria-label={
-                t('data.source.ticks_label', { count: ticks.length }, locale) +
+                t(
+                  ticks.length === 1 ? 'data.source.ticks_label_one' : 'data.source.ticks_label',
+                  { count: ticks.length },
+                  locale
+                ) +
                 ': ' +
                 t('data.strip.ticks_received', { received, missed, errors: failed }, locale)
               }

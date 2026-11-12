@@ -39,7 +39,7 @@
   },
   "inputs": {
     "rain": "gauge",
-    "api": "API",
+    "api": "Air Pollutant Index",
     "met_warning": "MET warning",
     "met_forecast": "MET forecast",
     "camera": "camera",

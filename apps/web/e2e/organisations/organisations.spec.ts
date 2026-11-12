@@ -89,13 +89,13 @@ test('ORG-1 reserved and taken slugs are refused inline with the reason and focu
   await signInAs(page, 'owner', await makeOrg())
   await page.goto('/new')
   await page.getByLabel('Organisation name').fill('Taken org')
-  await page.getByLabel('Slug').fill('taken-slope')
+  await page.getByLabel('Web address name').fill('taken-slope')
   await page.getByRole('button', { name: 'Create organisation' }).click()
-  await expect(page.getByText('taken-slope is taken. Choose another slug.')).toBeVisible()
-  await expect(page.getByLabel('Slug')).toBeFocused()
+  await expect(page.getByText('taken-slope is taken. Choose another web address name.')).toBeVisible()
+  await expect(page.getByLabel('Web address name')).toBeFocused()
 
-  await page.getByLabel('Slug').fill('new')
-  await expect(page.getByText('new is reserved. Choose another slug.')).toBeVisible()
+  await page.getByLabel('Web address name').fill('new')
+  await expect(page.getByText('new is reserved. Choose another web address name.')).toBeVisible()
 })
 
 test('creating an organisation continues to the first run next step', async ({ page }) => {
@@ -103,8 +103,8 @@ test('creating an organisation continues to the first run next step', async ({ p
   const slug = `e2e-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
   await page.goto('/new')
   await page.getByLabel('Organisation name').fill('E2E Org')
-  await expect(page.getByLabel('Slug')).toHaveValue('e2e-org')
-  await page.getByLabel('Slug').fill(slug)
+  await expect(page.getByLabel('Web address name')).toHaveValue('e2e-org')
+  await page.getByLabel('Web address name').fill(slug)
   await page.getByRole('button', { name: 'Create organisation' }).click()
   await expect(page).toHaveURL(`/${slug}/new`)
 })
@@ -130,7 +130,7 @@ test('the shell lists a new organisation as soon as it is created, instead of No
       { name: 'skyclause-test-shell', value: encodeURIComponent(JSON.stringify(shell)), url: origin, httpOnly: true }
     ])
   await page.getByLabel('Organisation name').fill('E2E Org')
-  await page.getByLabel('Slug').fill(slug)
+  await page.getByLabel('Web address name').fill(slug)
   await page.getByRole('button', { name: 'Create organisation' }).click()
   await expect(page).toHaveURL(`/${slug}/new`)
   await expect(switcher).toHaveAccessibleName('Switch organisation: E2E Org')
@@ -220,7 +220,7 @@ test('general panel renames the organisation with the slug read-only', async ({ 
   await signInAs(page, 'owner', org)
   await page.goto(`/${org.slug}/settings/general`)
   await expect(page.getByLabel('Organisation name')).toHaveValue(org.slug)
-  await expect(page.getByLabel(/Slug/)).toHaveValue(org.slug)
+  await expect(page.getByLabel(/Web address name/)).toHaveValue(org.slug)
   await page.getByLabel('Organisation name').fill('Renamed org')
   await page.getByRole('button', { name: 'Save name' }).click()
   await expect(page.getByText('Name saved.')).toBeVisible()

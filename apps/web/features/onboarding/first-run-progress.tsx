@@ -16,12 +16,24 @@ import styles from './onboarding.module.css'
 
 type Step = OnboardingView['steps'][number]['step']
 
+/** A result that would print something raw: a status code, a snake_case key such as `rain_5m_mm`. */
+const RAW_RESULT = /\bHTTP\b|\b[a-z0-9]+_[a-z0-9_]+\b/
+
 /**
- * A done step's line. The API words each result as an English sentence, and a source step's can carry the source's
- * status code; in every other language, and for such a result, the line says when the step was done instead.
+ * A done step's line. The API words each result as an English sentence. The source step's names the source by its ID
+ * and can carry its error, so the line says it is bound or needs attention instead; the channel step's names the
+ * channel by its key. In every other language, and for any result that would print something raw, the line says when
+ * the step was done.
  */
 function DoneLine({ item, locale }: { item: OnboardingView['steps'][number]; locale: Locale }) {
-  if (locale === 'en' && item.result && !/\bHTTP\b/.test(item.result)) return item.result
+  if (item.step === 'sources' && item.result) {
+    return t(
+      /·\s*error\b/.test(item.result) ? 'onboarding.step_needs_attention' : 'onboarding.source_bound',
+      {},
+      locale
+    )
+  }
+  if (locale === 'en' && item.step !== 'channel' && item.result && !RAW_RESULT.test(item.result)) return item.result
   if (!item.completed_at) return t('onboarding.done', {}, locale)
   return (
     <time dateTime={item.completed_at}>

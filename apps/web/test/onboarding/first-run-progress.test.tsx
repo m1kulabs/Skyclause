@@ -108,13 +108,38 @@ test('in Malay a done step reads when it was done, never the English result the 
   expect(within(list).getAllByText('Selesai pada 09:00 MYT')).toHaveLength(2)
 })
 
-test('in English a done step keeps its result, unless it would print a status code', async () => {
-  const answer = view(3)
-  answer.steps[2]!.result = 'CA16W bound · error · HTTP 404'
+test('in English a done step keeps its result, unless it would print anything raw', async () => {
+  // Every step done but the rota, so the list still shows.
+  const answer = view(6)
+  answer.steps[4]!.completed_at = null
+  answer.steps[4]!.result = null
+  answer.steps[3]!.result = 'Open-air lecture declared · rain_5m_mm'
+  answer.steps[5]!.result = 'in app connected'
   vi.mocked(onboardingApi).mockResolvedValue(answer as never)
   render(<FirstRunProgress org="test-org" />)
   const list = await screen.findByRole('list')
   expect(within(list).getByText('organisation done')).toBeTruthy()
-  expect(within(list).queryByText(/HTTP/)).toBeNull()
-  expect(within(list).getByText('Done at 09:00 MYT')).toBeTruthy()
+  // A snake_case key, and the channel's unlocalised name, never show: the step says when it was done instead.
+  expect(within(list).queryByText(/rain_5m_mm|in app connected/)).toBeNull()
+  expect(within(list).getAllByText('Done at 09:00 MYT')).toHaveLength(2)
+})
+
+test('the source step says it is bound, or that it needs attention, never the source ID or its error', async () => {
+  const answer = view(3)
+  answer.steps[2]!.result = 'CA16W bound · API 67, 13 min old'
+  vi.mocked(onboardingApi).mockResolvedValue(answer as never)
+  render(<FirstRunProgress org="test-org" />)
+  let list = await screen.findByRole('list')
+  expect(within(list).getByText('Source bound.')).toBeTruthy()
+  expect(within(list).queryByText(/CA16W/)).toBeNull()
+  cleanup()
+  for (const result of ['CA16W bound · error · HTTP 404', '0232901RF bound · error']) {
+    answer.steps[2]!.result = result
+    vi.mocked(onboardingApi).mockResolvedValue(answer as never)
+    render(<FirstRunProgress org="test-org" locale="ms" />)
+    list = await screen.findByRole('list')
+    expect(within(list).getByText('Perlu perhatian: tinjauan terakhir sumber gagal.')).toBeTruthy()
+    expect(within(list).queryByText(/HTTP|CA16W|0232901RF|error/)).toBeNull()
+    cleanup()
+  }
 })

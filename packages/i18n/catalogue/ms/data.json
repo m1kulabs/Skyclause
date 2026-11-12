@@ -1,7 +1,9 @@
 {
   "strip": {
     "summary_live": "Strip langsung hingga {to}. {crossing}. {count} bacaan.",
+    "summary_live_one": "Strip langsung hingga {to}. {crossing}. 1 bacaan.",
     "summary_replay": "Ulangan {source}, dirakam {captured}. {crossing}. {count} bacaan.",
+    "summary_replay_one": "Ulangan {source}, dirakam {captured}. {crossing}. 1 bacaan.",
     "crossing": "Lebat dicapai pada {time} ({value} mm dalam 60 min)",
     "no_crossing": "Tiada lintasan Lebat dalam tetingkap ini",
     "show_table": "Tunjuk jadual",
@@ -20,6 +22,7 @@
     "chart_date": "{date} · MYT",
     "now_label": "Kini MYT",
     "table_peaks": "Bacaan tertinggi dalam setiap {minutes} minit, daripada {count} bacaan.",
+    "table_peaks_one": "Bacaan tertinggi dalam setiap {minutes} minit, daripada 1 bacaan.",
     "lane_rain5": "Hujan, mm setiap 5 min",
     "lane_rain60": "Hujan, mm dalam 60 min",
     "ticks_received": "{received} diterima, {missed} tiada, {errors} gagal"
@@ -45,6 +48,7 @@
     "latest_empty": "Tiada bacaan lagi (n=0).",
     "error_since": "Ralat {source} sejak {time}",
     "ticks_label": "{count} tinjauan terakhir",
+    "ticks_label_one": "Tinjauan terakhir",
     "tick_received": "diterima",
     "tick_missed": "tiada",
     "tick_error": "ralat",
@@ -132,8 +136,8 @@
   "indicators": {
     "site": {
       "rain_60m_mm": "Hujan dalam 60 minit lepas (tapak)",
-      "api_max": "Indeks pencemaran udara, tertinggi antara stesen",
-      "api_0600_min_last3_max": "Indeks pencemaran udara pada 06:00, terendah dalam tiga pagi lepas",
+      "api_max": "Indeks Pencemaran Udara (IPU), tertinggi antara stesen",
+      "api_0600_min_last3_max": "Indeks Pencemaran Udara (IPU) pada 06:00, terendah dalam tiga pagi lepas",
       "met_warning_in_force": "Amaran MET sedang berkuat kuasa (tapak)",
       "met_afternoon_thunderstorm": "Ramalan MET: ribut petir waktu petang",
       "camera_far_low_frames": "Kamera langit: bingkai jauh berkontras rendah, daripada 3 terakhir",

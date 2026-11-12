@@ -87,7 +87,13 @@ function ReplayChart({ series, locale }: { series: ReplaySeries; locale: Locale 
   return (
     <div data-replay-chart>
       <div className="analysis-chart-head">
-        <h3>{t('analysis.replaySummary', { n: steps }, locale)}</h3>
+        <h3>
+          {t(
+            series.points.length === 1 ? 'analysis.replaySummary_one' : 'analysis.replaySummary',
+            { n: steps },
+            locale
+          )}
+        </h3>
         <Button variant="ghost" size="sm" aria-expanded={table} onClick={() => setTable(!table)}>
           {t(table ? 'analysis.view' : 'analysis.table', {}, locale)}
         </Button>
@@ -434,7 +440,9 @@ export function ReplayPane({
                       <option key={step} value={step}>
                         {step === 'reading'
                           ? t('analysis.reading', {}, locale)
-                          : t('analysis.stepMinutes', { n: formatNumber(Number(step.slice(2, -1)), locale) }, locale)}
+                          : Number(step.slice(2, -1)) === 1
+                            ? t('analysis.stepMinutes_one', {}, locale)
+                            : t('analysis.stepMinutes', { n: formatNumber(Number(step.slice(2, -1)), locale) }, locale)}
                       </option>
                     ))}
                   </select>
@@ -481,7 +489,11 @@ export function ReplayPane({
                   {visible?.status === 'loading'
                     ? t('analysis.running', {}, locale)
                     : visible?.status === 'ready' && value
-                      ? t('analysis.replayDone', { n: formatNumber(value.steps.length, locale) }, locale)
+                      ? t(
+                          value.steps.length === 1 ? 'analysis.replayDone_one' : 'analysis.replayDone',
+                          { n: formatNumber(value.steps.length, locale) },
+                          locale
+                        )
                       : null}
                 </p>
               </div>

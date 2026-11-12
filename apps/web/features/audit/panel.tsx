@@ -241,7 +241,7 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
     ? null
     : positionKnown
       ? copy('range', { from: number(first), to: number(first + entries.length - 1) })
-      : copy('pageOf', { count: number(entries.length) })
+      : copy(entries.length === 1 ? 'pageOf_one' : 'pageOf', { count: number(entries.length) })
   const active = Object.values(filters).filter(Boolean).length
   const actionName = (action: string) => copy(`actions.${auditActionKey(action)}`)
   const objectNoun = (type: string) => {

@@ -39,7 +39,7 @@
   },
   "inputs": {
     "rain": "tolok hujan",
-    "api": "IPU",
+    "api": "Indeks Pencemaran Udara",
     "met_warning": "amaran MET",
     "met_forecast": "ramalan MET",
     "camera": "kamera",

@@ -64,10 +64,14 @@ test('channel errors keep the confirmed state and never invent a preview', async
   // uncheck() would wait for an unchecked state the error path never reaches; Space performs the same write.
   await toggle.focus()
   await page.keyboard.press('Space')
-  await expect(page.locator('[data-channels-panel]').getByRole('alert')).toContainText('permission-denied')
+  // Said in words; the problem's slug stays on the alert for tests, never in what a person reads.
+  const alert = page.locator('[data-channels-panel]').getByRole('alert')
+  await expect(alert).toHaveText(t('subscribe.error_forbidden'))
+  await expect(alert).toHaveAttribute('data-problem', 'permission-denied')
   await expect(toggle).toBeChecked()
   await page.getByRole('button', { name: t('channels.preview') }).click()
-  await expect(page.locator('[data-channels-panel]').getByRole('alert')).toContainText('operation-unavailable')
+  await expect(alert).toHaveText(t('subscribe.failed'))
+  await expect(alert).toHaveAttribute('data-problem', 'operation-unavailable')
   await expect(page.getByText(t('channels.no_preview'))).toHaveCount(0)
 })
 

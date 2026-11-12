@@ -330,7 +330,7 @@ export function LedgerFragment() {
         <li>
           <span className="frag-ledger-when">None</span>
           <span className="frag-ledger-what">Call, approval, send</span>
-          <span>Empty: no call was made that day</span>
+          <span>No call was made that day.</span>
         </li>
         <li data-source={JPS_SOURCE_URL}>
           <time dateTime="2026-11-03T06:45:00+08:00">06:45{NB}MYT</time>

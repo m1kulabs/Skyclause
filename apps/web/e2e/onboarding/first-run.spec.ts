@@ -90,7 +90,7 @@ test.describe('the first run on a production-style server', () => {
     await expectClean(page, 'organisation form')
     await shoot(page, '1-organisation')
     await page.getByLabel('Organisation name').fill('Campus weather desk')
-    await page.getByLabel('Slug').fill(orgSlug)
+    await page.getByLabel('Web address name').fill(orgSlug)
     const created = page.waitForResponse(
       (response) => response.request().method() === 'POST' && response.url().endsWith('/api/orgs')
     )
@@ -109,7 +109,7 @@ test.describe('the first run on a production-style server', () => {
     await shoot(page, '2-project')
     const form = page.locator('form').filter({ has: page.getByLabel('Project name') })
     await form.getByLabel('Project name').fill('Bukit Jalil campus')
-    await form.getByLabel('Project slug').fill(projectSlug)
+    await form.getByLabel('Web address name').fill(projectSlug)
     await form.getByLabel('Site name').fill('Bukit Jalil')
     await form.getByLabel('Latitude').fill('3.0559')
     await form.getByLabel('Longitude').fill('101.6997')

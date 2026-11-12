@@ -14,6 +14,11 @@ import type { Rows } from './index'
 type Locale = 'en' | 'ms'
 type Row = Rows['data'][number]
 
+/** The consent forms the API records, each said in words; anything else is never printed as its key. */
+const consentForms = new Set(['subscribe_link', 'import', 'confirm', 'preferences'])
+const consentForm = (form: string, locale: Locale) =>
+  t(consentForms.has(form) ? `subscribers.form_${form}` : 'subscribers.form_other', {}, locale)
+
 const filters = ['all', 'confirmed', 'unconfirmed', 'suppressed'] as const
 type Filter = (typeof filters)[number]
 
@@ -92,7 +97,7 @@ function SubscriberDetails({ row, onClose, locale }: { row: Row; onClose: () => 
               ? t(
                   'subscribers.consent_detail',
                   {
-                    form: row.consent.form,
+                    form: consentForm(row.consent.form, locale),
                     version: row.consent.notice_version,
                     language: language(row.consent.language)
                   },

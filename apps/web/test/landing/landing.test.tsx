@@ -282,6 +282,13 @@ describe('landing sections', () => {
     expect(range.getAttribute('aria-valuetext')).toBe('Approval and notice')
   })
 
+  test('the replayed ledger says plainly that no call was made that day, with no "Empty:" label', () => {
+    renderPage()
+    const ledger = document.querySelector('.record-object[data-item="ledger"]')!
+    expect(ledger.textContent).toContain('No call was made that day.')
+    expect(ledger.textContent).not.toContain('Empty:')
+  })
+
   test('the record: four parts, each with its photograph, object and fact; radios choose one', () => {
     renderPage()
     const radios = [...document.querySelectorAll<HTMLInputElement>('input[name="record"]')]

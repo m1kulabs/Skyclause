@@ -10,8 +10,8 @@
   "indicators": {
     "site": {
       "rain_60m_mm": "Rain in the last 60 minutes",
-      "api_max": "Highest Air Pollution Index",
-      "api_0600_min_last3_max": "Highest of the last three 06:00 Air Pollution Index readings",
+      "api_max": "Highest Air Pollutant Index",
+      "api_0600_min_last3_max": "Highest of the last three 06:00 Air Pollutant Index readings",
       "met_warning_in_force": "MET warning in force",
       "met_afternoon_thunderstorm": "Afternoon thunderstorm forecast",
       "camera_far_low_frames": "Far low-contrast camera frames",
