@@ -125,6 +125,7 @@ export function HeroStatic({
             className={styles.zone}
             data-window-line={result.kind === 'unavailable' ? '' : undefined}
             data-source={CLOCK_SOURCE}
+            aria-live="polite"
           >
             {result.kind === 'unavailable' ? windowLineOf(win) : t('landing-hero.time_zone', {}, 'en')}
           </p>
