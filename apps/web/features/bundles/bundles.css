@@ -52,7 +52,11 @@ html:has(.bundle-detail) {
   align-items: center;
   min-height: 24px;
   text-decoration: underline;
+  text-decoration-color: var(--control-edge);
   text-underline-offset: 3px;
+}
+.bundle-link:hover {
+  text-decoration-color: currentColor;
 }
 .bundle-status {
   font-weight: 600;
@@ -79,6 +83,7 @@ html:has(.bundle-detail) {
     top: calc(var(--shell-bar-height, 0px) + 16px);
     max-height: calc(100dvh - var(--shell-bar-height, 0px) - 128px);
     overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 4px;
     margin: -4px;
   }
@@ -192,6 +197,24 @@ html:has(.bundle-detail) {
   align-self: flex-start;
 }
 
+/* After approval: what it did, then the record and the next bundle, in place of the SLA countdown. */
+.bundle-approved {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: var(--radius-nested, 10px);
+}
+.bundle-approved:focus {
+  outline: none;
+}
+.bundle-approved-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 20px;
+  margin-top: 4px;
+}
+
 /* The shadow check comes first when the agent and the clause engine disagree. */
 .bundle-disagreements {
   display: flex;
@@ -232,6 +255,11 @@ html:has(.bundle-detail) {
 .bundle-choice:has(input:checked) {
   border-color: var(--foreground);
 }
+@media (hover: hover) {
+  .bundle-choice:has(input:enabled):hover {
+    background: var(--accent);
+  }
+}
 .bundle-choice:has(input:disabled) {
   cursor: default;
 }
@@ -262,6 +290,27 @@ html:has(.bundle-detail) {
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px 12px;
+}
+.bundle-call-mark {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  max-width: 100%;
+}
+/* A call's fate if the bundle is approved now, in words under its badge. */
+.bundle-call-fate {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--muted-foreground);
+  text-align: right;
+}
+.bundle-call-fate[data-fate='rejected'] {
+  font-weight: 600;
+  color: var(--foreground);
+}
+.bundle-keys {
+  margin-bottom: -8px;
 }
 .bundle-call-meta {
   display: flex;
@@ -404,6 +453,19 @@ html:has(.bundle-detail) {
 .bundle-recipients li {
   color: var(--muted-foreground);
 }
+.bundle-recipient-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 18px;
+}
+.bundle-recipient-pager > p {
+  margin-right: auto;
+  color: var(--muted-foreground);
+}
 .bundle-notice {
   display: flex;
   flex-direction: column;
@@ -445,7 +507,7 @@ html:has(.bundle-detail) {
   bottom: 0;
   z-index: 10;
   margin-top: 16px;
-  padding-block: 12px;
+  padding-block: 12px calc(12px + env(safe-area-inset-bottom, 0px));
   background: var(--background);
 }
 .bundle-approval-panel {
@@ -470,30 +532,50 @@ html:has(.bundle-detail) {
   font-weight: 600;
   line-height: 20px;
 }
-.bundle-approve,
-.bundle-approval-reason {
+.bundle-approval-decide {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 16px;
+  min-width: 0;
   margin-left: auto;
 }
+/* What Approve sends, or why it cannot yet: beside the button, in words. */
 .bundle-approval-reason {
-  max-width: 32ch;
+  max-width: 34ch;
   font-size: 13px;
-  font-weight: 600;
   line-height: 18px;
+  color: var(--muted-foreground);
   text-align: right;
 }
-.bundle-approval-reason + .bundle-approve {
-  margin-left: 0;
+.bundle-approval-reason[data-blocked] {
+  font-weight: 600;
+  color: var(--foreground);
 }
-.bundle-phone-approval {
-  display: none;
+.bundle-approve {
+  height: auto;
+  min-height: 36px;
+  white-space: normal;
 }
 .bundle-edit,
 .bundle-recheck {
   overflow-wrap: anywhere;
-  max-height: calc(100dvh - 32px);
-  overflow-y: auto;
   width: min(640px, calc(100vw - 32px));
   max-width: none;
+}
+.bundle-field-error {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
+.bundle-recheck-changes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.bundle-recheck-call {
+  font-weight: 600;
 }
 .bundle-edit fieldset {
   display: grid;
@@ -514,21 +596,9 @@ html:has(.bundle-detail) {
   gap: 8px;
   min-height: 44px;
 }
-.bundle-approval-drawer {
-  overflow-wrap: anywhere;
-}
-.bundle-drawer-reason {
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 20px;
-}
-.bundle-approval-drawer [data-slot='drawer-footer'] {
-  gap: 12px;
-  padding-top: 16px;
-}
-
+/* The keys belong to a keyboard: no hint where the pointer is a finger. */
 @media (pointer: coarse) {
-  .bundle-kbd {
+  .bundle-keys {
     display: none;
   }
 }
@@ -551,7 +621,7 @@ html:has(.bundle-detail) {
     height: auto;
     white-space: normal;
   }
-  .bundle-kbd {
+  .bundle-keys {
     display: none;
   }
   .bundle-triage [data-slot='triage-item'] {
@@ -560,24 +630,17 @@ html:has(.bundle-detail) {
   .bundle-call-list > li {
     padding: 12px;
   }
-  .bundle-approval-reason {
-    display: none;
-  }
   .bundle-call-actions > button {
     min-height: 44px;
   }
   .bundle-detail[data-view='list'] .bundle-approval-bar {
     display: none;
   }
-  .bundle-approval-bar {
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-  }
   .bundle-approval-panel {
     gap: 8px;
     padding: 8px 8px 8px 12px;
   }
-  .bundle-approval-name,
-  .bundle-approve {
+  .bundle-approval-name {
     display: none;
   }
   .bundle-approval-panel button {
@@ -585,15 +648,16 @@ html:has(.bundle-detail) {
     height: auto;
     white-space: normal;
   }
-  .bundle-phone-approval {
-    display: block;
-    margin-left: auto;
+  /* The same Approve and the same words as on a desktop, the full width of the bar. */
+  .bundle-approval-decide {
+    flex-basis: 100%;
+    justify-content: space-between;
+    margin-left: 0;
   }
-  .bundle-phone-confirm {
-    width: 100%;
-    min-height: 44px;
-    height: auto;
-    white-space: normal;
+  .bundle-approval-reason {
+    flex: 1 1 12rem;
+    max-width: none;
+    text-align: left;
   }
   .bundle-edit button,
   .bundle-recheck button {

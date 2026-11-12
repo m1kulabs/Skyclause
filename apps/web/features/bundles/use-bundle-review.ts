@@ -15,7 +15,7 @@ import {
   type StripDetail
 } from './operations'
 import { approves, canReviewCall, decisionsFor, teachingLineIncluded, type Decisions } from './model'
-import { t } from './i18n'
+import { t, type Locale } from './i18n'
 import { useReauth } from '../reauth'
 import { cancelStepUp, ReauthCancelledError } from '../step-up/flow'
 import type { BundleList } from './use-project-bundles'
@@ -43,7 +43,8 @@ export function useBundleReview(
   org: string,
   initial?: InitialReview,
   /** Called on every bundle event of the project, this bundle's or another's, so the list can read again. */
-  onProjectEvent?: () => void
+  onProjectEvent?: () => void,
+  locale: Locale = 'en'
 ) {
   const projectEvent = useRef(onProjectEvent)
   useEffect(() => {
@@ -94,7 +95,9 @@ export function useBundleReview(
           try {
             return await task
           } catch {
-            errors.push(t('bundles.read_error', { operation: t(`bundles.operations.${operation}`) }))
+            errors.push(
+              t('bundles.read_error', { operation: t(`bundles.operations.${operation}`, {}, locale) }, locale)
+            )
           }
         }
         async function readRole() {
@@ -144,7 +147,7 @@ export function useBundleReview(
     }
     void load()
     return () => controller.abort()
-  }, [bundleId, org, revision, clearReauth])
+  }, [bundleId, org, revision, clearReauth, locale])
 
   const projectId = data?.bundle.project_id
   useEffect(() => {
@@ -190,6 +193,26 @@ export function useBundleReview(
             .then((bundle) => {
               if (!controller.signal.aborted)
                 setData((current) => (current ? { ...current, bundle: { ...bundle, state: 'superseded' } } : current))
+            })
+            .catch(() => undefined)
+        }
+        // Nor which calls were sent or when: read the bundle again so the page says what approving did.
+        if (bundleEvent.type === 'bundle.approved') {
+          void apiFetch('getBundle', { params: { id: bundleId }, signal: controller.signal })
+            .then((bundle) => {
+              if (!controller.signal.aborted)
+                setData((current) =>
+                  current
+                    ? {
+                        ...current,
+                        bundle: { ...current.bundle, ...bundle },
+                        calls: current.calls.map((call) => ({
+                          ...call,
+                          ...bundle.calls.find((item) => item.id === call.id)
+                        }))
+                      }
+                    : current
+                )
             })
             .catch(() => undefined)
         }
@@ -277,7 +300,7 @@ export function useBundleReview(
       const recognized = ['validation-failed', 'malay-reader-required', 'redraft-required', 'call-expired'].includes(
         code ?? ''
       )
-      const message = recognized ? t(`bundles.${code}`) : t('bundles.write_error')
+      const message = recognized ? t(`bundles.${code}`, {}, locale) : t('bundles.write_error', {}, locale)
       const callId = problem?.body.call_id
       setError({
         message: problem?.body.detail ? `${message} ${problem.body.detail}` : message,

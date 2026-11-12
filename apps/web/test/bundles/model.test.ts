@@ -1,6 +1,9 @@
 import { expect, test, vi } from 'vitest'
 import type { CallView } from '@skyclause/contracts'
 import {
+  approvalReach,
+  approvedReach,
+  callFate,
   canReviewCall,
   decisionsFor,
   teachingLineIncluded,
@@ -120,4 +123,60 @@ test('pseudo UI copy never changes the canonical teaching-line validation', () =
   } finally {
     vi.unstubAllEnvs()
   }
+})
+
+test('every open call counts as approved until rejected, and its fate says so in words', () => {
+  expect(callFate({})).toBe('included')
+  expect(callFate({ action: 'approve', chosen: 'agent' })).toBe('included')
+  expect(callFate({ action: 'edit', notices: [] })).toBe('edited')
+  expect(callFate({ recipients: ['test-recipient-1'] })).toBe('edited')
+  expect(callFate({ action: 'reject', notices: [] })).toBe('rejected')
+})
+
+test('Approve says what it sends: one notice per open call with recipients, each recipient once', () => {
+  const calls = [
+    call('a', { recipients: ['test-r1', 'test-r2'] }),
+    call('b', { recipients: ['test-r2', 'test-r3'] }),
+    call('quiet', { recipients: [] }),
+    call('old', { state: 'superseded', recipients: ['test-r9'] })
+  ]
+  expect(approvalReach(calls, {}, Date.now())).toEqual({ notices: 2, recipients: 3, rejected: 0 })
+  expect(approvalReach(calls, { b: { action: 'reject' } }, Date.now())).toEqual({
+    notices: 1,
+    recipients: 2,
+    rejected: 1
+  })
+  // An edit that removes a recipient is what is sent.
+  expect(approvalReach(calls, { a: { action: 'edit', recipients: ['test-r1'] } }, Date.now())).toEqual({
+    notices: 2,
+    recipients: 3,
+    rejected: 0
+  })
+  expect(approvalReach(calls, { a: { action: 'reject' }, b: { action: 'reject' } }, Date.now())).toEqual({
+    notices: 0,
+    recipients: 0,
+    rejected: 2
+  })
+})
+
+test('an approved bundle says when it was approved, what it sent and, once all are out, when', () => {
+  const approved = [
+    call('a', { state: 'sending', recipients: ['test-r1'], approved_at: '2026-11-02T07:08:00Z' }),
+    call('b', {
+      state: 'sent',
+      recipients: ['test-r2'],
+      approved_at: '2026-11-02T07:09:00Z',
+      sent_at: '2026-11-02T07:10:00Z'
+    }),
+    call('c', { state: 'rejected', recipients: ['test-r3'] })
+  ]
+  expect(approvedReach(approved)).toEqual({
+    notices: 2,
+    recipients: 2,
+    rejected: 1,
+    approvedAt: '2026-11-02T07:09:00Z',
+    sentAt: null
+  })
+  approved[0] = { ...approved[0]!, state: 'sent', sent_at: '2026-11-02T07:11:00Z' }
+  expect(approvedReach(approved).sentAt).toBe('2026-11-02T07:11:00Z')
 })

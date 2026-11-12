@@ -201,10 +201,10 @@ test('the list beside the review shows the server’s rows, marks the open bundl
     /aria-current="true"[^>]*href="\/test-org\/test-project\/bundles\/test-bundle"|href="\/test-org\/test-project\/bundles\/test-bundle"[^>]*aria-current="true"/
   )
   expect(html).toContain('Sky · Input crossing')
-  expect(html).toContain('2 min ago')
-  expect(html).toContain('8 min left')
+  expect(html).toContain('2\u00a0min ago')
+  expect(html).toContain('8\u00a0min left')
   expect(html).toContain('Sky · Scheduled run')
   expect(html).toContain('Yesterday')
   expect(html).toContain('Approved')
-  expect(html).toContain('n=2')
+  expect(html).toContain('2 bundles')
 })
