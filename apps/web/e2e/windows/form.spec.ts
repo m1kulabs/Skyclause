@@ -3,6 +3,12 @@ import { stubApi } from '../harness'
 import { windowsOperations } from '../../features/windows/operations'
 import { prepareWindows, replayWindow, route, windowId } from './replay'
 import { w } from './messages'
+import { controls } from './controls'
+
+const NO_REPEAT = 'createWindow refuses a recurrence until a series is built'
+const NO_EDIT = 'updateWindow has no handler: an existing window opens as its details'
+const NO_CANCEL = 'cancelWindow has no handler: Cancel window is not offered'
+const NO_IMPORT = 'createIcsFeed has no handler: the ICS import is not offered'
 
 async function openForm(page: import('@playwright/test').Page) {
   await page.clock.install({ time: new Date('2026-11-02T01:00:00Z') })
@@ -129,6 +135,7 @@ test('D13 zero-length commute wave saves through createWindow with MYT converted
 })
 
 test('WIN-3 Monday and Wednesday for six weeks and one skip previews 11 before saving', async ({ page }) => {
+  test.skip(!controls.repeat, NO_REPEAT)
   await openForm(page)
   await fillWindow(page)
   await page.getByRole('checkbox', { name: w('weekly'), exact: true }).check()
@@ -150,6 +157,7 @@ test('WIN-3 Monday and Wednesday for six weeks and one skip previews 11 before s
 })
 
 test('edit loads the selected occurrence and PATCHes its own id', async ({ page }) => {
+  test.skip(!controls.edit, NO_EDIT)
   await page.clock.install({ time: new Date('2026-11-02T01:00:00Z') })
   await prepareWindows(page)
   await stubApi(page, 'updateWindow', replayWindow, { registry: windowsOperations })
@@ -165,6 +173,7 @@ test('edit loads the selected occurrence and PATCHes its own id', async ({ page 
 })
 
 test('ICS URL import calls createIcsFeed and preserves server errors', async ({ page }) => {
+  test.skip(!controls.importIcs, NO_IMPORT)
   await openForm(page)
   await page.getByRole('button', { name: w('import'), exact: true }).click()
   await page.getByLabel(w('import_url'), { exact: true }).fill('https://calendar.example.org/replay.ics')
@@ -181,6 +190,7 @@ test('ICS URL import calls createIcsFeed and preserves server errors', async ({ 
 })
 
 test('ICS file upload sends original replay bytes through createIcsFeed', async ({ page }) => {
+  test.skip(!controls.importIcs, NO_IMPORT)
   await openForm(page)
   await page.getByRole('button', { name: w('import'), exact: true }).click()
   const content =
@@ -201,6 +211,7 @@ test('ICS file upload sends original replay bytes through createIcsFeed', async 
 })
 
 test('whole-series edit uses scope=series and previews the saved recurrence', async ({ page }) => {
+  test.skip(!controls.edit || !controls.repeat, !controls.edit ? NO_EDIT : NO_REPEAT)
   await page.clock.install({ time: new Date('2026-11-02T01:00:00Z') })
   const occurrence = {
     ...replayWindow,
@@ -227,6 +238,7 @@ test('whole-series edit uses scope=series and previews the saved recurrence', as
 })
 
 test('whole-series cancellation sends exactly one DELETE after 10 seconds', async ({ page }) => {
+  test.skip(!controls.edit || !controls.cancel, !controls.edit ? NO_EDIT : NO_CANCEL)
   await page.clock.install({ time: new Date('2026-11-02T01:00:00Z') })
   await prepareWindows(page, [{ ...replayWindow, series_id: '2-november-replay-series' }])
   await stubApi(
@@ -254,7 +266,72 @@ test('whole-series cancellation sends exactly one DELETE after 10 seconds', asyn
   expect(writes).toBe(1)
 })
 
+test('an existing window opens as its details while it cannot be changed, and Declare a window opens the form', async ({
+  page
+}) => {
+  test.skip(controls.edit, 'updateWindow has a handler: the editor is tested above')
+  await page.clock.install({ time: new Date('2026-11-02T01:00:00Z') })
+  await prepareWindows(page)
+  await page.goto(`${route}&edit=${windowId}`)
+  const dialog = page.getByRole('dialog', { name: w('details_title') })
+  await expect(dialog.getByText(replayWindow.title, { exact: true })).toBeVisible()
+  await expect(dialog.getByText(w('read_only'), { exact: true })).toBeVisible()
+  await expect(dialog.getByRole('textbox')).toHaveCount(0)
+  await expect(dialog.getByRole('button', { name: w('save'), exact: true })).toHaveCount(0)
+  await expect(dialog.getByRole('button', { name: w('cancel'), exact: true })).toHaveCount(controls.cancel ? 1 : 0)
+  await dialog.getByRole('button', { name: w('declare'), exact: true }).click()
+  await expect(page).toHaveURL(/declare=window/)
+  await expect(page.getByRole('dialog').getByLabel(w('field_title'), { exact: true })).toHaveValue('')
+})
+
+test('declaring offers no Repeat and no ICS import while they cannot work', async ({ page }) => {
+  test.skip(controls.repeat && controls.importIcs, 'Repeat and Import both work: they are tested above')
+  await page.clock.install({ time: new Date('2026-11-02T01:00:00Z') })
+  await prepareWindows(page)
+  // An old link to the import still opens the one form that works.
+  await page.goto(`${route}&declare=window&import=ics`)
+  const dialog = page.getByRole('dialog', { name: w('declare') })
+  await expect(dialog.getByLabel(w('field_title'), { exact: true })).toBeVisible()
+  await expect(dialog.getByRole('checkbox', { name: w('weekly'), exact: true })).toHaveCount(controls.repeat ? 1 : 0)
+  await expect(dialog.getByRole('button', { name: w('import'), exact: true })).toHaveCount(controls.importIcs ? 1 : 0)
+  await expect(dialog.getByLabel(w('import_url'), { exact: true })).toHaveCount(controls.importIcs ? 1 : 0)
+})
+
+test('keyboard-only user declares a window', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-11-02T01:00:00Z') })
+  await prepareWindows(page)
+  await stubApi(page, 'createWindow', replayWindow, { registry: windowsOperations })
+  const request = page.waitForRequest((request) => request.url().includes('/windows') && request.method() === 'POST')
+  await page.goto(route)
+  await tabTo(page, '[data-declare-window]')
+  await page.keyboard.press('Enter')
+  await expect(page.locator('#window-title')).toBeVisible()
+  await tabTo(page, '#window-title')
+  await page.keyboard.type('2 November replay · keyboard declaration')
+  await tabTo(page, '#window-start')
+  await page.keyboard.type('0330')
+  await page.keyboard.press('p')
+  await expect(page.locator('#window-start')).toHaveValue('15:30')
+  await tabTo(page, '#window-end')
+  await page.keyboard.type('0400')
+  await page.keyboard.press('p')
+  await expect(page.locator('#window-end')).toHaveValue('16:00')
+  await tabTo(page, '[data-window-form] button[type="submit"]')
+  await page.keyboard.press('Enter')
+  expect((await request).postDataJSON()).not.toHaveProperty('recurrence')
+  await expect(page.getByRole('dialog')).toBeHidden()
+})
+
+async function tabTo(page: import('@playwright/test').Page, selector: string) {
+  for (let index = 0; index < 100; index++) {
+    if (await page.locator(selector).evaluate((element) => element === document.activeElement)) return
+    await page.keyboard.press('Tab')
+  }
+  throw new Error(`Tab could not reach ${selector}`)
+}
+
 test('keyboard-only user declares, edits and cancels a window', async ({ page }) => {
+  test.skip(!controls.edit || !controls.cancel, !controls.edit ? NO_EDIT : NO_CANCEL)
   await page.clock.install({ time: new Date('2026-11-02T01:00:00Z') })
   await prepareWindows(page)
   await stubApi(page, 'createWindow', replayWindow, { registry: windowsOperations })

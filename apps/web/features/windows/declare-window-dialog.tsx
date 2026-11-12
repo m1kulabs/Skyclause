@@ -13,7 +13,9 @@ import { ApiProblem } from '../../lib/api-fetch'
 import { SourceError } from '../data-components'
 import { allPages, resolveProject, windowsApi, type WindowView } from './operations'
 import { WindowForm } from './window-form'
+import { WindowDetails } from './window-details'
 import { ImportForm } from './import-form'
+import type { WindowControls } from './controls'
 import { useMedia } from './use-media'
 import { localDate } from './model'
 import { t, type Locale } from './catalogue'
@@ -22,6 +24,8 @@ export interface DeclareWindowDialogProps {
   org: string
   locale?: Locale
   project: string
+  /** Which parts can work, read on the server from the API's handlers: the rest is not offered. */
+  controls: WindowControls
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
@@ -77,12 +81,21 @@ function Frame({
   )
 }
 
-export function DeclareWindowDialog({ org, project, locale = 'en', open, onOpenChange }: DeclareWindowDialogProps) {
+export function DeclareWindowDialog({
+  org,
+  project,
+  controls,
+  locale = 'en',
+  open,
+  onOpenChange
+}: DeclareWindowDialogProps) {
   const search = useSearchParams()
   const router = useRouter()
   const editId = search.get('edit')
   const visible = open ?? (search.get('declare') === 'window' || !!editId)
-  const importing = !editId && search.get('import') === 'ics'
+  const importing = controls.importIcs && !editId && search.get('import') === 'ics'
+  // Without updateWindow an existing window is shown as its details, never as a form whose Save can only fail.
+  const readOnly = !!editId && !controls.edit
   const root = `/${encodeURIComponent(org)}/${encodeURIComponent(project)}`
   const guard = useRef<() => boolean>(() => true)
   const queued = useRef<{ id: string; scope: 'occurrence' | 'series' } | null>(null)
@@ -143,6 +156,19 @@ export function DeclareWindowDialog({ org, project, locale = 'en', open, onOpenC
     guard.current = () => true
     requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('[data-declare-window]')?.focus())
   }
+  function declareNew() {
+    const next = new URLSearchParams(search)
+    next.delete('edit')
+    next.set('declare', 'window')
+    router.replace(`?${next}`, { scroll: false })
+  }
+  function cancel(scope: 'occurrence' | 'series') {
+    if (action.pending || action.committing || !loaded?.window) return
+    queued.current = { id: loaded.window.id, scope }
+    action.start()
+    setStatus('cancelled')
+    close(true)
+  }
   function saved(created?: WindowView) {
     setStatus(importing ? 'imported' : 'saved')
     close(true)
@@ -158,10 +184,10 @@ export function DeclareWindowDialog({ org, project, locale = 'en', open, onOpenC
         phone={phone}
         open={visible}
         onClose={() => close()}
-        title={t(editId ? 'windows.edit' : 'windows.declare', {}, locale)}
-        description={t('windows.description', {}, locale)}
+        title={t(readOnly ? 'windows.details_title' : editId ? 'windows.edit' : 'windows.declare', {}, locale)}
+        description={t(readOnly ? 'windows.read_only' : 'windows.description', {}, locale)}
       >
-        {!editId && (
+        {!editId && controls.importIcs && (
           <ToggleGroup
             value={[importing ? 'ics' : 'manual']}
             onValueChange={(values) => {
@@ -199,7 +225,14 @@ export function DeclareWindowDialog({ org, project, locale = 'en', open, onOpenC
             }
           />
         ) : loaded?.key === key ? (
-          importing ? (
+          readOnly && loaded.window ? (
+            <WindowDetails
+              window={loaded.window}
+              locale={locale}
+              onDeclare={declareNew}
+              onCancel={controls.cancel ? () => cancel('occurrence') : undefined}
+            />
+          ) : importing ? (
             <ImportForm
               key={`${key}-import`}
               locale={locale}
@@ -216,17 +249,13 @@ export function DeclareWindowDialog({ org, project, locale = 'en', open, onOpenC
               projectId={loaded.projectId}
               window={loaded.window}
               root={root}
+              repeat={controls.repeat}
+              cancellable={controls.cancel}
               onSaved={saved}
               registerClose={(check) => {
                 guard.current = check
               }}
-              onCancel={(scope) => {
-                if (action.pending || action.committing || !loaded.window) return
-                queued.current = { id: loaded.window.id, scope }
-                action.start()
-                setStatus('cancelled')
-                close(true)
-              }}
+              onCancel={cancel}
             />
           )
         ) : (

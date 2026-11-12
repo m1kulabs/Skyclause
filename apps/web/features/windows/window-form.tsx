@@ -42,6 +42,8 @@ export function WindowForm({
   projectId,
   window,
   root,
+  repeat,
+  cancellable,
   onSaved,
   onCancel,
   registerClose,
@@ -51,6 +53,10 @@ export function WindowForm({
   projectId: string
   window?: WindowView
   root: string
+  /** Whether Repeat can work: off, the form declares one window and sends no recurrence. */
+  repeat: boolean
+  /** Whether Cancel window can work. */
+  cancellable: boolean
   onSaved: (saved: WindowView) => void
   onCancel: (scope: 'occurrence' | 'series') => void
   registerClose: (close: () => boolean) => void
@@ -62,6 +68,8 @@ export function WindowForm({
   const [saving, setSaving] = useState(false)
   const [failed, setFailed] = useState(false)
   const focusRequested = useRef(false)
+  // The Repeat fields show for a new window, or for a whole series being edited, and only where a recurrence can save.
+  const repeating = repeat && (!window || scope === 'series')
   useLayoutEffect(() => {
     if (!focusRequested.current) return
     document.querySelector<HTMLElement>('[data-window-form] [aria-invalid="true"]')?.focus()
@@ -74,7 +82,7 @@ export function WindowForm({
     const nextDraft = { ...draft, [key]: value }
     setDraft(nextDraft)
     setDirty(true)
-    const validation = validateWindow({ ...nextDraft, repeat: (!window || scope === 'series') && nextDraft.repeat })
+    const validation = validateWindow({ ...nextDraft, repeat: repeating && nextDraft.repeat })
     setErrors((previous) => {
       const next = { ...previous, [key]: validation[key] }
       if (['date', 'start', 'kind'].includes(key) && nextDraft.start && nextDraft.end) next.end = validation.end
@@ -93,7 +101,7 @@ export function WindowForm({
       onSubmit={async (event) => {
         event.preventDefault()
         if (saving) return
-        const next = validateWindow({ ...draft, repeat: (!window || scope === 'series') && draft.repeat })
+        const next = validateWindow({ ...draft, repeat: repeating && draft.repeat })
         if (Object.keys(next).length) {
           focusError(next)
           return
@@ -106,9 +114,12 @@ export function WindowForm({
             ? await windowsApi('updateWindow', {
                 params: { id: window.id },
                 query: window.series_id ? { scope } : undefined,
-                body: windowBody({ ...draft, repeat: scope === 'series' && draft.repeat })
+                body: windowBody({ ...draft, repeat: repeating && draft.repeat })
               })
-            : await windowsApi('createWindow', { params: { id: projectId }, body: windowBody(draft) })
+            : await windowsApi('createWindow', {
+                params: { id: projectId },
+                body: windowBody({ ...draft, repeat: repeating && draft.repeat })
+              })
           setDirty(false)
           onSaved(saved)
         } catch (error) {
@@ -220,9 +231,7 @@ export function WindowForm({
             </select>
           </Field>
         )}
-        {(!window || scope === 'series') && (
-          <RecurrenceFields draft={draft} change={change} errors={errors} locale={locale} />
-        )}
+        {repeating && <RecurrenceFields draft={draft} change={change} errors={errors} locale={locale} />}
       </FieldGroup>
       {failed && (
         <Alert variant="destructive">
@@ -233,7 +242,7 @@ export function WindowForm({
         <Button type="submit" className="max-sm:w-full" disabled={saving}>
           {t(saving ? 'windows.saving' : 'windows.save', {}, locale)}
         </Button>
-        {window && (
+        {window && cancellable && (
           <Button
             type="button"
             data-window-cancel
