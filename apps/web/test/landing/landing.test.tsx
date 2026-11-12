@@ -146,14 +146,24 @@ describe('landing sections', () => {
 
   test('live reads render as read: n=0 before any grade, the error when a read fails, n with its interval', () => {
     renderPage()
-    expect(document.body.textContent).toContain('No live grades yet (n=0)')
-    expect(document.body.textContent).toContain('No approved call yet (n=0)')
+    // LND-3 and LND-4 keep their n=0, each inside a plain sentence.
+    expect(document.body.textContent).toContain(
+      'No live grades yet (n=0): the first appears once a call has been graded.'
+    )
+    expect(document.body.textContent).toContain('No approved call yet (n=0): each call a person approves appears here.')
     cleanup()
     renderPage({ kind: 'error', message: 'Grades request failed (503)' })
-    expect(document.body.textContent).toContain(
-      'Couldn’t load live grades: Grades request failed (503). Reload the page to try again.'
-    )
+    expect(document.body.textContent).toContain('Couldn’t load live grades just now. Reload the page to try again.')
+    // A failure is said in words; its status code is not.
+    expect(document.body.textContent).not.toContain('503')
     expect(document.body.textContent).not.toContain('No live grades yet')
+    cleanup()
+    // Public grades the API does not serve yet: what will show, never "not built".
+    renderPage({ kind: 'not_built' })
+    expect(document.body.textContent).toContain(
+      'Live grades show here, each with its n and 95% interval, once they are published.'
+    )
+    expect(document.body.textContent).not.toMatch(/not built/i)
     cleanup()
     renderPage({ kind: 'grades', n: 8, x: 7, low: 0.53, high: 0.98, metric: 'precision' })
     expect(document.body.textContent).toContain('Latest: n=8, 7 of 8 (Wilson 95% interval 0.53–0.98)')
@@ -175,7 +185,10 @@ describe('landing sections', () => {
     const tiles = [...document.querySelectorAll('details')]
     expect(tiles.length).toBeGreaterThanOrEqual(6)
     expect(new Set(tiles.map((tile) => tile.getAttribute('name')))).toEqual(new Set(['faq']))
-    expect(tiles.filter((tile) => tile.open)).toHaveLength(1)
+    // The tile open on arrival is the first question, whose answer is a real answer, not an empty state.
+    expect(tiles.filter((tile) => tile.open).map((tile) => tile.querySelector('summary')?.textContent)).toEqual([
+      'Is this an emergency warning service?'
+    ])
   })
 
   test('the closing sentence asks for a time, not personal data, and submits the window form', () => {
