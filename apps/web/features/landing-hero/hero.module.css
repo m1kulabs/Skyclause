@@ -322,6 +322,14 @@
   border-top: 6px solid transparent;
   border-bottom: 6px solid transparent;
 }
+/* The words agree with the glyph: Pause beside the bars, Play beside the triangle. */
+.playWord,
+.pause:has(.pauseInput:checked) .pauseWord {
+  display: none;
+}
+.pause:has(.pauseInput:checked) .playWord {
+  display: inline;
+}
 
 /* The window form and the verdict, on a solid panel. */
 .panel {

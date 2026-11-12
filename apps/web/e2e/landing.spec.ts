@@ -130,6 +130,9 @@ test('the photographs crossfade only calm skies, and the pause stops them', asyn
   expect(await states()).toContain('running')
   await page.getByLabel('Pause the photographs').check()
   expect(new Set((await states()).join(',').split(/,\s*/))).toEqual(new Set(['paused']))
+  // The words follow the glyph: paused, the control offers Play beside its triangle.
+  await expect(page.getByLabel('Play the photographs')).toBeChecked()
+  await expect(page.getByText('Pause the photographs')).toBeHidden()
 })
 
 const MOVED = '[data-reveal], [data-words] .word, [data-reveal-slot]'
