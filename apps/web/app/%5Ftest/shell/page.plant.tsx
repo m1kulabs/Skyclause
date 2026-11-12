@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
+import { connection } from 'next/server'
 import { Providers } from '../../../components/providers'
 import { AppShell } from '../../../features/shell'
 import { SHELL_HARNESS_COOKIE, shellHarnessData } from '../../../features/shell/test-request'
@@ -17,6 +18,7 @@ export default async function ShellHarness({
   if (process.env.APP_ENV !== 'test') notFound()
   const data = shellHarnessData((await cookies()).get(SHELL_HARNESS_COOKIE)?.value)
   const scope = await searchParams
+  await connection()
   return (
     <Providers>
       <ShellTestReady>
