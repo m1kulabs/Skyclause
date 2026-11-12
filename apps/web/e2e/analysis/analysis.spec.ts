@@ -273,6 +273,44 @@ test('Crowd Night lanes show arrival, hatched exit, forecast band and the D+1 ac
   await expectZonedTimes(page)
 })
 
+test('Crowd nights still draw when listings are not available yet, and a real listings failure offers Retry', async ({
+  page
+}) => {
+  await setup(page)
+  const night = {
+    id: 'night-two',
+    project_id: projectId,
+    date: '2026-11-04',
+    state: 'graded' as const,
+    doors: '2026-11-04T10:00:00Z',
+    show: '2026-11-04T12:00:00Z',
+    arrival_start: '2026-11-04T10:00:00Z',
+    arrival_end: '2026-11-04T12:00:00Z',
+    exit_start: null,
+    exit_end: null,
+    forecast: null
+  }
+  await stubApi(page, 'listNights', { data: [night], next_cursor: null }, { registry })
+  await stubApi(
+    page,
+    'listProjectListings',
+    { type: 'https://skyclause.test/problems/not-built', title: 'Not built', status: 501 },
+    { registry, status: 501 }
+  )
+  await page.goto(`${projectRoute}?tab=crowd`)
+  await expect(page.locator('[data-night-lane]')).toHaveCount(1)
+  await expect(page.locator('.analysis-nights [data-source-error]')).toHaveCount(0)
+  await expect(page.locator('.analysis-nights').getByRole('button', { name: copy('retry'), exact: true })).toHaveCount(
+    0
+  )
+
+  await stubApi(page, 'listProjectListings', { title: 'Unavailable', status: 503 }, { registry, status: 503 })
+  await page.reload()
+  await expect(page.locator('[data-night-lane]')).toHaveCount(1)
+  await expect(page.locator('.analysis-nights [data-source-error="503"]')).toBeVisible()
+  await expect(page.locator('.analysis-nights').getByRole('button', { name: copy('retry'), exact: true })).toBeVisible()
+})
+
 test('operation failures render errors instead of inventing zero counts', async ({ page }) => {
   await setup(page)
   await page.route(`**/v1/projects/${projectId}/analysis?**`, (route) =>
