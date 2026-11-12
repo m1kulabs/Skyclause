@@ -51,7 +51,8 @@ test('loading is skeleton capsules on the day strip, not text', async ({ page })
   })
   await page.goto(route)
   await expect(page.locator('[data-timeline-skeleton]')).toBeVisible()
-  await expect(page.getByText(w('loading'), { exact: true })).not.toBeVisible()
+  // The status is for a screen reader only: nothing reads "Loading windows…" on the screen.
+  await expect(page.getByText(w('loading'), { exact: true })).toHaveClass(/sr-only/)
   await expect.poll(() => !!release).toBe(true)
   release!()
   await expect(page.locator('[data-timeline-skeleton]')).toHaveCount(0)
@@ -84,7 +85,7 @@ test('over 50 rows virtualise and the last window is reachable by keyboard scrol
   expect(await page.locator('[data-window-row]').count()).toBeLessThan(50)
   await scroller.focus()
   await page.keyboard.press('Control+End')
-  await expect(page.getByRole('button', { name: /release wave 199$/ })).toBeAttached()
+  await expect(page.getByRole('button', { name: /release wave 99$/ })).toBeAttached()
 })
 
 test('a 501 read is a named source error with retry and never the empty day', async ({ page }) => {

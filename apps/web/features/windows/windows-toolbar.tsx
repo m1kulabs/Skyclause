@@ -41,7 +41,7 @@ export function WindowsToolbar({
         <ToggleGroupItem value="week">{t('windows.view_week')}</ToggleGroupItem>
         <ToggleGroupItem value="month">{t('windows.view_month')}</ToggleGroupItem>
       </ToggleGroup>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <div
           role="group"
           aria-label={t('windows.period_group')}

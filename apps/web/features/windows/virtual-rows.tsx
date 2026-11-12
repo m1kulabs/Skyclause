@@ -43,11 +43,12 @@ export function VirtualRows<Item>({
   const offsets = [0]
   items.forEach((_, index) => offsets.push(offsets[index]! + (heights.current.get(index) ?? estimate)))
   const first = virtual ? Math.max(0, offsets.findIndex((offset) => offset >= scroll) - 6) : 0
+  // No row starts below the viewport: the scroller is at its end, so the rows run to the last one.
+  const below = offsets.findIndex((offset) => offset > scroll + (ref.current?.clientHeight ?? 600))
   const last = virtual
-    ? Math.min(
-        items.length,
-        Math.max(first + 12, offsets.findIndex((offset) => offset > scroll + (ref.current?.clientHeight ?? 600)) + 6)
-      )
+    ? below === -1
+      ? items.length
+      : Math.min(items.length, Math.max(first + 12, below + 6))
     : items.length
   return (
     <div
