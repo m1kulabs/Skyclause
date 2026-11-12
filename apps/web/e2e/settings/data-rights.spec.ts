@@ -209,12 +209,12 @@ test('audit pages by cursor, never rendering more than 50 records, as two-line r
   const rows = panel.locator('[data-audit-row]')
   const entries = panel.getByRole('region', { name: 'Audit entries' })
   await expect(rows).toHaveCount(50)
-  await expect(panel.getByText('Records 1–50')).toBeVisible()
+  await expect(panel.getByText('Records 1–50').last()).toBeVisible()
   await expect(panel.getByRole('button', { name: 'Newer records' })).toBeDisabled()
   await panel.getByRole('button', { name: 'Older records' }).click()
   // The next page replaces the first: the ledger never holds more than one page.
   await expect(rows).toHaveCount(30)
-  await expect(panel.getByText('Records 51–80')).toBeVisible()
+  await expect(panel.getByText('Records 51–80').last()).toBeVisible()
   await expect(panel.getByRole('button', { name: 'Older records' })).toBeDisabled()
   await expect(entries).toContainText('Aisha Rahman · Admin')
   // The action reads as a sentence and the object as its kind: neither shows a slug or an identifier.
@@ -227,7 +227,7 @@ test('audit pages by cursor, never rendering more than 50 records, as two-line r
   await expect.poll(() => rows.first().evaluate((row) => row.getBoundingClientRect().height)).toBeLessThan(96)
   await panel.getByRole('button', { name: 'Newer records' }).click()
   await expect(rows).toHaveCount(50)
-  await expect(panel.getByText('Records 1–50')).toBeVisible()
+  await expect(panel.getByText('Records 1–50').last()).toBeVisible()
 })
 
 test('organisation data shows API export states, retention policy and a cancellable grace period', async ({ page }) => {
@@ -577,7 +577,8 @@ test('P1 settings routes and destructive dialogs are payment-free and axe-clean 
     }
 
     await page.goto(`/${org.slug}/settings/data`)
-    await expect(panel.getByText('Loading exports…', { exact: true })).toBeHidden()
+    // The loading words are a status region that fills after the page is live, so wait for the control itself.
+    await expect(panel.getByRole('button', { name: 'Delete organisation' })).toBeEnabled()
     await panel.getByRole('button', { name: 'Delete organisation' }).focus()
     await page.keyboard.press('Enter')
     const offer = page.getByRole('alertdialog')
@@ -591,7 +592,7 @@ test('P1 settings routes and destructive dialogs are payment-free and axe-clean 
     await page.keyboard.press('Escape')
 
     await page.goto('/account/data')
-    await expect(panel.getByText('Loading exports…', { exact: true })).toBeHidden()
+    await expect(panel.getByRole('button', { name: 'Delete account' })).toBeEnabled()
     await panel.getByRole('button', { name: 'Delete account' }).focus()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('alertdialog')).toBeVisible()

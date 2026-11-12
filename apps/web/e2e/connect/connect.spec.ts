@@ -207,7 +207,8 @@ test('Admin creates the selected organisation client and sees its secret only on
   await page.keyboard.press('Enter')
   await expect(page.getByText(secret, { exact: true })).toHaveCount(0)
   await expect(page.getByText(t('client_created'), { exact: true })).toBeVisible()
-  await expect(page.getByText(t('client_created'), { exact: true })).toBeFocused()
+  // The status line (the paragraph around its words) takes focus once the secret panel is gone.
+  await expect(page.getByRole('status').filter({ hasText: t('client_created') })).toBeFocused()
   await page.reload()
   await expect(page.getByText(secret, { exact: true })).toHaveCount(0)
   expect(writes).toBe(1)
