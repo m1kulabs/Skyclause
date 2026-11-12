@@ -5,7 +5,7 @@
 
 FROM oven/bun:1.4.4-slim@sha256:1846adf22496bd711036aae8be147e57bdebbaea2e5264e3e0b5af1db187d9a4 AS bun
 
-FROM node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d AS build
+FROM node:22-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee AS build
 COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 ENV HUSKY=0 NEXT_TELEMETRY_DISABLED=1
 WORKDIR /repo
@@ -25,7 +25,7 @@ RUN mkdir -p /out/apps/worker /out/apps/web/public /out/packages/db \
      fi \
   && cp scripts/container-entry.sh /out/container-entry.sh
 
-FROM node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d
+FROM node:22-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 HOSTNAME=0.0.0.0 PORT=8080
 WORKDIR /app
 COPY --from=build /out/ ./
