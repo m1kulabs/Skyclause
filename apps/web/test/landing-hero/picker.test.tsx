@@ -653,6 +653,78 @@ describe('HeroPicker', () => {
     expect(screen.queryByText(/No approved call yet/)).toBeNull()
   })
 
+  test('after a 429 nothing asks until the time the API gave; then the window shown is read once', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const limited = (retryAfter: string | null) => () =>
+      Promise.resolve({
+        ok: false,
+        status: 429,
+        headers: { get: (name: string) => (name === 'Retry-After' ? retryAfter : null) },
+        json: () => Promise.resolve({})
+      })
+    fetchMock.mockImplementation(limited('120'))
+    render(
+      <HeroPicker
+        initialResult={initialResult}
+        initialStripSvg={null}
+        initialWin={{ date: '2026-11-05', startMin: 1290, endMin: 1380 }}
+        dates={dates}
+        latestCall={null}
+        pilot={null}
+        calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+        apiOrigin="https://api.example.test"
+        replay={null}
+      />
+    )
+    const slider = screen.getByRole('slider')
+    fireEvent.keyDown(slider, { key: 'ArrowRight' })
+    await vi.advanceTimersByTimeAsync(400)
+    await waitFor(() => expect(screen.getByText('Live verdicts are busy just now.')).toBeTruthy())
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    fetchMock.mockImplementation((url: string) =>
+      Promise.resolve(url.includes('evaluate') ? evaluateOk() : okResponse())
+    )
+    // A change, and the minute's refresh, inside the two minutes the API gave: nothing is sent.
+    fireEvent.keyDown(slider, { key: 'ArrowRight' })
+    await vi.advanceTimersByTimeAsync(110_000)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    // At that time, the window now shown is read, once.
+    await vi.advanceTimersByTimeAsync(11_000)
+    await waitFor(() => expect(screen.queryByText('Live verdicts are busy just now.')).toBeNull())
+    const evaluations = fetchMock.mock.calls.filter(([url]) => String(url).includes('evaluate'))
+    expect(evaluations).toHaveLength(2)
+    expect(JSON.parse((evaluations[1]![1] as RequestInit).body as string)).toMatchObject({ start_time: '22:00' })
+  })
+
+  test('a 429 without Retry-After pauses the picker for one minute', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    fetchMock.mockImplementation(() =>
+      Promise.resolve({ ok: false, status: 429, headers: { get: () => null }, json: () => Promise.resolve({}) })
+    )
+    render(
+      <HeroPicker
+        initialResult={initialResult}
+        initialStripSvg={null}
+        initialWin={{ date: '2026-11-05', startMin: 1290, endMin: 1380 }}
+        dates={dates}
+        latestCall={null}
+        pilot={null}
+        calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+        apiOrigin="https://api.example.test"
+        replay={null}
+      />
+    )
+    const slider = screen.getByRole('slider')
+    fireEvent.keyDown(slider, { key: 'ArrowRight' })
+    await vi.advanceTimersByTimeAsync(400)
+    await waitFor(() => expect(screen.getByText('Live verdicts are busy just now.')).toBeTruthy())
+    fireEvent.keyDown(slider, { key: 'ArrowRight' })
+    await vi.advanceTimersByTimeAsync(55_000)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(6_000)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+  })
+
   test('a 429 shows Retry-After in MYT, and gauge errors suppress rain animation', async () => {
     fetchMock.mockImplementation((url: string) =>
       Promise.resolve(

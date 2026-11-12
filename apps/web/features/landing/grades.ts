@@ -1,5 +1,6 @@
 import { loadEnv } from '@skyclause/config'
 import { serverBaseUrl } from '../landing-hero/evaluate'
+import { ANSWER_TTL_MS, FAILURE_TTL_MS, NOT_BUILT_TTL_MS, sharedReadsFor } from '../landing-hero/shared-read'
 
 // Grades read for the FAQ (#185, #187): GET /v1/public/{org}/{project}/grades for PILOT_PROJECT (§6, D4).
 // Unset or empty reads n=0; a failed read returns an error so the FAQ shows it rather than a fallback.
@@ -48,6 +49,13 @@ export function gradesPath(ref: { org: string; project: string } | null): string
     : '/v1/public/commons/bukit-jalil/grades'
 }
 
+const gradesTtl = (state: GradesState) =>
+  state.kind === 'error' ? FAILURE_TTL_MS : state.kind === 'not_built' ? NOT_BUILT_TTL_MS : ANSWER_TTL_MS
+
+/**
+ * The pilot project's grades. Every visitor asks the same public question with no credential, so the answer read
+ * through `fetcher` is shared (landing-hero/shared-read.ts): one request while it is in flight, kept 30 s.
+ */
 export async function readGrades(
   fetcher: typeof fetch = fetch,
   env: Record<string, string | undefined> = process.env,
@@ -57,6 +65,10 @@ export async function readGrades(
   if (!ref) return { kind: 'empty', n: 0 }
   // Server reads go to API_ORIGIN, as the hero's do (the production API when it is unset).
   const url = new URL(gradesPath(ref), env.API_ORIGIN ?? serverBaseUrl()).toString()
+  return sharedReadsFor(fetcher).read(`grades:${url}`, () => fetchGrades(fetcher, url, signal), gradesTtl)
+}
+
+async function fetchGrades(fetcher: typeof fetch, url: string, signal?: AbortSignal): Promise<GradesState> {
   try {
     const res = await fetcher(url, { cache: 'no-store', signal })
     // 501: the public grades are not built yet, which no reload changes.

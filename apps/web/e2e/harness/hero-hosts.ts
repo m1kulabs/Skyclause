@@ -104,6 +104,9 @@ export async function startMultiHostServer(request: APIRequestContext, port: num
     EMBED_ORIGIN: 'https://embed.skyclause.m1ku.tech',
     DOCS_ORIGIN: 'https://docs.skyclause.m1ku.tech',
     E2E_API_STAND_IN: standIn,
+    // Each test sets the stand-in's answer and loads the page again: the landing's shared reads (kept 30 s, a 501 60 s)
+    // would answer with the last test's. Their sharing is unit-tested (test/landing-hero/shared-read.test.ts).
+    LANDING_SHARED_READS: 'off',
     HOSTNAME: 'localhost',
     PORT: String(port)
   }

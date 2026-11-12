@@ -137,6 +137,13 @@ export default function HeroPicker({
   // While live verdicts are not open (the server's read answered 501), no window can be read: the picker draws the
   // chosen window on the strip, keeps the replay as the answer, and asks the API nothing until the next page load.
   const open = result.kind !== 'unavailable'
+  // After a 429 the picker asks nothing until the time the API gave (a minute when it gave none): the minute's refresh
+  // and window changes wait, and when the time comes the window then shown is read once.
+  const pausedUntil = result.kind === 'rate_limited' ? Date.parse(result.retryAfter) : null
+  const pausedUntilRef = useRef(pausedUntil)
+  pausedUntilRef.current = pausedUntil
+  const heldRef = useRef(false)
+  const paused = () => pausedUntilRef.current !== null && Date.now() < pausedUntilRef.current
 
   const evaluate = useCallback(
     async (next: HeroWindow, beacon: boolean, silent = false) => {
@@ -179,6 +186,10 @@ export default function HeroPicker({
       return
     }
     if (!open) return
+    if (paused()) {
+      heldRef.current = true
+      return
+    }
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => void evaluate(win, true), 300)
     return () => {
@@ -189,10 +200,25 @@ export default function HeroPicker({
   useEffect(() => {
     if (!open) return
     const timer = setInterval(() => {
+      if (paused()) return
       if (visibleRef.current && document.visibilityState !== 'hidden') void evaluate(winRef.current, false, true)
     }, 60_000)
     return () => clearInterval(timer)
   }, [evaluate, open])
+
+  useEffect(() => {
+    if (pausedUntil === null) return
+    const timer = setTimeout(
+      () => {
+        // A window chosen during the pause is the visitor's read; otherwise the shown one is refreshed quietly.
+        const held = heldRef.current
+        heldRef.current = false
+        void evaluate(winRef.current, held, !held)
+      },
+      Math.max(0, pausedUntil - Date.now())
+    )
+    return () => clearTimeout(timer)
+  }, [evaluate, pausedUntil])
 
   // The answer's slot (the readings strip and the readout) keeps the tallest answer it has shown, and CSS reserves the
   // replay's height before any, so a shorter verdict, a failure or a rate limit never pulls the panel up and the
