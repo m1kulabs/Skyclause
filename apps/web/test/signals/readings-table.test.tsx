@@ -21,10 +21,10 @@ const reading = (index: number, over: Partial<SourceReading> = {}): SourceReadin
 test('the readings table starts at twelve rows and never renders more than fifty, newest first', () => {
   const readings = Array.from({ length: 288 }, (_, index) => reading(index))
   const preview = renderToStaticMarkup(<ReadingsTable readings={readings} locale="en" />)
-  expect((preview.split('<tbody>')[1]!.match(/<tr /g) ?? []).length).toBe(12)
+  expect((preview.split('<tbody')[1]!.match(/<tr /g) ?? []).length).toBe(12)
   expect(preview).toContain('Show the newest 50 readings')
   const html = renderToStaticMarkup(<ReadingsTable readings={readings} locale="en" expanded />)
-  expect((html.split('<tbody>')[1]!.match(/<tr /g) ?? []).length).toBe(READING_ROWS)
+  expect((html.split('<tbody')[1]!.match(/<tr /g) ?? []).length).toBe(READING_ROWS)
   expect(html).toContain('The newest 50 of 288 readings, newest first.')
   // reading 287 is the newest
   expect(html.indexOf('28.7')).toBeLessThan(html.indexOf('28.6'))

@@ -22,7 +22,7 @@ test('SIG-1 bound sources show the captured values, finding, age, licence and so
   await expect(root).toContainText('Thunderstorms Warning')
   await expect(root).toContainText('21:05 MYT')
   await expect(
-    root.locator(`[data-source="${sourceIdsForTest.ca16w}"]`).getByRole('link', { name: 'Open source' })
+    root.locator(`[data-source="${sourceIdsForTest.ca16w}"]`).getByRole('link', { name: /^Publisher’s page for / })
   ).toHaveAttribute('href', 'https://eqms.doe.gov.my/mapcaqm')
   await expectZonedTimes(page)
   await expectAxeClean(page)
