@@ -100,6 +100,8 @@ describe('HeroPicker', () => {
         latestCall={null}
         pilot={null}
         calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+        apiOrigin="https://api.example.test"
+        replay={null}
       />
     )
     expect(fetchMock).not.toHaveBeenCalled()
@@ -107,7 +109,8 @@ describe('HeroPicker', () => {
     expect(fetchMock).not.toHaveBeenCalled()
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
     const [evaluateUrl, evaluateInit] = fetchMock.mock.calls[0] as [string, RequestInit]
-    expect(evaluateUrl).toContain('/v1/public/commons/bukit-jalil/evaluate')
+    // The browser reads from the API origin the server handed down, never from the page's own host.
+    expect(evaluateUrl).toBe('https://api.example.test/v1/public/commons/bukit-jalil/evaluate')
     expect(JSON.parse(evaluateInit.body as string)).toEqual({
       date: '2026-11-05',
       start_time: '22:00',
@@ -122,6 +125,89 @@ describe('HeroPicker', () => {
     expect(beaconBody).not.toContain('2026-11-05')
   })
 
+  test('while live verdicts are not open, no control and no minute asks for one; the strip still draws the window', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    render(
+      <HeroPicker
+        initialResult={{ kind: 'unavailable' }}
+        initialStripSvg={null}
+        initialWin={{ date: '2026-11-05', startMin: 1290, endMin: 1380 }}
+        dates={dates}
+        latestCall={null}
+        pilot={null}
+        calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+        apiOrigin="https://api.example.test"
+        replay={<p data-replay />}
+      />
+    )
+    const slider = screen.getByRole('slider')
+    fireEvent.keyDown(slider, { key: 'ArrowRight' })
+    expect(slider.getAttribute('aria-valuetext')).toMatch(/21:45.*23:15/)
+    fireEvent.click(screen.getAllByRole('radio')[2]!)
+    fireEvent.change(screen.getByLabelText('Window start') as HTMLInputElement, { target: { value: '18:00' } })
+    fireEvent.change(screen.getByLabelText('Window end') as HTMLInputElement, { target: { value: '19:00' } })
+    fireEvent.submit(screen.getByRole('form', { name: 'Window picker' }))
+    await vi.advanceTimersByTimeAsync(130_000)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(navigator.sendBeacon).not.toHaveBeenCalled()
+    // The answer stays the replay, with nothing to retry.
+    expect(document.querySelector('[data-replay]')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+    expect(slider.getAttribute('aria-valuetext')).toMatch(/18:00.*19:00/)
+  })
+
+  test('a browser read that answers 501 turns to the replay and stops asking, the minute refresh included', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    fetchMock.mockImplementation(() =>
+      Promise.resolve({ ok: false, status: 501, headers: { get: () => null }, json: () => Promise.resolve({}) })
+    )
+    render(
+      <HeroPicker
+        initialResult={initialResult}
+        initialStripSvg={null}
+        initialWin={{ date: '2026-11-05', startMin: 1290, endMin: 1380 }}
+        dates={dates}
+        latestCall={null}
+        pilot={null}
+        calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+        apiOrigin="https://api.example.test"
+        replay={<p data-replay />}
+      />
+    )
+    fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowRight' })
+    await vi.advanceTimersByTimeAsync(400)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(document.querySelector('[data-replay]')).toBeTruthy())
+    fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowRight' })
+    await vi.advanceTimersByTimeAsync(130_000)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  test('a failed browser read says so without its status code and offers Retry', async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve({ ok: false, status: 503, headers: { get: () => null }, json: () => Promise.resolve({}) })
+    )
+    render(
+      <HeroPicker
+        initialResult={initialResult}
+        initialStripSvg={null}
+        initialWin={{ date: '2026-11-05', startMin: 1290, endMin: 1380 }}
+        dates={dates}
+        latestCall={null}
+        pilot={null}
+        calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+        apiOrigin="https://api.example.test"
+        replay={null}
+      />
+    )
+    fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowRight' })
+    await waitFor(() => expect(screen.getByText('Couldn’t reach the live verdict just now.')).toBeTruthy())
+    expect(screen.getByText(/^Last tried at \d\d:\d\d MYT\.$/)).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/\b503\b/)
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+  })
+
   test('arrows move the start with the length held; Shift with arrows changes only the length', async () => {
     render(
       <HeroPicker
@@ -132,6 +218,8 @@ describe('HeroPicker', () => {
         latestCall={null}
         pilot={null}
         calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+        apiOrigin="https://api.example.test"
+        replay={null}
       />
     )
     const slider = screen.getByRole('slider')
@@ -156,6 +244,8 @@ describe('HeroPicker', () => {
         latestCall={null}
         pilot={null}
         calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+        apiOrigin="https://api.example.test"
+        replay={null}
       />
     )
     const slider = screen.getByRole('slider')
@@ -184,6 +274,8 @@ describe('HeroPicker', () => {
         latestCall={null}
         pilot={null}
         calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+        apiOrigin="https://api.example.test"
+        replay={null}
       />
     )
     const start = screen.getByLabelText('Window start') as HTMLInputElement
@@ -225,6 +317,8 @@ describe('HeroPicker', () => {
         latestCall={null}
         pilot={null}
         calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+        apiOrigin="https://api.example.test"
+        replay={null}
       />
     )
     fireEvent.change(screen.getByLabelText('Window start') as HTMLInputElement, { target: { value: '23:45' } })
@@ -243,6 +337,8 @@ describe('HeroPicker', () => {
         latestCall={null}
         pilot={null}
         calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+        apiOrigin="https://api.example.test"
+        replay={null}
       />
     )
     fetchMock.mockClear()
@@ -277,6 +373,8 @@ describe('HeroPicker', () => {
         latestCall={null}
         pilot={null}
         calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+        apiOrigin="https://api.example.test"
+        replay={null}
       />
     )
     const slider = screen.getByRole('slider')
@@ -323,6 +421,8 @@ describe('HeroPicker', () => {
         latestCall={null}
         pilot={null}
         calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+        apiOrigin="https://api.example.test"
+        replay={null}
       />
     )
     const slider = screen.getByRole('slider')
@@ -380,6 +480,8 @@ describe('HeroPicker', () => {
         pilot={null}
         calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
         initialReplay={{ k: 'ptr', x: capsuleCentre }}
+        apiOrigin="https://api.example.test"
+        replay={null}
       />
     )
     const replayed = screen.getByRole('slider')
@@ -410,6 +512,8 @@ describe('HeroPicker', () => {
         latestCall={null}
         pilot={{ org: 'x', project: 'y' }}
         calendarQuery="/v1/public/x/y/calendar-entries?limit=1"
+        apiOrigin="https://api.example.test"
+        replay={null}
       />
     )
     const start = screen.getByLabelText('Window start') as HTMLInputElement
@@ -440,11 +544,13 @@ describe('HeroPicker', () => {
         latestCall={null}
         pilot={{ org: 'x', project: 'y' }}
         calendarQuery="/v1/public/x/y/calendar-entries?limit=1"
+        apiOrigin="https://api.example.test"
+        replay={null}
       />
     )
     fireEvent.change(screen.getByLabelText('Window start') as HTMLInputElement, { target: { value: '22:00' } })
     await waitFor(() => expect(screen.getByText('Couldn’t reach the approved-call calendar.')).toBeTruthy())
-    expect(screen.queryByText('No approved call yet (n=0)')).toBeNull()
+    expect(screen.queryByText(/No approved call yet/)).toBeNull()
   })
 
   test('a 429 shows Retry-After in MYT, and gauge errors suppress rain animation', async () => {
@@ -464,10 +570,13 @@ describe('HeroPicker', () => {
         latestCall={null}
         pilot={null}
         calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+        apiOrigin="https://api.example.test"
+        replay={null}
       />
     )
     fireEvent.change(screen.getByLabelText('Window start') as HTMLInputElement, { target: { value: '22:00' } })
-    await waitFor(() => expect(screen.getByText(/Retry after .* MYT/)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/^Try again after \d\d:\d\d MYT\.$/)).toBeTruthy())
+    expect(screen.getByText('Live verdicts are busy just now.')).toBeTruthy()
     const errorResult: EvaluateResult = {
       kind: 'ok',
       data: {
@@ -508,6 +617,8 @@ describe('HeroPicker', () => {
         latestCall={null}
         pilot={null}
         calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+        apiOrigin="https://api.example.test"
+        replay={null}
       />
     )
     expect(second.container.querySelector('[data-rain-animated="no"]')).toBeTruthy()

@@ -11,8 +11,8 @@ import type { HeroRead } from '../../features/landing-hero/landing-hero'
 const read: HeroRead = {
   now: new Date('2026-11-12T06:00:00.000Z'),
   win: { date: '2026-11-12', startMin: 900, endMin: 960 },
-  // Production today: the public verdict answers 501, not built.
-  result: { kind: 'error', status: 501, at: '2026-11-12T06:00:00.000Z' },
+  // Production today: the public verdict answers 501, so the hero answers with the replay.
+  result: { kind: 'unavailable' },
   latestCall: null,
   status: { kind: 'not_built' }
 }

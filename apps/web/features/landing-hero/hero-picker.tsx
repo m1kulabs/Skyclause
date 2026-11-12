@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { t } from './catalogue'
 import { fetchEvaluate, fetchLatestCall, type EvaluateResult, type LatestCallRead } from './evaluate'
 import type { PickerReplay } from './activator'
@@ -35,6 +35,10 @@ export interface HeroPickerProps {
   latestCall: LatestCallRead
   pilot: { org: string; project: string } | null
   calendarQuery: string
+  /** The server's API_ORIGIN: the browser reads the verdict there, never from the marketing host. */
+  apiOrigin: string | undefined
+  /** The labelled replay, drawn on the server: the answer while live verdicts are not open. */
+  replay: ReactNode
   initialReplay?: PickerReplay | null
 }
 
@@ -70,6 +74,8 @@ export default function HeroPicker({
   latestCall,
   pilot,
   calendarQuery,
+  apiOrigin,
+  replay,
   initialReplay
 }: HeroPickerProps) {
   const [win, setWin] = useState(initialWin)
@@ -93,6 +99,8 @@ export default function HeroPicker({
   const sliderRef = useRef<HTMLDivElement>(null)
   const replayDoneRef = useRef(false)
   const firstSyncRef = useRef(false)
+  const answerRef = useRef<HTMLDivElement>(null)
+  const tallestRef = useRef(0)
 
   // The first intent that mounted this island is replayed once, so the click or key is not lost.
   useEffect(() => {
@@ -126,16 +134,20 @@ export default function HeroPicker({
     }
   }, [])
 
+  // While live verdicts are not open (the server's read answered 501), no window can be read: the picker draws the
+  // chosen window on the strip, keeps the replay as the answer, and asks the API nothing until the next page load.
+  const open = result.kind !== 'unavailable'
+
   const evaluate = useCallback(
     async (next: HeroWindow, beacon: boolean) => {
       const id = ++requestRef.current
       setPending(true)
-      const outcome = await fetchEvaluate(next)
+      const outcome = await fetchEvaluate(next, apiOrigin)
       if (id !== requestRef.current) return
       setPending(false)
       setResult(outcome)
       if (outcome.kind === 'ok') {
-        const fetchedLatest = await fetchLatestCall(pilot)
+        const fetchedLatest = await fetchLatestCall(pilot, apiOrigin)
         // A newer request owns the readout, the beacon and the URL from here.
         if (id !== requestRef.current) return
         setLatest(fetchedLatest)
@@ -157,7 +169,7 @@ export default function HeroPicker({
         window.history.replaceState(null, '', `/?${params.toString()}`)
       }
     },
-    [pilot]
+    [pilot, apiOrigin]
   )
 
   useEffect(() => {
@@ -165,19 +177,43 @@ export default function HeroPicker({
       firstWindowRef.current = false
       return
     }
+    if (!open) return
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => void evaluate(win, true), 300)
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [evaluate, win])
+  }, [evaluate, win, open])
 
   useEffect(() => {
+    if (!open) return
     const timer = setInterval(() => {
       if (visibleRef.current && document.visibilityState !== 'hidden') void evaluate(winRef.current, false)
     }, 60_000)
     return () => clearInterval(timer)
-  }, [evaluate])
+  }, [evaluate, open])
+
+  // The answer's slot (the readings strip and the readout) keeps the tallest answer it has shown, and CSS reserves the
+  // replay's height before any, so a shorter verdict, a failure or a rate limit never pulls the panel up and the
+  // photograph above it down. A new width starts over.
+  useLayoutEffect(() => {
+    const slot = answerRef.current
+    if (!slot) return
+    const height = slot.getBoundingClientRect().height
+    if (height > tallestRef.current) {
+      tallestRef.current = height
+      slot.style.minHeight = `${height}px`
+    }
+  }, [result, latest])
+
+  useEffect(() => {
+    const reset = () => {
+      tallestRef.current = 0
+      answerRef.current?.style.removeProperty('min-height')
+    }
+    window.addEventListener('resize', reset)
+    return () => window.removeEventListener('resize', reset)
+  }, [])
 
   useEffect(() => {
     if (!rootRef.current) return
@@ -306,7 +342,7 @@ export default function HeroPicker({
     const clamped = clampWindow(start, end)
     const next = { ...win, startMin: clamped.start, endMin: clamped.end }
     setWin(next)
-    void evaluate(next, true)
+    if (open) void evaluate(next, true)
   }
 
   const strip = result.kind === 'ok' ? stripOf(result.data.strip, win, result.data.evaluated_at) : null
@@ -406,20 +442,31 @@ export default function HeroPicker({
               onBlur={(event) => settleTime('end', event.target.value)}
             />
           </label>
-          <p className={styles.zone}>{t('landing-hero.time_zone', {}, 'en')}</p>
-          <p id={timeErrorId} className={styles.timeError} aria-live="polite">
-            {invalid.start || invalid.end ? t('landing-hero.time_error', {}, 'en') : null}
+          {/* The rule for a typed time takes the zone line's place, so a message never pushes the verdict down. */}
+          <p
+            id={timeErrorId}
+            className={styles.zone}
+            data-invalid={invalid.start || invalid.end || undefined}
+            data-source={CLOCK_SOURCE}
+            aria-live="polite"
+          >
+            {invalid.start || invalid.end
+              ? t('landing-hero.time_error', {}, 'en')
+              : t('landing-hero.time_zone', {}, 'en')}
           </p>
         </div>
-        <HeroStrip strip={strip} initialSvg={initialStripSvg} rainAnimated={!gaugeError && !pending} />
-        <div aria-live="polite" aria-busy={pending}>
-          <HeroReadout
-            result={result}
-            win={win}
-            latestCall={latest}
-            calendarQuery={calendarQuery}
-            rainAnimated={!gaugeError}
-          />
+        <div ref={answerRef} className={styles.answer}>
+          <HeroStrip strip={strip} initialSvg={initialStripSvg} rainAnimated={!gaugeError && !pending} />
+          <div aria-live="polite" aria-busy={pending}>
+            <HeroReadout
+              result={result}
+              win={win}
+              latestCall={latest}
+              calendarQuery={calendarQuery}
+              rainAnimated={!gaugeError}
+              replay={replay}
+            />
+          </div>
         </div>
       </form>
     </>

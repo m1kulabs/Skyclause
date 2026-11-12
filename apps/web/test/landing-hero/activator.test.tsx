@@ -9,7 +9,7 @@ import type { EvaluateResult } from '../../features/landing-hero/evaluate'
 // The picker island loads on first intent; until then the server's static band and form are the page.
 vi.mock('../../features/landing-hero/hero-picker', () => ({ default: () => <p data-picker /> }))
 
-const result: EvaluateResult = { kind: 'error', status: 501, at: '2026-11-05T13:05:00.000Z' }
+const result: EvaluateResult = { kind: 'unavailable' }
 const win = { date: '2026-11-05', startMin: 1290, endMin: 1380 }
 const dates = ['2026-11-05', '2026-11-06']
 
@@ -23,6 +23,8 @@ function renderActivator() {
       latestCall={null}
       pilot={null}
       calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+      apiOrigin={undefined}
+      replay={null}
     >
       <HeroStatic
         result={result}
@@ -32,6 +34,7 @@ function renderActivator() {
         latestCall={null}
         calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
         now="2026-11-05T08:00:00.000Z"
+        replay={null}
       />
     </HeroActivator>
   )
