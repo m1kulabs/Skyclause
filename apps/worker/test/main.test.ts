@@ -33,19 +33,23 @@ function terraformJobEnv(file: string) {
   const pairs = (block: string) =>
     [...block.matchAll(/^\s*([A-Z][A-Z0-9_]*)\s+=\s*(.+?)\s*$/gm)].map((m) => [m[1]!, m[2]!] as const)
   const quoted = (block: string) => [...block.matchAll(/"([A-Z][A-Z0-9_]*)"/g)].map((m) => m[1]!)
-  const run = infra('run.tf'),
-    job = infra(file)
+  // The one shape each read expects; another shape (a map over several lines, another local) fails naming both.
+  const shape = (tf: string, pattern: RegExp) => {
+    const found = infra(tf).match(pattern)?.[1]
+    if (found === undefined) throw new Error(`${tf} has no ${pattern}; teach terraformJobEnv its shape`)
+    return found
+  }
   const mail = quoted(
-    run.match(/\n\s+sending_values\s+= (\[.*\])/)![1]! + run.match(/\n\s+receiving_values\s+= (\[.*\])/)![1]!
+    shape('run.tf', /\n\s+sending_values\s+= (\[.*\])/) + shape('run.tf', /\n\s+receiving_values\s+= (\[.*\])/)
   )
-  const appConfig = pairs(infra('terraform.tfvars').split('\napp_config = {')[1]!.split('\n}\n')[0]!)
+  const appConfig = pairs(shape('terraform.tfvars', /\napp_config = \{([\s\S]*?)\n\}\n/))
   const plain = [
     ...appConfig.filter(([name]) => !mail.includes(name)),
-    ...pairs(run.split(/\n\s+env\s+= merge\(local\.shared_config, \{/)[1]!.split('\n  })')[0]!),
-    ...pairs(job.match(/\n\s+env\s+= merge\(local\.env, \{(.*)\}\)\n/)![1]!.replace(/,\s*/g, '\n'))
+    ...pairs(shape('run.tf', /\n\s+env\s+= merge\(local\.shared_config, \{([\s\S]*?)\n {2}\}\)/)),
+    ...pairs(shape(file, /\n\s+env\s+= merge\(local\.env, \{(.*)\}\)\n/).replace(/,\s*/g, '\n'))
   ]
-  const account = job.match(/\n\s+secrets\s+= \{ for name in local\.mounts\.(\w+) : name => name \}\n/)![1]!
-  const secrets = quoted(infra('secrets.tf').match(new RegExp(`\\n\\s+${account}\\s+= (\\[[^\\]]*\\])`))![1]!)
+  const account = shape(file, /\n\s+secrets\s+= \{ for name in local\.mounts\.(\w+) : name => name \}\n/)
+  const secrets = quoted(shape('secrets.tf', new RegExp(`\\n\\s+${account}\\s+= (\\[[^\\]]*\\])`)))
   const value = (name: string, expression: string) => {
     if (expression.startsWith('"')) return JSON.parse(expression) as string
     if (name === 'APP_ENV') return 'production' // variables.tf allows no other app_env
@@ -75,4 +79,4 @@ test('org-purge runs on exactly the environment org-purge.tf gives it', () => {
     timeout: 30_000
   })
   expect(result.status, result.stderr).toBe(0)
-})
+}, 30_000)
