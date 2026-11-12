@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test'
+import { signIn } from '@skyclause/auth/testing'
 import { pseudo } from '../../../../packages/i18n/src/pseudo'
 import { test, expect } from '../fixtures'
+import { makeOrg, signInAs } from '../harness/sign-in-as'
 import { expectUnclippedText } from '../harness/expect-unclipped-text'
 import { org, project, stubDashboard } from '../dashboard/doubles'
 import type { ShellData } from '../../features/shell/types'
@@ -176,6 +178,9 @@ test('390px keeps the wordmark, Review and Menu; the sheet holds every destinati
   for (const link of await sheet.locator('[data-slot="phone-sheet-item"]').all())
     expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44)
   await expect(sheet.locator('time')).toHaveText(/^\d{2}:\d{2} MYT/)
+  const signOut = sheet.getByRole('button', { name: copy('Sign out'), exact: true })
+  await expect(signOut).toBeAttached()
+  expect((await signOut.boundingBox())!.height).toBeGreaterThanOrEqual(44)
   await expectAxeClean(page)
   await page.keyboard.press('Escape')
   await expect(bar(page).getByRole('button', { name: copy('Menu') })).toBeFocused()
@@ -267,11 +272,39 @@ test('a guest account sees only Appearance for its account', async ({ page }) =>
     '/commons/analysis',
     '/account/appearance'
   ])
+  // A guest's session could never be signed back into: it is offered no Sign out.
+  await expect(page.getByRole('menuitem', { name: copy('Sign out') })).toHaveCount(0)
   await closeMenu(page)
   await bar(page)
     .getByRole('button', { name: /Switch organisation:/ })
     .click()
   expect((await menuLinks(page)).map((item) => item.href)).toEqual(['/commons'])
+})
+
+test('a real session signs out from the account menu, lands on sign-in, and leaves its other sessions signed in', async ({
+  page,
+  browser
+}) => {
+  const account = await signInAs(page, 'owner', await makeOrg())
+  const otherSession = await signIn(account.accountId)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/account/profile')
+  expect((await (await page.request.get('/api/auth/get-session')).json())?.session).toBeTruthy()
+  await bar(page)
+    .getByRole('button', { name: copy('Organisation and account') })
+    .click()
+  await page.getByRole('menuitem', { name: copy('Sign out'), exact: true }).click()
+  await page.waitForURL((url) => url.pathname === '/sign-in')
+  expect(await (await page.request.get('/api/auth/get-session')).json()).toBeNull()
+  // This session only: "Sign out everywhere" stays in Security.
+  const elsewhere = await browser.newContext()
+  try {
+    await elsewhere.addCookies(otherSession.cookies)
+    const other = await elsewhere.request.get(`${origin}/api/auth/get-session`)
+    expect((await other.json())?.session?.id).toBe(otherSession.sessionId)
+  } finally {
+    await elsewhere.close()
+  }
 })
 
 test('Review opens the dashboard at its needs-review block and prints no count without the live stream', async ({
