@@ -57,6 +57,9 @@ const ROUTES: Array<{ group: string; surface: Surface | null; match: (path: stri
       exact('/favicon.ico', '/icon.svg', '/apple-touch-icon.png', '/manifest.webmanifest', '/health')(path) ||
       under('/icons', '/landing', '/_next')(path)
   },
+  // Every page beacons its vitals to its own origin (D40), so each host's CSP `connect-src 'self'` covers it. It can't
+  // be an organisation: a slug is at least two characters.
+  { group: '/e', surface: null, match: exact('/e') },
   { group: '/v1', surface: 'api', match: under('/v1') },
   { group: '/api', surface: 'app', match: under('/api') },
   { group: '/mcp', surface: 'mcp', match: under('/mcp') },
@@ -73,7 +76,6 @@ const ROUTES: Array<{ group: string; surface: Surface | null; match: (path: stri
   { group: '/sw.js', surface: 'app', match: exact('/sw.js') },
   { group: '/openapi.json', surface: 'marketing', match: exact('/openapi.json') },
   { group: '/oembed', surface: 'marketing', match: exact('/oembed') },
-  { group: '/e', surface: 'marketing', match: exact('/e') },
   { group: '/skills', surface: 'marketing', match: under('/skills') },
   { group: '/elements', surface: 'embed', match: under('/elements') },
   { group: '(embed)', surface: 'embed', match: under('/embed') },

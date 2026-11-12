@@ -475,4 +475,10 @@ describe('what the proxy adds for the route', () => {
       '307 https://app.skyclause.m1ku.tech/sign-in?next=%2Fapu'
     )
   })
+
+  it('serves the beacon on every host, so a page posts to its own origin', () => {
+    for (const host of [...Object.values(ORIGINS).map((origin) => new URL(origin).host), RUN_APP]) {
+      expect(routeRequest({ ...multi, host, pathname: '/e' }), host).toEqual({ group: '/e', pathname: '/e' })
+    }
+  })
 })
