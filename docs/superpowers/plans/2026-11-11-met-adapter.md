@@ -10,7 +10,7 @@
 
 **Spec:** [MET design](/docs/superpowers/specs/2026-11-11-met-adapter-design.md), immutable source baseline `219b38f72dbf05c8a4e3c074078f5273e55ab63e`, actual [#122](https://github.com/m1kulabs/Skyclause/issues/122) and [#79](https://github.com/m1kulabs/Skyclause/issues/79).
 
-## Contents
+Contents:
 
 - [Global constraints](#global-constraints)
 - [Review focus](#review-focus)

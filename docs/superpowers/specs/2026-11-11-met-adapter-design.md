@@ -2,7 +2,7 @@
 
 Design and implementation planning only, 11 November 2026. Deadline: 13 November 2026. The parent session has authorized core implementation after the plans and opted out of further questions. Native execution is the best fit with AGY quota exhausted. This planning work changes only these external artifacts; it does not change repository files, HEAD, index, P0, GitHub, cloud, accounts or databases, install dependencies, build, or refresh Graphify.
 
-## Contents
+Contents:
 
 - [Intent and evidence](#intent-and-evidence)
 - [Approach and boundaries](#approach-and-boundaries)
