@@ -9,6 +9,8 @@
   "noProjects": "Projek: n=0. Minta pentadbir organisasi memberikan akses projek.",
   "noRows": "Baris: n=0. Pilih tempoh lain atau tunggu penggredan.",
   "featureOff": "Crowd dinyahdayakan untuk organisasi ini. Pilih Sky atau minta pentadbir mengaktifkan pek ini.",
+  "crowdOff": "Pek Crowd dimatikan untuk projek ini. Pilih Sky, atau hidupkan Crowd dalam Pek dan sumber.",
+  "crowdOffOrganisation": "Tiada projek di sini yang menjalankan pek Crowd. Pilih Sky.",
   "retry": "Cuba lagi",
   "pack": "Pek",
   "project": "Projek untuk semakan dan ulang tayang",

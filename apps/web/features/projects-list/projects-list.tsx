@@ -10,6 +10,7 @@ import { formatAge, formatNumber, formatTime } from '@skyclause/i18n/format'
 import { PackStateNote } from '../data-components/pack-state-note'
 import { indicatorName } from '../data-components/indicator-names'
 import { VirtualRows } from '../windows/virtual-rows'
+import { enabledPacks, packStatesFor } from '../overview/model'
 import { brandStates } from '@skyclause/elements'
 import { t as brandText } from '@skyclause/i18n/brand'
 import { t, type Locale } from '../organisations/catalogue'
@@ -129,7 +130,7 @@ function ProjectRow({
           )}
         </div>
         <ul className={styles.packs}>
-          {(summary?.pack_states ?? []).map((packState) => (
+          {packStatesFor(summary?.pack_states ?? [], enabledPacks(item.packs)).map((packState) => (
             <li key={packState.pack}>
               <PackStateNote pack={packState} locale={locale} />
               <NoCall packState={packState} locale={locale} />

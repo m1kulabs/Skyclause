@@ -45,7 +45,26 @@ export function selectTodayAtRisk<Window extends AtRiskWindow>(
   return { total: matching.length, windows: matching.slice(0, limit) }
 }
 
-export function overviewFilterState(search: Pick<URLSearchParams, 'get'>): { pack: OverviewPackFilter } {
+export type PackName = 'sky' | 'crowd'
+
+/** The packs a project runs, Sky first. A pack that is off is neither shown, offered as a filter nor read. */
+export function enabledPacks(packs: ReadonlyArray<{ pack: PackName; enabled: boolean }>): PackName[] {
+  return (['sky', 'crowd'] as const).filter((name) => packs.some((item) => item.pack === name && item.enabled))
+}
+
+/** The project summary carries a state for every pack, on or off: keep the ones the project runs. */
+export function packStatesFor<State extends { pack: PackName }>(
+  states: readonly State[],
+  enabled: readonly PackName[]
+): State[] {
+  return states.filter((state) => enabled.includes(state.pack))
+}
+
+/** The pack filter in the URL; one naming a pack the project does not run (`enabled`) shows all the packs it does. */
+export function overviewFilterState(
+  search: Pick<URLSearchParams, 'get'>,
+  enabled?: readonly PackName[]
+): { pack: OverviewPackFilter } {
   const value = search.get('pack')
-  return { pack: value === 'sky' || value === 'crowd' ? value : 'all' }
+  return { pack: (value === 'sky' || value === 'crowd') && (!enabled || enabled.includes(value)) ? value : 'all' }
 }

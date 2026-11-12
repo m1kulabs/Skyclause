@@ -43,7 +43,15 @@ import {
   type ProjectVerdicts,
   type ProjectWindow
 } from './operations'
-import { localDateAt, overviewFilterState, selectTodayAtRisk, todaysWindows, type OverviewPackFilter } from './model'
+import {
+  enabledPacks,
+  localDateAt,
+  overviewFilterState,
+  packStatesFor,
+  selectTodayAtRisk,
+  todaysWindows,
+  type OverviewPackFilter
+} from './model'
 import { t as bundleText } from '../bundles/i18n'
 import { clauseName } from '../bundles/clause-name'
 import { t } from './catalogue'
@@ -107,6 +115,8 @@ async function loadOverview(org: string, slug: string, signal: AbortSignal): Pro
     allPages((cursor) => overviewApi('listMyMemberships', { query: { limit: 200, cursor }, signal }))
   ])
   const membership = memberships.find((item) => item.org_slug === org)
+  // Show nights are the Crowd pack's: a project without it reads none.
+  const crowd = enabledPacks(project.packs).includes('crowd')
   const [strip, verdicts, sources, windows, days, nights, bundles] = await Promise.all([
     tryRead(() => overviewApi('getProjectStrip', { org, params: { id: project.id }, signal })),
     tryRead(() => overviewApi('getProjectVerdicts', { org, params: { id: project.id }, signal })),
@@ -137,11 +147,13 @@ async function loadOverview(org: string, slug: string, signal: AbortSignal): Pro
         overviewApi('listProjectDays', { org, params: { id: project.id }, query: { limit: 200, cursor }, signal })
       )
     ),
-    tryRead(() =>
-      allPages((cursor) =>
-        overviewApi('listNights', { org, params: { id: project.id }, query: { limit: 200, cursor }, signal })
-      )
-    ),
+    crowd
+      ? tryRead(() =>
+          allPages((cursor) =>
+            overviewApi('listNights', { org, params: { id: project.id }, query: { limit: 200, cursor }, signal })
+          )
+        )
+      : ({ ok: true, value: [] } satisfies Read<ProjectNight[]>),
     tryRead(() =>
       allPages((cursor) =>
         overviewApi('listProjectBundles', {
@@ -461,10 +473,11 @@ export function ProjectOverview({
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const filter = overviewFilterState(searchParams).pack
   const [readRevision, setReadRevision] = useState(0)
   const read = useCallback((signal: AbortSignal) => loadOverview(org, slug, signal), [org, slug, readRevision])
   const state = useRead(read)
+  const packs = state.status === 'ready' ? enabledPacks(state.value.project.packs) : undefined
+  const filter = overviewFilterState(searchParams, packs).pack
   const [now, setNow] = useState(() => new Date())
   const [latestBundle, setLatestBundle] = useState<Bundle | null>(null)
   const [refresh, setRefresh] = useState(0)
@@ -589,7 +602,8 @@ export function ProjectOverview({
   const sourcesAction = bind ? bindLink : undefined
   const summary = data.listItem.summary
   const strip = valueOf(data.strip)
-  const packStates = summary?.pack_states ?? strip?.packs ?? []
+  const running = packs ?? []
+  const packStates = packStatesFor(summary?.pack_states ?? strip?.packs ?? [], running)
   const visiblePacks = packStates.filter((pack) => filter === 'all' || pack.pack === filter)
   const windows = valueOf(data.windows) ?? []
   const todayAtRisk = selectTodayAtRisk(windows, data.project.time_zone, now)
@@ -618,19 +632,22 @@ export function ProjectOverview({
       <header className="overview-topline">
         <h1 className="type-title">{t('overview.title', {}, locale)}</h1>
         <div className="overview-controls">
-          <ToggleGroup
-            value={[filter]}
-            onValueChange={(values) => values[0] && changeFilter(values[0] as OverviewPackFilter)}
-            aria-label={t('overview.filter', {}, locale)}
-          >
-            {(['all', 'sky', 'crowd'] as const).map((value) => (
-              <ToggleGroupItem key={value} value={value}>
-                {value === 'all'
-                  ? t('overview.all_packs', {}, locale)
-                  : t('overview.pack_filter', { pack: t(`brand.packs.${value}`, {}, locale) }, locale)}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+          {/* With one pack running there is nothing to filter. */}
+          {running.length > 1 ? (
+            <ToggleGroup
+              value={[filter]}
+              onValueChange={(values) => values[0] && changeFilter(values[0] as OverviewPackFilter)}
+              aria-label={t('overview.filter', {}, locale)}
+            >
+              {(['all', ...running] as const).map((value) => (
+                <ToggleGroupItem key={value} value={value}>
+                  {value === 'all'
+                    ? t('overview.all_packs', {}, locale)
+                    : t('overview.pack_filter', { pack: t(`brand.packs.${value}`, {}, locale) }, locale)}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          ) : null}
           {declare ? (
             <Link href={declareHref} className={buttonVariants()}>
               {t('overview.declare_window', {}, locale)}
@@ -794,7 +811,11 @@ export function ProjectOverview({
           )}
         </Section>
 
-        <Section id="overview-next-event" title={t('overview.next_event', {}, locale)} className="overview-next">
+        <Section
+          id="overview-next-event"
+          title={t(running.includes('crowd') ? 'overview.next_event' : 'overview.next_storm', {}, locale)}
+          className="overview-next"
+        >
           {!data.nights.ok ? (
             <ReadError
               read={data.nights}
@@ -836,7 +857,10 @@ export function ProjectOverview({
               </a>
             </div>
           ) : (
-            <EmptyBlock sentence={t('overview.no_next_event', {}, locale)} action={sourcesAction} />
+            <EmptyBlock
+              sentence={t(running.includes('crowd') ? 'overview.no_next_event' : 'overview.no_next_storm', {}, locale)}
+              action={sourcesAction}
+            />
           )}
         </Section>
       </div>

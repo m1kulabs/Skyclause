@@ -19,6 +19,8 @@
   "no_bundles": "Belum ada himpunan (n=0)",
   "next_event": "Persembahan seterusnya atau ramalan ribut",
   "no_next_event": "Tiada persembahan tersenarai atau ramalan ribut (n=0)",
+  "next_storm": "Ramalan ribut seterusnya",
+  "no_next_storm": "Tiada ramalan ribut akan datang (n=0)",
   "show": "{name} · persembahan",
   "storm": "Ramalan ribut · {wording}",
   "storm_source": "Sumber ramalan MET (dibuka dalam tab baharu)",

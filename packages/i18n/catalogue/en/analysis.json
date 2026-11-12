@@ -9,6 +9,8 @@
   "noProjects": "Projects: n=0. Ask an organisation administrator for project access.",
   "noRows": "Rows: n=0. Choose another period or wait for grading.",
   "featureOff": "Crowd is disabled for this organisation. Choose Sky or ask an administrator to enable the pack.",
+  "crowdOff": "The Crowd pack is off for this project. Choose Sky, or turn Crowd on in Packs and sources.",
+  "crowdOffOrganisation": "No project here runs the Crowd pack. Choose Sky.",
   "retry": "Try again",
   "pack": "Pack",
   "project": "Project for review and replay",
