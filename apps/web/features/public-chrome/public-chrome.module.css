@@ -85,6 +85,13 @@
 /* The capsule's fill reaches its 2px edge, as tall as the outlined controls (see requests/t4.md). */
 .action {
   background-clip: border-box;
+  /* A long label (Malay, or 30% longer) wraps inside the capsule instead of pushing the page past 320px. */
+  max-width: 100%;
+  height: auto;
+  min-height: 48px;
+  padding-block: 8px;
+  white-space: normal;
+  text-align: center;
 }
 
 .content {
@@ -161,6 +168,9 @@
 }
 
 .errorPage {
+  /* The 404 also renders inside the app and auth groups, outside .frame, so it carries its own margin and measure. */
+  --page-margin: clamp(16px, 2.2vw, 32px);
+  --page-max: 1320px;
   width: min(100%, var(--page-max));
   margin-inline: auto;
   padding: clamp(48px, 12vh, 144px) var(--page-margin) 0;
