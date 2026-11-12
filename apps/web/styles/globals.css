@@ -1134,6 +1134,13 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
     line-height: 20px;
     color: inherit;
   }
+  /* A name that is not truncated wraps, instead of running under the end mark. */
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    > :is(tbody, tfoot)
+    > tr
+    > :is(td, th):is(:first-child:not([data-phone]), [data-phone='primary']):not([data-truncate]) {
+    white-space: normal;
+  }
   :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
     > :is(tbody, tfoot)
     > tr
