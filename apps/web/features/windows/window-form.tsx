@@ -204,7 +204,10 @@ export function WindowForm({
                 <FieldError id={`window-${field}-error`}>
                   {fieldMessage(errors[field]!, locale)}
                   {errors[field] === 'past' && (
-                    <a className="ml-1 underline underline-offset-3" href={`${root}/ledger?tab=evidence`}>
+                    <a
+                      className="ml-1 underline underline-offset-3"
+                      href={`${root}/ledger?tab=evidence&request=evidence`}
+                    >
                       {t('windows.evidence', {}, locale)}
                     </a>
                   )}

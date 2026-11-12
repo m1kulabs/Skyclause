@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { DeclareWindowDialog } from '../../features/windows/declare-window-dialog'
 import type { WindowControls } from '../../features/windows/controls'
@@ -96,4 +96,18 @@ test('once their handlers exist, the editor offers Save and Cancel window, and d
   const dialog = await screen.findByRole('dialog', { name: 'Declare a window' })
   expect(await within(dialog).findByRole('checkbox', { name: 'Repeat weekly' })).toBeTruthy()
   expect(within(dialog).getByText('Import an ICS calendar')).toBeTruthy()
+})
+
+test('a start in the past links to Request evidence with the request form open on the ledger', async () => {
+  search = new URLSearchParams('declare=window')
+  render(<DeclareWindowDialog org="test-org" project="test-project" controls={none} />)
+  const dialog = await screen.findByRole('dialog', { name: 'Declare a window' })
+  fireEvent.change(await within(dialog).findByLabelText('Title'), { target: { value: 'Test lecture' } })
+  fireEvent.change(within(dialog).getByLabelText('Date'), { target: { value: '2026-01-05' } })
+  fireEvent.change(within(dialog).getByLabelText('Start (MYT)'), { target: { value: '08:00' } })
+  fireEvent.change(within(dialog).getByLabelText('End (MYT)'), { target: { value: '09:00' } })
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save window' }))
+  const link = await within(dialog).findByRole('link', { name: 'Request evidence' })
+  // The ledger opens its request form for `request=evidence` (features/ledger/page.tsx), not for the tab alone.
+  expect(link.getAttribute('href')).toBe('/test-org/test-project/ledger?tab=evidence&request=evidence')
 })

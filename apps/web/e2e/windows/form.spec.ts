@@ -47,7 +47,7 @@ for (const violation of [
     if (violation.error === 'past')
       await expect(page.getByRole('link', { name: w('evidence'), exact: true })).toHaveAttribute(
         'href',
-        '/replay/bukit-jalil/ledger?tab=evidence'
+        '/replay/bukit-jalil/ledger?tab=evidence&request=evidence'
       )
   })
 }
@@ -106,7 +106,10 @@ for (const violation of [
     await expect(page.locator(`[name="${violation.field}"]`)).toBeFocused()
     await expect(page.locator(`#window-${violation.field}-error`)).toContainText(w(violation.code))
     if (violation.code === 'past')
-      await expect(page.getByRole('link', { name: w('evidence'), exact: true })).toBeVisible()
+      await expect(page.getByRole('link', { name: w('evidence'), exact: true })).toHaveAttribute(
+        'href',
+        '/replay/bukit-jalil/ledger?tab=evidence&request=evidence'
+      )
   })
 }
 
