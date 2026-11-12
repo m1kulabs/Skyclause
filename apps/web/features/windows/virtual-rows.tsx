@@ -1,7 +1,5 @@
 'use client'
 
-/* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex -- Scroll regions need a tab stop and Home/End for keyboard access. */
-
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
 function MeasuredRow({ children, measure }: { children: ReactNode; measure: (height: number) => void }) {
@@ -14,6 +12,8 @@ function MeasuredRow({ children, measure }: { children: ReactNode; measure: (hei
   }, [measure])
   return <div ref={ref}>{children}</div>
 }
+
+/* A scroll region needs a tab stop and Home/End for keyboard access: both are set only once the list scrolls. */
 
 /**
  * Variable row heights preserve full titles and source URLs, including the pseudo locale. Up to 50 rows it is a plain

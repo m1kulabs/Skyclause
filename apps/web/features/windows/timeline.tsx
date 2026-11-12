@@ -278,8 +278,8 @@ function DayRow({
       <div className="flex min-w-0 flex-col gap-1">
         <Track date={date} segments={segments} axis={axis} nights={nights} now={now} locale={locale} />
         {day?.storm_afternoon && (
-          <p className="type-small">
-            {t('windows.met_label', {}, locale)}{' '}
+          <p className="flex flex-wrap gap-x-1.5 type-small">
+            <span>{t('windows.met_label', {}, locale)}</span>
             <a lang="ms" href={day.storm_afternoon.source_url} className="w-fit underline underline-offset-3">
               {t('windows.met_wording', { wording: day.storm_afternoon.wording }, locale)}
             </a>

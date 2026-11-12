@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { attribution } from '@skyclause/elements'
 import { formatTime } from '@skyclause/i18n/format'
 import { formatNumber } from '@skyclause/i18n/format'

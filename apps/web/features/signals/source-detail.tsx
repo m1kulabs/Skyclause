@@ -261,8 +261,8 @@ export function SourceDetail({ project, source, strip, readings, polls, locale, 
           {t('signals.warning_summary', { time: formatTime(warningTime, locale) }, locale)}
         </p>
         {source.latest_reading?.value_json && (
-          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- axe scrollable-region-focusable requires the scroll container to be keyboard-focusable.
           <pre
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- axe scrollable-region-focusable requires the scroll container to be keyboard-focusable.
             tabIndex={0}
             role="region"
             aria-label={t('signals.warning_data', {}, locale)}

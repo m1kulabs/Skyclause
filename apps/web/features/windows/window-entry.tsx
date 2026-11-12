@@ -154,12 +154,15 @@ export function WindowEntry({
         <button
           type="button"
           data-window-edit
-          aria-description={t('windows.edit_hint', {}, locale)}
+          aria-describedby={`window-edit-hint-${window.id}`}
           onClick={() => onEdit(window.id)}
           className="min-h-6 w-fit max-w-full py-0.5 text-left type-body font-medium break-words underline decoration-1 underline-offset-3 hover:decoration-2"
         >
           {window.title}
         </button>
+        <span id={`window-edit-hint-${window.id}`} className="sr-only">
+          {t('windows.edit_hint', {}, locale)}
+        </span>
         {!compact && (
           <div className="flex min-w-0 flex-wrap gap-x-3 type-small text-muted-foreground">
             <span>{t(`windows.${window.kind}`, {}, locale)}</span>
