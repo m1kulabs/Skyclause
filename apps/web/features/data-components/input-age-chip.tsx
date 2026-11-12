@@ -75,6 +75,9 @@ export function InputAgeChip({
     label = t('data.age.error', { name, time: errorTime ? formatTime(errorTime, locale) : '–' }, locale)
   } else if (dailyDate) {
     label = t('data.age.daily', { date: formatDate(dailyDate, locale) }, locale)
+  } else if (ageSeconds === null && input.observed_at === null && input.value === null) {
+    // Nothing observed yet (a new project's inputs): its `since` is when it went stale, not a reading's time.
+    label = t('data.age.no_reading', { name }, locale)
   } else if (snapshotAge !== null && snapshotAge !== undefined) {
     const age = formatAge(new Date(Date.now() - snapshotAge * 1000), locale)
     label = isStale

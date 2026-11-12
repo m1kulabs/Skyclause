@@ -28,6 +28,7 @@
     "label": "{name} {age}",
     "label_stale": "{name} {age} {stale}",
     "stale": "lapuk",
+    "no_reading": "{name} belum ada bacaan",
     "error": "{name} ralat sejak {time}",
     "daily": "data hingga {date}",
     "source_time": "Waktu sumber",

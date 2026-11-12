@@ -28,6 +28,7 @@
     "label": "{name} {age}",
     "label_stale": "{name} {age} {stale}",
     "stale": "stale",
+    "no_reading": "{name} no reading yet",
     "error": "{name} error since {time}",
     "daily": "data to {date}",
     "source_time": "Source time",
