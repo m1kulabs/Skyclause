@@ -326,7 +326,8 @@ test('marketing follows OS contrast and motion while keeping a dark document', a
   await page.keyboard.press('Tab')
   await expect(page.locator('.skip-link')).toBeFocused()
   await page.keyboard.press('Enter')
-  await expect(page.locator('#main-content')).toBeFocused()
+  // The landing's skip link goes straight to its main, past the language suggestion.
+  await expect(page.locator('#landing-main')).toBeFocused()
   await page.emulateMedia({ contrast: 'no-preference', reducedMotion: 'no-preference' })
   await expect(page.locator('html')).toHaveClass('dark')
   await expect(page.locator('html')).toHaveAttribute('data-motion', 'full')
