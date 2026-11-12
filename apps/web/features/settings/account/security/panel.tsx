@@ -442,33 +442,35 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
             </form>
           </div>
 
-          <SettingsItem data-density-row>
-            <div className="grid min-w-0 gap-0.5">
-              <span className="type-body flex flex-wrap items-baseline gap-x-2 font-medium">
-                {copy('google')}
-                <span className="type-small font-normal text-muted-foreground">
-                  {google ? copy('linked') : copy('notLinked')}
+          <SettingsList>
+            <SettingsItem data-density-row>
+              <div className="grid min-w-0 gap-0.5">
+                <span className="type-body flex flex-wrap items-baseline gap-x-2 font-medium">
+                  {copy('google')}
+                  <span className="type-small font-normal text-muted-foreground">
+                    {google ? copy('linked') : copy('notLinked')}
+                  </span>
                 </span>
-              </span>
-              <span className="type-small text-muted-foreground">
-                {google ? copy('googleLinked') : copy('googleNotLinked')}
-              </span>
-            </div>
-            {google ? (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={working}
-                onClick={() => setPending({ kind: 'google', id: google.id })}
-              >
-                {copy('unlinkGoogle')}
-              </Button>
-            ) : (
-              <Button type="button" variant="outline" disabled={loading} onClick={() => void linkGoogle()}>
-                {copy('linkGoogle')}
-              </Button>
-            )}
-          </SettingsItem>
+                <span className="type-small text-muted-foreground">
+                  {google ? copy('googleLinked') : copy('googleNotLinked')}
+                </span>
+              </div>
+              {google ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={working}
+                  onClick={() => setPending({ kind: 'google', id: google.id })}
+                >
+                  {copy('unlinkGoogle')}
+                </Button>
+              ) : (
+                <Button type="button" variant="outline" disabled={loading} onClick={() => void linkGoogle()}>
+                  {copy('linkGoogle')}
+                </Button>
+              )}
+            </SettingsItem>
+          </SettingsList>
           {error?.where === 'methods' ? <SettingsError>{error.message}</SettingsError> : null}
           {notice?.where === 'methods' ? <SettingsStatus>{notice.message}</SettingsStatus> : null}
         </SettingsPart>
