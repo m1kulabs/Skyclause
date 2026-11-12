@@ -23,12 +23,22 @@ export function startMotion(): () => void {
   const unseen = (el: Element) => el.getBoundingClientRect().top > window.innerHeight
 
   const context = gsap.context(() => {
-    for (const section of document.querySelectorAll<HTMLElement>('[data-reveal-section]')) {
-      const words = [...section.querySelectorAll<HTMLElement>('[data-words] .word')].filter(unseen)
-      const parts = [...section.querySelectorAll<HTMLElement>('[data-reveal]')].filter(
-        (el) => unseen(el) && !el.matches('[data-words]')
-      )
-      const slots = [...section.querySelectorAll<HTMLElement>('[data-reveal-slot]')].filter(unseen)
+    // Every position is read before anything is set, so the page lays out once, not once per section.
+    // Each plan is [section, words, parts, slots].
+    const plans = [...document.querySelectorAll<HTMLElement>('[data-reveal-section]')].map(
+      (section) =>
+        [
+          section,
+          [...section.querySelectorAll<HTMLElement>('[data-words] .word')].filter(unseen),
+          [...section.querySelectorAll<HTMLElement>('[data-reveal]')].filter(
+            (el) => unseen(el) && !el.matches('[data-words]')
+          ),
+          [...section.querySelectorAll<HTMLElement>('[data-reveal-slot]')].filter(unseen)
+        ] as const
+    )
+    const record = document.querySelector<HTMLElement>('.record-capsule')
+    const recordUnseen = !!record && unseen(record)
+    for (const [section, words, parts, slots] of plans) {
       if (!words.length && !parts.length && !slots.length) continue
       if (words.length) gsap.set(words, { yPercent: 60, opacity: 0 })
       if (parts.length) gsap.set(parts, { y: 28, opacity: 0 })
@@ -72,8 +82,7 @@ export function startMotion(): () => void {
       })
     }
     // The record's photographs settle from a slight scale inside their capsule as it comes into view.
-    const record = document.querySelector<HTMLElement>('.record-capsule')
-    if (record && unseen(record)) {
+    if (record && recordUnseen) {
       gsap.fromTo(
         record.querySelectorAll('.record-photo'),
         { scale: 1.08 },
