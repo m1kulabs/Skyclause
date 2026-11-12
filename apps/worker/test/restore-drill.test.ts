@@ -309,9 +309,10 @@ test('the Neon client refuses branches outside drill-* and keeps response bodies
 test('the restore-drill job is registered and names the variables it is missing', async () => {
   vi.stubEnv('NEON_PROJECT_ID', '')
   vi.stubEnv('NEON_DRILL_API_KEY', '')
+  vi.stubEnv('DATABASE_URL_SYSTEM', '')
   try {
     await expect(registry.jobs['restore-drill']!([])).rejects.toThrow(
-      'restore-drill needs NEON_PROJECT_ID, NEON_DRILL_API_KEY'
+      'restore-drill needs NEON_PROJECT_ID, NEON_DRILL_API_KEY, DATABASE_URL_SYSTEM'
     )
   } finally {
     vi.unstubAllEnvs()

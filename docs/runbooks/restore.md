@@ -56,8 +56,6 @@ The `restore-drill` job (`apps/worker/src/restore-drill/`) runs at 10:00 MYT on 
 1.  Deletes the branch, also when a step fails or Cloud Run stops the job.
 1.  Logs one line and exits non-zero on any miss.
 
-Until #91's `system` login and #146's `verifyLedger` land, the database side is missing: the drill records `projects` 0, `entries` 0, `rpo_s` null and `ledger: "not built (#146)"`, and RPO isn't measured. #224 adds it.
-
 ### What the drill records
 
 | Field                 | Meaning                                                                                      | A miss when                                         |
@@ -69,13 +67,12 @@ Until #91's `system` login and #146's `verifyLedger` land, the database side is 
 | `ready_s`             | Branch request to the compute reporting `active`                                             |                                                     |
 | `verified_s`          | The ledger walk and the branch's newest-write read                                           |                                                     |
 | `rto_ok`              | `ready_s + verified_s` within 4 hours                                                        | False                                               |
-| `rpo_s`               | How far the branch's newest write trails production's newest write at or before the point    | Over 300 s, or null once the database side exists   |
+| `rpo_s`               | How far the branch's newest write trails production's newest write at or before the point    | Over 300 s, or null                                 |
 | `lag_s`               | The point minus the branch's newest write                                                    | Never; see below                                    |
 | `projects`, `entries` | Projects walked and ledger entries verified                                                  |                                                     |
 | `first_bad`           | The first broken entry: `project`, `id`, `seq` and `reason` (`seq_gap`, `prev_hash`, `hash`) | Any                                                 |
 | `deleted`             | The branch was deleted                                                                       | False                                               |
 | `swept`               | `drill-*` branches from earlier runs deleted first                                           |                                                     |
-| `ledger`              | `not built (#146)` while the database side is missing                                        |                                                     |
 
 The drill still checks the ticket's RPO 5 minutes and RTO 4 hours, which Neon meets with a restore of seconds. The TRD no longer promises them on the Free plan ([#220]).
 
@@ -83,9 +80,11 @@ The drill still checks the ticket's RPO 5 minutes and RTO 4 hours, which Neon me
 
 On the Free plan the worker writes in 15-minute batches and the database sleeps when idle, so the newest row before any point can be up to 15 minutes old, or hours old at night, with nothing lost. Measured against the point alone, as `lag_s` is, most drills would fail. `rpo_s` measures what the branch is missing instead: production's newest write at or before the point minus the branch's, 0 when the branch holds everything production had.
 
+A write here is a `domain_event` or `analytics_event` row: the database stamps both with `now()`, the start of the writing transaction on its own clock, which is the clock Neon branches by. Neon cuts at commit time, so a transaction that starts before the point and commits after it counts on production but isn't on the branch, and `rpo_s` comes out too high. Run the drill again before treating an RPO miss as lost data.
+
 ### What the drill may touch
 
-The job runs as `skyclause-drill`, which reads only the `NEON_DRILL_API_KEY` secret. That key is a Neon key scoped to this one project: it can't create projects, mint keys or read another project, but Neon can't narrow it further, so it could change anything inside the project. The job's Neon client refuses to create or delete any branch not named `drill-*`, and Neon refuses to delete the default branch.
+The job runs as `skyclause-drill`, which reads only the `NEON_DRILL_API_KEY` and `DATABASE_URL_SYSTEM` secrets. It connects as `system` to production and to the branch, with the same URL and the branch's host, since a branch keeps its parent's logins and passwords. It only reads, but `system` may write what the workers write. The branch's connection closes before the branch is deleted. The Neon key is a Neon key scoped to this one project: it can't create projects, mint keys or read another project, but Neon can't narrow it further, so it could change anything inside the project. The job's Neon client refuses to create or delete any branch not named `drill-*`, and Neon refuses to delete the default branch.
 
 ### Run the drill
 

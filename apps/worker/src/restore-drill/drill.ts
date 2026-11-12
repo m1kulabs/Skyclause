@@ -56,13 +56,13 @@ export interface DrillRecord {
   deleted: boolean
   /** `drill-*` branches left by an earlier run and deleted before this one. */
   swept: number
-  /** Present while the database side isn't built. */
+  /** Present only when the drill runs without a database. */
   ledger?: string
 }
 
 export interface DrillOptions {
   neon: NeonClient
-  /** Null until #91's `system` login and #146's `verifyLedger` land. */
+  /** packages/db's `drillDatabase` in the job; null runs the Neon side alone. */
   database: DrillDatabase | null
   now?: () => number
   sleep?: (ms: number) => Promise<void>
