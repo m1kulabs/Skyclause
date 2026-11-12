@@ -22,18 +22,34 @@ const defaults: FormPostDependencies = {
 /** What Better Auth reads from the visitor's own request: the session (a guest converting), the rate-limit address. */
 const FORWARDED = ['cookie', 'user-agent', 'x-forwarded-for', 'accept-language']
 
-/** A form post from another site is refused, as the plugin's own wrappers refuse one. */
+/**
+ * A form post from another site is refused, as the plugin's own wrappers refuse one. A post proves it came from the
+ * app by its Origin, or else by Sec-Fetch-Site; with neither it fails closed.
+ */
 function crossSite(request: Request, appOrigin: string): boolean {
   const origin = request.headers.get('origin')
   if (origin) return origin !== appOrigin
-  const site = request.headers.get('sec-fetch-site')
-  return site !== null && site !== 'same-origin' && site !== 'none'
+  return request.headers.get('sec-fetch-site') !== 'same-origin'
+}
+
+/** Every answer here depends on the visitor or sets a cookie: no cache may keep it. */
+const NO_STORE = 'no-store'
+
+function refused(): Response {
+  return new Response(null, { status: 403, headers: { 'Cache-Control': NO_STORE } })
 }
 
 function back(state: Record<string, string>, next: string | null): Response {
   const query = new URLSearchParams(state)
   if (next) query.set('next', next)
-  return new Response(null, { status: 303, headers: { Location: `/sign-in?${query}` } })
+  return new Response(null, { status: 303, headers: { Location: `/sign-in?${query}`, 'Cache-Control': NO_STORE } })
+}
+
+/** Better Auth's own answer, passed on as it is (its cookies kept), with no-store. */
+function noStore(response: Response): Response {
+  const headers = new Headers(response.headers)
+  headers.set('Cache-Control', NO_STORE)
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers })
 }
 
 async function readForm(request: Request): Promise<{ email: string; next: string | null }> {
@@ -59,7 +75,7 @@ function callAuth(deps: FormPostDependencies, request: Request, path: string, bo
 
 /** POST /sign-in/link: sends the email link, then says on /sign-in what happened and until when the link works. */
 export async function sendLinkFromForm(request: Request, deps: FormPostDependencies = defaults): Promise<Response> {
-  if (crossSite(request, deps.appOrigin())) return new Response(null, { status: 403 })
+  if (crossSite(request, deps.appOrigin())) return refused()
   const { email, next } = await readForm(request)
   if (!isEmailAddress(email)) return back({ state: 'email-invalid' }, next)
   // Taken before the send, so the end drawn is never later than the server's own.
@@ -84,7 +100,7 @@ export async function sendLinkFromForm(request: Request, deps: FormPostDependenc
 
 /** POST /sign-in/google: starts Google sign-in and hands the browser to Google with Better Auth's state cookie. */
 export async function startGoogleFromForm(request: Request, deps: FormPostDependencies = defaults): Promise<Response> {
-  if (crossSite(request, deps.appOrigin())) return new Response(null, { status: 403 })
+  if (crossSite(request, deps.appOrigin())) return refused()
   const { next } = await readForm(request)
   try {
     const response = await callAuth(deps, request, '/sign-in/social', {
@@ -93,7 +109,7 @@ export async function startGoogleFromForm(request: Request, deps: FormPostDepend
     })
     const body = (await response.json().catch(() => null)) as { url?: unknown } | null
     if (!response.ok || typeof body?.url !== 'string') return back({ state: 'google-failed' }, next)
-    const headers = new Headers({ Location: body.url })
+    const headers = new Headers({ Location: body.url, 'Cache-Control': NO_STORE })
     for (const cookie of response.headers.getSetCookie()) headers.append('Set-Cookie', cookie)
     return new Response(null, { status: 303, headers })
   } catch {
@@ -106,7 +122,7 @@ export async function startGoogleFromForm(request: Request, deps: FormPostDepend
  * answer, a 303 with the session cookie or back to an expired link, goes to the browser as it is.
  */
 export async function confirmLinkFromForm(request: Request, deps: FormPostDependencies = defaults): Promise<Response> {
-  if (crossSite(request, deps.appOrigin())) return new Response(null, { status: 403 })
+  if (crossSite(request, deps.appOrigin())) return refused()
   const form = await request.formData().catch(() => null)
   const field = (name: string) => {
     const value = form?.get(name)
@@ -117,7 +133,7 @@ export async function confirmLinkFromForm(request: Request, deps: FormPostDepend
   const body = { link: field('link'), ...(!stepUp && resend ? { resend } : {}) }
   try {
     const response = await callAuth(deps, request, stepUp ? '/step-up/magic-link/confirm' : '/magic-link/confirm', body)
-    if (!stepUp) return response
+    if (!stepUp) return noStore(response)
     return response.ok
       ? back({ state: 'step-up-confirmed' }, null)
       : back({ state: 'link-expired', for: 'step-up' }, null)
@@ -128,7 +144,7 @@ export async function confirmLinkFromForm(request: Request, deps: FormPostDepend
 
 /** POST /sign-in/resend: a new link for an expired one's address, then the sent page with the new link's end. */
 export async function resendLinkFromForm(request: Request, deps: FormPostDependencies = defaults): Promise<Response> {
-  if (crossSite(request, deps.appOrigin())) return new Response(null, { status: 403 })
+  if (crossSite(request, deps.appOrigin())) return refused()
   const form = await request.formData().catch(() => null)
   const value = form?.get('resend')
   const resend = typeof value === 'string' && value.length <= 128 ? value : ''
