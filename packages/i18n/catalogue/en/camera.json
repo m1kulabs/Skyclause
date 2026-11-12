@@ -1,6 +1,10 @@
 {
   "title": "Skyline camera",
   "intro": "Keep this phone on a charger, with this page in front. Capture runs every 10 minutes in daylight.",
+  "groupDevice": "This phone and the site",
+  "groupRegions": "Regions in the frame",
+  "groupReference": "Clear-day reference",
+  "groupSend": "Start sending",
   "preview": "Masked camera preview. The lower third stays black.",
   "openCamera": "Allow camera",
   "opening": "Opening camera…",
