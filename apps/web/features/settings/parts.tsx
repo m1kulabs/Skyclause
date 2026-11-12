@@ -12,6 +12,7 @@ import { cn } from '#lib/utils'
 import { ApiProblem } from '../../lib/api-fetch'
 import { Glyph } from '../brand/glyph'
 import { SourceError } from '../data-components/states'
+import './catalogue'
 
 /**
  * Building blocks for what sits inside a settings panel. The frame supplies the row (label column and panel); these

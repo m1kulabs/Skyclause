@@ -1,64 +1,9 @@
-/* Members and invitations as lists that measure: one person a row, the same columns down the list, the exact age of
-   their last activity set right. Rows are raised tiles (tone, not rules). The panel is a container, so a narrow panel
-   (the frame's label column takes a third of it on a tablet) and a phone share one stacked arrangement. */
+/* Members and invitations are the shared table; this holds only what sits around it: the panel as a container, the role
+   word of a member who cannot be changed, the Malay switch with its word, and the invite and transfer forms. */
 .panel {
   container-type: inline-size;
   min-width: 0;
   overflow-wrap: anywhere;
-}
-
-.list {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.head,
-.row {
-  display: grid;
-  min-width: 0;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: center;
-  gap: 8px 16px;
-}
-
-.head {
-  display: none;
-}
-
-.row {
-  border-radius: 10px;
-  background: var(--raised);
-  padding: 12px 16px;
-}
-
-.identity {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-  grid-column: 1 / -1;
-}
-
-.identity strong {
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 600;
-}
-
-.identity span,
-.meta {
-  color: var(--muted-foreground);
-  font-size: 13px;
-  line-height: 18px;
-}
-
-.roleCell {
-  display: grid;
-  min-width: 0;
-  gap: 4px;
 }
 
 .roleWord {
@@ -67,19 +12,10 @@
   font-weight: 500;
 }
 
-.cellLabel {
-  display: block;
+.meta {
   color: var(--muted-foreground);
   font-size: 13px;
   line-height: 18px;
-}
-
-.active {
-  display: grid;
-  min-width: 0;
-  gap: 0;
-  font-size: 14px;
-  line-height: 20px;
 }
 
 .switchCell {
@@ -92,19 +28,6 @@
 
 .switchCell .meta {
   white-space: nowrap;
-}
-
-.actions {
-  display: flex;
-  min-width: 0;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-start;
-}
-
-.problem {
-  grid-column: 1 / -1;
-  margin: 0;
 }
 
 .fields {
@@ -134,38 +57,7 @@
 }
 
 @container (width >= 600px) {
-  .head,
-  .row {
-    grid-template-columns: minmax(0, 1fr) 132px 88px 88px 76px;
-    gap: 8px 12px;
-  }
-
-  .inviteHead,
-  .inviteRow {
-    grid-template-columns: minmax(0, 1fr) 124px 96px 176px;
-  }
-
-  .head {
-    display: grid;
-    padding: 0 16px 4px;
-    color: var(--muted-foreground);
-    font-size: 13px;
-    line-height: 18px;
-  }
-
-  .identity {
-    grid-column: auto;
-  }
-
-  .active {
-    text-align: right;
-  }
-
   .fields {
     grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-  }
-
-  .headEnd {
-    text-align: right;
   }
 }
