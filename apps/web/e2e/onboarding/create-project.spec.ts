@@ -244,7 +244,12 @@ test('project form shows inline slug errors, announces saving, and sends Crowd t
   await page.reload()
   const progress = page.locator('[data-first-run-progress]')
   await expect(progress.getByText('2 of 6 steps complete')).toBeVisible()
-  await expect(progress.locator('a[href="/test-org/apu-air-quality/settings/packs"]')).toBeVisible()
+  // The open step is this page: it says so instead of linking to itself, and the steps after it still link on.
+  const sources = progress.locator('li[data-state="current"]')
+  await expect(sources).toContainText('Bind sources')
+  await expect(sources).toContainText('You are here')
+  await expect(progress.locator('a[href="/test-org/apu-air-quality/settings/packs"]')).toHaveCount(0)
+  await expect(progress.locator('a[href="/test-org/apu-air-quality/windows?declare=window"]')).toBeVisible()
 })
 
 test('source picker sorts captured APIMS rows, finds CA16W, allows an erroring source, and creates no extra rows', async ({
