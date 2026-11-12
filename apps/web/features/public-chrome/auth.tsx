@@ -1,0 +1,55 @@
+import { t } from '@skyclause/i18n'
+import { CircleAlertIcon, InfoIcon } from 'lucide-react'
+import type { ComponentProps, ReactNode } from 'react'
+import { Alert } from '#ui/alert'
+import './auth.css'
+import './catalogue'
+
+/** The brand, then the page's one h1 saying what this is, then at most one plain sentence. */
+export function AuthHeader({
+  title,
+  titleId,
+  lead,
+  locale = 'en'
+}: {
+  title: ReactNode
+  titleId?: string
+  lead?: ReactNode
+  locale?: 'en' | 'ms'
+}) {
+  return (
+    <header className="auth-header">
+      {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- The way home must work without JavaScript. */}
+      <a className="auth-brand" href="/" aria-label={t('legal.frame.home', {}, locale)}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- The fixed SVG mark needs no optimization or client code. */}
+        <img src="/icon.svg" width={28} height={28} alt="" />
+        <span translate="no">{t('brand.name', {}, locale)}</span>
+      </a>
+      <h1 className="auth-title" id={titleId}>
+        {title}
+      </h1>
+      {lead ? <p className="auth-lead">{lead}</p> : null}
+    </header>
+  )
+}
+
+/** A message with a glyph, so it is never told by colour alone: an error is announced at once, a result politely. */
+export function AuthMessage({
+  tone = 'error',
+  children,
+  className,
+  ...props
+}: Omit<ComponentProps<typeof Alert>, 'variant'> & { tone?: 'error' | 'result' }) {
+  const Icon = tone === 'error' ? CircleAlertIcon : InfoIcon
+  return (
+    <Alert
+      variant="destructive"
+      role={tone === 'error' ? 'alert' : 'status'}
+      className={`text-base leading-6 ${className ?? ''}`}
+      {...props}
+    >
+      <Icon aria-hidden="true" />
+      <p className="m-0">{children}</p>
+    </Alert>
+  )
+}

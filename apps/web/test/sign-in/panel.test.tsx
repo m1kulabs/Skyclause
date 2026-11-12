@@ -3,11 +3,16 @@ import { expect, test } from 'vitest'
 import { SignInPanel } from '../../features/sign-in/panel'
 import type { AuthState } from '../../features/sign-in/model'
 
-function render(mode: 'sign-in' | 'sign-up', state: AuthState = { kind: 'form' }, next: string | null = null) {
-  return renderToStaticMarkup(<SignInPanel mode={mode} next={next} state={state} />)
+function render(
+  mode: 'sign-in' | 'sign-up',
+  state: AuthState = { kind: 'form' },
+  next: string | null = null,
+  locale: 'en' | 'ms' = 'en'
+) {
+  return renderToStaticMarkup(<SignInPanel mode={mode} next={next} state={state} locale={locale} />)
 }
 
-test('sign-in renders a passkey-first email form, Google, guest entry and PDPA notice', () => {
+test('sign-in renders a passkey-first email form, Google and the PDPA notice, and no guest entry', () => {
   const html = render('sign-in')
   const normalized = html.toLowerCase()
 
@@ -19,9 +24,9 @@ test('sign-in renders a passkey-first email form, Google, guest entry and PDPA n
   expect(normalized).toContain('autocomplete="username webauthn"')
   expect(normalized).toContain('spellcheck="false"')
   expect(html).toContain('Continue with Google')
-  expect(html).toContain('href="/guest"')
+  expect(html).not.toContain('/guest')
+  expect(html).not.toContain('Continue as guest')
   expect(html).toContain('href="/legal/privacy"')
-  expect(html.match(/Continue as guest/g)).toHaveLength(1)
   expect(html.indexOf('Sign in with a passkey')).toBeLessThan(html.indexOf('Email address'))
   expect(html.indexOf('Email address')).toBeLessThan(html.indexOf('Continue with Google'))
   expect(html).not.toMatch(/type="password"|autocomplete="(?:current|new)-password"/)
@@ -60,4 +65,22 @@ test('expired, pending and Google failure states explain the failure and next ac
 
   const googleFailed = render('sign-in', { kind: 'google-failed' })
   expect(googleFailed).toContain('Try Google again or use email sign-in')
+})
+
+test('the page says what it is in one h1', () => {
+  const html = render('sign-in')
+
+  expect(html.match(/<h1/g)).toHaveLength(1)
+  expect(html).toContain('lang="en"')
+  expect(html).toContain('aria-labelledby="sign-in-title"')
+})
+
+test('Malay visitors get the Malay form and a Malay lang', () => {
+  const html = render('sign-in', { kind: 'form' }, null, 'ms')
+
+  expect(html).toContain('lang="ms"')
+  expect(html).toContain('Log masuk ke Skyclause')
+  expect(html).toContain('Alamat e-mel')
+  expect(html).toContain('Teruskan dengan Google')
+  expect(html).not.toContain('Sign in to Skyclause')
 })
