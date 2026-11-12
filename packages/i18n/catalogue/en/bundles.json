@@ -25,7 +25,6 @@
   "agent": "Agent: {mode}",
   "shadow": "Clause engine: {mode}",
   "choice_required": "Choose a verdict for each disagreement before approving.",
-  "call": "Call {id}",
   "site_call": "The whole site",
   "night_call": "Crowd night of {date}",
   "calls": "Calls",

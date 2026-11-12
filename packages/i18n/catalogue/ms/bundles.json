@@ -25,7 +25,6 @@
   "agent": "Ejen: {mode}",
   "shadow": "Enjin klausa: {mode}",
   "choice_required": "Pilih keputusan bagi setiap percanggahan sebelum meluluskan.",
-  "call": "Panggilan {id}",
   "site_call": "Seluruh tapak",
   "night_call": "Malam Crowd {date}",
   "calls": "Panggilan",
