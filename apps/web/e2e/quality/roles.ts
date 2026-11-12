@@ -1,7 +1,10 @@
 // The crawl visits every route as each role (#116): signed out, and signed in as each of the others (#94).
 import type { Page } from '@playwright/test'
 import type { Role as MemberRole } from '@skyclause/contracts'
+import { inOrg } from '@skyclause/auth/testing'
+import { makeProject } from '@skyclause/db/test/factories/index'
 import { makeOrg, openShareLink, signInAs, type TestOrg } from '../harness/sign-in-as'
+import { SHARED_PROJECT } from './rows'
 
 export const ROLES = [
   'Owner',
@@ -32,7 +35,8 @@ const SIGN_IN: Record<Exclude<Role, 'signed out'>, (page: Page) => Promise<TestO
   guest: member('guest'),
   'share-link reviewer': async (page) => {
     const org = await makeOrg()
-    await openShareLink(page, org)
+    const shared = await inOrg(org.id, (tx) => makeProject(tx, { slug: SHARED_PROJECT }))
+    await openShareLink(page, org, 'reviewer', shared.id)
     return org
   }
 }

@@ -30,20 +30,23 @@ const PLANTED_FIELD_RULES = [
 ]
 const ACCOUNT_MOTION = 'dark, account reduced motion'
 const PUBLIC_GROUPS = new Set(['marketing', 'public'])
+/** A role the page denies sees the not-found page instead of any of the page's states. */
+const NOT_FOUND = 'h1:has-text("Page not found")'
 /** Pages that read in an effect: inspected once a read has landed (content, empty state or error), never loading. */
 const READY: Record<string, string> = {
-  '/[org]/projects': ':is(h1, [data-slot="empty"], [data-slot="alert"])',
-  '/[org]/analysis': ':is(.analysis-muted, .analysis-error)',
-  '/[org]/settings/members':
-    ':is(#members-table-heading, [data-slot="empty"], [data-slot="alert"]), h1:has-text("Page not found")',
-  '/[org]/[project]/analysis':
-    '[data-analysis-page]:not(:has([role="status"])), .analysis-page:not([data-analysis-page]) > .analysis-error',
+  '/[org]/projects': `[data-projects-list]:not([aria-busy="true"]), ${NOT_FOUND}`,
+  '/[org]/analysis': `:is(.analysis-muted, .analysis-error), ${NOT_FOUND}`,
+  '/[org]/settings/members': `:is(#members-table-heading, [data-slot="empty"], [data-slot="alert"], [data-source-error]), ${NOT_FOUND}`,
+  // A failed read is a source error, itself a role="status": the loading states carry their own marker.
+  '/[org]/[project]/analysis': `[data-analysis-page]:not(:has([data-analysis-loading])), .analysis-page:not([data-analysis-page]) > .analysis-error, ${NOT_FOUND}`,
   // The server renders a member's review; the run arrives with the client's refresh.
   '/[org]/[project]/bundles/[id]': '.bundle-trace p:text-matches("^Run "), .bundle-detail[aria-busy="false"]',
   '/[org]/[project]/camera/[sourceId]': '#device-token',
-  '/[org]/[project]/ledger': '.ledger-page:not(:has(div[role="status"]))',
-  '/[org]/[project]/settings/channels':
-    '[data-channels-panel] :is(button, [role="alert"]), h1:has-text("Page not found")',
+  '/[org]/[project]/ledger': `.ledger-page:not(:has([data-ledger-loading])), ${NOT_FOUND}`,
+  '/[org]/[project]/settings/channels': `[data-channels-panel] :is(button, [role="alert"]), ${NOT_FOUND}`,
+  // The frame, the source error, the empty queue or the not-a-labeller line: anything but the skeleton.
+  '/[org]/[project]/signals/probation/[sourceId]': '.probation-labeller:not(:has([data-slot="skeleton"]))',
+  '/[org]/[project]/windows': `:is([data-source-error], [data-empty-day], [data-timeline], [data-calendar]), ${NOT_FOUND}`,
   '/invite/[token]': 'section[aria-labelledby="invite-heading"] :is(h2, [role="alert"])',
   '/subscribe/[token]': '.subscribe-column :is(form, [role="alert"])'
 }
@@ -54,11 +57,7 @@ const PROJECT_UI_ROUTES = new Set([
   '/[org]/[project]/settings/share'
 ])
 /** Pages whose content comes only from an operation a teammate hasn't built: crawled once it lands. */
-const WAITING: Record<string, string> = {
-  '/[org]/[project]/windows': 'its windows come only from listWindows, which b-windows-api hasn’t built (#139)',
-  '/[org]/[project]/signals/probation/[sourceId]':
-    'its frames come only from getNextProbationFrame, which b-device-ingest hasn’t built (#128)'
-}
+const WAITING: Record<string, string> = {}
 /** A documentation-range address (RFC 3849): one crawl case as one visitor. */
 const visitorAddress = () => `2001:db8::${randomBytes(2).toString('hex')}:${randomBytes(2).toString('hex')}`
 
@@ -195,7 +194,7 @@ async function crawl(
   // The fixtures' routes keep their pattern path and the status rules of a page without parameters.
   const concreteRoute = projectUiRoute
     ? { ...route, params: undefined }
-    : { ...route, path: await crawlPath(route, org) }
+    : { ...route, path: await crawlPath(route, org, session.role) }
   if (!projectUiRoute) await stubDynamicPage(page, concreteRoute)
   // The API limits token and signed-out reads per client address: each case is its own visitor.
   await page.setExtraHTTPHeaders({ 'X-Forwarded-For': visitorAddress() })

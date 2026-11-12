@@ -180,13 +180,16 @@ export async function makeShareLinkFor(o: {
   orgId: string
   access: 'view' | 'reviewer'
   revokedAt?: Date
+  /** The project it opens; a new one if unset. */
+  projectId?: string
 }): Promise<{ id: string; projectId: string; token: string }> {
   const token = randomUUID()
   const row = await inOrg(o.orgId, (tx) =>
     makeShareLink(tx, {
       access: o.access,
       tokenHash: tokenHash(token),
-      ...(o.revokedAt ? { revokedAt: o.revokedAt } : {})
+      ...(o.revokedAt ? { revokedAt: o.revokedAt } : {}),
+      ...(o.projectId ? { projectId: o.projectId } : {})
     })
   )
   return { id: row.id, projectId: row.projectId, token }
