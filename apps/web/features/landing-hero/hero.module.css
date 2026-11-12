@@ -108,6 +108,10 @@
 }
 /* The live time at the lead size, in the figures face (its letters fall back to Roundo), so the minute never jitters. */
 .factNow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.3em;
   font-family: var(--font-figures);
   font-size: var(--step-lead);
   font-weight: 500;

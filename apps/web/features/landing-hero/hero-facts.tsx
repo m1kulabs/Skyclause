@@ -17,7 +17,7 @@ export function HeroFacts({ now, status }: { now: Date; status: StatusRead }) {
   return (
     <div className={styles.facts}>
       <p className={styles.factNow} data-source={CLOCK_SOURCE}>
-        <MytClock initial={{ iso, text: formatTime(iso, 'en') }} />{' '}
+        <MytClock initial={{ iso, text: formatTime(iso, 'en') }} />
         <span className={styles.factWords}>{t('landing-hero.now_label', {}, 'en')}</span>
       </p>
       {status.kind === 'ok' && status.gaugeAt ? (
