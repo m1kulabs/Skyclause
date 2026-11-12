@@ -494,7 +494,7 @@
     margin-top: 0;
   }
   .band {
-    padding: 28px 32px 0;
+    padding: 40px 40px 0;
   }
   .track {
     height: 56px;
@@ -505,7 +505,7 @@
   }
   .copy {
     align-self: end;
-    padding: 40px 32px 32px;
+    padding: 40px;
   }
   .room {
     height: auto;

@@ -42,6 +42,10 @@ export function HowItWorks({ grades, gradesSource }: { grades: GradesState; grad
             </span>
           ))}
         </h2>
+        <p className="how-note" data-source={TERMS_SERVICE}>
+          Replay of 2 November 2026 from JPS gauge 0232901RF; the 60-minute totals are our arithmetic. Times after 15:05
+          MYT are inferred from the documented delays, and no call was made that day.
+        </p>
       </div>
       <div className="how-field" data-reveal>
         {fragments.map((fragment, index) => (
@@ -68,10 +72,6 @@ export function HowItWorks({ grades, gradesSource }: { grades: GradesState; grad
           </label>
         ))}
       </fieldset>
-      <p className="how-note" data-source={TERMS_SERVICE}>
-        Replay of 2 November 2026 from JPS gauge 0232901RF; the 60-minute totals are our arithmetic. Times after 15:05
-        MYT are inferred from the documented delays, and no call was made that day.
-      </p>
     </section>
   )
 }

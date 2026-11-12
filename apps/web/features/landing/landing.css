@@ -69,13 +69,16 @@ html.lenis body {
 .how {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: 'field' 'track' 'clause' 'names' 'note';
+  grid-template-areas: 'field' 'track' 'clause' 'names';
   margin-top: var(--section-gap);
   padding-inline: var(--m);
   scroll-margin-top: 24px;
 }
 .how-clause {
   grid-area: clause;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   padding: 28px 20px 16px;
   background: var(--ink);
   color: var(--ground);
@@ -223,10 +226,7 @@ html.lenis body {
   outline-offset: 2px;
 }
 .how-note {
-  grid-area: note;
-  max-width: 72ch;
-  margin-top: 16px;
-  color: var(--ink-muted);
+  max-width: 52ch;
   font-size: var(--step-small);
 }
 .how-fragment {
@@ -428,6 +428,12 @@ html.lenis body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+.slot[data-which='rain'] img {
+  object-position: 50% 62%;
+}
+.slot[data-which='haze'] img {
+  object-position: 78% 58%;
 }
 .slot--capsule {
   display: inline-flex;
@@ -1141,13 +1147,13 @@ html.lenis body {
 @media (min-width: 1024px) {
   .how {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) auto auto auto;
+    grid-template-rows: minmax(0, 1fr) auto auto;
     grid-template-areas: none;
     min-height: 88svh;
   }
   .how-clause {
     grid-area: 1 / 1 / 4 / 2;
-    padding: 40px 40px 220px;
+    padding: 40px 40px 196px;
     border-radius: var(--r) 0 0 var(--r);
   }
   .how-heading {
@@ -1190,7 +1196,13 @@ html.lenis body {
     font-weight: 500;
   }
   .how-note {
-    grid-area: 4 / 1 / 5 / 3;
+    margin-top: auto;
+  }
+  .how-fragment {
+    width: min(100%, 480px);
+  }
+  .how-fragment .frag {
+    font-size: 15px;
   }
 
   .record {
@@ -1265,10 +1277,7 @@ html.lenis body {
   }
   .plan {
     min-height: 90svh;
-    padding: 40px var(--m) var(--m);
-  }
-  .plan--free {
-    padding-left: max(40px, var(--m));
+    padding: 40px;
   }
   .plan-foot {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -1310,7 +1319,7 @@ html.lenis body {
     font-size: 7vw;
   }
   .cta-help {
-    grid-column: 8 / 13;
+    grid-column: 7 / 13;
   }
 
   .proof-board {

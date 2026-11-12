@@ -6,7 +6,7 @@ import { photo } from './photos'
 function PhotoSlot({ which }: { which: 'rain' | 'haze' }) {
   const entry = photo(which)
   return (
-    <span className="slot" data-reveal-slot>
+    <span className="slot" data-which={which} data-reveal-slot>
       <img src={entry.src} width={entry.width} height={entry.height} alt="" loading="lazy" decoding="async" />
     </span>
   )
