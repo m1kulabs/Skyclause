@@ -642,6 +642,7 @@ test('project creation route admits Owner and Admin only', async ({ page, expect
       sameSite: 'Lax'
     }
   ])
+  // A visitor with no session is sent to sign in first, and back.
   await page.goto(`/${org}/new`)
-  await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible()
+  await expect(page).toHaveURL(new RegExp(`/sign-in\\?next=${encodeURIComponent(`/${org}/new`)}$`))
 })
