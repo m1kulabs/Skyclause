@@ -516,6 +516,7 @@
     caret-color: var(--ink);
     accent-color: var(--ink);
     scrollbar-color: var(--overlay) var(--ground);
+    /* The one anchor offset: html reserves it, ids add none (a margin on top of it doubled every jump). */
     scroll-padding-top: 64px;
     --density-row-height: 44px;
     --density-body-size: 14px;
@@ -544,9 +545,6 @@
   h5,
   h6 {
     text-wrap: balance;
-  }
-  [id] {
-    scroll-margin-top: 64px;
   }
   table,
   time,
