@@ -302,5 +302,6 @@
     "createdOn": "Dicipta {date}",
     "deleteNamed": "Padam klien OAuth: {name}",
     "revokeNamed": "Batalkan: {name}"
-  }
+  },
+  "loading": "Memuatkan…"
 }

@@ -302,5 +302,6 @@
     "createdOn": "Created {date}",
     "deleteNamed": "Delete OAuth client: {name}",
     "revokeNamed": "Revoke: {name}"
-  }
+  },
+  "loading": "Loading…"
 }
