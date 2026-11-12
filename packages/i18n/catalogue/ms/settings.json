@@ -1,4 +1,5 @@
 {
+  "page_title": "{section} · {scope}",
   "scopes": {
     "account": "Tetapan akaun",
     "organisation": "Tetapan organisasi",
@@ -270,6 +271,7 @@
     "projectsSource": "senarai projek",
     "copyColumn": "Salin ID",
     "pageOf": "Satu halaman, {count} rekod",
+    "pageOf_one": "Satu halaman, 1 rekod",
     "directorySource": "orang dan projek untuk ditapis",
     "formerPerson": "Bekas ahli",
     "otherProject": "Projek lain",
@@ -363,7 +365,7 @@
     "deleteOrgDescription": "Pemadaman memulakan tempoh ihsan 30 hari. Anda boleh membatalkannya dalam tempoh ini.",
     "exportFirst": "Eksport dahulu",
     "continueWithoutExport": "Teruskan tanpa eksport",
-    "deleteOrgDialog": "Taip slug organisasi untuk menjadualkan pemadaman.",
+    "deleteOrgDialog": "Taip nama alamat web organisasi untuk menjadualkan pemadaman.",
     "deletionScheduled": "Pemadaman dijadualkan. Organisasi akan dihapuskan pada {date}.",
     "graceTitle": "Organisasi dipadam",
     "purgeDate": "Organisasi akan dihapuskan pada {date}.",
@@ -400,16 +402,16 @@
     "exportJobFailed": "Eksport ini gagal. Minta eksport baharu."
   },
   "unbuilt": {
-    "accountAi": "kunci AI untuk akaun anda",
-    "accountApi": "kunci API untuk akaun anda",
-    "organisationAi": "kunci AI untuk organisasi ini",
-    "organisationApi": "kunci API untuk organisasi ini"
+    "accountAi": "Kunci AI belum tersedia.",
+    "accountApi": "Kunci API belum tersedia.",
+    "organisationAi": "Kunci AI belum tersedia.",
+    "organisationApi": "Kunci API belum tersedia."
   },
   "general": {
     "title": "Namakan semula organisasi",
     "source": "nama organisasi",
     "summaryName": "Nama sekarang",
-    "summarySlug": "Slug",
+    "summarySlug": "Nama alamat web",
     "nameHint": "Sehingga {limit} aksara.",
     "saveFailed": "Nama tidak dapat disimpan. Cuba lagi.",
     "nameRequired": "Masukkan nama untuk organisasi.",

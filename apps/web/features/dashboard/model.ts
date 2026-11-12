@@ -18,8 +18,9 @@ export function wilsonInterval(successes: number, n: number): { low: number; hig
 }
 
 export function stripInput(strip: DashboardStrip, now = new Date().toISOString()): StripInput {
-  const rain5 = strip.series.rain5 ?? []
-  const rain60 = strip.series.rain60 ?? []
+  // The lanes getProjectStrip answers with (packages/api services/signals/strip.ts), as the bundle and overview read them.
+  const rain5 = strip.series['site.rain_5m_mm'] ?? []
+  const rain60 = strip.series['site.rain_60m_mm'] ?? []
   return {
     from: strip.range.from,
     to: strip.range.to,

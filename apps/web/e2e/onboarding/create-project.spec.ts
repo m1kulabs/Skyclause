@@ -4,6 +4,7 @@ import { expect, test } from '../fixtures'
 import { asPage, stubApi } from '../harness'
 import { onboardingOperations } from '../../features/onboarding/operations'
 import { sourceOperations } from '../../features/sources/operations'
+import { devicesBuilt } from '../../features/settings/project/packs/controls'
 import type { Request } from '@playwright/test'
 
 const org = 'test-org'
@@ -215,11 +216,11 @@ test('project form shows inline slug errors, announces saving, and sends Crowd t
   await expectAxeClean(page)
   const form = page.locator('[data-project-create]')
   await expect(form.getByLabel('Project name')).toBeVisible()
-  await expect(form.getByLabel('Project slug')).toHaveAttribute('spellcheck', 'false')
+  await expect(form.getByLabel('Web address name')).toHaveAttribute('spellcheck', 'false')
   await expect(form.getByLabel('Time zone')).toHaveValue('Asia/Kuala_Lumpur')
   await expect(form.getByLabel('Project name')).toHaveAttribute('autocomplete', 'off')
   await form.getByLabel('Project name').fill('APU Air Quality')
-  await form.getByLabel('Project slug').fill('new')
+  await form.getByLabel('Web address name').fill('new')
   await form.getByLabel('Site name').fill('APU')
   await form.getByLabel('Latitude').fill('3.0559')
   await form.getByLabel('Longitude').fill('101.6997')
@@ -227,18 +228,23 @@ test('project form shows inline slug errors, announces saving, and sends Crowd t
   const submit = form.getByRole('button', { name: 'Create project' })
   await submit.click()
   await expect(form.getByRole('button', { name: 'Saving…' })).toBeVisible()
-  await expect(form.getByText('This slug is reserved.')).toBeVisible()
-  await expect(form.getByLabel('Project slug')).toBeFocused()
+  await expect(form.getByText('This web address name is reserved.')).toBeVisible()
+  await expect(form.getByLabel('Web address name')).toBeFocused()
 
-  await form.getByLabel('Project slug').fill('apu-air-quality')
+  await form.getByLabel('Web address name').fill('apu-air-quality')
   await submit.click()
-  await expect(form.getByText('This slug is already in use.')).toBeVisible()
-  await expect(form.getByLabel('Project slug')).toBeFocused()
+  await expect(form.getByText('This web address name is already in use.')).toBeVisible()
+  await expect(form.getByLabel('Web address name')).toBeFocused()
   await submit.click()
   await expect(page).toHaveURL(/\/test-org\/apu-air-quality\/settings\/packs/)
   expect(submitted).toMatchObject({ packs: ['sky', 'crowd'], site_lat: 3.0559, site_lon: 101.6997 })
   const panel = page.locator('[data-settings-panel]')
   await expect(panel.getByText('Needs a rail station with gate taps and a venue with listings.')).toBeVisible()
+  // A Create a project link asks for another project: the form stays, the first run waits beside it.
+  await page.goto(`/${org}/new?another=1`)
+  await expect(page.locator('[data-first-run-progress]').getByText('2 of 6 steps complete')).toBeVisible()
+  await expect(page.locator('[data-project-create]')).toBeVisible()
+  await expect(page).toHaveURL(/\/test-org\/new\?another=1$/)
   await page.goto(`/${org}/new`)
   await expect(page).toHaveURL(/\/test-org\/apu-air-quality\/settings\/packs/)
   await page.reload()
@@ -327,13 +333,17 @@ test('source picker sorts captured APIMS rows, finds CA16W, allows an erroring s
   await expect(closest.getByRole('cell', { name: 'no published terms' })).toBeVisible()
   await expect(closest).toContainText('Hourly')
   await expect(closest).toContainText(/67\s*API/)
-  await expect(closest).toContainText(/error.*HTTP 503/i)
+  await expect(closest).toContainText('Last poll failed')
+  await expect(closest).not.toContainText('HTTP')
   await expect(picker.getByRole('row').nth(2)).toContainText('CA01R')
   await picker.getByLabel('Search sources').fill('CA16W')
   await expect(picker.getByText('CA01R')).toHaveCount(0)
   await picker.getByRole('button', { name: 'Bind CA16W' }).click()
   await expect(picker.getByRole('status')).toHaveText('Source bound.')
-  await expect(page.locator('[data-first-run-progress]').getByText('CA16W bound · API 67, 13 min old')).toBeVisible()
+  // The step says the source is bound, never its ID or the API's raw sentence.
+  const progress = page.locator('[data-first-run-progress]')
+  await expect(progress.getByText('Source bound.')).toBeVisible()
+  await expect(progress).not.toContainText('CA16W bound')
   await expectAxeClean(page)
   expect(binds).toBe(1)
   expect(boundSourceCount).toBe(1)
@@ -469,7 +479,26 @@ test('Crowd stays off until the rail station and venue are both bound', async ({
   expect(writes).toEqual([])
 })
 
+test('the packs page offers no Add a camera or Pi while createDevice has no handler', async ({ page }) => {
+  test.skip(devicesBuilt(), 'createDevice has a handler: the device flow is tested below')
+  await asPage(page, principal())
+  await stubApi(page, 'getOnboarding', onboarding(true), { registry: onboardingOperations })
+  await stubApi(
+    page,
+    'listProjects',
+    { data: [projectRecord()], next_cursor: null },
+    { registry: onboardingOperations }
+  )
+  await stubApi(page, 'listProjectSources', { data: [], next_cursor: null }, { registry: sourceOperations })
+  await page.goto(`/${org}/apu-air-quality/settings/packs`)
+  const panel = page.locator('[data-settings-panel]')
+  await expect(panel.getByRole('heading', { name: 'Packs' })).toBeVisible()
+  await expect(panel.getByRole('heading', { name: 'Devices' })).toHaveCount(0)
+  await expect(panel.getByRole('button', { name: 'Add a camera or Pi' })).toHaveCount(0)
+})
+
 test('device token is visible once and cleared when its dialog closes', async ({ page, expectAxeClean }) => {
+  test.skip(!devicesBuilt(), 'createDevice has no handler: the Devices part is not offered')
   await asPage(page, principal())
   const device = {
     source_id: '019b7f4a-1e00-7000-8000-000000000701',
@@ -531,7 +560,9 @@ test('Crowd prerequisite errors name the missing venue and rail station beside t
   const confirm = page.getByRole('alertdialog')
   await expect(confirm.getByRole('heading')).toContainText('Turn on Crowd for')
   await confirm.getByRole('button', { name: /^Turn on Crowd for/ }).click()
-  await expect(panel.getByText(prerequisites.detail)).toBeVisible()
+  // The catalogue's sentence names what is missing; the API's English detail never shows.
+  await expect(panel.getByText('Needs a rail station with gate taps and a venue with listings.')).toBeVisible()
+  await expect(page.getByText(prerequisites.detail)).toHaveCount(0)
   await expect(page.getByRole('dialog', { name: 'Bind sources' })).toBeVisible()
 })
 
@@ -616,6 +647,7 @@ test('project creation route admits Owner and Admin only', async ({ page, expect
       sameSite: 'Lax'
     }
   ])
+  // A visitor with no session is sent to sign in first, and back.
   await page.goto(`/${org}/new`)
-  await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible()
+  await expect(page).toHaveURL(new RegExp(`/sign-in\\?next=${encodeURIComponent(`/${org}/new`)}$`))
 })

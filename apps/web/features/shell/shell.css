@@ -290,6 +290,23 @@ a.shell-wordmark:hover > span {
 .shell-sheet [data-slot='phone-sheet-item'] {
   overflow-wrap: anywhere;
 }
+/* Sign out, drawn as a sheet row: it ends the session, so it is a button, not one of the links. */
+.shell-sheet-action {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  border-radius: 9999px;
+  padding-inline: 16px;
+  color: var(--muted-foreground);
+  font-size: 16px;
+  font-weight: 500;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+.shell-sheet-action:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
 /* The current organisation and project in the switch lists: marked like the current page, with aria-current="true". */
 .shell-sheet [data-slot='phone-sheet-item'][aria-current='true'] {
   background: var(--raised);

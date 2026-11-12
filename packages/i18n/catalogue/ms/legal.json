@@ -7,7 +7,9 @@
     "signIn": "Log masuk",
     "footerNavigation": "Undang-undang dan bahasa",
     "language": "English",
-    "languageLabel": "Baca halaman ini dalam bahasa Inggeris"
+    "languageLabel": "Baca halaman ini dalam bahasa Inggeris",
+    "languagePrivacy": "Privacy notice in English",
+    "languagePrivacyLabel": "Baca notis privasi dalam bahasa Inggeris"
   },
   "contents": "Dalam halaman ini",
   "attribution": {

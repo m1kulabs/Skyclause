@@ -29,7 +29,7 @@ export async function RootDocument({
   resolved?: ReturnType<typeof resolveAppearance>
   colorScheme?: 'light' | 'dark' | 'light dark'
   routeGroup?: RouteGroup
-  /** The public pages' route locale; other roots follow the stored language. */
+  /** The language the page is rendered in: a public page's route locale, or the request's language. */
   locale?: Locale
   skipTarget?: string
   /** The per-request CSP nonce for the inline appearance script. */

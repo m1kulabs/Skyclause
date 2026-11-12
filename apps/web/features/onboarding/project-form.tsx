@@ -87,7 +87,8 @@ export function ProjectForm({ org, locale = 'en' }: { org: string; locale?: Loca
   // The browser's own list of IANA zones, read after mounting so the server and the first render agree.
   useEffect(() => setZones(Intl.supportedValuesOf?.('timeZone') ?? []), [])
   // The draft is lost on navigating away: warn while it differs from what the form started with.
-  useUnsavedChangesGuard(!created && JSON.stringify(draft) !== JSON.stringify(INITIAL), locale)
+  const dirty = !created && JSON.stringify(draft) !== JSON.stringify(INITIAL)
+  useUnsavedChangesGuard(dirty, locale)
 
   useLayoutEffect(() => {
     if (!focusRequested.current) return
@@ -118,6 +119,8 @@ export function ProjectForm({ org, locale = 'en' }: { org: string; locale?: Loca
     <form
       className={styles.projectForm}
       data-project-create
+      // The first-run list beside the form never moves the page while this is set.
+      data-dirty={dirty || undefined}
       noValidate
       onSubmit={async (event) => {
         event.preventDefault()
@@ -146,6 +149,9 @@ export function ProjectForm({ org, locale = 'en' }: { org: string; locale?: Loca
           // The button stays busy until the next page takes over, so a second click cannot create it twice.
           setCreated(true)
           router.push(draft.packs.includes('crowd') ? `${prefix}?pack=crowd` : prefix)
+          // A push keeps the app layout as it was read, so the project switcher would not list the new project. The
+          // refresh waits behind the push and then reads every layout again.
+          router.refresh()
         } catch (error) {
           const slugError = apiSlugError(error)
           if (slugError) fail({ slug: slugError })

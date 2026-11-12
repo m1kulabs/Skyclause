@@ -5,6 +5,7 @@ import { DEFAULT_PREFERENCES, Preferences, type Preferences as PreferenceValues 
 import { getSessionForRequest } from '@skyclause/auth'
 import { DEFAULT_APPEARANCE, resolveAppearance, type Appearance } from '../lib/theme'
 import { preferencesToAppearance } from '../features/account/presentation'
+import { prefersMalay } from '../lib/preferred-language'
 import { RootDocument } from './root-document'
 
 interface Props {
@@ -17,8 +18,8 @@ export async function RequestRootLayout({ children, routeGroup, locale }: Props)
   // These roots set instant=false so request hints resolve before their document starts streaming.
   const requestHeaders = await headers()
   let preferences: PreferenceValues = DEFAULT_PREFERENCES
-  // Public pages follow the visitor's system colour scheme until stored preferences say otherwise.
-  let appearance = routeGroup === 'public' ? { ...DEFAULT_APPEARANCE, theme: 'system' as const } : DEFAULT_APPEARANCE
+  // Every page, public ones included, is Dusk until a signed-in account's stored appearance says otherwise.
+  let appearance = DEFAULT_APPEARANCE
   const testOverride =
     process.env.APP_ENV === 'test' ? (await cookies()).get('skyclause-test-appearance')?.value : undefined
   if (testOverride) {
@@ -65,7 +66,9 @@ export async function RequestRootLayout({ children, routeGroup, locale }: Props)
         appearance.theme === 'system' && colorSchemeHint ? (resolved.mode === 'light' ? 'light' : 'dark') : undefined
       }
       routeGroup={routeGroup}
-      locale={locale}
+      // `lang` names what is rendered: the route's locale, or the language every page reads from Accept-Language,
+      // which proxy.ts sets from the saved one.
+      locale={locale ?? (prefersMalay(requestHeaders.get('accept-language')) ? 'ms' : 'en')}
       skipTarget={routeGroup === 'public' ? 'public-main' : 'main-content'}
       nonce={requestHeaders.get('x-nonce') ?? undefined}
     >

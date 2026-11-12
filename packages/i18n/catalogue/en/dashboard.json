@@ -38,5 +38,16 @@
   "window_in_project": "{project} · {window}",
   "today_at_risk_note": "Engine verdicts, not reviewed.",
   "loading": "Loading dashboard…",
-  "capped": "Showing the first {shown} of {total}."
+  "capped": "Showing the first {shown} of {total}.",
+  "covered_projects": "Showing {shown} of {total} projects: the most recently active.",
+  "storm": "Storm afternoon forecast · {wording}",
+  "storm_source": "MET forecast source (opens in a new tab)",
+  "today_drafts_note": "Latest call for each window. A draft is not reviewed yet.",
+  "sources": {
+    "needs_review": "the bundles needing review",
+    "windows_at_risk": "today’s windows",
+    "signal_health": "the sources",
+    "upcoming_risks": "the shows and forecasts ahead",
+    "yesterday_grades": "yesterday’s grades"
+  }
 }

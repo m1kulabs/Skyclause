@@ -3,13 +3,26 @@ import {
   getMyPreferences,
   updateMyPreferences
 } from '@skyclause/contracts/api/first-party/me'
-import { getBundle } from '@skyclause/contracts/api/v1/bundles'
+import { getBundle, listProjectBundles } from '@skyclause/contracts/api/v1/bundles'
 import { getCall } from '@skyclause/contracts/api/v1/calls'
 import { getDashboard } from '@skyclause/contracts/api/v1/dashboard'
+import { listProjectDays } from '@skyclause/contracts/api/v1/days'
+import { listGrades } from '@skyclause/contracts/api/v1/grades'
+import { listNights } from '@skyclause/contracts/api/v1/nights'
 import { listProjects } from '@skyclause/contracts/api/v1/projects'
 import { searchOrganisation } from '@skyclause/contracts/api/v1/search'
+import { listProjectSources } from '@skyclause/contracts/api/v1/sources'
 import { getProjectStrip } from '@skyclause/contracts/api/v1/strip'
-import { createApiFetch } from '../../lib/api-fetch'
+import { listWindows } from '@skyclause/contracts/api/v1/windows'
+import { ApiProblem, createApiFetch } from '../../lib/api-fetch'
+import {
+  COMPOSED_PROJECT_CAP,
+  composeDashboard,
+  dashboardBlocks,
+  mostRecentlyActive,
+  type DashboardBlocks
+} from './compose'
+import { readOrgProjects } from '../shell/org-projects'
 import { sortNeedsReviewBySla } from './model'
 
 type JsonSchema<Route> = Route extends {
@@ -47,6 +60,22 @@ export const dashboardOperations = {
   getBundle: operation(getBundle, { params: getBundle.request.params }),
   getCall: operation(getCall, { params: getCall.request.params }),
   getProjectStrip: operation(getProjectStrip, { params: getProjectStrip.request.params }),
+  // While getDashboard is not built (501), the dashboard is composed from these per-project reads.
+  listProjectBundles: operation(listProjectBundles, {
+    params: listProjectBundles.request.params,
+    query: listProjectBundles.request.query
+  }),
+  listWindows: operation(listWindows, { params: listWindows.request.params, query: listWindows.request.query }),
+  listProjectSources: operation(listProjectSources, {
+    params: listProjectSources.request.params,
+    query: listProjectSources.request.query
+  }),
+  listProjectDays: operation(listProjectDays, {
+    params: listProjectDays.request.params,
+    query: listProjectDays.request.query
+  }),
+  listNights: operation(listNights, { params: listNights.request.params, query: listNights.request.query }),
+  listGrades: operation(listGrades, { params: listGrades.request.params, query: listGrades.request.query }),
   searchOrganisation: operation(searchOrganisation, { query: searchOrganisation.request.query }),
   listMyMemberships: operation(memberships, { query: memberships.request.query }),
   getMyPreferences: operation(getMyPreferences, {}),
@@ -75,14 +104,29 @@ export type DashboardBundle = ReturnType<typeof dashboardOperations.getBundle.re
 export type DashboardCall = ReturnType<typeof dashboardOperations.getCall.response.parse>
 export type DashboardStrip = ReturnType<typeof dashboardOperations.getProjectStrip.response.parse>
 export type DashboardReview = Dashboard['needs_review']['data'][number]
+type ListItem<Operation extends keyof typeof dashboardOperations> =
+  ReturnType<(typeof dashboardOperations)[Operation]['response']['parse']> extends { data: Array<infer Item> }
+    ? Item
+    : never
+export type DashboardWindow = ListItem<'listWindows'>
+export type DashboardSource = ListItem<'listProjectSources'>
+export type DashboardDay = ListItem<'listProjectDays'>
+export type DashboardNight = ListItem<'listNights'>
+export type DashboardGrade = ListItem<'listGrades'>
 export type DashboardMembership = ReturnType<
   typeof dashboardOperations.listMyMemberships.response.parse
 >['data'][number]
 
-export interface DashboardRead {
-  dashboard: Dashboard
+export interface DashboardRead extends DashboardBlocks {
+  /** Every live project in the organisation, for names and the first project's links. */
   projects: DashboardProject[]
-  bundles: Array<{ summary: DashboardReview; detail: DashboardBundle }>
+  /**
+   * How many of those projects the blocks cover: all of them when getDashboard answers; while it is not built, the
+   * most recently active few, said on screen when there are more.
+   */
+  covered: number
+  /** What today's window states come from: getDashboard's engine verdicts, or each window's latest call. */
+  windowsBasis: 'engine_verdict' | 'latest_call'
   firstCall: DashboardCall | null
   strip: DashboardStrip | null
   /** When the read landed: the countdowns and the strip's "now" count from it, the same on the server and client. */
@@ -105,52 +149,128 @@ export async function allPages<Item>(
   return items
 }
 
+/** A read the page can do without: null when it fails, so the block it decorates still renders. */
+const optional = <Value>(read: Promise<Value>): Promise<Value | null> => read.catch(() => null)
+
+/** The first bundle's lead call and its readings strip, which decorate the needs-review block; null when they fail. */
+async function leadReads(
+  blocks: DashboardBlocks,
+  common: { org: string; headers: Headers; signal: AbortSignal; cache: 'no-store' }
+): Promise<{ firstCall: DashboardCall | null; strip: DashboardStrip | null }> {
+  const firstBundle = blocks.needs_review.ok ? blocks.needs_review.data[0] : undefined
+  if (!firstBundle) return { firstCall: null, strip: null }
+  const lead = firstBundle.detail.calls.find((call) => call.window_id) ?? firstBundle.detail.calls[0]
+  const [firstCall, strip] = await Promise.all([
+    lead ? optional(dashboardApi('getCall', { ...common, params: { id: lead.id } })) : Promise.resolve(null),
+    optional(dashboardApi('getProjectStrip', { ...common, params: { id: firstBundle.detail.project_id } }))
+  ])
+  return { firstCall, strip }
+}
+
+/** The whole dashboard read, every wave, gets this long: the page's first byte never waits on an untimed read. */
+export const DASHBOARD_DEADLINE_MS = 8_000
+
+/** `read`, or the signal's reason once it aborts, whichever comes first. */
+function until<Value>(read: Promise<Value>, signal: AbortSignal): Promise<Value> {
+  if (signal.aborted) return Promise.reject(signal.reason)
+  return new Promise((resolve, reject) => {
+    signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+    read.then(resolve, reject)
+  })
+}
+
+/**
+ * The organisation dashboard: getDashboard when it answers; while it is not built (501), composed from the reads that
+ * are (`composeDashboard`). Any other failure of getDashboard, or of the projects list, fails the page. One deadline
+ * covers every wave; the projects list is the shell's own read of it (`readOrgProjects`), so a render reads it once.
+ */
 export async function readDashboard(
   org: string,
   requestHeaders = new Headers(),
-  signal?: AbortSignal
+  callerSignal?: AbortSignal,
+  options: { deadlineMs?: number } = {}
 ): Promise<DashboardRead> {
   const forwarded = new Headers()
   for (const name of ['cookie', 'authorization']) {
     const value = requestHeaders.get(name)
     if (value) forwarded.set(name, value)
   }
+  const deadline = AbortSignal.timeout(options.deadlineMs ?? DASHBOARD_DEADLINE_MS)
+  const signal = callerSignal ? AbortSignal.any([callerSignal, deadline]) : deadline
+  const common = { org, headers: forwarded, signal, cache: 'no-store' as const }
 
   const [dashboard, projects] = await Promise.all([
-    dashboardApi('getDashboard', { org, headers: forwarded, signal, cache: 'no-store' }),
-    allPages((cursor) =>
-      dashboardApi('listProjects', {
-        org,
-        headers: forwarded,
-        query: { limit: 200, cursor },
-        signal,
-        cache: 'no-store'
-      })
-    )
+    dashboardApi('getDashboard', common).catch((error: unknown) => {
+      if (error instanceof ApiProblem && error.status === 501) return null
+      throw error
+    }),
+    until(readOrgProjects(org, forwarded.get('cookie'), forwarded.get('authorization')), signal)
   ])
-  const summaries = sortNeedsReviewBySla(dashboard.needs_review.data)
-  const details = await Promise.all(
-    summaries.map((summary) =>
-      dashboardApi('getBundle', { org, headers: forwarded, params: { id: summary.id }, signal, cache: 'no-store' })
-    )
-  )
-  const bundles = summaries.map((summary, index) => ({ summary, detail: details[index]! }))
-  const firstBundle = bundles[0]
-  const lead = firstBundle?.detail.calls.find((call) => call.window_id) ?? firstBundle?.detail.calls[0]
-  const [firstCall, strip] = firstBundle
-    ? await Promise.all([
-        lead
-          ? dashboardApi('getCall', { org, headers: forwarded, params: { id: lead.id }, signal, cache: 'no-store' })
-          : Promise.resolve(null),
-        dashboardApi('getProjectStrip', {
-          org,
-          headers: forwarded,
-          params: { id: firstBundle.detail.project_id },
-          signal,
-          cache: 'no-store'
-        })
-      ])
-    : [null, null]
+  const live = projects.filter((project) => !project.archived_at)
 
-  return { dashboard, projects, bundles, firstCall, strip, readAt: new Date().toISOString() }
+  let blocks: DashboardBlocks
+  let covered = live.length
+  if (dashboard) {
+    const summaries = sortNeedsReviewBySla(dashboard.needs_review.data)
+    const details = await Promise.all(
+      summaries.map((summary) => dashboardApi('getBundle', { ...common, params: { id: summary.id } }))
+    )
+    blocks = dashboardBlocks(
+      dashboard,
+      summaries.map((summary, index) => ({ summary, detail: details[index]! }))
+    )
+  } else {
+    const composed = await composeDashboard(dashboardApi, {
+      org,
+      projects: live,
+      headers: forwarded,
+      signal,
+      now: new Date()
+    })
+    blocks = composed.blocks
+    covered = composed.shown.length
+  }
+
+  const { firstCall, strip } = await leadReads(blocks, common)
+
+  return {
+    ...blocks,
+    projects: live,
+    covered,
+    windowsBasis: dashboard ? 'engine_verdict' : 'latest_call',
+    firstCall,
+    strip,
+    readAt: new Date().toISOString()
+  }
+}
+
+/**
+ * One composed block read again, for its Retry: only that block's reads, across the projects the dashboard covers,
+ * under the same deadline; every other block stays as it is. A dashboard read whole from getDashboard is read whole.
+ */
+export async function readDashboardBlock(
+  org: string,
+  key: keyof DashboardBlocks,
+  data: DashboardRead,
+  callerSignal?: AbortSignal,
+  options: { deadlineMs?: number } = {}
+): Promise<DashboardRead> {
+  if (data.windowsBasis === 'engine_verdict') return readDashboard(org, new Headers(), callerSignal, options)
+  const deadline = AbortSignal.timeout(options.deadlineMs ?? DASHBOARD_DEADLINE_MS)
+  const signal = callerSignal ? AbortSignal.any([callerSignal, deadline]) : deadline
+  const now = new Date()
+  const headers = new Headers()
+  const { blocks } = await composeDashboard(dashboardApi, {
+    org,
+    projects: mostRecentlyActive(data.projects).slice(0, COMPOSED_PROJECT_CAP),
+    headers,
+    signal,
+    now,
+    only: key
+  })
+  const next: DashboardRead = { ...data, [key]: blocks[key] }
+  if (key !== 'needs_review') return next
+  // The bundles were read again: their countdowns start now, with the lead call and strip of the first one.
+  const lead = await leadReads(next, { org, headers, signal, cache: 'no-store' })
+  return { ...next, ...lead, readAt: now.toISOString() }
 }

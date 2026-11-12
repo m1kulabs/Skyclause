@@ -79,9 +79,9 @@ async function stubProjects(page: Page, data: ProjectListItem[]) {
   await stubApi(page, 'listProjects', { data, next_cursor: null }, { registry: organisationOperations })
 }
 
-test('/new sends guests to /sign-up', async ({ page }) => {
+test('/new sends a visitor with no session to sign in first, and back', async ({ page }) => {
   await page.goto('/new')
-  await expect(page).toHaveURL(/sign-up/)
+  await expect(page).toHaveURL(/\/sign-in\?next=%2Fnew$/)
 })
 
 test('ORG-1 reserved and taken slugs are refused inline with the reason and focus (real session)', async ({ page }) => {
@@ -89,13 +89,13 @@ test('ORG-1 reserved and taken slugs are refused inline with the reason and focu
   await signInAs(page, 'owner', await makeOrg())
   await page.goto('/new')
   await page.getByLabel('Organisation name').fill('Taken org')
-  await page.getByLabel('Slug').fill('taken-slope')
+  await page.getByLabel('Web address name').fill('taken-slope')
   await page.getByRole('button', { name: 'Create organisation' }).click()
-  await expect(page.getByText('taken-slope is taken. Choose another slug.')).toBeVisible()
-  await expect(page.getByLabel('Slug')).toBeFocused()
+  await expect(page.getByText('taken-slope is taken. Choose another web address name.')).toBeVisible()
+  await expect(page.getByLabel('Web address name')).toBeFocused()
 
-  await page.getByLabel('Slug').fill('new')
-  await expect(page.getByText('new is reserved. Choose another slug.')).toBeVisible()
+  await page.getByLabel('Web address name').fill('new')
+  await expect(page.getByText('new is reserved. Choose another web address name.')).toBeVisible()
 })
 
 test('creating an organisation continues to the first run next step', async ({ page }) => {
@@ -103,10 +103,38 @@ test('creating an organisation continues to the first run next step', async ({ p
   const slug = `e2e-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
   await page.goto('/new')
   await page.getByLabel('Organisation name').fill('E2E Org')
-  await expect(page.getByLabel('Slug')).toHaveValue('e2e-org')
-  await page.getByLabel('Slug').fill(slug)
+  await expect(page.getByLabel('Web address name')).toHaveValue('e2e-org')
+  await page.getByLabel('Web address name').fill(slug)
   await page.getByRole('button', { name: 'Create organisation' }).click()
   await expect(page).toHaveURL(`/${slug}/new`)
+})
+
+test('the shell lists a new organisation as soon as it is created, instead of No organisations yet', async ({
+  page
+}) => {
+  await signInAs(page, 'owner', await makeOrg())
+  const slug = `e2e-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+  await page.goto('/new')
+  const switcher = page.getByRole('button', { name: /^Switch organisation:/ }).first()
+  await expect(switcher).toHaveAccessibleName('Switch organisation: No organisations')
+  // The test runtime's app layout reads the shell's memberships from this cookie each time it renders (production reads
+  // listMyMemberships), so the shell changes only if the layout is read again after the create.
+  const origin = process.env.E2E_BASE_URL ?? `http://localhost:${process.env.E2E_PORT ?? 3100}`
+  const shell = {
+    memberships: [{ org_id: 'e2e-new-org', org_name: 'E2E Org', org_slug: slug, role: 'owner' }],
+    projects: []
+  }
+  await page
+    .context()
+    .addCookies([
+      { name: 'skyclause-test-shell', value: encodeURIComponent(JSON.stringify(shell)), url: origin, httpOnly: true }
+    ])
+  await page.getByLabel('Organisation name').fill('E2E Org')
+  await page.getByLabel('Web address name').fill(slug)
+  await page.getByRole('button', { name: 'Create organisation' }).click()
+  await expect(page).toHaveURL(`/${slug}/new`)
+  await expect(switcher).toHaveAccessibleName('Switch organisation: E2E Org')
+  await expect(page.getByText('No organisations yet (n=0)')).toHaveCount(0)
 })
 
 test('ORG-5 with zero projects an owner sees n=0 and Create a project', async ({ page }) => {
@@ -116,7 +144,7 @@ test('ORG-5 with zero projects an owner sees n=0 and Create a project', async ({
   await expect(page.getByText(/No projects yet \(n=0\)/)).toBeVisible()
   const create = page.getByRole('link', { name: 'Create a project' })
   await expect(create).toBeVisible()
-  await expect(create).toHaveAttribute('href', '/test-org/new')
+  await expect(create).toHaveAttribute('href', '/test-org/new?another=1')
 })
 
 test('ORG-5 without project.manage the empty page asks for an Admin', async ({ page }) => {
@@ -192,7 +220,7 @@ test('general panel renames the organisation with the slug read-only', async ({ 
   await signInAs(page, 'owner', org)
   await page.goto(`/${org.slug}/settings/general`)
   await expect(page.getByLabel('Organisation name')).toHaveValue(org.slug)
-  await expect(page.getByLabel(/Slug/)).toHaveValue(org.slug)
+  await expect(page.getByLabel(/Web address name/)).toHaveValue(org.slug)
   await page.getByLabel('Organisation name').fill('Renamed org')
   await page.getByRole('button', { name: 'Save name' }).click()
   await expect(page.getByText('Name saved.')).toBeVisible()

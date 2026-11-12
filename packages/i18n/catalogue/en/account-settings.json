@@ -50,7 +50,7 @@
     "languageAndShortcuts": "Language and shortcuts",
     "languageDescription": "Your language choice also sets the document locale.",
     "language": "Language",
-    "languageHelp": "App strings without a Malay translation stay in English until localisation work is complete.",
+    "languageHelp": "The app’s pages show in this language, on every device you sign in on.",
     "english": "English",
     "bahasaMelayu": "Bahasa Melayu",
     "keyboardShortcuts": "Keyboard shortcuts",

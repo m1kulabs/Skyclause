@@ -14,17 +14,13 @@ export function vitalBody(metric: { name: VitalMetric; value: number }, group: R
   return { type: 'vital', metric: metric.name, value: metric.value, route_group: group }
 }
 
-/** Spec §4 Hosts serve `/e` on the marketing host only; `app.` and `embed.` sit one label under it. */
-export function vitalsEndpoint({ protocol, hostname }: { protocol: string; hostname: string }): string {
-  const [first, ...rest] = hostname.split('.')
-  return (first === 'app' || first === 'embed') && rest.length > 1 ? `${protocol}//${rest.join('.')}/e` : '/e'
-}
-
-/** One `sendBeacon` per metric as web-vitals reports it; a string body goes as text/plain, so no CORS preflight. */
+/**
+ * One `sendBeacon` per metric as web-vitals reports it, to the page's own origin: every host serves `/e` (spec §4
+ * Hosts), and its CSP's `connect-src 'self'` allows it. A string body goes as text/plain, so no CORS preflight.
+ */
 export function reportVitals(group: RouteGroup) {
-  const endpoint = vitalsEndpoint(location)
   const send = (metric: { name: VitalMetric; value: number }) =>
-    navigator.sendBeacon(endpoint, JSON.stringify(vitalBody(metric, group)))
+    navigator.sendBeacon('/e', JSON.stringify(vitalBody(metric, group)))
   onLCP(send)
   onINP(send)
   onCLS(send)

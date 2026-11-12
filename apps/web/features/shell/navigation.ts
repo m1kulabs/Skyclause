@@ -3,7 +3,9 @@ import type { Role } from '@skyclause/contracts'
 /**
  * Every destination the shell offers, in one place for the bar, its menus, the phone sheet and the command palette.
  * Each one is a built page; unbuilt routes (clauses, the approvals queue, the developers index, /docs) are never
- * listed. Role gates mirror the pages' own: features/settings/access.ts and e2e/quality/visit.ts.
+ * listed, and neither are pages whose operations have no handler yet: webhooks (e-webhooks; `/{org}/settings/webhooks`
+ * and `/developers/webhooks` say so when reached by URL). Role gates mirror the pages' own:
+ * features/settings/access.ts and e2e/quality/visit.ts.
  */
 export type DestinationKey =
   | 'windows'
@@ -18,7 +20,6 @@ export type DestinationKey =
   | 'projects'
   | 'organisationAnalysis'
   | 'connect'
-  | 'webhooks'
   | 'organisationSettings'
   | 'account'
   | 'appearance'
@@ -79,8 +80,6 @@ export function organisationMenuDestinations(
       { key: 'projects', href: path(org, 'projects') },
       { key: 'organisationAnalysis', href: path(org, 'analysis') }
     )
-    // The organisation's own webhooks page: /developers/webhooks answers for the session's organisation, not this one.
-    if (manages(role)) destinations.push({ key: 'webhooks', href: path(org, 'settings', 'webhooks') })
     if (manages(role) || role === 'approver') {
       destinations.push({
         key: 'organisationSettings',

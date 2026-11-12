@@ -19,10 +19,14 @@ for (const route of builtRoutes()) {
       // The skip link is a server translation on every route; this proves pseudo mode actually ran.
       // The shell owns the app skip target and hides the shared document's public-page link.
       const skip = page.locator('.skip-link:visible')
-      // A /ms/ route renders Malay whatever the browser asks for, and the app's shell speaks the request's language
-      // (Malay here); a public page stays English and suggests Malay.
+      // A /ms/ route renders Malay whatever the browser asks for. The app's shell speaks the request's language
+      // (Malay here); the planted shell page keeps its fixture's English. A page without a shell or a route locale (the
+      // auth pages a signed-out app visit is sent to, the test roots) is rendered in the request's language too, skip
+      // link included; the landing and the English public pages stay English and suggest Malay.
+      const shell = (await page.locator('.app-shell').count()) > 0
       const malay =
-        route.path.startsWith('/ms/') || (route.group === 'app' && (await page.locator('.app-shell').count()) > 0)
+        route.path.startsWith('/ms/') ||
+        (shell ? route.group === 'app' : !(route.group === 'marketing' || route.group === 'public'))
       await expect(skip).toHaveText(pseudo(t('shell.skip_to_content', {}, malay ? 'ms' : 'en')))
       if (route.group === 'marketing') await expect(page.locator('[data-language-suggestion]')).toBeVisible()
       await page.evaluate(() => document.fonts.ready)

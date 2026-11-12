@@ -8,6 +8,7 @@ import { oauthConsentRedirect } from '../../../../features/oauth/guard'
 import '../../../../features/oauth/catalogue'
 import { OAuthConsentForm } from '../../../../features/oauth/consent-form'
 import { AuthHeader, AuthMessage } from '../../../../features/public-chrome/auth'
+import { marketingHref } from '../../../../features/sign-in/links'
 
 export default async function OAuthConsentPage({
   searchParams
@@ -40,6 +41,7 @@ export default async function OAuthConsentPage({
         title={t('oauth.consent.title', { client: details.clientName }, locale)}
         titleId="oauth-consent-title"
         lead={t('oauth.consent.intro', {}, locale)}
+        homeHref={marketingHref('/')}
         locale={locale}
       />
       {hasChoices ? (

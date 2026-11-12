@@ -34,9 +34,16 @@ function Myt({ clock }: { clock: string }) {
   )
 }
 
-/** Lebat is MET's word for heavy rain, a rain class, not a mode: a neutral edged capsule, never a mode's hue or glyph. */
+/**
+ * Lebat is MET's word for heavy rain, a rain class, not a mode: a neutral edged capsule, never a mode's hue or glyph.
+ * It is Malay inside English, and the term the clause is defined by, so a translating browser leaves it as it is.
+ */
 function Lebat({ children = 'Lebat' }: { children?: string }) {
-  return <span className="frag-class">{children}</span>
+  return (
+    <span className="frag-class" lang="ms" translate="no">
+      {children}
+    </span>
+  )
 }
 
 /** The replay's 60-minute totals as bars, ink on the panel, the last one emphasised, with the Lebat line at 31 mm. */
@@ -258,20 +265,23 @@ export function GradeFragment({ grades, source }: { grades: GradesState; source:
   )
 }
 
-/** The live grades read: n=0 before any grade, the read's error, or n with the Wilson 95% interval. */
+/**
+ * The live grades read: n=0 before any grade, said in a sentence (LND-4); a failed read, said plainly; a read the API
+ * does not serve yet, said as what will show; or n with the Wilson 95% interval.
+ */
 export function LiveGrades({ grades, source }: { grades: GradesState; source: string }) {
   if (grades.kind === 'error') {
     return (
       <p className="frag-live" data-source={source}>
         <Glyph state="error" width={14} height={14} />
-        <span>Couldn&rsquo;t load live grades: {grades.message}. Reload the page to try again.</span>
+        <span>Couldn&rsquo;t load live grades just now. Reload the page to try again.</span>
       </p>
     )
   }
   if (grades.kind === 'not_built') {
     return (
       <p className="frag-live" data-source={source}>
-        <span>Live grades are not built yet.</span>
+        <span>Live grades show here, each with its n and 95% interval, once they are published.</span>
       </p>
     )
   }
@@ -279,7 +289,7 @@ export function LiveGrades({ grades, source }: { grades: GradesState; source: st
     return (
       <p className="frag-live" data-source={source}>
         <Glyph state="no_call" width={14} height={14} />
-        <span>No live grades yet (n=0)</span>
+        <span>No live grades yet (n=0): the first appears once a call has been graded.</span>
       </p>
     )
   }
@@ -287,12 +297,14 @@ export function LiveGrades({ grades, source }: { grades: GradesState; source: st
   const n = formatNumber(grades.n, 'en')
   const low = grades.low === null ? '' : share(grades.low)
   const high = grades.high === null ? '' : `–${share(grades.high)}`
+  // A grade with no interval yet says nothing about one, never an empty parenthesis.
+  const interval = low || high ? ` (Wilson 95% interval ${low}${high})` : ''
   return (
     <p className="frag-live" data-source={source}>
       <span>
         Latest: n={n}
-        {grades.x !== null ? `, ${formatNumber(grades.x, 'en')} of ${n}` : ''} (Wilson 95% interval {low}
-        {high})
+        {grades.x !== null ? `, ${formatNumber(grades.x, 'en')} of ${n}` : ''}
+        {interval}
       </span>
     </p>
   )
@@ -318,7 +330,7 @@ export function LedgerFragment() {
         <li>
           <span className="frag-ledger-when">None</span>
           <span className="frag-ledger-what">Call, approval, send</span>
-          <span>Empty: no call was made that day</span>
+          <span>No call was made that day.</span>
         </li>
         <li data-source={JPS_SOURCE_URL}>
           <time dateTime="2026-11-03T06:45:00+08:00">06:45{NB}MYT</time>
@@ -407,7 +419,7 @@ export function CalendarFragment({
         </p>
       ) : latestCall === 'not_built' ? (
         <p className="frag-live" data-source={source}>
-          <span>The approved-call calendar is not built yet.</span>
+          <span>Approved calls show on this calendar once it opens.</span>
         </p>
       ) : latestCall ? (
         // The permalink's page (/c/{callId}, PUB-3) is not built yet: the date stands alone until it is.
@@ -417,7 +429,7 @@ export function CalendarFragment({
       ) : (
         <p className="frag-live" data-source={source}>
           <Glyph state="no_call" width={14} height={14} />
-          <span>No approved call yet (n=0)</span>
+          <span>No approved call yet (n=0): each call a person approves appears here.</span>
         </p>
       )}
     </div>

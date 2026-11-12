@@ -39,7 +39,8 @@ const embedLoaded = z.strictObject({
 const vital = z.strictObject({
   type: z.literal('vital'),
   metric: z.enum(VITAL_METRICS),
-  value: z.number().finite().nonnegative(),
+  // An hour in milliseconds bounds every metric (CLS is far below it): a larger value is no real page's.
+  value: z.number().finite().nonnegative().max(3_600_000),
   route_group: z.enum(ROUTE_GROUPS)
 })
 

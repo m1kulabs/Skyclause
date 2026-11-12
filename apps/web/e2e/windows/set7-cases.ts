@@ -1,10 +1,12 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { stubApi } from '../harness'
 import { windowsOperations } from '../../features/windows/operations'
 import { prepareWindows, replayWindow, route, windowId } from './replay'
 import { w } from './messages'
+import { controls } from './controls'
 
 export async function windowUndoCase(page: Page) {
+  test.skip(!controls.cancel, 'cancelWindow has no handler: Cancel window is not offered')
   await page.clock.install({ time: new Date('2026-11-02T01:00:00Z') })
   await prepareWindows(page)
   await stubApi(

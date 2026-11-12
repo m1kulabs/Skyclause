@@ -94,7 +94,7 @@ test('with zero projects the page shows n=0 and Create a project (ORG-5)', async
   expect(await screen.findByText(/No projects yet \(n=0\)/)).toBeTruthy()
   expect(await screen.findByText(/n=0/)).toBeTruthy()
   const create = (await screen.findByText('Create a project')) as HTMLAnchorElement
-  expect(create.getAttribute('href')).toBe('/test-org/new')
+  expect(create.getAttribute('href')).toBe('/test-org/new?another=1')
   await expectAxeClean()
 })
 

@@ -4,6 +4,12 @@ import { notFound } from 'next/navigation'
 import { getOrgPrincipal } from '../../../../../lib/principal'
 import { prefersMalay } from '../../../../../lib/preferred-language'
 import { LedgerPage } from '../../../../../features/ledger/page'
+import { t } from '../../../../../features/ledger/i18n'
+import { settingsLocale } from '../../../../../features/settings/locale'
+
+export async function generateMetadata() {
+  return { title: t('ledger.title', {}, await settingsLocale()) }
+}
 
 export default async function Page({ params }: { params: Promise<{ org: string; project: string }> }) {
   const { org, project } = await params

@@ -4,6 +4,12 @@ import { prefersMalay } from '../../../../../lib/preferred-language'
 import { getOrgPrincipal } from '../../../../../lib/principal'
 import { Subscribers } from '../../../../../features/subscribers'
 import { maySeeSettings } from '../../../../../features/settings/access'
+import { t } from '../../../../../features/subscribers/catalogue'
+import { settingsLocale } from '../../../../../features/settings/locale'
+
+export async function generateMetadata() {
+  return { title: t('subscribers.title', {}, await settingsLocale()) }
+}
 
 export default async function Page({
   params,

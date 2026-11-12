@@ -1,8 +1,7 @@
-import { t } from '@skyclause/i18n'
-import { brandMetadata } from '../../../../features/brand/metadata'
 import { TermsPage } from '../../../../features/legal'
+import { pageMetadata } from '../../../../features/share-previews/pages'
 
-export const metadata = { ...brandMetadata, title: t('legal.terms.metadataTitle') }
+export const generateMetadata = () => pageMetadata('terms', 'en')
 
 export default function TermsRoute() {
   return <TermsPage locale="en" />

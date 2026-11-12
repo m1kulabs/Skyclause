@@ -203,6 +203,11 @@ describe('POST /e', () => {
       '/metric'
     ],
     ['a NaN vital', '{"type":"vital","metric":"CLS","value":NaN,"route_group":"public"}', ''],
+    [
+      'a vital past an hour',
+      JSON.stringify({ type: 'vital', metric: 'LCP', value: 1e12, route_group: 'public' }),
+      '/value'
+    ],
     ['malformed JSON', '{oops', ''],
     [
       'an oversize body',
@@ -246,6 +251,37 @@ describe('POST /e', () => {
     const response = await post(deps, big)
     expect(response.status).toBe(422)
     expect(((await response.json()) as { type: string }).type).toContain('validation-failed')
+  })
+
+  it('refuses a body whose Content-Length is over 2 KB before reading it, and stops reading one that runs past', async () => {
+    const declared = await handleAnalyticsIngest(
+      new Request('https://skyclause.m1ku.tech/e', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain', 'Content-Length': '1048576' },
+        body: validEvent
+      }),
+      testDeps()
+    )
+    expect(declared.status).toBe(422)
+    // A body with no length that streams on: read no further than the limit, then refused.
+    let pulled = 0
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled += 1
+        controller.enqueue(new Uint8Array(1024).fill(32))
+      }
+    })
+    const streamed = await handleAnalyticsIngest(
+      new Request('https://skyclause.m1ku.tech/e', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: endless,
+        duplex: 'half'
+      } as RequestInit),
+      testDeps()
+    )
+    expect(streamed.status).toBe(422)
+    expect(pulled).toBeLessThan(10)
   })
 
   it('refuses another content type with validation-failed', async () => {

@@ -69,8 +69,6 @@
   "warning_gloss": "{text} · {gloss}",
   "trace_id": "Trace ID",
   "copy_trace": "Copy trace ID",
-  "permalink": "Public permalink",
-  "copy_permalink": "Copy permalink",
   "copied": "Copied",
   "copy_failed": "Couldn’t copy. Select the text and copy it.",
   "approver": "Approved by the Approver on duty.",

@@ -8,7 +8,7 @@ import { sortFindings } from './known-gaps'
 import { sessions, signedOut, type Role, type Session } from './roles'
 import { builtRoutes, type CrawlRoute } from './routes'
 import { crawlPath, fillable } from './rows'
-import { hasSession, redirectsToAccount, visit } from './visit'
+import { hasSession, redirectsToAccount, signsInFirst, visit } from './visit'
 import { onboardingOperations } from '../../features/onboarding/operations'
 import { AUTH_REAUTH_DIALOG_SELECTOR, isAuthRoute } from '../../features/sign-in/model'
 import { sourceOperations } from '../../features/sources/operations'
@@ -191,6 +191,9 @@ async function crawl(
   if (projectUiRoute) await prepareCrawl(page, session.role)
   else if (session.signIn) org = await session.signIn(page)
   else await signedOut(page)
+  // The fixtures hold no share link, so prepareCrawl leaves their share-link reviewer without a credential: on these
+  // routes that is a signed-out visit, which the app layout sends to sign in first.
+  const role: Role = projectUiRoute && session.role === 'share-link reviewer' ? 'signed out' : session.role
   // The fixtures' routes keep their pattern path and the status rules of a page without parameters.
   const concreteRoute = projectUiRoute
     ? { ...route, params: undefined }
@@ -206,8 +209,9 @@ async function crawl(
       reducedMotion: 'no-preference'
     })
     if (variant.viewport) await page.setViewportSize(variant.viewport)
-    const findings = await visit(page, concreteRoute, session.role, readySelector, org?.slug)
-    if (redirectsToAccount(route, session.role)) return found
+    const findings = await visit(page, concreteRoute, role, readySelector, org?.slug)
+    // Sign-in is crawled as its own route; a page that sends there has nothing of its own to inspect.
+    if (redirectsToAccount(route, role) || signsInFirst(route, role)) return found
     const reauthDialog = page.locator(AUTH_REAUTH_DIALOG_SELECTOR)
     if (isAuthRoute(route.path) || (await reauthDialog.count()) > 0) {
       const passwordControls = page.locator(
@@ -241,7 +245,7 @@ async function crawl(
   if (jsOn) {
     await page.emulateMedia({ colorScheme: 'dark', contrast: 'no-preference', reducedMotion: 'reduce' })
     const findings = [
-      ...(await visit(page, concreteRoute, session.role, readySelector, org?.slug)),
+      ...(await visit(page, concreteRoute, role, readySelector, org?.slug)),
       ...(await motionFindings(page))
     ]
     found.push(...findings.map((finding) => ({ ...finding, theme: 'dark, reduced motion', size: 'project size' })))
@@ -250,7 +254,7 @@ async function crawl(
     if (hasSession(session.role) && !(route.group && PUBLIC_GROUPS.has(route.group))) {
       await page.emulateMedia({ reducedMotion: 'no-preference' })
       await reduceMotionOnAccount(page, org !== null)
-      const visited = await visit(page, concreteRoute, session.role, readySelector, org?.slug)
+      const visited = await visit(page, concreteRoute, role, readySelector, org?.slug)
       const applied = await page.evaluate(
         () =>
           document.documentElement.dataset.motion === 'reduce' &&

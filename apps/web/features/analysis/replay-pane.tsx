@@ -9,6 +9,8 @@ import { Input } from '#ui/input'
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
 import { formatDate, formatDateCompact, formatNumber } from '@skyclause/i18n/format'
 import { ReplayMark } from '../brand/replay-mark'
+import { NotBuilt } from '../data-components/states'
+import { ApiProblem } from '../../lib/api-fetch'
 import { t } from './catalogue'
 import { apiFetch, allPages, type Replay } from './operations'
 import { axisTicks, thinned, type AnalysisState, type Locale, type ReplayPoint, type ReplaySeries } from './model'
@@ -85,7 +87,13 @@ function ReplayChart({ series, locale }: { series: ReplaySeries; locale: Locale 
   return (
     <div data-replay-chart>
       <div className="analysis-chart-head">
-        <h3>{t('analysis.replaySummary', { n: steps }, locale)}</h3>
+        <h3>
+          {t(
+            series.points.length === 1 ? 'analysis.replaySummary_one' : 'analysis.replaySummary',
+            { n: steps },
+            locale
+          )}
+        </h3>
         <Button variant="ghost" size="sm" aria-expanded={table} onClick={() => setTable(!table)}>
           {t(table ? 'analysis.view' : 'analysis.table', {}, locale)}
         </Button>
@@ -213,7 +221,17 @@ export function ReplayPane({
   ])
   const currentKey = useRef(inputKey)
   currentKey.current = inputKey
-  const [run, setRun] = useState<{ key: string; status: 'loading' | 'error' | 'ready'; value?: Replay }>()
+  const [run, setRun] = useState<{
+    key: string
+    status: 'loading' | 'error' | 'ready'
+    value?: Replay
+    /** Why a run failed: the sheet or range was refused (422), or the run did not complete. */
+    failure?: 'refused' | 'failed'
+  }>()
+  // A 501 means the replay engine is not available on this server yet: Run could only fail again, so the form gives way
+  // to saying so. Only an answer decides it, so once the engine answers, Run works on the next visit.
+  const [unavailable, setUnavailable] = useState(false)
+  const notice = useRef<HTMLDivElement>(null)
   const visible = run?.key === inputKey ? run : undefined
   const validRange =
     !!state.from &&
@@ -243,8 +261,17 @@ export function ReplayPane({
         // The result takes focus, so the keyboard does not stay on a button that was disabled while running.
         requestAnimationFrame(() => result.current?.focus())
       }
-    } catch {
-      if (currentKey.current === key) setRun({ key, status: 'error' })
+    } catch (error) {
+      if (error instanceof ApiProblem && error.status === 501) {
+        setUnavailable(true)
+        // The notice takes Run's place, so it takes Run's focus too and is read out; focus never falls to the body.
+        requestAnimationFrame(() => notice.current?.focus())
+      } else if (currentKey.current === key)
+        setRun({
+          key,
+          status: 'error',
+          failure: error instanceof ApiProblem && error.status === 422 ? 'refused' : 'failed'
+        })
     }
   }
   const value = visible?.value
@@ -308,186 +335,203 @@ export function ReplayPane({
         </h2>
         <p className="analysis-muted">{t('analysis.replayHelp', {}, locale)}</p>
       </div>
-      <div className="analysis-replay-body">
-        {sheets.status === 'error' ? (
-          <Failure
-            source={t('analysis.sources.sheets', {}, locale)}
-            error={sheets.error}
-            at={sheets.at}
-            retry={sheets.retry}
-            locale={locale}
-          />
-        ) : (
-          <form noValidate onSubmit={(event) => void submit(event)} className="analysis-replay-form">
-            <div className="analysis-form-grid">
-              {field(
-                'sheet',
-                t('analysis.sheet', {}, locale),
-                <select
-                  name="sheet"
-                  className="native-select"
-                  autoComplete="off"
-                  value={sheet?.id ?? ''}
-                  {...invalid('sheet')}
-                  onChange={(event) => edit({ sheet: event.target.value, version: '' })}
-                >
-                  <option value="">{t('analysis.chooseSheet', {}, locale)}</option>
-                  {sheetsOfPack.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {sheetName(item.id)}
-                    </option>
-                  ))}
-                </select>
-              )}
-              {field(
-                'subject',
-                t('analysis.subject', {}, locale),
-                <select
-                  name="subject"
-                  className="native-select"
-                  autoComplete="off"
-                  value={state.subject}
-                  onChange={(event) => edit({ subject: event.target.value, version: '' })}
-                >
-                  <option value="version">{t('analysis.version', {}, locale)}</option>
-                  {canDraft && <option value="draft">{t('analysis.draft', {}, locale)}</option>}
-                </select>
-              )}
-              {field(
-                'version',
-                t(state.subject === 'draft' ? 'analysis.draft' : 'analysis.version', {}, locale),
-                <select
-                  name="version"
-                  className="native-select"
-                  autoComplete="off"
-                  value={version?.id ?? ''}
-                  disabled={!sheet || versions.status !== 'ready'}
-                  {...invalid('version')}
-                  onChange={(event) => edit({ version: event.target.value })}
-                >
-                  <option value="">{t('analysis.chooseVersion', {}, locale)}</option>
-                  {versions.status === 'ready' &&
-                    versions.value
-                      .filter((item) => item.status === (state.subject === 'draft' ? 'draft' : 'published'))
-                      .map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {versionName(item)}
-                        </option>
-                      ))}
-                </select>
-              )}
-              {(['from', 'to'] as const).map((key) =>
-                field(
-                  key,
-                  t(`analysis.${key}`, {}, locale),
-                  <span className="analysis-field-ring" data-focus-ring>
-                    <Input
-                      type="date"
-                      name={key}
-                      autoComplete="off"
-                      value={state[key]}
-                      {...invalid('range')}
-                      onChange={(event) => edit({ [key]: event.target.value })}
-                      required
-                    />
-                  </span>
-                )
-              )}
-              {field(
-                'step',
-                t('analysis.step', {}, locale),
-                <select
-                  name="step"
-                  className="native-select"
-                  autoComplete="off"
-                  value={state.step}
-                  onChange={(event) => edit({ step: event.target.value })}
-                >
-                  {[...new Set(['reading', 'PT5M', 'PT60M', state.step])].map((step) => (
-                    <option key={step} value={step}>
-                      {step === 'reading'
-                        ? t('analysis.reading', {}, locale)
-                        : t('analysis.stepMinutes', { n: formatNumber(Number(step.slice(2, -1)), locale) }, locale)}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-            {versions.status === 'error' && (
-              <Failure
-                source={t('analysis.sources.versions', {}, locale)}
-                error={versions.error}
-                at={versions.at}
-                retry={versions.retry}
-                locale={locale}
-              />
-            )}
-            {((sheets.status === 'ready' && sheets.value.length === 0) ||
-              (sheet && versions.status === 'ready' && versions.value.length === 0)) && (
-              <EmptyBlock message="subjectsEmpty" locale={locale} />
-            )}
-            <div className="analysis-replay-run">
-              <Button
-                type="submit"
-                variant="outline"
-                disabled={!version || !validRange || visible?.status === 'loading'}
-                aria-describedby={reversed || waiting ? 'analysis-replay-problem' : undefined}
-              >
-                {t(visible?.status === 'loading' ? 'analysis.running' : 'analysis.run', {}, locale)}
-              </Button>
-              {reversed ? (
-                <p role="alert" id="analysis-replay-problem">
-                  {t('analysis.invalidRange', {}, locale)}
-                </p>
-              ) : waiting ? (
-                <p role="status" id="analysis-replay-problem" className="analysis-sub">
-                  {t(waiting, {}, locale)}
-                </p>
-              ) : null}
-              {visible?.status === 'error' && <p role="alert">{t('analysis.replayFailed', {}, locale)}</p>}
-              {/* Always mounted: says when a replay starts and when it is done. */}
-              <p role="status" className="sr-only">
-                {visible?.status === 'loading'
-                  ? t('analysis.running', {}, locale)
-                  : visible?.status === 'ready' && value
-                    ? t('analysis.replayDone', { n: formatNumber(value.steps.length, locale) }, locale)
-                    : null}
-              </p>
-            </div>
-          </form>
-        )}
-        {value && version && (
-          <section
-            aria-label={t('analysis.replay', {}, locale)}
-            className="analysis-replay-result"
-            ref={result}
-            tabIndex={-1}
-          >
-            <ReplayMark
+      {/* In place of the form's card, not inside it: the notice is a card of its own. */}
+      {unavailable ? (
+        <NotBuilt ref={notice} title={t('analysis.replayUnavailable', {}, locale)}>
+          <p className="analysis-muted">{t('analysis.replayUnavailableDetail', {}, locale)}</p>
+        </NotBuilt>
+      ) : (
+        <div className="analysis-replay-body">
+          {sheets.status === 'error' ? (
+            <Failure
+              source={t('analysis.sources.sheets', {}, locale)}
+              error={sheets.error}
+              at={sheets.at}
+              retry={sheets.retry}
               locale={locale}
-              label={t(
-                'analysis.replayLabel',
-                {
-                  sheet: sheetName(state.sheet),
-                  subject: t(`analysis.${state.subject}`, {}, locale),
-                  version: version.n ? formatNumber(version.n, locale) : versionName(version),
-                  from: formatDate(state.from, locale),
-                  to: formatDate(state.to, locale)
-                },
-                locale
-              )}
             />
-            <ReplayChart series={series} locale={locale} />
-            {!!value.metrics?.length && (
-              <ul className="analysis-rows" aria-label={t('analysis.replayFigures', {}, locale)}>
-                {value.metrics.map((metric, index) => (
-                  <MetricRow key={index} metric={metric} locale={locale} />
-                ))}
-              </ul>
-            )}
-          </section>
-        )}
-      </div>
+          ) : (
+            <form noValidate onSubmit={(event) => void submit(event)} className="analysis-replay-form">
+              <div className="analysis-form-grid">
+                {field(
+                  'sheet',
+                  t('analysis.sheet', {}, locale),
+                  <select
+                    name="sheet"
+                    className="native-select"
+                    autoComplete="off"
+                    value={sheet?.id ?? ''}
+                    {...invalid('sheet')}
+                    onChange={(event) => edit({ sheet: event.target.value, version: '' })}
+                  >
+                    <option value="">{t('analysis.chooseSheet', {}, locale)}</option>
+                    {sheetsOfPack.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {sheetName(item.id)}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {field(
+                  'subject',
+                  t('analysis.subject', {}, locale),
+                  <select
+                    name="subject"
+                    className="native-select"
+                    autoComplete="off"
+                    value={state.subject}
+                    onChange={(event) => edit({ subject: event.target.value, version: '' })}
+                  >
+                    <option value="version">{t('analysis.version', {}, locale)}</option>
+                    {canDraft && <option value="draft">{t('analysis.draft', {}, locale)}</option>}
+                  </select>
+                )}
+                {field(
+                  'version',
+                  t(state.subject === 'draft' ? 'analysis.draft' : 'analysis.version', {}, locale),
+                  <select
+                    name="version"
+                    className="native-select"
+                    autoComplete="off"
+                    value={version?.id ?? ''}
+                    disabled={!sheet || versions.status !== 'ready'}
+                    {...invalid('version')}
+                    onChange={(event) => edit({ version: event.target.value })}
+                  >
+                    <option value="">{t('analysis.chooseVersion', {}, locale)}</option>
+                    {versions.status === 'ready' &&
+                      versions.value
+                        .filter((item) => item.status === (state.subject === 'draft' ? 'draft' : 'published'))
+                        .map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {versionName(item)}
+                          </option>
+                        ))}
+                  </select>
+                )}
+                {(['from', 'to'] as const).map((key) =>
+                  field(
+                    key,
+                    t(`analysis.${key}`, {}, locale),
+                    <span className="analysis-field-ring" data-focus-ring>
+                      <Input
+                        type="date"
+                        name={key}
+                        autoComplete="off"
+                        value={state[key]}
+                        {...invalid('range')}
+                        onChange={(event) => edit({ [key]: event.target.value })}
+                        required
+                      />
+                    </span>
+                  )
+                )}
+                {field(
+                  'step',
+                  t('analysis.step', {}, locale),
+                  <select
+                    name="step"
+                    className="native-select"
+                    autoComplete="off"
+                    value={state.step}
+                    onChange={(event) => edit({ step: event.target.value })}
+                  >
+                    {[...new Set(['reading', 'PT5M', 'PT60M', state.step])].map((step) => (
+                      <option key={step} value={step}>
+                        {step === 'reading'
+                          ? t('analysis.reading', {}, locale)
+                          : Number(step.slice(2, -1)) === 1
+                            ? t('analysis.stepMinutes_one', {}, locale)
+                            : t('analysis.stepMinutes', { n: formatNumber(Number(step.slice(2, -1)), locale) }, locale)}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              {versions.status === 'error' && (
+                <Failure
+                  source={t('analysis.sources.versions', {}, locale)}
+                  error={versions.error}
+                  at={versions.at}
+                  retry={versions.retry}
+                  locale={locale}
+                />
+              )}
+              {((sheets.status === 'ready' && sheets.value.length === 0) ||
+                (sheet && versions.status === 'ready' && versions.value.length === 0)) && (
+                <EmptyBlock message="subjectsEmpty" locale={locale} />
+              )}
+              <div className="analysis-replay-run">
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={!version || !validRange || visible?.status === 'loading'}
+                  aria-describedby={reversed || waiting ? 'analysis-replay-problem' : undefined}
+                >
+                  {t(visible?.status === 'loading' ? 'analysis.running' : 'analysis.run', {}, locale)}
+                </Button>
+                {reversed ? (
+                  <p role="alert" id="analysis-replay-problem">
+                    {t('analysis.invalidRange', {}, locale)}
+                  </p>
+                ) : waiting ? (
+                  <p role="status" id="analysis-replay-problem" className="analysis-sub">
+                    {t(waiting, {}, locale)}
+                  </p>
+                ) : null}
+                {visible?.status === 'error' && (
+                  <p role="alert">
+                    {t(visible.failure === 'refused' ? 'analysis.replayFailed' : 'analysis.replayError', {}, locale)}
+                  </p>
+                )}
+                {/* Always mounted: says when a replay starts and when it is done. */}
+                <p role="status" className="sr-only">
+                  {visible?.status === 'loading'
+                    ? t('analysis.running', {}, locale)
+                    : visible?.status === 'ready' && value
+                      ? t(
+                          value.steps.length === 1 ? 'analysis.replayDone_one' : 'analysis.replayDone',
+                          { n: formatNumber(value.steps.length, locale) },
+                          locale
+                        )
+                      : null}
+                </p>
+              </div>
+            </form>
+          )}
+          {value && version && (
+            <section
+              aria-label={t('analysis.replay', {}, locale)}
+              className="analysis-replay-result"
+              ref={result}
+              tabIndex={-1}
+            >
+              <ReplayMark
+                locale={locale}
+                label={t(
+                  'analysis.replayLabel',
+                  {
+                    sheet: sheetName(state.sheet),
+                    subject: t(`analysis.${state.subject}`, {}, locale),
+                    version: version.n ? formatNumber(version.n, locale) : versionName(version),
+                    from: formatDate(state.from, locale),
+                    to: formatDate(state.to, locale)
+                  },
+                  locale
+                )}
+              />
+              <ReplayChart series={series} locale={locale} />
+              {!!value.metrics?.length && (
+                <ul className="analysis-rows" aria-label={t('analysis.replayFigures', {}, locale)}>
+                  {value.metrics.map((metric, index) => (
+                    <MetricRow key={index} metric={metric} locale={locale} />
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+        </div>
+      )}
     </section>
   )
 }
