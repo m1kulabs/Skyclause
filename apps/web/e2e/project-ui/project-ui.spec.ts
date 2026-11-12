@@ -1,10 +1,13 @@
 import { expect, test } from '@playwright/test'
+import { pseudo } from '@skyclause/i18n'
 import { overviewOperations } from '../../features/overview/operations'
 import { projectSettingsOperations } from '../../features/project-settings/operations'
 import { adminId, prepareOverview, prepareSettings, projectFixtureData, baseProject, projectPath } from './fixtures'
 import { stubApi } from '../harness'
 import { expectUnclippedText } from '../harness/expect-unclipped-text'
 
+/** The copy as rendered: the pseudo project renders every string through `pseudo`. */
+const copy = (value: string) => (process.env.I18N_PSEUDO === '1' ? pseudo(value) : value)
 const emptyRoute = `${projectPath}`
 const settingsRoute = `${projectPath}/settings`
 
@@ -22,7 +25,7 @@ test('every empty overview block gives a next action and draws no chart', async 
     ['overview-next-event', 'Declare a window']
   ] as const) {
     const section = overview.locator(`#${id}`).locator('..').locator('..')
-    await expect(section.getByText('n=0', { exact: true }).first()).toBeVisible()
+    await expect(section.getByText(copy('n=0'), { exact: true }).first()).toBeVisible()
     await expect(section.getByText(action)).toBeVisible()
   }
   await expect(overview.locator('#overview-strip svg')).toHaveCount(0)
@@ -36,7 +39,7 @@ test('overview uses the 5 November captures, declares from the primary action an
   await page.goto(emptyRoute)
   const overview = page.locator('[data-project-overview]')
   // The answer: each pack's mode set large with its glyph and word, then the inputs behind it.
-  await expect(overview.locator('[data-pack="sky"] [data-state="normal"]')).toHaveText('Normal')
+  await expect(overview.locator('[data-pack="sky"] [data-state="normal"]')).toHaveText(copy('Normal'))
   await expect(overview.locator('[data-finding-line]')).toContainText('5 inputs reporting, oldest 12 min')
   await expect(overview.locator('[data-pack="sky"]')).toContainText('No clause has fired')
   await expect(overview.locator('[data-source="source-jps"]')).toContainText('Sg. Kuyoh di LRT Bukit Jalil')
