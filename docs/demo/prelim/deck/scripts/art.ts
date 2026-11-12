@@ -1,6 +1,6 @@
 // Generates the deck's illustrations with the OpenAI Images API. Art only: no text, numbers, charts, logos or
 // interface, so nothing in a picture can be read as data. Run from the repo root with OPENAI_API_KEY set:
-//   bun docs/demo/deck/scripts/art.ts [name ...]
+//   bun docs/demo/prelim/deck/scripts/art.ts [name ...]
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
