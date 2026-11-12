@@ -583,7 +583,7 @@
 @media (min-width: 1024px) {
   .hero {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto auto minmax(16rem, 1fr) auto;
+    grid-template-rows: auto 1fr auto auto;
     grid-template-areas:
       'band room'
       'facts room'
@@ -600,7 +600,8 @@
   }
   /* On the card the time is a figure at the statement size, centred in the stretch between the strip and the name. */
   .facts {
-    padding: 80px 40px 0;
+    align-self: center;
+    padding: 32px 40px;
   }
   .factNow {
     font-size: var(--step-statement);
