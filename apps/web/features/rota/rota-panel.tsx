@@ -163,8 +163,11 @@ export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
   // The shift just removed from the draft, so Undo can put it back where it was.
   const [removed, setRemoved] = useState<{ shift: DraftShift; index: number; label: string } | null>(null)
   const [reload, setReload] = useState(0)
+  // The editor as it was when it opened: a shift being written and not yet added is unsaved input as well.
+  const [editorStart, setEditorStart] = useState('')
   const dirty = useMemo(() => stableSignature(draft) !== savedSignature, [draft, savedSignature])
-  useUnsavedChangesGuard(dirty, locale)
+  const editorDirty = showEditor && !!editor && JSON.stringify(editor) !== editorStart
+  useUnsavedChangesGuard(dirty || editorDirty, locale)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -226,7 +229,7 @@ export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
   function startNewShift() {
     const firstTemplate = templateValues.find((item) => item.template !== 'custom') ?? templateValues[0]
     const person = viewer.role === 'approver' ? viewer.accountId : (eligible[0]?.account_id ?? '')
-    setEditor({
+    const opened: ShiftEditor = {
       key: null,
       accountId: person,
       template: firstTemplate?.template ?? 'custom',
@@ -234,13 +237,15 @@ export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
       localStart: firstTemplate?.local_start ?? '09:00',
       localEnd: firstTemplate?.local_end ?? '17:00',
       condition: firstTemplate?.condition ?? null
-    })
+    }
+    setEditor(opened)
+    setEditorStart(JSON.stringify(opened))
     setShowEditor(true)
     setErrors({})
   }
 
   function editShift(shift: DraftShift) {
-    setEditor({
+    const opened: ShiftEditor = {
       key: shift.clientKey,
       accountId: shift.account_id,
       template: shift.template,
@@ -248,7 +253,9 @@ export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
       localStart: shift.local_start,
       localEnd: shift.local_end,
       condition: shift.condition
-    })
+    }
+    setEditor(opened)
+    setEditorStart(JSON.stringify(opened))
     setShowEditor(true)
     setErrors({})
   }

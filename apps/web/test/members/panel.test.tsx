@@ -141,3 +141,21 @@ test('sending an invite with no address names the field and focuses it', async (
   expect(email.getAttribute('aria-invalid')).toBe('true')
   expect(document.activeElement).toBe(email)
 })
+
+function leaving() {
+  const event = new Event('beforeunload', { cancelable: true })
+  window.dispatchEvent(event)
+  return event.defaultPrevented
+}
+
+test('an address typed into the invite form is guarded against leaving, and an empty form is not', async () => {
+  mockApi()
+  render(<Panel org="org-a" viewerRole="admin" locale="en" />)
+
+  const email = await screen.findByLabelText('Email address')
+  expect(leaving()).toBe(false)
+  fireEvent.change(email, { target: { value: 'new@example.test' } })
+  expect(leaving()).toBe(true)
+  fireEvent.change(email, { target: { value: '' } })
+  expect(leaving()).toBe(false)
+})

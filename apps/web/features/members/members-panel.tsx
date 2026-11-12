@@ -10,6 +10,7 @@ import { Skeleton } from '#ui/skeleton'
 import { Switch } from '#ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
 import { ConfirmDialog } from '../settings/set-7/confirm-dialog'
+import { useUnsavedChangesGuard } from '../settings/set-7/use-unsaved-changes-guard'
 import {
   SettingsAside,
   SettingsError,
@@ -114,6 +115,8 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
   const [memberPage, setMemberPage] = useState(0)
   const [invitePage, setInvitePage] = useState(0)
   const [cancelTransferOpen, setCancelTransferOpen] = useState(false)
+  // An address typed and not yet sent is unsaved input.
+  useUnsavedChangesGuard(inviteEmail.trim().length > 0, locale)
   const [inviteBusy, setInviteBusy] = useState(false)
   const [roleChange, setRoleChange] = useState<RoleChange | null>(null)
   const [removeTarget, setRemoveTarget] = useState<Member | null>(null)

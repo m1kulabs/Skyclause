@@ -40,6 +40,9 @@ function mockApi() {
   )
 }
 
+// jsdom has no PointerEvent, which the checkbox primitive constructs.
+if (!('PointerEvent' in window)) Object.defineProperty(window, 'PointerEvent', { value: MouseEvent })
+
 async function openShiftMenu(name: string) {
   const [menu] = await screen.findAllByRole('button', { name: new RegExp(`^More actions for ${name}, `) })
   if (!menu) throw new Error('no shift menu')
@@ -195,4 +198,21 @@ test('an incomplete shift names each field that is wrong and focuses the first',
   await waitFor(() => expect(document.activeElement?.getAttribute('role')).toBe('checkbox'))
   // Editing an existing shift names its submit for what it does.
   expect(screen.queryByRole('button', { name: 'Update shift' })).toBeNull()
+})
+
+test('a shift being written is guarded against leaving until it is added or cancelled', async () => {
+  mockRota([])
+  render(<Panel org="org-a" viewer={{ accountId: approverAccount, role: 'owner' }} locale="en" />)
+  const leaving = () => {
+    const event = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(event)
+    return event.defaultPrevented
+  }
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Add an approver' }))
+  expect(leaving()).toBe(false)
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Monday' }))
+  expect(leaving()).toBe(true)
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+  expect(leaving()).toBe(false)
 })
