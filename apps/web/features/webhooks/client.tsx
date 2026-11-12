@@ -313,11 +313,11 @@ export function Webhooks({
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('webhooks.col_endpoint', {}, locale)}</TableHead>
-                  {/* The panel is 660px wide: the counts of events and projects show on a phone and in the title. */}
+                  {/* The panel is 660px wide: the counts of events and projects and the last delivery show on a phone. */}
                   <TableHead className="hidden">{t('webhooks.events', {}, locale)}</TableHead>
                   <TableHead className="hidden">{t('webhooks.projects', {}, locale)}</TableHead>
                   <TableHead>{t('webhooks.status', {}, locale)}</TableHead>
-                  <TableHead>{t('webhooks.last_delivery', {}, locale)}</TableHead>
+                  <TableHead className="hidden">{t('webhooks.last_delivery', {}, locale)}</TableHead>
                   <TableHead>
                     <span className="sr-only">{t('webhooks.col_actions', {}, locale)}</span>
                   </TableHead>
@@ -365,7 +365,7 @@ export function Webhooks({
                       <TableCell phone="end" title={endpointSentence(endpoint, locale)}>
                         <StatusMark state={mark.state} variant="plain" label={mark.word} locale={locale} />
                       </TableCell>
-                      <TableCell phone="meta" label={t('webhooks.last_delivery', {}, locale)}>
+                      <TableCell phone="meta" className="hidden" label={t('webhooks.last_delivery', {}, locale)}>
                         <ZonedTime value={endpoint.last_delivery_at} locale={locale} />
                       </TableCell>
                       <TableCell phone="meta">

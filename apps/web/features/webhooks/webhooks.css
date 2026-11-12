@@ -133,8 +133,9 @@
 }
 .webhook-row-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 4px;
 }
 .webhook-detail-cell {
