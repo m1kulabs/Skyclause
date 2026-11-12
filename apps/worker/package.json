@@ -21,9 +21,9 @@
     "@skyclause/delivery": "workspace:*",
     "@skyclause/sources": "workspace:*",
     "drizzle-orm": "0.45.4",
-    "hono": "4.13.16",
+    "hono": "4.13.17",
     "google-auth-library": "11.3.3",
-    "jose": "6.2.15",
+    "jose": "6.2.16",
     "zod": "4.6.7",
     "@skyclause/i18n": "workspace:*"
   },
@@ -31,7 +31,7 @@
     "@opentelemetry/sdk-metrics": "3.1.0",
     "@opentelemetry/sdk-trace": "3.1.0",
     "@skyclause/api": "workspace:*",
-    "ai": "7.0.163",
+    "ai": "7.0.166",
     "drizzle-orm": "0.45.4",
     "ical.js": "2.2.1"
   }

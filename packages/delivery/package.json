@@ -14,7 +14,7 @@
     "@skyclause/i18n": "workspace:*"
   },
   "devDependencies": {
-    "axe-core": "4.10.2",
+    "axe-core": "4.14.0",
     "ical.js": "2.2.1",
     "jsdom": "26.1.0"
   }
