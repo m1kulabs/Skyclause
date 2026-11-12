@@ -18,7 +18,7 @@
   "ranked": "Ranked clauses",
   "rankSummary": "Ranked by fired count; precision includes n and its Wilson interval.",
   "fired": "Fired: {n}",
-  "noClauses": "Clauses: n=0. Choose another pack or wait for grading.",
+  "noClauses": "Clauses: n=0. Choose another period or wait for grading.",
   "metricsTitle": "Grade figures",
   "metricUnknown": "Metric: {name}",
   "count": "{x} of {n}",
