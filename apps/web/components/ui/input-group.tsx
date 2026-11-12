@@ -13,6 +13,7 @@ function InputGroup({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot="input-group"
       role="group"
+      data-focus-ring
       className={cn(
         'group/input-group relative flex h-10 w-full min-w-0 items-center rounded-md border-2 border-input bg-field transition-none outline-none has-[[data-slot=input-group-control]:focus-visible]:outline-(length:--focus-width) has-[[data-slot=input-group-control]:focus-visible]:outline-solid has-[[data-slot=input-group-control]:focus-visible]:outline-(--focus) has-[[data-slot=input-group-control]:focus-visible]:outline-offset-2 has-disabled:opacity-60 has-[[data-slot][aria-invalid=true]]:border-2 has-[[data-slot][aria-invalid=true]]:border-foreground has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>textarea]:h-auto has-[>[data-align=block-end]]:[&>input]:pt-3 has-[>[data-align=block-start]]:[&>input]:pb-3 has-[>[data-align=inline-end]]:[&>input]:pr-1.5 has-[>[data-align=inline-start]]:[&>input]:pl-1.5 in-data-[slot=card]:bg-raised in-data-[slot=dialog-content]:bg-background in-data-[slot=alert-dialog-content]:bg-background in-data-[slot=sheet-content]:bg-background in-data-[slot=drawer-popup]:bg-background in-data-[slot=popover-content]:bg-background',
         className
