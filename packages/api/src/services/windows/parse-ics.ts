@@ -800,5 +800,9 @@ export async function expandCalendar(document: CalendarDocument, options: Calend
       a.uid.localeCompare(b.uid) ||
       a.recurrenceId.localeCompare(b.recurrenceId)
   )
+  // RDATE canonicalization can remove a zone's last event reference. Reconcile the already
+  // validated whitelist before persisting, so our own document remains valid for strict reloads.
+  result.document = { version: 1, jcal: normalized(jcal, false) }
+  checkBytes(JSON.stringify(result.document))
   return result
 }

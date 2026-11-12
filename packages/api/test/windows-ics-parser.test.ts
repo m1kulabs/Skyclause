@@ -913,4 +913,52 @@ describe('bounded ICS normalization', () => {
       expect(refused.protectedIdentities).toContainEqual({ uid: 'one', recurrenceId: null })
     }
   )
+  test.each(['UTC', 'Zone/A'])(
+    'F1 %s master with a separately zoned RDATE produces a stable persisted document',
+    async (masterZone) => {
+      const zoneB = zone('+0200').replaceAll('Source/Local', 'Zone/B')
+      const zoneA = zone('+0500').replaceAll('Source/Local', 'Zone/A')
+      const master = masterZone === 'UTC' ? event() : zoned().replaceAll('Source/Local', 'Zone/A')
+      const input = calendar(
+        ...(masterZone === 'UTC' ? [zoneB] : [zoneA, zoneB]),
+        master.replace('END:VEVENT', 'RDATE;TZID=Zone/B:20261130T090000\r\nEND:VEVENT')
+      )
+      const parsed = await parseCalendar(input, options)
+      expect(parsed.occurrences).toHaveLength(2)
+      expect(parsed.occurrences[1]!.startsAt.toISOString()).toBe('2026-11-30T07:00:00.000Z')
+      const persisted = JSON.parse(JSON.stringify(parsed.document))
+      const before = JSON.stringify(persisted)
+      const expanded = await expandCalendar(persisted, options)
+      expect(expanded.occurrences).toEqual(parsed.occurrences)
+      expect(expanded.document).toEqual(parsed.document)
+      expect(JSON.stringify(persisted)).toBe(before)
+      const zones = new ICAL.Component(expanded.document.jcal)
+        .getAllSubcomponents('vtimezone')
+        .map((component) => component.getFirstPropertyValue('tzid'))
+      expect(zones).toEqual(masterZone === 'UTC' ? [] : ['Zone/A'])
+      expect(JSON.stringify(parsed.document)).not.toContain('Zone/B')
+    }
+  )
+
+  test('F1 final canonical document cannot outgrow the existing stored-document reload limit', async () => {
+    const document = {
+      version: 1 as const,
+      jcal: ICAL.parse(calendar(event('one', 'RDATE:20261123T090000Z'))) as unknown[]
+    }
+    const component = new ICAL.Component(document.jcal).getFirstSubcomponent('vevent')!
+    const summary = component.getFirstProperty('summary')!
+    summary.setValue('')
+    const padding = 5 * 1024 * 1024 - Buffer.byteLength(JSON.stringify(document), 'utf8')
+    summary.setValue('x'.repeat(padding))
+    const before = JSON.stringify(document)
+    expect(Buffer.byteLength(before, 'utf8')).toBe(5 * 1024 * 1024)
+    let failure: unknown
+    try {
+      await expandCalendar(document, options)
+    } catch (error) {
+      failure = error
+    }
+    expect(failure).toBeInstanceOf(CalendarParseError)
+    expect(JSON.stringify(document)).toBe(before)
+  })
 })
