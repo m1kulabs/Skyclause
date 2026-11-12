@@ -221,6 +221,8 @@ export interface Verdicts {
 
 // Spec §1 ReadingHistory; #131's snapshotAt freezes reads at tEval.
 export interface ReadingHistory {
+  /** Current tenant project context; absent or empty terms match no warning area. */
+  warningAreaTerms?: string[]
   sources: Array<{
     id: string
     kind: SourceKind

@@ -18,6 +18,12 @@ async function history(
   if (!tx.orgId) throw new Error('evaluator history requires a tenant transaction')
   const until = new Date(cutoff)
   if (!Number.isFinite(until.getTime())) throw new Error('invalid evaluator cutoff')
+  const [context] = await tx
+    .select({ warningAreaTerms: project.warningAreaTerms })
+    .from(project)
+    .where(and(eq(project.id, projectId), eq(project.orgId, tx.orgId), isNull(project.archivedAt)))
+  // Do not attach another tenant's context, even when it has public shared sources.
+  if (!context) return { sources: [], readings: [], polls: [] }
   const bindings = await tx
     .selectDistinct({ source })
     .from(projectSource)
@@ -40,7 +46,7 @@ async function history(
     probation: row.probation,
     meta: row.meta as Record<string, unknown>
   }))
-  if (!sources.length) return { sources: [], readings: [], polls: [] }
+  if (!sources.length) return { warningAreaTerms: context.warningAreaTerms, sources: [], readings: [], polls: [] }
   // Current mutable settings cannot establish a recorded-at-time camera choice.
   if (sources.some((row) => row.kind === 'camera')) throw new NotBuiltError('b-evaluator:camera-context-history')
   const ids = sources.map((row) => row.id)
@@ -76,6 +82,7 @@ async function history(
       desc(reading.id)
     )
   return {
+    warningAreaTerms: context.warningAreaTerms,
     sources,
     polls: polls.map((row) => ({
       id: row.id,
