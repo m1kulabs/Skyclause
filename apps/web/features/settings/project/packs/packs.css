@@ -1,0 +1,53 @@
+/* A native checkbox drawn as a switch, so the pack control stays a labelled input named "pack" that posts and tests. */
+.native-switch {
+  appearance: none;
+  flex: none;
+  position: relative;
+  inline-size: 40px;
+  block-size: 24px;
+  margin: 0;
+  border: 2px solid var(--input);
+  border-radius: 9999px;
+  background: var(--field);
+  cursor: pointer;
+}
+:where([data-slot='card']) .native-switch {
+  background: var(--raised);
+}
+.native-switch::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 2px;
+  inset-inline-start: 2px;
+  inline-size: 16px;
+  block-size: 16px;
+  border-radius: 9999px;
+  background: var(--foreground);
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.native-switch:checked {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+.native-switch:checked::before {
+  background: var(--primary-foreground);
+  transform: translateX(16px);
+}
+.native-switch:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+@media (prefers-reduced-motion: reduce) {
+  .native-switch::before {
+    transition: none;
+  }
+}
+@media (forced-colors: active) {
+  .native-switch:checked {
+    border-color: Highlight;
+    background: Highlight;
+  }
+  .native-switch:checked::before {
+    background: HighlightText;
+  }
+}
