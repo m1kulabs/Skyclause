@@ -1,5 +1,5 @@
-import { Poll, type Operations } from '@skyclause/contracts'
-import type { ProjectSourceHealthRecord } from '@skyclause/db'
+import { Poll, type Operations, type Reading } from '@skyclause/contracts'
+import type { ProjectSourceHealthRecord, SourceReadingRecord, SourcePollRecord } from '@skyclause/db'
 import type { z } from 'zod'
 import { instant, toWire } from '../../serialize'
 import { serializeBoundSource } from '../sources/serialize'
@@ -37,5 +37,44 @@ export function serializeProjectSourceHealth(row: ProjectSourceHealthRecord, now
     age_s: blocked || elapsed === null || elapsed < 0 ? null : Math.floor(elapsed / 1000),
     history,
     last_error: error ? { ...Poll.parse(toWire(error)), message: error.message, purpose: error.purpose } : null
+  }
+}
+
+export type SourcePollView = z.infer<
+  Operations['listSourcePolls']['responses'][200]['content']['application/json']['schema']
+>['data'][number]
+
+/** Provider JSON is raw evidence: rename only known top-level fields. */
+export function serializeSourceReading(row: SourceReadingRecord): Reading {
+  return {
+    id: row.id,
+    source_id: row.sourceId,
+    poll_id: row.pollId,
+    metric: row.metric,
+    unit: row.unit,
+    observed_at: row.observedAt,
+    received_at: row.receivedAt,
+    value: row.value,
+    value_text: row.valueText,
+    value_json: row.valueJson as Reading['value_json'],
+    device_time: row.deviceTime,
+    item_key: row.itemKey,
+    revision: String(row.revision)
+  }
+}
+
+export function serializeSourcePoll(row: SourcePollRecord): SourcePollView {
+  return {
+    id: row.id,
+    source_id: row.sourceId,
+    started_at: row.startedAt,
+    http_status: row.httpStatus,
+    latency_ms: row.latencyMs,
+    outcome: row.outcome,
+    request_id: row.requestId,
+    error_code: row.errorCode,
+    message: row.message,
+    purpose: row.purpose,
+    received_at: row.receivedAt
   }
 }
