@@ -173,7 +173,10 @@ export const notice = tenantTable(
     index('notice_provider_message_id_idx').on(self.providerMessageId),
     index('notice_queued_idx')
       .on(self.orgId)
-      .where(sql`${self.status} = 'queued'`)
+      .where(sql`${self.status} = 'queued'`),
+    // a-observability: the `sli` batch reads each call's notices (#600). `system`'s policies on notice OR `org_id` with
+    // `current_org_id() IS NULL`, so `org_id` can't lead an index its reads use.
+    index('notice_call_id_idx').on(self.callId)
   ],
   { nullableOrg: true }
 )
