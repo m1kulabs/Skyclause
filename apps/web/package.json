@@ -12,7 +12,7 @@
   "dependencies": {
     "@base-ui/react": "1.9.0",
     "@fontsource-variable/jetbrains-mono": "5.3.0",
-    "@simplewebauthn/browser": "13.3.0",
+    "@simplewebauthn/browser": "14.0.0",
     "@skyclause/api": "workspace:*",
     "@skyclause/auth": "workspace:*",
     "@skyclause/config": "workspace:*",
