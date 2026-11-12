@@ -195,6 +195,8 @@
  */
 @media (max-width: 640px) {
   .retention .retentionCell.retentionCell {
+    /* One period per line, however short, so every row reads the same way. */
+    flex: 0 0 100%;
     margin-top: 12px;
     font-size: 16px;
     line-height: 24px;
