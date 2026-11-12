@@ -57,15 +57,8 @@ test('Approver reads subscriber-counts only, without any subscriber table or adm
       requests.push(new URL(request.url()).pathname)
   })
   await page.goto(projectPath)
-  await expect(
-    page.getByText(
-      t('subscribers.summary', {
-        confirmed: counts.confirmed,
-        unconfirmed: counts.unconfirmed,
-        suppressed: counts.suppressed
-      })
-    )
-  ).toBeVisible()
+  for (const status of ['confirmed', 'unconfirmed', 'suppressed'] as const)
+    await expect(page.locator(`[data-subscriber-count="${status}"]`)).toHaveText(String(counts[status]))
   await expect(page.getByRole('table')).toHaveCount(0)
   await expect(page.getByText(row.email)).toHaveCount(0)
   await expect(page.getByRole('button', { name: t('subscribers.copy') })).toHaveCount(0)
@@ -123,10 +116,16 @@ test('subscriber pagination uses the returned cursor and preserves earlier conse
     })
   })
   await page.goto(projectPath)
-  await page.getByRole('button', { name: t('subscribers.more') }).click()
-  await expect(page.getByRole('table')).toContainText(row.email)
+  await page.getByRole('button', { name: t('subscribers.next') }).click()
+  // Pages replace each other, so at most 50 rows are ever rendered; the earlier page comes back from memory.
   await expect(page.getByRole('table')).toContainText('next@example.test')
-  await expect(page.getByRole('button', { name: t('subscribers.more') })).toHaveCount(0)
+  await expect(page.getByRole('table')).not.toContainText(row.email)
+  await expect(page.getByRole('button', { name: t('subscribers.next') })).toBeDisabled()
+  await page.getByRole('button', { name: t('subscribers.previous') }).click()
+  await expect(page.getByRole('table')).toContainText(row.email)
+  await expect(page.getByRole('table')).toContainText(
+    t('subscribers.consent_detail', { form: 'subscribe', version: '2026-11-06', language: t('subscribe.english') })
+  )
 })
 
 test('empty subscriber data says n=0 with the next action', async ({ page }) => {
@@ -143,11 +142,11 @@ test('empty subscriber data says n=0 with the next action', async ({ page }) => 
   await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(0)
 })
 
-test('subscriber read failure displays the operation error without invented rows', async ({ page }) => {
+test('subscriber read failure names the failed read and its answer without invented rows', async ({ page }) => {
   await setupProject(page)
   await failOperation(page, '**/v1/projects/project-id/subscribers*', 'GET', 403, 'permission-denied')
   await page.goto(projectPath)
-  await expect(page.locator('main').getByRole('alert')).toContainText('permission-denied')
+  await expect(page.locator('main [data-source-error="403"]')).toBeVisible()
   await expect(page.getByRole('table')).toHaveCount(0)
 })
 

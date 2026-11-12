@@ -1,0 +1,157 @@
+/* A row of a ranking list: its own capsule-ended fill is the bar, as wide as its share of the largest. */
+.measure-row {
+  position: relative;
+  isolation: isolate;
+}
+.measure-row::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: -1;
+  width: calc(var(--share, 0) * 1%);
+  min-width: 36px;
+  border-radius: 9999px;
+  background: var(--raised);
+}
+
+/* The list scrolls inside its own frame below the width where its eight columns fit; the page never scrolls sideways. */
+.subscribers-frame {
+  min-width: 0;
+  overflow-x: auto;
+  border-radius: 16px;
+  background: var(--card);
+}
+.subscribers-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.subscribers-table th {
+  height: 40px;
+  padding: 0 8px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.subscribers-table td {
+  min-height: 64px;
+  padding: 10px 8px;
+  vertical-align: top;
+}
+.subscribers-table tr:first-child th:first-child,
+.subscribers-table td:first-child {
+  padding-left: 20px;
+}
+.subscribers-table th:last-child,
+.subscribers-table td:last-child {
+  padding-right: 20px;
+}
+.subscribers-table tbody td[data-cell='email'] {
+  min-width: 260px;
+}
+.subscribers-table tbody td[data-cell='role'] {
+  min-width: 96px;
+}
+.subscribers-table tbody td[data-cell='windows'],
+.subscribers-table tbody td[data-cell='language'] {
+  min-width: 112px;
+}
+.subscribers-table tbody td[data-cell='since'],
+.subscribers-table tbody td[data-cell='state'] {
+  min-width: 160px;
+}
+.subscribers-email,
+.subscribers-sub {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.subscribers-email {
+  font-weight: 600;
+}
+.subscribers-sub {
+  color: var(--muted-foreground);
+}
+/* A filter dims what it does not match: the muted ink and the lighter weight, never the removal of a row. */
+.subscribers-table tbody tr[data-dimmed] {
+  color: var(--muted-foreground);
+}
+.subscribers-table tbody tr[data-dimmed] .subscribers-email {
+  font-weight: 400;
+}
+
+@media (max-width: 640px) {
+  .subscribers-frame {
+    overflow: visible;
+    background: transparent;
+  }
+  .subscribers-table,
+  .subscribers-table tbody {
+    display: block;
+  }
+  /* The column labels return as each cell's own label below. */
+  .subscribers-table thead {
+    display: none;
+  }
+  /* Each subscriber is a card of short lines: who and their state first, the measures after, the action last. */
+  .subscribers-table tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 16px;
+    margin-bottom: 8px;
+    padding: 12px 16px;
+    border-radius: 16px;
+    background: var(--card);
+  }
+  .subscribers-table td,
+  .subscribers-table td:first-child,
+  .subscribers-table th:last-child,
+  .subscribers-table td:last-child {
+    display: block;
+    min-width: 0 !important;
+    min-height: 0;
+    padding: 0;
+    text-align: left;
+  }
+  .subscribers-table td[data-cell='email'],
+  .subscribers-table td[data-cell='state'],
+  .subscribers-table td[data-cell='windows'],
+  .subscribers-table td[data-cell='since'],
+  .subscribers-table td[data-cell='actions'] {
+    flex: 1 1 100%;
+  }
+  .subscribers-table td[data-cell='email'] {
+    order: 1;
+  }
+  .subscribers-table td[data-cell='state'] {
+    order: 2;
+  }
+  .subscribers-table td[data-cell='role'] {
+    order: 3;
+  }
+  .subscribers-table td[data-cell='language'] {
+    order: 4;
+  }
+  .subscribers-table td[data-cell='windows'] {
+    order: 5;
+  }
+  .subscribers-table td[data-cell='since'] {
+    order: 6;
+  }
+  .subscribers-table td[data-cell='actions'] {
+    order: 7;
+    margin-top: 6px;
+  }
+  .subscribers-table td[data-label] {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--muted-foreground);
+  }
+  .subscribers-table td[data-label]::before {
+    content: attr(data-label) ': ';
+  }
+  .subscribers-table td[data-cell='windows'] .subscribers-sub {
+    display: inline;
+    margin-left: 8px;
+  }
+}
