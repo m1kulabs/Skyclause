@@ -609,7 +609,14 @@
 .input {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 2px 12px;
+}
+/* Each input's source link is a target of its own in the row, so it stands at least 24px tall. */
+.input a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
 }
 .inputName {
   font-weight: 500;
