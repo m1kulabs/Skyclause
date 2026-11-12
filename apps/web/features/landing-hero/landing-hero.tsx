@@ -1,6 +1,5 @@
 import type { CSSProperties } from 'react'
 import { wordmarkSvg } from '@skyclause/elements'
-import { buttonVariants } from '#ui/button'
 import { t } from './catalogue'
 import { HeroActivator } from './activator'
 import { HeroRoom } from './hero-room'
@@ -63,7 +62,7 @@ export function LandingHero({ read }: { read: HeroRead }) {
         </h1>
         <p className={styles.lead}>{t('landing-hero.lead_sentence', {}, 'en')}</p>
         <div className={styles.actions}>
-          <a href={signInHref} className={`${buttonVariants({ size: 'lg' })} ${styles.primary}`}>
+          <a href={signInHref} className="landing-button">
             {t('landing-hero.sign_in', {}, 'en')}
           </a>
           <nav aria-label={t('landing-hero.links_label', {}, 'en')} className={styles.links}>

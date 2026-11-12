@@ -56,6 +56,33 @@ html.lenis body {
   pointer-events: none;
 }
 
+/* The picker's wrapper has no box: the hero's band and window form are grid items of the hero. */
+.hero-island {
+  display: contents;
+}
+
+/* The page's one button shape: a 48px capsule, primary by inversion (ink fill, ground text). */
+.landing-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 24px;
+  border: 2px solid var(--edge);
+  border-radius: 9999px;
+  background: var(--ink);
+  color: var(--ground);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: transform var(--t-press) var(--ease);
+}
+.landing-button:active {
+  transform: scale(0.97);
+}
+
 /* On an ink field, the focus ring takes the ground so it stays visible. */
 .how-clause,
 .plan--free,
@@ -335,7 +362,6 @@ html.lenis body {
   min-height: 48px;
   color: var(--ink-muted);
   cursor: pointer;
-  transition: color var(--t-hover) ease;
 }
 .record-name::before {
   content: '';
@@ -614,7 +640,6 @@ html.lenis body {
 .faq-tile {
   border-radius: var(--r);
   background: var(--surface);
-  transition: background-color var(--t-hover) ease;
 }
 .faq-tile[open] {
   background: var(--ink);
@@ -781,7 +806,6 @@ html.lenis body {
   text-decoration-thickness: 2px;
   text-underline-offset: 5px;
   text-decoration-color: var(--ink-muted);
-  transition: text-decoration-color var(--t-hover) ease;
 }
 .footer-links a {
   display: inline-flex;

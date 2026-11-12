@@ -1,5 +1,4 @@
 /* eslint-disable skyclause-i18n/no-literal-jsx, @next/next/no-img-element -- Landing copy is English in the component (no Malay landing route; LND-7 is P2). Self-hosted, pre-sized pictures; next/image would add client script. */
-import { buttonVariants } from '#ui/button'
 import { Glyph } from '../brand/glyph'
 import { photo } from './photos'
 
@@ -51,7 +50,7 @@ export function Features({ signInHref }: { signInHref: string }) {
           Readings come from JPS, APIMS, MET and Rapid Rail on their own schedules, and a source that fails is never
           filled in with an old value.
         </p>
-        <a href={signInHref} className={buttonVariants({ size: 'lg' })}>
+        <a href={signInHref} className="landing-button">
           Sign in
         </a>
       </div>

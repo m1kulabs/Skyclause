@@ -2,11 +2,11 @@
 
 import { Suspense, lazy, useState, type ReactNode } from 'react'
 import type { HeroPickerProps } from './hero-picker'
-import styles from './hero.module.css'
 
 // The island (drag, debounce, minute refresh) loads on first intent, so the landing ships
 // server-rendered markup without picker JavaScript before first input (budgets.spec). Its wrapper has no box
-// (display: contents), so the band and the window form sit in the hero's grid as the card and the room need them.
+// (display: contents, `.hero-island` in landing.css; a CSS module here would ship its class map before input), so the
+// band and the window form sit in the hero's grid as the card and the room need them.
 export interface HeroActivatorProps extends HeroPickerProps {
   children: ReactNode
 }
@@ -29,7 +29,7 @@ export function HeroActivator(props: HeroActivatorProps) {
     return (
       // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- passive intent listener; the static children are natively interactive.
       <div
-        className={styles.island}
+        className="hero-island"
         onPointerDown={(event) => {
           // Only a strip press replays as a drag; other presses finish natively and activate through onChange.
           if ((event.target as Element).closest('[role="slider"]')) setReplay({ k: 'ptr', x: event.clientX })
@@ -47,7 +47,7 @@ export function HeroActivator(props: HeroActivatorProps) {
     )
   }
   return (
-    <div className={styles.island}>
+    <div className="hero-island">
       <Suspense fallback={props.children}>
         <HeroPicker {...props} initialReplay={replay} />
       </Suspense>

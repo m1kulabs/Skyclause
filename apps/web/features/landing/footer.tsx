@@ -1,10 +1,8 @@
-/* eslint-disable skyclause-i18n/no-literal-jsx -- Landing copy is English in the component (no Malay landing route; LND-7 is P2). */
-import Link from 'next/link'
+/* eslint-disable skyclause-i18n/no-literal-jsx, @next/next/no-html-link-for-pages -- Landing copy is English in the component (no Malay landing route; LND-7 is P2). Plain links: next/link would add router script to the landing's 150 KB budget; these navigate to other route groups anyway. */
 import { t } from '@skyclause/i18n/brand'
 import { FooterClock } from './clock'
 import { PHOTO_KEYS, photo } from './photos'
 
-// Internal links are next/link without prefetch, so no other route's script loads before the visitor asks.
 // The name, built large: each letter knocked out of its own capsule, the capsules of different heights standing on one
 // strip (the brand mark, a capsule on its day, at the scale of the page). Below: the links that exist, the place and
 // its live MYT clock, both brand lines and the picture credits.
@@ -83,31 +81,23 @@ export function LandingFooter() {
           </ul>
           <ul>
             <li>
-              <Link href="/sign-in" prefetch={false}>
-                Sign in
-              </Link>
+              <a href="/sign-in">Sign in</a>
             </li>
             <li>
-              <Link href="/sign-up" prefetch={false}>
-                Create an account
-              </Link>
+              <a href="/sign-up">Create an account</a>
             </li>
           </ul>
           <ul>
             <li>
-              <Link href="/legal/terms" prefetch={false}>
-                Terms
-              </Link>
+              <a href="/legal/terms">Terms</a>
             </li>
             <li>
-              <Link href="/legal/privacy" prefetch={false}>
-                Privacy
-              </Link>
+              <a href="/legal/privacy">Privacy</a>
             </li>
             <li>
-              <Link href="/ms/legal/privacy" prefetch={false} lang="ms" hrefLang="ms">
+              <a href="/ms/legal/privacy" lang="ms" hrefLang="ms">
                 Privasi dalam Bahasa Melayu
-              </Link>
+              </a>
             </li>
           </ul>
         </nav>

@@ -1,5 +1,4 @@
 /* eslint-disable skyclause-i18n/no-literal-jsx -- Landing copy is English in the component (no Malay landing route; LND-7 is P2). Prices are PRODUCT's, every one a proposal, untested (LND-6). */
-import { buttonVariants } from '#ui/button'
 import { Words } from './words'
 
 export const PLANS_SOURCE = '/legal/terms#plans'
@@ -28,7 +27,7 @@ export function Pricing({ signInHref }: { signInHref: string }) {
           <p className="plan-price" data-source={PLANS_SOURCE}>
             <span className="plan-figure">Free</span> <span className="plan-period">proposal, untested</span>
           </p>
-          <a href={signInHref} className={`${buttonVariants({ size: 'lg' })} plan-action`}>
+          <a href={signInHref} className="landing-button plan-action">
             Sign in
           </a>
         </div>
@@ -50,7 +49,7 @@ export function Pricing({ signInHref }: { signInHref: string }) {
             <span className="plan-figure">RM&nbsp;49</span>{' '}
             <span className="plan-period">a month per organisation, from P2, proposal, untested</span>
           </p>
-          <a href={PLANS_SOURCE} className={`${buttonVariants({ size: 'lg' })} plan-action`}>
+          <a href={PLANS_SOURCE} className="landing-button plan-action">
             Plan terms
           </a>
         </div>
