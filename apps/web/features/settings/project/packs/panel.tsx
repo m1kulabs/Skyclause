@@ -396,11 +396,7 @@ export default function Panel({
                     <span className="type-small text-muted-foreground">{t('onboarding.source_not_evaluated')}</span>
                   )}
                   {source.state?.state === 'error' && (
-                    <span className="type-small font-medium">
-                      {t('onboarding.source_error', {
-                        status: source.state.http_status ?? t('onboarding.source_error_unknown')
-                      })}
-                    </span>
+                    <span className="type-small font-medium">{t('onboarding.source_error')}</span>
                   )}
                 </div>
                 <Button type="button" variant="outline" onClick={() => setUnbinding(source)}>
