@@ -23,12 +23,12 @@
   },
   "notFound": {
     "label": "Halaman tidak ditemui",
-    "sentence": "Halaman ini mungkin tiada atau bersifat peribadi.",
+    "sentence": "Halaman ini mungkin tiada atau bersifat peribadi. Semak alamatnya, atau pergi ke laman utama.",
     "home": "Pergi ke laman utama Skyclause"
   },
   "error": {
     "label": "Sesuatu tidak kena",
-    "sentence": "Halaman ini tidak dapat dimuatkan.",
+    "sentence": "Halaman ini tidak dapat dimuatkan. Cuba lagi, atau pergi ke laman utama.",
     "retry": "Cuba lagi",
     "home": "Pergi ke laman utama Skyclause"
   },

@@ -23,12 +23,12 @@
   },
   "notFound": {
     "label": "Page not found",
-    "sentence": "This page may be missing or private.",
+    "sentence": "This page may be missing or private. Check the address, or go to the home page.",
     "home": "Go to the Skyclause home page"
   },
   "error": {
     "label": "Something went wrong",
-    "sentence": "This page could not be loaded.",
+    "sentence": "This page could not be loaded. Try again, or go to the home page.",
     "retry": "Try again",
     "home": "Go to the Skyclause home page"
   },
