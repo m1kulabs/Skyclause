@@ -39,10 +39,13 @@ function submit(address: string) {
   return email
 }
 
-test('after the link is sent, focus moves from the vanished button to the heading that replaced it', async () => {
+test('after the link is sent, the page’s one h1 says “Check your email” in its place and takes focus', async () => {
   renderPanel()
+  const title = screen.getByRole('heading', { level: 1 })
   submit('reader@example.test')
-  const heading = await screen.findByRole('heading', { name: 'Check your email' })
+  const heading = await screen.findByRole('heading', { level: 1, name: 'Check your email' })
+  expect(heading).toBe(title)
+  expect(screen.getAllByRole('heading')).toHaveLength(1)
   await waitFor(() => expect(document.activeElement).toBe(heading))
   expect(screen.getByRole('status').textContent).toContain('We sent a sign-in link to reader@example.test.')
 })
@@ -83,6 +86,27 @@ test('the link’s window closes at its real end: the form returns with the addr
   expect((email as HTMLInputElement).value).toBe('reader@example.test')
   expect(screen.getByText(/Your sign-in link expired at/)).toBeTruthy()
   await waitFor(() => expect(document.activeElement).toBe(email))
+  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Sign in or create your account')
+  // The strip keeps the closed window where it was, in words, rather than snapping back.
+  const strip = document.querySelector('[data-sign-in-strip]')!
+  expect(strip.getAttribute('data-sign-in-strip')).toBe('closed')
+  expect(strip.querySelector('[data-shown]')!.textContent).toMatch(/^Your link expired at \d\d:\d\d\u00a0MYT$/)
+  expect(strip.querySelector('[data-sign-in-window]')!.getAttribute('data-sign-in-window')).toBe('closed')
+})
+
+test('at rest the strip draws the window a link sent now would have; sent, the same window fills', async () => {
+  renderPanel('sign-in')
+  const strip = document.querySelector('[data-sign-in-strip]')!
+  const window_ = strip.querySelector('[data-sign-in-window]')!
+  expect(strip.getAttribute('data-sign-in-strip')).toBe('rest')
+  expect(window_.getAttribute('data-sign-in-window')).toBe('ready')
+  expect(strip.querySelector('[data-shown]')!.textContent).toMatch(/^A link sent now works until \d\d:\d\d\u00a0MYT$/)
+  submit('reader@example.test')
+  await screen.findByRole('heading', { name: 'Check your email' })
+  expect(strip.getAttribute('data-sign-in-strip')).toBe('link')
+  expect(strip.querySelector('[data-sign-in-window]')).toBe(window_)
+  expect(window_.getAttribute('data-sign-in-window')).toBe('live')
+  expect(strip.querySelector('[data-shown]')!.textContent).toMatch(/^Your link works until \d\d:\d\d\u00a0MYT$/)
 })
 
 test('a cancelled passkey prompt returns to rest silently; a passkey no account uses is said', async () => {
@@ -176,7 +200,7 @@ test('a link that cannot be confirmed names the button on this tab and the one o
     renderPanel('sign-in', { kind: 'confirm', link: 'token', stepUp: false })
     fireEvent.submit(screen.getByRole('button', { name: 'Sign in' }).closest('form')!)
     expect((await screen.findByRole('alert')).textContent).toBe(
-      'This link couldn’t be confirmed. Try Sign in again, or return to the first tab and choose Send the link again.'
+      'This link couldn’t be confirmed. Try Sign in again, or return to the first tab and choose Send a new link.'
     )
     cleanup()
     renderPanel('sign-in', { kind: 'confirm', link: 'token', stepUp: true })
@@ -194,7 +218,7 @@ test('a refused resend says when to ask again, as the first send does, never the
   vi.stubGlobal('fetch', fetchMock)
   try {
     renderPanel('sign-in', { kind: 'expired', resend: 'handle-1' } as import('../../features/sign-in/model').AuthState)
-    fireEvent.submit(screen.getByRole('button', { name: 'Resend' }).closest('form')!)
+    fireEvent.submit(screen.getByRole('button', { name: 'Send a new link' }).closest('form')!)
     await waitFor(() =>
       expect(
         screen

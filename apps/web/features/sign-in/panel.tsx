@@ -3,7 +3,6 @@
 /* eslint-disable @next/next/no-img-element -- Self-hosted, pre-sized pictures (CSP img-src 'self'), as the landing's room. */
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import Link from 'next/link'
-import { Loader2Icon } from 'lucide-react'
 import type { SignInMethods } from '@skyclause/auth'
 import { authClient } from '@skyclause/auth/client'
 import { formatClock } from '@skyclause/i18n/format'
@@ -127,6 +126,11 @@ export function SignInPanel({
 
   const continueHref = continuePath(next)
   const expiredStepUp = state.kind === 'expired' && state.stepUp
+  /** The emailed link's own page, and the step-up link's: each says what it is, not "Sign in" again. */
+  const linkPage = state.kind === 'confirm' && !state.stepUp
+  const stepUpPage = (state.kind === 'confirm' && state.stepUp) || state.kind === 'step-up-confirmed' || expiredStepUp
+  /** Until when the opened link works, when the server knows it (route.tsx). */
+  const linkUntil = state.kind === 'confirm' && state.until ? Date.parse(state.until) : null
   const resendOnly = state.kind === 'expired' && Boolean(state.resend) && !forceEmailForm
   const showOptions = state.kind !== 'confirm' && state.kind !== 'step-up-confirmed' && !expiredStepUp && !resendOnly
   const showSent = showOptions && sent !== null
@@ -138,6 +142,27 @@ export function SignInPanel({
   const expiredCopy = state.kind === 'expired' ? (state.stepUp ? 'link_expired_step_up' : 'link_expired') : null
   const reason =
     next && showForm && !visibleAlert && !expiredCopy && expiredAt === null && !sendProblem ? 'next_reason' : null
+  /** One h1 per state, in the same place: what the page is now, and at most one sentence under it. */
+  const heading = sentView
+    ? 'sent_heading'
+    : stepUpPage
+      ? 'step_up_heading'
+      : linkPage
+        ? 'link_heading'
+        : mode === 'sign-in'
+          ? 'heading'
+          : 'heading_sign_up'
+  const lead = sentView
+    ? null
+    : stepUpPage
+      ? state.kind === 'confirm' && !stepUpConfirmed
+        ? 'step_up_lead'
+        : null
+      : linkPage
+        ? 'link_lead'
+        : mode === 'sign-in'
+          ? 'lead'
+          : 'lead_sign_up'
 
   useEffect(() => {
     if (fieldError || (state.kind === 'expired' && !state.resend && !state.stepUp)) {
@@ -445,12 +470,17 @@ export function SignInPanel({
           </a>
 
           <header className="sign-in-head">
-            <h1 className="sign-in-title" id="sign-in-title" data-long={mode === 'sign-up' || undefined}>
-              {text(mode === 'sign-in' ? 'sign-in.heading' : 'sign-in.heading_sign_up')}
+            {/* It takes focus when "Check your email" replaces the form, so it is a target only then. */}
+            <h1
+              className="sign-in-title"
+              id="sign-in-title"
+              data-long={heading === 'heading_sign_up' || undefined}
+              tabIndex={sentView ? -1 : undefined}
+              ref={sentHeadingRef}
+            >
+              {text(`sign-in.${heading}`)}
             </h1>
-            {sentView ? null : (
-              <p className="sign-in-lead">{text(mode === 'sign-in' ? 'sign-in.lead' : 'sign-in.lead_sign_up')}</p>
-            )}
+            {lead ? <p className="sign-in-lead">{text(`sign-in.${lead}`)}</p> : null}
           </header>
 
           {reason && <p className="sign-in-reason">{text(`sign-in.${reason}`)}</p>}
@@ -462,7 +492,7 @@ export function SignInPanel({
           )}
 
           {limited && (
-            <AuthMessage>
+            <AuthMessage glyph="clock">
               {limited.retryAt
                 ? withParts(text(`sign-in.${limited.key}_until`), { time: clock(limited.retryAt) })
                 : text(`sign-in.${limited.key}`)}
@@ -470,19 +500,23 @@ export function SignInPanel({
           )}
 
           {expiredCopy && (
-            <AuthMessage tabIndex={-1} ref={expiredRef}>
+            <AuthMessage tone="result" glyph="clock" tabIndex={-1} ref={expiredRef}>
               {text(`sign-in.${expiredCopy}`)}
             </AuthMessage>
           )}
 
           {expiredAt !== null && showForm && (
-            <AuthMessage tone="result">
+            <AuthMessage tone="result" glyph="clock">
               {withParts(text('sign-in.link_expired_local'), { time: clock(expiredAt) })}
             </AuthMessage>
           )}
 
           {state.kind === 'step-up-confirmed' && (
             <AuthMessage tone="result">{text('sign-in.confirm_done')}</AuthMessage>
+          )}
+
+          {linkUntil !== null && (
+            <p className="sign-in-sent-to">{withParts(text('sign-in.sent_until'), { time: clock(linkUntil) })}</p>
           )}
 
           {state.kind === 'confirm' && (
@@ -525,7 +559,7 @@ export function SignInPanel({
               >
                 <input type="hidden" name="resend" value={state.resend} />
                 <Button size="lg" className="w-full" type="submit" disabled={busy !== null}>
-                  {busy === 'resend' ? text('sign-in.sending') : text('sign-in.resend')}
+                  {busy === 'resend' ? text('sign-in.sending') : text('sign-in.send_new')}
                 </Button>
               </form>
               {differentEmail}
@@ -534,10 +568,7 @@ export function SignInPanel({
 
           {sentView && sent && (
             <div className="sign-in-sent">
-              <h2 className="sign-in-sent-title" tabIndex={-1} ref={sentHeadingRef}>
-                {text('sign-in.sent_heading')}
-              </h2>
-              {/* The heading takes focus; only the sentences are live, so neither they nor the buttons are read twice. */}
+              {/* The h1 takes focus; only the sentences are live, so neither they nor the buttons are read twice. */}
               <div className="sign-in-sent-lines" role="status">
                 <p className="sign-in-sent-to">
                   {sent.resent
@@ -549,7 +580,12 @@ export function SignInPanel({
                 <p className="sign-in-sent-to">{withParts(text('sign-in.sent_until'), { time: clock(sent.until) })}</p>
                 {sent.again && <p className="sign-in-sent-again">{text('sign-in.resent')}</p>}
               </div>
-              {sendProblem && <AuthMessage>{sendProblemText(sendProblem)}</AuthMessage>}
+              <p className="sign-in-hint">{text('sign-in.sent_help')}</p>
+              {sendProblem && (
+                <AuthMessage glyph={sendProblem.key === 'send_limited' ? 'clock' : undefined}>
+                  {sendProblemText(sendProblem)}
+                </AuthMessage>
+              )}
               <div className="sign-in-actions">
                 {sent.email && (
                   <Button
@@ -559,10 +595,7 @@ export function SignInPanel({
                     onClick={() => void send(sent.email!, true)}
                     disabled={busy !== null}
                   >
-                    {busy === 'email' ? (
-                      <Loader2Icon data-icon="inline-start" aria-hidden="true" className="animate-spin" />
-                    ) : null}
-                    {busy === 'email' ? text('sign-in.sending') : text('sign-in.resend_again')}
+                    {busy === 'email' ? text('sign-in.sending') : text('sign-in.send_new')}
                   </Button>
                 )}
                 {differentEmail}
@@ -612,24 +645,32 @@ export function SignInPanel({
                           fieldError ? 'sign-in-email-error' : mode === 'sign-in' ? 'sign-in-email-hint' : undefined
                         }
                       />
-                      {fieldError ? (
-                        <FieldError id="sign-in-email-error" className="sign-in-field-error">
-                          {text(`sign-in.${fieldError}`)}
-                        </FieldError>
-                      ) : null}
+                      {/* The hint and the error share one slot under the field, so an error never moves the button. */}
+                      <div className="sign-in-field-note">
+                        {mode === 'sign-in' ? (
+                          <FieldDescription
+                            id="sign-in-email-hint"
+                            className="sign-in-hint"
+                            data-covered={fieldError ? '' : undefined}
+                          >
+                            {text('sign-in.email_hint')}
+                          </FieldDescription>
+                        ) : null}
+                        {fieldError ? (
+                          <FieldError id="sign-in-email-error" className="sign-in-field-error">
+                            {text(`sign-in.${fieldError}`)}
+                          </FieldError>
+                        ) : null}
+                      </div>
                     </Field>
-                    {sendProblem && <AuthMessage>{sendProblemText(sendProblem)}</AuthMessage>}
+                    {sendProblem && (
+                      <AuthMessage glyph={sendProblem.key === 'send_limited' ? 'clock' : undefined}>
+                        {sendProblemText(sendProblem)}
+                      </AuthMessage>
+                    )}
                     <Button size="lg" className="w-full" type="submit" disabled={busy !== null}>
-                      {busy === 'email' ? (
-                        <Loader2Icon data-icon="inline-start" aria-hidden="true" className="animate-spin" />
-                      ) : null}
                       {busy === 'email' ? text('sign-in.sending') : text('sign-in.email_submit')}
                     </Button>
-                    {mode === 'sign-in' ? (
-                      <FieldDescription id="sign-in-email-hint" className="sign-in-hint">
-                        {text('sign-in.email_hint')}
-                      </FieldDescription>
-                    ) : null}
                   </FieldGroup>
                 </form>
               ) : (
@@ -645,6 +686,14 @@ export function SignInPanel({
                       {text('sign-in.or')}
                     </p>
                   )}
+                  {methods.google && (
+                    <form method="post" action="/sign-in/google" onSubmit={(event) => void startGoogleSignIn(event)}>
+                      {next ? <input type="hidden" name="next" value={next} /> : null}
+                      <Button variant="outline" size="lg" className="w-full" type="submit" disabled={busy !== null}>
+                        {text(busy === 'google' ? BUSY_LABEL.google : 'sign-in.google')}
+                      </Button>
+                    </form>
+                  )}
                   {offerPasskey &&
                     (passkeyNote ? (
                       <p className="sign-in-note">{text(`sign-in.${passkeyNote}`)}</p>
@@ -657,23 +706,9 @@ export function SignInPanel({
                         onClick={() => void startPasskeySignIn()}
                         disabled={busy !== null}
                       >
-                        {busy === 'passkey' ? (
-                          <Loader2Icon data-icon="inline-start" aria-hidden="true" className="animate-spin" />
-                        ) : null}
                         {text(busy === 'passkey' ? BUSY_LABEL.passkey : 'sign-in.passkey')}
                       </Button>
                     ))}
-                  {methods.google && (
-                    <form method="post" action="/sign-in/google" onSubmit={(event) => void startGoogleSignIn(event)}>
-                      {next ? <input type="hidden" name="next" value={next} /> : null}
-                      <Button variant="outline" size="lg" className="w-full" type="submit" disabled={busy !== null}>
-                        {busy === 'google' ? (
-                          <Loader2Icon data-icon="inline-start" aria-hidden="true" className="animate-spin" />
-                        ) : null}
-                        {text(busy === 'google' ? BUSY_LABEL.google : 'sign-in.google')}
-                      </Button>
-                    </form>
-                  )}
                 </div>
               )}
 
@@ -706,7 +741,7 @@ export function SignInPanel({
             />
           </div>
         </div>
-        <SignInStrip initialNow={now} until={sent?.until ?? null} locale={locale} />
+        <SignInStrip initialNow={now} until={sent?.until ?? linkUntil} closed={expiredAt} locale={locale} />
         <p className="sign-in-credit">
           <a href={links.credits}>{text('sign-in.photo_credit', { creator: ROOM.creator, licence: ROOM.licence })}</a>
         </p>
