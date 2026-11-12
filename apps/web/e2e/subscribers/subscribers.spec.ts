@@ -1,7 +1,13 @@
+import type { Page } from '@playwright/test'
+import type { Role } from '@skyclause/contracts'
+import { inOrg } from '@skyclause/auth/testing'
+import { makeProject } from '@skyclause/db/test/factories/index'
 import { test, expect } from '../fixtures'
 import { stubApi, asPage } from '../harness'
 import { expectUnclippedText } from '../harness/expect-unclipped-text'
 import { expectZonedTimes } from '../harness/expect-zoned-times'
+import { makeOrg, signInAs } from '../harness/sign-in-as'
+import type { ShellData } from '../../features/shell/types'
 import { setupProject, registry, counts, row, projectPath, principal, failOperation } from './data'
 import { t } from './messages'
 import { subscriberRemoval } from './removal'
@@ -208,3 +214,63 @@ for (const theme of ['dark', 'light', 'high-contrast'] as const) {
     await expectUnclippedText(page)
   })
 }
+
+// #647: the gate reads the URL organisation's membership from a real session (signInAs), never the test principal,
+// whose orgId stands in for the URL's name and so hid a gate that compared a session's organisation ID with the slug.
+async function realProject(page: Page, role: Role) {
+  const org = await makeOrg()
+  const project = await inOrg(org.id, (tx) => makeProject(tx))
+  await signInAs(page, role, org)
+  return { org, path: `/${org.slug}/${project.slug}` }
+}
+
+const notFound = (page: Page) => page.locator('[data-status-code="404"]')
+
+for (const role of ['owner', 'admin', 'approver'] as const) {
+  test(`SET a real ${role} session opens its project's Subscribers`, async ({ page }) => {
+    const { path } = await realProject(page, role)
+    await page.goto(`${path}/subscribers`)
+    await expect(page.getByRole('heading', { level: 1, name: t('subscribers.title') })).toBeVisible()
+    await expect(notFound(page)).toHaveCount(0)
+  })
+}
+
+for (const role of ['editor', 'viewer'] as const) {
+  test(`SET a real ${role} session gets not-found on Subscribers`, async ({ page }) => {
+    const { path } = await realProject(page, role)
+    await page.goto(`${path}/subscribers`)
+    await expect(notFound(page)).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: t('subscribers.title') })).toHaveCount(0)
+  })
+}
+
+test('SET a real Owner of another organisation gets not-found on Subscribers', async ({ page }) => {
+  const org = await makeOrg()
+  const project = await inOrg(org.id, (tx) => makeProject(tx))
+  await signInAs(page, 'owner', await makeOrg())
+  await page.goto(`/${org.slug}/${project.slug}/subscribers`)
+  await expect(notFound(page)).toBeVisible()
+})
+
+test('SET a real Owner reaches Subscribers from the More project pages menu', async ({ page, baseURL }) => {
+  const org = await makeOrg()
+  const project = await inOrg(org.id, (tx) => makeProject(tx))
+  await signInAs(page, 'owner', org)
+  const path = `/${org.slug}/${project.slug}`
+  // The shell's own server reads take the test runtime's shell cookie (features/shell/load.ts); the page gate still
+  // reads the real session.
+  const shell: ShellData = {
+    memberships: [{ org_id: org.id, org_name: 'Test organisation', org_slug: org.slug, role: 'owner' }],
+    projects: [{ id: project.id, org_id: org.id, name: project.name, slug: project.slug }]
+  }
+  await page
+    .context()
+    .addCookies([
+      { name: 'skyclause-test-shell', value: encodeURIComponent(JSON.stringify(shell)), url: baseURL!, httpOnly: true }
+    ])
+  await page.goto(`${path}/windows`)
+  await page.getByRole('button', { name: t('app-shell.moreLabel') }).click()
+  await page.getByRole('menuitem', { name: t('app-shell.subscribers') }).click()
+  await expect(page).toHaveURL(new RegExp(`${path}/subscribers$`))
+  await expect(page.getByRole('heading', { level: 1, name: t('subscribers.title') })).toBeVisible()
+})

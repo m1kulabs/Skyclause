@@ -46,14 +46,6 @@ export const KNOWN_GAPS: KnownGap[] = [
     issue: 596,
     why: 'the day start and end times show no ring on their last segment',
     projects: ['chromium', 'webkit', 'iphone']
-  },
-  {
-    route: '/[org]/[project]/subscribers',
-    check: 'status',
-    detail: /^answered \d+ with "Page not found", expected the page$/,
-    issue: 596,
-    why: 'the page gate compares the URL’s organisation with a real session’s orgId, which is always null',
-    roles: ['Owner', 'Admin', 'Approver']
   }
 ]
 
