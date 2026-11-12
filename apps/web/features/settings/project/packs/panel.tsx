@@ -18,7 +18,6 @@ import { SourcePicker } from '../../../sources/source-picker'
 import { sourcesApi, type BoundSourceView, type CatalogueSourceView } from '../../../sources/operations'
 import { ConfirmDialog } from '../../set-7'
 import { Aside, Notice, Part, Parts, Problem, ReadFailed, Row, Rows, SummaryLine } from '../parts'
-import './packs.css'
 
 type Pack = 'sky' | 'crowd'
 
