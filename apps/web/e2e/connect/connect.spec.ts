@@ -11,7 +11,9 @@ test('connect is in the app shell with the current navigation selected', async (
   await prepare(page)
   await page.goto('/connect')
   await expect(page.getByRole('heading', { level: 1, name: t('title'), exact: true })).toBeVisible()
-  await expect(page.locator('.shell-sidebar a[href="/connect"]')).toHaveAttribute('aria-current', 'page')
+  // Connect your AI lives in the closed organisation and account menu; the menu marks the current page.
+  await page.getByRole('button', { name: 'Organisation and account' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Connect your AI' })).toHaveAttribute('aria-current', 'page')
 })
 
 test('CAI-3 renders exactly the live tools.json set and its scopes', async ({ page }) => {
@@ -33,12 +35,14 @@ test('verification badges use API statuses and stored MYT dates without age math
   await expect(page.locator('.connect-targets a')).toHaveCount(8)
   // This deliberately ancient record is still verified because the server says so; UTC crosses the MYT date.
   await expect(page.locator('.connect-targets a').first()).toContainText('2 January 2020')
-  await expect(page.getByText(t('reverify_due'), { exact: true })).toBeVisible()
-  await expect(page.getByText(t('not_verified'), { exact: true })).toHaveCount(6)
+  // Each of the eight targets in the strip carries its own status; the selected client repeats it under its name.
+  const statuses = page.locator('.connect-verification')
+  await expect(statuses.filter({ hasText: t('reverify_due') })).toHaveCount(1)
+  await expect(statuses.filter({ hasText: t('not_verified') })).toHaveCount(6)
   await stubApi(page, 'listConnectVerifications', { data: [], next_cursor: null }, { registry: connectOperations })
   await page.reload()
   await expect(page.getByText(t('finding', { n: 0 }), { exact: true })).toBeVisible()
-  await expect(page.getByText(t('not_verified'), { exact: true })).toHaveCount(8)
+  await expect(statuses.filter({ hasText: t('not_verified') })).toHaveCount(8)
 })
 
 test('selection survives reload and config copies byte for byte by keyboard', async ({ page }) => {
@@ -152,17 +156,10 @@ test('CAI-4 names the constraint, policy-admin role, cited date and all Enterpri
   await prepare(page)
   await page.goto('/connect?target=gemini_enterprise')
   const setup = page.getByRole('region', { name: t('enterprise') })
-  for (const key of [
-    'preview',
-    'policy_id',
-    'policy_role',
-    'egress',
-    'registration_path',
-    'oauth_fields',
-    'redirect',
-    'enable_tools'
-  ])
+  for (const key of ['preview', 'policy_id', 'policy_role', 'egress', 'oauth_fields', 'redirect', 'enable_tools'])
     await expect(setup).toContainText(t(key))
+  // The registration path is drawn as steps with an icon between them, never as the arrow character.
+  for (const step of t('registration_path').split(' > ')) await expect(setup).toContainText(step)
   await expect(setup).toContainText('6 November 2026')
   await expect(setup.getByRole('link', { name: t('policy_source') })).toHaveAttribute('href', /override-constraint/)
 })
@@ -410,8 +407,9 @@ test('API failures and n=0 tools offer recovery without fallback data', async ({
   )
   await page.route('**/mcp/tools.json', (route) => route.fulfill({ status: 503 }))
   await page.goto('/connect')
-  for (const key of ['verification_error', 'config_error', 'tools_error', 'activity_error'])
-    await expect(page.getByText(t(key), { exact: true })).toBeVisible()
+  // The verification records, the client config and the tool list each name their failed read with its answer.
+  await expect(page.locator('[data-connect-page] [data-source-error="503"]')).toHaveCount(3)
+  await expect(page.getByText(t('activity_error'), { exact: true })).toBeVisible()
   await expect(page.locator('[data-connect-page] pre, .connect-tools')).toHaveCount(0)
   await page.route('**/mcp/tools.json', (route) => route.fulfill({ json: { tools: [] } }))
   await page
