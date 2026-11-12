@@ -1,216 +1,145 @@
-.page {
-  position: relative;
-  left: 50%;
-  width: 100vw;
-  transform: translateX(-50%);
-  min-height: 100vh;
-  padding: 48px 20px 72px;
-  color: var(--landing-foreground);
-  background: var(--landing-background);
-}
-
-.column {
-  width: min(100%, 520px);
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-}
-
-.project {
-  margin: 0;
-  color: var(--landing-muted-foreground);
-  font-size: 13px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.page h1 {
-  margin: 6px 0 0;
-  font-size: clamp(30px, 8vw, 42px);
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-}
-
-.intro {
-  margin: 0;
-  color: var(--landing-muted-foreground);
-  line-height: 1.6;
-}
-
+/*
+ * The data page: what is held about one subscriber, as real tables. Rows step in tone instead of ruled lines; on a phone
+ * each row stacks under its first cell and every value keeps its column's name, so nothing scrolls sideways.
+ */
 .section {
-  border-top: 1px solid var(--rule);
-  padding-top: 20px;
+  display: grid;
+  gap: 16px;
   min-width: 0;
-}
-
-.section h2,
-.result h2 {
-  margin: 0 0 12px;
-  font-size: 17px;
-  font-weight: 500;
-}
-
-.tableWrap {
-  width: 100%;
-  overflow-x: auto;
+  margin-top: 16px;
 }
 
 .table {
   width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-  font-size: 13px;
+  border-collapse: separate;
+  border-spacing: 0 4px;
+  font-size: 1rem;
   line-height: 1.5;
+  text-align: left;
 }
 
 .table caption {
   position: absolute;
   width: 1px;
   height: 1px;
-  padding: 0;
   margin: -1px;
   overflow: hidden;
-  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
   white-space: nowrap;
-  border: 0;
 }
 
 .table th,
 .table td {
-  padding: 10px 8px 10px 0;
-  border-bottom: 1px solid var(--rule);
+  padding: 12px 16px;
   vertical-align: top;
+  text-align: left;
   overflow-wrap: anywhere;
 }
 
-.table th {
-  color: var(--landing-muted-foreground);
-  font-weight: 500;
+.table thead th {
+  padding-block: 4px;
+  color: var(--muted-foreground);
+  font-weight: 400;
+}
+
+.table tbody > tr > * {
+  background: var(--surface);
+}
+
+.table tbody > tr > :first-child {
+  border-radius: 10px 0 0 10px;
+}
+
+.table tbody > tr > :last-child {
+  border-radius: 0 10px 10px 0;
 }
 
 .summary th {
-  width: 36%;
+  width: 34%;
+  font-weight: 600;
 }
 
 .form {
-  display: grid;
-  gap: 14px;
-  margin-top: 22px;
-}
-
-.field {
-  display: grid;
-  gap: 6px;
-  font-size: 13px;
-}
-
-.field input {
-  min-height: 42px;
-  width: 100%;
-  padding: 9px 11px;
-  border: 1px solid var(--input);
-  border-radius: 4px;
-  color: var(--landing-field-foreground);
-  background: var(--landing-field);
-  font: inherit;
-}
-
-.field input:focus-visible,
-.button:focus-visible,
-.download:focus-visible {
-  outline: 2px solid var(--selection);
-  outline-offset: 3px;
+  max-width: 520px;
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 18px;
+  gap: 12px;
 }
 
-.button,
-.download {
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 15px;
-  border: 1px solid var(--landing-foreground);
-  border-radius: 3px;
-  color: var(--landing-background);
-  background: var(--landing-foreground);
-  font: inherit;
-  font-weight: 500;
-  text-decoration: none;
-  cursor: pointer;
-  overflow-wrap: anywhere;
+.actions > * {
+  min-width: 0;
+  white-space: normal;
 }
 
-.button:disabled {
-  opacity: 0.7;
-  cursor: wait;
-}
+@media (max-width: 720px) {
+  .table:not(.summary),
+  .table:not(.summary) tbody,
+  .table:not(.summary) tr,
+  .table:not(.summary) th,
+  .table:not(.summary) td {
+    display: block;
+  }
 
-.download {
-  color: var(--landing-foreground);
-  background: transparent;
-}
+  .table:not(.summary) thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
 
-.danger {
-  color: var(--primary-foreground);
-  background: var(--primary);
-  border-color: var(--primary);
-}
+  .table:not(.summary) tbody tr {
+    margin-bottom: 8px;
+    padding: 16px;
+    border-radius: 16px;
+    background: var(--surface);
+  }
 
-.confirmBox {
-  margin-top: 18px;
-  padding: 16px;
-  border: 2px solid var(--ink);
-  background: var(--surface);
-}
+  .table:not(.summary) tbody tr > * {
+    padding: 0;
+    border-radius: 0;
+    background: none;
+  }
 
-.confirmBox p,
-.status,
-.error,
-.footnote {
-  line-height: 1.6;
-}
+  .table:not(.summary) tbody td + td {
+    margin-top: 8px;
+  }
 
-.confirmBox p {
-  margin: 0;
-}
+  .table:not(.summary) td::before {
+    content: attr(data-label);
+    display: block;
+    color: var(--muted-foreground);
+  }
 
-.status {
-  margin: 14px 0 0;
-  color: var(--ink);
-}
+  .summary,
+  .summary tbody,
+  .summary tr,
+  .summary th,
+  .summary td {
+    display: block;
+  }
 
-.error {
-  margin: 14px 0 0;
-  color: var(--ink);
-}
+  .summary tr {
+    margin-bottom: 8px;
+    padding: 12px 16px;
+    border-radius: 16px;
+    background: var(--surface);
+  }
 
-.result {
-  padding: 24px 0;
-  border-top: 1px solid var(--rule);
-}
+  .summary tr > * {
+    width: auto;
+    padding: 0;
+    border-radius: 0;
+    background: none;
+  }
 
-.result h2:focus {
-  outline: none;
-}
-
-.footnote {
-  margin: 10px 0 0;
-  color: var(--landing-muted-foreground);
-  font-size: 12px;
-}
-
-@media (max-width: 520px) {
-  .page {
-    padding: 32px 16px 56px;
+  .summary th {
+    color: var(--muted-foreground);
+    font-weight: 400;
   }
 
   .actions > * {
