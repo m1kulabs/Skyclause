@@ -79,9 +79,9 @@ async function stubProjects(page: Page, data: ProjectListItem[]) {
   await stubApi(page, 'listProjects', { data, next_cursor: null }, { registry: organisationOperations })
 }
 
-test('/new sends guests to /sign-up', async ({ page }) => {
+test('/new sends a visitor with no session to sign in first, and back', async ({ page }) => {
   await page.goto('/new')
-  await expect(page).toHaveURL(/sign-up/)
+  await expect(page).toHaveURL(/\/sign-in\?next=%2Fnew$/)
 })
 
 test('ORG-1 reserved and taken slugs are refused inline with the reason and focus (real session)', async ({ page }) => {

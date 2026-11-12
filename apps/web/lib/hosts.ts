@@ -178,6 +178,8 @@ const PAGES: Record<'marketing' | 'app', string[]> = {
     '/:org/:project/camera/:sourceId'
   ]
 }
+/** The `(app)` group's pages, whose layout needs a credential: everything from `/new` up to the camera's. */
+const APP_GROUP_PAGES = PAGES.app.slice(PAGES.app.indexOf('/new'), PAGES.app.indexOf('/:org/:project/camera/:sourceId'))
 
 /** For the test that holds PAGES to app/. */
 export const pagesOf = (surface: 'marketing' | 'app') => [...PAGES[surface]]
@@ -264,6 +266,14 @@ export function pageElsewhere(
     : { url, status: 308 }
 }
 
+/** The request header that carries an `(app)` page's own path and query, for its sign-in's return path. */
+export const APP_PATH_HEADER = 'x-skyclause-app-path'
+
+/** The cookies that can carry a credential: Better Auth's session, a share link, and the test runtime's principal. */
+const CREDENTIAL_COOKIE = /^(?:__Secure-)?better-auth\.session_token$|^sc_share$|^skyclause_test_principal$/
+const carriesCredential = (request: NextRequest) =>
+  request.headers.has('authorization') || request.cookies.getAll().some(({ name }) => CREDENTIAL_COOKIE.test(name))
+
 /**
  * `proxy.ts` only maps hosts to route groups (TRD "Sign-in and sessions"); routes check auth themselves. A 404 renders
  * the global not-found page; a page path asked of the wrong host is redirected to its own (`pageElsewhere`). It never
@@ -306,6 +316,27 @@ export function proxyResponse(
   if (target.group === '(public)') {
     requestHeaders.set('x-skyclause-locale', pathname.startsWith('/ms/legal') ? 'ms' : 'en')
     requestHeaders.set('x-skyclause-public-path', pathname)
+    added = true
+  }
+  if (target.group === '(app)') {
+    const query = new URLSearchParams(search)
+    query.delete('_rsc')
+    const rest = query.toString()
+    const own = `${pathname}${rest ? `?${rest}` : ''}`
+    // A visitor with no credential at all signs in first, then comes back: a real redirect, before any of the shell.
+    // The layout does the same for a credential that turns out not to be one (an expired session).
+    const segments = pathname.split('/').slice(1)
+    if (
+      (request.method === 'GET' || request.method === 'HEAD') &&
+      !carriesCredential(request) &&
+      APP_GROUP_PAGES.some((pattern) => matchPage(pattern, segments, true))
+    ) {
+      const signIn = new URL('/sign-in', request.url)
+      if (!pathname.startsWith('//')) signIn.searchParams.set('next', own)
+      return NextResponse.redirect(signIn, 307)
+    }
+    // Always set here, so a request can't bring its own.
+    requestHeaders.set(APP_PATH_HEADER, own)
     added = true
   }
   const forwarded = added ? { ...init, request: { ...init?.request, headers: requestHeaders } } : init

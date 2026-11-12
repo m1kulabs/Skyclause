@@ -2,7 +2,15 @@ import { readdirSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import { NextRequest } from 'next/server'
 import { describe, expect, it } from 'vitest'
-import { hostConfig, pageElsewhere, pagesOf, proxyResponse, routeRequest, type HostConfig } from '../lib/hosts'
+import {
+  APP_PATH_HEADER,
+  hostConfig,
+  pageElsewhere,
+  pagesOf,
+  proxyResponse,
+  routeRequest,
+  type HostConfig
+} from '../lib/hosts'
 
 const ORIGINS = {
   MARKETING_ORIGIN: 'https://skyclause.m1ku.tech',
@@ -416,5 +424,55 @@ describe('a page on the wrong host', () => {
         .sort()
     expect(listed('marketing')).toEqual(built(['(marketing)', '(public)']))
     expect(listed('app')).toEqual(built(['(auth)', '(app)', '(camera)']))
+  })
+})
+
+describe('what the proxy adds for the route', () => {
+  const forwarded = (url: string, headers: Record<string, string> = {}) => {
+    const response = proxyResponse(new NextRequest(url, { headers }), multi)
+    return (name: string) => response.headers.get(`x-middleware-request-${name}`)
+  }
+
+  it('tells an (app) page its own path and query for sign-in’s return path, which a request cannot set', () => {
+    const own = forwarded('https://app.skyclause.m1ku.tech/apu/site/windows?view=month&_rsc=abc', {
+      [APP_PATH_HEADER]: '//evil.example',
+      cookie: '__Secure-better-auth.session_token=abc'
+    })
+    expect(own(APP_PATH_HEADER)).toBe('/apu/site/windows?view=month')
+    expect(forwarded('https://app.skyclause.m1ku.tech/sign-in')(APP_PATH_HEADER)).toBeNull()
+  })
+
+  it('sends a visit with no credential at all to sign in first, with its page as the return path', () => {
+    const visit = (path: string, headers: Record<string, string> = {}, method = 'GET') => {
+      const response = proxyResponse(
+        new NextRequest(`https://app.skyclause.m1ku.tech${path}`, { headers, method }),
+        multi
+      )
+      return response.headers.get('location') ? `${response.status} ${response.headers.get('location')}` : 'served'
+    }
+    expect(visit('/apu')).toBe('307 https://app.skyclause.m1ku.tech/sign-in?next=%2Fapu')
+    expect(visit('/apu/site/ledger?tab=evidence')).toBe(
+      '307 https://app.skyclause.m1ku.tech/sign-in?next=%2Fapu%2Fsite%2Fledger%3Ftab%3Devidence'
+    )
+    for (const path of ['/account/profile', '/connect', '/new', '/developers/webhooks', '/apu/settings/members'])
+      expect(visit(path), path).toMatch(/^307 https:\/\/app\.skyclause\.m1ku\.tech\/sign-in\?next=/)
+    // Any credential is the page's to judge: a session (even an expired one), a share link, a bearer, a test principal.
+    const credentials: Array<Record<string, string>> = [
+      { cookie: 'better-auth.session_token=abc' },
+      { cookie: 'theme=x; __Secure-better-auth.session_token=abc' },
+      { cookie: 'sc_share=tok' },
+      { cookie: 'skyclause_test_principal=null' },
+      { authorization: 'Bearer abc' }
+    ]
+    for (const headers of credentials)
+      expect(visit('/apu/site/ledger', headers), JSON.stringify(headers)).toBe('served')
+    // Sign-in itself, the camera's own page, an unknown path and a post are not this redirect.
+    for (const path of ['/sign-in', '/apu/site/camera/source-1', '/aaa/bbb/ccc/ddd', '/api/me/memberships'])
+      expect(visit(path), path).toBe('served')
+    expect(visit('/apu/site', {}, 'POST')).toBe('served')
+    // A language cookie is no credential.
+    expect(visit('/apu', { cookie: 'skyclause-language=ms' })).toBe(
+      '307 https://app.skyclause.m1ku.tech/sign-in?next=%2Fapu'
+    )
   })
 })
