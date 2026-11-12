@@ -607,6 +607,7 @@ Nothing links to these; the shell, palette and settings frame list only built pa
 - **Custom elements and embeds:** `<skyclause-status>` and `<skyclause-window>`, the embed script (`/elements/v1.js`), and the subscribe-to-calendar button. The oEmbed route already points at the embed origin.
 - **Product pages:** the clause sheet editor, an approvals queue across projects (`/{org}/approvals`), a developers index and playground, and the docs site. Review opens the dashboard's needs-review block, and each project's bundles open as the triage inbox.
 - **Settings panels:** account and organisation AI keys and API keys, and the project's public page switch ("The public project page is not built yet"). A guest entry ("Continue as guest") is not offered on the sign-in page while `/guest` is unbuilt.
+- **The public verdict read:** the API registers `evaluatePublicProject` without a handler, so on 12 November 2026 the landing's live verdict shows its named 501 error ("It answered 501: the public verdict is not built yet.") until the handler ships.
 - **The CLI** and its output, below.
 - **Things the design leaves out on purpose:** a sidebar, a collapse setting, a project tab row, a bottom bar, KPI cards with icons or sparklines, "welcome back" copy, icons in tinted squares, emoji, gradients, glass, 1px outlines on surfaces, a hue on a button or navigation item, invented numbers, a logo wall, Three.js, and any fallback, cached copy or sample value where a read fails.
 
