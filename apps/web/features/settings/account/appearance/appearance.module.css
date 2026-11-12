@@ -1,7 +1,7 @@
 /*
- * Each choice is previewed as a small piece of the real interface drawn in that choice: real markup, set inside a
- * scope that re-resolves the theme's roles (the page's own aliases are resolved once, at the document). Nothing here is
- * a picture: the capsule is the status mark, the buttons are capsules, the rows keep their real pitch.
+ * Each choice is previewed as a small piece of the real interface drawn in that choice: real markup, set inside the
+ * theme's own class, which resolves its roles and aliases there. Nothing here is a picture: the capsule is the status
+ * mark, the buttons are capsules, the rows keep their real pitch.
  */
 .choices {
   container-type: inline-size;
@@ -70,21 +70,8 @@
   outline-offset: 2px;
 }
 
-/* Re-resolve the roles the fragment reads, in whichever theme class the preview carries (dark, light, hc). */
+/* The preview carries its theme class (dark, light, hc), which resolves the roles and their aliases on it. */
 .preview {
-  --background: var(--ground);
-  --foreground: var(--ink);
-  --card: var(--surface);
-  --muted-foreground: var(--ink-muted);
-  --primary: var(--ink);
-  --primary-foreground: var(--ground);
-  --control: var(--raised);
-  --control-edge: var(--ink-muted);
-  --mode-normal-ink: var(--ink);
-  --mode-normal-edge: var(--ink-muted);
-  --mode-commute-disruption-edge: var(--edge);
-  --mode-hybrid-recommended-edge: var(--edge);
-  --mode-surge-night-edge: var(--edge);
   display: grid;
   min-width: 0;
   min-height: 120px;
