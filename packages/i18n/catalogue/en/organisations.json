@@ -4,11 +4,13 @@
     "description": "Organisations hold projects, sources and approvers. You become its Owner.",
     "name": "Organisation name",
     "nameHint": "Shown in the switcher and on notices.",
+    "nameRequired": "Enter a name for the organisation.",
     "slug": "Slug",
     "slugHint": "Lowercase letters, digits and single hyphens, 2–39 characters.",
     "format": "Use 2–39 lowercase letters, digits and single hyphens, starting and ending with a letter or digit.",
     "reserved": "{slug} is reserved. Choose another slug.",
     "taken": "{slug} is taken. Choose another slug.",
+    "failed": "The organisation was not created. Try again.",
     "submit": "Create organisation",
     "creating": "Creating…",
     "signedOut": "Sign in to create an organisation."

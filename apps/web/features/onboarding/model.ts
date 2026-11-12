@@ -1,3 +1,5 @@
+import { formatNumber } from '@skyclause/i18n/format'
+
 export interface PickerSource {
   id: string
   kind: string
@@ -48,8 +50,8 @@ export function distanceKm(site: SitePoint, source: Pick<PickerSource, 'lat' | '
 }
 
 /** Keep the compact picker label from rounding a distance up to the next tenth. */
-export function formatDistanceKm(distance: number): string {
-  return (Math.floor(distance * 10) / 10).toFixed(1)
+export function formatDistanceKm(distance: number, locale: 'en' | 'ms' = 'en'): string {
+  return formatNumber(Math.floor(distance * 10) / 10, locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 }
 
 export function sortSources<Source extends PickerSource>(sources: Source[], site: SitePoint): Source[] {

@@ -4,6 +4,7 @@ import { t } from '../../../features/organisations/catalogue'
 import { FirstRunOutline } from '../../../features/onboarding/first-run-progress'
 import '../../../features/onboarding/catalogue'
 import { getPrincipal } from '../../../lib/principal'
+import { settingsLocale } from '../../../features/settings/locale'
 import styles from '../../../features/onboarding/onboarding.module.css'
 
 export const metadata = { title: t('organisations.create.title') }
@@ -12,17 +13,18 @@ export const metadata = { title: t('organisations.create.title') }
 export default async function Page() {
   const principal = await getPrincipal()
   if (principal?.kind !== 'session' || principal.isGuest) redirect('/sign-up')
+  const locale = await settingsLocale()
   return (
     <div className={styles.firstRunPage}>
       <header className={styles.pageHeading}>
-        <h1 className="type-title">{t('organisations.create.title')}</h1>
-        <p className="type-text">{t('organisations.create.description')}</p>
+        <h1 className="type-title">{t('organisations.create.title', {}, locale)}</h1>
+        <p className="type-text">{t('organisations.create.description', {}, locale)}</p>
       </header>
       <div className={styles.firstRunMain}>
-        <OrgCreateForm />
+        <OrgCreateForm locale={locale} />
       </div>
       <div className={styles.firstRunSteps}>
-        <FirstRunOutline />
+        <FirstRunOutline locale={locale} />
       </div>
     </div>
   )

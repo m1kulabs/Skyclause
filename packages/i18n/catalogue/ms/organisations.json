@@ -4,11 +4,13 @@
     "description": "Organisasi memegang projek, sumber dan pelulus. Anda menjadi Pemiliknya.",
     "name": "Nama organisasi",
     "nameHint": "Dipaparkan dalam penukar dan pada notis.",
+    "nameRequired": "Masukkan nama untuk organisasi.",
     "slug": "Slug",
     "slugHint": "Huruf kecil, digit dan sempang tunggal, 2–39 aksara.",
     "format": "Gunakan 2–39 huruf kecil, digit dan sempang tunggal, bermula dan berakhir dengan huruf atau digit.",
     "reserved": "{slug} dikhaskan. Pilih slug lain.",
     "taken": "{slug} telah digunakan. Pilih slug lain.",
+    "failed": "Organisasi tidak dicipta. Cuba lagi.",
     "submit": "Cipta organisasi",
     "creating": "Mencipta…",
     "signedOut": "Log masuk untuk mencipta organisasi."
