@@ -265,28 +265,43 @@ export function createSourceJobs(ports: SourceJobPorts) {
     refreshSourcePlan: (now: Date) => refreshSourcePlan(now, ports.store, ports.database.snapshot),
     async catalogueSync(): Promise<void> {
       let count = 0
+      // Each kind stands alone: one provider's failure keeps its own catalogue as it was, never another kind's.
+      const failures: Array<{ kind: string; message: string }> = []
       for (const adapter of ports.adapters)
         if (adapter.latestSlot?.discover || adapter.discover) {
-          // Discovery must finish before the transaction; a provider error preserves the catalogue.
-          let entries
-          if (adapter.latestSlot?.discover) {
-            const plan = await readSourcePlan(ports.store)
-            const sources = plan.sources.filter((entry) => entry.source.kind === adapter.kind)
-            if (!sources.length) await latest(adapter, [], plan, null)
-            const capture = await readCurrentSlotCapture(
-              ports.store,
-              adapter.kind,
-              adapter.latestSlot.seconds,
-              ports.clock.now()
-            )
-            if (!capture?.body)
-              throw new Error(`Catalogue unavailable: no successful current-slot capture for ${adapter.kind}`)
-            entries = adapter.latestSlot.discover(capture.body)
-          } else entries = await adapter.discover!()
-          await ports.database.catalogue(adapter, entries)
-          count++
+          try {
+            // Discovery must finish before the transaction; a provider error preserves the catalogue.
+            let entries
+            if (adapter.latestSlot?.discover) {
+              const plan = await readSourcePlan(ports.store)
+              const sources = plan.sources.filter((entry) => entry.source.kind === adapter.kind)
+              if (!sources.length) await latest(adapter, [], plan, null)
+              const capture = await readCurrentSlotCapture(
+                ports.store,
+                adapter.kind,
+                adapter.latestSlot.seconds,
+                ports.clock.now()
+              )
+              if (!capture?.body)
+                throw new Error(`Catalogue unavailable: no successful current-slot capture for ${adapter.kind}`)
+              entries = adapter.latestSlot.discover(capture.body)
+            } else entries = await adapter.discover!()
+            await ports.database.catalogue(adapter, entries)
+            count++
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error)
+            failures.push({ kind: adapter.kind, message })
+            ports.log('source.catalogue.failed', { adapter: adapter.kind, error: message })
+          }
         }
       ports.log('source.catalogue.complete', { adapters: count })
+      // The job still fails, so the alarm still fires, after every other kind has been saved.
+      if (failures.length)
+        throw new Error(
+          `Catalogue sync failed for ${failures.map((f) => f.kind).join(', ')}: ${failures
+            .map((f) => `${f.kind}: ${f.message}`)
+            .join('; ')}`
+        )
     },
     async adapterContracts(): Promise<void> {
       if (!ports.adapters.length) {

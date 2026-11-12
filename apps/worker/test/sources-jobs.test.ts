@@ -133,6 +133,45 @@ test('catalogue discovery failure never calls a database writer', async () => {
   await expect(jobs.catalogueSync()).rejects.toThrow('provider unavailable')
   expect(catalogue).not.toHaveBeenCalled()
 })
+test('one kind failing discovery still saves every other kind, then fails naming it', async () => {
+  const store = new MemoryStore(),
+    catalogue = vi.fn(async () => {}),
+    log = vi.fn()
+  const entries = [
+    { externalId: 'X', name: 'Warning feed', lat: null, lon: null, url: 'https://example.test/x', meta: {} }
+  ]
+  const jobs = createSourceJobs({
+    store,
+    scratch: store,
+    clock: new TestClock(),
+    id: () => sid,
+    adapters: [
+      adapter({
+        discover: async () => {
+          throw new Error('HTTP request timed out')
+        }
+      }),
+      adapter({ kind: 'met_warning', discover: async () => entries })
+    ],
+    http: fetch,
+    userAgent: 'test',
+    publish: async () => {},
+    database: {
+      snapshot: async () => {
+        throw new Error('not used')
+      },
+      catalogue
+    },
+    log
+  })
+  await expect(jobs.catalogueSync()).rejects.toThrow(
+    'Catalogue sync failed for jps_rain: jps_rain: HTTP request timed out'
+  )
+  expect(catalogue).toHaveBeenCalledTimes(1)
+  expect(catalogue).toHaveBeenCalledWith(expect.objectContaining({ kind: 'met_warning' }), entries)
+  expect(log).toHaveBeenCalledWith('source.catalogue.failed', { adapter: 'jps_rain', error: 'HTTP request timed out' })
+  expect(log).toHaveBeenCalledWith('source.catalogue.complete', { adapters: 1 })
+})
 test('empty registry reports zero contracts and discoveries; failed probes log and reject', async () => {
   const store = new MemoryStore(),
     log = vi.fn(),
