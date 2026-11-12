@@ -8,7 +8,7 @@
     "account": {
       "profile": {
         "title": "Profile",
-        "description": "Manage your name, photo and sign-in email."
+        "description": "Change the name shown on your account. Your sign-in email is read-only."
       },
       "security": {
         "title": "Security",
@@ -127,7 +127,9 @@
     "campusPrice": "RM 900 a month per campus, billed yearly after GA · proposal, untested",
     "now": "Available now",
     "fromP2": "From P2",
-    "afterGa": "After GA"
+    "afterGa": "After GA",
+    "payment": "Payment",
+    "yourPlan": "Your plan"
   },
   "audit": {
     "title": "Audit log",
@@ -142,17 +144,27 @@
     "allActions": "All actions",
     "empty": "No audit entries yet (n=0)",
     "loading": "Loading audit entries…",
-    "loadMore": "Load more",
     "export": "Export CSV",
     "exporting": "Exporting…",
     "error": "Audit entries could not be loaded. Try again.",
     "exportError": "The audit log could not be exported. Try again.",
     "actorUnknown": "Unknown actor",
     "objectUnknown": "Unknown object",
-    "actorRole": "{actor} · {role}",
     "object": "Object",
     "time": "Time",
-    "entriesRegion": "Audit entries"
+    "entriesRegion": "Audit entries",
+    "records": "Records",
+    "actorColumn": "Actor",
+    "newer": "Newer",
+    "older": "Older",
+    "range": "Records {from}–{to}",
+    "summaryShowing": "Showing",
+    "summaryNone": "No records",
+    "summaryFilters": "{count} set",
+    "summaryNoFilters": "None set",
+    "emptyFiltered": "No audit entries match these filters (n=0).",
+    "source": "the audit log",
+    "dateHint": "A whole day in MYT."
   },
   "data": {
     "exportsTitle": "Data exports",
@@ -186,7 +198,11 @@
     "retentionPeriod": "Retention period",
     "retentionAfter": "After retention",
     "retention": {
-      "readings": { "item": "Readings and error rows", "period": "Life of project", "after": "Deleted with project" },
+      "readings": {
+        "item": "Readings and error rows",
+        "period": "Life of project",
+        "after": "Deleted with project"
+      },
       "camera": {
         "item": "Camera frames",
         "period": "Until semester end, up to 183 days",
@@ -197,8 +213,16 @@
         "period": "Until segment times are computed, up to 24 hours",
         "after": "Deleted; segment times are kept"
       },
-      "guestWindows": { "item": "Guest windows", "period": "14 days", "after": "Deleted" },
-      "guestAccounts": { "item": "Guest accounts", "period": "30 days idle", "after": "Deleted with data" },
+      "guestWindows": {
+        "item": "Guest windows",
+        "period": "14 days",
+        "after": "Deleted"
+      },
+      "guestAccounts": {
+        "item": "Guest accounts",
+        "period": "30 days idle",
+        "after": "Deleted with data"
+      },
       "subscribers": {
         "item": "Subscriber records",
         "period": "Until unsubscribe, then 30 days",
@@ -209,8 +233,16 @@
         "period": "Life of organisation",
         "after": "Personal fields pseudonymised on account or subscriber deletion"
       },
-      "deletedOrg": { "item": "Deleted organisation", "period": "30-day grace period", "after": "Purged" },
-      "exports": { "item": "Export files", "period": "7 days", "after": "Deleted" },
+      "deletedOrg": {
+        "item": "Deleted organisation",
+        "period": "30-day grace period",
+        "after": "Purged"
+      },
+      "exports": {
+        "item": "Export files",
+        "period": "7 days",
+        "after": "Deleted"
+      },
       "apu": {
         "item": "APU timetable NAME, SAMACCOUNTNAME and LECTID",
         "period": "Never stored",
@@ -240,6 +272,41 @@
     "membershipsUnavailable": "Organisation ownership could not be loaded.",
     "noOwnedOrganisations": "No organisation ownership needs to be transferred.",
     "cancel": "Cancel",
-    "ownerOnly": "Only an Owner can delete this organisation."
+    "ownerOnly": "Only an Owner can delete this organisation.",
+    "summaryExports": "Export jobs",
+    "summaryExportCount": "{count} listed",
+    "summaryErase": "Erasing",
+    "summaryEraseValue": "Last, in its own part below",
+    "summaryDeletion": "Deletion",
+    "deleteAccountConsequence": "Deleting your account removes your profile, passkeys and sessions. Ledger and audit records you appear in stay, with your personal fields pseudonymised.",
+    "deleteAccountDialog": "This removes your profile, passkeys and sessions and pseudonymises your personal fields in ledger and audit records. Type your sign-in email to schedule it.",
+    "deleteOrgConsequence": "When the grace period ends the organisation and its data are purged. Exports already downloaded are not affected."
+  },
+  "unbuilt": {
+    "accountAi": "AI keys for your account",
+    "accountApi": "API keys for your account",
+    "organisationAi": "AI keys for this organisation",
+    "organisationApi": "API keys for this organisation"
+  },
+  "general": {
+    "title": "Rename the organisation",
+    "source": "the organisation name",
+    "summaryName": "Name now",
+    "summarySlug": "Slug",
+    "nameHint": "Up to {limit} characters.",
+    "saveFailed": "The name could not be saved. Try again."
+  },
+  "integrations": {
+    "source": "the OAuth clients and grants",
+    "summaryClients": "{count} created",
+    "summaryGrants": "{count} active",
+    "nameHint": "Up to {limit} characters. Its redirect address is {redirect}.",
+    "created": "Created the client {name}. Its secret is shown below, once.",
+    "deleted": "Deleted the client {name}. Every grant it created is revoked.",
+    "revoked": "Revoked the grant for {name}. It stops working at once.",
+    "revokedOn": "Revoked {date}",
+    "createdOn": "Created {date}",
+    "deleteNamed": "Delete OAuth client: {name}",
+    "revokeNamed": "Revoke: {name}"
   }
 }
