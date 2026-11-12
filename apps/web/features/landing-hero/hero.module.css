@@ -446,14 +446,10 @@
   color: var(--ink-muted);
 }
 .meta {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 6px;
   color: var(--ink-muted);
-}
-.meta a {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 24px;
-  color: var(--ink);
 }
 
 @media (pointer: coarse) {

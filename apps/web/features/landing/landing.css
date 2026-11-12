@@ -1127,9 +1127,6 @@ html.lenis body {
   gap: 8px;
   font-weight: 600;
 }
-[data-ui] .frag-live a {
-  min-height: 24px;
-}
 [data-ui].frag--mail .frag-mail-subject {
   padding-bottom: 10px;
   border-bottom: 2px solid var(--raised);
