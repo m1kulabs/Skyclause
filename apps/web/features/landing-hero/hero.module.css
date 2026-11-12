@@ -602,14 +602,10 @@
     grid-column: 1;
     margin-top: 0;
   }
-  /* On the card the time is a figure at the statement size, centred in the stretch between the strip and the name. */
+  /* On the card the time sits centred in whatever stretch the strip and the name leave between them. */
   .facts {
     align-self: center;
     padding: 32px 40px;
-  }
-  .factNow {
-    font-size: var(--step-statement);
-    line-height: 1.1;
   }
   .band {
     padding: 40px 40px 0;
