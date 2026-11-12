@@ -40,15 +40,16 @@ test('overview uses the 5 November captures, declares from the primary action an
   const overview = page.locator('[data-project-overview]')
   // The answer: each pack's mode set large with its glyph and word, then the inputs behind it.
   await expect(overview.locator('[data-pack="sky"] [data-state="normal"]')).toHaveText(copy('Normal'))
-  await expect(overview.locator('[data-finding-line]')).toContainText('5 inputs reporting, oldest 12 min')
+  // Two strings joined: under the pseudo pass each carries its own tildes.
+  await expect(overview.locator('[data-finding-line]')).toContainText(/5 inputs reporting~*, oldest 12 min/)
   await expect(overview.locator('[data-pack="sky"]')).toContainText('No clause has fired')
   await expect(overview.locator('[data-source="source-jps"]')).toContainText('Sg. Kuyoh di LRT Bukit Jalil')
   await expect(overview.locator('[data-bundle]')).toBeVisible()
 
-  await overview.getByRole('button', { name: 'Crowd pack' }).click()
+  await overview.getByRole('button', { name: /^Crowd~* pack/ }).click()
   await expect(page).toHaveURL(/\?pack=crowd$/)
   await page.reload()
-  await expect(overview.getByRole('button', { name: 'Crowd pack' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(overview.getByRole('button', { name: /^Crowd~* pack/ })).toHaveAttribute('aria-pressed', 'true')
   await overview.getByRole('button', { name: 'Declare a window' }).click()
   await expect(page).toHaveURL(/\?pack=crowd&declare=window$/)
 })
