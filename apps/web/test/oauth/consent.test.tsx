@@ -128,3 +128,28 @@ test('consent names who is asking before it lists what is granted', () => {
   expect(who.textContent).toContain('MCP server')
   expect(screen.getByRole('group', { name: 'Access' }).textContent).toContain('Read project information')
 })
+
+test('a link-fixed project is stated and submitted, never shown as a box that cannot be unticked', () => {
+  const { container } = render(
+    <OAuthConsentForm
+      details={{
+        ...details,
+        link: {
+          id: 'link-1',
+          orgId: 'org-1',
+          organizationName: 'Bukit Jalil',
+          projectId: 'project-1',
+          projectName: 'Community centre',
+          access: 'view'
+        }
+      }}
+      oauthQuery="client_id=public-test-client"
+      locale="en"
+    />
+  )
+  expect(screen.queryByRole('checkbox', { name: 'Community centre' })).toBeNull()
+  expect(screen.getByText('Community centre')).toBeTruthy()
+  expect(container.querySelector('input[type="hidden"][name="project_ids"]')).toHaveProperty('value', 'project-1')
+  expect(screen.getByText('Claude Desktop').getAttribute('translate')).toBe('no')
+  expect(screen.getByText('claude.example').getAttribute('translate')).toBe('no')
+})
