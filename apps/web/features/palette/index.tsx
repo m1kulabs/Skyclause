@@ -6,6 +6,7 @@ import type { Role } from '@skyclause/contracts'
 import { t } from './catalogue'
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '#ui/command'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '#ui/dialog'
+import { OPEN_PALETTE_EVENT, type OpenPaletteDetail } from './open'
 import { paletteSources, sourcesForRole, type PaletteContext, type PaletteItem, type PaletteSource } from './sources'
 import { palettePreferencesApi } from './operations'
 
@@ -89,6 +90,16 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
     [changeTheme, chooseProject, data.memberships, data.projects, pathname, projectChoice, projectQuery, query]
   )
 
+  const show = useCallback((returnTo?: HTMLElement | null) => {
+    if (returnTo) previousFocus.current = returnTo
+    else if (document.activeElement instanceof HTMLElement) previousFocus.current = document.activeElement
+    setQuery('')
+    setCommandValue('')
+    setProjectChoice(null)
+    setProjectQuery('')
+    setOpen(true)
+  }, [])
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() !== 'k' || !(event.metaKey || event.ctrlKey) || event.altKey) return
@@ -101,16 +112,18 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
         return
       event.preventDefault()
       if (event.repeat || open) return
-      if (document.activeElement instanceof HTMLElement) previousFocus.current = document.activeElement
-      setQuery('')
-      setCommandValue('')
-      setProjectChoice(null)
-      setProjectQuery('')
-      setOpen(true)
+      show()
+    }
+    const onOpen = (event: Event) => {
+      if (!open) show((event as CustomEvent<OpenPaletteDetail>).detail?.returnTo)
     }
     document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [open])
+    document.addEventListener(OPEN_PALETTE_EVENT, onOpen)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener(OPEN_PALETTE_EVENT, onOpen)
+    }
+  }, [open, show])
 
   useEffect(() => {
     const marker = paletteReadyMarker.current
