@@ -116,3 +116,6 @@ pilot/pi/.ridership-state.json
 
 # Impeccable design-hook cache
 .impeccable/hook.cache.json
+
+# design-taste-frontend working files
+.taste-skill/
