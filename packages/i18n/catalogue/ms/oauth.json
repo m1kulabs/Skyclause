@@ -30,7 +30,7 @@
   "settings": {
     "clients": "Klien OAuth",
     "clientName": "Nama klien",
-    "namePlaceholder": "Gemini Enterprise",
+    "namePlaceholder": "Gemini Enterprise…",
     "create": "Cipta klien Gemini Enterprise",
     "geminiRedirect": "https://vertexaisearch.cloud.google.com/oauth-redirect",
     "authorizationUrl": "URL kebenaran",
@@ -64,12 +64,17 @@
     "close": "Tutup",
     "loading": "Memuatkan tetapan OAuth…",
     "failed": "Tetapan OAuth tidak dapat dimuatkan.",
-    "saveFailed": "Perubahan OAuth tidak dapat disimpan.",
+    "saveFailed": "Perubahan OAuth tidak dapat disimpan. Cuba lagi.",
     "emptyClients": "Tiada klien Gemini Enterprise lagi.",
     "emptyGrants": "Tiada geran bersambung lagi.",
     "allProjects": "Semua projek",
     "projectCount": "{count} projek",
     "read": "Baca",
-    "draft": "Draf"
+    "draft": "Draf",
+    "copyFailed": "Tidak dapat menyalin. Pilih rahsia dan salin menggunakan papan kekunci anda.",
+    "copiedNotice": "Rahsia klien disalin.",
+    "projectCount_one": "1 projek",
+    "nameRequired": "Masukkan nama klien.",
+    "scopeRequired": "Pilih sekurang-kurangnya satu jenis akses."
   }
 }
