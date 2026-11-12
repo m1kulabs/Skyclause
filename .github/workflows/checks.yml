@@ -84,7 +84,7 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-      - run: bunx playwright install --with-deps --only-shell chromium
+      - run: bunx playwright install --with-deps chromium firefox webkit
         working-directory: apps/web
       - run: bun run db:up
       - run: bun run test
