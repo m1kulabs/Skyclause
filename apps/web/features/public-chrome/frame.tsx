@@ -1,8 +1,8 @@
 import { t } from '@skyclause/i18n'
 import type { ReactNode } from 'react'
 import { buttonVariants } from '#ui/button-variants'
-import { CapsuleWordmark } from '../brand'
 import type { PublicLocale } from './attribution'
+import { BlockWordmark } from './block-wordmark'
 import { BrandLines } from './brand-lines'
 import './catalogue'
 import styles from './public-chrome.module.css'
@@ -77,7 +77,7 @@ export function PublicChrome({
           </nav>
         </div>
         <div className={styles.wordmarkBand}>
-          <CapsuleWordmark locale={locale} />
+          <BlockWordmark locale={locale} />
         </div>
       </footer>
     </div>
