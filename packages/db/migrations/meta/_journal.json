@@ -351,6 +351,13 @@
       "when": 1794365714754,
       "tag": "0049_b-evaluator-deadlines",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1794509741886,
+      "tag": "0050_b-windows-api-lifecycle",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { boolean, date, doublePrecision, jsonb, text, time, unique, uuid } from 'drizzle-orm/pg-core'
+import { boolean, check, date, doublePrecision, jsonb, text, time, unique, uuid } from 'drizzle-orm/pg-core'
 import { id, instant, orgKey, sameOrg, tenantTable, timestamps } from './columns'
 import { listingState, moderation, nightState, shareAccess, windowKind, windowVia } from './enums'
 import { project } from './project'
@@ -32,9 +32,28 @@ export const windowSeries = tenantTable(
     localStart: time('local_start').notNull(),
     localEnd: time('local_end').notNull(),
     materialisedUntil: date('materialised_until'),
+    definition: jsonb('definition'),
+    icsFeedId: uuid('ics_feed_id'),
+    icsUid: text('ics_uid'),
+    checkedOn: date('checked_on'),
+    cancelledAt: instant('cancelled_at'),
+    lastError: text('last_error'),
     ...timestamps()
   },
-  (self) => [orgKey('window_series', self), sameOrg('window_series_project', self, self.projectId, project, true)]
+  (self) => [
+    orgKey('window_series', self),
+    sameOrg('window_series_project', self, self.projectId, project, true),
+    sameOrg('window_series_ics_feed', self, self.icsFeedId, icsFeed),
+    unique('window_series_import_identity_key').on(self.icsFeedId, self.icsUid),
+    check(
+      'window_series_import_identity_check',
+      sql`(${self.icsFeedId} IS NULL AND ${self.icsUid} IS NULL) OR (${self.icsFeedId} IS NOT NULL AND ${self.icsUid} IS NOT NULL AND octet_length(${self.icsUid}) BETWEEN 1 AND 1024)`
+    ),
+    check(
+      'window_series_definition_check',
+      sql`${self.definition} IS NULL OR (jsonb_typeof(${self.definition}) = 'object' AND coalesce(${self.definition}->'version' = '1'::jsonb, false))`
+    )
+  ]
 )
 
 /** A subscribed or uploaded ICS calendar and its refresh state. */
@@ -48,9 +67,33 @@ export const icsFeed = tenantTable(
     etag: text('etag'),
     lastModified: text('last_modified'),
     refreshedAt: instant('refreshed_at'),
+    kind: windowKind('kind').notNull().default('class'),
+    document: jsonb('document'),
+    provenance: jsonb('provenance'),
+    lastAttemptAt: instant('last_attempt_at'),
+    nextRefreshAt: instant('next_refresh_at'),
+    refreshClaim: uuid('refresh_claim'),
+    lastError: text('last_error'),
+    deletedAt: instant('deleted_at'),
+    skipped: jsonb('skipped')
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    materialisedUntil: date('materialised_until'),
     ...timestamps()
   },
-  (self) => [orgKey('ics_feed', self), sameOrg('ics_feed_project', self, self.projectId, project, true)]
+  (self) => [
+    orgKey('ics_feed', self),
+    sameOrg('ics_feed_project', self, self.projectId, project, true),
+    check(
+      'ics_feed_document_check',
+      sql`${self.document} IS NULL OR (jsonb_typeof(${self.document}) = 'object' AND coalesce(${self.document}->'version' = '1'::jsonb, false) AND coalesce(jsonb_typeof(${self.document}->'jcal') = 'array', false))`
+    ),
+    check(
+      'ics_feed_provenance_check',
+      sql`${self.provenance} IS NULL OR (jsonb_typeof(${self.provenance}) = 'object' AND coalesce(${self.provenance}->'version' = '1'::jsonb, false))`
+    ),
+    check('ics_feed_skipped_check', sql`jsonb_typeof(${self.skipped}) = 'array'`)
+  ]
 )
 
 /** A declared time window (TRD); a zero-length `commute_wave` is valid (D13). */
@@ -71,6 +114,11 @@ export const window = tenantTable(
     seriesId: uuid('series_id'),
     icsFeedId: uuid('ics_feed_id'),
     cancelledAt: instant('cancelled_at'),
+    cancellationOrigin: text('cancellation_origin').$type<'manual' | 'series' | 'source'>(),
+    seriesOccurrenceDate: date('series_occurrence_date'),
+    icsUid: text('ics_uid'),
+    icsRecurrenceId: text('ics_recurrence_id'),
+    localOverride: boolean('local_override').notNull().default(false),
     shareLinkId: uuid('share_link_id'),
     guestDeviceHash: text('guest_device_hash'),
     guestIpHash: text('guest_ip_hash'),
@@ -82,7 +130,21 @@ export const window = tenantTable(
     sameOrg('window_project', self, self.projectId, project, true),
     sameOrg('window_series', self, self.seriesId, windowSeries),
     sameOrg('window_ics_feed', self, self.icsFeedId, icsFeed),
-    sameOrg('window_share_link', self, self.shareLinkId, shareLink)
+    sameOrg('window_share_link', self, self.shareLinkId, shareLink),
+    unique('window_native_identity_key').on(self.seriesId, self.seriesOccurrenceDate),
+    unique('window_import_identity_key').on(self.icsFeedId, self.icsUid, self.icsRecurrenceId),
+    check(
+      'window_native_identity_check',
+      sql`${self.seriesOccurrenceDate} IS NULL OR (${self.seriesId} IS NOT NULL AND ${self.icsFeedId} IS NULL)`
+    ),
+    check(
+      'window_import_identity_check',
+      sql`(${self.icsUid} IS NULL AND ${self.icsRecurrenceId} IS NULL) OR (${self.icsFeedId} IS NOT NULL AND ${self.icsUid} IS NOT NULL AND ${self.icsRecurrenceId} IS NOT NULL AND octet_length(${self.icsUid}) BETWEEN 1 AND 1024 AND octet_length(${self.icsRecurrenceId}) <= 1024)`
+    ),
+    check(
+      'window_cancellation_origin_check',
+      sql`${self.cancellationOrigin} IS NULL OR (${self.cancelledAt} IS NOT NULL AND ${self.cancellationOrigin} IN ('manual', 'series', 'source'))`
+    )
   ]
 )
 
