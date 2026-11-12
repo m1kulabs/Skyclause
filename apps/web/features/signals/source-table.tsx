@@ -62,9 +62,9 @@ export function SourceTable({
   locale: Locale
 }) {
   return (
-    <table className="w-full text-left type-body max-md:block">
+    <table className="w-full text-left type-body max-lg:block">
       <caption className="sr-only">{t('signals.sources_caption', {}, locale)}</caption>
-      <thead className="sr-only md:not-sr-only">
+      <thead className="sr-only lg:not-sr-only">
         <tr className="type-small text-muted-foreground">
           <th scope="col" className="px-3 pb-2 font-normal">
             {t('signals.col_source', {}, locale)}
@@ -80,7 +80,7 @@ export function SourceTable({
           </th>
         </tr>
       </thead>
-      <tbody className="max-md:block">
+      <tbody className="max-lg:block">
         {sources.map((source) => {
           const latest = source.latest_reading
           const value = latestParts(source, strip, locale)
@@ -93,9 +93,9 @@ export function SourceTable({
               key={source.id}
               data-source={source.id}
               data-state={source.state.state}
-              className="align-top max-md:grid max-md:grid-cols-[minmax(0,1fr)_auto] max-md:gap-x-4 max-md:py-4"
+              className="align-top max-lg:grid max-lg:grid-cols-[minmax(0,1fr)_auto] max-lg:gap-x-4 max-lg:py-4"
             >
-              <td className="px-3 py-3 max-md:col-span-2 max-md:p-0">
+              <td className="px-3 py-3 max-lg:col-span-2 max-lg:p-0">
                 <Link
                   href={`?source=${encodeURIComponent(source.external_id)}`}
                   scroll={false}
@@ -125,7 +125,7 @@ export function SourceTable({
                   </a>
                 </p>
               </td>
-              <td className="px-3 py-3 text-right max-md:col-start-1 max-md:p-0 max-md:text-left">
+              <td className="px-3 py-3 text-right max-lg:col-start-1 max-lg:p-0 max-lg:text-left">
                 {value ? (
                   <span data-numeric={value.figure ? true : undefined} className="block">
                     {value.figure && <span className="type-figure">{value.figure}</span>}
@@ -136,7 +136,7 @@ export function SourceTable({
                   <span className="type-small text-muted-foreground">{t('signals.no_value', {}, locale)}</span>
                 )}
               </td>
-              <td className="px-3 py-3 text-right max-md:col-start-2 max-md:row-start-2 max-md:p-0">
+              <td className="px-3 py-3 text-right max-lg:col-start-2 max-lg:row-start-2 max-lg:p-0">
                 {source.age_s === null ? null : (
                   <span data-numeric className="block">
                     {formatAge(new Date(now - source.age_s * 1000), locale)}
@@ -148,7 +148,7 @@ export function SourceTable({
                   </time>
                 )}
               </td>
-              <td className="px-3 py-3 max-md:col-span-2 max-md:p-0 max-md:pt-2">
+              <td className="px-3 py-3 max-lg:col-span-2 max-lg:p-0 max-lg:pt-2">
                 <StatusMark state={source.state.state} locale={locale} />
                 {detail && <p className="mt-1 type-small text-muted-foreground">{detail}</p>}
                 <SourceProblem source={source} now={now} locale={locale} />

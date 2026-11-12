@@ -86,7 +86,7 @@ export function WindowEntry({
       className={
         compact
           ? 'flex min-w-0 flex-col gap-1'
-          : 'grid min-w-0 gap-x-4 gap-y-1 md:grid-cols-[9.5rem_minmax(0,1fr)_auto] md:items-start'
+          : 'grid min-w-0 gap-x-4 gap-y-1 md:grid-cols-[9.5rem_minmax(0,1fr)] md:items-start lg:grid-cols-[9.5rem_minmax(12rem,1fr)_auto]'
       }
     >
       <time
@@ -126,7 +126,9 @@ export function WindowEntry({
       </div>
       <div
         className={
-          compact ? 'flex flex-col items-start gap-1' : 'flex flex-wrap items-center gap-x-3 gap-y-1 md:justify-end'
+          compact
+            ? 'flex flex-col items-start gap-1'
+            : 'flex flex-wrap items-center gap-x-3 gap-y-1 md:col-start-2 lg:col-start-3 lg:justify-end'
         }
       >
         <Calls window={window} root={root} bundles={bundles} compact={compact} />
