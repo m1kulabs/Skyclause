@@ -69,7 +69,7 @@ export function HeroBand({ win, state, sliderProps, sliderRef, now }: HeroBandPr
           <span className={styles.now} data-now aria-hidden="true" style={{ left: `${nowLeft.toFixed(3)}%` }} />
         ) : null}
       </div>
-      <p id="hero-strip-help" className="sr-only">
+      <p id="hero-strip-help" className="sr-only" data-source={CLOCK_SOURCE}>
         {t('landing-hero.strip_help', {}, 'en')}
       </p>
       <div className={styles.ticks} data-source={CLOCK_SOURCE}>
