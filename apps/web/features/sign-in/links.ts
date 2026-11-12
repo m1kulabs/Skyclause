@@ -2,12 +2,13 @@
 // host (lib/hosts.ts). Under HOST_MODE=multi a relative link from here would end on the app host's not-found page, so
 // these are absolute to MARKETING_ORIGIN; on one host (HOST_MODE=single, the e2e server) they stay relative.
 
+import { hrefOn } from '../../lib/origins'
+
 type Env = Record<string, string | undefined>
 
 /** A marketing page's href as seen from the app host: absolute under HOST_MODE=multi, relative on one host. */
 export function marketingHref(path: string, env: Env = process.env): string {
-  const origin = env.HOST_MODE === 'multi' ? env.MARKETING_ORIGIN : undefined
-  return origin ? new URL(path, origin).toString() : path
+  return hrefOn('marketing', path, env)
 }
 
 export interface SignInLinks {

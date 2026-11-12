@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render } from '@testing-library/react'
 import axe from 'axe-core'
 import { t } from '@skyclause/i18n/brand'
@@ -308,8 +308,8 @@ describe('landing sections', () => {
     for (const href of hrefs) expect(href).toMatch(/^(#|\/sign-in$|\/sign-up$|\/legal\/|\/ms\/legal\/|https:\/\/)/)
     cleanup()
     // Where the hosts split, Sign in and Create an account are the app host's pages, never the marketing host's.
-    const appOrigin = process.env.APP_ORIGIN
-    process.env.APP_ORIGIN = 'https://app.skyclause.m1ku.tech'
+    vi.stubEnv('HOST_MODE', 'multi')
+    vi.stubEnv('APP_ORIGIN', 'https://app.skyclause.m1ku.tech')
     try {
       render(<LandingFooter />)
       const named = (name: string) =>
@@ -317,8 +317,7 @@ describe('landing sections', () => {
       expect(named('Sign in')).toBe('https://app.skyclause.m1ku.tech/sign-in')
       expect(named('Create an account')).toBe('https://app.skyclause.m1ku.tech/sign-up')
     } finally {
-      if (appOrigin === undefined) delete process.env.APP_ORIGIN
-      else process.env.APP_ORIGIN = appOrigin
+      vi.unstubAllEnvs()
     }
     expect(hrefs).not.toContain('/guest')
     expect(hrefs).not.toContain('/docs')
