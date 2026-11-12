@@ -1,17 +1,20 @@
 // #94 ticket decision: a token held in a T table maps to its live row's organisation and ID, before any organisation
 // is known, and only through auth.credential_owner().
-import { beforeAll, expect, test } from 'vitest'
+import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { credentialOwner } from '../src/auth'
 import { tokenHash, withTenant, type Tx } from '../src'
 import { makeGuestToken, makeOauthGrant, makeOrganization, makeShareLink } from './factories'
-import { asLogin, memberOf, refusal } from './harness'
+import { asLogin, databaseNow, memberOf, refusal } from './harness'
 
 let orgId: string
 const asMember = <T>(fn: (tx: Tx) => Promise<T>) => withTenant({ orgId, principal: memberOf(orgId) }, fn)
-const past = new Date(Date.now() - 1000)
 
 beforeAll(async () => {
   orgId = (await makeOrganization()).id
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 test('tokenHash is the SHA-256 hex of the token', () => {
@@ -31,6 +34,10 @@ test('a live guest token, share link or grant maps to its organisation and ID', 
 })
 
 test('an expired or revoked row, an unknown hash or a malformed grant ID maps to null', async () => {
+  // Only the application clock leads; credential expiry is checked against database time.
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(Date.now() + 60_000)
+  const past = new Date((await databaseNow()).getTime() - 1000)
   const grant = await asMember(async (tx) => {
     await makeGuestToken(tx, { tokenHash: tokenHash('skg_expired'), expiresAt: past })
     await makeShareLink(tx, { tokenHash: tokenHash('share-expired'), expiresAt: past })
