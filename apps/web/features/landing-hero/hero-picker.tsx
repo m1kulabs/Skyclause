@@ -139,9 +139,10 @@ export default function HeroPicker({
   const open = result.kind !== 'unavailable'
 
   const evaluate = useCallback(
-    async (next: HeroWindow, beacon: boolean) => {
+    async (next: HeroWindow, beacon: boolean, silent = false) => {
       const id = ++requestRef.current
-      setPending(true)
+      // The minute's refresh reads quietly: only a read the visitor asked for dims the answer on screen.
+      if (!silent) setPending(true)
       const outcome = await fetchEvaluate(next, apiOrigin)
       if (id !== requestRef.current) return
       setPending(false)
@@ -188,7 +189,7 @@ export default function HeroPicker({
   useEffect(() => {
     if (!open) return
     const timer = setInterval(() => {
-      if (visibleRef.current && document.visibilityState !== 'hidden') void evaluate(winRef.current, false)
+      if (visibleRef.current && document.visibilityState !== 'hidden') void evaluate(winRef.current, false, true)
     }, 60_000)
     return () => clearInterval(timer)
   }, [evaluate, open])
@@ -333,16 +334,32 @@ export default function HeroPicker({
     return parsed
   }
 
+  // Sending the form (Enter in a time field, or Retry) applies both typed times; a new window is read once the
+  // debounce settles, the same window at once. A Retry already under way is not sent again.
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    const submitter = (event.nativeEvent as SubmitEvent).submitter
+    if (submitter?.getAttribute('aria-disabled') === 'true') return
     const start = parseTimeInput(startText)
     const end = parseTimeInput(endText)
     setInvalid({ start: start === null, end: end === null })
     if (start === null || end === null) return
     const clamped = clampWindow(start, end)
-    const next = { ...win, startMin: clamped.start, endMin: clamped.end }
-    setWin(next)
-    if (open) void evaluate(next, true)
+    setStartText(toLocalTime(clamped.start))
+    setEndText(toLocalTime(clamped.end))
+    if (clamped.start !== win.startMin || clamped.end !== win.endMin) {
+      setWin({ ...win, startMin: clamped.start, endMin: clamped.end })
+    } else if (open) void evaluate(win, true)
+  }
+
+  // The form has two text fields and no submit button, so a browser never sends it on Enter: the field does. It reads
+  // its own text as leaving it would (marked, and nothing sent, when it cannot), then sends both.
+  const onTimeKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter') return
+    event.preventDefault()
+    const field = event.currentTarget.name === 'end' ? 'end' : 'start'
+    if (settleTime(field, event.currentTarget.value) === null) return
+    event.currentTarget.form?.requestSubmit()
   }
 
   const strip = result.kind === 'ok' ? stripOf(result.data.strip, win, result.data.evaluated_at) : null
@@ -417,6 +434,7 @@ export default function HeroPicker({
                 if (parsed !== null) commitTimes(parsed, win.endMin)
               }}
               onBlur={(event) => settleTime('start', event.target.value)}
+              onKeyDown={onTimeKeyDown}
             />
           </label>
           <label className={styles.field}>
@@ -440,6 +458,7 @@ export default function HeroPicker({
                 if (parsed !== null) commitTimes(win.startMin, parsed)
               }}
               onBlur={(event) => settleTime('end', event.target.value)}
+              onKeyDown={onTimeKeyDown}
             />
           </label>
           {/* The rule for a typed time takes the zone line's place, so a message never pushes the verdict down. */}
@@ -465,6 +484,7 @@ export default function HeroPicker({
               calendarQuery={calendarQuery}
               rainAnimated={!gaugeError}
               replay={replay}
+              pending={pending}
             />
           </div>
         </div>

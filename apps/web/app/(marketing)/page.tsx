@@ -19,7 +19,8 @@ export default async function Home({
   const [read, grades] = await Promise.all([readHero(query), readGrades(fetch, process.env, AbortSignal.timeout(2000))])
   return (
     <div className="landing">
-      <main>
+      {/* The skip link's target: past the language suggestion, straight to the page. */}
+      <main id="landing-main" tabIndex={-1}>
         <LandingHero read={read} />
         <LandingSections read={read} grades={grades} gradesSource={gradesPath(pilotRefFromEnv(process.env))} />
       </main>

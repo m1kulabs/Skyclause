@@ -208,6 +208,106 @@ describe('HeroPicker', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
   })
 
+  test('Enter in a time field applies what was typed, in any form the rule names, without leaving the field', async () => {
+    render(
+      <HeroPicker
+        initialResult={initialResult}
+        initialStripSvg={null}
+        initialWin={{ date: '2026-11-05', startMin: 1290, endMin: 1380 }}
+        dates={dates}
+        latestCall={null}
+        pilot={null}
+        calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+        apiOrigin="https://api.example.test"
+        replay={null}
+      />
+    )
+    const start = screen.getByLabelText('Window start') as HTMLInputElement
+    start.focus()
+    // "1530" is not HH:MM, so typing alone moves nothing; Enter reads it as the rule says.
+    fireEvent.change(start, { target: { value: '1530' } })
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    expect(fetchMock).not.toHaveBeenCalled()
+    fireEvent.keyDown(start, { key: 'Enter' })
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    expect(JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string)).toMatchObject({
+      start_time: '15:30',
+      end_time: '23:00'
+    })
+    expect(start.value).toBe('15:30')
+    expect(document.activeElement).toBe(start)
+    // An unreadable time is marked on Enter as on leaving the field, and nothing is sent for it.
+    fetchMock.mockClear()
+    fireEvent.change(start, { target: { value: 'soon' } })
+    fireEvent.keyDown(start, { key: 'Enter' })
+    expect(start.getAttribute('aria-invalid')).toBe('true')
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  test('while a read is under way the answer says so, dimmed, and Retry says it is retrying and sends once', async () => {
+    let release: (value: unknown) => void = () => {}
+    fetchMock.mockImplementation(() =>
+      Promise.resolve({ ok: false, status: 503, headers: { get: () => null }, json: () => Promise.resolve({}) })
+    )
+    render(
+      <HeroPicker
+        initialResult={initialResult}
+        initialStripSvg={null}
+        initialWin={{ date: '2026-11-05', startMin: 1290, endMin: 1380 }}
+        dates={dates}
+        latestCall={null}
+        pilot={null}
+        calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+        apiOrigin="https://api.example.test"
+        replay={null}
+      />
+    )
+    fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowRight' })
+    await waitFor(() => expect(screen.getByText('Couldn’t reach the live verdict just now.')).toBeTruthy())
+    const readout = document.querySelector('[data-rain-animated]')!
+    expect(readout.getAttribute('data-pending')).toBeNull()
+    fetchMock.mockImplementation(() => new Promise((resolve) => (release = resolve)))
+    const retry = screen.getByRole('button', { name: 'Retry' })
+    retry.focus()
+    fireEvent.click(retry)
+    await waitFor(() => expect(readout.getAttribute('data-pending')).toBe('yes'))
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    const retrying = screen.getByRole('button', { name: 'Retrying…' })
+    expect(retrying.getAttribute('aria-disabled')).toBe('true')
+    expect(document.activeElement).toBe(retrying)
+    expect(screen.getByText('Checking this window…')).toBeTruthy()
+    // A second press while the read runs sends nothing more.
+    fireEvent.click(retrying)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    release(evaluateOk())
+    await waitFor(() => expect(readout.getAttribute('data-pending')).toBeNull())
+    expect(screen.queryByText('Checking this window…')).toBeNull()
+    expect(screen.getByText(/^Evaluated /)).toBeTruthy()
+  })
+
+  test('the minute refresh reads quietly: the answer is never dimmed for it', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    fetchMock.mockImplementation(() => new Promise(() => {}))
+    render(
+      <HeroPicker
+        initialResult={initialResult}
+        initialStripSvg={null}
+        initialWin={{ date: '2026-11-05', startMin: 1290, endMin: 1380 }}
+        dates={dates}
+        latestCall={null}
+        pilot={null}
+        calendarQuery="/v1/public/commons/bukit-jalil/calendar-entries?limit=1"
+        apiOrigin="https://api.example.test"
+        replay={null}
+      />
+    )
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(document.querySelector('[data-rain-animated]')!.getAttribute('data-pending')).toBeNull()
+    expect(screen.queryByText('Checking this window…')).toBeNull()
+  })
+
   test('arrows move the start with the length held; Shift with arrows changes only the length', async () => {
     render(
       <HeroPicker

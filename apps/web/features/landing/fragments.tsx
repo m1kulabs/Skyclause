@@ -34,9 +34,16 @@ function Myt({ clock }: { clock: string }) {
   )
 }
 
-/** Lebat is MET's word for heavy rain, a rain class, not a mode: a neutral edged capsule, never a mode's hue or glyph. */
+/**
+ * Lebat is MET's word for heavy rain, a rain class, not a mode: a neutral edged capsule, never a mode's hue or glyph.
+ * It is Malay inside English, and the term the clause is defined by, so a translating browser leaves it as it is.
+ */
 function Lebat({ children = 'Lebat' }: { children?: string }) {
-  return <span className="frag-class">{children}</span>
+  return (
+    <span className="frag-class" lang="ms" translate="no">
+      {children}
+    </span>
+  )
 }
 
 /** The replay's 60-minute totals as bars, ink on the panel, the last one emphasised, with the Lebat line at 31 mm. */
@@ -290,12 +297,14 @@ export function LiveGrades({ grades, source }: { grades: GradesState; source: st
   const n = formatNumber(grades.n, 'en')
   const low = grades.low === null ? '' : share(grades.low)
   const high = grades.high === null ? '' : `–${share(grades.high)}`
+  // A grade with no interval yet says nothing about one, never an empty parenthesis.
+  const interval = low || high ? ` (Wilson 95% interval ${low}${high})` : ''
   return (
     <p className="frag-live" data-source={source}>
       <span>
         Latest: n={n}
-        {grades.x !== null ? `, ${formatNumber(grades.x, 'en')} of ${n}` : ''} (Wilson 95% interval {low}
-        {high})
+        {grades.x !== null ? `, ${formatNumber(grades.x, 'en')} of ${n}` : ''}
+        {interval}
       </span>
     </p>
   )

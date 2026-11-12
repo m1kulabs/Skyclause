@@ -31,10 +31,13 @@ export function PublicChrome({
     { label: t('legal.frame.terms', {}, locale), page: '/legal/terms', hrefLang: 'en' as const },
     { label: t('legal.frame.privacy', {}, locale), page: privacyPath(locale), hrefLang: locale }
   ]
+  // The other language exists for the privacy notice only: on it the link reads this page in that language; anywhere
+  // else (the Terms, a not-found page) it names the notice it opens.
   const other = locale === 'ms' ? 'en' : 'ms'
+  const onPrivacy = path === privacyPath(locale)
   const language = {
-    label: t('legal.frame.language', {}, locale),
-    title: t('legal.frame.languageLabel', {}, locale),
+    label: t(onPrivacy ? 'legal.frame.language' : 'legal.frame.languagePrivacy', {}, locale),
+    title: t(onPrivacy ? 'legal.frame.languageLabel' : 'legal.frame.languagePrivacyLabel', {}, locale),
     href: hrefOn('marketing', privacyPath(other)),
     hrefLang: other
   }

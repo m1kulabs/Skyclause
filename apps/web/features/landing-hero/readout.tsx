@@ -28,6 +28,17 @@ export interface HeroReadoutProps {
   rainAnimated: boolean
   /** The labelled replay the server drew (ReplayAnswer), the answer while live verdicts are not open. */
   replay: ReactNode
+  /** A read the visitor asked for is under way: the answer on screen is the last window's, dimmed and said so. */
+  pending?: boolean
+}
+
+/** Retry sends the form again; while that read runs it says so and is not sent twice (it keeps focus). */
+function RetryButton({ pending }: { pending: boolean }) {
+  return (
+    <button type="submit" className={styles.retry} aria-disabled={pending || undefined}>
+      {t(pending ? 'landing-hero.retrying' : 'landing-hero.retry', {}, 'en')}
+    </button>
+  )
 }
 
 function InputRow({ input, evaluatedAt }: { input: InputValue; evaluatedAt: string }) {
@@ -62,11 +73,13 @@ function InputRow({ input, evaluatedAt }: { input: InputValue; evaluatedAt: stri
 export function VerdictBody({
   groups,
   evaluatedAt,
-  label
+  label,
+  pending = false
 }: {
   groups: readonly GroupedVerdict[]
   evaluatedAt: string
   label: string
+  pending?: boolean
 }) {
   const errors = groups.flatMap((group) => group.inputs.filter((input) => input.state === 'error'))
   return (
@@ -74,7 +87,11 @@ export function VerdictBody({
       <div className={styles.verdictHead}>
         <p className={styles.label}>{label}</p>
         <p data-source={CLOCK_SOURCE} className={styles.meta}>
-          <span>{t('landing-hero.evaluated', { time: formatTime(evaluatedAt, 'en') }, 'en')}</span>
+          <span>
+            {pending
+              ? t('landing-hero.checking', {}, 'en')
+              : t('landing-hero.evaluated', { time: formatTime(evaluatedAt, 'en') }, 'en')}
+          </span>
         </p>
       </div>
       {groups.map((group) => (
@@ -124,17 +141,23 @@ export function VerdictBody({
           <span>{errorLineOf(input)}</span>
         </p>
       ))}
-      {errors.length ? (
-        <button type="submit" className={styles.retry}>
-          {t('landing-hero.retry', {}, 'en')}
-        </button>
-      ) : null}
+      {errors.length ? <RetryButton pending={pending} /> : null}
     </>
   )
 }
 
 /** A read that failed (no answer, a timeout, a server error) or was refused for now (429): said plainly, with Retry. */
-function ReadFailure({ title, detail, glyph }: { title: string; detail: string; glyph: 'error' | 'stale' }) {
+function ReadFailure({
+  title,
+  detail,
+  glyph,
+  pending
+}: {
+  title: string
+  detail: string
+  glyph: 'error' | 'stale'
+  pending: boolean
+}) {
   return (
     <div className={styles.error}>
       <p className={styles.errorTitle}>
@@ -142,11 +165,9 @@ function ReadFailure({ title, detail, glyph }: { title: string; detail: string; 
         <span>{title}</span>
       </p>
       <p data-source={CLOCK_SOURCE} className={styles.errorDetail}>
-        {detail}
+        {pending ? t('landing-hero.checking', {}, 'en') : detail}
       </p>
-      <button type="submit" className={styles.retry}>
-        {t('landing-hero.retry', {}, 'en')}
-      </button>
+      <RetryButton pending={pending} />
     </div>
   )
 }
@@ -175,13 +196,21 @@ function LatestCallLine({ latestCall, calendarQuery }: { latestCall: LatestCallR
   )
 }
 
-export function HeroReadout({ result, latestCall, calendarQuery, rainAnimated, replay }: HeroReadoutProps) {
+export function HeroReadout({
+  result,
+  latestCall,
+  calendarQuery,
+  rainAnimated,
+  replay,
+  pending = false
+}: HeroReadoutProps) {
   let answer: ReactNode
   if (result.kind === 'unavailable') answer = replay
   else if (result.kind === 'rate_limited')
     answer = (
       <ReadFailure
         glyph="stale"
+        pending={pending}
         title={t('landing-hero.rate_limited', {}, 'en')}
         detail={t('landing-hero.retry_after', { time: formatTime(result.retryAfter, 'en') }, 'en')}
       />
@@ -190,6 +219,7 @@ export function HeroReadout({ result, latestCall, calendarQuery, rainAnimated, r
     answer = (
       <ReadFailure
         glyph="error"
+        pending={pending}
         title={t('landing-hero.fetch_error', {}, 'en')}
         detail={t('landing-hero.fetch_error_at', { time: formatTime(result.at, 'en') }, 'en')}
       />
@@ -200,10 +230,15 @@ export function HeroReadout({ result, latestCall, calendarQuery, rainAnimated, r
         groups={groupedVerdicts(result.data.verdicts)}
         evaluatedAt={result.data.evaluated_at}
         label={result.data.label}
+        pending={pending}
       />
     )
   return (
-    <div className={styles.readout} data-rain-animated={rainAnimated ? 'yes' : 'no'}>
+    <div
+      className={styles.readout}
+      data-rain-animated={rainAnimated ? 'yes' : 'no'}
+      data-pending={pending ? 'yes' : undefined}
+    >
       {answer}
       <LatestCallLine latestCall={latestCall} calendarQuery={calendarQuery} />
     </div>
