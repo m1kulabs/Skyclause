@@ -43,7 +43,10 @@ const REGISTRY: Registry = {
 export function createApi(deps: ApiDeps, registry: Registry = REGISTRY) {
   return {
     v1: surfaceApp('v1', registry.v1, registry.handlers, deps),
-    api: surfaceApp('api', registry.api, registry.handlers, deps)
+    api: surfaceApp('api', registry.api, registry.handlers, deps),
+    // #737: the `/v1` operations as the app host serves them at `/api/v1`, where the browser's host-only session
+    // cookie goes. `/api`'s rule applies (sessions only; a cookie write from APP_ORIGIN) and there is no CORS.
+    v1Bridge: surfaceApp('v1', registry.v1, registry.handlers, deps, { bridge: true })
   }
 }
 
@@ -53,7 +56,8 @@ function surfaceApp(
   surface: Surface,
   routes: readonly SkyclauseRoute[],
   handlers: Registry['handlers'],
-  deps: ApiDeps
+  deps: ApiDeps,
+  { bridge = false }: { bridge?: boolean } = {}
 ) {
   const app = new OpenAPIHono<ApiEnv>({
     defaultHook: (result) => {
@@ -68,7 +72,7 @@ function surfaceApp(
     c.set('orgId', null)
     await next()
   })
-  if (surface === 'v1') app.use('/v1/*', v1Cors())
+  if (surface === 'v1' && !bridge) app.use('/v1/*', v1Cors())
   app.onError((error, c) => {
     const problem = toApiError(error)
     if (problem.status >= 500 && problem.slug !== 'not-built') {
@@ -83,7 +87,7 @@ function surfaceApp(
       new ApiError(HTTP_PROBLEM_STATUS['not-found'], 'not-found', 'No operation answers this method and path.')
     )
   )
-  for (const route of routes) mount(app, surface, route, handlers[route.operationId])
+  for (const route of routes) mount(app, surface, route, handlers[route.operationId], surface === 'api' || bridge)
   if (surface === 'api') mountAuditWriteGuards(app)
   return app
 }
@@ -125,7 +129,13 @@ function gate(statement: RouteMetadata['statement']): Middleware[] {
   }
 }
 
-function mount(app: OpenAPIHono<ApiEnv>, surface: Surface, route: SkyclauseRoute, entry: AnyHandlerEntry | undefined) {
+function mount(
+  app: OpenAPIHono<ApiEnv>,
+  surface: Surface,
+  route: SkyclauseRoute,
+  entry: AnyHandlerEntry | undefined,
+  firstParty: boolean
+) {
   const x = route['x-skyclause']
   const chain: Middleware[] = [
     async (c, next) => {
@@ -135,7 +145,7 @@ function mount(app: OpenAPIHono<ApiEnv>, surface: Surface, route: SkyclauseRoute
     // Public reads resolve no principal; `/api` still does, so a key or token gets its 403.
     takePrincipal(!(surface === 'v1' && x.statement === 'public')),
     rateLimit,
-    ...(surface === 'api' ? [apiSurfaceGate] : []),
+    ...(firstParty ? [apiSurfaceGate] : []),
     ...gate(x.statement),
     auditToolCall,
     ...(entry?.middleware ?? []),
