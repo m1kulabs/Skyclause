@@ -89,9 +89,11 @@ test('newestWrite is the newest database-stamped write at or before `at`, and a 
     expect(await newestWrite(await cutoff())).toEqual(newest)
   }
 
+  // A row of each table committed after `at`.
   const at = await cutoff()
   await pause()
-  const later = await asMember(async (tx) => (await makeDomainEvent(tx)).createdAt)
-  expect(later.getTime()).toBeGreaterThan(at.getTime())
-  expect(await newestWrite(at)).toEqual(newest)
+  for (const write of writes) {
+    expect((await write()).getTime()).toBeGreaterThan(at.getTime())
+    expect(await newestWrite(at)).toEqual(newest)
+  }
 })
