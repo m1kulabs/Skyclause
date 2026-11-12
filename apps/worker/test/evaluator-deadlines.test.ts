@@ -109,6 +109,7 @@ test('pending, GTFS calendar and camera daylight use their actual boundaries', (
 })
 test('MET actual validity and forecast local date boundaries are derived', () => {
   const warning = h('met_warning')
+  warning.warningAreaTerms = ['Kuala Lumpur']
   warning.sources[0]!.staleAfterS = 100000
   warning.readings[0]!.value = true
   warning.readings[0]!.valueJson = { valid_from_utc: iso(10000), valid_to_utc: iso(20000), text_en: 'Kuala Lumpur' }
@@ -229,10 +230,33 @@ test('missing APIMS morning coverage never becomes a daily polling deadline', ()
 
 test('MET missing validity never fabricates an infinite warning boundary', () => {
   const history = h('met_warning')
+  history.warningAreaTerms = ['Kuala Lumpur']
   history.sources[0]!.staleAfterS = 1
   history.readings[0]!.value = true
   history.readings[0]!.valueJson = { valid_to_utc: iso(500000), text_en: 'Kuala Lumpur' }
   expect(plan(history, iso(5000), ['site.met_warning_in_force'])).toBeNull()
   history.readings[0]!.valueJson = { valid_from_utc: iso(500000), text_en: 'Kuala Lumpur' }
   expect(plan(history, iso(5000), ['site.met_warning_in_force'])).toBeNull()
+})
+
+test('MET deadlines use the same project terms, raw bilingual text and strict exclusions as snapshots', () => {
+  const warning = h('met_warning')
+  warning.sources[0]!.staleAfterS = 100000
+  warning.readings[0]!.valueJson = {
+    warning_issue: { title_en: 'Thunderstorms Warning' },
+    valid_from_utc: iso(10000),
+    valid_to_utc: iso(20000),
+    text_en: 'Kedah',
+    text_bm: 'Amaran di Kedah',
+    excluded: false
+  }
+  warning.warningAreaTerms = ['Kedah']
+  expect(Date.parse(plan(warning, base, ['site.met_warning_in_force'])!)).toBe(ms + 10000)
+  warning.warningAreaTerms = ['Kuala Lumpur']
+  expect(Date.parse(plan(warning, base, ['site.met_warning_in_force'])!)).not.toBe(ms + 10000)
+  delete warning.warningAreaTerms
+  expect(Date.parse(plan(warning, base, ['site.met_warning_in_force'])!)).not.toBe(ms + 10000)
+  warning.warningAreaTerms = ['Kedah']
+  warning.readings[0]!.valueJson!.excluded = true
+  expect(Date.parse(plan(warning, base, ['site.met_warning_in_force'])!)).not.toBe(ms + 10000)
 })

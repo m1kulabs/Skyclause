@@ -110,6 +110,18 @@ function buildSnapshotFromValues(params: {
           ? [['2026-11-02T06:00:00Z', Date.parse('2026-11-02T09:00:00Z'), 'mw-1']]
           : []
     },
+    warningObservations:
+      warnState === 'fresh' && params.metWarn
+        ? {
+            'mw-1': {
+              sourceId: 'met-warn',
+              observedAt: '2026-11-02T06:00:00Z',
+              receivedAt: '2026-11-02T06:00:00Z',
+              validFrom: '2026-11-02T06:00:00Z',
+              validTo: '2026-11-02T09:00:00Z'
+            }
+          }
+        : {},
     nights: [],
     registryHash: 'reg',
     hash: 'snap'

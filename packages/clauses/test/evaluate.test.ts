@@ -1,3 +1,4 @@
+import { metWarningHistory } from './met-warning-history'
 /// <reference types="node" />
 
 import { readFileSync } from 'node:fs'
@@ -113,6 +114,15 @@ describe('evaluate, explain, and diff', () => {
     const snap = makeSkySnapshot()
     snap.site['site.api_max']!.value = 125 // Fires haze_watch (outdoor_limited)
     snap.series['w.met_warning_in_force'] = [['2026-11-02T06:00:00Z', Date.parse('2026-11-02T09:00:00Z'), 'mw-1']]
+    snap.warningObservations = {
+      'mw-1': {
+        sourceId: 'met-warn',
+        observedAt: '2026-11-02T06:00:00Z',
+        receivedAt: '2026-11-02T06:00:00Z',
+        validFrom: '2026-11-02T06:00:00Z',
+        validTo: '2026-11-02T09:00:00Z'
+      }
+    }
 
     const verdicts = evaluate(checked, snap, [wave1530], snap.tEval)
     expect(verdicts.site[0]?.mode).toBe('outdoor_limited')
@@ -510,6 +520,7 @@ describe('review regression: warning observation interval and provenance', () =>
   }
   function history(observedAt: string, receivedAt = observedAt): ReadingHistory {
     return {
+      warningAreaTerms: ['Kuala Lumpur'],
       sources: [
         {
           id: 'met',
@@ -531,7 +542,13 @@ describe('review regression: warning observation interval and provenance', () =>
           receivedAt,
           value: true,
           valueText: 'Kuala Lumpur',
-          valueJson: { valid_from: ts('06:00'), valid_to: ts('10:00') },
+          valueJson: {
+            text_en: 'Kuala Lumpur',
+            excluded: false,
+            warning_issue: { title_en: 'Thunderstorms Warning' },
+            valid_from_utc: ts('06:00'),
+            valid_to_utc: ts('10:00')
+          },
           itemKey: 'warning',
           revision: 1
         }
@@ -563,7 +580,7 @@ describe('review regression: warning observation interval and provenance', () =>
 
   test('explicit span extension accepts a warning valid within the extension but outside the actual window', () => {
     const h = history(ts('08:00'))
-    h.readings[0]!.valueJson = { valid_from: ts('08:00'), valid_to: ts('08:15') }
+    h.readings[0]!.valueJson = { ...h.readings[0]!.valueJson, valid_from_utc: ts('08:00'), valid_to_utc: ts('08:15') }
     const snap = snapshotAt(h, registry, 'p', 'sky', ts('09:00'))
     expect(evaluate(check(sheet, registry).sheet!, snap, [window], ts('09:00')).windows[0]?.clauses[0]?.result).toBe(
       'fired'
@@ -646,5 +663,90 @@ describe('shared effective window span boundary', () => {
   test('an explicit span takes precedence over the implicit rain span', () => {
     const explicit = { ...clause, requires: ['w.rain_max_4h_mm'], span: { from: 'start-5m', to: 'end+10m' } }
     expect(effectiveWindowSpan(explicit, window)).toEqual({ from: '2026-11-02T06:55:00Z', to: '2026-11-02T08:10:00Z' })
+  })
+})
+
+describe('actual MET window eligibility', () => {
+  const registry = TEST_REGISTRY.filter((def) => def.sourceKind === 'met_warning')
+  const sheet: SheetInput = {
+    pack: 'sky',
+    clauses: [
+      {
+        key: 'warning',
+        name: 'Warning',
+        enabled: true,
+        scope: 'window',
+        requires: ['w.met_warning_in_force'],
+        when: 'w.met_warning_in_force',
+        proposes: { watch: true },
+        wording: { en: 'Warning' }
+      }
+    ]
+  }
+  const at = '2026-11-05T13:13:01Z'
+  function result(h: ReturnType<typeof metWarningHistory>, start = at, end = at) {
+    const snap = snapshotAt(h, registry, 'project', 'sky', at)
+    return evaluate(
+      check(sheet, registry).sheet!,
+      JSON.parse(JSON.stringify(snap)),
+      [{ id: 'window', startsAt: start, endsAt: end, kind: 'class', tz: 'Asia/Kuala_Lumpur' }],
+      at
+    ).windows[0]!.watch
+  }
+  test('same capture matches Kedah but not KL and future Strong Winds cannot apply to 5 November', () => {
+    const h = metWarningHistory()
+    expect(result(h)).toBe(true)
+    h.warningAreaTerms = ['Kuala Lumpur']
+    expect(result(h)).toBe(false)
+    h.warningAreaTerms = ['Kedah']
+    h.readings = h.readings.filter((r) => String(r.valueJson?.valid_from_utc) > at)
+    for (const r of h.readings) r.valueJson!.excluded = false
+    expect(result(h, '2026-11-04T16:00:00Z', '2026-11-05T15:59:59Z')).toBe(false)
+    delete h.warningAreaTerms
+    expect(result(h)).toBe(false)
+  })
+  test.each(['valid_from_utc', 'valid_to_utc', 'excluded'])(
+    'window rejects null validity or excluded nested warning: %s',
+    (field) => {
+      const h = metWarningHistory()
+      h.warningAreaTerms = ['Kuala Lumpur']
+      for (const r of h.readings) {
+        r.valueJson!.text_en = 'Kuala Lumpur'
+        r.valueJson![field] = field === 'excluded' ? true : null
+      }
+      expect(result(h)).toBe(false)
+    }
+  )
+  test.each(['null-end', 'series-only', 'site-only'] as const)(
+    'incomplete frozen warning evidence cannot create validity: %s',
+    (variant) => {
+      const snap = snapshotAt(metWarningHistory(), registry, 'project', 'sky', at)
+      expect(snap.site['site.met_warning_in_force']?.value).toBe(true)
+      const id = snap.series['w.met_warning_in_force']![0]![2]
+      if (variant === 'null-end') snap.warningObservations![id]!.validTo = null
+      else {
+        snap.warningObservations = {}
+        if (variant === 'site-only') snap.series['w.met_warning_in_force'] = []
+        else snap.series['w.met_warning_in_force']![0]![1] = 1
+      }
+      expect(
+        evaluate(
+          check(sheet, registry).sheet!,
+          snap,
+          [{ id: 'window', startsAt: at, endsAt: at, kind: 'class', tz: 'Asia/Kuala_Lumpur' }],
+          at
+        ).windows[0]!.watch
+      ).toBe(false)
+    }
+  )
+  test('window endpoints are inclusive and successful empty poll preserves a still-valid warning', () => {
+    const h = metWarningHistory()
+    h.polls.push({ id: 'empty', sourceId: 'met', startedAt: at, outcome: 'unchanged', httpStatus: 200 })
+    const row = h.readings.find((r) => r.valueJson?.excluded === false)!
+    const from = String(row.valueJson!.valid_from_utc),
+      to = String(row.valueJson!.valid_to_utc)
+    expect(result(h, from, from)).toBe(true)
+    expect(result(h, to, to)).toBe(true)
+    expect(result(h, new Date(Date.parse(to) + 1).toISOString(), '2026-11-05T17:05:00Z')).toBe(false)
   })
 })

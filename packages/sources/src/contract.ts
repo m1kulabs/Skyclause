@@ -70,7 +70,7 @@ export interface PollContext {
 const Instant = z.iso.datetime()
 const LocalDate = z.iso.date()
 const WarningValue = z.looseObject({
-  warning_issue: z.object({ issued: z.string(), title_bm: z.string(), title_en: z.string() }),
+  warning_issue: z.looseObject({ issued: z.string(), title_bm: z.string(), title_en: z.string() }),
   valid_from: z.string().nullable(),
   valid_to: z.string().nullable(),
   heading_en: z.string(),
@@ -85,8 +85,18 @@ const WarningValue = z.looseObject({
 })
 // #122 stores the published forecast row verbatim with per-field English glosses.
 const ForecastDayValue = z.looseObject({
+  location: z.looseObject({
+    location_id: z.string().min(1).regex(/\S/),
+    location_name: z.string().min(1).regex(/\S/)
+  }),
   date: LocalDate,
+  morning_forecast: z.string(),
   afternoon_forecast: z.string(),
+  night_forecast: z.string(),
+  summary_forecast: z.string(),
+  summary_when: z.string(),
+  min_temp: z.number().int(),
+  max_temp: z.number().int(),
   gloss_en: z.record(z.string(), z.string())
 })
 const ExitsDailyValue = z.object({ data_as_of: z.string(), edition: z.number().int(), file_last_modified: z.string() })
