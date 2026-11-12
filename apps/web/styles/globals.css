@@ -490,6 +490,117 @@
   }
 }
 
+/*
+ * Native form controls, for a plain form that has to post without a client component and where a Base UI primitive
+ * cannot stand in: `native-check` on <input type="checkbox"> or <input type="radio">, `native-select` on <select>.
+ * They match <Input> and <Checkbox>: the filled field with its 2px control edge (one tone up inside a card, down to the
+ * ground inside anything that floats), an ink fill with a ground tick or dot when checked, an ink edge when invalid.
+ * Opt-in by class, so no existing native control changes. Put the control and its <label> in a row of at least 44px on
+ * touch screens; the box is 24px. The ring is the page-wide :focus-visible outline.
+ */
+@utility native-check {
+  appearance: none;
+  flex: none;
+  display: inline-grid;
+  place-content: center;
+  inline-size: 24px;
+  block-size: 24px;
+  margin: 0;
+  border: 2px solid var(--input);
+  border-radius: 4px;
+  background: var(--field);
+  cursor: pointer;
+  :where([data-slot='card']) & {
+    background: var(--raised);
+  }
+  :where(
+      [data-slot='dialog-content'],
+      [data-slot='alert-dialog-content'],
+      [data-slot='sheet-content'],
+      [data-slot='drawer-popup'],
+      [data-slot='popover-content']
+    )
+    & {
+    background: var(--background);
+  }
+  &[type='radio'] {
+    border-radius: 9999px;
+  }
+  &::before {
+    content: '';
+    inline-size: 12px;
+    block-size: 12px;
+    background: var(--ground);
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+    transform: scale(0);
+  }
+  &[type='radio']::before {
+    inline-size: 10px;
+    block-size: 10px;
+    border-radius: 9999px;
+    clip-path: none;
+  }
+  &:checked {
+    border-color: var(--ink);
+    background: var(--ink);
+  }
+  &:checked::before {
+    transform: scale(1);
+  }
+  &[aria-invalid='true'] {
+    border-color: var(--foreground);
+  }
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  @media (forced-colors: active) {
+    &:checked {
+      border-color: Highlight;
+      background: Highlight;
+    }
+    &:checked::before {
+      background: HighlightText;
+    }
+  }
+}
+
+@utility native-select {
+  inline-size: 100%;
+  min-inline-size: 0;
+  block-size: 40px;
+  padding-inline: 12px;
+  border: 2px solid var(--input);
+  border-radius: 10px;
+  background-color: var(--field);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 16px;
+  @media (min-width: 768px) {
+    font-size: 14px;
+  }
+  :where([data-slot='card']) & {
+    background-color: var(--raised);
+  }
+  :where(
+      [data-slot='dialog-content'],
+      [data-slot='alert-dialog-content'],
+      [data-slot='sheet-content'],
+      [data-slot='drawer-popup'],
+      [data-slot='popover-content']
+    )
+    & {
+    background-color: var(--background);
+  }
+  &[aria-invalid='true'] {
+    border-color: var(--foreground);
+  }
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
 @layer base {
   * {
     border-color: var(--border);
