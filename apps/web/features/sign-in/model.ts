@@ -1,3 +1,4 @@
+import { safeRelativePath } from '@skyclause/auth/relative-path'
 import { SIGN_IN_LINK_EXPIRY_S } from '@skyclause/auth/sign-in-link'
 
 const APP_ORIGIN = 'https://app.skyclause.m1ku.tech'
@@ -21,14 +22,9 @@ function first(value: string | string[] | undefined): string | undefined {
   return typeof value === 'string' ? value : undefined
 }
 
+/** A same-origin return path, by the rule the sign-in plugin and Better Auth apply (`@skyclause/auth/relative-path`). */
 export function safeNext(value: string | undefined): string | null {
-  if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return null
-  try {
-    const resolved = new URL(value, APP_ORIGIN)
-    return resolved.origin === APP_ORIGIN ? `${resolved.pathname}${resolved.search}${resolved.hash}` : null
-  } catch {
-    return null
-  }
+  return safeRelativePath(value)
 }
 
 export function continuePath(next: string | null | undefined): string {

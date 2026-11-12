@@ -239,6 +239,16 @@ test('continue accepts only same-origin relative paths, then uses the earliest m
   expect(absolute.headers.get('Location')).toBe('/new')
   const protocolRelative = await request('GET', '/continue?next=%2F%2Fevil.example', undefined, session.cookie)
   expect(protocolRelative.headers.get('Location')).toBe('/new')
+  // As Better Auth's own callback check: no control character, no encoded separator in the path, and not too long.
+  for (const next of ['/commons%00', '/commons%0D%0AX-Injected:%201', '/%252fevil.example', `/${'a'.repeat(2000)}`]) {
+    const refused = await request(
+      'GET',
+      `/continue?next=${encodeURIComponent(decodeURIComponent(next))}`,
+      undefined,
+      session.cookie
+    )
+    expect(refused.headers.get('Location'), next.slice(0, 30)).toBe('/new')
+  }
 
   const first = await makeOrg({ slug: 'first-org' })
   const second = await makeOrg({ slug: 'second-org' })

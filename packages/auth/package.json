@@ -8,6 +8,7 @@
     "./can": "./src/can.ts",
     "./client": "./src/client.ts",
     "./sign-in-link": "./src/sign-in-link.ts",
+    "./relative-path": "./src/relative-path.ts",
     "./testing": "./test/harness/index.ts",
     "./test/*": "./test/*.ts"
   },

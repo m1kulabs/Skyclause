@@ -15,6 +15,24 @@ test('next accepts same-origin paths and drops external or ambiguous URLs', () =
   }
 })
 
+test('next refuses what Better Auth refuses in a callback URL, and anything past 2,000 characters', () => {
+  for (const value of [
+    '/commons\u0000',
+    '/commons\u001fx',
+    '/commons\u007f',
+    '/commons\u0085',
+    '/%2fevil.example',
+    '/%2Fevil.example',
+    '/commons%5cevil',
+    `/${'a'.repeat(2000)}`
+  ]) {
+    expect(safeNext(value), JSON.stringify(value.slice(0, 20))).toBeNull()
+  }
+  // An encoded slash after the path is a query value, as Better Auth allows; a path of exactly 2,000 is kept.
+  expect(safeNext('/commons?next=%2Fwindows')).toBe('/commons?next=%2Fwindows')
+  expect(safeNext(`/${'a'.repeat(1999)}`)).toHaveLength(2000)
+})
+
 test('continue and account links preserve only a safe next path', () => {
   expect(continuePath('/commons?tab=windows')).toBe('/api/auth/continue?next=%2Fcommons%3Ftab%3Dwindows')
   expect(continuePath('//evil.example')).toBe('/api/auth/continue')

@@ -9,6 +9,7 @@ import type { BetterAuthPlugin } from 'better-auth'
 import { magicLink } from 'better-auth/plugins'
 import { asc, eq, sql } from 'drizzle-orm'
 import { withSendRefusal } from '../send-refusal'
+import { safeRelativePath } from '../relative-path'
 import { SIGN_IN_LINK_EXPIRY_S } from '../sign-in-link'
 
 const OWNER = 'a-auth-signin-api'
@@ -94,17 +95,7 @@ function clientIp(headers?: Headers) {
   return headers?.get('x-forwarded-for')?.split(',').at(-1)?.trim() || 'unknown'
 }
 
-function safeNext(value: unknown): string | null {
-  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return null
-  try {
-    const resolved = new URL(value, 'https://app.skyclause.m1ku.tech')
-    return resolved.origin === 'https://app.skyclause.m1ku.tech'
-      ? `${resolved.pathname}${resolved.search}${resolved.hash}`
-      : null
-  } catch {
-    return null
-  }
-}
+const safeNext = safeRelativePath
 
 function nextFromRequest(ctx?: { body?: unknown; context?: { baseURL?: string } }) {
   const body = (ctx?.body ?? {}) as { callbackURL?: unknown; metadata?: Record<string, unknown> }
@@ -551,18 +542,6 @@ async function resendMagicLink(auth: AuthApiRuntime, request: Request, now: () =
   })
 }
 
-function validRelativeNext(value: string | null, appOrigin: string) {
-  if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return null
-  try {
-    const resolved = new URL(value, appOrigin)
-    return resolved.origin === new URL(appOrigin).origin
-      ? `${resolved.pathname}${resolved.search}${resolved.hash}`
-      : null
-  } catch {
-    return null
-  }
-}
-
 /** apps/web's LANGUAGE_COOKIE: the saved language, which the web proxy puts in place of Accept-Language (LOC-1). */
 export const LANGUAGE_COOKIE = 'skyclause-language'
 
@@ -589,7 +568,7 @@ async function continueSignIn(auth: AuthApiRuntime, request: Request, appOrigin:
     )
     return response
   }
-  const next = validRelativeNext(new URL(request.url).searchParams.get('next'), appOrigin)
+  const next = safeNext(new URL(request.url).searchParams.get('next'))
   if (next) return signedIn(next)
   const memberships = await authDatabase()
     .select({ slug: organization.slug })
