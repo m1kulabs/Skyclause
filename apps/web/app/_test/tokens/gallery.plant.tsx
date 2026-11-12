@@ -358,10 +358,10 @@ export function Gallery() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Reading</TableHead>
-              <TableHead className="text-right">Time</TableHead>
-              <TableHead className="text-right">mm in 60 min</TableHead>
-              <TableHead className="text-right">Share of windows</TableHead>
+              <TableHead className="whitespace-normal">Reading</TableHead>
+              <TableHead className="text-right whitespace-normal">Time</TableHead>
+              <TableHead className="text-right whitespace-normal">mm in 60 min</TableHead>
+              <TableHead className="text-right whitespace-normal">Share of windows</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -372,14 +372,14 @@ export function Gallery() {
               ['Gauge 12', '20:00', '0.0', '100.0%']
             ].map(([name, time, rain, share], index) => (
               <TableRow key={index}>
-                <TableCell>{name}</TableCell>
-                <TableCell className="text-right" data-numeric>
+                <TableCell className="whitespace-normal">{name}</TableCell>
+                <TableCell className="text-right whitespace-normal" data-numeric>
                   <time dateTime={`2026-11-12T${time}:00+08:00`}>{`${time} MYT`}</time>
                 </TableCell>
-                <TableCell className="text-right" data-numeric>
+                <TableCell className="text-right whitespace-normal" data-numeric>
                   {rain}
                 </TableCell>
-                <TableCell className="text-right" data-numeric>
+                <TableCell className="text-right whitespace-normal" data-numeric>
                   {share}
                 </TableCell>
               </TableRow>
@@ -538,11 +538,11 @@ export function Gallery() {
               <input
                 type="checkbox"
                 role="switch"
-                id="native-pack-off"
+                id="native-pack-switch-off"
                 name="native-pack-off-switch"
                 className="native-switch"
               />
-              <Label htmlFor="native-pack-off">Native switch</Label>
+              <Label htmlFor="native-pack-switch-off">Native switch</Label>
             </div>
             <div className="flex items-center gap-2">
               <Switch id="send-push" name="send-push" defaultChecked />
