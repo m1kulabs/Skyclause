@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import type { Role } from '@skyclause/contracts'
 import { inOrg } from '@skyclause/auth/testing'
 import { makeProject } from '@skyclause/db/test/factories/index'
@@ -281,4 +281,29 @@ test('at 320px the On the list filter stays inside the page (WCAG 1.4.10)', asyn
   await page.goto(projectPath)
   await expect(page.getByRole('group', { name: t('subscribers.filter') })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320)
+})
+
+test.describe('on a coarse pointer', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+
+  test('the Menu button, the row menu and the filter segments are 44px targets', async ({ page }) => {
+    const expectTargets = async (targets: Locator[]) => {
+      for (const target of targets) {
+        const box = (await target.boundingBox())!
+        expect(box.height, await target.innerText()).toBeGreaterThanOrEqual(44)
+        expect(box.width, await target.innerText()).toBeGreaterThanOrEqual(44)
+      }
+    }
+    await setupProject(page)
+    await page.goto(projectPath)
+    expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true)
+    const filter = page.getByRole('group', { name: t('subscribers.filter') }).getByRole('button')
+    await expect(filter.first()).toBeVisible()
+    await expectTargets([page.getByRole('button', { name: t('app-shell.menu'), exact: true }), ...(await filter.all())])
+    // A phone's list rows hide the row menu; a tablet's table shows it.
+    await page.setViewportSize({ width: 800, height: 1024 })
+    const rowMenu = page.getByRole('button', { name: t('subscribers.more_actions', { email: row.email }) })
+    await expect(rowMenu).toBeVisible()
+    await expectTargets([rowMenu])
+  })
 })

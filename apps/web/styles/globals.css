@@ -1207,12 +1207,19 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
 }
 
 @media (pointer: coarse) {
+  /*
+   * Keyed on the recipes' own group classes as well as the slots: a composed trigger (the phone's Menu sheet trigger, a
+   * row's "More actions" menu) keeps the button recipe but takes its own slot, and a segment is a toggle-group-item.
+   */
   .language-suggestion button,
   .language-suggestion a,
+  .group\/button,
+  .group\/toggle,
   [data-slot='button'],
   [data-slot='select-trigger'],
   [data-slot='tabs-trigger'],
   [data-slot='toggle'] {
+    min-width: 44px;
     min-height: 44px;
   }
 }
