@@ -189,7 +189,12 @@ test.describe('the first run on a production-style server', () => {
     await expect(progress).toContainText('First run complete.')
     await shoot(page, '6-channels-done')
 
-    // The end: the project's overview, with every step shown and the next thing to do.
+    // The end: the project's overview, with every step shown and the next thing to do. The overview opens the
+    // project's bundle stream, which this walk does not judge: an idle one, so the harness's head request for it can't
+    // hang up mid-walk.
+    await context.route(/\/bundles\/stream(\?|$)/, (route) =>
+      route.fulfill({ status: 200, contentType: 'text/event-stream', body: ': idle\n\n' })
+    )
     const landed = log.length
     await progress.getByRole('link', { name: 'Continue' }).click()
     await expect(page).toHaveURL(`${APP}/${orgSlug}/${projectSlug}?first-run=done`)
