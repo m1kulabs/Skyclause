@@ -148,6 +148,11 @@ export function FrameLabeller({ sourceId, mode, locale = 'en', onStatus, onDisag
     if (frameId) previousFrame.current = frameId
   }, [frameId])
 
+  // The last label empties the queue: the answer buttons that held focus are gone, so the heading takes it.
+  useEffect(() => {
+    if ((view.kind === 'empty' || view.kind === 'not-labeller') && previousFrame.current) headingRef.current?.focus()
+  }, [view.kind])
+
   const vote = useCallback(
     (frame: ProbationFrame, label: LabelValue) => {
       const post = async (signal: AbortSignal) => {
@@ -222,12 +227,19 @@ export function FrameLabeller({ sourceId, mode, locale = 'en', onStatus, onDisag
             // A fetched object URL: next/image cannot optimise a blob, and the frame must render at true aspect.
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              className="probation-frame block h-auto w-full rounded-xl bg-card"
+              className="probation-frame block aspect-[4/3] h-auto w-full rounded-xl bg-card"
               src={view.url}
-              alt={t('probation.frame_alt', {
-                date: formatDate(view.frame.observed_at, locale),
-                time: formatTime(view.frame.observed_at, locale)
-              })}
+              // The masked canvas is 640 by 480: the frame keeps its space whatever the file's own size says.
+              width={640}
+              height={480}
+              alt={t(
+                'probation.frame_alt',
+                {
+                  date: formatDate(view.frame.observed_at, locale),
+                  time: formatTime(view.frame.observed_at, locale)
+                },
+                locale
+              )}
             />
           ) : (
             <Skeleton className={FRAME_SKELETON} />
@@ -296,19 +308,22 @@ export function FrameLabeller({ sourceId, mode, locale = 'en', onStatus, onDisag
           />
         </div>
       )}
-      {(view.kind === 'empty' || view.kind === 'not-labeller') && (
-        <p role="status" className="type-text max-w-prose rounded-xl bg-card p-pad">
-          {t(
-            view.kind === 'not-labeller'
-              ? 'probation.not_labeller'
-              : mode === 'resolve'
-                ? 'probation.empty_resolve'
-                : 'probation.empty_label',
-            {},
-            locale
-          )}
-        </p>
-      )}
+      {/* Mounted before its message, so a screen reader announces it when the queue runs out. */}
+      <div role="status">
+        {(view.kind === 'empty' || view.kind === 'not-labeller') && (
+          <p className="type-text max-w-prose rounded-xl bg-card p-pad">
+            {t(
+              view.kind === 'not-labeller'
+                ? 'probation.not_labeller'
+                : mode === 'resolve'
+                  ? 'probation.empty_resolve'
+                  : 'probation.empty_label',
+              {},
+              locale
+            )}
+          </p>
+        )}
+      </div>
     </section>
   )
 }
