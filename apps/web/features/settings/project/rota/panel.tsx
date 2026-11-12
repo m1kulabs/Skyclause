@@ -6,9 +6,11 @@ import { formatList, formatTimeZoneName } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
 import { Input } from '#ui/input'
 import { Label } from '#ui/label'
+import { Skeleton } from '#ui/skeleton'
 import { useRead } from '../../../analysis/use-read'
 import { useUnsavedChangesGuard } from '../../set-7'
 import { t } from '../../../project-settings/catalogue'
+import { Aside, Notice, Part, Parts, Problem, ReadFailed, Row, Rows, SummaryLine, dateFieldRing } from '../parts'
 import {
   projectSettingsApi,
   resolveProject,
@@ -199,101 +201,100 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
   if (loaded.status === 'loading')
     return (
       <div className="grid gap-4" aria-busy="true">
-        <div className="h-24 animate-pulse rounded bg-muted" />
-        <div className="h-24 animate-pulse rounded bg-muted" />
+        <Skeleton className="h-16 w-full rounded-md" />
+        <Skeleton className="h-16 w-full rounded-md" />
       </div>
     )
   if (loaded.status === 'error')
     return (
-      <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">
-        <span>{t('project-settings.rota_failed', {}, locale)}</span>
-        <Button type="button" variant="link" onClick={() => setRevision((value) => value + 1)}>
-          {t('project-settings.retry', {}, locale)}
-        </Button>
-      </div>
+      <ReadFailed
+        source={t('project-settings.source_rota', {}, locale)}
+        error={loaded.error}
+        onRetry={() => setRevision((value) => value + 1)}
+        locale={locale}
+      />
     )
   if (!pageData) return null
 
+  const shiftLine = (shift: RotaShift) => (
+    <div className="grid min-w-0 gap-0.5">
+      <p className="type-body font-semibold [overflow-wrap:anywhere]">{memberName(shift.account_id)}</p>
+      <p className="type-small text-muted-foreground">{shiftSchedule(shift, pageData.project.time_zone, locale)}</p>
+      <p className="type-small text-muted-foreground">{t(`project-settings.${shift.template}`, {}, locale)}</p>
+    </div>
+  )
+  const empty = (count: number) => (
+    <p className="type-body flex flex-wrap gap-x-2 text-muted-foreground">
+      <span data-numeric>{t('project-settings.count', { count }, locale)}</span>
+    </p>
+  )
+
   return (
-    <div className="grid min-w-0 gap-8" data-project-settings-rota>
-      <section className="grid min-w-0 gap-3" aria-labelledby="project-rota-override-title">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 id="project-rota-override-title" className="flex flex-wrap items-baseline gap-2 text-base font-semibold">
-            <span>{t('project-settings.override', {}, locale)}</span>
-            <span className="text-sm font-normal text-muted-foreground">
-              {t('project-settings.count', { count: overrides.length }, locale)}
-            </span>
-          </h3>
+    <Parts data-project-settings-rota>
+      <Aside>
+        <SummaryLine label={t('project-settings.override', {}, locale)}>
+          <span data-numeric>{t('project-settings.count', { count: overrides.length }, locale)}</span>
+        </SummaryLine>
+        <SummaryLine label={t('project-settings.inherited', {}, locale)}>
+          <span data-numeric>{t('project-settings.count', { count: inherited.length }, locale)}</span>
+        </SummaryLine>
+      </Aside>
+      <Part
+        title={t('project-settings.override', {}, locale)}
+        description={t('project-settings.rota_description', {}, locale)}
+        id="project-rota-override-title"
+        actions={
           <Button type="button" variant="outline" onClick={openNew}>
             {t('project-settings.add_shift', {}, locale)}
           </Button>
-        </div>
+        }
+      >
         {overrides.length ? (
-          <ul className="grid gap-3">
+          <Rows>
             {overrides.map((shift) => (
-              <li key={shift.id} className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b pb-3">
-                <div className="min-w-0">
-                  <p className="font-medium [overflow-wrap:anywhere]">{memberName(shift.account_id)}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {shiftSchedule(shift, pageData.project.time_zone, locale)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{t(`project-settings.${shift.template}`, {}, locale)}</p>
-                </div>
+              <Row key={shift.id}>
+                {shiftLine(shift)}
                 <Button type="button" variant="outline" onClick={() => openEdit(shift)}>
                   {t('project-settings.edit_shift', {}, locale)}
                 </Button>
-              </li>
+              </Row>
             ))}
-          </ul>
+          </Rows>
         ) : (
-          <p className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-            <span>{t('project-settings.count', { count: 0 }, locale)}</span>
-            <span>{t('project-settings.empty_rota', {}, locale)}</span>
-          </p>
+          <div className="grid gap-1">
+            {empty(0)}
+            <p className="type-body text-muted-foreground">{t('project-settings.empty_rota', {}, locale)}</p>
+          </div>
         )}
-      </section>
+      </Part>
 
-      <section className="grid min-w-0 gap-3" aria-labelledby="project-rota-inherited-title">
-        <h3 id="project-rota-inherited-title" className="flex flex-wrap items-baseline gap-2 text-base font-semibold">
-          <span>{t('project-settings.inherited', {}, locale)}</span>
-          <span className="text-sm font-normal text-muted-foreground">
-            {t('project-settings.count', { count: inherited.length }, locale)}
-          </span>
-        </h3>
+      <Part title={t('project-settings.inherited', {}, locale)} id="project-rota-inherited-title">
         {inherited.length ? (
-          <ul className="grid gap-3">
+          <Rows>
             {inherited.map((shift) => (
-              <li key={shift.id} className="border-b pb-3">
-                <p className="font-medium [overflow-wrap:anywhere]">{memberName(shift.account_id)}</p>
-                <p className="text-sm text-muted-foreground">
-                  {shiftSchedule(shift, pageData.project.time_zone, locale)}
-                </p>
-                <p className="text-sm text-muted-foreground">{t(`project-settings.${shift.template}`, {}, locale)}</p>
-              </li>
+              <Row key={shift.id}>{shiftLine(shift)}</Row>
             ))}
-          </ul>
+          </Rows>
         ) : (
-          <p className="text-sm text-muted-foreground">{t('project-settings.count', { count: 0 }, locale)}</p>
+          empty(0)
         )}
-      </section>
+      </Part>
 
-      {status ? (
-        <p role="status" className="text-sm">
-          {status}
-        </p>
-      ) : null}
+      {status ? <Notice>{status}</Notice> : null}
       {formOpen ? (
-        <form className="grid min-w-0 gap-5 border-t pt-6" onSubmit={save} data-rota-editor>
-          <h3 className="text-base font-semibold">
-            {t(`project-settings.${editingId ? 'edit_shift' : 'add_shift'}`, {}, locale)}
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            {t(
-              'project-settings.local_time_zone',
-              { zone: formatTimeZoneName(pageData.project.time_zone, locale) },
-              locale
-            )}
-          </p>
+        <form className="grid min-w-0 gap-5 rounded-md bg-raised p-4" onSubmit={save} data-rota-editor>
+          <div className="grid gap-1">
+            <h3 className="type-card-title">
+              {t(`project-settings.${editingId ? 'edit_shift' : 'add_shift'}`, {}, locale)}
+            </h3>
+            <p className="type-body text-muted-foreground">
+              {t(
+                'project-settings.local_time_zone',
+                { zone: formatTimeZoneName(pageData.project.time_zone, locale) },
+                locale
+              )}
+            </p>
+          </div>
           {eligible.length ? (
             <div className="grid gap-2">
               <Label htmlFor="rota-approver">{t('project-settings.approver', {}, locale)}</Label>
@@ -303,7 +304,7 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
                 autoComplete="off"
                 value={form.accountId}
                 onChange={(event) => setForm((current) => ({ ...current, accountId: event.target.value }))}
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                className="native-select"
               >
                 <option value="">{t('project-settings.choose_approver', {}, locale)}</option>
                 {eligible.map((member) => (
@@ -314,23 +315,24 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
               </select>
             </div>
           ) : (
-            <p role="status" className="text-sm text-muted-foreground">
+            <p role="status" className="type-body text-muted-foreground">
               {t('project-settings.no_approvers', {}, locale)}
             </p>
           )}
 
           <fieldset className="grid min-w-0 gap-2 sm:grid-cols-2">
-            <legend className="mb-2 text-sm font-medium">{t('project-settings.days', {}, locale)}</legend>
+            <legend className="type-body mb-2 font-medium">{t('project-settings.days', {}, locale)}</legend>
             {weekdays.map((name, index) => {
               const day = index + 1
               const id = `rota-day-${name}`
               return (
-                <label key={name} htmlFor={id} className="flex min-h-11 items-center gap-2 rounded border px-3 text-sm">
+                <label key={name} htmlFor={id} className="type-body flex min-h-11 items-center gap-3">
                   <input
                     id={id}
                     name="days"
                     autoComplete="off"
                     type="checkbox"
+                    className="native-check"
                     value={day}
                     checked={form.days.includes(day)}
                     onChange={() => toggleDay(day)}
@@ -342,10 +344,7 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
           </fieldset>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div
-              data-focus-ring
-              className="grid gap-2 rounded-sm focus-within:outline-solid focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring"
-            >
+            <div className={`grid gap-2 ${dateFieldRing}`} data-focus-ring>
               <Label htmlFor="rota-start">{t('project-settings.start', {}, locale)}</Label>
               <Input
                 id="rota-start"
@@ -357,10 +356,7 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
                 required
               />
             </div>
-            <div
-              data-focus-ring
-              className="grid gap-2 rounded-sm focus-within:outline-solid focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring"
-            >
+            <div className={`grid gap-2 ${dateFieldRing}`} data-focus-ring>
               <Label htmlFor="rota-end">{t('project-settings.end', {}, locale)}</Label>
               <Input
                 id="rota-end"
@@ -392,7 +388,7 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
                     ...(template === 'surge_night' ? { localStart: '08:00', localEnd: '22:00' } : {})
                   }))
                 }}
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                className="native-select"
               >
                 {(['custom', 'storm_afternoon', 'surge_night'] as const).map((template) => (
                   <option key={template} value={template}>
@@ -417,7 +413,7 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
                         : null
                   }))
                 }
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                className="native-select"
               >
                 <option value="">{t('project-settings.condition_none', {}, locale)}</option>
                 <option value="storm_afternoon">{t('project-settings.storm_afternoon', {}, locale)}</option>
@@ -425,11 +421,7 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
               </select>
             </div>
           </div>
-          {error ? (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          ) : null}
+          {error ? <Problem>{error}</Problem> : null}
           <div className="flex flex-wrap gap-3">
             <Button type="submit" disabled={busy || !eligible.length} aria-busy={busy}>
               {busy ? t('project-settings.saving', {}, locale) : t('project-settings.save_shift', {}, locale)}
@@ -440,7 +432,7 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
           </div>
         </form>
       ) : null}
-    </div>
+    </Parts>
   )
 }
 

@@ -6,7 +6,7 @@ import {
 import { listMyMemberships as memberships } from '@skyclause/contracts/api/first-party/me'
 import { createOauthClient as create } from '@skyclause/contracts/api/first-party/orgs'
 import { Instant } from '@skyclause/contracts/api/shared'
-import { createApiFetch } from '../../lib/api-fetch'
+import { ApiProblem, createApiFetch } from '../../lib/api-fetch'
 
 export const connectOperations = {
   listMyMemberships: {
@@ -51,10 +51,25 @@ export type Activity = ReturnType<typeof connectOperations.listConnectActivity.r
 export type Verification = ReturnType<typeof connectOperations.listConnectVerifications.response.parse>['data'][number]
 export type Tools = ReturnType<typeof connectOperations.getConnectConfig.response.parse>['tools']
 
+/** The MCP server answered the tool list with a status that is not a success. */
+export class ToolsReadError extends Error {
+  readonly status: number
+  constructor(status: number) {
+    super(`Tools read failed: ${status}`)
+    this.name = 'ToolsReadError'
+    this.status = status
+  }
+}
+
+/** The HTTP status a failed read answered, or null when it did not answer. */
+export function statusOf(error: unknown): number | null {
+  return error instanceof ApiProblem || error instanceof ToolsReadError ? error.status : null
+}
+
 /** #199 publishes this envelope; reuse the existing tool schema until its public route lands. */
 export async function readTools(origin: string, signal: AbortSignal): Promise<Tools> {
   const response = await fetch(new URL('/mcp/tools.json', origin), { signal, credentials: 'omit', cache: 'no-store' })
-  if (!response.ok) throw new Error(`Tools read failed: ${response.status}`)
+  if (!response.ok) throw new ToolsReadError(response.status)
   const body: unknown = await response.json()
   const tools = typeof body === 'object' && body !== null && 'tools' in body ? body.tools : undefined
   return connectOperations.getConnectConfig.response.shape.tools.parse(tools)

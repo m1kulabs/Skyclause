@@ -2,13 +2,15 @@
 
 import { useRef, useState } from 'react'
 import { Button } from '#ui/button'
+import { Textarea } from '#ui/textarea'
 import { Subscriber } from '@skyclause/contracts'
-import { actionClass, controlClass } from '../subscribe/fields'
+import { Glyph } from '../brand/glyph'
 import { OperationError } from '../subscribe/error'
 import { apiFetch } from '../subscribe/operations'
 import { useUnsavedChangesGuard } from '../settings/set-7/use-unsaved-changes-guard'
 import { t } from './catalogue'
 
+/** Add or import: one form, one address per line. Only confirmation emails go out; nothing is sent as a notice. */
 export function ImportAddresses({
   projectId,
   locale,
@@ -65,26 +67,29 @@ export function ImportAddresses({
     }
   }
   return (
-    <section className="grid min-w-0 gap-4 border-t border-border pt-6" aria-labelledby="import-title">
-      <h2 id="import-title" className="text-lg font-medium">
-        {t('subscribers.import_title', {}, locale)}
-      </h2>
-      <p id="import-notice" className="text-muted-foreground">
-        {t('subscribers.import_notice', {}, locale)}
-      </p>
+    <section className="grid min-w-0 gap-4 rounded-xl bg-card p-5" aria-labelledby="import-title">
+      <div className="grid gap-1">
+        <h2 id="import-title" className="type-section">
+          {t('subscribers.import_title', {}, locale)}
+        </h2>
+        <p id="import-notice" className="type-body text-muted-foreground">
+          {t('subscribers.import_notice', {}, locale)}
+        </p>
+      </div>
       <form
-        className="grid min-w-0 gap-3"
+        className="grid min-w-0 max-w-2xl gap-4"
         onSubmit={(event) => {
           event.preventDefault()
           void submit()
         }}
       >
-        <label className="grid min-w-0 gap-2" htmlFor="subscriber-addresses">
+        <label className="type-body grid min-w-0 gap-2 font-medium" htmlFor="subscriber-addresses">
           {t('subscribers.addresses', {}, locale)}
-          <textarea
+          <Textarea
             id="subscriber-addresses"
-            className={controlClass}
             name="addresses"
+            autoComplete="off"
+            spellCheck={false}
             rows={4}
             required
             value={addresses}
@@ -94,10 +99,19 @@ export function ImportAddresses({
             aria-invalid={invalid}
           />
         </label>
-        {invalid && <p role="alert">{t('subscribers.invalid_addresses', {}, locale)}</p>}
+        {invalid && (
+          <p role="alert" className="type-body flex items-start gap-2 font-medium">
+            <Glyph state="error" className="mt-1.5" />
+            {t('subscribers.invalid_addresses', {}, locale)}
+          </p>
+        )}
         <OperationError error={error} locale={locale} />
-        {count !== undefined && <p role="status">{t('subscribers.import_result', { count }, locale)}</p>}
-        <Button className={actionClass} type="submit" disabled={busy || !addresses.trim()}>
+        {count !== undefined && (
+          <p role="status" className="type-body">
+            {t('subscribers.import_result', { count }, locale)}
+          </p>
+        )}
+        <Button className="justify-self-start" type="submit" disabled={busy || !addresses.trim()}>
           {t(busy ? 'subscribe.saving' : 'subscribers.import', {}, locale)}
         </Button>
       </form>

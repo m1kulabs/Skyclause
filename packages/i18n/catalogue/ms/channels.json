@@ -9,5 +9,13 @@
   "no_preview": "0 keputusan (n=0). Luluskan keputusan sebenar untuk melihat pratonton notis.",
   "source": "Keputusan sebenar terkini: {id}",
   "preview_label": "{channel} · {language}",
-  "no_renderings": "0 pratonton (n=0). Konfigurasikan templat saluran, kemudian cuba lagi."
+  "no_renderings": "0 pratonton (n=0). Konfigurasikan templat saluran, kemudian cuba lagi.",
+  "description": "Ke mana panggilan diluluskan dihantar",
+  "about_email": "Pelanggan yang telah mengesahkan menerima setiap panggilan yang diluluskan sebagai notis melalui e-mel, dalam bahasa mereka.",
+  "about_ics": "Kalendar yang boleh dilanggan bagi panggilan yang diluluskan dan entri malam lonjakan projek ini.",
+  "about_webhook": "Acara bertandatangan dihantar ke endpoint yang ditetapkan dalam tetapan organisasi.",
+  "about_in_app": "Panggilan yang diluluskan muncul di dalam aplikasi.",
+  "preview_title": "Notis terkini",
+  "preview_description": "Lihat bagaimana panggilan sebenar terbaharu dibaca pada setiap saluran.",
+  "source_read": "saluran"
 }

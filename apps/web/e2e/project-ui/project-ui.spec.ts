@@ -3,6 +3,7 @@ import { overviewOperations } from '../../features/overview/operations'
 import { projectSettingsOperations } from '../../features/project-settings/operations'
 import { adminId, prepareOverview, prepareSettings, projectFixtureData, baseProject, projectPath } from './fixtures'
 import { stubApi } from '../harness'
+import { expectUnclippedText } from '../harness/expect-unclipped-text'
 
 const emptyRoute = `${projectPath}`
 const settingsRoute = `${projectPath}/settings`
@@ -263,4 +264,31 @@ test('share link creation selects access and expiry and shows its URL once', asy
   await expect(page).toHaveURL(`${projectPath}/settings/share`)
   await expect(page.locator('[data-project-settings-share] #share-link-url')).toHaveCount(0)
   await expect(page.locator('[data-project-settings-share]')).not.toContainText('once-only-secret')
+})
+
+test('project settings panels fit phone, tablet and desktop widths with nothing clipped', async ({ page }) => {
+  await prepareSettings(page, 'admin')
+  const panels = [
+    ['', '[data-project-settings-general]'],
+    ['/rota', '[data-project-settings-rota]'],
+    ['/share', '[data-project-settings-share]'],
+    ['/public', '[data-unbuilt]']
+  ] as const
+  for (const [route, ready] of panels) {
+    await page.goto(`${settingsRoute}${route}`)
+    await expect(page.locator(ready)).toBeVisible()
+    if (route === '/rota') {
+      await page.getByRole('button', { name: 'Add a shift' }).click()
+      await expect(page.locator('[data-rota-editor]')).toBeVisible()
+    }
+    for (const width of [1440, 768, 375, 320]) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.evaluate(() => document.fonts.ready)
+      await expectUnclippedText(page)
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        `${route} at ${width}`
+      ).toBe(true)
+    }
+  }
 })

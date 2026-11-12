@@ -1,7 +1,15 @@
 import { ApiProblem } from '../../lib/api-fetch'
 
+/** The server answered, but the config holds a key or an Authorization header: it is never shown. */
+export class UnsafeConfigError extends Error {
+  constructor() {
+    super('Unsafe connect config')
+    this.name = 'UnsafeConfigError'
+  }
+}
+
 export function safeConfig(config: string): string {
-  if (/sk[cgw]_|\bauthorization\b["']?\s*[:=]/i.test(config)) throw new Error('Unsafe connect config')
+  if (/sk[cgw]_|\bauthorization\b["']?\s*[:=]/i.test(config)) throw new UnsafeConfigError()
   return config
 }
 
