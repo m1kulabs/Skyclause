@@ -10,7 +10,8 @@ test('NTC-8 join requires PDPA consent and requests email confirmation by keyboa
   await stubApi(page, 'createSubscription', { ...subscriber, confirmed_at: null }, { registry })
   await page.goto('/subscribe/test-token')
   const submit = page.getByRole('button', { name: t('subscribe.subscribe'), exact: true })
-  await expect(submit).toBeDisabled()
+  // The button stays pressable and names the missing consent instead of greying out with no reason.
+  await expect(submit).toBeEnabled()
   await page.getByLabel(t('subscribe.email'), { exact: true }).fill(subscriber.email)
   await page.getByLabel(t('subscribe.role'), { exact: true }).fill(subscriber.role)
   await page.getByRole('combobox').selectOption('ms')
