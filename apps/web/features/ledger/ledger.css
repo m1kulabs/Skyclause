@@ -66,7 +66,11 @@
   font-size: 14px;
   font-weight: 500;
   text-decoration: underline;
+  text-decoration-color: var(--control-edge);
   text-underline-offset: 4px;
+}
+.ledger-archive-link:hover {
+  text-decoration-color: currentColor;
 }
 .ledger-archive-link svg {
   width: 16px;
@@ -175,9 +179,7 @@
 
 /* Loading: skeleton capsules on the record's pitch. */
 .ledger-loading {
-  border-radius: var(--radius-surface);
-  background: var(--card);
-  padding: 8px 20px;
+  padding: 0 12px;
 }
 .ledger-loading-row {
   display: grid;
@@ -186,9 +188,6 @@
   gap: 16px;
   height: 44px;
 }
-.ledger-loading-row + .ledger-loading-row {
-  border-top: 1px solid var(--grid);
-}
 .ledger-loading-block {
   display: flex;
   flex-direction: column;
@@ -196,97 +195,25 @@
   padding-block: 12px;
 }
 
-/* The record. */
+/* The record: the shared table on the ground, one line per entry, its header stuck under the shell bar. */
 .ledger-table-frame {
-  border-radius: var(--radius-surface);
-  background: var(--card);
-  padding: 0 20px 8px;
-}
-.ledger-table-frame table {
-  width: 100%;
-  table-layout: fixed;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: 14px;
-  line-height: 20px;
-}
-.ledger-table-frame th {
-  position: sticky;
-  top: var(--shell-bar-height, 0px);
-  z-index: 2;
-  padding: 14px 8px 8px;
-  background: var(--card);
-  border-bottom: 2px solid var(--grid);
-  color: var(--muted-foreground);
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 18px;
-  text-align: left;
-  vertical-align: bottom;
-}
-.ledger-table-frame th:first-child {
-  border-top-left-radius: var(--radius-surface);
-}
-.ledger-table-frame td {
-  padding: 4px 8px;
-  vertical-align: middle;
-  overflow-wrap: anywhere;
-  border-bottom: 1px solid var(--grid);
-}
-.ledger-table-frame tbody tr:last-child td {
-  border-bottom: 0;
-}
-.ledger-table-frame tr.ledger-spacer td {
-  padding: 0;
-  border: 0;
-}
-.ledger-table-frame [data-figure] {
-  text-align: right;
-  white-space: nowrap;
-}
-.ledger-table-frame tr[data-index] {
-  height: 44px;
+  min-width: 0;
 }
 .ledger-col-time {
-  width: 148px;
-}
-.ledger-col-entry {
-  width: 164px;
-}
-.ledger-col-actor {
-  width: 104px;
-}
-.ledger-col-detail {
-  width: 236px;
-}
-.ledger-col-toApproval {
-  width: 88px;
-}
-.ledger-col-toNotice {
-  width: 80px;
-}
-.ledger-col-seq {
-  width: 48px;
+  white-space: nowrap;
 }
 .ledger-col-evidence {
   width: 44px;
-  text-align: right;
 }
 td.ledger-col-evidence {
-  padding-inline: 0;
+  padding-block: 0;
+  padding-inline: 0 4px;
+  text-align: right;
 }
-.ledger-table-frame td > time,
-.ledger-col-entry > *,
-.ledger-col-concerns > *,
-.ledger-col-detail > * {
-  display: block;
-}
-.ledger-table-frame td > time {
-  display: flex;
-  flex-direction: column;
-}
-.ledger-clock {
-  font-weight: 500;
+.ledger-entry-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px 12px;
 }
 .ledger-kind {
   display: inline-flex;
@@ -304,25 +231,33 @@ td.ledger-col-evidence {
   padding-inline: 1px;
 }
 .ledger-detail {
-  display: flex;
-  flex-wrap: wrap;
+  display: inline-flex;
   align-items: center;
   gap: 4px 8px;
 }
-/* A mode capsule keeps its words on one line; the grade wraps under it instead. */
 .ledger-detail .mode-badge-pill > span {
   white-space: nowrap;
 }
 .ledger-missing {
   color: var(--muted-foreground);
 }
-.ledger-compact {
-  display: none;
+.ledger-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  text-decoration: underline;
+  text-decoration-color: var(--control-edge);
+  text-underline-offset: 4px;
+}
+.ledger-link:hover {
+  text-decoration-color: currentColor;
+}
+/* Focus is never hidden under the sticky header: a focused row or control stops below the header's 40px. */
+.ledger-table-frame tbody tr,
+.ledger-table-frame tbody :is(a, button) {
+  scroll-margin-top: 48px;
 }
 /* Filters dim, never remove: an entry of another kind keeps its place in the sequence, in the muted ink. */
-.ledger-table-frame tr[data-dimmed] td {
-  color: var(--muted-foreground);
-}
 .ledger-table-frame tr[data-dimmed] .mode-badge-pill {
   filter: saturate(0);
 }
@@ -330,105 +265,16 @@ td.ledger-col-evidence {
 .ledger-table-frame[data-filtering] tr:not([data-dimmed]) .ledger-kind {
   font-weight: 600;
 }
-.ledger-table-frame a {
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-.ledger-table-frame tr[aria-current='true'] td {
-  background: var(--raised);
-}
-.ledger-table-frame tr[aria-current='true'] td:first-child {
-  border-radius: var(--radius-nested) 0 0 var(--radius-nested);
-}
-.ledger-table-frame tr[aria-current='true'] td:last-child {
-  border-radius: 0 var(--radius-nested) var(--radius-nested) 0;
-}
 
-/* The compact record: who acted, the minutes and the entry number move under their neighbours. */
-@media (max-width: 1199px) {
+/* Between a phone and 1200px, who decided, the minutes and the entry number step out; the rest stay on one line. */
+@media (min-width: 641px) and (max-width: 1199px) {
   .ledger-table-frame [data-wide] {
     display: none;
   }
-  .ledger-compact {
-    display: block;
-  }
-  .ledger-col-detail {
-    width: 248px;
-  }
-  .ledger-table-frame td {
-    padding-block: 6px;
-  }
 }
-
-/* A list of entries: time and kind on the first line, what it concerns, then the mode and the minutes. */
 @media (max-width: 1023px) {
   .ledger-filters {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .ledger-table-frame .ledger-col-concerns > .ledger-missing,
-  .ledger-table-frame .ledger-col-detail > .ledger-missing {
-    display: none;
-  }
-  .ledger-table-frame {
-    padding: 0 16px;
-  }
-  .ledger-table-frame table,
-  .ledger-table-frame tbody {
-    display: block;
-  }
-  .ledger-table-frame thead {
-    display: none;
-  }
-  .ledger-table-frame tr[data-index] {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas:
-      'time entry evidence'
-      'concerns concerns concerns'
-      'detail detail detail';
-    column-gap: 12px;
-    row-gap: 4px;
-    height: auto;
-    padding-block: 10px;
-    border-bottom: 1px solid var(--grid);
-  }
-  .ledger-table-frame tbody tr[data-index]:last-of-type {
-    border-bottom: 0;
-  }
-  .ledger-table-frame tr.ledger-spacer {
-    display: block;
-  }
-  .ledger-table-frame tr.ledger-spacer td {
-    display: block;
-  }
-  .ledger-table-frame td {
-    width: auto;
-    padding: 0;
-    border: 0;
-  }
-  .ledger-table-frame td.ledger-col-time {
-    grid-area: time;
-  }
-  .ledger-table-frame td.ledger-col-entry {
-    grid-area: entry;
-  }
-  .ledger-table-frame td.ledger-col-concerns {
-    grid-area: concerns;
-  }
-  .ledger-table-frame td.ledger-col-detail {
-    grid-area: detail;
-  }
-  .ledger-table-frame td.ledger-col-evidence {
-    grid-area: evidence;
-  }
-  .ledger-table-frame tr[aria-current='true'] td {
-    background: none;
-  }
-  .ledger-table-frame tr[aria-current='true'] {
-    margin-inline: -12px;
-    padding-inline: 12px;
-    border-radius: var(--radius-nested);
-    background: var(--raised);
   }
   .ledger-loading-row {
     grid-template-columns: 72px minmax(0, 1fr);
@@ -437,14 +283,11 @@ td.ledger-col-evidence {
     display: none;
   }
 }
-/* On a tablet the list keeps two lines: the kind over what it concerns, the mode and minutes beside them. */
-@media (min-width: 768px) and (max-width: 1023px) {
-  .ledger-table-frame tr[data-index] {
-    grid-template-columns: 132px minmax(0, 1fr) minmax(0, 0.8fr) auto;
-    grid-template-areas:
-      'time entry detail evidence'
-      'time concerns detail evidence';
-    column-gap: 16px;
+/* A phone: the shared list. A windowed run's spacer rows keep only their own height. */
+@media (max-width: 640px) {
+  .ledger-table-frame [data-slot='table'] tr.ledger-spacer {
+    min-height: 0;
+    padding: 0;
   }
 }
 @media (max-width: 767px) {
@@ -458,56 +301,14 @@ td.ledger-col-evidence {
   }
 }
 
-/* Evidence requests: one row per request, its span as the identity. */
+/* Evidence requests: the shared table, one row per request, its span as the identity. */
 .evidence-list {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
-.evidence-rows {
-  border-radius: var(--radius-surface);
-  background: var(--card);
-  padding: 4px 20px;
-}
-.evidence-rows li + li {
-  border-top: 1px solid var(--grid);
-}
-.evidence-rows a {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, auto);
-  align-items: center;
-  gap: 4px 24px;
-  min-height: 56px;
-  padding-block: 8px;
-  text-decoration: none;
-}
-.evidence-rows a:hover .evidence-row-span {
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
 .evidence-row-span {
   font-weight: 500;
-}
-.evidence-row-meta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  font-size: 13px;
-  line-height: 18px;
-  color: var(--muted-foreground);
-  text-align: right;
-}
-@media (max-width: 767px) {
-  .evidence-rows {
-    padding-inline: 16px;
-  }
-  .evidence-rows a {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .evidence-row-meta {
-    align-items: flex-start;
-    text-align: left;
-  }
 }
 
 /* The request: one form that reads across, evidence for a span or a call. */
@@ -547,6 +348,7 @@ td.ledger-col-evidence {
   width: min(100vw, 720px);
   max-width: 720px;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .ledger-sheet-body {
   display: flex;
@@ -652,6 +454,15 @@ td.ledger-col-evidence {
 }
 .evidence-value {
   font-weight: 500;
+}
+.evidence-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.evidence-pager > p {
+  margin-right: auto;
 }
 .ledger-sheet-body > ul {
   display: flex;

@@ -2,7 +2,7 @@
 
 import { memo, startTransition, useEffect, useMemo, useRef, useState } from 'react'
 import type { LedgerKind } from '@skyclause/contracts'
-import { formatClock, formatDate, formatNumber, formatTime } from '@skyclause/i18n/format'
+import { formatClock, formatDate, formatDateCompact, formatNumber, formatTime } from '@skyclause/i18n/format'
 import {
   CalendarXIcon,
   CheckIcon,
@@ -23,6 +23,7 @@ import {
   XIcon
 } from 'lucide-react'
 import { Button } from '#ui/button'
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
 import { ModeBadge } from '../brand/mode-badge'
 import { actorOf, matchesKind, measuredWindow, minutesBetween, rowOffsets, type KindGroup } from './model'
 import type { LedgerRow } from './operations'
@@ -89,6 +90,7 @@ export function SpanTimes({ from, to, day, locale }: { from: string; to: string;
   )
 }
 
+/** The record's columns; `wide` ones step out between a phone and 1200px, where the rest still fit on one line. */
 const COLUMNS = [
   { key: 'time' },
   { key: 'entry' },
@@ -113,6 +115,7 @@ export function LedgerTable({
   locale,
   onRequest,
   correctionHref,
+  callHref,
   selectedEntry,
   kindGroup,
   busy
@@ -123,6 +126,7 @@ export function LedgerTable({
   locale: Locale
   onRequest: (target: Target) => void
   correctionHref: (id: string) => string
+  callHref: (id: string) => string
   selectedEntry: string | null
   kindGroup: KindGroup | null
   busy: boolean
@@ -194,6 +198,8 @@ export function LedgerTable({
       ? rendered.getBoundingClientRect().top
       : body.current.getBoundingClientRect().top + offsets[index]!
     window.scrollTo({ top: window.scrollY + top - barHeight() - header })
+    // The jump moves the keyboard too: focus lands on the entry, not at the top of the page.
+    rendered?.focus({ preventScroll: true })
     scrolledEntry.current = selectedEntry
   }, [selectedEntry, rows, offsets])
   return (
@@ -205,28 +211,28 @@ export function LedgerTable({
       aria-label={t('ledger.frame', {}, locale)}
       aria-busy={busy}
     >
-      <table data-ledger-table aria-rowcount={total + 1}>
-        <caption className="sr-only">{t('ledger.title', {}, locale)}</caption>
-        <thead ref={head}>
-          <tr aria-rowindex={1}>
+      <Table sticky data-ledger-table aria-rowcount={total + 1}>
+        <TableCaption className="sr-only">{t('ledger.title', {}, locale)}</TableCaption>
+        <TableHeader ref={head}>
+          <TableRow aria-rowindex={1}>
             {COLUMNS.map((column) => (
-              <th
+              <TableHead
                 key={column.key}
                 scope="col"
+                numeric={'figure' in column}
                 className={`ledger-col-${column.key}`}
                 data-wide={'wide' in column ? '' : undefined}
-                data-figure={'figure' in column ? '' : undefined}
               >
                 {'hidden' in column ? (
                   <span className="sr-only">{t(`ledger.columns.${column.key}`, {}, locale)}</span>
                 ) : (
                   t(`ledger.columns.${column.key}`, {}, locale)
                 )}
-              </th>
+              </TableHead>
             ))}
-          </tr>
-        </thead>
-        <tbody ref={body}>
+          </TableRow>
+        </TableHeader>
+        <TableBody ref={body}>
           {window_.before > 0 && (
             <tr aria-hidden="true" className="ledger-spacer">
               <td colSpan={COLUMNS.length} style={{ height: window_.before }} />
@@ -241,6 +247,7 @@ export function LedgerTable({
               locale={locale}
               onRequest={onRequest}
               correctionHref={correctionHref}
+              callHref={callHref}
               dimmed={!matchesKind(row.kind, kindGroup)}
               selected={row.id === selectedEntry}
             />
@@ -250,8 +257,8 @@ export function LedgerTable({
               <td colSpan={COLUMNS.length} style={{ height: window_.after }} />
             </tr>
           )}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   )
 }
@@ -264,6 +271,7 @@ const EntryRow = memo(function EntryRow({
   locale,
   onRequest,
   correctionHref,
+  callHref,
   dimmed,
   selected
 }: {
@@ -273,6 +281,7 @@ const EntryRow = memo(function EntryRow({
   locale: Locale
   onRequest: (target: Target) => void
   correctionHref: (id: string) => string
+  callHref: (id: string) => string
   dimmed: boolean
   selected: boolean
 }) {
@@ -289,92 +298,90 @@ const EntryRow = memo(function EntryRow({
   const minutes = (value: number | null) =>
     value === null ? <Missing locale={locale} /> : t('ledger.minutes', { value: formatNumber(value, locale) }, locale)
   const outcome = row.grade?.outcome
+  const at = t('ledger.at', { date: formatDateCompact(row.at, locale), time: formatTime(row.at, locale) }, locale)
+  const span = row.window
+    ? `${row.window.title} · ${formatDate(row.window.starts_at, locale)}, ${formatClock(row.window.starts_at, locale)}${t('ledger.rangeDash', {}, locale)}${formatTime(row.window.ends_at, locale)}`
+    : undefined
   return (
-    <tr
+    <TableRow
       id={`ledger-${row.id}`}
       data-index={index}
       aria-rowindex={offset + index + 2}
       data-dimmed={dimmed ? '' : undefined}
-      aria-current={selected ? 'true' : undefined}
+      selected={selected}
+      dimmed={dimmed}
+      // A deep link focuses its entry; the row is not a tab stop otherwise.
+      tabIndex={selected ? -1 : undefined}
     >
-      <td className="ledger-col-time">
-        <time dateTime={row.at}>
-          <span className="ledger-clock" data-numeric>
-            {formatTime(row.at, locale)}
-          </span>
-          <span className="ledger-sub">{formatDate(row.at, locale)}</span>
+      <TableCell className="ledger-col-time" phone="meta">
+        <time dateTime={row.at} data-numeric>
+          {at}
         </time>
-      </td>
-      <td className="ledger-col-entry">
-        <EntryMark kind={row.kind} locale={locale} />
-        {row.corrects && (
-          <a className="ledger-sub" href={correctionHref(row.corrects)}>
-            {t('ledger.corrects', { id: row.corrects }, locale)}
-          </a>
-        )}
-        <span className="ledger-sub ledger-compact" data-numeric>
-          {t('ledger.seq', { n: formatNumber(row.seq, locale) }, locale)}
+      </TableCell>
+      <TableCell className="ledger-col-entry" phone="primary">
+        <span className="ledger-entry-line">
+          <EntryMark kind={row.kind} locale={locale} />
+          {row.corrects && (
+            <a
+              className="ledger-link"
+              href={correctionHref(row.corrects)}
+              aria-label={t('ledger.corrects', { id: row.corrects }, locale)}
+            >
+              {t('ledger.correctsShort', {}, locale)}
+            </a>
+          )}
         </span>
-      </td>
-      <td className="ledger-col-concerns">
+      </TableCell>
+      <TableCell
+        className="ledger-col-concerns"
+        truncate={row.window ? '40ch' : undefined}
+        title={span}
+        label={t('ledger.columns.concerns', {}, locale)}
+      >
         {row.window ? (
-          <>
-            <span className="ledger-concerns-title">{row.window.title}</span>
-            <span className="ledger-sub">
-              <SpanTimes
-                from={row.window.starts_at}
-                to={row.window.ends_at}
-                day={formatDate(row.at, locale)}
-                locale={locale}
-              />
-            </span>
-          </>
+          row.window.title
         ) : target ? (
-          <span translate="no">{t('ledger.callRef', { id: target }, locale)}</span>
+          <a className="ledger-link" href={callHref(target)}>
+            {t('ledger.openCall', {}, locale)}
+          </a>
         ) : (
           <Missing locale={locale} />
         )}
-        {actorText && (
-          <span className="ledger-sub ledger-compact">{t('ledger.decidedBy', { actor: actorText }, locale)}</span>
-        )}
-      </td>
-      <td className="ledger-col-actor" data-wide="">
+      </TableCell>
+      <TableCell className="ledger-col-actor" data-wide="" label={t('ledger.columns.actor', {}, locale)}>
         {actorText ?? <Missing locale={locale} />}
-      </td>
-      <td className="ledger-col-detail">
+      </TableCell>
+      <TableCell className="ledger-col-detail">
         {call?.mode || outcome ? (
           <span className="ledger-detail">
             {call?.mode && <ModeBadge mode={call.mode} pack={row.pack ?? undefined} locale={locale} />}
             {outcome && (
               <span>
-                {outcome in OUTCOMES ? t(`ledger.outcomes.${outcome}`, {}, locale) : outcome.replaceAll('_', ' ')}
+                {outcome in OUTCOMES
+                  ? t(`ledger.outcomes.${outcome}`, {}, locale)
+                  : t('ledger.outcomeOther', {}, locale)}
               </span>
             )}
           </span>
         ) : (
           <Missing locale={locale} />
         )}
-        {toApproval !== null && (
-          <span className="ledger-sub ledger-compact" data-numeric>
-            {t('ledger.toApproval', { value: formatNumber(toApproval, locale) }, locale)}
-          </span>
-        )}
-        {toNotice !== null && (
-          <span className="ledger-sub ledger-compact" data-numeric>
-            {t('ledger.toNotice', { value: formatNumber(toNotice, locale) }, locale)}
-          </span>
-        )}
-      </td>
-      <td className="ledger-col-toApproval" data-wide="" data-figure="" data-numeric>
+      </TableCell>
+      <TableCell
+        className="ledger-col-toApproval"
+        data-wide=""
+        numeric
+        label={t('ledger.columns.toApproval', {}, locale)}
+      >
         {minutes(toApproval)}
-      </td>
-      <td className="ledger-col-toNotice" data-wide="" data-figure="" data-numeric>
+      </TableCell>
+      <TableCell className="ledger-col-toNotice" data-wide="" numeric label={t('ledger.columns.toNotice', {}, locale)}>
         {minutes(toNotice)}
-      </td>
-      <td className="ledger-col-seq" data-wide="" data-figure="" data-numeric>
+      </TableCell>
+      <TableCell className="ledger-col-seq" data-wide="" numeric phone="hide">
         {formatNumber(row.seq, locale)}
-      </td>
-      <td className="ledger-col-evidence">
+      </TableCell>
+      <TableCell className="ledger-col-evidence" phone="end">
         <Button
           variant="ghost"
           size="icon-sm"
@@ -391,8 +398,8 @@ const EntryRow = memo(function EntryRow({
         >
           <FileSearchIcon aria-hidden="true" />
         </Button>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   )
 })
 

@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { getOrgPrincipal } from '../../../../../lib/principal'
+import { prefersMalay } from '../../../../../lib/preferred-language'
 import { LedgerPage } from '../../../../../features/ledger/page'
 
 export default async function Page({ params }: { params: Promise<{ org: string; project: string }> }) {
@@ -11,7 +12,7 @@ export default async function Page({ params }: { params: Promise<{ org: string; 
   // scopes a link or a guest token to its project. Everyone else, signed out included, gets the not-found page.
   const member = principal?.kind === 'session' && !!principal.role
   if (!member && principal?.kind !== 'share_link' && principal?.kind !== 'guest_token') notFound()
-  const locale = (await headers()).get('accept-language')?.startsWith('ms') ? 'ms' : 'en'
+  const locale = prefersMalay((await headers()).get('accept-language')) ? 'ms' : 'en'
   return (
     <Suspense>
       <LedgerPage org={org} projectSlug={project} principal={principal} locale={locale} />
