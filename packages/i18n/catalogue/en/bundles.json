@@ -148,7 +148,7 @@
   "region_details": "Recipients, wording and trace",
   "list_title": "Bundles",
   "list_count": "n={count}",
-  "list_loading": "Loading this project's bundles",
+  "list_loading": "Loading this project's bundles…",
   "list_source": "this project's bundles",
   "list_empty": "Bundles: n=0. A run that drafts calls adds one here.",
   "list_more": "The newest {count} bundles. Older ones are in the ledger.",

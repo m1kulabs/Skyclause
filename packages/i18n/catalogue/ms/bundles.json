@@ -148,7 +148,7 @@
   "region_details": "Penerima, teks dan jejak",
   "list_title": "Berkas",
   "list_count": "n={count}",
-  "list_loading": "Memuatkan berkas projek ini",
+  "list_loading": "Memuatkan berkas projek ini…",
   "list_source": "berkas projek ini",
   "list_empty": "Berkas: n=0. Penilaian yang mendraf panggilan akan menambahnya di sini.",
   "list_more": "{count} berkas terbaharu. Berkas lebih lama ada dalam lejar.",
