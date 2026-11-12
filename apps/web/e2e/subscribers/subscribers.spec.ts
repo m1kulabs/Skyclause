@@ -289,9 +289,10 @@ test.describe('on a coarse pointer', () => {
   test('the Menu button, the row menu and the filter segments are 44px targets', async ({ page }) => {
     const expectTargets = async (targets: Locator[]) => {
       for (const target of targets) {
+        // Rounded: a table cell can lay a 44px control out a fraction of a pixel short.
         const box = (await target.boundingBox())!
-        expect(box.height, await target.innerText()).toBeGreaterThanOrEqual(44)
-        expect(box.width, await target.innerText()).toBeGreaterThanOrEqual(44)
+        expect(Math.round(box.height), await target.innerText()).toBeGreaterThanOrEqual(44)
+        expect(Math.round(box.width), await target.innerText()).toBeGreaterThanOrEqual(44)
       }
     }
     await setupProject(page)
