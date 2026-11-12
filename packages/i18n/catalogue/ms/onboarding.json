@@ -82,6 +82,7 @@
   "first_run": "Permulaan",
   "saving_project": "Menyimpan…",
   "cadence_seconds": "Setiap {count} saat",
+  "cadence_seconds_one": "Setiap saat",
   "cadence_minutes": "Setiap {count} minit",
   "cadence_hours": "Setiap {count} jam",
   "cadence_days": "Setiap {count} hari",

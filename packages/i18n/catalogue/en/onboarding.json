@@ -82,6 +82,7 @@
   "first_run": "First run",
   "saving_project": "Saving…",
   "cadence_seconds": "Every {count} seconds",
+  "cadence_seconds_one": "Every second",
   "cadence_minutes": "Every {count} minutes",
   "cadence_hours": "Every {count} hours",
   "cadence_days": "Every {count} days",

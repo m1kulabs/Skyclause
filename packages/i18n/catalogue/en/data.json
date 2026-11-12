@@ -1,7 +1,9 @@
 {
   "strip": {
     "summary_live": "Live strip to {to}. {crossing}. {count} readings.",
+    "summary_live_one": "Live strip to {to}. {crossing}. 1 reading.",
     "summary_replay": "Replay of {source}, captured {captured}. {crossing}. {count} readings.",
+    "summary_replay_one": "Replay of {source}, captured {captured}. {crossing}. 1 reading.",
     "crossing": "Lebat crossed at {time} ({value} mm in 60 min)",
     "no_crossing": "No Lebat crossing in this window",
     "show_table": "Show table",
@@ -20,6 +22,7 @@
     "chart_date": "{date} · MYT",
     "now_label": "Now MYT",
     "table_peaks": "Highest reading in each {minutes} minutes, from {count} readings.",
+    "table_peaks_one": "Highest reading in each {minutes} minutes, from 1 reading.",
     "lane_rain5": "Rain, mm per 5 min",
     "lane_rain60": "Rain, mm in 60 min",
     "ticks_received": "{received} received, {missed} missed, {errors} failed"
@@ -45,6 +48,7 @@
     "latest_empty": "No readings yet (n=0).",
     "error_since": "{source} error since {time}",
     "ticks_label": "Last {count} polls",
+    "ticks_label_one": "Last poll",
     "tick_received": "received",
     "tick_missed": "missed",
     "tick_error": "error",

@@ -271,6 +271,7 @@
     "projectsSource": "the projects list",
     "copyColumn": "Copy an ID",
     "pageOf": "A page of {count} records",
+    "pageOf_one": "A page of 1 record",
     "directorySource": "the people and projects to filter by",
     "formerPerson": "Former member",
     "otherProject": "Another project",

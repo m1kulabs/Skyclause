@@ -271,6 +271,7 @@
     "projectsSource": "senarai projek",
     "copyColumn": "Salin ID",
     "pageOf": "Satu halaman, {count} rekod",
+    "pageOf_one": "Satu halaman, 1 rekod",
     "directorySource": "orang dan projek untuk ditapis",
     "formerPerson": "Bekas ahli",
     "otherProject": "Projek lain",

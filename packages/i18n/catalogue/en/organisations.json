@@ -33,6 +33,7 @@
     "create": "Create a project",
     "askAdmin": "Ask an Admin to create a project",
     "needsReview": "{count} need review",
+    "needsReview_one": "{count} needs review",
     "signal": "Signal health: {state} · {reporting}{oldest}",
     "inputsReporting": "{count} inputs reporting",
     "inputsReporting_one": "{count} input reporting",

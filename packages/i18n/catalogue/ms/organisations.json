@@ -33,6 +33,7 @@
     "create": "Cipta projek",
     "askAdmin": "Minta Admin mencipta projek",
     "needsReview": "{count} perlu semakan",
+    "needsReview_one": "{count} perlu semakan",
     "signal": "Kesihatan isyarat: {state} · {reporting}{oldest}",
     "inputsReporting": "{count} input melaporkan",
     "inputsReporting_one": "{count} input melaporkan",

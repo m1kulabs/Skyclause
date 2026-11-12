@@ -40,7 +40,7 @@ function cadence(seconds: number, locale: Locale) {
     return seconds === 60
       ? t('onboarding.minute', {}, locale)
       : t('onboarding.cadence_minutes', { count: seconds / 60 }, locale)
-  return t('onboarding.cadence_seconds', { count: seconds }, locale)
+  return t(seconds === 1 ? 'onboarding.cadence_seconds_one' : 'onboarding.cadence_seconds', { count: seconds }, locale)
 }
 
 /** The newest reading as its value and unit, how old it is, and when it was taken. */
