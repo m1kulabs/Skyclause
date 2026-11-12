@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import { Input } from '#ui/input'
 import {
@@ -92,10 +92,10 @@ test('loading carries its words for assistive technology next to the skeleton', 
   expect(screen.getByRole('status').textContent).toBe('Memuatkan…')
 })
 
-test('a part heading takes focus by its id, so a removed row leaves focus somewhere', () => {
+test('a part heading takes focus by its id, so a removed row leaves focus somewhere', async () => {
   render(<SettingsPart title="Share links" id="links-heading" />)
   focusPartHeading('links-heading')
-  expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Share links' }))
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Share links' })))
 })
 
 test('a row menu names its row and runs the chosen action', async () => {

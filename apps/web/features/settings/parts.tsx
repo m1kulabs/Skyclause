@@ -13,6 +13,7 @@ import { ApiProblem } from '../../lib/api-fetch'
 import { Glyph } from '../brand/glyph'
 import { SourceError } from '../data-components/states'
 import './catalogue'
+import { focusHeadingWhenFree } from './focus'
 
 /**
  * Building blocks for what sits inside a settings panel. The frame supplies the row (label column and panel); these
@@ -135,10 +136,11 @@ export function SettingsStatus({ children, className }: { children?: ReactNode; 
 
 /**
  * Moves focus to a part's heading by the id given to its `SettingsPart`. A control that removes its own row (or turns
- * into another control) leaves focus nowhere, so the panel calls this once the change has landed.
+ * into another control) leaves focus nowhere, so the panel calls this once the change has landed. A confirm dialog that
+ * is still closing keeps the page inert, so the move retries until the page is free.
  */
 export function focusPartHeading(id: string) {
-  document.getElementById(id)?.focus()
+  focusHeadingWhenFree(id)
 }
 
 /** What stands in for a panel's content while it loads: the skeleton, with the words for assistive technology. */
