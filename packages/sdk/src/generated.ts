@@ -1,4 +1,4 @@
-export const OPENAPI_SHA256 = 'c1a1b29e8a3421e7d774d1a64cab5e3f0965cfbe1eb6b630fe171e27828a0be8' as const // gitleaks:allow -- a SHA-256 of openapi.json, not a secret.
+export const OPENAPI_SHA256 = 'f49c0e88879b9c988592bbaf390903c82e4524a169e3f9f2ef011038e9844905' as const // gitleaks:allow -- a SHA-256 of openapi.json, not a secret.
 
 export const OPERATION_IDS = [
   'getProjectAnalysis',
@@ -1067,6 +1067,8 @@ export type OperationRequests = {
     query?: {
       limit?: number
       cursor?: string
+      from?: string
+      to?: string
     }
     idempotencyKey?: string
     signal?: AbortSignal
@@ -1078,6 +1080,9 @@ export type OperationRequests = {
     query?: {
       limit?: number
       cursor?: string
+      from?: string
+      to?: string
+      outcome?: 'ok' | 'unchanged' | 'error'
     }
     idempotencyKey?: string
     signal?: AbortSignal
@@ -5738,6 +5743,9 @@ export type OperationResponses = {
       outcome: string
       request_id: string
       error_code: string | null
+      message?: string | null
+      purpose?: string
+      received_at?: string | null
     }>
     next_cursor: string | null
   }

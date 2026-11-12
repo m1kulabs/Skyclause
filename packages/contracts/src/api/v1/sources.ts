@@ -12,6 +12,30 @@ import { Instant, Page, PageQuery, Poll, Reading, Source, SourceRole, SourceStat
 
 const ProjectSourceParams = ProjectParams.extend({ sourceId: ProjectParams.shape.id })
 const PageRequest = z.object({ ...PageQuery.shape })
+// PostgreSQL has no year zero and stores microseconds: reject unsupported bounds rather than rounding.
+const HistoryInstant = Instant.regex(/^(?!0000)\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/).openapi({
+  format: 'date-time'
+})
+const HistoryRequest = PageRequest.extend({ from: HistoryInstant.optional(), to: HistoryInstant.optional() })
+function orderedHistoryRange({ from, to }: { from?: string; to?: string }) {
+  if (from === undefined || to === undefined) return true
+  const position = (value: string) => {
+    const [seconds, fraction = ''] = value.slice(0, -1).split('.')
+    return `${seconds}.${fraction.padEnd(6, '0')}`
+  }
+  return position(from) < position(to)
+}
+const historyRangeError = { path: ['to'], message: 'to must be after from' }
+const SourceReadingsRequest = HistoryRequest.refine(orderedHistoryRange, historyRangeError)
+const SourcePollsRequest = HistoryRequest.extend({ outcome: z.enum(['ok', 'unchanged', 'error']).optional() }).refine(
+  orderedHistoryRange,
+  historyRangeError
+)
+const PollHistory = Poll.extend({
+  message: z.string().nullable().optional(),
+  purpose: z.string().optional(),
+  received_at: Instant.nullable().optional()
+})
 const ProjectSource = Source.extend({
   project_id: z.string(),
   role: SourceRole,
@@ -135,7 +159,7 @@ export const listSourceReadings = createRoute({
   path: '/v1/sources/{id}/readings',
   operationId: 'listSourceReadings',
   tags: ['Readings'],
-  request: { headers: OrganizationHeaders, params: SourceParams, query: PageRequest },
+  request: { headers: OrganizationHeaders, params: SourceParams, query: SourceReadingsRequest },
   responses: {
     200: { description: 'Source readings', content: { 'application/json': { schema: Page(Reading) } } },
     ...projectErrors
@@ -148,9 +172,9 @@ export const listSourcePolls = createRoute({
   path: '/v1/sources/{id}/polls',
   operationId: 'listSourcePolls',
   tags: ['Polls'],
-  request: { headers: OrganizationHeaders, params: SourceParams, query: PageRequest },
+  request: { headers: OrganizationHeaders, params: SourceParams, query: SourcePollsRequest },
   responses: {
-    200: { description: 'Source poll history', content: { 'application/json': { schema: Page(Poll) } } },
+    200: { description: 'Source poll history', content: { 'application/json': { schema: Page(PollHistory) } } },
     ...projectErrors
   },
   x: { owner: 'b-signals-api', statement: 'project.view', idempotent: false }
