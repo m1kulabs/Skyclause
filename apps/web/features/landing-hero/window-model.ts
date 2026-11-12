@@ -78,11 +78,13 @@ export function parseWindowFromSearch(query: string, now: Date): HeroWindow | nu
   const date = params.get('date')
   const start = params.get('start')
   const end = params.get('end')
-  if (!date || !start || !end) return null
+  if (!date || !start) return null
   if (!datesTodayPlusSeven(now).includes(date)) return null
   const startMin = parseLocalTime(start)
-  const endMin = parseLocalTime(end)
-  if (startMin === null || endMin === null) return null
+  if (startMin === null) return null
+  // The closing sentence asks for one time: without an end, the window is the hour from its start.
+  const endMin = end ? parseLocalTime(end) : startMin + 60
+  if (endMin === null) return null
   const clamped = clampWindow(startMin, endMin)
   return { date, startMin: clamped.start, endMin: clamped.end }
 }
