@@ -22,7 +22,7 @@ export const dateFieldRing =
 
 /** The panel's parts in one column with the space between them. */
 export function Parts({ className, ...props }: ComponentProps<'div'>) {
-  return <div className={cn('grid min-w-0 gap-10', className)} {...props} />
+  return <div className={cn('grid min-w-0 gap-10 [overflow-wrap:anywhere]', className)} {...props} />
 }
 
 /** A titled part: its heading, what it does in a sentence, then its content; `actions` end its header. */

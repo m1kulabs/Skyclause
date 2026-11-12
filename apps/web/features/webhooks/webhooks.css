@@ -152,7 +152,7 @@
 }
 .webhook-evidence dl {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-columns: minmax(0, 14rem) minmax(0, 1fr);
   gap: 2px 16px;
   margin: 0;
 }
@@ -211,6 +211,9 @@
   }
 }
 @media (max-width: 640px) {
+  .webhook-evidence dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .webhook-attempt > summary {
     grid-template-columns: minmax(0, 1fr) auto;
   }
