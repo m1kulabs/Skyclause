@@ -78,6 +78,7 @@ export * from './schema/partitioned'
 export * from './subscribers'
 export * from './sources'
 export * from './signals'
+export * from './windows'
 
 export * from './auditor'
 
