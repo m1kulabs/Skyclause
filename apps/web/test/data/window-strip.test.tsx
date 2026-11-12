@@ -110,6 +110,11 @@ describe('WindowStrip', () => {
     expect(labels.length).toBeGreaterThan(6)
     expect(chart.querySelector('[data-now-label]')!.textContent).toBe('Now\u00a0MYT')
     expect(chart.querySelector('[data-lebat-label]')!.textContent).toBe('Lebat\u00a031\u00a0mm')
+    // Under 24rem the name moves under the chart (a container query shows one of the two), never past the edge.
+    expect(chart.classList.contains('@container')).toBe(true)
+    expect(chart.querySelector('[data-lebat-label]')!.className).toContain('@[24rem]:inline-flex')
+    expect(chart.querySelector('[data-lebat-legend]')!.textContent).toBe('Lebat\u00a031\u00a0mm')
+    expect(chart.querySelector('[data-lebat-legend]')!.className).toContain('@[24rem]:hidden')
     expect(chart.querySelector('[data-replay]')!.textContent).toContain('Replay')
     // The two lanes' ticks are different elements at different heights, never two labels on one spot.
     const tops = [...chart.querySelectorAll<HTMLElement>('[data-numeric]')].map((el) => Number.parseFloat(el.style.top))

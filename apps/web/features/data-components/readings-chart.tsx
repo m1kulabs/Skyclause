@@ -10,8 +10,9 @@ import { ClockTicks } from './clock-ticks'
  * The readings, drawn at real size: the lines are an SVG whose width follows the column while its height stays in
  * pixels, and every label is HTML at 13px laid out around it, so no text scales with the column. The x axis labels
  * whole MYT hours and thins as the column narrows. Each rain lane is titled with its unit above it, the rolling lane's
- * title also naming the Lebat line, so nothing is labelled on a curve. `layout` comes from `layoutStrip` with `laneGap`
- * 30 and a header band of 28 (when now is on the strip) plus 20 for the first lane's title.
+ * title also naming the Lebat line, so nothing is labelled on a curve; on a strip narrower than 24rem the Lebat name
+ * moves under the chart, where a longer locale cannot push it past the edge. `layout` comes from `layoutStrip` with
+ * `laneGap` 30 and a header band of 28 (when now is on the strip) plus 20 for the first lane's title.
  */
 export function ReadingsChart({ layout, locale }: { layout: StripLayout; locale: 'en' | 'ms' }) {
   const pct = (x: number) => `${(stripShare(layout, x) * 100).toFixed(3)}%`
@@ -21,8 +22,16 @@ export function ReadingsChart({ layout, locale }: { layout: StripLayout; locale:
   // under the line there): the label ends at the mark, clear of the line. Its left edge never passes the plot's own
   // (8.5rem holds the label). With no room above (the header or the lane over this one is too close) it sits under the
   // line to the right of the mark instead, where the curve is above.
+  const lebat = (
+    <>
+      <svg aria-hidden="true" width="16" height="4" viewBox="0 0 16 4" className="shrink-0">
+        <path d="M0 2h16" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" fill="none" />
+      </svg>
+      {t('data.strip.lebat_line', {}, locale)}
+    </>
+  )
   return (
-    <div data-strip-chart className="flex w-full flex-col gap-1">
+    <div data-strip-chart className="@container flex w-full flex-col gap-1">
       <div className="flex flex-wrap justify-between gap-x-4 type-small text-muted-foreground">
         <span>{t('data.strip.chart_date', { date: formatDate(layout.from, locale) }, locale)}</span>
         {layout.isReplay && layout.replayBadge ? <span data-replay="true">{layout.replayBadge}</span> : null}
@@ -39,11 +48,8 @@ export function ReadingsChart({ layout, locale }: { layout: StripLayout; locale:
             >
               <span>{t(lane.key === 'rain5' ? 'data.strip.lane_rain5' : 'data.strip.lane_rain60', {}, locale)}</span>
               {lane.key === 'rain60' && layout.lebatY !== null ? (
-                <span data-lebat-label className="inline-flex items-center gap-1.5 text-foreground">
-                  <svg aria-hidden="true" width="16" height="4" viewBox="0 0 16 4" className="shrink-0">
-                    <path d="M0 2h16" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" fill="none" />
-                  </svg>
-                  {t('data.strip.lebat_line', {}, locale)}
+                <span data-lebat-label className="hidden items-center gap-1.5 text-foreground @[24rem]:inline-flex">
+                  {lebat}
                 </span>
               ) : null}
             </span>
@@ -131,6 +137,11 @@ export function ReadingsChart({ layout, locale }: { layout: StripLayout; locale:
       <div className="mr-2 ml-9">
         <ClockTicks from={layout.from} to={layout.to} locale={locale} />
       </div>
+      {layout.lebatY !== null ? (
+        <p data-lebat-legend className="mr-2 ml-9 flex items-center gap-1.5 type-small text-foreground @[24rem]:hidden">
+          {lebat}
+        </p>
+      ) : null}
     </div>
   )
 }
