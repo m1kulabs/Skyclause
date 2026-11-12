@@ -5,7 +5,13 @@ import { useEffect, useId, useState, type ReactNode } from 'react'
 import { t } from '@skyclause/i18n'
 import { EllipsisIcon } from 'lucide-react'
 import { Button } from '#ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '#ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '#ui/dropdown-menu'
 import { Label } from '#ui/label'
 import { Switch } from '#ui/switch'
 import { cn } from '#lib/utils'
@@ -184,7 +190,7 @@ export function SettingsRowMenu({
         <EllipsisIcon aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-auto min-w-44">
-        {children}
+        <DropdownMenuGroup>{children}</DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )
