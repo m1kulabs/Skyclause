@@ -168,7 +168,33 @@ test('empty registry reports zero contracts and discoveries; failed probes log a
 })
 
 import { sourcePart } from '../src/sources/index'
+import { sourceSubscription } from '../src/sources/pubsub'
 import { defineRegistry } from '../src/server'
+test('source batch refreshes its plan after a bounded pull completes no delivery', async () => {
+  const t = setup(),
+    controller = new AbortController(),
+    timeout = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal),
+    refresh = vi.spyOn(t.jobs, 'refreshSourcePlan').mockResolvedValue(),
+    ingest = vi.fn(async () => {}),
+    http = vi.fn<typeof fetch>(async () => {
+      controller.abort(new DOMException('Owned wait expired', 'TimeoutError'))
+      throw controller.signal.reason
+    })
+  const subscription = sourceSubscription('project', 'subscription', {
+    headers: async () => new Headers(),
+    http
+  })
+  const part = sourcePart(() => ({ jobs: t.jobs, store: t.store, repair: async () => {}, subscription, ingest }))
+  try {
+    await expect(part.batch!['sources-ingest']!(t.clock.now())).resolves.toBeUndefined()
+    expect(refresh).toHaveBeenCalledExactlyOnceWith(t.clock.now())
+    expect(ingest).not.toHaveBeenCalled()
+    expect(http).toHaveBeenCalledTimes(1)
+  } finally {
+    timeout.mockRestore()
+    refresh.mockRestore()
+  }
+})
 test('source WorkerPart dispatches real adapter arguments through runJob', async () => {
   const t = setup()
   await plan(t)
