@@ -21,7 +21,7 @@ const row = (id: string, email: string, extra: Partial<Row> = {}): Row => ({
   status: 'confirmed',
   suppressed: false,
   last_notice_at: '2026-11-06T02:00:00Z',
-  consent: { at: '2026-11-06T00:00:00Z', form: 'subscribe', notice_version: '2026-11-06', language: 'en' },
+  consent: { at: '2026-11-06T00:00:00Z', form: 'subscribe_link', notice_version: '2026-11-06', language: 'en' },
   ...extra
 })
 
@@ -50,8 +50,28 @@ test('a subscriber is one line: the consent record and last notice wait behind t
 
   fireEvent.click(screen.getByRole('button', { name: 'amina@example.test' }))
   const dialog = screen.getByRole('dialog')
-  expect(within(dialog).getByText('Form: subscribe · Notice version: 2026-11-06 · Language: English')).toBeDefined()
+  expect(
+    within(dialog).getByText('Form: Subscribe link · Notice version: 2026-11-06 · Language: English')
+  ).toBeDefined()
   expect(within(dialog).getByText('Last notice')).toBeDefined()
+})
+
+test('the consent form is said in words, never as the key the API records', () => {
+  const imported = row('s1', 'amina@example.test', {
+    consent: { at: '2026-11-06T00:00:00Z', form: 'import', notice_version: '2026-11-06', language: 'ms' }
+  })
+  const unknown = row('s2', 'lee@example.test', {
+    consent: { at: '2026-11-06T00:00:00Z', form: 'mystery_form', notice_version: '2026-11-06', language: 'en' }
+  })
+  render(<SubscriberTable {...props} rows={[imported, unknown]} />)
+  fireEvent.click(screen.getByRole('button', { name: 'amina@example.test' }))
+  expect(screen.getByRole('dialog').textContent).toContain('Form: Added by the project')
+  expect(screen.getByRole('dialog').textContent).not.toContain('import ·')
+  cleanup()
+  render(<SubscriberTable {...props} rows={[unknown]} />)
+  fireEvent.click(screen.getByRole('button', { name: 'lee@example.test' }))
+  expect(screen.getByRole('dialog').textContent).toContain('Form: Another form')
+  expect(screen.getByRole('dialog').textContent).not.toContain('mystery_form')
 })
 
 test('row actions are one menu per row that names its subscriber, with Remove inside', async () => {
