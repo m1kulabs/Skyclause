@@ -28,7 +28,10 @@ export default defineConfig({
   timeout: process.env.E2E_TIMEOUT ? Number(process.env.E2E_TIMEOUT) : 30_000,
   reporter: process.env.CI ? [['github'], ['list']] : 'list',
   use: { baseURL: deployed ?? `http://localhost:${port}` },
-  testIgnore: pseudo ? undefined : [/(?:quality|camera)\/pseudo\.spec\.ts$/, /bundles\/mobile\.spec\.ts$/],
+  // e2e/flow runs on its own stack, with the worker (#194): `test:e2e:flow`.
+  testIgnore: pseudo
+    ? undefined
+    : [/(?:quality|camera)\/pseudo\.spec\.ts$/, /bundles\/mobile\.spec\.ts$/, /e2e\/flow\//],
   projects: pseudo
     ? [
         {

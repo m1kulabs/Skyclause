@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "tsc -b && next build && cp -R .next/static .next/standalone/apps/web/.next/static && cp -R public .next/standalone/apps/web/public",
     "start": "node .next/standalone/apps/web/server.js",
-    "test:e2e": "playwright test && I18N_PSEUDO=1 playwright test --project=pseudo"
+    "test:e2e": "playwright test && I18N_PSEUDO=1 playwright test --project=pseudo",
+    "test:e2e:flow": "playwright test -c e2e/flow/playwright.config.ts"
   },
   "dependencies": {
     "@skyclause/elements": "workspace:*",
