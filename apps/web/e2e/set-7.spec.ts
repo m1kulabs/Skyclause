@@ -472,7 +472,7 @@ for (const mode of [
   })
 }
 
-test('notifications panel removes a registered device immediately by keyboard — #170', async ({ page }) => {
+test('notifications panel asks first, then removes a registered device by keyboard — #170', async ({ page }) => {
   await removeDeviceScenario(page)
 })
 test('cancel window — #143 b-windows-ui', async ({ page }) => windowUndoCase(page))
@@ -517,7 +517,9 @@ test('revoking a share link asks for confirmation and names the link — #174 b-
   const share = page.locator('[data-project-settings-share]')
   await share.getByRole('button', { name: 'Revoke' }).click()
   const dialog = page.getByRole('alertdialog')
-  await expect(dialog.getByRole('heading')).toContainText('share-link-one')
+  // The link is named by its access and expiry, never by its ID.
+  await expect(dialog.getByRole('heading')).toContainText('Reviewer link, expires 12 November 2026')
+  await expect(dialog.getByRole('heading')).not.toContainText('share-link-one')
   await expect(dialog.getByRole('button', { name: 'Revoke link' })).toBeVisible()
   await dialog.getByRole('button', { name: 'Revoke link' }).click()
   await expect(share).toContainText('Revoked')

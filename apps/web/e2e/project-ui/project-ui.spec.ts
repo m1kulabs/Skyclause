@@ -161,7 +161,7 @@ test('changing the Sky SLA sends sla_s and shows the saved value', async ({ page
   await general.locator('[data-sla-pack="sky"]').getByRole('button').click()
   await expect.poll(() => submitted?.sla_s).toBe(900)
   expect(submitted).toMatchObject({ enabled: true, sla_s: 900 })
-  await expect(general.locator('[data-sla-pack="sky"]')).toContainText('15 Minutes')
+  await expect(general.locator('[data-sla-pack="sky"]')).toContainText('15 minutes')
 })
 
 test('project rota adds a field-edited override with the project id', async ({ page }) => {

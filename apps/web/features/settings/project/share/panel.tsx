@@ -3,13 +3,15 @@
 import { useCallback, useState, type FormEvent } from 'react'
 import { useParams } from 'next/navigation'
 import { CopyIcon } from 'lucide-react'
-import { formatDateTime } from '@skyclause/i18n/format'
+import { formatDateTime, formatNumber } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
 import { Card, CardContent } from '#ui/card'
 import { Input } from '#ui/input'
 import { Label } from '#ui/label'
 import { Skeleton } from '#ui/skeleton'
 import { ConfirmDialog } from '../../set-7'
+import { focusHeadingWhenFree } from '../../focus'
+import { RowPager, pageOf } from '../row-pager'
 import { useRead } from '../../../analysis/use-read'
 import { StatusMark } from '../../../brand/status-mark'
 import {
@@ -19,11 +21,13 @@ import {
   type ShareLink
 } from '../../../project-settings/operations'
 import { t } from '../../../project-settings/catalogue'
+import '../../catalogue'
 import {
   SettingsAside,
   SettingsError,
   SettingsItem,
   SettingsList,
+  SettingsLoading,
   SettingsPart,
   SettingsParts,
   SettingsReadError,
@@ -48,18 +52,32 @@ function linkState(link: ShareLink, now: number, locale: Locale) {
   } as const
 }
 
+/** Every share link of the project: the API's pages are followed to the end, and the panel pages through them. */
+async function allShareLinks(projectId: string, signal: AbortSignal) {
+  const links: ShareLink[] = []
+  const seen = new Set<string>()
+  let cursor: string | undefined
+  do {
+    const page = await projectSettingsApi('listShareLinks', {
+      params: { id: projectId },
+      query: { limit: 200, cursor },
+      signal
+    })
+    links.push(...page.data)
+    cursor = page.next_cursor ?? undefined
+    if (cursor && seen.has(cursor)) throw new Error('Repeated share link cursor')
+    if (cursor) seen.add(cursor)
+  } while (cursor)
+  return links
+}
+
 export function ProjectSharePanel({ locale = 'en' }: { locale?: Locale }) {
   const params = useParams<{ org: string; project: string }>()
   const [readRevision, setReadRevision] = useState(0)
   const read = useCallback(
     async (signal: AbortSignal): Promise<LinkData> => {
       const project = await resolveProject(params.org, params.project, signal)
-      const links = await projectSettingsApi('listShareLinks', {
-        params: { id: project.id },
-        query: { limit: 200 },
-        signal
-      })
-      return { projectId: project.id, links: links.data }
+      return { projectId: project.id, links: await allShareLinks(project.id, signal) }
     },
     [params.org, params.project, readRevision]
   )
@@ -72,19 +90,31 @@ export function ProjectSharePanel({ locale = 'en' }: { locale?: Locale }) {
   const [revoking, setRevoking] = useState<ShareLink | null>(null)
   const [busyRevoke, setBusyRevoke] = useState(false)
   const [revoked, setRevoked] = useState<string | null>(null)
-  const [error, setError] = useState('')
+  const [createError, setCreateError] = useState('')
+  const [revokeError, setRevokeError] = useState('')
+  const [linkPage, setLinkPage] = useState(0)
   const [links, setLinks] = useState<ShareLink[] | null>(null)
 
   const projectId = loaded.status === 'ready' ? loaded.value.projectId : ''
   const visibleLinks = links ?? (loaded.status === 'ready' ? loaded.value.links : [])
+  // A link is named by its access and when it expires, never by its ID.
   const linkName = (link: ShareLink) =>
-    t('project-settings.link_name', { access: t(`project-settings.${link.access}`, {}, locale), id: link.id }, locale)
+    t(
+      'project-settings.link_name',
+      {
+        access: t(`project-settings.${link.access}`, {}, locale),
+        expiry: link.expires_at
+          ? t('project-settings.link_expires_on', { date: formatDateTime(link.expires_at, locale) }, locale)
+          : t('project-settings.link_no_expiry', {}, locale)
+      },
+      locale
+    )
 
   const create = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!projectId || creating) return
     setCreating(true)
-    setError('')
+    setCreateError('')
     setCreated(null)
     setRevoked(null)
     setCopyState('idle')
@@ -95,8 +125,9 @@ export function ProjectSharePanel({ locale = 'en' }: { locale?: Locale }) {
       })
       setCreated(result)
       setLinks((current) => [result, ...(current ?? visibleLinks)])
+      setLinkPage(0)
     } catch {
-      setError(t('project-settings.link_create_failed', {}, locale))
+      setCreateError(t('project-settings.link_create_failed', {}, locale))
     } finally {
       setCreating(false)
     }
@@ -115,14 +146,16 @@ export function ProjectSharePanel({ locale = 'en' }: { locale?: Locale }) {
   const revoke = async () => {
     if (!revoking || busyRevoke) return
     setBusyRevoke(true)
-    setError('')
+    setRevokeError('')
     try {
       const result = await projectSettingsApi('revokeShareLink', { params: { id: revoking.id } })
       setLinks((current) => (current ?? visibleLinks).map((link) => (link.id === result.id ? result : link)))
       setRevoked(linkName(revoking))
       setRevoking(null)
+      // The Revoke button that held focus is gone: the list's heading takes it, once the dialog lets go of the page.
+      focusHeadingWhenFree('project-share-links-title')
     } catch {
-      setError(t('project-settings.revoke_failed', {}, locale))
+      setRevokeError(t('project-settings.revoke_failed', {}, locale))
     } finally {
       setBusyRevoke(false)
     }
@@ -130,10 +163,10 @@ export function ProjectSharePanel({ locale = 'en' }: { locale?: Locale }) {
 
   if (loaded.status === 'loading')
     return (
-      <div className="grid gap-4" aria-busy="true">
+      <SettingsLoading locale={locale} className="grid gap-4">
         <Skeleton className="h-10 w-full rounded-full" />
         <Skeleton className="h-16 w-full rounded-md" />
-      </div>
+      </SettingsLoading>
     )
   if (loaded.status === 'error')
     return (
@@ -204,9 +237,12 @@ export function ProjectSharePanel({ locale = 'en' }: { locale?: Locale }) {
           </Button>
         </form>
         {created ? (
-          <Card role="status" data-created-share-link>
+          <Card data-created-share-link>
             <CardContent className="grid min-w-0 gap-3">
-              <p className="type-card-title">{t('project-settings.link_created', {}, locale)}</p>
+              <SettingsStatus className="sr-only">{t('project-settings.link_created', {}, locale)}</SettingsStatus>
+              <p className="type-card-title" aria-hidden="true">
+                {t('project-settings.link_created', {}, locale)}
+              </p>
               <div className="grid min-w-0 gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
                 <div className="grid min-w-0 gap-2">
                   <Label htmlFor="share-link-url">{t('project-settings.link_url', {}, locale)}</Label>
@@ -233,20 +269,27 @@ export function ProjectSharePanel({ locale = 'en' }: { locale?: Locale }) {
             </CardContent>
           </Card>
         ) : null}
+        {createError ? <SettingsError>{createError}</SettingsError> : null}
       </SettingsPart>
 
       <SettingsPart
         title={t('project-settings.share_title', {}, locale)}
         actions={
-          <span className="type-body text-muted-foreground" data-numeric>
-            {t('project-settings.count', { count: visibleLinks.length }, locale)}
-          </span>
+          visibleLinks.length ? (
+            <span className="type-body text-muted-foreground" data-numeric>
+              {t(
+                visibleLinks.length === 1 ? 'project-settings.links_count_one' : 'project-settings.links_count_other',
+                { count: formatNumber(visibleLinks.length, locale) },
+                locale
+              )}
+            </span>
+          ) : null
         }
         id="project-share-links-title"
       >
         {visibleLinks.length ? (
           <SettingsList>
-            {visibleLinks.map((link) => {
+            {pageOf(visibleLinks, linkPage).map((link) => {
               const state = linkState(link, now, locale)
               return (
                 <SettingsItem key={link.id}>
@@ -288,12 +331,13 @@ export function ProjectSharePanel({ locale = 'en' }: { locale?: Locale }) {
             })}
           </SettingsList>
         ) : (
-          <SettingsStatus>{t('project-settings.count', { count: 0 }, locale)}</SettingsStatus>
+          <p className="type-body text-muted-foreground">{t('project-settings.links_empty', {}, locale)}</p>
         )}
+        <RowPager total={visibleLinks.length} page={linkPage} onPage={setLinkPage} locale={locale} />
         {revoked ? (
           <SettingsStatus>{t('project-settings.revoked_notice', { name: revoked }, locale)}</SettingsStatus>
         ) : null}
-        {error ? <SettingsError>{error}</SettingsError> : null}
+        {revokeError ? <SettingsError>{revokeError}</SettingsError> : null}
       </SettingsPart>
       {revoking ? (
         <ConfirmDialog

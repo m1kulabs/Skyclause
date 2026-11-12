@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { useParams } from 'next/navigation'
 import { formatTimeZoneName } from '@skyclause/i18n/format'
 import { defaultSlaSeconds, slaUpdateBody } from '../../../project-settings/model'
@@ -11,14 +11,17 @@ import { Input } from '#ui/input'
 import { Label } from '#ui/label'
 import { Textarea } from '#ui/textarea'
 import { Skeleton } from '#ui/skeleton'
-import { ConfirmDialog, useUndoableAction } from '../../set-7'
+import { ConfirmDialog, useUndoableAction, useUnsavedChangesGuard } from '../../set-7'
+import { focusWhenFree } from '../../focus'
 import { t } from '../../../project-settings/catalogue'
+import '../../catalogue'
 import {
   SettingsAside,
   SettingsDanger,
   SettingsError,
   SettingsItem,
   SettingsList,
+  SettingsLoading,
   SettingsPart,
   SettingsParts,
   SettingsReadError,
@@ -38,6 +41,20 @@ type ProjectForm = {
   cameraEnd: string
   semesterEnd: string
   warningTerms: string
+}
+
+type Pack = 'sky' | 'crowd'
+const PACKS = ['sky', 'crowd'] as const
+const SLA_SECONDS_MAX = 2147483647
+/** Seconds in the unit each pack's deadline is written in: minutes for Sky, hours for Crowd. */
+const slaUnit = (pack: Pack) => (pack === 'sky' ? 60 : 3600)
+const slaWords = (seconds: number, pack: Pack) => String(Math.max(1, Math.round(seconds / slaUnit(pack))))
+
+/** The whole number of units a deadline field holds, or null while it is empty, fractional, below 1 or too large. */
+function parseSla(text: string, pack: Pack): number | null {
+  if (!/^\d+$/.test(text.trim())) return null
+  const value = Number(text.trim())
+  return value >= 1 && value * slaUnit(pack) <= SLA_SECONDS_MAX ? value : null
 }
 
 function formFrom(project: Project): ProjectForm {
@@ -82,17 +99,22 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
   const [project, setProject] = useState<Project | null>(null)
   const [form, setForm] = useState<ProjectForm | null>(null)
   const [savedForm, setSavedForm] = useState<ProjectForm | null>(null)
-  const [sla, setSla] = useState<Record<'sky' | 'crowd', number>>({
-    sky: defaultSlaSeconds('sky'),
-    crowd: defaultSlaSeconds('crowd')
+  // What each deadline field holds, as typed: it is checked on blur and on save, never rewritten while typing.
+  const [slaText, setSlaText] = useState<Record<Pack, string>>({
+    sky: slaWords(defaultSlaSeconds('sky'), 'sky'),
+    crowd: slaWords(defaultSlaSeconds('crowd'), 'crowd')
   })
-  const [savedSla, setSavedSla] = useState<Record<'sky' | 'crowd', number> | null>(null)
-  const [busy, setBusy] = useState<'project' | 'sky' | 'crowd' | null>(null)
+  const [slaProblem, setSlaProblem] = useState<Record<Pack, boolean>>({ sky: false, crowd: false })
+  const [savedSla, setSavedSla] = useState<Record<Pack, number> | null>(null)
+  const [busy, setBusy] = useState<'project' | Pack | null>(null)
   const [status, setStatus] = useState('')
   const [error, setError] = useState('')
   const [archived, setArchived] = useState(false)
   const [archiveOpen, setArchiveOpen] = useState(false)
-  const [slaSaved, setSlaSaved] = useState<'sky' | 'crowd' | null>(null)
+  const [slaSaved, setSlaSaved] = useState<Pack | null>(null)
+  const [focusNext, setFocusNext] = useState<'undo' | 'archive' | null>(null)
+  const archiveRef = useRef<HTMLButtonElement>(null)
+  const undoRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (loaded.status !== 'ready') return
@@ -105,18 +127,31 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
     setProject(value)
     setForm(nextForm)
     setSavedForm(nextForm)
-    setSla(nextSla)
+    setSlaText({ sky: slaWords(nextSla.sky, 'sky'), crowd: slaWords(nextSla.crowd, 'crowd') })
     setSavedSla(nextSla)
     setArchived(value.archived_at !== null)
   }, [loaded])
 
   const dirty = !!form && !!savedForm && JSON.stringify(form) !== JSON.stringify(savedForm)
-  const slaDirty = (pack: 'sky' | 'crowd') => savedSla !== null && sla[pack] !== savedSla[pack]
+  const slaDirty = (pack: Pack) => savedSla !== null && slaText[pack].trim() !== slaWords(savedSla[pack], pack)
+  // Leaving the page (a link, the back button, closing the tab) with edits in the form or a deadline asks first.
+  useUnsavedChangesGuard(dirty || PACKS.some(slaDirty), locale)
   const archiveAction = useUndoableAction(async ({ keepalive }) => {
     if (!project) return
     const result = await projectSettingsApi('archiveProject', { params: { id: project.id }, keepalive })
     setArchived(result.archived_at !== null)
   })
+  // The control that was pressed is replaced by the next one (Archive by Undo, Undo and Restore by Archive): focus
+  // follows it, once the confirm dialog that was open has let go of the page.
+  useEffect(() => {
+    if (focusNext === 'undo' && archiveAction.pending) {
+      focusWhenFree(() => undoRef.current)
+      setFocusNext(null)
+    } else if (focusNext === 'archive' && !archiveAction.pending && !archived) {
+      focusWhenFree(() => archiveRef.current)
+      setFocusNext(null)
+    }
+  }, [focusNext, archiveAction.pending, archived])
 
   const saveProject = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -147,8 +182,15 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
     }
   }
 
-  const saveSla = async (pack: 'sky' | 'crowd') => {
+  const saveSla = async (pack: Pack) => {
     if (!project || !slaDirty(pack) || busy) return
+    const words = parseSla(slaText[pack], pack)
+    if (words === null) {
+      setSlaProblem((current) => ({ ...current, [pack]: true }))
+      document.getElementById(`sla-${pack}`)?.focus()
+      return
+    }
+    const seconds = words * slaUnit(pack)
     setBusy(pack)
     setError('')
     setStatus('')
@@ -158,7 +200,7 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
       const updated = await projectSettingsApi('updateProjectPack', {
         org: params.org,
         params: { id: project.id, pack },
-        body: slaUpdateBody({ pack, enabled: existing?.enabled ?? false }, sla[pack])
+        body: slaUpdateBody({ pack, enabled: existing?.enabled ?? false }, seconds)
       })
       setProject(
         (current) =>
@@ -169,8 +211,10 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
               : [...current.packs, updated]
           }
       )
-      setSla((current) => ({ ...current, [pack]: updated.sla_s ?? sla[pack] }))
-      setSavedSla((current) => current && { ...current, [pack]: updated.sla_s ?? sla[pack] })
+      const saved = updated.sla_s ?? seconds
+      setSlaText((current) => ({ ...current, [pack]: slaWords(saved, pack) }))
+      setSavedSla((current) => current && { ...current, [pack]: saved })
+      setSlaProblem((current) => ({ ...current, [pack]: false }))
       setSlaSaved(pack)
     } catch {
       setError(t('project-settings.save_failed', {}, locale))
@@ -188,6 +232,7 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
       setProject(result)
       setArchived(false)
       setStatus(t('project-settings.saved', {}, locale))
+      setFocusNext('archive')
     } catch {
       setError(t('project-settings.restore_failed', {}, locale))
     } finally {
@@ -197,11 +242,11 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
 
   if (loaded.status === 'loading' || (loaded.status === 'ready' && (!project || !form)))
     return (
-      <div className="grid gap-4" aria-busy="true">
+      <SettingsLoading locale={locale} className="grid gap-4">
         <Skeleton className="h-10 w-full rounded-full" />
         <Skeleton className="h-10 w-full rounded-full" />
         <Skeleton className="h-10 w-2/3 rounded-full" />
-      </div>
+      </SettingsLoading>
     )
   if (loaded.status === 'error')
     return (
@@ -226,7 +271,7 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
         <SettingsSummaryLine label={t('project-settings.time_zone', {}, locale)}>
           {formatTimeZoneName(project.time_zone, locale)}
         </SettingsSummaryLine>
-        {(['sky', 'crowd'] as const).map((pack) => (
+        {PACKS.map((pack) => (
           <SettingsSummaryLine
             key={pack}
             label={t('project-settings.deadline_of', { pack: t(`project-settings.${pack}`, {}, locale) }, locale)}
@@ -234,8 +279,8 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
             {t(
               'project-settings.value_unit',
               {
-                value: Math.max(1, Math.round((savedSla?.[pack] ?? sla[pack]) / (pack === 'sky' ? 60 : 3600))),
-                unit: t(`project-settings.${pack === 'sky' ? 'minutes' : 'hours'}`, {}, locale)
+                value: savedSla ? slaWords(savedSla[pack], pack) : slaText[pack],
+                unit: t(`project-settings.unit_${pack === 'sky' ? 'minutes' : 'hours'}`, {}, locale)
               },
               locale
             )}
@@ -250,7 +295,7 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
               <Input
                 id="project-name"
                 name="name"
-                autoComplete="organization-title"
+                autoComplete="off"
                 value={form.name}
                 onChange={(event) => field('name', event.target.value)}
                 required
@@ -262,7 +307,7 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
               <Input
                 id="site-name"
                 name="site_name"
-                autoComplete="organization"
+                autoComplete="off"
                 value={form.siteName}
                 onChange={(event) => field('siteName', event.target.value)}
                 maxLength={160}
@@ -307,10 +352,14 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
                 name="time_zone"
                 autoComplete="off"
                 spellCheck={false}
+                aria-describedby="project-time-zone-hint"
                 value={form.timeZone}
                 onChange={(event) => field('timeZone', event.target.value)}
                 required
               />
+              <p id="project-time-zone-hint" className="type-small text-muted-foreground">
+                {t('project-settings.time_zone_hint', {}, locale)}
+              </p>
             </div>
             <div className={`grid min-w-0 gap-2 ${dateFieldRing}`} data-focus-ring>
               <Label htmlFor="semester-end">{t('project-settings.semester_end', {}, locale)}</Label>
@@ -391,52 +440,81 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
         id="project-sla-title"
       >
         <SettingsList>
-          {(['sky', 'crowd'] as const).map((pack) => {
-            const unit = pack === 'sky' ? 60 : 3600
-            const value = Math.max(1, Math.round(sla[pack] / unit))
-            const unitWord = t(`project-settings.${pack === 'sky' ? 'minutes' : 'hours'}`, {}, locale)
+          {PACKS.map((pack) => {
+            const unitWord = t(`project-settings.unit_${pack === 'sky' ? 'minutes' : 'hours'}`, {}, locale)
+            const packName = t(`project-settings.${pack}`, {}, locale)
             return (
               <SettingsItem key={pack} data-sla-pack={pack} className="items-end">
-                <div className="grid min-w-0 gap-2">
-                  <Label htmlFor={`sla-${pack}`}>{t(`project-settings.${pack}`, {}, locale)}</Label>
-                  <div className="flex items-center gap-3">
-                    <Input
-                      id={`sla-${pack}`}
-                      name={`sla_s_${pack}`}
-                      autoComplete="off"
-                      type="number"
-                      min={1}
-                      step={1}
-                      value={value}
-                      data-numeric
-                      className="w-24 text-right"
-                      aria-label={`${t(`project-settings.${pack}`, {}, locale)} ${t('project-settings.sla', {}, locale)}`}
-                      onChange={(event) =>
-                        setSla((current) => ({
-                          ...current,
-                          [pack]: Math.max(1, Number(event.target.value) || 1) * unit
-                        }))
-                      }
-                    />
-                    <span className="type-body text-muted-foreground">{unitWord}</span>
+                <form
+                  className="flex w-full min-w-0 flex-wrap items-end justify-between gap-x-4 gap-y-3"
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    void saveSla(pack)
+                  }}
+                  noValidate
+                >
+                  <div className="grid min-w-0 content-start gap-2">
+                    <Label htmlFor={`sla-${pack}`}>
+                      {t('project-settings.deadline_of', { pack: packName }, locale)}
+                    </Label>
+                    <div className="flex items-center gap-3">
+                      <Input
+                        id={`sla-${pack}`}
+                        name={`sla_s_${pack}`}
+                        autoComplete="off"
+                        type="number"
+                        min={1}
+                        step={1}
+                        inputMode="numeric"
+                        value={slaText[pack]}
+                        data-numeric
+                        className="w-24 text-right"
+                        aria-invalid={slaProblem[pack] ? true : undefined}
+                        aria-describedby={`sla-${pack}-hint${slaProblem[pack] ? ` sla-${pack}-error` : ''}`}
+                        onChange={(event) => {
+                          setSlaText((current) => ({ ...current, [pack]: event.target.value }))
+                          if (slaProblem[pack]) setSlaProblem((current) => ({ ...current, [pack]: false }))
+                        }}
+                        onBlur={() => {
+                          if (parseSla(slaText[pack], pack) === null)
+                            setSlaProblem((current) => ({ ...current, [pack]: true }))
+                        }}
+                      />
+                      <span aria-hidden="true" className="type-body text-muted-foreground">
+                        {unitWord}
+                      </span>
+                    </div>
+                    <p id={`sla-${pack}-hint`} className="type-small text-muted-foreground">
+                      {t('project-settings.sla_hint', { unit: unitWord }, locale)}
+                    </p>
+                    {slaProblem[pack] ? (
+                      <SettingsError id={`sla-${pack}-error`}>
+                        {t('project-settings.sla_invalid', { unit: unitWord }, locale)}
+                      </SettingsError>
+                    ) : null}
                   </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  {slaSaved === pack && (
-                    <SettingsStatus>
-                      {t('project-settings.saved_sla_value', { value, unit: unitWord }, locale)}
-                    </SettingsStatus>
-                  )}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={!slaDirty(pack) || busy !== null}
-                    aria-busy={busy === pack}
-                    onClick={() => void saveSla(pack)}
-                  >
-                    {busy === pack ? t('project-settings.saving', {}, locale) : t('project-settings.save', {}, locale)}
-                  </Button>
-                </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {slaSaved === pack && !slaDirty(pack) && (
+                      <SettingsStatus>
+                        {t(
+                          'project-settings.saved_sla_value',
+                          { value: slaWords(savedSla?.[pack] ?? 0, pack), unit: unitWord },
+                          locale
+                        )}
+                      </SettingsStatus>
+                    )}
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      disabled={!slaDirty(pack) || busy !== null}
+                      aria-busy={busy === pack}
+                    >
+                      {busy === pack
+                        ? t('project-settings.saving', {}, locale)
+                        : t('project-settings.save', {}, locale)}
+                    </Button>
+                  </div>
+                </form>
               </SettingsItem>
             )
           })}
@@ -454,7 +532,15 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
         {archiveAction.pending ? (
           <div className="flex flex-wrap items-center gap-3" role="status">
             <span className="type-body">{t('project-settings.archive_pending', { name: project.name }, locale)}</span>
-            <Button type="button" variant="outline" onClick={archiveAction.undo}>
+            <Button
+              ref={undoRef}
+              type="button"
+              variant="outline"
+              onClick={() => {
+                archiveAction.undo()
+                setFocusNext('archive')
+              }}
+            >
               {t('project-settings.undo', {}, locale)}
             </Button>
           </div>
@@ -464,6 +550,7 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
           </Button>
         ) : (
           <Button
+            ref={archiveRef}
             type="button"
             variant="destructive"
             disabled={busy !== null || archiveAction.committing}
@@ -484,6 +571,7 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
         locale={locale}
         onConfirm={() => {
           archiveAction.start()
+          setFocusNext('undo')
         }}
       />
     </SettingsParts>
