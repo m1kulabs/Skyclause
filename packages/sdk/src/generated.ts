@@ -1,4 +1,4 @@
-export const OPENAPI_SHA256 = '177c931987b3a643759a8d71fe378608f2424b308041666120404da86c427152' as const // gitleaks:allow -- a SHA-256 of openapi.json, not a secret.
+export const OPENAPI_SHA256 = 'f49c0e88879b9c988592bbaf390903c82e4524a169e3f9f2ef011038e9844905' as const // gitleaks:allow -- a SHA-256 of openapi.json, not a secret.
 
 export const OPERATION_IDS = [
   'getProjectAnalysis',

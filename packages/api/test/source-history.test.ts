@@ -347,6 +347,7 @@ for (const kind of ['readings', 'polls'] as const) {
       { outcome: 'error' },
       { extra: true },
       { at: '2026-11-01T00:00:00.0000001Z' },
+      { at: '0000-01-01T00:00:00Z' },
       { id: 'invalid' }
     ]) {
       const cursor = encodeCursor({ ...payload, ...patch })
@@ -376,11 +377,17 @@ for (const kind of ['readings', 'polls'] as const) {
     expect((await body(kind, src.id, { from: times[2]!, to: times[0]! })).data.map((r) => r.id)).toEqual([ids[2]])
     expect((await body(kind, src.id, { from: times[2]! })).data.map((r) => r.id)).toEqual(ids.slice(0, 3))
     expect((await body(kind, src.id, { to: times[2]! })).data.map((r) => r.id)).toEqual([ids[3]])
+    expect((await body(kind, src.id, { from: '0001-01-01T00:00:00Z' })).data.map((r) => r.id)).toEqual(ids)
+    expect(await direct(kind, src.id, viewer, { limit: 50, from: '0001-01-01T00:00:00Z' })).toEqual(
+      await body(kind, src.id, { from: '0001-01-01T00:00:00Z' })
+    )
     for (const [query, pointer] of [
       [{ from: times[0], to: times[0] }, '/to'],
       [{ from: times[0], to: times[2] }, '/to'],
       [{ from: '2026-11-01T00:00:00.1234567Z' }, '/from'],
       [{ to: 'invalid' }, '/to'],
+      [{ from: '0000-01-01T00:00:00Z' }, '/from'],
+      [{ to: '0000-01-01T00:00:00Z' }, '/to'],
       [{ limit: '0' }, '/limit'],
       [{ limit: '201' }, '/limit'],
       [{ limit: '1.5' }, '/limit'],

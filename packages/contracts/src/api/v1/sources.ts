@@ -12,8 +12,8 @@ import { Instant, Page, PageQuery, Poll, Reading, Source, SourceRole, SourceStat
 
 const ProjectSourceParams = ProjectParams.extend({ sourceId: ProjectParams.shape.id })
 const PageRequest = z.object({ ...PageQuery.shape })
-// PostgreSQL stores microseconds: reject finer bounds rather than silently rounding the requested range.
-const HistoryInstant = Instant.regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/).openapi({
+// PostgreSQL has no year zero and stores microseconds: reject unsupported bounds rather than rounding.
+const HistoryInstant = Instant.regex(/^(?!0000)\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/).openapi({
   format: 'date-time'
 })
 const HistoryRequest = PageRequest.extend({ from: HistoryInstant.optional(), to: HistoryInstant.optional() })

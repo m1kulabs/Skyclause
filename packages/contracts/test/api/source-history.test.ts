@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest'
+import { Instant } from '../../src/api/shared'
 import { listSourcePolls, listSourceReadings } from '../../src/api/v1/sources'
 
 const from = '2026-11-01T00:00:00.000001Z'
@@ -9,6 +10,7 @@ for (const operation of [listSourceReadings, listSourcePolls]) {
   test(`${operation.operationId} retains exact microsecond range and pagination`, () => {
     expect(query.parse({ from, to, cursor: 'position' })).toEqual({ from, to, cursor: 'position', limit: 50 })
     for (const instant of [
+      '0001-01-01T00:00:00Z',
       '2026-11-01T00:00:00Z',
       '2026-11-01T00:00:00.1Z',
       '2026-11-01T00:00:00.12Z',
@@ -24,7 +26,11 @@ for (const operation of [listSourceReadings, listSourcePolls]) {
 
   test(`${operation.operationId} reports invalid instants and ranges at their query fields`, () => {
     for (const field of ['from', 'to']) {
+      expect(query.parse({ [field]: '0001-01-01T00:00:00Z' })).toMatchObject({
+        [field]: '0001-01-01T00:00:00Z'
+      })
       for (const value of [
+        '0000-01-01T00:00:00Z',
         'bad',
         '2026-11-01T00:00:00+08:00',
         '2026-11-01T00:00:00+00:00',
@@ -104,4 +110,9 @@ test('poll history preserves optional nullable diagnostics while base poll and r
     next_cursor: null
   }
   expect(listSourceReadings.responses[200].content['application/json'].schema.parse(page)).toEqual(page)
+})
+
+test('shared Instant retains year-zero compatibility', () => {
+  for (const instant of ['0000-01-01T00:00:00Z', '0001-01-01T00:00:00Z', from, to])
+    expect(Instant.parse(instant)).toBe(instant)
 })
