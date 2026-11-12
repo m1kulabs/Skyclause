@@ -360,6 +360,26 @@ test('failed reads show an error and Retry, without substituting data', async ({
   await expect(page.locator('.bundle-call-list > li')).toHaveCount(2)
 })
 
+test('on a phone the open bundle shows first; Bundles shows the list and its open row returns', async ({ page }) => {
+  await prepare(page)
+  await page.setViewportSize({ width: 375, height: 812 })
+  await open(page)
+  const list = page.getByRole('region', { name: t('region_list') })
+  const item = page.getByRole('region', { name: t('region_item') })
+  await expect(item).toBeVisible()
+  await expect(list).toBeHidden()
+  await expect(page.locator('.bundle-approval-bar')).toBeVisible()
+  await item.getByRole('button', { name: t('back_to_list'), exact: true }).click()
+  await expect(list).toBeVisible()
+  await expect(item).toBeHidden()
+  await expect(page.locator('.bundle-approval-bar')).toBeHidden()
+  const current = list.locator('[aria-current="true"]')
+  await expect(current).toHaveAttribute('href', path)
+  await current.click()
+  await expect(item).toBeVisible()
+  await expect(page).toHaveURL(path)
+})
+
 test('NFR-15 measured replay is derived from the named committed capture', () => {
   expect(rain60).toBe(39)
 })

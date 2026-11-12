@@ -102,21 +102,23 @@ export function BundleDetail({ bundleId, actionsRef, initial }: BundleDetailProp
 
   const ordered = useMemo(() => (data ? orderedCalls(data.calls) : []), [data])
   const reviewable = ordered.filter((call) => canReviewCall(call, now))
-  const current = reviewable.find((call) => call.id === focused) ?? reviewable[0]
-  const canAct = editable && !pending && !review.conflict && !review.reauth && !!current
+  // A, E and R act on the focused call only; the bar's Edit and Reject on it too, else on the first open call.
+  const focusedCall = reviewable.find((call) => call.id === focused)
+  const current = focusedCall ?? reviewable[0]
+  const canAct = editable && !pending && !review.conflict && !review.reauth && !!focusedCall
   const decide = (id: string, action: 'approve' | 'reject') =>
     review.setDecisions((items) => ({
       ...items,
       [id]: { ...items[id], action: action === 'reject' ? 'reject' : items[id]?.notices ? 'edit' : 'approve' }
     }))
   const edit = () => {
-    if (canAct) startTransition(() => setEditing(current.id))
+    if (canAct) startTransition(() => setEditing(focusedCall.id))
   }
   const reject = async () => {
-    if (canAct) decide(current.id, 'reject')
+    if (canAct) decide(focusedCall.id, 'reject')
   }
   const select = async () => {
-    if (canAct) decide(current.id, 'approve')
+    if (canAct) decide(focusedCall.id, 'approve')
   }
   useImperativeHandle(actionsRef, () => ({ approve: select, edit, reject }))
 

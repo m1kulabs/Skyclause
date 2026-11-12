@@ -42,7 +42,7 @@ export function BundleList({
     onChoose(id)
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
     event.preventDefault()
-    router.push(href)
+    if (id !== current) router.push(href)
   }
   return (
     <div className="bundle-list">
