@@ -171,10 +171,12 @@
 }
 
 /*
- * Derived roles and the shadcn aliases, resolved wherever the roles are set (the document and the forced-dusk
- * surfaces), so a surface's own theme reaches its aliases.
+ * Derived roles and the shadcn aliases, resolved wherever the roles are set (the document, a nested .dark or .light
+ * such as the Appearance preview, and the forced-dusk surfaces), so a surface's own theme reaches its aliases.
  */
 :root,
+.dark,
+.light,
 [data-surface='marketing'],
 [data-surface='auth'] {
   --control: var(--raised);
