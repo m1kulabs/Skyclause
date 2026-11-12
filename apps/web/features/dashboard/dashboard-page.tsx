@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
+import { ChevronRight } from 'lucide-react'
 import { formatDate, formatNumber, formatTime } from '@skyclause/i18n/format'
 import type { StripWindow } from '@skyclause/elements'
 import type { Mode } from '@skyclause/contracts'
@@ -286,7 +287,10 @@ function ReviewRow({
         </p>
         {index === 0 && data.strip ? (
           <details className={styles.readings}>
-            <summary>{t('dashboard.readings')}</summary>
+            <summary>
+              <ChevronRight aria-hidden="true" className="size-4" />
+              {t('dashboard.readings')}
+            </summary>
             <div data-window-strip className="pt-3">
               <WindowStrip windows={data.strip.window ? [data.strip.window] : []} strip={stripInput(data.strip)} />
             </div>

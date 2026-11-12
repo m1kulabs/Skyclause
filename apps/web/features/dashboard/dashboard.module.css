@@ -53,7 +53,20 @@
   align-self: center;
 }
 
+.readings > summary::-webkit-details-marker {
+  display: none;
+}
+
+.readings > summary svg {
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.readings[open] > summary svg {
+  transform: rotate(90deg);
+}
+
 .readings > summary {
+  list-style: none;
   display: inline-flex;
   min-height: 24px;
   align-items: center;
@@ -127,6 +140,14 @@
   .bundleEnter {
     animation: none;
   }
+
+  .readings > summary svg {
+    transition: none;
+  }
+}
+
+:global(html[data-motion='reduce']) .readings > summary svg {
+  transition: none;
 }
 
 @media (max-width: 1023px) {

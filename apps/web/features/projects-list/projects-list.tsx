@@ -60,7 +60,8 @@ function ProjectMeta({ item, fetchedAt }: { item: ProjectListItem; fetchedAt: nu
   const age = ageS !== null ? formatAge(new Date(Date.now() - ageS * 1000).toISOString(), 'en') : null
   return (
     <div className={styles.meta}>
-      <p className="type-card-title" data-numeric>
+      {/* A zero is printed as a zero, quietly: only a count that needs someone is set in the card title. */}
+      <p className={summary.windows_at_risk > 0 ? 'type-card-title' : 'type-body text-muted-foreground'} data-numeric>
         {t('organisations.projects.needsReview', { count: formatNumber(summary.windows_at_risk, 'en') })}
       </p>
       <p className="type-small text-muted-foreground">

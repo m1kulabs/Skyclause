@@ -198,10 +198,24 @@
   gap: 6px;
 }
 
+.overview-readings > summary::-webkit-details-marker {
+  display: none;
+}
+
+.overview-readings > summary svg {
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.overview-readings[open] > summary svg {
+  transform: rotate(90deg);
+}
+
 .overview-readings > summary {
+  list-style: none;
   display: inline-flex;
   min-height: 24px;
   align-items: center;
+  gap: 6px;
   cursor: pointer;
   text-decoration: underline;
   text-decoration-color: var(--ink-muted);
@@ -280,11 +294,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .overview-bundle-row {
+  .overview-bundle-row,
+  .overview-readings > summary svg {
     transition: none;
   }
 }
 
-:root[data-motion='reduce'] .overview-bundle-row {
+:root[data-motion='reduce'] :is(.overview-bundle-row, .overview-readings > summary svg) {
   transition: none;
 }

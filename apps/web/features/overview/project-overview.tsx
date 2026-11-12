@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { ChevronRight } from 'lucide-react'
 import type { Bundle, PackState, Verdict } from '@skyclause/contracts'
 import type { StripInput, StripPointState, StripWindow } from '@skyclause/elements'
 import { brandStates } from '@skyclause/elements'
@@ -635,7 +636,10 @@ export function ProjectOverview({
           ) : null}
           {hasReadings && stripData ? (
             <details className="overview-readings">
-              <summary>{t('overview.readings', {}, locale)}</summary>
+              <summary>
+                <ChevronRight aria-hidden="true" className="size-4" />
+                {t('overview.readings', {}, locale)}
+              </summary>
               <div className="pt-3">
                 <WindowStrip
                   windows={windows.filter(
