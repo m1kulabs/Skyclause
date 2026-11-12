@@ -188,6 +188,29 @@
   font-weight: 600;
 }
 
+/*
+ * On a phone the shared table's list (styles/globals.css) leads each value with its column's name, inline, at 13px.
+ * A retention period is a sentence, so its name takes a line of its own above it and the sentence keeps the page's
+ * reading size: "Kept for" never runs into "At most 24 hours". The doubled class outranks the list's cell rule.
+ */
+@media (max-width: 640px) {
+  .retention .retentionCell.retentionCell {
+    margin-top: 12px;
+    font-size: 16px;
+    line-height: 24px;
+    color: var(--foreground);
+  }
+
+  .retention .retentionCell[data-label]::before {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 18px;
+    color: var(--muted-foreground);
+  }
+}
+
 @media (min-width: 1000px) {
   .body {
     grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
