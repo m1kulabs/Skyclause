@@ -129,8 +129,8 @@
   "indicators": {
     "site": {
       "rain_60m_mm": "Hujan dalam 60 minit lepas (tapak)",
-      "api_max": "Indeks pencemaran udara, tertinggi antara stesen",
-      "api_0600_min_last3_max": "Indeks pencemaran udara pada 06:00, terendah dalam tiga pagi lepas",
+      "api_max": "Indeks Pencemaran Udara (IPU), tertinggi antara stesen",
+      "api_0600_min_last3_max": "Indeks Pencemaran Udara (IPU) pada 06:00, terendah dalam tiga pagi lepas",
       "met_warning_in_force": "Amaran MET sedang berkuat kuasa (tapak)",
       "met_afternoon_thunderstorm": "Ramalan MET: ribut petir waktu petang",
       "camera_far_low_frames": "Kamera langit: bingkai jauh berkontras rendah, daripada 3 terakhir",

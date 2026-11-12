@@ -129,8 +129,8 @@
   "indicators": {
     "site": {
       "rain_60m_mm": "Rain in the last 60 minutes (site)",
-      "api_max": "Air pollution index, highest across stations",
-      "api_0600_min_last3_max": "Air pollution index at 06:00, lowest of the last three mornings",
+      "api_max": "Air Pollutant Index, highest across stations",
+      "api_0600_min_last3_max": "Air Pollutant Index at 06:00, lowest of the last three mornings",
       "met_warning_in_force": "MET warning in force (site)",
       "met_afternoon_thunderstorm": "MET forecast: afternoon thunderstorm",
       "camera_far_low_frames": "Sky camera: low-contrast far frames, of the last 3",

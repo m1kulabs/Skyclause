@@ -92,10 +92,10 @@ describe('card models', () => {
     )
 
     expect(card.noCall).toBe(
-      'No call: Rain in the last 60 minutes, Highest Air Pollution Index failing since 14:50 MYT'
+      'No call: Rain in the last 60 minutes, Highest Air Pollutant Index failing since 14:50 MYT'
     )
     expect(cardAlt(card)).toBe(
-      'Commute disruption. 15:30 MYT – 17:00 MYT · Monday 2 November 2026. Deciding reading: 39 mm Rain in the last 60 minutes at 15:00 MYT. No call: Rain in the last 60 minutes, Highest Air Pollution Index failing since 14:50 MYT.'
+      'Commute disruption. 15:30 MYT – 17:00 MYT · Monday 2 November 2026. Deciding reading: 39 mm Rain in the last 60 minutes at 15:00 MYT. No call: Rain in the last 60 minutes, Highest Air Pollutant Index failing since 14:50 MYT.'
     )
     expect(card.strip).toBeNull()
     expect(card.captured).toBe('2 November 2026, 15:00 MYT')
