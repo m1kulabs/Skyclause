@@ -125,6 +125,19 @@ function latestErrorAt(polls: readonly SourcePoll[]): string | null {
   )
 }
 
+export function newestObservedAt(readings: readonly Pick<SourceReading, 'observed_at'>[]): string | null {
+  let latest: string | null = null
+  let latestMs = -Infinity
+  for (const reading of readings) {
+    const at = Date.parse(reading.observed_at)
+    if (!Number.isNaN(at) && at > latestMs) {
+      latestMs = at
+      latest = reading.observed_at
+    }
+  }
+  return latest
+}
+
 export interface SourceDetailProps {
   project: Project
   source: EvaluatedSource
@@ -145,7 +158,7 @@ export function SourceDetail({ project, source, strip, readings, polls, locale, 
       return at >= now - DAY_MS && at <= now
     })
     .sort((left, right) => Date.parse(right.started_at) - Date.parse(left.started_at))
-  const latestObserved = readingRows.at(-1)?.observed_at ?? source.latest_reading?.observed_at ?? null
+  const latestObserved = newestObservedAt(readingRows) ?? source.latest_reading?.observed_at ?? null
 
   let body: React.ReactNode
   if (source.kind === 'jps_rain') {
