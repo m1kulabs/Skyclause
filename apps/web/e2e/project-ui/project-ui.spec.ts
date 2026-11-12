@@ -146,7 +146,10 @@ test('project fields save through PATCH /api/projects/{id}', async ({ page }) =>
   await panel.locator('#site-name').fill('Updated campus')
   await panel.locator('#project-time-zone').fill('Asia/Kuala_Lumpur')
   // Each deadline row is its own form with its own Save, named for its pack; the project form's Save is just "Save changes".
-  await panel.locator('form').getByRole('button', { name: 'Save changes', exact: true }).click()
+  await panel
+    .locator('form')
+    .getByRole('button', { name: copy('Save changes'), exact: true })
+    .click()
   await expect.poll(() => submitted?.site_name).toBe('Updated campus')
   expect(submitted).toMatchObject({
     name: 'Bukit Jalil campus',
