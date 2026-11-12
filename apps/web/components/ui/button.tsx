@@ -5,8 +5,9 @@ import { cn } from '#lib/utils'
 const buttonVariants = cva(
   // A capsule: 36px in the app, 48px (`lg`) on public pages. Primary by inversion; secondary is a filled control with a
   // 2px muted edge (3:1). Every capsule keeps a 2px border so forced colours draw it, and high contrast inks it. The
-  // global :focus-visible outline is the ring.
-  "group/button inline-flex shrink-0 items-center justify-center rounded-full border-2 border-transparent [.hc_&]:border-(--edge) bg-clip-padding text-[14px] leading-5 font-medium whitespace-nowrap transition-[transform,opacity] outline-none select-none active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-60 aria-invalid:border-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  // fill is painted under that border (no `bg-clip-padding`), so the primary is as big as the outlined capsule beside
+  // it. The global :focus-visible outline is the ring.
+  "group/button inline-flex shrink-0 items-center justify-center rounded-full border-2 border-transparent [.hc_&]:border-(--edge) text-[14px] leading-5 font-medium whitespace-nowrap transition-[transform,opacity] outline-none select-none active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-60 aria-invalid:border-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
