@@ -175,10 +175,10 @@ function numbersIn(text: string, identifiers: Set<string>): Found[] {
   return found
 }
 
-/** Trusted names a notice may print verbatim: indicator names, IDs, the pinned sheet's text and the source URLs. */
-function identifiers(input: AgentInput): Set<string> {
+/** Trusted text a notice may print verbatim: indicator names, IDs, the pinned sheet's text and the source URLs. */
+function trustedTexts(input: AgentInput): string[] {
   const { snapshot } = input
-  const texts = [
+  return [
     snapshot.projectId,
     ...Object.keys(snapshot.site),
     ...Object.values(snapshot.site).flatMap((v) => [v.name, ...v.sourceIds, ...v.readingIds]),
@@ -190,8 +190,12 @@ function identifiers(input: AgentInput): Set<string> {
     ...input.sheet.clauses.flatMap((c) => [c.key, c.when, c.wording.en ?? '', c.wording.ms ?? '']),
     ...input.source_urls
   ]
+}
+
+/** The words of the trusted text, whole and split at dots. */
+function identifiers(input: AgentInput): Set<string> {
   const out = new Set<string>()
-  for (const text of texts) {
+  for (const text of trustedTexts(input)) {
     for (const [word] of text.matchAll(WORD)) {
       out.add(word)
       for (const part of word.split('.')) out.add(part)
