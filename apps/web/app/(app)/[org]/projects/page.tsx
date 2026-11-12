@@ -2,6 +2,11 @@ import { notFound } from 'next/navigation'
 import { ProjectsList } from '../../../../features/projects-list/projects-list'
 import { getOrgPrincipal } from '../../../../lib/principal'
 import { settingsLocale } from '../../../../features/settings/locale'
+import { t } from '../../../../features/organisations/catalogue'
+
+export async function generateMetadata() {
+  return { title: t('organisations.projects.title', {}, await settingsLocale()) }
+}
 
 /** `/{org}/projects`: the organisation's projects with per-pack modes, review counts and signal health. */
 export default async function Page({

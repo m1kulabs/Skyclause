@@ -3,6 +3,9 @@ import { devicesBuilt } from '../../../../../../features/settings/project/packs/
 import { SettingsFrame } from '../../../../../../features/settings/frame'
 import { requireSettings } from '../../../../../../features/settings/gate'
 import { settingsLocale } from '../../../../../../features/settings/locale'
+import { settingsMetadata } from '../../../../../../features/settings/metadata'
+
+export const generateMetadata = settingsMetadata('project', 'packs')
 
 export default async function Page({
   params,

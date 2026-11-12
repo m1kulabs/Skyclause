@@ -7,6 +7,11 @@ import { getOrgPrincipal } from '../../../../lib/principal'
 import { projectVisible } from '../../../../features/overview/server-gate'
 import { ProjectOverview } from '../../../../features/overview/project-overview'
 import { t } from '../../../../features/overview/catalogue'
+import { settingsLocale } from '../../../../features/settings/locale'
+
+export async function generateMetadata() {
+  return { title: t('overview.title', {}, await settingsLocale()) }
+}
 
 export default async function Page({ params }: { params: Promise<{ org: string; project: string }> }) {
   const { org, project } = await params

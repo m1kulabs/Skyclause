@@ -5,8 +5,11 @@ import { WindowsPage } from '../../../../../features/windows/windows-page'
 import { FirstRunProgress } from '../../../../../features/onboarding/first-run-progress'
 import { t } from '../../../../../features/windows/catalogue'
 import { prefersMalay } from '../../../../../lib/preferred-language'
+import { settingsLocale } from '../../../../../features/settings/locale'
 
-export const metadata = { title: t('windows.title') }
+export async function generateMetadata() {
+  return { title: t('windows.title', {}, await settingsLocale()) }
+}
 
 export default async function Page({ params }: { params: Promise<{ org: string; project: string }> }) {
   const { org, project } = await params
