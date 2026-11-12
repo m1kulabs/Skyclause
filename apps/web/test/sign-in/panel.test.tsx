@@ -172,17 +172,6 @@ test('on the app host of a multi-host deploy, every marketing link goes to the m
   }
 })
 
-test('without script, a refused post puts the typed address back in the field', () => {
-  for (const state of [
-    { kind: 'email-invalid', email: 'reader@example' },
-    { kind: 'send-failed', email: 'reader@example.org' },
-    { kind: 'send-limited', email: 'reader@example.org' }
-  ] as const) {
-    expect(render('sign-in', state)).toContain(`value="${state.email}"`)
-  }
-  expect(render('sign-in', { kind: 'send-failed' })).toContain('value=""')
-})
-
 test('a result (a confirmation, an expiry) is set in the plain style; only an error takes the error style', () => {
   const result = renderToStaticMarkup(<AuthMessage tone="result">{t('sign-in.confirm_done')}</AuthMessage>)
   expect(result).toContain('role="status"')

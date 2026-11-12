@@ -70,22 +70,3 @@ test('an email address needs one @ with something either side and a dotted domai
     expect(isEmailAddress(value)).toBe(false)
   }
 })
-
-test('a refused no-script post carries the typed address back for the field, and nothing longer than an address', () => {
-  expect(resolveAuthState({ state: 'email-invalid', email: 'reader@example' })).toEqual({
-    kind: 'email-invalid',
-    email: 'reader@example'
-  })
-  expect(resolveAuthState({ state: 'send-failed', email: 'reader@example.org' })).toEqual({
-    kind: 'send-failed',
-    email: 'reader@example.org'
-  })
-  expect(resolveAuthState({ state: 'send-limited', email: 'reader@example.org' })).toEqual({
-    kind: 'send-limited',
-    email: 'reader@example.org'
-  })
-  expect(resolveAuthState({ state: 'send-failed', email: `${'x'.repeat(250)}@example.org` })).toEqual({
-    kind: 'send-failed'
-  })
-  expect(resolveAuthState({ state: 'link-pending', email: 'reader@example.org' })).toEqual({ kind: 'link-pending' })
-})

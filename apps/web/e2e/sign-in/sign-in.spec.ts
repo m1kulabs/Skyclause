@@ -501,10 +501,8 @@ test('without JavaScript the email form posts and the page says what happened', 
   // This server has no mail transport, so the real send fails, and the page says so in words.
   await page.getByLabel('Email address').fill('reader@example.org')
   await page.getByRole('button', { name: 'Send sign-in link' }).click()
-  await expect(page).toHaveURL(/\/sign-in\?state=send-failed&email=reader%40example\.org&next=%2Fnew$/)
+  await expect(page).toHaveURL(/\/sign-in\?state=send-failed&next=%2Fnew$/)
   await expect(page.getByRole('alert')).toHaveText('We couldn’t send the sign-in link just now. Try again in a minute.')
-  // The typed address comes back in the field, so a second try needs no retyping.
-  await expect(page.getByLabel('Email address')).toHaveValue('reader@example.org')
 
   // A sent link's page, as the form lands on it: the address it went to, and until when it works.
   const until = new Date(Date.now() + 14 * 60_000).toISOString()

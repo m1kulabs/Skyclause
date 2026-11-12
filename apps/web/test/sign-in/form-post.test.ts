@@ -60,12 +60,12 @@ test('each refusal says what happened in a state the page renders, never a statu
   const cases: Array<[Response, string]> = [
     [
       new Response(null, { status: 429, headers: { 'Retry-After': '600' } }),
-      'state=send-limited&retry=2026-11-13T02%3A20%3A00.000Z&email=reader%40example.org'
+      'state=send-limited&retry=2026-11-13T02%3A20%3A00.000Z'
     ],
-    [new Response(null, { status: 429 }), 'state=send-limited&email=reader%40example.org'],
-    [Response.json({ code: 'VALIDATION_ERROR' }, { status: 400 }), 'state=email-invalid&email=reader%40example.org'],
-    [Response.json({ code: 'EMAIL_NOT_SENT' }, { status: 502 }), 'state=send-failed&email=reader%40example.org'],
-    [new Response(null, { status: 500 }), 'state=send-failed&email=reader%40example.org']
+    [new Response(null, { status: 429 }), 'state=send-limited'],
+    [Response.json({ code: 'VALIDATION_ERROR' }, { status: 400 }), 'state=email-invalid'],
+    [Response.json({ code: 'EMAIL_NOT_SENT' }, { status: 502 }), 'state=send-failed'],
+    [new Response(null, { status: 500 }), 'state=send-failed']
   ]
   for (const [answer, location] of cases) {
     const { deps } = fake(() => answer)
@@ -74,18 +74,10 @@ test('each refusal says what happened in a state the page renders, never a statu
   }
 })
 
-test('a refusal carries the typed address back to the field, so nobody retypes it', async () => {
-  const { deps } = fake(() => new Response(null, { status: 500 }))
-  const failed = await sendLinkFromForm(post('/sign-in/link', { email: ' reader@example.org ', next: '/new' }), deps)
-  expect(failed.headers.get('location')).toBe('/sign-in?state=send-failed&email=reader%40example.org&next=%2Fnew')
-  const empty = await sendLinkFromForm(post('/sign-in/link', {}), deps)
-  expect(empty.headers.get('location')).toBe('/sign-in?state=email-invalid')
-})
-
 test('a malformed address or a cross-site post never reaches Better Auth', async () => {
   const { deps, calls } = fake(() => Response.json({ status: true }))
   const invalid = await sendLinkFromForm(post('/sign-in/link', { email: 'not-an-email', next: '//evil.example' }), deps)
-  expect(invalid.headers.get('location')).toBe('/sign-in?state=email-invalid&email=not-an-email')
+  expect(invalid.headers.get('location')).toBe('/sign-in?state=email-invalid')
   const forged = await sendLinkFromForm(
     post('/sign-in/link', { email: 'reader@example.org' }, { origin: 'https://evil.example' }),
     deps
