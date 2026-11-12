@@ -28,6 +28,11 @@ export function connection(login: Login, purpose?: 'account-security') {
   const name = `DATABASE_URL_${login}`
   const url = process.env[name]
   if (!url) throw new Error(`${name} is not set`)
+  return pooled(login, url, purpose)
+}
+
+/** The pool for `url`, made once per URL and purpose. */
+function pooled(login: Login, url: string, purpose?: 'account-security') {
   const key = purpose ? `${purpose}:${url}` : url
   let found = connections.get(key)
   if (!found) {
