@@ -1,4 +1,4 @@
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { ApiProblem, createApiFetch } from '../../lib/api-fetch'
 import { testRegistry, validProblem } from './registry'
 
@@ -19,9 +19,35 @@ function jsonResponse(body: unknown, status = 200) {
   })
 }
 
+// Server-side reads have no default origin, so each test names the API's.
+beforeEach(() => {
+  vi.stubEnv('API_ORIGIN', 'https://api.example.test')
+})
+
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.unstubAllEnvs()
+})
+
+test.each([undefined, ''])('fails closed on the server when API_ORIGIN is %j, sending no request', async (origin) => {
+  vi.stubEnv('API_ORIGIN', origin)
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse(validProblem))
+  vi.stubGlobal('fetch', fetchMock)
+
+  await expect(apiFetch('getProjects', { params: { instance: 'acme' } })).rejects.toThrow(/API_ORIGIN/)
+  expect(fetchMock).not.toHaveBeenCalled()
+})
+
+test('browser reads need no API_ORIGIN and stay same-origin without NEXT_PUBLIC_API_ORIGIN', async () => {
+  vi.stubEnv('API_ORIGIN', undefined)
+  vi.stubEnv('NEXT_PUBLIC_API_ORIGIN', undefined)
+  vi.stubGlobal('window', { location: { origin: 'https://app.example.test', pathname: '/acme' } })
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse(validProblem))
+  vi.stubGlobal('fetch', fetchMock)
+
+  await apiFetch('getProjects', { params: { instance: 'acme' } })
+
+  expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(['/v1/orgs/acme/projects'])
 })
 
 test('routes /api to the app origin and /v1 to API_ORIGIN in multi-host mode', async () => {

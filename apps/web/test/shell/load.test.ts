@@ -1,5 +1,10 @@
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { loadShellData } from '../../features/shell/load'
+
+// Server-side reads have no default origin, so each test names the API's.
+beforeEach(() => {
+  vi.stubEnv('API_ORIGIN', 'http://localhost:3000')
+})
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -132,6 +137,19 @@ test('keeps every read on API_ORIGIN in single-host mode', async () => {
     'http://localhost:3000/api/me/preferences',
     'http://localhost:3000/v1/projects'
   ])
+})
+
+test('sends no request when API_ORIGIN is unset, so a session never reaches another environment', async () => {
+  vi.stubEnv('API_ORIGIN', undefined)
+  const fetcher = vi.fn(async (input: string | URL) => answerShell(input))
+  vi.stubGlobal('fetch', fetcher)
+
+  expect(await loadShellData(new Headers({ cookie: 'session=test' }))).toEqual({
+    memberships: [],
+    projects: [],
+    sidebarCollapsed: false
+  })
+  expect(fetcher).not.toHaveBeenCalled()
 })
 
 test('returns empty data when the origin answers a page instead of JSON', async () => {
