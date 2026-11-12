@@ -33,7 +33,9 @@ export interface TodayWindow {
   draft: boolean
 }
 
-export type SignalEntry = Dashboard['signal_health']['data'][number]
+type DashboardSignal = Dashboard['signal_health']['data'][number]
+/** A source's health; a source with no state yet has none, never one made up for it. */
+export type SignalEntry = Omit<DashboardSignal, 'state'> & { state: DashboardSignal['state'] | null }
 
 /** A show night or a forecast storm afternoon ahead; a storm afternoon has a day but no time of its own. */
 export interface UpcomingEntry {
@@ -100,7 +102,7 @@ export function mostRecentlyActive(projects: readonly DashboardProject[]): Dashb
 }
 
 const SEVERITY: Record<string, number> = { error: 0, stale: 1, probation: 2, pending: 3, recovered: 4, off_hours: 5 }
-const severity = (entry: SignalEntry) => SEVERITY[entry.state.state] ?? 6
+const severity = (entry: SignalEntry) => SEVERITY[entry.state?.state ?? 'pending'] ?? 6
 
 /** Sources in trouble first (error, then stale), the oldest reading first within each. */
 function sortSignals(entries: SignalEntry[]): SignalEntry[] {
@@ -252,7 +254,7 @@ export async function composeDashboard(
       : sources.value.data.map((source) => ({
           project: ref,
           source,
-          state: source.state ?? { state: 'pending', since: now.toISOString(), http_status: null, pending_until: null },
+          state: source.state,
           age_s: source.age_s
         }))
   )
