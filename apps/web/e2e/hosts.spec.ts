@@ -62,13 +62,17 @@ test.describe('HOST_MODE=multi', () => {
     expect(html).toContain('id="skyclause-announcer"')
   })
 
-  test('each host serves its own routes and 404s the others', async ({ request }) => {
+  test('each host serves its own routes and 404s the others’ non-page paths', async ({ request }) => {
     const get = (host: string, pathname: string) =>
       request.get(`${origin}${pathname}`, { headers: { host }, maxRedirects: 0 })
     expect((await get('skyclause.m1ku.tech', '/')).status()).toBe(200)
     expect((await get('skyclause.m1ku.tech', '/openapi.json')).status()).toBe(200)
     expect((await get('app.skyclause.m1ku.tech', '/openapi.json')).status()).toBe(404)
-    expect((await get('app.skyclause.m1ku.tech', '/')).status()).toBe(404)
+    // The app host's home is sign-in's continue (hosts-links.spec.ts walks the rest of the redirects).
+    const appHome = await get('app.skyclause.m1ku.tech', '/')
+    expect(`${appHome.status()} ${appHome.headers().location}`).toBe(
+      '307 https://app.skyclause.m1ku.tech/api/auth/continue'
+    )
     expect((await get('api.skyclause.m1ku.tech', '/')).status()).toBe(404)
 
     const v1 = await get('api.skyclause.m1ku.tech', '/v1/no-such-operation')
