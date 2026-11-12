@@ -332,24 +332,34 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
               placeholder={t(projectChoice ? 'palette.choose_project' : 'palette.placeholder', {}, locale)}
               className="h-10 min-w-0"
             />
-            <CommandList label={t('palette.results', {}, locale)} className="max-h-none min-h-0 flex-1">
-              {groups.map((group) => (
-                <CommandGroup key={group.id} heading={group.heading}>
-                  {group.items.map((item) => (
-                    <CommandItem
-                      key={item.id}
-                      value={item.id}
-                      className="min-h-11 whitespace-normal break-words"
-                      onSelect={() => {
-                        if (!item.keepOpen) setOpen(false)
-                        item.onSelect()
-                      }}
-                    >
-                      <span translate={item.translateNo ? 'no' : undefined}>{item.label}</span>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              ))}
+            {/* One scroll area: the listbox holds only options; loading and failed reads sit after it, outside. */}
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <CommandList label={t('palette.results', {}, locale)} className="max-h-none overflow-visible">
+                {groups.map((group) => (
+                  <CommandGroup key={group.id} heading={group.heading}>
+                    {group.items.map((item) => (
+                      <CommandItem
+                        key={item.id}
+                        value={item.id}
+                        className="min-h-11 whitespace-normal break-words"
+                        onSelect={() => {
+                          if (!item.keepOpen) setOpen(false)
+                          item.onSelect()
+                        }}
+                      >
+                        <span translate={item.translateNo ? 'no' : undefined}>{item.label}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                ))}
+                {loaded && !searching && !searchFailure && (
+                  <CommandEmpty className="px-4 py-6 text-[14px] break-words" aria-live="polite">
+                    {projectChoice
+                      ? t('palette.choose_project_empty', {}, locale)
+                      : t(query.trim() ? 'palette.no_matches' : 'palette.empty', {}, locale)}
+                  </CommandEmpty>
+                )}
+              </CommandList>
               {(!loaded || searching) && (
                 <div className="flex flex-col gap-3 px-3 py-3" role="status" aria-live="polite">
                   <span className="sr-only">{t(searching ? 'palette.searching' : 'palette.loading', {}, locale)}</span>
@@ -388,14 +398,7 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
                   />
                 </div>
               )}
-              {loaded && !searching && !searchFailure && (
-                <CommandEmpty className="px-4 py-6 text-[14px] break-words" aria-live="polite">
-                  {projectChoice
-                    ? t('palette.choose_project_empty', {}, locale)
-                    : t(query.trim() ? 'palette.no_matches' : 'palette.empty', {}, locale)}
-                </CommandEmpty>
-              )}
-            </CommandList>
+            </div>
           </Command>
           <div
             className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 text-[13px] leading-[18px] text-muted-foreground *:inline-flex *:items-center *:gap-1.5"
