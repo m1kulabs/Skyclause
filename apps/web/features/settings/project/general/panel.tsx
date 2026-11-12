@@ -508,6 +508,7 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
                       variant="outline"
                       disabled={!slaDirty(pack) || busy !== null}
                       aria-busy={busy === pack}
+                      aria-label={t('project-settings.save_named', { name: packName }, locale)}
                     >
                       {busy === pack
                         ? t('project-settings.saving', {}, locale)

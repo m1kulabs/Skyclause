@@ -153,5 +153,6 @@
   "page_next": "Next page",
   "sources_range": "Sources {from}–{to} of {total}",
   "unknown_member": "Unknown member",
-  "link_no_expiry": "no expiry"
+  "link_no_expiry": "no expiry",
+  "save_named": "Save changes: {name}"
 }

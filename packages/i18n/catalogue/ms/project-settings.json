@@ -153,5 +153,6 @@
   "page_next": "Halaman seterusnya",
   "sources_range": "Sumber {from}–{to} daripada {total}",
   "unknown_member": "Ahli tidak diketahui",
-  "link_no_expiry": "tanpa tarikh tamat"
+  "link_no_expiry": "tanpa tarikh tamat",
+  "save_named": "Simpan perubahan: {name}"
 }
