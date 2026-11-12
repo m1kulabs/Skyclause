@@ -1,56 +1,85 @@
+/*
+ * The public world: one frame for every page a visitor reaches before the app. Tone does the separating (the footer is
+ * one step up from the ground), one pair of margins runs through header, page and footer, and the wordmark returns
+ * large at the foot as a row of capsules. Colour comes from the theme tokens, so the frame follows Dusk or Day.
+ */
 .frame {
+  --page-margin: clamp(16px, 2.2vw, 32px);
+  --page-max: 1320px;
   min-height: 100svh;
   display: flex;
   flex-direction: column;
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
-  font-size: 17px;
-  line-height: 1.55;
-}
-
-.header,
-.footer {
-  width: min(100%, 1120px);
-  margin-inline: auto;
-  padding-inline: clamp(20px, 5vw, 40px);
 }
 
 .header {
-  min-height: 80px;
+  width: min(100%, var(--page-max));
+  margin-inline: auto;
+  padding: 16px var(--page-margin);
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .home {
   display: inline-flex;
-  min-height: 44px;
+  min-height: 48px;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  border-radius: 9999px;
   color: inherit;
   text-decoration: none;
 }
 
-.home:focus-visible,
-.footer a:focus-visible,
-.exits a:focus-visible,
-.attributionTrigger:focus-visible,
-.attributionDialog button:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-
 .mark {
   display: block;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   flex: none;
 }
 
 .wordmark {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 500;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+
+.headerEnd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav a,
+.footerNav a {
+  position: relative;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding-inline: 14px;
+  border-radius: 9999px;
+  color: var(--foreground);
+  font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+  text-decoration: none;
+}
+
+.nav a:hover,
+.footerNav a:hover {
+  background: var(--surface);
+}
+
+.footerNav a:hover {
+  background: var(--raised);
 }
 
 .content {
@@ -59,93 +88,99 @@
 }
 
 .footer {
-  padding-block: 32px 40px;
-  color: var(--secondary-foreground);
-  font-size: 14px;
-}
-
-.disclosures {
-  max-width: 76ch;
   display: grid;
-  gap: 4px;
-  margin: 0 0 16px;
+  gap: clamp(32px, 6vw, 72px);
+  margin: clamp(64px, 10vw, 160px) var(--page-margin) var(--page-margin);
+  padding: clamp(20px, 4vw, 56px);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--foreground);
 }
 
-.disclosures p {
-  margin: 0;
+.footerTop {
+  width: min(100%, var(--page-max));
+  margin-inline: auto;
+  display: grid;
+  gap: 24px 48px;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .footerNav {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 10px;
+  gap: 4px;
+  margin-inline: -14px;
 }
 
-.footerNav a {
-  min-height: 32px;
-  display: inline-flex;
-  align-items: center;
-  color: inherit;
-  text-underline-offset: 4px;
+.disclosures {
+  max-width: 60ch;
+  display: grid;
+  gap: 12px;
+  font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+  line-height: 1.5;
 }
 
-.footerLink + .footerLink::before {
-  content: '·';
-  margin-inline: 0.65em;
-  color: var(--muted-foreground);
+.disclosures p {
+  margin: 0;
 }
 
-.footerNav a:hover {
-  color: var(--foreground);
+.wordmarkBand {
+  width: min(100%, var(--page-max));
+  margin-inline: auto;
+  container-type: inline-size;
 }
 
-.separator {
-  color: var(--muted-foreground);
+/* Nine capsules of different lengths, one per letter, like windows on a strip: the length is the letter's own. */
+.footerWordmark {
+  display: flex;
+  gap: 1.1cqw;
+  font-size: 8.4cqw;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  user-select: none;
+}
+
+.footerWordmark span {
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
+  height: 1.5em;
+  padding-inline: 0.2em;
+  padding-bottom: 0.06em;
+  border: 2px solid var(--ink);
+  border-radius: 9999px;
+  background: var(--ink);
+  color: var(--ground);
 }
 
 .errorPage {
-  width: min(100% - 40px, 760px);
-  margin: 0 auto;
-  padding-block: clamp(72px, 15vh, 160px) 112px;
-}
-
-.errorPage h1.errorLabel {
-  margin: 0 0 20px;
-  color: var(--muted-foreground);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  width: min(100%, var(--page-max));
+  margin-inline: auto;
+  padding: clamp(48px, 12vh, 144px) var(--page-margin) 0;
+  display: grid;
+  justify-items: start;
+  gap: 24px;
 }
 
 .errorPage h1 {
+  max-width: 14ch;
   margin: 0;
-  max-width: 12ch;
-  font-size: clamp(36px, 7vw, 56px);
-  font-weight: 400;
-  letter-spacing: -0.035em;
-  line-height: 1.04;
   overflow-wrap: anywhere;
 }
 
 .errorSentence {
   max-width: 55ch;
-  margin: 22px 0 28px;
-  color: var(--secondary-foreground);
+  margin: 0;
 }
 
 .exits {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 24px;
-}
-
-.exits a {
-  min-height: 40px;
-  display: inline-flex;
   align-items: center;
-  color: var(--foreground);
-  text-underline-offset: 4px;
+  gap: 8px 16px;
+  margin-top: 8px;
 }
 
 .attributionTrigger {
@@ -153,8 +188,7 @@
   min-height: 24px;
   color: inherit;
   text-decoration: underline;
-  text-decoration-color: var(--selection);
-  text-decoration-thickness: 1px;
+  text-decoration-thickness: 2px;
   text-underline-offset: 3px;
   cursor: pointer;
 }
@@ -165,14 +199,15 @@
   max-height: min(80svh, 720px);
   overflow: auto;
   padding: 24px;
-  border: 1px solid var(--border);
-  border-radius: 0;
+  border: 0;
+  border-radius: 16px;
   background: var(--popover);
   color: var(--foreground);
+  box-shadow: var(--shadow-float);
 }
 
 .attributionDialog::backdrop {
-  background: rgb(0 0 0 / 0.62);
+  background: rgb(6 8 20 / 0.62);
 }
 
 .dialogHeader {
@@ -195,13 +230,17 @@
   min-width: 44px;
   min-height: 44px;
   flex: none;
-  padding: 8px 12px;
-  border: 1px solid var(--control);
-  border-radius: 0;
-  background: transparent;
+  padding: 8px 16px;
+  border: 2px solid var(--control-edge);
+  border-radius: 9999px;
+  background: var(--control);
   color: inherit;
   font: inherit;
   cursor: pointer;
+}
+
+.attributionDialog button:hover {
+  background: var(--accent);
 }
 
 .sourceDetails {
@@ -225,7 +264,7 @@
   display: inline-block;
   min-height: 24px;
   color: inherit;
-  text-decoration-color: var(--selection);
+  text-decoration-thickness: 2px;
   text-underline-offset: 3px;
   overflow-wrap: anywhere;
 }
@@ -239,7 +278,7 @@
 }
 
 .attributionList {
-  width: min(100% - 40px, 760px);
+  width: min(100% - 2 * var(--page-margin, 16px), 760px);
   margin: 80px auto 0;
   padding-block: 24px;
   scroll-margin-top: 24px;
@@ -270,15 +309,28 @@
   overflow-wrap: anywhere;
 }
 
+@media (min-width: 900px) {
+  .footerTop {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    align-items: start;
+  }
+
+  .footerNav {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 640px) {
+  .nav {
+    display: none;
+  }
+
+  .wordmark {
+    font-size: 18px;
+  }
+}
+
 @media (max-width: 480px) {
-  .header {
-    min-height: 68px;
-  }
-
-  .footer {
-    padding-block: 24px 28px;
-  }
-
   .sourceDetails {
     grid-template-columns: minmax(0, 1fr);
     gap: 2px;
@@ -290,5 +342,11 @@
 
   .attributionDialog {
     padding: 18px;
+  }
+}
+
+@media (forced-colors: active) {
+  .footer {
+    border: 2px solid CanvasText;
   }
 }

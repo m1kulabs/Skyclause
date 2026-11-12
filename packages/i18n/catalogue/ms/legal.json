@@ -2,12 +2,14 @@
   "frame": {
     "navigation": "Pautan awam",
     "home": "Laman utama Skyclause",
-    "docs": "Dokumen",
-    "status": "Status",
     "terms": "Terma",
     "privacy": "Privasi",
-    "malay": "Bahasa Melayu"
+    "signIn": "Log masuk",
+    "footerNavigation": "Undang-undang dan bahasa",
+    "language": "English",
+    "languageLabel": "Baca halaman ini dalam bahasa Inggeris"
   },
+  "contents": "Dalam halaman ini",
   "attribution": {
     "view": "Lihat atribusi sumber untuk {source}, stesen {station}",
     "heading": "Atribusi sumber",
@@ -20,18 +22,15 @@
     "close": "Tutup atribusi"
   },
   "notFound": {
-    "label": "404 · TIDAK DITEMUI",
+    "label": "Halaman tidak ditemui",
     "sentence": "Halaman ini mungkin tiada atau bersifat peribadi.",
-    "home": "Laman utama",
-    "status": "Status",
-    "privacy": "Privasi"
+    "home": "Pergi ke laman utama Skyclause"
   },
   "error": {
-    "label": "RALAT PERKHIDMATAN",
+    "label": "Sesuatu tidak kena",
     "sentence": "Halaman ini tidak dapat dimuatkan.",
-    "home": "Laman utama",
-    "status": "Status",
-    "privacy": "Privasi"
+    "retry": "Cuba lagi",
+    "home": "Pergi ke laman utama Skyclause"
   },
   "privacy": {
     "label": "UNDANG-UNDANG · PRIVASI",

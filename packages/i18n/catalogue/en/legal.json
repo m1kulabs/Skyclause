@@ -2,12 +2,14 @@
   "frame": {
     "navigation": "Public navigation",
     "home": "Skyclause home",
-    "docs": "Docs",
-    "status": "Status",
     "terms": "Terms",
     "privacy": "Privacy",
-    "malay": "Bahasa Melayu"
+    "signIn": "Sign in",
+    "footerNavigation": "Legal and language",
+    "language": "Bahasa Melayu",
+    "languageLabel": "Read this page in Bahasa Melayu"
   },
+  "contents": "On this page",
   "attribution": {
     "view": "View source attribution for {source}, station {station}",
     "heading": "Source attribution",
@@ -22,16 +24,13 @@
   "notFound": {
     "label": "Page not found",
     "sentence": "This page may be missing or private.",
-    "home": "Home",
-    "status": "Status",
-    "privacy": "Privacy"
+    "home": "Go to the Skyclause home page"
   },
   "error": {
-    "label": "SERVICE ERROR",
+    "label": "Something went wrong",
     "sentence": "This page could not be loaded.",
-    "home": "Home",
-    "status": "Status",
-    "privacy": "Privacy"
+    "retry": "Try again",
+    "home": "Go to the Skyclause home page"
   },
   "privacy": {
     "label": "LEGAL · PRIVACY",
