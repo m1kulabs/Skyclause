@@ -10,7 +10,18 @@ import { Skeleton } from '#ui/skeleton'
 import { useRead } from '../../../analysis/use-read'
 import { useUnsavedChangesGuard } from '../../set-7'
 import { t } from '../../../project-settings/catalogue'
-import { Aside, Notice, Part, Parts, Problem, ReadFailed, Row, Rows, SummaryLine, dateFieldRing } from '../parts'
+import {
+  SettingsAside,
+  SettingsError,
+  SettingsItem,
+  SettingsList,
+  SettingsPart,
+  SettingsParts,
+  SettingsReadError,
+  SettingsStatus,
+  SettingsSummaryLine,
+  dateFieldRing
+} from '../../parts'
 import {
   projectSettingsApi,
   resolveProject,
@@ -207,7 +218,7 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
     )
   if (loaded.status === 'error')
     return (
-      <ReadFailed
+      <SettingsReadError
         source={t('project-settings.source_rota', {}, locale)}
         error={loaded.error}
         onRetry={() => setRevision((value) => value + 1)}
@@ -230,16 +241,16 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
   )
 
   return (
-    <Parts data-project-settings-rota>
-      <Aside>
-        <SummaryLine label={t('project-settings.override', {}, locale)}>
+    <SettingsParts data-project-settings-rota>
+      <SettingsAside>
+        <SettingsSummaryLine label={t('project-settings.override', {}, locale)}>
           <span data-numeric>{t('project-settings.count', { count: overrides.length }, locale)}</span>
-        </SummaryLine>
-        <SummaryLine label={t('project-settings.inherited', {}, locale)}>
+        </SettingsSummaryLine>
+        <SettingsSummaryLine label={t('project-settings.inherited', {}, locale)}>
           <span data-numeric>{t('project-settings.count', { count: inherited.length }, locale)}</span>
-        </SummaryLine>
-      </Aside>
-      <Part
+        </SettingsSummaryLine>
+      </SettingsAside>
+      <SettingsPart
         title={t('project-settings.override', {}, locale)}
         description={t('project-settings.rota_description', {}, locale)}
         id="project-rota-override-title"
@@ -250,37 +261,37 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
         }
       >
         {overrides.length ? (
-          <Rows>
+          <SettingsList>
             {overrides.map((shift) => (
-              <Row key={shift.id}>
+              <SettingsItem key={shift.id}>
                 {shiftLine(shift)}
                 <Button type="button" variant="outline" onClick={() => openEdit(shift)}>
                   {t('project-settings.edit_shift', {}, locale)}
                 </Button>
-              </Row>
+              </SettingsItem>
             ))}
-          </Rows>
+          </SettingsList>
         ) : (
           <div className="grid gap-1">
             {empty(0)}
             <p className="type-body text-muted-foreground">{t('project-settings.empty_rota', {}, locale)}</p>
           </div>
         )}
-      </Part>
+      </SettingsPart>
 
-      <Part title={t('project-settings.inherited', {}, locale)} id="project-rota-inherited-title">
+      <SettingsPart title={t('project-settings.inherited', {}, locale)} id="project-rota-inherited-title">
         {inherited.length ? (
-          <Rows>
+          <SettingsList>
             {inherited.map((shift) => (
-              <Row key={shift.id}>{shiftLine(shift)}</Row>
+              <SettingsItem key={shift.id}>{shiftLine(shift)}</SettingsItem>
             ))}
-          </Rows>
+          </SettingsList>
         ) : (
           empty(0)
         )}
-      </Part>
+      </SettingsPart>
 
-      {status ? <Notice>{status}</Notice> : null}
+      {status ? <SettingsStatus>{status}</SettingsStatus> : null}
       {formOpen ? (
         <form className="grid min-w-0 gap-5 rounded-md bg-raised p-4" onSubmit={save} data-rota-editor>
           <div className="grid gap-1">
@@ -421,7 +432,7 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
               </select>
             </div>
           </div>
-          {error ? <Problem>{error}</Problem> : null}
+          {error ? <SettingsError>{error}</SettingsError> : null}
           <div className="flex flex-wrap gap-3">
             <Button type="submit" disabled={busy || !eligible.length} aria-busy={busy}>
               {busy ? t('project-settings.saving', {}, locale) : t('project-settings.save_shift', {}, locale)}
@@ -432,7 +443,7 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
           </div>
         </form>
       ) : null}
-    </Parts>
+    </SettingsParts>
   )
 }
 

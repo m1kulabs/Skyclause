@@ -13,7 +13,17 @@ import { apiFetch } from '../subscribe/operations'
 import { OperationError } from '../subscribe/error'
 import { resolveProject } from '../subscribers/project'
 import { StatusMark } from '../brand/status-mark'
-import { Aside, Notice, Part, Parts, Problem, ReadFailed, Row, Rows, SummaryLine } from '../settings/project/parts'
+import {
+  SettingsAside,
+  SettingsError,
+  SettingsItem,
+  SettingsList,
+  SettingsPart,
+  SettingsParts,
+  SettingsReadError,
+  SettingsStatus,
+  SettingsSummaryLine
+} from '../settings/parts'
 
 const readPreview = (id: string) => apiFetch('previewChannels', { params: { id } })
 type Preview = Awaited<ReturnType<typeof readPreview>>
@@ -89,13 +99,18 @@ export function Channels() {
   }
   const retry = () => setAttempt((n) => n + 1)
   return (
-    <Parts data-channels-panel>
+    <SettingsParts data-channels-panel>
       {readError ? (
-        <ReadFailed source={t('channels.source_read', {}, locale)} error={readError} onRetry={retry} locale={locale} />
+        <SettingsReadError
+          source={t('channels.source_read', {}, locale)}
+          error={readError}
+          onRetry={retry}
+          locale={locale}
+        />
       ) : null}
       {missing && (
         <div className="grid justify-items-start gap-3">
-          <Problem>{t('subscribers.no_project', {}, locale)}</Problem>
+          <SettingsError>{t('subscribers.no_project', {}, locale)}</SettingsError>
           <Button variant="outline" onClick={retry}>
             {t('subscribe.retry', {}, locale)}
           </Button>
@@ -112,23 +127,23 @@ export function Channels() {
       )}
       {channels && (
         <>
-          <Aside>
+          <SettingsAside>
             {channels.map((channel) => (
-              <SummaryLine key={channel.channel} label={t(`subscribe.${channel.channel}_channel`, {}, locale)}>
+              <SettingsSummaryLine key={channel.channel} label={t(`subscribe.${channel.channel}_channel`, {}, locale)}>
                 {t(channel.enabled ? 'channels.enabled' : 'channels.disabled', {}, locale)}
-              </SummaryLine>
+              </SettingsSummaryLine>
             ))}
-          </Aside>
-          <Part
+          </SettingsAside>
+          <SettingsPart
             title={t('channels.description', {}, locale)}
-            actions={<Notice>{busy ? t('subscribe.saving', {}, locale) : saved}</Notice>}
+            actions={<SettingsStatus>{busy ? t('subscribe.saving', {}, locale) : saved}</SettingsStatus>}
           >
             {!channels.length && <p className="type-body text-muted-foreground">{t('channels.empty', {}, locale)}</p>}
-            <Rows>
+            <SettingsList>
               {channels.map((channel) => {
                 const name = t(`subscribe.${channel.channel}_channel`, {}, locale)
                 return (
-                  <Row key={channel.channel} data-channel={channel.channel}>
+                  <SettingsItem key={channel.channel} data-channel={channel.channel}>
                     <div className="grid min-w-0 flex-1 gap-1">
                       <span className="type-card-title">{name}</span>
                       <p className="type-body">
@@ -149,13 +164,13 @@ export function Channels() {
                       disabled={busy}
                       onCheckedChange={() => void toggle(channel)}
                     />
-                  </Row>
+                  </SettingsItem>
                 )
               })}
-            </Rows>
+            </SettingsList>
             <OperationError error={error} locale={locale} />
-          </Part>
-          <Part
+          </SettingsPart>
+          <SettingsPart
             title={t('channels.preview_title', {}, locale)}
             description={t('channels.preview_description', {}, locale)}
           >
@@ -200,9 +215,9 @@ export function Channels() {
                 )}
               </section>
             )}
-          </Part>
+          </SettingsPart>
         </>
       )}
-    </Parts>
+    </SettingsParts>
   )
 }

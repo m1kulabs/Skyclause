@@ -19,7 +19,17 @@ import {
   type ShareLink
 } from '../../../project-settings/operations'
 import { t } from '../../../project-settings/catalogue'
-import { Aside, Notice, Part, Parts, Problem, ReadFailed, Row, Rows, SummaryLine } from '../parts'
+import {
+  SettingsAside,
+  SettingsError,
+  SettingsItem,
+  SettingsList,
+  SettingsPart,
+  SettingsParts,
+  SettingsReadError,
+  SettingsStatus,
+  SettingsSummaryLine
+} from '../../parts'
 
 type Locale = 'en' | 'ms'
 type LinkData = { projectId: string; links: ShareLink[] }
@@ -127,7 +137,7 @@ export function ProjectSharePanel({ locale = 'en' }: { locale?: Locale }) {
     )
   if (loaded.status === 'error')
     return (
-      <ReadFailed
+      <SettingsReadError
         source={t('project-settings.source_links', {}, locale)}
         error={loaded.error}
         onRetry={() => setReadRevision((value) => value + 1)}
@@ -137,9 +147,9 @@ export function ProjectSharePanel({ locale = 'en' }: { locale?: Locale }) {
 
   const now = Date.now()
   return (
-    <Parts data-project-settings-share>
-      <Aside>
-        <SummaryLine label={t('project-settings.share_title', {}, locale)}>
+    <SettingsParts data-project-settings-share>
+      <SettingsAside>
+        <SettingsSummaryLine label={t('project-settings.share_title', {}, locale)}>
           <span data-numeric>
             {t(
               'project-settings.links_active',
@@ -150,9 +160,9 @@ export function ProjectSharePanel({ locale = 'en' }: { locale?: Locale }) {
               locale
             )}
           </span>
-        </SummaryLine>
-      </Aside>
-      <Part
+        </SettingsSummaryLine>
+      </SettingsAside>
+      <SettingsPart
         title={t('project-settings.create_link', {}, locale)}
         description={t('project-settings.share_description', {}, locale)}
         id="project-share-create-title"
@@ -217,13 +227,15 @@ export function ProjectSharePanel({ locale = 'en' }: { locale?: Locale }) {
                     : t('project-settings.copy', {}, locale)}
                 </Button>
               </div>
-              {copyState === 'failed' ? <Problem>{t('project-settings.copy_failed', {}, locale)}</Problem> : null}
+              {copyState === 'failed' ? (
+                <SettingsError>{t('project-settings.copy_failed', {}, locale)}</SettingsError>
+              ) : null}
             </CardContent>
           </Card>
         ) : null}
-      </Part>
+      </SettingsPart>
 
-      <Part
+      <SettingsPart
         title={t('project-settings.share_title', {}, locale)}
         actions={
           <span className="type-body text-muted-foreground" data-numeric>
@@ -233,11 +245,11 @@ export function ProjectSharePanel({ locale = 'en' }: { locale?: Locale }) {
         id="project-share-links-title"
       >
         {visibleLinks.length ? (
-          <Rows>
+          <SettingsList>
             {visibleLinks.map((link) => {
               const state = linkState(link, now, locale)
               return (
-                <Row key={link.id}>
+                <SettingsItem key={link.id}>
                   <div className="grid min-w-0 gap-1">
                     <p className="type-body flex flex-wrap items-center gap-x-3 gap-y-1 font-semibold [overflow-wrap:anywhere]">
                       <span>{t(`project-settings.${link.access}`, {}, locale)}</span>
@@ -271,16 +283,18 @@ export function ProjectSharePanel({ locale = 'en' }: { locale?: Locale }) {
                       {t('project-settings.revoke', {}, locale)}
                     </Button>
                   ) : null}
-                </Row>
+                </SettingsItem>
               )
             })}
-          </Rows>
+          </SettingsList>
         ) : (
-          <Notice>{t('project-settings.count', { count: 0 }, locale)}</Notice>
+          <SettingsStatus>{t('project-settings.count', { count: 0 }, locale)}</SettingsStatus>
         )}
-        {revoked ? <Notice>{t('project-settings.revoked_notice', { name: revoked }, locale)}</Notice> : null}
-        {error ? <Problem>{error}</Problem> : null}
-      </Part>
+        {revoked ? (
+          <SettingsStatus>{t('project-settings.revoked_notice', { name: revoked }, locale)}</SettingsStatus>
+        ) : null}
+        {error ? <SettingsError>{error}</SettingsError> : null}
+      </SettingsPart>
       {revoking ? (
         <ConfirmDialog
           open
@@ -293,7 +307,7 @@ export function ProjectSharePanel({ locale = 'en' }: { locale?: Locale }) {
           locale={locale}
         />
       ) : null}
-    </Parts>
+    </SettingsParts>
   )
 }
 

@@ -9,7 +9,7 @@ import { cn } from '#lib/utils'
 import { TypedConfirmDialog } from '../settings/set-7/confirm-dialog'
 import { StatusMark } from '../brand/status-mark'
 import { SourceError } from '../data-components/states'
-import { Aside, SummaryLine } from '../settings/project/parts'
+import { SettingsAside, SettingsSummaryLine } from '../settings/parts'
 import { ApiProblem } from '../../lib/api-fetch'
 import { apiFetch, type Endpoint, type WebhookProject } from './operations'
 import { RegisterForm, problemKey } from './form'
@@ -183,16 +183,16 @@ export function Webhooks({ org, settings = false }: { org: string; settings?: bo
       )}
       {settings ? (
         <>
-          <Aside>
-            <SummaryLine label={t('webhooks.endpoints')}>
+          <SettingsAside>
+            <SettingsSummaryLine label={t('webhooks.endpoints')}>
               <span data-numeric>{data.endpoints.length}</span>
-            </SummaryLine>
-            <SummaryLine label={t('webhooks.state_verified')}>
+            </SettingsSummaryLine>
+            <SettingsSummaryLine label={t('webhooks.state_verified')}>
               <span data-numeric>
                 {data.endpoints.filter((endpoint) => endpoint.verified_at && !endpoint.disabled_at).length}
               </span>
-            </SummaryLine>
-          </Aside>
+            </SettingsSummaryLine>
+          </SettingsAside>
           <div>
             <Button onClick={() => setFormOpen(true)}>{t('webhooks.add')}</Button>
           </div>

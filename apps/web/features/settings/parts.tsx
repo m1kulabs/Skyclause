@@ -17,6 +17,13 @@ import { SourceError } from '../data-components/states'
  * a status line and a destructive part. Parts separate by space and tone, never by rules.
  */
 
+/**
+ * A native date or time input keeps no :focus-visible ring of its own in every browser: its field draws the ring
+ * round the label and the input together (the crawl accepts a [data-focus-ring] owner).
+ */
+export const dateFieldRing =
+  'rounded-sm focus-within:outline-solid focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring'
+
 /** The panel's parts, in one column with the space between them. */
 export function SettingsParts({ className, ...props }: React.ComponentProps<'div'>) {
   return <div className={cn('grid min-w-0 gap-8', className)} {...props} />
@@ -245,16 +252,17 @@ export function SettingsReadError({
   /** What could not be read, as it reads mid-sentence ("your sessions"). */
   source: string
   error?: unknown
-  /** When it failed (an ISO instant). */
-  at: string | null
+  /** When it failed (an ISO instant); the moment it first renders if unset. */
+  at?: string | null
   onRetry?: () => void
   locale?: 'en' | 'ms'
 }) {
+  const [renderedAt] = useState(() => new Date().toISOString())
   return (
     <SourceError
       source={source}
       status={error instanceof ApiProblem ? error.status : null}
-      at={at}
+      at={at === undefined ? renderedAt : at}
       locale={locale}
       retry={
         onRetry ? (

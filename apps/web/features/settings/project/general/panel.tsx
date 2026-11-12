@@ -14,18 +14,18 @@ import { Skeleton } from '#ui/skeleton'
 import { ConfirmDialog, useUndoableAction } from '../../set-7'
 import { t } from '../../../project-settings/catalogue'
 import {
-  Aside,
-  Danger,
-  Notice,
-  Part,
-  Parts,
-  Problem,
-  ReadFailed,
-  Row,
-  Rows,
-  SummaryLine,
+  SettingsAside,
+  SettingsDanger,
+  SettingsError,
+  SettingsItem,
+  SettingsList,
+  SettingsPart,
+  SettingsParts,
+  SettingsReadError,
+  SettingsStatus,
+  SettingsSummaryLine,
   dateFieldRing
-} from '../parts'
+} from '../../parts'
 
 type Locale = 'en' | 'ms'
 type ProjectForm = {
@@ -205,7 +205,7 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
     )
   if (loaded.status === 'error')
     return (
-      <ReadFailed
+      <SettingsReadError
         source={t('project-settings.source', {}, locale)}
         error={loaded.error}
         onRetry={() => setReadRevision((value) => value + 1)}
@@ -217,17 +217,17 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
   const field = (key: keyof ProjectForm, value: string) => setForm((current) => current && { ...current, [key]: value })
 
   return (
-    <Parts data-project-settings-general>
-      <Aside>
-        <SummaryLine label={t('project-settings.name', {}, locale)}>{project.name}</SummaryLine>
-        <SummaryLine label={t('project-settings.site_name', {}, locale)}>
+    <SettingsParts data-project-settings-general>
+      <SettingsAside>
+        <SettingsSummaryLine label={t('project-settings.name', {}, locale)}>{project.name}</SettingsSummaryLine>
+        <SettingsSummaryLine label={t('project-settings.site_name', {}, locale)}>
           {project.site_name ?? t('project-settings.missing', {}, locale)}
-        </SummaryLine>
-        <SummaryLine label={t('project-settings.time_zone', {}, locale)}>
+        </SettingsSummaryLine>
+        <SettingsSummaryLine label={t('project-settings.time_zone', {}, locale)}>
           {formatTimeZoneName(project.time_zone, locale)}
-        </SummaryLine>
+        </SettingsSummaryLine>
         {(['sky', 'crowd'] as const).map((pack) => (
-          <SummaryLine
+          <SettingsSummaryLine
             key={pack}
             label={t('project-settings.deadline_of', { pack: t(`project-settings.${pack}`, {}, locale) }, locale)}
           >
@@ -239,11 +239,11 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
               },
               locale
             )}
-          </SummaryLine>
+          </SettingsSummaryLine>
         ))}
-      </Aside>
+      </SettingsAside>
       <form className="grid min-w-0 gap-10" onSubmit={saveProject}>
-        <Part title={t('project-settings.site', {}, locale)}>
+        <SettingsPart title={t('project-settings.site', {}, locale)}>
           <div className="grid min-w-0 gap-4 sm:grid-cols-2">
             <div className="grid min-w-0 gap-2">
               <Label htmlFor="project-name">{t('project-settings.name', {}, locale)}</Label>
@@ -340,9 +340,9 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
               </p>
             </div>
           </div>
-        </Part>
+        </SettingsPart>
 
-        <Part
+        <SettingsPart
           title={t('project-settings.camera_hours', {}, locale)}
           description={t(
             'project-settings.local_time_zone',
@@ -374,29 +374,29 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
               />
             </div>
           </div>
-        </Part>
+        </SettingsPart>
 
         <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" disabled={!dirty || busy !== null} aria-busy={busy === 'project'}>
             {busy === 'project' ? t('project-settings.saving', {}, locale) : t('project-settings.save', {}, locale)}
           </Button>
-          {status ? <Notice>{status}</Notice> : null}
-          {error ? <Problem>{error}</Problem> : null}
+          {status ? <SettingsStatus>{status}</SettingsStatus> : null}
+          {error ? <SettingsError>{error}</SettingsError> : null}
         </div>
       </form>
 
-      <Part
+      <SettingsPart
         title={t('project-settings.sla', {}, locale)}
         description={t('project-settings.sla_description', {}, locale)}
         id="project-sla-title"
       >
-        <Rows>
+        <SettingsList>
           {(['sky', 'crowd'] as const).map((pack) => {
             const unit = pack === 'sky' ? 60 : 3600
             const value = Math.max(1, Math.round(sla[pack] / unit))
             const unitWord = t(`project-settings.${pack === 'sky' ? 'minutes' : 'hours'}`, {}, locale)
             return (
-              <Row key={pack} data-sla-pack={pack} className="items-end">
+              <SettingsItem key={pack} data-sla-pack={pack} className="items-end">
                 <div className="grid min-w-0 gap-2">
                   <Label htmlFor={`sla-${pack}`}>{t(`project-settings.${pack}`, {}, locale)}</Label>
                   <div className="flex items-center gap-3">
@@ -423,7 +423,9 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   {slaSaved === pack && (
-                    <Notice>{t('project-settings.saved_sla_value', { value, unit: unitWord }, locale)}</Notice>
+                    <SettingsStatus>
+                      {t('project-settings.saved_sla_value', { value, unit: unitWord }, locale)}
+                    </SettingsStatus>
                   )}
                   <Button
                     type="button"
@@ -435,18 +437,20 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
                     {busy === pack ? t('project-settings.saving', {}, locale) : t('project-settings.save', {}, locale)}
                   </Button>
                 </div>
-              </Row>
+              </SettingsItem>
             )
           })}
-        </Rows>
-      </Part>
+        </SettingsList>
+      </SettingsPart>
 
-      <Danger
+      <SettingsDanger
         title={t('project-settings.archive', {}, locale)}
         description={t('project-settings.archive_description', {}, locale)}
         id="project-archive-title"
       >
-        {archived ? <Notice>{t('project-settings.archived', { name: project.name }, locale)}</Notice> : null}
+        {archived ? (
+          <SettingsStatus>{t('project-settings.archived', { name: project.name }, locale)}</SettingsStatus>
+        ) : null}
         {archiveAction.pending ? (
           <div className="flex flex-wrap items-center gap-3" role="status">
             <span className="type-body">{t('project-settings.archive_pending', { name: project.name }, locale)}</span>
@@ -468,8 +472,8 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
             {t('project-settings.archive_action', {}, locale)}
           </Button>
         )}
-        {archiveAction.error ? <Problem>{t('project-settings.archive_failed', {}, locale)}</Problem> : null}
-      </Danger>
+        {archiveAction.error ? <SettingsError>{t('project-settings.archive_failed', {}, locale)}</SettingsError> : null}
+      </SettingsDanger>
       <ConfirmDialog
         open={archiveOpen}
         onOpenChange={setArchiveOpen}
@@ -482,7 +486,7 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
           archiveAction.start()
         }}
       />
-    </Parts>
+    </SettingsParts>
   )
 }
 

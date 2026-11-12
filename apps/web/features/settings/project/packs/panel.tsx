@@ -17,7 +17,17 @@ import { onboardingApi, type ProjectView } from '../../../onboarding/operations'
 import { SourcePicker } from '../../../sources/source-picker'
 import { sourcesApi, type BoundSourceView, type CatalogueSourceView } from '../../../sources/operations'
 import { ConfirmDialog } from '../../set-7'
-import { Aside, Notice, Part, Parts, Problem, ReadFailed, Row, Rows, SummaryLine } from '../parts'
+import {
+  SettingsAside,
+  SettingsError,
+  SettingsItem,
+  SettingsList,
+  SettingsPart,
+  SettingsParts,
+  SettingsReadError,
+  SettingsStatus,
+  SettingsSummaryLine
+} from '../../parts'
 
 type Pack = 'sky' | 'crowd'
 
@@ -238,30 +248,30 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
       </div>
     )
   if (loadFailed || !project) {
-    return <ReadFailed source={ts('project-settings.source')} error={loadFailed} onRetry={() => void load()} />
+    return <SettingsReadError source={ts('project-settings.source')} error={loadFailed} onRetry={() => void load()} />
   }
 
   const readsOf = (pack: Pack) =>
     sources.filter((source) => (packRoles[pack] as readonly string[]).includes(source.role))
   return (
-    <Parts data-project-packs>
-      <Aside>
+    <SettingsParts data-project-packs>
+      <SettingsAside>
         {(['sky', 'crowd'] as const).map((pack) => (
-          <SummaryLine key={pack} label={t(`onboarding.${pack}`)}>
+          <SettingsSummaryLine key={pack} label={t(`onboarding.${pack}`)}>
             {ts(
               project.packs.find((item) => item.pack === pack)?.enabled
                 ? 'project-settings.pack_on'
                 : 'project-settings.pack_off'
             )}
-          </SummaryLine>
+          </SettingsSummaryLine>
         ))}
-        <SummaryLine label={t('onboarding.sources_bound')}>
+        <SettingsSummaryLine label={t('onboarding.sources_bound')}>
           <span data-numeric>{sources.length}</span>
-        </SummaryLine>
-      </Aside>
+        </SettingsSummaryLine>
+      </SettingsAside>
       <FirstRunProgress org={org} />
-      <Part title={t('onboarding.packs')} description={t('onboarding.packs_description')} id="packs-heading">
-        <Rows>
+      <SettingsPart title={t('onboarding.packs')} description={t('onboarding.packs_description')} id="packs-heading">
+        <SettingsList>
           {(['sky', 'crowd'] as const).map((pack) => {
             const enabled = project.packs.find((item) => item.pack === pack)?.enabled ?? false
             const prerequisite = pack === 'crowd' ? missing : null
@@ -274,7 +284,7 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
                 : ''
             const reads = readsOf(pack)
             return (
-              <Row key={pack} className="items-start">
+              <SettingsItem key={pack} className="items-start">
                 <div className="grid min-w-0 flex-1 gap-1">
                   <label htmlFor={`pack-${pack}`} className="type-card-title flex min-h-6 items-center">
                     {t(`onboarding.${pack}`)}
@@ -315,15 +325,15 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
                   aria-describedby={pack === 'crowd' && missingText ? 'crowd-missing' : undefined}
                   onChange={(event) => setConfirmPack({ pack, enable: event.target.checked })}
                 />
-              </Row>
+              </SettingsItem>
             )
           })}
-        </Rows>
-        {notice ? <Notice>{notice}</Notice> : null}
-        {message ? <Problem>{message}</Problem> : null}
-      </Part>
+        </SettingsList>
+        {notice ? <SettingsStatus>{notice}</SettingsStatus> : null}
+        {message ? <SettingsError>{message}</SettingsError> : null}
+      </SettingsPart>
 
-      <Part
+      <SettingsPart
         title={t('onboarding.sources_bound')}
         id="sources-heading"
         actions={
@@ -335,9 +345,9 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
         {sources.length === 0 ? (
           <p className="type-body text-muted-foreground">{t('onboarding.no_bound_sources')}</p>
         ) : (
-          <Rows>
+          <SettingsList>
             {sources.map((source) => (
-              <Row key={source.id}>
+              <SettingsItem key={source.id}>
                 <div className="grid min-w-0 gap-0.5">
                   <strong className="type-body [overflow-wrap:anywhere]">
                     {source.external_id} {t('onboarding.separator')} {source.name}
@@ -362,13 +372,13 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
                 <Button type="button" variant="outline" onClick={() => setUnbinding(source)}>
                   {t('onboarding.remove_source', { source: source.external_id })}
                 </Button>
-              </Row>
+              </SettingsItem>
             ))}
-          </Rows>
+          </SettingsList>
         )}
-      </Part>
+      </SettingsPart>
 
-      <Part
+      <SettingsPart
         title={t('onboarding.devices')}
         id="devices-title"
         actions={
@@ -468,7 +478,7 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
                   {t('onboarding.close')}
                 </Button>
               </div>
-              {tokenCopied === 'failed' ? <Problem>{ts('project-settings.copy_failed')}</Problem> : null}
+              {tokenCopied === 'failed' ? <SettingsError>{ts('project-settings.copy_failed')}</SettingsError> : null}
             </div>
           ) : (
             <form className="grid min-w-0 gap-4" onSubmit={(event) => void createDevice(event)}>
@@ -497,7 +507,7 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
                   <option value="pi">{t('onboarding.pi')}</option>
                 </select>
               </div>
-              {deviceError ? <Problem>{t('onboarding.save_error_generic')}</Problem> : null}
+              {deviceError ? <SettingsError>{t('onboarding.save_error_generic')}</SettingsError> : null}
               <Button type="submit" disabled={deviceSaving || !deviceName.trim()}>
                 {deviceSaving ? t('onboarding.saving') : t('onboarding.create_device')}
               </Button>
@@ -505,6 +515,6 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
           )}
         </DialogContent>
       </Dialog>
-    </Parts>
+    </SettingsParts>
   )
 }
