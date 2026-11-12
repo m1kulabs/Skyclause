@@ -203,6 +203,12 @@
   min-height: 48px;
   align-items: center;
   color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.auth-page table a {
+  text-decoration: underline;
   text-underline-offset: 4px;
 }
 

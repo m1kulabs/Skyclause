@@ -21,6 +21,7 @@
   "safety": "Skyclause is not a safety or emergency service. In an emergency, call 999.",
   "data": "Access, export or erase your data",
   "loading": "Loading…",
+  "error_title": "This link did not work",
   "saving": "Saving…",
   "saved": "{field} saved. Applies before the next notice.",
   "error": "Request failed ({status}): {reason}. Try again.",

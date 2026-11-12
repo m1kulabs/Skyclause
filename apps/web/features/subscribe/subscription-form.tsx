@@ -136,7 +136,7 @@ export function SubscriptionForm({ token, locale }: { token: string; locale: 'en
     ? preferences
       ? t('subscribe.preferences_title', {}, locale)
       : t('subscribe.join_title', { name: data.project_name }, locale)
-    : t('subscribe.loading', {}, locale)
+    : t(error ? 'subscribe.error_title' : 'subscribe.loading', {}, locale)
 
   return (
     <>
