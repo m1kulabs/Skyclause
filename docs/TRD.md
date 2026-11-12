@@ -278,8 +278,9 @@ The GTFS Realtime cadence is the platform's; the pilot's Pi probe polls every mi
 ### Freshness, staleness and recovery
 
 - Input states: fresh, stale, error, recovered ([SIG-3](/docs/PRD.md#signals-sig)), plus `probation` and `off_hours` for the camera.
-- `observed` sources: age is `t_eval − observed_at` of the newest reading; stale after two missed intervals. A catalogued source's readings reach Postgres only in the 15-minute batch (D45), so its threshold adds two batches, one for the wait and one for the poll's phase and the provider's publishing lag (JPS 40 minutes, APIMS 2 hours as published); a device source ingests directly (camera 20 minutes in daylight).
-- `polled` sources (warnings, forecast, listings): age is time since the last `ok` or `unchanged` poll, because an unchanged warning list is still current; stale after two missed or failed polls.
+- `observed` sources: age is `t_eval − observed_at` of the newest reading; catalogued sources default to two source cadences plus two 15-minute batches (D45), while device sources ingest directly and keep their own thresholds (camera: 20 minutes in daylight). JPS (300 s) therefore becomes stale after 40 minutes; APIMS keeps its explicit 2-hour threshold. The stored reading age remains visible, and old provider data can still be stale after a successful HTTP poll.
+- `polled` sources (warnings, forecast, listings): age is `t_eval − started_at` of the latest eligible normal `ok` or `unchanged` poll, because an unchanged warning list is still current; catalogued thresholds use the same two source cadences plus two 15-minute batches. MET warnings (600 s) become stale after 50 minutes and forecast (6 h) after 12 h 30 min.
+- The temporary demo allowance changes eligible data age; it does not reduce ingestion latency. Issue [#777](https://github.com/m1kulabs/Skyclause/issues/777) tracks the D45 ingestion/cost decision and its live verification.
 - Error: the latest poll failed, naming the HTTP status and since when. Recovered: the first good reading after stale or error marks the input recovered and names it on the next call; clauses use it only from the next fresh reading.
 - Rapid Rail is "pending" until its `next_update`, then stale after two missed polls. Ages are computed at `t_eval` and frozen in the indicator snapshot, so a replay reproduces them exactly.
 
