@@ -51,14 +51,14 @@ test('web composition serves raw drafts with real auth and checks drafts against
   const draft = (await savedResponse.json()) as { id: string }
   expect(draft).toMatchObject({
     validation_status: 'checked',
-    check: expect.objectContaining({ ok: false, publishable: false }),
+    check: expect.objectContaining({ ok: true, publishable: true, issues: [] }),
     content
   })
   const response = await api.fetch(
     new Request(`${TEST_AUTH_ENV.APP_ORIGIN}/api/clause-sheets/${id}/publish-preview?draft_id=${draft.id}`, { headers })
   )
   expect(response.status).toBe(200)
-  expect(await response.json()).toMatchObject({ publishable: false, errors: expect.any(Array) })
+  expect(await response.json()).toMatchObject({ publishable: true, errors: [] })
   const key = await makeApiKey({ orgId: org.id, accountId: account.id, scopes: ['admin'] })
   const keyHeaders = {
     Authorization: `Bearer ${key.key}`,
@@ -107,6 +107,9 @@ test('web composition serves raw drafts with real auth and checks drafts against
       body: payload
     })
   )
-  expect(bearerPublish.status, await bearerPublish.clone().text()).toBe(422)
-  expect(await bearerPublish.json()).toMatchObject({ status: 422 })
+  expect(bearerPublish.status, await bearerPublish.clone().text()).toBe(409)
+  expect(await bearerPublish.json()).toMatchObject({
+    status: 409,
+    type: 'https://docs.skyclause.m1ku.tech/problems/preview-stale'
+  })
 })
