@@ -185,13 +185,12 @@ export function OrganisationDataPanel({
         <SettingsPart title={label('exportsTitle')} description={label('exportsDescription')} id="org-exports-title">
           <p className="type-small text-muted-foreground">{label('readyWithin')}</p>
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" className="transition-none" onClick={() => void requestExport()} disabled={loading}>
+            <Button type="button" onClick={() => void requestExport()} disabled={loading}>
               {label('requestExport')}
             </Button>
             <Button
               type="button"
               variant="outline"
-              className="transition-none"
               onClick={() => void loadExports().catch(() => setExportError(label('exportFailed')))}
               disabled={loading}
             >
@@ -259,13 +258,7 @@ export function OrganisationDataPanel({
               {cancelError && <SettingsError>{cancelError}</SettingsError>}
             </div>
           ) : owner ? (
-            <Button
-              type="button"
-              variant="destructive"
-              className="transition-none"
-              onClick={() => setOfferOpen(true)}
-              disabled={loading}
-            >
+            <Button type="button" variant="destructive" onClick={() => setOfferOpen(true)} disabled={loading}>
               {label('deleteOrgTitle')}
             </Button>
           ) : (

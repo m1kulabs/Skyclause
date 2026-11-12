@@ -29,6 +29,14 @@ describe('buttonVariants', () => {
     }
   )
 
+  test('only the press transitions, so a button enabled when its read lands is never measured half-faded', () => {
+    for (const variant of variants) {
+      const classes = recipe({ variant }).split(/\s+/)
+      expect(classes).toContain('transition-transform')
+      expect(classes.filter((name) => name.startsWith('transition-'))).toEqual(['transition-transform'])
+    }
+  })
+
   test('an outline link keeps its edge and a large capsule its 16px type, with no merge step', () => {
     const outline = recipe({ variant: 'outline' }).split(/\s+/)
     expect(outline).toContain('border-input')

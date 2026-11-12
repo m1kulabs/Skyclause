@@ -164,7 +164,7 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
             </SettingsField>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" className="transition-none" disabled={loading || saving} aria-busy={saving}>
+            <Button type="submit" disabled={loading || saving} aria-busy={saving}>
               {saving ? copy('saving') : copy('save')}
             </Button>
             {done ? <SettingsStatus>{copy('saved')}</SettingsStatus> : null}

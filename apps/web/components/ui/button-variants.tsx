@@ -13,8 +13,9 @@ const capsule = 'rounded-full border-2 [.hc_&]:border-(--edge)'
 export const buttonVariants = cva(
   // A capsule: 36px in the app, 48px (`lg`) on public pages. Primary by inversion; secondary is a filled control with a
   // 2px muted edge (3:1). The fill is painted under the border (no `bg-clip-padding`), so the primary is as big as the
-  // outlined capsule beside it. The global :focus-visible outline is the ring.
-  'group/button inline-flex shrink-0 items-center justify-center font-medium whitespace-nowrap transition-[transform,opacity] outline-none select-none active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-60 aria-invalid:border-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0',
+  // outlined capsule beside it. The global :focus-visible outline is the ring. Only the press transitions: a button that
+  // turns enabled when its read lands is never caught half-faded (and failing contrast) by the accessibility crawl.
+  'group/button inline-flex shrink-0 items-center justify-center font-medium whitespace-nowrap transition-transform outline-none select-none active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-60 aria-invalid:border-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0',
   {
     variants: {
       variant: {
