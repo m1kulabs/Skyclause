@@ -10,7 +10,7 @@ vi.mock('next/headers', () => ({ headers: async () => incoming.headers }))
 vi.mock('@skyclause/auth', () => ({ resolvePrincipal: vi.fn(async () => null) }))
 vi.mock('../../lib/api', () => ({ api: { fetch: vi.fn(async () => new Response(null, { status: 404 })) } }))
 
-const MALFORMED = [
+const MALFORMED: Array<Record<string, string>> = [
   { 'x-forwarded-host': 'user@evil.com' },
   { 'x-forwarded-host': 'bad:port' },
   { 'x-forwarded-host': '' },
