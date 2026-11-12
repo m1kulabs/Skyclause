@@ -133,7 +133,7 @@ function TableCell({ className, numeric, truncate, phone, label, title, children
       {truncate ? (
         <span
           data-slot="table-truncate"
-          className="block overflow-hidden text-ellipsis"
+          className="block truncate"
           style={{ maxWidth: typeof truncate === 'string' ? truncate : '28ch' }}
         >
           {children}
