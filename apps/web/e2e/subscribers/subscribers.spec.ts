@@ -274,3 +274,11 @@ test('SET a real Owner reaches Subscribers from the More project pages menu', as
   await expect(page).toHaveURL(new RegExp(`${path}/subscribers$`))
   await expect(page.getByRole('heading', { level: 1, name: t('subscribers.title') })).toBeVisible()
 })
+
+test('at 320px the On the list filter stays inside the page (WCAG 1.4.10)', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 })
+  await setupProject(page)
+  await page.goto(projectPath)
+  await expect(page.getByRole('group', { name: t('subscribers.filter') })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320)
+})
