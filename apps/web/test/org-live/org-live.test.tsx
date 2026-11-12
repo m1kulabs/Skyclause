@@ -217,9 +217,11 @@ test('recounts snapshots, dedupes repeated event IDs, and clears the final waiti
   mountLive()
   await waitFor(() => expect(streams).toHaveLength(1))
   expect(screen.getByRole('link', { name: 'Review' }).getAttribute('href')).toBe('/test-org#dashboard-needs-review')
+  expect(screen.getByRole('link', { name: 'Review' }).dataset.waiting).toBe('unknown')
 
   await act(async () => send(streams[0]!, 'snapshot', { needs_review: [], sources: [] }))
   // A known zero prints nothing: never "0".
+  expect(screen.getByRole('link', { name: 'Review' }).dataset.waiting).toBe('0')
   expect(screen.getByRole('link', { name: 'Review' }).textContent).toBe('Review')
   expect(document.querySelector('[data-count]')).toBeNull()
   const event = domainEvent('019a45b0-0000-7000-8000-000000000021', 'bundle.needs_review', {
@@ -453,6 +455,7 @@ test('prints no count before the first snapshot, and drops it when the stream fa
 
   await act(async () => streams[0]!.controller.error(new Error('stream dropped')))
   await waitFor(() => expect(screen.getByRole('link', { name: 'Review' }).hasAttribute('aria-label')).toBe(false))
+  expect(screen.getByRole('link', { name: 'Review' }).dataset.waiting).toBe('unknown')
   expect(document.querySelector('[data-count]')).toBeNull()
   expect(document.title).toBe('Dashboard · Skyclause')
   expect(document.querySelector<HTMLLinkElement>('link[rel="icon"]')?.getAttribute('href')).toBe('/icon.svg')

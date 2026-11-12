@@ -124,7 +124,7 @@ test('review counts are axe-clean at 0, 1 and 12 in dark, light and high contras
 
       if (count === 0) {
         // A known zero prints no count: the control is just "Review", never "0".
-        await expect(bar.getByRole('link', { name: 'Review', exact: true })).toBeVisible()
+        await expect(bar.getByRole('link', { name: 'Review', exact: true })).toHaveAttribute('data-waiting', '0')
         await expect(badge).toHaveCount(0)
         await expect(page).not.toHaveTitle(/^\(\d+\) /)
         await expect(page.locator('link[rel="icon"][type="image/svg+xml"]')).toHaveAttribute('href', '/icon.svg')

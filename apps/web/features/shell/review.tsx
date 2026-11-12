@@ -19,6 +19,7 @@ export function ReviewLink({ org }: { org: string }) {
       href={reviewHref(org)}
       className={cn(buttonVariants({ variant: 'secondary' }), 'shell-review')}
       aria-label={waiting === null ? undefined : t('app-shell.reviewWaiting', { count: waiting })}
+      data-waiting={count ?? 'unknown'}
     >
       <span>{t('app-shell.review')}</span>
       {/* The figure is drawn from data-count: the link's visible text stays "Review", inside its accessible name. */}
