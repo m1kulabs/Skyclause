@@ -21,11 +21,8 @@ export function ReviewLink({ org }: { org: string }) {
       aria-label={waiting === null ? undefined : t('app-shell.reviewWaiting', { count: waiting })}
     >
       <span>{t('app-shell.review')}</span>
-      {waiting !== null && (
-        <span className="shell-review-count" aria-hidden="true" data-count={shown}>
-          {shown}
-        </span>
-      )}
+      {/* The figure is drawn from data-count: the link's visible text stays "Review", inside its accessible name. */}
+      {waiting !== null && <span className="shell-review-count" aria-hidden="true" data-count={shown} />}
     </a>
   )
 }

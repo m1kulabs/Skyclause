@@ -101,7 +101,7 @@ export function PhoneMenu({ scope, now }: { scope: ShellScope; now: string }) {
             })}
           >
             <span>{item.org_name}</span>
-            <span className="shell-menu-meta">{t(`app-shell.roles.${item.role}`)}</span>
+            <span className="shell-menu-meta" aria-hidden="true" data-role={t(`app-shell.roles.${item.role}`)} />
           </PhoneSheetItem>
         ))}
         <PhoneSheetItem href="/new">{t('app-shell.createOrganisation')}</PhoneSheetItem>

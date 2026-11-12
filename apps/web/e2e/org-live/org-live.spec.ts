@@ -132,7 +132,9 @@ test('review counts are axe-clean at 0, 1 and 12 in dark, light and high contras
         const accessibleName = `Review, ${count} waiting`
         await expect(bar.getByRole('link', { name: accessibleName })).toBeVisible()
         await expect(badge).toHaveAttribute('data-count', String(count))
-        await expect(badge).toHaveText(String(count))
+        await expect
+          .poll(() => badge.evaluate((element) => getComputedStyle(element, '::after').content))
+          .toBe(`"${count}"`)
         await expect(page).toHaveTitle(new RegExp(`^\\(${count}\\) `))
         await expect(page.locator('link[rel="icon"][type="image/svg+xml"]')).toHaveAttribute(
           'href',

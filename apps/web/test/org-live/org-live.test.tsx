@@ -232,7 +232,7 @@ test('recounts snapshots, dedupes repeated event IDs, and clears the final waiti
   await act(async () => send(streams[0]!, 'bundle.needs_review', event))
 
   await waitFor(() => expect(screen.getByRole('link', { name: 'Review, 1 waiting' })).toBeTruthy())
-  expect(document.querySelector('[data-count="1"]')?.textContent).toBe('1')
+  expect(document.querySelector('[data-count="1"]')).not.toBeNull()
   await waitFor(() =>
     expect(document.getElementById('skyclause-announcer')?.textContent).toContain(
       'New bundle needs review: Commute disruption, Test project, 8 min SLA'
@@ -356,7 +356,7 @@ test('shows raw counts accessibly and caps the favicon mark at 9+', async () => 
   )
 
   expect(screen.getByRole('link', { name: 'Review, 12 waiting' })).toBeTruthy()
-  expect(document.querySelector('[data-count="12"]')?.textContent).toBe('12')
+  expect(document.querySelector('[data-count="12"]')).not.toBeNull()
   expect(document.title).toBe('(12) Dashboard · Skyclause')
   expect(document.querySelector<HTMLLinkElement>('link[rel="icon"]')?.getAttribute('href')).toBe('/brand/tab-9+.svg')
 })

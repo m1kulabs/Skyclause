@@ -184,6 +184,9 @@ body:has(.app-shell) > .skip-link {
   padding-right: 6px;
 }
 /* The waiting count: a text-size capsule inverted like the primary control, with figures that keep one width. */
+.shell-review-count::after {
+  content: attr(data-count);
+}
 .shell-review-count {
   display: inline-flex;
   align-items: center;
@@ -218,6 +221,10 @@ body:has(.app-shell) > .skip-link {
 .shell-menu .shell-menu-item {
   flex-wrap: wrap;
   overflow-wrap: anywhere;
+}
+/* The role is drawn from data-role: the row's visible text stays the name, inside its "name, role" accessible name. */
+.shell-menu-meta::after {
+  content: attr(data-role);
 }
 .shell-menu-meta {
   margin-left: auto;

@@ -136,7 +136,8 @@ test('laptop and tablet widths move the project links and the time to a second r
 })
 
 test('390px keeps the wordmark, Review and Menu; the sheet holds every destination and both switchers', async ({
-  page
+  page,
+  expectAxeClean
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await openShell(page)
@@ -171,6 +172,7 @@ test('390px keeps the wordmark, Review and Menu; the sheet holds every destinati
   for (const link of await sheet.locator('[data-slot="phone-sheet-item"]').all())
     expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44)
   await expect(sheet.locator('time')).toHaveText(/^\d{2}:\d{2} MYT$/)
+  await expectAxeClean(page)
   await page.keyboard.press('Escape')
   await expect(bar(page).getByRole('button', { name: copy('Menu') })).toBeFocused()
 })
@@ -341,7 +343,7 @@ test('focus is never hidden under the sticky bar', async ({ page }) => {
 })
 
 for (const theme of ['dark', 'light', 'high contrast'] as const) {
-  test(`axe passes in ${theme}, with the bar and an open menu`, async ({ page, expectAxeClean }) => {
+  test(`axe passes in ${theme}, with the bar and each of its menus open`, async ({ page, expectAxeClean }) => {
     await page.context().addCookies([
       {
         name: 'skyclause-test-appearance',
@@ -354,11 +356,12 @@ for (const theme of ['dark', 'light', 'high contrast'] as const) {
     ])
     await openShell(page, { ...data, projects: [] }, '?org=test-two')
     await expectAxeClean(page)
-    await bar(page)
-      .getByRole('button', { name: /Switch project:/ })
-      .click()
-    await expect(page.getByRole('menu')).toBeVisible()
-    await expectAxeClean(page)
+    for (const control of [/Switch project:/, /Switch organisation:/, new RegExp(copy('Organisation and account'))]) {
+      await bar(page).getByRole('button', { name: control }).click()
+      await expect(page.getByRole('menu')).toBeVisible()
+      await expectAxeClean(page)
+      await closeMenu(page)
+    }
   })
 }
 
