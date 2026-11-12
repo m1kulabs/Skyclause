@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test'
 import { asPage, stubApi } from '../harness'
 import { windowsOperations } from '../../features/windows/operations'
+import { onboardingOperations, type OnboardingView } from '../../features/onboarding/operations'
 import type { WindowView } from '../../features/windows/operations'
 
 // Test doubles for the 2 November 2026 15:30 release-wave replay (DESIGN voice and content).
@@ -56,7 +57,27 @@ export const replayProject = {
   packs: []
 }
 
-export async function prepareWindows(page: Page, windows: WindowView[] = [replayWindow]) {
+const STEPS = ['organisation', 'project', 'sources', 'window', 'rota', 'channel'] as const
+
+/** A getOnboarding double: every step before `next` done, the rest open; with no `next`, every step done. */
+export function onboarding(next?: (typeof STEPS)[number]): OnboardingView {
+  const open = next ? STEPS.indexOf(next) : STEPS.length
+  return {
+    steps: STEPS.map((step, index) => ({
+      step,
+      completed_at: index < open ? '2026-11-02T01:00:00Z' : null,
+      skipped: false,
+      result: index < open ? `${step} done` : null,
+      href: step === 'window' ? '/replay/bukit-jalil/windows?declare=window' : `/replay/${step}`
+    }))
+  }
+}
+
+export async function prepareWindows(
+  page: Page,
+  windows: WindowView[] = [replayWindow],
+  steps: OnboardingView = onboarding()
+) {
   await asPage(page, {
     kind: 'session',
     client: 'app',
@@ -84,6 +105,8 @@ export async function prepareWindows(page: Page, windows: WindowView[] = [replay
     }
   ])
   await stubApi(page, 'listProjects', { data: [replayProject], next_cursor: null }, { registry: windowsOperations })
+  // An Owner's windows page carries the first-run steps, which hide once every step is done.
+  await stubApi(page, 'getOnboarding', steps, { registry: onboardingOperations })
   for (const id of ['listWindows', 'listIcsFeeds', 'listProjectDays', 'listNights', 'listProjectBundles'] as const) {
     await stubApi(
       page,

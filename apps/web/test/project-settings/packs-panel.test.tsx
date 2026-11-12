@@ -98,8 +98,15 @@ test('the panel is written in the request language', async () => {
   expect(await screen.findByRole('heading', { name: onboarding('onboarding.packs', {}, 'ms') })).toBeDefined()
 })
 
+test('without a createDevice handler the panel offers no Devices part, so nothing can fail to save', async () => {
+  render(<Panel org="org" project="campus" devices={false} />)
+  expect(await screen.findByRole('heading', { name: onboarding('onboarding.packs') })).toBeDefined()
+  expect(screen.queryByRole('heading', { name: onboarding('onboarding.devices') })).toBeNull()
+  expect(screen.queryByRole('button', { name: onboarding('onboarding.add_device') })).toBeNull()
+})
+
 test('a device needs a name: the empty submit says so, keeps the form open and focuses the field', async () => {
-  render(<Panel org="org" project="campus" />)
+  render(<Panel org="org" project="campus" devices />)
   fireEvent.click(await screen.findByRole('button', { name: onboarding('onboarding.add_device') }))
   const name = (await screen.findByLabelText(onboarding('onboarding.device_name'))) as HTMLInputElement
   expect(name.maxLength).toBe(80)

@@ -33,6 +33,7 @@ import {
   type StripView
 } from './operations'
 import { t } from './i18n'
+import { clauseName } from '../bundles/clause-name'
 import styles from './calls.module.css'
 import { cn } from '#lib/utils'
 
@@ -418,7 +419,7 @@ export function CallDetailPage({
                       <ul className={styles.clauseList}>
                         {explanation.clauses.map((clause) => (
                           <li key={clause.key}>
-                            <h3>{clause.wording[locale] ?? clause.key}</h3>
+                            <h3>{clause.wording[locale] ?? clauseName(clause.key, locale)}</h3>
                             <code translate="no">{clause.cel}</code>
                             {clause.inputs.length ? (
                               <ul className={styles.clauseInputs}>
@@ -551,18 +552,18 @@ export function CallDetailPage({
                   </section>
                   <section className={styles.recordItem}>
                     <h3>{t('calls.sheet', {}, locale)}</h3>
-                    <p>{t('calls.clause_version', { version: call.sheet_version_id }, locale)}</p>
+                    {/* The version's ID is a database key: its last eight characters say which, the title keeps all of it. */}
+                    <p title={call.sheet_version_id}>
+                      {t('calls.clause_version', { version: `…${call.sheet_version_id.slice(-8)}` }, locale)}
+                    </p>
                   </section>
                   <section className={styles.recordItem}>
                     <h3>{t('calls.permalink', {}, locale)}</h3>
+                    {/* Text to copy, not a link: no public page answers it yet (getPublicCall has no handler). */}
                     <div className={styles.linkValue}>
-                      <a
-                        href={call.permalink}
-                        translate="no"
-                        aria-label={`${t('calls.permalink', {}, locale)}: ${call.permalink}`}
-                      >
+                      <span translate="no" data-permalink>
                         {call.permalink}
-                      </a>
+                      </span>
                       <CopyButton
                         value={call.permalink}
                         label={t('calls.copy_permalink', {}, locale)}

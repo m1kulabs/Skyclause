@@ -400,10 +400,10 @@
     "exportJobFailed": "This export failed. Request a new export."
   },
   "unbuilt": {
-    "accountAi": "AI keys for your account",
-    "accountApi": "API keys for your account",
-    "organisationAi": "AI keys for this organisation",
-    "organisationApi": "API keys for this organisation"
+    "accountAi": "AI keys are not available yet.",
+    "accountApi": "API keys are not available yet.",
+    "organisationAi": "AI keys are not available yet.",
+    "organisationApi": "API keys are not available yet."
   },
   "general": {
     "title": "Rename the organisation",

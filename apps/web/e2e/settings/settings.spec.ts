@@ -1,24 +1,20 @@
 import type { Page } from '@playwright/test'
 import type { Principal, Role } from '@skyclause/contracts'
+import { inOrg } from '@skyclause/auth/testing'
+import { makeProject } from '@skyclause/db/test/factories/index'
 import { expect, test } from '../fixtures'
 import { asPage } from '../harness'
 import { makeOrg, signInAs } from '../harness/sign-in-as'
 import { expectUnclippedText } from '../harness/expect-unclipped-text'
 
-const account = ['profile', 'security', 'appearance', 'notifications', 'ai-keys', 'api-keys', 'data']
-const organisation = [
-  'general',
-  'members',
-  'rota',
-  'billing',
-  'audit',
-  'ai-keys',
-  'api-keys',
-  'webhooks',
-  'integrations',
-  'data'
-]
-const project = ['packs', 'channels', 'rota', 'public', 'share']
+// Each navigation lists the first set; the unlisted sections have no handler yet (AI and API keys, webhooks, the
+// public page, share links): they are reached only by URL, where each says it is not available.
+const account = ['profile', 'security', 'appearance', 'notifications', 'data']
+const accountUnlisted = ['ai-keys', 'api-keys']
+const organisation = ['general', 'members', 'rota', 'billing', 'audit', 'integrations', 'data']
+const organisationUnlisted = ['ai-keys', 'api-keys', 'webhooks']
+const project = ['packs', 'channels', 'rota']
+const projectUnlisted = ['public', 'share']
 
 function principal(role: Role = 'admin', isGuest = false): Principal {
   return {
@@ -65,31 +61,42 @@ async function expectPage(page: Page, path: string, allowed: boolean) {
   }
 }
 
-test('SET-1 all seven routes admit a signed-in account', async ({ page }) => {
+test('SET-1 all seven routes admit a signed-in account; the nav lists the five that work', async ({ page }) => {
   await asPage(page, principal('viewer'))
-  for (const section of account) await expectPage(page, `/account/${section}`, true)
+  for (const section of [...account, ...accountUnlisted]) await expectPage(page, `/account/${section}`, true)
+  await expect(page.locator('[data-settings-nav] a')).toHaveCount(account.length)
+  for (const section of accountUnlisted)
+    await expect(page.locator(`[data-settings-nav] a[href="/account/${section}"]`)).toHaveCount(0)
 })
 
 test('SET-1 guests get appearance only', async ({ page }) => {
   await asPage(page, principal('guest', true))
-  for (const section of account) await expectPage(page, `/account/${section}`, section === 'appearance')
+  for (const section of [...account, ...accountUnlisted])
+    await expectPage(page, `/account/${section}`, section === 'appearance')
   await expectPage(page, '/account/does-not-exist', false)
 })
 
 // SET-3 turns on the URL organisation's membership, so these run on real sessions (#94's signInAs).
 for (const role of ['admin', 'owner'] as const) {
-  test(`SET-3 all ten routes admit ${role}`, async ({ page }) => {
+  test(`SET-3 all ten routes admit ${role}; the nav lists the seven that work`, async ({ page }) => {
     const org = await makeOrg()
     await signInAs(page, role, org)
-    for (const section of organisation) await expectPage(page, `/${org.slug}/settings/${section}`, true)
+    for (const section of [...organisation, ...organisationUnlisted])
+      await expectPage(page, `/${org.slug}/settings/${section}`, true)
+    // Webhooks have no handler yet: a real Owner or Admin is told so, never that they need an Admin.
+    await page.goto(`/${org.slug}/settings/webhooks`)
+    await expect(page.locator('[data-settings-panel] [data-not-built]')).toHaveText('Webhooks are not available yet.')
     await expect(page.locator('[data-settings-nav] a')).toHaveCount(organisation.length)
+    for (const section of organisationUnlisted)
+      await expect(page.locator(`[data-settings-nav] a[href="/${org.slug}/settings/${section}"]`)).toHaveCount(0)
   })
 }
 
 test('SET-3 an Approver gets only rota and its nav contains no forbidden sections', async ({ page }) => {
   const org = await makeOrg()
   await signInAs(page, 'approver', org)
-  for (const section of organisation) await expectPage(page, `/${org.slug}/settings/${section}`, section === 'rota')
+  for (const section of [...organisation, ...organisationUnlisted])
+    await expectPage(page, `/${org.slug}/settings/${section}`, section === 'rota')
   await page.goto(`/${org.slug}/settings/rota`)
   await expect(page.locator('[data-settings-nav] a')).toHaveCount(1)
 })
@@ -97,7 +104,8 @@ test('SET-3 an Approver gets only rota and its nav contains no forbidden section
 test('SET-3 another organisation gets not-found on every route, including rota', async ({ page }) => {
   const [org, another] = [await makeOrg(), await makeOrg()]
   await signInAs(page, 'owner', org)
-  for (const section of organisation) await expectPage(page, `/${another.slug}/settings/${section}`, false)
+  for (const section of [...organisation, ...organisationUnlisted])
+    await expectPage(page, `/${another.slug}/settings/${section}`, false)
 })
 
 test('SET-4 keyboard navigation reaches all panels', async ({ page }) => {
@@ -119,9 +127,32 @@ test('SET-4 keyboard navigation reaches all panels', async ({ page }) => {
   }
 })
 
+test('SET-4 reached by URL, the public page and share links say they are not available; the nav lists neither', async ({
+  page
+}) => {
+  const org = await makeOrg()
+  await signInAs(page, 'owner', org)
+  const row = await inOrg(org.id, (tx) => makeProject(tx, { name: 'Unlisted sections' }))
+  const base = `/${org.slug}/${row.slug}/settings`
+  await page.goto(base)
+  await expect(page.locator('[data-settings-frame]')).toBeVisible()
+  // General and the three listed sections.
+  await expect(page.locator('[data-settings-nav] a')).toHaveCount(project.length + 1)
+  for (const section of projectUnlisted)
+    await expect(page.locator(`[data-settings-nav] a[href="${base}/${section}"]`)).toHaveCount(0)
+  for (const [section, sentence] of [
+    ['public', 'The public project page is not available yet.'],
+    ['share', 'Share links are not available yet.']
+  ] as const) {
+    await page.goto(`${base}/${section}`)
+    await expect(page.locator('[data-settings-panel] [data-not-built]')).toHaveText(sentence)
+    await expect(page.locator('[data-settings-panel] [data-source-error]')).toHaveCount(0)
+  }
+})
+
 test('SET-4 denies Approvers and a different organisation', async ({ page }) => {
   await asPage(page, principal('approver'))
-  for (const section of ['', ...project])
+  for (const section of ['', ...project, ...projectUnlisted])
     await expectPage(page, `/test-org/test-project/settings${section ? `/${section}` : ''}`, false)
   await asPage(page, principal('owner'))
   await expectPage(page, '/another-org/test-project/settings', false)

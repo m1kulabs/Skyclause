@@ -15,6 +15,8 @@ import { focusHeadingWhenFree } from '../../focus'
 import { RowPager, pageOf } from '../row-pager'
 import { useRead } from '../../../analysis/use-read'
 import { StatusMark } from '../../../brand/status-mark'
+import { NotBuilt } from '../../../data-components/states'
+import { ApiProblem } from '../../../../lib/api-fetch'
 import {
   projectSettingsApi,
   projectSettingsOperations,
@@ -168,6 +170,13 @@ export function ProjectSharePanel({ locale = 'en' }: { locale?: Locale }) {
         <Skeleton className="h-10 w-full rounded-full" />
         <Skeleton className="h-16 w-full rounded-md" />
       </SettingsLoading>
+    )
+  // Share links have no handler yet (b-share-links): a 501 says so plainly, never a failed read to retry.
+  if (loaded.status === 'error' && loaded.error instanceof ApiProblem && loaded.error.status === 501)
+    return (
+      <div className="-m-5 grid min-w-0 [overflow-wrap:anywhere]">
+        <NotBuilt title={t('project-settings.share_unavailable', {}, locale)} />
+      </div>
     )
   if (loaded.status === 'error')
     return (

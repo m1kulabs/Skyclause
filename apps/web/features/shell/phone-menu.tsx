@@ -9,7 +9,8 @@ import { ShellClock } from './clock'
 import { t } from './i18n'
 import type { Destination } from './navigation'
 import type { ShellScope } from './scope'
-import { canCreateProject } from './switchers'
+import { signOutLabel, useSignOut } from './sign-out'
+import { canCreateProject, offersSignOut } from './switchers'
 
 const ACCOUNT_KEYS = new Set(['connect', 'account', 'appearance'])
 
@@ -21,6 +22,16 @@ function Section({ id, title, children }: { id: string; title: string; children:
       </h3>
       {children}
     </section>
+  )
+}
+
+/** The sheet's Sign out: a row like its links, but a button, since it ends the session rather than opening a page. */
+function SignOutRow({ scope }: { scope: ShellScope }) {
+  const { state, signOut } = useSignOut()
+  return (
+    <button type="button" className="shell-sheet-action" onClick={() => void signOut()}>
+      {t(signOutLabel[state], {}, scope.locale)}
+    </button>
   )
 }
 
@@ -88,6 +99,7 @@ export function PhoneMenu({ scope, now }: { scope: ShellScope; now: string }) {
       )}
       <Section id="shell-sheet-account" title={t('app-shell.accountGroup', {}, locale)}>
         <Links destinations={account} scope={scope} />
+        {offersSignOut(scope) && <SignOutRow scope={scope} />}
       </Section>
       <Section id="shell-sheet-organisations" title={t('app-shell.switchOrganisation', {}, locale)}>
         {data.membershipsError && (

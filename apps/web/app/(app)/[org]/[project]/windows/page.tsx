@@ -2,6 +2,7 @@ import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { getOrgPrincipal } from '../../../../../lib/principal'
 import { WindowsPage } from '../../../../../features/windows/windows-page'
+import { FirstRunProgress } from '../../../../../features/onboarding/first-run-progress'
 import { t } from '../../../../../features/windows/catalogue'
 import { prefersMalay } from '../../../../../lib/preferred-language'
 
@@ -16,5 +17,11 @@ export default async function Page({ params }: { params: Promise<{ org: string; 
   const member = principal?.kind === 'session' && !!principal.role
   if (!member && principal?.kind !== 'share_link' && principal?.kind !== 'guest_token') notFound()
   const locale = prefersMalay((await headers()).get('accept-language')) ? 'ms' : 'en'
-  return <WindowsPage key={`${org}/${project}`} org={org} project={project} locale={locale} />
+  // The first-run steps are an Owner's or Admin's (they read and skip the organisation's steps): the window step
+  // brings them here, so the steps continue here too, and disappear once every step is done.
+  const firstRun =
+    principal?.kind === 'session' && (principal.role === 'owner' || principal.role === 'admin') ? (
+      <FirstRunProgress org={org} locale={locale} />
+    ) : null
+  return <WindowsPage key={`${org}/${project}`} org={org} project={project} firstRun={firstRun} locale={locale} />
 }

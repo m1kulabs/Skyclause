@@ -98,3 +98,37 @@ test('a call review renders project strip readings when provided', () => {
   expect(html).toContain('2 readings.')
   expect(html).toContain('data-strip-plot')
 })
+
+test('fired clauses lead with the wording in the interface’s language and never print a clause key', () => {
+  const fired: CallDetail = {
+    ...sent,
+    fired: [
+      { clause: 'storm_confirmed', inputs: [] },
+      { clause: 'gate_queue_long', inputs: [] }
+    ],
+    clauses: [
+      {
+        key: 'storm_confirmed',
+        result: 'fired',
+        blocked_by: [],
+        inputs: [],
+        cel: 'true',
+        wording: { en: 'Storm confirmed over the campus', ms: 'Ribut disahkan di kampus' }
+      }
+    ]
+  } as CallDetail
+  const malay = renderToStaticMarkup(
+    <CallReview call={fired} decision={{}} expired={false} basePath="/test/project" locale="ms" />
+  )
+  expect(malay).toMatch(/class="bundle-clause-name">Ribut disahkan di kampus</)
+  // The other language's wording, which goes out too, follows marked as English.
+  expect(malay).toContain('lang="en">Storm confirmed over the campus<')
+  // A clause with no explanation reads as words, never as its key.
+  expect(malay).toContain('Gate queue long')
+  expect(malay).not.toContain('gate_queue_long')
+  const english = renderToStaticMarkup(
+    <CallReview call={fired} decision={{}} expired={false} basePath="/test/project" locale="en" />
+  )
+  expect(english).toMatch(/class="bundle-clause-name">Storm confirmed over the campus</)
+  expect(english).toContain('lang="ms">Ribut disahkan di kampus<')
+})

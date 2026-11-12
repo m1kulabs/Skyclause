@@ -27,7 +27,6 @@ export interface PaletteContext {
   memberships: readonly PaletteMembership[]
   projects: readonly PaletteProject[]
   query: string
-  projectQuery: string
   projectChoice: 'window' | 'ledger' | null
   changeTheme: (theme: 'light' | 'dark' | 'system') => void
   chooseProject: (purpose: 'window' | 'ledger') => void

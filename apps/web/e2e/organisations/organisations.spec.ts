@@ -109,6 +109,34 @@ test('creating an organisation continues to the first run next step', async ({ p
   await expect(page).toHaveURL(`/${slug}/new`)
 })
 
+test('the shell lists a new organisation as soon as it is created, instead of No organisations yet', async ({
+  page
+}) => {
+  await signInAs(page, 'owner', await makeOrg())
+  const slug = `e2e-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+  await page.goto('/new')
+  const switcher = page.getByRole('button', { name: /^Switch organisation:/ }).first()
+  await expect(switcher).toHaveAccessibleName('Switch organisation: No organisations')
+  // The test runtime's app layout reads the shell's memberships from this cookie each time it renders (production reads
+  // listMyMemberships), so the shell changes only if the layout is read again after the create.
+  const origin = process.env.E2E_BASE_URL ?? `http://localhost:${process.env.E2E_PORT ?? 3100}`
+  const shell = {
+    memberships: [{ org_id: 'e2e-new-org', org_name: 'E2E Org', org_slug: slug, role: 'owner' }],
+    projects: []
+  }
+  await page
+    .context()
+    .addCookies([
+      { name: 'skyclause-test-shell', value: encodeURIComponent(JSON.stringify(shell)), url: origin, httpOnly: true }
+    ])
+  await page.getByLabel('Organisation name').fill('E2E Org')
+  await page.getByLabel('Slug').fill(slug)
+  await page.getByRole('button', { name: 'Create organisation' }).click()
+  await expect(page).toHaveURL(`/${slug}/new`)
+  await expect(switcher).toHaveAccessibleName('Switch organisation: E2E Org')
+  await expect(page.getByText('No organisations yet (n=0)')).toHaveCount(0)
+})
+
 test('ORG-5 with zero projects an owner sees n=0 and Create a project', async ({ page }) => {
   await asPage(page, principal('owner'))
   await stubProjects(page, [])

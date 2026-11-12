@@ -4,6 +4,7 @@ import { expect, test } from '../fixtures'
 import { asPage, stubApi } from '../harness'
 import { onboardingOperations } from '../../features/onboarding/operations'
 import { sourceOperations } from '../../features/sources/operations'
+import { devicesBuilt } from '../../features/settings/project/packs/controls'
 import type { Request } from '@playwright/test'
 
 const org = 'test-org'
@@ -327,7 +328,8 @@ test('source picker sorts captured APIMS rows, finds CA16W, allows an erroring s
   await expect(closest.getByRole('cell', { name: 'no published terms' })).toBeVisible()
   await expect(closest).toContainText('Hourly')
   await expect(closest).toContainText(/67\s*API/)
-  await expect(closest).toContainText(/error.*HTTP 503/i)
+  await expect(closest).toContainText('Last poll failed')
+  await expect(closest).not.toContainText('HTTP')
   await expect(picker.getByRole('row').nth(2)).toContainText('CA01R')
   await picker.getByLabel('Search sources').fill('CA16W')
   await expect(picker.getByText('CA01R')).toHaveCount(0)
@@ -469,7 +471,26 @@ test('Crowd stays off until the rail station and venue are both bound', async ({
   expect(writes).toEqual([])
 })
 
+test('the packs page offers no Add a camera or Pi while createDevice has no handler', async ({ page }) => {
+  test.skip(devicesBuilt(), 'createDevice has a handler: the device flow is tested below')
+  await asPage(page, principal())
+  await stubApi(page, 'getOnboarding', onboarding(true), { registry: onboardingOperations })
+  await stubApi(
+    page,
+    'listProjects',
+    { data: [projectRecord()], next_cursor: null },
+    { registry: onboardingOperations }
+  )
+  await stubApi(page, 'listProjectSources', { data: [], next_cursor: null }, { registry: sourceOperations })
+  await page.goto(`/${org}/apu-air-quality/settings/packs`)
+  const panel = page.locator('[data-settings-panel]')
+  await expect(panel.getByRole('heading', { name: 'Packs' })).toBeVisible()
+  await expect(panel.getByRole('heading', { name: 'Devices' })).toHaveCount(0)
+  await expect(panel.getByRole('button', { name: 'Add a camera or Pi' })).toHaveCount(0)
+})
+
 test('device token is visible once and cleared when its dialog closes', async ({ page, expectAxeClean }) => {
+  test.skip(!devicesBuilt(), 'createDevice has no handler: the Devices part is not offered')
   await asPage(page, principal())
   const device = {
     source_id: '019b7f4a-1e00-7000-8000-000000000701',

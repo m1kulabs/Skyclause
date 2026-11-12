@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test'
+import { signIn } from '@skyclause/auth/testing'
 import { pseudo } from '../../../../packages/i18n/src/pseudo'
 import { test, expect } from '../fixtures'
+import { makeOrg, signInAs } from '../harness/sign-in-as'
 import { expectUnclippedText } from '../harness/expect-unclipped-text'
 import { org, project, stubDashboard } from '../dashboard/doubles'
 import type { ShellData } from '../../features/shell/types'
@@ -20,7 +22,8 @@ const copy = (value: string) => (process.env.I18N_PSEUDO === '1' ? pseudo(value)
 const membership = (name: string, role: string) => copy(`${name}, ${copy(role)}`)
 const origin = process.env.E2E_BASE_URL ?? `http://localhost:${process.env.E2E_PORT ?? 3100}`
 const PROJECT = '?org=test-one&project=test-project&tab=windows'
-const UNBUILT = /\/(approvals|clauses|docs)(\/|$|\?|#)|^\/developers$/
+// Webhooks have no handler yet (e-webhooks): reached by URL they say so, but nothing links to them.
+const UNBUILT = /\/(approvals|clauses|docs|webhooks)(\/|$|\?|#)|^\/developers(\/|$)/
 
 async function setShell(page: Page, shellData: ShellData) {
   await page.context().addCookies([
@@ -165,8 +168,9 @@ test('390px keeps the wordmark, Review and Menu; the sheet holds every destinati
     'Project settings'
   ])
     await expect(sheet.getByRole('link', { name: copy(name), exact: true })).toBeVisible()
-  for (const name of ['Dashboard', 'Projects', 'Organisation analysis', 'Webhooks', 'Organisation settings', 'Account'])
+  for (const name of ['Dashboard', 'Projects', 'Organisation analysis', 'Organisation settings', 'Account'])
     await expect(sheet.getByRole('link', { name: copy(name), exact: true })).toBeAttached()
+  await expect(sheet.getByRole('link', { name: copy('Webhooks'), exact: true })).toHaveCount(0)
   await expect(sheet.getByRole('link', { name: copy('Windows'), exact: true })).toHaveAttribute('aria-current', 'page')
   await expect(sheet.getByRole('link', { name: membership('Test organisation one', 'Owner') })).toHaveAttribute(
     'aria-current',
@@ -176,6 +180,9 @@ test('390px keeps the wordmark, Review and Menu; the sheet holds every destinati
   for (const link of await sheet.locator('[data-slot="phone-sheet-item"]').all())
     expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44)
   await expect(sheet.locator('time')).toHaveText(/^\d{2}:\d{2} MYT/)
+  const signOut = sheet.getByRole('button', { name: copy('Sign out'), exact: true })
+  await expect(signOut).toBeAttached()
+  expect((await signOut.boundingBox())!.height).toBeGreaterThanOrEqual(44)
   await expectAxeClean(page)
   await page.keyboard.press('Escape')
   await expect(bar(page).getByRole('button', { name: copy('Menu') })).toBeFocused()
@@ -221,7 +228,6 @@ test('the project and account menus link only to built pages, filtered by role',
     { name: copy('Dashboard'), href: '/test-one' },
     { name: copy('Projects'), href: '/test-one/projects' },
     { name: copy('Organisation analysis'), href: '/test-one/analysis' },
-    { name: copy('Webhooks'), href: '/test-one/settings/webhooks' },
     { name: copy('Organisation settings'), href: '/test-one/settings/general' },
     { name: copy('Connect your AI'), href: '/connect' },
     { name: copy('Account'), href: '/account/profile' }
@@ -267,11 +273,39 @@ test('a guest account sees only Appearance for its account', async ({ page }) =>
     '/commons/analysis',
     '/account/appearance'
   ])
+  // A guest's session could never be signed back into: it is offered no Sign out.
+  await expect(page.getByRole('menuitem', { name: copy('Sign out') })).toHaveCount(0)
   await closeMenu(page)
   await bar(page)
     .getByRole('button', { name: /Switch organisation:/ })
     .click()
   expect((await menuLinks(page)).map((item) => item.href)).toEqual(['/commons'])
+})
+
+test('a real session signs out from the account menu, lands on sign-in, and leaves its other sessions signed in', async ({
+  page,
+  browser
+}) => {
+  const account = await signInAs(page, 'owner', await makeOrg())
+  const otherSession = await signIn(account.accountId)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/account/profile')
+  expect((await (await page.request.get('/api/auth/get-session')).json())?.session).toBeTruthy()
+  await bar(page)
+    .getByRole('button', { name: copy('Organisation and account') })
+    .click()
+  await page.getByRole('menuitem', { name: copy('Sign out'), exact: true }).click()
+  await page.waitForURL((url) => url.pathname === '/sign-in')
+  expect(await (await page.request.get('/api/auth/get-session')).json()).toBeNull()
+  // This session only: "Sign out everywhere" stays in Security.
+  const elsewhere = await browser.newContext()
+  try {
+    await elsewhere.addCookies(otherSession.cookies)
+    const other = await elsewhere.request.get(`${origin}/api/auth/get-session`)
+    expect((await other.json())?.session?.id).toBe(otherSession.sessionId)
+  } finally {
+    await elsewhere.close()
+  }
 })
 
 test('Review opens the dashboard at its needs-review block and prints no count without the live stream', async ({
@@ -307,7 +341,7 @@ test('a failed memberships read names itself as an error, not as no organisation
   )
   const main = page.locator('main')
   await expect(main.locator('[data-source-error="501"]')).toContainText(
-    copy(`Couldn’t read ${copy('your organisations')}.`)
+    copy(`Skyclause can’t show ${copy('your organisations')} yet.`)
   )
   // Reading again cannot change a "not built" answer, so it offers no Try again; a failed read (below) does.
   await expect(main.getByRole('button', { name: copy('Try again') })).toHaveCount(0)
@@ -447,16 +481,42 @@ test('on a real route the palette opens from the bar and offers every destinatio
     'Dashboard',
     'Projects',
     'Organisation analysis',
-    'Webhooks',
     'Organisation settings',
     'Connect your AI',
     'Account'
   ])
     await expect(dialog.getByRole('option', { name: copy(name), exact: true })).toBeAttached()
+  await expect(dialog.getByRole('option', { name: copy('Webhooks'), exact: true })).toHaveCount(0)
   await page.getByRole('combobox', { name: copy('Search commands') }).fill('ledger')
   await expect(dialog.getByRole('option').first()).toHaveAttribute('aria-selected', 'true')
   await expect(dialog.getByRole('option', { name: copy('Ledger'), exact: true })).toBeVisible()
   const navigation = page.waitForURL(`**/${org.slug}/${project.slug}/ledger`)
   await dialog.getByRole('option', { name: copy('Ledger'), exact: true }).click()
   await navigation
+})
+
+test('typing still matches commands and destinations while the organisation search is not available yet', async ({
+  page
+}) => {
+  await stubDashboard(page, { role: 'owner' })
+  await setShell(page, {
+    memberships: [{ org_id: org.id, org_name: org.name, org_slug: org.slug, role: 'owner' }],
+    projects: [{ id: project.id, org_id: org.id, name: project.name, slug: project.slug }]
+  })
+  let searches = 0
+  await page.route(/\/v1\/search(\?|$)/, async (route) => {
+    searches++
+    await route.fulfill({ status: 501, contentType: 'application/problem+json', json: { title: 'Not built' } })
+  })
+  await page.goto(`/${org.slug}/${project.slug}/windows`)
+  await expect(page.locator('[data-palette-ready="true"]')).toBeAttached()
+  await bar(page)
+    .getByRole('button', { name: /^Open command palette/ })
+    .click()
+  const dialog = page.getByRole('dialog', { name: copy('Command palette') })
+  await page.getByRole('combobox', { name: copy('Search commands') }).fill('ledger')
+  await expect.poll(() => searches).toBeGreaterThan(0)
+  await expect(dialog.getByRole('option', { name: copy('Ledger'), exact: true })).toBeVisible()
+  await expect(dialog.locator('[data-source-error]')).toHaveCount(0)
+  await expect(dialog).not.toContainText(copy('Try again'))
 })

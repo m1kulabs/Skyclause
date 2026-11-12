@@ -42,8 +42,8 @@ test('the organisation and account menu follows each role, and a guest account s
     roles.map((role) => [role, keys(organisationMenuDestinations('test-org', role, role === 'guest'))])
   )
   expect(byRole).toEqual({
-    owner: ['dashboard', 'projects', 'organisationAnalysis', 'webhooks', 'organisationSettings', 'connect', 'account'],
-    admin: ['dashboard', 'projects', 'organisationAnalysis', 'webhooks', 'organisationSettings', 'connect', 'account'],
+    owner: ['dashboard', 'projects', 'organisationAnalysis', 'organisationSettings', 'connect', 'account'],
+    admin: ['dashboard', 'projects', 'organisationAnalysis', 'organisationSettings', 'connect', 'account'],
     approver: ['dashboard', 'projects', 'organisationAnalysis', 'organisationSettings', 'connect', 'account'],
     editor: ['dashboard', 'projects', 'organisationAnalysis', 'connect', 'account'],
     viewer: ['dashboard', 'projects', 'organisationAnalysis', 'connect', 'account'],
@@ -56,7 +56,10 @@ test('the organisation and account menu follows each role, and a guest account s
   expect(keys(organisationMenuDestinations(undefined))).toEqual(['connect', 'account'])
 })
 
-/** Every href the shell can produce, for every role, resolves to a built page.tsx under app/(app). */
+/**
+ * Every href the shell can produce, for every role, resolves to a built page.tsx under app/(app), and none is a page
+ * whose operations have no handler yet: webhooks (e-webhooks) render only "not available yet" until they do.
+ */
 test('nothing links to a page that is not built', () => {
   const app = path.resolve(import.meta.dirname, '../../app/(app)')
   const pages: RegExp[] = []
@@ -91,7 +94,7 @@ test('nothing links to a page that is not built', () => {
       pages.some((page) => page.test(href)),
       href
     ).toBe(true)
-  expect([...hrefs].some((href) => /\/(approvals|clauses|docs)\b|^\/developers$/.test(href))).toBe(false)
+  expect([...hrefs].filter((href) => /\/(approvals|clauses|docs|webhooks)\b|^\/developers\b/.test(href))).toEqual([])
 })
 
 test('Review opens the dashboard at its needs-review block', () => {
@@ -113,7 +116,8 @@ test('the current destination is the longest match; overview and dashboard only 
   expect(currentDestination('/o/p/bundles/x', coreDestinations('o', 'p'))).toBe('calls')
   expect(currentDestination('/test-org', all)).toBe('dashboard')
   expect(currentDestination('/test-org/settings/members', all)).toBe('organisationSettings')
-  expect(currentDestination('/test-org/settings/webhooks', all)).toBe('webhooks')
+  // Reached by URL, the webhooks section is still under Organisation settings.
+  expect(currentDestination('/test-org/settings/webhooks', all)).toBe('organisationSettings')
   expect(currentDestination('/account/security', all)).toBe('account')
   expect(currentDestination('/test-org/new', all)).toBeUndefined()
 })

@@ -4,6 +4,9 @@ import { overviewOperations } from '../../features/overview/operations'
 import { projectSettingsOperations } from '../../features/project-settings/operations'
 import { adminId, prepareOverview, prepareSettings, projectFixtureData, baseProject, projectPath } from './fixtures'
 import { stubApi } from '../harness'
+import { inOrg } from '@skyclause/auth/testing'
+import { makeProject } from '@skyclause/db/test/factories/index'
+import { makeOrg, signInAs } from '../harness/sign-in-as'
 import { expectUnclippedText } from '../harness/expect-unclipped-text'
 
 /** The copy as rendered: the pseudo project renders every string through `pseudo`. */
@@ -70,6 +73,50 @@ test('overview uses the 5 November captures, declares from the primary action an
   await expect(overview.getByRole('button', { name: /^Crowd~* pack/ })).toHaveAttribute('aria-pressed', 'true')
   await overview.locator('.overview-topline').getByRole('link', { name: 'Declare a window' }).click()
   await expect(page).toHaveURL(/\?pack=crowd&declare=window$/)
+})
+
+test('a mistyped or foreign project is the not-found page, and a member’s own project is the overview', async ({
+  page
+}) => {
+  // makeOrg's own slugs are longer than an organisation slug may be, which the page refuses on its own.
+  const slug = () => `gate-${Math.random().toString(36).slice(2, 10)}`
+  const mine = await makeOrg({ slug: slug() })
+  await signInAs(page, 'viewer', mine)
+  await inOrg(mine.id, (tx) => makeProject(tx, { slug: 'own-project' }))
+  const notFound = page.getByRole('heading', { level: 1, name: 'Page not found' })
+
+  // A streamed not-found page may already have answered 200, as the crawl allows: the page is what counts.
+  await page.goto(`/${mine.slug}/no-such-project`)
+  await expect(notFound).toBeVisible()
+  await expect(page.getByText(/answered|Couldn’t read this project/)).toHaveCount(0)
+
+  const other = await makeOrg({ slug: slug() })
+  await inOrg(other.id, (tx) => makeProject(tx, { slug: 'their-project' }))
+  await page.goto(`/${other.slug}/their-project`)
+  await expect(notFound).toBeVisible()
+
+  await page.goto(`/${mine.slug}/own-project`)
+  await expect(page.getByRole('heading', { level: 1, name: 'Project overview' })).toBeVisible()
+  await expect(notFound).toHaveCount(0)
+})
+
+test('without the verdicts read the pack card leaves out Fired clauses instead of saying none fired', async ({
+  page
+}) => {
+  await page.clock.install({ time: new Date(projectFixtureData.capturedAt) })
+  await prepareOverview(page, 'admin', { empty: false })
+  await stubApi(
+    page,
+    'getProjectVerdicts',
+    { type: 'https://skyclause.test/problems/not-built', title: 'Not built', status: 501 },
+    { registry: overviewOperations, status: 501 }
+  )
+  await page.goto(emptyRoute)
+  const sky = page.locator('[data-project-overview] [data-pack="sky"]')
+  await expect(sky.locator('[data-state="normal"]')).toHaveText(copy('Normal'))
+  await expect(sky.locator('[data-fired-clauses]')).toHaveCount(0)
+  await expect(sky).not.toContainText('No clause has fired')
+  await expect(sky).not.toContainText('Fired clauses')
 })
 
 test('a 2 November strip replay stays labelled as replay when it has no rain series', async ({ page }) => {

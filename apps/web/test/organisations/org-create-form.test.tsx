@@ -13,12 +13,14 @@ vi.mock('../../features/organisations/operations', async (original) => ({
 }))
 
 const push = vi.fn()
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }))
+const refresh = vi.fn()
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push, refresh }) }))
 
 afterEach(() => {
   cleanup()
   vi.mocked(apiFetch).mockReset()
   push.mockReset()
+  refresh.mockReset()
 })
 
 async function expectAxeClean(): Promise<void> {
@@ -76,6 +78,16 @@ test('success continues to the first run next step', async () => {
   fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'River Watch' } })
   fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }))
   await waitFor(() => expect(push).toHaveBeenCalledWith('/river-watch/new'))
+})
+
+test('success refreshes the shell after the push, so its switchers hold the new organisation', async () => {
+  vi.mocked(apiFetch).mockResolvedValue({ id: 'org-id', slug: 'river-watch' } as never)
+  render(<OrgCreateForm />)
+  fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'River Watch' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }))
+  await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1))
+  // The refresh is queued behind the navigation, so it re-renders the new page's layouts from the root.
+  expect(push.mock.invocationCallOrder[0]).toBeLessThan(refresh.mock.invocationCallOrder[0]!)
 })
 
 test('an empty form can be submitted: it says what is missing and focuses it, instead of a dead button', async () => {

@@ -251,3 +251,84 @@ export async function stubDashboard(
     )
   }
 }
+
+type ComposedRead =
+  'listProjectBundles' | 'listWindows' | 'listProjectSources' | 'listProjectDays' | 'listNights' | 'listGrades'
+
+/**
+ * getDashboard not built (501), as in production today, and the per-project reads the page composes it from instead.
+ * `fail` answers a read with that status; every other read answers the filled dashboard's data in its own shape.
+ */
+export async function stubComposedReads(page: Page, fail: Partial<Record<ComposedRead, number>> = {}) {
+  await stubApi(page, 'getDashboard', { title: 'Not built' }, { registry: dashboardOperations, status: 501 })
+  const signal = filledDashboard.signal_health.data[0]!
+  const bodies: Record<ComposedRead, unknown> = {
+    listProjectBundles: { data: [reviewBundle], next_cursor: null },
+    listWindows: {
+      data: [
+        {
+          ...firstCall.window!,
+          at_risk: true,
+          latest_calls: {
+            sky: { id: firstCall.id, bundle_id: reviewBundle.id, state: 'drafted', mode: firstCall.mode },
+            crowd: null
+          }
+        }
+      ],
+      next_cursor: null
+    },
+    listProjectSources: {
+      data: [
+        {
+          ...signal.source,
+          project_id: project.id,
+          role: 'rain_gauge',
+          state: signal.state,
+          latest_reading: null,
+          age_s: signal.age_s,
+          recent_errors: []
+        }
+      ],
+      next_cursor: null
+    },
+    listProjectDays: { data: [], next_cursor: null },
+    listNights: {
+      data: [
+        {
+          id: '019a45b0-0000-7000-8000-000000000040',
+          project_id: project.id,
+          date: '2099-11-14',
+          state: 'upcoming',
+          doors: '2099-11-14T10:00:00Z',
+          show: '2099-11-14T11:00:00Z',
+          arrival_start: '2099-11-14T09:00:00Z',
+          arrival_end: '2099-11-14T11:00:00Z',
+          exit_start: null,
+          exit_end: null,
+          forecast: null
+        }
+      ],
+      next_cursor: null
+    },
+    listGrades: {
+      data: [
+        {
+          ...grade,
+          outcome: 'hit',
+          forecast: null,
+          actual: null,
+          reading_ids: [],
+          graded_at: '2026-11-12T22:45:00Z'
+        }
+      ],
+      next_cursor: null
+    }
+  }
+  for (const operation of Object.keys(bodies) as ComposedRead[]) {
+    const status = fail[operation]
+    await stubApi(page, operation, status ? { title: 'Failed', status } : bodies[operation], {
+      registry: dashboardOperations,
+      ...(status ? { status } : {})
+    })
+  }
+}

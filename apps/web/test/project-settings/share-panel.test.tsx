@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import Panel from '../../features/settings/project/share/panel'
+import { ApiProblem } from '../../lib/api-fetch'
 
 vi.mock('next/navigation', () => ({ useParams: () => ({ org: 'campus-org', project: 'bukit-jalil' }) }))
 
@@ -17,6 +18,7 @@ const link = (id: string, expires: string | null = '2026-11-12T13:12:00.000Z') =
 
 let pages: { data: ReturnType<typeof link>[]; next_cursor: string | null }[] = []
 let createFails = false
+let listFails: ApiProblem | null = null
 const api = vi.hoisted(() => vi.fn())
 vi.mock('../../features/project-settings/operations', async (original) => {
   const actual = await original<typeof import('../../features/project-settings/operations')>()
@@ -25,7 +27,9 @@ vi.mock('../../features/project-settings/operations', async (original) => {
 
 beforeEach(() => {
   createFails = false
+  listFails = null
   api.mockImplementation(async (operation: string, args?: { query?: { cursor?: string }; params?: { id: string } }) => {
+    if (operation === 'listShareLinks' && listFails) throw listFails
     if (operation === 'listShareLinks') return pages[args?.query?.cursor ? Number(args.query.cursor) : 0]
     if (operation === 'createShareLink') {
       if (createFails) throw new Error('no')
@@ -39,6 +43,21 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
+})
+
+test('share links that are not available yet (501) say so plainly: no form, no retry, no failed read', async () => {
+  listFails = new ApiProblem(501, { title: 'Not built' })
+  render(<Panel />)
+  expect(await screen.findByText('Share links are not available yet.')).toBeDefined()
+  expect(screen.queryByRole('button')).toBeNull()
+  expect(document.body.textContent).not.toMatch(/Couldn’t read|can’t show|501/)
+})
+
+test('a share link list that really failed still says so and offers Try again', async () => {
+  listFails = new ApiProblem(503, { title: 'Unavailable' })
+  render(<Panel />)
+  expect(await screen.findByRole('button', { name: 'Try again' })).toBeDefined()
+  expect(document.body.textContent).toContain('Couldn’t read the share links just now.')
 })
 
 test('no links is a sentence that points at the form, not an n= count', async () => {

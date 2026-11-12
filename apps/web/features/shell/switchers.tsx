@@ -15,6 +15,7 @@ import {
 import { t, type Locale } from './i18n'
 import type { Destination, DestinationKey } from './navigation'
 import type { ShellScope } from './scope'
+import { signOutLabel, useSignOut } from './sign-out'
 
 const ACCOUNT_KEYS: readonly DestinationKey[] = ['connect', 'account', 'appearance']
 
@@ -186,6 +187,21 @@ export function ProjectMenu({ scope }: { scope: ShellScope }) {
   )
 }
 
+/** Ends this session; the menu stays open while it does, so a failure is read where it was chosen. */
+function SignOutItem({ locale }: { locale: Locale }) {
+  const { state, signOut } = useSignOut()
+  return (
+    <DropdownMenuItem className="shell-menu-item" closeOnClick={false} onClick={() => void signOut()}>
+      {t(signOutLabel[state], {}, locale)}
+    </DropdownMenuItem>
+  )
+}
+
+/** A visitor without a session has nothing to sign out of; a guest's session could never be signed back into. */
+export function offersSignOut(scope: ShellScope) {
+  return !scope.data.signedOut && !scope.guestAccount
+}
+
 /** The organisation's pages and the account's, behind one control at the bar's right end. */
 export function AccountMenu({ scope }: { scope: ShellScope }) {
   const organisation = scope.organisationMenu.filter((item) => !ACCOUNT_KEYS.includes(item.key))
@@ -212,6 +228,14 @@ export function AccountMenu({ scope }: { scope: ShellScope }) {
           <DropdownMenuLabel>{t('app-shell.accountGroup', {}, scope.locale)}</DropdownMenuLabel>
           <DestinationLinks destinations={account} current={scope.current} locale={scope.locale} />
         </DropdownMenuGroup>
+        {offersSignOut(scope) && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <SignOutItem locale={scope.locale} />
+            </DropdownMenuGroup>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )
