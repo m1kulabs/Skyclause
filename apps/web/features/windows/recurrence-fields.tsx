@@ -2,11 +2,16 @@
 
 import { Field, FieldLabel, FieldGroup, FieldError, FieldSet, FieldLegend, FieldDescription } from '#ui/field'
 import { Input } from '#ui/input'
+import { Textarea } from '#ui/textarea'
 import { formatDate } from '@skyclause/i18n/format'
 import { WEEKDAYS, previewOccurrences, type WindowDraft, type FieldErrors } from './model'
 import { t, fieldMessage } from './catalogue'
 import { VirtualRows } from './virtual-rows'
-import styles from './windows.module.css'
+
+/** A native select, which is what a phone opens its own picker for, drawn as the foundation's field. */
+export const selectClass =
+  'h-10 w-full rounded-md border-2 border-input bg-background px-3 type-body text-foreground outline-none aria-invalid:border-foreground'
+const checkRow = 'flex min-h-11 cursor-pointer items-center gap-3 type-body'
 
 export function RecurrenceFields({
   draft,
@@ -20,11 +25,12 @@ export function RecurrenceFields({
   const dates = previewOccurrences(draft)
   return (
     <FieldSet>
-      <FieldLegend>{t('windows.weekly')}</FieldLegend>
-      <label className={styles.checkLabel}>
+      <label className={checkRow}>
         <input
           type="checkbox"
           name="repeat"
+          autoComplete="off"
+          className="size-5 shrink-0"
           checked={draft.repeat}
           onChange={(event) => change('repeat', event.target.checked)}
         />
@@ -33,14 +39,19 @@ export function RecurrenceFields({
       {draft.repeat && (
         <FieldGroup>
           <FieldSet aria-describedby={errors.days ? 'window-days-error' : undefined}>
-            <FieldLegend>{t('windows.days')}</FieldLegend>
-            <div className={styles.checks}>
+            <FieldLegend variant="label">{t('windows.days')}</FieldLegend>
+            <div className="flex flex-wrap gap-2">
               {WEEKDAYS.map((day) => (
-                <label key={day} className={styles.checkLabel}>
+                <label
+                  key={day}
+                  className="relative inline-flex min-h-9 cursor-pointer items-center rounded-full border-2 border-input bg-background px-3 type-body has-checked:border-primary has-checked:bg-primary has-checked:text-primary-foreground has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring"
+                >
                   <input
                     id={`window-days-${day}`}
                     type="checkbox"
                     name="days"
+                    autoComplete="off"
+                    className="absolute inset-0 size-full cursor-pointer opacity-0"
                     value={day}
                     checked={draft.days.includes(day)}
                     aria-invalid={!!errors.days}
@@ -64,6 +75,8 @@ export function RecurrenceFields({
             <select
               id="window-repeatEnd"
               name="repeatEnd"
+              autoComplete="off"
+              className={selectClass}
               value={draft.repeatEnd}
               onChange={(event) => change('repeatEnd', event.target.value === 'count' ? 'count' : 'until')}
             >
@@ -104,9 +117,11 @@ export function RecurrenceFields({
           )}
           <Field data-invalid={!!errors.skips}>
             <FieldLabel htmlFor="window-skips">{t('windows.skips')}</FieldLabel>
-            <textarea
+            <Textarea
               id="window-skips"
               name="skips"
+              autoComplete="off"
+              spellCheck={false}
               value={draft.skips}
               onChange={(event) => change('skips', event.target.value)}
               aria-invalid={!!errors.skips}
@@ -115,25 +130,26 @@ export function RecurrenceFields({
             <FieldDescription id="window-skips-help">{t('windows.skips_help')}</FieldDescription>
             {errors.skips && <FieldError id="window-skips-error">{fieldMessage(errors.skips!)}</FieldError>}
           </Field>
-          <div role="status">
+          <div role="status" className="type-body">
             <p>{t('windows.preview', { count: dates.length })}</p>
-            {!dates.length && <p>{t('windows.preview_empty')}</p>}
+            {!dates.length && <p className="text-muted-foreground">{t('windows.preview_empty')}</p>}
           </div>
           {dates.length > 50 ? (
             <VirtualRows
               items={dates}
               label={t('windows.preview', { count: dates.length })}
-              className={styles.preview}
+              className="max-h-64 overflow-y-auto"
+              estimate={32}
               render={(date) => (
-                <p>
+                <p className="min-h-8 type-body">
                   <time dateTime={date}>{formatDate(`${date}T12:00:00+08:00`, 'en')}</time>
                 </p>
               )}
             />
           ) : (
-            <ol className={styles.preview}>
+            <ol className="flex max-h-64 flex-col overflow-y-auto">
               {dates.map((date) => (
-                <li key={date}>
+                <li key={date} className="min-h-8 type-body">
                   <time dateTime={date}>{formatDate(`${date}T12:00:00+08:00`, 'en')}</time>
                 </li>
               ))}

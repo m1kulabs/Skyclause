@@ -30,6 +30,8 @@ export function findingLine(
   sources: readonly Pick<SourceHealthLike, 'state' | 'age_s'>[],
   locale: 'en' | 'ms'
 ): string {
+  // With nothing bound there is no oldest age to print: "oldest 0 min" would be a made-up zero.
+  if (!sources.length) return t('signals.finding_empty', {}, locale)
   const reporting = sources.filter(({ state }) => state.state === 'fresh' || state.state === 'recovered').length
   const oldest = Math.max(0, ...sources.map(({ age_s }) => age_s ?? 0))
   return t('signals.finding', { count: reporting, age: Math.round(oldest / 60) }, locale)

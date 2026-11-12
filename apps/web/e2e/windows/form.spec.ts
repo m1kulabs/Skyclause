@@ -36,7 +36,7 @@ for (const violation of [
     await page.getByRole('button', { name: w('save'), exact: true }).click()
     const field = page.locator(`[name="${violation.field}"]`)
     await expect(field).toBeFocused()
-    await expect(field).toHaveAttribute('aria-describedby', `window-${violation.field}-error`)
+    await expect(field).toHaveAttribute('aria-describedby', new RegExp(`window-${violation.field}-error$`))
     await expect(page.locator(`#window-${violation.field}-error`)).toContainText(w(violation.error))
     if (violation.error === 'past')
       await expect(page.getByRole('link', { name: w('evidence'), exact: true })).toHaveAttribute(

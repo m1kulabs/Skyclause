@@ -13,6 +13,7 @@ import {
   ComboboxList,
   useComboboxAnchor
 } from '#ui/combobox'
+import { SourceError } from '../data-components'
 import { ApiProblem } from '../../lib/api-fetch'
 import { t } from './i18n'
 import { apiFetch, type Member, type ProbationStatus } from './operations'
@@ -109,13 +110,21 @@ export function LabellerPicker({ org, sourceId, status, editable, locale = 'en',
     }
   }, [selected, sourceId, onStatus, locale])
 
+  // A reader with no pair on record has nothing to see here.
+  if (!editable && !status) return null
+
   return (
-    <section aria-labelledby="labeller-picker-heading" className="probation-picker">
-      <div className="probation-picker-label">
-        <h2 id="labeller-picker-heading">{t('probation.picker_heading', {}, locale)}</h2>
-        <p>{t('probation.picker_description', {}, locale)}</p>
+    <section
+      aria-labelledby="labeller-picker-heading"
+      className="probation-picker flex max-w-2xl flex-col gap-gap rounded-xl bg-card p-pad"
+    >
+      <div className="flex flex-col gap-1">
+        <h2 id="labeller-picker-heading" className="type-section">
+          {t('probation.picker_heading', {}, locale)}
+        </h2>
+        <p className="type-body text-muted-foreground">{t('probation.picker_description', {}, locale)}</p>
       </div>
-      <div className="probation-picker-panel">
+      <div className="flex flex-col gap-3">
         {status && names(status.labeller_ids).length > 0 && (
           <p>
             {t('probation.picker_current', { names: names(status.labeller_ids).map(displayName).join(', ') }, locale)}
@@ -127,16 +136,22 @@ export function LabellerPicker({ org, sourceId, status, editable, locale = 'en',
         {members.kind === 'loading' && <p>{t('probation.picker_loading', {}, locale)}</p>}
         {members.kind === 'error' && editable && (
           <div className="probation-failure">
-            <p>{t('probation.picker_error', {}, locale)}</p>
-            <Button
-              variant="outline"
-              onClick={() => {
-                const controller = new AbortController()
-                reload(controller.signal)
-              }}
-            >
-              {t('probation.retry', {}, locale)}
-            </Button>
+            <SourceError
+              source={t('probation.source_members', {}, locale)}
+              at={new Date().toISOString()}
+              locale={locale}
+              retry={
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const controller = new AbortController()
+                    reload(controller.signal)
+                  }}
+                >
+                  {t('probation.retry', {}, locale)}
+                </Button>
+              }
+            />
           </div>
         )}
         {members.kind === 'ready' && editable && (
@@ -193,14 +208,26 @@ export function LabellerPicker({ org, sourceId, status, editable, locale = 'en',
                 </ComboboxList>
               </ComboboxContent>
             </Combobox>
-            {limitRefused && <p role="alert">{t('probation.picker_limit', {}, locale)}</p>}
-            {needTwo && selected.length !== 2 && <p role="alert">{t('probation.picker_need_two', {}, locale)}</p>}
-            <div className="probation-actions">
+            {limitRefused && (
+              <p role="alert" className="font-medium">
+                {t('probation.picker_limit', {}, locale)}
+              </p>
+            )}
+            {needTwo && selected.length !== 2 && (
+              <p role="alert" className="font-medium">
+                {t('probation.picker_need_two', {}, locale)}
+              </p>
+            )}
+            <div>
               <Button disabled={saving} onClick={save}>
                 {t(saving ? 'probation.picker_saving' : 'probation.picker_save', {}, locale)}
               </Button>
             </div>
-            {saveError && <p role="alert">{t('probation.picker_save_error', {}, locale)}</p>}
+            {saveError && (
+              <p role="alert" className="font-medium">
+                {t('probation.picker_save_error', {}, locale)}
+              </p>
+            )}
           </>
         )}
         <p role="status">{announcement}</p>

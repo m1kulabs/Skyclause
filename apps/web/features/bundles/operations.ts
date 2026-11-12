@@ -3,7 +3,11 @@ import {
   getMyPreferences as preferences,
   listMyMemberships as memberships
 } from '@skyclause/contracts/api/first-party/me'
-import { getBundle as bundle, streamBundles } from '@skyclause/contracts/api/v1/bundles'
+import {
+  getBundle as bundle,
+  listProjectBundles as projectBundles,
+  streamBundles
+} from '@skyclause/contracts/api/v1/bundles'
 import { getCall as call, getCallExplanation as explanation } from '@skyclause/contracts/api/v1/calls'
 import { getRun as run } from '@skyclause/contracts/api/v1/runs'
 import { getProjectStrip as strip } from '@skyclause/contracts/api/v1/strip'
@@ -17,6 +21,12 @@ export const bundleOperations = {
     path: bundle.path,
     request: { params: bundle.request.params },
     response: bundle.responses[200].content['application/json'].schema
+  },
+  listProjectBundles: {
+    method: 'GET',
+    path: projectBundles.path,
+    request: { params: projectBundles.request.params, query: projectBundles.request.query },
+    response: projectBundles.responses[200].content['application/json'].schema
   },
   getCall: {
     method: 'GET',
@@ -64,6 +74,7 @@ export const bundleOperations = {
 export const apiFetch = createApiFetch(bundleOperations)
 export const approvalConflict = approve.responses[409].content['application/problem+json'].schema
 export type BundleView = ReturnType<typeof bundleOperations.getBundle.response.parse>
+export type BundleListItem = ReturnType<typeof bundleOperations.listProjectBundles.response.parse>['data'][number]
 export type CallDetail = ReturnType<typeof bundleOperations.getCall.response.parse>
 export type RunDetail = ReturnType<typeof bundleOperations.getRun.response.parse>
 export type StripDetail = ReturnType<typeof bundleOperations.getProjectStrip.response.parse>

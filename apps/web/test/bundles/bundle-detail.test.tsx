@@ -5,7 +5,10 @@ import { BundleDetail } from '../../features/bundles/bundle-detail'
 import type { BundleView, CallDetail } from '../../features/bundles/operations'
 import { useBundleReview } from '../../features/bundles/use-bundle-review'
 
-vi.mock('next/navigation', () => ({ useParams: () => ({ org: 'test-org', project: 'test-project' }) }))
+vi.mock('next/navigation', () => ({
+  useParams: () => ({ org: 'test-org', project: 'test-project' }),
+  useRouter: () => ({ push: vi.fn() })
+}))
 vi.mock('../../features/bundles/use-bundle-review', async (original) => {
   const actual = await original<typeof import('../../features/bundles/use-bundle-review')>()
   return { ...actual, useBundleReview: vi.fn(actual.useBundleReview) }
@@ -153,4 +156,55 @@ test('#372 with the server’s read, the first render is the review at the serve
   expect(html).toContain('Test release wave')
   expect(html).toContain('Approve 1')
   expect(html).not.toContain('Expired, not sent')
+})
+
+test('the list beside the review shows the server’s rows, marks the open bundle and counts down its SLA', () => {
+  // HTTP test doubles of listProjectBundles' rows: the open bundle and an older approved one, never application data.
+  const open: BundleView = {
+    id: 'test-bundle',
+    project_id: 'test-project',
+    run_id: 'test-run',
+    pack: 'sky',
+    state: 'needs_review',
+    superseded_by: null,
+    review_hash: 'test-review',
+    sla_due_at: '2026-11-02T07:15:00Z',
+    needs_review_at: '2026-11-02T07:06:00Z',
+    approved_by: null,
+    escalation_level: 0,
+    draft_only: false,
+    calls: [],
+    trigger: 'crossing',
+    triggered_at: '2026-11-02T07:05:00Z',
+    sheet_version_id: 'test-sheet',
+    alerts: []
+  }
+  const older: BundleView = {
+    ...open,
+    id: 'older-bundle',
+    state: 'approved',
+    sla_due_at: null,
+    trigger: 'schedule',
+    triggered_at: '2026-11-01T07:05:00Z'
+  }
+  const html = renderToStaticMarkup(
+    <BundleDetail
+      bundleId="test-bundle"
+      initial={{
+        data: { bundle: open, calls: [], shortcuts: true, canApprove: true, errors: [] },
+        now: Date.parse('2026-11-02T07:07:00Z'),
+        list: { status: 'ready', rows: [open, older], more: false }
+      }}
+    />
+  )
+  expect(html).toMatch(
+    /aria-current="true"[^>]*href="\/test-org\/test-project\/bundles\/test-bundle"|href="\/test-org\/test-project\/bundles\/test-bundle"[^>]*aria-current="true"/
+  )
+  expect(html).toContain('Sky · Input crossing')
+  expect(html).toContain('2 min ago')
+  expect(html).toContain('8 min left')
+  expect(html).toContain('Sky · Scheduled run')
+  expect(html).toContain('Yesterday')
+  expect(html).toContain('Approved')
+  expect(html).toContain('n=2')
 })

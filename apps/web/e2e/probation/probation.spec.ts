@@ -23,7 +23,9 @@ import { t } from './messages'
 /** Alt text and composed date/time lines gain extra `~~~` per nested `t()` in pseudo mode, so match their letter skeleton. */
 const frameAltRe = /Masked camera frame, .* MYT/
 const verdictPassedRe = /Passed probation on \d+ \w+ \d+/
-const frameErrorRe = /Frame failed to load .* · HTTP 500/
+/** The failed-read states are the shared SourceError: its title names what failed, its detail names the status. */
+const nextFrameErrorRe = /Couldn.t read the next frame/
+const frameErrorRe = /Couldn.t read the frame captured at .* MYT/
 
 /** Tab from the current focus until the matcher is focused; every action stays keyboard-driven. */
 async function tabUntilFocused(page: Page, target: string) {
@@ -250,7 +252,7 @@ test('a labeller records the agreed answer, and progress counts it down', async 
   await page.getByRole('link', { name: t('view_resolve'), exact: true }).click()
   await expect(page.getByAltText(frameAltRe)).toBeVisible()
   await page.getByRole('link', { name: t('view_progress'), exact: true }).click()
-  await expect(page.getByText(/1 disagreements/, { exact: false })).toBeVisible()
+  await expect(page.locator('[data-probation-disagreements="1"]')).toBeVisible()
   await page.getByRole('link', { name: t('view_resolve'), exact: true }).click()
   await expect(page.getByAltText(frameAltRe)).toBeVisible()
   await (await tabUntilFocused(page, t('option_obscured'))).press('Enter')
@@ -260,7 +262,7 @@ test('a labeller records the agreed answer, and progress counts it down', async 
   ])
   await expect(page.getByText(t('empty_resolve'), { exact: true })).toBeVisible()
   await page.getByRole('link', { name: t('view_progress'), exact: true }).click()
-  await expect(page.getByText(/0 disagreements/, { exact: false })).toBeVisible()
+  await expect(page.locator('[data-probation-disagreements="0"]')).toBeVisible()
 })
 
 test('reloading ?view=resolve restores the view', async ({ page }) => {
@@ -302,37 +304,33 @@ test('SIG-9 shows n, obscured, agreement with its interval and the verdict', asy
   await pickMember(page, 'Bala')
   await page.getByRole('button', { name: t('picker_save'), exact: true }).click()
   const interval = wilson(Math.round(0.93 * 96), 96)!
-  await expect(
-    page.getByText(
-      t('progress_line', {
-        n: '96',
-        k: '9',
-        p: '0.93',
-        interval: ` (n=96, 95% ${interval.lo}–${interval.hi})`,
-        d: '0'
-      }),
-      { exact: true }
-    )
-  ).toBeVisible()
-  await expect(page.getByText(t('verdict_watching', { n: '96', k: '9', p: '0.93' }), { exact: true })).toBeVisible()
+  const agreement = page.locator('[data-probation-agreement]')
+  await expect(agreement).toContainText('0.93')
+  await expect(agreement).toContainText(t('measure_needed', { needed: '0.90' }))
+  await expect(agreement).toContainText(
+    t('progress_interval', { n: '96', low: String(interval.lo), high: String(interval.hi) })
+  )
+  await expect(agreement.getByText(t('verdict_watching'), { exact: true })).toBeVisible()
+  await expect(page.locator('[data-probation-frames="96"]')).toContainText(
+    t('measure_of', { value: '96', target: '100' })
+  )
+  await expect(page.locator('[data-probation-obscured="9"]')).toContainText(
+    t('measure_of', { value: '9', target: '10' })
+  )
+  await expect(page.locator('[data-probation-disagreements="0"]')).toBeVisible()
   expect(puts).toHaveLength(1)
 
   await stubPutStatus(page, statusFixture({ n: 104, obscured_frames: 12, agreement: 0.95, probation: false }))
   await page.getByRole('button', { name: t('picker_save'), exact: true }).click()
   await expect(page.getByText(verdictPassedRe)).toBeVisible()
   const passed = wilson(99, 104)!
-  await expect(
-    page.getByText(
-      t('progress_line', {
-        n: '104',
-        k: '12',
-        p: '0.95',
-        interval: ` (n=104, 95% ${passed.lo}–${passed.hi})`,
-        d: '0'
-      }),
-      { exact: true }
-    )
-  ).toBeVisible()
+  await expect(agreement).toContainText('0.95')
+  await expect(agreement).toContainText(
+    t('progress_interval', { n: '104', low: String(passed.lo), high: String(passed.hi) })
+  )
+  await expect(page.locator('[data-probation-frames="104"]')).toContainText(
+    t('measure_of', { value: '104', target: '100' })
+  )
 })
 
 test('empty and failed states print n=0 and offer the next action', async ({ page }) => {
@@ -354,7 +352,8 @@ test('empty and failed states print n=0 and offer the next action', async ({ pag
     route.fulfill({ status: 500, json: { title: 'Server error', status: 500 } })
   )
   await page.goto(probationUrl('label'))
-  await expect(page.getByText(t('next_error'), { exact: true })).toBeVisible()
+  await expect(page.getByText(nextFrameErrorRe)).toBeVisible()
+  await expect(page.locator('[data-source-error="500"]')).toBeVisible()
   await stubNextSequence(page, [frameFixture('frame-9')])
   await page
     .locator('.probation-failure')
@@ -373,6 +372,7 @@ test('a failed frame names its time and status with Retry', async ({ page }) => 
   })
   await page.goto(probationUrl('label'))
   await expect(page.getByText(frameErrorRe)).toBeVisible()
+  await expect(page.locator('[data-source-error="500"]')).toBeVisible()
   await expect(page.locator('img')).toHaveCount(0)
   failImage = false
   await page
