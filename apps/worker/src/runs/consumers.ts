@@ -1,5 +1,5 @@
 import { CrossingDetectedEventSchema, WindowCreatedEventSchema, type RequestRun } from '@skyclause/contracts'
-import { icsFeed, requestRun, RunRefused, window, type Tx } from '@skyclause/db'
+import { requestRun, RunRefused, window, type Tx } from '@skyclause/db'
 import { eq } from 'drizzle-orm'
 import { onEvent } from '../events'
 import { log, type EventConsumer } from '../server'
@@ -45,31 +45,29 @@ const crossings = onEvent(['crossing.detected'], 'runs-crossings', async (event,
 
 /**
  * D14: share-link and MCP declarations and time edits start `window` runs; ICS changes, cancellations included, start
- * one `calendar` run per feed version. Guest windows never start runs (guests only "Ask for a call"); other
+ * one `calendar` run per immutable change batch. Guest windows never start runs (guests only "Ask for a call"); other
  * declarations and cancellations wait for the next crossing or schedule.
  */
 const windows = onEvent(['window.created', 'window.updated', 'window.cancelled'], 'runs-windows', async (event, tx) => {
   const data = WindowCreatedEventSchema.shape.data.parse(event.data)
+  if (data.calendar) {
+    const { feed_id, revision, window_ids } = data.calendar
+    if (!window_ids) return
+    await requestUnlessRefused(tx, {
+      projectId: event.project_id,
+      pack: 'sky',
+      trigger: 'calendar',
+      triggerRef: feed_id,
+      windowIds: window_ids,
+      dedupeKey: `calendar:${feed_id}:${revision}`,
+      triggeredAt: event.created_at
+    })
+    return
+  }
   const [w] = await tx.select().from(window).where(eq(window.id, data.window_id))
   if (!w || w.guest || data.via === 'guest') return
   const base = { projectId: w.projectId, pack: 'sky' as const, windowIds: [w.id], triggeredAt: event.created_at }
 
-  if (data.via === 'ics') {
-    const [feed] = w.icsFeedId ? await tx.select().from(icsFeed).where(eq(icsFeed.id, w.icsFeedId)) : []
-    // The feed's version: its ETag, else its Last-Modified, else the refresh that read it.
-    const version = feed?.etag ?? feed?.lastModified ?? (feed?.refreshedAt ? instant(feed.refreshedAt) : null)
-    if (!feed || !version) {
-      log('INFO', 'ICS change without a feed version; no run', { window_id: w.id })
-      return
-    }
-    await requestUnlessRefused(tx, {
-      ...base,
-      trigger: 'calendar',
-      triggerRef: feed.id,
-      dedupeKey: `calendar:${feed.id}:${version}`
-    })
-    return
-  }
   const declared = event.type === 'window.created' && (data.via === 'share' || data.via === 'mcp')
   const timesChanged = event.type === 'window.updated' && data.times_changed
   if (!declared && !timesChanged) return

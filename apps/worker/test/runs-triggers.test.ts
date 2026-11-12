@@ -229,16 +229,43 @@ describe('window.created, .updated and .cancelled', () => {
     expect(await runsOf(renamed.id)).toEqual([])
   })
 
-  test('an ICS change, a cancellation included, starts one calendar run per feed version', async () => {
+  test('calendar peers wait for the representative and its immutable complete set', async () => {
     const p = await project()
-    const feed = await inOrg((tx) => makeIcsFeed(tx, { projectId: p.id, etag: '"5f2a"' }))
-    const first = await inOrg((tx) => makeWindow(tx, { projectId: p.id, via: 'ics', icsFeedId: feed.id }))
-    const second = await inOrg((tx) => makeWindow(tx, { projectId: p.id, via: 'ics', icsFeedId: feed.id }))
-    await windowEvent('window.updated', first, 'ics', true)
-    await windowEvent('window.cancelled', second, 'ics')
-    const rows = await runsOf(p.id)
-    expect(rows).toHaveLength(1)
-    expect(rows[0]).toMatchObject({ trigger: 'calendar', triggerRef: feed.id, dedupeKey: `calendar:${feed.id}:"5f2a"` })
-    expect([...rows[0]!.windowIds].sort()).toEqual([first.id, second.id].sort())
+    const feed = await inOrg((tx) => makeIcsFeed(tx, { projectId: p.id, etag: '"old"' }))
+    const a = await inOrg((tx) => makeWindow(tx, { projectId: p.id, via: 'ics', icsFeedId: feed.id }))
+    const b = await inOrg((tx) => makeWindow(tx, { projectId: p.id, via: 'ics', icsFeedId: feed.id }))
+    const ids = [a.id, b.id].sort()
+    const revision = '018f0000-0000-7000-8000-000000000001'
+    const emit = (windowId: string, representative: boolean) =>
+      inOrg((tx) =>
+        emitEvent(tx, {
+          projectId: p.id,
+          type: 'window.updated',
+          data: {
+            window_id: windowId,
+            via: 'ics',
+            times_changed: true,
+            series_id: null,
+            calendar: { feed_id: feed.id, revision, ...(representative ? { window_ids: ids } : {}) }
+          }
+        })
+      )
+    const peer = await emit(ids[1]!, false)
+    const representative = await emit(ids[0]!, true)
+    await dispatchEvent(registry.events, peer.id)
+    expect(await runsOf(p.id)).toEqual([])
+    await dispatchEvent(registry.events, representative.id)
+    await dispatchEvent(registry.events, representative.id)
+    expect(await runsOf(p.id)).toMatchObject([
+      { trigger: 'calendar', triggerRef: feed.id, dedupeKey: `calendar:${feed.id}:${revision}`, windowIds: ids }
+    ])
+  })
+
+  test('a manual imported time edit starts an ordinary window run', async () => {
+    const p = await project()
+    const feed = await inOrg((tx) => makeIcsFeed(tx, { projectId: p.id }))
+    const w = await inOrg((tx) => makeWindow(tx, { projectId: p.id, via: 'ics', icsFeedId: feed.id }))
+    await windowEvent('window.updated', w, 'ics', true)
+    expect(await runsOf(p.id)).toMatchObject([{ trigger: 'window', triggerRef: w.id, windowIds: [w.id] }])
   })
 })
