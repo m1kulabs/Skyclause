@@ -47,10 +47,10 @@ const reads = {
 
 /**
  * The restore drill's database port (apps/worker/src/restore-drill/drill.ts): `fn` reads as `system` on the branch
- * compute at `host`, or on production when `host` is null, over one connection.
+ * compute at `host`, or on production when `host` is null, over one read-only connection.
  */
 export const drillDatabase = {
   read<T>(host: string | null, fn: (db: typeof reads) => Promise<T>): Promise<T> {
-    return shareSystemConnection(() => fn(reads), host ?? undefined)
+    return shareSystemConnection(() => fn(reads), { host })
   }
 }

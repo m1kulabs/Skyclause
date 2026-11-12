@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm'
 import { expect, test, vi } from 'vitest'
 import { appendLedger, drillDatabase, withSystem, withTenant, type Tx } from '../src'
 import { makeAnalyticsEvent, makeDomainEvent, makeOrganization, makeProject } from './factories'
-import { asLogin, databaseNow, memberOf } from './harness'
+import { asLogin, databaseNow, memberOf, refusal } from './harness'
 
 /** 2 ms on the database clock: a JS Date holds milliseconds, and the stamps microseconds. */
 const pause = () => asLogin('postgres', (client) => client.query('SELECT pg_sleep(0.002)'))
@@ -36,6 +36,16 @@ test('read(host) opens system on the compute at `host`, and closes that connecti
     )
     expect(rows[0].n).toBe(0)
   })
+})
+
+test('the drill’s connection refuses writes, on production and on a branch', async () => {
+  const host = new URL(process.env.DATABASE_URL_SYSTEM!).hostname === 'localhost' ? '127.0.0.1' : 'localhost'
+  for (const at of [null, host]) {
+    const write = drillDatabase.read(at, () => withSystem('restore-drill-test', (tx) => makeAnalyticsEvent(tx)))
+    expect(await refusal(write)).toContain('read-only transaction')
+  }
+  // The pool other system calls use still writes.
+  await expect(withSystem('restore-drill-test', (tx) => makeAnalyticsEvent(tx))).resolves.toBeDefined()
 })
 
 test('projectIds lists every organisation’s projects, and verifyLedger walks each chain as system in its organisation', async () => {
