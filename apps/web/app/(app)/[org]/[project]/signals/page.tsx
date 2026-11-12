@@ -11,5 +11,6 @@ export default async function Page({ params }: { params: Promise<{ org: string; 
   // that the organisation exists (#596). Share-link access to project pages arrives with their share-link owner.
   if (principal?.kind !== 'session' || !principal.role) notFound()
   const locale = prefersMalay((await headers()).get('accept-language')) ? 'ms' : 'en'
-  return <SignalsPage org={org} project={project} locale={locale} />
+  const canBind = principal.role === 'owner' || principal.role === 'admin'
+  return <SignalsPage org={org} project={project} locale={locale} canBind={canBind} />
 }
