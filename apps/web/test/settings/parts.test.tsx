@@ -77,7 +77,8 @@ test('a status region is mounted before its message so the message is announced'
   const { rerender } = render(<SettingsStatus>{null}</SettingsStatus>)
   const region = screen.getByRole('status')
   expect(region.textContent).toBe('')
-  rerender(<SettingsStatus>Saved</SettingsStatus>)
+  const saved = ['Saved']
+  rerender(<SettingsStatus>{saved}</SettingsStatus>)
   expect(screen.getByRole('status')).toBe(region)
   expect(region.textContent).toBe('Saved')
 })
@@ -99,10 +100,11 @@ test('a part heading takes focus by its id, so a removed row leaves focus somewh
 
 test('a row menu names its row and runs the chosen action', async () => {
   const onRemove = vi.fn()
+  const removeLabel = ['Remove']
   render(
     <SettingsRowMenu label="More actions for Aisha Rahman">
       <SettingsRowMenuItem destructive onSelect={onRemove}>
-        Remove
+        {removeLabel}
       </SettingsRowMenuItem>
     </SettingsRowMenu>
   )
