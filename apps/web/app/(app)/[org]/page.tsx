@@ -1,11 +1,13 @@
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
+import { prefersMalay } from '../../../lib/preferred-language'
 import { ApiProblem } from '../../../lib/api-fetch'
 import { DashboardPage } from '../../../features/dashboard/dashboard-page'
 import { readDashboard, type DashboardRead } from '../../../features/dashboard/operations'
 
 export default async function Page({ params }: { params: Promise<{ org: string }> }) {
   const { org } = await params
+  const locale = prefersMalay((await headers()).get('accept-language')) ? 'ms' : 'en'
 
   let initialData: DashboardRead | null = null
   let initialError: number | null = null
@@ -22,6 +24,12 @@ export default async function Page({ params }: { params: Promise<{ org: string }
   }
 
   return (
-    <DashboardPage org={org} initialData={initialData} initialError={initialError} initialErrorAt={initialErrorAt} />
+    <DashboardPage
+      org={org}
+      locale={locale}
+      initialData={initialData}
+      initialError={initialError}
+      initialErrorAt={initialErrorAt}
+    />
   )
 }

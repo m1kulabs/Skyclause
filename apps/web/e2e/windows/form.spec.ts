@@ -41,7 +41,7 @@ for (const violation of [
     if (violation.error === 'past')
       await expect(page.getByRole('link', { name: w('evidence'), exact: true })).toHaveAttribute(
         'href',
-        '/replay/bukit-jalil/ledger?request=evidence'
+        '/replay/bukit-jalil/ledger?tab=evidence'
       )
   })
 }

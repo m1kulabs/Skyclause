@@ -7,14 +7,25 @@ import { ChevronRight } from 'lucide-react'
 import type { Bundle, PackState, Verdict } from '@skyclause/contracts'
 import type { StripInput, StripPointState, StripWindow } from '@skyclause/elements'
 import { brandStates } from '@skyclause/elements'
-import { formatDateLong, formatNumber, formatTime } from '@skyclause/i18n/format'
+import { formatDateCompact, formatDateLong, formatNumber, formatTime } from '@skyclause/i18n/format'
 import { cn } from '#lib/utils'
 import { Button } from '#ui/button'
+import { buttonVariants } from '#ui/button-variants'
 import { Skeleton } from '#ui/skeleton'
+import { Table, TableBody } from '#ui/table'
 import { ToggleGroup, ToggleGroupItem } from '#ui/toggle-group'
 import { ModeBadge } from '../brand/mode-badge'
 import { Glyph } from '../brand/glyph'
-import { DayStrip, InputAgeChip, NoCallState, SourceError, SourceHealthRow, WindowStrip } from '../data-components'
+import {
+  DayStrip,
+  indicatorName,
+  InputAgeChip,
+  NoCallState,
+  SignalHealthHead,
+  SourceError,
+  SourceHealthRow,
+  WindowStrip
+} from '../data-components'
 import { ApiProblem } from '../../lib/api-fetch'
 import { readSse } from '../../lib/read-sse'
 import { useRead } from '../analysis/use-read'
@@ -33,10 +44,14 @@ import {
   type ProjectWindow
 } from './operations'
 import { localDateAt, overviewFilterState, selectTodayAtRisk, type OverviewPackFilter } from './model'
+import { t as bundleText } from '../bundles/i18n'
 import { t } from './catalogue'
 import './overview.css'
 
 type Locale = 'en' | 'ms'
+
+/** The sources table draws at most this many rows. */
+const SOURCE_CAP = 50
 
 /** One of the overview's reads: its value, or the status it failed with and when (shown as a named error). */
 type Read<Value> = { ok: true; value: Value } | { ok: false; status: number | null; at: string }
@@ -192,6 +207,11 @@ function canDeclare(role: string) {
   return ['owner', 'admin', 'approver', 'editor'].includes(role)
 }
 
+/** Binding a source lives in the project's pack settings, which only owners and admins open. */
+function canBind(role: string) {
+  return role === 'owner' || role === 'admin'
+}
+
 /** Today's windows on the strip, each with its latest call for the pack in view (Sky first when both are shown). */
 function stripWindows(windows: readonly ProjectWindow[], filter: OverviewPackFilter): StripWindow[] {
   return windows.map((window) => {
@@ -219,17 +239,13 @@ function hasBundleDetails(bundle: Bundle): bundle is ProjectBundle {
 function Section({
   id,
   title,
-  count,
   action,
-  locale,
   className,
   children
 }: {
   id: string
   title: string
-  count?: number
   action?: ReactNode
-  locale: Locale
   className?: string
   children: ReactNode
 }) {
@@ -239,11 +255,6 @@ function Section({
         <h2 id={id} className="type-section">
           {title}
         </h2>
-        {count !== undefined && (
-          <span className="type-small text-muted-foreground" data-numeric>
-            {t('overview.count', { count: formatNumber(count, locale) }, locale)}
-          </span>
-        )}
         {action ? <span className="overview-section-action">{action}</span> : null}
       </header>
       {children}
@@ -251,11 +262,11 @@ function Section({
   )
 }
 
-/** An empty block: n=0 and the one next action. */
-function EmptyBlock({ action, locale }: { action: ReactNode; locale: Locale }) {
+/** An empty block: its sentence, with n=0 once, and the one next action that exists for this person (or none). */
+function EmptyBlock({ sentence, action }: { sentence: string; action?: ReactNode }) {
   return (
     <p className="overview-empty">
-      <span>{t('overview.count', { count: 0 }, locale)}</span>
+      <span>{sentence}</span>
       {action}
     </p>
   )
@@ -279,10 +290,13 @@ function ReadError({
       status={read.status}
       at={read.at}
       locale={locale}
+      // A 501 is "not built": reading again cannot change the answer.
       retry={
-        <Button type="button" variant="outline" onClick={onRetry}>
-          {t('overview.retry', {}, locale)}
-        </Button>
+        read.status === 501 ? undefined : (
+          <Button type="button" variant="outline" onClick={onRetry}>
+            {t('overview.retry', {}, locale)}
+          </Button>
+        )
       }
     />
   )
@@ -321,7 +335,11 @@ function PackAnswer({ pack, data, locale }: { pack: PackState; data: OverviewDat
           </p>
           <p className="type-small text-muted-foreground">{basis}</p>
           {pack.no_call ? (
-            <NoCallState inputs={blocked.map((input) => input.name)} since={since} locale={locale} />
+            <NoCallState
+              inputs={blocked.map((input) => indicatorName(input.name, locale))}
+              since={since}
+              locale={locale}
+            />
           ) : null}
         </div>
         <div className="overview-answer-detail">
@@ -330,7 +348,9 @@ function PackAnswer({ pack, data, locale }: { pack: PackState; data: OverviewDat
             {fired.length ? (
               <ul className="overview-fired">
                 {fired.map((clause, index) => (
-                  <li key={`${clause.scope}-${clause.key}-${index}`}>{clause.key}</li>
+                  <li key={`${clause.scope}-${clause.key}-${index}`} translate="no">
+                    {clause.key}
+                  </li>
                 ))}
               </ul>
             ) : (
@@ -348,7 +368,7 @@ function PackAnswer({ pack, data, locale }: { pack: PackState; data: OverviewDat
                 ))}
               </ul>
             ) : (
-              <p className="type-body">{t('overview.count', { count: 0 }, locale)}</p>
+              <p className="type-body">{t('overview.no_inputs', {}, locale)}</p>
             )}
           </div>
         </div>
@@ -368,12 +388,19 @@ function Finding({ data, locale, now }: { data: OverviewData; locale: Locale; no
   const oldest =
     oldestS === null || oldestS === undefined
       ? '—'
-      : t('overview.oldest_minutes', { count: Math.floor(oldestS / 60) }, locale)
+      : t('overview.oldest_minutes', { count: formatNumber(Math.floor(oldestS / 60), locale) }, locale)
   return (
     <p className="type-body text-muted-foreground" data-finding-line>
       {t(
         'overview.signal_line',
-        { reporting: t('overview.inputs_reporting', { count: formatNumber(reporting, locale) }, locale), oldest },
+        {
+          reporting: t(
+            reporting === 1 ? 'overview.inputs_reporting_one' : 'overview.inputs_reporting',
+            { count: formatNumber(reporting, locale) },
+            locale
+          ),
+          oldest
+        },
         locale
       )}
     </p>
@@ -386,6 +413,9 @@ function OverviewSkeleton({ locale }: { locale: Locale }) {
       <header className="overview-topline">
         <h1 className="type-title">{t('overview.title', {}, locale)}</h1>
       </header>
+      <p className="sr-only" role="status">
+        {t('overview.loading', {}, locale)}
+      </p>
       <div className="overview-answers" aria-hidden="true">
         <Skeleton className="h-[180px] w-full rounded-xl" />
       </div>
@@ -500,9 +530,11 @@ export function ProjectOverview({
           status={state.error instanceof ApiProblem ? state.error.status : null}
           locale={locale}
           retry={
-            <Button type="button" variant="outline" onClick={retry}>
-              {t('overview.retry', {}, locale)}
-            </Button>
+            state.error instanceof ApiProblem && state.error.status === 501 ? undefined : (
+              <Button type="button" variant="outline" onClick={retry}>
+                {t('overview.retry', {}, locale)}
+              </Button>
+            )
           }
         />
       </div>
@@ -512,6 +544,7 @@ export function ProjectOverview({
   const data = state.value
   const root = `/${encodeURIComponent(org)}/${encodeURIComponent(slug)}`
   const declare = canDeclare(data.role)
+  const bind = canBind(data.role)
   const declareHref = (() => {
     const params = new URLSearchParams(searchParams.toString())
     params.set('declare', 'window')
@@ -532,6 +565,10 @@ export function ProjectOverview({
       {t('overview.view_windows', {}, locale)}
     </Link>
   )
+  /** What an empty block about windows offers: declaring one, or for a viewer looking at the windows page. */
+  const windowsAction = declare ? declareLink : windowsLink
+  /** What an empty block about sources offers: binding one, which only owners and admins can do. */
+  const sourcesAction = bind ? bindLink : undefined
   const summary = data.listItem.summary
   const strip = valueOf(data.strip)
   const packStates = summary?.pack_states ?? strip?.packs ?? []
@@ -577,14 +614,14 @@ export function ProjectOverview({
             ))}
           </ToggleGroup>
           {declare ? (
-            <Button type="button" onClick={() => router.push(declareHref)}>
+            <Link href={declareHref} className={buttonVariants()}>
               {t('overview.declare_window', {}, locale)}
-            </Button>
+            </Link>
           ) : null}
         </div>
       </header>
 
-      <Section id="overview-packs" title={t('overview.packs', {}, locale)} count={visiblePacks.length} locale={locale}>
+      <Section id="overview-packs" title={t('overview.packs', {}, locale)}>
         {visiblePacks.length ? (
           <>
             <div className="overview-answers">
@@ -595,18 +632,12 @@ export function ProjectOverview({
             <Finding data={data} locale={locale} now={now} />
           </>
         ) : (
-          <EmptyBlock locale={locale} action={declare ? bindLink : t('overview.bind_source', {}, locale)} />
+          <EmptyBlock sentence={t('overview.no_packs', {}, locale)} action={sourcesAction} />
         )}
       </Section>
 
       <div className="overview-row">
-        <Section
-          id="overview-strip"
-          title={t('overview.strip', {}, locale)}
-          count={today ? today.windows.length : undefined}
-          locale={locale}
-          className="overview-today"
-        >
+        <Section id="overview-strip" title={t('overview.strip', {}, locale)} className="overview-today">
           {!data.windows.ok ? (
             <ReadError
               read={data.windows}
@@ -621,7 +652,7 @@ export function ProjectOverview({
               now={now.toISOString()}
               windows={today.windows}
               hrefs={hrefs}
-              emptyAction={declare ? declareLink : windowsLink}
+              emptyAction={windowsAction}
               locale={locale}
             />
           ) : null}
@@ -663,13 +694,7 @@ export function ProjectOverview({
           ) : null}
         </Section>
 
-        <Section
-          id="overview-risk"
-          title={t('overview.at_risk', {}, locale)}
-          count={data.windows.ok ? todayAtRisk.total : undefined}
-          locale={locale}
-          className="overview-risk"
-        >
+        <Section id="overview-risk" title={t('overview.at_risk', {}, locale)} className="overview-risk">
           {!data.windows.ok ? (
             <ReadError
               read={data.windows}
@@ -698,19 +723,13 @@ export function ProjectOverview({
               )}
             </>
           ) : (
-            <EmptyBlock locale={locale} action={declare ? declareLink : t('overview.view_windows', {}, locale)} />
+            <EmptyBlock sentence={t('overview.no_at_risk', {}, locale)} action={windowsAction} />
           )}
         </Section>
       </div>
 
       <div className="overview-row">
-        <Section
-          id="overview-sources"
-          title={t('overview.sources', {}, locale)}
-          count={data.sources.ok ? sources.length : undefined}
-          locale={locale}
-          className="overview-sources"
-        >
+        <Section id="overview-sources" title={t('overview.sources', {}, locale)} className="overview-sources">
           {!data.sources.ok ? (
             <ReadError
               read={data.sources}
@@ -719,45 +738,45 @@ export function ProjectOverview({
               locale={locale}
             />
           ) : sources.length ? (
-            <table className="overview-source-table">
-              <caption className="sr-only">{t('overview.sources', {}, locale)}</caption>
-              <thead className="sr-only">
-                <tr>
-                  <th scope="col">{t('overview.sources', {}, locale)}</th>
-                  <th scope="col">{t('overview.updated', {}, locale)}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sources.map((item) => (
-                  <SourceHealthRow
-                    key={item.id}
-                    source={item}
-                    latest={
-                      item.latest_reading
-                        ? {
-                            value: item.latest_reading.value,
-                            observed_at: item.latest_reading.observed_at,
-                            unit: item.latest_reading.unit ?? undefined
-                          }
-                        : null
-                    }
-                    state={item.state}
-                    locale={locale}
-                  />
-                ))}
-              </tbody>
-            </table>
+            <>
+              <Table aria-label={t('overview.sources', {}, locale)}>
+                <SignalHealthHead locale={locale} />
+                <TableBody>
+                  {sources.slice(0, SOURCE_CAP).map((item) => (
+                    <SourceHealthRow
+                      key={item.id}
+                      source={item}
+                      latest={
+                        item.latest_reading
+                          ? {
+                              value: item.latest_reading.value,
+                              observed_at: item.latest_reading.observed_at,
+                              unit: item.latest_reading.unit ?? undefined
+                            }
+                          : null
+                      }
+                      state={item.state}
+                      locale={locale}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+              {sources.length > SOURCE_CAP ? (
+                <p className="type-small text-muted-foreground" data-numeric>
+                  {t(
+                    'overview.capped',
+                    { shown: formatNumber(SOURCE_CAP, locale), total: formatNumber(sources.length, locale) },
+                    locale
+                  )}
+                </p>
+              ) : null}
+            </>
           ) : (
-            <EmptyBlock locale={locale} action={declare ? bindLink : t('overview.bind_source', {}, locale)} />
+            <EmptyBlock sentence={t('overview.no_sources', {}, locale)} action={sourcesAction} />
           )}
         </Section>
 
-        <Section
-          id="overview-next-event"
-          title={t('overview.next_event', {}, locale)}
-          locale={locale}
-          className="overview-next"
-        >
+        <Section id="overview-next-event" title={t('overview.next_event', {}, locale)} className="overview-next">
           {!data.nights.ok ? (
             <ReadError
               read={data.nights}
@@ -795,21 +814,16 @@ export function ProjectOverview({
                 rel="noreferrer"
                 className="overview-action"
               >
-                {t('overview.source', {}, locale)}
+                {t('overview.storm_source', {}, locale)}
               </a>
             </div>
           ) : (
-            <EmptyBlock locale={locale} action={declare ? declareLink : t('overview.view_windows', {}, locale)} />
+            <EmptyBlock sentence={t('overview.no_next_event', {}, locale)} action={sourcesAction} />
           )}
         </Section>
       </div>
 
-      <Section
-        id="overview-bundle"
-        title={t('overview.bundle', {}, locale)}
-        count={data.bundles.ok ? recent.length : undefined}
-        locale={locale}
-      >
+      <Section id="overview-bundle" title={t('overview.bundle', {}, locale)}>
         {!data.bundles.ok && !latestBundle ? (
           <ReadError
             read={data.bundles}
@@ -826,12 +840,18 @@ export function ProjectOverview({
                 <li key={bundle.id} data-bundle={bundle.id}>
                   <Link href={`${root}/bundles/${encodeURIComponent(bundle.id)}`} className="overview-bundle-row">
                     <span className="overview-bundle-when" data-numeric>
-                      {at ? <time dateTime={at}>{formatTime(at, locale)}</time> : null}
+                      {at ? (
+                        <time dateTime={at}>
+                          {localDateAt(new Date(at), data.project.time_zone) === todayKey
+                            ? formatTime(at, locale)
+                            : `${formatDateCompact(at, locale)} ${formatTime(at, locale)}`}
+                        </time>
+                      ) : null}
                     </span>
                     <span className="overview-bundle-what">
                       <span className="type-card-title">
                         {hasBundleDetails(bundle) && bundle.trigger
-                          ? bundle.trigger
+                          ? bundleText(`bundles.triggers.${bundle.trigger}`, {}, locale)
                           : t(`brand.packs.${bundle.pack}`, {}, locale)}
                       </span>
                       <span className="flex flex-wrap items-center gap-2">
@@ -849,7 +869,7 @@ export function ProjectOverview({
             })}
           </ol>
         ) : (
-          <EmptyBlock locale={locale} action={declare ? declareLink : t('overview.view_windows', {}, locale)} />
+          <EmptyBlock sentence={t('overview.no_bundles', {}, locale)} action={windowsAction} />
         )}
       </Section>
     </div>

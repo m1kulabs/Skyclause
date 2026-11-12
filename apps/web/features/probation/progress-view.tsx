@@ -77,7 +77,9 @@ export function ProgressView({
   const labelHref = `/${encodeURIComponent(org)}/${encodeURIComponent(project)}/signals/probation/${encodeURIComponent(sourceId)}?view=label`
   const interval = status ? agreementInterval(status.agreement, status.n) : null
   const hasAgreement = status !== null && status.agreement !== null
-  const agreement = hasAgreement ? formatNumber(Math.round(status.agreement! * 100) / 100, locale) : null
+  // Agreement, its target and its interval are all read to two places, so they compare at a glance.
+  const twoPlaces = { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+  const agreement = hasAgreement ? formatNumber(Math.round(status.agreement! * 100) / 100, locale, twoPlaces) : null
 
   return (
     <div className="probation-progress flex flex-col gap-section">
@@ -95,11 +97,7 @@ export function ProgressView({
                     {agreement}
                   </span>
                   <span data-numeric className="type-body text-muted-foreground">
-                    {t(
-                      'probation.measure_needed',
-                      { needed: formatNumber(PASS.agreement, locale, { minimumFractionDigits: 2 }) },
-                      locale
-                    )}
+                    {t('probation.measure_needed', { needed: formatNumber(PASS.agreement, locale, twoPlaces) }, locale)}
                   </span>
                 </p>
               ) : (
@@ -111,8 +109,8 @@ export function ProgressView({
                     'probation.progress_interval',
                     {
                       n: formatNumber(status.n, locale),
-                      low: formatNumber(interval.lo, locale),
-                      high: formatNumber(interval.hi, locale)
+                      low: formatNumber(interval.lo, locale, twoPlaces),
+                      high: formatNumber(interval.hi, locale, twoPlaces)
                     },
                     locale
                   )}

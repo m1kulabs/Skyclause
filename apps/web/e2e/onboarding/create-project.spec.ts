@@ -217,7 +217,7 @@ test('project form shows inline slug errors, announces saving, and sends Crowd t
   await expect(form.getByLabel('Project name')).toBeVisible()
   await expect(form.getByLabel('Project slug')).toHaveAttribute('spellcheck', 'false')
   await expect(form.getByLabel('Time zone')).toHaveValue('Asia/Kuala_Lumpur')
-  await expect(form.getByLabel('Project name')).toHaveAttribute('autocomplete', 'organization')
+  await expect(form.getByLabel('Project name')).toHaveAttribute('autocomplete', 'off')
   await form.getByLabel('Project name').fill('APU Air Quality')
   await form.getByLabel('Project slug').fill('new')
   await form.getByLabel('Site name').fill('APU')
@@ -244,12 +244,14 @@ test('project form shows inline slug errors, announces saving, and sends Crowd t
   await page.reload()
   const progress = page.locator('[data-first-run-progress]')
   await expect(progress.getByText('2 of 6 steps complete')).toBeVisible()
-  // The open step is this page: it says so instead of linking to itself, and the steps after it still link on.
+  // The open step is this page: it says so instead of linking to itself, and the steps after it offer nothing yet.
   const sources = progress.locator('li[data-state="current"]')
   await expect(sources).toContainText('Bind sources')
   await expect(sources).toContainText('You are here')
   await expect(progress.locator('a[href="/test-org/apu-air-quality/settings/packs"]')).toHaveCount(0)
-  await expect(progress.locator('a[href="/test-org/apu-air-quality/windows?declare=window"]')).toBeVisible()
+  await expect(progress.locator('a[href="/test-org/apu-air-quality/windows?declare=window"]')).toHaveCount(0)
+  await expect(progress.getByRole('link', { name: /^Continue/ })).toHaveCount(0)
+  await expect(progress.getByRole('button', { name: /^Skip this step/ })).toHaveCount(1)
 })
 
 test('source picker sorts captured APIMS rows, finds CA16W, allows an erroring source, and creates no extra rows', async ({
@@ -324,7 +326,7 @@ test('source picker sorts captured APIMS rows, finds CA16W, allows an erroring s
   await expect(closest).toContainText('5.9 km')
   await expect(closest.getByRole('cell', { name: 'no published terms' })).toBeVisible()
   await expect(closest).toContainText('Hourly')
-  await expect(closest).toContainText(/API 67/)
+  await expect(closest).toContainText(/67\s*API/)
   await expect(closest).toContainText(/error.*HTTP 503/i)
   await expect(picker.getByRole('row').nth(2)).toContainText('CA01R')
   await picker.getByLabel('Search sources').fill('CA16W')
@@ -562,7 +564,7 @@ test('keyboard users can skip and resume each onboarding step', async ({ page })
   await page.goto(`/${org}/new`)
   const progress = page.locator('[data-first-run-progress]')
   for (let step = 0; step < onboardingSteps.length; step++) {
-    const skip = progress.getByRole('button', { name: 'Skip step' }).first()
+    const skip = progress.getByRole('button', { name: 'Skip this step' }).first()
     await tabTo(page, skip)
     await page.keyboard.press('Enter')
   }

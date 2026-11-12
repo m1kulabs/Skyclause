@@ -7,3 +7,4 @@ catalogueFiles['../catalogue/en/organisations.json'] = { default: en }
 catalogueFiles['../catalogue/ms/organisations.json'] = { default: ms }
 
 export { t } from '@skyclause/i18n'
+export type Locale = 'en' | 'ms'

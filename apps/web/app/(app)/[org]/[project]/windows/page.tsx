@@ -1,7 +1,9 @@
+import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { getOrgPrincipal } from '../../../../../lib/principal'
 import { WindowsPage } from '../../../../../features/windows/windows-page'
 import { t } from '../../../../../features/windows/catalogue'
+import { prefersMalay } from '../../../../../lib/preferred-language'
 
 export const metadata = { title: t('windows.title') }
 
@@ -13,5 +15,6 @@ export default async function Page({ params }: { params: Promise<{ org: string; 
   // included, gets the not-found page.
   const member = principal?.kind === 'session' && !!principal.role
   if (!member && principal?.kind !== 'share_link' && principal?.kind !== 'guest_token') notFound()
-  return <WindowsPage key={`${org}/${project}`} org={org} project={project} />
+  const locale = prefersMalay((await headers()).get('accept-language')) ? 'ms' : 'en'
+  return <WindowsPage key={`${org}/${project}`} org={org} project={project} locale={locale} />
 }

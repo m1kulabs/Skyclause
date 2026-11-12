@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { InputState, SourceState } from '@skyclause/contracts'
-import { formatDateTime } from '@skyclause/i18n/format'
+import { formatDateTime, formatNumber } from '@skyclause/i18n/format'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Button, buttonVariants } from '#ui/button'
 import { Skeleton } from '#ui/skeleton'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
 import { SourceError } from '../data-components'
 import { ApiProblem } from '../../lib/api-fetch'
 import { readSse } from '../../lib/read-sse'
@@ -29,6 +30,8 @@ import { SourceTable } from './source-table'
 import { t } from './catalogue'
 
 type Locale = 'en' | 'ms'
+/** A table never draws more than this many rows (NFR-9). */
+const ERROR_ROWS = 50
 type PageData = { project: Project; sources: ProjectSource[]; strip: ProjectStrip; readAt: number }
 type DetailState =
   | { status: 'loading'; sourceId: string }
@@ -74,7 +77,7 @@ export function SignalsPage({
   const [pageError, setPageError] = useState<{ status: number | null; at: string } | null>(null)
   const [detailState, setDetailState] = useState<DetailState | null>(null)
   const [announcement, setAnnouncement] = useState('')
-  const [copyStatus, setCopyStatus] = useState('')
+  const [copyStatus, setCopyStatus] = useState<'copied' | 'failed' | null>(null)
   const [clockNow, setClockNow] = useState(() => Date.now())
   const [refresh, setRefresh] = useState(0)
   const [resolveAttempt, setResolveAttempt] = useState(0)
@@ -248,18 +251,38 @@ export function SignalsPage({
 
   async function copyTailCommand() {
     if (!project) return
+    // Clear the last result first, so copying twice announces twice.
+    setCopyStatus(null)
     try {
       await navigator.clipboard.writeText(tailCommand(org, project.slug))
-      setCopyStatus(t('signals.copied', {}, locale))
+      setCopyStatus('copied')
     } catch {
-      setCopyStatus('')
+      setCopyStatus('failed')
     }
   }
+  // The visible "Copied" goes after a few seconds, so the button offers copying again.
+  useEffect(() => {
+    if (copyStatus !== 'copied') return
+    const timer = window.setTimeout(() => setCopyStatus(null), 4000)
+    return () => window.clearTimeout(timer)
+  }, [copyStatus])
 
+  // Opening a source brings its detail into view and puts focus on its heading; closing it returns focus to the row
+  // that opened it, which would otherwise be lost with the detail that held it.
+  const openedFor = useRef<string | null>(null)
+  const detailReady = !!selectedSource && detailState?.status === 'ready' && detailState.sourceId === selectedSource.id
+  useEffect(() => {
+    if (!detailReady || openedFor.current === selectedExternalId) return
+    openedFor.current = selectedExternalId
+    document.querySelector<HTMLElement>('[data-source-detail] h2')?.focus()
+  }, [detailReady, selectedExternalId])
   function closeDetail() {
+    const row = selectedSource?.id
     const params = new URLSearchParams(search.toString())
     params.delete('source')
     router.replace(`${pathname}${params.size ? `?${params}` : ''}`, { scroll: false })
+    openedFor.current = null
+    requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-source="${row}"] a`)?.focus())
   }
 
   const agedSources = useMemo(
@@ -302,7 +325,7 @@ export function SignalsPage({
         <h1 className="type-title">{t('signals.title', {}, locale)}</h1>
         {data && (
           <Button type="button" variant="outline" onClick={() => void copyTailCommand()}>
-            {t('signals.copy_tail', {}, locale)}
+            {t(copyStatus === 'copied' ? 'signals.copied' : 'signals.copy_tail', {}, locale)}
           </Button>
         )}
       </div>
@@ -321,7 +344,8 @@ export function SignalsPage({
           source={t('signals.source_sources', {}, locale)}
           status={pageError.status}
           at={pageError.at}
-          retry={retry}
+          // A 501 is "not built": reading again cannot change the answer.
+          retry={pageError.status === 501 ? undefined : retry}
           locale={locale}
         />
       )}
@@ -357,7 +381,16 @@ export function SignalsPage({
               />
               {unevaluated.length > 0 && (
                 <p className="mt-3 px-3 type-small text-muted-foreground">
-                  {t('signals.not_evaluated', { sources: unevaluated.map((source) => source.name).join(', ') }, locale)}
+                  {t(
+                    'signals.not_evaluated',
+                    {
+                      sources: new Intl.ListFormat(locale === 'ms' ? 'ms-MY' : 'en-MY', {
+                        style: 'long',
+                        type: 'conjunction'
+                      }).format(unevaluated.map((source) => source.name))
+                    },
+                    locale
+                  )}
                 </p>
               )}
             </div>
@@ -413,32 +446,47 @@ export function SignalsPage({
                 {t('signals.recent_errors', {}, locale)}
               </h2>
               {errors.length ? (
-                <table className="w-full text-left type-body">
-                  <thead className="sr-only">
-                    <tr>
-                      <th scope="col">{t('signals.col_source', {}, locale)}</th>
-                      <th scope="col">{t('signals.errors_status', {}, locale)}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {errors.map(({ poll, source }) => (
-                      <tr key={poll.id} className="h-11">
-                        <th scope="row" translate="no" className="pr-4 font-medium">
-                          {source?.external_id ?? poll.source_id}
-                        </th>
-                        <td data-numeric className="pr-4">
-                          {poll.http_status === null
-                            ? t('signals.error_no_status', { time: formatDateTime(poll.started_at, locale) }, locale)
-                            : t(
-                                'signals.error_status',
-                                { status: poll.http_status, time: formatDateTime(poll.started_at, locale) },
-                                locale
-                              )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <>
+                  <Table compact>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t('signals.col_source', {}, locale)}</TableHead>
+                        <TableHead numeric>{t('signals.errors_status', {}, locale)}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {errors.slice(0, ERROR_ROWS).map(({ poll, source }) => (
+                        <TableRow key={poll.id}>
+                          <TableCell
+                            phone="primary"
+                            translate={source ? 'no' : undefined}
+                            className="font-medium whitespace-normal [overflow-wrap:anywhere]"
+                          >
+                            {source?.external_id ?? t('signals.source_unknown', {}, locale)}
+                          </TableCell>
+                          <TableCell data-numeric phone="end" className="whitespace-normal">
+                            {poll.http_status === null
+                              ? t('signals.error_no_status', { time: formatDateTime(poll.started_at, locale) }, locale)
+                              : t(
+                                  'signals.error_status',
+                                  { status: poll.http_status, time: formatDateTime(poll.started_at, locale) },
+                                  locale
+                                )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {errors.length > ERROR_ROWS ? (
+                    <p className="type-small text-muted-foreground" data-numeric>
+                      {t(
+                        'signals.sources_capped',
+                        { shown: formatNumber(ERROR_ROWS, locale), total: formatNumber(errors.length, locale) },
+                        locale
+                      )}
+                    </p>
+                  ) : null}
+                </>
               ) : (
                 <p className="type-body text-muted-foreground">{t('signals.no_errors', {}, locale)}</p>
               )}
@@ -450,8 +498,9 @@ export function SignalsPage({
       <p data-signal-announcement role="status" aria-live="polite" className="sr-only">
         {announcement}
       </p>
-      <p role="status" aria-live="polite" className="sr-only">
-        {copyStatus}
+      <p role="status" aria-live="polite" className={copyStatus === 'failed' ? 'type-small' : 'sr-only'}>
+        {copyStatus === 'copied' ? t('signals.copied', {}, locale) : null}
+        {copyStatus === 'failed' ? t('signals.copy_failed', {}, locale) : null}
       </p>
     </section>
   )

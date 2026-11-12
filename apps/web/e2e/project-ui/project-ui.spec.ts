@@ -11,24 +11,42 @@ const copy = (value: string) => (process.env.I18N_PSEUDO === '1' ? pseudo(value)
 const emptyRoute = `${projectPath}`
 const settingsRoute = `${projectPath}/settings`
 
-test('every empty overview block gives a next action and draws no chart', async ({ page }) => {
+test('every empty overview block says so once and gives the next action that exists, and draws no chart', async ({
+  page
+}) => {
   await prepareOverview(page, 'admin', { empty: true })
   await page.goto(emptyRoute)
   const overview = page.locator('[data-project-overview]')
   await expect(overview.getByRole('heading', { name: 'Project overview' })).toBeVisible()
-  for (const [id, action] of [
-    ['overview-packs', 'Bind a source'],
-    ['overview-strip', 'Declare a window'],
-    ['overview-risk', 'Declare a window'],
-    ['overview-sources', 'Bind a source'],
-    ['overview-bundle', 'Declare a window'],
-    ['overview-next-event', 'Declare a window']
+  for (const [id, sentence, action] of [
+    ['overview-packs', 'No pack to show (n=0)', 'Bind a source'],
+    ['overview-strip', null, 'Declare a window'],
+    ['overview-risk', 'No windows at risk today (n=0)', 'Declare a window'],
+    ['overview-sources', 'No sources bound (n=0)', 'Bind a source'],
+    ['overview-bundle', 'No bundles yet (n=0)', 'Declare a window'],
+    // Nothing in the product lists a show by hand: what fills this block is a bound venue listing or forecast.
+    ['overview-next-event', 'No listed show or storm forecast (n=0)', 'Bind a source']
   ] as const) {
     const section = overview.locator(`#${id}`).locator('..').locator('..')
-    await expect(section.getByText(copy('n=0'), { exact: true }).first()).toBeVisible()
-    await expect(section.getByText(action)).toBeVisible()
+    if (sentence) await expect(section.getByText(copy(sentence))).toBeVisible()
+    await expect(section.getByText(copy(action), { exact: true })).toBeVisible()
+    // No bare "n=3" tag beside the heading.
+    await expect(section.locator('header')).not.toContainText('n=')
   }
   await expect(overview.locator('#overview-strip svg')).toHaveCount(0)
+})
+
+test('a viewer sees no instruction they cannot follow in an empty overview block', async ({ page }) => {
+  await prepareOverview(page, 'viewer', { empty: true })
+  await page.goto(emptyRoute)
+  const overview = page.locator('[data-project-overview]')
+  await expect(overview.getByRole('heading', { name: 'Project overview' })).toBeVisible()
+  await expect(overview.getByText('Bind a source')).toHaveCount(0)
+  await expect(overview.getByText('Declare a window')).toHaveCount(0)
+  // The windows page is something a viewer can open, so the blocks about windows link to it.
+  await expect(
+    overview.locator('#overview-risk').locator('..').locator('..').getByRole('link', { name: 'View windows' })
+  ).toHaveAttribute('href', `${projectPath}/windows`)
 })
 
 test('overview uses the 5 November captures, declares from the primary action and keeps filters on reload', async ({
@@ -41,7 +59,7 @@ test('overview uses the 5 November captures, declares from the primary action an
   // The answer: each pack's mode set large with its glyph and word, then the inputs behind it.
   await expect(overview.locator('[data-pack="sky"] [data-state="normal"]')).toHaveText(copy('Normal'))
   // Two strings joined: under the pseudo pass each carries its own tildes.
-  await expect(overview.locator('[data-finding-line]')).toContainText(/5 inputs reporting~*, oldest 12 min/)
+  await expect(overview.locator('[data-finding-line]')).toContainText(/5 inputs reporting~*, oldest 12\smin/)
   await expect(overview.locator('[data-pack="sky"]')).toContainText('No clause has fired')
   await expect(overview.locator('[data-source="source-jps"]')).toContainText('Sg. Kuyoh di LRT Bukit Jalil')
   await expect(overview.locator('[data-bundle]')).toBeVisible()
@@ -50,7 +68,7 @@ test('overview uses the 5 November captures, declares from the primary action an
   await expect(page).toHaveURL(/\?pack=crowd$/)
   await page.reload()
   await expect(overview.getByRole('button', { name: /^Crowd~* pack/ })).toHaveAttribute('aria-pressed', 'true')
-  await overview.getByRole('button', { name: 'Declare a window' }).click()
+  await overview.locator('.overview-topline').getByRole('link', { name: 'Declare a window' }).click()
   await expect(page).toHaveURL(/\?pack=crowd&declare=window$/)
 })
 
@@ -80,7 +98,6 @@ test('today at-risk windows use project local date, stop at six and link to all 
   await stubApi(page, 'listWindows', { data: windows, next_cursor: null }, { registry: overviewOperations })
   await page.goto(projectPath)
   const risk = page.locator('[data-project-overview] section[aria-labelledby="overview-risk"]')
-  await expect(risk.locator('header')).toContainText('n=8')
   await expect(risk.locator('ul li')).toHaveCount(6)
   await expect(risk.getByRole('link', { name: 'View all' })).toHaveAttribute('href', `${projectPath}/windows`)
 })

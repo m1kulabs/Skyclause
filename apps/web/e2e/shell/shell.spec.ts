@@ -292,7 +292,7 @@ test('Review opens the dashboard at its needs-review block and prints no count w
 test('empty data shows the no-organisation state and its next action, never sample organisations', async ({ page }) => {
   await openShell(page, { memberships: [], projects: [] }, '')
   const main = page.locator('main')
-  await expect(main.locator('[data-slot="empty"]')).toContainText(copy('Organisations: n=0'))
+  await expect(main.locator('[data-slot="empty"]')).toContainText(copy('No organisations yet (n=0)'))
   await expect(main.getByRole('link', { name: copy('Create an organisation') })).toHaveAttribute('href', '/new')
   await expect(main).not.toContainText('Test organisation')
   await expect(main.locator('[data-source-error]')).toHaveCount(0)
@@ -311,11 +311,11 @@ test('a failed memberships read names itself as an error, not as no organisation
   )
   await expect(main.getByRole('button', { name: copy('Try again') })).toBeVisible()
   await expect(main.locator('[data-slot="empty"]')).toHaveCount(0)
-  await expect(main).not.toContainText(copy('Organisations: n=0'))
+  await expect(main).not.toContainText(copy('No organisations yet (n=0)'))
   await expect(bar(page).getByRole('button', { name: /Switch organisation:/ })).toContainText(
     copy('Organisations unavailable')
   )
-  // On an organisation's page the project list is unknown too: an error, never "Projects: n=0".
+  // On an organisation's page the project list is unknown too: an error, never "No projects".
   await openShell(
     page,
     { memberships: [], projects: [], membershipsError: { status: 503, at: '2026-11-12T03:04:00.000Z' } },
@@ -324,12 +324,12 @@ test('a failed memberships read names itself as an error, not as no organisation
   await expect(bar(page).getByRole('button', { name: /Switch project:/ })).toContainText(copy('Projects unavailable'))
 })
 
-test('a membership without projects shows n=0 and its role-appropriate next action', async ({ page }) => {
+test('a membership without projects says so and offers its role-appropriate next action', async ({ page }) => {
   await openShell(page, { ...data, projects: [] }, '?org=test-one')
   await bar(page)
     .getByRole('button', { name: /Switch project:/ })
     .press('Enter')
-  await expect(page.getByRole('menu')).toContainText(copy('Projects: n=0'))
+  await expect(page.getByRole('menu')).toContainText(copy('No projects'))
   await expect(page.getByRole('menuitem', { name: copy('Create a project') })).toHaveAttribute('href', '/test-one/new')
   await closeMenu(page)
   await openShell(page, { ...data, projects: [] }, '?org=test-two')
