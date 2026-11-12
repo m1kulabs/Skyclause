@@ -1,127 +1,59 @@
-/* eslint-disable skyclause-i18n/no-literal-jsx -- Landing copy is the DESIGN copy deck verbatim (English P1; Malay LND-7 P2). Images are cropped-only Wikimedia Commons files loaded lazily. */
-import { StadiumDrift } from './drift'
+/* eslint-disable skyclause-i18n/no-literal-jsx -- Landing copy is English in the component (no Malay landing route; LND-7 is P2). Prices are PRODUCT's, every one a proposal, untested (LND-6). */
+import { Words } from './words'
 
-// Pricing: "What it costs" — inverted to #efefef. Every price element also holds "proposal, untested" (LND-6).
-// MYR prices and inclusions from PRODUCT pricing. No crimson in this section.
-const PLANS = [
-  {
-    group: 'Free',
-    tiers: [
-      {
-        name: 'Commons',
-        price: 'Free',
-        for: 'Guests and reviewers',
-        desc: 'One shared live project for Bukit Jalil; guest windows last 14 days',
-        limits: {
-          Projects: 'The shared "Bukit Jalil" project',
-          Approvers: 'None; guests can’t approve',
-          'Hosted-model runs': 'Per-device and per-IP budgets',
-          BYOK: 'No',
-          Subscribers: 'None',
-          Channels: 'In-app; the pilot’s public conditions calendar',
-          Support: 'Docs and the status page',
-          'SSO and data residency': 'No'
-        }
-      },
-      {
-        name: 'Community',
-        price: 'Free',
-        for: 'One club or student group',
-        desc: 'One project of your own',
-        limits: {
-          Projects: '1',
-          Approvers: '3',
-          'Hosted-model runs': '150',
-          BYOK: 'Yes',
-          Subscribers: '200',
-          Channels: 'Email, ICS calendar, in-app, one webhook',
-          Support: 'Docs, status page and email, best effort',
-          'SSO and data residency': 'No'
-        }
-      }
-    ]
-  },
-  {
-    group: 'Paid',
-    tiers: [
-      {
-        name: 'Team',
-        price: 'RM 49 a month per organisation, from P2',
-        for: 'Clubs and offices with several sites or both packs',
-        desc: 'Clubs and offices with several sites or both packs',
-        limits: {
-          Projects: '5',
-          Approvers: '15',
-          'Hosted-model runs': '1,500',
-          BYOK: 'Yes',
-          Subscribers: '2,000',
-          Channels: 'All P1 channels; Microsoft 365 and Jira from P2',
-          Support: 'Email, best effort, ahead of the free tiers',
-          'SSO and data residency': 'No'
-        }
-      },
-      {
-        name: 'Campus',
-        price: 'RM 900 a month per campus, billed yearly, after GA',
-        for: 'A university office sending lecturer notices',
-        desc: 'A university office sending lecturer notices',
-        limits: {
-          Projects: '50',
-          Approvers: 'No limit',
-          'Hosted-model runs': '15,000',
-          BYOK: 'Yes',
-          Subscribers: '25,000',
-          Channels: 'All channels',
-          Support: 'A named contact; any SLA is an open question',
-          'SSO and data residency': 'Only once verified'
-        }
-      }
-    ]
-  }
-] as const
+export const PLANS_SOURCE = '/legal/terms#plans'
 
-export function Pricing() {
+// "Two plans, two fields": what anyone can use now (Commons and Community, free) on the wider pink field, and the
+// paid plans that come later on the narrower navy one. Each price itself carries "proposal, untested".
+export function Pricing({ signInHref }: { signInHref: string }) {
   return (
-    <section aria-labelledby="pricing-heading" className="landing-section landing-inverted landing-reveal-0">
-      <div className="landing-inner">
-        <h2 id="pricing-heading" className="landing-head landing-reveal-0">
-          What it costs
-        </h2>
-        <p className="landing-reveal-1">Prices in MYR. Every price is a proposal, untested.</p>
-      </div>
-      {PLANS.map((group) => (
-        <div key={group.group} className="landing-reveal-2">
-          <h3>{group.group}</h3>
-          {group.tiers.map((tier) => (
-            <article key={tier.name} aria-label={tier.name}>
-              <h4>{tier.name}</h4>
-              <p data-source="/legal/terms#plans">
-                <span className="font-medium">{tier.price}</span> · proposal, untested
-              </p>
-              <p data-source="/legal/terms#service">{tier.for}</p>
-              <p data-source="/legal/terms#service">{tier.desc}</p>
-              <table>
-                <caption data-source="/legal/terms#plans">{tier.name} inclusions · proposal, untested</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Limit</th>
-                    <th scope="col">{tier.name}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(tier.limits).map(([limit, value]) => (
-                    <tr key={limit}>
-                      <th scope="row">{limit}</th>
-                      <td data-source="/legal/terms#plans">{value}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </article>
-          ))}
+    <section id="prices" className="pricing" aria-labelledby="pricing-heading" data-reveal-section>
+      <h2 id="pricing-heading" className="sr-only">
+        Prices, in MYR
+      </h2>
+      <article className="plan plan--free" aria-labelledby="plan-free">
+        <h3 id="plan-free" className="plan-name" data-words>
+          <Words text="Commons and Community" />
+        </h3>
+        <p className="plan-for" data-reveal>
+          For guests, reviewers and one club or student group.
+        </p>
+        <p className="plan-includes" data-source={PLANS_SOURCE} data-reveal>
+          Commons: the shared, live &ldquo;Bukit Jalil&rdquo; project for guests and reviewers; guest windows last 14
+          days, and guests can&rsquo;t approve. Community: one project of your own with 3 approvers, 150 hosted-model
+          runs a month, 200 subscribers, and email, the ICS calendar, in-app and one webhook.
+        </p>
+        <div className="plan-foot" data-reveal>
+          <p className="plan-price" data-source={PLANS_SOURCE}>
+            <span className="plan-figure">Free</span> <span className="plan-period">proposal, untested</span>
+          </p>
+          <a href={signInHref} className="landing-button plan-action">
+            Sign in
+          </a>
         </div>
-      ))}
-      <StadiumDrift />
+      </article>
+      <article className="plan plan--paid" aria-labelledby="plan-paid">
+        <h3 id="plan-paid" className="plan-name" data-words>
+          <Words text="Team and Campus" />
+        </h3>
+        <p className="plan-for" data-reveal>
+          For clubs and offices with several sites or both packs.
+        </p>
+        <p className="plan-includes" data-source={PLANS_SOURCE} data-reveal>
+          Team: 5 projects, 15 approvers, 1,500 hosted-model runs a month and 2,000 subscribers, on all P1 channels,
+          with Microsoft 365 and Jira from P2. Campus, for a university office sending lecturer notices:{' '}
+          <span className="plan-campus">RM 900 a month per campus, billed yearly, after GA, proposal, untested</span>.
+        </p>
+        <div className="plan-foot" data-reveal>
+          <p className="plan-price" data-source={PLANS_SOURCE}>
+            <span className="plan-figure">RM&nbsp;49</span>{' '}
+            <span className="plan-period">a month per organisation, from P2, proposal, untested</span>
+          </p>
+          <a href={PLANS_SOURCE} className="landing-button plan-action">
+            Plan terms
+          </a>
+        </div>
+      </article>
     </section>
   )
 }

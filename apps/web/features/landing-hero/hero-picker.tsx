@@ -6,6 +6,7 @@ import { fetchEvaluate, fetchLatestCall, type EvaluateResult, type LatestCallRea
 import type { PickerReplay } from './activator'
 import { HeroReadout } from './readout'
 import { HeroStrip } from './hero-strip'
+import { HeroBand } from './hero-band'
 import {
   CLOCK_SOURCE,
   beaconEventOf,
@@ -13,13 +14,13 @@ import {
   groupedVerdicts,
   hasGaugeError,
   parseLocalTime,
+  skyStateOf,
   snapToStep,
   stripOf,
   toLocalTime,
-  windowInstants,
   type HeroWindow
 } from './window-model'
-import { formatDate, formatTime } from '@skyclause/i18n/format'
+import { formatDateCompact } from '@skyclause/i18n/format'
 import styles from './hero.module.css'
 
 export interface HeroPickerProps {
@@ -243,8 +244,6 @@ export default function HeroPicker({
     void evaluate(win, true)
   }
 
-  const hours = [0, 6, 12, 18]
-  const instants = windowInstants(win)
   const strip = result.kind === 'ok' ? stripOf(result.data.strip, win, result.data.evaluated_at) : null
   // A blocked clause silences the gauge even when its inputs list carries no values of its own.
   const groupedForError = result.kind === 'ok' ? groupedVerdicts(result.data.verdicts) : []
@@ -252,116 +251,100 @@ export default function HeroPicker({
     result.kind === 'ok' &&
     (hasGaugeError(groupedForError.flatMap((group) => group.inputs)) ||
       groupedForError.some((group) => group.blocked.length > 0))
-  const windowText = t(
-    'landing-hero.window_text',
-    { start: formatTime(instants.from, 'en'), end: formatTime(instants.to, 'en') },
-    'en'
-  )
 
   return (
-    <form
-      ref={rootRef}
-      method="get"
-      action="/"
-      onSubmit={onSubmit}
-      className={styles.heroPicker}
-      data-ui
-      aria-label={t('landing-hero.picker_label', {}, 'en')}
-    >
-      <fieldset className={styles.heroDates}>
-        <legend>{t('landing-hero.date_label', {}, 'en')}</legend>
-        {dates.map((date, index) => (
-          <label key={date} data-source={CLOCK_SOURCE} className={styles.heroDate}>
-            <input
-              type="radio"
-              name="date"
-              value={date}
-              checked={win.date === date}
-              onChange={() => setWin((current) => ({ ...current, date }))}
-            />
-            <span>{index === 0 ? t('landing-hero.today', {}, 'en') : formatDate(`${date}T12:00:00+08:00`, 'en')}</span>
-          </label>
-        ))}
-      </fieldset>
-      <div
-        ref={sliderRef}
-        role="slider"
-        tabIndex={0}
-        aria-label={t('landing-hero.strip_label', {}, 'en')}
-        aria-valuemin={0}
-        aria-valuemax={1425}
-        aria-valuenow={win.startMin}
-        aria-valuetext={windowText}
-        className={styles.heroSlider}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-        onKeyDown={onKeyDown}
+    <>
+      <HeroBand
+        win={win}
+        state={skyStateOf(groupedForError)}
+        sliderRef={sliderRef}
+        sliderProps={{
+          onPointerDown,
+          onPointerMove,
+          onPointerUp,
+          onPointerCancel: onPointerUp,
+          onKeyDown
+        }}
+      />
+      <form
+        ref={rootRef}
+        method="get"
+        action="/"
+        onSubmit={onSubmit}
+        className={styles.panel}
+        data-ui
+        id="window"
+        aria-label={t('landing-hero.picker_label', {}, 'en')}
       >
-        <HeroStrip strip={strip} initialSvg={initialStripSvg} rainAnimated={!gaugeError && !pending} />
-        {!strip ? (
-          <div className={styles.heroHours} aria-hidden="true">
-            {hours.map((hour) => (
-              <span key={hour} data-source={CLOCK_SOURCE}>
-                {formatTime(
-                  new Date(Date.parse(instants.from) - win.startMin * 60_000 + hour * 3600_000).toISOString(),
-                  'en'
-                )}
+        <fieldset className={styles.dates}>
+          <legend className={styles.legend}>{t('landing-hero.window_legend', {}, 'en')}</legend>
+          {dates.map((date, index) => (
+            <label key={date} data-source={CLOCK_SOURCE} className={styles.date}>
+              <input
+                type="radio"
+                name="date"
+                value={date}
+                checked={win.date === date}
+                onChange={() => setWin((current) => ({ ...current, date }))}
+              />
+              <span>
+                {index === 0 ? t('landing-hero.today', {}, 'en') : formatDateCompact(`${date}T12:00:00+08:00`, 'en')}
               </span>
-            ))}
-          </div>
-        ) : null}
-      </div>
-      <div className={styles.heroTimes}>
-        <label>
-          {t('landing-hero.start_label', {}, 'en')}
-          <input
-            type="text"
-            inputMode="numeric"
-            placeholder="09:45…"
-            name="start"
-            autoComplete="off"
-            step={900}
-            required
-            value={startText}
-            onChange={(event) => {
-              setStartText(event.target.value)
-              const parsed = parseLocalTime(event.target.value)
-              if (parsed !== null) commitTimes(parsed, win.endMin)
-            }}
-            onBlur={() => setStartText(toLocalTime(win.startMin))}
+            </label>
+          ))}
+        </fieldset>
+        <div className={styles.times}>
+          <label className={styles.field}>
+            <span>{t('landing-hero.start_label', {}, 'en')}</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="09:45…"
+              name="start"
+              autoComplete="off"
+              step={900}
+              required
+              value={startText}
+              onChange={(event) => {
+                setStartText(event.target.value)
+                const parsed = parseLocalTime(event.target.value)
+                if (parsed !== null) commitTimes(parsed, win.endMin)
+              }}
+              onBlur={() => setStartText(toLocalTime(win.startMin))}
+            />
+          </label>
+          <label className={styles.field}>
+            <span>{t('landing-hero.end_label', {}, 'en')}</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="09:45…"
+              name="end"
+              autoComplete="off"
+              step={900}
+              required
+              value={endText}
+              onChange={(event) => {
+                setEndText(event.target.value)
+                const parsed = parseLocalTime(event.target.value)
+                if (parsed !== null) commitTimes(win.startMin, parsed)
+              }}
+              onBlur={() => setEndText(toLocalTime(win.endMin))}
+            />
+          </label>
+          <p className={styles.zone}>{t('landing-hero.time_zone', {}, 'en')}</p>
+        </div>
+        <HeroStrip strip={strip} initialSvg={initialStripSvg} rainAnimated={!gaugeError && !pending} />
+        <div aria-live="polite" aria-busy={pending}>
+          <HeroReadout
+            result={result}
+            win={win}
+            latestCall={latest}
+            calendarQuery={calendarQuery}
+            rainAnimated={!gaugeError}
           />
-        </label>
-        <label>
-          {t('landing-hero.end_label', {}, 'en')}
-          <input
-            type="text"
-            inputMode="numeric"
-            placeholder="09:45…"
-            name="end"
-            autoComplete="off"
-            step={900}
-            required
-            value={endText}
-            onChange={(event) => {
-              setEndText(event.target.value)
-              const parsed = parseLocalTime(event.target.value)
-              if (parsed !== null) commitTimes(win.startMin, parsed)
-            }}
-            onBlur={() => setEndText(toLocalTime(win.endMin))}
-          />
-        </label>
-      </div>
-      <div aria-busy={pending}>
-        <HeroReadout
-          result={result}
-          win={win}
-          latestCall={latest}
-          calendarQuery={calendarQuery}
-          rainAnimated={!gaugeError}
-        />
-      </div>
-    </form>
+        </div>
+      </form>
+    </>
   )
 }

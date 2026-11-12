@@ -3,7 +3,6 @@
   "heading_line_2": "every window",
   "h1_join": " ",
   "lead_sentence": "Skyclause reads the rain gauge, the haze index and the stadium listings around Bukit Jalil, and makes one approved, graded call for each class, event or commute window.",
-  "open_commons": "Open the Commons",
   "sign_in": "Sign in",
   "today": "Today",
   "date_label": "Window date",
@@ -26,5 +25,16 @@
   "evaluated": "Evaluated {time}",
   "input_value": "{value} {unit}",
   "sky_line": "Sky",
-  "crowd_line": "Crowd"
+  "crowd_line": "Crowd",
+  "midnight": "24:00",
+  "window_legend": "Your window",
+  "time_zone": "Times in MYT",
+  "not_built": "It answered 501: the public verdict is not built yet.",
+  "answered": "It answered {status}.",
+  "pause_photos": "Pause the photographs",
+  "photos_label": "Bukit Jalil under its sky: the LRT station by day, the National Stadium under cloud and at night",
+  "links_label": "On this page",
+  "link_how": "How it works",
+  "link_record": "The record",
+  "link_prices": "Prices"
 }
