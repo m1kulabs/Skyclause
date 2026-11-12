@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./members": "./src/services/members/index.ts",
     "./rota": "./src/services/rota/index.ts",
+    "./windows": "./src/services/windows/worker.ts",
     "./testing": "./test/harness/index.ts",
     "./evaluator": "./src/services/evaluator/index.ts"
   },

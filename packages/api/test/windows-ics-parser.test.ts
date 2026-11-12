@@ -37,6 +37,18 @@ const zoned = () =>
     .replace('DTSTART:20261116T090000Z', 'DTSTART;TZID=Source/Local:20261116T090000')
     .replace('DTEND:20261116T100000Z', 'DTEND;TZID=Source/Local:20261116T100000')
 
+test('extended source coverage must be finite and cannot change source identities', async () => {
+  await expect(parseCalendar(calendar(event()), { ...options, sourceThrough: new Date(NaN) })).rejects.toBeInstanceOf(
+    CalendarParseError
+  )
+  const result = await parseCalendar(calendar(event()), {
+    ...options,
+    transformOccurrence: async (occurrence) => ({ ...occurrence, uid: 'spoofed' })
+  })
+  expect(result.occurrences).toEqual([])
+  expect(result.protectedIdentities).toContainEqual({ uid: 'one', recurrenceId: null })
+})
+
 async function rejected(text: string) {
   try {
     await parseCalendar(text, options)

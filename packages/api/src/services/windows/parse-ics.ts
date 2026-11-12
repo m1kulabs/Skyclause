@@ -4,7 +4,8 @@ import type {
   CalendarIssue,
   CalendarOccurrence,
   CalendarOptions,
-  ParsedCalendar
+  ParsedCalendar,
+  WindowKind
 } from './calendar-types'
 import { parseLocalDate, validateWindowFields } from './validation'
 
@@ -160,6 +161,9 @@ function checkOptions(options: CalendarOptions) {
   const through = options.through.getTime()
   if (!Number.isFinite(start) || !Number.isFinite(through) || through < start || through > start + 90 * DAY)
     fail('Expansion must stay within now and 90 elapsed days.', '/through')
+  const sourceThrough = (options.sourceThrough ?? options.through).getTime()
+  if (!Number.isFinite(sourceThrough) || sourceThrough < through || sourceThrough > Date.parse('9999-12-31T00:00:00Z'))
+    fail('Invalid source coverage.', '/sourceThrough')
 }
 
 /** Check balanced component boundaries; ICAL's permissive parser alone accepts missing END lines. */
@@ -546,7 +550,10 @@ export async function expandCalendar(document: CalendarDocument, options: Calend
       fail('Invalid source VTIMEZONE recurrence.')
     }
   }
-  let requestedYear = Math.max(options.now.getUTCFullYear(), options.through.getUTCFullYear())
+  let requestedYear = Math.max(
+    options.now.getUTCFullYear(),
+    (options.sourceThrough ?? options.through).getUTCFullYear()
+  )
   for (const component of components) {
     for (const property of component.getAllProperties()) {
       const raw: unknown[] = property.toJSON()
@@ -723,21 +730,27 @@ export async function expandCalendar(document: CalendarDocument, options: Calend
           throw new Error('SUMMARY must contain between 1 and 200 characters.')
         const { startsAt } = await instants(start, start, options, ensureSourceCoverage)
         const endsAt = new Date(startsAt.getTime() + (await elapsedDuration(event)))
+        const raw = { uid, recurrenceId: key, recurring, startsAt, endsAt, title: title.trim(), tz: options.projectTz }
+        const effective: CalendarOccurrence & { kind?: WindowKind } = options.transformOccurrence
+          ? await options.transformOccurrence(raw)
+          : raw
+        if (effective.uid !== uid || effective.recurrenceId !== key || effective.recurring !== recurring)
+          throw new Error('Calendar identity cannot be transformed.')
         const issues = validateWindowFields(
           {
-            starts_at: startsAt.toISOString(),
-            ends_at: endsAt.toISOString(),
-            kind: options.kind,
-            tz: options.projectTz
+            starts_at: effective.startsAt.toISOString(),
+            ends_at: effective.endsAt.toISOString(),
+            kind: effective.kind ?? options.kind,
+            tz: effective.tz
           },
-          startsAt
+          effective.startsAt
         )
         if (issues.length) throw new Error(issues.map((issue) => issue.detail).join('; '))
-        if (startsAt < options.now || startsAt > options.through) {
+        if (effective.startsAt < options.now || effective.startsAt > options.through) {
           protect(uid, key)
           return
         }
-        local.push({ uid, recurrenceId: key, recurring, startsAt, endsAt, title: title.trim(), tz: options.projectTz })
+        local.push(effective)
         if (result.occurrences.length + local.length > MAX_OCCURRENCES)
           fail('Calendar exceeds 10,000 occurrences.', pointer)
       }
@@ -776,7 +789,7 @@ export async function expandCalendar(document: CalendarDocument, options: Calend
           ) {
             await add(master, key, details.startDate, master.isRecurring(), masters[0]!.pointer)
           }
-          if (startsAt > options.through) break
+          if (startsAt > (options.sourceThrough ?? options.through)) break
         }
       }
       for (const [key, exception] of exceptions) {

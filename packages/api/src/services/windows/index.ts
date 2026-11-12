@@ -117,3 +117,4 @@ export async function createWindow(
   return windowView(row, [])
 }
 export { fetchCalendar } from './fetch-ics'
+export { planCalendarDiff } from './calendar-diff'

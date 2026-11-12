@@ -1,11 +1,34 @@
 import { type Page, type Principal } from '@skyclause/contracts'
 import { listIcsFeeds as route } from '@skyclause/contracts/api/v1/ics-feeds'
 import { recordAudit, withTenant, type Tx } from '@skyclause/db'
-import { makeIcsFeed, makeOrganization, makeProject } from '@skyclause/db/test/factories/index'
+import { makeIcsFeed, makeOrganization, makeProject, makeWindow } from '@skyclause/db/test/factories/index'
 import { beforeAll, describe, expect, test } from 'vitest'
+import { randomUUID } from 'node:crypto'
+import { eq } from 'drizzle-orm'
+import { claimDueIcsFeeds, domainEvent, icsFeed, window, windowSeries } from '@skyclause/db'
+import {
+  applyCalendar,
+  MissingCalendarDocumentError,
+  recordCalendarFailure
+} from '../src/services/windows/apply-calendar'
+import { UnsafeUrlError } from '@skyclause/config/net'
 import type { IcsFeedView } from '../src/services/ics-feeds'
 import { encodeCursor } from '../src/pagination'
-import { apiRequest, asApiKey, asSession, createTestApi, crossOrgCase, testCan, testDeps, testOrg } from './harness'
+import {
+  apiRequest,
+  asApiKey,
+  asOAuth,
+  asSession,
+  asShareLink,
+  createTestApi,
+  crossOrgCase,
+  testCan,
+  testDeps,
+  testOrg
+} from './harness'
+const { can: canonicalCan } = (await import(new URL('../../auth/src/can.ts', import.meta.url).href)) as {
+  can: import('@skyclause/contracts').Can
+}
 
 const ORG = 'ics-feeds-home'
 const OTHER = 'ics-feeds-other'
@@ -68,7 +91,7 @@ describe('listIcsFeeds', () => {
     const member = asSession({ org: ORG, role: 'editor' })
     const response = await request(p.id, {}, member)
     expect(response.status).toBe(200)
-    expect(((await response.json()) as Page<IcsFeedView>).data).toEqual([
+    expect(((await response.json()) as Page<IcsFeedView>).data).toMatchObject([
       { id: oldest.id, project_id: p.id, url: 'https://calendar.example.com/a.ics' },
       { id: middle.id, project_id: p.id, url: null, filename: 'middle.ics' },
       { id: newest.id, project_id: p.id, url: null, filename: 'late.ics' }
@@ -116,6 +139,10 @@ describe('listIcsFeeds', () => {
     expect((await request(p.id, {}, viewer, denied)).status).toBe(403)
     expect((await request(p.id, {}, asApiKey({ org: ORG, role: 'viewer', scopes: [] }))).status).toBe(403)
   })
+  test('list rejects unknown query fields', async () => {
+    const p = await project()
+    expect((await request(p.id, { org_id: 'spoof' })).status).toBe(422)
+  })
   test("another organisation's project is 404", async () => {
     const foreign = await withTenant(
       { orgId: testOrg(OTHER).id, principal: { ...viewer, orgId: testOrg(OTHER).id } },
@@ -123,4 +150,646 @@ describe('listIcsFeeds', () => {
     )
     await crossOrgCase('listIcsFeeds', { app: v1, as: viewer, org: ORG, params: { id: foreign.id } }).run()
   })
+})
+
+test('URL registration is pending, creates no windows, performs no HTTP and replays the original response', async () => {
+  const p = await project()
+  let requests = 0
+  const api = createTestApi({
+    deps: testDeps({
+      withTenant,
+      recordAudit,
+      now: () => now,
+      can: testCan,
+      calendarTransport: {
+        assertPublicUrl: async (url) => ({ url: new URL(url), addresses: ['192.0.2.1'] }),
+        safeFetch: async () => {
+          requests++
+          throw new Error('HTTP must not run during registration')
+        }
+      }
+    })
+  }).v1
+  const key = randomUUID()
+  const send = () =>
+    apiRequest(api, {
+      as: asSession({ org: ORG, role: 'editor' }),
+      org: ORG,
+      method: 'POST',
+      path: `/v1/projects/${p.id}/ics-feeds`,
+      body: { url: 'https://calendar.example.org/private?token=secret' },
+      idempotencyKey: key
+    })
+  const first = await send()
+  expect(first.status).toBe(201)
+  const value = await first.json()
+  expect(value).toMatchObject({
+    project_id: p.id,
+    status: 'pending',
+    kind: 'class',
+    refreshed_at: null,
+    last_attempt_at: null
+  })
+  const replay = await send()
+  expect(replay.status).toBe(201)
+  expect(await replay.json()).toEqual(value)
+  expect(requests).toBe(0)
+  const feeds = await tenant((tx) => tx.select().from(icsFeed).where(eq(icsFeed.projectId, p.id)))
+  expect(feeds).toHaveLength(1)
+  expect(feeds[0]).toMatchObject({ document: null, refreshedAt: null, lastAttemptAt: null, nextRefreshAt: now })
+  expect(await tenant((tx) => tx.select().from(window).where(eq(window.projectId, p.id)))).toHaveLength(0)
+})
+
+test('file import applies its occurrences before returning ready without HTTP', async () => {
+  const p = await project()
+  const api = createTestApi({
+    deps: testDeps({
+      withTenant,
+      recordAudit,
+      now: () => now,
+      can: testCan,
+      calendarTransport: {
+        assertPublicUrl: async () => {
+          throw new Error('unexpected URL preflight')
+        },
+        safeFetch: async () => {
+          throw new Error('unexpected HTTP')
+        }
+      }
+    })
+  }).v1
+  const response = await apiRequest(api, {
+    as: asSession({ org: ORG, role: 'editor' }),
+    org: ORG,
+    method: 'POST',
+    path: `/v1/projects/${p.id}/ics-feeds`,
+    idempotencyKey: randomUUID(),
+    body: {
+      file: {
+        name: 'class.ics',
+        content: [
+          'BEGIN:VCALENDAR',
+          'VERSION:2.0',
+          'BEGIN:VEVENT',
+          'UID:CaseSensitive',
+          'DTSTART:20261114T100000Z',
+          'DTEND:20261114T110000Z',
+          'SUMMARY:Lecture',
+          'END:VEVENT',
+          'END:VCALENDAR',
+          ''
+        ].join('\r\n')
+      }
+    }
+  })
+  expect(response.status).toBe(201)
+  const value = await response.json()
+  expect(value).toMatchObject({ status: 'ready', filename: 'class.ics', kind: 'class' })
+  const [storedFeed] = await tenant((tx) => tx.select().from(icsFeed).where(eq(icsFeed.projectId, p.id)))
+  expect(storedFeed?.nextRefreshAt).toEqual(new Date('2026-11-12T16:00:00Z'))
+  const rows = await tenant((tx) => tx.select().from(window).where(eq(window.projectId, p.id)))
+  expect(rows).toHaveLength(1)
+  expect(rows[0]).toMatchObject({
+    icsUid: 'CaseSensitive',
+    title: 'Lecture',
+    startsAt: new Date('2026-11-14T10:00:00Z')
+  })
+})
+
+test('file extension is due at the next local date across a DST change', async () => {
+  const p = await tenant((tx) => makeProject(tx, { timeZone: 'America/New_York' }))
+  const at = new Date('2026-03-08T04:30:00Z')
+  const api = createTestApi({ deps: testDeps({ withTenant, recordAudit, now: () => at, can: testCan }) }).v1
+  const content = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'BEGIN:VEVENT',
+    'UID:dst',
+    'DTSTART:20260309T100000Z',
+    'DTEND:20260309T110000Z',
+    'SUMMARY:Lecture',
+    'END:VEVENT',
+    'END:VCALENDAR',
+    ''
+  ].join('\r\n')
+  const response = await apiRequest(api, {
+    as: asSession({ org: ORG, role: 'editor' }),
+    org: ORG,
+    method: 'POST',
+    path: `/v1/projects/${p.id}/ics-feeds`,
+    idempotencyKey: randomUUID(),
+    body: { file: { name: 'dst.ics', content } }
+  })
+  expect(response.status).toBe(201)
+  const [feed] = await tenant((tx) => tx.select().from(icsFeed).where(eq(icsFeed.projectId, p.id)))
+  expect(feed?.nextRefreshAt).toEqual(new Date('2026-03-08T05:00:00Z'))
+})
+
+test('a due file claim extends from the retained document without HTTP and schedules the next local day', async () => {
+  const p = await project()
+  const content = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'BEGIN:VEVENT',
+    'UID:file',
+    'DTSTART:20261114T100000Z',
+    'DTEND:20261114T110000Z',
+    'SUMMARY:Lecture',
+    'END:VEVENT',
+    'END:VCALENDAR',
+    ''
+  ].join('\r\n')
+  const response = await apiRequest(v1, {
+    as: asSession({ org: ORG, role: 'editor' }),
+    org: ORG,
+    method: 'POST',
+    path: `/v1/projects/${p.id}/ics-feeds`,
+    idempotencyKey: randomUUID(),
+    body: { file: { name: 'file.ics', content } }
+  })
+  expect(response.status).toBe(201)
+  const due = new Date('2026-11-12T16:00:00Z')
+  expect(await tenant((tx) => claimDueIcsFeeds(tx, { projectId: p.id, now, includeFiles: true }))).toEqual([])
+  const [claim] = await tenant((tx) => claimDueIcsFeeds(tx, { projectId: p.id, now: due, includeFiles: true }))
+  expect(claim?.url).toBeNull()
+  const result = await tenant((tx) =>
+    applyCalendar(
+      { tx, principal: viewer },
+      { feedId: claim!.feedId, claimId: claim!.claimId, now: due, result: { status: 'unchanged' } }
+    )
+  )
+  expect(result.status).toBe('applied')
+  const [stored] = await tenant((tx) => tx.select().from(icsFeed).where(eq(icsFeed.id, claim!.feedId)))
+  expect(stored).toMatchObject({ lastAttemptAt: due, nextRefreshAt: new Date('2026-11-13T16:00:00Z') })
+})
+
+test('a malformed upload rolls back its feed and creates no windows', async () => {
+  const p = await project()
+  const response = await apiRequest(v1, {
+    as: asSession({ org: ORG, role: 'editor' }),
+    org: ORG,
+    method: 'POST',
+    path: `/v1/projects/${p.id}/ics-feeds`,
+    idempotencyKey: randomUUID(),
+    body: { file: { name: 'bad.ics', content: 'not a calendar' } }
+  })
+  expect(response.status).toBe(422)
+  expect(await tenant((tx) => tx.select().from(icsFeed).where(eq(icsFeed.projectId, p.id)))).toHaveLength(0)
+  expect(await tenant((tx) => tx.select().from(window).where(eq(window.projectId, p.id)))).toHaveLength(0)
+})
+
+test('unsafe URL preflight returns a sanitized 422 and stores nothing', async () => {
+  const p = await project()
+  const response = await apiRequest(v1, {
+    as: asSession({ org: ORG, role: 'editor' }),
+    org: ORG,
+    method: 'POST',
+    path: `/v1/projects/${p.id}/ics-feeds`,
+    idempotencyKey: randomUUID(),
+    body: { url: 'https://127.0.0.1/private?token=secret' }
+  })
+  expect(response.status).toBe(422)
+  const problem = JSON.stringify(await response.json())
+  expect(problem).toContain('unsafe-url')
+  expect(problem).not.toContain('secret')
+  expect(await tenant((tx) => tx.select().from(icsFeed).where(eq(icsFeed.projectId, p.id)))).toHaveLength(0)
+})
+
+test('URL registration strips userinfo before storing the capability URL', async () => {
+  const p = await project()
+  const api = createTestApi({
+    deps: testDeps({
+      withTenant,
+      recordAudit,
+      now: () => now,
+      can: testCan,
+      calendarTransport: {
+        assertPublicUrl: async (url) => ({ url: new URL(url), addresses: ['192.0.2.1'] }),
+        safeFetch: async () => {
+          throw new Error('unexpected HTTP')
+        }
+      }
+    })
+  }).v1
+  const response = await apiRequest(api, {
+    as: asSession({ org: ORG, role: 'editor' }),
+    org: ORG,
+    method: 'POST',
+    path: `/v1/projects/${p.id}/ics-feeds`,
+    idempotencyKey: randomUUID(),
+    body: { url: 'https://user:password@calendar.example.org/private?token=secret' }
+  })
+  expect(response.status).toBe(201)
+  expect(await response.json()).toMatchObject({ url: 'https://calendar.example.org/private?token=secret' })
+  const [stored] = await tenant((tx) => tx.select().from(icsFeed).where(eq(icsFeed.projectId, p.id)))
+  expect(stored?.url).toBe('https://calendar.example.org/private?token=secret')
+})
+
+test('legacy userinfo is removed even when a declarer reads the feed', async () => {
+  const p = await project()
+  const feed = await tenant((tx) =>
+    makeIcsFeed(tx, { projectId: p.id, url: 'https://user:password@calendar.example.org/private?token=secret' })
+  )
+  const response = await apiRequest(v1, {
+    as: asSession({ org: ORG, role: 'editor' }),
+    org: ORG,
+    method: 'GET',
+    path: `/v1/ics-feeds/${feed.id}`
+  })
+  expect(response.status).toBe(200)
+  expect(await response.json()).toMatchObject({ url: 'https://calendar.example.org/private?token=secret' })
+})
+
+test('URL registration replay rechecks the OAuth project scope', async () => {
+  const p = await project()
+  const api = createTestApi({
+    deps: testDeps({
+      withTenant,
+      recordAudit,
+      now: () => now,
+      can: canonicalCan,
+      calendarTransport: {
+        assertPublicUrl: async (url) => ({ url: new URL(url), addresses: ['192.0.2.1'] }),
+        safeFetch: async () => {
+          throw new Error('unexpected HTTP')
+        }
+      }
+    })
+  }).v1
+  const grant = asOAuth({ org: ORG, role: 'editor', scopes: ['draft'], projectIds: [p.id] })
+  if (grant.kind !== 'oauth') throw new Error('OAuth fixture required')
+  const key = randomUUID()
+  const send = (as: Principal) =>
+    apiRequest(api, {
+      as,
+      org: ORG,
+      method: 'POST',
+      path: `/v1/projects/${p.id}/ics-feeds`,
+      idempotencyKey: key,
+      body: { url: 'https://calendar.example.org/private?token=secret' }
+    })
+  expect((await send(grant)).status).toBe(201)
+  const replay = await send({ ...grant, projectIds: [] })
+  expect(replay.status).toBe(404)
+  expect(JSON.stringify(await replay.json())).not.toContain('token=secret')
+})
+
+test('get exposes status but redacts identifiers and diagnostic detail to a viewer', async () => {
+  const p = await project()
+  const feed = await tenant((tx) =>
+    makeIcsFeed(tx, {
+      projectId: p.id,
+      url: 'https://calendar.example.org/?secret=value',
+      lastAttemptAt: now,
+      lastError: JSON.stringify({ version: 1, code: 'parse-failed' }),
+      skipped: [
+        { uid: 'SecretUID', recurrenceId: 'SecretRecurrence', pointer: '/vevents/0', detail: 'Sensitive detail' }
+      ]
+    })
+  )
+  const response = await apiRequest(v1, { as: viewer, org: ORG, method: 'GET', path: `/v1/ics-feeds/${feed.id}` })
+  expect(response.status).toBe(200)
+  const value = await response.json()
+  expect(value).toMatchObject({
+    status: 'error',
+    url: null,
+    last_attempt_at: now.toISOString(),
+    last_error: { code: 'parse-failed' }
+  })
+  const json = JSON.stringify(value)
+  for (const secret of ['secret=value', 'SecretUID', 'SecretRecurrence', 'Sensitive detail'])
+    expect(json).not.toContain(secret)
+})
+
+test('a project share reviewer can read status without source credentials', async () => {
+  const p = await project()
+  const feed = await tenant((tx) =>
+    makeIcsFeed(tx, { projectId: p.id, url: 'https://calendar.example.org/?secret=value' })
+  )
+  const response = await apiRequest(v1, {
+    as: asShareLink({ org: ORG, projectId: p.id, access: 'reviewer' }),
+    org: ORG,
+    method: 'GET',
+    path: `/v1/ics-feeds/${feed.id}`
+  })
+  expect(response.status).toBe(200)
+  expect(await response.json()).toMatchObject({ status: 'pending', url: null })
+})
+
+test('removed feeds stay retrievable but leave the active list', async () => {
+  const p = await project()
+  const feed = await tenant((tx) => makeIcsFeed(tx, { projectId: p.id, deletedAt: now }))
+  expect((await body(p.id)).data).toEqual([])
+  const response = await apiRequest(v1, { as: viewer, org: ORG, method: 'GET', path: `/v1/ics-feeds/${feed.id}` })
+  expect(response.status).toBe(200)
+  expect(await response.json()).toMatchObject({ status: 'removed', deleted_at: now.toISOString() })
+})
+
+test('get and delete hide feeds in another organisation', async () => {
+  const foreign = await withTenant(
+    { orgId: testOrg(OTHER).id, principal: { ...viewer, orgId: testOrg(OTHER).id } },
+    async (tx) => {
+      const p = await makeProject(tx)
+      return makeIcsFeed(tx, { projectId: p.id })
+    }
+  )
+  for (const method of ['GET', 'DELETE'] as const) {
+    const response = await apiRequest(v1, {
+      as: asSession({ org: ORG, role: 'editor' }),
+      org: ORG,
+      method,
+      path: `/v1/ics-feeds/${foreign.id}`
+    })
+    expect(response.status).toBe(404)
+  }
+})
+
+test('viewer cannot register or delete a feed', async () => {
+  const p = await project()
+  const feed = await tenant((tx) => makeIcsFeed(tx, { projectId: p.id }))
+  const create = await apiRequest(v1, {
+    as: viewer,
+    org: ORG,
+    method: 'POST',
+    path: `/v1/projects/${p.id}/ics-feeds`,
+    body: { url: 'https://calendar.example.org/calendar.ics' },
+    idempotencyKey: randomUUID()
+  })
+  const remove = await apiRequest(v1, { as: viewer, org: ORG, method: 'DELETE', path: `/v1/ics-feeds/${feed.id}` })
+  expect([create.status, remove.status]).toEqual([403, 403])
+})
+
+test('item operations reject undeclared query fields', async () => {
+  const p = await project()
+  const feed = await tenant((tx) => makeIcsFeed(tx, { projectId: p.id }))
+  for (const method of ['GET', 'DELETE'] as const) {
+    const response = await apiRequest(v1, {
+      as: asSession({ org: ORG, role: 'editor' }),
+      org: ORG,
+      method,
+      path: `/v1/ics-feeds/${feed.id}`,
+      query: { org_id: 'spoof' }
+    })
+    expect(response.status).toBe(422)
+  }
+})
+
+test('delete fences refresh and cancels upcoming managed windows without touching overrides or history', async () => {
+  const p = await project()
+  const { feed, upcoming, overridden, started } = await tenant(async (tx) => {
+    const feed = await makeIcsFeed(tx, { projectId: p.id, refreshClaim: randomUUID() })
+    const upcoming = await makeWindow(tx, {
+      projectId: p.id,
+      icsFeedId: feed.id,
+      icsUid: 'a',
+      icsRecurrenceId: '',
+      startsAt: new Date('2026-11-14T10:00:00Z'),
+      endsAt: new Date('2026-11-14T11:00:00Z')
+    })
+    const overridden = await makeWindow(tx, {
+      projectId: p.id,
+      icsFeedId: feed.id,
+      icsUid: 'b',
+      icsRecurrenceId: '',
+      localOverride: true,
+      startsAt: new Date('2026-11-14T10:00:00Z'),
+      endsAt: new Date('2026-11-14T11:00:00Z')
+    })
+    const started = await makeWindow(tx, {
+      projectId: p.id,
+      icsFeedId: feed.id,
+      icsUid: 'c',
+      icsRecurrenceId: '',
+      startsAt: new Date('2026-11-11T10:00:00Z'),
+      endsAt: new Date('2026-11-11T11:00:00Z')
+    })
+    return { feed, upcoming, overridden, started }
+  })
+  const response = await apiRequest(v1, {
+    as: asSession({ org: ORG, role: 'editor' }),
+    org: ORG,
+    method: 'DELETE',
+    path: `/v1/ics-feeds/${feed.id}`
+  })
+  expect(response.status).toBe(200)
+  expect(await response.json()).toMatchObject({ status: 'removed', deleted_at: now.toISOString() })
+  const rows = await tenant((tx) => tx.select().from(window).where(eq(window.projectId, p.id)))
+  expect(rows.find((row) => row.id === upcoming.id)).toMatchObject({ cancelledAt: now, cancellationOrigin: 'source' })
+  expect(rows.find((row) => row.id === overridden.id)?.cancelledAt).toBeNull()
+  expect(rows.find((row) => row.id === started.id)?.cancelledAt).toBeNull()
+  const [stored] = await tenant((tx) => tx.select().from(icsFeed).where(eq(icsFeed.id, feed.id)))
+  expect(stored?.refreshClaim).toBeNull()
+})
+
+test('refresh retains a UID window on end-time edit and identical refresh emits no event', async () => {
+  const p = await project()
+  const feed = await tenant((tx) =>
+    makeIcsFeed(tx, { projectId: p.id, provenance: { version: 1, declaredBy: 'account', via: 'app' } })
+  )
+  const doc = (end: string) =>
+    [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'BEGIN:VEVENT',
+      'UID:CaseUID',
+      'DTSTART:20261114T100000Z',
+      `DTEND:${end}`,
+      'SUMMARY:Lecture',
+      'END:VEVENT',
+      'END:VCALENDAR',
+      ''
+    ].join('\r\n')
+  const apply = (text: string) =>
+    tenant((tx) =>
+      applyCalendar(
+        { tx, principal: viewer },
+        { feedId: feed.id, now, result: { status: 'changed', text, etag: null, lastModified: null } }
+      )
+    )
+  expect((await apply(doc('20261114T110000Z'))).status).toBe('applied')
+  const [first] = await tenant((tx) => tx.select().from(window).where(eq(window.icsFeedId, feed.id)))
+  expect((await apply(doc('20261114T120000Z'))).status).toBe('applied')
+  const [edited] = await tenant((tx) => tx.select().from(window).where(eq(window.icsFeedId, feed.id)))
+  expect(edited).toMatchObject({ id: first!.id, endsAt: new Date('2026-11-14T12:00:00Z') })
+  const before = await tenant((tx) => tx.select().from(domainEvent).where(eq(domainEvent.projectId, p.id)))
+  expect((await apply(doc('20261114T120000Z'))).status).toBe('applied')
+  const after = await tenant((tx) => tx.select().from(domainEvent).where(eq(domainEvent.projectId, p.id)))
+  expect(after).toHaveLength(before.length)
+})
+
+test('source disappearance and restoration preserve identity and emit one final restored event', async () => {
+  const p = await project()
+  const feed = await tenant((tx) =>
+    makeIcsFeed(tx, { projectId: p.id, provenance: { version: 1, declaredBy: 'account', via: 'app' } })
+  )
+  const event = (uid: string, end: string) =>
+    ['BEGIN:VEVENT', `UID:${uid}`, 'DTSTART:20261114T100000Z', `DTEND:${end}`, 'SUMMARY:Lecture', 'END:VEVENT'].join(
+      '\r\n'
+    )
+  const doc = (...events: string[]) => ['BEGIN:VCALENDAR', 'VERSION:2.0', ...events, 'END:VCALENDAR', ''].join('\r\n')
+  const a = event('A', '20261114T110000Z')
+  const b = event('B', '20261114T110000Z')
+  const apply = (text: string) =>
+    tenant((tx) =>
+      applyCalendar(
+        { tx, principal: viewer },
+        { feedId: feed.id, now, result: { status: 'changed', text, etag: null, lastModified: null } }
+      )
+    )
+  await apply(doc(a, b))
+  const initial = await tenant((tx) => tx.select().from(window).where(eq(window.icsFeedId, feed.id)))
+  const original = initial.find((row) => row.icsUid === 'A')!
+  const createdEvents = await tenant((tx) => tx.select().from(domainEvent).where(eq(domainEvent.projectId, p.id)))
+  const ids = initial.map((row) => row.id).sort()
+  const batch = createdEvents.map(
+    (entry) => entry.data as { window_id: string; calendar: { revision: string; window_ids?: string[] } }
+  )
+  expect(batch).toHaveLength(2)
+  expect(batch.find((entry) => entry.window_id === ids[0])?.calendar.window_ids).toEqual(ids)
+  expect(batch.find((entry) => entry.window_id === ids[1])?.calendar.window_ids).toBeUndefined()
+  expect(new Set(batch.map((entry) => entry.calendar.revision)).size).toBe(1)
+  expect(JSON.stringify(createdEvents)).not.toContain('Lecture')
+  await apply(doc(b))
+  const [cancelled] = await tenant((tx) => tx.select().from(window).where(eq(window.id, original.id)))
+  expect(cancelled).toMatchObject({ cancellationOrigin: 'source', cancelledAt: now })
+  const prior = await tenant((tx) => tx.select().from(domainEvent).where(eq(domainEvent.projectId, p.id)))
+  await apply(doc(event('A', '20261114T120000Z'), b))
+  const [restored] = await tenant((tx) => tx.select().from(window).where(eq(window.id, original.id)))
+  expect(restored).toMatchObject({ id: original.id, cancelledAt: null, endsAt: new Date('2026-11-14T12:00:00Z') })
+  const after = await tenant((tx) => tx.select().from(domainEvent).where(eq(domainEvent.projectId, p.id)))
+  const emitted = after.filter((event) => !prior.some((old) => old.id === event.id))
+  expect(emitted).toHaveLength(1)
+  expect(emitted[0]).toMatchObject({
+    type: 'window.updated',
+    data: { window_id: original.id, times_changed: true, calendar: { window_ids: [original.id] } }
+  })
+})
+
+test('EXDATE cancels and restores an occurrence without stopping its source series', async () => {
+  const p = await project()
+  const feed = await tenant((tx) =>
+    makeIcsFeed(tx, { projectId: p.id, provenance: { version: 1, declaredBy: 'account', via: 'app' } })
+  )
+  const doc = (exclude: boolean) =>
+    [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'BEGIN:VEVENT',
+      'UID:weekly',
+      'DTSTART:20261116T090000Z',
+      'DTEND:20261116T100000Z',
+      'SUMMARY:Lecture',
+      'RRULE:FREQ=WEEKLY;COUNT=2',
+      ...(exclude ? ['EXDATE:20261123T090000Z'] : []),
+      'END:VEVENT',
+      'END:VCALENDAR',
+      ''
+    ].join('\r\n')
+  const apply = (text: string) =>
+    tenant((tx) =>
+      applyCalendar(
+        { tx, principal: viewer },
+        { feedId: feed.id, now, result: { status: 'changed', text, etag: null, lastModified: null } }
+      )
+    )
+  await apply(doc(false))
+  const initial = await tenant((tx) => tx.select().from(window).where(eq(window.icsFeedId, feed.id)))
+  expect(initial).toHaveLength(2)
+  const excluded = initial.find((row) => row.icsRecurrenceId === '2026-11-23T09:00:00Z')!
+  await apply(doc(true))
+  const [cancelled] = await tenant((tx) => tx.select().from(window).where(eq(window.id, excluded.id)))
+  expect(cancelled).toMatchObject({ cancelledAt: now, cancellationOrigin: 'source' })
+  const [series] = await tenant((tx) => tx.select().from(windowSeries).where(eq(windowSeries.icsFeedId, feed.id)))
+  expect(series?.cancelledAt).toBeNull()
+  await apply(doc(false))
+  const [restored] = await tenant((tx) => tx.select().from(window).where(eq(window.id, excluded.id)))
+  expect(restored?.cancelledAt).toBeNull()
+})
+
+test('a skipped source UID remains protected instead of being cancelled', async () => {
+  const p = await project()
+  const feed = await tenant((tx) =>
+    makeIcsFeed(tx, { projectId: p.id, provenance: { version: 1, declaredBy: 'account', via: 'app' } })
+  )
+  const doc = (summary: string) =>
+    [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'BEGIN:VEVENT',
+      'UID:ProtectedUID',
+      'DTSTART:20261114T100000Z',
+      'DTEND:20261114T110000Z',
+      ...(summary ? [`SUMMARY:${summary}`] : []),
+      'END:VEVENT',
+      'END:VCALENDAR',
+      ''
+    ].join('\r\n')
+  const apply = (text: string) =>
+    tenant((tx) =>
+      applyCalendar(
+        { tx, principal: viewer },
+        { feedId: feed.id, now, result: { status: 'changed', text, etag: null, lastModified: null } }
+      )
+    )
+  await apply(doc('Lecture'))
+  const [before] = await tenant((tx) => tx.select().from(window).where(eq(window.icsFeedId, feed.id)))
+  await apply(doc(''))
+  const [after] = await tenant((tx) => tx.select().from(window).where(eq(window.id, before!.id)))
+  expect(after).toMatchObject({ id: before!.id, cancelledAt: null, title: 'Lecture' })
+  const [stored] = await tenant((tx) => tx.select().from(icsFeed).where(eq(icsFeed.id, feed.id)))
+  expect(stored?.skipped).toMatchObject([{ uid: 'ProtectedUID', detail: 'A calendar entry could not be imported.' }])
+})
+
+test('failure records a fixed code without losing the last successful document or validators', async () => {
+  const p = await project()
+  const claimId = randomUUID()
+  const document = { version: 1, jcal: ['vcalendar', [['version', {}, 'text', '2.0']], []] }
+  const feed = await tenant((tx) =>
+    makeIcsFeed(tx, {
+      projectId: p.id,
+      refreshClaim: claimId,
+      nextRefreshAt: new Date(now.getTime() + 3_600_000),
+      document,
+      etag: '"old"',
+      refreshedAt: now
+    })
+  )
+  const response = await tenant((tx) =>
+    recordCalendarFailure(
+      { tx, principal: viewer },
+      { feedId: feed.id, claimId, now, error: new UnsafeUrlError('https://secret.example/?token=secret') }
+    )
+  )
+  expect(response.status).toBe('applied')
+  const [stored] = await tenant((tx) => tx.select().from(icsFeed).where(eq(icsFeed.id, feed.id)))
+  expect(stored).toMatchObject({
+    document,
+    etag: '"old"',
+    refreshedAt: now,
+    lastError: JSON.stringify({ version: 1, code: 'unsafe-url' }),
+    refreshClaim: null
+  })
+  expect(stored?.lastError).not.toContain('secret')
+})
+
+test('304 without an authoritative document fails without cancelling existing windows', async () => {
+  const p = await project()
+  const feed = await tenant((tx) =>
+    makeIcsFeed(tx, { projectId: p.id, provenance: { version: 1, declaredBy: 'account', via: 'app' } })
+  )
+  const managed = await tenant((tx) =>
+    makeWindow(tx, {
+      projectId: p.id,
+      icsFeedId: feed.id,
+      icsUid: 'uid',
+      icsRecurrenceId: '',
+      startsAt: new Date('2026-11-14T10:00:00Z'),
+      endsAt: new Date('2026-11-14T11:00:00Z')
+    })
+  )
+  await expect(
+    tenant((tx) => applyCalendar({ tx, principal: viewer }, { feedId: feed.id, now, result: { status: 'unchanged' } }))
+  ).rejects.toBeInstanceOf(MissingCalendarDocumentError)
+  const [stored] = await tenant((tx) => tx.select().from(window).where(eq(window.id, managed.id)))
+  expect(stored?.cancelledAt).toBeNull()
 })

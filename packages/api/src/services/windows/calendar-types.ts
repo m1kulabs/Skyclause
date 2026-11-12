@@ -27,6 +27,9 @@ export interface CalendarOptions {
   now: Date
   through: Date
   resolveLocalSpan: ResolveLocalSpan
+  /** Iterator coverage only; now/through remain the actual effective occurrence horizon. */
+  sourceThrough?: Date
+  transformOccurrence?: (occurrence: CalendarOccurrence) => Promise<CalendarOccurrence & { kind?: WindowKind }>
 }
 export interface CalendarIssue {
   uid: string | null

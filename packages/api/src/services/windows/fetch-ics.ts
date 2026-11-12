@@ -5,6 +5,18 @@ export type Validators = { etag: string | null; lastModified: string | null }
 export type FetchResult = { status: 'unchanged' } | ({ status: 'changed'; text: string } & Validators)
 
 export const realCalendarTransport: CalendarTransport = { assertPublicUrl, safeFetch }
+export class CalendarHttpError extends Error {
+  constructor() {
+    super('Calendar request failed.')
+    this.name = 'CalendarHttpError'
+  }
+}
+export class CalendarDecodeError extends Error {
+  constructor() {
+    super('Calendar is not valid UTF-8.')
+    this.name = 'CalendarDecodeError'
+  }
+}
 
 /** Fetches a bounded calendar. A 304 must be checked against the stored document by the caller. */
 export async function fetchCalendar(
@@ -25,10 +37,16 @@ export async function fetchCalendar(
     maxBytes: 5 * 1024 * 1024
   })
   if (response.status === 304) return { status: 'unchanged' }
-  if (response.status !== 200) throw new Error('Calendar request failed.')
+  if (response.status !== 200) throw new CalendarHttpError()
+  let text: string
+  try {
+    text = new TextDecoder('utf-8', { fatal: true }).decode(await response.arrayBuffer())
+  } catch {
+    throw new CalendarDecodeError()
+  }
   return {
     status: 'changed',
-    text: await response.text(),
+    text,
     etag: response.headers.get('etag'),
     lastModified: response.headers.get('last-modified')
   }

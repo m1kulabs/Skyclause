@@ -27464,13 +27464,111 @@
                           },
                           "filename": {
                             "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "class",
+                              "event",
+                              "commute_wave"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "ready",
+                              "error",
+                              "removed"
+                            ]
+                          },
+                          "refreshed_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "last_attempt_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "deleted_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "last_error": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "code": {
+                                "type": "string"
+                              },
+                              "detail": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "detail"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "skipped": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "uid": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "recurrence_id": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "pointer": {
+                                  "type": "string"
+                                },
+                                "detail": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "uid",
+                                "recurrence_id",
+                                "pointer",
+                                "detail"
+                              ],
+                              "additionalProperties": false
+                            }
                           }
                         },
                         "required": [
                           "id",
                           "project_id",
-                          "url"
-                        ]
+                          "url",
+                          "kind",
+                          "status",
+                          "refreshed_at",
+                          "last_attempt_at",
+                          "deleted_at",
+                          "last_error",
+                          "skipped"
+                        ],
+                        "additionalProperties": false
                       }
                     },
                     "next_cursor": {
@@ -27776,7 +27874,7 @@
         },
         "responses": {
           "201": {
-            "description": "An imported ICS calendar",
+            "description": "A registered or imported ICS calendar",
             "content": {
               "application/json": {
                 "schema": {
@@ -27797,13 +27895,111 @@
                     },
                     "filename": {
                       "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "class",
+                        "event",
+                        "commute_wave"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "ready",
+                        "error",
+                        "removed"
+                      ]
+                    },
+                    "refreshed_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "last_attempt_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "deleted_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "last_error": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "detail": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "detail"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "skipped": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "uid": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "recurrence_id": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "pointer": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "uid",
+                          "recurrence_id",
+                          "pointer",
+                          "detail"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
                     "id",
                     "project_id",
-                    "url"
-                  ]
+                    "url",
+                    "kind",
+                    "status",
+                    "refreshed_at",
+                    "last_attempt_at",
+                    "deleted_at",
+                    "last_error",
+                    "skipped"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }
@@ -28022,6 +28218,345 @@
       }
     },
     "/v1/ics-feeds/{id}": {
+      "get": {
+        "operationId": "getIcsFeed",
+        "tags": [
+          "ics-feeds"
+        ],
+        "x-skyclause": {
+          "owner": "b-windows-api",
+          "statement": "project.view",
+          "idempotent": false
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "Skyclause-Organization",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "An ICS calendar",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "project_id": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "uri"
+                    },
+                    "filename": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "class",
+                        "event",
+                        "commute_wave"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "ready",
+                        "error",
+                        "removed"
+                      ]
+                    },
+                    "refreshed_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "last_attempt_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "deleted_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "last_error": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "detail": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "detail"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "skipped": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "uid": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "recurrence_id": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "pointer": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "uid",
+                          "recurrence_id",
+                          "pointer",
+                          "detail"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "project_id",
+                    "url",
+                    "kind",
+                    "status",
+                    "refreshed_at",
+                    "last_attempt_at",
+                    "deleted_at",
+                    "last_error",
+                    "skipped"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found in this organisation",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "instance": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
       "delete": {
         "operationId": "deleteIcsFeed",
         "tags": [
@@ -28075,13 +28610,111 @@
                     },
                     "filename": {
                       "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "class",
+                        "event",
+                        "commute_wave"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "ready",
+                        "error",
+                        "removed"
+                      ]
+                    },
+                    "refreshed_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "last_attempt_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "deleted_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "last_error": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "detail": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "detail"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "skipped": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "uid": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "recurrence_id": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "pointer": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "uid",
+                          "recurrence_id",
+                          "pointer",
+                          "detail"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
                     "id",
                     "project_id",
-                    "url"
-                  ]
+                    "url",
+                    "kind",
+                    "status",
+                    "refreshed_at",
+                    "last_attempt_at",
+                    "deleted_at",
+                    "last_error",
+                    "skipped"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }

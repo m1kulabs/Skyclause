@@ -66,3 +66,9 @@ test('ICS import accepts a window kind and defaults it to class', () => {
   expect(schema.safeParse({ url: 'https://calendar.example.org/calendar.ics', kind: 'class' }).success).toBe(true)
   expect(schema.safeParse({ url: 'https://calendar.example.org/calendar.ics', kind: 'bogus' }).success).toBe(false)
 })
+
+test('ICS file limit counts UTF-8 bytes rather than JavaScript characters', () => {
+  const schema = createIcsFeed.request.body.content['application/json'].schema
+  expect(schema.safeParse({ file: { name: 'large.ics', content: 'é'.repeat(3 * 1024 * 1024) } }).success).toBe(false)
+  expect(schema.safeParse({ file: { name: 'invalid.ics', content: '\ud800' } }).success).toBe(false)
+})
