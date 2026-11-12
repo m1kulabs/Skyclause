@@ -15,7 +15,7 @@
     "@better-auth/cimd": "1.7.17",
     "@better-auth/mcp": "1.7.17",
     "@better-auth/passkey": "1.7.17",
-    "@simplewebauthn/server": "13.3.3",
+    "@simplewebauthn/server": "14.1.0",
     "@skyclause/config": "workspace:*",
     "@skyclause/contracts": "workspace:*",
     "@skyclause/db": "workspace:*",
