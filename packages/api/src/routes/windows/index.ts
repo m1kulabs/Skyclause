@@ -1,6 +1,7 @@
 import type { Handlers } from '..'
 import { cancelWindow, createWindow, listWindows, updateWindow } from '../../services/windows'
 import { inTenant } from '../../tenancy'
+import { authorizeWindowProject } from '../../middleware/window-project'
 
 // #139, #79 §4 b-windows-api: list and declare a single window. Mount-all has checked the statement (`project.view`;
 // `window.declare` and the Idempotency-Key for the POST).
@@ -15,6 +16,7 @@ export const windowHandlers: Handlers = {
     }
   },
   createWindow: {
+    middleware: [authorizeWindowProject],
     handler: async (c) => {
       const { id: projectId } = c.req.valid('param')
       const body = c.req.valid('json')

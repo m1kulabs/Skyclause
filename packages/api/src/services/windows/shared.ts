@@ -59,7 +59,12 @@ const denied = (statement: Statement) =>
  * The statement check mount-all ran, again with the project (a grant or link may cover only some), then the project
  * itself in the caller's tenant: another organisation's, or an unknown, project is 404 (NFR-10).
  */
-export async function openProject(ctx: ServiceContext, projectId: string, statement: Statement, access: WindowsAccess) {
+export async function openProject(
+  ctx: ServiceContext,
+  projectId: string,
+  statement: Statement,
+  access: Pick<WindowsAccess, 'can'>
+) {
   const { principal, tx } = ctx
   assertWindowsStatement(ctx, statement, access)
   if (statement === 'window.declare') declarer(principal)
