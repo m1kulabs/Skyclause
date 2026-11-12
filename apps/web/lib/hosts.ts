@@ -286,6 +286,9 @@ export function organisationToCheck(request: NextRequest, config: HostConfig): s
   return segments[0]!
 }
 
+/** Route groups the hosts map whose pages are not built yet (DESIGN: no docs site and no embed frame). */
+const UNBUILT_GROUPS: ReadonlySet<string> = new Set(['docs', '(embed)'])
+
 /** A redirect no browser or shared cache keeps: where it goes can change with the session or the hosts. */
 function redirectTo(url: URL): NextResponse {
   const response = NextResponse.redirect(url, 307)
@@ -314,6 +317,9 @@ export function proxyResponse(
   const { pathname, search } = request.nextUrl
   const host = request.headers.get('host') ?? request.nextUrl.host
   const target = routeRequest({ ...config, host, pathname })
+  // No docs site or embed frame is built yet: rewritten into /docs/ or /embed/, a path there fell to the app's
+  // /[org]/[project] and its sign-in, which those hosts do not serve, and drew a blank page. It is the not-found page.
+  if (target && UNBUILT_GROUPS.has(target.group)) return NextResponse.rewrite(new URL('/_not-found', request.url), init)
   if (!target) {
     const elsewhere = pageElsewhere({ ...config, host, pathname, search, method: request.method })
     // Next's router fetches (and prefetches) a page's payload from its own origin, where a redirect to the other host
