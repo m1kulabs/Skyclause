@@ -22,25 +22,19 @@ const GROUND = '#171719'
 const INK = '#ffffff'
 const MUTED = '#bdbdc0'
 
-// Static woff weights: Satori reads neither woff2 nor variable fonts. Loaded once, as the route module loads.
-const fonts = [
-  {
-    name: 'Work Sans',
-    weight: 400 as const,
-    style: 'normal' as const,
-    data: await readFile(
-      new URL('../../node_modules/@fontsource/work-sans/files/work-sans-latin-400-normal.woff', import.meta.url)
-    )
-  },
-  {
-    name: 'Work Sans',
-    weight: 500 as const,
-    style: 'normal' as const,
-    data: await readFile(
-      new URL('../../node_modules/@fontsource/work-sans/files/work-sans-latin-500-normal.woff', import.meta.url)
-    )
-  }
-]
+// Roundo's static woff weights (fonts/roundo/SOURCE.txt): Satori reads neither woff2 nor variable fonts. Literal URLs,
+// so the build traces each file; loaded once, as the route module loads.
+const face = async (weight: 400 | 500 | 600, url: URL) => ({
+  name: 'Roundo',
+  weight,
+  style: 'normal' as const,
+  data: await readFile(url)
+})
+const fonts = await Promise.all([
+  face(400, new URL('../../fonts/roundo/Roundo-Regular.woff', import.meta.url)),
+  face(500, new URL('../../fonts/roundo/Roundo-Medium.woff', import.meta.url)),
+  face(600, new URL('../../fonts/roundo/Roundo-SemiBold.woff', import.meta.url))
+])
 
 const dataUri = (svg: string) => `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`
 /** A standalone SVG has no page to inherit from: set its `currentColor`, replacing any adaptive ink style. */
@@ -57,7 +51,7 @@ const unescapeXml = (text: string) =>
     .replace(/&amp;/g, '&')
 
 /**
- * `stripSvg`'s labels lifted out of its SVG, which resvg would set in a fallback face, so Satori sets them in Work Sans
+ * `stripSvg`'s labels lifted out of its SVG, which resvg would set in a fallback face, so Satori sets them in Roundo
  * at the same places; the rest of the strip stays one image.
  */
 export function splitStrip(svg: string) {
@@ -120,7 +114,7 @@ export function CardView({ card, locale = 'en' }: { card: Card; locale?: Locale 
         padding: `44px ${PAD}px 0`,
         background: GROUND,
         color: INK,
-        fontFamily: 'Work Sans',
+        fontFamily: 'Roundo',
         fontWeight: 400
       }}
     >

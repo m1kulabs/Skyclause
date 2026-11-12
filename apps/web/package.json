@@ -13,8 +13,6 @@
     "@skyclause/elements": "workspace:*",
     "@base-ui/react": "1.9.0",
     "@fontsource-variable/jetbrains-mono": "5.3.0",
-    "@fontsource-variable/work-sans": "5.3.0",
-    "@fontsource/work-sans": "5.3.0",
     "@skyclause/config": "workspace:*",
     "@skyclause/contracts": "workspace:*",
     "@skyclause/db": "workspace:*",

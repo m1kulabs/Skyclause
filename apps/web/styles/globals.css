@@ -1,4 +1,3 @@
-@import '@fontsource-variable/work-sans';
 @import '@fontsource-variable/jetbrains-mono';
 @import 'tailwindcss' source(none);
 
@@ -296,7 +295,7 @@
   --color-landing-field: var(--landing-field);
   --color-landing-field-foreground: var(--landing-field-foreground);
   --color-landing-field-muted-foreground: var(--landing-field-muted-foreground);
-  --font-sans: 'Work Sans Variable', 'Work Sans', system-ui, sans-serif;
+  --font-sans: 'Roundo', 'Roundo Fallback', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
   --font-heading: var(--font-sans);
   --radius-sm: 4px;
