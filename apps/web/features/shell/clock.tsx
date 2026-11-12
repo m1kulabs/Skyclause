@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { formatTime } from '@skyclause/i18n/format'
 
 /**
@@ -10,10 +10,12 @@ import { formatTime } from '@skyclause/i18n/format'
 export function ShellClock({ now }: { now: string }) {
   const [time, setTime] = useState(now)
 
+  // Before the first paint after mounting: a clock mounted later (the phone sheet's) never shows the request's minute.
+  useLayoutEffect(() => setTime(new Date().toISOString()), [])
+
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | undefined
     const tick = () => setTime(new Date().toISOString())
-    tick()
     const timeout = setTimeout(
       () => {
         tick()
