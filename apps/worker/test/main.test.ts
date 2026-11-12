@@ -1,8 +1,11 @@
 import { spawnSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test } from 'vitest'
 
 const main = fileURLToPath(new URL('../src/main.ts', import.meta.url))
+const infra = (file: string) =>
+  readFileSync(new URL(`../../../infra/environments/production/${file}`, import.meta.url), 'utf8')
 
 function run(args: string[], env: Record<string, string>) {
   const { PATH, HOME } = process.env
@@ -19,4 +22,57 @@ test('job <name> refuses an unregistered job', () => {
   const result = run(['job', 'no-such-job'], { APP_ENV: 'dev' })
   expect(result.status).toBe(1)
   expect(result.stderr).toMatch(/unknown job no-such-job/)
+})
+
+/**
+ * The names a job gets from infra/environments/production: run.tf's `local.env` (its own block plus app_config's
+ * non-mail values, `shared_config`), the job's own `env` map and its account's secrets (secrets.tf `wanted_secrets`).
+ * Values are Terraform's literals where it has them, shaped stand-ins otherwise, and the test database's URLs.
+ */
+function terraformJobEnv(file: string) {
+  const pairs = (block: string) =>
+    [...block.matchAll(/^\s*([A-Z][A-Z0-9_]*)\s+=\s*(.+?)\s*$/gm)].map((m) => [m[1]!, m[2]!] as const)
+  const quoted = (block: string) => [...block.matchAll(/"([A-Z][A-Z0-9_]*)"/g)].map((m) => m[1]!)
+  const run = infra('run.tf'),
+    job = infra(file)
+  const mail = quoted(
+    run.match(/\n\s+sending_values\s+= (\[.*\])/)![1]! + run.match(/\n\s+receiving_values\s+= (\[.*\])/)![1]!
+  )
+  const appConfig = pairs(infra('terraform.tfvars').split('\napp_config = {')[1]!.split('\n}\n')[0]!)
+  const plain = [
+    ...appConfig.filter(([name]) => !mail.includes(name)),
+    ...pairs(run.split(/\n\s+env\s+= merge\(local\.shared_config, \{/)[1]!.split('\n  })')[0]!),
+    ...pairs(job.match(/\n\s+env\s+= merge\(local\.env, \{(.*)\}\)\n/)![1]!.replace(/,\s*/g, '\n'))
+  ]
+  const account = job.match(/\n\s+secrets\s+= \{ for name in local\.mounts\.(\w+) : name => name \}\n/)![1]!
+  const secrets = quoted(infra('secrets.tf').match(new RegExp(`\\n\\s+${account}\\s+= (\\[[^\\]]*\\])`))![1]!)
+  const value = (name: string, expression: string) => {
+    if (expression.startsWith('"')) return JSON.parse(expression) as string
+    if (name === 'APP_ENV') return 'production' // variables.tf allows no other app_env
+    if (name === 'HOST_MODE') return 'multi'
+    if (name === 'LOG_LEVEL') return 'info'
+    if (name === 'WORKER_URL' || expression.startsWith('local.origins.')) return `https://${name.toLowerCase()}.test`
+    if (name === 'WORKER_INVOKER_SA') return 'invoker@test.iam.gserviceaccount.com'
+    return `test-${name.toLowerCase().replaceAll('_', '-')}`
+  }
+  return {
+    ...Object.fromEntries(plain.map(([name, expression]) => [name, value(name, expression)])),
+    ...Object.fromEntries(secrets.map((name) => [name, process.env[name] ?? 'test-secret-'.padEnd(64, '0')]))
+  }
+}
+
+test('org-purge runs on exactly the environment org-purge.tf gives it', () => {
+  const env = terraformJobEnv('org-purge.tf')
+  // Terraform sets GCP_PROJECT, which makes the entry export telemetry to that Google project. Every profile has it
+  // optional, so the test drops it.
+  expect(env).toHaveProperty('GCP_PROJECT')
+  delete env.GCP_PROJECT
+  // No HOME (no gcloud credentials to find) and no .env file: the child gets these names and PATH, nothing else. The
+  // test database is fresh for this file, so no organisation is due and no bucket is called.
+  const result = spawnSync('bun', ['--no-env-file', main, 'job', 'org:purge'], {
+    env: { PATH: process.env.PATH, ...env },
+    encoding: 'utf8',
+    timeout: 30_000
+  })
+  expect(result.status, result.stderr).toBe(0)
 })
