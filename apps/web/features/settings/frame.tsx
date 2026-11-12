@@ -15,6 +15,11 @@ export interface SettingsFrameProps {
   project?: string
   children: ReactNode
   locale?: 'en' | 'ms'
+  /**
+   * A section that is a table (the audit log) leaves the two columns: its title and description sit above it and the
+   * panel takes the whole column under the navigation.
+   */
+  wide?: boolean
 }
 
 export function SettingsFrame({
@@ -24,7 +29,8 @@ export function SettingsFrame({
   org,
   project,
   children,
-  locale = 'en'
+  locale = 'en',
+  wide = false
 }: SettingsFrameProps) {
   const labelId = `settings-${scope}-${section}`
   // The gate admitted this page, so a session's orgId is the URL organisation's: its ID for a real session (#94,
@@ -52,7 +58,12 @@ export function SettingsFrame({
             ))}
         </ul>
       </nav>
-      <section className={styles.columns} aria-labelledby={labelId} data-settings-columns>
+      <section
+        className={styles.columns}
+        aria-labelledby={labelId}
+        data-settings-columns
+        data-wide={wide ? '' : undefined}
+      >
         <div className={styles.label} data-settings-label>
           <h2 id={labelId}>{t(`settings.sections.${scope}.${section}.title`, {}, locale)}</h2>
           <p>{t(`settings.sections.${scope}.${section}.description`, {}, locale)}</p>
