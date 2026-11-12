@@ -13,6 +13,7 @@
   "access": "Log masuk sebagai anda, dengan peranan anda dalam setiap organisasi",
   "organisations": "Organisasi",
   "no_organisations": "Anda belum menyertai mana-mana organisasi.",
+  "warning": "Sahkan hanya jika anda baru sahaja menjalankan skyclause login pada peranti ini.",
   "confirm": "Sahkan",
   "deny": "Tolak",
   "expired": "Kod ini telah tamat tempoh. Jalankan `skyclause login` sekali lagi.",

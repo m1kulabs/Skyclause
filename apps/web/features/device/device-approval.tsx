@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { InfoIcon } from 'lucide-react'
 import { Button } from '../../components/ui/button'
-import { t } from './i18n'
+import { AuthHeader, AuthMessage } from '../public-chrome/auth'
+import { t as translate, type Locale } from './i18n'
 import { normalizeDeviceCode, type CliDevice } from './model'
 
 export type DevicePageState = 'empty' | 'ready' | 'expired' | 'unknown' | 'done' | 'denied'
@@ -13,6 +15,7 @@ interface MembershipSummary {
 }
 
 interface DeviceApprovalProps {
+  locale?: Locale
   code: string
   initialState: DevicePageState
   device: CliDevice
@@ -43,7 +46,8 @@ function errorCode(error: unknown) {
     .join(' ')
 }
 
-export function DeviceApproval({ code, initialState, device, memberships }: DeviceApprovalProps) {
+export function DeviceApproval({ code, initialState, device, memberships, locale = 'en' }: DeviceApprovalProps) {
+  const t = (key: string) => translate(key, {}, locale)
   const [enteredCode, setEnteredCode] = useState(code)
   const [state, setState] = useState<DevicePageState>(initialState)
   const [verified, setVerified] = useState(false)
@@ -121,89 +125,87 @@ export function DeviceApproval({ code, initialState, device, memberships }: Devi
   const deviceName = device.name === 'Unknown device' ? t('device.unknown_device') : device.name
 
   return (
-    <main className="mx-auto w-full max-w-xl space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">{t('device.title')}</h1>
-        <p className="text-sm text-muted-foreground">{t('device.intro')}</p>
-      </header>
+    <main className="auth-page" lang={locale}>
+      <AuthHeader title={t('device.title')} lead={t('device.intro')} locale={locale} />
 
-      <form action="/device" method="get" className="flex flex-col gap-3">
-        <label htmlFor="device-code" className="text-sm font-medium">
-          {t('device.code')}
-        </label>
-        <input
-          id="device-code"
-          name="user_code"
-          type="text"
-          autoComplete="one-time-code"
-          autoCapitalize="characters"
-          spellCheck={false}
-          inputMode="text"
-          required
-          value={enteredCode}
-          onChange={(event) => setEnteredCode(event.currentTarget.value)}
-          className="min-h-11 rounded-md border border-input bg-background px-3 font-mono text-base uppercase tracking-[0.16em] outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-        <Button type="submit" variant="outline" className="min-h-11 w-full">
+      <form action="/device" method="get" className="auth-form">
+        <div className="auth-field">
+          <label htmlFor="device-code">{t('device.code')}</label>
+          <input
+            id="device-code"
+            name="user_code"
+            type="text"
+            autoComplete="one-time-code"
+            autoCapitalize="characters"
+            spellCheck={false}
+            inputMode="text"
+            required
+            value={enteredCode}
+            onChange={(event) => setEnteredCode(event.currentTarget.value)}
+            className="figures h-12 w-full min-w-0 rounded-md border-2 border-input bg-field px-3 text-xl uppercase tracking-[0.12em] text-foreground outline-none placeholder:text-muted-foreground"
+          />
+        </div>
+        <Button type="submit" size="lg" variant={state === 'ready' ? 'outline' : 'default'} className="w-full">
           {t('device.continue')}
         </Button>
       </form>
 
       {state === 'ready' && (
-        <section aria-labelledby="device-access-title" className="space-y-5 rounded-xl border border-border p-5">
-          <h2 id="device-access-title" className="text-lg font-semibold">
+        <section aria-labelledby="device-access-title" className="auth-tile">
+          <h2 id="device-access-title" className="auth-h2">
             {t('device.access')}
           </h2>
-          <dl className="grid gap-3 text-sm sm:grid-cols-2">
+          <dl className="auth-facts">
             <div>
-              <dt className="font-medium">{t('device.device')}</dt>
+              <dt>{t('device.device')}</dt>
               <dd>{deviceName}</dd>
             </div>
             <div>
-              <dt className="font-medium">{t('device.operating_system')}</dt>
+              <dt>{t('device.operating_system')}</dt>
               <dd>{t(`device.os_${device.os}`)}</dd>
             </div>
           </dl>
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium">{t('device.organisations')}</h3>
+          <div className="auth-fieldset">
+            <h3 className="auth-legend m-0">{t('device.organisations')}</h3>
             {memberships.length ? (
-              <ul className="space-y-2">
+              <ul className="auth-grant">
                 {memberships.map(({ organization, role }) => (
-                  <li
-                    key={`${organization}:${role}`}
-                    className="flex min-h-11 items-center justify-between gap-3 border-b border-border py-2"
-                  >
+                  <li key={`${organization}:${role}`}>
                     <span>{organization}</span>
-                    <span className="text-sm text-muted-foreground">{role}</span>
+                    <span>{role}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-muted-foreground">{t('device.no_organisations')}</p>
+              <p className="auth-hint">{t('device.no_organisations')}</p>
             )}
           </div>
 
           {verified && (
-            <div className="grid grid-cols-2 gap-3">
-              <Button type="button" disabled={busy} className="min-h-11 w-full" onClick={() => void decide('approve')}>
-                {t('device.confirm')}
-              </Button>
-              <Button type="button" disabled={busy} className="min-h-11 w-full" onClick={() => void decide('deny')}>
-                {t('device.deny')}
-              </Button>
-            </div>
+            <>
+              <p className="auth-hint">{t('device.warning')}</p>
+              <div className="auth-pair">
+                <Button type="button" size="lg" disabled={busy} onClick={() => void decide('approve')}>
+                  {t('device.confirm')}
+                </Button>
+                <Button type="button" size="lg" disabled={busy} onClick={() => void decide('deny')}>
+                  {t('device.deny')}
+                </Button>
+              </div>
+            </>
           )}
         </section>
       )}
 
-      <p role="status" aria-live="polite" className="min-h-6 text-sm">
-        {statusMessage}
-      </p>
-      {actionError && (
-        <p role="alert" className="text-sm text-destructive">
-          {t('device.action_error')}
-        </p>
-      )}
+      <div role="status" aria-live="polite">
+        {statusMessage ? (
+          <p className="auth-error m-0">
+            <InfoIcon aria-hidden="true" />
+            {statusMessage}
+          </p>
+        ) : null}
+      </div>
+      {actionError && <AuthMessage>{t('device.action_error')}</AuthMessage>}
     </main>
   )
 }

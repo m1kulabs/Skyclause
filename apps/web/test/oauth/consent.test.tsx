@@ -118,3 +118,13 @@ test('the integrations table names the client in its confirmation dialog', async
   expect(screen.getByRole('alertdialog').textContent).toContain('Gemini tenant 42')
   await expectNoSeriousAxeIssues()
 })
+
+test('consent names who is asking before it lists what is granted', () => {
+  render(<OAuthConsentForm details={details} oauthQuery="client_id=public-test-client" locale="en" />)
+
+  const who = screen.getByRole('region', { name: 'Who is asking' })
+  expect(who.textContent).toContain('Claude Desktop')
+  expect(who.textContent).toContain('claude.example')
+  expect(who.textContent).toContain('MCP server')
+  expect(screen.getByRole('group', { name: 'Access' }).textContent).toContain('Read project information')
+})

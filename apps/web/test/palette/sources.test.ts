@@ -6,8 +6,8 @@ const sources: PaletteSource[] = [
   { id: 'manage', roles: ['owner', 'admin'], items: [] }
 ]
 
-test('registers the dashboard source for role-aware navigation and search', () => {
-  expect(paletteSources.map((source) => source.id)).toEqual(['dashboard'])
+test('registers the dashboard source for actions and search, and the navigation source for every destination', () => {
+  expect(paletteSources.map((source) => source.id)).toEqual(['dashboard', 'navigation'])
 })
 
 test('filters test-only sources by the current role and fails closed without a role', () => {

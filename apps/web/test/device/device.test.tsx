@@ -140,3 +140,26 @@ test('expired and unknown code messages match the login recovery instructions', 
   )
   expect(screen.getByRole('status')).toHaveTextContent('This code is not recognised. Check it and try again.')
 })
+
+test('the approval says what is granted and to whom before it asks, in the visitor’s language', async () => {
+  request.mockResolvedValue(response({ status: 'pending', client_id: 'skyclause-cli', scope: '' }))
+  render(
+    <DeviceApproval
+      code="ABCD2345"
+      initialState="ready"
+      device={{ name: 'Work laptop', os: 'linux' }}
+      memberships={[{ organization: 'Northstar', role: 'approver' }]}
+      locale="ms"
+    />
+  )
+
+  expect(await screen.findByRole('heading', { level: 1, name: 'Sambungkan Skyclause CLI' })).toBeInTheDocument()
+  const grant = screen.getByRole('region', {
+    name: 'Log masuk sebagai anda, dengan peranan anda dalam setiap organisasi'
+  })
+  expect(grant).toHaveTextContent('Work laptop')
+  expect(grant).toHaveTextContent('Linux')
+  expect(grant).toHaveTextContent('Northstarapprover')
+  expect(grant).toHaveTextContent('Sahkan hanya jika anda baru sahaja menjalankan skyclause login')
+  expect(document.querySelector('main')).toHaveAttribute('lang', 'ms')
+})

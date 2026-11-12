@@ -1,6 +1,7 @@
 import { brandMetadata } from '../../features/brand/metadata'
 import type { ReactNode } from 'react'
 import { RequestRootLayout } from '../../components/request-root-layout'
+import '../../features/public-chrome/auth.css'
 
 export const metadata = { ...brandMetadata, title: 'Skyclause' }
 export const instant = false

@@ -109,3 +109,28 @@ test('subscriber page has no axe violations', async () => {
     canvas.mockRestore()
   }
 })
+
+test('the correction form names its fields and keeps the email literal (#691)', () => {
+  const html = renderToStaticMarkup(<SubscriberRights initialData={data} token="manage-token" />)
+  const input = (name: string) => html.match(new RegExp(`<input[^>]*name="${name}"[^>]*>`))![0]
+
+  expect(input('email')).toMatch(/type="email"/)
+  expect(input('email')).toMatch(/autoComplete="email"/i)
+  expect(input('email')).toMatch(/spellCheck="false"/i)
+  expect(input('role')).toMatch(/autoComplete="organization-title"/i)
+  expect(html.match(/<main/g)).toHaveLength(1)
+})
+
+test('a Malay subscriber reads the page in Malay, in a Malay main landmark', () => {
+  const html = renderToStaticMarkup(
+    <SubscriberRights
+      initialData={{ ...data, subscriber: { ...data.subscriber, language: 'ms' } }}
+      token="manage-token"
+    />
+  )
+
+  expect(html).toContain('lang="ms"')
+  expect(html).toContain('Urus data anda')
+  expect(html).toContain('Muat turun data saya')
+  expect(html).not.toContain('Manage your data')
+})

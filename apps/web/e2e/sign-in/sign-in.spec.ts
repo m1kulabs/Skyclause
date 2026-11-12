@@ -27,7 +27,7 @@ test.beforeEach(async ({ page }) => {
   await signedOut(page)
 })
 
-test('sign-in shows passkey, labelled email, Google, guest entry and the PDPA link', async ({ page }) => {
+test('sign-in shows passkey, labelled email, Google and the PDPA link, and no guest entry', async ({ page }) => {
   await page.goto('/sign-in')
 
   await expect(page.getByRole('heading', { level: 1, name: 'Sign in to Skyclause' })).toBeVisible()
@@ -39,7 +39,8 @@ test('sign-in shows passkey, labelled email, Google, guest entry and the PDPA li
   await expect(email).toHaveAttribute('autocomplete', 'username webauthn')
   await expect(email).toHaveAttribute('spellcheck', 'false')
   await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Continue as guest' })).toHaveAttribute('href', '/guest')
+  await expect(page.getByRole('link', { name: 'Continue as guest' })).toHaveCount(0)
+  await expect(page.locator('a[href="/guest"]')).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'PDPA privacy notice' })).toHaveAttribute('href', '/legal/privacy')
   await expectNoPasswordControls(page)
   await expectAuthAxe(page)

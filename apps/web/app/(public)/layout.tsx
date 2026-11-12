@@ -10,11 +10,12 @@ export const instant = false
 export default async function Layout({ children }: { children: ReactNode }) {
   const requestHeaders = await headers()
   const locale = requestHeaders.get('x-skyclause-locale') === 'ms' ? 'ms' : 'en'
-  const includeSafetyLine = requestHeaders.get('x-skyclause-public-path') !== '/legal/terms'
+  const path = requestHeaders.get('x-skyclause-public-path') ?? undefined
+  const includeSafetyLine = path !== '/legal/terms'
 
   return (
     <RequestRootLayout routeGroup="public" locale={locale}>
-      <PublicChrome locale={locale} includeSafetyLine={includeSafetyLine}>
+      <PublicChrome locale={locale} includeSafetyLine={includeSafetyLine} path={path}>
         {children}
       </PublicChrome>
     </RequestRootLayout>

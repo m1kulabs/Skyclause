@@ -3,10 +3,10 @@
 import { useRef, useState } from 'react'
 import { Button } from '#ui/button'
 import { Input } from '#ui/input'
+import { AuthHeader, AuthMessage } from '../public-chrome/auth'
 import { t } from './catalogue'
 import { apiFetch } from './operations'
-import { actionClass } from './fields'
-import { OperationError } from './error'
+import { operationError } from './error'
 
 export type TokenActionKind = 'confirm' | 'unsubscribe' | 'reply' | 'feedback'
 export function TokenAction({
@@ -60,26 +60,25 @@ export function TokenAction({
   }
   return (
     <>
-      <h1 className="text-2xl font-semibold">{t(`subscribe.${kind}_title`, {}, locale)}</h1>
-      <OperationError error={error} locale={locale} />
+      <AuthHeader title={t(`subscribe.${kind}_title`, {}, locale)} locale={locale} />
+      {error ? <AuthMessage>{operationError(error, locale)}</AuthMessage> : null}
       {done ? (
-        <p role="status">{t(`subscribe.${success}`, {}, locale)}</p>
+        <AuthMessage tone="result">{t(`subscribe.${success}`, {}, locale)}</AuthMessage>
       ) : (
         <form
-          className="grid gap-5"
+          className="auth-form"
           onSubmit={(event) => {
             event.preventDefault()
             void submit()
           }}
         >
           {kind === 'reply' && (
-            <fieldset disabled={busy} className="grid gap-3">
+            <fieldset disabled={busy} className="auth-fieldset">
               <legend className="sr-only">{t('subscribe.reply_title', {}, locale)}</legend>
               {(['keep', 'shift', 'shuttle'] as const).map((option) => (
-                <label key={option} className="flex min-h-11 items-center gap-3">
+                <label key={option} className="auth-check">
                   <input
                     type="radio"
-                    className="size-5 accent-primary"
                     name="reply"
                     value={option}
                     checked={reply === option}
@@ -89,28 +88,29 @@ export function TokenAction({
                 </label>
               ))}
               {reply === 'shift' && (
-                <label className="grid gap-2" htmlFor="shift-to">
-                  {t('subscribe.shift_to', {}, locale)}
+                <div className="auth-field">
+                  <label htmlFor="shift-to">{t('subscribe.shift_to', {}, locale)}</label>
                   <Input
                     id="shift-to"
                     type="time"
                     name="shift_to"
+                    autoComplete="off"
                     required
+                    className="h-12 text-base md:text-base"
                     value={shiftTo}
                     onChange={(event) => setShiftTo(event.target.value)}
                   />
-                </label>
+                </div>
               )}
             </fieldset>
           )}
           {kind === 'feedback' && (
-            <fieldset disabled={busy} className="grid gap-3">
+            <fieldset disabled={busy} className="auth-fieldset">
               <legend className="sr-only">{t('subscribe.feedback_title', {}, locale)}</legend>
               {(['yes', 'no'] as const).map((option) => (
-                <label key={option} className="flex min-h-11 items-center gap-3">
+                <label key={option} className="auth-check">
                   <input
                     type="radio"
-                    className="size-5 accent-primary"
                     name="answer"
                     value={option}
                     checked={answer === option}
@@ -123,7 +123,9 @@ export function TokenAction({
           )}
           <Button
             type="submit"
-            className={actionClass}
+            size="lg"
+            className="w-full"
+            variant={kind === 'unsubscribe' ? 'destructive' : 'default'}
             disabled={
               busy ||
               (kind === 'feedback' && !answer) ||

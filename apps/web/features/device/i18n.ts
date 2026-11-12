@@ -6,3 +6,4 @@ catalogueFiles['../catalogue/en/device.json'] = { default: english }
 catalogueFiles['../catalogue/ms/device.json'] = { default: malay }
 
 export { t } from '@skyclause/i18n'
+export type Locale = 'en' | 'ms'

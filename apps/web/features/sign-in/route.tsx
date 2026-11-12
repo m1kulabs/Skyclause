@@ -1,5 +1,7 @@
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getPrincipal } from '../../lib/principal'
+import { prefersMalay } from '../../lib/preferred-language'
 import { continuePath, resolveAuthState, safeNext, type AuthSearchParams } from './model'
 import { SignInPanel } from './panel'
 
@@ -13,5 +15,6 @@ export async function accountRoute(mode: 'sign-in' | 'sign-up', searchParams: Pr
   if (principal?.kind === 'session' && !principal.isGuest) redirect(continuePath(next))
 
   const state = mode === 'sign-in' ? resolveAuthState(params) : { kind: 'form' as const }
-  return <SignInPanel mode={mode} next={next} state={state} />
+  const locale = prefersMalay((await headers()).get('accept-language')) ? 'ms' : 'en'
+  return <SignInPanel mode={mode} next={next} state={state} locale={locale} />
 }

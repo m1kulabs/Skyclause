@@ -1,88 +1,116 @@
+/*
+ * The app's one content column: 1200px of content between 24px gutters (16px at 640px and below). Every app screen
+ * renders inside it (#shell-content) and the bar's row shares it, so the wordmark sits on the column's left edge and the
+ * bar's right cluster ends on its right edge. Screens fill the column; they never set their own page width.
+ */
 .app-shell {
+  --shell-column: 1200px;
+  --shell-gutter: 24px;
   min-height: 100svh;
   color: var(--foreground);
   background: var(--background);
 }
-/* RootDocument also serves public pages. The app owns a skip target after its navigation. */
+/* The sticky bar publishes its height (useStickyBar): focus and anchor jumps land below it, never under it. */
+html:has(.app-shell) {
+  scroll-padding-top: calc(var(--shell-bar-height, 56px) + 8px);
+}
+.app-shell [id] {
+  scroll-margin-top: 0;
+}
+/* RootDocument also serves public pages. The app owns a skip target after its bar. */
 body:has(.app-shell) > .skip-link {
   display: none;
 }
-.shell-sidebar {
+.shell-column {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: calc(var(--shell-column) + 2 * var(--shell-gutter));
+  margin-inline: auto;
+  padding-inline: var(--shell-gutter);
+}
+
+/*
+ * The bar: the page ground, no line at rest. Once content scrolls under it, a rule in the raised tone appears, as the
+ * app sheet asks of a sticky bar on the ground: a tone step instead merged with the surface cards passing beneath.
+ */
+.shell-bar {
   position: sticky;
   top: 0;
-  height: 100svh;
-  width: 224px;
-  flex-shrink: 0;
-  border-right: 1px solid var(--border);
+  z-index: 40;
+  background: var(--background);
 }
-.shell-brand {
-  display: block;
-  padding: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  overflow-wrap: anywhere;
+.shell-bar::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 1px; /* taste-skill-ignore: the sticky bar's scroll rule, see above */
+  background: var(--rule);
+  opacity: 0;
+  transition: opacity 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
-.shell-secondary-nav {
-  margin-top: 24px;
+.shell-bar[data-scrolled]::after {
+  opacity: 1;
 }
-.shell-sidebar nav {
-  padding-inline: 8px;
+.shell-bar-row {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr) max-content max-content;
+  grid-template-areas: 'start . live end';
+  align-items: center;
+  column-gap: 16px;
+  min-height: 48px;
+  padding-block: 6px;
 }
-.shell-nav-link {
-  position: relative;
-  min-height: 34px;
-  height: auto;
-  overflow: visible;
-  color: var(--muted-foreground);
-}
-.shell-nav-link > .shell-nav-label {
-  white-space: normal;
-  overflow: visible;
-  overflow-wrap: anywhere;
-}
-.shell-nav-link[data-active] {
-  color: var(--foreground);
-}
-.shell-nav-link[data-active] > .shell-nav-label {
-  text-decoration: underline;
-  text-decoration-color: var(--selection);
-  text-decoration-thickness: var(--selection-width);
-  text-underline-offset: 4px;
-}
-.shell-approvals-count:empty {
-  display: none;
-}
-.shell-approvals-count {
-  margin-left: auto;
-}
-.shell-collapse {
-  justify-content: flex-start;
-  height: auto;
-  min-height: 34px;
-  white-space: normal;
-}
-.shell-body {
-  flex: 1;
-  min-width: 0;
-}
-.shell-topline {
+.shell-start {
+  grid-area: start;
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 48px;
-  border-bottom: 1px solid var(--border);
-  padding-inline: 16px;
-}
-.shell-desktop-scope {
   min-width: 0;
 }
-.shell-desktop-scope [data-slot='breadcrumb-list'] {
-  flex-wrap: nowrap;
+.shell-wordmark {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  border-radius: 9999px;
+  color: var(--foreground);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  letter-spacing: -0.025em;
+  text-decoration: none;
+}
+.shell-mark {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  fill: currentColor;
+}
+.shell-scope {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+/* The divider between the organisation and its project: a capsule leaning like a slash. */
+.shell-scope-divider {
+  flex-shrink: 0;
+  width: 2px;
+  height: 16px;
+  margin-inline: 6px;
+  border-radius: 9999px;
+  background: var(--muted-foreground);
+  transform: rotate(18deg);
 }
 .shell-switcher {
+  flex-shrink: 1;
   min-width: 0;
+  max-width: 14rem;
   height: auto;
-  min-height: 34px;
+  min-height: 36px;
+  padding-inline: 10px;
+  font-weight: 600;
   text-align: left;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -90,212 +118,250 @@ body:has(.app-shell) > .skip-link {
 .shell-switcher > span {
   min-width: 0;
 }
-.shell-freshness {
-  margin-left: auto;
+.shell-switcher > svg {
+  color: var(--muted-foreground);
 }
-.shell-menu {
-  width: max-content;
-  max-width: min(28rem, calc(100vw - 32px));
-}
-.shell-menu [data-slot='dropdown-menu-item'] {
-  min-height: 34px;
-  flex-wrap: wrap;
-  overflow-wrap: anywhere;
-}
-.shell-project-tabs {
+
+/* The four core destinations and the project menu: muted labels; the current one in ink with the capsule mark. */
+.shell-destinations {
+  grid-area: nav;
   display: flex;
-  align-items: stretch;
-  gap: 24px;
-  padding-inline: 24px;
-  min-height: 44px;
-  overflow-x: auto;
-  border-bottom: 1px solid var(--border);
-  scrollbar-width: thin;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
 }
-.shell-project-tabs a {
-  flex-shrink: 0;
+.shell-destination {
   display: inline-flex;
   align-items: center;
-  padding-block: 12px;
+  gap: 4px;
+  min-height: 36px;
+  padding-inline: 8px;
+  border: 0;
+  border-radius: 9999px;
+  background: none;
   color: var(--muted-foreground);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  text-decoration: none;
+  cursor: pointer;
 }
-.shell-project-tabs [aria-current='page'] {
+.shell-destination:hover,
+.shell-destination[aria-expanded='true'],
+.shell-destination[aria-current='page'],
+.shell-destination[data-current] {
   color: var(--foreground);
 }
-.shell-project-tabs [aria-current='page'] span {
-  text-decoration: underline;
-  text-decoration-color: var(--selection);
-  text-decoration-thickness: var(--selection-width);
-  text-underline-offset: 12px;
+.shell-destination > svg {
+  width: 14px;
+  height: 14px;
 }
-.shell-content {
-  padding: 24px;
+
+.shell-live {
+  grid-area: live;
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 18px;
+  white-space: nowrap;
 }
-.shell-content a,
-.shell-scope-list a {
-  text-underline-offset: 4px;
-}
-.shell-content [data-slot='empty-content'] > a {
-  text-decoration: underline;
-  min-height: 44px;
+.shell-end {
+  grid-area: end;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
 }
-.shell-phone-scope,
-.shell-bottom-bar {
+.shell-review {
+  height: auto;
+  min-height: 36px;
+  gap: 8px;
+  text-decoration: none;
+}
+.shell-review:has(.shell-review-count) {
+  padding-right: 6px;
+}
+/* The waiting count: a text-size capsule inverted like the primary control, with figures that keep one width. */
+.shell-review-count::after {
+  content: attr(data-count);
+}
+.shell-review-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding-inline: 7px;
+  border-radius: 9999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-family: var(--font-figures);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.shell-search {
+  gap: 6px;
+  padding-inline: 10px 6px;
+}
+.shell-account-wrap {
+  display: inline-flex;
+}
+.shell-phone-menu {
   display: none;
 }
-.shell-scope-sheet {
-  max-height: 85svh;
+
+/* Menus: rows wrap long names; the role and the current mark sit at the row's end. */
+.shell-menu {
+  width: max-content;
+  min-width: 14rem;
+  max-width: min(24rem, calc(100vw - 32px));
 }
-.shell-scope-list {
-  overflow-y: auto;
-  padding: 0 24px 24px;
+.shell-menu .shell-menu-item {
+  flex-wrap: wrap;
   overflow-wrap: anywhere;
 }
-.shell-scope-list section {
+/* The role is drawn from data-role: the row's visible text stays the name, inside its "name, role" accessible name. */
+.shell-menu-meta::after {
+  content: attr(data-role);
+}
+.shell-menu-meta {
+  margin-left: auto;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+.shell-menu-item:is([aria-current='page'], [aria-current='true'])::after {
+  content: '';
+  flex-shrink: 0;
+  width: 16px;
+  height: 4px;
+  margin-left: auto;
+  border-radius: 9999px;
+  background: currentColor;
+}
+.shell-menu-item:has(.shell-menu-meta)::after {
+  margin-left: 8px;
+}
+.shell-menu-note[data-disabled] {
+  opacity: 1;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+
+.shell-content {
+  padding-block: 24px 64px;
+}
+.shell-state {
   margin-bottom: 24px;
 }
-.shell-scope-list a {
+
+/* The phone sheet: tools first, then the place's pages, then the switchers. */
+.shell-sheet-tools {
   display: flex;
-  align-items: center;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  min-height: 44px;
+  padding: 0 4px 8px;
 }
-.shell-scope-list a span {
-  color: var(--muted-foreground);
-}
-.shell-more-links {
+.shell-sheet-section {
   display: flex;
   flex-direction: column;
-  padding: 0 24px 24px;
+  gap: 4px;
+  padding-top: 16px;
 }
-.shell-more-links a {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 44px;
+.shell-sheet-heading,
+.shell-sheet-note {
+  margin: 0;
+  padding-inline: 16px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  overflow-wrap: anywhere;
 }
-.shell-more-links svg {
+.shell-sheet-note {
+  padding-block: 8px;
+  font-weight: 400;
+}
+.shell-sheet [data-slot='phone-sheet-item'] {
+  overflow-wrap: anywhere;
+}
+/* The current organisation and project in the switch lists: marked like the current page, with aria-current="true". */
+.shell-sheet [data-slot='phone-sheet-item'][aria-current='true'] {
+  background: var(--raised);
+  color: var(--foreground);
+}
+.shell-sheet [data-slot='phone-sheet-item'][aria-current='true']::after {
+  content: '';
+  flex-shrink: 0;
   width: 16px;
-  height: 16px;
+  height: 4px;
+  border-radius: 9999px;
+  background: currentColor;
 }
-@media (min-width: 1101px) {
-  .shell-expanded-tooltip {
-    display: none;
-  }
-}
-@media (min-width: 641px) {
-  .app-shell[data-collapsed='true'] .shell-sidebar {
-    width: 50px;
-  }
-  .app-shell[data-collapsed='true'] .shell-sidebar .shell-nav-label,
-  .app-shell[data-collapsed='true'] .shell-sidebar-scope,
-  .app-shell[data-collapsed='true'] .shell-approvals-count {
-    display: none;
-  }
-  .app-shell[data-collapsed='true'] .shell-brand {
-    padding: 8px 0;
-    font-size: 12px;
-    text-align: center;
-  }
-  .app-shell[data-collapsed='true'] .shell-nav-link[data-active]::after {
-    content: '';
-    position: absolute;
-    right: -8px;
-    width: var(--selection-width);
-    height: 16px;
-    background: var(--selection);
+
+/* Wide: one row. The four links sit after the switchers and the live facts and tools close the row. */
+@media (min-width: 1360px) {
+  .app-shell[data-project] .shell-bar-row {
+    grid-template-columns: minmax(0, max-content) max-content minmax(0, 1fr) max-content max-content;
+    grid-template-areas: 'start nav . live end';
   }
 }
-@media (min-width: 641px) and (max-width: 1100px) {
-  .shell-sidebar {
-    width: 50px;
+/* Laptop: with a project, its links and the time take a second row on the same column. */
+@media (min-width: 1024px) and (max-width: 1359px) {
+  .app-shell[data-project] .shell-bar-row {
+    grid-template-areas:
+      'start . . end'
+      'nav nav live live';
   }
-  .shell-sidebar .shell-nav-label,
-  .shell-sidebar-scope,
-  .shell-approvals-count,
-  .shell-collapse {
-    display: none;
-  }
-  .shell-brand {
-    padding: 8px 0;
-    font-size: 12px;
-    text-align: center;
-  }
-  .shell-nav-link[data-active]::after {
-    content: '';
-    position: absolute;
-    right: -8px;
-    width: var(--selection-width);
-    height: 16px;
-    background: var(--selection);
+  .app-shell[data-project] .shell-live {
+    justify-self: end;
   }
 }
+/* Tablet: always two rows; the second holds the project's links, if any, and the time. */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .shell-bar-row,
+  .app-shell[data-project] .shell-bar-row {
+    grid-template-columns: minmax(0, max-content) minmax(0, 1fr) max-content;
+    grid-template-areas:
+      'start . end'
+      'nav nav live';
+  }
+  .shell-live {
+    justify-self: end;
+  }
+}
+/* Phone: the wordmark, Review and the menu button; everything else moves into the sheet. */
 @media (max-width: 640px) {
-  .shell-sidebar,
-  .shell-desktop-scope {
+  .app-shell {
+    --shell-gutter: 16px;
+  }
+  .shell-bar-row,
+  .app-shell[data-project] .shell-bar-row {
+    grid-template-columns: minmax(0, 1fr) max-content;
+    grid-template-areas: 'start end';
+  }
+  .shell-scope,
+  .shell-destinations,
+  .shell-bar .shell-live,
+  .shell-search,
+  .shell-account-wrap {
     display: none;
   }
-  .shell-phone-scope {
-    display: block;
-    min-width: 0;
-  }
-  .shell-topline {
-    gap: 4px;
-    padding-inline: 8px;
-  }
-  .shell-topline .shell-switcher {
-    min-height: 44px;
+  .shell-phone-menu {
+    display: inline-flex;
   }
   .shell-content {
-    padding: 20px 16px calc(100px + env(safe-area-inset-bottom));
-  }
-  .shell-bottom-bar {
-    position: fixed;
-    inset-inline: 0;
-    bottom: 0;
-    z-index: 20;
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    padding: 4px 0 calc(4px + env(safe-area-inset-bottom));
-    border-top: 1px solid var(--border);
-    background: var(--background);
-  }
-  .shell-bottom-bar > a,
-  .shell-more {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    min-height: 44px;
-    padding: 4px 2px;
-    color: var(--muted-foreground);
-    font-size: 12px;
-    line-height: 16px;
-    overflow-wrap: anywhere;
-    text-align: center;
-  }
-  .shell-bottom-bar svg {
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
-  }
-  .shell-bottom-bar [aria-current='page'] {
-    color: var(--foreground);
-  }
-  .shell-bottom-bar [aria-current='page'] span {
-    text-decoration: underline;
-    text-decoration-color: var(--selection);
-    text-decoration-thickness: var(--selection-width);
-    text-underline-offset: 3px;
+    padding-block: 20px 48px;
   }
 }
 @media (pointer: coarse) {
-  .shell-nav-link,
-  .shell-menu [data-slot='dropdown-menu-item'] {
+  .shell-wordmark,
+  .shell-switcher,
+  .shell-destination,
+  .shell-review {
     min-height: 44px;
   }
 }
