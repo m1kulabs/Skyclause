@@ -34,26 +34,24 @@ function status(overrides = {}) {
 }
 
 describe('probation progress view', () => {
-  test('on probation prints n, obscured, agreement with its Wilson interval and the verdict, never a chart', () => {
+  test('on probation prints agreement with its Wilson interval, n and obscured against their targets, never a chart', () => {
     const interval = wilson(Math.round(0.93 * 96), 96)!
     const html = renderToStaticMarkup(
       createElement(ProgressView, { ...base, status: status(), passedAt: null, picker: 'none' })
     )
+    expect(html).toContain('0.93')
+    expect(html).toContain(t('probation.measure_needed', { needed: '0.90' }, 'en'))
     expect(html).toContain(
-      t(
-        'probation.progress_line',
-        {
-          n: '96',
-          k: '9',
-          p: '0.93',
-          interval: ` (n=96, 95% ${interval.lo}–${interval.hi})`,
-          d: '0'
-        },
-        'en'
-      )
+      t('probation.progress_interval', { n: '96', low: String(interval.lo), high: String(interval.hi) }, 'en')
     )
-    expect(html).toContain(t('probation.verdict_watching', { n: '96', k: '9', p: '0.93' }, 'en'))
-    expect(html).not.toContain('<svg')
+    expect(html).toContain('data-probation-frames="96"')
+    expect(html).toContain(t('probation.measure_of', { value: '96', target: '100' }, 'en'))
+    expect(html).toContain('data-probation-obscured="9"')
+    expect(html).toContain(t('probation.measure_of', { value: '9', target: '10' }, 'en'))
+    expect(html).toContain('data-probation-disagreements="0"')
+    expect(html).toContain(t('probation.verdict_watching', {}, 'en'))
+    expect(html).not.toContain('<canvas')
+    expect(html).not.toContain('role="img"')
     expect(html).not.toContain('<figure')
     expect(html).not.toContain('phone_obscured')
   })
@@ -70,7 +68,8 @@ describe('probation progress view', () => {
     )
     expect(html).toContain(t('probation.verdict_passed', { date: formatDate(passedAt, 'en') }, 'en'))
     expect(html).toContain('95%')
-    expect(html).not.toContain('<svg')
+    expect(html).not.toContain(t('probation.verdict_watching', {}, 'en'))
+    expect(html).not.toContain('role="img"')
   })
 
   test('no status prints n=0 with no interval and a next action', () => {
@@ -79,6 +78,7 @@ describe('probation progress view', () => {
     )
     expect(html).toContain(t('probation.progress_zero', {}, 'en'))
     expect(html).not.toContain('95%')
+    expect(html).not.toContain('data-probation-frames')
     expect(html).toContain(t('probation.progress_cta', {}, 'en'))
   })
 
