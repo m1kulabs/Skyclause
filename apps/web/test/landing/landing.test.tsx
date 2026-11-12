@@ -167,6 +167,23 @@ describe('landing sections', () => {
     cleanup()
     renderPage({ kind: 'grades', n: 8, x: 7, low: 0.53, high: 0.98, metric: 'precision' })
     expect(document.body.textContent).toContain('Latest: n=8, 7 of 8 (Wilson 95% interval 0.53–0.98)')
+    cleanup()
+    // A grade with no interval yet names none: never an empty "(Wilson 95% interval )".
+    renderPage({ kind: 'grades', n: 1, x: null, low: null, high: null, metric: 'precision' })
+    const live = [...document.querySelectorAll('.frag-live')].map((line) => line.textContent)
+    expect(live).toContain('Latest: n=1')
+    expect(document.body.textContent).not.toContain('Wilson 95% interval )')
+  })
+
+  test('Lebat, the Malay rain class the clause is defined by, is marked Malay and left alone by translation', () => {
+    renderPage()
+    const terms = [...document.querySelectorAll('.frag-class')]
+    expect(terms.length).toBeGreaterThan(0)
+    for (const term of terms) {
+      expect(term.textContent).toMatch(/^Lebat/)
+      expect(term.getAttribute('lang')).toBe('ms')
+      expect(term.getAttribute('translate')).toBe('no')
+    }
   })
 
   test('both brand lines, and the questions as filled tiles sharing one name', () => {
