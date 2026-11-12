@@ -1094,6 +1094,12 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
     vertical-align: middle;
   }
   :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
+    [data-slot='table-measure']
+    > [data-slot='table-measure-fill'] {
+    right: auto;
+    left: 0;
+  }
+  :is([data-slot='table'][data-phone='list'], table:has(> tbody > tr[data-phone-row]))
     > :is(tbody, tfoot)
     > tr
     > :is(td, th)[data-label]::before {
