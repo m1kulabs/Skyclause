@@ -7,13 +7,24 @@ import { useReauth, ReauthDialog } from '../../../reauth'
 import { ReauthCancelledError } from '../../../step-up/flow'
 import { Button } from '#ui/button'
 import { Input } from '#ui/input'
-import { Label } from '#ui/label'
-import { Switch } from '#ui/switch'
+import { Skeleton } from '#ui/skeleton'
 import { ConfirmDialog } from '../../set-7'
+import {
+  SettingsAside,
+  SettingsError,
+  SettingsField,
+  SettingsItem,
+  SettingsList,
+  SettingsPart,
+  SettingsParts,
+  SettingsReadError,
+  SettingsStatus,
+  SettingsSummaryLine,
+  SettingsSwitchRow
+} from '../../parts'
 import { authRequest, isProblem, unwrapAuthResult } from '../../../account/auth-api'
 import { accountApi } from '../../../account/operations'
 import { formatSessionDate, presentSessionAgent } from '../../../account/presentation'
-import styles from '../../../account/account-settings.module.css'
 import '../../catalogue'
 
 interface AccountSession {
@@ -48,13 +59,19 @@ type PendingAction =
   | { kind: 'session'; id: string; token: string; name: string }
   | { kind: 'others' }
 
-const copy = (key: string) => t(`account-settings.security.${key}`)
+type Where = 'methods' | 'devices'
 
-export default function Panel() {
+export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
+  const copy = useCallback(
+    (key: string, vars: Record<string, string | number> = {}) => t(`account-settings.security.${key}`, vars, locale),
+    [locale]
+  )
   const [reauthOpen, setReauthOpen] = useState(false)
   const reauthWaiter = useRef<{ resolve: () => void; reject: (error: unknown) => void } | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [loadFailure, setLoadFailure] = useState<{ error: unknown; at: string } | null>(null)
+  const [error, setError] = useState<{ where: Where; message: string } | null>(null)
+  const [notice, setNotice] = useState<{ where: Where; message: string } | null>(null)
   const [currentSessionId, setCurrentSessionId] = useState('')
   const [magicLinkEnabled, setMagicLinkEnabled] = useState(true)
   const [sessions, setSessions] = useState<SessionRow[]>([])
@@ -65,6 +82,15 @@ export default function Panel() {
   const [renameValue, setRenameValue] = useState('')
   const [pending, setPending] = useState<PendingAction | null>(null)
   const [working, setWorking] = useState(false)
+
+  const messageOf = useCallback(
+    (failure: unknown): string => {
+      if (isProblem(failure, 'last-sign-in-method')) return copy('lastSignInMethod')
+      if (failure instanceof Error) return failure.message
+      return copy('genericFailure')
+    },
+    [copy]
+  )
 
   const refresh = useCallback(async () => {
     const [current, sessionRows, linkedAccounts, registeredPasskeys] = await Promise.all([
@@ -79,7 +105,22 @@ export default function Panel() {
     setSessions(sessionRows)
     setAccounts(linkedAccounts)
     setPasskeys(registeredPasskeys)
-  }, [])
+  }, [copy])
+
+  const load = useCallback(
+    async (isCurrent: () => boolean) => {
+      setLoading(true)
+      setLoadFailure(null)
+      try {
+        await refresh()
+      } catch (failure) {
+        if (isCurrent()) setLoadFailure({ error: failure, at: new Date().toISOString() })
+      } finally {
+        if (isCurrent()) setLoading(false)
+      }
+    },
+    [refresh]
+  )
 
   const finishReauth = useCallback(() => {
     const waiter = reauthWaiter.current
@@ -88,12 +129,15 @@ export default function Panel() {
     waiter?.resolve()
   }, [])
 
-  const failReauth = useCallback((failure: unknown) => {
-    const waiter = reauthWaiter.current
-    reauthWaiter.current = null
-    setReauthOpen(false)
-    waiter?.reject(failure instanceof ReauthCancelledError ? new Error(copy('reauthCancelled')) : failure)
-  }, [])
+  const failReauth = useCallback(
+    (failure: unknown) => {
+      const waiter = reauthWaiter.current
+      reauthWaiter.current = null
+      setReauthOpen(false)
+      waiter?.reject(failure instanceof ReauthCancelledError ? new Error(copy('reauthCancelled')) : failure)
+    },
+    [copy]
+  )
 
   // The dialog settles the step-up before it closes (resolved on success, rejected on cancel); ReauthFlow passes that
   // outcome to the waiter, so closing alone must not reject it.
@@ -103,15 +147,11 @@ export default function Panel() {
 
   useEffect(() => {
     let active = true
-    void refresh()
-      .catch((failure: unknown) => {
-        if (active) setError(messageOf(failure))
-      })
-      .finally(() => active && setLoading(false))
+    void load(() => active)
     return () => {
       active = false
     }
-  }, [refresh])
+  }, [load])
 
   async function withRecentAuth<T>(action: () => Promise<T>): Promise<T> {
     try {
@@ -126,47 +166,55 @@ export default function Panel() {
     }
   }
 
-  async function saveMagicLink(enabled: boolean) {
+  function begin(where: Where) {
     setWorking(true)
-    setError(null)
+    setError((current) => (current?.where === where ? null : current))
+    setNotice(null)
+  }
+
+  async function saveMagicLink(enabled: boolean) {
+    begin('methods')
     try {
       await withRecentAuth(() => accountApi('updateMySecurity', { body: { magic_link_enabled: enabled } }))
       setMagicLinkEnabled(enabled)
+      setNotice({ where: 'methods', message: copy(enabled ? 'magicLinkOn' : 'magicLinkOff') })
     } catch (failure) {
-      setError(messageOf(failure))
+      setError({ where: 'methods', message: messageOf(failure) })
     } finally {
       setWorking(false)
     }
   }
 
   async function addPasskey() {
-    if (!passkeyName.trim() || working) return
-    setWorking(true)
-    setError(null)
+    const name = passkeyName.trim()
+    if (!name || working) return
+    begin('methods')
     try {
       await withRecentAuth(async () => {
-        const result = await authClient.passkey.addPasskey({ name: passkeyName.trim() })
+        const result = await authClient.passkey.addPasskey({ name })
         return unwrapAuthResult(result)
       })
       setPasskeyName('')
       await refresh()
+      setNotice({ where: 'methods', message: copy('passkeyAdded', { name }) })
     } catch (failure) {
-      setError(messageOf(failure))
+      setError({ where: 'methods', message: messageOf(failure) })
     } finally {
       setWorking(false)
     }
   }
 
   async function renamePasskey(id: string) {
-    if (!renameValue.trim() || working) return
-    setWorking(true)
-    setError(null)
+    const name = renameValue.trim()
+    if (!name || working) return
+    begin('methods')
     try {
-      await authRequest('/passkey/update-passkey', { method: 'POST', body: { id, name: renameValue.trim() } })
+      await authRequest('/passkey/update-passkey', { method: 'POST', body: { id, name } })
       setRenaming(null)
       await refresh()
+      setNotice({ where: 'methods', message: copy('passkeyRenamed', { name }) })
     } catch (failure) {
-      setError(messageOf(failure))
+      setError({ where: 'methods', message: messageOf(failure) })
     } finally {
       setWorking(false)
     }
@@ -179,15 +227,15 @@ export default function Panel() {
       if (result.error) throw new Error(result.error.message ?? copy('googleLinkFailed'))
       if (result.data.url) window.location.assign(result.data.url)
     } catch (failure) {
-      setError(messageOf(failure))
+      setError({ where: 'methods', message: messageOf(failure) })
     }
   }
 
   async function confirmPending() {
     const action = pending
     if (!action) return
-    setWorking(true)
-    setError(null)
+    const where: Where = action.kind === 'session' || action.kind === 'others' ? 'devices' : 'methods'
+    begin(where)
     try {
       if (action.kind === 'passkey') {
         await authRequest('/passkey/delete-passkey', { method: 'POST', body: { id: action.id } })
@@ -199,9 +247,20 @@ export default function Panel() {
         await authRequest('/revoke-other-sessions', { method: 'POST', body: {} })
       }
       await refresh()
+      setNotice({
+        where,
+        message:
+          action.kind === 'passkey'
+            ? copy('passkeyRemoved', { name: action.name })
+            : action.kind === 'google'
+              ? copy('googleUnlinked')
+              : action.kind === 'session'
+                ? copy('sessionRevoked', { name: action.name })
+                : copy('othersSignedOut')
+      })
     } catch (failure) {
       // Keep guard reasons on the panel so the person can act on them after the confirmation closes.
-      setError(messageOf(failure))
+      setError({ where, message: messageOf(failure) })
     } finally {
       setPending(null)
       setWorking(false)
@@ -219,7 +278,7 @@ export default function Panel() {
           : pending?.kind === 'others'
             ? copy('otherSessions')
             : ''
-  const pendingTitle =
+  const pendingAction =
     pending?.kind === 'passkey'
       ? copy('removePasskey')
       : pending?.kind === 'google'
@@ -227,98 +286,112 @@ export default function Panel() {
         : pending?.kind === 'session'
           ? copy('revokeSession')
           : copy('signOutEverywhere')
-  const pendingConfirm =
-    pending?.kind === 'passkey'
-      ? copy('removePasskey')
-      : pending?.kind === 'google'
-        ? copy('unlinkGoogle')
-        : pending?.kind === 'session'
-          ? copy('revokeSession')
-          : copy('signOutEverywhere')
+  const pendingDescription =
+    pending?.kind === 'others'
+      ? copy('signOutOthersDescription')
+      : pending?.kind === 'passkey'
+        ? copy('removePasskeyConsequence')
+        : pending?.kind === 'google'
+          ? copy('unlinkGoogleConsequence')
+          : pending?.kind === 'session'
+            ? copy('revokeSessionConsequence')
+            : copy('confirmDescription')
+
+  if (loadFailure)
+    return (
+      <div data-account-panel="security">
+        <SettingsReadError
+          source={copy('source')}
+          error={loadFailure.error}
+          at={loadFailure.at}
+          locale={locale}
+          onRetry={() => void load(() => true)}
+        />
+      </div>
+    )
+
+  const listSkeleton = <Skeleton className="h-16 w-full rounded-md" />
 
   return (
-    <div className={styles.panel} data-account-panel="security" aria-busy={loading || working}>
-      {error && (
-        <p className={styles.alert} role="alert">
-          {error}
-        </p>
+    <div data-account-panel="security" aria-busy={loading || working}>
+      {!loading && (
+        <SettingsAside>
+          <SettingsSummaryLine label={copy('methods')}>
+            {copy('summaryMethods', {
+              passkeys: passkeys.length,
+              magic: magicLinkEnabled ? copy('on') : copy('off'),
+              google: google ? copy('linked') : copy('notLinked')
+            })}
+          </SettingsSummaryLine>
+          <SettingsSummaryLine label={copy('sessions')}>
+            {copy('summarySessions', { count: sessions.length })}
+          </SettingsSummaryLine>
+        </SettingsAside>
       )}
-      {loading ? (
-        <p className={styles.status} role="status">
-          {copy('load')}
-        </p>
-      ) : (
-        <>
-          <section className={styles.section} aria-labelledby="security-sign-in">
-            <div>
-              <h3 id="security-sign-in" className={styles.sectionTitle}>
-                {copy('methods')}
-              </h3>
-              <p className={styles.description}>{copy('methodsDescription')}</p>
-            </div>
-            <div className={styles.field} data-density-row>
-              <div className={styles.fieldLabel}>
-                <Label htmlFor="magic-link-enabled" className={styles.fieldTitle}>
-                  {copy('magicLink')}
-                </Label>
-                <p className={styles.help}>{copy('magicLinkDescription')}</p>
-              </div>
-              <Switch
-                id="magic-link-enabled"
-                aria-label={copy('magicLink')}
-                checked={magicLinkEnabled}
-                disabled={working}
-                onCheckedChange={(checked) => void saveMagicLink(checked)}
-              />
-            </div>
-            <div>
-              <h4 className={styles.fieldTitle}>{copy('passkeys')}</h4>
-              {passkeys.length ? (
-                <div className={styles.rows}>
-                  {passkeys.map((credential) => {
-                    const name = credential.name || copy('unnamedPasskey')
-                    return (
-                      <article
-                        className={styles.item}
-                        key={credential.id}
-                        data-passkey-row
-                        data-passkey-id={credential.id}
-                      >
-                        <div className={styles.itemBody}>
-                          {renaming === credential.id ? (
-                            <div className={styles.inlineForm}>
-                              <div className="grid gap-1">
-                                <Label htmlFor={`passkey-name-${credential.id}`}>{copy('passkeyName')}</Label>
-                                <Input
-                                  id={`passkey-name-${credential.id}`}
-                                  name="passkey-name"
-                                  value={renameValue}
-                                  onChange={(event) => setRenameValue(event.target.value)}
-                                />
-                              </div>
-                              <Button
-                                type="button"
-                                onClick={() => void renamePasskey(credential.id)}
-                                disabled={working || !renameValue.trim()}
-                              >
-                                {copy('saveName')}
-                              </Button>
-                            </div>
-                          ) : (
-                            <>
-                              <span className={styles.itemTitle}>{name}</span>
-                              <span className={styles.itemMeta}>
-                                <span>{copy('added')}</span>
-                                <time dateTime={credential.createdAt}>{formatSessionDate(credential.createdAt)}</time>
-                              </span>
-                            </>
-                          )}
-                        </div>
-                        {renaming !== credential.id && (
+      <SettingsParts>
+        <SettingsPart title={copy('methods')} description={copy('methodsDescription')}>
+          <SettingsSwitchRow
+            id="magic-link-enabled"
+            title={copy('magicLink')}
+            description={copy('magicLinkDescription')}
+            state={magicLinkEnabled ? copy('on') : copy('off')}
+            checked={magicLinkEnabled}
+            disabled={loading || working}
+            onCheckedChange={(checked) => void saveMagicLink(checked)}
+          />
+
+          <div className="grid gap-3">
+            <h4 className="type-body font-medium">{copy('passkeys')}</h4>
+            {loading ? (
+              listSkeleton
+            ) : passkeys.length ? (
+              <SettingsList>
+                {passkeys.map((credential) => {
+                  const name = credential.name || copy('unnamedPasskey')
+                  return (
+                    <SettingsItem key={credential.id} data-passkey-row data-passkey-id={credential.id}>
+                      {renaming === credential.id ? (
+                        <form
+                          className="flex min-w-0 flex-1 flex-wrap items-end gap-3"
+                          onSubmit={(event) => {
+                            event.preventDefault()
+                            void renamePasskey(credential.id)
+                          }}
+                        >
+                          <SettingsField label={copy('passkeyName')} className="min-w-48 flex-1">
+                            {(aria) => (
+                              <Input
+                                {...aria}
+                                name="passkey-name"
+                                type="text"
+                                autoComplete="off"
+                                value={renameValue}
+                                onChange={(event) => setRenameValue(event.target.value)}
+                              />
+                            )}
+                          </SettingsField>
+                          <Button type="submit" disabled={working || !renameValue.trim()}>
+                            {copy('saveName')}
+                          </Button>
+                          <Button type="button" variant="ghost" onClick={() => setRenaming(null)}>
+                            {copy('cancel')}
+                          </Button>
+                        </form>
+                      ) : (
+                        <>
+                          <div className="grid min-w-0 gap-0.5">
+                            <span className="type-body font-medium [overflow-wrap:anywhere]">{name}</span>
+                            <span className="type-small text-muted-foreground">
+                              <time dateTime={credential.createdAt}>
+                                {copy('addedOn', { date: formatSessionDate(credential.createdAt) })}
+                              </time>
+                            </span>
+                          </div>
                           <div className="flex flex-wrap gap-2">
                             <Button
                               type="button"
                               variant="outline"
+                              aria-label={copy('renameNamed', { name })}
                               onClick={() => {
                                 setRenameValue(name)
                                 setRenaming(credential.id)
@@ -329,126 +402,155 @@ export default function Panel() {
                             <Button
                               type="button"
                               variant="outline"
+                              aria-label={copy('removeNamed', { name })}
                               onClick={() => setPending({ kind: 'passkey', id: credential.id, name })}
                             >
                               {copy('remove')}
                             </Button>
                           </div>
-                        )}
-                      </article>
-                    )
-                  })}
-                </div>
-              ) : (
-                <p className={styles.help}>{copy('noPasskeys')}</p>
-              )}
-              <form
-                className={`${styles.inlineForm} mt-3`}
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  void addPasskey()
-                }}
-              >
-                <div className="grid gap-1">
-                  <Label htmlFor="new-passkey-name">{copy('newPasskeyName')}</Label>
+                        </>
+                      )}
+                    </SettingsItem>
+                  )
+                })}
+              </SettingsList>
+            ) : (
+              <p className="type-body text-muted-foreground">{copy('noPasskeys')}</p>
+            )}
+            <form
+              className="flex min-w-0 flex-wrap items-start gap-3"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void addPasskey()
+              }}
+            >
+              <SettingsField label={copy('newPasskeyName')} hint={copy('newPasskeyHint')} className="min-w-56 flex-1">
+                {(aria) => (
                   <Input
-                    id="new-passkey-name"
+                    {...aria}
                     name="new-passkey-name"
+                    type="text"
+                    autoComplete="off"
                     value={passkeyName}
                     onChange={(event) => setPasskeyName(event.target.value)}
-                    autoComplete="off"
                   />
-                </div>
-                <Button type="submit" disabled={working || !passkeyName.trim()}>
-                  {copy('addPasskey')}
-                </Button>
-              </form>
-            </div>
-            <div className={styles.field} data-density-row>
-              <div className={styles.fieldLabel}>
-                <span className={styles.fieldTitle}>{copy('google')}</span>
-                <p className={styles.help}>{google ? copy('googleLinked') : copy('googleNotLinked')}</p>
-              </div>
-              {google ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={working}
-                  onClick={() => setPending({ kind: 'google', id: google.id })}
-                >
-                  {copy('unlinkGoogle')}
-                </Button>
-              ) : (
-                <Button type="button" variant="outline" onClick={() => void linkGoogle()}>
-                  {copy('linkGoogle')}
-                </Button>
-              )}
-            </div>
-          </section>
+                )}
+              </SettingsField>
+              <Button type="submit" className="sm:mt-7" disabled={loading || working || !passkeyName.trim()}>
+                {copy('addPasskey')}
+              </Button>
+            </form>
+          </div>
 
-          <section className={styles.section} aria-labelledby="security-sessions">
-            <div>
-              <h3 id="security-sessions" className={styles.sectionTitle}>
-                {copy('sessions')}
-              </h3>
-              <p className={styles.description}>{copy('sessionsDescription')}</p>
-            </div>
-            <div className={styles.rows}>
+          {loading ? (
+            listSkeleton
+          ) : (
+            <SettingsList>
+              <SettingsItem data-density-row>
+                <div className="grid min-w-0 gap-0.5">
+                  <span className="type-body flex flex-wrap items-baseline gap-x-2 font-medium">
+                    {copy('google')}
+                    <span className="type-small font-normal text-muted-foreground">
+                      {google ? copy('linked') : copy('notLinked')}
+                    </span>
+                  </span>
+                  <span className="type-small text-muted-foreground">
+                    {google ? copy('googleLinked') : copy('googleNotLinked')}
+                  </span>
+                </div>
+                {google ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={working}
+                    onClick={() => setPending({ kind: 'google', id: google.id })}
+                  >
+                    {copy('unlinkGoogle')}
+                  </Button>
+                ) : (
+                  <Button type="button" variant="outline" onClick={() => void linkGoogle()}>
+                    {copy('linkGoogle')}
+                  </Button>
+                )}
+              </SettingsItem>
+            </SettingsList>
+          )}
+          {error?.where === 'methods' ? <SettingsError>{error.message}</SettingsError> : null}
+          {notice?.where === 'methods' ? <SettingsStatus>{notice.message}</SettingsStatus> : null}
+        </SettingsPart>
+
+        <SettingsPart
+          title={copy('sessions')}
+          description={copy('sessionsDescription')}
+          actions={
+            <Button
+              type="button"
+              variant="outline"
+              disabled={loading || working || sessions.length < 2}
+              onClick={() => setPending({ kind: 'others' })}
+            >
+              {copy('signOutEverywhere')}
+            </Button>
+          }
+        >
+          {loading ? (
+            listSkeleton
+          ) : (
+            <SettingsList>
               {sessions.map((session) => {
                 const agent = presentSessionAgent(session.userAgent)
                 const current = session.id === currentSessionId
                 const name = `${agent.device} · ${agent.browser}`
                 return (
-                  <article className={styles.item} key={session.id} data-session-row data-session-id={session.id}>
-                    <div className={styles.itemBody}>
-                      <span className={styles.itemTitle} aria-label={name}>
-                        <span>{agent.device}</span>
-                        <span aria-hidden="true" className={styles.sessionSeparator} />
-                        <span>{agent.browser}</span>
+                  <SettingsItem key={session.id} data-session-row data-session-id={session.id}>
+                    <div className="grid min-w-0 gap-0.5">
+                      <span className="type-body font-medium [overflow-wrap:anywhere]" aria-label={name}>
+                        {name}
+                        {current ? (
+                          <span className="type-small ml-2 font-normal text-muted-foreground">
+                            {copy('thisDevice')}
+                          </span>
+                        ) : null}
                       </span>
-                      {current && <span className={styles.itemMeta}>{copy('thisDevice')}</span>}
-                      <span className={styles.itemMeta}>
-                        <span>{copy('created')}</span>
-                        <time dateTime={session.createdAt}>{formatSessionDate(session.createdAt)}</time>
+                      <span className="type-small text-muted-foreground">
+                        <time dateTime={session.createdAt}>
+                          {copy('createdOn', { date: formatSessionDate(session.createdAt) })}
+                        </time>
                       </span>
-                      <span className={styles.itemMeta}>
-                        <span>{copy('lastActive')}</span>
-                        <time dateTime={session.updatedAt}>{formatSessionDate(session.updatedAt)}</time>
+                      <span className="type-small text-muted-foreground">
+                        <time dateTime={session.updatedAt}>
+                          {copy('lastActiveOn', { date: formatSessionDate(session.updatedAt) })}
+                        </time>
                       </span>
                     </div>
                     <Button
                       type="button"
                       variant="outline"
                       disabled={working}
+                      aria-label={copy('revokeNamed', { name })}
                       onClick={() => setPending({ kind: 'session', id: session.id, token: session.token, name })}
                     >
                       {copy('revoke')}
                     </Button>
-                  </article>
+                  </SettingsItem>
                 )
               })}
-            </div>
-            <div>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={working || sessions.length < 2}
-                onClick={() => setPending({ kind: 'others' })}
-              >
-                {copy('signOutEverywhere')}
-              </Button>
-            </div>
-          </section>
-        </>
-      )}
+            </SettingsList>
+          )}
+          {error?.where === 'devices' ? <SettingsError>{error.message}</SettingsError> : null}
+          {notice?.where === 'devices' ? <SettingsStatus>{notice.message}</SettingsStatus> : null}
+        </SettingsPart>
+      </SettingsParts>
+
       <ConfirmDialog
         open={pending !== null}
         onOpenChange={(open) => !open && setPending(null)}
         objectName={pendingName}
-        title={pendingTitle}
-        confirmLabel={pendingConfirm}
-        description={pending?.kind === 'others' ? copy('signOutOthersDescription') : copy('confirmDescription')}
+        title={pendingAction}
+        confirmLabel={pendingAction}
+        description={pendingDescription}
         onConfirm={confirmPending}
+        locale={locale}
       />
       {reauthOpen && (
         <ReauthFlow
@@ -492,10 +594,4 @@ function ReauthFlow({
   }, [open])
 
   return <ReauthDialog open={open} onOpenChange={onOpenChange} />
-}
-
-function messageOf(error: unknown): string {
-  if (isProblem(error, 'last-sign-in-method')) return copy('lastSignInMethod')
-  if (error instanceof Error) return error.message
-  return copy('genericFailure')
 }

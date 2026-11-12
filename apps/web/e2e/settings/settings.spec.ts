@@ -153,19 +153,26 @@ for (const mode of [
   }
 }
 
-test('settings frame uses 428/24/700 columns and stacks below 640px', async ({ page }, testInfo) => {
+test('settings frame fills the shell column in 428/700 columns, rests on tone, and stacks below 860px', async ({
+  page
+}, testInfo) => {
   await asPage(page, principal())
-  // The full frame needs room for the 224px app sidebar and both layers of padding.
+  // The column is the shell's 1200px, so the 428 + 24 + 700 row fits from 1248px.
   await page.setViewportSize({ width: 1680, height: 900 })
   await page.goto('/account/profile')
   const columns = await page.locator('[data-settings-columns]').evaluate((element) => {
     const style = getComputedStyle(element)
-    return { columns: style.gridTemplateColumns, gap: style.columnGap }
+    return { tracks: style.gridTemplateColumns.split(' ').map(parseFloat), gap: style.columnGap }
   })
-  expect(columns).toEqual({ columns: '428px 700px', gap: '24px' })
-  const rules = page.locator('[data-settings-frame] [data-slot=separator]')
-  await expect(rules).toHaveCount(2)
-  for (const rule of await rules.all()) await expect(rule).toHaveCSS('height', '1px')
+  expect(columns.gap).toBe('24px')
+  expect(columns.tracks).toHaveLength(2)
+  expect(columns.tracks[0]! / columns.tracks[1]!).toBeCloseTo(428 / 700, 2)
+  // Sections separate by space and tone, never by rules; the panel is a 16px surface with no border.
+  await expect(page.locator('[data-settings-frame] [data-slot=separator]')).toHaveCount(0)
+  const panel = page.locator('[data-settings-panel]')
+  await expect(panel).toHaveCSS('border-top-width', '0px')
+  await expect(panel).toHaveCSS('border-top-left-radius', '16px')
+  await expect(page.locator('[data-settings-nav] a[aria-current="page"]')).toHaveCount(1)
   await page.screenshot({ path: testInfo.outputPath('settings-desktop.png'), fullPage: true })
   for (const width of [1440, 900]) {
     await page.setViewportSize({ width, height: 900 })
@@ -179,8 +186,8 @@ test('settings frame uses 428/24/700 columns and stacks below 640px', async ({ p
   await page.setViewportSize({ width: 375, height: 812 })
   await expectUnclippedText(page)
   const label = await page.locator('[data-settings-label]').boundingBox()
-  const panel = await page.locator('[data-settings-panel]').boundingBox()
-  expect(panel!.y).toBeGreaterThan(label!.y + label!.height)
+  const phonePanel = await page.locator('[data-settings-panel]').boundingBox()
+  expect(phonePanel!.y).toBeGreaterThan(label!.y + label!.height)
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375)
   await page.screenshot({ path: testInfo.outputPath('settings-phone.png'), fullPage: true })
 })

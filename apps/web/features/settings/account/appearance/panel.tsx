@@ -1,182 +1,276 @@
 'use client'
 
+import { useEffect, useState, type ReactNode } from 'react'
 import { DEFAULT_PREFERENCES } from '@skyclause/contracts'
 import { t } from '@skyclause/i18n'
-import { Label } from '#ui/label'
-import { Switch } from '#ui/switch'
-import styles from '../../../account/account-settings.module.css'
+import { cn } from '#lib/utils'
+import { StatusMark } from '../../../brand/status-mark'
 import { useAccountPreferences } from '../../../account/use-account-preferences'
+import {
+  NativeSelect,
+  SettingsAside,
+  SettingsError,
+  SettingsField,
+  SettingsParts,
+  SettingsPart,
+  SettingsStatus,
+  SettingsSummaryLine,
+  SettingsSwitchRow
+} from '../../parts'
+import styles from './appearance.module.css'
 import '../../catalogue'
 
-const themes = ['light', 'dark', 'system'] as const
-const densities = ['compact', 'comfortable'] as const
+type Scheme = 'dark' | 'light'
+type Locale = 'en' | 'ms'
 
-export default function Panel() {
-  const { preferences, save, saving, error } = useAccountPreferences(DEFAULT_PREFERENCES)
+const themes = [
+  { value: 'dark', key: 'dusk' },
+  { value: 'light', key: 'day' },
+  { value: 'system', key: 'system' }
+] as const
+const contrasts = [
+  { value: false, key: 'contrastSystem' },
+  { value: true, key: 'contrastMore' }
+] as const
+const motions = [
+  { value: false, key: 'motionSystem' },
+  { value: true, key: 'motionReduce' }
+] as const
+const densities = ['comfortable', 'compact'] as const
+
+/** The scheme the document is drawn in now, followed live: the contrast previews are drawn in it. */
+function useDocumentScheme(): Scheme {
+  const [scheme, setScheme] = useState<Scheme>('dark')
+  useEffect(() => {
+    const root = document.documentElement
+    const read = () => setScheme(root.classList.contains('light') ? 'light' : 'dark')
+    read()
+    const observer = new MutationObserver(read)
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [])
+  return scheme
+}
+
+export default function Panel({ locale = 'en' }: { locale?: Locale }) {
+  const copy = (key: string, vars: Record<string, string | number> = {}) =>
+    t(`account-settings.appearance.${key}`, vars, locale)
+  const { preferences, save, saving, saved, error } = useAccountPreferences(DEFAULT_PREFERENCES)
+  const scheme = useDocumentScheme()
+  const theme = themes.find((item) => item.value === preferences.theme) ?? themes[0]
+  const contrast = contrasts.find((item) => item.value === preferences.high_contrast) ?? contrasts[0]
+  const motion = motions.find((item) => item.value === preferences.reduced_motion) ?? motions[0]
 
   return (
-    <div className={styles.panel} data-account-panel="appearance" aria-busy={saving}>
-      <section className={styles.section} aria-labelledby="appearance-theme">
-        <div>
-          <h3 id="appearance-theme" className={styles.sectionTitle}>
-            {t('account-settings.appearance.theme')}
-          </h3>
-          <p className={styles.description}>{t('account-settings.appearance.themeDescription')}</p>
-        </div>
-        <fieldset className="grid min-w-0 gap-2">
-          <legend className="sr-only">{t('account-settings.appearance.theme')}</legend>
-          <div className={styles.radioGrid}>
-            {themes.map((theme) => (
-              <label className={styles.radioCard} key={theme}>
-                <input
-                  type="radio"
-                  name="theme"
-                  value={theme}
-                  aria-label={t(`account-settings.appearance.${theme}`)}
-                  checked={preferences.theme === theme}
-                  disabled={saving}
-                  onChange={() => void save({ theme })}
-                />
-                <span className={styles.fieldTitle}>{t(`account-settings.appearance.${theme}`)}</span>
-                <span className={styles.preview} data-preview-theme={theme} aria-hidden="true">
-                  <span className={styles.previewLine}>{t('account-settings.appearance.previewWindow')}</span>
-                  <span className={styles.previewLine}>
-                    <span className={styles.previewStatus}>{t('account-settings.appearance.previewWatch')}</span>
-                    <span className={styles.previewRain}>{t('account-settings.appearance.previewRain')}</span>
-                  </span>
-                </span>
-              </label>
+    <div data-account-panel="appearance" aria-busy={saving}>
+      <SettingsAside>
+        <SettingsSummaryLine label={copy('theme')}>{copy(theme.key)}</SettingsSummaryLine>
+        <SettingsSummaryLine label={copy('contrast')}>{copy(contrast.key)}</SettingsSummaryLine>
+        <SettingsSummaryLine label={copy('motion')}>{copy(motion.key)}</SettingsSummaryLine>
+        <SettingsSummaryLine label={copy('density')}>{copy(preferences.density)}</SettingsSummaryLine>
+        <SettingsSummaryLine label={copy('language')}>
+          {preferences.language === 'ms' ? copy('bahasaMelayu') : copy('english')}
+        </SettingsSummaryLine>
+      </SettingsAside>
+      <SettingsParts>
+        <SettingsPart title={copy('theme')} description={copy('themeDescription')}>
+          <fieldset className={styles.choices}>
+            <legend className="sr-only">{copy('theme')}</legend>
+            {themes.map((item) => (
+              <Tile
+                key={item.value}
+                name="theme"
+                value={item.value}
+                checked={preferences.theme === item.value}
+                disabled={saving}
+                label={copy(item.key)}
+                note={copy(`${item.key}Note`)}
+                wide={item.value === 'system'}
+                onSelect={() => void save({ theme: item.value })}
+              >
+                {item.value === 'system' ? (
+                  <div className={styles.pair} aria-hidden="true">
+                    <Specimen scheme="dark" locale={locale} compact />
+                    <Specimen scheme="light" locale={locale} compact />
+                  </div>
+                ) : (
+                  <Specimen scheme={item.value} locale={locale} />
+                )}
+              </Tile>
             ))}
-          </div>
-        </fieldset>
-      </section>
+          </fieldset>
+        </SettingsPart>
 
-      <section className={styles.section} aria-labelledby="appearance-details">
-        <div>
-          <h3 id="appearance-details" className={styles.sectionTitle}>
-            {t('account-settings.appearance.display')}
-          </h3>
-          <p className={styles.description}>{t('account-settings.appearance.displayDescription')}</p>
-        </div>
-        <PreferenceSwitch
-          id="high-contrast"
-          title={t('account-settings.appearance.highContrast')}
-          description={t('account-settings.appearance.highContrastDescription')}
-          checked={preferences.high_contrast}
-          disabled={saving}
-          onChange={(checked) => void save({ high_contrast: checked })}
-        />
-        <fieldset className="grid min-w-0 gap-2">
-          <legend className={styles.fieldTitle}>{t('account-settings.appearance.density')}</legend>
-          <p className={styles.help}>{t('account-settings.appearance.densityDescription')}</p>
-          <div className="flex flex-wrap gap-4">
+        <SettingsPart title={copy('contrast')} description={copy('contrastDescription')}>
+          <fieldset className={styles.choices}>
+            <legend className="sr-only">{copy('contrast')}</legend>
+            {contrasts.map((item) => (
+              <Tile
+                key={item.key}
+                name="contrast"
+                value={item.key}
+                checked={preferences.high_contrast === item.value}
+                disabled={saving}
+                label={copy(item.key)}
+                note={copy(`${item.key}Note`)}
+                onSelect={() => void save({ high_contrast: item.value })}
+              >
+                <Specimen scheme={scheme} contrast={item.value} locale={locale} />
+              </Tile>
+            ))}
+          </fieldset>
+        </SettingsPart>
+
+        <SettingsPart title={copy('motion')} description={copy('motionDescription')}>
+          <fieldset className={styles.choices}>
+            <legend className="sr-only">{copy('motion')}</legend>
+            {motions.map((item) => (
+              <Tile
+                key={item.key}
+                name="motion"
+                value={item.key}
+                checked={preferences.reduced_motion === item.value}
+                disabled={saving}
+                label={copy(item.key)}
+                note={copy(`${item.key}Note`)}
+                onSelect={() => void save({ reduced_motion: item.value })}
+              >
+                <div className={cn(styles.preview, scheme)} aria-hidden="true">
+                  <div className={styles.track} data-motion={item.value ? 'reduce' : 'full'}>
+                    <span className={styles.traveller} />
+                  </div>
+                </div>
+              </Tile>
+            ))}
+          </fieldset>
+        </SettingsPart>
+
+        <SettingsPart title={copy('density')} description={copy('densityDescription')}>
+          <fieldset className={styles.choices}>
+            <legend className="sr-only">{copy('density')}</legend>
             {densities.map((density) => (
-              <label className="inline-flex min-h-11 items-center gap-2" key={density}>
-                <input
-                  type="radio"
-                  name="density"
-                  value={density}
-                  checked={preferences.density === density}
-                  disabled={saving}
-                  onChange={() => void save({ density })}
-                />
-                <span>{t(`account-settings.appearance.${density}`)}</span>
-              </label>
+              <Tile
+                key={density}
+                name="density"
+                value={density}
+                checked={preferences.density === density}
+                disabled={saving}
+                label={copy(density)}
+                note={copy(`${density}Note`)}
+                onSelect={() => void save({ density })}
+              >
+                <div className={cn(styles.preview, scheme)} aria-hidden="true">
+                  <div className={styles.rows} data-density={density}>
+                    {(['previewRowWindows', 'previewRowCalls'] as const).map((row) => (
+                      <div className={styles.row} key={row}>
+                        <span>{copy(row)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Tile>
             ))}
-          </div>
-        </fieldset>
-        <PreferenceSwitch
-          id="sidebar-collapsed"
-          title={t('account-settings.appearance.collapseSidebar')}
-          description={t('account-settings.appearance.collapseSidebarDescription')}
-          checked={preferences.sidebar_collapsed}
-          disabled={saving}
-          onChange={(checked) => void save({ sidebar_collapsed: checked })}
-        />
-        <PreferenceSwitch
-          id="reduced-motion"
-          title={t('account-settings.appearance.reducedMotion')}
-          description={t('account-settings.appearance.reducedMotionDescription')}
-          checked={preferences.reduced_motion}
-          disabled={saving}
-          onChange={(checked) => void save({ reduced_motion: checked })}
-        />
-      </section>
+          </fieldset>
+        </SettingsPart>
 
-      <section className={styles.section} aria-labelledby="appearance-language">
-        <div>
-          <h3 id="appearance-language" className={styles.sectionTitle}>
-            {t('account-settings.appearance.languageAndShortcuts')}
-          </h3>
-          <p className={styles.description}>{t('account-settings.appearance.languageDescription')}</p>
-        </div>
-        <div className={styles.field}>
-          <div className={styles.fieldLabel}>
-            <Label htmlFor="account-language" className={styles.fieldTitle}>
-              {t('account-settings.appearance.language')}
-            </Label>
-            <p className={styles.help}>{t('account-settings.appearance.languageHelp')}</p>
-          </div>
-          <select
-            id="account-language"
-            name="language"
-            autoComplete="off"
-            className="min-h-11 rounded-lg border border-input bg-background px-3 text-[13px]"
-            value={preferences.language}
+        <SettingsPart title={copy('languageAndShortcuts')} description={copy('languageDescription')}>
+          <SettingsField label={copy('language')} hint={copy('languageHelp')} className="max-w-80">
+            {(aria) => (
+              <NativeSelect
+                {...aria}
+                name="language"
+                autoComplete="off"
+                value={preferences.language}
+                disabled={saving}
+                onChange={(event) => void save({ language: event.target.value as Locale })}
+              >
+                <option value="en">{copy('english')}</option>
+                <option value="ms">{copy('bahasaMelayu')}</option>
+              </NativeSelect>
+            )}
+          </SettingsField>
+          <SettingsSwitchRow
+            id="keyboard-shortcuts"
+            title={copy('keyboardShortcuts')}
+            description={copy('keyboardShortcutsDescription')}
+            state={preferences.shortcuts ? copy('on') : copy('off')}
+            checked={preferences.shortcuts}
             disabled={saving}
-            onChange={(event) => void save({ language: event.target.value as 'en' | 'ms' })}
-          >
-            <option value="en">{t('account-settings.appearance.english')}</option>
-            <option value="ms">{t('account-settings.appearance.bahasaMelayu')}</option>
-          </select>
-        </div>
-        <PreferenceSwitch
-          id="keyboard-shortcuts"
-          title={t('account-settings.appearance.keyboardShortcuts')}
-          description={t('account-settings.appearance.keyboardShortcutsDescription')}
-          checked={preferences.shortcuts}
-          disabled={saving}
-          onChange={(checked) => void save({ shortcuts: checked })}
-        />
-      </section>
-      {error && (
-        <p className={styles.alert} role="alert">
-          {error}
-        </p>
-      )}
-      {saving && (
-        <p className={styles.status} role="status">
-          {t('account-settings.appearance.saving')}
-        </p>
-      )}
+            onCheckedChange={(checked) => void save({ shortcuts: checked })}
+          />
+        </SettingsPart>
+
+        {error ? <SettingsError>{error}</SettingsError> : null}
+        <SettingsStatus>{saving ? copy('saving') : saved ? copy('saved') : null}</SettingsStatus>
+      </SettingsParts>
     </div>
   )
 }
 
-function PreferenceSwitch({
-  id,
-  title,
-  description,
+/** One selectable choice: its preview, its name and what it does. The radio is real; the tile is its label. */
+function Tile({
+  name,
+  value,
   checked,
   disabled,
-  onChange
+  label,
+  note,
+  onSelect,
+  wide = false,
+  children
 }: {
-  id: string
-  title: string
-  description: string
+  name: string
+  value: string
   checked: boolean
   disabled: boolean
-  onChange: (checked: boolean) => void
+  label: string
+  note: string
+  onSelect: () => void
+  wide?: boolean
+  children: ReactNode
 }) {
   return (
-    <div className={styles.field} data-density-row>
-      <div className={styles.fieldLabel}>
-        <Label htmlFor={id} className={styles.fieldTitle}>
-          {title}
-        </Label>
-        <p className={styles.help}>{description}</p>
+    <label
+      data-wide={wide || undefined}
+      className={cn(styles.tile, 'current-mark')}
+      data-current={checked || undefined}
+      data-disabled={disabled || undefined}
+    >
+      <input type="radio" name={name} value={value} checked={checked} disabled={disabled} onChange={onSelect} />
+      {children}
+      <span className={styles.name}>{label}</span>
+      <span className={styles.note}>{note}</span>
+    </label>
+  )
+}
+
+/** A piece of the real interface in one scheme: mode capsules, primary and quiet controls. Drawn, never clicked. */
+function Specimen({
+  scheme,
+  contrast = false,
+  compact = false,
+  locale
+}: {
+  scheme: Scheme
+  contrast?: boolean
+  compact?: boolean
+  locale: Locale
+}) {
+  const copy = (key: string) => t(`account-settings.appearance.${key}`, {}, locale)
+  return (
+    <div className={cn(styles.preview, scheme, contrast && 'hc')} aria-hidden="true">
+      <div className={styles.marks}>
+        <StatusMark state="normal" locale={locale} />
+        {compact ? null : (
+          <span className={styles.optional}>
+            <StatusMark state="outdoor_limited" locale={locale} />
+          </span>
+        )}
       </div>
-      <Switch id={id} checked={checked} disabled={disabled} onCheckedChange={onChange} aria-label={title} />
+      <div className={styles.marks}>
+        <span className={styles.capsule}>{copy('previewApprove')}</span>
+        {compact ? null : <span className={cn(styles.capsule, styles.quiet)}>{copy('previewEdit')}</span>}
+      </div>
     </div>
   )
 }

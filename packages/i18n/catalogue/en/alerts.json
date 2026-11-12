@@ -55,5 +55,6 @@
   "removeDevice": "Remove device",
   "emptyPreferences": "No preferences (n=0). Retry to load your settings.",
   "previousDevices": "First devices",
-  "emptyDevicePage": "No devices on this page (n=0). Show the first devices."
+  "emptyDevicePage": "No devices on this page (n=0). Show the first devices.",
+  "help": "The inbox lists every notification sent to your account. Enable alerts on a device to get them as they happen, and switch off the kinds you do not need."
 }

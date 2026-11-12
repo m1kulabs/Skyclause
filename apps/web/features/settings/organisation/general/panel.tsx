@@ -1,97 +1,164 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { t } from '@skyclause/i18n'
 import { Button } from '#ui/button'
 import { Input } from '#ui/input'
-import { Field, FieldLabel, FieldDescription } from '#ui/field'
-import { Alert, AlertDescription } from '#ui/alert'
-import { t } from '../../../organisations/catalogue'
+import { Skeleton } from '#ui/skeleton'
+import { t as organisations } from '../../../organisations/catalogue'
 import { apiFetch } from '../../../organisations/operations'
+import {
+  SettingsAside,
+  SettingsField,
+  SettingsParts,
+  SettingsReadError,
+  SettingsStatus,
+  SettingsSummaryLine
+} from '../../parts'
+import '../../catalogue'
+
+const NAME_LIMIT = 100
 
 /** The organisation rename panel: the name is editable (`org.manage`), the slug is shown read-only. */
-export default function Panel({ org }: { org: string }) {
+export default function Panel({ org, locale = 'en' }: { org: string; locale?: 'en' | 'ms' }) {
+  const copy = (key: string, vars: Record<string, string | number> = {}) => t(`settings.general.${key}`, vars, locale)
   const [name, setName] = useState<string | null>(null)
+  const [stored, setStored] = useState('')
   const [slug, setSlug] = useState('')
-  const [failed, setFailed] = useState(false)
+  const [failure, setFailure] = useState<{ error: unknown; at: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  async function load(signal?: AbortSignal) {
-    setFailed(false)
-    try {
-      const page = await apiFetch('listMyMemberships', { org, query: {}, signal })
-      const membership = page.data.find((item) => item.org_slug === org)
-      if (!membership) {
-        setFailed(true)
-        return
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      setFailure(null)
+      try {
+        const page = await apiFetch('listMyMemberships', { org, query: {}, signal })
+        const membership = page.data.find((item) => item.org_slug === org)
+        if (!membership) {
+          setFailure({ error: null, at: new Date().toISOString() })
+          return
+        }
+        setName(membership.org_name)
+        setStored(membership.org_name)
+        setSlug(membership.org_slug)
+      } catch (cause) {
+        if (!signal?.aborted) setFailure({ error: cause, at: new Date().toISOString() })
       }
-      setName(membership.org_name)
-      setSlug(membership.org_slug)
-    } catch {
-      if (!signal?.aborted) setFailed(true)
-    }
-  }
+    },
+    [org]
+  )
 
   useEffect(() => {
     const controller = new AbortController()
     void load(controller.signal)
     return () => controller.abort()
-  }, [org])
+  }, [load])
 
-  if (failed)
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (saving || name === null || name.trim().length === 0) return
+    setSaving(true)
+    setSaved(false)
+    setError(null)
+    try {
+      const updated = await apiFetch('updateOrganisation', { org, body: { name: name.trim() } })
+      setName(updated.name)
+      setStored(updated.name)
+      setSlug(updated.slug)
+      setSaved(true)
+    } catch {
+      setError(copy('saveFailed'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (failure)
     return (
-      <Alert variant="destructive">
-        <AlertDescription>{t('organisations.general.loadError')}</AlertDescription>
-        <Button variant="outline" onClick={() => void load()}>
-          {t('organisations.general.retry')}
-        </Button>
-      </Alert>
+      <SettingsReadError
+        source={copy('source')}
+        error={failure.error}
+        at={failure.at}
+        locale={locale}
+        onRetry={() => void load()}
+      />
     )
-  if (name === null) return <p role="status">{t('organisations.general.name')}</p>
+
+  const loading = name === null
 
   return (
-    <form
-      noValidate
-      onSubmit={async (event) => {
-        event.preventDefault()
-        if (saving || name.trim().length === 0) return
-        setSaving(true)
-        setSaved(false)
-        try {
-          const updated = await apiFetch('updateOrganisation', { org, body: { name: name.trim() } })
-          setName(updated.name)
-          setSlug(updated.slug)
-          setSaved(true)
-        } finally {
-          setSaving(false)
-        }
-      }}
-    >
-      <Field>
-        <FieldLabel htmlFor="org-general-name">{t('organisations.general.name')}</FieldLabel>
-        <Input
-          id="org-general-name"
-          name="name"
-          type="text"
-          autoComplete="organization"
-          required
-          disabled={saving}
-          value={name}
-          onChange={(event) => {
-            setName(event.target.value)
-            setSaved(false)
-          }}
-        />
-      </Field>
-      <Field>
-        <FieldLabel htmlFor="org-general-slug">{t('organisations.general.slug')}</FieldLabel>
-        <Input id="org-general-slug" name="slug" type="text" value={slug} readOnly aria-readonly spellCheck={false} />
-        <FieldDescription>{t('organisations.general.slugHint')}</FieldDescription>
-      </Field>
-      <Button type="submit" disabled={saving || name.trim().length === 0}>
-        {t(saving ? 'organisations.general.saving' : 'organisations.general.save')}
-      </Button>
-      {saved && <p role="status">{t('organisations.general.saved')}</p>}
-    </form>
+    <div aria-busy={loading || saving}>
+      {!loading && (
+        <SettingsAside>
+          <SettingsSummaryLine label={copy('summaryName')}>{stored}</SettingsSummaryLine>
+          <SettingsSummaryLine label={copy('summarySlug')}>{slug}</SettingsSummaryLine>
+        </SettingsAside>
+      )}
+      <form noValidate onSubmit={save} aria-label={copy('title')}>
+        <SettingsParts className="gap-6">
+          <div className="grid gap-5">
+            <SettingsField
+              label={organisations('organisations.general.name', {}, locale)}
+              hint={copy('nameHint', { limit: NAME_LIMIT })}
+              error={error}
+            >
+              {(aria) =>
+                name === null ? (
+                  <Skeleton className="h-10 w-full rounded-md" />
+                ) : (
+                  <Input
+                    {...aria}
+                    name="name"
+                    type="text"
+                    autoComplete="organization"
+                    maxLength={NAME_LIMIT}
+                    required
+                    disabled={saving}
+                    value={name}
+                    onChange={(event) => {
+                      setName(event.target.value)
+                      setSaved(false)
+                    }}
+                  />
+                )
+              }
+            </SettingsField>
+            <SettingsField
+              label={organisations('organisations.general.slug', {}, locale)}
+              hint={organisations('organisations.general.slugHint', {}, locale)}
+            >
+              {(aria) =>
+                loading ? (
+                  <Skeleton className="h-10 w-full rounded-md" />
+                ) : (
+                  <Input
+                    {...aria}
+                    name="slug"
+                    type="text"
+                    autoComplete="off"
+                    spellCheck={false}
+                    value={slug}
+                    readOnly
+                    aria-readonly
+                  />
+                )
+              }
+            </SettingsField>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="submit"
+              disabled={name === null || saving || name.trim().length === 0 || name.trim() === stored}
+              aria-busy={saving}
+            >
+              {organisations(saving ? 'organisations.general.saving' : 'organisations.general.save', {}, locale)}
+            </Button>
+            {saved ? <SettingsStatus>{organisations('organisations.general.saved', {}, locale)}</SettingsStatus> : null}
+          </div>
+        </SettingsParts>
+      </form>
+    </div>
   )
 }

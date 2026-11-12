@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { t } from '@skyclause/i18n'
+import { Button } from '../../components/ui/button'
 import { canDownloadExport, formatExpiryDate, isExportExpired } from './model'
 import type { ExportView } from './model'
 import '../settings/catalogue'
@@ -35,7 +36,7 @@ export function ExportList({
     }
   }, [jobs, scrollTop, virtual])
 
-  if (jobs.length === 0) return <p className="text-sm text-muted-foreground">{label('noExports')}</p>
+  if (jobs.length === 0) return <p className="type-body text-muted-foreground">{label('noExports')}</p>
 
   return (
     <div>
@@ -58,7 +59,7 @@ export function ExportList({
                 <p className="font-medium">{label(`status.${status}`)}</p>
                 {canDownload ? (
                   <a
-                    className="min-h-11 w-fit py-2 text-sm underline underline-offset-4"
+                    className="inline-flex min-h-9 w-fit items-center type-body underline underline-offset-4"
                     href={`/api/exports/${encodeURIComponent(job.id)}/download`}
                     download
                     aria-label={label(job.scope === 'account' ? 'downloadAccountFor' : 'downloadFor', { id: job.id })}
@@ -66,7 +67,7 @@ export function ExportList({
                     {label(job.scope === 'account' ? 'downloadAccount' : 'download')}
                   </a>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="type-body text-muted-foreground">
                     {status === 'expired' || (status === 'ready' && expired)
                       ? label('expiredLink')
                       : status === 'queued' || status === 'running'
@@ -77,7 +78,7 @@ export function ExportList({
                   </p>
                 )}
                 {canDownload && job.expires_at && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="type-body text-muted-foreground">
                     {label('linkExpires', { date: formatExpiryDate(job.expires_at, locale) })}
                   </p>
                 )}
@@ -88,14 +89,9 @@ export function ExportList({
         </ul>
       </div>
       {hasMore && onLoadMore && (
-        <button
-          type="button"
-          className="mt-3 min-h-11 rounded-md border border-border px-3 text-sm"
-          onClick={onLoadMore}
-          disabled={loadingMore}
-        >
+        <Button type="button" variant="outline" className="mt-3" onClick={onLoadMore} disabled={loadingMore}>
           {loadingMore ? label('loadingExports') : label('loadMoreExports')}
-        </button>
+        </Button>
       )}
     </div>
   )

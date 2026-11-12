@@ -92,7 +92,7 @@ test('consent identifies the request and exposes equal, keyboard-focusable nativ
   await expectNoSeriousAxeIssues()
 })
 
-test('the integrations table names the client in its confirmation dialog', async () => {
+test('the integrations list names the client on its button and in its confirmation dialog', async () => {
   const client = {
     id: 'client-row',
     client_id: 'client-1',
@@ -114,7 +114,7 @@ test('the integrations table names the client in its confirmation dialog', async
   render(<IntegrationsPanel org="org-1" locale="en" />)
   await screen.findByText('Gemini tenant 42')
   await expectNoSeriousAxeIssues()
-  fireEvent.click(screen.getByRole('button', { name: 'Delete OAuth client' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Delete OAuth client: Gemini tenant 42' }))
   expect(screen.getByRole('alertdialog').textContent).toContain('Gemini tenant 42')
   await expectNoSeriousAxeIssues()
 })

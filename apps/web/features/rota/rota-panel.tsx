@@ -1,19 +1,27 @@
 'use client'
 
-import { useEffect, useId, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import type { RotaShift } from '@skyclause/contracts'
 import { formatDateTime } from '@skyclause/i18n/format'
-import { Alert, AlertDescription } from '#ui/alert'
-import { Badge } from '#ui/badge'
 import { Button } from '#ui/button'
 import { Checkbox } from '#ui/checkbox'
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '#ui/field'
 import { Input } from '#ui/input'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '#ui/select'
+import { Skeleton } from '#ui/skeleton'
+import {
+  SettingsAside,
+  SettingsError,
+  SettingsField,
+  SettingsPart,
+  SettingsParts,
+  SettingsReadError,
+  SettingsStatus,
+  SettingsSummaryLine
+} from '../settings/parts'
 import { useUnsavedChangesGuard } from '../settings/set-7/use-unsaved-changes-guard'
 import { apiFetch } from '../members/operations'
 import type { Member } from '../members/model'
-import { formatMytClock, formatRotaDate, initials, nextSevenDays, type Locale } from './model'
+import { formatMytClock, formatRotaDate, initials, minutesOfDay, nextSevenDays, type Locale } from './model'
 import { t } from './i18n'
 import styles from './rota.module.css'
 
@@ -130,10 +138,6 @@ function shiftMatchesDay(shift: DraftShift, weekday: number): boolean {
 }
 
 export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
-  const personId = useId()
-  const templateId = useId()
-  const startId = useId()
-  const endId = useId()
   const [rota, setRota] = useState<RotaData | null>(null)
   const [members, setMembers] = useState<Member[]>([])
   const [draft, setDraft] = useState<DraftShift[]>([])
@@ -141,7 +145,8 @@ export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
   const [editor, setEditor] = useState<ShiftEditor | null>(null)
   const [showEditor, setShowEditor] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState(false)
+  const [loadFailure, setLoadFailure] = useState<{ error: unknown; at: string } | null>(null)
+  const [saveResult, setSaveResult] = useState<'saved' | 'failed' | null>(null)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [reload, setReload] = useState(0)
@@ -151,7 +156,7 @@ export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
   useEffect(() => {
     const controller = new AbortController()
     setLoading(true)
-    setLoadError(false)
+    setLoadFailure(null)
     Promise.all([
       apiFetch('getRota', { org, params: { org }, query: { days: 7 }, signal: controller.signal }),
       viewer.role === 'approver' ? Promise.resolve([] as Member[]) : allMembers(org, controller.signal)
@@ -164,10 +169,9 @@ export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
         setMembers(memberRows)
         setDraft(initial)
         setSavedSignature(stableSignature(initial))
-        setLoadError(false)
       })
-      .catch(() => {
-        if (!controller.signal.aborted) setLoadError(true)
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) setLoadFailure({ error, at: new Date().toISOString() })
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false)
@@ -285,6 +289,7 @@ export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
     if (!rota || !dirty) return
     setSaving(true)
     setMessage('')
+    setSaveResult(null)
     // An Approver's replacement covers only their own shifts; the API keeps colleagues' and refuses theirs.
     const editable = viewer.role === 'approver' ? draft.filter((shift) => shift.account_id === viewer.accountId) : draft
     try {
@@ -302,9 +307,9 @@ export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
       setRota(result)
       setDraft(saved)
       setSavedSignature(stableSignature(saved))
-      setMessage(t('rota.saved', {}, locale))
+      setSaveResult('saved')
     } catch {
-      setMessage(t('rota.save_failed', {}, locale))
+      setSaveResult('failed')
     } finally {
       setSaving(false)
     }
@@ -320,28 +325,51 @@ export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
         : null
   }
 
-  return (
-    <div className={styles.panel}>
-      {loading && <p role="status">{t('rota.loading', {}, locale)}</p>}
-      {loadError && (
-        <Alert variant="destructive" role="alert">
-          <AlertDescription className={styles.retryRow}>
-            <span>{t('rota.load_error', {}, locale)}</span>
-            <button className={styles.inlineButton} type="button" onClick={() => setReload((value) => value + 1)}>
-              {t('rota.retry', {}, locale)}
-            </button>
-          </AlertDescription>
-        </Alert>
-      )}
+  const hourTicks = [0, 3, 6, 9, 12, 15, 18, 21, 24]
+  const placement = (start: number, end: number) => ({
+    left: `${((start / 1440) * 100).toFixed(3)}%`,
+    width: `${(((end - start) / 1440) * 100).toFixed(3)}%`
+  })
+  const shiftCount = draft.length
+  const gapCount = unstaffedSlots.length
 
-      {!loading && !loadError && rota && (
-        <>
-          <section className={styles.coverage} aria-label={t('rota.on_duty', {}, locale)}>
-            <div>
-              <h3>{t('rota.on_duty', {}, locale)}</h3>
-              {onDuty ? (
-                <p>
-                  <strong>
+  return (
+    <div className={styles.panel} aria-busy={loading}>
+      {!loading && !loadFailure && rota && (
+        <SettingsAside>
+          <SettingsSummaryLine label={t('rota.timeline_short', {}, locale)}>
+            {t('rota.summary_shifts', { count: shiftCount }, locale)}
+          </SettingsSummaryLine>
+          <SettingsSummaryLine label={t('rota.unstaffed_row', {}, locale)}>
+            {t('rota.summary_gaps', { count: gapCount }, locale)}
+          </SettingsSummaryLine>
+        </SettingsAside>
+      )}
+      <SettingsParts>
+        {loading && (
+          <div className="grid gap-2" role="status" aria-label={t('rota.loading', {}, locale)}>
+            <Skeleton className="h-12 w-full rounded-md" />
+            <Skeleton className="h-28 w-full rounded-md" />
+            <Skeleton className="h-28 w-full rounded-md" />
+          </div>
+        )}
+        {loadFailure && (
+          <SettingsReadError
+            source={t('rota.source', {}, locale)}
+            error={loadFailure.error}
+            at={loadFailure.at}
+            locale={locale}
+            onRetry={() => setReload((value) => value + 1)}
+          />
+        )}
+
+        {!loading && !loadFailure && rota && (
+          <>
+            <section className={styles.coverage} aria-label={t('rota.on_duty', {}, locale)}>
+              <div className={styles.fact}>
+                <h3>{t('rota.on_duty', {}, locale)}</h3>
+                {onDuty ? (
+                  <p>
                     {t(
                       'rota.on_duty_summary',
                       {
@@ -350,17 +378,15 @@ export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
                       },
                       locale
                     )}
-                  </strong>
-                </p>
-              ) : (
-                <p>{t('rota.on_duty_none', {}, locale)}</p>
-              )}
-            </div>
-            <div>
-              <h3>{t('rota.next_shift', {}, locale)}</h3>
-              {nextShift ? (
-                <p>
-                  <strong>
+                  </p>
+                ) : (
+                  <p>{t('rota.on_duty_none', {}, locale)}</p>
+                )}
+              </div>
+              <div className={styles.fact}>
+                <h3>{t('rota.next_shift', {}, locale)}</h3>
+                {nextShift ? (
+                  <p>
                     {t(
                       'rota.next_shift_summary',
                       {
@@ -370,314 +396,360 @@ export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
                       },
                       locale
                     )}
-                  </strong>
-                </p>
-              ) : (
-                <p>{t('rota.next_none', {}, locale)}</p>
-              )}
-            </div>
-          </section>
-
-          {draft.some((shift) => shift.account_id === viewer.accountId) && alertsCard}
-
-          <section className={styles.finding} aria-labelledby="rota-finding-heading">
-            <h3 id="rota-finding-heading">{t('rota.finding', {}, locale)}</h3>
-            {firstUnstaffed ? (
-              <p>
-                {t(
-                  'rota.finding_item',
-                  {
-                    date: formatRotaDate(firstUnstaffed.date, locale),
-                    start: formatMytClock(firstUnstaffed.starts_at, locale),
-                    end: formatMytClock(firstUnstaffed.ends_at, locale),
-                    template: templateName(firstUnstaffed.template, locale)
-                  },
-                  locale
+                  </p>
+                ) : (
+                  <p>{t('rota.next_none', {}, locale)}</p>
                 )}
-              </p>
-            ) : (
-              <p>{t('rota.finding_none', {}, locale)}</p>
-            )}
-          </section>
+              </div>
+              <div className={styles.fact} aria-labelledby="rota-finding-heading" role="group">
+                <h3 id="rota-finding-heading">{t('rota.finding', {}, locale)}</h3>
+                {firstUnstaffed ? (
+                  <p>
+                    {t(
+                      'rota.finding_item',
+                      {
+                        date: formatRotaDate(firstUnstaffed.date, locale),
+                        start: formatMytClock(firstUnstaffed.starts_at, locale),
+                        end: formatMytClock(firstUnstaffed.ends_at, locale),
+                        template: templateName(firstUnstaffed.template, locale)
+                      },
+                      locale
+                    )}
+                  </p>
+                ) : (
+                  <p>{t('rota.finding_none', {}, locale)}</p>
+                )}
+              </div>
+            </section>
 
-          <section className={styles.templates} aria-labelledby="rota-templates-heading">
-            <h3 id="rota-templates-heading">{t('rota.templates_heading', {}, locale)}</h3>
-            {rota.templates.map((template) => {
-              const assigned = draft.some((shift) => shift.template === template.template)
-              return (
-                <div className={styles.templateRow} key={template.template}>
-                  <strong>{templateName(template.template, locale)}</strong>
-                  <span>
-                    {t('rota.template_hours', { start: template.local_start, end: template.local_end }, locale)}
-                  </span>
-                  <span>
-                    {assigned ? t('rota.template_assigned', {}, locale) : t('rota.no_one_assigned', {}, locale)}
-                  </span>
-                </div>
-              )
-            })}
-          </section>
+            {draft.some((shift) => shift.account_id === viewer.accountId) && alertsCard}
 
-          <section aria-labelledby="rota-timeline-heading">
-            <div className={styles.sectionHeader}>
-              <h3 id="rota-timeline-heading">{t('rota.timeline', {}, locale)}</h3>
-              <span>{t('rota.shift_count', { count: draft.length }, locale)}</span>
-            </div>
-            <div
-              className={styles.timelineFrame}
-              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- A scrollable timeline needs a keyboard tab stop.
-              tabIndex={0}
-              role="region"
-              aria-label={t('rota.timeline', {}, locale)}
+            <SettingsPart
+              title={t('rota.timeline', {}, locale)}
+              id="rota-timeline-heading"
+              actions={
+                <span className="type-small text-muted-foreground">
+                  {t('rota.shift_count', { count: draft.length }, locale)}
+                </span>
+              }
             >
-              <div className={styles.timeline}>
-                <div className={styles.timelineHeader}>
-                  <div className={styles.personHeader}>{t('rota.person', {}, locale)}</div>
-                  {days.map((day, index) => {
-                    const daySlots = unstaffedSlots.filter((slot) => slot.date === day.date)
-                    const labels = [
-                      ...new Set(daySlots.map(conditionLabel).filter((label): label is string => Boolean(label)))
-                    ]
-                    return (
-                      <div className={styles.dayHeader} key={day.date}>
-                        <strong>{formatRotaDate(day.date, locale)}</strong>
-                        {index === 0 && <span>{t('rota.today', {}, locale)}</span>}
-                        {labels.map((label) => (
-                          <Badge key={label} variant="outline">
-                            {label}
-                          </Badge>
-                        ))}
-                      </div>
-                    )
-                  })}
-                </div>
-                {people.map((person) => (
-                  <div className={styles.timelineRow} key={person.id}>
-                    <div className={styles.personCell}>
-                      <span className={styles.avatar} aria-hidden="true">
-                        {person.initials}
-                      </span>
-                      <strong>{person.name}</strong>
+              <div className={styles.week}>
+                <div className={styles.axis} aria-hidden="true">
+                  <div className={styles.axisRow}>
+                    <span className={styles.zone}>{t('rota.axis_zone', {}, locale)}</span>
+                    <div className={styles.ticks}>
+                      {hourTicks.map((hour) => (
+                        <time
+                          key={hour}
+                          className={styles.tick}
+                          dateTime={`${String(hour % 24).padStart(2, '0')}:00`}
+                          style={{ left: `${((hour / 24) * 100).toFixed(3)}%` }}
+                        >
+                          {String(hour).padStart(2, '0')}
+                        </time>
+                      ))}
                     </div>
-                    {days.map((day) => {
-                      const shifts = draft.filter(
-                        (shift) => shift.account_id === person.id && shiftMatchesDay(shift, day.isoWeekday)
-                      )
-                      return (
-                        <div className={styles.dayCell} key={`${person.id}-${day.date}`}>
-                          {shifts.map((shift) => {
-                            const canEdit = viewer.role !== 'approver' || shift.account_id === viewer.accountId
-                            return (
-                              <div className={styles.shiftCard} key={shift.clientKey}>
-                                <span>
-                                  {t('rota.time_range', { start: shift.local_start, end: shift.local_end }, locale)}
+                  </div>
+                </div>
+                {days.map((day, index) => {
+                  const dayShifts = draft
+                    .filter((shift) => shiftMatchesDay(shift, day.isoWeekday))
+                    .sort((a, b) => a.local_start.localeCompare(b.local_start))
+                  const daySlots = unstaffedSlots.filter((slot) => slot.date === day.date)
+                  const lanePeople = people.filter((person) =>
+                    dayShifts.some((shift) => shift.account_id === person.id)
+                  )
+                  return (
+                    <div className={styles.day} key={day.date} data-day={day.date}>
+                      <div className={styles.dayHead}>
+                        <strong>{formatRotaDate(day.date, locale)}</strong>
+                        {index === 0 && <span className={styles.today}>{t('rota.today', {}, locale)}</span>}
+                      </div>
+                      <div className={styles.lanes} aria-hidden="true">
+                        {lanePeople.map((person) => (
+                          <div className={styles.lane} key={person.id}>
+                            {dayShifts
+                              .filter((shift) => shift.account_id === person.id)
+                              .map((shift) => (
+                                <span
+                                  className={styles.capsule}
+                                  data-own={person.id === viewer.accountId || undefined}
+                                  key={shift.clientKey}
+                                  style={placement(minutesOfDay(shift.local_start), minutesOfDay(shift.local_end))}
+                                >
+                                  <span className={styles.initials}>
+                                    {person.id === viewer.accountId ? t('rota.you', {}, locale) : person.initials}
+                                  </span>
+                                  <span className={styles.name}>{person.name}</span>
                                 </span>
-                                <span>{templateName(shift.template, locale)}</span>
-                                {canEdit && (
-                                  <div className={styles.shiftActions}>
-                                    <Button variant="outline" onClick={() => editShift(shift)}>
-                                      {t(
-                                        'rota.edit_shift',
-                                        { name: person.name, date: formatRotaDate(day.date, locale) },
-                                        locale
-                                      )}
-                                    </Button>
-                                    <Button variant="outline" onClick={() => removeShift(shift)}>
-                                      {t('rota.remove_shift', { name: person.name }, locale)}
-                                    </Button>
-                                  </div>
-                                )}
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )
-                    })}
-                  </div>
-                ))}
-                <div className={styles.timelineRow}>
-                  <div className={styles.personCell}>
-                    <strong>{t('rota.unstaffed_row', {}, locale)}</strong>
-                  </div>
-                  {days.map((day) => {
-                    const slots = unstaffedSlots.filter((slot) => slot.date === day.date)
-                    return (
-                      <div
-                        className={slots.length ? styles.unstaffedCell : styles.dayCell}
-                        key={`unstaffed-${day.date}`}
-                      >
-                        {slots.map((slot, index) => (
-                          <div className={styles.unstaffedCard} key={`${slot.template}-${slot.starts_at}-${index}`}>
-                            <strong>{t('rota.unstaffed', {}, locale)}</strong>
-                            <span>
-                              {t(
-                                'rota.time_range',
-                                {
-                                  start: formatMytClock(slot.starts_at, locale),
-                                  end: formatMytClock(slot.ends_at, locale)
-                                },
-                                locale
-                              )}
-                            </span>
-                            {conditionLabel(slot) && <span>{conditionLabel(slot)}</span>}
+                              ))}
                           </div>
                         ))}
+                        {daySlots.map((slot, slotIndex) => (
+                          <div className={styles.lane} key={`${slot.template}-${slot.starts_at}-${slotIndex}`}>
+                            <span
+                              className={styles.capsule}
+                              data-gap
+                              style={placement(minutesOfDay(slot.starts_at), minutesOfDay(slot.ends_at))}
+                            >
+                              <span className={styles.initials}>{t('rota.unstaffed_short', {}, locale)}</span>
+                              <span className={styles.name}>{t('rota.unstaffed', {}, locale)}</span>
+                            </span>
+                          </div>
+                        ))}
+                        {!daySlots.length && !lanePeople.length ? <div className={styles.lane} /> : null}
                       </div>
-                    )
-                  })}
-                </div>
+                      {dayShifts.length || daySlots.length ? (
+                        <ul className={styles.shifts}>
+                          {dayShifts.map((shift) => {
+                            const canEdit = viewer.role !== 'approver' || shift.account_id === viewer.accountId
+                            const person = displayName(shift.account_id, members, viewer, locale)
+                            return (
+                              <li className={styles.shift} key={shift.clientKey}>
+                                <span className={styles.shiftWhen} data-numeric>
+                                  {t('rota.time_range', { start: shift.local_start, end: shift.local_end }, locale)}
+                                </span>
+                                <span className={styles.shiftWho}>
+                                  {person}
+                                  <span>{templateName(shift.template, locale)}</span>
+                                </span>
+                                {canEdit && (
+                                  <span className={styles.shiftActions}>
+                                    <Button
+                                      variant="outline"
+                                      aria-label={t(
+                                        'rota.edit_shift',
+                                        { name: person, date: formatRotaDate(day.date, locale) },
+                                        locale
+                                      )}
+                                      onClick={() => editShift(shift)}
+                                    >
+                                      {t('rota.edit', {}, locale)}
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      aria-label={t('rota.remove_shift', { name: person }, locale)}
+                                      onClick={() => removeShift(shift)}
+                                    >
+                                      {t('rota.remove', {}, locale)}
+                                    </Button>
+                                  </span>
+                                )}
+                              </li>
+                            )
+                          })}
+                          {daySlots.map((slot, slotIndex) => (
+                            <li
+                              className={styles.shift}
+                              data-gap
+                              key={`gap-${slot.template}-${slot.starts_at}-${slotIndex}`}
+                            >
+                              <span className={styles.shiftWhen} data-numeric>
+                                {t(
+                                  'rota.time_range',
+                                  {
+                                    start: formatMytClock(slot.starts_at, locale),
+                                    end: formatMytClock(slot.ends_at, locale)
+                                  },
+                                  locale
+                                )}
+                              </span>
+                              <span className={styles.shiftWho}>
+                                {t('rota.unstaffed', {}, locale)}
+                                <span>{conditionLabel(slot) ?? templateName(slot.template, locale)}</span>
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className={styles.empty}>{t('rota.no_shifts', {}, locale)}</p>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
-            </div>
-          </section>
+            </SettingsPart>
 
-          <section className={styles.editorSection} aria-labelledby="rota-add-heading">
-            <h3 id="rota-add-heading">{t('rota.add_heading', {}, locale)}</h3>
-            {!showEditor && (
-              <Button type="button" onClick={startNewShift}>
-                {t('rota.add_action', {}, locale)}
-              </Button>
-            )}
-            {showEditor && editor && (
-              <form className={styles.editor} onSubmit={applyEditor}>
-                <FieldGroup className={styles.editorFields}>
-                  <Field>
-                    <FieldLabel htmlFor={personId}>{t('rota.person', {}, locale)}</FieldLabel>
-                    <Select
-                      value={editor.accountId}
-                      onValueChange={(value) =>
-                        setEditor((current) => current && { ...current, accountId: value ?? '' })
-                      }
-                      disabled={viewer.role === 'approver'}
-                    >
-                      <SelectTrigger id={personId} aria-label={t('rota.person', {}, locale)}>
-                        <SelectValue placeholder={t('rota.person_placeholder', {}, locale)} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {(viewer.role === 'approver'
-                            ? eligible.filter((member) => member.account_id === viewer.accountId)
-                            : eligible
-                          ).map((member) => (
-                            <SelectItem key={member.account_id} value={member.account_id}>
-                              {displayName(member.account_id, members, viewer, locale)}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                    {!eligible.length && <FieldDescription>{t('rota.no_approvers', {}, locale)}</FieldDescription>}
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor={templateId}>{t('rota.template', {}, locale)}</FieldLabel>
-                    <Select
-                      value={editor.template}
-                      onValueChange={(value) => value && chooseTemplate(value as TemplateName)}
-                    >
-                      <SelectTrigger id={templateId} aria-label={t('rota.template', {}, locale)}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {rota.templates.map((template) => (
-                            <SelectItem key={template.template} value={template.template}>
-                              {templateName(template.template, locale)}
-                            </SelectItem>
-                          ))}
-                          {!rota.templates.some((template) => template.template === 'custom') && (
-                            <SelectItem value="custom">{templateName('custom', locale)}</SelectItem>
-                          )}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor={startId}>{t('rota.time_start', {}, locale)}</FieldLabel>
-                    <Input
-                      id={startId}
-                      type="time"
-                      value={editor.localStart}
-                      onChange={(event) => {
-                        const localStart = event.currentTarget.value
-                        setEditor((current) => current && { ...current, localStart })
-                      }}
-                      disabled={editor.template !== 'custom'}
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor={endId}>{t('rota.time_end', {}, locale)}</FieldLabel>
-                    <Input
-                      id={endId}
-                      type="time"
-                      value={editor.localEnd}
-                      onChange={(event) => {
-                        const localEnd = event.currentTarget.value
-                        setEditor((current) => current && { ...current, localEnd })
-                      }}
-                      disabled={editor.template !== 'custom'}
-                    />
-                  </Field>
-                </FieldGroup>
-                <fieldset className={styles.dayChoices}>
-                  <legend>{t('rota.days', {}, locale)}</legend>
-                  <div className={styles.dayOptions}>
-                    {dayKeys.map((key, index) => {
-                      const weekday = index + 1
-                      const checked = editor.days.includes(weekday)
-                      return (
-                        <label className={styles.dayChoice} key={key}>
-                          <Checkbox
-                            checked={checked}
-                            aria-label={dayName(weekday, locale)}
-                            onCheckedChange={(value) =>
-                              setEditor(
-                                (current) =>
-                                  current && {
-                                    ...current,
-                                    days: value
-                                      ? [...new Set([...current.days, weekday])].sort((a, b) => a - b)
-                                      : current.days.filter((day) => day !== weekday)
-                                  }
-                              )
-                            }
-                          />
-                          <span>{dayName(weekday, locale)}</span>
-                        </label>
-                      )
-                    })}
-                  </div>
-                </fieldset>
-                {message && (
-                  <p role="alert" className={styles.problem}>
-                    {message}
-                  </p>
-                )}
-                <div className={styles.editorActions}>
-                  <Button type="submit">{t('rota.apply_shift', {}, locale)}</Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setShowEditor(false)
-                      setEditor(null)
-                      setMessage('')
-                    }}
-                  >
-                    {t('rota.cancel_edit', {}, locale)}
+            <SettingsPart title={t('rota.templates_heading', {}, locale)} id="rota-templates-heading">
+              <div className={styles.templates}>
+                {rota.templates.map((template) => {
+                  const assigned = draft.some((shift) => shift.template === template.template)
+                  return (
+                    <div className={styles.templateRow} key={template.template}>
+                      <strong>{templateName(template.template, locale)}</strong>
+                      <span>
+                        {t('rota.template_hours', { start: template.local_start, end: template.local_end }, locale)}
+                      </span>
+                      <span>
+                        {assigned ? t('rota.template_assigned', {}, locale) : t('rota.no_one_assigned', {}, locale)}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </SettingsPart>
+
+            <SettingsPart title={t('rota.add_heading', {}, locale)} id="rota-add-heading">
+              {!showEditor && (
+                <div>
+                  <Button type="button" onClick={startNewShift}>
+                    {t('rota.add_action', {}, locale)}
                   </Button>
                 </div>
-              </form>
-            )}
-          </section>
+              )}
+              {showEditor && editor && (
+                <form className={styles.editor} onSubmit={applyEditor} noValidate>
+                  <div className={styles.editorFields}>
+                    <SettingsField
+                      label={t('rota.person', {}, locale)}
+                      hint={!eligible.length ? t('rota.no_approvers', {}, locale) : undefined}
+                    >
+                      {(aria) => (
+                        <Select
+                          value={editor.accountId}
+                          onValueChange={(value) =>
+                            setEditor((current) => current && { ...current, accountId: value ?? '' })
+                          }
+                          disabled={viewer.role === 'approver'}
+                        >
+                          <SelectTrigger {...aria} className="w-full" aria-label={t('rota.person', {}, locale)}>
+                            <SelectValue placeholder={t('rota.person_placeholder', {}, locale)}>
+                              {editor.accountId ? displayName(editor.accountId, members, viewer, locale) : null}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              {(viewer.role === 'approver'
+                                ? eligible.filter((member) => member.account_id === viewer.accountId)
+                                : eligible
+                              ).map((member) => (
+                                <SelectItem key={member.account_id} value={member.account_id}>
+                                  {displayName(member.account_id, members, viewer, locale)}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </SettingsField>
+                    <SettingsField label={t('rota.template', {}, locale)}>
+                      {(aria) => (
+                        <Select
+                          value={editor.template}
+                          onValueChange={(value) => value && chooseTemplate(value as TemplateName)}
+                        >
+                          <SelectTrigger {...aria} className="w-full" aria-label={t('rota.template', {}, locale)}>
+                            <SelectValue>{templateName(editor.template, locale)}</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              {rota.templates.map((template) => (
+                                <SelectItem key={template.template} value={template.template}>
+                                  {templateName(template.template, locale)}
+                                </SelectItem>
+                              ))}
+                              {!rota.templates.some((template) => template.template === 'custom') && (
+                                <SelectItem value="custom">{templateName('custom', locale)}</SelectItem>
+                              )}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </SettingsField>
+                    <SettingsField label={t('rota.time_start', {}, locale)} hint={t('rota.time_hint', {}, locale)}>
+                      {(aria) => (
+                        <Input
+                          {...aria}
+                          name="local_start"
+                          type="time"
+                          autoComplete="off"
+                          value={editor.localStart}
+                          onChange={(event) => {
+                            const localStart = event.currentTarget.value
+                            setEditor((current) => current && { ...current, localStart })
+                          }}
+                          disabled={editor.template !== 'custom'}
+                        />
+                      )}
+                    </SettingsField>
+                    <SettingsField label={t('rota.time_end', {}, locale)} hint={t('rota.time_hint', {}, locale)}>
+                      {(aria) => (
+                        <Input
+                          {...aria}
+                          name="local_end"
+                          type="time"
+                          autoComplete="off"
+                          value={editor.localEnd}
+                          onChange={(event) => {
+                            const localEnd = event.currentTarget.value
+                            setEditor((current) => current && { ...current, localEnd })
+                          }}
+                          disabled={editor.template !== 'custom'}
+                        />
+                      )}
+                    </SettingsField>
+                  </div>
+                  <fieldset className={styles.dayChoices}>
+                    <legend>{t('rota.days', {}, locale)}</legend>
+                    <div className={styles.dayOptions}>
+                      {dayKeys.map((key, index) => {
+                        const weekday = index + 1
+                        const checked = editor.days.includes(weekday)
+                        return (
+                          <label className={styles.dayChoice} key={key}>
+                            <Checkbox
+                              checked={checked}
+                              name="days"
+                              value={String(weekday)}
+                              aria-label={dayName(weekday, locale)}
+                              onCheckedChange={(value) =>
+                                setEditor(
+                                  (current) =>
+                                    current && {
+                                      ...current,
+                                      days: value
+                                        ? [...new Set([...current.days, weekday])].sort((a, b) => a - b)
+                                        : current.days.filter((day) => day !== weekday)
+                                    }
+                                )
+                              }
+                            />
+                            <span>{dayName(weekday, locale)}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </fieldset>
+                  {message && <SettingsError>{message}</SettingsError>}
+                  <div className={styles.editorActions}>
+                    <Button type="submit">{t('rota.apply_shift', {}, locale)}</Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setShowEditor(false)
+                        setEditor(null)
+                        setMessage('')
+                      }}
+                    >
+                      {t('rota.cancel_edit', {}, locale)}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </SettingsPart>
 
-          <div className={styles.saveRow}>
-            <Button type="button" disabled={!dirty || saving} onClick={() => void saveRota()}>
-              {saving ? t('rota.saving', {}, locale) : t('rota.save', {}, locale)}
-            </Button>
-            {dirty && <span role="status">{t('rota.unsaved', {}, locale)}</span>}
-            {message && !showEditor && <span role="status">{message}</span>}
-          </div>
-        </>
-      )}
+            <div className={styles.saveRow}>
+              <Button type="button" disabled={!dirty || saving} onClick={() => void saveRota()}>
+                {saving ? t('rota.saving', {}, locale) : t('rota.save', {}, locale)}
+              </Button>
+              {dirty && <SettingsStatus>{t('rota.unsaved', {}, locale)}</SettingsStatus>}
+              {saveResult === 'saved' && !dirty && <SettingsStatus>{t('rota.saved', {}, locale)}</SettingsStatus>}
+              {saveResult === 'failed' && <SettingsError>{t('rota.save_failed', {}, locale)}</SettingsError>}
+            </div>
+          </>
+        )}
+      </SettingsParts>
     </div>
   )
 }

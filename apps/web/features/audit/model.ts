@@ -1,5 +1,6 @@
 import type { AuditAction } from '@skyclause/contracts'
-import { formatDateTime } from '@skyclause/i18n/format'
+import { formatDateKey, formatDateTime } from '@skyclause/i18n/format'
+import type { AuditEntry } from './operations'
 
 export interface AuditFilterState {
   actor_id: string
@@ -52,4 +53,23 @@ export function toApiAuditFilters(filters: AuditFilterState) {
 
 export function formatAuditTime(instant: string, locale: 'en' | 'ms' = 'en'): string {
   return formatDateTime(instant, locale)
+}
+
+/** The most records a page of the ledger renders; the API's own page size. */
+export const AUDIT_PAGE_SIZE = 50
+
+/**
+ * Whether a record already on screen satisfies the filters now set. While the answer for new filters is on its way the
+ * rows that fail are dimmed, not removed, so nothing jumps; the answer then replaces them.
+ */
+export function entryMatchesFilters(entry: AuditEntry, filters: AuditFilterState): boolean {
+  if (filters.actor_id && entry.actor_id !== filters.actor_id) return false
+  if (filters.action && entry.action !== filters.action) return false
+  if (filters.target_type && entry.target_type !== filters.target_type) return false
+  if (filters.target_id && entry.target_id !== filters.target_id) return false
+  if (filters.project_id && entry.project_id !== filters.project_id) return false
+  const day = formatDateKey(entry.created_at)
+  if (filters.from && day < filters.from) return false
+  if (filters.to && day > filters.to) return false
+  return true
 }

@@ -12,6 +12,7 @@ export function useAccountPreferences(initial = DEFAULT_PREFERENCES) {
   const [preferences, setPreferences] = useState<PreferenceValues>(initial)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
   const current = useRef(initial)
   const inFlight = useRef(false)
 
@@ -42,11 +43,13 @@ export function useAccountPreferences(initial = DEFAULT_PREFERENCES) {
     applyAccountPreferences(next)
     setSaving(true)
     setError(null)
+    setSaved(false)
     try {
-      const saved = await accountApi('updateMyPreferences', { body: update })
-      current.current = saved
-      setPreferences(saved)
-      applyAccountPreferences(saved)
+      const stored = await accountApi('updateMyPreferences', { body: update })
+      current.current = stored
+      setPreferences(stored)
+      applyAccountPreferences(stored)
+      setSaved(true)
     } catch (failure) {
       current.current = previous
       setPreferences(previous)
@@ -62,5 +65,5 @@ export function useAccountPreferences(initial = DEFAULT_PREFERENCES) {
     }
   }, [])
 
-  return { preferences, save, saving, error }
+  return { preferences, save, saving, saved, error }
 }

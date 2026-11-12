@@ -3,6 +3,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import { t } from '@skyclause/i18n'
 import { Button } from '../../components/ui/button'
+import {
+  SettingsAside,
+  SettingsDanger,
+  SettingsError,
+  SettingsPart,
+  SettingsParts,
+  SettingsStatus,
+  SettingsSummaryLine
+} from '../settings/parts'
 import { TypedConfirmDialog } from '../settings/set-7/confirm-dialog'
 import { accountApiFetch, type AccountExport } from './operations'
 import { ExportList } from './export-list'
@@ -123,98 +132,73 @@ export function AccountDataPanel({ email, locale = 'en' }: { email: string | nul
   }
 
   return (
-    <div className="grid gap-8">
-      <section aria-labelledby="account-data-title" className="grid gap-4">
-        <div>
-          <h2 id="account-data-title" className="text-base font-semibold">
-            {label('accountTitle')}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">{label('accountDescription')}</p>
-          <p className="mt-2 text-sm text-muted-foreground">{label('readyWithin')}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Button type="button" className="min-h-11" onClick={() => void requestExport()}>
-            {label('requestAccountExport')}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11"
-            onClick={() => void loadExports().catch(() => setExportError(label('exportFailed')))}
-          >
-            {label('refreshExports')}
-          </Button>
-          {loading && (
-            <span role="status" className="text-sm text-muted-foreground">
-              {label('loadingExports')}
-            </span>
-          )}
-        </div>
-        {exportError && (
-          <p role="status" className="text-sm text-destructive">
-            {exportError}
-          </p>
-        )}
-        <ExportList
-          jobs={exports}
-          locale={locale}
-          hasMore={Boolean(exportCursor)}
-          loadingMore={loadingMore}
-          onLoadMore={() => void loadMoreExports()}
-        />
-      </section>
-
-      <section
-        aria-labelledby="delete-account-title"
-        className="grid justify-items-start gap-3 rounded-md border border-destructive/60 p-4"
-      >
-        <h2 id="delete-account-title" className="text-base font-semibold text-destructive">
-          {label('deleteAccount')}
-        </h2>
-        {deleted ? (
-          <p role="status">{label('accountDeletionScheduled')}</p>
-        ) : (
-          <>
-            <p className="text-sm text-muted-foreground">{label('deleteAccountDescription')}</p>
+    <div data-account-panel="data" aria-busy={loading}>
+      <SettingsAside>
+        <SettingsSummaryLine label={label('summaryExports')}>
+          {loading ? label('loadingExports') : label('summaryExportCount', { count: exports.length })}
+        </SettingsSummaryLine>
+      </SettingsAside>
+      <SettingsParts>
+        <SettingsPart title={label('accountTitle')} description={label('accountDescription')} id="account-data-title">
+          <p className="type-small text-muted-foreground">{label('readyWithin')}</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" onClick={() => void requestExport()}>
+              {label('requestAccountExport')}
+            </Button>
             <Button
               type="button"
-              variant="destructive"
-              className="min-h-11"
-              disabled={!email}
-              onClick={() => setDeleteOpen(true)}
+              variant="outline"
+              onClick={() => void loadExports().catch(() => setExportError(label('exportFailed')))}
             >
-              {label('deleteAccount')}
+              {label('refreshExports')}
             </Button>
-            {!email && (
-              <p role="status" className="text-sm text-muted-foreground">
-                {label('accountDeleteUnavailable')}
-              </p>
-            )}
-          </>
-        )}
-        {deleteError && (
-          <p role="alert" className="text-sm text-destructive">
-            {deleteError}
-          </p>
-        )}
-        {deleteError && transferOrganisations.length > 0 && (
-          <ul className="grid gap-2">
-            {transferOrganisations.map((membership) => (
-              <li key={membership.id}>
-                <a
-                  className="min-h-11 py-2 underline underline-offset-4"
-                  href={`/${encodeURIComponent(membership.org_slug)}/settings/members`}
-                >
-                  {label('transferOwnership', { name: membership.org_name })}
-                </a>
-              </li>
-            ))}
-          </ul>
-        )}
-        {deleteError && membershipsLoaded && transferOrganisations.length === 0 && (
-          <p className="text-sm text-muted-foreground">{label('noOwnedOrganisations')}</p>
-        )}
-      </section>
+            {loading && <SettingsStatus>{label('loadingExports')}</SettingsStatus>}
+          </div>
+          {exportError && <SettingsError>{exportError}</SettingsError>}
+          <ExportList
+            jobs={exports}
+            locale={locale}
+            hasMore={Boolean(exportCursor)}
+            loadingMore={loadingMore}
+            onLoadMore={() => void loadMoreExports()}
+          />
+        </SettingsPart>
+
+        <SettingsDanger
+          id="delete-account-title"
+          title={label('deleteAccount')}
+          description={label('deleteAccountConsequence')}
+        >
+          {deleted ? (
+            <SettingsStatus>{label('accountDeletionScheduled')}</SettingsStatus>
+          ) : (
+            <>
+              <Button type="button" variant="destructive" disabled={!email} onClick={() => setDeleteOpen(true)}>
+                {label('deleteAccount')}
+              </Button>
+              {!email && <SettingsStatus>{label('accountDeleteUnavailable')}</SettingsStatus>}
+            </>
+          )}
+          {deleteError && <SettingsError>{deleteError}</SettingsError>}
+          {deleteError && transferOrganisations.length > 0 && (
+            <ul className="m-0 grid w-full list-none gap-2 p-0">
+              {transferOrganisations.map((membership) => (
+                <li key={membership.id}>
+                  <a
+                    className="inline-flex min-h-9 items-center underline underline-offset-4"
+                    href={`/${encodeURIComponent(membership.org_slug)}/settings/members`}
+                  >
+                    {label('transferOwnership', { name: membership.org_name })}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+          {deleteError && membershipsLoaded && transferOrganisations.length === 0 && (
+            <p className="type-small text-muted-foreground">{label('noOwnedOrganisations')}</p>
+          )}
+        </SettingsDanger>
+      </SettingsParts>
 
       <TypedConfirmDialog
         open={deleteOpen}
@@ -222,7 +206,7 @@ export function AccountDataPanel({ email, locale = 'en' }: { email: string | nul
         objectName={email ?? ''}
         title={label('deleteAccount')}
         confirmLabel={label('deleteAccount')}
-        description={label('deleteAccountDescription')}
+        description={label('deleteAccountDialog')}
         onConfirm={deleteAccount}
         locale={locale}
       />

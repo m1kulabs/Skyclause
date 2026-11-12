@@ -8,7 +8,7 @@
     "account": {
       "profile": {
         "title": "Profil",
-        "description": "Urus nama, foto dan e-mel log masuk anda."
+        "description": "Tukar nama yang dipaparkan pada akaun anda. E-mel log masuk anda hanya boleh dibaca."
       },
       "security": {
         "title": "Keselamatan",
@@ -127,7 +127,9 @@
     "campusPrice": "RM 900 sebulan bagi setiap kampus, dibil setiap tahun selepas GA · proposal, untested",
     "now": "Tersedia sekarang",
     "fromP2": "Mulai P2",
-    "afterGa": "Selepas GA"
+    "afterGa": "Selepas GA",
+    "payment": "Bayaran",
+    "yourPlan": "Pelan anda"
   },
   "audit": {
     "title": "Log audit",
@@ -142,17 +144,27 @@
     "allActions": "Semua tindakan",
     "empty": "Belum ada entri audit (n=0)",
     "loading": "Memuatkan entri audit…",
-    "loadMore": "Muat lagi",
     "export": "Eksport CSV",
     "exporting": "Mengeksport…",
     "error": "Entri audit tidak dapat dimuatkan. Cuba lagi.",
     "exportError": "Log audit tidak dapat dieksport. Cuba lagi.",
     "actorUnknown": "Pelaku tidak diketahui",
     "objectUnknown": "Objek tidak diketahui",
-    "actorRole": "{actor} · {role}",
     "object": "Objek",
     "time": "Masa",
-    "entriesRegion": "Entri audit"
+    "entriesRegion": "Entri audit",
+    "records": "Rekod",
+    "actorColumn": "Pelaku",
+    "newer": "Lebih baharu",
+    "older": "Lebih lama",
+    "range": "Rekod {from}–{to}",
+    "summaryShowing": "Dipaparkan",
+    "summaryNone": "Tiada rekod",
+    "summaryFilters": "{count} ditetapkan",
+    "summaryNoFilters": "Tiada ditetapkan",
+    "emptyFiltered": "Tiada entri audit sepadan dengan penapis ini (n=0).",
+    "source": "log audit",
+    "dateHint": "Dari dan Hingga ialah hari penuh dalam MYT."
   },
   "data": {
     "exportsTitle": "Eksport data",
@@ -201,8 +213,16 @@
         "period": "Sehingga masa segmen dikira, maksimum 24 jam",
         "after": "Dipadam; masa segmen dikekalkan"
       },
-      "guestWindows": { "item": "Tetingkap tetamu", "period": "14 hari", "after": "Dipadam" },
-      "guestAccounts": { "item": "Akaun tetamu", "period": "30 hari tidak aktif", "after": "Dipadam bersama data" },
+      "guestWindows": {
+        "item": "Tetingkap tetamu",
+        "period": "14 hari",
+        "after": "Dipadam"
+      },
+      "guestAccounts": {
+        "item": "Akaun tetamu",
+        "period": "30 hari tidak aktif",
+        "after": "Dipadam bersama data"
+      },
       "subscribers": {
         "item": "Rekod pelanggan",
         "period": "Sehingga berhenti langgan, kemudian 30 hari",
@@ -218,7 +238,11 @@
         "period": "Tempoh ihsan 30 hari",
         "after": "Dihapuskan sepenuhnya"
       },
-      "exports": { "item": "Fail eksport", "period": "7 hari", "after": "Dipadam" },
+      "exports": {
+        "item": "Fail eksport",
+        "period": "7 hari",
+        "after": "Dipadam"
+      },
       "apu": {
         "item": "NAME, SAMACCOUNTNAME dan LECTID jadual APU",
         "period": "Tidak pernah disimpan",
@@ -248,6 +272,39 @@
     "membershipsUnavailable": "Pemilikan organisasi tidak dapat dimuatkan.",
     "noOwnedOrganisations": "Tiada pemilikan organisasi yang perlu dipindahkan.",
     "cancel": "Batal",
-    "ownerOnly": "Hanya Pemilik boleh memadam organisasi ini."
+    "ownerOnly": "Hanya Pemilik boleh memadam organisasi ini.",
+    "summaryExports": "Kerja eksport",
+    "summaryExportCount": "{count} disenaraikan",
+    "summaryDeletion": "Pemadaman",
+    "deleteAccountConsequence": "Memadam akaun anda membuang profil, kunci laluan dan sesi anda. Rekod lejar dan audit yang memaparkan anda kekal, dengan medan peribadi anda disamarkan.",
+    "deleteAccountDialog": "Ini membuang profil, kunci laluan dan sesi anda serta menyamarkan medan peribadi anda dalam rekod lejar dan audit. Taip e-mel log masuk anda untuk menjadualkannya.",
+    "deleteOrgConsequence": "Apabila tempoh bertenang tamat, organisasi dan datanya dihapuskan. Eksport yang telah dimuat turun tidak terjejas."
+  },
+  "unbuilt": {
+    "accountAi": "kunci AI untuk akaun anda",
+    "accountApi": "kunci API untuk akaun anda",
+    "organisationAi": "kunci AI untuk organisasi ini",
+    "organisationApi": "kunci API untuk organisasi ini"
+  },
+  "general": {
+    "title": "Namakan semula organisasi",
+    "source": "nama organisasi",
+    "summaryName": "Nama sekarang",
+    "summarySlug": "Slug",
+    "nameHint": "Sehingga {limit} aksara.",
+    "saveFailed": "Nama tidak dapat disimpan. Cuba lagi."
+  },
+  "integrations": {
+    "source": "klien dan geran OAuth",
+    "summaryClients": "{count} dicipta",
+    "summaryGrants": "{count} aktif",
+    "nameHint": "Sehingga {limit} aksara. Alamat ubah hala ialah {redirect}.",
+    "created": "Klien {name} dicipta. Rahsianya dipaparkan di bawah, sekali sahaja.",
+    "deleted": "Klien {name} dipadam. Setiap geran yang dicipta olehnya dibatalkan.",
+    "revoked": "Geran untuk {name} dibatalkan. Ia berhenti berfungsi serta-merta.",
+    "revokedOn": "Dibatalkan {date}",
+    "createdOn": "Dicipta {date}",
+    "deleteNamed": "Padam klien OAuth: {name}",
+    "revokeNamed": "Batalkan: {name}"
   }
 }

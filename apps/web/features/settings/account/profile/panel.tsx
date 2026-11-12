@@ -1,114 +1,160 @@
 'use client'
 
-import { useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Button } from '#ui/button'
 import { Input } from '#ui/input'
-import { Label } from '#ui/label'
+import { Skeleton } from '#ui/skeleton'
 import { authClient } from '@skyclause/auth/client'
 import { t } from '@skyclause/i18n'
 import { authRequest } from '../../../account/auth-api'
-import styles from '../../../account/account-settings.module.css'
+import {
+  SettingsAside,
+  SettingsField,
+  SettingsParts,
+  SettingsReadError,
+  SettingsStatus,
+  SettingsSummaryLine
+} from '../../parts'
 import '../../catalogue'
 
 interface AccountSession {
   user: { id: string; name: string; email: string }
 }
 
-export default function Panel() {
+const NAME_LIMIT = 100
+
+export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
+  const copy = (key: string, vars: Record<string, string | number> = {}) =>
+    t(`account-settings.profile.${key}`, vars, locale)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [saved, setSavedName] = useState('')
   const [loading, setLoading] = useState(true)
+  const [loadFailure, setLoadFailure] = useState<{ error: unknown; at: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
+  const [done, setDone] = useState(false)
+
+  const load = useCallback(async (isCurrent: () => boolean) => {
+    setLoading(true)
+    setLoadFailure(null)
+    try {
+      const current = await authRequest<AccountSession | null>('/get-session')
+      if (!isCurrent()) return
+      if (!current) throw new Error('expired')
+      setName(current.user.name)
+      setSavedName(current.user.name)
+      setEmail(current.user.email)
+    } catch (failure) {
+      if (isCurrent()) setLoadFailure({ error: failure, at: new Date().toISOString() })
+    } finally {
+      if (isCurrent()) setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     let active = true
-    void authRequest<AccountSession | null>('/get-session')
-      .then((current) => {
-        if (!active) return
-        if (!current) throw new Error(t('account-settings.profile.expired'))
-        setName(current.user.name)
-        setEmail(current.user.email)
-      })
-      .catch((failure: unknown) => {
-        if (active) setError(failure instanceof Error ? failure.message : t('account-settings.profile.loadFailed'))
-      })
-      .finally(() => active && setLoading(false))
+    void load(() => active)
     return () => {
       active = false
     }
-  }, [])
+  }, [load])
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (saving || !name.trim()) return
     setSaving(true)
     setError(null)
-    setSaved(false)
+    setDone(false)
     try {
       const result = await authClient.updateUser({ name: name.trim() })
-      if (result.error) throw new Error(result.error.message ?? t('account-settings.profile.saveFailed'))
+      if (result.error) throw new Error(result.error.message ?? copy('saveFailed'))
       setName(name.trim())
-      setSaved(true)
+      setSavedName(name.trim())
+      setDone(true)
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : t('account-settings.profile.saveFailed'))
+      setError(failure instanceof Error ? failure.message : copy('saveFailed'))
     } finally {
       setSaving(false)
     }
   }
 
+  if (loadFailure)
+    return (
+      <div data-account-panel="profile">
+        <SettingsReadError
+          source={copy('source')}
+          error={loadFailure.error}
+          at={loadFailure.at}
+          locale={locale}
+          onRetry={() => void load(() => true)}
+        />
+      </div>
+    )
+
   return (
-    <div className={styles.panel} data-account-panel="profile">
-      <form className={styles.section} onSubmit={save} aria-label={t('account-settings.profile.title')}>
-        <div>
-          <h3 className={styles.sectionTitle}>{t('account-settings.profile.title')}</h3>
-          <p className={styles.description}>{t('account-settings.profile.description')}</p>
-        </div>
-        {error && (
-          <p className={styles.alert} role="alert">
-            {error}
-          </p>
-        )}
-        {saved && (
-          <p className={styles.status} role="status">
-            {t('account-settings.profile.saved')}
-          </p>
-        )}
-        <div className="grid gap-2">
-          <Label htmlFor="account-name">{t('account-settings.profile.name')}</Label>
-          <Input
-            id="account-name"
-            name="name"
-            autoComplete="name"
-            value={name}
-            onChange={(event) => {
-              setName(event.target.value)
-              setSaved(false)
-            }}
-            disabled={loading || saving}
-            required
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="account-email">{t('account-settings.profile.email')}</Label>
-          <Input
-            id="account-email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            spellCheck={false}
-            value={email}
-            readOnly
-            disabled={loading}
-          />
-          <p className={styles.help}>{t('account-settings.profile.emailReadonly')}</p>
-        </div>
-        <div>
-          <Button type="submit" disabled={loading || saving || !name.trim()} aria-busy={saving}>
-            {saving ? t('account-settings.profile.saving') : t('account-settings.profile.save')}
-          </Button>
-        </div>
+    <div data-account-panel="profile" aria-busy={loading || saving}>
+      {!loading && (
+        <SettingsAside>
+          <SettingsSummaryLine label={copy('summaryName')}>{saved}</SettingsSummaryLine>
+          <SettingsSummaryLine label={copy('summaryEmail')}>{email}</SettingsSummaryLine>
+        </SettingsAside>
+      )}
+      <form onSubmit={save} aria-label={copy('title')} noValidate>
+        <SettingsParts className="gap-6">
+          <div className="grid gap-5">
+            <SettingsField label={copy('name')} hint={copy('nameHint', { limit: NAME_LIMIT })} error={error}>
+              {(aria) =>
+                loading ? (
+                  <Skeleton className="h-10 w-full rounded-md" />
+                ) : (
+                  <Input
+                    {...aria}
+                    name="name"
+                    type="text"
+                    autoComplete="name"
+                    maxLength={NAME_LIMIT}
+                    value={name}
+                    onChange={(event) => {
+                      setName(event.target.value)
+                      setDone(false)
+                    }}
+                    disabled={saving}
+                    required
+                  />
+                )
+              }
+            </SettingsField>
+            <SettingsField label={copy('email')} hint={copy('emailReadonly')}>
+              {(aria) =>
+                loading ? (
+                  <Skeleton className="h-10 w-full rounded-md" />
+                ) : (
+                  <Input
+                    {...aria}
+                    name="email"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    spellCheck={false}
+                    value={email}
+                    readOnly
+                  />
+                )
+              }
+            </SettingsField>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="submit"
+              disabled={loading || saving || !name.trim() || name.trim() === saved}
+              aria-busy={saving}
+            >
+              {saving ? copy('saving') : copy('save')}
+            </Button>
+            {done ? <SettingsStatus>{copy('saved')}</SettingsStatus> : null}
+          </div>
+        </SettingsParts>
       </form>
     </div>
   )
