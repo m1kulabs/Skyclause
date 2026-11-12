@@ -26,7 +26,15 @@ export const project = {
   camera_day_start: null,
   camera_day_end: null,
   warning_area_terms: [],
-  packs: []
+  // Both packs: the double serves Sky's bundles and storm days and Crowd's show nights, and a project without the
+  // Crowd pack has no show nights to read.
+  packs: (['sky', 'crowd'] as const).map((pack) => ({
+    pack,
+    enabled: true,
+    sheet_id: null,
+    schedule: null,
+    sla_s: 600
+  }))
 }
 
 const projectRef = { id: project.id, slug: project.slug, org_slug: org.slug }

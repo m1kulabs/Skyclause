@@ -121,8 +121,10 @@ test.describe('the organisation dashboard on a production-style server', () => {
 
     // The composed reads went through the app host's bridge with the session, and each answered.
     const reads = log.filter((line) => line.includes('/api/v1/projects/'))
-    for (const read of ['/bundles?', '/windows?', '/sources?', '/days?', '/nights?', '/grades?'])
+    for (const read of ['/bundles?', '/windows?', '/sources?', '/days?', '/grades?'])
       expect(reads.find((line) => line.includes(read))).toMatch(/^200 GET /)
+    // A Sky-only project has no show nights: they are never read.
+    expect(reads.filter((line) => line.includes('/nights?'))).toEqual([])
     expect(log.filter((line) => /^501 GET .*\/api\/v1\/dashboard$/.test(line))).toHaveLength(1)
     await close()
   })
