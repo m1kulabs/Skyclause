@@ -1,6 +1,6 @@
 import { t } from '@skyclause/i18n'
 import { CircleAlertIcon, InfoIcon } from 'lucide-react'
-import type { ComponentProps, ReactNode } from 'react'
+import type { ComponentProps, ReactNode, Ref } from 'react'
 import { Alert } from '#ui/alert'
 import './auth.css'
 import './catalogue'
@@ -9,11 +9,17 @@ import './catalogue'
 export function AuthHeader({
   title,
   titleId,
+  titleRef,
+  statement = false,
   lead,
   locale = 'en'
 }: {
   title: ReactNode
   titleId?: string
+  /** For a title that must take focus when the page changes under it, as a result does. */
+  titleRef?: Ref<HTMLHeadingElement>
+  /** A title that is a whole sentence (a result, a refusal) is set as a statement, not as a headline. */
+  statement?: boolean
   lead?: ReactNode
   locale?: 'en' | 'ms'
 }) {
@@ -25,7 +31,12 @@ export function AuthHeader({
         <img src="/icon.svg" width={28} height={28} alt="" />
         <span translate="no">{t('brand.name', {}, locale)}</span>
       </a>
-      <h1 className="auth-title" id={titleId}>
+      <h1
+        className={statement ? 'auth-title auth-title-statement' : 'auth-title'}
+        id={titleId}
+        ref={titleRef}
+        tabIndex={titleRef ? -1 : undefined}
+      >
         {title}
       </h1>
       {lead ? <p className="auth-lead">{lead}</p> : null}

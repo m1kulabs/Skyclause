@@ -46,5 +46,6 @@
   "no": "Tidak",
   "send_feedback": "Hantar maklum balas",
   "feedback_saved": "Maklum balas direkodkan.",
-  "window_label": "{title}: {start} – {end}"
+  "window_span": "{day}, {start} hingga {end}",
+  "window_span_days": "{startDay}, {start} hingga {endDay}, {end}"
 }

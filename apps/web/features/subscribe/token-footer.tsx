@@ -2,14 +2,14 @@ import { t } from './catalogue'
 
 export function TokenFooter({ token, locale }: { token: string; locale: 'en' | 'ms' }) {
   return (
-    <footer className="grid gap-4">
+    <footer className="auth-stack">
       <a
-        className="underline"
+        className="auth-link"
         href={`/subscribe/${encodeURIComponent(token)}/data${locale === 'ms' ? '?lang=ms' : ''}`}
       >
         {t('subscribe.data', {}, locale)}
       </a>
-      <p>{t('subscribe.safety', {}, locale)}</p>
+      <p className="auth-hint m-0">{t('subscribe.safety', {}, locale)}</p>
     </footer>
   )
 }

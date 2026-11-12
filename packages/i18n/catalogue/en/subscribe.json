@@ -46,5 +46,6 @@
   "no": "No",
   "send_feedback": "Send feedback",
   "feedback_saved": "Feedback recorded.",
-  "window_label": "{title}: {start} – {end}"
+  "window_span": "{day}, {start} to {end}",
+  "window_span_days": "{startDay}, {start} to {endDay}, {end}"
 }

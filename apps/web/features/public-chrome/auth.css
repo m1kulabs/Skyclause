@@ -50,6 +50,17 @@
   text-wrap: balance;
 }
 
+.auth-title-statement {
+  max-width: 28ch;
+  font-size: clamp(1.25rem, 1.1rem + 0.7vw, 1.625rem);
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.auth-title:focus {
+  outline: none;
+}
+
 .auth-lead {
   max-width: 46ch;
   margin: 0;
@@ -274,6 +285,37 @@
 .auth-check:has(input:disabled) {
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+/* A window: its box beside the title, the span of the day under it. */
+.auth-window {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 0 12px;
+  align-items: start;
+}
+
+.auth-window > input {
+  grid-row: 1 / span 2;
+}
+
+.auth-window-title {
+  font-weight: 600;
+}
+
+.auth-window-span {
+  grid-column: 2;
+  color: var(--muted-foreground);
+  font-size: 1rem;
+}
+
+.auth-fields {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 .auth-select {
