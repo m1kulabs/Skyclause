@@ -551,7 +551,10 @@ export function CallDetailPage({
                   </section>
                   <section className={styles.recordItem}>
                     <h3>{t('calls.sheet', {}, locale)}</h3>
-                    <p>{t('calls.clause_version', { version: call.sheet_version_id }, locale)}</p>
+                    {/* The version's ID is a database key: its last eight characters say which, the title keeps all of it. */}
+                    <p title={call.sheet_version_id}>
+                      {t('calls.clause_version', { version: `…${call.sheet_version_id.slice(-8)}` }, locale)}
+                    </p>
                   </section>
                   <section className={styles.recordItem}>
                     <h3>{t('calls.permalink', {}, locale)}</h3>

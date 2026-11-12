@@ -123,7 +123,8 @@ test('CAL-12 detail renders the strip, trace ages, role, delay, grade, version a
   await expect(detail).toContainText('Hit')
   await expect(detail).toContainText(/commute disruption/i)
   // The clause sheet is named; its page isn't built, so nothing links to it.
-  await expect(detail).toContainText('Sheet version test-sheet')
+  // The version's ID is a key: its last eight characters show, the whole of it is in the title.
+  await expect(detail.getByText('Sheet version …st-sheet', { exact: true })).toHaveAttribute('title', 'test-sheet')
   await expect(detail.locator('a[href*="/clauses"]')).toHaveCount(0)
   // No public page answers the permalink yet: it is text to copy, never a link that ends on "Page not found".
   await expect(detail.locator('[data-permalink]')).toHaveText(call.permalink)
