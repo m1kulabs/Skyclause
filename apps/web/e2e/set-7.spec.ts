@@ -364,7 +364,9 @@ test('remove member — #104: confirmation names the member', async ({ page }) =
   await prepareMemberSettings(page, 'members')
   await page.goto('/test-org/settings/members')
 
-  await page.getByRole('button', { name: 'Remove member: Aisha Rahman' }).click()
+  // One quiet menu per row holds Remove; the confirmation then names the member.
+  await page.getByRole('button', { name: 'More actions for Aisha Rahman' }).click()
+  await page.getByRole('menuitem', { name: 'Remove member' }).click()
   const dialog = page.getByRole('alertdialog')
   await expect(dialog.getByRole('heading', { name: 'Remove “Aisha Rahman”?' })).toBeVisible()
   await expect(dialog).toContainText('Aisha Rahman')
@@ -406,8 +408,10 @@ test('last-owner — #104: the refusal reason appears next to the role control',
   const dialog = page.getByRole('alertdialog')
   await expect(dialog.getByRole('heading', { name: 'Change “Morgan Owner” to Admin?' })).toBeVisible()
   await dialog.getByRole('button', { name: /Change role to Admin/ }).click()
-  const ownerRow = page.getByRole('listitem').filter({ hasText: 'Morgan Owner' })
-  await expect(ownerRow.getByRole('alert')).toHaveText('The organisation must retain at least one Owner.')
+  // The failure is named by whose row it is, in the list's own part of the panel.
+  await expect(page.getByRole('alert').filter({ hasText: 'Morgan Owner' })).toHaveText(
+    'Morgan Owner: The organisation must retain at least one Owner.'
+  )
 })
 
 test('unsaved rota — #104: closing the tab prompts before the shift is saved', async ({ page }) => {
@@ -416,7 +420,7 @@ test('unsaved rota — #104: closing the tab prompts before the shift is saved',
   await page.getByRole('button', { name: 'Add an approver' }).click()
   await page.getByRole('checkbox', { name: 'Monday' }).click()
   await page.getByRole('button', { name: 'Add shift' }).click()
-  await expect(page.getByText('Rota shifts (n=1)')).toBeVisible()
+  await expect(page.getByText('1 shift', { exact: true })).toBeVisible()
 
   const prompt = page.waitForEvent('dialog')
   const reload = page.evaluate(() => window.location.reload())
@@ -435,7 +439,7 @@ test('ORG-4: a new organisation shows both empty rota templates and Add an appro
   await expect(templates.getByText('Surge nights')).toBeVisible()
   await expect(templates.getByText('No one assigned')).toHaveCount(2)
   await expect(page.getByRole('button', { name: 'Add an approver' })).toBeVisible()
-  await expect(page.getByText('Rota shifts (n=0)')).toBeVisible()
+  await expect(page.getByText('0 shifts', { exact: true })).toBeVisible()
 })
 
 test('ORG settings lists and the week fit the 375px viewport', async ({ page }) => {
