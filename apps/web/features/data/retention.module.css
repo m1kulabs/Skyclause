@@ -1,6 +1,9 @@
+/* The retention policy as a table that reads as rows on tone: each row a raised tile, no rules. Below 640px a row is two
+   lines (the data, then period and what follows) so nothing scrolls sideways. */
 .table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0 2px;
   text-align: left;
   font-size: 14px;
 }
@@ -8,6 +11,29 @@
 .table th,
 .table td {
   vertical-align: top;
+}
+
+.table thead th {
+  padding: 0 12px 4px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.table tbody th,
+.table tbody td {
+  padding: 10px 12px;
+  background: var(--raised);
+  overflow-wrap: anywhere;
+}
+
+.table tbody th {
+  border-radius: 10px 0 0 10px;
+  font-weight: 500;
+}
+
+.table tbody td:last-child {
+  border-radius: 0 10px 10px 0;
 }
 
 @media (width < 640px) {
@@ -23,8 +49,8 @@
     border: 0;
   }
 
-  .table tbody,
-  .table tr {
+  .table,
+  .table tbody {
     display: block;
     width: 100%;
   }
@@ -32,26 +58,32 @@
   .table tr {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    padding-block: 10px;
-    border-bottom: 1px solid var(--border);
+    margin-bottom: 2px;
+    border-radius: 10px;
+    background: var(--raised);
+    padding: 6px 12px;
   }
 
-  .table th[scope='row'] {
+  .table tbody th,
+  .table tbody td {
+    background: none;
+    border-radius: 0;
+    padding: 4px 8px 4px 0;
+  }
+
+  .table tbody th[scope='row'] {
     grid-column: 1 / -1;
-    padding: 4px 0;
   }
 
   .table td {
     min-width: 0;
-    padding: 4px 8px 4px 0;
-    overflow-wrap: anywhere;
   }
 
   .table td::before {
     display: block;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
     color: var(--muted-foreground);
     content: attr(data-label);
-    font-size: 11px;
+    font-size: 13px;
   }
 }

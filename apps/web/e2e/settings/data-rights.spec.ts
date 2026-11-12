@@ -139,7 +139,7 @@ test('audit filters stay in the URL and CSV export sends the same filters', asyn
   expect((await download).suggestedFilename()).toContain('audit')
 })
 
-test('audit loads more by cursor and virtualises over 50 two-line rows on mobile', async ({ page }) => {
+test('audit pages by cursor, never rendering more than 50 records, as two-line rows on mobile', async ({ page }) => {
   await asPage(page, principal())
   await page.setViewportSize({ width: 375, height: 812 })
   await stubApi(
@@ -157,23 +157,31 @@ test('audit loads more by cursor and virtualises over 50 two-line rows on mobile
   await page.goto('/test-org/settings/audit')
   const panel = settingsPanel(page)
   const rows = panel.locator('[data-audit-row]')
-  await panel.getByRole('button', { name: 'Load more' }).click()
   const entries = panel.getByRole('region', { name: 'Audit entries' })
-  await expect(entries).toBeVisible()
-  await expect.poll(() => rows.count()).toBeLessThan(80)
+  await expect(rows).toHaveCount(50)
+  await expect(panel.getByText('Records 1–50')).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'Newer' })).toBeDisabled()
+  await panel.getByRole('button', { name: 'Older' }).click()
+  // The next page replaces the first: the ledger never holds more than one page.
+  await expect(rows).toHaveCount(30)
+  await expect(panel.getByText('Records 51–80')).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'Older' })).toBeDisabled()
   await expect(entries).toContainText('Aisha Rahman')
   await expect(entries).toContainText('admin')
   await expect(entries).toContainText(auditAction)
-  await expect(entries).toContainText(`membership · ${uuidV7(300)}`)
+  await expect(entries).toContainText(`membership · ${uuidV7(350)}`)
   await expect(entries).toContainText('10 November 2026, 10:00 MYT')
   await expect
     .poll(() =>
       rows.first().evaluate((row) => {
         const style = getComputedStyle(row)
-        return [style.gridTemplateColumns.split(' ').length, style.gridTemplateRows.split(' ').length]
+        return style.gridTemplateColumns.split(' ').length
       })
     )
-    .toEqual([2, 2])
+    .toBe(2)
+  await panel.getByRole('button', { name: 'Newer' }).click()
+  await expect(rows).toHaveCount(50)
+  await expect(panel.getByText('Records 1–50')).toBeVisible()
 })
 
 test('organisation data shows API export states, retention policy and a cancellable grace period', async ({ page }) => {

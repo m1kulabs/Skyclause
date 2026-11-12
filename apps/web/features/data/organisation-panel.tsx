@@ -5,6 +5,15 @@ import type { Role } from '@skyclause/contracts'
 import { t } from '@skyclause/i18n'
 import { Button } from '../../components/ui/button'
 import {
+  SettingsAside,
+  SettingsDanger,
+  SettingsError,
+  SettingsPart,
+  SettingsParts,
+  SettingsStatus,
+  SettingsSummaryLine
+} from '../settings/parts'
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -155,128 +164,99 @@ export function OrganisationDataPanel({
   }))
 
   return (
-    <div className="grid gap-8">
-      <section aria-labelledby="org-exports-title" className="grid gap-4">
-        <div>
-          <h2 id="org-exports-title" className="text-base font-semibold">
-            {label('exportsTitle')}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">{label('exportsDescription')}</p>
-          <p className="mt-2 text-sm text-muted-foreground">{label('readyWithin')}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            type="button"
-            className="min-h-11 disabled:opacity-100"
-            onClick={() => void requestExport()}
-            disabled={loading}
-          >
-            {label('requestExport')}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11 disabled:opacity-100"
-            onClick={() => void loadExports().catch(() => setExportError(label('exportFailed')))}
-            disabled={loading}
-          >
-            {label('refreshExports')}
-          </Button>
-          {loading && (
-            <span role="status" className="text-sm text-muted-foreground">
-              {label('loadingExports')}
-            </span>
-          )}
-        </div>
-        {exportError && (
-          <p role="status" className="text-sm text-destructive">
-            {exportError}
-          </p>
-        )}
-        <ExportList
-          jobs={exports}
-          locale={locale}
-          hasMore={Boolean(exportCursor)}
-          loadingMore={loadingMore}
-          onLoadMore={() => void loadMoreExports()}
-        />
-      </section>
-
-      <section aria-labelledby="retention-title" className="grid gap-3">
-        <div>
-          <h2 id="retention-title" className="text-base font-semibold">
-            {label('retentionTitle')}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">{label('retentionDescription')}</p>
-        </div>
-        <table aria-label={label('retentionTitle')} className={retentionStyles.table}>
-          <thead>
-            <tr className="border-b border-border">
-              <th scope="col" className="py-2 pr-3">
-                {label('retentionItem')}
-              </th>
-              <th scope="col" className="py-2 pr-3">
-                {label('retentionPeriod')}
-              </th>
-              <th scope="col" className="py-2">
-                {label('retentionAfter')}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.item} className="border-b border-border/70 align-top last:border-b-0">
-                <th scope="row" className="py-3 pr-3 font-medium">
-                  {row.item}
-                </th>
-                <td className="py-3 pr-3" data-label={label('retentionPeriod')}>
-                  {row.period}
-                </td>
-                <td className="py-3" data-label={label('retentionAfter')}>
-                  {row.after}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-
-      <section aria-labelledby="delete-org-title" className="grid gap-3 rounded-md border border-destructive/60 p-4">
-        <h2 id="delete-org-title" className="text-base font-semibold text-destructive">
-          {label('deleteOrgTitle')}
-        </h2>
-        <p className="text-sm text-muted-foreground">{label('deleteOrgDescription')}</p>
-        {deletion.deletion_requested_at && deletion.purge_after ? (
-          <div className="grid justify-items-start gap-3">
-            <p role="status" className="font-medium">
-              {label('graceTitle')}
-            </p>
-            <p>{label('purgeDate', { date: formatExpiryDate(deletion.purge_after, locale) })}</p>
-            <Button type="button" variant="outline" className="min-h-11" onClick={() => void cancelDeletion()}>
-              {label('cancelDeletion')}
+    <div aria-busy={loading}>
+      <SettingsAside>
+        <SettingsSummaryLine label={label('summaryExports')}>
+          {loading ? label('loadingExports') : label('summaryExportCount', { count: exports.length })}
+        </SettingsSummaryLine>
+        <SettingsSummaryLine label={label('summaryDeletion')}>
+          {deletion.purge_after
+            ? label('purgeDate', { date: formatExpiryDate(deletion.purge_after, locale) })
+            : label('deletionCancelled')}
+        </SettingsSummaryLine>
+      </SettingsAside>
+      <SettingsParts>
+        <SettingsPart title={label('exportsTitle')} description={label('exportsDescription')} id="org-exports-title">
+          <p className="type-small text-muted-foreground">{label('readyWithin')}</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" onClick={() => void requestExport()} disabled={loading}>
+              {label('requestExport')}
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void loadExports().catch(() => setExportError(label('exportFailed')))}
+              disabled={loading}
+            >
+              {label('refreshExports')}
+            </Button>
+            {loading && <SettingsStatus>{label('loadingExports')}</SettingsStatus>}
           </div>
-        ) : owner ? (
-          <Button
-            type="button"
-            variant="destructive"
-            className="min-h-11 w-fit disabled:opacity-100"
-            onClick={() => setOfferOpen(true)}
-            disabled={loading}
-          >
-            {label('deleteOrgTitle')}
-          </Button>
-        ) : (
-          <p className="text-sm text-muted-foreground">{label('ownerOnly')}</p>
-        )}
-        {scheduled && <p role="status">{label('deletionScheduled', { date: scheduled })}</p>}
-        {cancelled && <p role="status">{label('deletionCancelled')}</p>}
-        {!deletion.deletion_requested_at && !scheduled && pageError && (
-          <p role="alert" className="text-sm text-destructive">
-            {pageError}
-          </p>
-        )}
-      </section>
+          {exportError && <SettingsError>{exportError}</SettingsError>}
+          <ExportList
+            jobs={exports}
+            locale={locale}
+            hasMore={Boolean(exportCursor)}
+            loadingMore={loadingMore}
+            onLoadMore={() => void loadMoreExports()}
+          />
+        </SettingsPart>
+
+        <SettingsPart title={label('retentionTitle')} description={label('retentionDescription')} id="retention-title">
+          <table aria-label={label('retentionTitle')} className={retentionStyles.table}>
+            <thead>
+              <tr>
+                <th scope="col">{label('retentionItem')}</th>
+                <th scope="col">{label('retentionPeriod')}</th>
+                <th scope="col">{label('retentionAfter')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.item}>
+                  <th scope="row">{row.item}</th>
+                  <td data-label={label('retentionPeriod')}>{row.period}</td>
+                  <td data-label={label('retentionAfter')}>{row.after}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </SettingsPart>
+
+        <SettingsDanger
+          id="delete-org-title"
+          title={label('deleteOrgTitle')}
+          description={
+            <>
+              <p>{label('deleteOrgDescription')}</p>
+              <p>{label('deleteOrgConsequence')}</p>
+            </>
+          }
+        >
+          {deletion.deletion_requested_at && deletion.purge_after ? (
+            <div className="grid justify-items-start gap-3">
+              <p role="status" className="font-medium text-foreground">
+                {label('graceTitle')}
+              </p>
+              <p className="text-foreground">
+                {label('purgeDate', { date: formatExpiryDate(deletion.purge_after, locale) })}
+              </p>
+              <Button type="button" variant="outline" onClick={() => void cancelDeletion()}>
+                {label('cancelDeletion')}
+              </Button>
+            </div>
+          ) : owner ? (
+            <Button type="button" variant="destructive" onClick={() => setOfferOpen(true)} disabled={loading}>
+              {label('deleteOrgTitle')}
+            </Button>
+          ) : (
+            <p className="type-body text-muted-foreground">{label('ownerOnly')}</p>
+          )}
+          {scheduled && <SettingsStatus>{label('deletionScheduled', { date: scheduled })}</SettingsStatus>}
+          {cancelled && <SettingsStatus>{label('deletionCancelled')}</SettingsStatus>}
+          {!deletion.deletion_requested_at && !scheduled && pageError && <SettingsError>{pageError}</SettingsError>}
+        </SettingsDanger>
+      </SettingsParts>
 
       <AlertDialog open={offerOpen} onOpenChange={setOfferOpen}>
         <AlertDialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md">
@@ -284,20 +264,13 @@ export function OrganisationDataPanel({
             <AlertDialogTitle>{label('deleteOrgTitle')}</AlertDialogTitle>
             <AlertDialogDescription>{label('deleteOrgDescription')}</AlertDialogDescription>
           </AlertDialogHeader>
-          {exportError && (
-            <p role="status" className="text-sm text-destructive">
-              {exportError}
-            </p>
-          )}
+          {exportError && <SettingsError>{exportError}</SettingsError>}
           <AlertDialogFooter>
-            <AlertDialogCancel className="min-h-11">{label('cancel')}</AlertDialogCancel>
-            <AlertDialogAction className="min-h-11" onClick={() => void requestExport(true)}>
-              {label('exportFirst')}
-            </AlertDialogAction>
+            <AlertDialogCancel>{label('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void requestExport(true)}>{label('exportFirst')}</AlertDialogAction>
             <Button
               type="button"
               variant="destructive"
-              className="min-h-11"
               onClick={() => {
                 setOfferOpen(false)
                 setConfirmOpen(true)

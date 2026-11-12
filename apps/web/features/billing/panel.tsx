@@ -1,4 +1,5 @@
 import { t } from '@skyclause/i18n'
+import { SettingsParts } from '../settings/parts'
 import '../settings/catalogue'
 import styles from './panel.module.css'
 
@@ -26,51 +27,44 @@ export default function BillingPanel({
   const cell = (key: string): string => t(`settings.billing.${key}`, {}, locale)
 
   return (
-    <div className="grid gap-6">
-      <section aria-labelledby="billing-plan-title" className="grid gap-2">
-        <h2 id="billing-plan-title" className="text-base font-semibold">
+    <SettingsParts>
+      <section aria-labelledby="billing-plan-title" className="grid gap-1">
+        <h3 id="billing-plan-title" className="type-small font-normal text-muted-foreground">
           {cell('currentPlan')}
-        </h2>
+        </h3>
         {plan ? (
-          <p data-current-plan={plan} className="capitalize">
+          <p data-current-plan={plan} className="type-section">
             {cell(plan)}
           </p>
         ) : (
-          <p>{cell('unknownPlan')}</p>
+          <p className="type-text">{cell('unknownPlan')}</p>
         )}
-        <p className="text-sm text-muted-foreground">{cell('betaNotice')}</p>
+        <p className="type-body text-muted-foreground">{cell('betaNotice')}</p>
       </section>
 
       <table aria-label={cell('tableLabel')} className={styles.table}>
         <thead>
-          <tr className="border-b border-border">
-            <th scope="col" className="py-3 pr-4 font-medium">
-              {cell('planColumn')}
-            </th>
-            <th scope="col" className="py-3 pr-4 font-medium">
-              {cell('priceColumn')}
-            </th>
-            <th scope="col" className="py-3 font-medium">
-              {cell('availabilityColumn')}
-            </th>
+          <tr>
+            <th scope="col">{cell('planColumn')}</th>
+            <th scope="col">{cell('priceColumn')}</th>
+            <th scope="col">{cell('availabilityColumn')}</th>
           </tr>
         </thead>
         <tbody>
           {plans.map(({ key, price, availability }) => (
-            <tr key={key} className="border-b border-border/70 align-top last:border-b-0">
-              <th scope="row" className="py-3 pr-4 font-medium">
+            <tr key={key} aria-current={key === plan ? 'true' : undefined}>
+              <th scope="row">
                 {cell(key)}
+                {key === plan ? <span className={styles.current}>{cell('yourPlan')}</span> : null}
               </th>
-              <td className="py-3 pr-4" data-label={cell('priceColumn')}>
+              <td data-label={cell('priceColumn')}>
                 <p data-price>{cell(price)}</p>
               </td>
-              <td className="py-3" data-label={cell('availabilityColumn')}>
-                {cell(availability)}
-              </td>
+              <td data-label={cell('availabilityColumn')}>{cell(availability)}</td>
             </tr>
           ))}
         </tbody>
       </table>
-    </div>
+    </SettingsParts>
   )
 }

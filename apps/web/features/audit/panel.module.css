@@ -1,45 +1,113 @@
-.scrollRegion {
-  max-height: 560px;
-  overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overscroll-behavior: contain;
+/* The audit log as a ledger: one record a row, time first, then who, what and on what. Rows are raised tiles; a record
+   that does not match the filters now set is dimmed (set in the muted ink, never faded) until the answer lands. */
+.filters {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
+  gap: 16px;
+}
+
+.ledger {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.head,
+.row {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(150px, 1.1fr) minmax(0, 1.2fr) minmax(0, 1.3fr) minmax(0, 1.6fr);
+  align-items: start;
+  gap: 4px 16px;
+  padding: 10px 16px;
+}
+
+.head {
+  padding-block: 0 4px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 18px;
 }
 
 .row {
-  display: grid;
-  grid-template-columns: minmax(130px, 1fr) minmax(130px, 1fr) minmax(120px, 1fr) minmax(120px, 1fr);
-  align-items: center;
-  gap: 12px;
-  height: 76px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-  overflow: hidden;
+  min-height: 56px;
+  border-radius: 10px;
+  background: var(--raised);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.row[data-dim] {
+  color: var(--muted-foreground);
 }
 
 .cell {
   min-width: 0;
   overflow-wrap: anywhere;
-  line-height: 1.35;
+}
+
+.sub {
+  display: block;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 18px;
 }
 
 .label {
-  display: block;
-  margin-bottom: 3px;
-  color: var(--muted-foreground);
-  font-size: 11px;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
-.spacer {
-  pointer-events: none;
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.range {
+  margin-inline-end: auto;
+  color: var(--muted-foreground);
+  font-size: 13px;
 }
 
 @media (width < 640px) {
+  .head {
+    display: none;
+  }
+
   .row {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: repeat(2, minmax(0, 1fr));
-    height: 104px;
     gap: 4px 12px;
-    padding: 8px 10px;
+    padding: 10px 12px;
+  }
+
+  .row .cell:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .row .cell:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .label {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+    display: block;
+    color: var(--muted-foreground);
+    font-size: 13px;
+    line-height: 18px;
   }
 }
