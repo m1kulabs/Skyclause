@@ -18,6 +18,7 @@ export default async function Page({ params }: { params: Promise<{ org: string }
   let initialData: DashboardRead | null = null
   let initialError: number | null = null
   let initialErrorAt: string | null = null
+  let initialRetryAt: string | null = null
 
   if (process.env.APP_ENV !== 'test') {
     try {
@@ -26,6 +27,7 @@ export default async function Page({ params }: { params: Promise<{ org: string }
       if (error instanceof ApiProblem && error.status === 404) notFound()
       initialError = error instanceof ApiProblem ? error.status : null
       initialErrorAt = new Date().toISOString()
+      initialRetryAt = error instanceof ApiProblem ? error.retryAt : null
     }
   }
 
@@ -36,6 +38,7 @@ export default async function Page({ params }: { params: Promise<{ org: string }
       initialData={initialData}
       initialError={initialError}
       initialErrorAt={initialErrorAt}
+      initialRetryAt={initialRetryAt}
     />
   )
 }

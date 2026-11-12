@@ -2,6 +2,7 @@ import { ApiProblem, createApiFetch } from '../../lib/api-fetch'
 import type { ShellData, ShellReadError } from './types'
 import { shellOperations } from './operations'
 import { SHELL_HARNESS_COOKIE, shellHarnessData } from './test-request'
+import { readOrgProjects } from './org-projects'
 
 type Page<Item> = { data: Item[]; next_cursor: string | null }
 
@@ -68,16 +69,16 @@ export async function loadShellData(requestHeaders = new Headers()): Promise<She
   const projectLists = await Promise.all(
     memberships.map(async (membership) => {
       try {
-        const projects = await readPages((cursor) =>
-          apiFetch('listProjects', {
-            headers,
-            org: membership.org_slug,
-            query: { cursor },
-            cache: 'no-store',
-            signal: AbortSignal.timeout(5000)
+        // The same read the organisation's dashboard makes, so a render reads each list once.
+        const projects = await readOrgProjects(membership.org_slug, headers.get('cookie'), headers.get('authorization'))
+        return projects
+          .filter((project) => project.org_id === membership.org_id)
+          .map((project) => {
+            // The summaries are the dashboard's; the shell sends the browser names and slugs only.
+            const shellProject = { ...project }
+            delete shellProject.summary
+            return shellProject
           })
-        )
-        return projects.filter((project) => project.org_id === membership.org_id)
       } catch (error) {
         projectsError[membership.org_id] = readError(error)
         return []

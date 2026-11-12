@@ -124,6 +124,9 @@
     "unavailable": "Skyclause belum dapat menunjukkan {source}.",
     "tried": "Dicuba pada {time}.",
     "unreachable": "Tiada jawapan pada {time}.",
+    "busy": "Skyclause sibuk buat masa ini.",
+    "busy_until": "Cuba lagi selepas {time}.",
+    "busy_later": "Cuba lagi dalam seminit.",
     "retry": "Cuba lagi"
   },
   "indicators": {

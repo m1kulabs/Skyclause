@@ -39,6 +39,8 @@
   "google_opening": "Opening Google…",
   "google_failed": "Google sign-in didn’t finish. Try Google again or use email sign-in.",
   "google_start_failed": "Google sign-in couldn’t start. Try again or use email sign-in.",
+  "google_rate_limited": "Too many sign-in attempts from this network just now. Wait a while, then try Google again.",
+  "google_rate_limited_until": "Too many sign-in attempts from this network just now. You can try Google again at {time} MYT.",
   "send_failed": "We couldn’t send the sign-in link just now. Try again in a minute.",
   "send_unreachable": "Skyclause didn’t answer. Check your connection and try again.",
   "send_rate_limited": "Too many link requests. Wait a while, then try again.",

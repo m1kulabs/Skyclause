@@ -15,7 +15,14 @@ import { listProjectSources } from '@skyclause/contracts/api/v1/sources'
 import { getProjectStrip } from '@skyclause/contracts/api/v1/strip'
 import { listWindows } from '@skyclause/contracts/api/v1/windows'
 import { ApiProblem, createApiFetch } from '../../lib/api-fetch'
-import { composeDashboard, dashboardBlocks, type DashboardBlocks } from './compose'
+import {
+  COMPOSED_PROJECT_CAP,
+  composeDashboard,
+  dashboardBlocks,
+  mostRecentlyActive,
+  type DashboardBlocks
+} from './compose'
+import { readOrgProjects } from '../shell/org-projects'
 import { sortNeedsReviewBySla } from './model'
 
 type JsonSchema<Route> = Route extends {
@@ -145,20 +152,51 @@ export async function allPages<Item>(
 /** A read the page can do without: null when it fails, so the block it decorates still renders. */
 const optional = <Value>(read: Promise<Value>): Promise<Value | null> => read.catch(() => null)
 
+/** The first bundle's lead call and its readings strip, which decorate the needs-review block; null when they fail. */
+async function leadReads(
+  blocks: DashboardBlocks,
+  common: { org: string; headers: Headers; signal: AbortSignal; cache: 'no-store' }
+): Promise<{ firstCall: DashboardCall | null; strip: DashboardStrip | null }> {
+  const firstBundle = blocks.needs_review.ok ? blocks.needs_review.data[0] : undefined
+  if (!firstBundle) return { firstCall: null, strip: null }
+  const lead = firstBundle.detail.calls.find((call) => call.window_id) ?? firstBundle.detail.calls[0]
+  const [firstCall, strip] = await Promise.all([
+    lead ? optional(dashboardApi('getCall', { ...common, params: { id: lead.id } })) : Promise.resolve(null),
+    optional(dashboardApi('getProjectStrip', { ...common, params: { id: firstBundle.detail.project_id } }))
+  ])
+  return { firstCall, strip }
+}
+
+/** The whole dashboard read, every wave, gets this long: the page's first byte never waits on an untimed read. */
+export const DASHBOARD_DEADLINE_MS = 8_000
+
+/** `read`, or the signal's reason once it aborts, whichever comes first. */
+function until<Value>(read: Promise<Value>, signal: AbortSignal): Promise<Value> {
+  if (signal.aborted) return Promise.reject(signal.reason)
+  return new Promise((resolve, reject) => {
+    signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+    read.then(resolve, reject)
+  })
+}
+
 /**
  * The organisation dashboard: getDashboard when it answers; while it is not built (501), composed from the reads that
- * are (`composeDashboard`). Any other failure of getDashboard, or of the projects list, fails the page.
+ * are (`composeDashboard`). Any other failure of getDashboard, or of the projects list, fails the page. One deadline
+ * covers every wave; the projects list is the shell's own read of it (`readOrgProjects`), so a render reads it once.
  */
 export async function readDashboard(
   org: string,
   requestHeaders = new Headers(),
-  signal?: AbortSignal
+  callerSignal?: AbortSignal,
+  options: { deadlineMs?: number } = {}
 ): Promise<DashboardRead> {
   const forwarded = new Headers()
   for (const name of ['cookie', 'authorization']) {
     const value = requestHeaders.get(name)
     if (value) forwarded.set(name, value)
   }
+  const deadline = AbortSignal.timeout(options.deadlineMs ?? DASHBOARD_DEADLINE_MS)
+  const signal = callerSignal ? AbortSignal.any([callerSignal, deadline]) : deadline
   const common = { org, headers: forwarded, signal, cache: 'no-store' as const }
 
   const [dashboard, projects] = await Promise.all([
@@ -166,7 +204,7 @@ export async function readDashboard(
       if (error instanceof ApiProblem && error.status === 501) return null
       throw error
     }),
-    allPages((cursor) => dashboardApi('listProjects', { ...common, query: { limit: 200, cursor, include: 'summary' } }))
+    until(readOrgProjects(org, forwarded.get('cookie'), forwarded.get('authorization')), signal)
   ])
   const live = projects.filter((project) => !project.archived_at)
 
@@ -193,14 +231,7 @@ export async function readDashboard(
     covered = composed.shown.length
   }
 
-  const firstBundle = blocks.needs_review.ok ? blocks.needs_review.data[0] : undefined
-  const lead = firstBundle?.detail.calls.find((call) => call.window_id) ?? firstBundle?.detail.calls[0]
-  const [firstCall, strip] = firstBundle
-    ? await Promise.all([
-        lead ? optional(dashboardApi('getCall', { ...common, params: { id: lead.id } })) : Promise.resolve(null),
-        optional(dashboardApi('getProjectStrip', { ...common, params: { id: firstBundle.detail.project_id } }))
-      ])
-    : [null, null]
+  const { firstCall, strip } = await leadReads(blocks, common)
 
   return {
     ...blocks,
@@ -211,4 +242,35 @@ export async function readDashboard(
     strip,
     readAt: new Date().toISOString()
   }
+}
+
+/**
+ * One composed block read again, for its Retry: only that block's reads, across the projects the dashboard covers,
+ * under the same deadline; every other block stays as it is. A dashboard read whole from getDashboard is read whole.
+ */
+export async function readDashboardBlock(
+  org: string,
+  key: keyof DashboardBlocks,
+  data: DashboardRead,
+  callerSignal?: AbortSignal,
+  options: { deadlineMs?: number } = {}
+): Promise<DashboardRead> {
+  if (data.windowsBasis === 'engine_verdict') return readDashboard(org, new Headers(), callerSignal, options)
+  const deadline = AbortSignal.timeout(options.deadlineMs ?? DASHBOARD_DEADLINE_MS)
+  const signal = callerSignal ? AbortSignal.any([callerSignal, deadline]) : deadline
+  const now = new Date()
+  const headers = new Headers()
+  const { blocks } = await composeDashboard(dashboardApi, {
+    org,
+    projects: mostRecentlyActive(data.projects).slice(0, COMPOSED_PROJECT_CAP),
+    headers,
+    signal,
+    now,
+    only: key
+  })
+  const next: DashboardRead = { ...data, [key]: blocks[key] }
+  if (key !== 'needs_review') return next
+  // The bundles were read again: their countdowns start now, with the lead call and strip of the first one.
+  const lead = await leadReads(next, { org, headers, signal, cache: 'no-store' })
+  return { ...next, ...lead, readAt: now.toISOString() }
 }

@@ -188,3 +188,41 @@ test('a link that cannot be confirmed names the button on this tab and the one o
     vi.unstubAllGlobals()
   }
 })
+
+test('a refused resend says when to ask again, as the first send does, never the generic failure', async () => {
+  const fetchMock = vi.fn(async () => new Response(null, { status: 429, headers: { 'Retry-After': '600' } }))
+  vi.stubGlobal('fetch', fetchMock)
+  try {
+    renderPanel('sign-in', { kind: 'expired', resend: 'handle-1' } as import('../../features/sign-in/model').AuthState)
+    fireEvent.submit(screen.getByRole('button', { name: 'Resend' }).closest('form')!)
+    await waitFor(() =>
+      expect(
+        screen
+          .queryAllByRole('alert')
+          .map((alert) => alert.textContent)
+          .join(' ')
+      ).toMatch(/You can ask again at \d\d:\d\d\u00a0MYT\./)
+    )
+    expect(document.body.textContent).not.toMatch(/A new link wasn’t sent|429/)
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
+
+test('a refused Google start says when to try Google again, from either retry header', async () => {
+  social.mockImplementation(async (_body: unknown, options: { onError: (context: unknown) => void }) => {
+    options.onError({ response: new Response(null, { status: 429, headers: { 'X-Retry-After': '120' } }) })
+    return { data: null, error: { status: 429, message: 'Too many requests.' } }
+  })
+  renderPanel('sign-in')
+  fireEvent.submit(screen.getByRole('button', { name: 'Continue with Google' }).closest('form')!)
+  await waitFor(() =>
+    expect(
+      screen
+        .queryAllByRole('alert')
+        .map((alert) => alert.textContent)
+        .join(' ')
+    ).toMatch(/try Google again at \d\d:\d\d\u00a0MYT\./)
+  )
+  expect(document.body.textContent).not.toMatch(/Google sign-in couldn’t start|429/)
+})

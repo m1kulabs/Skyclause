@@ -124,6 +124,9 @@
     "unavailable": "Skyclause can’t show {source} yet.",
     "tried": "Tried at {time}.",
     "unreachable": "No answer at {time}.",
+    "busy": "Skyclause is busy just now.",
+    "busy_until": "Try again after {time}.",
+    "busy_later": "Try again in a minute.",
     "retry": "Try again"
   },
   "indicators": {
