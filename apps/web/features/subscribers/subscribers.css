@@ -62,9 +62,15 @@
 .subscribers-table tbody td[data-cell='state'] {
   min-width: 160px;
 }
-.subscribers-email,
-.subscribers-sub {
+.subscribers-email {
   display: block;
+  overflow-wrap: anywhere;
+}
+/* A second line in a cell: its parts sit apart by a space even when they are an inline label and a <time>. */
+.subscribers-sub {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 4px;
   overflow-wrap: anywhere;
 }
 .subscribers-email {

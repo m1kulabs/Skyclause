@@ -176,7 +176,7 @@ export function SubscriberTable({
                   {row.suppressed && (
                     <span className="type-small subscribers-sub">{t('subscribers.suppressed_yes', {}, locale)}</span>
                   )}
-                  <span className="type-small subscribers-sub flex flex-wrap gap-x-1">
+                  <span className="type-small subscribers-sub">
                     {row.last_notice_at ? (
                       <>
                         {t('subscribers.last_notice', {}, locale)}
