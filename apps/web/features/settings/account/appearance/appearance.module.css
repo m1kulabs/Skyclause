@@ -234,6 +234,21 @@
   transform: translateX(75%);
 }
 
+/* The preview of full motion rests too while the page itself is calm: the OS asks for less (and the account has not
+   said full motion), or the account says reduced motion. This is the global `calm` variant, written out because a CSS
+   module cannot use it. */
+@media (prefers-reduced-motion: reduce) {
+  :global(html:not([data-motion='full'])) .track[data-motion='full'] .traveller {
+    animation: none;
+    transform: translateX(75%);
+  }
+}
+
+:global(html[data-motion='reduce']) .track[data-motion='full'] .traveller {
+  animation: none;
+  transform: translateX(75%);
+}
+
 @keyframes travel {
   from {
     transform: translateX(0);

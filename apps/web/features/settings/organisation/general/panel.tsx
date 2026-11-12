@@ -166,7 +166,7 @@ export default function Panel({ org, locale = 'en' }: { org: string; locale?: 'e
             </SettingsField>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" disabled={name === null || saving} aria-busy={saving}>
+            <Button type="submit" className="transition-none" disabled={name === null || saving} aria-busy={saving}>
               {organisations(saving ? 'organisations.general.saving' : 'organisations.general.save', {}, locale)}
             </Button>
             {saved ? <SettingsStatus>{organisations('organisations.general.saved', {}, locale)}</SettingsStatus> : null}

@@ -523,7 +523,12 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
                   />
                 )}
               </SettingsField>
-              <Button type="submit" className="sm:mt-7" disabled={loading || working} aria-busy={adding}>
+              <Button
+                type="submit"
+                className="transition-none sm:mt-7"
+                disabled={loading || working}
+                aria-busy={adding}
+              >
                 {adding ? copy('addingPasskey') : copy('addPasskey')}
               </Button>
             </form>
