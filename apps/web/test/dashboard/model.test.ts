@@ -4,9 +4,11 @@ import {
   mytDay,
   slaLeft,
   sortNeedsReviewBySla,
+  stripInput,
   verdictState,
   wilsonInterval
 } from '../../features/dashboard/model'
+import { dashboardOperations } from '../../features/dashboard/operations'
 
 const review = (id: string, seconds_remaining: number) => ({
   id,
@@ -93,5 +95,31 @@ describe('dashboard model', () => {
       from: iso('18:00'),
       to: new Date('2026-11-02T16:00:00Z').toISOString()
     })
+  })
+
+  test('the strip reads the rain lanes under the keys getProjectStrip answers with', () => {
+    // The series names packages/api/src/services/signals/strip.ts writes, parsed by the operation's own contract.
+    const strip = dashboardOperations.getProjectStrip.response.parse({
+      project_id: '019a45b0-0000-7000-8000-000000000003',
+      range: { from: '2026-11-02T06:00:00Z', to: '2026-11-02T08:00:00Z' },
+      window: null,
+      series: {
+        'site.rain_5m_mm': [
+          ['2026-11-02T07:00:00Z', 9.5, 'received'],
+          ['2026-11-02T07:05:00Z', null, 'missed']
+        ],
+        'site.rain_60m_mm': [['2026-11-02T07:00:00Z', 39, 'received']]
+      },
+      inputs: [],
+      packs: [],
+      verdicts: [],
+      nights: []
+    })
+    const input = stripInput(strip, '2026-11-02T07:10:00Z')
+    expect(input.rain5).toEqual([
+      { at: '2026-11-02T07:00:00Z', value: 9.5, state: 'received' },
+      { at: '2026-11-02T07:05:00Z', value: null, state: 'missed' }
+    ])
+    expect(input.rain60).toEqual([{ at: '2026-11-02T07:00:00Z', value: 39 }])
   })
 })

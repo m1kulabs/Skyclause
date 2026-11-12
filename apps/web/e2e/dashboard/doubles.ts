@@ -239,8 +239,8 @@ export async function stubDashboard(
         range: { from: '2026-11-02T06:00:00Z', to: '2026-11-02T08:00:00Z' },
         window: firstCall.window,
         series: {
-          rain5: [['2026-11-02T07:00:00Z', 9.5, 'received']],
-          rain60: [['2026-11-02T07:00:00Z', 39, 'received']]
+          'site.rain_5m_mm': [['2026-11-02T07:00:00Z', 9.5, 'received']],
+          'site.rain_60m_mm': [['2026-11-02T07:00:00Z', 39, 'received']]
         },
         inputs: firstCall.inputs,
         packs: [],
