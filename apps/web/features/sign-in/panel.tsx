@@ -91,7 +91,7 @@ export function SignInPanel({
   const conditionalStarted = useRef(false)
   const renderedAt = Date.parse(now)
   const urlUntil = state.kind === 'link-sent' ? Date.parse(state.until) : null
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(() => ('email' in state && state.email) || '')
   const [sent, setSent] = useState<SentLink | null>(() =>
     urlUntil !== null && urlUntil > renderedAt ? { email: null, until: urlUntil } : null
   )

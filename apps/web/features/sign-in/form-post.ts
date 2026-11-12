@@ -61,14 +61,16 @@ function callAuth(deps: FormPostDependencies, request: Request, path: string, bo
 export async function sendLinkFromForm(request: Request, deps: FormPostDependencies = defaults): Promise<Response> {
   if (crossSite(request, deps.appOrigin())) return new Response(null, { status: 403 })
   const { email, next } = await readForm(request)
-  if (!isEmailAddress(email)) return back({ state: 'email-invalid' }, next)
+  // A refusal carries the typed address back into the field (never logged), so nobody retypes it.
+  const typed: Record<string, string> = email && email.length <= 254 ? { email } : {}
+  if (!isEmailAddress(email)) return back({ state: 'email-invalid', ...typed }, next)
   // Taken before the send, so the end drawn is never later than the server's own.
   const sentAt = deps.now().getTime()
   let response: Response
   try {
     response = await callAuth(deps, request, '/sign-in/magic-link', { email, callbackURL: continuePath(next) })
   } catch {
-    return back({ state: 'send-failed' }, next)
+    return back({ state: 'send-failed', ...typed }, next)
   }
   if (response.ok) {
     return back({ state: 'link-sent', until: new Date(sentAt + SIGN_IN_LINK_EXPIRY_S * 1000).toISOString() }, next)
@@ -76,10 +78,10 @@ export async function sendLinkFromForm(request: Request, deps: FormPostDependenc
   if (response.status === 429) {
     const seconds = Number(response.headers.get('retry-after'))
     const retry = Number.isFinite(seconds) && seconds > 0 ? new Date(sentAt + seconds * 1000).toISOString() : null
-    return back({ state: 'send-limited', ...(retry ? { retry } : {}) }, next)
+    return back({ state: 'send-limited', ...(retry ? { retry } : {}), ...typed }, next)
   }
-  if (response.status === 400) return back({ state: 'email-invalid' }, next)
-  return back({ state: 'send-failed' }, next)
+  if (response.status === 400) return back({ state: 'email-invalid', ...typed }, next)
+  return back({ state: 'send-failed', ...typed }, next)
 }
 
 /** POST /sign-in/google: starts Google sign-in and hands the browser to Google with Better Auth's state cookie. */
