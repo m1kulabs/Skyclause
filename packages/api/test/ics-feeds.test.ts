@@ -964,3 +964,55 @@ describe.each(shiftedBoundaries)('source-managed defaults: $label', (boundary) =
     }
   )
 })
+
+test.each([true, false])(
+  'recurring and standalone roundtrips retain their own parents (starts recurring: %s)',
+  async (first) => {
+    const p = await project()
+    const feed = await tenant((tx) =>
+      makeIcsFeed(tx, { projectId: p.id, provenance: { version: 1, declaredBy: 'account', via: 'app' } })
+    )
+    const doc = (recurring: boolean) =>
+      [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'BEGIN:VEVENT',
+        'UID:changing',
+        'DTSTART:20261116T090000Z',
+        'DTEND:20261116T100000Z',
+        'SUMMARY:Lecture',
+        ...(recurring ? ['RRULE:FREQ=WEEKLY;COUNT=2'] : []),
+        'END:VEVENT',
+        'END:VCALENDAR',
+        ''
+      ].join('\r\n')
+    const identities = new Map<string, { id: string; seriesId: string | null }>()
+    let seriesId: string | undefined
+    for (const recurring of [first, !first, first]) {
+      await tenant((tx) =>
+        applyCalendar(
+          { tx, principal: viewer },
+          { feedId: feed.id, now, result: { status: 'changed', text: doc(recurring), etag: null, lastModified: null } }
+        )
+      )
+      const series = await tenant((tx) => tx.select().from(windowSeries).where(eq(windowSeries.icsFeedId, feed.id)))
+      if (recurring || seriesId) {
+        expect(series).toHaveLength(1)
+        seriesId ??= series[0]!.id
+        expect(series[0]).toMatchObject({ id: seriesId, cancelledAt: null })
+      } else expect(series).toEqual([])
+      const rows = await tenant((tx) => tx.select().from(window).where(eq(window.icsFeedId, feed.id)))
+      const active = rows.filter((row) => !row.cancelledAt)
+      expect(active.map((row) => row.icsRecurrenceId).sort()).toEqual(
+        recurring ? ['2026-11-16T09:00:00Z', '2026-11-23T09:00:00Z'] : ['']
+      )
+      for (const row of active) expect(row.seriesId).toBe(recurring ? seriesId : null)
+      for (const row of rows) {
+        const original = identities.get(row.icsRecurrenceId!)
+        if (original) expect(row).toMatchObject(original)
+        else identities.set(row.icsRecurrenceId!, { id: row.id, seriesId: row.seriesId })
+      }
+    }
+    expect(identities.size).toBe(3)
+  }
+)

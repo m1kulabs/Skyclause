@@ -179,7 +179,9 @@ export async function applyCalendar(
           icsFeedId: feed.id,
           icsUid: occurrence.uid,
           icsRecurrenceId: occurrence.recurrenceId,
-          seriesId: byUid.get(occurrence.uid)?.id ?? seriesIds.get(occurrence.uid) ?? null,
+          seriesId: occurrence.recurring
+            ? (byUid.get(occurrence.uid)?.id ?? seriesIds.get(occurrence.uid) ?? null)
+            : null,
           startsAt: occurrence.startsAt,
           endsAt: occurrence.endsAt,
           title: occurrence.title,
