@@ -1,18 +1,16 @@
-import { spawn, type ChildProcess } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
-import { once } from 'node:events'
 import { writeFile } from 'node:fs/promises'
 import http from 'node:http'
-import path from 'node:path'
-import { expect, test, type APIRequestContext, type BrowserContext } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import type { Role } from '@skyclause/contracts'
 import { addMember, inOrg, makeAccount, makeApiKey, makeOrg, makeShareLinkFor, signIn } from '@skyclause/auth/testing'
 import { makeProject, makeProjectPack } from '@skyclause/db/test/factories/index'
+import { RUN_APP, serveProductionHosts, startMultiHost } from './harness/multi-host'
 
-// Spec §4 Hosts through the built server's proxy.ts in HOST_MODE=multi, with production's six origins.
-const port = 3102
+// Spec §4 Hosts through the built server's proxy.ts in HOST_MODE=multi, with production's six origins. Its own port,
+// next to the run's E2E_PORT, so parallel worktrees don't share it.
+const port = Number(process.env.E2E_PORT ?? 3100) + 2
 const origin = `http://localhost:${port}`
-const RUN_APP = 'web-413187272599.asia-southeast1.run.app'
 const APP_HOST = 'app.skyclause.m1ku.tech'
 const APP = `https://${APP_HOST}`
 /**
@@ -44,81 +42,14 @@ async function seedBridge() {
   return { org, other, project, foreign, owner: await member('owner'), viewer: await member('viewer') }
 }
 
-/**
- * Answers every request a browser sends to the production hosts from this server, under the request's own Host, so
- * the page runs on https://app.skyclause.m1ku.tech exactly as the client build computes its URLs. An event stream is
- * answered with its status and headers only; `streams` records it.
- */
-async function serveProductionHosts(context: BrowserContext, request: APIRequestContext, streams: string[]) {
-  await context.route(/^https:\/\/([a-z]+\.)?skyclause\.m1ku\.tech\//, async (route) => {
-    const sent = route.request()
-    const url = new URL(sent.url())
-    const headers: Record<string, string> = { ...(await sent.allHeaders()), host: url.host }
-    if (headers.accept === 'text/event-stream') {
-      const status = await new Promise<number>((resolve, reject) => {
-        const head = http.get({ port, path: `${url.pathname}${url.search}`, headers }, (response) => {
-          resolve(response.statusCode ?? 0)
-          response.destroy()
-        })
-        head.on('error', reject)
-      })
-      streams.push(`${status} ${sent.method()} ${sent.url()}`)
-      await route.fulfill({ status, body: '' })
-      return
-    }
-    const response = await request.fetch(`${origin}${url.pathname}${url.search}`, {
-      method: sent.method(),
-      headers,
-      data: sent.postDataBuffer() ?? undefined,
-      maxRedirects: 0
-    })
-    await route.fulfill({ response })
-  })
-}
-
 test.describe('HOST_MODE=multi', () => {
   test.describe.configure({ mode: 'serial' })
-  let server: ChildProcess | undefined
+  let stop: (() => Promise<void>) | undefined
   test.beforeAll(async ({ request }) => {
-    server = spawn(process.execPath, [path.resolve(import.meta.dirname, '../.next/standalone/apps/web/server.js')], {
-      env: {
-        ...process.env,
-        APP_ENV: 'test',
-        IP_HASH_KEY: 'test-only-ip-hash-key-for-playwright-runs',
-        EMAIL_HASH_KEY: 'test-only-email-hash-key-for-playwright-runs',
-        // Production's setting, whatever the shell exports: the test-only routes are off.
-        PLANTED_ROUTES: '',
-        HOST_MODE: 'multi',
-        MARKETING_ORIGIN: 'https://skyclause.m1ku.tech',
-        APP_ORIGIN: 'https://app.skyclause.m1ku.tech',
-        API_ORIGIN: 'https://api.skyclause.m1ku.tech',
-        MCP_ORIGIN: 'https://mcp.skyclause.m1ku.tech',
-        EMBED_ORIGIN: 'https://embed.skyclause.m1ku.tech',
-        DOCS_ORIGIN: 'https://docs.skyclause.m1ku.tech',
-        HOSTNAME: 'localhost',
-        PORT: String(port)
-      },
-      stdio: 'ignore'
-    })
-    await expect
-      .poll(
-        async () => {
-          if (server?.exitCode !== null) throw new Error(`Multi-host server exited: ${server?.exitCode}`)
-          return request
-            .get(`${origin}/health`, { headers: { host: RUN_APP } })
-            .then((response) => response.status())
-            .catch(() => 0)
-        },
-        { timeout: 30_000 }
-      )
-      .toBe(200)
+    stop = await startMultiHost(request, port)
   })
   test.afterAll(async () => {
-    if (server && server.exitCode === null) {
-      const closed = once(server, 'exit')
-      server.kill('SIGTERM')
-      await closed
-    }
+    await stop?.()
   })
 
   test('the run.app host answers /health only; anything else is the not-found page', async ({ request }) => {
@@ -202,7 +133,7 @@ test.describe('HOST_MODE=multi', () => {
     const seed = await seedBridge()
     const context = await browser.newContext({ serviceWorkers: 'block' })
     const streams: string[] = []
-    await serveProductionHosts(context, request, streams)
+    await serveProductionHosts(context, request, port, streams)
     const [name, value] = seed.owner.cookie.split(/=(.*)/s) as [string, string]
     await context.addCookies([
       { name, value, domain: APP_HOST, path: '/', httpOnly: true, secure: true, sameSite: 'Lax' }
