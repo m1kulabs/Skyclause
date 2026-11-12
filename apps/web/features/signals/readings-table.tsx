@@ -42,7 +42,11 @@ export function ReadingsTable({
       </h3>
       <p className="type-small text-muted-foreground">
         {t(
-          rows.length > shown.length ? 'signals.readings_shown' : 'signals.readings_all',
+          rows.length === 1
+            ? 'signals.readings_one'
+            : rows.length > shown.length
+              ? 'signals.readings_shown'
+              : 'signals.readings_all',
           { shown: formatNumber(shown.length, locale), total: formatNumber(rows.length, locale) },
           locale
         )}

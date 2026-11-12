@@ -69,13 +69,13 @@ export function SourceTable({
           <th scope="col" className="px-3 pb-2 font-normal">
             {t('signals.col_source', {}, locale)}
           </th>
-          <th scope="col" className="w-[15rem] px-3 pb-2 text-right font-normal">
+          <th scope="col" className="w-[13rem] px-3 pb-2 text-right font-normal">
             {t('signals.col_value', {}, locale)}
           </th>
           <th scope="col" className="w-[9rem] px-3 pb-2 text-right font-normal">
             {t('signals.col_age', {}, locale)}
           </th>
-          <th scope="col" className="w-[16rem] px-3 pb-2 font-normal">
+          <th scope="col" className="w-[19rem] px-3 pb-2 font-normal">
             {t('signals.col_health', {}, locale)}
           </th>
         </tr>
@@ -101,7 +101,7 @@ export function SourceTable({
                   scroll={false}
                   replace
                   aria-current={open ? 'true' : undefined}
-                  className="relative inline-flex min-h-6 max-w-full items-center gap-2 pb-1 font-medium break-words current-mark hover:underline"
+                  className="relative inline-flex min-h-6 max-w-full items-center gap-2 pb-1 font-medium break-words current-mark after:left-0! after:translate-x-0! hover:underline"
                 >
                   <Glyph state={source.state.state} />
                   <span>{source.name}</span>

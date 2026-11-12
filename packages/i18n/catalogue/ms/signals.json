@@ -92,5 +92,6 @@
   "bind_sources": "Ikat sumber",
   "value_missing": "–",
   "readings_more": "Papar {count} bacaan terkini",
-  "readings_fewer": "Papar lebih sedikit bacaan"
+  "readings_fewer": "Papar lebih sedikit bacaan",
+  "readings_one": "1 bacaan."
 }

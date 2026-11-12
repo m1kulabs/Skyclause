@@ -39,7 +39,7 @@ test('a short stream says how many readings it holds and prints a missing value 
       locale="en"
     />
   )
-  expect(html).toContain('1 readings, newest first.')
+  expect(html).toContain('1 reading.')
   expect(html).toContain('–')
   expect(html).toContain('Thunderstorms Warning')
 })

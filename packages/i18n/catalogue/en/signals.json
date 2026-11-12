@@ -92,5 +92,6 @@
   "bind_sources": "Bind sources",
   "value_missing": "–",
   "readings_more": "Show the newest {count} readings",
-  "readings_fewer": "Show fewer readings"
+  "readings_fewer": "Show fewer readings",
+  "readings_one": "1 reading."
 }

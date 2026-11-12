@@ -407,41 +407,43 @@ export function SignalsPage({
             </>
           )}
 
-          <section data-signal-errors aria-labelledby="signals-errors-title" className="flex flex-col gap-2">
-            <h2 id="signals-errors-title" className="type-section">
-              {t('signals.recent_errors', {}, locale)}
-            </h2>
-            {errors.length ? (
-              <table className="w-full text-left type-body">
-                <thead className="sr-only">
-                  <tr>
-                    <th scope="col">{t('signals.col_source', {}, locale)}</th>
-                    <th scope="col">{t('signals.errors_status', {}, locale)}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {errors.map(({ poll, source }) => (
-                    <tr key={poll.id} className="h-11">
-                      <th scope="row" translate="no" className="pr-4 font-medium">
-                        {source?.external_id ?? poll.source_id}
-                      </th>
-                      <td data-numeric className="pr-4">
-                        {poll.http_status === null
-                          ? t('signals.error_no_status', { time: formatDateTime(poll.started_at, locale) }, locale)
-                          : t(
-                              'signals.error_status',
-                              { status: poll.http_status, time: formatDateTime(poll.started_at, locale) },
-                              locale
-                            )}
-                      </td>
+          {data.sources.length > 0 && (
+            <section data-signal-errors aria-labelledby="signals-errors-title" className="flex flex-col gap-2">
+              <h2 id="signals-errors-title" className="type-section">
+                {t('signals.recent_errors', {}, locale)}
+              </h2>
+              {errors.length ? (
+                <table className="w-full text-left type-body">
+                  <thead className="sr-only">
+                    <tr>
+                      <th scope="col">{t('signals.col_source', {}, locale)}</th>
+                      <th scope="col">{t('signals.errors_status', {}, locale)}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <p className="type-body text-muted-foreground">{t('signals.no_errors', {}, locale)}</p>
-            )}
-          </section>
+                  </thead>
+                  <tbody>
+                    {errors.map(({ poll, source }) => (
+                      <tr key={poll.id} className="h-11">
+                        <th scope="row" translate="no" className="pr-4 font-medium">
+                          {source?.external_id ?? poll.source_id}
+                        </th>
+                        <td data-numeric className="pr-4">
+                          {poll.http_status === null
+                            ? t('signals.error_no_status', { time: formatDateTime(poll.started_at, locale) }, locale)
+                            : t(
+                                'signals.error_status',
+                                { status: poll.http_status, time: formatDateTime(poll.started_at, locale) },
+                                locale
+                              )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="type-body text-muted-foreground">{t('signals.no_errors', {}, locale)}</p>
+              )}
+            </section>
+          )}
         </>
       )}
 
