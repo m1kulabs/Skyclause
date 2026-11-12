@@ -143,6 +143,32 @@ test('sending the link says Sending on the email button and in the live line, wh
   expect(screen.getByRole('button', { name: 'Sign in with a passkey' })).toBeTruthy()
 })
 
+test('“Use a different email” opens in a new tab on a modified click, and in place on a plain one', async () => {
+  renderPanel()
+  submit('reader@example.test')
+  const link = await screen.findByRole('link', { name: 'Use a different email' })
+  // Last to hear the click: notes whether the page kept the browser's own handling, then stops jsdom navigating.
+  let prevented: boolean | null = null
+  const record = (event: Event) => {
+    prevented = event.defaultPrevented
+    event.preventDefault()
+  }
+  window.addEventListener('click', record)
+  try {
+    for (const modifier of [{ metaKey: true }, { ctrlKey: true }, { shiftKey: true }, { button: 1 }]) {
+      prevented = null
+      fireEvent.click(link, modifier)
+      expect(prevented, JSON.stringify(modifier)).toBe(false)
+    }
+    expect(screen.getByRole('heading', { name: 'Check your email' })).toBeTruthy()
+    fireEvent.click(link)
+    expect(prevented).toBe(true)
+  } finally {
+    window.removeEventListener('click', record)
+  }
+  expect(await screen.findByRole('textbox', { name: 'Email address' })).toBeTruthy()
+})
+
 test('a link that cannot be confirmed names the button on this tab and the one on the first', async () => {
   const fetchMock = vi.fn().mockRejectedValue(new Error('offline'))
   vi.stubGlobal('fetch', fetchMock)

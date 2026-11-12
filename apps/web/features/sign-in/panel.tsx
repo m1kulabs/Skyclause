@@ -391,6 +391,8 @@ export function SignInPanel({
       className={buttonVariants({ variant: 'outline', size: 'lg', className: 'w-full' })}
       href={accountPath('/sign-in', next)}
       onClick={(event) => {
+        // A new tab or window (a modifier, the middle button) opens the empty form there, as the link says.
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
         event.preventDefault()
         useDifferentEmail()
       }}
