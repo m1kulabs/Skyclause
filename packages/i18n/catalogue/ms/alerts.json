@@ -55,5 +55,6 @@
   "removeDevice": "Alih keluar peranti",
   "emptyPreferences": "Tiada keutamaan (n=0). Cuba semula untuk memuatkan tetapan anda.",
   "previousDevices": "Peranti terawal",
-  "emptyDevicePage": "Tiada peranti pada halaman ini (n=0). Paparkan peranti terawal."
+  "emptyDevicePage": "Tiada peranti pada halaman ini (n=0). Paparkan peranti terawal.",
+  "help": "Peti masuk menyenaraikan setiap pemberitahuan yang dihantar kepada akaun anda. Hidupkan makluman pada peranti untuk menerimanya sebaik sahaja berlaku, dan matikan jenis yang tidak anda perlukan."
 }
