@@ -79,7 +79,11 @@ function CommandList({ className, ...props }: React.ComponentProps<typeof Comman
   return (
     <CommandPrimitive.List
       data-slot="command-list"
-      className={cn('no-scrollbar max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto outline-none', className)}
+      label={t('shell.suggestions')}
+      className={cn(
+        'no-scrollbar max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto overscroll-contain outline-none',
+        className
+      )}
       {...props}
     />
   )
@@ -89,6 +93,8 @@ function CommandEmpty({ className, ...props }: React.ComponentProps<typeof Comma
   return (
     <CommandPrimitive.Empty
       data-slot="command-empty"
+      role="status"
+      aria-live="polite"
       className={cn('py-6 text-center text-[14px] text-muted-foreground', className)}
       {...props}
     />

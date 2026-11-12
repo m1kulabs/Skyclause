@@ -192,7 +192,7 @@ function ComboboxChips({
     <ComboboxPrimitive.Chips
       data-slot="combobox-chips"
       className={cn(
-        'flex min-h-10 flex-wrap items-center gap-1 rounded-md border-2 border-input bg-field bg-clip-padding px-3 py-1 text-[14px] transition-none has-aria-invalid:border-2 has-aria-invalid:border-foreground has-data-[slot=combobox-chip]:px-1.5 in-data-[slot=card]:bg-raised in-data-[slot=dialog-content]:bg-background in-data-[slot=alert-dialog-content]:bg-background in-data-[slot=sheet-content]:bg-background in-data-[slot=drawer-popup]:bg-background in-data-[slot=popover-content]:bg-background',
+        'flex min-h-10 flex-wrap items-center gap-1 rounded-md border-2 border-input bg-field bg-clip-padding px-3 py-1 text-[14px] transition-none has-[[data-slot=combobox-chip-input]:focus-visible]:outline-(length:--focus-width) has-[[data-slot=combobox-chip-input]:focus-visible]:outline-solid has-[[data-slot=combobox-chip-input]:focus-visible]:outline-(--focus) has-[[data-slot=combobox-chip-input]:focus-visible]:outline-offset-2 has-aria-invalid:border-2 has-aria-invalid:border-foreground has-data-[slot=combobox-chip]:px-1.5 in-data-[slot=card]:bg-raised in-data-[slot=dialog-content]:bg-background in-data-[slot=alert-dialog-content]:bg-background in-data-[slot=sheet-content]:bg-background in-data-[slot=drawer-popup]:bg-background in-data-[slot=popover-content]:bg-background',
         className
       )}
       {...props}
@@ -204,9 +204,12 @@ function ComboboxChip({
   className,
   children,
   showRemove = true,
+  removeLabel,
   ...props
 }: ComboboxPrimitive.Chip.Props & {
   showRemove?: boolean
+  /** Names what the button removes ("Remove Amina Labeller"); taken from a text child when there is one. */
+  removeLabel?: string
 }) {
   return (
     <ComboboxPrimitive.Chip
@@ -223,7 +226,10 @@ function ComboboxChip({
           render={<Button variant="ghost" size="icon-xs" />}
           className="ml-1 size-7 opacity-70 hover:opacity-100"
           data-slot="combobox-chip-remove"
-          aria-label={t('shell.remove')}
+          aria-label={
+            removeLabel ??
+            (typeof children === 'string' ? t('shell.remove_named', { name: children }) : t('shell.remove'))
+          }
         >
           <XIcon className="pointer-events-none" />
         </ComboboxPrimitive.ChipRemove>
@@ -236,7 +242,7 @@ function ComboboxChipsInput({ className, ...props }: ComboboxPrimitive.Input.Pro
   return (
     <ComboboxPrimitive.Input
       data-slot="combobox-chip-input"
-      className={cn('min-h-6 min-w-16 flex-1 outline-none', className)}
+      className={cn('min-h-6 min-w-16 flex-1 outline-none focus-visible:outline-none!', className)}
       {...props}
     />
   )

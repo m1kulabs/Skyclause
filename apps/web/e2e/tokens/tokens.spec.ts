@@ -99,8 +99,41 @@ test('SSR uses available OS client hints for system preferences', async ({ page,
   expect(html).toContain('<meta name="theme-color" content="#ffffff"')
 })
 
+// Reduced motion takes the movement out (no spin, no slide or zoom) and leaves the state changes (a 120ms fade); there
+// is no blanket rule, so a transition on a colour is untouched.
+const motionProbe = () => {
+  const style = document.createElement('style')
+  style.textContent =
+    '.motion-probe { transition: transform 1s, color 1s; transform: translateY(10px) } .motion-spin { animation: motion-spin 1s linear infinite } @keyframes motion-spin { to { opacity: .5 } }'
+  document.head.append(style)
+  const read = (attrs: Record<string, string>, className: string) => {
+    const node = document.createElement('div')
+    node.className = className
+    for (const [name, value] of Object.entries(attrs)) node.setAttribute(name, value)
+    document.body.append(node)
+    const computed = getComputedStyle(node)
+    const result = {
+      animation: computed.animationName,
+      transition: computed.transitionProperty,
+      duration: computed.transitionDuration,
+      transform: computed.transform,
+      opacity: computed.opacity
+    }
+    node.remove()
+    return result
+  }
+  const result = {
+    spinner: read({}, 'animate-spin'),
+    popup: read({ 'data-open': '' }, 'motion-probe'),
+    entering: read({ 'data-starting-style': '' }, 'motion-probe'),
+    colour: read({}, 'motion-probe')
+  }
+  style.remove()
+  return result
+}
+
 for (const source of ['OS', 'attribute'] as const) {
-  test(`${source} reduced motion removes every transition and animation`, async ({ page }) => {
+  test(`${source} reduced motion stops the movement and keeps a short fade`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: source === 'OS' ? 'reduce' : 'no-preference' })
     await page.goto('/_test/tokens')
     if (source === 'attribute')
@@ -108,26 +141,46 @@ for (const source of ['OS', 'attribute'] as const) {
         root.dataset.motion = 'reduce'
       })
     await expect(page.locator('html')).toHaveAttribute('data-motion', 'reduce')
-    const result = await page.evaluate(() => {
-      const style = document.createElement('style')
-      style.textContent =
-        '.motion-probe { transition: transform 1s, opacity 1s; animation: probe 1s infinite } @keyframes probe { to { opacity: .5 } }'
-      document.head.append(style)
-      const probe = document.createElement('div')
-      probe.className = 'motion-probe'
-      document.body.append(probe)
-      const styles = [getComputedStyle(probe), getComputedStyle(probe, '::before')]
-      const result = styles.map((item) => ({ transition: item.transitionProperty, animation: item.animationName }))
-      probe.remove()
-      style.remove()
-      return result
-    })
-    expect(result).toEqual([
-      { transition: 'none', animation: 'none' },
-      { transition: 'none', animation: 'none' }
-    ])
+    const result = await page.evaluate(motionProbe)
+    expect(result.spinner.animation).toBe('none')
+    // A popup fades in 120ms and loses its slide while it enters or leaves.
+    expect(result.popup).toMatchObject({ transition: 'opacity', duration: '0.12s' })
+    expect(result.entering).toMatchObject({ transform: 'none', opacity: '0' })
+    // Nothing else is switched off: the probe's own transform and colour transition stay as the page wrote them.
+    expect(result.colour.transition).toBe('transform, color')
+    expect(result.colour.transform).not.toBe('none')
   })
 }
+
+test('the spinner stops and says Loading… in words under reduced motion', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/_test/tokens')
+  await expect(page.locator('html')).toHaveAttribute('data-motion', 'reduce')
+  const spinner = page.locator('[data-slot="spinner"]')
+  await expect(spinner.locator('[data-slot="spinner-label"]')).toBeVisible()
+  await expect(spinner.locator('[data-slot="spinner-label"]')).toHaveText('Loading…')
+  await expect(spinner.locator('svg')).toHaveCSS('animation-name', 'none')
+})
+
+test('the spinner spins with its word hidden from sight under full motion', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/_test/tokens')
+  const spinner = page.locator('[data-slot="spinner"]')
+  await expect(spinner.locator('svg')).not.toHaveCSS('animation-name', 'none')
+  await expect(spinner).toContainText('Loading…')
+  await expect(spinner.locator('[data-slot="spinner-label"]')).toHaveCSS('position', 'absolute')
+})
+
+test('full motion in the account wins over a reduced OS setting', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/_test/tokens')
+  await page.locator('html').evaluate((root) => {
+    root.dataset.motion = 'full'
+  })
+  const result = await page.evaluate(motionProbe)
+  expect(result.spinner.animation).not.toBe('none')
+  expect(result.popup.transition).toBe('transform, color')
+})
 
 test('marketing stays dark when the viewer selects light', async ({ page, baseURL }) => {
   await appearance(page, baseURL!, { theme: 'light' })

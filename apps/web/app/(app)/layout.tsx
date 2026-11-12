@@ -1,4 +1,4 @@
-import { brandMetadata } from '../../features/brand/metadata'
+import { brandMetadata, brandViewport } from '../../features/brand/metadata'
 import type { ReactNode } from 'react'
 import { Providers } from '../../components/providers'
 import { RequestRootLayout } from '../../components/request-root-layout'
@@ -11,6 +11,7 @@ import { t } from '../../features/shell/i18n'
 import { prefersMalay } from '../../lib/preferred-language'
 
 export const metadata = { ...brandMetadata, title: t('app-shell.brand') }
+export const viewport = brandViewport
 export const instant = false
 
 export default async function Layout({ children }: { children: ReactNode }) {

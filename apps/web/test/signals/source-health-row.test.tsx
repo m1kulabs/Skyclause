@@ -39,7 +39,7 @@ test('source rows show a custom latest value, current state detail and source li
   )
 
   expect(screen.getByText('67 API · Moderate')).toBeTruthy()
-  expect(screen.getAllByText('Fresh · Moderate')).toHaveLength(2)
+  expect(screen.getAllByText('Fresh · Moderate')).toHaveLength(1)
   expect(screen.getByText(lastErrorLabel)).toBeTruthy()
   expect(screen.getByText('Open data')).toBeTruthy()
   // No ticks were passed, so no poll strip is drawn: unknown polls never render as received.

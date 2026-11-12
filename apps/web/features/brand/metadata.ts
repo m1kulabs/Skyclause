@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 
 // Spread into every root's metadata; relative URLs work on every host in single and multi mode.
 export const brandMetadata = {
@@ -14,3 +14,6 @@ export const brandMetadata = {
   },
   manifest: '/manifest.webmanifest'
 } satisfies Metadata
+
+// Spread into every root's `viewport` export: edge to edge, so the `env(safe-area-inset-*)` paddings take effect.
+export const brandViewport = { viewportFit: 'cover' } satisfies Viewport
