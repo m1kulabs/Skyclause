@@ -372,7 +372,7 @@ Each screen answers one question first, says its finding under the title, and ke
 ### Signals
 
 - **Question:** is every input fresh, and what does each read now? ([SIG-5](/docs/PRD.md#signals-sig)) **Finding:** "Sky: {n} inputs reporting; oldest {m} min".
-- **Blocks:** source rows ordered by health (error first, then stale, pending and fresh), each with value and unit, age in words and a clock time, a status mark and detail ("Pending until {time}", "Failing since {time} · HTTP {status}"), and a link that opens the source's detail below it: the last 24 hours as a window strip with no window (rain), the hourly API line with reference lines at 100, 150 and 180, or the daily exits against the eight-week baseline; then up to 50 newest readings (12 first) and the errors of the last 24 hours, announced politely as they arrive. **Primary job:** "Copy tail command".
+- **Blocks:** source rows ordered by health (error first, then stale, pending and fresh), each with value and unit, age in words and a clock time, a status mark and detail ("Pending until {time}", "Failing since {time} · HTTP {status}"), and a link that opens the source's detail below it: the last 24 hours as a window strip with no window (rain), the hourly API line with reference lines at 100, 150 and 180, or the daily exits against the eight-week baseline; then up to 50 newest readings (12 first) and the errors of the last 24 hours, announced politely as they arrive. **Primary job:** opening a source's detail. ("Copy tail command" returns with the CLI.)
 - **States:** a failed read names "the bound sources"; no sources reads "No sources are bound to this project." with "Bind sources" for admins.
 
 ### Bundle and call detail
