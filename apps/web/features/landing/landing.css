@@ -24,9 +24,6 @@
   font-size: var(--step-body);
   line-height: 1.5;
 }
-.landing-surface[data-surface='marketing'] {
-  padding: 0;
-}
 .landing-surface > .language-suggestion {
   margin: 0;
   padding: 12px var(--m) 0;
