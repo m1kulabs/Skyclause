@@ -6,6 +6,8 @@ import { v1Bridge } from '../../../../lib/api'
 // it as the in-process principal binding (D5).
 const handle = (request: Request) => {
   const url = new URL(request.url)
+  // proxy.ts allowed this URL's path on this host; the strip below must not turn another host's path into `/v1`.
+  if (url.pathname !== '/api/v1' && !url.pathname.startsWith('/api/v1/')) return new Response(null, { status: 404 })
   url.pathname = url.pathname.slice('/api'.length)
   return v1Bridge.fetch(new Request(url, request))
 }
