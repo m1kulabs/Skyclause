@@ -90,8 +90,8 @@ test('terms publish all proposal prices and the linked service details', () => {
   expect(page).toContain(version(TERMS_VERSION, 'en'))
   expect(page.match(/proposal, untested/g)).toHaveLength(4)
   for (const item of [
-    'RM\u00a049 a month per organisation',
-    'RM\u00a0900 a month per campus, billed yearly',
+    'RM\u00a099 a month per organisation',
+    'RM\u00a0990 a month per campus, billed yearly',
     'JPS',
     'MET',
     'APIMS',
