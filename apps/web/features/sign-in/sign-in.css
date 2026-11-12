@@ -83,7 +83,7 @@
   line-height: 1.05;
   text-wrap: balance;
 }
-/* "Sign in or create your account" holds two lines in the column at the next step down. */
+/* Every title longer than "Sign in" takes the next step down, so it holds two lines and never breaks a word. */
 .sign-in-title:focus:not(:focus-visible) {
   outline: none;
 }
@@ -303,7 +303,8 @@
   bottom: 4px;
   min-width: 4px;
   box-sizing: border-box;
-  border: var(--edge-width) var(--tone-edge-style, solid) var(--tone-edge, transparent);
+  /* 2px in every theme, as the tone-fill capsules: the would-be window is drawn by its edge alone. */
+  border: 2px var(--tone-edge-style, solid) var(--tone-edge, transparent);
   border-radius: 9999px;
   background: var(--tone, transparent);
 }
@@ -313,7 +314,7 @@
 .sign-in-window::after {
   content: '';
   position: absolute;
-  inset: calc(-1 * var(--edge-width));
+  inset: -2px;
   border-radius: inherit;
   background: var(--ink);
   opacity: 0;

@@ -474,7 +474,7 @@ export function SignInPanel({
             <h1
               className="sign-in-title"
               id="sign-in-title"
-              data-long={heading === 'heading_sign_up' || undefined}
+              data-long={heading !== 'heading' || undefined}
               tabIndex={sentView ? -1 : undefined}
               ref={sentHeadingRef}
             >
