@@ -20,6 +20,35 @@ test('CAL-16 calls list keeps filters in the URL and shows the empty next action
   await expect(page.getByRole('region', { name: 'Calls' }).getByLabel('Pack')).toHaveValue('crowd')
 })
 
+test('CAL-16 P2-9 filters apply as they change, in one row with native date fields, and stay in the URL', async ({
+  page
+}) => {
+  const reads: URL[] = []
+  page.on('request', (request) => {
+    if (/\/v1\/projects\/[^/]+\/calls/.test(request.url())) reads.push(new URL(request.url()))
+  })
+  await prepareCalls(page, { rows: [callReplay()] })
+  await page.goto(callsPath)
+  const list = page.getByRole('region', { name: 'Calls' })
+  await expect(list.locator('[data-call]')).toHaveCount(1)
+  await expect(list.getByRole('button', { name: /apply/i })).toHaveCount(0)
+  await expect(list.getByLabel('From')).toHaveAttribute('type', 'date')
+  await expect(list.getByLabel('To')).toHaveAttribute('type', 'date')
+  await list.getByLabel('Pack').selectOption('sky')
+  await expect.poll(() => reads.at(-1)?.searchParams.get('pack')).toBe('sky')
+  expect(new URL(page.url()).searchParams.get('pack')).toBe('sky')
+  await list.getByLabel('From').fill('2026-11-02')
+  await expect.poll(() => reads.at(-1)?.searchParams.get('from')).toBe('2026-11-02')
+  expect(new URL(page.url()).searchParams.get('from')).toBe('2026-11-02')
+  // A reversed range says so and reads nothing new.
+  const before = reads.length
+  await list.getByLabel('To').fill('2026-11-01')
+  await expect(page.getByRole('alert')).toContainText('on or before')
+  expect(reads.length).toBe(before)
+  await page.reload()
+  await expect(page.getByRole('region', { name: 'Calls' }).getByLabel('From')).toHaveValue('2026-11-02')
+})
+
 test('CAL-16 list cursor pages render at most 50 call rows at once', async ({ page }) => {
   const rows = Array.from({ length: 50 }, (_, index) =>
     callDouble(`019a45b0-0000-7000-8000-${String(index + 10).padStart(12, '0')}`)
@@ -42,7 +71,7 @@ test('CAL-16 rows measure each call, and mode and state dim the rows that do not
   const list = page.getByRole('region', { name: 'Calls' })
   const rows = list.locator('[data-call]')
   await expect(rows).toHaveCount(2)
-  await expect(list).toContainText('n=2 · 1 match')
+  await expect(list).toContainText('2 calls · 1 match')
   await expect(rows.nth(0)).not.toHaveAttribute('data-dimmed')
   await expect(rows.nth(0)).toContainText('Hit')
   await expect(rows.nth(0)).toContainText('9 min')
@@ -50,7 +79,7 @@ test('CAL-16 rows measure each call, and mode and state dim the rows that do not
   await expect(rows.nth(1)).toContainText('Outdoor')
   await list.getByLabel('Mode').selectOption('')
   await expect(list.locator('[data-dimmed]')).toHaveCount(0)
-  await expect(list).toContainText('n=2')
+  await expect(list).toContainText('2 calls')
   expect(new URL(page.url()).searchParams.has('mode')).toBe(false)
   await list.getByLabel('State').selectOption('expired')
   await expect(rows.nth(0)).toHaveAttribute('data-dimmed', 'true')
@@ -84,11 +113,12 @@ test('CAL-12 detail renders the strip, trace ages, role, delay, grade, version a
   await expect(detail.getByRole('figure')).toBeVisible()
   const inputRows = detail.getByRole('table', { name: 'Inputs read at drafting' }).locator('tbody tr')
   await expect(inputRows).toHaveCount(2)
-  await expect(inputRows.nth(0)).toContainText(/gauge.*39 mm \/ 60 min.*5 min/)
-  await expect(inputRows.nth(1)).toContainText(/gauge_5m.*5 min/)
-  await expect(detail).toContainText('Approver on duty')
+  await expect(inputRows.nth(0)).toContainText(/gauge.*39\smm \/ 60 min.*5\smin/)
+  await expect(inputRows.nth(1)).toContainText(/gauge_5m.*5\smin/)
+  // P2-8: a sentence, not a fragment.
+  await expect(detail).toContainText('Approved by the Approver on duty.')
   await expect(detail).toContainText(
-    /Crossing 15:05 MYT · drafted 15:06 MYT \(1 min\) · approved 15:12 MYT \(6 min\) · sent 15:14 MYT \(2 min\)/
+    /Crossing 15:05 MYT · drafted 15:06 MYT \(1\smin\) · approved 15:12 MYT \(6\smin\) · sent 15:14 MYT \(2\smin\)/
   )
   await expect(detail).toContainText('Hit')
   await expect(detail).toContainText(/commute disruption/i)

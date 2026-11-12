@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import type { InputValue } from '@skyclause/contracts'
-import { formatDateCompact, formatTime } from '@skyclause/i18n/format'
+import { formatDate, formatDateCompact, formatDateKey, formatNumber, formatTime } from '@skyclause/i18n/format'
 import type { StripInput, StripReading, StripSixty } from '@skyclause/elements'
-import { Badge } from '#ui/badge'
 import { Button } from '#ui/button'
 import { Skeleton } from '#ui/skeleton'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
 import {
   Trace,
   TraceLine,
@@ -19,7 +19,9 @@ import {
 import { SourceError } from '../data-components/states'
 import { WindowStrip } from '../data-components/window-strip'
 import { ModeBadge } from '../brand/mode-badge'
+import { ReplayMark } from '../brand/replay-mark'
 import { StatusMark } from '../brand/status-mark'
+import { indicatorName } from '../data-components/indicator-names'
 import { ApiProblem } from '../../lib/api-fetch'
 import {
   apiFetch,
@@ -97,11 +99,7 @@ function stripInput(strip: StripView, call: CallDetailView, run: RunDetailView):
   }
 }
 
-function localDate(value: string): string {
-  // MYT is UTC+08:00 year round; the grades API filters by the project's local date.
-  return new Date(Date.parse(value) + 8 * 60 * 60 * 1000).toISOString().slice(0, 10)
-}
-
+/** The delay line in words: each step, its time and the minutes since the step before, in the catalogue's order. */
 function delayLine(call: CallDetailView, locale: 'en' | 'ms'): string {
   const events = [
     { label: t('calls.crossing', {}, locale), at: call.triggered_at },
@@ -111,15 +109,17 @@ function delayLine(call: CallDetailView, locale: 'en' | 'ms'): string {
   ]
   return events
     .map(({ label, at }, index) => {
-      let value = `${label} ${at ? formatTime(at, locale) : t('calls.dash', {}, locale)}`
+      const time = at ? formatTime(at, locale) : t('calls.dash', {}, locale)
       const previous = events[index - 1]?.at
-      if (at && previous) {
-        const minutes = Math.max(0, Math.round((Date.parse(at) - Date.parse(previous)) / 60_000))
-        value += ` (${t('calls.minutes', { count: minutes }, locale)})`
-      }
-      return value
+      if (!at || !previous) return t('calls.delay_event', { label, time }, locale)
+      const minutes = Math.max(0, Math.round((Date.parse(at) - Date.parse(previous)) / 60_000))
+      return t(
+        'calls.delay_event_after',
+        { label, time, minutes: t('calls.minutes', { count: formatNumber(minutes, locale) }, locale) },
+        locale
+      )
     })
-    .join(' · ')
+    .join(t('calls.delay_join', {}, locale))
 }
 
 function CopyButton({ value, label, locale }: { value: string; label: string; locale: 'en' | 'ms' }) {
@@ -141,7 +141,8 @@ function CopyButton({ value, label, locale }: { value: string; label: string; lo
       >
         {label}
       </Button>
-      {status ? <span role="status">{t(`calls.${status}`, {}, locale)}</span> : null}
+      {/* Always mounted, so the result is announced when it appears. */}
+      <span role="status">{status ? t(`calls.${status}`, {}, locale) : null}</span>
     </span>
   )
 }
@@ -149,15 +150,21 @@ function CopyButton({ value, label, locale }: { value: string; label: string; lo
 /** An input's age when the call was drafted, in words: seconds under a minute, else minutes, else hours. */
 function ageText(seconds: number | null, locale: 'en' | 'ms'): string {
   if (seconds === null) return t('calls.dash', {}, locale)
-  if (seconds < 60) return t('calls.seconds', { count: seconds }, locale)
-  if (seconds < 90 * 60) return t('calls.minutes', { count: Math.round(seconds / 60) }, locale)
-  return t('calls.hours', { count: Math.round(seconds / 3600) }, locale)
+  if (seconds < 60) return t('calls.seconds', { count: formatNumber(seconds, locale) }, locale)
+  if (seconds < 90 * 60) return t('calls.minutes', { count: formatNumber(Math.round(seconds / 60), locale) }, locale)
+  return t('calls.hours', { count: formatNumber(Math.round(seconds / 3600), locale) }, locale)
 }
 
+const figure = (value: unknown, locale: 'en' | 'ms') =>
+  typeof value === 'number' ? formatNumber(value, locale) : String(value)
+
+/** A reading with its unit, kept on one line. */
 const valueText = (input: InputValue, locale: 'en' | 'ms') =>
   input.value === null
     ? t('calls.dash', {}, locale)
-    : `${Array.isArray(input.value) ? input.value.join(', ') : input.value}${input.unit ? ` ${input.unit}` : ''}`
+    : `${Array.isArray(input.value) ? input.value.map((item) => figure(item, locale)).join(', ') : figure(input.value, locale)}${input.unit ? `\u00a0${input.unit}` : ''}`
+
+const TRACE_STATUSES = ['completed', 'running', 'queued', 'failed', 'skipped']
 
 /** The delay as one bar: drafting, approval and sending as segments as long as their minutes, approval in ink. */
 function DelayBar({ call }: { call: CallDetailView }) {
@@ -186,7 +193,8 @@ function DelayBar({ call }: { call: CallDetailView }) {
 
 function gradeDate(call: CallDetailView): string | undefined {
   if (call.night) return call.night.date
-  if (call.window) return localDate(call.window.starts_at)
+  // The grades API filters by the project's local date in MYT.
+  if (call.window) return formatDateKey(call.window.starts_at)
   return undefined
 }
 
@@ -292,7 +300,10 @@ export function CallDetailPage({
           return (
             <>
               <header className={styles.detailHeader}>
-                <h1>{call.window?.title ?? call.night?.date ?? t('calls.detail', {}, locale)}</h1>
+                <h1>
+                  {call.window?.title ??
+                    (call.night ? formatDate(call.night.date, locale) : t('calls.detail', {}, locale))}
+                </h1>
                 <div className={styles.detailIdentity}>
                   <ModeBadge mode={mark} locale={locale} />
                   <span className={styles.callState}>{t(`calls.states.${call.state}`, {}, locale)}</span>
@@ -310,18 +321,14 @@ export function CallDetailPage({
                     </time>
                   ) : null}
                   {replay ? (
-                    <Badge variant="outline">
-                      {t(
-                        'calls.replay',
-                        {
-                          label:
-                            (run.trace?.text.startsWith('Replay · ') ? run.trace.text : undefined) ??
-                            call.reason.split(':')[0] ??
-                            call.reason
-                        },
-                        locale
-                      )}
-                    </Badge>
+                    <ReplayMark
+                      locale={locale}
+                      label={(
+                        (run.trace?.text.startsWith('Replay · ') ? run.trace.text : undefined) ??
+                        call.reason.split(':')[0] ??
+                        call.reason
+                      ).replace(/^Replay · /, '')}
+                    />
                   ) : null}
                 </div>
                 {call.reason ? <p className={styles.reason}>{call.reason}</p> : null}
@@ -367,39 +374,38 @@ export function CallDetailPage({
                   <section className={styles.panel}>
                     <h2 id="call-inputs-heading">{t('calls.inputs', {}, locale)}</h2>
                     {inputs.length ? (
-                      <div className={styles.tableWrap}>
-                        <table className={styles.inputsTable} aria-labelledby="call-inputs-heading">
-                          <thead>
-                            <tr>
-                              <th scope="col">{t('calls.col_input', {}, locale)}</th>
-                              <th scope="col" className={styles.numeric}>
-                                {t('calls.col_value', {}, locale)}
-                              </th>
-                              <th scope="col">{t('calls.state', {}, locale)}</th>
-                              <th scope="col" className={styles.numeric}>
-                                {t('calls.col_age', {}, locale)}
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {inputs.map((input) => (
-                              <tr key={`${input.name}:${input.reading_ids.join(',')}`} data-input={input.name}>
-                                <th scope="row">{input.name}</th>
-                                <td className={styles.numeric} data-numeric>
-                                  {valueText(input, locale)}
-                                </td>
-                                <td>
-                                  <StatusMark state={input.state} variant="plain" locale={locale} />
-                                </td>
-                                <td className={styles.numeric} data-numeric>
-                                  <span className={styles.phoneLabel}>{t('calls.col_age', {}, locale)} </span>
-                                  {ageText(input.age_s, locale)}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                      <Table compact aria-labelledby="call-inputs-heading">
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead scope="col">{t('calls.col_input', {}, locale)}</TableHead>
+                            <TableHead scope="col" numeric>
+                              {t('calls.col_value', {}, locale)}
+                            </TableHead>
+                            <TableHead scope="col">{t('calls.state', {}, locale)}</TableHead>
+                            <TableHead scope="col" numeric>
+                              {t('calls.col_age', {}, locale)}
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {inputs.map((input) => (
+                            <TableRow key={`${input.name}:${input.reading_ids.join(',')}`} data-input={input.name}>
+                              <TableCell truncate="32ch" phone="primary">
+                                {indicatorName(input.name, locale)}
+                              </TableCell>
+                              <TableCell numeric phone="end">
+                                {valueText(input, locale)}
+                              </TableCell>
+                              <TableCell label={t('calls.state', {}, locale)}>
+                                <StatusMark state={input.state} variant="plain" locale={locale} />
+                              </TableCell>
+                              <TableCell numeric label={t('calls.col_age', {}, locale)}>
+                                {ageText(input.age_s, locale)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     ) : (
                       <p className={styles.quiet}>{t('calls.no_inputs', {}, locale)}</p>
                     )}
@@ -412,14 +418,14 @@ export function CallDetailPage({
                         {explanation.clauses.map((clause) => (
                           <li key={clause.key}>
                             <h3>{clause.wording[locale] ?? clause.key}</h3>
-                            <code>{clause.cel}</code>
+                            <code translate="no">{clause.cel}</code>
                             {clause.inputs.length ? (
                               <ul className={styles.clauseInputs}>
                                 {clause.inputs.map((input) => (
                                   <li key={`${clause.key}:${input.name}:${input.reading_ids.join(',')}`}>
                                     {t(
                                       'calls.clause_input',
-                                      { name: input.name, value: valueText(input, locale) },
+                                      { name: indicatorName(input.name, locale), value: valueText(input, locale) },
                                       locale
                                     )}
                                   </li>
@@ -456,7 +462,11 @@ export function CallDetailPage({
                         <TraceLine key={`${step.step}:${index}`}>
                           <TraceTitle>{step.step}</TraceTitle>
                           <TraceDescription className="text-foreground">
-                            {t('calls.trace_detail', { duration: step.duration_ms, detail: step.detail }, locale)}
+                            {t(
+                              'calls.trace_detail',
+                              { duration: formatNumber(step.duration_ms, locale), detail: step.detail },
+                              locale
+                            )}
                           </TraceDescription>
                         </TraceLine>
                       ))}
@@ -475,11 +485,18 @@ export function CallDetailPage({
                                 (step.finished_at
                                   ? Math.max(0, Date.parse(step.finished_at) - Date.parse(step.started_at))
                                   : 0)
-                              const status =
-                                step.status === 'completed' ? t('calls.trace_completed', {}, locale) : step.status
+                              const status = t(
+                                `calls.trace_statuses.${TRACE_STATUSES.includes(step.status) ? step.status : 'other'}`,
+                                {},
+                                locale
+                              )
                               return (
                                 <li key={`${step.step}:${index}`}>
-                                  {t('calls.trace_step_status', { step: step.step, status, duration }, locale)}
+                                  {t(
+                                    'calls.trace_step_status',
+                                    { step: step.step, status, duration: formatNumber(duration, locale) },
+                                    locale
+                                  )}
                                   {detail?.detail ? <p>{detail.detail}</p> : null}
                                 </li>
                               )
@@ -500,7 +517,7 @@ export function CallDetailPage({
                       {delayLine(call, locale)}
                     </p>
                     <p className={styles.quiet}>
-                      {call.approved_at ? t('calls.approver', {}, locale) : t('calls.approver_pending', {}, locale)}
+                      {t(call.approved_at ? 'calls.approver' : 'calls.approver_pending', {}, locale)}
                     </p>
                   </section>
                   <section className={styles.recordItem}>
@@ -538,7 +555,11 @@ export function CallDetailPage({
                   <section className={styles.recordItem}>
                     <h3>{t('calls.permalink', {}, locale)}</h3>
                     <div className={styles.linkValue}>
-                      <a href={call.permalink} aria-label={`${t('calls.permalink', {}, locale)}: ${call.permalink}`}>
+                      <a
+                        href={call.permalink}
+                        translate="no"
+                        aria-label={`${t('calls.permalink', {}, locale)}: ${call.permalink}`}
+                      >
                         {call.permalink}
                       </a>
                       <CopyButton
@@ -551,7 +572,7 @@ export function CallDetailPage({
                   <section className={styles.recordItem}>
                     <h3>{t('calls.trace_id', {}, locale)}</h3>
                     <div className={styles.linkValue}>
-                      <code>{call.trace_id}</code>
+                      <code translate="no">{call.trace_id}</code>
                       <CopyButton value={call.trace_id} label={t('calls.copy_trace', {}, locale)} locale={locale} />
                     </div>
                   </section>

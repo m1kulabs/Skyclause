@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import type { CallState, Mode } from '@skyclause/contracts'
-import { formatDateCompact, formatTime } from '@skyclause/i18n/format'
+import { formatDateCompact, formatNumber, formatTime } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
+import { Input } from '#ui/input'
 import { Skeleton } from '#ui/skeleton'
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableMeasure, TableRow } from '#ui/table'
 import { ModeBadge } from '../brand/mode-badge'
 import { StatusMark } from '../brand/status-mark'
 import { SourceError } from '../data-components/states'
@@ -59,6 +61,8 @@ const failure = (error: unknown): Failure => ({
   at: new Date().toISOString()
 })
 const minutes = (from: string, to: string) => Math.max(0, Math.round((Date.parse(to) - Date.parse(from)) / 60_000))
+const validPack = (value?: string): 'sky' | 'crowd' | undefined =>
+  value === 'sky' || value === 'crowd' ? value : undefined
 
 function pageHref(base: string, filters: CallsFilters, cursor?: string | null): string {
   const query = new URLSearchParams()
@@ -73,8 +77,8 @@ function pageHref(base: string, filters: CallsFilters, cursor?: string | null): 
 
 /**
  * The project's calls as rows that measure: when each crossed, its mode, its state, its grade and how long it took to
- * send, the delay drawn as the row's bar. Pack and dates scope the read; mode and state dim the rows that do not match
- * instead of removing them, so nothing jumps.
+ * send, the delay drawn as the row's bar. Every filter applies as it changes and lives in the URL: pack and dates scope
+ * the read; mode and state dim the rows that do not match instead of removing them, so nothing jumps.
  */
 export function CallsPage({
   org,
@@ -90,15 +94,21 @@ export function CallsPage({
   const [state, setState] = useState<ListState>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
   const base = `/${encodeURIComponent(org)}/${encodeURIComponent(projectSlug)}/calls`
-  const pack = filters.pack === 'sky' || filters.pack === 'crowd' ? filters.pack : undefined
-  const from = isDate(filters.from) ? filters.from : undefined
-  const to = isDate(filters.to) ? filters.to : undefined
+  const [pack, setPack] = useState(validPack(filters.pack))
+  const [from, setFrom] = useState(isDate(filters.from) ? filters.from : undefined)
+  const [to, setTo] = useState(isDate(filters.to) ? filters.to : undefined)
+  const [cursor, setCursor] = useState(filters.cursor)
+  const [rangeInvalid, setRangeInvalid] = useState(false)
   const [mode, setMode] = useState(validMode(filters.mode))
   const [callState, setCallState] = useState(validState(filters.state))
   useEffect(() => {
+    setPack(validPack(filters.pack))
+    setFrom(isDate(filters.from) ? filters.from : undefined)
+    setTo(isDate(filters.to) ? filters.to : undefined)
+    setCursor(filters.cursor)
     setMode(validMode(filters.mode))
     setCallState(validState(filters.state))
-  }, [filters.mode, filters.state])
+  }, [filters.pack, filters.from, filters.to, filters.cursor, filters.mode, filters.state])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -109,7 +119,7 @@ export function CallsPage({
           apiFetch('listProjectCalls', {
             org,
             params: { id: project.id },
-            query: { limit: 50, cursor: filters.cursor, pack, from, to },
+            query: { limit: 50, cursor, pack, from, to },
             signal: controller.signal
           }),
           apiFetch('listGrades', {
@@ -132,16 +142,37 @@ export function CallsPage({
         if (!controller.signal.aborted) setState({ status: 'error', failure: failure(error) })
       })
     return () => controller.abort()
-  }, [org, projectSlug, filters.cursor, pack, from, to, attempt])
+  }, [org, projectSlug, cursor, pack, from, to, attempt])
 
-  // Mode and state only dim rows; the URL keeps them so a reload or a shared link shows the same highlight.
+  // The URL keeps every filter, so a reload or a shared link shows the same rows. Editing a field replaces the entry.
+  function remember(changes: Record<string, string | undefined>) {
+    const url = new URL(window.location.href)
+    for (const [key, value] of Object.entries(changes)) {
+      if (value) url.searchParams.set(key, value)
+      else url.searchParams.delete(key)
+    }
+    window.history.replaceState(window.history.state, '', url)
+  }
+  // Mode and state only dim rows.
   function highlight(key: 'mode' | 'state', value: string) {
     if (key === 'mode') setMode(validMode(value))
     else setCallState(validState(value))
-    const url = new URL(window.location.href)
-    if (value) url.searchParams.set(key, value)
-    else url.searchParams.delete(key)
-    window.history.replaceState(window.history.state, '', url)
+    remember({ [key]: value })
+  }
+  // Pack and dates scope the read: a change reads the first page again. A half-typed date waits; a reversed range says so.
+  function scope(key: 'pack' | 'from' | 'to', value: string) {
+    if (key === 'pack') setPack(validPack(value))
+    else if (value && !isDate(value)) return
+    const next = { from, to, [key]: value || undefined }
+    if (key !== 'pack') {
+      const reversed = !!next.from && !!next.to && next.from > next.to
+      setRangeInvalid(reversed)
+      if (reversed) return
+      setFrom(next.from)
+      setTo(next.to)
+    }
+    setCursor(undefined)
+    remember({ [key]: value, cursor: undefined })
   }
 
   const matches = (call: CallRowView) => (!mode || call.mode === mode) && (!callState || call.state === callState)
@@ -149,6 +180,8 @@ export function CallsPage({
   const matching = ready ? ready.rows.filter(matches).length : 0
   const delays = ready ? ready.rows.map((call) => (call.sent_at ? minutes(call.triggered_at, call.sent_at) : null)) : []
   const longest = Math.max(1, ...delays.map((value) => value ?? 0))
+  const scoped = { ...filters, pack, from, to, mode, state: callState }
+  const counted = (key: string, count: number) => (count === 1 ? `${key}_one` : key)
 
   return (
     <section
@@ -164,53 +197,61 @@ export function CallsPage({
             <span>{ready.project.name}</span>
             <span className={styles.count} aria-live="polite" data-numeric>
               {mode || callState
-                ? t('calls.count_match', { matching, count: ready.rows.length }, locale)
-                : t('calls.count', { count: ready.rows.length }, locale)}
+                ? t(
+                    counted('calls.count_match', ready.rows.length),
+                    { matching: formatNumber(matching, locale), count: formatNumber(ready.rows.length, locale) },
+                    locale
+                  )
+                : t(
+                    counted('calls.count', ready.rows.length),
+                    { count: formatNumber(ready.rows.length, locale) },
+                    locale
+                  )}
             </span>
           </p>
         ) : null}
       </header>
 
-      <form className={styles.filters} action={base} method="get" aria-label={t('calls.filters', {}, locale)}>
+      <form
+        className={styles.filters}
+        action={base}
+        method="get"
+        aria-label={t('calls.filters', {}, locale)}
+        onSubmit={(event) => event.preventDefault()}
+      >
         <label className={styles.field} htmlFor="calls-pack">
           <span>{t('calls.pack', {}, locale)}</span>
-          <select id="calls-pack" name="pack" className="native-select" autoComplete="off" defaultValue={pack ?? ''}>
+          <select
+            id="calls-pack"
+            name="pack"
+            className="native-select"
+            autoComplete="off"
+            value={pack ?? ''}
+            onChange={(event) => scope('pack', event.target.value)}
+          >
             <option value="">{t('calls.all_packs', {}, locale)}</option>
             <option value="sky">{t('calls.packs.sky', {}, locale)}</option>
             <option value="crowd">{t('calls.packs.crowd', {}, locale)}</option>
           </select>
         </label>
-        <label className={styles.field} htmlFor="calls-from">
-          <span>{t('calls.from', {}, locale)}</span>
-          <input
-            id="calls-from"
-            name="from"
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}"
-            placeholder="YYYY-MM-DD"
-            spellCheck={false}
-            autoComplete="off"
-            defaultValue={from ?? ''}
-          />
-        </label>
-        <label className={styles.field} htmlFor="calls-to">
-          <span>{t('calls.to', {}, locale)}</span>
-          <input
-            id="calls-to"
-            name="to"
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}"
-            placeholder="YYYY-MM-DD"
-            spellCheck={false}
-            autoComplete="off"
-            defaultValue={to ?? ''}
-          />
-        </label>
-        <Button type="submit" variant="outline" className={`h-10 ${styles.filterButton}`}>
-          {t('calls.apply_filters', {}, locale)}
-        </Button>
+        {(['from', 'to'] as const).map((key) => (
+          <label className={styles.field} htmlFor={`calls-${key}`} key={key}>
+            <span>{t(`calls.${key}`, {}, locale)}</span>
+            {/* The wrapper draws the ring: Chromium drops :focus-visible on a date field's last segment. */}
+            <span className={styles.fieldRing} data-focus-ring>
+              <Input
+                id={`calls-${key}`}
+                name={key}
+                type="date"
+                autoComplete="off"
+                defaultValue={(key === 'from' ? from : to) ?? ''}
+                aria-invalid={rangeInvalid || undefined}
+                aria-describedby={rangeInvalid ? 'calls-range-error' : undefined}
+                onChange={(event) => scope(key, event.target.value)}
+              />
+            </span>
+          </label>
+        ))}
         <label className={styles.field} htmlFor="calls-mode">
           <span>{t('calls.mode', {}, locale)}</span>
           <select
@@ -248,9 +289,14 @@ export function CallsPage({
           </select>
         </label>
       </form>
+      {rangeInvalid && (
+        <p id="calls-range-error" role="alert" className={styles.reason}>
+          {t('calls.range_invalid', {}, locale)}
+        </p>
+      )}
 
       {state.status === 'loading' && (
-        <div className={styles.tableWrap} role="status">
+        <div className={styles.loading} role="status">
           <span className="sr-only">{t('calls.loading', {}, locale)}</span>
           {Array.from({ length: 4 }, (_, index) => (
             <div key={index} className={styles.skeletonRow}>
@@ -284,7 +330,7 @@ export function CallsPage({
       )}
       {ready && ready.rows.length === 0 && (
         <div className={styles.empty}>
-          <p>{t('calls.empty', {}, locale)}</p>
+          <p>{t(pack || from || to ? 'calls.empty' : 'calls.empty_all', {}, locale)}</p>
           <a
             className={styles.actionLink}
             href={`/${encodeURIComponent(org)}/${encodeURIComponent(projectSlug)}/windows?declare=window`}
@@ -294,99 +340,106 @@ export function CallsPage({
         </div>
       )}
       {ready && ready.rows.length > 0 && (
-        <div className={styles.tableWrap}>
-          <table className={styles.callsTable}>
-            <caption className="sr-only">{t('calls.table_caption', {}, locale)}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{t('calls.col_crossing', {}, locale)}</th>
-                <th scope="col">{t('calls.mode', {}, locale)}</th>
-                <th scope="col">{t('calls.state', {}, locale)}</th>
-                <th scope="col">{t('calls.grade', {}, locale)}</th>
-                <th scope="col" className={styles.numeric}>
-                  {t('calls.col_delay', {}, locale)}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {ready.rows.map((call, index) => {
-                const grade = Array.isArray(ready.grades)
-                  ? ready.grades.find((item) => item.call_id === call.id)
-                  : undefined
-                const delay = delays[index]
-                const dimmed = !matches(call)
-                const mark = call.no_call?.length ? 'no_call' : (call.mode ?? (call.watch ? 'storm_watch' : 'no_call'))
-                return (
-                  <tr key={call.id} data-call={call.id} data-dimmed={dimmed || undefined}>
-                    <th scope="row">
-                      <a href={`${base}/${encodeURIComponent(call.id)}`} data-open-call className={styles.rowLink}>
-                        <time dateTime={call.triggered_at}>
-                          {t(
-                            'calls.crossing_at',
-                            {
-                              date: formatDateCompact(call.triggered_at, locale),
-                              time: formatTime(call.triggered_at, locale)
-                            },
-                            locale
-                          )}
-                        </time>
-                      </a>
-                      <span className={styles.rowSub}>
-                        {call.night_id
-                          ? t('calls.night', {}, locale)
-                          : t('calls.expires_short', { time: formatTime(call.expires_at, locale) }, locale)}
-                        {dimmed ? <span className="sr-only">{t('calls.dimmed', {}, locale)}</span> : null}
-                      </span>
-                    </th>
-                    <td>
-                      {dimmed ? (
-                        <StatusMark state={mark} variant="plain" locale={locale} />
-                      ) : (
-                        <ModeBadge mode={mark} locale={locale} />
-                      )}
-                    </td>
-                    <td>{t(`calls.states.${call.state}`, {}, locale)}</td>
-                    <td>
-                      {grade ? (
-                        t(`calls.grades.${grade.outcome}`, {}, locale)
-                      ) : (
-                        <span className={styles.dash} aria-label={t('calls.ungraded', {}, locale)}>
+        <Table>
+          <TableCaption className="sr-only">{t('calls.table_caption', {}, locale)}</TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead scope="col">{t('calls.col_crossing', {}, locale)}</TableHead>
+              <TableHead scope="col">{t('calls.mode', {}, locale)}</TableHead>
+              <TableHead scope="col">{t('calls.state', {}, locale)}</TableHead>
+              <TableHead scope="col">{t('calls.grade', {}, locale)}</TableHead>
+              <TableHead scope="col" numeric className="w-48">
+                {t('calls.col_delay', {}, locale)}
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {ready.rows.map((call, index) => {
+              const grade = Array.isArray(ready.grades)
+                ? ready.grades.find((item) => item.call_id === call.id)
+                : undefined
+              const delay = delays[index]
+              const dimmed = !matches(call)
+              const mark = call.no_call?.length ? 'no_call' : (call.mode ?? (call.watch ? 'storm_watch' : 'no_call'))
+              const stateWord = t(`calls.states.${call.state}`, {}, locale)
+              return (
+                <TableRow key={call.id} data-call={call.id} data-dimmed={dimmed || undefined} dimmed={dimmed}>
+                  <TableCell phone="primary">
+                    <a href={`${base}/${encodeURIComponent(call.id)}`} data-open-call className={styles.rowLink}>
+                      <time dateTime={call.triggered_at}>
+                        {t(
+                          'calls.crossing_at',
+                          {
+                            date: formatDateCompact(call.triggered_at, locale),
+                            time: formatTime(call.triggered_at, locale)
+                          },
+                          locale
+                        )}
+                      </time>
+                    </a>
+                    {dimmed ? <span className="sr-only">{t('calls.dimmed', {}, locale)}</span> : null}
+                  </TableCell>
+                  <TableCell phone="end">
+                    {dimmed ? (
+                      <StatusMark state={mark} variant="plain" locale={locale} />
+                    ) : (
+                      <ModeBadge mode={mark} locale={locale} />
+                    )}
+                  </TableCell>
+                  <TableCell label={t('calls.state', {}, locale)}>
+                    {['drafted', 'edited'].includes(call.state) ? (
+                      <time dateTime={call.expires_at}>
+                        {t(
+                          'calls.state_expires',
+                          { state: stateWord, time: formatTime(call.expires_at, locale) },
+                          locale
+                        )}
+                      </time>
+                    ) : (
+                      stateWord
+                    )}
+                  </TableCell>
+                  <TableCell label={t('calls.grade', {}, locale)}>
+                    {grade ? (
+                      t(`calls.grades.${grade.outcome}`, {}, locale)
+                    ) : (
+                      <>
+                        <span className={styles.dash} aria-hidden="true">
                           {t('calls.dash', {}, locale)}
                         </span>
-                      )}
-                    </td>
-                    <td className={styles.numeric}>
-                      {delay === null || delay === undefined ? (
-                        <span className={styles.dash} aria-label={t('calls.not_sent', {}, locale)}>
+                        <span className="sr-only">{t('calls.ungraded', {}, locale)}</span>
+                      </>
+                    )}
+                  </TableCell>
+                  <TableCell numeric label={t('calls.col_delay', {}, locale)}>
+                    {delay === null || delay === undefined ? (
+                      <>
+                        <span className={styles.dash} aria-hidden="true">
                           {t('calls.dash', {}, locale)}
                         </span>
-                      ) : (
-                        <span className={styles.delay} data-numeric>
-                          <span
-                            className={styles.delayBar}
-                            aria-hidden="true"
-                            style={{ width: `${Math.max(8, (delay / longest) * 100).toFixed(1)}%` }}
-                          />
-                          <span className={styles.delayFigure}>{t('calls.minutes', { count: delay }, locale)}</span>
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+                        <span className="sr-only">{t('calls.not_sent', {}, locale)}</span>
+                      </>
+                    ) : (
+                      <TableMeasure value={delay} max={longest}>
+                        <span data-numeric>{t('calls.minutes', { count: formatNumber(delay, locale) }, locale)}</span>
+                      </TableMeasure>
+                    )}
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
       )}
-      {ready && (ready.next || filters.cursor) && (
+      {ready && (ready.next || cursor) && (
         <nav className={styles.pagination} aria-label={t('calls.pages', {}, locale)}>
-          {filters.cursor ? (
-            <a className={styles.actionLink} href={pageHref(base, { ...filters, mode, state: callState })}>
+          {cursor ? (
+            <a className={styles.actionLink} href={pageHref(base, scoped)}>
               {t('calls.first_page', {}, locale)}
             </a>
           ) : null}
           {ready.next ? (
-            <a className={styles.actionLink} href={pageHref(base, { ...filters, mode, state: callState }, ready.next)}>
+            <a className={styles.actionLink} href={pageHref(base, scoped, ready.next)}>
               {t('calls.next', {}, locale)}
             </a>
           ) : null}

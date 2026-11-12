@@ -50,7 +50,7 @@
   font-size: 14px;
 }
 
-/* Filters: pack and dates scope the read (Apply), mode and state dim at once. */
+/* Filters: one row that applies as it changes. Pack and dates scope the read, mode and state dim at once. */
 .filters {
   display: flex;
   flex-wrap: wrap;
@@ -65,31 +65,27 @@
   line-height: 18px;
   color: var(--muted-foreground);
 }
-/* The selects take the foundation's native-select; the date fields match it. */
+/* The selects take the foundation's native-select; the date fields are the foundation's Input. */
 .field select {
   inline-size: 168px;
   max-width: 100%;
 }
-.field input {
-  width: 140px;
-  max-width: 100%;
-  height: 40px;
-  min-width: 0;
-  padding: 0 12px;
-  border: 2px solid var(--input);
-  border-radius: var(--radius-nested, 10px);
-  background: var(--field);
-  color: var(--foreground);
-  font-size: 14px;
-}
 .field select:global(#calls-mode) {
   inline-size: 216px;
 }
-.field input::placeholder {
-  color: var(--muted-foreground);
+.fieldRing {
+  display: block;
+  width: 168px;
+  max-width: 100%;
+  border-radius: var(--radius-nested, 10px);
 }
-.filterButton {
-  margin-right: 8px;
+.fieldRing:focus-within {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: 2px;
+}
+/* The wrapper draws the ring: Chromium drops :focus-visible on a date field's last segment. */
+.fieldRing input:focus-visible {
+  outline: none;
 }
 
 .actionLink {
@@ -98,7 +94,11 @@
   align-items: center;
   color: var(--foreground);
   text-decoration: underline;
+  text-decoration-color: var(--control-edge);
   text-underline-offset: 3px;
+}
+.actionLink:hover {
+  text-decoration-color: currentColor;
 }
 
 .empty {
@@ -114,54 +114,16 @@
   margin: 0;
 }
 
-/* The list: rules and alignment on the ground, a 52px pitch, figures right-aligned. */
-.tableWrap {
-  min-width: 0;
-  overflow-x: auto;
+/* The list: the shared table (44px rows, figures right-aligned, the delay drawn behind its figure). */
+.loading {
+  display: grid;
 }
 .skeletonRow {
   display: flex;
   align-items: center;
   gap: 24px;
-  min-height: 52px;
-}
-.callsTable {
-  width: 100%;
-  table-layout: fixed;
-  border-collapse: collapse;
-  text-align: left;
-  font-size: 14px;
-  line-height: 20px;
-}
-.callsTable th[scope='col'] {
-  height: 40px;
-  padding: 0 12px;
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--muted-foreground);
-  white-space: nowrap;
-}
-.callsTable tbody tr {
-  border-top: 1px solid var(--rule);
-}
-.callsTable tbody th,
-.callsTable td {
-  height: 52px;
-  padding: 6px 12px;
-  font-weight: 400;
-  vertical-align: middle;
-}
-@media (min-width: 1024px) {
-  .callsTable th[scope='col']:nth-child(1) {
-    width: 24%;
-  }
-  .callsTable th[scope='col']:nth-child(2) {
-    width: 22%;
-  }
-  .callsTable th[scope='col']:nth-child(3),
-  .callsTable th[scope='col']:nth-child(4) {
-    width: 13%;
-  }
+  min-height: 44px;
+  padding-inline: 12px;
 }
 .rowLink {
   display: inline-flex;
@@ -175,44 +137,12 @@
 .rowLink:hover {
   text-decoration-color: currentColor;
 }
-.rowSub {
-  display: block;
-}
-.numeric {
-  text-align: right;
-}
-.callsTable th.numeric {
-  text-align: right;
-}
 .dash {
   color: var(--muted-foreground);
 }
 /* A dimmed row keeps its place and its words; it loses the fill of its mark and drops to the muted ink. */
-.callsTable tr[data-dimmed] {
-  color: var(--muted-foreground);
-}
-.callsTable tr[data-dimmed] .rowLink {
+:global([data-state='dimmed']) .rowLink {
   font-weight: 400;
-}
-.delay {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  width: 100%;
-  min-height: 28px;
-}
-.delayBar {
-  position: absolute;
-  top: 2px;
-  right: 0;
-  bottom: 2px;
-  border-radius: 9999px;
-  background: var(--raised);
-}
-.delayFigure {
-  position: relative;
-  padding-inline: 10px;
 }
 .pagination {
   display: flex;
@@ -281,43 +211,6 @@
 .expired {
   margin: 0;
   font-weight: 600;
-}
-.inputsTable {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-  line-height: 20px;
-}
-.inputsTable th[scope='col'] {
-  height: 36px;
-  padding: 0 8px;
-  font-size: 13px;
-  font-weight: 400;
-  text-align: left;
-  color: var(--muted-foreground);
-}
-.inputsTable th.numeric {
-  text-align: right;
-}
-.inputsTable tbody tr {
-  border-top: 1px solid var(--rule);
-}
-.inputsTable tbody th,
-.inputsTable td {
-  height: 44px;
-  padding: 4px 8px;
-  font-weight: 400;
-  text-align: left;
-}
-.inputsTable td.numeric {
-  text-align: right;
-}
-.inputsTable th,
-.inputsTable td {
-  overflow-wrap: normal;
-}
-.phoneLabel {
-  display: none;
 }
 .clauseList,
 .stepList {
@@ -417,113 +310,39 @@
   min-height: 24px;
   align-items: center;
   text-decoration: underline;
+  text-decoration-color: var(--control-edge);
   text-underline-offset: 3px;
+}
+.linkValue > a:hover {
+  text-decoration-color: currentColor;
 }
 
 @media (max-width: 1023px) {
   .recordGrid {
     grid-template-columns: minmax(0, 1fr);
   }
-  /* The tablet keeps five columns sized by their content; the time and the mark stay on one line. */
-  .callsTable {
-    table-layout: auto;
-  }
-  .rowLink,
-  .callsTable td:nth-of-type(1) {
-    white-space: nowrap;
-  }
 }
 
-/* Phone: the table becomes two-line rows (time and mode, then state, grade and delay); the record follows the evidence. */
+/* Phone: the filters take the width, the table is the shared phone list; the record follows the evidence. */
 @media (max-width: 640px) {
   .field {
     flex: 1 1 140px;
   }
   .field select,
-  .field input,
-  .field select:global(#calls-mode) {
+  .field select:global(#calls-mode),
+  .fieldRing {
     inline-size: 100%;
     width: 100%;
+  }
+  .field select,
+  .fieldRing input {
     min-height: 44px;
-  }
-  .filterButton {
-    flex-basis: 100%;
-    min-height: 44px;
-  }
-  .callsTable thead {
-    display: none;
-  }
-  .callsTable tbody tr {
-    display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr);
-    align-items: center;
-    gap: 4px 12px;
-    padding-block: 10px;
-  }
-  .callsTable tbody th,
-  .callsTable td {
-    height: auto;
-    min-width: 0;
-    padding: 0;
-  }
-  .callsTable tbody th {
-    grid-column: 1 / 3;
-    grid-row: 1;
-  }
-  .callsTable td:nth-of-type(1) {
-    grid-column: 3;
-    grid-row: 1;
-    justify-self: end;
-  }
-  .callsTable td:nth-of-type(2) {
-    grid-column: 1;
-    grid-row: 2;
-    font-size: 13px;
-  }
-  .callsTable td:nth-of-type(3) {
-    grid-column: 2;
-    grid-row: 2;
-    font-size: 13px;
-  }
-  .callsTable td:nth-of-type(4) {
-    grid-column: 3;
-    grid-row: 2;
   }
   .rowLink {
     min-height: 44px;
   }
-  .rowLink,
-  .callsTable td:nth-of-type(1) {
-    white-space: normal;
-  }
-  .delay {
-    width: 120px;
-  }
   .panel,
   .recordSide {
     padding: 16px;
-  }
-  /* Inputs as two lines: the name and its value, then its state and its age at drafting. */
-  .inputsTable thead {
-    display: none;
-  }
-  .inputsTable tbody tr {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 2px 12px;
-    padding-block: 8px;
-  }
-  .inputsTable tbody th,
-  .inputsTable td {
-    height: auto;
-    padding: 0;
-  }
-  .inputsTable td:nth-of-type(2),
-  .inputsTable td:nth-of-type(3) {
-    font-size: 13px;
-  }
-  .phoneLabel {
-    display: inline;
-    color: var(--muted-foreground);
   }
 }
