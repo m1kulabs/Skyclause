@@ -22,6 +22,7 @@ import {
   stripOf,
   TIME_INPUT_PATTERN,
   toLocalTime,
+  windowLineOf,
   type HeroWindow
 } from './window-model'
 import { formatDateCompact } from '@skyclause/i18n/format'
@@ -39,6 +40,8 @@ export interface HeroPickerProps {
   apiOrigin: string | undefined
   /** The labelled replay, drawn on the server: the answer while live verdicts are not open. */
   replay: ReactNode
+  /** Why the answer is a replay, drawn on the server: said last and small under it. */
+  replayNote?: ReactNode
   initialReplay?: PickerReplay | null
 }
 
@@ -82,6 +85,7 @@ export default function HeroPicker({
   calendarQuery,
   apiOrigin,
   replay,
+  replayNote,
   initialReplay
 }: HeroPickerProps) {
   const [win, setWin] = useState(initialWin)
@@ -141,8 +145,8 @@ export default function HeroPicker({
   }, [])
 
   // While live verdicts are not open (the server's read answered 501), no window can be read: the picker draws the
-  // chosen window on the strip, keeps it in the URL, keeps the replay as the answer, and asks the API nothing until the
-  // next page load.
+  // chosen window on the strip, names it in its live line, keeps it in the URL, keeps the replay as the answer, and
+  // asks the API nothing until the next page load.
   const open = result.kind !== 'unavailable'
   // After a 429 the picker asks nothing until the time the API gave (a minute when it gave none): the minute's refresh
   // and window changes wait, and when the time comes the window then shown is read once.
@@ -405,32 +409,47 @@ export default function HeroPicker({
       groupedForError.some((group) => group.blocked.length > 0))
 
   return (
-    <>
-      <HeroBand
-        win={win}
-        now={new Date().toISOString()}
-        state={skyStateOf(groupedForError)}
-        sliderRef={sliderRef}
-        sliderProps={{
-          onPointerDown,
-          onPointerMove,
-          onPointerUp,
-          onPointerCancel,
-          onKeyDown
-        }}
-      />
-      <form
-        ref={rootRef}
-        method="get"
-        action="/"
-        onSubmit={onSubmit}
-        className={styles.panel}
-        data-ui
-        id="window"
-        aria-label={t('landing-hero.picker_label', {}, 'en')}
-      >
-        <fieldset className={styles.dates}>
-          <legend className={styles.legend}>{t('landing-hero.window_legend', {}, 'en')}</legend>
+    <form
+      ref={rootRef}
+      method="get"
+      action="/"
+      onSubmit={onSubmit}
+      className={styles.panel}
+      data-ui
+      id="window"
+      aria-label={t('landing-hero.picker_label', {}, 'en')}
+    >
+      <div ref={answerRef} className={styles.answer}>
+        <HeroStrip strip={strip} initialSvg={initialStripSvg} rainAnimated={!gaugeError && !pending} />
+        <div aria-live="polite" aria-busy={pending}>
+          <HeroReadout
+            result={result}
+            win={win}
+            latestCall={latest}
+            calendarQuery={calendarQuery}
+            rainAnimated={!gaugeError}
+            replay={replay}
+            replayNote={replayNote}
+            pending={pending}
+          />
+        </div>
+      </div>
+      <fieldset className={styles.window}>
+        <legend className={styles.legend}>{t('landing-hero.window_legend', {}, 'en')}</legend>
+        <HeroBand
+          win={win}
+          now={new Date().toISOString()}
+          state={skyStateOf(groupedForError)}
+          sliderRef={sliderRef}
+          sliderProps={{
+            onPointerDown,
+            onPointerMove,
+            onPointerUp,
+            onPointerCancel,
+            onKeyDown
+          }}
+        />
+        <div className={styles.dates}>
           {dates.map((date, index) => (
             <label key={date} data-source={CLOCK_SOURCE} className={styles.date}>
               <input
@@ -445,7 +464,7 @@ export default function HeroPicker({
               </span>
             </label>
           ))}
-        </fieldset>
+        </div>
         <div className={styles.times}>
           <label className={styles.field}>
             <span>{t('landing-hero.start_label', {}, 'en')}</span>
@@ -495,34 +514,24 @@ export default function HeroPicker({
               onKeyDown={onTimeKeyDown}
             />
           </label>
-          {/* The rule for a typed time takes the zone line's place, so a message never pushes the verdict down. */}
+          {/* The rule for a typed time takes the zone line's place, so a message never moves the photograph. While live
+              verdicts are not open the slot is the picker's answer: every change names the chosen window, politely. */}
           <p
             id={timeErrorId}
             className={styles.zone}
             data-invalid={invalid.start || invalid.end || undefined}
+            data-window-line={open ? undefined : ''}
             data-source={CLOCK_SOURCE}
             aria-live="polite"
           >
             {invalid.start || invalid.end
               ? t('landing-hero.time_error', {}, 'en')
-              : t('landing-hero.time_zone', {}, 'en')}
+              : open
+                ? t('landing-hero.time_zone', {}, 'en')
+                : windowLineOf(win)}
           </p>
         </div>
-        <div ref={answerRef} className={styles.answer}>
-          <HeroStrip strip={strip} initialSvg={initialStripSvg} rainAnimated={!gaugeError && !pending} />
-          <div aria-live="polite" aria-busy={pending}>
-            <HeroReadout
-              result={result}
-              win={win}
-              latestCall={latest}
-              calendarQuery={calendarQuery}
-              rainAnimated={!gaugeError}
-              replay={replay}
-              pending={pending}
-            />
-          </div>
-        </div>
-      </form>
-    </>
+      </fieldset>
+    </form>
   )
 }

@@ -23,6 +23,12 @@ const port = Number(process.env.E2E_PORT ?? 3100) + 4
 const JPS = 'https://infobanjirjpskl.water.gov.my/Rainfall/GetRainfallGraph/75'
 const REPLAY_LEAD =
   'Live verdicts for the window you pick are not open yet, so this is 2 November, replayed from the JPS gauge’s readings.'
+const CLOSED = 'Its live verdict opens later; the replay above shows a window that got a call.'
+/** The picker's line naming the chosen window, in the replay's own format ("Saturday 14 November 2026"). */
+const windowLine = (start: string, end: string) =>
+  new RegExp(
+    `^Your window: \\w+day \\d{1,2} \\w+ \\d{4}, ${start} MYT to ${end} MYT\\. ${CLOSED.replace(/[.;]/g, '\\$&')}$`
+  )
 
 const inputValue = (over: Record<string, unknown> = {}) => ({
   name: 'site.rain_60m_mm',
@@ -208,7 +214,9 @@ test('while live verdicts are not open, the hero answers with the 2 November rep
   await page.goto(`${MARKETING}/`)
   const form = hero(page)
 
-  // One plain sentence says what this is, then the replay's window, its verdict and its input, labelled and sourced.
+  // The call leads at the statement step, then what fired on which reading, the label and the replay's own window;
+  // one plain sentence says why, last and small.
+  await expect(form.locator('[data-statement]')).toHaveText(/^Commute disruption\s+for\sthe 15:30 MYT release wave$/)
   await expect(form.getByText(REPLAY_LEAD)).toBeVisible()
   await expect(form.locator('[data-replay-mark]')).toHaveText('Replay')
   await expect(form.locator('[data-replay-mark]')).toHaveAttribute('data-source', JPS)
@@ -218,9 +226,15 @@ test('while live verdicts are not open, the hero answers with the 2 November rep
   await expect(form.locator('[data-pack="sky"] .status-mark svg')).toHaveCount(1)
   await expect(form.getByText('Storm confirmed fired')).toBeVisible()
   const gauge = form.locator(`li[data-source="${JPS}"]`)
-  await expect(gauge).toContainText('39.0 mm')
+  await expect(gauge).toContainText('39.0 mm in 60 min')
   await expect(gauge).toContainText('0232901RF')
   await expect(gauge).toContainText('5 min old')
+  await expect(gauge.getByRole('link', { name: 'JPS gauge page for gauge 0232901RF, in a new tab' })).toHaveAttribute(
+    'href',
+    JPS
+  )
+  // The replay's window is drawn on a dashed strip of its own day, apart from the visitor's.
+  await expect(form.locator('[data-replay-band] [data-state="commute_disruption"]')).toBeVisible()
   await expect(form.getByText(/^No approved call yet \(n=0\): /)).toBeVisible()
   // Nothing a visitor would read as a fault: no status code, no "not built", no API, nothing to retry.
   expect(await form.innerText()).not.toMatch(/\b(?:4\d\d|50\d)\b|not built|\bAPI\b|Couldn’t/i)
@@ -230,7 +244,10 @@ test('while live verdicts are not open, the hero answers with the 2 November rep
   expect((await form.boundingBox())!.y + (await form.boundingBox())!.height).toBeLessThanOrEqual(900)
   await expectAxeClean(page)
 
-  // Every control still describes a window: the strip draws it, and no verdict is asked for.
+  // Every control still describes a window: the strip draws it, the line names it, the URL keeps it, and no verdict is
+  // asked for.
+  const answered = form.locator('[data-window-line]')
+  await expect(answered).toHaveAttribute('aria-live', 'polite')
   const verdictCalls = () => log.filter((line) => line.includes(EVALUATE))
   const settled = async () => {
     await page.waitForTimeout(700)
@@ -240,6 +257,9 @@ test('while live verdicts are not open, the hero answers with the 2 November rep
   const dates = form.locator('label:has(input[name="date"])')
   await dates.nth(1).click()
   await expect(dates.nth(1).locator('input')).toBeChecked()
+  const chosen = (await dates.nth(1).locator('input').getAttribute('value'))!
+  await expect(answered).toHaveText(new RegExp(`^Your window: \\w+day ${Number(chosen.slice(8))} `))
+  await expect(page).toHaveURL(new RegExp(`[?&]date=${chosen}&`))
   await settled()
   await form.getByLabel('Window start').fill('17:30')
   await form.getByLabel('Window start').press('Tab')
@@ -247,10 +267,20 @@ test('while live verdicts are not open, the hero answers with the 2 November rep
   await form.getByLabel('Window end').fill('19:00')
   await form.getByLabel('Window end').press('Tab')
   await expect(band(page)).toHaveAttribute('aria-valuetext', '17:30 MYT to 19:00 MYT')
+  await expect(answered).toHaveText(windowLine('17:30', '19:00'))
   await settled()
   await band(page).press('ArrowRight')
   await expect(band(page)).toHaveAttribute('aria-valuetext', '17:45 MYT to 19:15 MYT')
+  await expect(answered).toHaveText(windowLine('17:45', '19:15'))
+  await expect(page).toHaveURL(new RegExp(`/\\?date=${chosen}&start=17%3A45&end=19%3A15$`))
   await settled()
+  // A reload, or the link shared, opens the same window, still with the replay and no verdict asked for.
+  await page.reload()
+  await expect(dates.nth(1).locator('input')).toBeChecked()
+  await expect(form.getByLabel('Window start')).toHaveValue('17:45')
+  await expect(form.getByLabel('Window end')).toHaveValue('19:15')
+  await expect(answered).toHaveText(windowLine('17:45', '19:15'))
+  await expect(form.getByText(REPLAY_LEAD)).toBeVisible()
   const capsule = (await band(page).locator('[data-state]').boundingBox())!
   await page.mouse.move(capsule.x + capsule.width / 2, capsule.y + capsule.height / 2)
   await page.mouse.down()
@@ -371,6 +401,7 @@ test('without JavaScript the window form draws the chosen window and answers wit
   await expect(form.getByLabel('Window start')).toHaveValue('17:30')
   await expect(form.getByLabel('Window end')).toHaveValue('19:00')
   await expect(band(page)).toHaveAttribute('aria-valuetext', '17:30 MYT to 19:00 MYT')
+  await expect(form.locator('[data-window-line]')).toHaveText(windowLine('17:30', '19:00'))
   await expect(form.getByText(REPLAY_LEAD)).toBeVisible()
   await expect(form.getByText('Clause engine verdict: not reviewed, not sent')).toBeVisible()
   expect(await form.innerText()).not.toMatch(/\b(?:4\d\d|50\d)\b|not built|\bAPI\b|Couldn’t/i)
@@ -464,6 +495,78 @@ test('expectAxeClean covers the replay, a verdict and a failure at both widths',
   ).toBe(true)
   await expectAxeClean(page)
 })
+
+// P2-1: a phone's first screen holds the headline, its sentence, the one action and the call with its window; the
+// photograph comes last, shorter, and an answered change never moves it.
+for (const viewport of [
+  { width: 390, height: 844 },
+  { width: 375, height: 667 }
+]) {
+  test(`on a ${viewport.width}x${viewport.height} phone the first screen holds the headline, Sign in and the call`, async ({
+    page
+  }) => {
+    await page.setViewportSize(viewport)
+    await page.goto(`${MARKETING}/`)
+    const firstScreen = [
+      page.getByRole('heading', { level: 1 }),
+      page.getByText(/^Skyclause reads the rain gauge/),
+      page.locator('section[aria-labelledby="hero-title"]').getByRole('link', { name: 'Sign in' }),
+      hero(page).locator('[data-statement]')
+    ]
+    for (const part of firstScreen) {
+      const box = (await part.boundingBox())!
+      expect(box.y).toBeGreaterThanOrEqual(0)
+      expect(box.y + box.height).toBeLessThanOrEqual(viewport.height)
+    }
+    const edge = await photoBottom(page)
+    await hero(page).locator('label:has(input[name="date"])').nth(2).click()
+    await expect(hero(page).locator('[data-window-line]')).toHaveText(/^Your window: /)
+    await band(page).press('PageUp')
+    await page.waitForTimeout(400)
+    expect(await photoBottom(page)).toBe(edge)
+  })
+}
+
+// P2-2: Tab walks the hero in the order it reads at every width: the action and the section links, the answer's source,
+// the strip, the chosen date, the times, then the photographs' pause last. No tabindex reorders it.
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 390, height: 844 }
+]) {
+  test(`at ${viewport.width}px Tab walks the hero in reading order, the photographs' pause last`, async ({ page }) => {
+    await page.setViewportSize(viewport)
+    await page.goto(`${MARKETING}/`)
+    const section = page.locator('section[aria-labelledby="hero-title"]')
+    expect(await section.locator('[tabindex]:not([tabindex="0"]):not([tabindex="-1"])').count()).toBe(0)
+    await section.getByRole('link', { name: 'Sign in' }).focus()
+    const stops: string[] = []
+    for (let step = 0; step < 12; step++) {
+      const stop = await page.evaluate(() => {
+        const el = document.activeElement as HTMLElement
+        const inHero = !!el.closest('section[aria-labelledby="hero-title"]')
+        const name =
+          el.getAttribute('aria-label') ?? (el.closest('label') as HTMLElement | null)?.innerText ?? el.innerText
+        return inHero ? name.trim().split('\n')[0]! : null
+      })
+      if (!stop) break
+      stops.push(stop)
+      await page.keyboard.press('Tab')
+    }
+    const chosenDate = (await section.locator('label:has(input[name="date"]:checked)').innerText()).trim()
+    expect(stops).toEqual([
+      'Sign in',
+      'How it works',
+      'The record',
+      'Prices',
+      'JPS gauge page for gauge 0232901RF, in a new tab',
+      'Your window on the day',
+      chosenDate,
+      'Window start',
+      'Window end',
+      'Pause the photographs'
+    ])
+  })
+}
 
 // The day strip under touch at 390px, with gestures synthesized through CDP (Chromium's touch emulation): a scroll
 // that starts on the strip changes nothing, a cancelled drag puts the window back, and the capsule as drawn (28px at

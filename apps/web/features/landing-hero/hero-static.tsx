@@ -7,15 +7,17 @@ import {
   hasGaugeError,
   skyStateOf,
   TIME_INPUT_PATTERN,
-  toLocalTime
+  toLocalTime,
+  windowLineOf
 } from './window-model'
 import { HeroBand } from './hero-band'
 import { HeroReadout } from './readout'
 import styles from './hero.module.css'
 import { formatDateCompact } from '@skyclause/i18n/format'
 
-// Server-rendered band and window form (no client JavaScript): the no-JS path and the pre-interaction paint.
-// The HeroActivator island replaces this markup on first intent.
+// Server-rendered window panel (no client JavaScript): the no-JS path and the pre-interaction paint. The answer
+// leads; then the visitor's window: the day strip, the dates and the times. The HeroActivator island replaces this
+// markup on first intent.
 export function HeroStatic({
   result,
   stripSvg,
@@ -24,7 +26,8 @@ export function HeroStatic({
   latestCall,
   calendarQuery,
   now,
-  replay
+  replay,
+  replayNote
 }: {
   result: EvaluateResult
   stripSvg: string | null
@@ -34,6 +37,7 @@ export function HeroStatic({
   calendarQuery: string
   now: string
   replay: ReactNode
+  replayNote?: ReactNode
 }) {
   const grouped = result.kind === 'ok' ? groupedVerdicts(result.data.verdicts) : []
   const rainAnimated =
@@ -41,18 +45,40 @@ export function HeroStatic({
     !hasGaugeError(grouped.flatMap((group) => group.inputs)) &&
     !grouped.some((group) => group.blocked.length > 0)
   return (
-    <>
-      <HeroBand win={win} state={skyStateOf(grouped)} now={now} />
-      <form
-        method="get"
-        action="/"
-        className={styles.panel}
-        data-ui
-        id="window"
-        aria-label={t('landing-hero.picker_label', {}, 'en')}
-      >
-        <fieldset className={styles.dates}>
-          <legend className={styles.legend}>{t('landing-hero.window_legend', {}, 'en')}</legend>
+    <form
+      method="get"
+      action="/"
+      className={styles.panel}
+      data-ui
+      id="window"
+      aria-label={t('landing-hero.picker_label', {}, 'en')}
+    >
+      <div className={styles.answer}>
+        {stripSvg ? (
+          <figure className={styles.rain} data-rain-animated={rainAnimated ? 'yes' : 'no'}>
+            <div
+              className={styles.rainSvg}
+              // biome-ignore lint/security/noDangerouslySetInnerHtml: stripSvg is geometry from derived readings.
+              dangerouslySetInnerHTML={{ __html: stripSvg }}
+            />
+          </figure>
+        ) : null}
+        <div aria-live="polite">
+          <HeroReadout
+            result={result}
+            win={win}
+            latestCall={latestCall}
+            calendarQuery={calendarQuery}
+            rainAnimated={rainAnimated}
+            replay={replay}
+            replayNote={replayNote}
+          />
+        </div>
+      </div>
+      <fieldset className={styles.window}>
+        <legend className={styles.legend}>{t('landing-hero.window_legend', {}, 'en')}</legend>
+        <HeroBand win={win} state={skyStateOf(grouped)} now={now} />
+        <div className={styles.dates}>
           {dates.map((date, index) => (
             <label key={date} data-source={CLOCK_SOURCE} className={styles.date}>
               <input type="radio" name="date" value={date} defaultChecked={win.date === date} />
@@ -61,7 +87,7 @@ export function HeroStatic({
               </span>
             </label>
           ))}
-        </fieldset>
+        </div>
         <div className={styles.times}>
           <label className={styles.field}>
             <span>{t('landing-hero.start_label', {}, 'en')}</span>
@@ -95,8 +121,12 @@ export function HeroStatic({
               defaultValue={toLocalTime(win.endMin)}
             />
           </label>
-          <p className={styles.zone} data-source={CLOCK_SOURCE}>
-            {t('landing-hero.time_zone', {}, 'en')}
+          <p
+            className={styles.zone}
+            data-window-line={result.kind === 'unavailable' ? '' : undefined}
+            data-source={CLOCK_SOURCE}
+          >
+            {result.kind === 'unavailable' ? windowLineOf(win) : t('landing-hero.time_zone', {}, 'en')}
           </p>
           {/* Two text fields block implicit submission, so the no-JS form needs its own submit control. */}
           <noscript>
@@ -105,28 +135,7 @@ export function HeroStatic({
             </button>
           </noscript>
         </div>
-        <div className={styles.answer}>
-          {stripSvg ? (
-            <figure className={styles.rain} data-rain-animated={rainAnimated ? 'yes' : 'no'}>
-              <div
-                className={styles.rainSvg}
-                // biome-ignore lint/security/noDangerouslySetInnerHtml: stripSvg is geometry from derived readings.
-                dangerouslySetInnerHTML={{ __html: stripSvg }}
-              />
-            </figure>
-          ) : null}
-          <div aria-live="polite">
-            <HeroReadout
-              result={result}
-              win={win}
-              latestCall={latestCall}
-              calendarQuery={calendarQuery}
-              rainAnimated={rainAnimated}
-              replay={replay}
-            />
-          </div>
-        </div>
-      </form>
-    </>
+      </fieldset>
+    </form>
   )
 }

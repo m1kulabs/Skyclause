@@ -1,5 +1,5 @@
 import { t } from '@skyclause/i18n'
-import { formatNumber, formatTime } from '@skyclause/i18n/format'
+import { formatDateLong, formatNumber, formatTime } from '@skyclause/i18n/format'
 import type { BlockedInput, ClauseResult, InputValue, Mode, Pack, Verdicts } from '@skyclause/contracts/api/shared'
 import type { StripInput } from '@skyclause/elements'
 import { indicatorName } from '../data-components/indicator-names'
@@ -159,6 +159,19 @@ export function windowInstants(win: HeroWindow): { from: string; to: string } {
     from: new Date(midnightUtc + win.startMin * 60_000).toISOString(),
     to: new Date(midnightUtc + win.endMin * 60_000).toISOString()
   }
+}
+
+/**
+ * The picker's line while live verdicts are not open: the chosen window in words, in the replay's own format so the two
+ * compare at a glance, and what happens with it.
+ */
+export function windowLineOf(win: HeroWindow): string {
+  const { from, to } = windowInstants(win)
+  return t(
+    'landing-hero.window_line',
+    { date: formatDateLong(from, 'en'), start: formatTime(from, 'en'), end: formatTime(to, 'en') },
+    'en'
+  )
 }
 
 export function dayBounds(win: { date: string }): { from: string; to: string } {
