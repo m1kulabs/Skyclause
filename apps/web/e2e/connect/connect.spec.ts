@@ -21,7 +21,7 @@ test('CAI-3 renders exactly the live tools.json set and its scopes', async ({ pa
   await page.goto('/connect')
   const rows = page.locator('.connect-tools tbody tr')
   await expect(rows).toHaveCount(tools.length)
-  expect(await rows.locator('th').allTextContents()).toEqual(tools.map((tool) => tool.name))
+  expect(await rows.locator('td:first-child').allTextContents()).toEqual(tools.map((tool) => tool.name))
   await expect(rows.first()).toContainText(t('scope_read'))
   await expect(rows.last()).toContainText(t('scope_draft'))
   await expect(page.getByText('ignored_config_tool')).toHaveCount(0)
@@ -198,6 +198,8 @@ test('Admin creates the selected organisation client and sees its secret only on
   await create.focus()
   await page.keyboard.press('Enter')
   await expect(page.getByText(secret, { exact: true })).toBeVisible()
+  // The button that made the secret is gone: the panel, named by its once-only warning, holds focus.
+  await expect(page.getByRole('group', { name: t('secret_once'), exact: true })).toBeFocused()
   await page.getByRole('button', { name: t('copy_secret'), exact: true }).focus()
   await page.keyboard.press('Enter')
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(secret)
@@ -205,6 +207,7 @@ test('Admin creates the selected organisation client and sees its secret only on
   await page.keyboard.press('Enter')
   await expect(page.getByText(secret, { exact: true })).toHaveCount(0)
   await expect(page.getByText(t('client_created'), { exact: true })).toBeVisible()
+  await expect(page.getByText(t('client_created'), { exact: true })).toBeFocused()
   await page.reload()
   await expect(page.getByText(secret, { exact: true })).toHaveCount(0)
   expect(writes).toBe(1)
@@ -400,7 +403,7 @@ test('NFR-15 shows no tool, verification date or activity until APIs answer', as
   await expect(page.locator('.connect-tools tbody tr')).toHaveCount(2)
 })
 
-test('API failures and n=0 tools offer recovery without fallback data', async ({ page }) => {
+test('API failures and an empty tool list offer recovery without fallback data', async ({ page }) => {
   await prepare(page)
   await page.route('**/api/connect/*', (route) =>
     route.fulfill({ status: 503, json: { title: 'Unavailable', status: 503 } })

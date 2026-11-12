@@ -2,14 +2,16 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { formatDate, formatTime } from '@skyclause/i18n/format'
+import { useRouter } from 'next/navigation'
+import { formatDate, formatList, formatTime } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
 import { Card, CardContent } from '#ui/card'
 import { CodeBlock, CodeBlockContent, CodeBlockHeader } from '#ui/code-block'
 import { Skeleton } from '#ui/skeleton'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
 import { cn } from '#lib/utils'
 import { Glyph } from '../brand/glyph'
-import { t } from './i18n'
+import { t, type Locale } from './i18n'
 import { apiFetch, targets, readTools, type Target, type Transport, type Verification } from './operations'
 import { UnsafeConfigError, safeConfig, verificationState } from './model'
 import { useResource } from './resource'
@@ -35,13 +37,17 @@ async function readVerifications(signal: AbortSignal) {
 
 type VerificationState = ReturnType<typeof verificationState>
 
+/** The most tool rows the list draws; the server's own tool list is far shorter. */
+const TOOL_ROWS = 50
+
 const verificationGlyph = { verified: 'fresh', reverify_due: 'stale' } as const
 
 function VerificationGlyph({ state }: { state: VerificationState }) {
   return <Glyph state={state === 'verified' || state === 'reverify_due' ? verificationGlyph[state] : 'pending'} />
 }
 
-function Config({ target, transport }: { target: Target; transport: Transport }) {
+function Config({ target, transport, locale }: { target: Target; transport: Transport; locale: Locale }) {
+  const copy = (key: string, vars: Record<string, string | number> = {}) => t(key, vars, locale)
   const read = useCallback(
     async (signal: AbortSignal) => {
       const response = await apiFetch('getConnectConfig', { query: { target, transport }, signal })
@@ -55,7 +61,7 @@ function Config({ target, transport }: { target: Target; transport: Transport })
   return (
     <section aria-labelledby="config-title" className="grid min-w-0 gap-4" data-connect-config>
       <h2 id="config-title" className="type-card-title">
-        {t('connect.config')}
+        {copy('connect.config')}
       </h2>
       {config.kind === 'loading' ? (
         <div className="grid gap-2">
@@ -63,7 +69,7 @@ function Config({ target, transport }: { target: Target; transport: Transport })
           <Skeleton className="h-5 w-4/5 rounded-full" />
           <Skeleton className="h-5 w-3/5 rounded-full" />
           <p role="status" className="sr-only">
-            {t('connect.loading_config')}
+            {copy('connect.loading_config')}
           </p>
         </div>
       ) : config.kind === 'error' ? (
@@ -71,19 +77,25 @@ function Config({ target, transport }: { target: Target; transport: Transport })
           <div className="grid justify-items-start gap-3">
             <p role="alert" className="flex items-start gap-2 font-medium">
               <Glyph state="error" className="mt-1.5" />
-              <span>{t('connect.config_error')}</span>
+              <span>{copy('connect.config_error')}</span>
             </p>
             <Button variant="outline" onClick={retry}>
-              {t('connect.retry')}
+              {copy('connect.retry')}
             </Button>
           </div>
         ) : (
-          <Failure source={t('connect.source_config')} error={config.error} at={config.at} retry={retry} />
+          <Failure
+            source={copy('connect.source_config')}
+            error={config.error}
+            at={config.at}
+            retry={retry}
+            locale={locale}
+          />
         )
       ) : (
         <CodeBlock>
           <CodeBlockHeader className="justify-end">
-            <CopyButton key={config.value} value={config.value} label="copy_config" />
+            <CopyButton key={config.value} value={config.value} label="copy_config" locale={locale} />
           </CodeBlockHeader>
           <CodeBlockContent wrap translate="no">
             {config.value}
@@ -94,7 +106,8 @@ function Config({ target, transport }: { target: Target; transport: Transport })
   )
 }
 
-function Listener() {
+function Listener({ locale }: { locale: Locale }) {
+  const copy = (key: string, vars: Record<string, string | number> = {}) => t(key, vars, locale)
   const [state, setState] = useState<Listening>({ kind: 'waiting' })
   const [attempt, setAttempt] = useState(0)
   useEffect(() => {
@@ -109,7 +122,7 @@ function Listener() {
   return (
     <section aria-labelledby="activity-title" className="grid min-w-0 gap-3">
       <h2 id="activity-title" className="type-card-title">
-        {t('connect.activity')}
+        {copy('connect.activity')}
       </h2>
       <p
         role="status"
@@ -120,81 +133,95 @@ function Listener() {
         {state.kind === 'received' ? (
           <>
             <time dateTime={state.request.at} data-numeric className="font-semibold">
-              {formatTime(state.request.at, 'en')}
+              {formatTime(state.request.at, locale)}
             </time>
             <span className="[overflow-wrap:anywhere]">{state.request.tool}</span>
             <span className="text-muted-foreground [overflow-wrap:anywhere]">
-              {state.request.client_name ?? t('connect.unknown_client')}
+              {state.request.client_name ?? copy('connect.unknown_client')}
             </span>
           </>
         ) : (
           <>
             {state.kind === 'error' ? <Glyph state="error" /> : <Glyph state="pending" />}
-            <span>{t(`connect.${state.kind === 'error' ? 'activity_error' : state.kind}`)}</span>
+            <span>{copy(`connect.${state.kind === 'error' ? 'activity_error' : state.kind}`)}</span>
           </>
         )}
       </p>
       {(state.kind === 'timeout' || state.kind === 'error') && (
         <Button variant="outline" className="justify-self-start" onClick={() => setAttempt((value) => value + 1)}>
-          {t('connect.retry')}
+          {copy('connect.retry')}
         </Button>
       )}
     </section>
   )
 }
 
-function ToolList({ origin }: { origin: string }) {
+function ToolList({ origin, locale }: { origin: string; locale: Locale }) {
+  const copy = (key: string, vars: Record<string, string | number> = {}) => t(key, vars, locale)
   const read = useCallback((signal: AbortSignal) => readTools(origin, signal), [origin])
   const [tools, retry] = useResource(read)
   return (
     <section aria-labelledby="tools-title" className="grid min-w-0 gap-4">
       <div className="grid gap-1">
         <h2 id="tools-title" className="type-section">
-          {t('connect.tools')}
+          {copy('connect.tools')}
         </h2>
-        <p className="type-card-title">{t('connect.no_approval')}</p>
+        <p className="type-card-title">{copy('connect.no_approval')}</p>
       </div>
       {tools.kind === 'loading' ? (
         <div className="grid gap-3">
           <Skeleton className="h-6 w-full rounded-full" />
           <Skeleton className="h-6 w-full rounded-full" />
           <p role="status" className="sr-only">
-            {t('connect.loading_tools')}
+            {copy('connect.loading_tools')}
           </p>
         </div>
       ) : tools.kind === 'error' ? (
-        <Failure source={t('connect.source_tools')} error={tools.error} at={tools.at} retry={retry} />
+        <Failure
+          source={copy('connect.source_tools')}
+          error={tools.error}
+          at={tools.at}
+          retry={retry}
+          locale={locale}
+        />
       ) : tools.value.length === 0 ? (
         <div className="grid justify-items-start gap-3">
           <p className="type-body flex items-center gap-2">
             <Glyph state="pending" />
-            <span>{t('connect.empty_tools')}</span>
+            <span>{copy('connect.empty_tools')}</span>
           </p>
           <Button variant="outline" onClick={retry}>
-            {t('connect.retry')}
+            {copy('connect.retry')}
           </Button>
         </div>
       ) : (
-        <table className="connect-tools type-body">
-          <thead className="sr-only sm:not-sr-only">
-            <tr>
-              <th scope="col">{t('connect.tool_name')}</th>
-              <th scope="col">{t('connect.tool_description')}</th>
-              <th scope="col">{t('connect.scopes')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tools.value.map((tool) => (
-              <tr key={tool.name}>
-                <th scope="row" translate="no">
+        <Table className="connect-tools">
+          <TableHeader>
+            <TableRow>
+              <TableHead>{copy('connect.tool_name')}</TableHead>
+              <TableHead>{copy('connect.tool_description')}</TableHead>
+              <TableHead>{copy('connect.scopes')}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {tools.value.slice(0, TOOL_ROWS).map((tool) => (
+              <TableRow key={tool.name}>
+                <TableCell translate="no" className="font-semibold" truncate="32ch">
                   {tool.name}
-                </th>
-                <td>{tool.description}</td>
-                <td>{tool.scopes.map((scope) => t(`connect.scope_${scope}`)).join(t('connect.scope_separator'))}</td>
-              </tr>
+                </TableCell>
+                <TableCell className="whitespace-normal" phone="meta" label={copy('connect.tool_description')}>
+                  {tool.description}
+                </TableCell>
+                <TableCell phone="meta" label={copy('connect.scopes')}>
+                  {formatList(
+                    tool.scopes.map((scope) => copy(`connect.scope_${scope}`)),
+                    locale
+                  )}
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       )}
     </section>
   )
@@ -209,13 +236,17 @@ export function ConnectPanel({
   target,
   transport,
   mcpOrigin,
-  orgId
+  orgId,
+  locale = 'en'
 }: {
   target: Target
   transport: Transport
   mcpOrigin: string
   orgId: string | null
+  locale?: Locale
 }) {
+  const router = useRouter()
+  const copy = (key: string, vars: Record<string, string | number> = {}) => t(key, vars, locale)
   const [verifications, retry] = useResource(readVerifications)
   const records =
     verifications.kind === 'ready'
@@ -228,22 +259,23 @@ export function ConnectPanel({
   return (
     <div className="connect-page grid min-w-0 gap-section" data-connect-page>
       <header className="grid gap-2">
-        <h1 className="type-title">{t('connect.title')}</h1>
+        <h1 className="type-title">{copy('connect.title')}</h1>
         {verifications.kind === 'error' ? (
           <Failure
-            source={t('connect.source_verifications')}
+            source={copy('connect.source_verifications')}
             error={verifications.error}
             at={verifications.at}
             retry={retry}
+            locale={locale}
           />
         ) : (
           <p role="status" className="type-text text-muted-foreground">
-            {verified === undefined ? t('connect.loading_verifications') : t('connect.finding', { n: verified })}
+            {verified === undefined ? copy('connect.loading_verifications') : copy('connect.finding', { n: verified })}
           </p>
         )}
       </header>
       <div className="grid min-w-0 gap-4">
-        <nav aria-label={t('connect.pick')} className={cn('connect-targets', strip)}>
+        <nav aria-label={copy('connect.pick')} className={cn('connect-targets', strip)}>
           {targets.map((id) => {
             const item = records?.get(id)
             const itemState = verificationState(item?.result)
@@ -258,12 +290,12 @@ export function ConnectPanel({
                 )}
               >
                 {records && <VerificationGlyph state={itemState} />}
-                <span translate="no">{t(`connect.targets.${id}`)}</span>
+                <span translate="no">{copy(`connect.targets.${id}`)}</span>
                 {records && (
                   <span className="connect-verification sr-only">
                     {itemState === 'verified' && item
-                      ? t('connect.verified', { date: formatDate(item.tested_at, 'en') })
-                      : t(`connect.${itemState}`)}
+                      ? copy('connect.verified', { date: formatDate(item.tested_at, locale) })
+                      : copy(`connect.${itemState}`)}
                   </span>
                 )}
               </Link>
@@ -273,15 +305,15 @@ export function ConnectPanel({
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-6 gap-y-3">
           <div className="grid min-w-0 gap-1">
             <h2 className="type-section" translate="no">
-              {t(`connect.targets.${target}`)}
+              {copy(`connect.targets.${target}`)}
             </h2>
             {records ? (
               <p className="type-body flex items-center gap-2" data-connect-verified>
                 <VerificationGlyph state={state} />
                 <span>
                   {state === 'verified' && record
-                    ? t('connect.verified', { date: formatDate(record.tested_at, 'en') })
-                    : t(`connect.${state}`)}
+                    ? copy('connect.verified', { date: formatDate(record.tested_at, locale) })
+                    : copy(`connect.${state}`)}
                 </span>
               </p>
             ) : (
@@ -289,7 +321,7 @@ export function ConnectPanel({
             )}
           </div>
           <fieldset className="grid gap-1.5">
-            <legend className="type-small mb-1.5 text-muted-foreground">{t('connect.transport')}</legend>
+            <legend className="type-small mb-1.5 text-muted-foreground">{copy('connect.transport')}</legend>
             <div className={strip}>
               {(['remote', 'stdio'] as const).map((method) => (
                 <label
@@ -305,11 +337,9 @@ export function ConnectPanel({
                     value={method}
                     checked={transport === method}
                     className="sr-only"
-                    onChange={() => {
-                      window.location.assign(`/connect?target=${target}&transport=${method}`)
-                    }}
+                    onChange={() => router.push(`/connect?target=${target}&transport=${method}`)}
                   />
-                  {t(`connect.${method}`)}
+                  {copy(`connect.${method}`)}
                 </label>
               ))}
             </div>
@@ -318,12 +348,12 @@ export function ConnectPanel({
       </div>
       <Card className="overflow-visible">
         <CardContent className="grid min-w-0 gap-8">
-          <Config key={`${target}-${transport}`} target={target} transport={transport} />
-          <Listener />
+          <Config key={`${target}-${transport}`} target={target} transport={transport} locale={locale} />
+          <Listener locale={locale} />
         </CardContent>
       </Card>
-      {target === 'gemini_enterprise' && <Enterprise orgId={orgId} />}
-      <ToolList origin={mcpOrigin} />
+      {target === 'gemini_enterprise' && <Enterprise orgId={orgId} locale={locale} />}
+      <ToolList origin={mcpOrigin} locale={locale} />
     </div>
   )
 }

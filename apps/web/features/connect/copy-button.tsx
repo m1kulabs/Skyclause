@@ -3,14 +3,22 @@
 import { useState } from 'react'
 import { CopyIcon } from 'lucide-react'
 import { Button } from '#ui/button'
-import { t } from './i18n'
+import { t, type Locale } from './i18n'
 
-export function CopyButton({ value, label }: { value: string; label: 'copy_config' | 'copy_secret' }) {
+export function CopyButton({
+  value,
+  label,
+  locale
+}: {
+  value: string
+  label: 'copy_config' | 'copy_secret'
+  locale: Locale
+}) {
   const [status, setStatus] = useState<'copied' | 'copy_error' | undefined>()
   return (
     <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">
       <span role="status" className="type-small text-muted-foreground">
-        {status && t(`connect.${status}`)}
+        {status && t(`connect.${status}`, {}, locale)}
       </span>
       <Button
         variant="outline"
@@ -25,7 +33,7 @@ export function CopyButton({ value, label }: { value: string; label: 'copy_confi
         }}
       >
         <CopyIcon data-icon="inline-start" />
-        {t(`connect.${label}`)}
+        {t(`connect.${label}`, {}, locale)}
       </Button>
     </div>
   )
