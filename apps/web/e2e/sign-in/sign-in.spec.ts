@@ -106,6 +106,11 @@ test('email sign-in preserves next, announces Sending, names the address, and al
 test('keyboard-only email sign-in reaches and submits the labelled form', async ({ page }) => {
   await page.route('**/api/auth/sign-in/magic-link', (route) => route.fulfill({ json: { status: true } }))
   await page.goto('/sign-in')
+  // Until React hydrates the form, Enter posts it without script (its own tested path): wait for the scripted one.
+  await page.waitForFunction(() => {
+    const form = document.querySelector('form[action="/sign-in/link"]')
+    return !!form && Object.keys(form).some((key) => key.startsWith('__reactProps'))
+  })
 
   // The skip link is the first stop, then the wordmark, then the field.
   await page.keyboard.press('Tab')

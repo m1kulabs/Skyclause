@@ -130,7 +130,8 @@ test.describe('the first run on a production-style server', () => {
     const picker = page.getByRole('dialog', { name: 'Bind sources' })
     await picker.getByLabel('Search sources').fill(gauge)
     await picker.getByRole('button', { name: `Bind ${gauge}` }).click()
-    await expect(picker.getByRole('status')).toHaveText('Source bound.')
+    // The list re-reads after a bind, so its own "Loading sources…" status may show beside this one.
+    await expect(picker.getByRole('status').filter({ hasText: 'Source bound.' })).toBeVisible()
     await shoot(page, '3-sources')
     await picker.getByRole('button', { name: 'Close' }).click()
     await expectClean(page, 'packs after binding')
