@@ -323,15 +323,22 @@ test.describe('HOST_MODE=multi, as a visitor meets it', () => {
         headers: { host: 'app.skyclause.m1ku.tech', ...(cookie ? { cookie } : {}) },
         maxRedirects: 0
       })
+      // The return path names what was asked; everything else must be the same byte for byte.
+      const own = (text: string | undefined) => text?.replaceAll(encodeURIComponent(`/${slug}`), '{path}')
       return {
         status: response.status(),
-        location: response.headers().location?.replace(encodeURIComponent(`/${slug}`), '{path}'),
+        location: own(response.headers().location),
         cacheControl: response.headers()['cache-control'],
-        body: await response.text()
+        body: own(await response.text())
       }
     }
     const existing = await visit(org.slug)
-    expect(existing).toEqual({ status: 307, location: '/sign-in?next={path}', cacheControl: 'no-store', body: '' })
+    expect(existing).toEqual({
+      status: 307,
+      location: '/sign-in?next={path}',
+      cacheControl: 'no-store',
+      body: '/sign-in?next={path}'
+    })
     expect(await visit(unknownSlug)).toEqual(existing)
     // Signed in, an organisation nobody has is the not-found page, as before.
     const account = await makeAccount()
