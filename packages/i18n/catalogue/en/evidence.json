@@ -1,5 +1,6 @@
 {
   "request": "Request evidence",
+  "for": "Evidence for",
   "description": "Choose a date and time window, or enter a call ID. Times use MYT.",
   "target": "Evidence for",
   "span": "Time window",
@@ -14,6 +15,8 @@
   "loading": "Loading evidence…",
   "refresh": "Refresh requests",
   "more": "More requests",
+  "count": "n={n}",
+  "receivedAt": "Received {time}",
   "status": {
     "notReviewed": "Not reviewed",
     "waiting": "Waiting for approval",
@@ -51,6 +54,7 @@
   "frames": "Retained frames",
   "frame": "Open frame: reading {id} · {time}",
   "ledger": "Ledger entries",
+  "body": "Entry body as recorded",
   "none": "n=0",
   "provenanceMissing": "No reading reference recorded",
   "email": {
