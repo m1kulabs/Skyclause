@@ -5,10 +5,11 @@ import type { Subscriber } from '@skyclause/contracts'
 import { Button } from '#ui/button'
 import { useUnsavedChangesGuard } from '../settings/set-7/use-unsaved-changes-guard'
 import { ApiProblem } from '../../lib/api-fetch'
+import { AuthHeader, AuthMessage } from '../public-chrome/auth'
 import { t } from './catalogue'
 import { apiFetch } from './operations'
-import { Fields, actionClass, type SubscriberFields } from './fields'
-import { OperationError } from './error'
+import { Fields, type SubscriberFields } from './fields'
+import { operationError } from './error'
 
 type Subscription = Awaited<ReturnType<typeof readSubscription>>
 const readSubscription = (token: string, signal: AbortSignal) =>
@@ -131,30 +132,29 @@ export function SubscriptionForm({ token, locale }: { token: string; locale: 'en
     }
   }
 
+  const title = data
+    ? preferences
+      ? t('subscribe.preferences_title', {}, locale)
+      : t('subscribe.join_title', { name: data.project_name }, locale)
+    : t(error ? 'subscribe.error_title' : 'subscribe.loading', {}, locale)
+
   return (
     <>
-      <h1 className="text-2xl font-semibold [overflow-wrap:anywhere]">
-        {data
-          ? preferences
-            ? t('subscribe.preferences_title', {}, locale)
-            : t('subscribe.join_title', { name: data.project_name }, locale)
-          : t('subscribe.loading', {}, locale)}
-      </h1>
-      {data && <p className="text-muted-foreground">{t('subscribe.intro', {}, locale)}</p>}
-      <OperationError error={error} locale={locale} />
+      <AuthHeader title={title} lead={data ? t('subscribe.intro', {}, locale) : undefined} locale={locale} />
+      {error ? <AuthMessage>{operationError(error, locale)}</AuthMessage> : null}
       {!data && error && (
-        <Button className={actionClass} onClick={() => setAttempt((n) => n + 1)}>
+        <Button size="lg" className="w-full" onClick={() => setAttempt((n) => n + 1)}>
           {t('subscribe.retry', {}, locale)}
         </Button>
       )}
       {sent ? (
-        <p role="status">{preferences ? saved : t('subscribe.check_email', {}, locale)}</p>
+        <AuthMessage tone="result">{preferences ? saved : t('subscribe.check_email', {}, locale)}</AuthMessage>
       ) : (
         data &&
         !blocked && (
           <>
             <form
-              className="grid min-w-0 gap-5"
+              className="auth-form"
               onSubmit={(event) => {
                 event.preventDefault()
                 if (!preferences) void join()
@@ -174,24 +174,25 @@ export function SubscriptionForm({ token, locale }: { token: string; locale: 'en
               />
               {!preferences && (
                 <>
-                  <a className="underline" href={`/legal/privacy${locale === 'ms' ? '?lang=ms' : ''}`}>
-                    {t('subscribe.privacy', {}, locale)}
-                  </a>
-                  <p className="text-sm text-muted-foreground">
-                    {t('subscribe.notice_version', { version: data.privacy_notice_version! }, locale)}
-                  </p>
-                  <label className="flex min-h-11 items-start gap-3 py-2">
-                    <input
-                      className="mt-1 size-5 shrink-0 accent-primary"
-                      type="checkbox"
-                      name="consent"
-                      checked={consent}
-                      onChange={(event) => setConsent(event.target.checked)}
-                      disabled={busy}
-                    />
-                    <span>{t('subscribe.consent', {}, locale)}</span>
-                  </label>
-                  <Button type="submit" className={actionClass} disabled={!consent || busy}>
+                  <div className="auth-stack">
+                    <a className="auth-link" href={locale === 'ms' ? '/ms/legal/privacy' : '/legal/privacy'}>
+                      {t('subscribe.privacy', {}, locale)}
+                    </a>
+                    <p className="auth-hint m-0">
+                      {t('subscribe.notice_version', { version: data.privacy_notice_version! }, locale)}
+                    </p>
+                    <label className="auth-check">
+                      <input
+                        type="checkbox"
+                        name="consent"
+                        checked={consent}
+                        onChange={(event) => setConsent(event.target.checked)}
+                        disabled={busy}
+                      />
+                      <span>{t('subscribe.consent', {}, locale)}</span>
+                    </label>
+                  </div>
+                  <Button type="submit" size="lg" className="w-full" disabled={!consent || busy}>
                     {t(busy ? 'subscribe.saving' : 'subscribe.subscribe', {}, locale)}
                   </Button>
                 </>
@@ -199,9 +200,12 @@ export function SubscriptionForm({ token, locale }: { token: string; locale: 'en
             </form>
             {preferences && (
               <>
-                <p role="status">{busy ? t('subscribe.saving', {}, locale) : saved}</p>
+                <p role="status" className="auth-hint m-0">
+                  {busy ? t('subscribe.saving', {}, locale) : saved}
+                </p>
                 <Button
-                  className={actionClass}
+                  size="lg"
+                  className="w-full"
                   variant="destructive"
                   disabled={busy}
                   onClick={() => void unsubscribe()}

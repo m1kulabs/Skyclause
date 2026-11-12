@@ -42,6 +42,7 @@
   "address_confirmation": "A confirmation email was sent to the new address. We will keep using this address until you confirm it.",
   "saved": "Your changes are saved.",
   "save_error": "We could not save your changes. Try again.",
+  "export_erase": "Export or erase your data",
   "download": "Download my data",
   "delete": "Delete my data",
   "delete_explanation": "Delete the subscriber data held for {project}. This cannot be undone.",

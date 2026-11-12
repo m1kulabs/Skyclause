@@ -1,37 +1,9 @@
-.subscribe-ground {
-  min-height: 100svh;
-  padding: 64px 20px 32px;
-  background: #171719;
-  color: #ebebed;
-  color-scheme: dark;
-  --background: #171719;
-  --foreground: #ebebed;
-  --muted-foreground: #a9a9af;
-  --input: #696971;
-  --primary: #e44a62;
-  --primary-foreground: #171719;
-  --destructive: #fa8298;
-  --ring: #ffffff;
-}
-.hc .subscribe-ground {
-  background: #000;
-  color: #fff;
-  --background: #000;
-  --foreground: #fff;
-  --muted-foreground: #eee;
-  --input: #fff;
-  --destructive: #ff9aaf;
-}
+/* The subscriber pages sit in the auth column (features/public-chrome/auth.css); the crawl waits on .subscribe-column. */
 .subscribe-column {
-  display: grid;
-  gap: 24px;
-  max-width: 520px;
-  margin-inline: auto;
-  overflow-wrap: anywhere;
+  min-width: 0;
 }
-.subscribe-column footer {
-  border-top: 1px solid var(--input);
-  margin-top: 24px;
-  padding-top: 24px;
-  font-size: 14px;
+
+/* The data page holds tables, so its column opens up from a form's 520px. */
+.auth-column:has(.subscribe-wide) {
+  width: min(100%, 1040px);
 }

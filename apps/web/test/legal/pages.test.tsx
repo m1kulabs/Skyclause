@@ -116,3 +116,34 @@ test('terms publish all proposal prices and the linked service details', () => {
     expect(page).toContain(item)
   }
 })
+
+test('a legal page is set for reading: one h1, a contents list whose links all land, no eyebrow', () => {
+  for (const [page, locale] of [
+    [<PrivacyNoticePage locale="en" key="en" />, 'en'],
+    [<PrivacyNoticePage locale="ms" key="ms" />, 'ms'],
+    [<TermsPage locale="en" key="terms" />, 'en']
+  ] as const) {
+    const markup = html(page)
+    const targets = [...markup.matchAll(/<a href="#([^"]+)"/g)].map((match) => match[1]!)
+
+    expect(markup.match(/<h1/g)).toHaveLength(1)
+    expect(markup).toContain(`lang="${locale}"`)
+    expect(markup).toContain(t('legal.contents', {}, locale))
+    expect(targets.length).toBeGreaterThanOrEqual(2)
+    for (const target of targets) expect(markup).toContain(`id="${target}"`)
+    expect(markup).not.toMatch(/LEGAL ·|UNDANG-UNDANG ·/)
+  }
+})
+
+test('the retention periods are a real table with a name, a period and what happens after', () => {
+  for (const locale of ['en', 'ms'] as const) {
+    const markup = html(<PrivacyNoticePage locale={locale} />)
+    const table = markup.match(/<table[^>]*>.*<\/table>/)![0]
+
+    expect(table.match(/<th scope="col">/g)).toHaveLength(3)
+    expect(table.match(/<th scope="row">/g)).toHaveLength(11)
+    expect(table.match(/<td /g)).toHaveLength(22)
+    expect(table).toContain(t('legal.privacy.retention.columnKept', {}, locale))
+  }
+  expect(html(<TermsPage locale="en" />)).toContain('<table')
+})

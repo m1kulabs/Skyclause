@@ -3,6 +3,7 @@
     "brand": "Skyclause",
     "title": "Sambungkan {client}",
     "intro": "Klien ini meminta akses kepada akaun Skyclause anda.",
+    "who": "Siapa yang meminta",
     "client": "Klien",
     "redirect": "Hos hala semula",
     "resource": "Sumber",
