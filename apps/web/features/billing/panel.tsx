@@ -21,8 +21,8 @@ export default function BillingPanel({
   const plans = [
     { key: 'commons', price: 'commonsPrice', amount: null, availability: 'now' },
     { key: 'community', price: 'communityPrice', amount: null, availability: 'now' },
-    { key: 'team', price: 'teamPrice', amount: 299, availability: 'fromP2' },
-    { key: 'campus', price: 'campusPrice', amount: 1900, availability: 'afterGa' }
+    { key: 'team', price: 'teamPrice', amount: 99, availability: 'fromP2' },
+    { key: 'campus', price: 'campusPrice', amount: 990, availability: 'afterGa' }
   ] as const
 
   const cell = (key: string, vars: Record<string, string | number> = {}): string =>
