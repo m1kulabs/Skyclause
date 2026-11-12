@@ -70,9 +70,9 @@ function resultKind(item: PaletteItem) {
   return RESULT_KINDS.includes(kind) ? kind : 'project'
 }
 
-/** Every word typed appears in the item's ID, label or keywords. */
+/** Every word typed appears in the item's label or keywords (not its ID: "go" would match every destination). */
 function matchesItem(item: PaletteItem, words: readonly string[], locale: 'en' | 'ms') {
-  const fields = [item.id, item.label, ...(item.keywords ?? [])].map((value) =>
+  const fields = [item.label, ...(item.keywords ?? [])].map((value) =>
     value.toLocaleLowerCase(locale === 'ms' ? 'ms-MY' : 'en-MY')
   )
   return words.every((word) => fields.some((field) => field.includes(word)))
