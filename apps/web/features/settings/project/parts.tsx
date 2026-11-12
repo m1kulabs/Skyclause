@@ -1,6 +1,7 @@
 'use client'
 
-import { useId, useState, type ComponentProps, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { useEffect, useId, useState, type ComponentProps, type ReactNode } from 'react'
 import { t } from '@skyclause/i18n'
 import { Button } from '#ui/button'
 import { cn } from '#lib/utils'
@@ -146,5 +147,27 @@ export function ReadFailed({
         </Button>
       }
     />
+  )
+}
+
+/**
+ * Puts a summary of the section's current values in the frame's label column, so a panel much taller than its label
+ * never leaves that column empty. Renders nothing in the panel itself, and nothing at all where the frame has no slot.
+ */
+export function Aside({ children }: { children: ReactNode }) {
+  const [slot, setSlot] = useState<Element | null>(null)
+  useEffect(() => {
+    setSlot(document.querySelector('[data-settings-aside]'))
+  }, [])
+  return slot ? createPortal(children, slot) : null
+}
+
+/** One line of that summary: what it is, then its value. */
+export function SummaryLine({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <p className="m-0 grid gap-0.5 [overflow-wrap:anywhere]">
+      <span className="type-small text-muted-foreground">{label}</span>
+      <span className="text-foreground">{children}</span>
+    </p>
   )
 }

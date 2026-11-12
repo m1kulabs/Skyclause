@@ -126,5 +126,9 @@
   "source_rota": "rota projek",
   "public_not_built": "Belum dibina",
   "public_body": "Halaman projek awam belum dibina, jadi tiada apa untuk dihidupkan atau dimatikan di sini. Pautan kongsi memberi akses lihat atau penyemak yang tamat tempoh dan boleh dibatalkan.",
-  "public_share": "Buka pautan kongsi"
+  "public_share": "Buka pautan kongsi",
+  "missing": "–",
+  "value_unit": "{value} {unit}",
+  "deadline_of": "Tarikh akhir semakan {pack}",
+  "links_active": "{active} daripada {total} aktif"
 }

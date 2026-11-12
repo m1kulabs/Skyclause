@@ -19,7 +19,7 @@ import {
   type ShareLink
 } from '../../../project-settings/operations'
 import { t } from '../../../project-settings/catalogue'
-import { Notice, Part, Parts, Problem, ReadFailed, Row, Rows } from '../parts'
+import { Aside, Notice, Part, Parts, Problem, ReadFailed, Row, Rows, SummaryLine } from '../parts'
 
 type Locale = 'en' | 'ms'
 type LinkData = { projectId: string; links: ShareLink[] }
@@ -138,6 +138,20 @@ export function ProjectSharePanel({ locale = 'en' }: { locale?: Locale }) {
   const now = Date.now()
   return (
     <Parts data-project-settings-share>
+      <Aside>
+        <SummaryLine label={t('project-settings.share_title', {}, locale)}>
+          <span data-numeric>
+            {t(
+              'project-settings.links_active',
+              {
+                active: visibleLinks.filter((link) => linkState(link, now, locale).mark === 'fresh').length,
+                total: visibleLinks.length
+              },
+              locale
+            )}
+          </span>
+        </SummaryLine>
+      </Aside>
       <Part
         title={t('project-settings.create_link', {}, locale)}
         description={t('project-settings.share_description', {}, locale)}

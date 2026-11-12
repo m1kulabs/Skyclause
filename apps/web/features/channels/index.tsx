@@ -13,7 +13,7 @@ import { apiFetch } from '../subscribe/operations'
 import { OperationError } from '../subscribe/error'
 import { resolveProject } from '../subscribers/project'
 import { StatusMark } from '../brand/status-mark'
-import { Notice, Part, Parts, Problem, ReadFailed, Row, Rows } from '../settings/project/parts'
+import { Aside, Notice, Part, Parts, Problem, ReadFailed, Row, Rows, SummaryLine } from '../settings/project/parts'
 
 const readPreview = (id: string) => apiFetch('previewChannels', { params: { id } })
 type Preview = Awaited<ReturnType<typeof readPreview>>
@@ -112,6 +112,13 @@ export function Channels() {
       )}
       {channels && (
         <>
+          <Aside>
+            {channels.map((channel) => (
+              <SummaryLine key={channel.channel} label={t(`subscribe.${channel.channel}_channel`, {}, locale)}>
+                {t(channel.enabled ? 'channels.enabled' : 'channels.disabled', {}, locale)}
+              </SummaryLine>
+            ))}
+          </Aside>
           <Part
             title={t('channels.description', {}, locale)}
             actions={<Notice>{busy ? t('subscribe.saving', {}, locale) : saved}</Notice>}

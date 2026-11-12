@@ -13,7 +13,19 @@ import { Textarea } from '#ui/textarea'
 import { Skeleton } from '#ui/skeleton'
 import { ConfirmDialog, useUndoableAction } from '../../set-7'
 import { t } from '../../../project-settings/catalogue'
-import { Danger, Notice, Part, Parts, Problem, ReadFailed, Row, Rows, dateFieldRing } from '../parts'
+import {
+  Aside,
+  Danger,
+  Notice,
+  Part,
+  Parts,
+  Problem,
+  ReadFailed,
+  Row,
+  Rows,
+  SummaryLine,
+  dateFieldRing
+} from '../parts'
 
 type Locale = 'en' | 'ms'
 type ProjectForm = {
@@ -206,6 +218,30 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
 
   return (
     <Parts data-project-settings-general>
+      <Aside>
+        <SummaryLine label={t('project-settings.name', {}, locale)}>{project.name}</SummaryLine>
+        <SummaryLine label={t('project-settings.site_name', {}, locale)}>
+          {project.site_name ?? t('project-settings.missing', {}, locale)}
+        </SummaryLine>
+        <SummaryLine label={t('project-settings.time_zone', {}, locale)}>
+          {formatTimeZoneName(project.time_zone, locale)}
+        </SummaryLine>
+        {(['sky', 'crowd'] as const).map((pack) => (
+          <SummaryLine
+            key={pack}
+            label={t('project-settings.deadline_of', { pack: t(`project-settings.${pack}`, {}, locale) }, locale)}
+          >
+            {t(
+              'project-settings.value_unit',
+              {
+                value: Math.max(1, Math.round((savedSla?.[pack] ?? sla[pack]) / (pack === 'sky' ? 60 : 3600))),
+                unit: t(`project-settings.${pack === 'sky' ? 'minutes' : 'hours'}`, {}, locale)
+              },
+              locale
+            )}
+          </SummaryLine>
+        ))}
+      </Aside>
       <form className="grid min-w-0 gap-10" onSubmit={saveProject}>
         <Part title={t('project-settings.site', {}, locale)}>
           <div className="grid min-w-0 gap-4 sm:grid-cols-2">

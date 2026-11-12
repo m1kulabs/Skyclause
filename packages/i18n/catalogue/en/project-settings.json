@@ -126,5 +126,9 @@
   "source_rota": "the project rota",
   "public_not_built": "Not built yet",
   "public_body": "The public project page is not built yet, so there is nothing to switch on or off here. A share link gives view or reviewer access that expires and can be revoked.",
-  "public_share": "Open share links"
+  "public_share": "Open share links",
+  "missing": "–",
+  "value_unit": "{value} {unit}",
+  "deadline_of": "{pack} review deadline",
+  "links_active": "{active} of {total} active"
 }

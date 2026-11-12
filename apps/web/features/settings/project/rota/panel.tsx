@@ -10,7 +10,7 @@ import { Skeleton } from '#ui/skeleton'
 import { useRead } from '../../../analysis/use-read'
 import { useUnsavedChangesGuard } from '../../set-7'
 import { t } from '../../../project-settings/catalogue'
-import { Notice, Part, Parts, Problem, ReadFailed, Row, Rows, dateFieldRing } from '../parts'
+import { Aside, Notice, Part, Parts, Problem, ReadFailed, Row, Rows, SummaryLine, dateFieldRing } from '../parts'
 import {
   projectSettingsApi,
   resolveProject,
@@ -231,6 +231,14 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
 
   return (
     <Parts data-project-settings-rota>
+      <Aside>
+        <SummaryLine label={t('project-settings.override', {}, locale)}>
+          <span data-numeric>{t('project-settings.count', { count: overrides.length }, locale)}</span>
+        </SummaryLine>
+        <SummaryLine label={t('project-settings.inherited', {}, locale)}>
+          <span data-numeric>{t('project-settings.count', { count: inherited.length }, locale)}</span>
+        </SummaryLine>
+      </Aside>
       <Part
         title={t('project-settings.override', {}, locale)}
         description={t('project-settings.rota_description', {}, locale)}

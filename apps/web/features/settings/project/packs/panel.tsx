@@ -17,7 +17,7 @@ import { onboardingApi, type ProjectView } from '../../../onboarding/operations'
 import { SourcePicker } from '../../../sources/source-picker'
 import { sourcesApi, type BoundSourceView, type CatalogueSourceView } from '../../../sources/operations'
 import { ConfirmDialog } from '../../set-7'
-import { Notice, Part, Parts, Problem, ReadFailed, Row, Rows } from '../parts'
+import { Aside, Notice, Part, Parts, Problem, ReadFailed, Row, Rows, SummaryLine } from '../parts'
 import './packs.css'
 
 type Pack = 'sky' | 'crowd'
@@ -246,6 +246,20 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
     sources.filter((source) => (packRoles[pack] as readonly string[]).includes(source.role))
   return (
     <Parts data-project-packs>
+      <Aside>
+        {(['sky', 'crowd'] as const).map((pack) => (
+          <SummaryLine key={pack} label={t(`onboarding.${pack}`)}>
+            {ts(
+              project.packs.find((item) => item.pack === pack)?.enabled
+                ? 'project-settings.pack_on'
+                : 'project-settings.pack_off'
+            )}
+          </SummaryLine>
+        ))}
+        <SummaryLine label={t('onboarding.sources_bound')}>
+          <span data-numeric>{sources.length}</span>
+        </SummaryLine>
+      </Aside>
       <FirstRunProgress org={org} />
       <Part title={t('onboarding.packs')} description={t('onboarding.packs_description')} id="packs-heading">
         <Rows>
