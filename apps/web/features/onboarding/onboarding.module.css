@@ -81,7 +81,7 @@
   align-items: center;
   gap: 10px;
   min-height: 36px;
-  padding: 6px 16px 6px 12px;
+  padding: 4px 16px 4px 6px;
   border: 2px solid var(--input);
   border-radius: 9999px;
   background: var(--field);
@@ -90,12 +90,6 @@
 
 .checkLabel:has(input:checked) {
   border-color: var(--ink);
-}
-
-.checkLabel input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--ink);
 }
 
 .formActions {
