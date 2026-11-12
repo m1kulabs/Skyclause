@@ -43,7 +43,11 @@ const REGISTRY: Registry = {
 export function createApi(deps: ApiDeps, registry: Registry = REGISTRY) {
   return {
     v1: surfaceApp('v1', registry.v1, registry.handlers, deps),
-    api: surfaceApp('api', registry.api, registry.handlers, deps)
+    api: surfaceApp('api', registry.api, registry.handlers, deps),
+    // #737: the `/v1` operations as the app host serves them at `/api/v1`, where the browser's host-only session
+    // cookie goes. They are the `/api` surface: its gate (sessions only; a cookie write from APP_ORIGIN), principals
+    // resolved as `/api` resolves them, and no CORS. Its audit guards sit under `/api/orgs`, which never reaches it.
+    v1Bridge: surfaceApp('api', registry.v1, registry.handlers, deps)
   }
 }
 

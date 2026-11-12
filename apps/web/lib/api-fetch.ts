@@ -105,6 +105,14 @@ function problemBody(value: unknown, status: number, statusText: string): ApiPro
   return { type: 'about:blank', title: statusText || `HTTP ${status}`, status }
 }
 
+/**
+ * The browser's path for an operation or event stream (#737). Its session cookie is host-only on the app host, so
+ * `/v1` goes through that host's own `/api/v1`, never to API_ORIGIN; `/api` stays as it is.
+ */
+export function browserPath(path: string): string {
+  return path.startsWith('/v1/') ? `/api${path}` : path
+}
+
 function defaultBaseUrl(path: string): string | undefined {
   if (path.startsWith('/api/')) {
     if (typeof window !== 'undefined') return window.location.origin
@@ -133,7 +141,9 @@ export function createApiFetch<const Registry extends ApiRegistry>(
       query?: unknown
       body?: unknown
     }
-    const path = fillPath(operation.path, requestOptions.params, organization)
+    const filled = fillPath(operation.path, requestOptions.params, organization)
+    // A caller's own baseUrl keeps its path: the camera sends its device bearer straight to the API origin.
+    const path = typeof window !== 'undefined' && config.baseUrl === undefined ? browserPath(filled) : filled
     const baseUrl = config.baseUrl ?? defaultBaseUrl(path)
     const requestUrl = addQuery(baseUrl ? new URL(path, baseUrl) : path, requestOptions.query)
     const headers = new Headers(options.headers)

@@ -7,6 +7,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '#ui/button'
 import { InputAgeChip } from '../data-components/input-age-chip'
 import { SourceHealthRow } from '../data-components/source-health-row'
+import { browserPath } from '../../lib/api-fetch'
 import { readSse } from '../../lib/read-sse'
 import {
   apiFetch,
@@ -256,8 +257,7 @@ export function SignalsPage({ org, project: projectSlug, locale }: { org: string
     const controller = new AbortController()
     seenEventIds.current.clear()
     const path = signalsOperations.streamReadings.path.replace('{id}', encodeURIComponent(project.id))
-    const streamUrl = process.env.NEXT_PUBLIC_API_ORIGIN ? new URL(path, process.env.NEXT_PUBLIC_API_ORIGIN) : path
-    void readSse(streamUrl, {
+    void readSse(browserPath(path), {
       resume: false,
       signal: controller.signal,
       headers: { 'Skyclause-Organization': org },

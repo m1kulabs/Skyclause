@@ -24,7 +24,7 @@ afterEach(() => {
   vi.unstubAllEnvs()
 })
 
-test('routes /api to the app origin and /v1 to API_ORIGIN in multi-host mode', async () => {
+test('routes browser /api and /v1 calls to the app origin in multi-host mode', async () => {
   vi.stubEnv('HOST_MODE', 'multi')
   vi.stubEnv('NEXT_PUBLIC_API_ORIGIN', 'https://api.example.test')
   vi.stubGlobal('window', { location: { origin: 'https://app.example.test', pathname: '/' } })
@@ -44,7 +44,7 @@ test('routes /api to the app origin and /v1 to API_ORIGIN in multi-host mode', a
 
   expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
     'https://app.example.test/api/me/preferences',
-    'https://api.example.test/v1/orgs/acme/projects'
+    'https://app.example.test/api/v1/orgs/acme/projects'
   ])
 })
 
@@ -85,7 +85,7 @@ test('uses the organisation slug in the current URL for Skyclause-Organization',
   const [requestUrl, init] = fetchMock.mock.calls[0] ?? []
   expect(new Headers(init?.headers).get('Skyclause-Organization')).toBe('acme')
   const url = new URL(String(requestUrl), 'https://app.example.test')
-  expect(url.pathname).toBe('/v1/orgs/acme/projects')
+  expect(url.pathname).toBe('/api/v1/orgs/acme/projects')
   expect(url.searchParams.get('title')).toBe('active')
 })
 
@@ -190,6 +190,38 @@ test('reads a text/csv API response as text for filtered audit exports', async (
     'id,action\nentry-1,member.role_changed\n'
   )
   expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Accept')).toBe('text/csv')
+})
+
+// #737: the session cookie is host-only on the app host, so the browser reads /v1 through the app's own /api/v1.
+test.each([undefined, 'https://api.example.test'])(
+  'the browser sends /v1 to the app origin at /api/v1 when NEXT_PUBLIC_API_ORIGIN is %j',
+  async (publicApiOrigin) => {
+    vi.stubEnv('HOST_MODE', 'multi')
+    vi.stubEnv('API_ORIGIN', 'https://api.example.test')
+    vi.stubEnv('NEXT_PUBLIC_API_ORIGIN', publicApiOrigin)
+    vi.stubGlobal('window', { location: { origin: 'https://app.example.test', pathname: '/acme/rain/settings' } })
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse(validProblem))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('getProjects', { params: { instance: 'acme' }, query: { title: 'rain' } })
+
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
+      'https://app.example.test/api/v1/orgs/acme/projects?title=rain'
+    ])
+    expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Skyclause-Organization')).toBe('acme')
+  }
+)
+
+test('the browser keeps an explicit baseUrl, such as the camera’s API origin', async () => {
+  vi.stubGlobal('window', { location: { origin: 'https://app.example.test', pathname: '/acme' } })
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse(validProblem))
+  vi.stubGlobal('fetch', fetchMock)
+
+  await createApiFetch(testRegistry, { baseUrl: 'https://api.example.test' })('getProjects', {
+    params: { instance: 'acme' }
+  })
+
+  expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(['https://api.example.test/v1/orgs/acme/projects'])
 })
 
 test('parses a CSV export as text through the operation response schema', async () => {
