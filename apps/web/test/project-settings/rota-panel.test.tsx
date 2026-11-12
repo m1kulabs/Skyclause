@@ -39,6 +39,7 @@ const shift = (id: string, accountId: string, projectId: string | null) => ({
 })
 
 let shifts: ReturnType<typeof shift>[] = []
+let onDuty: Array<{ account_id: string; shift_id: string; until: string }> = []
 const api = vi.hoisted(() => vi.fn())
 vi.mock('../../features/project-settings/operations', async (original) => {
   const actual = await original<typeof import('../../features/project-settings/operations')>()
@@ -47,8 +48,9 @@ vi.mock('../../features/project-settings/operations', async (original) => {
 
 beforeEach(() => {
   shifts = []
+  onDuty = []
   api.mockImplementation(async (operation: string) => {
-    if (operation === 'getRota') return { shifts }
+    if (operation === 'getRota') return { shifts, on_duty: onDuty }
     if (operation === 'listMembers') return { data: members, next_cursor: null }
     if (operation === 'createRotaShift') {
       shifts = [...shifts, shift('new', 'account-aisha', 'project-1')]
@@ -89,6 +91,34 @@ test('counts are plain and a shift is named by its person, never by an account I
   expect(await screen.findAllByText('1 shift')).toHaveLength(2)
   expect(screen.getByText('Unknown member')).toBeDefined()
   expect(document.body.textContent).not.toContain('account-gone')
+})
+
+test('the rota is read for this project, so its own shifts and who is on duty show', async () => {
+  shifts = [shift('s1', 'account-aisha', 'project-1')]
+  onDuty = [{ account_id: 'account-aisha', shift_id: 's1', until: '2026-11-13T04:00:00.000Z' }]
+  render(
+    <>
+      <div data-settings-aside />
+      <Panel />
+    </>
+  )
+  expect(await screen.findByRole('button', { name: 'Edit shift for Aisha Rahman' })).toBeDefined()
+  expect(api).toHaveBeenCalledWith(
+    'getRota',
+    expect.objectContaining({ params: { org: 'campus-org' }, query: { project_id: 'project-1' } })
+  )
+  expect(await screen.findByText('On duty now')).toBeDefined()
+  expect(screen.getByText(/^Aisha Rahman until 12:00/)).toBeDefined()
+})
+
+test('with no one on duty the summary says so', async () => {
+  render(
+    <>
+      <div data-settings-aside />
+      <Panel />
+    </>
+  )
+  expect(await screen.findByText('No one assigned')).toBeDefined()
 })
 
 test('a shift with problems names each one beside its field and focuses the first', async () => {
