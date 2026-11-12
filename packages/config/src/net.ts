@@ -437,9 +437,10 @@ function requestOnce(
                 // Skip a malformed header rather than failing the fetch.
               }
             }
+            const status = incoming.statusCode ?? 200
             resolve(
-              new Response(Buffer.concat(chunks), {
-                status: incoming.statusCode ?? 200,
+              new Response(status === 204 || status === 205 || status === 304 ? null : Buffer.concat(chunks), {
+                status,
                 statusText: incoming.statusMessage ?? '',
                 headers
               })
