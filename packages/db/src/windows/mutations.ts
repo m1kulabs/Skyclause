@@ -5,7 +5,7 @@ import { emitEvent } from '../events'
 import { appendLedger } from '../ledger'
 import { call, icsFeed, window, windowSeries } from '../schema'
 import type { WindowRow } from './index'
-import { lockWindowCreation, lockWindowParent, windowTenant } from './repository'
+import { lockWindowCreation, lockWindowParent, startWindowMutation, windowTenant } from './repository'
 import type { CalendarBatch, WindowChange } from './types'
 
 function actorOf(principal: Principal): { actor_type: string; actor_id: string } {
@@ -83,6 +83,7 @@ export async function writeWindowChange(tx: Tx, change: WindowChange): Promise<W
   const orgId = windowTenant(tx)
   if (change.kind === 'create') {
     await lockWindowCreation(tx, change.values)
+    startWindowMutation(tx)
     const [row] = await tx
       .insert(window)
       .values({ ...change.values, orgId, createdAt: change.now, updatedAt: change.now })
@@ -92,9 +93,11 @@ export async function writeWindowChange(tx: Tx, change: WindowChange): Promise<W
   }
   const row = await lockWindowParent(tx, change.id)
   if (!row) throw new Error('window not found')
+  startWindowMutation(tx)
   let patch: Partial<typeof window.$inferInsert>
   let type: 'window.updated' | 'window.cancelled' = 'window.updated'
   let timesChanged = false
+  let hasSentCall = false
   if (change.kind === 'update') {
     if (row.cancelledAt) throw new Error('cannot update a cancelled window')
     const fields = ['title', 'kind', 'startsAt', 'endsAt', 'tz', 'localOverride'] as const
@@ -113,6 +116,13 @@ export async function writeWindowChange(tx: Tx, change: WindowChange): Promise<W
     timesChanged = patch.startsAt !== undefined || patch.endsAt !== undefined
   } else if (change.kind === 'cancel') {
     if (row.cancelledAt || (change.origin === 'source' && row.localOverride)) return row
+    const [sent] = await tx
+      .select({ id: call.id })
+      .from(call)
+      .where(and(eq(call.windowId, row.id), eq(call.state, 'sent')))
+      .limit(1)
+    hasSentCall = Boolean(sent)
+    if (row.guest && hasSentCall) throw new Error('cannot cancel a guest window with a sent call')
     patch = {
       cancelledAt: change.now,
       cancellationOrigin: change.origin,
@@ -129,19 +139,12 @@ export async function writeWindowChange(tx: Tx, change: WindowChange): Promise<W
     .where(and(eq(window.orgId, orgId), eq(window.id, row.id)))
     .returning()
   await event(tx, updated!, type, timesChanged, change.calendar)
-  if (change.kind === 'cancel') {
-    const [sent] = await tx
-      .select({ id: call.id })
-      .from(call)
-      .where(and(eq(call.windowId, row.id), eq(call.state, 'sent')))
-      .limit(1)
-    if (sent)
-      await appendLedger(tx, {
-        projectId: row.projectId,
-        kind: 'window_cancelled',
-        refs: { window_id: row.id },
-        body: { ...actorOf(tx.principal), cancelled_at: change.now.toISOString() }
-      })
-  }
+  if (change.kind === 'cancel' && hasSentCall)
+    await appendLedger(tx, {
+      projectId: row.projectId,
+      kind: 'window_cancelled',
+      refs: { window_id: row.id },
+      body: { ...actorOf(tx.principal), cancelled_at: change.now.toISOString() }
+    })
   return updated!
 }

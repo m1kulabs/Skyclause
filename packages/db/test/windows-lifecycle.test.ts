@@ -544,3 +544,182 @@ test('lifecycle migration preserves legacy source evidence without inventing ide
     rmSync(folder, { recursive: true, force: true })
   }
 }, 120_000)
+
+async function lifecycleParent(c: Awaited<ReturnType<typeof context>>, kind: 'feed' | 'series') {
+  if (kind === 'feed') {
+    const feed = await c.run((tx) => makeIcsFeed(tx, { projectId: c.project.id }))
+    return {
+      id: feed.id,
+      values: { ...c.values, icsFeedId: feed.id, icsUid: 'uid', icsRecurrenceId: '' },
+      stop: (tx: Tx) => tx.update(icsFeed).set({ deletedAt: now }).where(eq(icsFeed.id, feed.id))
+    }
+  }
+  const series = await c.run((tx) => makeWindowSeries(tx, { projectId: c.project.id }))
+  return {
+    id: series.id,
+    values: { ...c.values, seriesId: series.id, seriesOccurrenceDate: '2026-11-15' },
+    stop: (tx: Tx) => tx.update(windowSeries).set({ cancelledAt: now }).where(eq(windowSeries.id, series.id))
+  }
+}
+
+function signal<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((done) => {
+    resolve = done
+  })
+  return { promise, resolve }
+}
+
+test.each(['feed', 'series'] as const)('creation refuses an already inactive %s before inserting', async (kind) => {
+  const c = await context()
+  const parent = await lifecycleParent(c, kind)
+  await c.run(parent.stop)
+  await expect(c.run((tx) => writeWindowChange(tx, { kind: 'create', values: parent.values, now }))).rejects.toThrow(
+    /inactive window parent/
+  )
+  expect(await c.run((tx) => tx.select().from(window))).toEqual([])
+  expect(await c.run((tx) => tx.select().from(domainEvent))).toEqual([])
+})
+
+test.each(['feed', 'series'] as const)('creation rechecks a stopping %s after waiting for its lock', async (kind) => {
+  const c = await context()
+  const parent = await lifecycleParent(c, kind)
+  const stopped = signal<void>()
+  const release = signal<void>()
+  const backend = signal<number>()
+  const stop = c.run(async (tx) => {
+    await parent.stop(tx)
+    stopped.resolve()
+    await release.promise
+  })
+  await stopped.promise
+  const create = c
+    .run(async (tx) => {
+      const { rows } = await tx.execute<{ pid: number }>(sql`SELECT pg_backend_pid() AS pid`)
+      backend.resolve(rows[0]!.pid)
+      return writeWindowChange(tx, { kind: 'create', values: parent.values, now })
+    })
+    .then(
+      (row) => ({ row, error: null }),
+      (error: unknown) => ({ row: null, error })
+    )
+  try {
+    const pid = await backend.promise
+    await expect
+      .poll(async () => {
+        const result = await asLogin('postgres', (client) =>
+          client.query<{ blockers: number }>('SELECT cardinality(pg_blocking_pids($1)) AS blockers', [pid])
+        )
+        return result.rows[0]!.blockers
+      })
+      .toBe(1)
+  } finally {
+    release.resolve()
+    await stop
+  }
+  const result = await create
+  expect(result.error).toBeInstanceOf(Error)
+  expect(String(result.error)).toMatch(/inactive window parent/)
+  expect(result.row).toBeNull()
+  expect(await c.run((tx) => tx.select().from(window))).toEqual([])
+  expect(await c.run((tx) => tx.select().from(domainEvent))).toEqual([])
+})
+
+test.each(['feed', 'series'] as const)(
+  'prelock accumulation rejects descending %s locks and accepts ascending locks',
+  async (kind) => {
+    const c = await context()
+    const parents = [await lifecycleParent(c, kind), await lifecycleParent(c, kind)].sort((a, b) =>
+      a.id.localeCompare(b.id)
+    )
+    await expect(
+      c.run(async (tx) => {
+        await lockWindowParents(tx, [], [parents[1]!.values])
+        await lockWindowParents(tx, [], [parents[0]!.values])
+      })
+    ).rejects.toThrow(/complete window batch/)
+    await c.run(async (tx) => {
+      for (const parent of parents) await lockWindowParents(tx, [], [parent.values])
+      for (const parent of parents) await writeWindowChange(tx, { kind: 'create', values: parent.values, now })
+    })
+    expect(await c.run((tx) => tx.select().from(window))).toHaveLength(2)
+    expect(await c.run((tx) => tx.select().from(domainEvent))).toHaveLength(2)
+  }
+)
+
+test.each([
+  ['feed', false],
+  ['feed', true],
+  ['series', false],
+  ['series', true]
+] as const)(
+  'creation freezes the planned %s parents after its first mutation; first has no parent=%s',
+  async (kind, unparented) => {
+    const c = await context()
+    const parents = [await lifecycleParent(c, kind), await lifecycleParent(c, kind)].sort((a, b) =>
+      a.id.localeCompare(b.id)
+    )
+    const first = unparented ? c.values : parents[0]!.values
+    const second = parents[1]!.values
+    await expect(
+      c.run(async (tx) => {
+        await writeWindowChange(tx, { kind: 'create', values: first, now })
+        await writeWindowChange(tx, { kind: 'create', values: second, now })
+      })
+    ).rejects.toThrow(/complete window batch/)
+    expect(await c.run((tx) => tx.select().from(window))).toEqual([])
+    expect(await c.run((tx) => tx.select().from(domainEvent))).toEqual([])
+    await c.run(async (tx) => {
+      await lockWindowParents(tx, [], [first, second])
+      await writeWindowChange(tx, { kind: 'create', values: first, now })
+      await writeWindowChange(tx, { kind: 'create', values: second, now })
+    })
+    expect(await c.run((tx) => tx.select().from(window))).toHaveLength(2)
+    expect(await c.run((tx) => tx.select().from(domainEvent))).toHaveLength(2)
+  }
+)
+
+test('repeated creation under the same prelocked parent remains supported', async () => {
+  const c = await context()
+  const parent = await lifecycleParent(c, 'feed')
+  await c.run(async (tx) => {
+    await lockWindowParents(tx, [], [parent.values])
+    await writeWindowChange(tx, { kind: 'create', values: parent.values, now })
+    await writeWindowChange(tx, { kind: 'create', values: { ...parent.values, icsUid: 'another' }, now })
+  })
+  expect(await c.run((tx) => tx.select().from(window))).toHaveLength(2)
+})
+
+test.each([false, true])('guest cancellation with sent call=%s never creates public ledger history', async (sent) => {
+  const c = await context()
+  const row = await c.run((tx) => writeWindowChange(tx, { kind: 'create', values: { ...c.values, guest: true }, now }))
+  if (sent) await c.run((tx) => makeCall(tx, { windowId: row.id, state: 'sent', projectId: c.project.id }))
+  const failure = await c.run(async (tx) => {
+    try {
+      await writeWindowChange(tx, { kind: 'cancel', id: row.id, origin: 'manual', now })
+      return null
+    } catch (error) {
+      return error
+    }
+  })
+  const saved = await c.run(async (tx) => ({
+    rows: await tx.select().from(window),
+    events: await tx.select().from(domainEvent),
+    ledger: await tx.select().from(ledgerEntry),
+    calls: await tx.select().from(call)
+  }))
+  expect(saved.ledger).toEqual([])
+  if (sent) {
+    expect(failure).toBeInstanceOf(Error)
+    expect(String(failure)).toMatch(/guest.*sent call/)
+    expect(saved.rows[0]).toEqual(row)
+    expect(saved.events).toHaveLength(1)
+    expect(saved.calls).toHaveLength(1)
+    expect(saved.calls[0]!.state).toBe('sent')
+  } else {
+    expect(failure).toBeNull()
+    expect(saved.rows[0]!.cancelledAt).toEqual(now)
+    expect(saved.rows[0]!.localOverride).toBe(true)
+    expect(saved.events.map((event) => event.type)).toEqual(['window.created', 'window.cancelled'])
+  }
+})

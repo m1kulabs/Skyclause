@@ -11,6 +11,12 @@ export function windowTenant(tx: Tx): string {
 
 // Repeated mutation calls reuse the batch's locks rather than acquiring parents after windows.
 const locked = new WeakMap<Tx, Set<string>>()
+const mutationStarted = new WeakSet<Tx>()
+
+/** Freeze the complete planned parent set before the first write or event. */
+export function startWindowMutation(tx: Tx) {
+  mutationStarted.add(tx)
+}
 const keys = (kind: string, ids: readonly string[]) => ids.map((id) => `${kind}:${id}`)
 
 /**
@@ -45,18 +51,28 @@ export async function lockWindowParents(
     ])
   ].sort()
   const parentKeys = [...keys('feed', feedIds), ...keys('series', seriesIds)]
-  if ([...held].some((key) => key.startsWith('window:')) && parentKeys.some((key) => !held.has(key)))
+  if (
+    (mutationStarted.has(tx) || [...held].some((key) => key.startsWith('window:'))) &&
+    parentKeys.some((key) => !held.has(key))
+  )
     throw new Error('lock the complete window batch before mutation')
   const newFeeds = feedIds.filter((id) => !held.has(`feed:${id}`))
   const newSeries = seriesIds.filter((id) => !held.has(`series:${id}`))
   if (newFeeds.length && [...held].some((key) => key.startsWith('series:')))
     throw new Error('lock the complete window batch before mutation')
-  const lastWindow = [...held]
-    .filter((key) => key.startsWith('window:'))
-    .sort()
-    .at(-1)
-  if (lastWindow && ids.some((id) => !held.has(`window:${id}`) && `window:${id}` < lastWindow))
-    throw new Error('lock the complete window batch before mutation')
+  const newIds = [...new Set(ids)].filter((id) => !held.has(`window:${id}`)).sort()
+  for (const [kind, additions] of [
+    ['feed', newFeeds],
+    ['series', newSeries],
+    ['window', newIds]
+  ] as const) {
+    const last = [...held]
+      .filter((key) => key.startsWith(`${kind}:`))
+      .sort()
+      .at(-1)
+    if (last && additions.some((id) => `${kind}:${id}` < last))
+      throw new Error('lock the complete window batch before mutation')
+  }
   if (newFeeds.length)
     await tx
       .select({ id: icsFeed.id })
@@ -71,7 +87,6 @@ export async function lockWindowParents(
       .where(and(eq(windowSeries.orgId, orgId), inArray(windowSeries.id, newSeries)))
       .orderBy(asc(windowSeries.id))
       .for('update')
-  const newIds = [...new Set(ids)].filter((id) => !held.has(`window:${id}`)).sort()
   if (newIds.length)
     await tx
       .select({ id: window.id })
@@ -123,6 +138,7 @@ export async function lockWindowCreation(tx: Tx, values: WindowMutationInsert) {
     (values.icsFeedId && (!feed || feed.projectId !== values.projectId))
   )
     throw new Error('window parent project is unavailable')
+  if (series?.cancelledAt || feed?.deletedAt) throw new Error('inactive window parent')
   if (series && (series.icsFeedId !== (values.icsFeedId ?? null) || series.icsUid !== (values.icsUid ?? null)))
     throw new Error('window series identity does not match')
 }
