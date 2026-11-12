@@ -2,6 +2,7 @@ import { expect, test, vi } from 'vitest'
 import type { Role } from '@skyclause/contracts'
 import { dashboardPaletteSource } from '../../features/dashboard/palette-source'
 import type { PaletteContext } from '../../features/palette/sources'
+import { ApiProblem } from '../../lib/api-fetch'
 
 const project = {
   id: 'project',
@@ -86,4 +87,35 @@ test('search results are results', async () => {
   const results = await dashboardPaletteSource.search!('Window', context(), new AbortController().signal)
   expect(results.map((item) => item.kind)).toEqual(['results'])
   vi.doUnmock('../../features/dashboard/operations')
+})
+
+function searchAnswers(problem: ApiProblem) {
+  vi.doMock('../../features/dashboard/operations', () => ({
+    allPages: async (read: (cursor?: string) => Promise<{ data: unknown[]; next_cursor: string | null }>) =>
+      (await read()).data,
+    paletteSearchApi: async () => {
+      throw problem
+    }
+  }))
+}
+
+test('a search that is not available yet (501) finds nothing, so typed commands and destinations still match', async () => {
+  searchAnswers(new ApiProblem(501, { title: 'Not built' }))
+  try {
+    const outside = context({ org: undefined, project: undefined, pathname: '/account/profile' })
+    await expect(dashboardPaletteSource.search!('ledger', outside, new AbortController().signal)).resolves.toEqual([])
+  } finally {
+    vi.doUnmock('../../features/dashboard/operations')
+  }
+})
+
+test('a search that really failed still fails, so the palette can say so and offer Retry', async () => {
+  searchAnswers(new ApiProblem(503, { title: 'Unavailable' }))
+  try {
+    await expect(dashboardPaletteSource.search!('ledger', context(), new AbortController().signal)).rejects.toThrow(
+      ApiProblem
+    )
+  } finally {
+    vi.doUnmock('../../features/dashboard/operations')
+  }
 })

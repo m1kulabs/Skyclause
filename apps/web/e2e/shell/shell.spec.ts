@@ -460,3 +460,29 @@ test('on a real route the palette opens from the bar and offers every destinatio
   await dialog.getByRole('option', { name: copy('Ledger'), exact: true }).click()
   await navigation
 })
+
+test('typing still matches commands and destinations while the organisation search is not available yet', async ({
+  page
+}) => {
+  await stubDashboard(page, { role: 'owner' })
+  await setShell(page, {
+    memberships: [{ org_id: org.id, org_name: org.name, org_slug: org.slug, role: 'owner' }],
+    projects: [{ id: project.id, org_id: org.id, name: project.name, slug: project.slug }]
+  })
+  let searches = 0
+  await page.route(/\/v1\/search(\?|$)/, async (route) => {
+    searches++
+    await route.fulfill({ status: 501, contentType: 'application/problem+json', json: { title: 'Not built' } })
+  })
+  await page.goto(`/${org.slug}/${project.slug}/windows`)
+  await expect(page.locator('[data-palette-ready="true"]')).toBeAttached()
+  await bar(page)
+    .getByRole('button', { name: /^Open command palette/ })
+    .click()
+  const dialog = page.getByRole('dialog', { name: copy('Command palette') })
+  await page.getByRole('combobox', { name: copy('Search commands') }).fill('ledger')
+  await expect.poll(() => searches).toBeGreaterThan(0)
+  await expect(dialog.getByRole('option', { name: copy('Ledger'), exact: true })).toBeVisible()
+  await expect(dialog.locator('[data-source-error]')).toHaveCount(0)
+  await expect(dialog).not.toContainText(copy('Try again'))
+})

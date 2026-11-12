@@ -1,5 +1,6 @@
 import { can } from '@skyclause/auth/can'
 import type { Principal, Role } from '@skyclause/contracts'
+import { ApiProblem } from '../../lib/api-fetch'
 import type { PaletteContext, PaletteItem, PaletteMembership, PaletteProject, PaletteSource } from '../palette/sources'
 import { t } from '../palette/catalogue'
 
@@ -213,7 +214,14 @@ async function search(query: string, context: PaletteContext, signal: AbortSigna
           signal,
           cache: 'no-store'
         })
-      ).then((items) => ({ membership, items }))
+      )
+        // An organisation whose search is not available yet (501) adds no results; the palette's own commands and
+        // destinations still match what was typed. Any other failure is a failed search, shown with Retry.
+        .catch((error: unknown) => {
+          if (error instanceof ApiProblem && error.status === 501) return []
+          throw error
+        })
+        .then((items) => ({ membership, items }))
     )
   )
   return pages.flatMap(({ membership, items }) =>
