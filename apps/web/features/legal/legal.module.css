@@ -75,6 +75,12 @@
   text-underline-offset: 4px;
 }
 
+@media (hover: hover) {
+  .contents a:hover {
+    text-decoration-thickness: 2px;
+  }
+}
+
 .article {
   min-width: 0;
   max-width: 66ch;
@@ -161,43 +167,25 @@
   font-weight: 600;
 }
 
-/* Rows step in tone instead of ruled lines; the first cell and the last round the row's ends. */
+/* The shared table (components/ui/table.tsx), set at the reading size of the page instead of the app's 14px. */
 .retention {
-  width: 100%;
   margin-top: 24px;
-  border-collapse: separate;
-  border-spacing: 0 4px;
+  font-size: inherit;
+  line-height: 1.5;
+}
+
+.retentionName,
+.retentionCell {
+  padding-block: 12px;
+  vertical-align: top;
+  white-space: normal;
   font-size: inherit;
   text-align: left;
 }
 
-.retention th,
-.retention td {
-  padding: 14px 16px;
-  vertical-align: top;
-  text-align: left;
-}
-
-.retention thead th {
-  color: var(--muted-foreground);
-  font-weight: 400;
-  padding-block: 4px;
-}
-
-.retention tbody th {
+.retentionName {
+  color: var(--foreground);
   font-weight: 600;
-}
-
-.retention tbody tr > * {
-  background: var(--surface);
-}
-
-.retention tbody tr > :first-child {
-  border-radius: 10px 0 0 10px;
-}
-
-.retention tbody tr > :last-child {
-  border-radius: 0 10px 10px 0;
 }
 
 @media (min-width: 1000px) {
@@ -210,54 +198,5 @@
   .contents {
     position: sticky;
     top: 24px;
-  }
-}
-
-/* A phone gets each row as a block: the figure and what follows sit under the name, each with its own label. */
-@media (max-width: 720px) {
-  .retention,
-  .retention tbody,
-  .retention tr,
-  .retention th,
-  .retention td {
-    display: block;
-  }
-
-  .retention thead {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
-  .retention tbody tr {
-    margin-bottom: 8px;
-    padding: 16px;
-    border-radius: 16px;
-    background: var(--surface);
-  }
-
-  .retention tbody tr > * {
-    padding: 0;
-    border-radius: 0;
-    background: none;
-  }
-
-  .retention tbody tr > :first-child,
-  .retention tbody tr > :last-child {
-    border-radius: 0;
-  }
-
-  .retention td {
-    margin-top: 8px;
-  }
-
-  .retention td::before {
-    content: attr(data-label);
-    display: block;
-    color: var(--muted-foreground);
-    font-size: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
   }
 }
