@@ -9,6 +9,7 @@ import {
 import {
   dashboardOperations,
   readDashboard,
+  readDashboardBlock,
   type DashboardProject,
   type dashboardApi
 } from '../../features/dashboard/operations'
@@ -24,7 +25,11 @@ const now = new Date('2026-11-13T02:00:00.000Z') // 10:00 MYT
 const org = 'campus-org'
 const id = (n: number) => `019a6000-0000-7000-8000-${String(n).padStart(12, '0')}`
 
-function project(n: number, latestBundle: unknown = null): DashboardProject {
+function project(
+  n: number,
+  latestBundle: unknown = null,
+  packs: Array<'sky' | 'crowd'> = ['sky', 'crowd']
+): DashboardProject {
   return dashboardOperations.listProjects.response.parse({
     data: [
       {
@@ -42,7 +47,7 @@ function project(n: number, latestBundle: unknown = null): DashboardProject {
         camera_day_start: null,
         camera_day_end: null,
         warning_area_terms: [],
-        packs: [{ pack: 'sky', enabled: true, sheet_id: null, schedule: null, sla_s: 600 }],
+        packs: packs.map((pack) => ({ pack, enabled: true, sheet_id: null, schedule: null, sla_s: 600 })),
         summary: {
           pack_states: [],
           windows_at_risk: 0,
@@ -343,6 +348,41 @@ describe('composeDashboard', () => {
     for (const block of Object.values(blocks)) expect(block).toEqual({ ok: true, data: [], n: 0 })
   })
 
+  test('a project without the Crowd pack never reads show nights', async () => {
+    const calls: Array<{ id: string; options: Options }> = []
+    const { blocks } = await compose(fakeApi({}, calls), [project(1, bundle, ['sky'])])
+    expect(calls.map((item) => item.id)).not.toContain('listNights')
+    // Its storm afternoons are still ahead.
+    expect(blocks.upcoming_risks.ok && blocks.upcoming_risks.data.map((item) => item.pack)).toEqual(['sky'])
+  })
+
+  test('one project’s failed read keeps the other projects’ rows and names the project that could not be read', async () => {
+    const api = (async (operationId: string, options: Options) => {
+      if (operationId === 'listProjectSources' && options.params?.id === id(2))
+        throw new ApiProblem(503, { title: 'Failed' })
+      return parse(operationId as ReadId, answers[operationId as ReadId])
+    }) as unknown as typeof dashboardApi
+    const { blocks } = await compose(api, [project(1, bundle), project(2)])
+    expect(blocks.signal_health).toMatchObject({
+      ok: true,
+      n: 2,
+      unread: [{ project: { id: id(2), slug: 'project-2', org_slug: org }, status: 503 }]
+    })
+    // A block every project failed is a failed block, as before.
+    const all = await compose(fakeApi({ listProjectSources: 503 }), [project(1, bundle), project(2)])
+    expect(all.blocks.signal_health).toMatchObject({ ok: false, status: 503 })
+  })
+
+  test('a rate-limited read keeps when to try again', async () => {
+    const api = (async (operationId: string) => {
+      if (operationId === 'listGrades')
+        throw new ApiProblem(429, { title: 'Too many requests' }, '2026-11-13T02:01:00.000Z')
+      return parse(operationId as ReadId, answers[operationId as ReadId])
+    }) as unknown as typeof dashboardApi
+    const { blocks } = await compose(api)
+    expect(blocks.yesterday_grades).toMatchObject({ ok: false, status: 429, retryAt: '2026-11-13T02:01:00.000Z' })
+  })
+
   test(`reads at most ${COMPOSED_PROJECT_CAP} projects: the reviewing ones, then the most recently active`, async () => {
     const older = {
       ...bundle,
@@ -418,6 +458,43 @@ describe('readDashboard', () => {
     expect(read.covered).toBe(1)
     expect(read.needs_review).toMatchObject({ ok: true, n: 1 })
     expect(paths).toContain(`/v1/projects/${id(1)}/bundles`)
+  })
+
+  test('one deadline covers every wave: a projects list that never answers fails the page in time', async () => {
+    vi.stubGlobal(
+      'fetch',
+      (_input: URL | string, init?: RequestInit) =>
+        new Promise((_, reject) => init?.signal?.addEventListener('abort', () => reject(init.signal!.reason)))
+    )
+    const started = Date.now()
+    await expect(readDashboard(org, new Headers(), undefined, { deadlineMs: 50 })).rejects.toBeTruthy()
+    expect(Date.now() - started).toBeLessThan(2_000)
+  })
+
+  test('a strip or call that never answers leaves them out; the dashboard still lands by the deadline', async () => {
+    const paths = serve(501)
+    const answer = globalThis.fetch
+    vi.stubGlobal('fetch', (input: URL | string, init?: RequestInit) =>
+      /\/strip$|\/calls\//.test(new URL(String(input)).pathname)
+        ? new Promise((_, reject) => init?.signal?.addEventListener('abort', () => reject(init.signal!.reason)))
+        : answer(input, init)
+    )
+    const read = await readDashboard(org, new Headers(), undefined, { deadlineMs: 200 })
+    expect(read.needs_review).toMatchObject({ ok: true, n: 1 })
+    expect(read.strip).toBeNull()
+    expect(paths).toContain(`/v1/projects/${id(1)}/bundles`)
+  })
+
+  test('a block’s Retry reads only that block’s reads again and keeps every other block', async () => {
+    serve(501)
+    const first = await readDashboard(org)
+    const read = { ...first, signal_health: { ok: false as const, status: 503, at: first.readAt } }
+    const paths = serve(501)
+    const again = await readDashboardBlock(org, 'signal_health', read)
+    expect(paths).toEqual([`/v1/projects/${id(1)}/sources`])
+    expect(again.signal_health).toMatchObject({ ok: true, n: 2 })
+    for (const key of ['needs_review', 'windows_at_risk', 'upcoming_risks', 'yesterday_grades'] as const)
+      expect(again[key]).toBe(read[key])
   })
 
   test('any other getDashboard failure fails the page, as before', async () => {

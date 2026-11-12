@@ -15,9 +15,22 @@ import type {
   dashboardApi
 } from './operations'
 
-/** One dashboard block: what its read found, or the status it failed with and when (null when it never answered). */
+/** A project whose read for a block failed while the other projects' reads landed. */
+export interface UnreadProject {
+  project: ProjectRef
+  status: number | null
+  at: string
+  /** On a 429, when the API said to try again. */
+  retryAt?: string | null
+}
+
+/**
+ * One dashboard block: what its reads found (and which projects' reads failed, when some did), or the status it
+ * failed with and when (null when it never answered). A rate-limited read keeps when to try again.
+ */
 export type BlockRead<Item> =
-  { ok: true; data: Item[]; n: number; next_action?: string | null } | { ok: false; status: number | null; at: string }
+  | { ok: true; data: Item[]; n: number; next_action?: string | null; unread?: UnreadProject[] }
+  | { ok: false; status: number | null; at: string; retryAt?: string | null }
 
 export interface ReviewEntry {
   summary: DashboardReview
@@ -71,9 +84,13 @@ type Api = typeof dashboardApi
 
 const ok = <Item>(data: Item[]): BlockRead<Item> => ({ ok: true, data, n: data.length })
 
-function failed(error: unknown, at: string): { ok: false; status: number | null; at: string } {
-  return { ok: false, status: error instanceof ApiProblem ? error.status : null, at }
+function failed(error: unknown, at: string): { ok: false; status: number | null; at: string; retryAt?: string | null } {
+  const status = error instanceof ApiProblem ? error.status : null
+  return { ok: false, status, at, ...(error instanceof ApiProblem && error.retryAt ? { retryAt: error.retryAt } : {}) }
 }
+
+/** Whether the project has the Crowd pack on: only then has it show nights to read. */
+const hasCrowd = (project: DashboardProject) => project.packs.some((pack) => pack.pack === 'crowd' && pack.enabled)
 
 /** The project's ref as the blocks carry it. */
 function refOf(project: DashboardProject, org: string): ProjectRef {
@@ -171,6 +188,8 @@ export async function composeDashboard(
     signal?: AbortSignal
     now: Date
     timeoutMs?: number
+    /** One block's Retry: only that block's reads are made; the others come back empty and are not used. */
+    only?: keyof DashboardBlocks
   }
 ): Promise<{ blocks: DashboardBlocks; shown: DashboardProject[] }> {
   const { org, headers, now } = input
@@ -179,6 +198,9 @@ export async function composeDashboard(
   const signal = () =>
     input.signal ? AbortSignal.any([input.signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs)
   const common = () => ({ org, headers, signal: signal(), cache: 'no-store' as const })
+  const wanted = (key: keyof DashboardBlocks) => !input.only || input.only === key
+  /** A read this composition does not need: an empty page, never a request. */
+  const skipped = () => Promise.resolve({ data: [], next_cursor: null } as never)
 
   const perProject = await Promise.all(
     shown.map(async (project) => {
@@ -186,32 +208,58 @@ export async function composeDashboard(
       const today = formatDateKeyAt(now, project.time_zone)
       const yesterday = formatDateKeyAt(new Date(now.getTime() - DAY_MS), project.time_zone)
       const [bundles, windows, sources, days, nights, grades] = await Promise.allSettled([
-        api('listProjectBundles', { ...common(), params, query: { state: 'needs_review', limit: ROWS } }),
-        api('listWindows', {
-          ...common(),
-          params,
-          query: { from: today, to: today, at_risk: 'true', include: 'calls', limit: ROWS }
-        }),
-        api('listProjectSources', { ...common(), params, query: { limit: ROWS } }),
-        api('listProjectDays', { ...common(), params, query: { limit: ROWS } }),
-        api('listNights', { ...common(), params, query: { limit: 200 } }),
-        api('listGrades', { ...common(), params, query: { from: yesterday, to: yesterday, limit: 200 } })
+        wanted('needs_review')
+          ? api('listProjectBundles', { ...common(), params, query: { state: 'needs_review', limit: ROWS } })
+          : skipped(),
+        wanted('windows_at_risk')
+          ? api('listWindows', {
+              ...common(),
+              params,
+              query: { from: today, to: today, at_risk: 'true', include: 'calls', limit: ROWS }
+            })
+          : skipped(),
+        wanted('signal_health')
+          ? api('listProjectSources', { ...common(), params, query: { limit: ROWS } })
+          : skipped(),
+        wanted('upcoming_risks') ? api('listProjectDays', { ...common(), params, query: { limit: ROWS } }) : skipped(),
+        // A Sky-only project has no show nights: the read is skipped, as an empty one.
+        wanted('upcoming_risks') && hasCrowd(project)
+          ? api('listNights', { ...common(), params, query: { limit: 200 } })
+          : skipped(),
+        wanted('yesterday_grades')
+          ? api('listGrades', { ...common(), params, query: { from: yesterday, to: yesterday, limit: 200 } })
+          : skipped()
       ])
       return { project, ref: refOf(project, org), today, bundles, windows, sources, days, nights, grades }
     })
   )
 
   const at = new Date().toISOString()
-  /** Joins one block's rows across the projects, or the first failure among them. */
+  /**
+   * Joins one block's rows across the projects. A project whose read failed is named beside the others' rows; the block
+   * fails only when every project's read failed.
+   */
   function block<Item>(rows: (entry: (typeof perProject)[number]) => Item[] | PromiseRejectedResult): BlockRead<Item> {
     const items: Item[] = []
+    const unread: UnreadProject[] = []
+    let first: PromiseRejectedResult | null = null
     for (const entry of perProject) {
       const result = rows(entry)
-      if (!Array.isArray(result)) return failed(result.reason, at)
-      items.push(...result)
+      if (Array.isArray(result)) {
+        items.push(...result)
+        continue
+      }
+      first ??= result
+      const { status, retryAt } = failed(result.reason, at)
+      unread.push({ project: entry.ref, status, at, ...(retryAt ? { retryAt } : {}) })
     }
-    return ok(items)
+    if (first && unread.length === perProject.length) return failed(first.reason, at)
+    return unread.length ? { ok: true, data: items, n: items.length, unread } : ok(items)
   }
+
+  /** The joined rows, sorted, keeping the projects that could not be read. */
+  const sorted = <Item>(read: BlockRead<Item>, order: (items: Item[]) => Item[]): BlockRead<Item> =>
+    read.ok ? { ...read, data: order(read.data), n: read.data.length } : read
 
   const needsReview = block<ReviewEntry>(({ bundles, ref }) =>
     bundles.status === 'rejected'
@@ -274,20 +322,16 @@ export async function composeDashboard(
   return {
     shown,
     blocks: {
-      needs_review: needsReview.ok
-        ? ok(needsReview.data.sort((a, b) => a.summary.seconds_remaining - b.summary.seconds_remaining))
-        : needsReview,
-      windows_at_risk: windowsAtRisk.ok
-        ? ok(windowsAtRisk.data.sort((a, b) => a.window.starts_at.localeCompare(b.window.starts_at)))
-        : windowsAtRisk,
-      signal_health: signals.ok ? ok(sortSignals(signals.data)) : signals,
-      upcoming_risks: upcoming.ok
-        ? ok(
-            upcoming.data.sort(
-              (a, b) => a.date.localeCompare(b.date) || (a.starts_at ?? '').localeCompare(b.starts_at ?? '')
-            )
-          )
-        : upcoming,
+      needs_review: sorted(needsReview, (items) =>
+        items.sort((a, b) => a.summary.seconds_remaining - b.summary.seconds_remaining)
+      ),
+      windows_at_risk: sorted(windowsAtRisk, (items) =>
+        items.sort((a, b) => a.window.starts_at.localeCompare(b.window.starts_at))
+      ),
+      signal_health: sorted(signals, sortSignals),
+      upcoming_risks: sorted(upcoming, (items) =>
+        items.sort((a, b) => a.date.localeCompare(b.date) || (a.starts_at ?? '').localeCompare(b.starts_at ?? ''))
+      ),
       yesterday_grades: yesterdayGrades
     }
   }
