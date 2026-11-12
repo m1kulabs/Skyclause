@@ -457,9 +457,9 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
                 <TableHeader>
                   <TableRow>
                     <TableHead>{copy('time')}</TableHead>
-                    <TableHead className="w-[20%] lg:w-52">{copy('actorColumn')}</TableHead>
+                    <TableHead className="max-lg:hidden lg:w-52">{copy('actorColumn')}</TableHead>
                     <TableHead>{copy('what')}</TableHead>
-                    <TableHead className="w-[26%] lg:w-56">{copy('object')}</TableHead>
+                    <TableHead className="max-lg:hidden lg:w-56">{copy('object')}</TableHead>
                     <TableHead className="lg:w-40 max-lg:hidden">{copy('project')}</TableHead>
                     <TableHead className="lg:w-14">
                       <span className="sr-only">{copy('copyColumn')}</span>
@@ -478,6 +478,7 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
                         <TableCell
                           truncate="30ch"
                           phone="meta"
+                          className="max-lg:hidden"
                           label={copy('actorColumn')}
                           title={actorCell(entry).full}
                         >
@@ -486,8 +487,12 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
                         </TableCell>
                         <TableCell phone="primary" className="whitespace-normal">
                           {sentence}
+                          {/* Between a phone and a desktop the who and the object sit under the sentence. */}
+                          <span className="type-small hidden text-muted-foreground min-[641px]:max-lg:block">
+                            {copy('whoOn', { who: actorCell(entry).short, object: objectCell(entry) })}
+                          </span>
                         </TableCell>
-                        <TableCell truncate="30ch" phone="meta" label={copy('object')}>
+                        <TableCell truncate="30ch" phone="meta" className="max-lg:hidden" label={copy('object')}>
                           {objectCell(entry)}
                         </TableCell>
                         <TableCell truncate="22ch" phone="hide" className="max-lg:hidden">

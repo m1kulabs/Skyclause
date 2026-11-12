@@ -273,7 +273,8 @@
     "directorySource": "the people and projects to filter by",
     "formerPerson": "Former member",
     "otherProject": "Another project",
-    "actorWithRole": "{name} · {role}"
+    "actorWithRole": "{name} · {role}",
+    "whoOn": "{who} · {object}"
   },
   "data": {
     "exportsTitle": "Data exports",

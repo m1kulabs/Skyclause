@@ -273,7 +273,8 @@
     "directorySource": "orang dan projek untuk ditapis",
     "formerPerson": "Bekas ahli",
     "otherProject": "Projek lain",
-    "actorWithRole": "{name} · {role}"
+    "actorWithRole": "{name} · {role}",
+    "whoOn": "{who} · {object}"
   },
   "data": {
     "exportsTitle": "Eksport data",
