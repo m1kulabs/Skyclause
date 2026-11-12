@@ -796,3 +796,55 @@ test('series PATCH exempts unchanged historical instants from creation-time boun
   expect(response.status).toBe(200)
   expect(await response.json()).toMatchObject({ id: historical.id, starts_at: historical.starts_at })
 })
+
+test.each([
+  { selection: 'started', at: '2026-11-17T02:00:00Z', status: 200 },
+  { selection: 'future', at: '2026-11-08T02:00:00Z', status: 422 }
+])('series kind reset respects a $selection selected zero-duration override', async ({ at, status }) => {
+  const view = await create({ recurrence: { ...rule, count: 3, skip_dates: [] } })
+  expect((await mutate(view.id, 'PATCH', { kind: 'commute_wave', ends_at: view.starts_at })).status).toBe(200)
+  const sent = await run((tx) => makeCall(tx, { projectId, windowId: view.id, state: 'sent' }))
+  const snapshot = () =>
+    run(async (tx) => ({
+      rows: await tx.select().from(window).where(eq(window.seriesId, view.series_id!)).orderBy(window.id),
+      series: await tx.select().from(windowSeries).where(eq(windowSeries.id, view.series_id!)),
+      events: (await tx.select().from(domainEvent)).filter(
+        (event) => (event.data as { series_id?: string }).series_id === view.series_id
+      ),
+      ledger: await tx.select().from(ledgerEntry)
+    }))
+  const before = await snapshot()
+  const app = createTestApi({ deps: testDeps({ withTenant, now: () => new Date(at) }) })
+  const response = await apiRequest(app.v1, {
+    as: editor(),
+    org: ORG,
+    method: 'PATCH',
+    path: `/v1/windows/${view.id}`,
+    query: { scope: 'series' },
+    body: { kind: 'class' }
+  })
+  expect(response.status).toBe(status)
+  if (status === 200) {
+    expect(await response.json()).toMatchObject({
+      id: view.id,
+      kind: 'commute_wave',
+      starts_at: view.starts_at,
+      ends_at: view.starts_at,
+      latest_calls: { sky: { id: sent.id, state: 'sent' } }
+    })
+    expect(
+      before.rows
+        .filter((row) => row.id !== view.id)
+        .map((row) => [row.kind, row.startsAt.toISOString(), row.endsAt.toISOString()])
+    ).toEqual([
+      ['class', '2026-11-18T01:00:00.123Z', '2026-11-18T02:00:00.123Z'],
+      ['class', '2026-11-23T01:00:00.123Z', '2026-11-23T02:00:00.123Z']
+    ])
+  } else {
+    expect(await response.json()).toMatchObject({
+      errors: expect.arrayContaining([expect.objectContaining({ pointer: '/ends_at', code: 'end_before_start' })])
+    })
+  }
+  // The historical selection is immutable; refusing the future invalid target also applies no partial plan.
+  expect(await snapshot()).toEqual(before)
+})

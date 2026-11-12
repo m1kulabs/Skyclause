@@ -143,13 +143,15 @@ async function seriesPlan(
   const timeChanged =
     (body.starts_at !== undefined && Date.parse(body.starts_at) !== selected.startsAt.getTime()) ||
     (body.ends_at !== undefined && Date.parse(body.ends_at) !== selected.endsAt.getTime())
+  const preservesSelectedHistory = selected.startsAt < access.now && !timeChanged
   // Validate the combined supplied/effective fields before conversion, preserving independent issue codes.
+  // A future-only kind patch does not change an untouched historical selection; planned future rows validate it.
   await validateFields(
     ctx,
     {
       starts_at: body.starts_at ?? selected.startsAt.toISOString(),
       ends_at: body.ends_at ?? selected.endsAt.toISOString(),
-      kind: body.kind ?? selected.kind,
+      kind: preservesSelectedHistory ? selected.kind : (body.kind ?? selected.kind),
       tz: body.tz ?? selected.tz
     },
     access.now,
