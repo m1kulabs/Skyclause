@@ -55,11 +55,8 @@ export function SourceHealthRow({
     current === 'error' && state
       ? t(
           'data.source.error_since',
-          {
-            source: source.name,
-            time: formatTime(state.since, locale),
-            status: state.http_status === null ? t('data.source.unknown_status', {}, locale) : state.http_status
-          },
+          // The source's own answer stays out of the sentence: a status code means nothing to the people reading it.
+          { source: source.name, time: formatTime(state.since, locale) },
           locale
         )
       : null
