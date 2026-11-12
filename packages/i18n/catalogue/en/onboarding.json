@@ -11,7 +11,6 @@
   "crowd": "Crowd",
   "create_project": "Create project",
   "saving": "Saving…",
-  "load_error": "First run progress could not load. Retry to check your steps.",
   "save_error": "The project was not created. Check the details and try again.",
   "required": "This field is required.",
   "invalid_coordinates": "Enter a valid latitude or longitude.",
@@ -120,5 +119,10 @@
   "role_gtfs_static": "static transit feed",
   "role_camera": "camera",
   "role_pi": "Pi device",
-  "source_adapter_role": "{adapter} · {role}"
+  "source_adapter_role": "{adapter} · {role}",
+  "loading_steps": "Loading your first-run steps…",
+  "steps_source": "your first-run steps",
+  "here": "You are here",
+  "next_step": "Next step",
+  "step_of": "Step {current} of {total}"
 }

@@ -9,18 +9,22 @@ export default async function Page({ params }: { params: Promise<{ org: string }
   const { org } = await params
   const principal = await requireSettings({ scope: 'organisation', section: 'general', orgId: org })
   return (
-    <main
+    <div
       className={styles.firstRunPage}
       data-project-create-page
       data-role={principal?.kind === 'session' ? principal.role : undefined}
     >
-      <header className={styles.pageHeading}>
-        <h1>{t('onboarding.title')}</h1>
-        <p>{t('onboarding.project_form_description')}</p>
-      </header>
-      <FirstRunProgress org={org} redirectFromProject />
-      <ProjectForm org={org} />
-      <p className={styles.helper}>{t('onboarding.no_sample_data')}</p>
-    </main>
+      <div className={styles.firstRunAside}>
+        <header className={styles.pageHeading}>
+          <h1 className="type-title">{t('onboarding.title')}</h1>
+          <p className="type-text">{t('onboarding.project_form_description')}</p>
+        </header>
+        <FirstRunProgress org={org} redirectFromProject />
+      </div>
+      <div className={styles.firstRunMain}>
+        <ProjectForm org={org} />
+        <p className={`${styles.helper} type-small`}>{t('onboarding.no_sample_data')}</p>
+      </div>
+    </div>
   )
 }
