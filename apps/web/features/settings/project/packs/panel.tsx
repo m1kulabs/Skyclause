@@ -291,7 +291,7 @@ export default function Panel({ org, project: projectSlug, initialPack, locale =
           <span data-numeric>{sources.length}</span>
         </SettingsSummaryLine>
       </SettingsAside>
-      <FirstRunProgress org={org} />
+      <FirstRunProgress org={org} locale={locale} />
       <SettingsPart title={t('onboarding.packs')} description={t('onboarding.packs_description')} id="packs-heading">
         <SettingsList>
           {(['sky', 'crowd'] as const).map((pack) => {
@@ -438,6 +438,7 @@ export default function Panel({ org, project: projectSlug, initialPack, locale =
         site={{ lat: project.site_lat, lon: project.site_lon }}
         boundIds={boundIds}
         onBound={refreshAfterBind}
+        locale={locale}
       />
       {confirmPack ? (
         <ConfirmDialog
