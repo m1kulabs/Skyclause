@@ -89,7 +89,7 @@ export function SettingsField({
       <Label htmlFor={id}>{label}</Label>
       {children({ id, 'aria-describedby': describedBy, 'aria-invalid': error ? true : undefined })}
       {hint ? (
-        <p id={hintId} className="type-small text-muted-foreground">
+        <p id={hintId} className="type-small text-muted-foreground [overflow-wrap:anywhere]">
           {hint}
         </p>
       ) : null}
