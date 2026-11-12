@@ -77,7 +77,8 @@ test('LED-7 Moto G Power (2022), 4x CPU: 10000 stub entries scroll and every fil
     await frame.focus()
     let interactionStart = await page.evaluate(() => performance.now())
     for (let index = 0; index < 8; index++) await page.keyboard.press('PageDown')
-    await expect.poll(() => frame.evaluate((element) => element.scrollTop)).toBeGreaterThan(1000)
+    // The page scrolls (the header sticks under the shell bar) and the table windows the rows in view.
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(1000)
     expect(await page.locator('tr[data-index]').count()).toBeLessThan(25)
     await expect(page.locator('table')).toHaveAttribute('aria-rowcount', '10001')
     const results: Record<string, number> = {}

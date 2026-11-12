@@ -1,48 +1,140 @@
+/*
+ * The organisation's projects in the shell's 1200px column: one surface per project, its name and site (2fr), each
+ * pack's mode (3fr) and its review count with signal health (2fr).
+ */
 .page {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 24px;
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+.title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 12px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+
+.toggle {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  text-decoration: underline;
+  text-decoration-color: var(--ink-muted);
+  text-underline-offset: 4px;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Above 50 rows the list scrolls in its own frame, so only the rows in view render. */
+.rows[data-virtualized='true'] {
+  display: block;
+  max-height: min(70vh, 960px);
+  overflow-y: auto;
+  border-radius: var(--radius-surface, 16px);
+}
+
+.rowWrap {
+  padding-bottom: 8px;
+}
+
+.rows:not([data-virtualized='true']) .rowWrap {
+  padding-bottom: 0;
 }
 
 .row {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
-  gap: 0.5rem 1rem;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) minmax(0, 2fr);
   align-items: start;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid var(--border);
+  gap: 12px 24px;
+  min-height: 88px;
+  padding: 20px;
+  border-radius: var(--radius-surface, 16px);
+  background: var(--surface);
 }
 
-.rowMain {
+.identity,
+.meta {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 4px;
   min-width: 0;
 }
 
-.rowSide {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  min-width: 0;
+.name {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  text-decoration: underline;
+  text-decoration-color: var(--ink-muted);
+  text-underline-offset: 4px;
+  overflow-wrap: anywhere;
+}
+
+.name:hover {
+  text-decoration-color: currentColor;
 }
 
 .packs {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-}
-
-.meta {
+  gap: 4px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 18px;
   color: var(--muted-foreground);
-  font-size: 0.875rem;
 }
 
-@media (max-width: 639px) {
+.packs li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 12px;
+}
+
+.empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 24px;
+  padding: 20px;
+  border-radius: var(--radius-surface, 16px);
+  background: var(--surface);
+}
+
+@media (max-width: 1023px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .identity {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
   .row {
     grid-template-columns: minmax(0, 1fr);
+    padding: 16px;
   }
 }

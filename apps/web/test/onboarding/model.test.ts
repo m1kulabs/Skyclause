@@ -6,6 +6,7 @@ import {
   formatDistanceKm,
   progressForSteps,
   sortSources,
+  stepStates,
   type PickerSource
 } from '../../features/onboarding/model'
 
@@ -86,4 +87,21 @@ test('progress is the exact share of completed or skipped steps', () => {
       { completed_at: null, skipped: false }
     ])
   ).toEqual({ completed: 2, total: 6, percentage: (2 / 6) * 100 })
+})
+
+test('each first-run step is done, skipped, the next one, or still to do', () => {
+  const step = (completed: boolean, skipped = false) => ({
+    completed_at: completed ? '2026-11-05T13:13:00Z' : null,
+    skipped
+  })
+  expect(stepStates([step(true), step(false), step(false, true), step(false), step(false)])).toEqual([
+    'done',
+    'current',
+    'skipped',
+    'todo',
+    'todo'
+  ])
+  // A skipped step is never the next one; the first open step after it is.
+  expect(stepStates([step(false, true), step(false)])).toEqual(['skipped', 'current'])
+  expect(stepStates([step(true), step(false, true)])).toEqual(['done', 'skipped'])
 })

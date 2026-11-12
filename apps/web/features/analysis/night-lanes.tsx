@@ -56,18 +56,18 @@ function NightLane({
   ]
   return (
     <article className="analysis-night" data-night-lane>
-      <div className="analysis-toolbar">
+      <div className="analysis-chart-head">
         <h3>{listing?.listing_key ?? t('analysis.nightName', { id: night.id }, locale)}</h3>
-        <Button variant="ghost" aria-expanded={table} onClick={() => setTable(!table)}>
+        <Button variant="ghost" size="sm" aria-expanded={table} onClick={() => setTable(!table)}>
           {t(table ? 'analysis.view' : 'analysis.table', {}, locale)}
         </Button>
       </div>
-      <p>{t('analysis.n', { n: 1 }, locale)}</p>
-      <p className="analysis-muted">{t('analysis.nightSummary', {}, locale)}</p>
+      <p className="analysis-sub">{t('analysis.n', { n: 1 }, locale)}</p>
       {listing && <a href={listing.source_url}>{t('analysis.source', { source: listing.source_url }, locale)}</a>}
       {forecast && (
         <p className="analysis-muted">
           {t('analysis.source', { source: forecast.method }, locale)}
+          <span className="analysis-dot" aria-hidden="true" />
           <Time at={forecast.created_at} locale={locale} />
         </p>
       )}
@@ -76,7 +76,7 @@ function NightLane({
           <svg viewBox="0 0 300 80" role="img" aria-label={t('analysis.nightSummary', {}, locale)}>
             <defs>
               <pattern id={hatch} width="6" height="6" patternUnits="userSpaceOnUse">
-                <path d="M0 6L6 0" stroke="var(--chart-2)" strokeWidth="1" />
+                <path d="M0 6L6 0" stroke="var(--chart-ink)" strokeWidth="1" />
               </pattern>
             </defs>
             <rect
@@ -84,8 +84,8 @@ function NightLane({
               y="12"
               width={Math.max(0, position(night.arrival_end) - position(night.arrival_start))}
               height="18"
-              fill="var(--chart-2)"
-              fillOpacity="0.12"
+              rx="9"
+              fill="var(--raised)"
             />
             {night.exit_start && night.exit_end && (
               <rect
@@ -93,7 +93,10 @@ function NightLane({
                 y="34"
                 width={Math.max(0, position(night.exit_end) - position(night.exit_start))}
                 height="18"
+                rx="9"
                 fill={`url(#${hatch})`}
+                stroke="var(--chart-ink)"
+                strokeWidth="1"
               />
             )}
             {[0, 1, 2, 3].map((index) => (
@@ -118,15 +121,16 @@ function NightLane({
                 y1="18"
                 x2={x(forecast.band_high)}
                 y2="18"
-                stroke="var(--chart-2)"
+                stroke="var(--chart-ink)"
                 strokeWidth="6"
+                strokeLinecap="round"
               />
               <line
                 x1={x(forecast.forecast)}
                 y1="10"
                 x2={x(forecast.forecast)}
                 y2="26"
-                stroke="var(--chart-1)"
+                stroke="var(--chart-emphasis)"
                 strokeWidth="2"
               />
               {actual !== null && (
@@ -194,13 +198,29 @@ export function NightLanes({
     [org, projectId]
   )
   const result = useRead(read)
-  if (result.status === 'loading') return <p role="status">{t('analysis.loading', {}, locale)}</p>
+  if (result.status === 'loading')
+    return (
+      <p role="status" className="analysis-sub" data-analysis-loading>
+        {t('analysis.loading', {}, locale)}
+      </p>
+    )
   if (result.status === 'error')
-    return <Failure operation={t('analysis.nightTitle', {}, locale)} error={result.error} locale={locale} />
+    return (
+      <Failure
+        source={t('analysis.sources.nights', {}, locale)}
+        error={result.error}
+        at={result.at}
+        retry={result.retry}
+        locale={locale}
+      />
+    )
   const nights = result.value.nights.filter((night) => night.date >= from && night.date <= to)
   return (
-    <section aria-labelledby="analysis-night-title">
-      <h2 id="analysis-night-title">{t('analysis.nightTitle', {}, locale)}</h2>
+    <section aria-labelledby="analysis-night-title" className="analysis-nights">
+      <div className="analysis-section-head">
+        <h2 id="analysis-night-title">{t('analysis.nightTitle', {}, locale)}</h2>
+        <p className="analysis-muted">{t('analysis.nightSummary', {}, locale)}</p>
+      </div>
       {!nights.length ? (
         <EmptyBlock message="nightEmpty" locale={locale} />
       ) : (

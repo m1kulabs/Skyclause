@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { Button } from '#ui/button'
 import { Input } from '#ui/input'
-import { Field, FieldGroup, FieldLabel, FieldError } from '#ui/field'
+import { Field, FieldLabel, FieldError } from '#ui/field'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '#ui/dialog'
 import { apiFetch, type Evidence } from '../ledger/operations'
 import { t } from '../ledger/i18n'
@@ -52,6 +52,7 @@ export function RequestEvidence({
   )
 }
 
+/** One form that reads as the request: evidence for [a time window] from [instant] to [instant], or for [a call]. */
 function RequestForm({
   projectId,
   target,
@@ -71,10 +72,12 @@ function RequestForm({
   const [invalid, setInvalid] = useState(false)
   const [busy, setBusy] = useState(false)
   const form = useRef<HTMLFormElement>(null)
+  const describedBy = error ? 'evidence-request-error' : undefined
   return (
     <form
       ref={form}
       noValidate
+      className="evidence-form"
       onSubmit={async (event) => {
         event.preventDefault()
         if (busy) return
@@ -108,16 +111,23 @@ function RequestForm({
         }
       }}
     >
-      <FieldGroup>
-        <Field>
+      <div className="evidence-sentence">
+        <Field className="evidence-target">
           <FieldLabel htmlFor="evidence-target">{t('evidence.target', {}, locale)}</FieldLabel>
-          <select id="evidence-target" name="target" value={kind} onChange={(event) => setKind(event.target.value)}>
+          <select
+            id="evidence-target"
+            name="target"
+            className="native-select"
+            autoComplete="off"
+            value={kind}
+            onChange={(event) => setKind(event.target.value)}
+          >
             <option value="span">{t('evidence.span', {}, locale)}</option>
             <option value="call">{t('evidence.call', {}, locale)}</option>
           </select>
         </Field>
         {kind === 'call' ? (
-          <Field data-invalid={invalid}>
+          <Field data-invalid={invalid} className="evidence-call">
             <FieldLabel htmlFor="evidence-call">{t('evidence.callId', {}, locale)}</FieldLabel>
             <Input
               id="evidence-call"
@@ -127,44 +137,40 @@ function RequestForm({
               value={callId}
               onChange={(event) => setCallId(event.target.value)}
               aria-invalid={invalid}
-              aria-describedby={error ? 'evidence-request-error' : undefined}
+              aria-describedby={describedBy}
             />
           </Field>
         ) : (
-          <>
-            <Field data-invalid={invalid}>
-              <FieldLabel htmlFor="evidence-from">{t('evidence.from', {}, locale)}</FieldLabel>
-              <Input
-                id="evidence-from"
-                name="from"
-                type="datetime-local"
-                autoComplete="off"
-                value={from}
-                onChange={(event) => setFrom(event.target.value)}
-                aria-invalid={invalid}
-                aria-describedby={error ? 'evidence-request-error' : undefined}
-              />
+          (
+            [
+              ['from', from, setFrom],
+              ['to', to, setTo]
+            ] as const
+          ).map(([key, value, set]) => (
+            <Field key={key} data-invalid={invalid}>
+              <FieldLabel htmlFor={`evidence-${key}`}>{t(`evidence.${key}`, {}, locale)}</FieldLabel>
+              <span className="ledger-field-ring" data-focus-ring>
+                <Input
+                  id={`evidence-${key}`}
+                  name={key}
+                  type="datetime-local"
+                  autoComplete="off"
+                  value={value}
+                  onChange={(event) => set(event.target.value)}
+                  aria-invalid={invalid}
+                  aria-describedby={describedBy}
+                />
+              </span>
             </Field>
-            <Field data-invalid={invalid}>
-              <FieldLabel htmlFor="evidence-to">{t('evidence.to', {}, locale)}</FieldLabel>
-              <Input
-                id="evidence-to"
-                name="to"
-                type="datetime-local"
-                autoComplete="off"
-                value={to}
-                onChange={(event) => setTo(event.target.value)}
-                aria-invalid={invalid}
-                aria-describedby={error ? 'evidence-request-error' : undefined}
-              />
-            </Field>
-          </>
+          ))
         )}
-        {error && <FieldError id="evidence-request-error">{error}</FieldError>}
+      </div>
+      {error && <FieldError id="evidence-request-error">{error}</FieldError>}
+      <div className="evidence-submit">
         <Button type="submit" disabled={busy}>
           {t(busy ? 'evidence.saving' : 'evidence.submit', {}, locale)}
         </Button>
-      </FieldGroup>
+      </div>
     </form>
   )
 }
