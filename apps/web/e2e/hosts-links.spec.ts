@@ -29,8 +29,7 @@ const START: Array<[string, string]> = [
   ['sign-up', `${APP}/sign-up`],
   ['the marketing host’s not-found page', `${MARKETING}/no-such-page`],
   ['the marketing host’s legal not-found page', `${MARKETING}/legal/no-such-page`],
-  ['the app host’s not-found page', `${APP}/aaa/bbb/ccc/ddd`],
-  ['the app host’s unknown organisation', `${APP}/no-such-organisation`]
+  ['the app host’s not-found page', `${APP}/aaa/bbb/ccc/ddd`]
 ]
 
 interface Found {
@@ -228,20 +227,24 @@ test.describe('HOST_MODE=multi, as a visitor meets it', () => {
         headers: { host: at.host, 'x-forwarded-for': visitorAddress() },
         maxRedirects: 0
       })
+      // A redirect no browser or shared cache keeps: a 307, never stored.
+      if (response.status() >= 300 && response.status() < 400)
+        expect(`${response.status()} ${response.headers()['cache-control']}`, url).toBe('307 no-store')
       return `${response.status()} ${response.headers().location ?? ''}`.trim()
     }
     const owner = await makeOrg()
     expect(await answer(`${APP}/`)).toBe(`307 ${APP}/api/auth/continue`)
-    expect(await answer(`${APP}/legal/privacy?from=sign-in`)).toBe(`308 ${MARKETING}/legal/privacy?from=sign-in`)
-    expect(await answer(`${APP}/ms/legal/privacy`)).toBe(`308 ${MARKETING}/ms/legal/privacy`)
-    expect(await answer(`${MARKETING}/sign-in?next=%2Fnew`)).toBe(`308 ${APP}/sign-in?next=%2Fnew`)
-    expect(await answer(`${MARKETING}/sign-up`)).toBe(`308 ${APP}/sign-up`)
-    expect(await answer(`${MARKETING}/account/profile`)).toBe(`308 ${APP}/account/profile`)
-    expect(await answer(`${MARKETING}/${owner.slug}/bukit-jalil/windows`)).toBe(
-      `308 ${APP}/${owner.slug}/bukit-jalil/windows`
-    )
-    // An organisation that doesn't exist, an unknown path, the API and a form post stay the not-found page.
+    expect(await answer(`${APP}/legal/privacy?from=sign-in`)).toBe(`307 ${MARKETING}/legal/privacy?from=sign-in`)
+    expect(await answer(`${APP}/ms/legal/privacy`)).toBe(`307 ${MARKETING}/ms/legal/privacy`)
+    expect(await answer(`${MARKETING}/sign-in?next=%2Fnew`)).toBe(`307 ${APP}/sign-in?next=%2Fnew`)
+    expect(await answer(`${MARKETING}/sign-up`)).toBe(`307 ${APP}/sign-up`)
+    expect(await answer(`${MARKETING}/account/profile`)).toBe(`307 ${APP}/account/profile`)
+    // An organisation's page is never sent across, whether the organisation exists or not; nor an unknown path, the
+    // API or a form post: each stays the not-found page.
     for (const url of [
+      `${MARKETING}/${owner.slug}`,
+      `${MARKETING}/${owner.slug}/bukit-jalil/windows`,
+      `${MARKETING}/no-such-organisation`,
       `${MARKETING}/no-such-organisation/bukit-jalil`,
       `${MARKETING}/account/nothing-here`,
       `${MARKETING}/guest`,
@@ -308,12 +311,48 @@ test.describe('HOST_MODE=multi, as a visitor meets it', () => {
     const html = await landed.text()
     expect(html).not.toMatch(/answered \d{3}/)
     expect(html).not.toContain('app-shell')
-    // An unknown organisation stays the not-found page, signed out or not.
-    const unknown = await request.get(`${origin}/no-such-organisation`, {
-      headers: { host: 'app.skyclause.m1ku.tech' },
-      maxRedirects: 0
+  })
+
+  test('signed out, an existing and an unknown organisation answer alike; signed in, an unknown one is not found', async ({
+    request
+  }) => {
+    const org = await makeOrg()
+    const unknownSlug = `no-such-${randomBytes(4).toString('hex')}`
+    const visit = async (slug: string, cookie?: string) => {
+      const response = await request.get(`${origin}/${slug}`, {
+        headers: { host: 'app.skyclause.m1ku.tech', ...(cookie ? { cookie } : {}) },
+        maxRedirects: 0
+      })
+      // The return path names what was asked; everything else must be the same byte for byte.
+      const own = (text: string | undefined) => text?.replaceAll(encodeURIComponent(`/${slug}`), '{path}')
+      return {
+        status: response.status(),
+        location: own(response.headers().location),
+        cacheControl: response.headers()['cache-control'],
+        body: own(await response.text())
+      }
+    }
+    const existing = await visit(org.slug)
+    expect(existing).toEqual({
+      status: 307,
+      location: '/sign-in?next={path}',
+      cacheControl: 'no-store',
+      body: '/sign-in?next={path}'
     })
-    expect(unknown.status()).toBe(404)
+    expect(await visit(unknownSlug)).toEqual(existing)
+    // A credential that resolves to no one (an expired session) is the layout's to send to sign in, which Next streams
+    // in an uncacheable page, whether the organisation exists or not.
+    const expired = `__Secure-better-auth.session_token=${randomBytes(16).toString('hex')}`
+    const stale = await visit(org.slug, expired)
+    expect(stale.cacheControl).toContain('no-store')
+    expect(stale.body).toContain('/sign-in?next={path}')
+    const staleUnknown = await visit(unknownSlug, expired)
+    expect([staleUnknown.status, staleUnknown.cacheControl]).toEqual([stale.status, stale.cacheControl])
+    expect(staleUnknown.body).toContain('/sign-in?next={path}')
+    // Signed in, an organisation nobody has is the not-found page, as before.
+    const account = await makeAccount()
+    const { cookie } = await signIn(account.id)
+    expect((await visit(unknownSlug, cookie.startsWith('__Secure-') ? cookie : `__Secure-${cookie}`)).status).toBe(404)
   })
 
   test('a share link still opens its project’s ledger without an account', async ({ request }) => {
