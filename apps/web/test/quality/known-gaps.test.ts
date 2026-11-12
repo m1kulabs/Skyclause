@@ -36,11 +36,7 @@ test('a known gap applies only to its route, roles and browser projects', () => 
 })
 
 // Copied from the Chromium, WebKit and iPhone crawl output of 11 November 2026 that #596 lists.
-const reported = [
-  ['/[org]/analysis', 'webkit', 'target-size', 'select "Choose a project" is 480×21 px'],
-  ['/[org]/analysis', 'iphone', 'target-size', 'select "Choose a project" is 264×21 px'],
-  ['/[org]/settings/audit', 'chromium', 'focus-visible', 'input shows no :focus-visible ring']
-] as const
+const reported = [['/[org]/settings/audit', 'chromium', 'focus-visible', 'input shows no :focus-visible ring']] as const
 
 test.each(reported)('the %s gap in %s covers its reported %s finding', (route, project, check, detail) => {
   expect(sortFindings([{ check, detail }], { route, role: 'Owner', project }).open).toEqual([])
@@ -51,22 +47,6 @@ const reportedTo = [
   ['/[org]/[project]/camera/[sourceId]', 'signed out', 'focus-visible', 'input shows no :focus-visible ring'],
   ['/[org]/[project]/subscribers', 'Approver', 'status', 'answered 200 with "Page not found", expected the page']
 ] as const
-
-// The same pages in the other engines (`QUALITY_BROWSERS=all`), 11 November 2026.
-const reportedIn = [
-  ['/[org]/[project]/analysis', 'webkit', 'target-size', 'select "Choose a clause sheet" is 435×21 px'],
-  [
-    '/[org]/[project]/analysis',
-    'iphone',
-    'target-size',
-    'select "Each recorded readingEvery 5 minutesEver" is 295×21 px'
-  ],
-  ['/[org]/[project]/ledger', 'webkit', 'target-size', 'select#ledger-pack[name="pack"] "AllSkyCrowd" is 189×20 px']
-] as const
-
-test.each(reportedIn)('the %s gap in %s covers its reported %s finding', (route, project, check, detail) => {
-  expect(sortFindings([{ check, detail }], { route, role: 'Editor', project }).open).toEqual([])
-})
 
 test('a ring gap leaves out Firefox, which rings a focused date or time field itself', () => {
   const where = { route: '/[org]/settings/audit', role: 'Owner' as const, project: 'firefox' }

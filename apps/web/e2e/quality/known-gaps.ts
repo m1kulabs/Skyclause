@@ -16,21 +16,11 @@ export interface KnownGap {
   projects?: string[]
 }
 
-const MEMBERS: Role[] = ['Owner', 'Admin', 'Approver', 'Editor', 'Viewer', 'guest']
 const ADMINS: Role[] = ['Owner', 'Admin']
 const NON_MEMBERS: Role[] = ['share-link reviewer', 'signed out']
 const SHOWN = /^answered 200 with the page, expected 404$/
 
 export const KNOWN_GAPS: KnownGap[] = [
-  {
-    route: '/[org]/analysis',
-    check: 'target-size',
-    detail: /^select "Choose a project" is \d+×21 px$/,
-    issue: 596,
-    why: 'WebKit draws the project select 21 px tall',
-    roles: MEMBERS,
-    projects: ['webkit', 'iphone']
-  },
   {
     route: '/[org]/settings/audit',
     check: 'focus-visible',
@@ -40,16 +30,6 @@ export const KNOWN_GAPS: KnownGap[] = [
     roles: ADMINS,
     // Firefox draws its own ring on a focused date field.
     projects: ['chromium', 'webkit', 'iphone']
-  },
-  {
-    route: '/[org]/[project]/analysis',
-    check: 'target-size',
-    detail:
-      /^select "(?:Choose a clause sheet|Choose a version or draft|Published version(?:Draft)?|Each recorded reading.*)" is \d+×21 px$/,
-    issue: 596,
-    why: 'WebKit draws the replay’s selects 21 px tall',
-    roles: MEMBERS,
-    projects: ['webkit', 'iphone']
   },
   {
     route: '/[org]/[project]/bundles/[id]',
@@ -66,15 +46,6 @@ export const KNOWN_GAPS: KnownGap[] = [
     issue: 596,
     why: 'the day start and end times show no ring on their last segment',
     projects: ['chromium', 'webkit', 'iphone']
-  },
-  {
-    route: '/[org]/[project]/ledger',
-    check: 'target-size',
-    detail: /^select#ledger-(pack|mode|state)\[name="\1"\] ".*" is \d+×20 px$/,
-    issue: 596,
-    why: 'WebKit draws the pack, mode and state filters 20 px tall',
-    roles: MEMBERS,
-    projects: ['webkit', 'iphone']
   },
   {
     route: '/[org]/[project]/subscribers',
