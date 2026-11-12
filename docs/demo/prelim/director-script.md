@@ -478,7 +478,7 @@ Why it works: time, reach and proof, each with a real number, then the promise o
 >
 > Cloud Scheduler wakes our source adapters on Cloud Run. Pub/Sub and Cloud Tasks carry every reading, with its age, to the clause engine. Gemini on Vertex AI drafts. A person approves. And the record is sealed in Postgres, with its keys in Cloud KMS.
 >
-> Behind all of it, 3,859 automated tests pass on real captures of the public feeds.
+> Behind all of it, more than 4,400 automated tests pass, many of them on real captures of the public feeds.
 
 On screen: the architecture diagram. Point to each zone as it is named: Signals, Google Cloud, Decide, Act. The Edge Devices box is dashed.
 
@@ -539,7 +539,7 @@ The close repeats slide 1's line, so the last thing heard is the first thing pro
 | Running cost about RM 45 a month per office and RM 490 per campus                                                    | Our estimate on Google Cloud Run, Vertex AI Gemini, Resend and Neon list prices; office: 300 drafts, 5,000 emails, a share of one database; campus: 1,500 drafts, 50,000 emails, half a database compute unit |
 | APSpace is APU's student app and carries the timetable students check; showing calls in it is a next step, not built | [APU research: APSpace timetable feed](/docs/research/apu.md#apspace-timetable-feed)                                                                                                                          |
 | Live grades: n=0                                                                                                     | Recheck on the recording day                                                                                                                                                                                  |
-| 3,859 automated tests pass on main                                                                                   | Recount with `bun run test` on the recording day                                                                                                                                                              |
+| More than 4,400 automated tests pass on main                                                                         | `bun run test` on main c250a78, 13 Nov 2026: 4,406 passed, 19 failed, 46 todo                                                                                                                                 |
 | Office RM 99 and Campus RM 990 a month                                                                               | [PRODUCT pricing](/docs/PRODUCT.md), #757                                                                                                                                                                     |
 
 ## Check before recording
