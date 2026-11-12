@@ -42,6 +42,9 @@ export async function expectUnclippedText(page: Page): Promise<void> {
       for (let element: HTMLElement | null = parent; element; element = element.parentElement) {
         const style = getComputedStyle(element)
         if (style.visibility === 'hidden' || style.display === 'none' || Number(style.opacity) === 0) break
+        // The shared table's one-line truncation is deliberate when its cell's title carries the whole text.
+        const cell = element.matches('[data-slot="table-truncate"]') ? element.closest('td, th') : null
+        if (cell && (cell.getAttribute('title') ?? '').includes(element.textContent?.trim() ?? '\u0000')) continue
         const clipsX = ['hidden', 'clip'].includes(style.overflowX) || style.textOverflow === 'ellipsis'
         const clipsY = ['hidden', 'clip'].includes(style.overflowY)
         // Modal scroll locks freeze the background document. Fixed overlay text can still scroll in its own frame.

@@ -5,6 +5,7 @@ import { formatDateTime, formatNumber } from '@skyclause/i18n/format'
 import { RefreshCwIcon } from 'lucide-react'
 import { Button } from '#ui/button'
 import { Empty, EmptyHeader, EmptyDescription } from '#ui/empty'
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
 import { apiFetch } from '../ledger/operations'
 import { useRead } from '../ledger/use-read'
 import { Failure, Loading } from '../ledger/feedback'
@@ -43,7 +44,11 @@ export function EvidenceList({
           {t('ledger.evidence', {}, locale)}
           {resource.data && (
             <span className="ledger-n" data-numeric>
-              {t('evidence.count', { n: formatNumber(resource.data.data.length, locale) }, locale)}
+              {t(
+                resource.data.data.length === 1 ? 'evidence.requestCount_one' : 'evidence.requestCount',
+                { n: formatNumber(resource.data.data.length, locale) },
+                locale
+              )}
             </span>
           )}
         </h2>
@@ -66,38 +71,50 @@ export function EvidenceList({
         resource.data && (
           <>
             {resource.data.data.length ? (
-              <ul className="evidence-rows">
-                {resource.data.data.map((request) => (
-                  <li key={request.id}>
-                    <a
-                      href={evidenceHref(request.id)}
-                      onClick={(event) => {
-                        if (
-                          !event.metaKey &&
-                          !event.ctrlKey &&
-                          !event.shiftKey &&
-                          !event.altKey &&
-                          event.button === 0
-                        ) {
-                          event.preventDefault()
-                          onOpen(request.id, event.currentTarget)
-                        }
-                      }}
-                    >
-                      <span className="evidence-row-span">
-                        <SpanTimes from={request.span.from} to={request.span.to} locale={locale} />
-                      </span>
-                      <RequestStatus request={request} guest={guest} locale={locale} />
-                      <span className="evidence-row-meta">
-                        <span translate="no">{t('evidence.packFor', { id: request.id }, locale)}</span>
+              <Table className="evidence-rows">
+                <TableCaption className="sr-only">{t('ledger.evidence', {}, locale)}</TableCaption>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead scope="col">{t('evidence.columns.span', {}, locale)}</TableHead>
+                    <TableHead scope="col">{t('evidence.columns.status', {}, locale)}</TableHead>
+                    <TableHead scope="col">{t('evidence.columns.received', {}, locale)}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {resource.data.data.map((request) => (
+                    <TableRow key={request.id} data-evidence-row={request.id}>
+                      <TableCell phone="primary">
+                        <a
+                          className="ledger-link evidence-row-span"
+                          href={evidenceHref(request.id)}
+                          onClick={(event) => {
+                            if (
+                              !event.metaKey &&
+                              !event.ctrlKey &&
+                              !event.shiftKey &&
+                              !event.altKey &&
+                              event.button === 0
+                            ) {
+                              event.preventDefault()
+                              onOpen(request.id, event.currentTarget)
+                            }
+                          }}
+                        >
+                          <SpanTimes from={request.span.from} to={request.span.to} locale={locale} />
+                        </a>
+                      </TableCell>
+                      <TableCell phone="end">
+                        <RequestStatus request={request} guest={guest} locale={locale} />
+                      </TableCell>
+                      <TableCell>
                         <time dateTime={request.received_at}>
                           {t('evidence.receivedAt', { time: formatDateTime(request.received_at, locale) }, locale)}
                         </time>
-                      </span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             ) : (
               <Empty className="ledger-empty">
                 <EmptyHeader>

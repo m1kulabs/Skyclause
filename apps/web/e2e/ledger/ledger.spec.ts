@@ -33,7 +33,7 @@ test('LED-7 selected filter chips clear one URL filter by keyboard and preserve 
 test('LED-4 evidence list opens its URL sheet and returns keyboard focus on close', async ({ page }) => {
   await setup(page, { role: 'viewer' })
   await page.goto(`${route}?tab=evidence`)
-  const link = page.getByRole('link', { name: new RegExp(copy('evidence.packFor', { id: evidence.id })) })
+  const link = page.locator(`[data-evidence-row="${evidence.id}"] a`)
   await link.press('Enter')
   await expect(page).toHaveURL(/evidence=evidence-1/)
   await expect(page.getByRole('dialog')).toContainText('reading-1')
@@ -71,6 +71,29 @@ test('LED-7 paginated ledger reads 1–50 then 51–100 and correction links fin
   await page.getByRole('button', { name: copy('ledger.firstPage'), exact: true }).press('Enter')
   await page.getByRole('link', { name: copy('ledger.corrects', { id: 'entry-100' }), exact: true }).press('Enter')
   await expect(page.locator('#ledger-entry-100')).toBeVisible()
+})
+
+test('a link with ?request=evidence opens the request form; ?call= selects and focuses that call’s entry', async ({
+  page
+}) => {
+  await setup(page)
+  await page.goto(`${route}?request=evidence`)
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('heading', { name: copy('evidence.request') })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await expect(page).not.toHaveURL(/request=/)
+  await page.goto(`${route}?call=${row.refs.call_id}`)
+  const entry = page.locator(`#ledger-${row.id}`)
+  await expect(entry).toHaveAttribute('aria-current', 'true')
+  await expect(entry).toBeFocused()
+})
+
+test('filters that match nothing say so, not that the ledger is empty', async ({ page }) => {
+  await setup(page, { rows: [] })
+  await page.goto(`${route}?pack=crowd`)
+  await expect(page.getByText(copy('ledger.emptyFiltered'), { exact: true })).toBeVisible()
+  await expect(page.getByText(copy('ledger.empty'), { exact: true })).toBeHidden()
 })
 
 test('LED-7 filters survive reload, totals and CSV use current filters, integrity identifies the first bad entry', async ({
@@ -224,8 +247,12 @@ test('LED-5 calls, approvals, grades and ledger values link to readings; long ta
   await page.setViewportSize({ width: 320, height: 900 })
   await page.goto(route)
   await expect(page.locator('[data-ledger-table]')).toContainText(detailedRow.window!.title)
-  await expect(page.locator('[data-ledger-table]')).toContainText(copy('ledger.toApproval', { value: 2 }))
-  await expect(page.locator('[data-ledger-table]')).toContainText(copy('ledger.toNotice', { value: 1 }))
+  await expect(page.locator('[data-ledger-table] td.ledger-col-toApproval')).toContainText(
+    copy('ledger.minutes', { value: 2 })
+  )
+  await expect(page.locator('[data-ledger-table] td.ledger-col-toNotice')).toContainText(
+    copy('ledger.minutes', { value: 1 })
+  )
   await expectUnclippedText(page)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: testInfo.outputPath('ledger-phone.png'), fullPage: true })
@@ -292,6 +319,10 @@ for (const role of ['owner', 'admin', 'approver', 'editor', 'viewer']) {
       )
       const request = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/approve'))
       await approve.press('Enter')
+      // Releasing a reply cannot be undone, so it asks first.
+      const confirm = page.getByRole('alertdialog')
+      await expect(confirm).toContainText(copy('evidence.confirmTitle'))
+      await confirm.getByRole('button', { name: copy('evidence.approve'), exact: true }).press('Enter')
       await request
       await expect(approve).toBeHidden()
     } else {

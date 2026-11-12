@@ -7,21 +7,31 @@ import {
   AlertDialogFooter
 } from '#ui/alert-dialog'
 import { Button } from '#ui/button'
-import type { Conflict } from './operations'
+import type { CallDetail, Conflict } from './operations'
 import { inputText } from './input-fact'
-import { t } from './i18n'
+import { callName } from './call-review'
+import { t, type Locale } from './i18n'
 
 export function RecheckDialog({
   conflict,
+  calls,
   pending,
   onCancel,
-  onConfirm
+  onConfirm,
+  locale = 'en'
 }: {
   conflict: Conflict
+  /** The bundle's calls, so each change is named by its window, never by its ID. */
+  calls: CallDetail[]
   pending: boolean
   onCancel: () => void
   onConfirm: () => void
+  locale?: Locale
 }) {
+  const name = (id: string) => {
+    const call = calls.find((item) => item.id === id)
+    return call ? callName(call, locale) : t('bundles.site_call', {}, locale)
+  }
   return (
     <AlertDialog
       open
@@ -31,31 +41,43 @@ export function RecheckDialog({
     >
       <AlertDialogContent className="bundle-recheck">
         <AlertDialogHeader>
-          <AlertDialogTitle>{t('bundles.changed')}</AlertDialogTitle>
-          <AlertDialogDescription>{t('bundles.changed_help')}</AlertDialogDescription>
+          <AlertDialogTitle>{t('bundles.changed', {}, locale)}</AlertDialogTitle>
+          <AlertDialogDescription>{t('bundles.changed_help', {}, locale)}</AlertDialogDescription>
         </AlertDialogHeader>
-        <div>
+        <ul className="bundle-recheck-changes">
           {conflict.changed_inputs?.map((change, index) => (
-            <div key={index}>
-              <p>{t('bundles.call', { id: change.call_id })}</p>
-              <p>{t('bundles.before', { value: inputText(change.before) })}</p>
-              <p>{t('bundles.after', { value: inputText(change.after) })}</p>
-            </div>
+            <li key={`input-${index}`}>
+              <p className="bundle-recheck-call">{name(change.call_id)}</p>
+              <p>{t('bundles.before', { value: inputText(change.before, locale) }, locale)}</p>
+              <p>{t('bundles.after', { value: inputText(change.after, locale) }, locale)}</p>
+            </li>
           ))}
           {conflict.changed_verdicts?.map((change, index) => (
-            <div key={index}>
-              <p>{t('bundles.call', { id: change.call_id })}</p>
-              <p>{t('bundles.before', { value: t(`bundles.modes.${change.before.mode ?? 'no_call'}`) })}</p>
-              <p>{t('bundles.after', { value: t(`bundles.modes.${change.after.mode ?? 'no_call'}`) })}</p>
-            </div>
+            <li key={`verdict-${index}`}>
+              <p className="bundle-recheck-call">{name(change.call_id)}</p>
+              <p>
+                {t(
+                  'bundles.before',
+                  { value: t(`bundles.modes.${change.before.mode ?? 'no_call'}`, {}, locale) },
+                  locale
+                )}
+              </p>
+              <p>
+                {t(
+                  'bundles.after',
+                  { value: t(`bundles.modes.${change.after.mode ?? 'no_call'}`, {}, locale) },
+                  locale
+                )}
+              </p>
+            </li>
           ))}
-        </div>
+        </ul>
         <AlertDialogFooter>
           <Button disabled={pending} variant="outline" onClick={onCancel}>
-            {t('bundles.cancel')}
+            {t('bundles.cancel', {}, locale)}
           </Button>
           <Button disabled={pending} onClick={onConfirm}>
-            {t(pending ? 'bundles.pending' : 'bundles.confirm')}
+            {t(pending ? 'bundles.pending' : 'bundles.confirm', {}, locale)}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

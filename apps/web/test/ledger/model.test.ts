@@ -1,6 +1,8 @@
 import { expect, test } from 'vitest'
 import {
   filtersFromSearch,
+  invalidFilters,
+  targetEntry,
   ledgerHref,
   canApproveReply,
   requestState,
@@ -78,4 +80,26 @@ test('budget exhaustion prints the API reset in MYT and unknown failures give a 
     '00:00 MYT'
   )
   expect(problemMessage(new Error('network'))).toContain('Try again')
+})
+
+test('only the offending filter field is marked invalid', () => {
+  expect([...invalidFilters(new URLSearchParams('from=2026-11-02&pack=sky'))]).toEqual([])
+  expect([...invalidFilters(new URLSearchParams('from=bad&pack=sky'))]).toEqual(['from'])
+  expect([...invalidFilters(new URLSearchParams('pack=moon&to=2026-11-04'))]).toEqual(['pack'])
+  expect([...invalidFilters(new URLSearchParams('from=2026-11-04&to=2026-11-02'))].sort()).toEqual(['from', 'to'])
+})
+
+test('a link to a call finds its approval entry, else its first entry; an entry link wins', () => {
+  const rows: Parameters<typeof targetEntry>[0] = [
+    { id: 'sent', kind: 'call_sent', refs: { call_id: 'c1' } },
+    { id: 'approved', kind: 'call_approved', refs: { call_id: 'c1' } },
+    { id: 'other', kind: 'call_sent', refs: {}, call: { id: 'c2' } }
+  ]
+  expect(targetEntry(rows, null, 'c1')).toBe('approved')
+  expect(targetEntry(rows, null, 'c2')).toBe('other')
+  expect(targetEntry(rows, 'sent', 'c1')).toBe('sent')
+  expect(targetEntry(rows, null, 'missing')).toBeNull()
+  // Not on this page yet: the read keeps going until the entry is found.
+  expect(targetEntry(rows, 'entry-on-a-later-page', null)).toBeNull()
+  expect(targetEntry(rows, null, null)).toBeNull()
 })

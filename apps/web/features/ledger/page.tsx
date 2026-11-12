@@ -20,7 +20,16 @@ import { readLedgerPage } from './read-page'
 import { useRead } from './use-read'
 import { Failure, Loading } from './feedback'
 import { t } from './i18n'
-import { KIND_GROUPS, filtersFromSearch, kindGroupFromSearch, ledgerHref, matchesKind, type KindGroup } from './model'
+import {
+  KIND_GROUPS,
+  filtersFromSearch,
+  invalidFilters,
+  kindGroupFromSearch,
+  ledgerHref,
+  matchesKind,
+  targetEntry,
+  type KindGroup
+} from './model'
 import { LedgerTable } from './table'
 import { ArchiveSheet } from './archive'
 import { saveDownload } from './download'
@@ -109,7 +118,8 @@ function LedgerContent({
   const path = usePathname()
   const tab = search.get('tab') === 'evidence' ? 'evidence' : 'entries'
   const guest = principal?.kind === 'guest_token' || (principal?.kind === 'session' && principal.isGuest)
-  const [target, setTarget] = useState<EvidenceTarget | null>(null)
+  // `?request=evidence` (a link from the window form) opens the request form on arrival.
+  const [target, setTarget] = useState<EvidenceTarget | null>(() => (search.get('request') === 'evidence' ? {} : null))
   const [actionError, setActionError] = useState('')
   const [exporting, setExporting] = useState(false)
   const archiveTrigger = useRef<HTMLAnchorElement>(null)
@@ -117,8 +127,10 @@ function LedgerContent({
   const packTrigger = useRef<HTMLElement | null>(null)
   const evidenceTab = useRef<HTMLButtonElement>(null)
   const href = (changes: Record<string, string | null>) => ledgerHref(path, search, changes)
-  // Native history integrates with Next's search hook and avoids server work for each local filter edit.
-  const navigate = (changes: Record<string, string | null>) => window.history.pushState(null, '', href(changes))
+  // Native history integrates with Next's search hook and avoids server work for each local filter edit. A field edit
+  // replaces the entry (a date field fires once per typed digit); pages, tabs and sheets push one.
+  const navigate = (changes: Record<string, string | null>, replace = false) =>
+    window.history[replace ? 'replaceState' : 'pushState'](null, '', href(changes))
   let filters: ReturnType<typeof filtersFromSearch> = {}
   let invalid = false
   try {
@@ -126,11 +138,13 @@ function LedgerContent({
   } catch {
     invalid = true
   }
+  const invalidKeys = invalid ? invalidFilters(search) : new Set<string>()
   const kindGroup = kindGroupFromSearch(search)
   const filterKey = JSON.stringify(filters)
   const cursor = search.get('cursor') ?? undefined
   const offset = Math.max(0, Number(search.get('offset')) || 0)
   const selectedEntry = search.get('entry')
+  const selectedCall = search.get('call')
   const readLedger = useCallback(
     async (signal: AbortSignal) => {
       const query = JSON.parse(filterKey) as ReturnType<typeof filtersFromSearch>
@@ -139,9 +153,9 @@ function LedgerContent({
         query: { ...query, cursor, limit: 50 },
         signal
       })
-      if (selectedEntry) {
+      if (selectedEntry || selectedCall) {
         const seen = new Set<string>()
-        while (!page.data.some((row) => row.id === selectedEntry) && page.next_cursor) {
+        while (!targetEntry(page.data, selectedEntry, selectedCall) && page.next_cursor) {
           if (seen.has(page.next_cursor)) throw new Error('Repeated ledger cursor')
           seen.add(page.next_cursor)
           const next = await readLedgerPage({
@@ -154,7 +168,7 @@ function LedgerContent({
       }
       return { ...page, view: { key: `${filterKey}-${cursor ?? ''}`, offset } }
     },
-    [project.id, filterKey, cursor, selectedEntry, offset]
+    [project.id, filterKey, cursor, selectedEntry, selectedCall, offset]
   )
   const ledger = useRead(readLedger, false, { keepPreviousData: true })
   const verification = useRead(
@@ -168,12 +182,17 @@ function LedgerContent({
     setTarget(target)
   }, [])
   const correctionHref = useCallback((id: string) => ledgerHref(path, new URLSearchParams(), { entry: id }), [path])
+  const callHref = useCallback(
+    (id: string) => `${path.replace(/\/ledger$/, '')}/calls/${encodeURIComponent(id)}`,
+    [path]
+  )
   const closeRequest = () => {
     setTarget(null)
+    if (search.get('request')) navigate({ request: null }, true)
     requestAnimationFrame(() => requestTrigger.current?.focus())
   }
   const changeFilter = (key: string, value: string) =>
-    navigate({ [key]: value || null, cursor: null, offset: null, entry: null })
+    navigate({ [key]: value || null, cursor: null, offset: null, entry: null, call: null }, true)
   const filterLabel = (key: 'from' | 'to' | 'pack' | 'mode' | 'state', value: string) =>
     t(
       'ledger.filter',
@@ -189,6 +208,7 @@ function LedgerContent({
   const chips = (['from', 'to', 'pack', 'mode', 'state'] as const).filter((key) => filters[key])
   const rows = ledger.data?.data ?? []
   const matching = kindGroup ? rows.filter((row) => matchesKind(row.kind, kindGroup)).length : 0
+  const selected = targetEntry(rows, selectedEntry, selectedCall)
   const integrity = (
     <div className="ledger-integrity">
       <p role="status" data-valid={verification.data ? String(verification.data.valid) : undefined}>
@@ -234,7 +254,7 @@ function LedgerContent({
                 className="ledger-archive-link"
                 href={href({ archive: '1' })}
                 onClick={(event) => {
-                  if (!event.metaKey && !event.ctrlKey && event.button === 0) {
+                  if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey && event.button === 0) {
                     event.preventDefault()
                     navigate({ archive: '1' })
                   }
@@ -278,7 +298,8 @@ function LedgerContent({
                     type="date"
                     autoComplete="off"
                     value={search.get(key) ?? ''}
-                    aria-invalid={invalid}
+                    aria-invalid={invalidKeys.has(key) || undefined}
+                    aria-describedby={invalidKeys.has(key) ? 'ledger-invalid' : undefined}
                     onChange={(event) => changeFilter(key, event.target.value)}
                   />
                 </span>
@@ -293,7 +314,8 @@ function LedgerContent({
                   className="native-select"
                   autoComplete="off"
                   value={search.get(key) ?? ''}
-                  aria-invalid={invalid}
+                  aria-invalid={invalidKeys.has(key) || undefined}
+                  aria-describedby={invalidKeys.has(key) ? 'ledger-invalid' : undefined}
                   onChange={(event) => changeFilter(key, event.target.value)}
                 >
                   <option value="">{t('ledger.all', {}, locale)}</option>
@@ -314,7 +336,7 @@ function LedgerContent({
                 autoComplete="off"
                 value={kindGroup ?? ''}
                 // Dims the rows of other kinds in place; the range and the CSV export stay as they are.
-                onChange={(event) => navigate({ kind: event.target.value || null })}
+                onChange={(event) => navigate({ kind: event.target.value || null }, true)}
               >
                 <option value="">{t('ledger.all', {}, locale)}</option>
                 {(Object.keys(KIND_GROUPS) as KindGroup[]).map((group) => (
@@ -368,16 +390,17 @@ function LedgerContent({
             </div>
           )}
           {invalid ? (
-            <p role="alert" className="ledger-invalid">
+            <p role="alert" className="ledger-invalid" id="ledger-invalid">
               {t('ledger.invalid', {}, locale)}
             </p>
           ) : (
             <>
               <div className="ledger-toolbar">
                 <div className="ledger-counts">
+                  {/* While the first page loads, the skeleton's own status says so; this line waits for a count. */}
                   <p data-ledger-total aria-live="polite">
                     {ledger.loading && !ledger.data
-                      ? t('ledger.loading', {}, locale)
+                      ? null
                       : ledger.data &&
                         t(
                           'ledger.total',
@@ -413,14 +436,14 @@ function LedgerContent({
                       const csv = await apiFetch('exportLedger', { params: { id: project.id }, query: filters })
                       saveDownload(csv, 'text/csv', t('ledger.exportFile', {}, locale))
                     } catch (error) {
-                      setActionError(problemMessage(error, locale))
+                      setActionError(problemMessage(error, locale, 'ledger.exportFailed'))
                     } finally {
                       setExporting(false)
                     }
                   }}
                 >
                   <DownloadIcon data-icon="inline-start" aria-hidden="true" />
-                  {t('ledger.export', {}, locale)}
+                  {t(exporting ? 'ledger.exporting' : 'ledger.export', {}, locale)}
                 </Button>
               </div>
               {actionError && (
@@ -449,15 +472,18 @@ function LedgerContent({
                     locale={locale}
                     onRequest={openRequest}
                     correctionHref={correctionHref}
-                    selectedEntry={selectedEntry}
+                    callHref={callHref}
+                    selectedEntry={selected}
                     kindGroup={kindGroup}
                     busy={ledger.loading}
                   />
                 ) : (
                   <Empty className="ledger-empty">
                     <EmptyHeader>
-                      <EmptyTitle>{t('ledger.empty', {}, locale)}</EmptyTitle>
-                      <EmptyDescription>{t('ledger.next', {}, locale)}</EmptyDescription>
+                      <EmptyTitle>{t(chips.length ? 'ledger.emptyFiltered' : 'ledger.empty', {}, locale)}</EmptyTitle>
+                      <EmptyDescription>
+                        {t(chips.length ? 'ledger.emptyFilteredNext' : 'ledger.next', {}, locale)}
+                      </EmptyDescription>
                     </EmptyHeader>
                   </Empty>
                 ))
@@ -527,12 +553,13 @@ function LedgerContent({
         onCreated={(request) => {
           packTrigger.current = requestTrigger.current
           setTarget(null)
-          navigate({ tab: 'evidence', evidence: request.id })
+          navigate({ tab: 'evidence', evidence: request.id, request: null })
         }}
       />
       <EvidenceSheet
         id={search.get('evidence')}
         projectId={project.id}
+        projectName={project.name}
         principal={principal}
         guest={!!guest}
         locale={locale}

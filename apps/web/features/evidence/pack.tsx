@@ -6,6 +6,15 @@ import type { Principal, CallView } from '@skyclause/contracts'
 import { formatDateTime, formatNumber, formatTime } from '@skyclause/i18n/format'
 import { DownloadIcon, RefreshCwIcon } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '#ui/sheet'
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '#ui/alert-dialog'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '#ui/hover-card'
 import { Button } from '#ui/button'
 import { InputAgeChip } from '../data-components/input-age-chip'
@@ -57,6 +66,7 @@ export function RequestStatus({
 export function EvidenceSheet({
   id,
   projectId,
+  projectName,
   principal,
   guest,
   locale,
@@ -65,6 +75,7 @@ export function EvidenceSheet({
 }: {
   id: string | null
   projectId: string
+  projectName: string
   principal: Principal | null
   guest: boolean
   locale: 'en' | 'ms'
@@ -81,7 +92,7 @@ export function EvidenceSheet({
       <SheetContent className="ledger-sheet" lang={locale} finalFocus={finalFocus}>
         <SheetHeader>
           <SheetTitle>{t('evidence.pack', {}, locale)}</SheetTitle>
-          <SheetDescription translate="no">{t('evidence.project', { id: projectId }, locale)}</SheetDescription>
+          <SheetDescription>{t('evidence.project', { name: projectName }, locale)}</SheetDescription>
         </SheetHeader>
         {id && <PackBody key={id} id={id} projectId={projectId} principal={principal} guest={guest} locale={locale} />}
       </SheetContent>
@@ -112,8 +123,23 @@ function PackBody({
   )
   const resource = useRead(read, true)
   const [busy, setBusy] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState('')
   const request = resource.data
+  // Approving releases the pack to the requester and cannot be taken back, so it asks first.
+  const approve = async () => {
+    setConfirming(false)
+    setBusy(true)
+    setError('')
+    try {
+      await apiFetch('approveEvidenceRequest', { params: { id } })
+      resource.retry()
+    } catch (error) {
+      setError(problemMessage(error, locale))
+    } finally {
+      setBusy(false)
+    }
+  }
   if (resource.loading)
     return (
       <div className="ledger-sheet-body">
@@ -160,23 +186,23 @@ function PackBody({
       </ol>
       <div className="ledger-actions">
         {canApproveReply(principal, request) && (
-          <Button
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true)
-              setError('')
-              try {
-                await apiFetch('approveEvidenceRequest', { params: { id } })
-                resource.retry()
-              } catch (error) {
-                setError(problemMessage(error, locale))
-              } finally {
-                setBusy(false)
-              }
-            }}
-          >
-            {t(busy ? 'evidence.approving' : 'evidence.approve', {}, locale)}
-          </Button>
+          <>
+            <Button disabled={busy} onClick={() => setConfirming(true)}>
+              {t(busy ? 'evidence.approving' : 'evidence.approve', {}, locale)}
+            </Button>
+            <AlertDialog open={confirming} onOpenChange={setConfirming}>
+              <AlertDialogContent lang={locale}>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{t('evidence.confirmTitle', {}, locale)}</AlertDialogTitle>
+                  <AlertDialogDescription>{t('evidence.confirmBody', {}, locale)}</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>{t('evidence.cancel', {}, locale)}</AlertDialogCancel>
+                  <Button onClick={() => void approve()}>{t('evidence.approve', {}, locale)}</Button>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </>
         )}
         <Button
           variant={canApproveReply(principal, request) ? 'outline' : 'default'}
@@ -219,15 +245,7 @@ function PackContents({ pack, locale }: { pack: NonNullable<Evidence['pack']>; l
     )
   }
   const section = (key: string, content: ReactNode[], empty?: string) => (
-    <section className="evidence-section" aria-labelledby={`evidence-${key}`}>
-      <h3 id={`evidence-${key}`}>
-        {t(`evidence.${key}`, {}, locale)}
-        <span className="ledger-n" data-numeric>
-          {t('evidence.count', { n: formatNumber(content.length, locale) }, locale)}
-        </span>
-      </h3>
-      {content.length ? content : <p className="ledger-sub">{t(empty ?? 'evidence.none', {}, locale)}</p>}
-    </section>
+    <PackSection key={key} name={key} content={content} empty={empty} locale={locale} />
   )
   return (
     <>
@@ -269,7 +287,12 @@ function PackContents({ pack, locale }: { pack: NonNullable<Evidence['pack']>; l
             <span className="evidence-refs">
               {call.shadow.clauses.flatMap((clause) =>
                 clause.inputs.map((input, index) => (
-                  <InputAgeChip key={`${clause.key}-${input.name}-${index}`} input={input} />
+                  <InputAgeChip
+                    key={`${clause.key}-${input.name}-${index}`}
+                    input={input}
+                    ageSeconds={input.age_s}
+                    locale={locale}
+                  />
                 ))
               )}
             </span>
@@ -312,20 +335,16 @@ function PackContents({ pack, locale }: { pack: NonNullable<Evidence['pack']>; l
             <p className="evidence-entry-line">
               <span>{reading.metric}</span>
               <span className="evidence-value" data-numeric>
-                {t(
-                  'evidence.value',
-                  {
-                    value:
-                      reading.value !== null
-                        ? formatNumber(reading.value, locale)
-                        : (reading.value_text ??
-                          (reading.value_json !== null
-                            ? JSON.stringify(reading.value_json)
-                            : t('ledger.noValue', {}, locale))),
-                    unit: reading.unit ?? ''
-                  },
-                  locale
-                )}
+                {(() => {
+                  const value =
+                    reading.value !== null
+                      ? formatNumber(reading.value, locale)
+                      : (reading.value_text ??
+                        (reading.value_json !== null
+                          ? JSON.stringify(reading.value_json)
+                          : t('ledger.noValue', {}, locale)))
+                  return reading.unit ? t('evidence.value', { value, unit: reading.unit }, locale) : value
+                })()}
               </span>
             </p>
             <p className="ledger-sub" translate="no">
@@ -335,7 +354,15 @@ function PackContents({ pack, locale }: { pack: NonNullable<Evidence['pack']>; l
                 locale
               )}
             </p>
-            {readingRef(reading.id)}
+            <span className="evidence-refs">
+              {readingRef(reading.id)}
+              {/* The source link stays in the reading itself, where a keyboard and a finger reach it. */}
+              {reading.source_url && (
+                <a className="evidence-reading-ref" href={reading.source_url}>
+                  {t('evidence.sourceLink', {}, locale)}
+                </a>
+              )}
+            </span>
           </article>
         ))
       )}
@@ -369,6 +396,58 @@ function PackContents({ pack, locale }: { pack: NonNullable<Evidence['pack']>; l
         ))
       )}
     </>
+  )
+}
+
+/** Lists never render more than 50 rows: a section of the pack shows 50 of its records at a time. */
+const PAGE = 50
+
+function PackSection({
+  name,
+  content,
+  empty,
+  locale
+}: {
+  name: string
+  content: ReactNode[]
+  empty?: string
+  locale: 'en' | 'ms'
+}) {
+  const [page, setPage] = useState(0)
+  const pages = Math.ceil(content.length / PAGE)
+  const current = Math.min(page, Math.max(0, pages - 1))
+  const shown = content.slice(current * PAGE, current * PAGE + PAGE)
+  return (
+    <section className="evidence-section" aria-labelledby={`evidence-${name}`}>
+      <h3 id={`evidence-${name}`}>
+        {t(`evidence.${name}`, {}, locale)}
+        <span className="ledger-n" data-numeric>
+          {t('evidence.count', { n: formatNumber(content.length, locale) }, locale)}
+        </span>
+      </h3>
+      {content.length ? shown : <p className="ledger-sub">{t(empty ?? 'evidence.none', {}, locale)}</p>}
+      {pages > 1 && (
+        <div className="evidence-pager">
+          <p role="status" className="ledger-sub" data-numeric>
+            {t(
+              'evidence.shown',
+              {
+                from: formatNumber(current * PAGE + 1, locale),
+                to: formatNumber(current * PAGE + shown.length, locale),
+                n: formatNumber(content.length, locale)
+              },
+              locale
+            )}
+          </p>
+          <Button variant="ghost" size="sm" disabled={current === 0} onClick={() => setPage(current - 1)}>
+            {t('evidence.previousItems', {}, locale)}
+          </Button>
+          <Button variant="ghost" size="sm" disabled={current >= pages - 1} onClick={() => setPage(current + 1)}>
+            {t('evidence.nextItems', {}, locale)}
+          </Button>
+        </div>
+      )}
+    </section>
   )
 }
 

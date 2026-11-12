@@ -42,20 +42,6 @@ export function analysisState(search: Pick<URLSearchParams, 'get'>): AnalysisSta
 export function analysisQuery(state: Pick<AnalysisState, 'period' | 'pack'>) {
   return { period: state.period, pack: state.pack }
 }
-export const rateMetrics = new Set([
-  'precision',
-  'recall',
-  'false_alarm_ratio',
-  'band_coverage',
-  'agreement',
-  'agent_shadow_agreement'
-])
-export function metricValue(metric: AnalysisMetric): number | null {
-  if (metric.n === 0) return null
-  if (metric.value !== undefined) return metric.value
-  if (metric.x === null) return null
-  return rateMetrics.has(metric.metric) ? metric.x / metric.n : metric.x
-}
 
 export interface LivePoint {
   kind: 'live'
@@ -77,6 +63,21 @@ export interface LiveSeries {
 export interface ReplaySeries {
   kind: 'replay'
   points: ReplayPoint[]
+}
+
+/**
+ * A long replay drawn at a readable density: at most `limit` points, each the highest count in its run of steps, so a
+ * peak is never smoothed away. `size` is how many steps each drawn point stands for (1 when nothing is thinned).
+ */
+export function thinned<Point extends { value: number | null }>(points: readonly Point[], limit = 400) {
+  if (points.length <= limit) return { points: [...points], size: 1 }
+  const size = Math.ceil(points.length / limit)
+  const drawn: Point[] = []
+  for (let start = 0; start < points.length; start += size) {
+    const run = points.slice(start, start + size)
+    drawn.push(run.reduce((best, point) => ((point.value ?? -Infinity) > (best.value ?? -Infinity) ? point : best)))
+  }
+  return { points: drawn, size }
 }
 
 export function axisTicks(max: number): number[] {

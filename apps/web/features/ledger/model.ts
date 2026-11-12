@@ -47,6 +47,34 @@ export function filtersFromSearch(search: Pick<URLSearchParams, 'get'>) {
   return filters
 }
 
+/** Which filter fields hold the problem: a value the contract refuses, or both dates when the range runs backwards. */
+export function invalidFilters(search: Pick<URLSearchParams, 'get'>): Set<string> {
+  const keys = new Set<string>()
+  for (const key of ['from', 'to', 'pack', 'mode', 'state'] as const) {
+    const value = search.get(key)
+    if (value && !ledgerOperations.exportLedger.request.query.safeParse({ [key]: value }).success) keys.add(key)
+  }
+  const from = search.get('from')
+  const to = search.get('to')
+  if (!keys.size && from && to && from > to) {
+    keys.add('from')
+    keys.add('to')
+  }
+  return keys
+}
+
+/** The entry a link points at: `?entry=` names it; `?call=` names a call, whose approval (else first) entry it is. */
+export function targetEntry(
+  rows: ReadonlyArray<{ id: string; kind: LedgerKind; refs: Record<string, string>; call?: { id: string } | null }>,
+  entry: string | null,
+  call: string | null
+): string | null {
+  if (entry) return rows.some((row) => row.id === entry) ? entry : null
+  if (!call) return null
+  const matches = rows.filter((row) => row.refs.call_id === call || row.call?.id === call)
+  return (matches.find((row) => row.kind === 'call_approved') ?? matches[0])?.id ?? null
+}
+
 export function ledgerHref(
   path: string,
   search: Pick<URLSearchParams, 'toString'>,

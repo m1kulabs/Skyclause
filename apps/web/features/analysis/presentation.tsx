@@ -5,13 +5,20 @@ import { Skeleton } from '#ui/skeleton'
 import { ApiProblem } from '../../lib/api-fetch'
 import { SourceError } from '../data-components/states'
 import { t } from './catalogue'
-import { metricValue, rateMetrics, type Locale } from './model'
+import {
+  metricInterval,
+  metricName,
+  metricText,
+  metricValue,
+  percentText,
+  rateMetrics
+} from '../data-components/metrics'
+import type { Locale } from './model'
 import type { Metric } from './operations'
 import en from '../../../../packages/i18n/catalogue/en/analysis.json'
 
-export function metricName(name: string, locale: Locale) {
-  return name in en.metrics ? t(`analysis.metrics.${name}`, {}, locale) : t('analysis.metricUnknown', { name }, locale)
-}
+// One reading and one name per metric, shared with the grade card (features/data-components/metrics.ts).
+export { metricName, metricText }
 
 export function outcomeName(outcome: string, noCall: boolean, locale: Locale) {
   const key = noCall ? 'no_call' : outcome
@@ -82,33 +89,25 @@ export function Time({ at, locale }: { at: string; locale: Locale }) {
   return <time dateTime={at}>{formatDateTime(at, locale)}</time>
 }
 
-const percent = (value: number, locale: Locale) =>
-  t('analysis.percent', { value: formatNumber(Math.round(value * 1000) / 10, locale) }, locale)
-
-export function metricText(metric: AnalysisMetric, locale: Locale) {
-  const value = metricValue(metric)
-  if (value === null) return t(metric.n === 0 ? 'analysis.n' : 'analysis.missing', { n: 0 }, locale)
-  if (rateMetrics.has(metric.metric) || /percentage_error|forecast_error/.test(metric.metric)) {
-    return percent(value, locale)
-  }
-  return /p50|p95|delay|minutes/.test(metric.metric)
-    ? t('analysis.minutes', { value: formatNumber(value, locale) }, locale)
-    : formatNumber(value, locale)
-}
-
 /** The interval in words, on the value's own scale (a share as a percentage). */
 export function intervalText(metric: AnalysisMetric, locale: Locale) {
-  return t('analysis.wilson', { low: percent(metric.low!, locale), high: percent(metric.high!, locale) }, locale)
+  return metricInterval(metric, locale) ?? ''
 }
 
 /**
  * A share on its 0–100% track: the track a capsule, the Wilson interval a capsule inside it, the value a 2px tick.
- * Lengths are percentages of the drawn width, so the capsule ends stay round at any width.
+ * Lengths are percentages of the drawn width, so the capsule ends stay round at any width. Where the interval is
+ * printed in words beside it, the drawing is hidden from assistive technology (`label` unset), so it is heard once.
  */
-export function IntervalBar({ metric, value, label }: { metric: AnalysisMetric; value: number; label: string }) {
+export function IntervalBar({ metric, value, label }: { metric: AnalysisMetric; value: number; label?: string }) {
   const at = (share: number) => `${Math.min(100, Math.max(0, share * 100))}%`
   return (
-    <svg className="analysis-interval" width="100%" height="16" role="img" aria-label={label}>
+    <svg
+      className="analysis-interval"
+      width="100%"
+      height="16"
+      {...(label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': true })}
+    >
       <rect x="0" y="4" width="100%" height="8" rx="4" className="analysis-interval-track" />
       <rect
         x={at(metric.low!)}
@@ -185,10 +184,10 @@ export function MetricFigure({
             (value !== null && metric.low !== null && metric.high !== null ? (
               <div className="analysis-answer-interval">
                 <p className="analysis-answer-words">{intervalText(metric, locale)}</p>
-                <IntervalBar metric={metric} value={value} label={intervalText(metric, locale)} />
+                <IntervalBar metric={metric} value={value} />
                 <p className="analysis-scale" aria-hidden="true">
-                  <span>{percent(0, locale)}</span>
-                  <span>{percent(1, locale)}</span>
+                  <span>{percentText(0, locale)}</span>
+                  <span>{percentText(1, locale)}</span>
                 </p>
               </div>
             ) : (
@@ -235,7 +234,7 @@ export function MetricRow({
         {metric.n > 0 && value !== null ? (
           rate ? (
             metric.low !== null && metric.high !== null ? (
-              <IntervalBar metric={metric} value={value} label={intervalText(metric, locale)} />
+              <IntervalBar metric={metric} value={value} />
             ) : null
           ) : max ? (
             <svg className="analysis-interval" width="100%" height="16" aria-hidden="true">
