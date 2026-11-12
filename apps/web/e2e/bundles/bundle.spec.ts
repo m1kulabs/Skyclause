@@ -1,3 +1,4 @@
+import { pseudo } from '@skyclause/i18n'
 import { test, expect } from '../fixtures'
 import { stubApi, expectZonedTimes } from '../harness'
 import { expectUnclippedText } from '../harness/expect-unclipped-text'
@@ -33,7 +34,8 @@ test('CAL-13 GET-safe links, tabs and reads never submit decisions', async ({ pa
   await open(page)
   await expect(page.locator('.bundle-detail')).toContainText('Replay · 2 November 2026')
   // P2-4: a bundle under review is a batch of calls, so the bar marks Calls current.
-  await expect(page.locator('.shell-destinations [aria-current="page"]')).toHaveText('Calls')
+  const calls = process.env.I18N_PSEUDO === '1' ? pseudo('Calls') : 'Calls'
+  await expect(page.locator('.shell-destinations [aria-current="page"]')).toHaveText(calls)
   for (const trigger of await page.locator('.bundle-detail [data-slot="trace-collapsible-trigger"]').all()) {
     await trigger.press('Enter')
   }
