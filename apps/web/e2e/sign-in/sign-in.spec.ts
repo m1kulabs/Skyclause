@@ -20,17 +20,19 @@ async function expectAuthAxe(page: import('@playwright/test').Page) {
 }
 
 function signInRegion(page: import('@playwright/test').Page) {
-  return page.getByRole('region', { name: 'Sign in to Skyclause' })
+  return page.getByRole('region', { name: /^Sign in/ })
 }
 
 test.beforeEach(async ({ page }) => {
   await signedOut(page)
 })
 
-test('sign-in shows passkey, labelled email, Google and the PDPA link, and no guest entry', async ({ page }) => {
+test('sign-in shows the email link, passkey, Google, the legal links and the room, and no guest entry', async ({
+  page
+}) => {
   await page.goto('/sign-in')
 
-  await expect(page.getByRole('heading', { level: 1, name: 'Sign in to Skyclause' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Sign in', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Sign in with a passkey' })).toBeVisible()
   const email = page.getByLabel('Email address')
   await expect(email).toHaveAttribute('type', 'email')
@@ -42,8 +44,30 @@ test('sign-in shows passkey, labelled email, Google and the PDPA link, and no gu
   await expect(page.getByRole('link', { name: 'Continue as guest' })).toHaveCount(0)
   await expect(page.locator('a[href="/guest"]')).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'PDPA privacy notice' })).toHaveAttribute('href', '/legal/privacy')
+  await expect(page.getByRole('link', { name: 'Terms', exact: true })).toHaveAttribute('href', '/legal/terms')
+  await expect(page.getByRole('link', { name: 'Skyclause home' })).toHaveAttribute('href', '/')
+  await expect(page.getByRole('img', { name: /Bukit Jalil LRT station/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Photo by *angys*, CC BY-SA 4.0' })).toHaveAttribute(
+    'href',
+    '/#picture-credits'
+  )
+  await expect(page.locator('[data-sign-in-strip="day"]')).toContainText(/Now \d\d:\d\d MYT/)
   await expectNoPasswordControls(page)
   await expectAuthAxe(page)
+})
+
+test('on a phone the field is on the first screen with 44px targets, and waits to be tapped', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+  const page = await context.newPage()
+  await signedOut(page)
+  await page.goto('/sign-in')
+  const email = page.getByLabel('Email address')
+  await expect(email).toBeInViewport()
+  await expect(email).not.toBeFocused()
+  for (const button of await page.getByRole('button').all()) {
+    expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+  }
+  await context.close()
 })
 
 test('email sign-in preserves next, announces Sending, names the address, and allows a different email', async ({
@@ -68,7 +92,11 @@ test('email sign-in preserves next, announces Sending, names the address, and al
   await page.getByRole('button', { name: 'Send sign-in link' }).click()
   await expect(sending).toBeVisible()
   await expect(signInRegion(page).getByRole('status')).toContainText(address)
-  await expect(page.getByRole('button', { name: 'Use a different email' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: 'Check your email' })).toBeFocused()
+  await expect(page.getByRole('link', { name: 'Use a different email' })).toBeVisible()
+  // The strip draws the link's window and says until when it works.
+  await expect(page.locator('[data-sign-in-strip="link"]')).toContainText(/Your link works until \d\d:\d\d MYT/)
+  await expect(page.locator('[data-sign-in-window]')).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   expect(requestCount).toBe(1)
   await expectNoPasswordControls(page)
@@ -79,13 +107,12 @@ test('keyboard-only email sign-in reaches and submits the labelled form', async 
   await page.route('**/api/auth/sign-in/magic-link', (route) => route.fulfill({ json: { status: true } }))
   await page.goto('/sign-in')
 
-  const passkey = page.getByRole('button', { name: 'Sign in with a passkey' })
-  for (let tab = 0; tab < 8 && !(await passkey.evaluate((element) => element === document.activeElement)); tab += 1) {
-    await page.keyboard.press('Tab')
-  }
-  await expect(passkey).toBeFocused()
+  // The skip link is the first stop, then the wordmark, then the field.
   await page.keyboard.press('Tab')
-
+  await expect(page.getByRole('link', { name: 'Skip to content' })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('link', { name: 'Skyclause home' })).toBeFocused()
+  await page.keyboard.press('Tab')
   const email = page.getByLabel('Email address')
   await expect(email).toBeFocused()
   await page.keyboard.insertText('keyboard@example.org')
@@ -109,9 +136,11 @@ test('email, Google and link errors explain recovery and focus the message or fi
   const email = page.getByLabel('Email address')
   await email.fill('reader@example.org')
   await page.getByRole('button', { name: 'Send sign-in link' }).click()
-  await expect(email).toHaveAttribute('aria-invalid', 'true')
+  // The mail or auth API failed, not the address: the field stays valid and takes focus for another try.
+  const sendError = signInRegion(page).getByRole('alert')
+  await expect(sendError).toHaveText('We couldn’t send the sign-in link just now. Try again in a minute.')
+  await expect(email).not.toHaveAttribute('aria-invalid', 'true')
   await expect(email).toBeFocused()
-  await expect(signInRegion(page).getByRole('alert')).toContainText('Check the address and try again')
   await expectAuthAxe(page)
 
   await page.getByRole('button', { name: 'Continue with Google' }).click()
@@ -131,7 +160,7 @@ test('email, Google and link errors explain recovery and focus the message or fi
 test('sign-up keeps a safe next path, offers email and Google, and links back to sign-in', async ({ page }) => {
   await page.goto('/sign-up?next=%2Fcommons%3Ftab%3Dwindows')
 
-  await expect(page.getByRole('heading', { level: 1, name: 'Create an account' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Sign in or create your account' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Sign in with a passkey' })).toHaveCount(0)
   await expect(page.getByLabel('Email address')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible()
@@ -251,7 +280,10 @@ test('an expired link with a resend handle takes one press and announces the sen
   await expectAuthAxe(page)
   await page.getByRole('button', { name: 'Resend' }).click()
 
-  await expect(signInRegion(page).getByRole('status')).toContainText('New sign-in link sent. Check your email.')
+  await expect(signInRegion(page).getByRole('status')).toContainText(
+    'A new sign-in link is on its way to the same address.'
+  )
+  await expect(page.locator('[data-sign-in-strip="link"]')).toContainText(/Your link works until \d\d:\d\d MYT/)
   expect(resendCount).toBe(1)
   await expectNoPasswordControls(page)
   await expectAuthAxe(page)
@@ -354,4 +386,136 @@ test('conditional passkey autofill offers a stored credential and signs in to ne
   await expect.poll(() => optionsCount).toBeGreaterThan(0)
   await expect.poll(() => verificationCount).toBe(1)
   await expect(page).toHaveURL(/\/commons$/)
+})
+
+test('an empty or malformed address is said beside the field with no browser bubble and no request', async ({
+  page
+}) => {
+  let requests = 0
+  await page.route('**/api/auth/sign-in/magic-link', (route) => {
+    requests += 1
+    return route.fulfill({ status: 400, json: { code: 'VALIDATION_ERROR', message: 'Invalid email' } })
+  })
+  await page.goto('/sign-in')
+  const email = page.getByLabel('Email address')
+  await page.getByRole('button', { name: 'Send sign-in link' }).click()
+  await expect(signInRegion(page).getByRole('alert')).toHaveText('Enter your email address.')
+  await expect(email).toHaveAttribute('aria-invalid', 'true')
+  await expect(email).toBeFocused()
+  // The form takes no browser validation, so no bubble covers the page.
+  await expect(page.locator('form[action="/sign-in/link"]')).toHaveAttribute('novalidate', '')
+  await email.fill('not-an-email')
+  await page.getByRole('button', { name: 'Send sign-in link' }).click()
+  await expect(signInRegion(page).getByRole('alert')).toHaveText('Enter an email address like name@example.com.')
+  expect(requests).toBe(0)
+  await expectAuthAxe(page)
+
+  // One the server refuses is told the same way.
+  await email.fill('reader@example.invalid')
+  await page.getByRole('button', { name: 'Send sign-in link' }).click()
+  await expect(email).toHaveAttribute('aria-invalid', 'true')
+  expect(requests).toBe(1)
+})
+
+test('too many links says when to ask again, from the API’s Retry-After, never a status', async ({ page }) => {
+  await page.route('**/api/auth/sign-in/magic-link', (route) =>
+    route.fulfill({
+      status: 429,
+      headers: { 'Retry-After': '1200' },
+      json: { code: 'RATE_LIMITED', message: 'Too many sign-in link requests.' }
+    })
+  )
+  await page.goto('/sign-in')
+  await page.getByLabel('Email address').fill('reader@example.org')
+  await page.getByRole('button', { name: 'Send sign-in link' }).click()
+  const alert = signInRegion(page).getByRole('alert')
+  await expect(alert).toContainText(/You can ask again at \d\d:\d\d MYT\./)
+  await expect(alert).not.toContainText(/429|RATE_LIMITED/)
+  await expectAuthAxe(page)
+})
+
+test('the link’s window runs to its real end; then the form returns with the address and one line', async ({
+  page
+}) => {
+  await page.clock.install()
+  await page.route('**/api/auth/sign-in/magic-link', (route) => route.fulfill({ json: { status: true } }))
+  await page.goto('/sign-in')
+  await page.getByLabel('Email address').fill('reader@example.org')
+  await page.getByRole('button', { name: 'Send sign-in link' }).click()
+  const strip = page.locator('[data-sign-in-strip="link"]')
+  await expect(strip).toContainText('15 min left')
+  await page.clock.fastForward('10:00')
+  await expect(strip).toContainText('5 min left')
+  await page.clock.fastForward('05:01')
+  const email = page.getByLabel('Email address')
+  await expect(email).toHaveValue('reader@example.org')
+  await expect(email).toBeFocused()
+  await expect(signInRegion(page).getByRole('status')).toContainText(/Your sign-in link expired at \d\d:\d\d MYT/)
+  await expect(page.locator('[data-sign-in-strip="day"]')).toBeVisible()
+  await expect(page.locator('[data-sign-in-window]')).toHaveCount(0)
+  await expectAuthAxe(page)
+})
+
+test('only the ways in the server can serve are offered; a missing email link is said in words', async ({ page }) => {
+  const url = `http://localhost:${process.env.E2E_PORT ?? 3100}`
+  await page.context().addCookies([{ name: 'skyclause-test-sign-in-off', value: 'google', url }])
+  await page.goto('/sign-in')
+  await expect(page.getByRole('button', { name: 'Continue with Google' })).toHaveCount(0)
+  await expect(page.getByLabel('Email address')).toBeVisible()
+
+  await page.context().addCookies([{ name: 'skyclause-test-sign-in-off', value: 'email', url }])
+  await page.goto('/sign-in')
+  await expect(page.getByLabel('Email address')).toHaveCount(0)
+  await expect(
+    page.getByText('Email sign-in isn’t available right now. Use a passkey or Google instead.')
+  ).toBeVisible()
+  await expectAuthAxe(page)
+})
+
+test('a browser without passkeys says so and points to the email link; a return path says why', async ({ page }) => {
+  await page.addInitScript(() => {
+    // @ts-expect-error -- this browser has no WebAuthn.
+    delete window.PublicKeyCredential
+  })
+  await page.goto('/sign-in?next=%2Fnew')
+  await expect(page.getByText('This browser can’t use passkeys. Use the email link.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Sign in with a passkey' })).toHaveCount(0)
+  await expect(page.getByText('Sign in to open the page you asked for.')).toBeVisible()
+  await expectAuthAxe(page)
+})
+
+test('without JavaScript the email form posts and the page says what happened', async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false })
+  const page = await context.newPage()
+  await signedOut(page)
+
+  await page.goto('/sign-in?next=%2Fnew')
+  await expect(page.getByRole('button', { name: 'Sign in with a passkey' })).toBeHidden()
+  await page.getByRole('button', { name: 'Send sign-in link' }).click()
+  await expect(page).toHaveURL(/\/sign-in\?state=email-invalid&next=%2Fnew$/)
+  await expect(page.getByText('Enter an email address like name@example.com.')).toBeVisible()
+
+  // This server has no mail transport, so the real send fails, and the page says so in words.
+  await page.getByLabel('Email address').fill('reader@example.org')
+  await page.getByRole('button', { name: 'Send sign-in link' }).click()
+  await expect(page).toHaveURL(/\/sign-in\?state=send-failed&next=%2Fnew$/)
+  await expect(page.getByRole('alert')).toHaveText('We couldn’t send the sign-in link just now. Try again in a minute.')
+
+  // A sent link's page, as the form lands on it: the address it went to, and until when it works.
+  const until = new Date(Date.now() + 14 * 60_000).toISOString()
+  await page.goto(`/sign-in?state=link-sent&until=${encodeURIComponent(until)}`)
+  await expect(page.getByRole('heading', { level: 2, name: 'Check your email' })).toBeVisible()
+  await expect(page.getByText(/It works until \d\d:\d\d MYT\./)).toBeVisible()
+  await expect(page.locator('[data-sign-in-strip="link"]')).toContainText(/Your link works until \d\d:\d\d MYT/)
+  await page.getByRole('link', { name: 'Use a different email' }).click()
+  await expect(page).toHaveURL(/\/sign-in$/)
+  await expect(page.getByLabel('Email address')).toBeVisible()
+
+  // The emailed link's own page: its "Sign in" posts as a form too, and an unknown link says it has expired.
+  await page.goto('/sign-in?link=unknown-token&resend=unknown-handle')
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(page).toHaveURL(/\/sign-in\?state=link-expired&resend=unknown-handle$/)
+  await expect(page.getByText('This link has expired. Request a new one.')).toBeVisible()
+  await expectNoPasswordControls(page)
+  await context.close()
 })

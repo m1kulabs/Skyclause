@@ -1,4 +1,8 @@
+import { SIGN_IN_LINK_EXPIRY_S } from '@skyclause/auth/sign-in-link'
+
 const APP_ORIGIN = 'https://app.skyclause.m1ku.tech'
+/** An emailed link's lifetime, from the constant the server sets it with. */
+export const LINK_LIFETIME_MS = SIGN_IN_LINK_EXPIRY_S * 1000
 
 export const AUTH_ROUTE_PATHS = [
   '/sign-in',
@@ -50,12 +54,39 @@ export function isAuthRoute(path: string): boolean {
 
 export type AuthState =
   | { kind: 'confirm'; link: string; resend?: string; stepUp: boolean }
-  | { kind: 'expired'; resend?: string; stepUp?: boolean }
+  | { kind: 'expired'; resend?: string; stepUp?: boolean; resendFailed?: boolean }
   | { kind: 'link-pending' }
   | { kind: 'google-failed' }
+  // The form posted without JavaScript (form-post.ts) says what happened through these.
+  | { kind: 'link-sent'; until: string }
+  | { kind: 'email-invalid' }
+  | { kind: 'send-failed' }
+  | { kind: 'send-limited'; retryAt?: string }
+  | { kind: 'step-up-confirmed' }
   | { kind: 'form' }
 
-export function resolveAuthState(params: AuthSearchParams): AuthState {
+/** An address with one @, something on both sides and a dot in the domain; the server checks it again. */
+export function isEmailAddress(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+}
+
+function instant(value: string | undefined): Date | null {
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+/**
+ * A sent link's end, from the URL the no-script form lands on. It is only a picture of the link's window, never a
+ * credential, so an end beyond one link's lifetime from now is ignored rather than drawn.
+ */
+function linkEnd(value: string | undefined, now: Date): string | null {
+  const until = instant(value)
+  if (!until || until.getTime() > now.getTime() + LINK_LIFETIME_MS + 60_000) return null
+  return until.toISOString()
+}
+
+export function resolveAuthState(params: AuthSearchParams, now: Date = new Date()): AuthState {
   const link = first(params.link)
   const stepUp = first(params.for) === 'step-up'
   if (link !== undefined) {
@@ -69,10 +100,22 @@ export function resolveAuthState(params: AuthSearchParams): AuthState {
     return {
       kind: 'expired',
       ...(resend ? { resend } : {}),
-      ...(stepUp ? { stepUp: true } : {})
+      ...(stepUp ? { stepUp: true } : {}),
+      ...(first(params.failed) === 'resend' ? { resendFailed: true } : {})
     }
   }
   if (state === 'link-pending') return { kind: 'link-pending' }
   if (state === 'google-failed') return { kind: 'google-failed' }
+  if (state === 'link-sent') {
+    const until = linkEnd(first(params.until), now)
+    return until ? { kind: 'link-sent', until } : { kind: 'form' }
+  }
+  if (state === 'email-invalid') return { kind: 'email-invalid' }
+  if (state === 'step-up-confirmed') return { kind: 'step-up-confirmed' }
+  if (state === 'send-failed') return { kind: 'send-failed' }
+  if (state === 'send-limited') {
+    const retryAt = instant(first(params.retry))?.toISOString()
+    return { kind: 'send-limited', ...(retryAt ? { retryAt } : {}) }
+  }
   return { kind: 'form' }
 }

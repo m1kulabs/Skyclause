@@ -9,13 +9,14 @@ import type { BetterAuthPlugin } from 'better-auth'
 import { magicLink } from 'better-auth/plugins'
 import { asc, eq, sql } from 'drizzle-orm'
 import { withSendRefusal } from '../send-refusal'
+import { SIGN_IN_LINK_EXPIRY_S } from '../sign-in-link'
 
 const OWNER = 'a-auth-signin-api'
 const HANDLE = 'magic-link-resend:'
 const MAGIC = 'magic-link:'
 const MAGIC_META = 'magic-link-meta:'
 const GOOGLE_LINK = 'google-link:'
-const MAGIC_EXPIRY_S = 15 * 60
+const MAGIC_EXPIRY_S = SIGN_IN_LINK_EXPIRY_S
 const HANDLE_EXPIRY_S = 24 * 60 * 60
 const RATE_WINDOW_S = 60 * 60
 
