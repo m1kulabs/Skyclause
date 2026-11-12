@@ -53,6 +53,18 @@ describe('InputAgeChip', () => {
     await expectAxeClean()
   })
 
+  test('an input with no reading yet says so, never an age it does not have', async () => {
+    // A new project's inputs: stale since the evaluation, nothing observed.
+    const none = { ...inputAt(0, 'stale'), value: null, observed_at: null, reading_ids: [], age_s: 0 }
+    render(<InputAgeChip input={none} />)
+    expect(screen.getByLabelText('gauge no reading yet')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/min old/)
+    cleanup()
+    render(<InputAgeChip input={none} locale="ms" />)
+    expect(screen.getByLabelText('gauge belum ada bacaan')).toBeTruthy()
+    await expectAxeClean()
+  })
+
   test('error reads gauge error since HH:MM with MYT nearby', async () => {
     render(<InputAgeChip input={{ ...inputAt(12, 'error') }} />)
     const label = screen.getByLabelText(/gauge error since/).getAttribute('aria-label') ?? ''

@@ -171,14 +171,19 @@ describe('securityHeaders', () => {
     expect(camera).toBe('camera=(self), microphone=(), geolocation=()')
   })
 
-  it('keeps the headers on the 404 page for unknown hosts and cross-surface paths', () => {
+  it('keeps the headers on the 404 page for unknown hosts and cross-surface paths, and on a page redirect', () => {
     const unknown = run('https://web-413187272599.asia-southeast1.run.app/', multi)
     expect(unknown.headers.get('x-middleware-rewrite')).toContain('/_not-found')
     expect(unknown.headers.get('Strict-Transport-Security')).toBe('max-age=63072000; includeSubdomains')
     expect(unknown.headers.get('Content-Security-Policy')).toContain("frame-ancestors 'none'")
-    const cross = run('https://skyclause.m1ku.tech/sign-in', multi)
+    const cross = run('https://skyclause.m1ku.tech/v1/projects', multi)
     expect(cross.headers.get('x-middleware-rewrite')).toContain('/_not-found')
     expect(cross.headers.get('Content-Security-Policy')).toContain("frame-ancestors 'none'")
+    // A page asked of the other host is sent there (lib/hosts.ts `pageElsewhere`), under the same headers.
+    const moved = run('https://skyclause.m1ku.tech/sign-in', multi)
+    expect(`${moved.status} ${moved.headers.get('location')}`).toBe('307 https://app.skyclause.m1ku.tech/sign-in')
+    expect(moved.headers.get('Strict-Transport-Security')).toBe('max-age=63072000; includeSubdomains')
+    expect(moved.headers.get('Content-Security-Policy')).toContain("frame-ancestors 'none'")
   })
 
   it('sets no cookie', () => {

@@ -54,5 +54,7 @@ test('null evaluator state is labelled separately while persisted provider error
   } as never)
   render(<Panel org="org" project="campus" />)
   expect(await screen.findByText('Not evaluated')).toBeTruthy()
-  expect(screen.getByText('Error · HTTP 503')).toBeTruthy()
+  // The source's own failure in words: never the status code it answered.
+  expect(screen.getByText('Last poll failed')).toBeTruthy()
+  expect(screen.queryByText(/HTTP|503/)).toBeNull()
 })

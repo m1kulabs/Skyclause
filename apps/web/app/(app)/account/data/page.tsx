@@ -3,6 +3,9 @@ import { SettingsFrame } from '../../../../features/settings/frame'
 import { settingsLocale } from '../../../../features/settings/locale'
 import { requireSettings } from '../../../../features/settings/gate'
 import { getAccountEmail } from '../../../../lib/principal'
+import { settingsMetadata } from '../../../../features/settings/metadata'
+
+export const generateMetadata = settingsMetadata('account', 'data')
 
 export default async function Page() {
   const principal = await requireSettings({ scope: 'account', section: 'data' })

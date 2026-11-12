@@ -67,8 +67,10 @@ test('landing times carry MYT (LOC-6)', async ({ page }) => {
 test('the questions open one at a time, and the grades answer reads the live grades', async ({ page }) => {
   await page.goto('/')
   const tiles = page.locator('details[name="faq"]')
-  await expect(tiles.filter({ hasText: 'Is it right?' })).toHaveAttribute('open', '')
-  await expect(tiles.getByText('No live grades yet (n=0)')).toBeVisible()
+  // The tile open on arrival is the first question, with a real answer; the grades answer is one choice away.
+  await expect(tiles.filter({ hasText: 'Is this an emergency warning service?' })).toHaveAttribute('open', '')
+  await page.getByText('Is it right?', { exact: true }).click()
+  await expect(tiles.getByText(/^No live grades yet \(n=0\): /)).toBeVisible()
   await page.getByText('Who makes the call?', { exact: true }).click()
   await expect(page.getByText('a person on the approver rota approves it before anyone hears it.')).toBeVisible()
   expect(await tiles.evaluateAll((all) => all.filter((tile) => (tile as HTMLDetailsElement).open).length)).toBe(1)
@@ -130,6 +132,9 @@ test('the photographs crossfade only calm skies, and the pause stops them', asyn
   expect(await states()).toContain('running')
   await page.getByLabel('Pause the photographs').check()
   expect(new Set((await states()).join(',').split(/,\s*/))).toEqual(new Set(['paused']))
+  // The words follow the glyph: paused, the control offers Play beside its triangle.
+  await expect(page.getByLabel('Play the photographs')).toBeChecked()
+  await expect(page.getByText('Pause the photographs')).toBeHidden()
 })
 
 const MOVED = '[data-reveal], [data-words] .word, [data-reveal-slot]'
@@ -219,7 +224,9 @@ test('with scripts blocked the page is complete: every section, stage, part and 
     await expect(page.getByRole('slider', { name: 'Stage' })).toBeDisabled()
     await expect(page.locator('form.cta-form input[name="start"]')).toBeVisible()
     await expect(page.locator('form#window input[name="end"]')).toBeVisible()
-    await expect(page.locator('details[name="faq"]').getByText('No live grades yet (n=0)')).toBeVisible()
+    await expect(
+      page.locator('.record-fact[data-item="grade"]').getByText(/^No live grades yet \(n=0\): /)
+    ).toBeVisible()
   } finally {
     await context.close()
   }

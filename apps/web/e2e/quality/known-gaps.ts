@@ -17,7 +17,6 @@ export interface KnownGap {
 }
 
 const ADMINS: Role[] = ['Owner', 'Admin']
-const NON_MEMBERS: Role[] = ['share-link reviewer', 'signed out']
 const SHOWN = /^answered 200 with the page, expected 404$/
 
 export const KNOWN_GAPS: KnownGap[] = [
@@ -36,8 +35,9 @@ export const KNOWN_GAPS: KnownGap[] = [
     check: 'status',
     detail: SHOWN,
     issue: 596,
-    why: 'the bundle page renders for non-members instead of 404',
-    roles: NON_MEMBERS
+    why: 'the bundle page renders for a share link outside its project instead of 404',
+    // Signed out, the app's layout now sends the visit to sign-in first (e2e/quality/visit.ts `signsInFirst`).
+    roles: ['share-link reviewer']
   },
   {
     route: '/[org]/[project]/camera/[sourceId]',

@@ -1,6 +1,7 @@
 import type { SubscriberData } from '@skyclause/contracts'
 import { headers } from 'next/headers'
 import { api } from '../../../../../lib/api'
+import { IN_PROCESS_ORIGIN } from '../../../../../lib/principal'
 import { prefersMalay } from '../../../../../lib/preferred-language'
 import {
   SubscriberRights,
@@ -11,12 +12,10 @@ export default async function Page({ params }: { params: Promise<{ token: string
   const { token } = await params
   const incoming = await headers()
   const forwardedFor = incoming.get('x-forwarded-for')
-  const host = incoming.get('x-forwarded-host') ?? incoming.get('host') ?? 'localhost'
-  const protocol = incoming.get('x-forwarded-proto') ?? 'https'
   const requestHeaders = new Headers()
   if (forwardedFor) requestHeaders.set('x-forwarded-for', forwardedFor)
   const response = await api.fetch(
-    new Request(`${protocol}://${host}/api/subscribe/${encodeURIComponent(token)}/data`, { headers: requestHeaders })
+    new Request(`${IN_PROCESS_ORIGIN}/api/subscribe/${encodeURIComponent(token)}/data`, { headers: requestHeaders })
   )
   // A link that fails has no subscriber to read a language from, so it speaks the browser's (LOC-7).
   const locale = prefersMalay(incoming.get('accept-language')) ? 'ms' : 'en'

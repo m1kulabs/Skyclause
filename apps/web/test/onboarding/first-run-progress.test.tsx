@@ -9,7 +9,8 @@ vi.mock('../../features/onboarding/operations', async (original) => ({
   ...(await original<typeof import('../../features/onboarding/operations')>()),
   onboardingApi: vi.fn()
 }))
-vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn() }), usePathname: () => '/test-org/new' }))
+const replace = vi.hoisted(() => vi.fn())
+vi.mock('next/navigation', () => ({ useRouter: () => ({ replace }), usePathname: () => '/test-org/new' }))
 
 const steps = ['organisation', 'project', 'sources', 'window', 'rota', 'channel'] as const
 const view = (done: number, skipped: readonly string[] = []) => ({
@@ -25,6 +26,41 @@ const view = (done: number, skipped: readonly string[] = []) => ({
 afterEach(() => {
   cleanup()
   vi.mocked(onboardingApi).mockReset()
+  replace.mockReset()
+  document.body.innerHTML = ''
+})
+
+/** The project form beside the list, with or without a draft typed into it. */
+function projectForm(dirty: boolean) {
+  const form = document.createElement('form')
+  form.setAttribute('data-project-create', '')
+  if (dirty) form.setAttribute('data-dirty', 'true')
+  document.body.append(form)
+}
+
+test('a bare visit to the project route after the project step resumes at the next outstanding step', async () => {
+  vi.mocked(onboardingApi).mockResolvedValue(view(2) as never)
+  projectForm(false)
+  render(<FirstRunProgress org="test-org" redirectFromProject />)
+  await waitFor(() => expect(replace).toHaveBeenCalledWith('/test-org/sources'))
+})
+
+test('a project form with a draft in it is never replaced by the next step', async () => {
+  vi.mocked(onboardingApi).mockResolvedValue(view(2) as never)
+  projectForm(true)
+  render(<FirstRunProgress org="test-org" redirectFromProject />)
+  await screen.findByRole('list')
+  await new Promise((resolve) => setTimeout(resolve, 50))
+  expect(replace).not.toHaveBeenCalled()
+})
+
+test('a Create a project link, which asks for another project, stays on the form', async () => {
+  vi.mocked(onboardingApi).mockResolvedValue(view(2) as never)
+  projectForm(false)
+  render(<FirstRunProgress org="test-org" redirectFromProject={false} />)
+  await screen.findByRole('list')
+  await new Promise((resolve) => setTimeout(resolve, 50))
+  expect(replace).not.toHaveBeenCalled()
 })
 
 test('only the step that is next has actions: one Continue and one quiet Skip this step, none on the rest', async () => {
@@ -62,4 +98,48 @@ test('the steps are written in the language they are given', async () => {
   vi.mocked(onboardingApi).mockResolvedValue(view(1) as never)
   render(<FirstRunProgress org="test-org" locale="ms" />)
   expect(await screen.findByRole('button', { name: /^Langkau langkah ini/ })).toBeTruthy()
+})
+
+test('in Malay a done step reads when it was done, never the English result the API words', async () => {
+  vi.mocked(onboardingApi).mockResolvedValue(view(2) as never)
+  render(<FirstRunProgress org="test-org" locale="ms" />)
+  const list = await screen.findByRole('list')
+  expect(within(list).queryByText('organisation done')).toBeNull()
+  expect(within(list).getAllByText('Selesai pada 09:00 MYT')).toHaveLength(2)
+})
+
+test('in English a done step keeps its result, unless it would print anything raw', async () => {
+  // Every step done but the rota, so the list still shows.
+  const answer = view(6)
+  answer.steps[4]!.completed_at = null
+  answer.steps[4]!.result = null
+  answer.steps[3]!.result = 'Open-air lecture declared · rain_5m_mm'
+  answer.steps[5]!.result = 'in app connected'
+  vi.mocked(onboardingApi).mockResolvedValue(answer as never)
+  render(<FirstRunProgress org="test-org" />)
+  const list = await screen.findByRole('list')
+  expect(within(list).getByText('organisation done')).toBeTruthy()
+  // A snake_case key, and the channel's unlocalised name, never show: the step says when it was done instead.
+  expect(within(list).queryByText(/rain_5m_mm|in app connected/)).toBeNull()
+  expect(within(list).getAllByText('Done at 09:00 MYT')).toHaveLength(2)
+})
+
+test('the source step says it is bound, or that it needs attention, never the source ID or its error', async () => {
+  const answer = view(3)
+  answer.steps[2]!.result = 'CA16W bound · API 67, 13 min old'
+  vi.mocked(onboardingApi).mockResolvedValue(answer as never)
+  render(<FirstRunProgress org="test-org" />)
+  let list = await screen.findByRole('list')
+  expect(within(list).getByText('Source bound.')).toBeTruthy()
+  expect(within(list).queryByText(/CA16W/)).toBeNull()
+  cleanup()
+  for (const result of ['CA16W bound · error · HTTP 404', '0232901RF bound · error']) {
+    answer.steps[2]!.result = result
+    vi.mocked(onboardingApi).mockResolvedValue(answer as never)
+    render(<FirstRunProgress org="test-org" locale="ms" />)
+    list = await screen.findByRole('list')
+    expect(within(list).getByText('Perlu perhatian: tinjauan terakhir sumber gagal.')).toBeTruthy()
+    expect(within(list).queryByText(/HTTP|CA16W|0232901RF|error/)).toBeNull()
+    cleanup()
+  }
 })

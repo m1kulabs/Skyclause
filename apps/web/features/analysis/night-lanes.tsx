@@ -4,6 +4,7 @@ import { useCallback, useId, useState, type ReactNode } from 'react'
 import type { Forecast, Listing, Night } from '@skyclause/contracts'
 import { formatClock, formatDate, formatNumber, formatTime } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
+import { ApiProblem } from '../../lib/api-fetch'
 import { t } from './catalogue'
 import { apiFetch, allPages, type Graded } from './operations'
 import { EmptyBlock, Failure, Time } from './presentation'
@@ -207,13 +208,25 @@ export function NightLanes({
 }) {
   const read = useCallback(
     async (signal: AbortSignal) => {
-      const [nights, listings] = await Promise.all([
+      const [nights, listings] = await Promise.allSettled([
         allPages((cursor) => apiFetch('listNights', { org, params: { id: projectId }, query: { cursor }, signal })),
         allPages((cursor) =>
           apiFetch('listProjectListings', { org, params: { id: projectId }, query: { cursor }, signal })
         )
       ])
-      return { nights, listings }
+      if (nights.status === 'rejected') throw nights.reason
+      // Listings that are not available yet (501) are no listings: the nights still draw. Any other failure is named
+      // beside them, with Retry.
+      const unavailable =
+        listings.status === 'rejected' && listings.reason instanceof ApiProblem && listings.reason.status === 501
+      return {
+        nights: nights.value,
+        listings: listings.status === 'fulfilled' ? listings.value : ([] as Listing[]),
+        listingsFailure:
+          listings.status === 'rejected' && !unavailable
+            ? { error: listings.reason as unknown, at: new Date().toISOString() }
+            : null
+      }
     },
     [org, projectId]
   )
@@ -246,6 +259,15 @@ export function NightLanes({
         <h2 id="analysis-night-title">{t('analysis.nightTitle', {}, locale)}</h2>
         <p className="analysis-muted">{t('analysis.nightSummary', {}, locale)}</p>
       </div>
+      {result.value.listingsFailure && (
+        <Failure
+          source={t('analysis.sources.listings', {}, locale)}
+          error={result.value.listingsFailure.error}
+          at={result.value.listingsFailure.at}
+          retry={result.retry}
+          locale={locale}
+        />
+      )}
       {!nights.length ? (
         <EmptyBlock message="nightEmpty" locale={locale} />
       ) : (

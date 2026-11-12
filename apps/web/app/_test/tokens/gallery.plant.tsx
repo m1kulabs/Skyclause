@@ -759,7 +759,7 @@ export function Gallery() {
         <NoCallState inputs={['JPS station 75']} since="2026-11-12T06:55:00Z" />
         <div className="grid gap-4 md:grid-cols-2">
           <SourceError source="the windows list" status={501} />
-          <NotBuilt thing="The key panel" />
+          <NotBuilt title="AI keys are not available yet." />
           <SourceError
             source="JPS station 75"
             status={503}

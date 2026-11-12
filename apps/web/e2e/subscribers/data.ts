@@ -46,7 +46,7 @@ export const row = {
   status: 'confirmed',
   suppressed: false,
   last_notice_at: '2026-11-06T02:00:00Z',
-  consent: { at: '2026-11-06T00:00:00Z', form: 'subscribe', notice_version: '2026-11-06', language: 'en' }
+  consent: { at: '2026-11-06T00:00:00Z', form: 'subscribe_link', notice_version: '2026-11-06', language: 'en' }
 }
 export const counts = {
   total: 1,

@@ -456,12 +456,13 @@ test('NFR-15 shows empty states, never fallback data, until APIs answer', async 
 })
 
 for (const guest of [false, true]) {
-  test(`${guest ? 'guest' : 'signed-out visitor'} goes to sign-up`, async ({ page }) => {
-    const base = process.env.E2E_BASE_URL ?? 'http://localhost:3100'
+  // A guest converts at sign-up; a visitor with no credential at all signs in first and comes back.
+  test(`${guest ? 'guest goes to sign-up' : 'signed-out visitor goes to sign-in and back'}`, async ({ page }) => {
+    const base = process.env.E2E_BASE_URL ?? `http://localhost:${process.env.E2E_PORT ?? 3100}`
     if (guest) await asPage(page, { ...member, isGuest: true })
     else await page.context().addCookies([{ name: 'skyclause_test_principal', value: 'null', url: base }])
     await page.goto(probationUrl('label'))
-    await expect(page).toHaveURL(/\/sign-up$/)
+    await expect(page).toHaveURL(guest ? /\/sign-up$/ : /\/sign-in\?next=%2F[^&]+probation/)
     await expect(page.locator('.probation-page')).toHaveCount(0)
   })
 }

@@ -69,24 +69,44 @@ export function InputAgeChip({
   const snapshotAge = ageSeconds ?? (mounted ? null : input.age_s)
   const name = indicatorName(input.name, locale)
 
+  const resolvedAge =
+    snapshotAge !== null && snapshotAge !== undefined
+      ? formatAge(new Date(Date.now() - snapshotAge * 1000), locale)
+      : observed
+        ? formatAge(observed, locale)
+        : null
+
   let label: string
+  let namePart: string
+  let agePart: string | null = null
   if (isError) {
     const errorTime = input.since ?? observed
-    label = t('data.age.error', { name, time: errorTime ? formatTime(errorTime, locale) : '–' }, locale)
+    const time = errorTime ? formatTime(errorTime, locale) : '–'
+    label = t('data.age.error', { name, time }, locale)
+    namePart = name
+    agePart = t('data.age.error', { name: '', time }, locale).trim()
   } else if (dailyDate) {
     label = t('data.age.daily', { date: formatDate(dailyDate, locale) }, locale)
-  } else if (snapshotAge !== null && snapshotAge !== undefined) {
-    const age = formatAge(new Date(Date.now() - snapshotAge * 1000), locale)
-    label = isStale
-      ? t('data.age.label_stale', { name, age, stale: t('data.age.stale', {}, locale) }, locale)
-      : t('data.age.label', { name, age }, locale)
-  } else if (observed) {
-    const age = formatAge(observed, locale)
-    label = isStale
-      ? t('data.age.label_stale', { name, age, stale: t('data.age.stale', {}, locale) }, locale)
-      : t('data.age.label', { name, age }, locale)
+    namePart = label
+  } else if (ageSeconds === null && input.observed_at === null && input.value === null) {
+    // Nothing observed yet (a new project's inputs): its `since` is when it went stale, not a reading's time.
+    label = t('data.age.no_reading', { name }, locale)
+    namePart = name
+    agePart = t('data.age.no_reading', { name: '' }, locale).trim()
+  } else if (resolvedAge !== null) {
+    if (isStale) {
+      const stale = t('data.age.stale', {}, locale)
+      label = t('data.age.label_stale', { name, age: resolvedAge, stale }, locale)
+      namePart = name
+      agePart = t('data.age.label_stale', { name: '', age: resolvedAge, stale }, locale).trim()
+    } else {
+      label = t('data.age.label', { name, age: resolvedAge }, locale)
+      namePart = name
+      agePart = t('data.age.label', { name: '', age: resolvedAge }, locale).trim()
+    }
   } else {
     label = name
+    namePart = name
   }
 
   const sourceTime = observed ? formatTime(observed, locale) : '–'
@@ -98,17 +118,21 @@ export function InputAgeChip({
       <PopoverTrigger
         openOnHover
         delay={250}
-        className="group/age inline-flex min-h-[34px] min-w-[34px] items-center rounded-full text-[13px] font-medium tabular-nums motion-reduce:transition-none [@media(pointer:coarse)]:min-h-[44px] [@media(pointer:coarse)]:min-w-[44px]"
+        className="group/age inline-flex min-h-[34px] max-w-full min-w-[34px] items-center rounded-full text-left text-[13px] font-medium tabular-nums motion-reduce:transition-none [@media(pointer:coarse)]:min-h-[44px] [@media(pointer:coarse)]:min-w-[44px]"
+        title={label}
         aria-label={label}
         data-state={input.state}
       >
         {/* A tag, not a button: the raised tone and no edge (high contrast adds its own through data-slot="badge"). */}
         <span
           data-slot="badge"
-          className="inline-flex min-h-6 items-center gap-1.5 rounded-full bg-raised px-2.5 in-data-[slot=card]:bg-overlay group-hover/age:bg-accent"
+          className="inline-flex h-6 max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-full bg-raised px-2.5 whitespace-nowrap in-data-[slot=card]:bg-overlay group-hover/age:bg-accent"
         >
           <Glyph state={input.state} />
-          <span>{label}</span>
+          <span className="inline-flex min-w-0 items-center gap-1 leading-snug">
+            <span className="min-w-0 truncate">{namePart}</span>
+            {agePart ? <span className="shrink-0 whitespace-nowrap"> {agePart}</span> : null}
+          </span>
         </span>
       </PopoverTrigger>
       <PopoverContent className="w-64 gap-0 tabular-nums">

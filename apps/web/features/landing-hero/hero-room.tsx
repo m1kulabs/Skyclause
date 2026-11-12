@@ -38,7 +38,9 @@ export function HeroRoom() {
       <label className={styles.pause}>
         <input type="checkbox" name="hero-photos-paused" className={styles.pauseInput} />
         <span className={styles.pauseGlyph} aria-hidden="true" />
-        <span>{t('landing-hero.pause_photos', {}, 'en')}</span>
+        {/* The words follow the glyph: Pause while the photographs move, Play once they are paused (CSS only). */}
+        <span className={styles.pauseWord}>{t('landing-hero.pause_photos', {}, 'en')}</span>
+        <span className={styles.playWord}>{t('landing-hero.play_photos', {}, 'en')}</span>
       </label>
     </>
   )

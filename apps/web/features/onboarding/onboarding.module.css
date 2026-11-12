@@ -226,7 +226,9 @@
   gap: 4px 8px;
 }
 
-@container (max-width: 330px) {
+/* Below this the step's name would share its row with Continue and Skip, and wrap a word to a line: the actions go
+   under it instead. */
+@container (max-width: 480px) {
   .step {
     grid-template-columns: 24px minmax(0, 1fr);
   }

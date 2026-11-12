@@ -73,7 +73,13 @@ function ProjectMeta({ item, fetchedAt, locale }: { item: ProjectListItem; fetch
     <div className={styles.meta}>
       {/* A zero is printed as a zero, quietly: only a count that needs someone is set in the card title. */}
       <p className={summary.windows_at_risk > 0 ? 'type-card-title' : 'type-body text-muted-foreground'} data-numeric>
-        {t('organisations.projects.needsReview', { count: formatNumber(summary.windows_at_risk, locale) }, locale)}
+        {t(
+          summary.windows_at_risk === 1
+            ? 'organisations.projects.needsReview_one'
+            : 'organisations.projects.needsReview',
+          { count: formatNumber(summary.windows_at_risk, locale) },
+          locale
+        )}
       </p>
       <p className="type-small text-muted-foreground">
         {t(
@@ -177,7 +183,7 @@ export function ProjectsList({
   const visible = (items ?? []).filter((item) => archived === (item.archived_at !== null))
   const hasArchived = (items ?? []).some((item) => item.archived_at !== null)
   const ready = !loading && !failure
-  const createHref = `/${encodeURIComponent(org)}/new`
+  const createHref = `/${encodeURIComponent(org)}/new?another=1`
   const nextAction = canCreate ? (
     <a href={createHref} className={buttonVariants()}>
       {t('organisations.projects.create', {}, locale)}

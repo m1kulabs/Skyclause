@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render } from '@testing-library/react'
 import axe from 'axe-core'
 import { t } from '@skyclause/i18n/brand'
@@ -11,8 +11,8 @@ import type { HeroRead } from '../../features/landing-hero/landing-hero'
 const read: HeroRead = {
   now: new Date('2026-11-12T06:00:00.000Z'),
   win: { date: '2026-11-12', startMin: 900, endMin: 960 },
-  // Production today: the public verdict answers 501, not built.
-  result: { kind: 'error', status: 501, at: '2026-11-12T06:00:00.000Z' },
+  // Production today: the public verdict answers 501, so the hero answers with the replay.
+  result: { kind: 'unavailable' },
   latestCall: null,
   status: { kind: 'not_built' }
 }
@@ -146,17 +146,44 @@ describe('landing sections', () => {
 
   test('live reads render as read: n=0 before any grade, the error when a read fails, n with its interval', () => {
     renderPage()
-    expect(document.body.textContent).toContain('No live grades yet (n=0)')
-    expect(document.body.textContent).toContain('No approved call yet (n=0)')
+    // LND-3 and LND-4 keep their n=0, each inside a plain sentence.
+    expect(document.body.textContent).toContain(
+      'No live grades yet (n=0): the first appears once a call has been graded.'
+    )
+    expect(document.body.textContent).toContain('No approved call yet (n=0): each call a person approves appears here.')
     cleanup()
     renderPage({ kind: 'error', message: 'Grades request failed (503)' })
-    expect(document.body.textContent).toContain(
-      'Couldn’t load live grades: Grades request failed (503). Reload the page to try again.'
-    )
+    expect(document.body.textContent).toContain('Couldn’t load live grades just now. Reload the page to try again.')
+    // A failure is said in words; its status code is not.
+    expect(document.body.textContent).not.toContain('503')
     expect(document.body.textContent).not.toContain('No live grades yet')
+    cleanup()
+    // Public grades the API does not serve yet: what will show, never "not built".
+    renderPage({ kind: 'not_built' })
+    expect(document.body.textContent).toContain(
+      'Live grades show here, each with its n and 95% interval, once they are published.'
+    )
+    expect(document.body.textContent).not.toMatch(/not built/i)
     cleanup()
     renderPage({ kind: 'grades', n: 8, x: 7, low: 0.53, high: 0.98, metric: 'precision' })
     expect(document.body.textContent).toContain('Latest: n=8, 7 of 8 (Wilson 95% interval 0.53–0.98)')
+    cleanup()
+    // A grade with no interval yet names none: never an empty "(Wilson 95% interval )".
+    renderPage({ kind: 'grades', n: 1, x: null, low: null, high: null, metric: 'precision' })
+    const live = [...document.querySelectorAll('.frag-live')].map((line) => line.textContent)
+    expect(live).toContain('Latest: n=1')
+    expect(document.body.textContent).not.toContain('Wilson 95% interval )')
+  })
+
+  test('Lebat, the Malay rain class the clause is defined by, is marked Malay and left alone by translation', () => {
+    renderPage()
+    const terms = [...document.querySelectorAll('.frag-class')]
+    expect(terms.length).toBeGreaterThan(0)
+    for (const term of terms) {
+      expect(term.textContent).toMatch(/^Lebat/)
+      expect(term.getAttribute('lang')).toBe('ms')
+      expect(term.getAttribute('translate')).toBe('no')
+    }
   })
 
   test('both brand lines, and the questions as filled tiles sharing one name', () => {
@@ -175,7 +202,10 @@ describe('landing sections', () => {
     const tiles = [...document.querySelectorAll('details')]
     expect(tiles.length).toBeGreaterThanOrEqual(6)
     expect(new Set(tiles.map((tile) => tile.getAttribute('name')))).toEqual(new Set(['faq']))
-    expect(tiles.filter((tile) => tile.open)).toHaveLength(1)
+    // The tile open on arrival is the first question, whose answer is a real answer, not an empty state.
+    expect(tiles.filter((tile) => tile.open).map((tile) => tile.querySelector('summary')?.textContent)).toEqual([
+      'Is this an emergency warning service?'
+    ])
   })
 
   test('the closing sentence asks for a time, not personal data, and submits the window form', () => {
@@ -252,6 +282,13 @@ describe('landing sections', () => {
     expect(range.getAttribute('aria-valuetext')).toBe('Approval and notice')
   })
 
+  test('the replayed ledger says plainly that no call was made that day, with no "Empty:" label', () => {
+    renderPage()
+    const ledger = document.querySelector('.record-object[data-item="ledger"]')!
+    expect(ledger.textContent).toContain('No call was made that day.')
+    expect(ledger.textContent).not.toContain('Empty:')
+  })
+
   test('the record: four parts, each with its photograph, object and fact; radios choose one', () => {
     renderPage()
     const radios = [...document.querySelectorAll<HTMLInputElement>('input[name="record"]')]
@@ -276,6 +313,8 @@ describe('landing sections', () => {
       expect(img.getAttribute('loading')).toBe('lazy')
     }
     const credits = document.querySelector('.footer-credits')!
+    // Other pages link their own picture's credit here.
+    expect(credits.id).toBe('picture-credits')
     for (const key of PHOTO_KEYS) {
       const entry = photo(key)
       const credit = [...credits.querySelectorAll('li')].find((li) => li.textContent?.includes(entry.title))
@@ -291,6 +330,19 @@ describe('landing sections', () => {
     expect(footer.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Skyclause')
     const hrefs = [...footer.querySelectorAll('a')].map((a) => a.getAttribute('href'))
     for (const href of hrefs) expect(href).toMatch(/^(#|\/sign-in$|\/sign-up$|\/legal\/|\/ms\/legal\/|https:\/\/)/)
+    cleanup()
+    // Where the hosts split, Sign in and Create an account are the app host's pages, never the marketing host's.
+    vi.stubEnv('HOST_MODE', 'multi')
+    vi.stubEnv('APP_ORIGIN', 'https://app.skyclause.m1ku.tech')
+    try {
+      render(<LandingFooter />)
+      const named = (name: string) =>
+        [...document.querySelectorAll('footer a')].find((a) => a.textContent === name)?.getAttribute('href')
+      expect(named('Sign in')).toBe('https://app.skyclause.m1ku.tech/sign-in')
+      expect(named('Create an account')).toBe('https://app.skyclause.m1ku.tech/sign-up')
+    } finally {
+      vi.unstubAllEnvs()
+    }
     expect(hrefs).not.toContain('/guest')
     expect(hrefs).not.toContain('/docs')
     expect(footer.querySelector('[data-source="clock:Asia/Kuala_Lumpur"]')?.textContent).toContain('MYT')

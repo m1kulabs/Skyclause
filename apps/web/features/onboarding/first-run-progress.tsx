@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { formatTime } from '@skyclause/i18n/format'
 import { cn } from '#lib/utils'
 import { Button, buttonVariants } from '#ui/button'
 import { Skeleton } from '#ui/skeleton'
@@ -15,10 +16,39 @@ import styles from './onboarding.module.css'
 
 type Step = OnboardingView['steps'][number]['step']
 
+/** A result that would print something raw: a status code, a snake_case key such as `rain_5m_mm`. */
+const RAW_RESULT = /\bHTTP\b|\b[a-z0-9]+_[a-z0-9_]+\b/
+
+/**
+ * A done step's line. The API words each result as an English sentence. The source step's names the source by its ID
+ * and can carry its error, so the line says it is bound or needs attention instead; the channel step's names the
+ * channel by its key. In every other language, and for any result that would print something raw, the line says when
+ * the step was done.
+ */
+function DoneLine({ item, locale }: { item: OnboardingView['steps'][number]; locale: Locale }) {
+  if (item.step === 'sources' && item.result) {
+    return t(
+      /·\s*error\b/.test(item.result) ? 'onboarding.step_needs_attention' : 'onboarding.source_bound',
+      {},
+      locale
+    )
+  }
+  if (locale === 'en' && item.step !== 'channel' && item.result && !RAW_RESULT.test(item.result)) return item.result
+  if (!item.completed_at) return t('onboarding.done', {}, locale)
+  return (
+    <time dateTime={item.completed_at}>
+      {t('onboarding.done_at', { time: formatTime(item.completed_at, locale) }, locale)}
+    </time>
+  )
+}
+
 export interface FirstRunProgressProps {
   org: string
   locale?: Locale
-  /** The first project route resumes at its first outstanding owner route after a reload. */
+  /**
+   * The first project route resumes at its first outstanding owner route after a reload. Off when a link asked for
+   * another project, and never while the project form holds a draft.
+   */
   redirectFromProject?: boolean
 }
 
@@ -100,7 +130,10 @@ export function FirstRunProgress({ org, locale = 'en', redirectFromProject = fal
     const project = onboarding.steps.find((item) => item.step === 'project')
     if (!project?.completed_at || pathname !== `/${encodeURIComponent(org)}/new`) return
     const next = onboarding.steps.find((item) => !item.completed_at && !item.skipped)
-    if (next && next.step !== 'project' && next.href !== pathname) router.replace(next.href)
+    if (!next || next.step === 'project' || next.href === pathname) return
+    // A form someone has started typing in stays: replacing it would drop the draft and the focus.
+    if (document.querySelector('[data-project-create][data-dirty]')) return
+    router.replace(next.href)
   }, [failure, loading, onboarding, org, pathname, redirectFromProject, router])
 
   async function changeSkipped(step: Step, skipped: boolean) {
@@ -183,7 +216,9 @@ export function FirstRunProgress({ org, locale = 'en', redirectFromProject = fal
                 {state === 'skipped' ? (
                   <p className={styles.stepResult}>{t('onboarding.skipped', {}, locale)}</p>
                 ) : state === 'done' ? (
-                  <p className={styles.stepResult}>{item.result ?? t('onboarding.done', {}, locale)}</p>
+                  <p className={styles.stepResult}>
+                    <DoneLine item={item} locale={locale} />
+                  </p>
                 ) : state === 'current' ? (
                   <p className={styles.stepResult}>
                     {here ? t('onboarding.here', {}, locale) : t('onboarding.next_step', {}, locale)}

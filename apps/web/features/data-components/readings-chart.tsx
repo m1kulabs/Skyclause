@@ -13,7 +13,7 @@ import { cn } from '#lib/utils'
  * whole MYT hours and thins as the column narrows. Each rain lane is titled with its unit above it, the rolling lane's
  * title also naming the Lebat line, so nothing is labelled on a curve; on a strip narrower than 24rem the Lebat name
  * moves under the chart, where a longer locale cannot push it past the edge. `layout` comes from `layoutStrip` with
- * `laneGap` 30 and a header band of 28 (when now is on the strip) plus 20 for the first lane's title.
+ * `laneGap` 46 and a header band of 28 (when now is on the strip) plus 20 for the first lane's title.
  */
 export function ReadingsChart({ layout, locale }: { layout: StripLayout; locale: 'en' | 'ms' }) {
   const pct = (x: number) => `${(stripShare(layout, x) * 100).toFixed(3)}%`

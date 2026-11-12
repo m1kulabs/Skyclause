@@ -31,7 +31,9 @@ export function OrgCreateForm({ locale = 'en' }: { locale?: Locale }) {
     if (failed) alertRef.current?.focus()
   }, [failed])
 
-  const liveError = validateSlugInput(slug)
+  // A slug suggested from the first letter of the name is too short, not wrong: its error waits until the slug was
+  // edited or has the two characters a slug needs. Submit still checks it.
+  const liveError = slugTouched || slug.length >= 2 ? validateSlugInput(slug) : null
   const shown: Exclude<SlugError, null> | null = error ?? liveError
 
   function focusSlug() {
@@ -66,6 +68,9 @@ export function OrgCreateForm({ locale = 'en' }: { locale?: Locale }) {
           const created = await apiFetch('createOrganisation', { body: { name: name.trim(), slug } })
           // Busy until the next page takes over, so a second click cannot create it twice.
           router.push(`/${encodeURIComponent(created.slug)}/new`)
+          // A push keeps the app layout as it was read, so the shell would still have no organisation. The refresh
+          // waits behind the push and then reads every layout again, the shell's memberships included.
+          router.refresh()
         } catch (failure) {
           if (failure instanceof ApiProblem && failure.status === 409) {
             const slugProblem = (failure.body.type as string | undefined) ?? ''

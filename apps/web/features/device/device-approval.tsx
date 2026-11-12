@@ -20,6 +20,8 @@ interface DeviceApprovalProps {
   initialState: DevicePageState
   device: CliDevice
   memberships: MembershipSummary[]
+  /** The wordmark's target: the landing, absolute when another host serves it. */
+  homeHref?: string
 }
 
 type Verification = { status?: string; client_id?: string }
@@ -62,7 +64,14 @@ function errorCode(error: unknown) {
     .join(' ')
 }
 
-export function DeviceApproval({ code, initialState, device, memberships, locale = 'en' }: DeviceApprovalProps) {
+export function DeviceApproval({
+  code,
+  initialState,
+  device,
+  memberships,
+  homeHref,
+  locale = 'en'
+}: DeviceApprovalProps) {
   const t = (key: string) => translate(key, {}, locale)
   const command = (key: string) => withCommand(translate(key, { command: SLOT }, locale))
   const [enteredCode, setEnteredCode] = useState(code)
@@ -143,7 +152,7 @@ export function DeviceApproval({ code, initialState, device, memberships, locale
 
   return (
     <main className="auth-page" lang={locale}>
-      <AuthHeader title={t('device.title')} lead={t('device.intro')} locale={locale} />
+      <AuthHeader title={t('device.title')} lead={t('device.intro')} homeHref={homeHref} locale={locale} />
 
       <form action="/device" method="get" className="auth-form">
         <div className="auth-field">

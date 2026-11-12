@@ -38,5 +38,16 @@
   "window_in_project": "{project} · {window}",
   "today_at_risk_note": "Keputusan enjin, belum disemak.",
   "loading": "Memuatkan papan pemuka…",
-  "capped": "Menunjukkan {shown} pertama daripada {total}."
+  "capped": "Menunjukkan {shown} pertama daripada {total}.",
+  "covered_projects": "Menunjukkan {shown} daripada {total} projek: yang paling baru aktif.",
+  "storm": "Ramalan ribut petang · {wording}",
+  "storm_source": "Sumber ramalan MET (dibuka dalam tab baharu)",
+  "today_drafts_note": "Keputusan terkini bagi setiap tetingkap. Draf belum disemak.",
+  "sources": {
+    "needs_review": "himpunan yang perlu disemak",
+    "windows_at_risk": "tetingkap hari ini",
+    "signal_health": "sumber",
+    "upcoming_risks": "persembahan dan ramalan akan datang",
+    "yesterday_grades": "gred semalam"
+  }
 }

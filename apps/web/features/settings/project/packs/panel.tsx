@@ -76,10 +76,18 @@ export interface ProjectPacksPanelProps {
   org: string
   project: string
   initialPack?: string
+  /** Whether Add device can work (`createDevice` has a handler); without it the Devices part is not offered. */
+  devices?: boolean
   locale?: 'en' | 'ms'
 }
 
-export default function Panel({ org, project: projectSlug, initialPack, locale = 'en' }: ProjectPacksPanelProps) {
+export default function Panel({
+  org,
+  project: projectSlug,
+  initialPack,
+  devices = false,
+  locale = 'en'
+}: ProjectPacksPanelProps) {
   const t = (key: string, vars: Record<string, string | number> = {}) => baseT(key, vars, locale)
   const ts = (key: string, vars: Record<string, string | number> = {}) => baseTs(key, vars, locale)
   const [project, setProject] = useState<ProjectView | null>(null)
@@ -168,19 +176,17 @@ export default function Panel({ org, project: projectSlug, initialPack, locale =
       )
       return true
     } catch (error) {
-      const detail = error instanceof ApiProblem ? error.body.detail : undefined
+      // The answer's `detail` is the API's English: the panel words each refusal from the catalogue instead.
       const code = error instanceof ApiProblem ? error.body.type?.split('/').pop() : undefined
       if (pack === 'crowd' && enabled && code === 'pack-prerequisites') {
         const prerequisite = missingForCrowd(sourcesForCheck)
         setCrowdIntent(true)
         setCrowdMissingMessage(
-          typeof detail === 'string' && detail
-            ? detail
-            : t('onboarding.pack_missing', { missing: t(`onboarding.${prerequisite.missing ?? 'missing_both'}`) })
+          t('onboarding.pack_missing', { missing: t(`onboarding.${prerequisite.missing ?? 'missing_both'}`) })
         )
         setPickerOpen(true)
       } else {
-        setMessage(typeof detail === 'string' && detail ? detail : t('onboarding.save_error_generic'))
+        setMessage(t('onboarding.save_error_generic'))
       }
       return false
     } finally {
@@ -388,11 +394,7 @@ export default function Panel({ org, project: projectSlug, initialPack, locale =
                     <span className="type-small text-muted-foreground">{t('onboarding.source_not_evaluated')}</span>
                   )}
                   {source.state?.state === 'error' && (
-                    <span className="type-small font-medium">
-                      {t('onboarding.source_error', {
-                        status: source.state.http_status ?? t('onboarding.source_error_unknown')
-                      })}
-                    </span>
+                    <span className="type-small font-medium">{t('onboarding.source_error')}</span>
                   )}
                 </div>
                 <Button type="button" variant="outline" onClick={() => setUnbinding(source)}>
@@ -411,25 +413,27 @@ export default function Panel({ org, project: projectSlug, initialPack, locale =
         />
       </SettingsPart>
 
-      <SettingsPart
-        title={t('onboarding.devices')}
-        id="devices-title"
-        actions={
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setDevice(null)
-              setDeviceError(false)
-              setTokenCopied('idle')
-              setDeviceNameError(false)
-              setDeviceOpen(true)
-            }}
-          >
-            {t('onboarding.add_device')}
-          </Button>
-        }
-      />
+      {devices && (
+        <SettingsPart
+          title={t('onboarding.devices')}
+          id="devices-title"
+          actions={
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setDevice(null)
+                setDeviceError(false)
+                setTokenCopied('idle')
+                setDeviceNameError(false)
+                setDeviceOpen(true)
+              }}
+            >
+              {t('onboarding.add_device')}
+            </Button>
+          }
+        />
+      )}
 
       <SourcePicker
         open={pickerOpen}
@@ -479,7 +483,7 @@ export default function Panel({ org, project: projectSlug, initialPack, locale =
         />
       ) : null}
       <Dialog
-        open={deviceOpen}
+        open={devices && deviceOpen}
         onOpenChange={(open) => {
           setDeviceOpen(open)
           if (!open) {

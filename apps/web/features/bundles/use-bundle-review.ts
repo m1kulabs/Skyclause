@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { formatTime } from '@skyclause/i18n/format'
 import { ApiProblem, browserPath } from '../../lib/api-fetch'
 import { readSse } from '../../lib/read-sse'
 import {
@@ -36,6 +37,22 @@ export interface InitialReview {
   now: number
   /** The project's bundles as the server read them, for the list beside the review. */
   list?: BundleList
+}
+
+const RECOGNIZED_REFUSALS = ['validation-failed', 'malay-reader-required', 'redraft-required', 'call-expired']
+
+/**
+ * What a refused approval says: a catalogue sentence for each problem the API answers, never its `detail`, which is
+ * English and can carry call IDs and ISO instants. A missing call drafted at approval can have expired: the API says
+ * when only in that detail, so its instant is read from there and shown in MYT.
+ */
+export function approvalErrorMessage(problem: ApiProblem | undefined, locale: Locale): string {
+  const code = problem?.body.type?.split('/').pop() ?? ''
+  const detail = typeof problem?.body.detail === 'string' ? problem.body.detail : ''
+  const expiredAt =
+    code === 'validation-failed' ? /expired at (\d{4}-\d{2}-\d{2}T[\d:.]+Z)/.exec(detail)?.[1] : undefined
+  if (expiredAt) return t('bundles.missing_call_expired', { time: formatTime(expiredAt, locale) }, locale)
+  return RECOGNIZED_REFUSALS.includes(code) ? t(`bundles.${code}`, {}, locale) : t('bundles.write_error', {}, locale)
 }
 
 export function useBundleReview(
@@ -297,13 +314,9 @@ export function useBundleReview(
         setConflict(undefined)
         return
       }
-      const recognized = ['validation-failed', 'malay-reader-required', 'redraft-required', 'call-expired'].includes(
-        code ?? ''
-      )
-      const message = recognized ? t(`bundles.${code}`, {}, locale) : t('bundles.write_error', {}, locale)
       const callId = problem?.body.call_id
       setError({
-        message: problem?.body.detail ? `${message} ${problem.body.detail}` : message,
+        message: approvalErrorMessage(problem, locale),
         callIds: typeof callId === 'string' ? [callId] : body.calls.map((call) => call.call_id)
       })
       if (code === 'call-expired') {

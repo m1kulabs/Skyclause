@@ -5,6 +5,7 @@ import type { EvaluatedSource, Project, ProjectStrip, SourcePoll, SourceReading 
 import type { StripInput } from '@skyclause/elements'
 import { formatDate, formatDateTime, formatLocalDateKey, formatNumber, formatTime } from '@skyclause/i18n/format'
 import { WindowStrip } from '../data-components/window-strip'
+import { indicatorName } from '../data-components/indicator-names'
 import { SignalsChart, type SignalChartPoint } from './signals-chart'
 import { Button } from '#ui/button'
 import { ReadingsTable } from './readings-table'
@@ -125,6 +126,19 @@ function latestErrorAt(polls: readonly SourcePoll[]): string | null {
   )
 }
 
+export function newestObservedAt(readings: readonly Pick<SourceReading, 'observed_at'>[]): string | null {
+  let latest: string | null = null
+  let latestMs = -Infinity
+  for (const reading of readings) {
+    const at = Date.parse(reading.observed_at)
+    if (!Number.isNaN(at) && at > latestMs) {
+      latestMs = at
+      latest = reading.observed_at
+    }
+  }
+  return latest
+}
+
 export interface SourceDetailProps {
   project: Project
   source: EvaluatedSource
@@ -133,6 +147,61 @@ export interface SourceDetailProps {
   polls: readonly SourcePoll[]
   locale: 'en' | 'ms'
   onClose: () => void
+}
+
+type Locale = 'en' | 'ms'
+type Json = string | number | boolean | null | Json[] | { [key: string]: Json }
+
+/** A publisher's field name as a label: the indicator's own name where one exists, else the key in words. */
+function fieldLabel(key: string, locale: Locale): string {
+  const named = indicatorName(key, locale)
+  if (named !== key) return named
+  const words = key.replace(/[_-]+/g, ' ').trim()
+  return words.charAt(0).toUpperCase() + words.slice(1)
+}
+
+/**
+ * A reading as the publisher sent it: its plain fields as labelled values, and the whole of it, the real evidence,
+ * under a closed "Raw reading" disclosure.
+ */
+export function ReadingFields({ value, locale }: { value: unknown; locale: Locale }) {
+  const fields =
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? Object.entries(value as Record<string, Json>).filter(
+          (entry): entry is [string, string | number] =>
+            (typeof entry[1] === 'string' && entry[1].trim() !== '') || typeof entry[1] === 'number'
+        )
+      : []
+  return (
+    <div className="flex flex-col gap-3" data-reading-fields>
+      {fields.length > 0 && (
+        <dl className="grid grid-cols-[minmax(0,max-content)_minmax(0,1fr)] gap-x-4 gap-y-1 type-body">
+          {fields.map(([key, field]) => (
+            <div key={key} className="contents">
+              <dt className="text-muted-foreground">{fieldLabel(key, locale)}</dt>
+              <dd className="[overflow-wrap:anywhere]" data-numeric={typeof field === 'number' ? '' : undefined}>
+                {typeof field === 'number' ? formatNumber(field, locale) : field}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      <details>
+        <summary className="inline-flex min-h-6 cursor-pointer items-center type-small underline underline-offset-3">
+          {t('signals.raw_reading', {}, locale)}
+        </summary>
+        <pre
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- axe scrollable-region-focusable requires the scroll container to be keyboard-focusable.
+          tabIndex={0}
+          role="region"
+          aria-label={t('signals.warning_data', {}, locale)}
+          className="mt-2 overflow-auto rounded-md bg-raised p-3 type-code"
+        >
+          <code>{JSON.stringify(value, null, 2)}</code>
+        </pre>
+      </details>
+    </div>
+  )
 }
 
 export function SourceDetail({ project, source, strip, readings, polls, locale, onClose }: SourceDetailProps) {
@@ -145,7 +214,7 @@ export function SourceDetail({ project, source, strip, readings, polls, locale, 
       return at >= now - DAY_MS && at <= now
     })
     .sort((left, right) => Date.parse(right.started_at) - Date.parse(left.started_at))
-  const latestObserved = readingRows.at(-1)?.observed_at ?? source.latest_reading?.observed_at ?? null
+  const latestObserved = newestObservedAt(readingRows) ?? source.latest_reading?.observed_at ?? null
 
   let body: React.ReactNode
   if (source.kind === 'jps_rain') {
@@ -261,15 +330,7 @@ export function SourceDetail({ project, source, strip, readings, polls, locale, 
           {t('signals.warning_summary', { time: formatTime(warningTime, locale) }, locale)}
         </p>
         {source.latest_reading?.value_json && (
-          <pre
-            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- axe scrollable-region-focusable requires the scroll container to be keyboard-focusable.
-            tabIndex={0}
-            role="region"
-            aria-label={t('signals.warning_data', {}, locale)}
-            className="overflow-auto rounded-md bg-raised p-3 type-code"
-          >
-            {JSON.stringify(source.latest_reading.value_json, null, 2)}
-          </pre>
+          <ReadingFields value={source.latest_reading.value_json} locale={locale} />
         )}
       </section>
     )
@@ -316,14 +377,10 @@ export function SourceDetail({ project, source, strip, readings, polls, locale, 
         {errors.length ? (
           <ul className="flex flex-col type-body">
             {errors.map((poll) => (
-              <li key={poll.id} data-numeric className="min-h-11 py-2">
+              <li key={poll.id} data-numeric data-http-status={poll.http_status ?? undefined} className="min-h-11 py-2">
                 {poll.http_status === null
                   ? t('signals.error_no_status', { time: formatDateTime(poll.started_at, locale) }, locale)
-                  : t(
-                      'signals.error_status',
-                      { status: poll.http_status, time: formatDateTime(poll.started_at, locale) },
-                      locale
-                    )}
+                  : t('signals.error_status', { time: formatDateTime(poll.started_at, locale) }, locale)}
               </li>
             ))}
           </ul>

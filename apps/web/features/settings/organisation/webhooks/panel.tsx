@@ -1,5 +1,7 @@
+import type { Principal } from '@skyclause/contracts'
 import { WebhookFeature } from '../../../webhooks'
 
-export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' } = {}) {
-  return <WebhookFeature settings locale={locale} />
+/** The organisation's webhooks, for the principal the settings gate resolved for this organisation. */
+export default function Panel({ principal, locale = 'en' }: { principal: Principal | null; locale?: 'en' | 'ms' }) {
+  return <WebhookFeature principal={principal} settings locale={locale} />
 }

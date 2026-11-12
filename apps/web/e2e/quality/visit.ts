@@ -49,6 +49,13 @@ export function expectedStatus(route: CrawlRoute, role: Role) {
 const signsUpFirst = (route: CrawlRoute, role: Role) =>
   /^\/[^/]+\/[^/]+\/signals\/probation\/[^/]+$/.test(route.path) && (!hasSession(role) || role === 'guest')
 
+/**
+ * The app's root layout sends a visitor with no credential at all to sign in first, with the page as the return path:
+ * signed out, every (app) page is that redirect. A share link is a credential, so its holder still
+ * meets each page's own gate.
+ */
+export const signsInFirst = (route: CrawlRoute, role: Role) => route.group === 'app' && role === 'signed out'
+
 /** #98 redirects members through #97's continue endpoint to their account destination. */
 export function redirectsToAccount(route: CrawlRoute, role: Role) {
   return (route.path === '/sign-in' || route.path === '/sign-up') && hasSession(role) && role !== 'guest'
@@ -69,6 +76,11 @@ export async function visit(
       )
     : undefined
   const response = await page.goto(path)
+  if (signsInFirst(route, role)) {
+    await expect(page).toHaveURL(new URL(`/sign-in?next=${encodeURIComponent(path)}`, page.url()).href)
+    await expect(page.locator('.app-shell')).toHaveCount(0)
+    return []
+  }
   if (readySelector && !signsUpFirst(route, role))
     await page.locator(readySelector).first().waitFor({ state: 'attached' })
   if (continuation) {

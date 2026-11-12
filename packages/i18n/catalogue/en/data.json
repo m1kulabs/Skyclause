@@ -1,7 +1,9 @@
 {
   "strip": {
     "summary_live": "Live strip to {to}. {crossing}. {count} readings.",
+    "summary_live_one": "Live strip to {to}. {crossing}. 1 reading.",
     "summary_replay": "Replay of {source}, captured {captured}. {crossing}. {count} readings.",
+    "summary_replay_one": "Replay of {source}, captured {captured}. {crossing}. 1 reading.",
     "crossing": "Lebat crossed at {time} ({value} mm in 60 min)",
     "no_crossing": "No Lebat crossing in this window",
     "show_table": "Show table",
@@ -20,6 +22,7 @@
     "chart_date": "{date} · MYT",
     "now_label": "Now MYT",
     "table_peaks": "Highest reading in each {minutes} minutes, from {count} readings.",
+    "table_peaks_one": "Highest reading in each {minutes} minutes, from 1 reading.",
     "lane_rain5": "Rain, mm per 5 min",
     "lane_rain60": "Rain, mm in 60 min",
     "ticks_received": "{received} received, {missed} missed, {errors} failed"
@@ -28,6 +31,7 @@
     "label": "{name} {age}",
     "label_stale": "{name} {age} {stale}",
     "stale": "stale",
+    "no_reading": "{name} no reading yet",
     "error": "{name} error since {time}",
     "daily": "data to {date}",
     "source_time": "Source time",
@@ -42,9 +46,9 @@
     "minute": "{value} min",
     "value": "{value} {unit}",
     "latest_empty": "No readings yet (n=0).",
-    "error_since": "{source} error since {time} · HTTP {status}",
-    "unknown_status": "unknown",
+    "error_since": "{source} error since {time}",
     "ticks_label": "Last {count} polls",
+    "ticks_label_one": "Last poll",
     "tick_received": "received",
     "tick_missed": "missed",
     "tick_error": "error",
@@ -119,23 +123,21 @@
     "reason": "{inputs} failing since {time}.",
     "reason_plain": "A required input is failing, so this window gets no call."
   },
-  "not_built": {
-    "title": "{thing} is not built yet.",
-    "detail": "There is nothing to show here yet."
-  },
   "source_error": {
-    "title": "Couldn’t read {source}.",
-    "not_built": "Not built yet, so there is nothing to show here.",
-    "status": "It answered {status} at {time}.",
-    "status_untimed": "It answered {status}.",
+    "title": "Couldn’t read {source} just now.",
+    "unavailable": "Skyclause can’t show {source} yet.",
+    "tried": "Tried at {time}.",
     "unreachable": "No answer at {time}.",
+    "busy": "Skyclause is busy just now.",
+    "busy_until": "Try again after {time}.",
+    "busy_later": "Try again in a minute.",
     "retry": "Try again"
   },
   "indicators": {
     "site": {
       "rain_60m_mm": "Rain in the last 60 minutes (site)",
-      "api_max": "Air pollution index, highest across stations",
-      "api_0600_min_last3_max": "Air pollution index at 06:00, lowest of the last three mornings",
+      "api_max": "Air Pollutant Index, highest across stations",
+      "api_0600_min_last3_max": "Air Pollutant Index at 06:00, lowest of the last three mornings",
       "met_warning_in_force": "MET warning in force (site)",
       "met_afternoon_thunderstorm": "MET forecast: afternoon thunderstorm",
       "camera_far_low_frames": "Sky camera: low-contrast far frames, of the last 3",
