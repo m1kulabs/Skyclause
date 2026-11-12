@@ -8,7 +8,7 @@ export default async function Page({ params }: { params: Promise<{ org: string }
   const principal = await requireSettings({ scope: 'organisation', section: 'audit', orgId: org })
   const locale = await settingsLocale()
   return (
-    <SettingsFrame scope="organisation" section="audit" principal={principal} org={org} locale={locale}>
+    <SettingsFrame scope="organisation" section="audit" principal={principal} org={org} locale={locale} wide>
       <Panel org={org} locale={locale} />
     </SettingsFrame>
   )
