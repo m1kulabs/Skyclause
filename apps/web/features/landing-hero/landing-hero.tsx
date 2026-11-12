@@ -1,10 +1,12 @@
 import type { CSSProperties } from 'react'
 import { wordmarkSvg } from '@skyclause/elements'
+import { appHref } from '../landing/app-links'
 import { t } from './catalogue'
 import { HeroActivator } from './activator'
 import { HeroFacts } from './hero-facts'
 import { HeroRoom } from './hero-room'
 import { HeroStatic } from './hero-static'
+import { ReplayAnswer } from './replay-answer'
 import type { EvaluateResult, LatestCallRead, StatusRead } from './evaluate'
 import { calendarPath, pilotRefOf } from './evaluate'
 import { heroStripSvg } from './strip-html'
@@ -43,8 +45,11 @@ export function LandingHero({ read }: { read: HeroRead }) {
   const { now, win, result, latestCall, status } = read
   const strip = result.kind === 'ok' ? stripOf(result.data.strip, win, result.data.evaluated_at) : null
   const stripSvg = heroStripSvg(strip)
-  const appOrigin = process.env.APP_ORIGIN
-  const signInHref = appOrigin ? new URL('/sign-in', appOrigin).toString() : '/sign-in'
+  const signInHref = appHref('/sign-in')
+  // The browser's verdict reads go to the API host itself (public reads answer CORS *; the CSP allows this origin),
+  // never to the marketing host; with one host for everything, to the page's own origin.
+  const apiOrigin = process.env.API_ORIGIN
+  const replay = <ReplayAnswer />
   const pilot = pilotRefOf(process.env.PILOT_PROJECT)
   const line1 = t('landing-hero.heading_line_1', {}, 'en')
   const dates = datesTodayPlusSeven(now)
@@ -84,6 +89,8 @@ export function LandingHero({ read }: { read: HeroRead }) {
         latestCall={latestCall}
         pilot={pilot}
         calendarQuery={calendarPath(pilot)}
+        apiOrigin={apiOrigin}
+        replay={replay}
       >
         <HeroStatic
           result={result}
@@ -93,6 +100,7 @@ export function LandingHero({ read }: { read: HeroRead }) {
           latestCall={latestCall}
           calendarQuery={calendarPath(pilot)}
           now={now.toISOString()}
+          replay={replay}
         />
       </HeroActivator>
     </section>

@@ -23,6 +23,8 @@ const randomNonce = () => {
 // every host, so it takes the requesting host's surface instead.
 const SURFACE_OF: Record<string, Surface | null> = {
   shared: null,
+  '/e': null,
+  '/robots.txt': null,
   '/v1': 'api',
   '/api': 'app',
   '/mcp': 'mcp',
@@ -31,7 +33,8 @@ const SURFACE_OF: Record<string, Surface | null> = {
   '/sw.js': 'app',
   '/openapi.json': 'marketing',
   '/oembed': 'marketing',
-  '/e': 'marketing',
+  '/sitemap.xml': 'marketing',
+  '/og.png': 'marketing',
   '/skills': 'marketing',
   '/elements': 'embed',
   '(embed)': 'embed',

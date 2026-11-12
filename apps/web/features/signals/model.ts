@@ -105,7 +105,3 @@ export function wilsonInterval(agreements: number, n: number): { low: number; hi
     high: Math.round(Math.min(1, center + margin) * 1000) / 1000
   }
 }
-
-export function tailCommand(org: string, project: string): string {
-  return `skyclause signals tail ${org}/${project}`
-}

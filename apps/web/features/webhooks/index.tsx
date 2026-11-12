@@ -1,24 +1,32 @@
 import { Suspense } from 'react'
-import { getPrincipal } from '../../lib/principal'
+import type { Principal } from '@skyclause/contracts'
 import { Skeleton } from '#ui/skeleton'
+import { NotBuilt } from '../data-components/states'
 import { Webhooks } from './client'
 import { t } from './catalogue'
 
-export async function WebhookFeature({
+/**
+ * Webhooks for the principal the page resolved: under `/{org}` that is the organisation's (`getOrgPrincipal`, which
+ * fills a real session's `orgId` and role), never the bare session, whose role is null outside an organisation (#647).
+ */
+export function WebhookFeature({
+  principal,
   settings = false,
   locale = 'en'
 }: {
+  principal: Principal | null
   settings?: boolean
   locale?: 'en' | 'ms'
 }) {
-  const principal = await getPrincipal()
   const content =
     !principal || principal.kind !== 'session' || principal.isGuest ? (
       <p className="type-text">{t('webhooks.guest', {}, locale)}</p>
+    ) : !principal.orgId ? (
+      // `/developers/webhooks` names no organisation, so a real session has none to read webhooks for there; and no
+      // webhook operation has a handler yet (e-webhooks). It says so rather than asking for a role or a choice.
+      <NotBuilt title={t('webhooks.unavailable', {}, locale)} />
     ) : !['owner', 'admin'].includes(principal.role ?? '') ? (
       <p className="type-text">{t('webhooks.member', {}, locale)}</p>
-    ) : !principal.orgId ? (
-      <p className="type-text">{t('webhooks.missing_org', {}, locale)}</p>
     ) : (
       <Suspense
         fallback={

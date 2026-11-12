@@ -10,8 +10,8 @@
   "indicators": {
     "site": {
       "rain_60m_mm": "Rain in the last 60 minutes",
-      "api_max": "Highest Air Pollution Index",
-      "api_0600_min_last3_max": "Highest of the last three 06:00 Air Pollution Index readings",
+      "api_max": "Highest Air Pollutant Index",
+      "api_0600_min_last3_max": "Highest of the last three 06:00 Air Pollutant Index readings",
       "met_warning_in_force": "MET warning in force",
       "met_afternoon_thunderstorm": "Afternoon thunderstorm forecast",
       "camera_far_low_frames": "Far low-contrast camera frames",
@@ -42,5 +42,27 @@
     "reading": "{state}. Deciding reading: {reading}.",
     "full": "{state}. {window}. Deciding reading: {reading}.",
     "noCall": "{alt} {noCall}."
+  },
+  "pages": {
+    "site": "Skyclause",
+    "landing": {
+      "title": "Skyclause · The call for every window",
+      "heading": "The call for every window",
+      "description": "Skyclause reads the rain gauge, the haze index and the stadium listings around Bukit Jalil, and makes one approved, graded call for each class, event or commute window."
+    },
+    "signIn": {
+      "title": "Sign in to Skyclause",
+      "heading": "Sign in",
+      "description": "Sign in to Skyclause to declare your windows, review each call and keep the record."
+    },
+    "signUp": {
+      "title": "Create an account · Skyclause",
+      "heading": "Create an account",
+      "description": "Create a Skyclause account to get one approved, graded call for each class, event or commute window."
+    },
+    "notFound": {
+      "title": "Page not found · Skyclause"
+    },
+    "imageAlt": "{heading}. {description}"
   }
 }

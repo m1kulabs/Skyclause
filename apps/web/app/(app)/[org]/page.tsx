@@ -4,6 +4,12 @@ import { prefersMalay } from '../../../lib/preferred-language'
 import { ApiProblem } from '../../../lib/api-fetch'
 import { DashboardPage } from '../../../features/dashboard/dashboard-page'
 import { readDashboard, type DashboardRead } from '../../../features/dashboard/operations'
+import { t } from '../../../features/dashboard/catalogue'
+import { settingsLocale } from '../../../features/settings/locale'
+
+export async function generateMetadata() {
+  return { title: t('dashboard.title', {}, await settingsLocale()) }
+}
 
 export default async function Page({ params }: { params: Promise<{ org: string }> }) {
   const { org } = await params
@@ -12,6 +18,7 @@ export default async function Page({ params }: { params: Promise<{ org: string }
   let initialData: DashboardRead | null = null
   let initialError: number | null = null
   let initialErrorAt: string | null = null
+  let initialRetryAt: string | null = null
 
   if (process.env.APP_ENV !== 'test') {
     try {
@@ -20,6 +27,7 @@ export default async function Page({ params }: { params: Promise<{ org: string }
       if (error instanceof ApiProblem && error.status === 404) notFound()
       initialError = error instanceof ApiProblem ? error.status : null
       initialErrorAt = new Date().toISOString()
+      initialRetryAt = error instanceof ApiProblem ? error.retryAt : null
     }
   }
 
@@ -30,6 +38,7 @@ export default async function Page({ params }: { params: Promise<{ org: string }
       initialData={initialData}
       initialError={initialError}
       initialErrorAt={initialErrorAt}
+      initialRetryAt={initialRetryAt}
     />
   )
 }

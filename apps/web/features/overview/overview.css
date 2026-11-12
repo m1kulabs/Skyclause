@@ -105,7 +105,7 @@
   line-height: 20px;
 }
 
-/* Clause keys are author-defined snake_case: no break points of their own, so allow one anywhere. */
+/* A project’s own clause names can be long single words: allow a break anywhere. */
 .overview-fired li {
   min-width: 0;
   overflow-wrap: anywhere;
@@ -115,6 +115,12 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+/* A long input name truncates inside its chip instead of pushing the chip past the card. */
+.overview-age-list > li {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .overview-row {

@@ -40,7 +40,7 @@
   "empty_inspector": "Belum ada titik akhir webhook. Daftar webhook untuk menerima peristiwa sebenar.",
   "member": "Webhook memerlukan Pentadbir organisasi anda",
   "guest": "Daftar akaun untuk mendaftarkan webhook",
-  "missing_org": "Pilih organisasi dalam aplikasi sebelum mendaftarkan webhook.",
+  "unavailable": "Webhook belum tersedia.",
   "action_failed": "Permintaan gagal. Cuba lagi.",
   "unsafe_url": "Gunakan titik akhir HTTPS awam. Alamat peribadi dan setempat tidak dibenarkan.",
   "validation_failed": "Semak URL HTTPS serta pilihan peristiwa dan projek anda.",

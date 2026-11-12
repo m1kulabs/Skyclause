@@ -326,7 +326,8 @@ test('marketing follows OS contrast and motion while keeping a dark document', a
   await page.keyboard.press('Tab')
   await expect(page.locator('.skip-link')).toBeFocused()
   await page.keyboard.press('Enter')
-  await expect(page.locator('#main-content')).toBeFocused()
+  // The landing's skip link goes straight to its main, past the language suggestion.
+  await expect(page.locator('#landing-main')).toBeFocused()
   await page.emulateMedia({ contrast: 'no-preference', reducedMotion: 'no-preference' })
   await expect(page.locator('html')).toHaveClass('dark')
   await expect(page.locator('html')).toHaveAttribute('data-motion', 'full')
@@ -334,7 +335,8 @@ test('marketing follows OS contrast and motion while keeping a dark document', a
 
 test('unmatched routes keep request-time appearance in their own document', async ({ page, baseURL }) => {
   await appearance(page, baseURL!, { theme: 'system' })
-  const response = await page.request.get('/no-such-route-95s', {
+  // Deeper than any page: a one-segment path is organisation-shaped, which a signed-out visit takes to sign-in.
+  const response = await page.request.get('/no-such-route-95s/b/c/d', {
     headers: {
       'sec-ch-prefers-color-scheme': '"light"',
       'sec-ch-prefers-contrast': '"more"',
@@ -425,6 +427,8 @@ const systemColour = (page: Page, keyword: string) =>
 test('forced colours keep the label of filled and selected controls and the edge of outline ones', async ({ page }) => {
   await page.emulateMedia({ forcedColors: 'active', colorScheme: 'dark' })
   await page.goto('/sign-in')
+  // The sign-in form rises in over 700 ms: its label is measured once it has settled, not mid-fade.
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'))
   const primary = page.getByRole('button', { name: 'Send sign-in link' })
   const colours = await primary.evaluate((button) => {
     const style = getComputedStyle(button)

@@ -21,10 +21,10 @@ function SourceProblem({ source, now, locale }: { source: EvaluatedSource; now: 
     return (
       <p className="flex items-center gap-1.5 type-small text-foreground">
         <Glyph state="error" />
-        <time dateTime={state.since} data-numeric>
+        <time dateTime={state.since} data-numeric data-http-status={state.http_status ?? undefined}>
           {state.http_status === null
             ? t('signals.failing_since_no_status', { time: formatTime(state.since, locale) }, locale)
-            : t('signals.failing_since', { time: formatTime(state.since, locale), status: state.http_status }, locale)}
+            : t('signals.failing_since', { time: formatTime(state.since, locale) }, locale)}
         </time>
       </p>
     )
@@ -33,10 +33,10 @@ function SourceProblem({ source, now, locale }: { source: EvaluatedSource; now: 
   if (!error) return null
   return (
     <p className="type-small text-muted-foreground">
-      <time dateTime={error.started_at} data-numeric>
+      <time dateTime={error.started_at} data-numeric data-http-status={error.http_status ?? undefined}>
         {error.http_status === null
           ? t('signals.last_error_no_status', { time: formatTime(error.started_at, locale) }, locale)
-          : t('signals.last_error', { status: error.http_status, time: formatTime(error.started_at, locale) }, locale)}
+          : t('signals.last_error', { time: formatTime(error.started_at, locale) }, locale)}
       </time>
     </p>
   )

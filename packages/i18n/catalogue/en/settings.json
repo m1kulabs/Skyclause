@@ -1,4 +1,5 @@
 {
+  "page_title": "{section} · {scope}",
   "scopes": {
     "account": "Account settings",
     "organisation": "Organisation settings",
@@ -270,6 +271,7 @@
     "projectsSource": "the projects list",
     "copyColumn": "Copy an ID",
     "pageOf": "A page of {count} records",
+    "pageOf_one": "A page of 1 record",
     "directorySource": "the people and projects to filter by",
     "formerPerson": "Former member",
     "otherProject": "Another project",
@@ -363,7 +365,7 @@
     "deleteOrgDescription": "Deletion starts a 30-day grace period. You can cancel during this period.",
     "exportFirst": "Export first",
     "continueWithoutExport": "Continue without export",
-    "deleteOrgDialog": "Type the organisation slug to schedule deletion.",
+    "deleteOrgDialog": "Type the organisation’s web address name to schedule deletion.",
     "deletionScheduled": "Deletion scheduled. The organisation will be purged on {date}.",
     "graceTitle": "Deleted organisation",
     "purgeDate": "The organisation will be purged on {date}.",
@@ -400,16 +402,16 @@
     "exportJobFailed": "This export failed. Request a new export."
   },
   "unbuilt": {
-    "accountAi": "AI keys for your account",
-    "accountApi": "API keys for your account",
-    "organisationAi": "AI keys for this organisation",
-    "organisationApi": "API keys for this organisation"
+    "accountAi": "AI keys are not available yet.",
+    "accountApi": "API keys are not available yet.",
+    "organisationAi": "AI keys are not available yet.",
+    "organisationApi": "API keys are not available yet."
   },
   "general": {
     "title": "Rename the organisation",
     "source": "the organisation name",
     "summaryName": "Name now",
-    "summarySlug": "Slug",
+    "summarySlug": "Web address name",
     "nameHint": "Up to {limit} characters.",
     "saveFailed": "The name could not be saved. Try again.",
     "nameRequired": "Enter a name for the organisation.",

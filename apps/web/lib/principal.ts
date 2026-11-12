@@ -4,6 +4,12 @@ import { headers } from 'next/headers'
 
 export const TEST_PRINCIPAL_COOKIE = 'skyclause_test_principal'
 
+/**
+ * The origin of a request a page builds to run in-process (the principal resolver, the API): never the request's own
+ * forwarded host or scheme, which a malformed value (`user@evil.com`, `bad:port`, empty) would make unparseable.
+ */
+export const IN_PROCESS_ORIGIN = 'https://in-process.invalid'
+
 export function principalFromTestCookie(
   value: string | undefined,
   appEnv = process.env.APP_ENV
@@ -40,10 +46,8 @@ export async function getPrincipal(): Promise<Principal | null> {
     if (principal !== undefined) return principal
   }
 
-  const host = requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host') ?? 'localhost'
-  const scheme = requestHeaders.get('x-forwarded-proto') ?? 'http'
-  const request = new Request(`${scheme}://${host}/`, { headers: requestHeaders })
-  return resolvePrincipal(request, { surface: 'api' })
+  // The principal is read from the headers alone.
+  return resolvePrincipal(new Request(`${IN_PROCESS_ORIGIN}/`, { headers: requestHeaders }), { surface: 'api' })
 }
 
 /** Read only the account email used by its typed deletion confirmation; never attach it to Principal. */

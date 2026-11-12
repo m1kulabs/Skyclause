@@ -92,7 +92,6 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
   const [searchFailure, setSearchFailure] = useState<ReadFailure | null>(null)
   const [searchAttempt, setSearchAttempt] = useState(0)
   const [projectChoice, setProjectChoice] = useState<PaletteContext['projectChoice']>(null)
-  const [projectQuery, setProjectQuery] = useState('')
   const [themeStatus, setThemeStatus] = useState<'saved' | 'failed' | null>(null)
   const paletteReadyMarker = useRef<HTMLSpanElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
@@ -104,15 +103,11 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
   const role = memberRole ?? activeMembership?.role ?? null
   const visibleSources = useMemo(() => sourcesForRole(sources, role), [role, sources])
 
-  const chooseProject = useCallback(
-    (purpose: 'window' | 'ledger') => {
-      setProjectChoice(purpose)
-      setProjectQuery(purpose === 'ledger' ? query.trim() : '')
-      setQuery('')
-      setCommandValue('')
-    },
-    [query]
-  )
+  const chooseProject = useCallback((purpose: 'window' | 'ledger') => {
+    setProjectChoice(purpose)
+    setQuery('')
+    setCommandValue('')
+  }, [])
 
   const changeTheme = useCallback(async (theme: 'light' | 'dark' | 'system') => {
     const root = document.documentElement
@@ -137,13 +132,12 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
       memberships: data.memberships,
       projects: data.projects,
       query,
-      projectQuery,
       projectChoice,
       changeTheme,
       chooseProject,
       navigate
     }),
-    [changeTheme, chooseProject, data, org, params?.project, pathname, projectChoice, projectQuery, query]
+    [changeTheme, chooseProject, data, org, params?.project, pathname, projectChoice, query]
   )
 
   const show = useCallback((returnTo?: HTMLElement | null) => {
@@ -152,7 +146,6 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
     setQuery('')
     setCommandValue('')
     setProjectChoice(null)
-    setProjectQuery('')
     setOpen(true)
   }, [])
 
@@ -288,7 +281,6 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
           setOpen(next)
           if (!next) {
             setProjectChoice(null)
-            setProjectQuery('')
             setQuery('')
             setCommandValue('')
           }
@@ -355,9 +347,10 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
               {(!loaded || searching) && (
                 <div className="flex flex-col gap-3 px-3 py-3" role="status" aria-live="polite">
                   <span className="sr-only">{t(searching ? 'palette.searching' : 'palette.loading', {}, locale)}</span>
-                  <Skeleton className="h-5 w-56 max-w-full rounded-full" />
-                  <Skeleton className="h-5 w-40 max-w-full rounded-full" />
-                  <Skeleton className="h-5 w-48 max-w-full rounded-full" />
+                  {/* Inside the raised dialog the skeletons step down to the ground tone, or they would not show. */}
+                  <Skeleton className="h-5 w-56 max-w-full rounded-full bg-background" />
+                  <Skeleton className="h-5 w-40 max-w-full rounded-full bg-background" />
+                  <Skeleton className="h-5 w-48 max-w-full rounded-full bg-background" />
                 </div>
               )}
               {loadFailure && (

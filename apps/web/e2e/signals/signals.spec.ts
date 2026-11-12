@@ -28,7 +28,7 @@ test('SIG-1 bound sources show the captured values, finding, age, licence and so
   await expectAxeClean(page)
 })
 
-test('SIG-5 recent errors stay visible with HTTP status and errors older than 24 hours are excluded', async ({
+test('SIG-5 recent errors stay visible, said in words with their status kept for tests, and older ones are excluded', async ({
   page
 }) => {
   await page.clock.install({ time: new Date(now) })
@@ -36,9 +36,11 @@ test('SIG-5 recent errors stay visible with HTTP status and errors older than 24
   await page.goto(projectRoute)
   const errors = page.locator('[data-signal-errors]')
 
-  await expect(errors.getByText('HTTP 503')).toBeVisible()
+  await expect(errors.locator('[data-http-status="503"]')).toContainText('The source answered with an error')
   await expect(errors).toContainText('18:12 MYT')
-  await expect(errors.getByText('HTTP 502')).toHaveCount(0)
+  await expect(errors.locator('[data-http-status="502"]')).toHaveCount(0)
+  // A person reads what happened, never the status code.
+  await expect(errors).not.toContainText(/HTTP|\b50\d\b/)
 })
 
 test('pending, offline Pi and probation camera states include their MYT times and sample size', async ({ page }) => {
@@ -62,12 +64,12 @@ test('source ages tick each minute and a repeated SSE error event is announced o
   const announcement = page.locator('[data-signal-announcement]')
 
   await expect(row).toContainText('12 min')
-  await expect(announcement).toHaveText(/CA16W.*HTTP 503/)
+  await expect(announcement).toHaveText(/CA16W.*answered with an error/)
   await page.clock.fastForward(60_000)
   await expect(row).toContainText('13 min')
   await page.waitForTimeout(700)
   await expect(announcement).toHaveCount(1)
-  await expect(announcement).toHaveText(/CA16W.*HTTP 503/)
+  await expect(announcement).toHaveText(/CA16W.*answered with an error/)
 })
 
 test('?source=CA16W opens the station detail, keeps its URL state, table view and chart thresholds', async ({
@@ -108,11 +110,8 @@ test('gauge detail uses a no-window strip with a table and the copied CLI tail c
   await expect(detail).toContainText('no declared window')
   await expect(detail.locator('[data-readings-table] table')).toBeVisible()
   expect(await detail.locator('[data-readings-table] tbody tr').count()).toBeLessThanOrEqual(50)
-  const copy = page.getByRole('button', { name: 'Copy tail command' })
-  await copy.press('Enter')
-  await expect
-    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
-    .toBe('skyclause signals tail test-org/test-project')
+  // No command to copy while the CLI is not built.
+  await expect(page.getByRole('button', { name: 'Copy tail command' })).toHaveCount(0)
 })
 
 test('Signals rows reflow at 320px without horizontal overflow', async ({ page }) => {

@@ -43,8 +43,9 @@ import {
   type ProjectVerdicts,
   type ProjectWindow
 } from './operations'
-import { localDateAt, overviewFilterState, selectTodayAtRisk, type OverviewPackFilter } from './model'
+import { localDateAt, overviewFilterState, selectTodayAtRisk, todaysWindows, type OverviewPackFilter } from './model'
 import { t as bundleText } from '../bundles/i18n'
+import { clauseName } from '../bundles/clause-name'
 import { t } from './catalogue'
 import { AskForCall } from './ask-for-call'
 import './overview.css'
@@ -55,7 +56,7 @@ type Locale = 'en' | 'ms'
 const SOURCE_CAP = 50
 
 /** One of the overview's reads: its value, or the status it failed with and when (shown as a named error). */
-type Read<Value> = { ok: true; value: Value } | { ok: false; status: number | null; at: string }
+export type Read<Value> = { ok: true; value: Value } | { ok: false; status: number | null; at: string }
 
 type OverviewData = {
   listItem: ProjectListItem
@@ -122,13 +123,14 @@ async function loadOverview(org: string, slug: string, signal: AbortSignal): Pro
           query: {
             limit: 200,
             cursor,
-            from: localDateAt(new Date(), project.time_zone),
+            // From yesterday: a window that began before midnight and runs into today is today's too.
+            from: localDateAt(new Date(Date.now() - 86_400_000), project.time_zone),
             to: localDateAt(new Date(Date.now() + 86_400_000), project.time_zone),
             include: 'calls'
           },
           signal
         })
-      )
+      ).then((windows) => windows.filter((window) => !window.cancelled_at))
     ),
     tryRead(() =>
       allPages((cursor) =>
@@ -303,6 +305,41 @@ function ReadError({
   )
 }
 
+/**
+ * The clauses that fired for a pack, by name. Without the verdicts read (it failed, or is not available yet) there is
+ * nothing to say about clauses, so the block is left out: "No clause has fired" would claim what nobody read.
+ */
+export function FiredClauses({
+  verdicts,
+  pack,
+  locale
+}: {
+  verdicts: Read<ProjectVerdicts>
+  pack: PackState['pack']
+  locale: Locale
+}) {
+  if (!verdicts.ok) return null
+  const fired = packVerdicts(verdicts.value, pack).flatMap((verdict) =>
+    verdict.clauses
+      .filter((clause) => clause.result === 'fired')
+      .map((clause) => ({ ...clause, scope: verdict.scope.kind }))
+  )
+  return (
+    <div data-fired-clauses>
+      <h4 className="type-small text-muted-foreground">{t('overview.fired', {}, locale)}</h4>
+      {fired.length ? (
+        <ul className="overview-fired">
+          {fired.map((clause, index) => (
+            <li key={`${clause.scope}-${clause.key}-${index}`}>{clauseName(clause.key, locale)}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="type-body">{t('overview.no_fired', {}, locale)}</p>
+      )}
+    </div>
+  )
+}
+
 /** The screen's answer: each pack's mode, large, with its glyph and word, its basis, fired clauses and input ages. */
 function PackAnswer({ pack, data, locale }: { pack: PackState; data: OverviewData; locale: Locale }) {
   const state = pack.no_call
@@ -317,11 +354,6 @@ function PackAnswer({ pack, data, locale }: { pack: PackState; data: OverviewDat
       : pack.basis === 'approved_call'
         ? t('data.pack.approved_call', {}, locale)
         : t('data.pack.no_basis', {}, locale)
-  const fired = packVerdicts(valueOf(data.verdicts), pack.pack).flatMap((verdict) =>
-    verdict.clauses
-      .filter((clause) => clause.result === 'fired')
-      .map((clause) => ({ ...clause, scope: verdict.scope.kind }))
-  )
   const inputs = valueOf(data.strip)?.inputs ?? []
   const blocked = pack.no_call?.inputs ?? []
   const since = blocked.map((input) => input.since).sort()[0] ?? null
@@ -344,20 +376,7 @@ function PackAnswer({ pack, data, locale }: { pack: PackState; data: OverviewDat
           ) : null}
         </div>
         <div className="overview-answer-detail">
-          <div>
-            <h4 className="type-small text-muted-foreground">{t('overview.fired', {}, locale)}</h4>
-            {fired.length ? (
-              <ul className="overview-fired">
-                {fired.map((clause, index) => (
-                  <li key={`${clause.scope}-${clause.key}-${index}`} translate="no">
-                    {clause.key}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="type-body">{t('overview.no_fired', {}, locale)}</p>
-            )}
-          </div>
+          <FiredClauses verdicts={data.verdicts} pack={pack.pack} locale={locale} />
           <div>
             <h4 className="type-small text-muted-foreground">{t('overview.input_ages', {}, locale)}</h4>
             {inputs.length ? (
@@ -505,8 +524,7 @@ export function ProjectOverview({
   const today = useMemo(() => {
     if (state.status !== 'ready' || !state.value.windows.ok) return null
     const { time_zone: timeZone } = state.value.project
-    const day = localDateAt(now, timeZone)
-    const todays = state.value.windows.value.filter((item) => localDateAt(new Date(item.starts_at), timeZone) === day)
+    const todays = todaysWindows(state.value.windows.value, timeZone, now)
     const windows = stripWindows(todays, filter)
     return { windows, span: daySpan(windows, now.toISOString()) }
   }, [state, filter, now])
@@ -828,7 +846,7 @@ export function ProjectOverview({
         title={t('overview.bundle', {}, locale)}
         action={
           data.project.packs.some((item) => item.pack === 'sky' && item.enabled) && declare ? (
-            <AskForCall org={org} projectId={data.project.id} locale={locale} />
+            <AskForCall org={org} projectId={data.project.id} drafted={refresh} locale={locale} />
           ) : undefined
         }
       >

@@ -80,6 +80,25 @@ test('ANL-6 what-if uses a named version and every live table stays live', async
   await expect(pane.locator('[data-replay-chart]')).toHaveCount(0)
 })
 
+test('a what-if replay that is not available yet says so instead of blaming the inputs, and drops Run', async ({
+  page
+}) => {
+  await setup(page)
+  await stubApi(
+    page,
+    'evaluateWhatIf',
+    { type: 'https://skyclause.test/problems/not-built', title: 'Not built', status: 501 },
+    { registry, status: 501 }
+  )
+  await page.goto(`${projectRoute}?${replayQuery}`)
+  const pane = page.locator('[data-replay-pane]')
+  await expect(pane.getByRole('button', { name: copy('run'), exact: true })).toBeEnabled()
+  await pane.getByRole('button', { name: copy('run'), exact: true }).press('Enter')
+  await expect(pane.locator('[data-not-built]')).toContainText(copy('replayUnavailable'))
+  await expect(pane).not.toContainText(copy('replayFailed'))
+  await expect(pane.getByRole('button', { name: copy('run'), exact: true })).toHaveCount(0)
+})
+
 test('URL state restores tabs, period, pack and draft inputs with Back navigation', async ({ page }) => {
   await setup(page)
   await page.goto(`${projectRoute}?tab=agreement&period=7d&pack=sky&${replayQuery}`)
@@ -130,7 +149,9 @@ test('agreement kill line, delay columns and table views use a single scale', as
   await page.goto(`${projectRoute}?tab=agreement`)
   const agreement = page.locator('[data-live-chart=agreement]')
   await expect(agreement).toContainText(copy('killLine'))
-  await expect(page.locator('.analysis-ranked')).toContainText('test-storm')
+  // Ranked clauses read by name, never by their key.
+  await expect(page.locator('.analysis-ranked')).toContainText('Test-storm')
+  await expect(page.locator('.analysis-ranked')).not.toContainText('test-storm')
   await expect(agreement.locator('.recharts-reference-line-line')).toHaveAttribute('stroke-dasharray', '4 4')
   await expect(agreement.locator('.recharts-yAxis')).toHaveCount(1)
   expect(await agreement.locator('.recharts-yAxis .recharts-cartesian-axis-tick').count()).toBeGreaterThanOrEqual(3)
@@ -271,6 +292,44 @@ test('Crowd Night lanes show arrival, hatched exit, forecast band and the D+1 ac
   await lane.getByRole('button', { name: copy('table'), exact: true }).press('Enter')
   await expect(lane.locator('[data-night-table]')).toBeVisible()
   await expectZonedTimes(page)
+})
+
+test('Crowd nights still draw when listings are not available yet, and a real listings failure offers Retry', async ({
+  page
+}) => {
+  await setup(page)
+  const night = {
+    id: 'night-two',
+    project_id: projectId,
+    date: '2026-11-04',
+    state: 'graded' as const,
+    doors: '2026-11-04T10:00:00Z',
+    show: '2026-11-04T12:00:00Z',
+    arrival_start: '2026-11-04T10:00:00Z',
+    arrival_end: '2026-11-04T12:00:00Z',
+    exit_start: null,
+    exit_end: null,
+    forecast: null
+  }
+  await stubApi(page, 'listNights', { data: [night], next_cursor: null }, { registry })
+  await stubApi(
+    page,
+    'listProjectListings',
+    { type: 'https://skyclause.test/problems/not-built', title: 'Not built', status: 501 },
+    { registry, status: 501 }
+  )
+  await page.goto(`${projectRoute}?tab=crowd`)
+  await expect(page.locator('[data-night-lane]')).toHaveCount(1)
+  await expect(page.locator('.analysis-nights [data-source-error]')).toHaveCount(0)
+  await expect(page.locator('.analysis-nights').getByRole('button', { name: copy('retry'), exact: true })).toHaveCount(
+    0
+  )
+
+  await stubApi(page, 'listProjectListings', { title: 'Unavailable', status: 503 }, { registry, status: 503 })
+  await page.reload()
+  await expect(page.locator('[data-night-lane]')).toHaveCount(1)
+  await expect(page.locator('.analysis-nights [data-source-error="503"]')).toBeVisible()
+  await expect(page.locator('.analysis-nights').getByRole('button', { name: copy('retry'), exact: true })).toBeVisible()
 })
 
 test('operation failures render errors instead of inventing zero counts', async ({ page }) => {

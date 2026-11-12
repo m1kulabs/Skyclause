@@ -43,7 +43,11 @@ test('NTC-13 Admin sees consent, suppression and bounce records and can copy a r
   await expect(table).not.toContainText(t('subscribers.consent'))
   await table.getByRole('button', { name: row.email, exact: true }).click()
   await expect(page.getByRole('dialog')).toContainText(
-    t('subscribers.consent_detail', { form: 'subscribe', version: '2026-11-06', language: t('subscribe.english') })
+    t('subscribers.consent_detail', {
+      form: t('subscribers.form_subscribe_link'),
+      version: '2026-11-06',
+      language: t('subscribe.english')
+    })
   )
   await page.keyboard.press('Escape')
   await table.getByRole('button', { name: 'bounced@example.test', exact: true }).click()
@@ -146,7 +150,11 @@ test('subscriber pagination uses the returned cursor and preserves earlier conse
   await expect(page.getByRole('table')).toContainText(row.email)
   await page.getByRole('table').getByRole('button', { name: row.email, exact: true }).click()
   await expect(page.getByRole('dialog')).toContainText(
-    t('subscribers.consent_detail', { form: 'subscribe', version: '2026-11-06', language: t('subscribe.english') })
+    t('subscribers.consent_detail', {
+      form: t('subscribers.form_subscribe_link'),
+      version: '2026-11-06',
+      language: t('subscribe.english')
+    })
   )
 })
 
@@ -190,8 +198,9 @@ test('subscriber page denies other organisations, lower roles and signed-out req
       sameSite: 'Lax'
     }
   ])
+  // A visitor with no session is sent to sign in first, and back.
   await page.goto(projectPath)
-  await expect(page.getByRole('heading', { name: /^Page not found/ })).toBeVisible()
+  await expect(page).toHaveURL(new RegExp(`/sign-in\\?next=${encodeURIComponent(projectPath)}$`))
 })
 
 for (const theme of ['dark', 'light', 'high-contrast'] as const) {

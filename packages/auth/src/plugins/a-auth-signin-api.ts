@@ -9,13 +9,15 @@ import type { BetterAuthPlugin } from 'better-auth'
 import { magicLink } from 'better-auth/plugins'
 import { asc, eq, sql } from 'drizzle-orm'
 import { withSendRefusal } from '../send-refusal'
+import { safeRelativePath } from '../relative-path'
+import { SIGN_IN_LINK_EXPIRY_S } from '../sign-in-link'
 
 const OWNER = 'a-auth-signin-api'
 const HANDLE = 'magic-link-resend:'
 const MAGIC = 'magic-link:'
 const MAGIC_META = 'magic-link-meta:'
 const GOOGLE_LINK = 'google-link:'
-const MAGIC_EXPIRY_S = 15 * 60
+const MAGIC_EXPIRY_S = SIGN_IN_LINK_EXPIRY_S
 const HANDLE_EXPIRY_S = 24 * 60 * 60
 const RATE_WINDOW_S = 60 * 60
 
@@ -93,17 +95,7 @@ function clientIp(headers?: Headers) {
   return headers?.get('x-forwarded-for')?.split(',').at(-1)?.trim() || 'unknown'
 }
 
-function safeNext(value: unknown): string | null {
-  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return null
-  try {
-    const resolved = new URL(value, 'https://app.skyclause.m1ku.tech')
-    return resolved.origin === 'https://app.skyclause.m1ku.tech'
-      ? `${resolved.pathname}${resolved.search}${resolved.hash}`
-      : null
-  } catch {
-    return null
-  }
-}
+const safeNext = safeRelativePath
 
 function nextFromRequest(ctx?: { body?: unknown; context?: { baseURL?: string } }) {
   const body = (ctx?.body ?? {}) as { callbackURL?: unknown; metadata?: Record<string, unknown> }
@@ -400,6 +392,8 @@ function responseRedirect(location: string, response?: Response, status = 303) {
   })
   for (const cookie of response?.headers.getSetCookie() ?? []) headers.append('Set-Cookie', cookie)
   headers.set('Location', location)
+  // Every redirect here depends on the session or sets a cookie: no cache may keep it.
+  headers.set('Cache-Control', 'private, no-store')
   return new Response(null, { status, headers })
 }
 
@@ -548,23 +542,34 @@ async function resendMagicLink(auth: AuthApiRuntime, request: Request, now: () =
   })
 }
 
-function validRelativeNext(value: string | null, appOrigin: string) {
-  if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return null
-  try {
-    const resolved = new URL(value, appOrigin)
-    return resolved.origin === new URL(appOrigin).origin
-      ? `${resolved.pathname}${resolved.search}${resolved.hash}`
-      : null
-  } catch {
-    return null
-  }
+/** apps/web's LANGUAGE_COOKIE: the saved language, which the web proxy puts in place of Accept-Language (LOC-1). */
+export const LANGUAGE_COOKIE = 'skyclause-language'
+
+/**
+ * The account's saved language as the cookie this browser keeps, so pages render in it from the first one. An account
+ * that never chose one clears it, so the browser's own language applies rather than the last account's.
+ */
+function languageCookie(preferences: unknown, appOrigin: string): string {
+  const language = (preferences as { language?: unknown } | null | undefined)?.language
+  const secure = new URL(appOrigin).protocol === 'https:' ? '; Secure' : ''
+  return language === 'en' || language === 'ms'
+    ? `${LANGUAGE_COOKIE}=${language}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`
+    : `${LANGUAGE_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax${secure}`
 }
 
 async function continueSignIn(auth: AuthApiRuntime, request: Request, appOrigin: string) {
   const session = await auth.api.getSession({ headers: request.headers })
   if (!session) return redirectToPath('/sign-in')
-  const next = validRelativeNext(new URL(request.url).searchParams.get('next'), appOrigin)
-  if (next) return redirectToPath(next)
+  const signedIn = (path: string) => {
+    const response = redirectToPath(path)
+    response.headers.append(
+      'Set-Cookie',
+      languageCookie((session.user as { preferences?: unknown }).preferences, appOrigin)
+    )
+    return response
+  }
+  const next = safeNext(new URL(request.url).searchParams.get('next'))
+  if (next) return signedIn(next)
   const memberships = await authDatabase()
     .select({ slug: organization.slug })
     .from(member)
@@ -572,7 +577,7 @@ async function continueSignIn(auth: AuthApiRuntime, request: Request, appOrigin:
     .where(eq(member.userId, session.user.id))
     .orderBy(asc(member.createdAt))
     .limit(1)
-  return redirectToPath(memberships[0] ? `/${memberships[0].slug}` : '/new')
+  return signedIn(memberships[0] ? `/${memberships[0].slug}` : '/new')
 }
 
 function googleCallbackRedirect(response: Response, appOrigin: string) {
@@ -587,12 +592,14 @@ function googleCallbackRedirect(response: Response, appOrigin: string) {
   return responseRedirect(`${target.pathname}${target.search}${target.hash}`, response)
 }
 
-/** Better Auth's form CSRF check stops cross-site sign-in posts; these wrappers bypass its router, so they check here. */
+/**
+ * Better Auth's form CSRF check stops cross-site sign-in posts; these wrappers bypass its router, so they check here.
+ * A post proves it came from the app by its Origin, or else by Sec-Fetch-Site; with neither it fails closed.
+ */
 function crossSite(request: Request, appOrigin: string) {
   const origin = request.headers.get('Origin')
   if (origin) return origin !== new URL(appOrigin).origin
-  const site = request.headers.get('Sec-Fetch-Site')
-  return site !== null && site !== 'same-origin' && site !== 'none'
+  return request.headers.get('Sec-Fetch-Site') !== 'same-origin'
 }
 
 export async function authSignInHandler(

@@ -69,7 +69,6 @@ test('every place the command palette goes is a built page, for every role and s
           memberships: [membership],
           projects: [project],
           query: 'flood',
-          projectQuery: 'flood',
           projectChoice,
           changeTheme: () => undefined,
           chooseProject: () => undefined,

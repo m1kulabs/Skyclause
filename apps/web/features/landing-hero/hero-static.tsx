@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { t } from './catalogue'
 import type { EvaluateResult, LatestCallRead } from './evaluate'
 import {
@@ -22,7 +23,8 @@ export function HeroStatic({
   dates,
   latestCall,
   calendarQuery,
-  now
+  now,
+  replay
 }: {
   result: EvaluateResult
   stripSvg: string | null
@@ -31,6 +33,7 @@ export function HeroStatic({
   latestCall: LatestCallRead
   calendarQuery: string
   now: string
+  replay: ReactNode
 }) {
   const grouped = result.kind === 'ok' ? groupedVerdicts(result.data.verdicts) : []
   const rainAnimated =
@@ -92,7 +95,9 @@ export function HeroStatic({
               defaultValue={toLocalTime(win.endMin)}
             />
           </label>
-          <p className={styles.zone}>{t('landing-hero.time_zone', {}, 'en')}</p>
+          <p className={styles.zone} data-source={CLOCK_SOURCE}>
+            {t('landing-hero.time_zone', {}, 'en')}
+          </p>
           {/* Two text fields block implicit submission, so the no-JS form needs its own submit control. */}
           <noscript>
             <button type="submit" className={styles.retry}>
@@ -100,23 +105,26 @@ export function HeroStatic({
             </button>
           </noscript>
         </div>
-        {stripSvg ? (
-          <figure className={styles.rain} data-rain-animated={rainAnimated ? 'yes' : 'no'}>
-            <div
-              className={styles.rainSvg}
-              // biome-ignore lint/security/noDangerouslySetInnerHtml: stripSvg is geometry from derived readings.
-              dangerouslySetInnerHTML={{ __html: stripSvg }}
+        <div className={styles.answer}>
+          {stripSvg ? (
+            <figure className={styles.rain} data-rain-animated={rainAnimated ? 'yes' : 'no'}>
+              <div
+                className={styles.rainSvg}
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: stripSvg is geometry from derived readings.
+                dangerouslySetInnerHTML={{ __html: stripSvg }}
+              />
+            </figure>
+          ) : null}
+          <div aria-live="polite">
+            <HeroReadout
+              result={result}
+              win={win}
+              latestCall={latestCall}
+              calendarQuery={calendarQuery}
+              rainAnimated={rainAnimated}
+              replay={replay}
             />
-          </figure>
-        ) : null}
-        <div aria-live="polite">
-          <HeroReadout
-            result={result}
-            win={win}
-            latestCall={latestCall}
-            calendarQuery={calendarQuery}
-            rainAnimated={rainAnimated}
-          />
+          </div>
         </div>
       </form>
     </>

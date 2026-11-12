@@ -12,6 +12,7 @@ import { WindowStrip } from '../data-components/window-strip'
 import { NoCallState } from '../data-components/states'
 import { ModeBadge } from '../brand/mode-badge'
 import { InputFact } from './input-fact'
+import { clauseName } from './clause-name'
 
 /** A call by what it is for: its window's title, its Crowd night, else the whole site. Never its ID. */
 export function callName(call: Pick<CallDetail, 'window' | 'night'>, locale: Locale = 'en'): string {
@@ -164,12 +165,18 @@ export const CallReview = memo(function CallReview({
         <ul className="bundle-clauses">
           {call.fired.map((fired) => {
             const clause = call.clauses.find((item) => item.key === fired.clause)
+            // The interface's language leads; the other language's wording, which goes out too, follows marked.
+            const other = locale === 'ms' ? 'en' : 'ms'
+            const lead = clause?.wording[locale] ?? clause?.wording[other]
+            const second = clause?.wording[locale] ? clause.wording[other] : undefined
             return (
               <li key={fired.clause}>
-                <p className="bundle-clause-name">{clause?.wording.en ?? fired.clause}</p>
-                {clause?.wording.ms && (
-                  <p className="bundle-quiet" lang="ms">
-                    {clause.wording.ms}
+                <p className="bundle-clause-name" lang={!clause?.wording[locale] && lead ? other : undefined}>
+                  {lead ?? clauseName(fired.clause, locale)}
+                </p>
+                {second && (
+                  <p className="bundle-quiet" lang={other}>
+                    {second}
                   </p>
                 )}
                 {(clause?.inputs ?? call.inputs.filter((input) => fired.inputs.includes(input.name))).map((input) => (

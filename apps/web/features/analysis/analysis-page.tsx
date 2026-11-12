@@ -8,6 +8,7 @@ import { formatDateTime, formatNumber } from '@skyclause/i18n/format'
 import { ApiProblem } from '../../lib/api-fetch'
 import { metricValue } from '../data-components/metrics'
 import { useUnsavedChangesGuard } from '../settings/set-7/use-unsaved-changes-guard'
+import { clauseName } from '../bundles/clause-name'
 import { t } from './catalogue'
 import { apiFetch, allPages, type Analysis, type Project } from './operations'
 import {
@@ -143,7 +144,7 @@ function LiveFigures({ analysis, state, locale }: { analysis: Analysis; state: A
                 <MetricRow
                   key={`${metric.pack}-${metric.clause_key}`}
                   metric={metric}
-                  name={metric.clause_key!}
+                  name={clauseName(metric.clause_key!, locale)}
                   extra={t('analysis.fired', { n: formatNumber(metric.n, locale) }, locale)}
                   locale={locale}
                 />

@@ -5,7 +5,6 @@ import {
   findingLine,
   markEventSeen,
   orderSources,
-  tailCommand,
   withGaps,
   wilsonInterval
 } from '../../features/signals/model'
@@ -126,8 +125,4 @@ test('chart series inserts nulls for missing intervals instead of connecting acr
 test('camera agreement shows no interval at n=0 and a Wilson interval when n is positive', () => {
   expect(wilsonInterval(0, 0)).toBeNull()
   expect(wilsonInterval(18, 20)).toEqual({ low: 0.699, high: 0.972 })
-})
-
-test('the project tail command follows the CLI-4 path', () => {
-  expect(tailCommand('sky', 'bukit-jalil')).toBe('skyclause signals tail sky/bukit-jalil')
 })

@@ -291,8 +291,7 @@
 @media (hover: hover) and (pointer: fine) {
   .pause:hover,
   .date:hover,
-  .retry:hover,
-  .next:hover {
+  .retry:hover {
     background: var(--overlay);
   }
   .date:has(input:checked):hover {
@@ -321,6 +320,23 @@
   border-left: 10px solid currentColor;
   border-top: 6px solid transparent;
   border-bottom: 6px solid transparent;
+}
+/* The words agree with the glyph: Pause beside the bars, Play beside the triangle. */
+.playWord,
+.pause:has(.pauseInput:checked) .pauseWord {
+  display: none;
+}
+.pause:has(.pauseInput:checked) .playWord {
+  display: inline;
+}
+/* Under reduced motion, from the system or the account, the photographs never move, so there is nothing to pause. */
+@media (prefers-reduced-motion: reduce) {
+  .pause {
+    display: none;
+  }
+}
+html[data-motion='reduce'] .pause {
+  display: none;
 }
 
 /* The window form and the verdict, on a solid panel. */
@@ -451,16 +467,14 @@
   color: var(--ink-muted);
 }
 .zone {
+  flex: 1 1 8rem;
   margin: 0 0 12px;
   color: var(--ink-muted);
 }
-.timeError {
-  flex-basis: 100%;
-  margin: 0;
+/* A typed time the parser cannot read: the rule replaces the zone line in its own slot, in the ink at weight. */
+.zone[data-invalid] {
+  color: var(--ink);
   font-weight: 600;
-}
-.timeError:empty {
-  display: none;
 }
 .field input[aria-invalid='true'] {
   border-color: var(--ink);
@@ -476,6 +490,21 @@
   height: auto;
 }
 
+/*
+ * The answer's slot (the readings strip and the readout) keeps at least the replay's height, so a failure or a rate
+ * limit never moves the photograph above it or the card beside it; the picker then holds the tallest answer shown.
+ */
+.answer {
+  display: grid;
+  align-content: start;
+  gap: 20px;
+  min-height: 20rem;
+}
+@media (min-width: 640px) {
+  .answer {
+    min-height: 15rem;
+  }
+}
 .readout {
   display: grid;
   gap: 10px;
@@ -484,8 +513,26 @@
 .readout p {
   margin: 0;
 }
+/* While the visitor's window is read, the answer on screen is the last window's: dimmed, under "Checking this window". */
+.readout[data-pending='yes'] .pack,
+.readout[data-pending='yes'] .label,
+.readout[data-pending='yes'] .errorTitle {
+  opacity: 0.55;
+}
+.retry[aria-disabled='true'] {
+  cursor: progress;
+}
+/* The label the verdict must wear (LND-3) and when it was evaluated, on one line where it fits. */
+.verdictHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+}
+.verdictHead p {
+  margin: 0;
+}
 .label {
-  font-size: var(--step-body);
   font-weight: 600;
 }
 .error {
@@ -525,31 +572,41 @@
     transform var(--t-press) var(--ease),
     opacity var(--t-hover) ease;
 }
-.retry:active,
-.next:active {
+.retry:active {
   transform: scale(0.97);
 }
-/* The way forward from a part that is not built: the labelled replay further down, as a capsule link. */
-.next {
-  justify-self: start;
-  display: inline-flex;
+/* The replay, while live verdicts are not open: what this is and why, its window, then the verdict as read. */
+.replay {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+.replayLead {
+  max-width: 62ch;
+  text-wrap: pretty;
+}
+.replayWindow {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  min-height: 44px;
-  margin-top: 4px;
-  padding: 0 20px;
-  border: 2px solid var(--ink);
-  border-radius: 9999px;
-  background: var(--raised);
-  color: var(--ink);
-  font-size: 14px;
+  gap: 4px 10px;
+  font-size: var(--step-body);
   font-weight: 600;
-  text-decoration: none;
-  transition: transform var(--t-press) var(--ease);
 }
 .pack {
   display: grid;
   gap: 6px;
   width: 100%;
+}
+/* The pack's name, its mode and the clauses that fired read as one line. */
+.packHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+.packHead p {
+  margin: 0;
 }
 .packName {
   font-weight: 600;
@@ -570,13 +627,25 @@
 .input {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 2px 12px;
+}
+/* Each input's source link is a target of its own in the row, so it stands at least 24px tall. */
+.input a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
 }
 .inputName {
   font-weight: 500;
 }
 .age {
   color: var(--ink-muted);
+}
+/* A reading's value and unit, and its age, each stay on one line: "39.0 mm", "5 min old". */
+.input [data-numeric],
+.age {
+  white-space: nowrap;
 }
 .meta {
   display: flex;
@@ -636,6 +705,9 @@
   }
   .panel {
     padding: 24px 28px;
+  }
+  .answer {
+    min-height: 13rem;
   }
 }
 

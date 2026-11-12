@@ -71,7 +71,8 @@ test('routes /api/me reads to APP_ORIGIN and /v1/projects to API_ORIGIN in multi
 
   expect(data).toEqual({ memberships: [membership], projects: [project] })
   expect(fetcher.mock.calls.map(([url]) => String(url)).sort()).toEqual([
-    'https://api.skyclause.m1ku.tech/v1/projects',
+    // One read with the summaries the dashboard needs, shared with it per render.
+    'https://api.skyclause.m1ku.tech/v1/projects?limit=200&include=summary',
     'https://app.skyclause.m1ku.tech/api/me/memberships'
   ])
 })
@@ -115,7 +116,7 @@ test('keeps every read on API_ORIGIN in single-host mode', async () => {
 
   expect(fetcher.mock.calls.map(([url]) => String(url)).sort()).toEqual([
     'http://localhost:3000/api/me/memberships',
-    'http://localhost:3000/v1/projects'
+    'http://localhost:3000/v1/projects?limit=200&include=summary'
   ])
 })
 

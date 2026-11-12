@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { headers } from 'next/headers'
 import { prefersMalay } from '../../../../lib/preferred-language'
 import { DeclareWindowDialog } from '../../../../features/windows/declare-window-dialog'
+import { windowControls } from '../../../../features/windows/controls'
 
 export default async function ProjectLayout({
   children,
@@ -15,7 +16,7 @@ export default async function ProjectLayout({
   return (
     <>
       {children}
-      <DeclareWindowDialog org={org} project={project} locale={locale} />
+      <DeclareWindowDialog org={org} project={project} controls={windowControls()} locale={locale} />
     </>
   )
 }

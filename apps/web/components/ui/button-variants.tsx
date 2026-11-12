@@ -4,6 +4,10 @@ import { cva } from 'class-variance-authority'
 // with no capsule. The recipe never lists two classes for one property (colour, width, radius, size and type each live in
 // exactly one of base, variant and size), so it renders right without `cn()`'s class merging.
 const capsule = 'rounded-full border-2 [.hc_&]:border-(--edge)'
+// Forced colours turn the accent fill into Highlight: a hovered or open capsule paints the pair's text colour on it, out
+// of the Canvas backplate that would hide HighlightText, as a selected segment does.
+const forcedAccent =
+  'forced-colors:hover:forced-color-adjust-none forced-colors:hover:border-accent-foreground forced-colors:hover:text-accent-foreground forced-colors:aria-expanded:forced-color-adjust-none forced-colors:aria-expanded:border-accent-foreground forced-colors:aria-expanded:text-accent-foreground'
 
 /**
  * The button's class recipe, kept apart from the button so a page can style a link as a capsule without loading Base
@@ -20,8 +24,8 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         default: `${capsule} border-transparent bg-primary text-primary-foreground hover:opacity-90`,
-        outline: `${capsule} border-input bg-control text-foreground hover:bg-accent aria-expanded:bg-accent`,
-        secondary: `${capsule} border-input bg-control text-foreground hover:bg-accent aria-expanded:bg-accent`,
+        outline: `${capsule} border-input bg-control text-foreground hover:bg-accent aria-expanded:bg-accent ${forcedAccent}`,
+        secondary: `${capsule} border-input bg-control text-foreground hover:bg-accent aria-expanded:bg-accent ${forcedAccent}`,
         ghost: `${capsule} border-transparent bg-transparent text-foreground hover:bg-muted aria-expanded:bg-muted`,
         destructive: `${capsule} border-foreground bg-transparent text-foreground hover:bg-muted`,
         link: 'rounded-none border-0 text-foreground underline underline-offset-3 hover:decoration-2 [.hc_&]:border-0'

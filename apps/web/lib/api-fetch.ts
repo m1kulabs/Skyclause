@@ -10,13 +10,24 @@ export interface ApiProblemBody {
 export class ApiProblem extends Error {
   readonly status: number
   readonly body: ApiProblemBody
+  /** When the API said to try again (its `Retry-After`), as an instant; null when it did not say. */
+  readonly retryAt: string | null
 
-  constructor(status: number, body: ApiProblemBody) {
+  constructor(status: number, body: ApiProblemBody, retryAt: string | null = null) {
     super(body.title ?? `HTTP ${status}`)
     this.name = 'ApiProblem'
     this.status = status
     this.body = body
+    this.retryAt = retryAt
   }
+}
+
+/** `Retry-After` as an instant: delay seconds from now, or an HTTP date; null when absent or unreadable. */
+export function retryAtOf(value: string | null, now = Date.now()): string | null {
+  if (!value) return null
+  const seconds = /^\d+$/.test(value.trim()) ? Number(value.trim()) : null
+  const at = seconds !== null ? now + seconds * 1000 : Date.parse(value)
+  return Number.isFinite(at) ? new Date(at).toISOString() : null
 }
 
 export interface ApiOperation {
@@ -169,7 +180,11 @@ export function createApiFetch<const Registry extends ApiRegistry>(
     const response = await fetch(requestUrl, init)
     if (!response.ok) {
       const body = await response.json().catch(() => undefined)
-      throw new ApiProblem(response.status, problemBody(body, response.status, response.statusText))
+      throw new ApiProblem(
+        response.status,
+        problemBody(body, response.status, response.statusText),
+        retryAtOf(response.headers.get('Retry-After'))
+      )
     }
 
     const body =
