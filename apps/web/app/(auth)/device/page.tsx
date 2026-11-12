@@ -1,6 +1,8 @@
 import { deviceAuthorizationPageData } from '@skyclause/auth'
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getPrincipal } from '../../../lib/principal'
+import { prefersMalay } from '../../../lib/preferred-language'
 import { DeviceApproval } from '../../../features/device/device-approval'
 import { normalizeDeviceCode, parseCliUserAgent } from '../../../features/device/model'
 
@@ -23,7 +25,14 @@ export default async function DevicePage({
     : { state: 'empty' as const, userAgent: null, memberships: [] }
 
   const device = parseCliUserAgent(userAgent)
+  const locale = prefersMalay((await headers()).get('accept-language')) ? 'ms' : 'en'
   return (
-    <DeviceApproval code={normalizeDeviceCode(code)} initialState={state} device={device} memberships={memberships} />
+    <DeviceApproval
+      code={normalizeDeviceCode(code)}
+      initialState={state}
+      device={device}
+      memberships={memberships}
+      locale={locale}
+    />
   )
 }

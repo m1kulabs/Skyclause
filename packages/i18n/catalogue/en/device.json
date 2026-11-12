@@ -13,6 +13,7 @@
   "access": "Signs in as you, with your roles in each organisation",
   "organisations": "Organisations",
   "no_organisations": "You do not belong to an organisation yet.",
+  "warning": "Confirm only if you just ran skyclause login on this device.",
   "confirm": "Confirm",
   "deny": "Deny",
   "expired": "This code has expired. Run `skyclause login` again.",
