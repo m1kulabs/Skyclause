@@ -564,7 +564,7 @@ test('#372 a signed-in approver’s bundle arrives rendered by the server and hy
   // The run and strip arrive in the client refresh; new readings must replace the server's empty strip.
   await expect(page.locator('.bundle-trace')).toContainText(review.bundle.run_id)
   // The readings chart, under the window's capsule (whose glyph is an svg too).
-  await expect(page.locator('.bundle-call-list figure svg[viewBox^="0 0 640"]')).toBeVisible()
+  await expect(page.locator('.bundle-call-list figure svg[data-strip-plot]')).toBeVisible()
   await expect(page.locator('.bundle-call-list figure figcaption')).toContainText('50')
   expect(errors.filter((error) => /hydrat|Minified React error #(418|419|421|422|423|425)\b/i.test(error))).toEqual([])
 })

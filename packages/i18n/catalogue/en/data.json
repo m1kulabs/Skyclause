@@ -16,7 +16,10 @@
     "window": "Window",
     "now": "Now",
     "ages_title": "Input ages",
-    "lebat_line": "Lebat 31 mm"
+    "lebat_line": "Lebat 31 mm",
+    "chart_date": "{date} · MYT",
+    "now_label": "Now MYT",
+    "table_peaks": "Highest reading in each {minutes} minutes, from {count} readings."
   },
   "age": {
     "label": "{name} {age}",
