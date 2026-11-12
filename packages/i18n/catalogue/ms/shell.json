@@ -26,5 +26,8 @@
   "command_description": "Cari arahan untuk dijalankan.",
   "show_options": "Tunjukkan pilihan",
   "clear": "Kosongkan pilihan",
-  "remove": "Alih keluar pilihan"
+  "remove": "Alih keluar pilihan",
+  "notifications": "Pemberitahuan",
+  "suggestions": "Cadangan",
+  "remove_named": "Alih keluar {name}"
 }

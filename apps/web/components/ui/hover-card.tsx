@@ -7,8 +7,9 @@ function HoverCard({ ...props }: PreviewCardPrimitive.Root.Props) {
   return <PreviewCardPrimitive.Root data-slot="hover-card" {...props} />
 }
 
-function HoverCardTrigger({ ...props }: PreviewCardPrimitive.Trigger.Props) {
-  return <PreviewCardPrimitive.Trigger data-slot="hover-card-trigger" {...props} />
+/** A button by default: the primitive's own trigger is an `<a>`, which without an `href` takes no focus and no tap. */
+function HoverCardTrigger({ render = <button type="button" />, ...props }: PreviewCardPrimitive.Trigger.Props) {
+  return <PreviewCardPrimitive.Trigger data-slot="hover-card-trigger" render={render} {...props} />
 }
 
 function HoverCardContent({
