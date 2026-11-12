@@ -27715,6 +27715,15 @@
                       "url": {
                         "type": "string",
                         "format": "uri"
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "class",
+                          "event",
+                          "commute_wave"
+                        ],
+                        "default": "class"
                       }
                     },
                     "required": [
@@ -27725,6 +27734,15 @@
                   {
                     "type": "object",
                     "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "class",
+                          "event",
+                          "commute_wave"
+                        ],
+                        "default": "class"
+                      },
                       "file": {
                         "type": "object",
                         "properties": {

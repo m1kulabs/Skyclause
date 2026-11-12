@@ -12,9 +12,10 @@ import { IcsFeed, Page, PageQuery } from '../shared'
 
 // #143 uploads the original bytes as text; #139 owns calendar parsing and validation.
 const IcsFeedBody = z.union([
-  z.object({ url: z.url() }).strict(),
+  z.object({ url: z.url(), kind: z.enum(['class', 'event', 'commute_wave']).default('class') }).strict(),
   z
     .object({
+      kind: z.enum(['class', 'event', 'commute_wave']).default('class'),
       file: z
         .object({
           name: z.string().min(1).max(255),

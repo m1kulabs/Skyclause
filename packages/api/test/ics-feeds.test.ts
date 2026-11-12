@@ -30,6 +30,21 @@ beforeAll(async () => {
 })
 
 describe('listIcsFeeds', () => {
+  test('viewer cannot read a calendar capability URL or filename', async () => {
+    const p = await project()
+    await tenant((tx) => makeIcsFeed(tx, { projectId: p.id, url: 'https://calendar.example.com/private?secret=abc' }))
+    await tenant((tx) => makeIcsFeed(tx, { projectId: p.id, url: null, filename: 'private.ics' }))
+    const feeds = (await body(p.id)).data
+    expect(feeds).toHaveLength(2)
+    expect(feeds.every((feed) => feed.url === null && !('filename' in feed))).toBe(true)
+  })
+  test('a read-only editor credential cannot read calendar secrets', async () => {
+    const p = await project()
+    await tenant((tx) => makeIcsFeed(tx, { projectId: p.id, url: 'https://calendar.example.com/private?secret=abc' }))
+    const response = await request(p.id, {}, asApiKey({ org: ORG, role: 'editor', scopes: ['read'] }))
+    expect(response.status).toBe(200)
+    expect(((await response.json()) as Page<IcsFeedView>).data[0]?.url).toBeNull()
+  })
   test('a project with no calendars returns an empty page', async () => {
     const p = await project()
     expect(await body(p.id)).toEqual({ data: [], next_cursor: null })
@@ -50,7 +65,10 @@ describe('listIcsFeeds', () => {
     const middle = await tenant((tx) =>
       makeIcsFeed(tx, { projectId: p.id, url: null, filename: 'middle.ics', createdAt: ago(200) })
     )
-    expect((await body(p.id)).data).toEqual([
+    const member = asSession({ org: ORG, role: 'editor' })
+    const response = await request(p.id, {}, member)
+    expect(response.status).toBe(200)
+    expect(((await response.json()) as Page<IcsFeedView>).data).toEqual([
       { id: oldest.id, project_id: p.id, url: 'https://calendar.example.com/a.ics' },
       { id: middle.id, project_id: p.id, url: null, filename: 'middle.ics' },
       { id: newest.id, project_id: p.id, url: null, filename: 'late.ics' }

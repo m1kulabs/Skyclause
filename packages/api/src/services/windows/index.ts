@@ -116,3 +116,4 @@ export async function createWindow(
   await track(ctx.tx, 'window_declared', { via: CATALOGUE_VIA[via], recurring: false }, { projectId })
   return windowView(row, [])
 }
+export { fetchCalendar } from './fetch-ics'

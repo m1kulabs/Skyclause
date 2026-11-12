@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { decodeCursor, page } from '../../pagination'
 import { ApiError, validationFailed } from '../../problems'
 import type { ServiceContext } from '../../tenancy'
+import { assertWindowsStatement, declarer } from '../windows/shared'
 
 export type IcsFeedView = z.infer<
   Operations['listIcsFeeds']['responses'][200]['content']['application/json']['schema']
@@ -64,13 +65,22 @@ export async function listIcsFeeds(
     project_id: projectId,
     feed_id: row.id
   }))
+  let reveal = false
+  try {
+    assertWindowsStatement(ctx, 'window.declare', access)
+    declarer(principal)
+    reveal = access.can(principal, 'window.declare', { projectId })
+  } catch (error) {
+    if (!(error instanceof ApiError)) throw error
+    // Metadata remains available to project viewers without declaration rights.
+  }
   return {
     data: result.data.map((row) => ({
       id: row.id,
       project_id: row.projectId,
-      url: row.url,
+      url: reveal ? row.url : null,
       // The contract's `filename` is optional, not nullable: a URL subscription has none.
-      ...(row.filename !== null ? { filename: row.filename } : {})
+      ...(reveal && row.filename !== null ? { filename: row.filename } : {})
     })),
     next_cursor: result.next_cursor
   }

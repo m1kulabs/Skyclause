@@ -76,7 +76,7 @@ export async function openProject(ctx: ServiceContext, projectId: string, statem
   if (!(await getProjectRecord(tx, projectId))) throw unavailable()
 }
 
-export function assertWindowsStatement(ctx: ServiceContext, statement: Statement, access: WindowsAccess) {
+export function assertWindowsStatement(ctx: ServiceContext, statement: Statement, access: Pick<WindowsAccess, 'can'>) {
   const { principal } = ctx
   const scopes =
     principal.kind === 'api_key' || principal.kind === 'oauth' || principal.kind === 'guest_token'

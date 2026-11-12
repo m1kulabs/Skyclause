@@ -59,3 +59,10 @@ test('#139 ICS import accepts exactly one URL or file and does not parse calenda
     }).success
   ).toBe(false)
 })
+
+test('ICS import accepts a window kind and defaults it to class', () => {
+  const schema = createIcsFeed.request.body.content['application/json'].schema
+  expect(schema.parse({ url: 'https://calendar.example.org/calendar.ics' })).toMatchObject({ kind: 'class' })
+  expect(schema.safeParse({ url: 'https://calendar.example.org/calendar.ics', kind: 'class' }).success).toBe(true)
+  expect(schema.safeParse({ url: 'https://calendar.example.org/calendar.ics', kind: 'bogus' }).success).toBe(false)
+})
