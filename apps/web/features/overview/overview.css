@@ -117,6 +117,12 @@
   gap: 6px;
 }
 
+/* A long input name truncates inside its chip instead of pushing the chip past the card. */
+.overview-age-list > li {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .overview-row {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
