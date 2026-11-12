@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { resolveWindowLocalSpan, withTenant } from '../src'
+import { nextWindowLocalDate, resolveWindowLocalSpan, withTenant } from '../src'
 import { makeOrganization } from './factories'
 import { memberOf } from './harness'
 
@@ -64,4 +64,20 @@ test('chooses standard time in the fall overlap and keeps daily 09:00 across DST
     '2026-03-08T13:00:00.000Z',
     '2026-03-09T13:00:00.000Z'
   ])
+})
+
+test.each([
+  ['late MYT evening', '2026-11-14T15:55:00Z', 'Asia/Kuala_Lumpur', '2026-11-14T16:00:00.000Z'],
+  ['exact MYT midnight', '2026-11-14T16:00:00Z', 'Asia/Kuala_Lumpur', '2026-11-15T16:00:00.000Z'],
+  ['23-hour spring date', '2026-03-08T05:00:00Z', 'America/New_York', '2026-03-09T04:00:00.000Z'],
+  ['25-hour autumn date', '2026-11-01T04:00:00Z', 'America/New_York', '2026-11-02T05:00:00.000Z'],
+  ['midnight spring gap', '2018-11-04T02:55:00Z', 'America/Sao_Paulo', '2018-11-04T03:00:00.000Z'],
+  ['skipped civil date', '2011-12-30T09:55:00Z', 'Pacific/Apia', '2011-12-30T10:00:00.000Z']
+])('the next local date boundary handles %s', async (_label, now, tz, expected) => {
+  const { id: orgId } = await makeOrganization()
+  const next = await withTenant({ orgId, principal: memberOf(orgId) }, (tx) =>
+    nextWindowLocalDate(tx, { now: new Date(now), tz })
+  )
+  expect(next.toISOString()).toBe(expected)
+  expect(next.getTime()).toBeGreaterThan(new Date(now).getTime())
 })

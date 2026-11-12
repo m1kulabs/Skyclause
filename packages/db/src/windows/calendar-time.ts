@@ -43,3 +43,12 @@ export async function windowZoneExists(tx: Tx, tz: string): Promise<boolean> {
   )
   return rows[0]!.present
 }
+
+/** Next project-local calendar date boundary, using PostgreSQL's zone rules rather than 24 elapsed hours. */
+export async function nextWindowLocalDate(tx: Tx, input: { now: Date; tz: string }): Promise<Date> {
+  const { rows } = await tx.execute<{ nextAt: string }>(sql`
+    SELECT ((((${input.now}::timestamptz AT TIME ZONE ${input.tz})::date + 1)::timestamp)
+      AT TIME ZONE ${input.tz}) AS "nextAt"
+  `)
+  return new Date(rows[0]!.nextAt)
+}
