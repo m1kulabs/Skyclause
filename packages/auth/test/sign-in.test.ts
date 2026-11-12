@@ -5,7 +5,7 @@ import { makeUser } from '@skyclause/db/test/factories/user'
 import { asLogin } from '@skyclause/db/test/harness/index'
 import { addMember, makeOrg, signIn, TEST_AUTH_ENV } from './harness'
 import { authSettings, createAuth } from '../src/instance'
-import { authSignInHandler, aAuthSignInApi } from '../src/plugins/a-auth-signin-api'
+import { authSignInHandler, aAuthSignInApi, LANGUAGE_COOKIE } from '../src/plugins/a-auth-signin-api'
 import { afterEach, expect, test, vi } from 'vitest'
 
 const APP = TEST_AUTH_ENV.APP_ORIGIN
@@ -239,6 +239,25 @@ test('continue accepts only same-origin relative paths, then uses the earliest m
   await addMember(second.id, accountUser.id, 'viewer')
   const home = await request('GET', '/continue', undefined, session.cookie)
   expect(home.headers.get('Location')).toBe('/first-org')
+})
+
+test('continue sends a signed-out visitor to sign-in, and a signed-in one with the saved language as a cookie', async () => {
+  const { request } = setup()
+  const signedOut = await request('GET', '/continue')
+  expect(signedOut.headers.get('Location')).toBe('/sign-in')
+  expect(signedOut.headers.getSetCookie().some((cookie) => cookie.startsWith(`${LANGUAGE_COOKIE}=`))).toBe(false)
+
+  const languageOf = (response: Response) =>
+    response.headers.getSetCookie().find((cookie) => cookie.startsWith(`${LANGUAGE_COOKIE}=`))
+  const malay = await makeUser({ email: 'malay@example.test', emailVerified: true, preferences: { language: 'ms' } })
+  const chose = await request('GET', '/continue', undefined, (await signIn(malay.id)).cookie)
+  expect(chose.headers.get('Location')).toBe('/new')
+  expect(languageOf(chose)).toMatch(/^skyclause-language=ms; Path=\/; Max-Age=31536000; SameSite=Lax; Secure$/)
+
+  // An account that never chose clears it: the browser's own language applies, not the last account's.
+  const never = await makeUser({ email: 'never@example.test', emailVerified: true })
+  const cleared = await request('GET', '/continue', undefined, (await signIn(never.id)).cookie)
+  expect(languageOf(cleared)).toMatch(/^skyclause-language=; Path=\/; Max-Age=0;/)
 })
 
 test('magic-link requests and resends enforce email and IP-hour limits with Retry-After', async () => {

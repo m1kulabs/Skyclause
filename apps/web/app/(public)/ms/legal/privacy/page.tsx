@@ -1,8 +1,7 @@
-import { t } from '@skyclause/i18n'
-import { brandMetadata } from '../../../../../features/brand/metadata'
 import { PrivacyNoticePage } from '../../../../../features/legal'
+import { pageMetadata } from '../../../../../features/share-previews/pages'
 
-export const metadata = { ...brandMetadata, title: t('legal.privacy.metadataTitle', {}, 'ms') }
+export const generateMetadata = () => pageMetadata('privacy', 'ms')
 
 export default function MalayPrivacyPage() {
   return <PrivacyNoticePage locale="ms" />

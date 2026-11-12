@@ -1,6 +1,7 @@
 import { t } from '@skyclause/i18n'
 import type { ReactNode } from 'react'
 import { buttonVariants } from '#ui/button-variants'
+import { hrefOn } from '../../lib/origins'
 import type { PublicLocale } from './attribution'
 import { BlockWordmark } from './block-wordmark'
 import { BrandLines } from './brand-lines'
@@ -24,21 +25,28 @@ export function PublicChrome({
   /** The request's path, so the link to the page being read says so. */
   path?: string
 }) {
-  // Only pages that exist: the Terms are English only, so a Malay reader's link says so with hrefLang.
+  // Only pages that exist: the Terms are English only, so a Malay reader's link says so with hrefLang. The frame also
+  // draws the app host's not-found page, so each link names the host its page is on.
   const legal = [
-    { label: t('legal.frame.terms', {}, locale), href: '/legal/terms', hrefLang: 'en' as const },
-    { label: t('legal.frame.privacy', {}, locale), href: privacyPath(locale), hrefLang: locale }
+    { label: t('legal.frame.terms', {}, locale), page: '/legal/terms', hrefLang: 'en' as const },
+    { label: t('legal.frame.privacy', {}, locale), page: privacyPath(locale), hrefLang: locale }
   ]
   const other = locale === 'ms' ? 'en' : 'ms'
   const language = {
     label: t('legal.frame.language', {}, locale),
     title: t('legal.frame.languageLabel', {}, locale),
-    href: privacyPath(other),
+    href: hrefOn('marketing', privacyPath(other)),
     hrefLang: other
   }
-  const current = (href: string) => (href === path ? ('page' as const) : undefined)
-  const link = ({ label, href, hrefLang }: { label: string; href: string; hrefLang: string }) => (
-    <a key={href} href={href} hrefLang={hrefLang} aria-current={current(href)} className="current-mark">
+  const current = (page: string) => (page === path ? ('page' as const) : undefined)
+  const link = ({ label, page, hrefLang }: { label: string; page: string; hrefLang: string }) => (
+    <a
+      key={page}
+      href={hrefOn('marketing', page)}
+      hrefLang={hrefLang}
+      aria-current={current(page)}
+      className="current-mark"
+    >
       {label}
     </a>
   )
@@ -46,8 +54,7 @@ export function PublicChrome({
   return (
     <div className={styles.frame} data-surface="public">
       <header className={styles.header}>
-        {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Public navigation stays server-rendered and works without JavaScript. */}
-        <a className={styles.home} href="/" aria-label={t('legal.frame.home', {}, locale)}>
+        <a className={styles.home} href={hrefOn('marketing', '/')} aria-label={t('legal.frame.home', {}, locale)}>
           {/* eslint-disable-next-line @next/next/no-img-element -- The fixed SVG mark needs no optimization or client code. */}
           <img className={styles.mark} src="/icon.svg" width={28} height={28} alt="" />
           <span className={styles.wordmark} translate="no">
@@ -58,8 +65,7 @@ export function PublicChrome({
           <nav className={styles.nav} aria-label={t('legal.frame.navigation', {}, locale)}>
             {legal.map(link)}
           </nav>
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Public navigation stays server-rendered and works without JavaScript. */}
-          <a className={cn(buttonVariants({ size: 'lg' }), styles.action)} href="/sign-in">
+          <a className={cn(buttonVariants({ size: 'lg' }), styles.action)} href={hrefOn('app', '/sign-in')}>
             {t('legal.frame.signIn', {}, locale)}
           </a>
         </div>

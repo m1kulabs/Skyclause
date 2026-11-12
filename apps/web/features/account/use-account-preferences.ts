@@ -3,6 +3,7 @@
 import { DEFAULT_PREFERENCES, Preferences, type Preferences as PreferenceValues } from '@skyclause/contracts'
 import { t } from '@skyclause/i18n'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { rememberLanguage } from '../../lib/preferred-language'
 import { applyAccountPreferences } from './presentation'
 import { accountApi } from './operations'
 import '../settings/catalogue'
@@ -50,6 +51,12 @@ export function useAccountPreferences(initial = DEFAULT_PREFERENCES, locale: 'en
         setPreferences(stored)
         applyAccountPreferences(stored)
         setSaved(true)
+        // The server renders every page's words: a language choice is remembered for every request, and this page
+        // loads again in it unless it is already in that language.
+        if ('language' in update) {
+          rememberLanguage(stored.language)
+          if (document.documentElement.lang !== stored.language) window.location.reload()
+        }
       } catch {
         current.current = previous
         setPreferences(previous)

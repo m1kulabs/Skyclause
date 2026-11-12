@@ -367,7 +367,8 @@ test('401 reauth-required opens step-up and retries client creation with the sam
 })
 
 for (const guest of [false, true]) {
-  test(`${guest ? 'guest' : 'signed-out visitor'} goes to sign-up`, async ({ page }) => {
+  // A guest converts at sign-up; a visitor with no credential at all signs in first and comes back.
+  test(`${guest ? 'guest goes to sign-up' : 'signed-out visitor goes to sign-in and back'}`, async ({ page }) => {
     if (guest) await asPage(page, { ...member, isGuest: true })
     else
       await page.context().addCookies([
@@ -378,7 +379,7 @@ for (const guest of [false, true]) {
         }
       ])
     await page.goto('/connect')
-    await expect(page).toHaveURL(/\/sign-up$/)
+    await expect(page).toHaveURL(guest ? /\/sign-up$/ : /\/sign-in\?next=%2Fconnect$/)
     await expect(page.locator('[data-connect-page]')).toHaveCount(0)
   })
 }

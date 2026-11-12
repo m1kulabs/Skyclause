@@ -8,7 +8,7 @@ import { sortFindings } from './known-gaps'
 import { sessions, signedOut, type Role, type Session } from './roles'
 import { builtRoutes, type CrawlRoute } from './routes'
 import { crawlPath, fillable } from './rows'
-import { hasSession, redirectsToAccount, visit } from './visit'
+import { hasSession, redirectsToAccount, signsInFirst, visit } from './visit'
 import { onboardingOperations } from '../../features/onboarding/operations'
 import { AUTH_REAUTH_DIALOG_SELECTOR, isAuthRoute } from '../../features/sign-in/model'
 import { sourceOperations } from '../../features/sources/operations'
@@ -207,7 +207,8 @@ async function crawl(
     })
     if (variant.viewport) await page.setViewportSize(variant.viewport)
     const findings = await visit(page, concreteRoute, session.role, readySelector, org?.slug)
-    if (redirectsToAccount(route, session.role)) return found
+    // Sign-in is crawled as its own route; a page that sends there has nothing of its own to inspect.
+    if (redirectsToAccount(route, session.role) || signsInFirst(route, session.role)) return found
     const reauthDialog = page.locator(AUTH_REAUTH_DIALOG_SELECTOR)
     if (isAuthRoute(route.path) || (await reauthDialog.count()) > 0) {
       const passwordControls = page.locator(

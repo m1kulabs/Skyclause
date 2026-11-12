@@ -249,8 +249,14 @@ test('SET-2 shares preferences across browser contexts and paints the saved them
   const html = await response!.text()
   expect(html).toMatch(/<html[^>]*class="dark hc"/)
   expect(html).toMatch(/color-scheme:\s*dark/)
-  await expect(otherPage.locator('html')).toHaveAttribute('lang', 'ms')
+  // `lang` names the language the page is rendered in. This context never came through sign-in's continue, which
+  // remembers the saved language in the browser, so it reads in its browser's own until it does.
+  await expect(otherPage.locator('html')).toHaveAttribute('lang', 'en')
+  await expect(otherPage.locator('select[name="language"]')).toHaveValue('ms')
   await expect(otherPage.getByRole('switch', { name: 'Keyboard shortcuts' })).not.toBeChecked()
+  await otherContext.addCookies([{ name: 'skyclause-language', value: 'ms', url: baseURL! }])
+  await otherPage.reload()
+  await expect(otherPage.locator('html')).toHaveAttribute('lang', 'ms')
   await otherContext.close()
 })
 

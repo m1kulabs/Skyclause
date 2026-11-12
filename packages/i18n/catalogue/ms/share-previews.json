@@ -42,5 +42,27 @@
       "rain_max_4h_mm": "Hujan maksimum dalam 4 jam",
       "met_warning_in_force": "Amaran MET berkuat kuasa semasa tetingkap"
     }
+  },
+  "pages": {
+    "site": "Skyclause",
+    "landing": {
+      "title": "Skyclause · Panggilan untuk setiap jendela masa",
+      "heading": "Panggilan untuk setiap jendela masa",
+      "description": "Skyclause membaca tolok hujan, indeks jerebu dan senarai acara stadium di sekitar Bukit Jalil, dan membuat satu panggilan yang diluluskan dan dinilai bagi setiap jendela masa kelas, acara atau perjalanan."
+    },
+    "signIn": {
+      "title": "Log masuk ke Skyclause",
+      "heading": "Log masuk",
+      "description": "Log masuk ke Skyclause untuk mengisytiharkan jendela masa anda, menyemak setiap panggilan dan menyimpan rekodnya."
+    },
+    "signUp": {
+      "title": "Cipta akaun · Skyclause",
+      "heading": "Cipta akaun",
+      "description": "Cipta akaun Skyclause untuk mendapatkan satu panggilan yang diluluskan dan dinilai bagi setiap jendela masa kelas, acara atau perjalanan."
+    },
+    "notFound": {
+      "title": "Halaman tidak ditemui · Skyclause"
+    },
+    "imageAlt": "{heading}. {description}"
   }
 }
