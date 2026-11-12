@@ -11,11 +11,11 @@
   "preview_label": "{channel} · {language}",
   "no_renderings": "Belum ada pratonton. Konfigurasikan templat saluran, kemudian cuba lagi.",
   "description": "Ke mana keputusan diluluskan dihantar",
-  "about_email": "Pelanggan yang telah mengesahkan menerima setiap panggilan yang diluluskan sebagai notis melalui e-mel, dalam bahasa mereka.",
+  "about_email": "Pelanggan yang telah mengesahkan menerima setiap keputusan yang diluluskan sebagai notis melalui e-mel, dalam bahasa mereka.",
   "about_ics": "Kalendar yang boleh dilanggan bagi keputusan yang diluluskan dan entri malam lonjakan projek ini.",
   "about_webhook": "Peristiwa bertandatangan dihantar ke titik akhir yang ditetapkan dalam tetapan organisasi.",
   "about_in_app": "Keputusan yang diluluskan muncul di dalam aplikasi.",
   "preview_title": "Notis terkini",
-  "preview_description": "Lihat bagaimana panggilan sebenar terbaharu dibaca pada setiap saluran.",
+  "preview_description": "Lihat bagaimana keputusan sebenar terbaharu dibaca pada setiap saluran.",
   "source_read": "saluran"
 }

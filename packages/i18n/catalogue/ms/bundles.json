@@ -3,7 +3,7 @@
   "loading": "Memuatkan berkas…",
   "load_error": "Berkas tidak dapat dimuatkan. Cuba lagi.",
   "retry": "Cuba lagi",
-  "empty": "Belum ada panggilan dalam berkas ini. Buka projek untuk meminta penilaian.",
+  "empty": "Belum ada keputusan dalam berkas ini. Buka projek untuk meminta larian.",
   "project": "Buka projek",
   "trigger": "{trigger} pada {time} · {pack}",
   "triggers": {
@@ -160,7 +160,7 @@
   "malay-reader-required": "Pelulus yang boleh membaca bahasa Melayu mesti menyemak keputusan ini.",
   "redraft-required": "Keputusan ini memerlukan draf baharu. Buka projek untuk meminta larian.",
   "call-expired": "Satu keputusan telah tamat tempoh. Muat semula berkas sebelum meluluskan keputusan yang lain.",
-  "missing_call_expired": "Panggilan ini tamat tempoh pada {time}. Abaikannya sahaja.",
+  "missing_call_expired": "Keputusan ini tamat tempoh pada {time}. Abaikannya sahaja.",
   "reauth": "Sahkan identiti semula sebelum meluluskan",
   "reauth_help": "Sesi anda memerlukan pengesahan identiti baharu. Lengkapkannya untuk mencuba keputusan yang sama semula.",
   "reauth_unavailable": "Pengesahan semula belum tersedia. Log masuk semula, kemudian kembali untuk menyemak berkas ini.",
@@ -192,7 +192,7 @@
   "list_empty": "Berkas: n=0. Larian yang mendraf keputusan akan menambahnya di sini.",
   "list_more": "{count} berkas terbaharu. Berkas lebih lama ada dalam lejar.",
   "row_title": "{pack} · {trigger}",
-  "row_no_calls": "Belum ada panggilan",
+  "row_no_calls": "Belum ada keputusan",
   "bundle_states": {
     "drafted": "Didraf",
     "closed": "Ditutup",

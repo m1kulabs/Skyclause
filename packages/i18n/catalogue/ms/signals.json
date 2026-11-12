@@ -4,7 +4,7 @@
   "finding_one": "Sky: 1 input melaporkan; paling lama {age} min",
   "finding_empty": "Belum ada input yang melaporkan data.",
   "loading": "Memuatkan sumber dipautkan…",
-  "load_error": "Sumber terikat tidak dapat dimuatkan.",
+  "load_error": "Sumber dipautkan tidak dapat dimuatkan.",
   "retry": "Cuba lagi",
   "empty": "Tiada sumber dipautkan pada projek ini.",
   "sources_caption": "Kesihatan sumber dipautkan",
