@@ -48,7 +48,7 @@ test('link confirmation renders only the token action and uses step-up copy when
   expect(normal).not.toContain('type="email"')
 
   const stepUp = render('sign-in', { kind: 'confirm', link: 'token', stepUp: true })
-  expect(stepUp).toContain('Confirm it&#x27;s you')
+  expect(stepUp).toContain('Confirm it’s you')
 })
 
 test('expired, pending and Google failure states explain the failure and next action', () => {
