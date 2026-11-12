@@ -79,9 +79,10 @@ export function SignalHealthRow({
       <span>{source.name}</span>
     </>
   )
+  const textValue = value && !value.figure && value.rest ? value.rest : undefined
   return (
     <TableRow selected={selected} data-source={source.id} data-phone-row className="align-top">
-      <TableCell className="py-2 whitespace-normal">
+      <TableCell className="min-w-60 py-2 whitespace-normal">
         {href ? (
           <Link
             href={href}
@@ -103,9 +104,15 @@ export function SignalHealthRow({
         </p>
         {meta ? <p className="flex flex-wrap items-center gap-x-3 type-small text-muted-foreground">{meta}</p> : null}
       </TableCell>
-      <TableCell numeric phone="meta" label={t('data.signal.value', {}, locale)} className="py-2 whitespace-normal">
+      <TableCell
+        numeric
+        phone="meta"
+        label={t('data.signal.value', {}, locale)}
+        title={textValue}
+        className="py-2 whitespace-normal"
+      >
         {value ? (
-          <span className="block">
+          <span className={value.figure ? 'block' : 'line-clamp-2 max-w-[26rem] sm:ml-auto'}>
             {value.figure ? <span className="type-figure">{value.figure}</span> : null}
             {value.figure && value.rest ? ' ' : null}
             <span className={value.figure ? 'text-muted-foreground' : undefined}>{value.rest}</span>
@@ -114,7 +121,7 @@ export function SignalHealthRow({
           <span className="type-small text-muted-foreground">{t('data.signal.no_value', {}, locale)}</span>
         )}
       </TableCell>
-      <TableCell numeric phone="meta" label={t('data.signal.age', {}, locale)} className="py-2">
+      <TableCell numeric phone="meta" label={t('data.signal.age', {}, locale)} className="py-2 whitespace-nowrap">
         {ageS === null || ageS === undefined ? null : (
           <span className="block">{formatAge(new Date(Date.now() - ageS * 1000), locale)}</span>
         )}
@@ -124,10 +131,10 @@ export function SignalHealthRow({
           </time>
         ) : null}
       </TableCell>
-      <TableCell phone="end" className="py-2 whitespace-normal">
+      <TableCell phone="end" className="py-2 whitespace-nowrap">
         <StatusMark state={state} label={stateLabel} locale={locale} />
-        {detail ? <p className="mt-1 type-small text-muted-foreground">{detail}</p> : null}
-        {problem}
+        {detail ? <p className="mt-1 type-small whitespace-normal text-muted-foreground">{detail}</p> : null}
+        {problem ? <div className="whitespace-normal">{problem}</div> : null}
       </TableCell>
     </TableRow>
   )
