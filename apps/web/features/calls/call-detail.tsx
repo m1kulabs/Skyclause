@@ -557,20 +557,8 @@ export function CallDetailPage({
                       {t('calls.clause_version', { version: `…${call.sheet_version_id.slice(-8)}` }, locale)}
                     </p>
                   </section>
-                  <section className={styles.recordItem}>
-                    <h3>{t('calls.permalink', {}, locale)}</h3>
-                    {/* Text to copy, not a link: no public page answers it yet (getPublicCall has no handler). */}
-                    <div className={styles.linkValue}>
-                      <span translate="no" data-permalink>
-                        {call.permalink}
-                      </span>
-                      <CopyButton
-                        value={call.permalink}
-                        label={t('calls.copy_permalink', {}, locale)}
-                        locale={locale}
-                      />
-                    </div>
-                  </section>
+                  {/* No permalink row: no public page answers `/c/{callId}` yet (getPublicCall has no handler), so a
+                      copied permalink could only end on not-found. It returns with the public call page. */}
                   <section className={styles.recordItem}>
                     <h3>{t('calls.trace_id', {}, locale)}</h3>
                     <div className={styles.linkValue}>

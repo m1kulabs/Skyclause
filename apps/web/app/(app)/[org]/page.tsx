@@ -4,6 +4,12 @@ import { prefersMalay } from '../../../lib/preferred-language'
 import { ApiProblem } from '../../../lib/api-fetch'
 import { DashboardPage } from '../../../features/dashboard/dashboard-page'
 import { readDashboard, type DashboardRead } from '../../../features/dashboard/operations'
+import { t } from '../../../features/dashboard/catalogue'
+import { settingsLocale } from '../../../features/settings/locale'
+
+export async function generateMetadata() {
+  return { title: t('dashboard.title', {}, await settingsLocale()) }
+}
 
 export default async function Page({ params }: { params: Promise<{ org: string }> }) {
   const { org } = await params

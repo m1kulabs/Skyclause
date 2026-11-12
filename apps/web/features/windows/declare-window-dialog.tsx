@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '#ui/dialog'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '#ui/sheet'
 import { Skeleton } from '#ui/skeleton'
 import { Button } from '#ui/button'
 import { ToggleGroup, ToggleGroupItem } from '#ui/toggle-group'
@@ -16,7 +15,6 @@ import { WindowForm } from './window-form'
 import { WindowDetails } from './window-details'
 import { ImportForm } from './import-form'
 import type { WindowControls } from './controls'
-import { useMedia } from './use-media'
 import { localDate } from './model'
 import { t, type Locale } from './catalogue'
 
@@ -30,18 +28,22 @@ export interface DeclareWindowDialogProps {
   onOpenChange?: (open: boolean) => void
 }
 
-/** A dialog on a desktop, and on a phone a sheet that rises from the bottom edge (both are one Base UI dialog). */
+/**
+ * One Base UI dialog: centred on a desktop, and below 640px restyled by CSS alone as a sheet on the bottom edge. No
+ * script picks the frame, so the first paint on a phone and a phone turned across 640px keep the form and its draft.
+ */
 function Frame({
-  phone,
   open,
   onClose,
+  finalFocus,
   title,
   description,
   children
 }: {
-  phone: boolean
   open: boolean
   onClose: () => void
+  /** Where focus goes once the dialog has closed. */
+  finalFocus: () => HTMLElement | null
   title: string
   description: string
   children: ReactNode
@@ -49,27 +51,12 @@ function Frame({
   const onOpenChange = (next: boolean) => {
     if (!next) onClose()
   }
-  if (phone)
-    return (
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent
-          side="bottom"
-          data-window-sheet
-          className="max-h-[calc(100svh-16px)] overflow-y-auto overscroll-contain pb-[max(20px,env(safe-area-inset-bottom))]"
-        >
-          <SheetHeader>
-            <SheetTitle>{title}</SheetTitle>
-            <SheetDescription>{description}</SheetDescription>
-          </SheetHeader>
-          <div className="flex flex-col gap-5 px-5">{children}</div>
-        </SheetContent>
-      </Sheet>
-    )
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         data-window-dialog
-        className="max-h-[calc(100svh-3rem)] overflow-y-auto overscroll-contain sm:max-w-xl"
+        finalFocus={() => finalFocus() ?? true}
+        className="max-h-[calc(100svh-3rem)] overflow-y-auto overscroll-contain sm:max-w-xl max-sm:top-auto max-sm:bottom-0 max-sm:left-0 max-sm:max-h-[calc(100svh-16px)] max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:p-5 max-sm:pb-[max(20px,env(safe-area-inset-bottom))]"
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
@@ -80,6 +67,8 @@ function Frame({
     </Dialog>
   )
 }
+
+const declareButton = () => document.querySelector<HTMLButtonElement>('[data-declare-window]')
 
 export function DeclareWindowDialog({
   org,
@@ -103,7 +92,8 @@ export function DeclareWindowDialog({
   const [loaded, setLoaded] = useState<{ projectId: string; window?: WindowView; key: string }>()
   const [loadError, setLoadError] = useState<{ status: number | null; at: string } | null>(null)
   const [attempt, setAttempt] = useState(0)
-  const phone = useMedia('(max-width: 640px)')
+  const undoButton = useRef<HTMLButtonElement>(null)
+  const undoOffered = useRef(false)
   const key = `${org}/${project}/${editId ?? 'new'}`
   const action = useUndoableAction(async ({ keepalive }) => {
     if (!queued.current) return
@@ -145,6 +135,19 @@ export function DeclareWindowDialog({
     void load()
     return () => controller.abort()
   }, [visible, org, project, editId, key, attempt])
+  // While a cancellation can be undone its Undo takes focus, so the keyboard reaches it within the delay; once it is
+  // gone (undone or committed), focus goes back to Declare a window, unless it has already moved on.
+  useEffect(() => {
+    if (action.pending) {
+      undoOffered.current = true
+      const frame = requestAnimationFrame(() => undoButton.current?.focus())
+      return () => cancelAnimationFrame(frame)
+    }
+    if (!undoOffered.current) return
+    undoOffered.current = false
+    const active = document.activeElement
+    if (!active || active === document.body) declareButton()?.focus()
+  }, [action.pending])
 
   function close(force = false) {
     if (!force && !guard.current()) return
@@ -154,7 +157,7 @@ export function DeclareWindowDialog({
     router.replace(`?${next}`, { scroll: false })
     setLoaded(undefined)
     guard.current = () => true
-    requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('[data-declare-window]')?.focus())
+    requestAnimationFrame(() => (undoButton.current ?? declareButton())?.focus())
   }
   function declareNew() {
     const next = new URLSearchParams(search)
@@ -183,9 +186,9 @@ export function DeclareWindowDialog({
   return (
     <>
       <Frame
-        phone={phone}
         open={visible}
         onClose={() => close()}
+        finalFocus={() => undoButton.current ?? declareButton()}
         title={t(readOnly ? 'windows.details_title' : editId ? 'windows.edit' : 'windows.declare', {}, locale)}
         description={t(readOnly ? 'windows.read_only' : 'windows.description', {}, locale)}
       >
@@ -280,6 +283,7 @@ export function DeclareWindowDialog({
             </p>
             {action.pending && (
               <Button
+                ref={undoButton}
                 data-window-undo
                 variant="outline"
                 onClick={() => {

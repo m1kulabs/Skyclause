@@ -69,8 +69,6 @@
   "warning_gloss": "{text} · {gloss}",
   "trace_id": "ID jejak",
   "copy_trace": "Salin ID jejak",
-  "permalink": "Pautan awam",
-  "copy_permalink": "Salin pautan",
   "copied": "Disalin",
   "copy_failed": "Tidak dapat menyalin. Pilih teks dan salin sendiri.",
   "approver": "Diluluskan oleh Pelulus yang bertugas.",

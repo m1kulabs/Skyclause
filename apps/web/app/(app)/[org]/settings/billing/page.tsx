@@ -2,6 +2,9 @@ import Panel from '../../../../../features/settings/organisation/billing/panel'
 import { SettingsFrame } from '../../../../../features/settings/frame'
 import { settingsLocale } from '../../../../../features/settings/locale'
 import { requireOrganisationSettings } from '../../../../../features/settings/gate'
+import { settingsMetadata } from '../../../../../features/settings/metadata'
+
+export const generateMetadata = settingsMetadata('organisation', 'billing')
 
 export default async function Page({ params }: { params: Promise<{ org: string }> }) {
   const { org } = await params

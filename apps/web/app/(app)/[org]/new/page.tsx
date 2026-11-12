@@ -7,6 +7,10 @@ import { t } from '@skyclause/i18n'
 import styles from '../../../../features/onboarding/onboarding.module.css'
 import { cn } from '#lib/utils'
 
+export async function generateMetadata() {
+  return { title: t('onboarding.title', {}, await settingsLocale()) }
+}
+
 export default async function Page({
   params,
   searchParams

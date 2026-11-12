@@ -4,8 +4,11 @@ import { SignalsPage } from '../../../../../features/signals/signals-page'
 import { t } from '../../../../../features/signals/catalogue'
 import { getOrgPrincipal } from '../../../../../lib/principal'
 import { prefersMalay } from '../../../../../lib/preferred-language'
+import { settingsLocale } from '../../../../../features/settings/locale'
 
-export const metadata = { title: t('signals.title') }
+export async function generateMetadata() {
+  return { title: t('signals.title', {}, await settingsLocale()) }
+}
 
 export default async function Page({ params }: { params: Promise<{ org: string; project: string }> }) {
   const { org, project } = await params

@@ -299,7 +299,6 @@
   align-items: center;
   gap: 8px 12px;
 }
-.linkValue > span,
 .linkValue > code {
   min-width: 0;
   overflow-wrap: anywhere;
