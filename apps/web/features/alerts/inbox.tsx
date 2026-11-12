@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Notification, type Notification as Item } from '@skyclause/contracts'
 import { formatDateTime, formatNumber } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
+import { browserPath } from '../../lib/api-fetch'
 import { readSse } from '../../lib/read-sse'
 import { apiFetch, notificationStreamPath } from './operations'
 import { notificationHref } from './notification-link'
@@ -84,10 +85,7 @@ export function Inbox({ locale }: { locale: Locale }) {
         return
       }
       if (controller.signal.aborted) return
-      const url = process.env.NEXT_PUBLIC_API_ORIGIN
-        ? new URL(notificationStreamPath, process.env.NEXT_PUBLIC_API_ORIGIN)
-        : notificationStreamPath
-      await readSse(url, {
+      await readSse(browserPath(notificationStreamPath), {
         resume: false,
         signal: controller.signal,
         onError() {

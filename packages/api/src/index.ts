@@ -2,7 +2,7 @@ import { createApi } from './app'
 import { productionDeps } from './production'
 
 /** The mounted apps: `apps/web`'s Route Handlers serve them, and MCP calls `v1.fetch(req, { principal })` (D5). */
-export const { v1, api } = createApi(productionDeps)
+export const { v1, api, v1Bridge } = createApi(productionDeps)
 
 export { createApi, type ApiApp, type Registry } from './app'
 export type { ApiConfig, ApiDeps, ApiEnv, Surface } from './context'

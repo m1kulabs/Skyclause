@@ -26,7 +26,7 @@ import {
   SourceHealthRow,
   WindowStrip
 } from '../data-components'
-import { ApiProblem } from '../../lib/api-fetch'
+import { ApiProblem, browserPath } from '../../lib/api-fetch'
 import { readSse } from '../../lib/read-sse'
 import { useRead } from '../analysis/use-read'
 import { daySpan } from '../dashboard/model'
@@ -465,8 +465,7 @@ export function ProjectOverview({
     const projectId = state.value.project.id
     const controller = new AbortController()
     const path = bundleStream.path.replace('{id}', encodeURIComponent(projectId))
-    const url = process.env.NEXT_PUBLIC_API_ORIGIN ? new URL(path, process.env.NEXT_PUBLIC_API_ORIGIN) : path
-    void readSse(url, {
+    void readSse(browserPath(path), {
       signal: controller.signal,
       headers: { 'Skyclause-Organization': org },
       onEvent(event) {

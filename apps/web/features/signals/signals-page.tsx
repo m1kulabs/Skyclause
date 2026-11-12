@@ -8,7 +8,7 @@ import { Button, buttonVariants } from '#ui/button'
 import { Skeleton } from '#ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
 import { SourceError } from '../data-components'
-import { ApiProblem } from '../../lib/api-fetch'
+import { ApiProblem, browserPath } from '../../lib/api-fetch'
 import { readSse } from '../../lib/read-sse'
 import {
   apiFetch,
@@ -193,8 +193,7 @@ export function SignalsPage({
     const controller = new AbortController()
     seenEventIds.current.clear()
     const path = signalsOperations.streamReadings.path.replace('{id}', encodeURIComponent(project.id))
-    const streamUrl = process.env.NEXT_PUBLIC_API_ORIGIN ? new URL(path, process.env.NEXT_PUBLIC_API_ORIGIN) : path
-    void readSse(streamUrl, {
+    void readSse(browserPath(path), {
       resume: false,
       signal: controller.signal,
       headers: { 'Skyclause-Organization': org },

@@ -8,6 +8,7 @@ import { t as brandText } from '@skyclause/i18n/brand'
 import { usePathname, useRouter } from 'next/navigation'
 import { announce } from '../../lib/announce'
 import { t, type Locale } from '../shell/i18n'
+import { browserPath } from '../../lib/api-fetch'
 import { readSse, type SseEvent } from '../../lib/read-sse'
 import { apiFetch, orgEventStream } from './operations'
 import { getWaitingCount, setWaitingCount, startOrgLive, stopOrgLive, subscribeToWaitingCount } from './store'
@@ -307,10 +308,7 @@ export function OrgLive({ org, locale = 'en' }: OrgLiveProps) {
       }
     }
 
-    const path = process.env.NEXT_PUBLIC_API_ORIGIN
-      ? new URL(orgEventStream.path, process.env.NEXT_PUBLIC_API_ORIGIN)
-      : orgEventStream.path
-    void readSse(path, {
+    void readSse(browserPath(orgEventStream.path), {
       headers: { 'Skyclause-Organization': org },
       resume: false,
       signal,
