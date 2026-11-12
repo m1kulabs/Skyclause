@@ -5,7 +5,7 @@ import { Button } from '#ui/button'
 import { Input } from '#ui/input'
 import { ToggleGroup, ToggleGroupItem } from '#ui/toggle-group'
 import { validDate } from './model'
-import { t } from './catalogue'
+import { t, type Locale } from './catalogue'
 
 export type WindowsView = 'timeline' | 'week' | 'month'
 
@@ -19,8 +19,10 @@ export function WindowsToolbar({
   onView,
   onFrom,
   onStep,
-  onToday
+  onToday,
+  locale
 }: {
+  locale: Locale
   view: WindowsView
   from: string
   onView: (view: WindowsView) => void
@@ -35,23 +37,23 @@ export function WindowsToolbar({
         onValueChange={(values) => {
           if (values[0]) onView(values[0] as WindowsView)
         }}
-        aria-label={t('windows.view')}
+        aria-label={t('windows.view', {}, locale)}
       >
-        <ToggleGroupItem value="timeline">{t('windows.timeline')}</ToggleGroupItem>
-        <ToggleGroupItem value="week">{t('windows.view_week')}</ToggleGroupItem>
-        <ToggleGroupItem value="month">{t('windows.view_month')}</ToggleGroupItem>
+        <ToggleGroupItem value="timeline">{t('windows.timeline', {}, locale)}</ToggleGroupItem>
+        <ToggleGroupItem value="week">{t('windows.view_week', {}, locale)}</ToggleGroupItem>
+        <ToggleGroupItem value="month">{t('windows.view_month', {}, locale)}</ToggleGroupItem>
       </ToggleGroup>
       <div className="flex flex-wrap items-center gap-2">
         <div
           role="group"
-          aria-label={t('windows.period_group')}
+          aria-label={t('windows.period_group', {}, locale)}
           className="flex items-center gap-1 rounded-full border-2 border-input bg-muted p-1"
         >
-          <Button variant="ghost" size="icon" aria-label={t('windows.previous')} onClick={() => onStep(-1)}>
+          <Button variant="ghost" size="icon" aria-label={t('windows.previous', {}, locale)} onClick={() => onStep(-1)}>
             <ChevronLeftIcon />
           </Button>
           <label className="flex items-center gap-2 pl-2 type-small text-muted-foreground">
-            <span className="sr-only sm:not-sr-only">{t('windows.from')}</span>
+            <span className="sr-only sm:not-sr-only">{t('windows.from', {}, locale)}</span>
             <Input
               type="date"
               name="from"
@@ -63,12 +65,12 @@ export function WindowsToolbar({
               }}
             />
           </label>
-          <Button variant="ghost" size="icon" aria-label={t('windows.next')} onClick={() => onStep(1)}>
+          <Button variant="ghost" size="icon" aria-label={t('windows.next', {}, locale)} onClick={() => onStep(1)}>
             <ChevronRightIcon />
           </Button>
         </div>
         <Button variant="ghost" onClick={onToday}>
-          {t('windows.today')}
+          {t('windows.today', {}, locale)}
         </Button>
       </div>
     </div>

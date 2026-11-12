@@ -12,7 +12,7 @@ import type { WindowView, FeedView, BundleView, NightView, DayView } from './ope
 import { WindowEntry } from './window-entry'
 import { VirtualRows } from './virtual-rows'
 import { useNow } from './use-media'
-import { t } from './catalogue'
+import { t, type Locale } from './catalogue'
 
 export interface ViewProps {
   windows: WindowView[]
@@ -23,6 +23,9 @@ export interface ViewProps {
   nights: NightView[]
   days?: DayView[]
   onEdit: (id: string) => void
+  locale: Locale
+  /** Series names by series id: the API names a series by its id alone, and a row says its name. */
+  seriesNames?: Readonly<Record<string, string>>
   /** The id of the window just saved: its row is marked so the new window is found on the strip. */
   added?: string
 }
@@ -41,15 +44,25 @@ function nightMinutes(night: NightView, date: string, which: 'arrival' | 'exit')
   return to > from ? { from, to } : null
 }
 
-function TrackCapsule({ segment, axis, crowdLane }: { segment: Segment; axis: Axis; crowdLane: boolean }) {
+function TrackCapsule({
+  segment,
+  axis,
+  crowdLane,
+  locale
+}: {
+  segment: Segment
+  axis: Axis
+  crowdLane: boolean
+  locale: Locale
+}) {
   const { capsule, lane } = segment
   const left = share(segment.from, axis)
   const right = share(segment.to, axis)
-  const mode = capsule.state ? brandText(brandStates[capsule.state].word, {}, 'en') : null
+  const mode = capsule.state ? brandText(brandStates[capsule.state].word, {}, locale) : null
   // With a Crowd lane on the day the word names its pack, so the two lanes cannot be mixed up.
   const word =
     mode && crowdLane
-      ? brandText('brand.badge_with_pack', { pack: brandText(`brand.packs.${lane}`, {}, 'en'), mode }, 'en')
+      ? brandText('brand.badge_with_pack', { pack: brandText(`brand.packs.${lane}`, {}, locale), mode }, locale)
       : mode
   return (
     <span
@@ -76,13 +89,15 @@ function Track({
   segments,
   axis,
   nights,
-  now
+  now,
+  locale
 }: {
   date: string
   segments: Segment[]
   axis: Axis
   nights: NightView[]
   now: number | null
+  locale: Locale
 }) {
   const crowdLane = segments.some((segment) => segment.lane === 'crowd')
   const idle = !segments.length && !nights.length
@@ -96,20 +111,22 @@ function Track({
   const height = lanes * LANE + PAD + (periods.length ? 14 : 0)
   const minutesNow = now === null ? null : (now - dayStart(date)) / 60_000
   const weekend = [0, 6].includes(new Date(date).getUTCDay())
+  const nowAt = minutesNow !== null && minutesNow >= axis.from && minutesNow <= axis.to ? share(minutesNow, axis) : null
   return (
     <div
       aria-hidden={idle ? undefined : 'true'}
       data-track
-      className={cn('relative rounded-full', weekend ? 'bg-raised' : 'bg-surface')}
+      // The row that holds the "now" mark has room above its track for the word.
+      className={cn('relative rounded-full', weekend ? 'bg-raised' : 'bg-surface', nowAt !== null && 'mt-6')}
       style={{ height }}
     >
       {idle && (
         <p className="absolute inset-y-0 left-4 flex items-center type-small text-muted-foreground">
-          {t('windows.no_windows_day')}
+          {t('windows.no_windows_day', {}, locale)}
         </p>
       )}
       {segments.map((segment) => (
-        <TrackCapsule key={segment.key} segment={segment} axis={axis} crowdLane={crowdLane} />
+        <TrackCapsule key={segment.key} segment={segment} axis={axis} crowdLane={crowdLane} locale={locale} />
       ))}
       {periods.map((period) => (
         <span
@@ -127,30 +144,60 @@ function Track({
           }}
         />
       ))}
-      {minutesNow !== null && minutesNow >= axis.from && minutesNow <= axis.to ? (
-        <span
-          data-now
-          className="absolute -top-1 -bottom-1 w-[3px] -translate-x-1/2 rounded-full bg-ink"
-          style={{ left: `${share(minutesNow, axis).toFixed(3)}%` }}
-        />
+      {nowAt !== null ? (
+        <>
+          <span
+            data-now
+            className="absolute -top-1 -bottom-1 w-[3px] -translate-x-1/2 rounded-full bg-ink"
+            style={{ left: `${nowAt.toFixed(3)}%` }}
+          />
+          <span
+            data-now-label
+            className="absolute bottom-full mb-1.5 type-small font-medium whitespace-nowrap text-foreground"
+            style={{
+              left: `${nowAt.toFixed(3)}%`,
+              transform: nowAt < 4 ? 'none' : nowAt > 96 ? 'translateX(-100%)' : 'translateX(-50%)'
+            }}
+          >
+            {t('windows.now', {}, locale)}
+          </span>
+        </>
       ) : null}
     </div>
   )
 }
 
-export function Night({ night }: { night: NightView }) {
+/** The two period bars' look, repeated in front of their names so the bars on the track are told by words. */
+const PERIOD_SWATCH = {
+  arrival: 'bg-muted-foreground',
+  exit: 'border-2 border-dashed border-muted-foreground'
+} as const
+
+function Swatch({ which }: { which: 'arrival' | 'exit' }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn('mr-1.5 inline-block h-2.5 w-6 rounded-full align-middle', PERIOD_SWATCH[which])}
+    />
+  )
+}
+
+export function Night({ night, locale }: { night: NightView; locale: Locale }) {
   const period = (start: string | null, end: string | null) =>
-    start && end ? t('windows.range', { from: formatClock(start, 'en'), to: formatClock(end, 'en') }) : null
+    start && end ? t('windows.range', { from: formatClock(start, locale), to: formatClock(end, locale) }, locale) : null
   const arrival = period(night.arrival_start, night.arrival_end)
   const exit = period(night.exit_start, night.exit_end)
   return (
     <li data-night-row={night.id} className="flex min-h-11 flex-wrap items-center gap-x-4 gap-y-1 py-1.5 type-body">
       <span className="font-medium">
-        {night.show_name ? t('windows.show_name', { name: night.show_name }) : t('windows.night', { date: night.date })}
+        {night.show_name
+          ? t('windows.show_name', { name: night.show_name }, locale)
+          : t('windows.night', { date: formatDateCompact(`${night.date}T12:00:00+08:00`, locale) }, locale)}
       </span>
       {arrival && (
         <span className="type-small text-muted-foreground">
-          {t('windows.arrival')}
+          <Swatch which="arrival" />
+          {t('windows.arrival', {}, locale)}
           <time dateTime={night.arrival_start} data-numeric className="ml-1.5">
             {arrival}
           </time>
@@ -158,13 +205,14 @@ export function Night({ night }: { night: NightView }) {
       )}
       {exit ? (
         <span className="type-small text-muted-foreground">
-          {t('windows.exit')}
+          <Swatch which="exit" />
+          {t('windows.exit', {}, locale)}
           <time dateTime={night.exit_start!} data-numeric className="ml-1.5">
             {exit}
           </time>
         </span>
       ) : (
-        <span className="type-small text-muted-foreground">{t('windows.no_exit')}</span>
+        <span className="type-small text-muted-foreground">{t('windows.no_exit', {}, locale)}</span>
       )}
     </li>
   )
@@ -182,8 +230,10 @@ function DayRow({
   feeds,
   bundles,
   onEdit,
-  added
-}: Pick<ViewProps, 'root' | 'feeds' | 'bundles' | 'onEdit' | 'added'> & {
+  added,
+  locale,
+  seriesNames
+}: Pick<ViewProps, 'root' | 'feeds' | 'bundles' | 'onEdit' | 'added' | 'locale' | 'seriesNames'> & {
   date: string
   windows: WindowView[]
   segments: Segment[]
@@ -202,6 +252,8 @@ function DayRow({
       feeds={feeds}
       bundles={bundles}
       onEdit={onEdit}
+      locale={locale}
+      seriesName={window.series_id ? seriesNames?.[window.series_id] : undefined}
       added={window.id === added}
     />
   )
@@ -216,32 +268,37 @@ function DayRow({
         aria-current={today ? 'date' : undefined}
         className="type-body relative flex flex-wrap items-baseline gap-x-2 pb-2 font-medium current-mark md:block md:self-start md:pt-2"
       >
-        <time dateTime={date}>{formatDateCompact(`${date}T12:00:00+08:00`, 'en')}</time>
+        <time dateTime={date}>{formatDateCompact(`${date}T12:00:00+08:00`, locale)}</time>
         {today && (
-          <span className="type-small font-normal text-muted-foreground md:block">{t('windows.today_mark')}</span>
+          <span className="type-small font-normal text-muted-foreground md:block">
+            {t('windows.today_mark', {}, locale)}
+          </span>
         )}
       </h2>
       <div className="flex min-w-0 flex-col gap-1">
-        <Track date={date} segments={segments} axis={axis} nights={nights} now={now} />
+        <Track date={date} segments={segments} axis={axis} nights={nights} now={now} locale={locale} />
         {day?.storm_afternoon && (
-          <a lang="ms" href={day.storm_afternoon.source_url} className="type-small w-fit underline underline-offset-3">
-            {t('windows.met_wording', { wording: day.storm_afternoon.wording })}
-          </a>
+          <p className="type-small">
+            {t('windows.met_label', {}, locale)}{' '}
+            <a lang="ms" href={day.storm_afternoon.source_url} className="w-fit underline underline-offset-3">
+              {t('windows.met_wording', { wording: day.storm_afternoon.wording }, locale)}
+            </a>
+          </p>
         )}
         {empty ? null : (
           <>
             {nights.length > 0 && (
-              <ul className="flex flex-col" aria-label={t('windows.nights_label')}>
+              <ul className="flex flex-col" aria-label={t('windows.nights_label', {}, locale)}>
                 {nights.map((night) => (
-                  <Night key={night.id} night={night} />
+                  <Night key={night.id} night={night} locale={locale} />
                 ))}
               </ul>
             )}
             {windows.length > 50 ? (
               <VirtualRows
                 items={windows}
-                label={t('windows.list_label', { date: formatDateCompact(`${date}T12:00:00+08:00`, 'en') })}
-                className="max-h-[32rem] overflow-y-auto"
+                label={t('windows.list_label', { date: formatDateCompact(`${date}T12:00:00+08:00`, locale) }, locale)}
+                className="max-h-[32rem] overflow-y-auto overscroll-contain"
                 estimate={84}
                 render={(window) => (
                   <div data-window-row className="min-h-11 py-1.5">
@@ -253,7 +310,11 @@ function DayRow({
               windows.length > 0 && (
                 <ol
                   className="flex flex-col"
-                  aria-label={t('windows.list_label', { date: formatDateCompact(`${date}T12:00:00+08:00`, 'en') })}
+                  aria-label={t(
+                    'windows.list_label',
+                    { date: formatDateCompact(`${date}T12:00:00+08:00`, locale) },
+                    locale
+                  )}
                 >
                   {windows.map((window) => (
                     <li key={window.id} data-window-row className="min-h-11 py-1.5">
@@ -284,6 +345,8 @@ export function Timeline({
   days = [],
   onEdit,
   added,
+  locale,
+  seriesNames,
   hideEmpty = false
 }: ViewProps & { hideEmpty?: boolean }) {
   const now = useNow()
@@ -305,7 +368,8 @@ export function Timeline({
   const ticks = ticksOf(axis)
   const shown = hideEmpty ? perDay.filter((day) => day.segments.length || day.nights.length) : perDay
   return (
-    <div data-timeline className="flex flex-col">
+    // The sticky hour axis is about 28px under the bar: a focused link or button lands below it too.
+    <div data-timeline className="flex flex-col [&_a]:scroll-mt-9 [&_button]:scroll-mt-9">
       <div
         aria-hidden="true"
         className="sticky top-[var(--shell-bar-height,0px)] z-10 grid gap-x-6 bg-background py-1 md:grid-cols-[7.5rem_minmax(0,1fr)]"
@@ -325,7 +389,7 @@ export function Timeline({
                   transform: at < 4 ? 'none' : at > 96 ? 'translateX(-100%)' : 'translateX(-50%)'
                 }}
               >
-                {formatClock(instantAt(dates[0]!, minute), 'en')}
+                {formatClock(instantAt(dates[0]!, minute), locale)}
               </time>
             )
           })}
@@ -346,6 +410,8 @@ export function Timeline({
           bundles={bundles}
           onEdit={onEdit}
           added={added}
+          locale={locale}
+          seriesNames={seriesNames}
         />
       ))}
     </div>
