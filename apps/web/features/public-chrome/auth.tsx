@@ -48,7 +48,10 @@ export function AuthHeader({
   )
 }
 
-/** A message with a glyph, so it is never told by colour alone: an error is announced at once, a result politely. */
+/**
+ * A message with a glyph, so it is never told by colour alone: an error is announced at once in the error style, a
+ * result (a confirmation, an expiry) politely in the plain one.
+ */
 export function AuthMessage({
   tone = 'error',
   children,
@@ -58,7 +61,7 @@ export function AuthMessage({
   const Icon = tone === 'error' ? CircleAlertIcon : InfoIcon
   return (
     <Alert
-      variant="destructive"
+      variant={tone === 'error' ? 'destructive' : 'default'}
       role={tone === 'error' ? 'alert' : 'status'}
       className={cn('text-base leading-6', className)}
       {...props}

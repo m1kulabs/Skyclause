@@ -1,6 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, test } from 'vitest'
 import { SignInPanel } from '../../features/sign-in/panel'
+import { AuthMessage } from '../../features/public-chrome/auth'
+import { t } from '../../features/sign-in/i18n'
 import { signInLinks } from '../../features/sign-in/links'
 import type { AuthState } from '../../features/sign-in/model'
 
@@ -179,4 +181,19 @@ test('without script, a refused post puts the typed address back in the field', 
     expect(render('sign-in', state)).toContain(`value="${state.email}"`)
   }
   expect(render('sign-in', { kind: 'send-failed' })).toContain('value=""')
+})
+
+test('a result (a confirmation, an expiry) is set in the plain style; only an error takes the error style', () => {
+  const result = renderToStaticMarkup(<AuthMessage tone="result">{t('sign-in.confirm_done')}</AuthMessage>)
+  expect(result).toContain('role="status"')
+  expect(result).not.toContain('text-destructive')
+  const error = renderToStaticMarkup(<AuthMessage>{t('sign-in.send_failed')}</AuthMessage>)
+  expect(error).toContain('role="alert"')
+  expect(error).toContain('text-destructive')
+  const lapsed = render('sign-in', { kind: 'link-sent', until: '2026-11-13T02:05:00.000Z' })
+  const message = lapsed.slice(0, lapsed.indexOf('Your sign-in link expired'))
+  const tag = message.slice(message.lastIndexOf('<div'))
+  expect(tag).toContain('data-slot="alert"')
+  expect(tag).toContain('role="status"')
+  expect(tag).not.toContain('text-destructive')
 })
