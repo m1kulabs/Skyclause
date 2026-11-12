@@ -96,6 +96,18 @@ export function formatDate(value: DateValue, locale: Locale): string {
   return t('format.date', dateParts(value, locale), locale)
 }
 
+/** Return an ISO local date key for a date-only API field or local calendar grouping. */
+export function formatLocalDateKey(value: DateValue, timeZone = TIME_ZONE): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(asDate(value))
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)!.value
+  return `${part('year')}-${part('month')}-${part('day')}`
+}
+
 export function formatDateLong(value: DateValue, locale: Locale): string {
   return t('format.dateLong', dateParts(value, locale, true), locale)
 }
@@ -114,8 +126,8 @@ export function formatAge(value: DateValue, locale: Locale): string {
   return t('format.ageMinute', { value: ageMinutes }, locale)
 }
 
-export function formatNumber(value: number, locale: Locale): string {
-  return new Intl.NumberFormat(intlLocale(locale)).format(value)
+export function formatNumber(value: number, locale: Locale, options?: Intl.NumberFormatOptions): string {
+  return new Intl.NumberFormat(intlLocale(locale), options).format(value)
 }
 
 export function formatDateKeyAt(value: DateValue, timeZone: string): string {

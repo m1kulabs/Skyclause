@@ -63,3 +63,34 @@ test('snapshot streams reconnect without Last-Event-ID when resume is disabled',
   expect(headers).toHaveLength(2)
   expect(headers.every((header) => !header.has('Last-Event-ID'))).toBe(true)
 })
+
+test('reconnect delay is jittered inside the exponential backoff window', async () => {
+  const controller = new AbortController()
+  const fetchMock = vi.fn(async () => new Response('event: snapshot\ndata: {}\n\n'))
+  const random = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+  const timers = vi.spyOn(globalThis, 'setTimeout')
+  vi.stubGlobal('fetch', fetchMock)
+  let received!: () => void
+  const firstEvent = new Promise<void>((resolve) => (received = resolve))
+
+  const reading = readSse('/v1/events/stream', {
+    resume: false,
+    signal: controller.signal,
+    onEvent: received
+  })
+
+  try {
+    await firstEvent
+    await vi.waitFor(() => expect(timers.mock.calls.some(([, delay]) => delay === 188)).toBe(true))
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(random).toHaveBeenCalledTimes(1)
+    expect(timers.mock.calls.find(([, delay]) => delay === 188)?.[1]).toBe(188)
+    controller.abort()
+    await expect(reading).resolves.toBeUndefined()
+  } finally {
+    controller.abort()
+    random.mockRestore()
+    timers.mockRestore()
+    vi.unstubAllGlobals()
+  }
+})

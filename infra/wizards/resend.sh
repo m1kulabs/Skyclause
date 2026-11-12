@@ -209,8 +209,8 @@ finish() {
 # secrets and the worker. About 20 minutes plus Resend's DNS check, which usually takes up to 15 minutes.
 #
 # DNS names, values and MX priorities come from what Resend's Domains API returns, never from this file. The wizard
-# touches no other record, so every SES record stays, except the MX at in. (replaced by Resend's) and the DMARC
-# record at notices. (rewritten without its report address); the AWS teardown (#661) removes the rest.
+# touches no other record: every record stays, except the MX at in. (replaced by Resend's) and the DMARC record at
+# notices. (rewritten without its report address).
 
 PROJECT=skyclause
 GCP_REGION=asia-southeast1
@@ -225,7 +225,7 @@ WEBHOOK_EVENTS_JSON='["email.delivered","email.bounced","email.complained","emai
 SENDING_KEY_NAME=skyclause-production-sending
 # The worker's own full-access key, so revoking a person's key never stops inbound mail.
 WORKER_KEY_NAME=skyclause-production-worker
-# DMARC for notices. keeps p=quarantine but loses its rua: the SES rule that caught the reports goes, and nothing read them.
+# DMARC for notices. is p=quarantine with no rua: nothing reads the reports, and one addressed to dmarc@in. would reach Resend.
 DMARC_NAME="_dmarc.$SENDING_DOMAIN"
 DMARC_VALUE='v=DMARC1; p=quarantine'
 SECRETS=(RESEND_RECEIVING_API_KEY RESEND_SENDING_API_KEY RESEND_WEBHOOK_SECRET)
@@ -472,9 +472,9 @@ RECEIVING_ID="$DOMAIN_ID"
 pause
 
 stage "Cloudflare: the DNS records"
-say "Resend's records sit beside SES's under other names, so SES keeps working. Only the MX at $RECEIVING_DOMAIN is replaced."
-note "Names, values and priorities are what Resend returned just now. Every SES record stays except that MX and the DMARC"
-note "report address; the AWS teardown (#661) removes the rest."
+say "Only the MX at $RECEIVING_DOMAIN and the DMARC record at $SENDING_DOMAIN can be replaced; every other existing record stays as it is."
+note "Names, values and priorities are what Resend returned just now. If the record script would replace any other record,"
+note "or refuses one, the wizard stops before it writes any record."
 # DMARC goes first: once the MX moves, a report still addressed to dmarc@in. would reach Resend and count against its quota.
 want=("TXT"$'\t'"$DMARC_NAME"$'\t'"$DMARC_VALUE")
 for pair in "$SENDING_DOMAIN:$SENDING_ID" "$RECEIVING_DOMAIN:$RECEIVING_ID"; do
@@ -516,7 +516,7 @@ if (( pending == 0 )); then
   note "Every record is already in Cloudflare."
 else
   if [[ -n "$replaced_mx" ]]; then
-    warn "This replaces the MX at $replaced_mx, which sends inbound mail to SES today. Until the Resend-backed worker is deployed,"
+    warn "This replaces the MX at $replaced_mx, which holds other content today. Until the Resend-backed worker is deployed,"
     warn "mail to $replaced_mx (Crowd replies and evidence requests) reaches nobody."
   fi
   confirm "Write the $pending change(s) to the m1ku.tech zone (DNS only, comment 'owner: skyclause')?" || { say "Nothing written."; exit 1; }

@@ -115,7 +115,8 @@ function contentSecurityPolicy(o: { surface: Surface | null; camera: boolean; no
     "form-action 'self'",
     embed ? 'frame-ancestors *' : "frame-ancestors 'none'",
     connect,
-    "img-src 'self' data: blob:",
+    // The landing's photographs load from Wikimedia Commons, which redirects to its upload host (#185).
+    "img-src 'self' data: blob: https://commons.wikimedia.org https://upload.wikimedia.org",
     "style-src 'self' 'unsafe-inline'"
   ].join('; ')
 }

@@ -1,5 +1,3 @@
-'use client'
-
 const ANNOUNCER_ID = 'skyclause-announcer'
 let timer: ReturnType<typeof setTimeout> | undefined
 

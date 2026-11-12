@@ -20,7 +20,9 @@ const RUN_APP = 'web-413187272599.asia-southeast1.run.app'
 const MULTI: Array<[string, string, [string, string] | null]> = [
   ['skyclause.m1ku.tech', '/', ['(marketing)', '/']],
   ['skyclause.m1ku.tech', '/ms', ['(marketing)', '/ms']],
-  ['skyclause.m1ku.tech', '/legal/privacy', ['(marketing)', '/legal/privacy']],
+  ['skyclause.m1ku.tech', '/legal/privacy', ['(public)', '/legal/privacy']],
+  ['skyclause.m1ku.tech', '/legal/terms', ['(public)', '/legal/terms']],
+  ['skyclause.m1ku.tech', '/ms/legal/privacy', ['(public)', '/ms/legal/privacy']],
   ['skyclause.m1ku.tech', '/status', ['(public)', '/status']],
   ['skyclause.m1ku.tech', '/p/apu/bukit-jalil/ledger', ['(public)', '/p/apu/bukit-jalil/ledger']],
   ['skyclause.m1ku.tech', '/c/0192f0e4/og.png', ['(public)', '/c/0192f0e4/og.png']],
@@ -70,6 +72,7 @@ const MULTI: Array<[string, string, [string, string] | null]> = [
   ['embed.skyclause.m1ku.tech', '/favicon.ico', ['shared', '/favicon.ico']],
   ['docs.skyclause.m1ku.tech', '/manifest.webmanifest', ['shared', '/manifest.webmanifest']],
   ['mcp.skyclause.m1ku.tech', '/icons/icon-192.png', ['shared', '/icons/icon-192.png']],
+  ['skyclause.m1ku.tech', '/landing/stadium-night.jpg', ['shared', '/landing/stadium-night.jpg']],
   ['app.skyclause.m1ku.tech', '/_next/static/chunks/app.js', ['shared', '/_next/static/chunks/app.js']],
   [RUN_APP, '/', null],
   [RUN_APP, '/v1/projects', null],
@@ -215,6 +218,20 @@ describe('proxy.ts', () => {
     const passed = run('https://api.skyclause.m1ku.tech/v1/projects')
     expect(passed.headers.get('x-middleware-next')).toBe('1')
     expect(passed.headers.get('x-middleware-rewrite')).toBeNull()
+
+    const malay = run('https://skyclause.m1ku.tech/ms/legal/privacy')
+    expect(malay.headers.get('x-middleware-request-x-skyclause-locale')).toBe('ms')
+
+    const terms = run('https://skyclause.m1ku.tech/legal/terms')
+    expect(terms.headers.get('x-middleware-request-x-skyclause-public-path')).toBe('/legal/terms')
+
+    // The public locale is added to the downstream headers `securityHeaders` passes, never in place of its nonce.
+    const nonced = proxyResponse(new NextRequest('https://skyclause.m1ku.tech/legal/privacy'), multi, {
+      request: { headers: new Headers({ 'x-nonce': 'abc', 'content-security-policy': "script-src 'nonce-abc'" }) }
+    })
+    expect(nonced.headers.get('x-middleware-request-x-nonce')).toBe('abc')
+    expect(nonced.headers.get('x-middleware-request-content-security-policy')).toBe("script-src 'nonce-abc'")
+    expect(nonced.headers.get('x-middleware-request-x-skyclause-locale')).toBe('en')
 
     // Cookies stay host-only: the proxy never writes one, and every rewrite stays on the request's own host.
     for (const response of [embed, unknown, passed]) expect(response.headers.get('set-cookie')).toBeNull()
