@@ -1,6 +1,12 @@
 import type { Handlers } from '..'
 import { productionEvaluatorProviders } from '../../services/evaluator/production'
-import { getProjectStrip, listProjectSources, listSourceReadings, listSourcePolls } from '../../services/signals'
+import {
+  getProjectStrip,
+  listProjectDays,
+  listProjectSources,
+  listSourceReadings,
+  listSourcePolls
+} from '../../services/signals'
 import { inTenant } from '../../tenancy'
 
 export const signalHandlers: Handlers = {
@@ -48,6 +54,16 @@ export const signalHandlers: Handlers = {
           { can, now: requestTime, snapshots: productionEvaluatorProviders().snapshots }
         )
       )
+      return c.json(result, 200)
+    }
+  },
+  listProjectDays: {
+    handler: async (c) => {
+      const { id: projectId } = c.req.valid('param')
+      const query = c.req.valid('query')
+      const { can, now } = c.get('deps')
+      const requestTime = now()
+      const result = await inTenant(c, (ctx) => listProjectDays(ctx, { projectId, query }, { can, now: requestTime }))
       return c.json(result, 200)
     }
   }

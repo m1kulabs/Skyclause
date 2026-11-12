@@ -5,6 +5,7 @@ import { poll, reading } from '../schema/partitioned'
 import { projectSource, source, sourceState } from '../schema/sources'
 import type { SourceProjection } from '../sources/picker'
 
+export * from './days'
 export * from './history'
 export * from './strip'
 

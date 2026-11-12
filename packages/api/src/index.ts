@@ -112,6 +112,7 @@ export { createEvaluatorProviders, semanticVerdictKey, type EvaluatorProviders }
 export { nextEvaluationAt, evaluatorWindows } from './services/evaluator/deadline'
 
 export {
+  listProjectDays,
   listProjectSources,
   serializeProjectSourceHealth,
   listSourceReadings,
@@ -121,6 +122,8 @@ export {
   type SourceReadingsQuery,
   type SourcePollsQuery,
   type SourcePollView,
+  type ProjectDaysQuery,
+  type ProjectDayView,
   type ProjectSourcesQuery,
   type ProjectSourceHealthView
 } from './services/signals'

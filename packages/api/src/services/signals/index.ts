@@ -70,6 +70,7 @@ export async function listProjectSources(
   }
 }
 
+export { listProjectDays, type ProjectDaysQuery, type ProjectDayView } from './days'
 export { listSourceReadings, listSourcePolls, type SourceReadingsQuery, type SourcePollsQuery } from './history'
 export { serializeSourceReading, serializeSourcePoll, type SourcePollView } from './serialize'
 export { getProjectStrip, rainLanes, STRIP_RANGE_MS, type ProjectStripView } from './strip'
