@@ -207,7 +207,7 @@ export const CallReview = memo(function CallReview({
         <a
           className="bundle-link"
           href={`${basePath}/calls/${encodeURIComponent(call.superseded_by_call_id)}`}
-          aria-label={t('bundles.successor_call_named', { name: callName(call, locale) }, locale)}
+          aria-describedby={`bundle-call-${call.id}`}
         >
           {t('bundles.successor_call', {}, locale)}
         </a>

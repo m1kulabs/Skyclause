@@ -233,9 +233,7 @@ test('LOC-4 and LOC-5 show recipient languages, Malay quotes and English fallbac
   ]
   await prepare(page, bundleDouble([call]))
   await open(page)
-  await expect(page.locator('.bundle-sends')).toContainText(
-    t('language_group', { language: t('language.en'), count: 1 })
-  )
+  await expect(page.locator('.bundle-sends')).toContainText(t('language_group_one', { language: t('language.en') }))
   await expect(page.locator('blockquote[lang="ms"]')).toHaveText('Amaran Ribut Petir')
   await expect(page.locator('.bundle-notice[lang="ms"]')).toContainText('Ulangan')
   await expectZonedTimes(page)

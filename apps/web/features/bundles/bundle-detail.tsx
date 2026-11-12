@@ -400,7 +400,7 @@ export function BundleDetail({ bundleId, actionsRef, initial, locale = 'en' }: B
                       className="bundle-link"
                       key={call.id}
                       href={`${basePath}/calls/${encodeURIComponent(call.superseded_by_call_id)}`}
-                      aria-label={t('bundles.successor_call_named', { name: callName(call, locale) }, locale)}
+                      aria-describedby={`bundle-call-${call.id}`}
                     >
                       {t('bundles.successor_call', {}, locale)}
                     </a>

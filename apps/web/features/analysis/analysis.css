@@ -202,9 +202,11 @@
 }
 
 /* Rows that measure. In the lead: name and figure on a line, the bar, the interval in words. */
+/* Rows separate by space, never by a rule. */
 .analysis-rows {
   display: flex;
   flex-direction: column;
+  gap: 4px;
 }
 .analysis-row {
   display: grid;
@@ -219,9 +221,6 @@
   padding-block: 10px;
   font-size: 14px;
   line-height: 20px;
-}
-.analysis-row + .analysis-row {
-  border-top: 1px solid var(--grid);
 }
 .analysis-row-name {
   grid-area: name;
@@ -381,8 +380,10 @@
   border-radius: var(--radius-surface);
   background: var(--card);
 }
-.analysis-review-list > li + li {
-  border-top: 1px solid var(--grid);
+.analysis-review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .analysis-review-item {
   display: grid;

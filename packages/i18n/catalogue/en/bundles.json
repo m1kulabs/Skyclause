@@ -86,7 +86,6 @@
   "superseded": "Superseded by a newer run",
   "successor": "Open newer bundle",
   "successor_call": "Open newer call",
-  "successor_call_named": "Open the newer call for {name}",
   "draft_only": "Draft: not reviewed, not sent",
   "approved": "Approved",
   "approved_at": "Approved at {time}",

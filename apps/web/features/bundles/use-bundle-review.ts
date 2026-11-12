@@ -200,7 +200,8 @@ export function useBundleReview(
         if (bundleEvent.type === 'bundle.approved') {
           void apiFetch('getBundle', { params: { id: bundleId }, signal: controller.signal })
             .then((bundle) => {
-              if (!controller.signal.aborted)
+              // A read that lags behind the event keeps the approved state the event already set.
+              if (!controller.signal.aborted && ['approved', 'sending', 'sent', 'graded'].includes(bundle.state))
                 setData((current) =>
                   current
                     ? {
