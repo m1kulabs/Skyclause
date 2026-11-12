@@ -3,8 +3,8 @@
   "short_name": "Skyclause",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#171719",
-  "theme_color": "#171719",
+  "background_color": "#1a2039",
+  "theme_color": "#1a2039",
   "icons": [
     {
       "src": "/icons/icon-192.png",
