@@ -291,6 +291,20 @@ describe('landing sections', () => {
     expect(footer.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Skyclause')
     const hrefs = [...footer.querySelectorAll('a')].map((a) => a.getAttribute('href'))
     for (const href of hrefs) expect(href).toMatch(/^(#|\/sign-in$|\/sign-up$|\/legal\/|\/ms\/legal\/|https:\/\/)/)
+    cleanup()
+    // Where the hosts split, Sign in and Create an account are the app host's pages, never the marketing host's.
+    const appOrigin = process.env.APP_ORIGIN
+    process.env.APP_ORIGIN = 'https://app.skyclause.m1ku.tech'
+    try {
+      render(<LandingFooter />)
+      const named = (name: string) =>
+        [...document.querySelectorAll('footer a')].find((a) => a.textContent === name)?.getAttribute('href')
+      expect(named('Sign in')).toBe('https://app.skyclause.m1ku.tech/sign-in')
+      expect(named('Create an account')).toBe('https://app.skyclause.m1ku.tech/sign-up')
+    } finally {
+      if (appOrigin === undefined) delete process.env.APP_ORIGIN
+      else process.env.APP_ORIGIN = appOrigin
+    }
     expect(hrefs).not.toContain('/guest')
     expect(hrefs).not.toContain('/docs')
     expect(footer.querySelector('[data-source="clock:Asia/Kuala_Lumpur"]')?.textContent).toContain('MYT')

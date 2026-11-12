@@ -1,6 +1,7 @@
 /* eslint-disable skyclause-i18n/no-literal-jsx, @next/next/no-html-link-for-pages -- Landing copy is English in the component (no Malay landing route; LND-7 is P2). Plain links: next/link would add router script to the landing's 150 KB budget; these navigate to other route groups anyway. */
 import { t } from '@skyclause/i18n/brand'
 import { BlockWordmark } from '../public-chrome/block-wordmark'
+import { appHref } from './app-links'
 import { FooterClock } from './clock'
 import { PHOTO_KEYS, photo } from './photos'
 
@@ -31,10 +32,10 @@ export function LandingFooter() {
           </ul>
           <ul>
             <li>
-              <a href="/sign-in">Sign in</a>
+              <a href={appHref('/sign-in')}>Sign in</a>
             </li>
             <li>
-              <a href="/sign-up">Create an account</a>
+              <a href={appHref('/sign-up')}>Create an account</a>
             </li>
           </ul>
           <ul>
