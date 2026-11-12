@@ -7,239 +7,196 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Roles, set per theme. Two colours do everything (ground and ink, with tone steps of the ground); mode hues are for
+ * data only. Every text pair is checked in test/tokens/contrast.test.ts. The shadcn names further down are aliases of
+ * these roles, declared once.
+ */
+
+/* Dusk: the default theme, navy and pink. Marketing and auth surfaces always use it. */
 :root,
-.dark {
-  --background: #171719;
-  --card: #131217;
-  --popover: #212023;
-  --foreground: #ffffff;
-  --secondary-foreground: #bdbdc0;
-  --muted-foreground: #8a8c92;
-  --primary: #ffffff;
-  --primary-foreground: #131217;
-  --secondary: #212023;
-  --muted: #212023;
-  --accent: #212023;
-  --accent-foreground: #ffffff;
-  --border: #222224;
-  --rule: #1b1a1f;
-  --control: #3a3a3e;
-  --input: #6a6c72;
-  --ring: #ffffff;
-  --selection: #f0566c;
-  --destructive: #f0566c;
-  --sidebar: #171719;
-  --chart-1: #f0566c;
-  --chart-2: #bdbdc0;
-  --chart-3: #8a8c92;
-  --chart-4: #d9a441;
-  --chart-5: #3a3a3e;
-  --grid: #2a292e;
-  --status-neutral-background: #212023;
-  --status-neutral-foreground: #bdbdc0;
-  --status-warning-background: #2a2416;
-  --status-warning-foreground: #d9a441;
-  --status-critical-background: #2c1a20;
-  --status-critical-foreground: #f0566c;
-  --status-no-call-background: transparent;
-  --status-no-call-foreground: #bdbdc0;
-  --status-no-call-border: #6a6c72;
-  --brand-crimson: #b11226;
-  --brand-crimson-foreground: #ffffff;
-  --landing-background: #0a0a0a;
-  --landing-surface: #151515;
-  --landing-foreground: #efefef;
-  --landing-muted-foreground: #8c8c8c;
-  --landing-primary: #b11226;
-  --landing-primary-foreground: #ffffff;
-  --landing-field: #efefef;
-  --landing-field-foreground: #0a0a0a;
-  --landing-field-muted-foreground: #595959;
-  --card-foreground: var(--foreground);
-  --popover-foreground: var(--foreground);
-  --sidebar-foreground: var(--foreground);
-  --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: var(--accent);
-  --sidebar-accent-foreground: var(--accent-foreground);
-  --sidebar-border: var(--border);
-  --sidebar-ring: var(--ring);
-  --shadow-float: 0 12px 28px rgba(0, 0, 0, 0.2);
+.dark,
+[data-surface='marketing'],
+[data-surface='auth'] {
+  --ground: #1a2039;
+  --surface: #212846;
+  --raised: #2a3257;
+  --overlay: #313a62;
+  --ink: #f9a3c0;
+  --ink-muted: #c493a8;
+  --edge: transparent;
+  --mode-normal: #2a3257;
+  --mode-outdoor-limited: #f6dc8e;
+  --mode-commute-disruption: #f08c3f;
+  --mode-hybrid-recommended: #ea5a44;
+  --mode-surge-night: #7fb0ff;
+  --mode-on-hue: #1a2039;
+  --shadow-float: 0 12px 32px rgb(6 8 20 / 0.45);
   --focus-width: 2px;
-  --selection-width: 1px;
+  --edge-width: 0px;
 }
 
+/* Day: pale pink and navy. */
 .light {
-  --background: #f6f6f7;
-  --card: #ffffff;
-  --popover: #ffffff;
-  --foreground: #111113;
-  --secondary-foreground: #3f4246;
-  --muted-foreground: #5f6368;
-  --primary: #1d1f20;
-  --primary-foreground: #ffffff;
-  --secondary: #f0f0f2;
-  --muted: #f0f0f2;
-  --accent: #f0f0f2;
-  --accent-foreground: #111113;
-  --border: #e4e4e7;
-  --rule: #efeff1;
-  --control: #d1d3d8;
-  --input: #8b8e94;
-  --ring: #111113;
-  --selection: #b11226;
-  --destructive: #9b0f24;
-  --sidebar: #f6f6f7;
-  --chart-1: #b11226;
-  --chart-2: #5f6368;
-  --chart-3: #8b8e94;
-  --chart-4: #966400;
-  --chart-5: #d1d3d8;
-  --grid: #e4e4e7;
-  --status-neutral-background: #ededef;
-  --status-neutral-foreground: #3f4246;
-  --status-warning-background: #fdf3dc;
-  --status-warning-foreground: #966400;
-  --status-critical-background: #fdecef;
-  --status-critical-foreground: #9b0f24;
-  --status-no-call-background: transparent;
-  --status-no-call-foreground: #3f4246;
-  --status-no-call-border: #8b8e94;
-  --shadow-float: 0 8px 24px rgb(17 17 19 / 0.08);
+  --ground: #fdeef3;
+  --surface: #f9dfe8;
+  --raised: #f3cfdc;
+  --overlay: #eec3d3;
+  --ink: #1a2039;
+  --ink-muted: #51566f;
+  --mode-normal: #f3cfdc;
+  --mode-outdoor-limited: #efc04c;
+  --mode-on-hue: #1a2039;
+  --shadow-float: 0 12px 28px rgb(26 32 57 / 0.16);
 }
 
 @media (prefers-color-scheme: light) {
   html[data-theme='system'] {
     color-scheme: light;
-    --background: #f6f6f7;
-    --card: #ffffff;
-    --popover: #ffffff;
-    --foreground: #111113;
-    --secondary-foreground: #3f4246;
-    --muted-foreground: #5f6368;
-    --primary: #1d1f20;
-    --primary-foreground: #ffffff;
-    --secondary: #f0f0f2;
-    --muted: #f0f0f2;
-    --accent: #f0f0f2;
-    --accent-foreground: #111113;
-    --border: #e4e4e7;
-    --rule: #efeff1;
-    --control: #d1d3d8;
-    --input: #8b8e94;
-    --ring: #111113;
-    --selection: #b11226;
-    --destructive: #9b0f24;
-    --sidebar: #f6f6f7;
-    --chart-1: #b11226;
-    --chart-2: #5f6368;
-    --chart-3: #8b8e94;
-    --chart-4: #966400;
-    --chart-5: #d1d3d8;
-    --grid: #e4e4e7;
-    --status-neutral-background: #ededef;
-    --status-neutral-foreground: #3f4246;
-    --status-warning-background: #fdf3dc;
-    --status-warning-foreground: #966400;
-    --status-critical-background: #fdecef;
-    --status-critical-foreground: #9b0f24;
-    --status-no-call-background: transparent;
-    --status-no-call-foreground: #3f4246;
-    --status-no-call-border: #8b8e94;
+    --ground: #fdeef3;
+    --surface: #f9dfe8;
+    --raised: #f3cfdc;
+    --overlay: #eec3d3;
+    --ink: #1a2039;
+    --ink-muted: #51566f;
+    --mode-normal: #f3cfdc;
+    --mode-outdoor-limited: #efc04c;
+    --mode-on-hue: #1a2039;
+    --shadow-float: 0 12px 28px rgb(26 32 57 / 0.16);
   }
 }
 
+/* High contrast, dark: ink outlines on every capsule and field, 3px focus. */
 .dark.hc,
 .hc [data-surface='marketing'],
 .hc [data-surface='auth'] {
-  --background: #000000;
-  --popover: #121212;
-  --foreground: #ffffff;
-  --muted-foreground: #d4d4d4;
-  --border: #8a8a8a;
-  --input: #ffffff;
-  --ring: #ffffff;
-  --selection: #ff6b80;
-  --warning: #ffc04d;
-  --card: var(--background);
-  --secondary: var(--popover);
-  --muted: var(--popover);
-  --accent: var(--popover);
-  --secondary-foreground: var(--muted-foreground);
-  --primary: var(--foreground);
-  --primary-foreground: var(--background);
-  --accent-foreground: var(--foreground);
-  --destructive: var(--selection);
-  --rule: var(--border);
-  --control: var(--border);
-  --sidebar: var(--background);
-  --chart-1: var(--selection);
-  --chart-2: var(--muted-foreground);
-  --chart-3: var(--input);
-  --chart-4: var(--warning);
-  --chart-5: var(--border);
-  --grid: transparent;
+  --ground: #0b0e1f;
+  --surface: #141933;
+  --raised: #1e2448;
+  --overlay: #2a315c;
+  --ink: #ffffff;
+  --ink-muted: #e6e8f2;
+  --edge: #ffffff;
+  --mode-normal: #1e2448;
+  --mode-outdoor-limited: #ffe29a;
+  --mode-commute-disruption: #ffa25a;
+  --mode-hybrid-recommended: #ff7a52;
+  --mode-surge-night: #93c2ff;
+  --mode-on-hue: #0b0e1f;
   --focus-width: 3px;
-  --selection-width: 2px;
-  --status-neutral-background: transparent;
-  --status-neutral-foreground: var(--muted-foreground);
-  --status-neutral-border: var(--status-neutral-foreground);
-  --status-warning-background: transparent;
-  --status-warning-foreground: var(--warning);
-  --status-warning-border: var(--status-warning-foreground);
-  --status-critical-background: transparent;
-  --status-critical-foreground: var(--selection);
-  --status-critical-border: var(--status-critical-foreground);
-  --status-no-call-background: transparent;
-  --status-no-call-foreground: var(--muted-foreground);
-  --status-no-call-border: var(--status-no-call-foreground);
+  --edge-width: 2px;
 }
 
+/* High contrast, light. */
 .light.hc {
-  --background: #ffffff;
-  --popover: #ffffff;
-  --foreground: #000000;
-  --muted-foreground: #2b2b2b;
-  --border: #575757;
-  --input: #000000;
-  --ring: #000000;
-  --selection: #8f0b1e;
-  --warning: #6b4500;
-  --card: var(--background);
-  --secondary: var(--popover);
-  --muted: var(--popover);
-  --accent: var(--popover);
-  --secondary-foreground: var(--muted-foreground);
-  --primary: var(--foreground);
-  --primary-foreground: var(--background);
-  --accent-foreground: var(--foreground);
-  --destructive: var(--selection);
-  --rule: var(--border);
-  --control: var(--border);
-  --sidebar: var(--background);
-  --chart-1: var(--selection);
-  --chart-2: var(--muted-foreground);
-  --chart-3: var(--input);
-  --chart-4: var(--warning);
-  --chart-5: var(--border);
-  --grid: transparent;
+  --ground: #ffffff;
+  --surface: #f4f2f7;
+  --raised: #e9e6f0;
+  --overlay: #dcd8e6;
+  --ink: #0b0e1f;
+  --ink-muted: #262a40;
+  --edge: #0b0e1f;
+  --mode-normal: #e9e6f0;
+  --mode-outdoor-limited: #fbd25e;
+  --mode-commute-disruption: #ffb066;
+  --mode-hybrid-recommended: #ff8d6e;
+  --mode-surge-night: #9cc8ff;
+  --mode-on-hue: #0b0e1f;
   --focus-width: 3px;
+  --edge-width: 2px;
+}
+
+/*
+ * Derived roles and the shadcn aliases, resolved wherever the roles are set (the document and the forced-dusk
+ * surfaces), so a surface's own theme reaches its aliases.
+ */
+:root,
+[data-surface='marketing'],
+[data-surface='auth'] {
+  --control: var(--raised);
+  --focus: var(--ink);
+  --field: var(--surface);
+  --rule: var(--raised);
+  --chart-emphasis: var(--ink);
+  --chart-ink: var(--ink-muted);
+  --chart-grid: var(--raised);
+  --mode-normal-ink: var(--ink);
+  --mode-outdoor-limited-ink: var(--mode-on-hue);
+  --mode-commute-disruption-ink: var(--mode-on-hue);
+  --mode-hybrid-recommended-ink: var(--mode-on-hue);
+  --mode-surge-night-ink: var(--mode-on-hue);
+  /* Non-mode states carry no hue: an edge style, a tone step, a word and a glyph. */
+  --mode-watch: var(--ink);
+  --mode-watch-ink: var(--ink);
+  --mode-no-call: var(--ink-muted);
+  --mode-no-call-ink: var(--ink);
+  --mode-draft: var(--ink);
+  --mode-draft-ink: var(--ink);
+  --mode-expired: var(--surface);
+  --mode-expired-ink: var(--ink-muted);
+  --mode-rejected: var(--raised);
+  --mode-rejected-ink: var(--ink);
+
+  --background: var(--ground);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--raised);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--ground);
+  --secondary: var(--raised);
+  --secondary-foreground: var(--ink);
+  --muted: var(--surface);
+  --muted-foreground: var(--ink-muted);
+  --accent: var(--overlay);
+  --accent-foreground: var(--ink);
+  --border: var(--rule);
+  --input: var(--field);
+  --ring: var(--focus);
+  --selection: var(--ink);
+  --destructive: var(--ink);
+  --warning: var(--ink);
+  --sidebar: var(--ground);
+  --sidebar-foreground: var(--ink);
+  --sidebar-accent: var(--surface);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--rule);
+  --sidebar-ring: var(--focus);
+  --chart-1: var(--chart-emphasis);
+  --chart-2: var(--chart-ink);
+  --chart-3: var(--chart-ink);
+  --chart-4: var(--chart-ink);
+  --chart-5: var(--overlay);
+  --grid: var(--chart-grid);
+  --landing-background: var(--ground);
+  --landing-surface: var(--surface);
+  --landing-foreground: var(--ink);
+  --landing-muted-foreground: var(--ink-muted);
+  --landing-field: var(--ink);
+  --landing-field-foreground: var(--ground);
   --selection-width: 2px;
-  --status-neutral-background: transparent;
-  --status-neutral-foreground: var(--muted-foreground);
-  --status-neutral-border: var(--status-neutral-foreground);
-  --status-warning-background: transparent;
-  --status-warning-foreground: var(--warning);
-  --status-warning-border: var(--status-warning-foreground);
-  --status-critical-background: transparent;
-  --status-critical-foreground: var(--selection);
-  --status-critical-border: var(--status-critical-foreground);
-  --status-no-call-background: transparent;
-  --status-no-call-foreground: var(--muted-foreground);
-  --status-no-call-border: var(--status-no-call-foreground);
 }
 
 @theme static inline {
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-overlay: var(--overlay);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-control: var(--control);
+  --color-focus: var(--focus);
+  --color-field: var(--field);
+  --color-edge: var(--edge);
+  --color-mode-normal: var(--mode-normal);
+  --color-mode-outdoor-limited: var(--mode-outdoor-limited);
+  --color-mode-commute-disruption: var(--mode-commute-disruption);
+  --color-mode-hybrid-recommended: var(--mode-hybrid-recommended);
+  --color-mode-surge-night: var(--mode-surge-night);
+  --color-mode-on-hue: var(--mode-on-hue);
+  --color-chart-emphasis: var(--chart-emphasis);
+  --color-chart-ink: var(--chart-ink);
   --color-background: var(--background);
   --color-card: var(--card);
   --color-popover: var(--popover);
@@ -254,11 +211,11 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-border: var(--border);
   --color-rule: var(--rule);
-  --color-control: var(--control);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-selection: var(--selection);
   --color-destructive: var(--destructive);
+  --color-warning: var(--warning);
   --color-sidebar: var(--sidebar);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -266,45 +223,43 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --color-grid: var(--grid);
-  --color-status-neutral-background: var(--status-neutral-background);
-  --color-status-neutral-foreground: var(--status-neutral-foreground);
-  --color-status-warning-background: var(--status-warning-background);
-  --color-status-warning-foreground: var(--status-warning-foreground);
-  --color-status-critical-background: var(--status-critical-background);
-  --color-status-critical-foreground: var(--status-critical-foreground);
-  --color-status-no-call-background: var(--status-no-call-background);
-  --color-status-no-call-foreground: var(--status-no-call-foreground);
-  --color-status-no-call-border: var(--status-no-call-border);
   --color-card-foreground: var(--card-foreground);
   --color-popover-foreground: var(--popover-foreground);
   --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --color-brand-crimson: var(--brand-crimson);
-  --color-brand-crimson-foreground: var(--brand-crimson-foreground);
   --color-landing-background: var(--landing-background);
   --color-landing-surface: var(--landing-surface);
   --color-landing-foreground: var(--landing-foreground);
   --color-landing-muted-foreground: var(--landing-muted-foreground);
-  --color-landing-primary: var(--landing-primary);
-  --color-landing-primary-foreground: var(--landing-primary-foreground);
   --color-landing-field: var(--landing-field);
   --color-landing-field-foreground: var(--landing-field-foreground);
-  --color-landing-field-muted-foreground: var(--landing-field-muted-foreground);
   --font-sans: 'Roundo', 'Roundo Fallback', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
   --font-heading: var(--font-sans);
+  /* One surface radius (16px), its nested step (10px) and the capsule. `sm` is the checkbox's text-size square. */
+  --radius-surface: 16px;
+  --radius-nested: 10px;
+  --radius-capsule: 9999px;
   --radius-sm: 4px;
-  --radius-md: 4px;
-  --radius-lg: 6px;
-  --radius-xl: 6px;
-  --radius-2xl: 8px;
+  --radius-md: 10px;
+  --radius-lg: 10px;
+  --radius-xl: 16px;
+  --radius-2xl: 16px;
   --radius-4xl: 9999px;
+  /* Only what floats (menus, popovers, dialogs, sheets, toasts) has a shadow. */
   --shadow-lg: var(--shadow-float);
+  --shadow-md: var(--shadow-float);
+  --shadow-xl: var(--shadow-float);
+  /* Spacing on the 4px base: the gap between blocks, panel padding, the gap between sections of a screen. */
+  --spacing-gap: 16px;
+  --spacing-pad: 20px;
+  --spacing-section: 48px;
+  --spacing-control: 36px;
+  --spacing-control-page: 48px;
+  --spacing-target: 24px;
 }
 
 @theme static {
@@ -316,23 +271,26 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* App type: five sizes (13, 14, 16, 20, 26). Labels and meta 13, controls and tables 14, running text 16. */
 @utility type-title {
   font-size: 26px;
-  font-weight: 700;
-  line-height: 32px;
-}
-
-@utility type-answer-figure {
-  font-size: 30px;
   font-weight: 500;
-  line-height: 36px;
+  line-height: 32px;
+  letter-spacing: -0.02em;
 }
 
 @utility type-section {
   font-size: 20px;
-  font-weight: 400;
+  font-weight: 500;
   line-height: 28px;
-  color: var(--muted-foreground);
+  letter-spacing: -0.01em;
+}
+
+@utility type-figure {
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+  font-variant-numeric: tabular-nums;
 }
 
 @utility type-card-title {
@@ -341,34 +299,22 @@
   line-height: 24px;
 }
 
-@utility type-figure {
-  font-size: 20px;
-  font-weight: 500;
-  line-height: 28px;
+@utility type-text {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
 }
 
 @utility type-body {
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 20px;
-}
-
-@utility type-body-comfortable {
   font-size: 14px;
   font-weight: 400;
   line-height: 20px;
 }
 
 @utility type-small {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 400;
-  line-height: 16px;
-}
-
-@utility type-badge {
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 16px;
+  line-height: 18px;
 }
 
 @utility type-code {
@@ -377,36 +323,63 @@
   line-height: 20px;
 }
 
-@utility type-landing-display {
-  font-size: clamp(48px, 5vw, 80px);
-  font-weight: 300;
-  line-height: 1;
-  letter-spacing: -0.035em;
-}
-
-@utility type-landing-head {
-  font-size: clamp(26px, 2.1vw, 32px);
+/* Public pages: the dealt steps. Display is the hero (6-8vw), head the section heads. */
+@utility type-display {
+  font-size: clamp(3rem, 7vw, 8rem);
   font-weight: 500;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
 }
 
-@utility type-landing-lead {
-  font-size: clamp(20px, 1.1rem + 0.7vw, 26px);
+@utility type-head {
+  font-size: clamp(2rem, 1.3rem + 3.2vw, 4rem);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+}
+
+@utility type-lead {
+  font-size: clamp(1.25rem, 1.1rem + 0.7vw, 1.625rem);
   font-weight: 400;
-  line-height: 1.3;
+  line-height: 1.35;
+}
+
+@utility type-page-body {
+  font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+@utility type-page-small {
+  font-size: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* The landing's names for the same steps, kept until its own ticket moves it to the ones above. */
+@utility type-landing-head {
+  font-size: clamp(2rem, 1.3rem + 3.2vw, 4rem);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
 }
 
 @utility type-landing-body {
-  font-size: clamp(17px, 1rem + 0.25vw, 19px);
+  font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
   font-weight: 400;
-  line-height: 1.55;
+  line-height: 1.5;
 }
 
 @utility type-landing-small {
-  font-size: 14px;
+  font-size: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
   font-weight: 400;
   line-height: 1.5;
+}
+
+/* A capsule at text size or larger, filled by its data-tone (see the tone block below). */
+@utility tone-fill {
+  background-color: var(--tone);
+  color: var(--tone-ink);
 }
 
 @layer base {
@@ -416,16 +389,19 @@
   html {
     background: var(--background);
     color: var(--foreground);
+    caret-color: var(--ink);
+    accent-color: var(--ink);
+    scrollbar-color: var(--overlay) var(--ground);
     scroll-padding-top: 64px;
-    --density-row-height: 48px;
+    --density-row-height: 44px;
     --density-body-size: 14px;
   }
   html[data-density='compact'] {
-    --density-row-height: 42px;
+    --density-row-height: 40px;
     --density-body-size: 13px;
   }
   html[data-density='comfortable'] {
-    --density-row-height: 48px;
+    --density-row-height: 44px;
     --density-body-size: 14px;
   }
   body {
@@ -454,17 +430,90 @@
     font-variant-numeric: tabular-nums;
   }
   code,
-  pre {
+  pre,
+  kbd,
+  samp {
     font-family: var(--font-mono);
+  }
+  ::selection {
+    background: var(--ink);
+    color: var(--ground);
+  }
+  a {
+    text-underline-offset: 3px;
   }
 }
 
-/* An unlayered outline replaces the registry's focus shadows, including on fields. */
+/* An unlayered outline replaces the registry's focus shadows, including on fields: 2px ink, 2px offset. */
 :focus-visible {
-  outline: var(--focus-width) solid var(--ring);
+  outline: var(--focus-width) solid var(--focus);
   outline-offset: 2px;
   --tw-ring-shadow: 0 0 #0000;
   --tw-ring-offset-shadow: 0 0 #0000;
+}
+
+/* Mode tones: set data-tone on a capsule, a strip mark or an SVG shape and read --tone and --tone-ink. */
+[data-tone] {
+  --tone: transparent;
+  --tone-ink: var(--ink);
+  --tone-edge: var(--edge);
+}
+[data-tone='normal'] {
+  --tone: var(--mode-normal);
+  --tone-ink: var(--mode-normal-ink);
+}
+[data-tone='outdoor-limited'] {
+  --tone: var(--mode-outdoor-limited);
+  --tone-ink: var(--mode-outdoor-limited-ink);
+}
+[data-tone='commute-disruption'] {
+  --tone: var(--mode-commute-disruption);
+  --tone-ink: var(--mode-commute-disruption-ink);
+}
+[data-tone='hybrid-recommended'] {
+  --tone: var(--mode-hybrid-recommended);
+  --tone-ink: var(--mode-hybrid-recommended-ink);
+}
+[data-tone='surge-night'] {
+  --tone: var(--mode-surge-night);
+  --tone-ink: var(--mode-surge-night-ink);
+}
+[data-tone='watch'] {
+  --tone-ink: var(--mode-watch-ink);
+  --tone-edge: var(--mode-watch);
+}
+[data-tone='no-call'] {
+  --tone-ink: var(--mode-no-call-ink);
+  --tone-edge: var(--mode-no-call);
+}
+[data-tone='draft'] {
+  --tone-ink: var(--mode-draft-ink);
+  --tone-edge: var(--mode-draft);
+}
+[data-tone='expired'] {
+  --tone: var(--mode-expired);
+  --tone-ink: var(--mode-expired-ink);
+}
+[data-tone='rejected'] {
+  --tone: var(--mode-rejected);
+  --tone-ink: var(--mode-rejected-ink);
+}
+/* The strip engine writes the Dusk values as attributes for standalone SVG; on a page the theme's tokens win. */
+svg [data-tone][data-fill] {
+  fill: var(--tone);
+}
+svg [data-tone][data-stroke] {
+  stroke: var(--tone-edge);
+}
+svg [data-tone][data-ink] {
+  fill: var(--tone-ink);
+}
+svg [data-tone][data-ink] * {
+  stroke: var(--tone-ink);
+}
+.hc svg [data-tone][data-fill] {
+  stroke: var(--ink);
+  stroke-width: 2px;
 }
 
 .skip-link {
@@ -472,11 +521,14 @@
   z-index: 100;
   top: 8px;
   left: 8px;
-  min-height: 34px;
-  padding: 7px 14px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 16px;
   background: var(--primary);
   color: var(--primary-foreground);
   border-radius: 9999px;
+  font-weight: 500;
   transform: translateY(-200%);
 }
 .skip-link:focus {
@@ -487,11 +539,12 @@
 [data-surface='auth'] {
   min-height: 100svh;
   color-scheme: dark;
-  background: var(--landing-background);
-  color: var(--landing-foreground);
-  --ring: var(--landing-foreground);
-  --primary: var(--landing-field);
-  --primary-foreground: var(--landing-field-foreground);
+  background: var(--ground);
+  color: var(--ink);
+}
+.hc [data-surface='marketing'],
+.hc [data-surface='auth'] {
+  color-scheme: dark;
 }
 [data-surface='marketing'] {
   padding: 40px;
@@ -508,67 +561,37 @@
   overflow-wrap: anywhere;
 }
 .language-suggestion a {
-  min-height: 34px;
+  min-height: 36px;
   display: inline-flex;
   align-items: center;
   text-decoration: underline;
   text-underline-offset: 4px;
 }
 .language-suggestion button {
-  min-height: 34px;
-  padding: 7px 14px;
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 9999px;
+  background: var(--control);
+  color: var(--ink);
   cursor: pointer;
 }
 .language-suggestion button:hover {
-  text-decoration: underline;
-  text-underline-offset: 4px;
+  background: var(--overlay);
 }
 .auth-column {
   width: min(100%, 520px);
   margin-inline: auto;
 }
 
-.token-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
-  gap: 24px;
-}
-.token-page {
-  padding: 32px;
-}
-.token-swatch {
-  display: block;
-  height: 40px;
-  border: 1px solid var(--input);
-  border-radius: 6px;
-}
-.token-name {
-  overflow-wrap: anywhere;
-}
-
 [data-slot='sidebar-menu-button'][data-active] > span:last-child,
 [data-slot='sidebar-menu-sub-button'][data-active] > span:last-child {
-  text-decoration: underline;
-  text-decoration-color: var(--selection);
-  text-decoration-thickness: var(--selection-width);
-  text-underline-offset: 4px;
-}
-[data-collapsible='icon'] [data-slot='sidebar-menu-button'][data-active]::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  height: 16px;
-  width: var(--selection-width);
-  background: var(--selection);
+  color: var(--ink);
 }
 
-.hc [data-status] {
-  background: transparent;
-  border: 1px solid currentColor;
-}
+/* High contrast: every capsule, chip and field carries a 2px ink edge; surfaces keep their tone step and add one. */
+.hc [data-status],
 .hc [data-slot='badge'] {
-  background: transparent;
-  border: 1px solid currentColor;
+  border: var(--edge-width) solid var(--edge);
 }
 .hc [data-slot='chart'] .recharts-cartesian-grid {
   display: none;
@@ -618,33 +641,50 @@ html[data-motion='reduce'] *::after {
   .light.hc,
   [data-surface='marketing'],
   [data-surface='auth'] {
+    --ground: Canvas;
+    --surface: Canvas;
+    --raised: Canvas;
+    --overlay: Highlight;
+    --ink: CanvasText;
+    --ink-muted: CanvasText;
+    --edge: CanvasText;
+    --edge-width: 1px;
+    --mode-normal: Canvas;
+    --mode-outdoor-limited: Canvas;
+    --mode-commute-disruption: Canvas;
+    --mode-hybrid-recommended: Canvas;
+    --mode-surge-night: Canvas;
+    --mode-on-hue: CanvasText;
     --background: Canvas;
     --card: Canvas;
     --popover: Canvas;
     --foreground: CanvasText;
     --secondary-foreground: CanvasText;
     --muted-foreground: CanvasText;
-    --primary: ButtonFace;
-    --primary-foreground: ButtonText;
-    --secondary: Canvas;
+    --primary: ButtonText;
+    --primary-foreground: ButtonFace;
+    --secondary: ButtonFace;
     --muted: Canvas;
     --accent: Highlight;
     --accent-foreground: HighlightText;
-    --border: ButtonBorder;
-    --input: ButtonBorder;
-    --control: ButtonBorder;
-    --rule: ButtonBorder;
+    --control: ButtonFace;
+    --border: CanvasText;
+    --rule: CanvasText;
+    --input: Field;
+    --field: Field;
     --ring: Highlight;
+    --focus: Highlight;
     --selection: Highlight;
     --destructive: CanvasText;
     --grid: transparent;
     --landing-background: Canvas;
     --landing-foreground: CanvasText;
-    --landing-field: ButtonFace;
-    --landing-field-foreground: ButtonText;
+    --landing-field: ButtonText;
+    --landing-field-foreground: ButtonFace;
   }
   [data-status],
-  [data-slot='badge'] {
+  [data-slot='badge'],
+  [data-tone] {
     background: Canvas;
     color: CanvasText;
     border: 1px solid CanvasText;
