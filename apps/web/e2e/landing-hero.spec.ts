@@ -218,7 +218,7 @@ test('while live verdicts are not open, the hero answers with the 2 November rep
   await expect(form.locator('[data-pack="sky"] .status-mark svg')).toHaveCount(1)
   await expect(form.getByText('Storm confirmed fired')).toBeVisible()
   const gauge = form.locator(`li[data-source="${JPS}"]`)
-  await expect(gauge).toContainText('39 mm')
+  await expect(gauge).toContainText('39.0 mm')
   await expect(gauge).toContainText('0232901RF')
   await expect(gauge).toContainText('5 min old')
   await expect(form.getByText(/^No approved call yet \(n=0\): /)).toBeVisible()
@@ -283,7 +283,7 @@ test('when live verdicts are open, the browser asks the API host itself and the 
   await page.goto(`${MARKETING}/`)
   const form = hero(page)
   const gauge = form.locator('li[data-source="https://example.com/gauge"]')
-  await expect(gauge).toContainText('39 mm')
+  await expect(gauge).toContainText('39.0 mm')
   const asked = page.waitForRequest((sent) => sent.url().endsWith(EVALUATE) && sent.method() === 'POST')
   await band(page).press('ArrowRight')
   const sent = await asked

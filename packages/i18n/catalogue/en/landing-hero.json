@@ -26,7 +26,7 @@
   "fetch_error_at": "Last tried at {time}.",
   "rate_limited": "Live verdicts are busy just now.",
   "retry_after": "Try again after {time}.",
-  "open_source": "Open source",
+  "open_source": "Source page",
   "evaluated": "Evaluated {time}",
   "fired_clause": "{clause} fired",
   "verdict_label": "Clause engine verdict: not reviewed, not sent",
@@ -51,7 +51,7 @@
   "gauge_fact": "JPS gauge: {age}",
   "mode_fact": "Bukit Jalil now:",
   "status_error": "Couldn’t read Bukit Jalil’s state at {time}.",
-  "open_source_named": "Open source: {name}, in a new tab",
+  "open_source_named": "Source page for {name}, in a new tab",
   "clauses": {
     "haze_watch": "Haze watch",
     "haze_severe": "Haze severe",

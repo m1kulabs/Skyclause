@@ -141,7 +141,7 @@ describe('HeroReadout', () => {
     )
     expect(screen.getByText('No call for Storm confirmed: gauge 0232901RF silent since 15:00 MYT')).toBeTruthy()
     expect(screen.getByText('Surge evaluates from 22:00 MYT')).toBeTruthy()
-    expect(document.body.textContent).not.toContain('39 mm')
+    expect(document.body.textContent).not.toMatch(/\b39(?:\.0)? mm/)
     await expectAxeClean()
   })
 
@@ -276,7 +276,7 @@ describe('HeroReadout', () => {
     const gauge = document.querySelector(
       'li[data-source="https://infobanjirjpskl.water.gov.my/Rainfall/GetRainfallGraph/75"]'
     )!
-    expect(gauge.textContent).toContain('39 mm')
+    expect(gauge.textContent).toContain('39.0 mm')
     expect(gauge.textContent).toContain('0232901RF')
     expect(gauge.textContent).toContain('5 min old')
     expect(screen.getByText('Clause engine verdict: not reviewed, not sent')).toBeTruthy()
@@ -336,10 +336,9 @@ describe('HeroReadout', () => {
       />
     )
     expect(screen.getByText('Storm confirmed fired')).toBeTruthy()
-    expect(screen.getByText('Rain in the last 60 minutes (site)')).toBeTruthy()
+    // The public page drops the app's internal scope qualifier ("(site)").
+    expect(screen.getByText('Rain in the last 60 minutes')).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/storm_confirmed|site\.rain_60m_mm/)
-    expect(
-      screen.getByRole('link', { name: 'Open source: Rain in the last 60 minutes (site), in a new tab' })
-    ).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Source page for Rain in the last 60 minutes, in a new tab' })).toBeTruthy()
   })
 })
