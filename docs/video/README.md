@@ -1,6 +1,6 @@
 # Skyclause video pipeline
 
-This directory renders the 3:45 submission video from the director script, the shot contract, stored readings, and recorded takes. It keeps replays labelled and leaves unavailable recorded segments as title cards.
+This directory renders the submission video, about 8:00, from the director script, the shot contract, stored readings, and recorded takes. It keeps replays labelled and leaves unavailable recorded segments as title cards.
 
 Contents:
 
@@ -14,7 +14,7 @@ Contents:
 
 ## Rules
 
-- `director-script.md` and `shots.json` are the script and recording contract. Do not change them as part of a video build.
+- [`director-script.md`](/docs/demo/prelim/director-script.md) and `shots.json` are the script and recording contract. Do not change them as part of a video build.
 - Use the stored JPS series for rainfall. Do not fill missing data, smooth a line, or create per-day haze values.
 - Label every stored replay. Show a mode word with its glyph. Keep the crimson mark to one element on a screen.
 - Keep recordings and voice files under `public/`; both folders are ignored by git. Never automate Google sign-in or enter a password through the recorder.
@@ -79,7 +79,7 @@ Recorded takes are append-only under `public/footage/runs/<run-id>/`. Cues inclu
 
 ## Voice
 
-Set `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID`, then run `bun run voice -- V1 D3`. The command reads spoken lines from the matching director-script headings, skips picture lines, and writes MP3 and word-timing JSON files. It refuses any selected segment with an open `{...}` script line. The `voice` command is not run as part of `finish`.
+Set `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID`, then run `bun run voice -- S1 D3`. The command reads the `> ` spoken lines under each `## Slide N` (id `SN`) and `### DN` demo heading, and writes MP3 and word-timing JSON files. It refuses any selected segment with an open `{...}` script line. The `voice` command is not run as part of `finish`.
 
 ## Fallbacks
 
