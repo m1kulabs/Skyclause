@@ -1,6 +1,6 @@
 # Director script
 
-The word-for-word script for Skyclause's prototype-round video, slide by slide, following the [prelim deck](deck/skyclause-pitch-deck.html). The video is a recording, labelled as one, and runs about 10:00, with the voiceover sped up 1.2×, inside the organisers' 10-minute limit.
+The word-for-word script for Skyclause's prototype-round video, slide by slide, following the [prelim deck](deck/skyclause-pitch-deck.html). The video is a recording, labelled as one, and runs about 9:24, with the voiceover sped up 1.2×, inside the organisers' 10-minute limit.
 
 Status: a full draft. The live demo runs on production at `app.skyclause.m1ku.tech`; work through [Check before recording](#check-before-recording) first.
 
@@ -31,20 +31,20 @@ At 140 words a minute, a natural pace for spoken lines.
 | Slide | Time        | Beat                                                                      | Words |
 | ----- | ----------- | ------------------------------------------------------------------------- | ----- |
 | 1     | 0:00–0:34   | Who we are, and what we built                                             | 75    |
-| 2     | 0:34–1:44   | One afternoon, three numbers, and the missing rule                        | 160   |
-| 3     | 1:44–2:21   | Who it is for, who approves, and the first pilot window                   | 83    |
-| 4     | 2:21–3:04   | Public signals in, one approved call out                                  | 97    |
-| 5     | 3:04–3:48   | The six-step loop, then the demo handoff                                  | 100   |
-| 6     | 3:48–6:48   | Live demo: declare, watch, the replayed crossing, approve, notify, record | 420   |
-| 7     | 6:48–8:12   | Why Skyclause, not a weather app                                          | 193   |
-| 8     | 8:12–9:29   | Impact: time, reach, honesty, 3 and 6 months                              | 175   |
-| 9     | 9:29–9:59   | Technical architecture on Google Cloud                                    | 67    |
-| 10    | 9:59–10:55  | Who pays, and the pilot roadmap                                           | 126   |
-| 11    | 10:55–11:24 | The close, the pilot ask, then 3 seconds on the QR codes                  | 59    |
+| 2     | 0:34–1:36   | One afternoon, three numbers, and the missing rule                        | 142   |
+| 3     | 1:36–2:13   | Who it is for, who approves, and the first pilot window                   | 83    |
+| 4     | 2:13–2:55   | Public signals in, one approved call out                                  | 95    |
+| 5     | 2:55–3:36   | The six-step loop, then the demo handoff                                  | 94    |
+| 6     | 3:36–6:36   | Live demo: declare, watch, the replayed crossing, approve, notify, record | 420   |
+| 7     | 6:36–7:50   | Why Skyclause, not a weather app                                          | 170   |
+| 8     | 7:50–8:52   | Impact: time, reach, honesty, 3 and 6 months                              | 140   |
+| 9     | 8:52–9:22   | Technical architecture on Google Cloud                                    | 67    |
+| 10    | 9:22–10:12  | Who pays, and the pilot roadmap                                           | 113   |
+| 11    | 10:12–10:41 | The close, the pilot ask, then 3 seconds on the QR codes                  | 59    |
 
-About 1555 spoken words; at 140 words a minute the cut ends at about 11:24, with 1.5 seconds of breath between slides and the demo's holds included. With the voiceover sped up 1.2× in the edit, it ends at about 10:00.
+About 1458 spoken words; at 140 words a minute the cut ends at about 10:41, with 1.5 seconds of breath between slides and the demo's holds included. With the voiceover sped up 1.2× in the edit, it ends at about 9:24, which leaves about 36 seconds under the limit.
 
-The demo is the longest beat on purpose: it is the proof that the product runs. If a full read runs long, speed the voiceover up in the edit, by up to 20% with the pitch kept: it still sounds natural, and at 1.2× this cut runs about 8:00 (the demo picture and holds stay at their own speed).
+The demo is the longest beat on purpose: it is the proof that the product runs. If a full read runs long, speed the voiceover up in the edit, by up to 20% with the pitch kept: it still sounds natural, and at 1.2× this cut runs about 9:24 (the demo picture and holds stay at their own speed).
 
 ## Slide 1, who we are
 
@@ -66,23 +66,21 @@ Why it works: open on something everyone owns, then a question nobody can answer
 
 ## Slide 2, the problem
 
-**Narrator**, 0:34 to 1:44
+**Narrator**, 0:34 to 1:36
 
-> Picture this. It's a Monday, 3:25. Your lecture ends in five minutes, and the sky over Bukit Jalil has just gone black.
+> Picture this. Monday, 3:25. Your lecture ends in five minutes, and the sky over Bukit Jalil has just gone black.
 >
-> Do you run for the LRT? Wait it out? Is your next class even on?
+> Run for the LRT? Wait it out? Nobody tells you. So you check your phone, the group chat, the window, and walk out anyway.
 >
-> Nobody tells you. So you check your phone, your group chat, the window. Then you walk out anyway.
+> That's what happened on the second of November. 63 millimetres of rain in two hours. At half past three, 89 classes let out, straight into it.
 >
-> That's exactly what happened on the second of November. 63 millimetres of rain in two hours. At half past three, 89 classes let out, straight into it.
+> And it keeps happening. 77.5 millimetres, three days earlier. LRT Bukit Jalil's fare gates under water in May. Unhealthy air near campus on 20 of 31 days, from early October into November.
 >
-> Worse, it keeps happening. 77.5 millimetres, three days earlier. LRT Bukit Jalil's fare gates under water in May. Unhealthy air near campus on 20 of 31 days, from early October into November.
->
-> For an international student, that's not trivial. Fall below 80% attendance, and your student pass is on the line.
+> For an international student, fall below 80% attendance, and your student pass is on the line.
 >
 > Schools shut down above 180 on the haze index. Universities? None.
 >
-> The result? Every lecturer decides alone. Every student guesses. And nobody writes any of it down.
+> So every lecturer decides alone. Every student guesses. And nobody writes it down.
 
 On screen: the 2 November rain bars with the 15:30 line over the storm background, then the four tiles in reading order: 77.5 mm, 20 of 31 days, 190, and 0 written rules. The band "Nobody Made the Call" lands on the last line. The storm background is generated art, not a photograph of 2 November.
 
@@ -90,7 +88,7 @@ Why it works: the room lives the 3:25 moment before it hears a number, so every 
 
 ## Slide 3, who it is for
 
-**Narrator**, 1:44 to 2:21
+**Narrator**, 1:36 to 2:13
 
 > Who is Skyclause for?
 >
@@ -104,7 +102,7 @@ On screen: the four cards, then the band "The Moment". The fourth card, "First P
 
 ## Slide 4, the solution
 
-**Narrator**, 2:21 to 3:04
+**Narrator**, 2:13 to 2:55
 
 > Now, you might be thinking: why not just use Google Weather?
 >
@@ -112,7 +110,7 @@ On screen: the four cards, then the band "The Moment". The fourth card, "First P
 >
 > That's Skyclause. Public signals in, one approved call out.
 >
-> In practice, it reads the real rain gauge by the LRT every five minutes, adds MET storm warnings and the haze index, and Gemini on Vertex AI drafts the call. Every day, on its own. And every call, sealed on the record.
+> It reads the real rain gauge by the LRT every five minutes, adds MET storm warnings and the haze index, and Gemini on Vertex AI drafts the call. Every day, on its own. And every call, sealed on the record.
 
 On screen: the table, row by row as each is named. Don't read the row labels; the narration covers them.
 
@@ -120,9 +118,9 @@ Why it works: it names the judge's first objection out loud, before they can rai
 
 ## Slide 5, how it works
 
-**Narrator**, 3:04 to 3:48
+**Narrator**, 2:55 to 3:36
 
-> One more word before the loop. A clause is the condition behind a call, like more than 31 millimetres of rain in an hour.
+> A clause is the condition behind a call, like more than 31 millimetres of rain in an hour.
 >
 > Here's the whole loop.
 >
@@ -148,18 +146,18 @@ Every label below was read off `main` at `d45a0b2` (#733, the redesign) on 13 No
 
 ### Read this first: what records today
 
-Four of the six beats can't be recorded as written on today's production build. The server answers 501 "not built" for the reads those pages need. The lines below were written to survive that: D1, D2 and D3 keep their narration word for word in the fallback, D4 and D5 swap their lines, and D6 swaps its first two. Run the two-minute check in step 9 of the setup, then pick each beat's version from this table.
+Status from a live walk on production at 03:08 MYT, 13 November 2026 (main `c250a78`, web revision `web-00039-hss`). Five beats record as written; D4's live verdict depends on the real sky. Recheck with the team's troubleshooting session before the take, and run step 10 of the setup.
 
-| Beat        | Records today as written? | Why                                                                                                | Fallback                                         |
-| ----------- | ------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| D1, declare | Half                      | The form opens and fills. **Save window** fails: no handler for `createWindow` (#139, open).       | Fill the form, cut before Save.                  |
-| D2, watch   | No                        | The Signals page fails whole: it needs `getProjectStrip` (#134, open).                             | **Signal health** on the project overview.       |
-| D3, decide  | Yes                       | It's the labelled replay. Nothing live is needed.                                                  | The same replay on the public site.              |
-| D4, approve | No                        | No window means no window call, and a failed strip read disables **Approve** on every bundle.      | The live rota, then the replay's worked example. |
-| D5, notify  | No                        | No approved call, so no notice. The pilot's public calendar answers 404.                           | The notice wording from the replay.              |
-| D6, record  | Yes, but short            | The ledger and **Check integrity** are built. Without an approved call it holds few rows, or none. | Show it as it is, and say so.                    |
+| Beat        | Records as written?   | What to know                                                                                                                                                                                                                                         | Fallback                                                       |
+| ----------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| D1, declare | Yes                   | The dialog has Title, Kind, Date, Start (MYT), End (MYT) and **Save window**, and saving works. Don't tick **Repeat weekly** or open **Import an ICS calendar**: neither is built.                                                                   | None needed.                                                   |
+| D2, watch   | Yes                   | The JPS row usually reads **Stale input** (#777): readings are pulled in 15-minute batches. Run setup step 9 just before the take. If it still reads stale, keep the take: the line "if a feed goes quiet, we say No call" is what the screen shows. | None needed.                                                   |
+| D3, decide  | Yes                   | The labelled replay. Nothing live is needed.                                                                                                                                                                                                         | None needed.                                                   |
+| D4, approve | Yes, if the sky turns | **Ask for a call** on the overview starts a run for today's open windows, so declare the window and ask before 15:30 MYT. A clear sky gives "Normal: nothing to send."                                                                               | The live bundle as it reads, then the replay's worked example. |
+| D5, notify  | Partly                | The pilot's calendar feed is live. The email needs a confirmed subscriber (setup step 5) and an approved call that isn't Normal. Don't open the link in the email: the public call page isn't built.                                                 | The notice wording from the replay.                            |
+| D6, record  | Yes                   | The ledger and **Check integrity** work. Without an approved call it reads "No entries yet (n=0)" and "Chain intact: 0 checked".                                                                                                                     | Show it as it is, and say so.                                  |
 
-Slide 6 says "The rest is recorded from the live system." If more than D3 ends up as replay, change that note on the slide to "Storm, call and notice replay the real JPS gauge record of 2 November. Windows, signals, rota and ledger are recorded from the live system." Don't leave a slide that claims more than the cut shows.
+Slide 6 says "The rest is recorded from the live system." If D4 or D5 ends up as replay, change that note on the slide to "Storm, call and notice replay the real JPS gauge record of 2 November. Windows, signals, rota and ledger are recorded from the live system." Don't leave a slide that claims more than the cut shows.
 
 ### Before the recording
 
@@ -167,22 +165,23 @@ A teammate sets up production the day before, about 30 minutes. The Recorder sig
 
 1.  Open Chrome with a clean profile: no bookmarks bar, no extensions, no other tabs. Set the window to 1920×1080 at 100% zoom (Ctrl+0). Turn on Do Not Disturb in the operating system, and close mail and chat apps.
 1.  Go to `https://app.skyclause.m1ku.tech/sign-in` and click **Continue with Google**. Use the team's pilot account, not a personal one. The account avatar and email must never be on screen: keep the account menu closed, and mask it in the edit if it shows.
-1.  Open `https://app.skyclause.m1ku.tech/skyclause-pilot/bukit-jalil`. The page heading is **Project overview**. Check that **Signal health** lists the JPS gauge, the MET warnings and the DOE index, each with a reading. If it says "No sources bound (n=0)", bind them under **Project settings**, **Packs and sources** first.
+1.  Open `https://app.skyclause.m1ku.tech/skyclause-pilot/bukit-jalil`. The page heading is **Project overview**. Check that **Signal health** lists the four bound sources: the JPS gauge `0232901RF`, MET warnings, the MET forecast for Kuala Lumpur and the DOE station at Cheras (`CA16W`). They were bound on 13 November; a source may read "No reading yet" until its next poll. If the header shows "Projects unavailable", reload: the database wakes from idle.
 1.  Set the rota. Go to `/skyclause-pilot/bukit-jalil/settings/rota`, the **Rota** page. Click **Add an approver**, pick yourself under **Person**, pick **Storm afternoons** under **Template** (14:00–19:15 MYT), tick Monday to Friday under **Days**, click **Add shift**, then **Save rota**. Wait for "Rota saved." **On duty now** must show a person during the recording, so record between 14:00 and 19:15 MYT on a weekday, or add a **Custom times** shift that covers your recording hour.
 1.  Add one subscriber. Go to `/skyclause-pilot/bukit-jalil/subscribers`, the **Subscribers** page. Under **Add or import addresses**, type the team's own test address in **Email addresses, one per line** and click **Send confirmations**. Open that inbox, confirm, and reload until the row reads **Confirmed**. It's the team's address, by its own consent. Mask the address in the edit everywhere it appears.
 1.  Keep the window's field values on a card next to the laptop. The 15:30 release wave is real: it's the wave the 2 November story is about, and it runs every teaching weekday. Check the date against the APU timetable before you record.
 
-    | Field           | Value                                                                                                                                                                                                             |
-    | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-    | **Title**       | `15:30 release wave, LRT Bukit Jalil`                                                                                                                                                                             |
-    | **Kind**        | **Commute wave**                                                                                                                                                                                                  |
-    | **Date**        | The recording day, if you record before 15:00 MYT on a teaching weekday (the form starts on today). Otherwise the next teaching weekday: Monday 16 November 2026 if you record on Friday 13 November after 15:00. |
-    | **Start (MYT)** | `15:30`                                                                                                                                                                                                           |
-    | **End (MYT)**   | `15:30` (a commute wave may start and end at the same time)                                                                                                                                                       |
+    | Field           | Value                                                                                 |
+    | --------------- | ------------------------------------------------------------------------------------- |
+    | **Title**       | `15:30 release wave, LRT Bukit Jalil`                                                 |
+    | **Kind**        | **Commute wave**                                                                      |
+    | **Date**        | Today, Friday 13 November 2026: recording starts at 08:00 MYT, before the 15:30 wave. |
+    | **Start (MYT)** | `15:30`                                                                               |
+    | **End (MYT)**   | `15:30` (a commute wave may start and end at the same time)                           |
 
 1.  Don't declare the window yet. D1 declares it on camera.
 1.  Have the replay clip ready: the Remotion composition `D3Crossing` (30 seconds, 1920×1080), rendered from `docs/video/src/D3Crossing.tsx`.
-1.  Run the two-minute check. Open **Windows**: if it says "Couldn’t read the windows list.", D1 uses its fallback. Open **Signals**: if it says "Couldn’t read the bound sources.", D2 uses its fallback. Open **Calls**: if it says "No calls yet (n=0).", D4 and D5 use their fallbacks. Open **Ledger** and click **Check integrity**: note the number it reports, for D6.
+1.  Just before the D2 take, have someone with Cloud Scheduler access pull the newest readings: `gcloud scheduler jobs run ticks-batch --location=asia-southeast1 --project=skyclause`. Wait about a minute.
+1.  Run the two-minute check, opening each page once so it's warm: **Windows** shows no error banner; **Signals** lists four rows; **Calls** and **Ledger** load; click **Check integrity** and note the number it reports, for D6.
 1.  Leave the browser on **Windows**, `/skyclause-pilot/bukit-jalil/windows`, in the **Timeline** view, with the mouse parked in the middle of the page.
 
 Record each beat as its own take, with two seconds of still screen at each end. Move the mouse slowly and stop it on the thing the Narrator names. Never type an email address, a name or a phone number on camera.
@@ -267,7 +266,7 @@ Say "could be on the record". No call was made on 2 November, and the clip says 
 
 ### D4, approve (0:35)
 
-**Page:** Bundle review, `/skyclause-pilot/bukit-jalil/bundles/{id}`, headed "Bundle review". Reach it from **Project overview**, **Recent bundles**: click the newest row marked **Needs review**.
+**Page:** Bundle review, `/skyclause-pilot/bukit-jalil/bundles/{id}`, headed "Bundle review". Reach it from **Project overview**, **Recent bundles**: after D1, click **Ask for a call** there, wait for the new row, and click it. Do this before 15:30 MYT; it covers today's open windows only.
 
 This beat needs the sky to give a verdict that isn't Normal while you record: heavy rain at the gauge, a MET warning in force, or unhealthy haze. Nothing here may be staged. If the sky is clear, the bundle reads "Normal: nothing to send." and you use the fallback.
 
@@ -422,25 +421,25 @@ If a bundle exists but **Approve 1 call** is greyed out under "Window strip coul
 
 ## Slide 7, why Skyclause
 
-**Narrator**, 6:48 to 8:12
+**Narrator**, 6:36 to 7:50
 
 > Let's be fair to weather apps. Google, MET, AirVisual. They're great at telling you what the sky is doing.
 >
-> But on the second of November, those apps were all there. And 89 classes still let out into the storm. Because knowing the weather was never the problem. Deciding what to do about it was.
+> On the second of November, those apps were all there. And 89 classes still let out into the storm. Knowing the weather was never the problem. Deciding what to do about it was.
 >
-> And the lecturer's group chat? Today, that means checking the feeds, agreeing what to do, typing the message, and digging up the evidence later, if anyone asks. With Skyclause, one person reviews one draft and says yes. The notice and its evidence stay together.
+> Today, a lecturer checks the feeds, types the group-chat message, and digs up the evidence later, if anyone asks. With Skyclause, one person reviews one draft and says yes.
 >
 > Here's what Skyclause does that they don't.
 >
-> First, it knows your timetable. Not just "rain in KL today", but rain at 3:30, when your class lets out.
+> First, it knows your timetable. Not "rain in KL today", but rain at 3:30, when your class lets out.
 >
 > Second, it puts a person in charge. One call, one yes, and everyone hears the same thing.
 >
-> Third, it's honest when it's blind. If a reading is late, it says so, instead of showing you an old number.
+> Third, it's honest when it's blind. If a reading is late, it says so, instead of showing an old number.
 >
 > Last, it remembers. Every call is written down and checked against what actually fell, the next morning.
 >
-> Five things. We looked hard, and no other app does all of them.
+> We looked hard. No other app does all five.
 
 On screen: the comparison table. Light each Skyclause tick as its line is spoken: knows your window, a person approves, says "No call" when a feed is stale, written record, graded next day.
 
@@ -448,21 +447,17 @@ Why it works: it concedes what weather apps do well, then moves the fight to dec
 
 ## Slide 8, impact
 
-**Narrator**, 8:12 to 9:29
+**Narrator**, 7:50 to 8:52
 
 > What does that change for a campus?
 >
-> Time. On the second of November, Skyclause flips the verdict 25 minutes before the wave. Enough for one person to make the call, and for every student to hear it first.
+> Time. On the second of November, Skyclause flips the verdict 25 minutes before the wave. Enough for one person to make the call, and for every student to hear it.
 >
-> Reach. Every weekday evening, between half past four and quarter past seven, up to 174 sessions end, right by that one station. One call covers them all.
+> Reach. Every weekday evening, from half past four to quarter past seven, up to 174 sessions end by that one station. One call covers them all.
 >
 > Proof. We ran a month of haze, 5 October to 3 November, back through the same clauses. On 9 of 22 weekdays, Skyclause would have called hybrid classes early.
 >
-> Even better, there's no app to install. Just email, and the calendar students already use.
->
-> Next, we bring the call into APSpace, right beside the timetable students already check on their way to class. No new app to open, just the one they already live in.
->
-> And every call stays on the record, graded every morning against the gauge.
+> There's no app to install. Just email, and the calendar students already use. Next, we bring the call into APSpace, beside the timetable students already check.
 >
 > Looking ahead: in three months, Skyclause is calling the monsoon. In six, a campus can show exactly what it decided, and why.
 
@@ -472,7 +467,7 @@ Why it works: time, reach and proof, each with a real number, then the promise o
 
 ## Slide 9, technical architecture
 
-**Narrator**, 9:29 to 9:59
+**Narrator**, 8:52 to 9:22
 
 > Under the hood, it runs on Google Cloud.
 >
@@ -484,15 +479,15 @@ On screen: the architecture diagram. Point to each zone as it is named: Signals,
 
 ## Slide 10, who pays
 
-**Narrator**, 9:59 to 10:55
+**Narrator**, 9:22 to 10:12
 
-> Who pays for all this? Never students. Clubs use it free, and that's how it spreads: every club brings its members onto the calendar.
+> Who pays? Never students. Clubs use it free, and every club brings its members onto the calendar.
 >
-> Instead, the money comes from the office that answers for the call. Student affairs. Campus operations. The inbox that fills up when 89 classes walk into a storm.
+> The money comes from the office that answers for the call. Student affairs. Campus operations. The inbox that fills up when 89 classes walk into a storm.
 >
 > We're starting at 99 ringgit a month for an office, against about 45 to run it. A whole campus is 990, for up to 25,000 people. About four sen each. And the pilot has to prove the time it saves before anyone pays.
 >
-> Our first step is right here. One APU office signs a pilot. In three months, we measure the hours saved. In six, it renews. Then the next campus down the line.
+> First, one APU office signs a pilot. In three months, we measure the hours saved. In six, it renews. Then the next campus down the line.
 
 On screen: the money flow first, Office Buyer and Campus Buyer into Skyclause, then the roadmap, P0 to GA, as the last paragraph names each step.
 
@@ -500,7 +495,7 @@ Why it works: free users grow it, a named office pays, the unit cost proves the 
 
 ## Slide 11, the close
 
-**Narrator**, 10:55 to 11:24
+**Narrator**, 10:12 to 10:41
 
 > Skyclause. The call for every window. Signals in, one person approves, and every call on the record.
 >
