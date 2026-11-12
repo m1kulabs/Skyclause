@@ -21,13 +21,19 @@ const names = (list: string) =>
     .split(',')
     .map((name) => name.trim().replace(/^"|"$/g, ''))
 const code = (text: string) => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/--.*$/gm, '')
+// The grant's WITH clause upper-cased on one line, ' WITH INHERIT FALSE, SET TRUE', or '' without one.
+const options = (members: string) => {
+  const clause = /\s(WITH\s[\s\S]*)$/i.exec(members)?.[1]
+  return clause ? ` ${clause.replace(/\s+/g, ' ').trim().toUpperCase()}` : ''
+}
 // `GRANT <role> TO <member>`: unlike a privilege grant it has no ON. Dynamic SQL in `EXECUTE format(...)` counts.
 const memberships = (text: string) =>
   [...code(text).matchAll(/\bGRANT\s+((?:(?!\bON\b)[^;'])+?)\s+TO\s+([^;'(]+)/gi)].flatMap((match) =>
     names(match[2]!)
       .filter((member) => logins.includes(member))
-      .flatMap((member) => names(match[1]!).map((role) => `${role} -> ${member}`))
+      .flatMap((member) => names(match[1]!).map((role) => `${role} -> ${member}${options(match[2]!)}`))
   )
+const login = database.split('resource "postgresql_role" "login"')[1]!.split('\n}\n')[0]!
 const alterations = (text: string) =>
   [...code(text).matchAll(/\bALTER\s+(?:ROLE|USER)\s+"?(\w+)"?/gi)]
     .map((match) => match[1]!)
@@ -38,13 +44,24 @@ test('Terraform leaves the role memberships of its logins to the migrations that
     memberships(`GRANT public_reader TO app WITH INHERIT FALSE, SET TRUE;
       GRANT SELECT, UPDATE (a) ON t TO app, "system"; -- GRANT owner TO retention
       GRANT USAGE ON SCHEMA auth TO auth_app;
-      EXECUTE format('GRANT %I TO "system"', r)`)
-  ).toEqual(['public_reader -> app', '%I -> system'])
+      EXECUTE format('GRANT %I TO "system"', r); grant x to retention with
+        inherit true`)
+  ).toEqual(['public_reader -> app WITH INHERIT FALSE, SET TRUE', '%I -> system', 'x -> retention WITH INHERIT TRUE'])
   // Terraform reads every membership back, and an unset `roles` means none, so the plan would revoke these.
-  expect(sql.flatMap(memberships)).toContain('public_reader -> app')
-  const login = database.split('resource "postgresql_role" "login"')[1]!.split('\n}\n')[0]!
+  expect(sql.flatMap(memberships)).toContain('public_reader -> app WITH INHERIT FALSE, SET TRUE')
   expect(login).toMatch(/ignore_changes\s*=\s*\[[^\]]*\broles\b/)
   expect(login).not.toMatch(/^\s*roles\s*=/m)
+})
+// cyrilgdn/postgresql 1.27.0 updates a login by revoking all its memberships and granting each back with a plain GRANT,
+// which on Postgres 16+ takes INHERIT from the login's own `inherit` and SET TRUE (#619).
+test('an in-place update of a login grants its memberships back as the migrations granted them', () => {
+  expect(login).toMatch(/^\s*inherit\s*=\s*false$/m)
+  // A new membership of a login needs its own check against an update: infra/scripts/replay-login-update shows one.
+  expect(sql.flatMap(memberships)).toEqual(['public_reader -> app WITH INHERIT FALSE, SET TRUE'])
+})
+// A replace runs DROP OWNED on the login, revoking every privilege the migrations granted it, and they run only once.
+test('Terraform refuses to replace or destroy a login', () => {
+  expect(login).toMatch(/^\s*prevent_destroy\s*=\s*true$/m)
 })
 test('no migration alters a Terraform-made login, which Terraform would read back as drift', () => {
   expect(alterations('ALTER ROLE app SET search_path = x; alter user "system" CONNECTION LIMIT 3;')).toEqual([

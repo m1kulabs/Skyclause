@@ -61,13 +61,18 @@ resource "postgresql_role" "login" {
   name     = each.key
   login    = true
   password = random_password.login[each.key].result
+  # An in-place update revokes every membership of the login and grants each back with a plain
+  # GRANT, which takes its INHERIT from this; false re-grants `public_reader` as 0000 does (#619).
+  inherit = false
 
   # The migrations own these logins' memberships: 0000 creates the group roles and grants
   # `public_reader` to `app` WITH INHERIT FALSE, SET TRUE. Terraform runs first on a new database,
   # when no group role exists, and reads every membership back, so an unset `roles` would revoke
-  # them. Updating a login in place still revokes all of them and re-grants with INHERIT TRUE (#619).
+  # them. A replace drops every privilege the migrations granted the login, and they run only once,
+  # so lift prevent_destroy only in a PR that also grants them back.
   lifecycle {
-    ignore_changes = [roles]
+    ignore_changes  = [roles]
+    prevent_destroy = true
   }
 }
 
